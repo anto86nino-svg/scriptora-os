@@ -30,3 +30,5 @@ dist-ssr
 .env.vercel
 .env.production
 .env.vercel
+.env
+.env.bak.*
