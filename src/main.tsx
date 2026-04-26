@@ -5,14 +5,6 @@ import "./index.css";
 import { hydrateFromIndexedDB } from "./lib/storage";
 import { supabase } from "./integrations/supabase/client";
 
-// 🔥 Supabase session init (fix Google login)
-supabase.auth.getSession().then(({ data }) => {
-  if (data.session) {
-    console.log("Utente già loggato:", data.session.user);
-  } else {
-    console.log("Nessuna sessione trovata");
-  }
-});
 
 
 // Env sanity check — mostra errore visibile invece di pagina bianca

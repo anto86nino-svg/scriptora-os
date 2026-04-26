@@ -794,7 +794,7 @@ const GenerationProgress = memo(function GenerationProgress({ onCancel, chunkPro
 
   // Fake progress for when no chunk data yet
   useEffect(() => {
-    if (chunkProgress) return;
+    if (!chunkProgress) return;
     const start = Date.now();
     const interval = setInterval(() => {
       const elapsed = (Date.now() - start) / 1000;
@@ -812,7 +812,7 @@ const GenerationProgress = memo(function GenerationProgress({ onCancel, chunkPro
     : Math.round(fakePct);
 
   const phaseLabels: Record<string, string> = {
-    OPENING: t("progress_analyzing") || "🪝 Opening — hooking the reader...",
+    OPENING: t("progress_analyzing") || "🪝 Inizio potente — hooking the reader...",
     DEVELOPMENT: t("progress_writing") || "✍️ Developing — building depth...",
     EXPANSION: t("progress_enhancing") || "🧠 Expanding — adding richness...",
     TRANSITION: t("progress_refining") || "🔥 Transitioning — guiding toward closure...",
@@ -824,7 +824,7 @@ const GenerationProgress = memo(function GenerationProgress({ onCancel, chunkPro
     : t("progress_analyzing") || "Preparing...";
 
   const wordInfo = chunkProgress
-    ? `${chunkProgress.currentWords.toLocaleString()} / ${chunkProgress.targetWords.toLocaleString()} words`
+    ? `${chunkProgress.currentWords.toLocaleString()} / ${chunkProgress.targetWords.toLocaleString()} parole`
     : "";
 
   return (
