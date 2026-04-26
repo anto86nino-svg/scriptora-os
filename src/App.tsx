@@ -20,7 +20,10 @@ import DownloadsPage from "./pages/DownloadsPage.tsx";
 import BestsellerRadarPage from "./pages/BestsellerRadarPage.tsx";
 import InstallPage from "./pages/InstallPage.tsx";
 import { DevModeBadge } from "@/components/DevModeBadge";
+import GlobalCuriosity from "./components/GlobalCuriosity";
+import MollyLive from "./molly/MollyLive";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+
 
 
 const queryClient = new QueryClient();
@@ -53,6 +56,8 @@ const App = () => (
               </Routes>
               </AppErrorBoundary>
               <DevModeBadge />
+<MollyLive />
+<GlobalCuriosity />
             </MollyProvider>
           </DominationProvider>
         </AuthProvider>

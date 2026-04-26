@@ -5,6 +5,16 @@ import "./index.css";
 import { hydrateFromIndexedDB } from "./lib/storage";
 import { supabase } from "./integrations/supabase/client";
 
+// 🔥 Supabase session init (fix Google login)
+supabase.auth.getSession().then(({ data }) => {
+  if (data.session) {
+    console.log("Utente già loggato:", data.session.user);
+  } else {
+    console.log("Nessuna sessione trovata");
+  }
+});
+
+
 // Env sanity check — mostra errore visibile invece di pagina bianca
 // se le variabili VITE_SUPABASE_* sono mancanti (es. .env vuoto dopo export).
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -92,3 +102,23 @@ hydrateFromIndexedDB().catch(() => {});
     /* ignore */
   }
 })();
+
+// 🔥 Mount globale Curiosita
+import("./components/GlobalCuriosity").then(({ default: GlobalCuriosity }) => {
+  const el = document.createElement("div");
+  document.body.appendChild(el);
+
+  import("react-dom/client").then(({ createRoot }) => {
+    createRoot(el).render(GlobalCuriosity({}));
+  });
+});
+
+// 🔥 Mount GenerationStatus globale
+import("./components/GenerationStatus").then(({ default: GenerationStatus }) => {
+  const el = document.createElement("div");
+  document.body.appendChild(el);
+
+  import("react-dom/client").then(({ createRoot }) => {
+    createRoot(el).render(GenerationStatus({}));
+  });
+});
