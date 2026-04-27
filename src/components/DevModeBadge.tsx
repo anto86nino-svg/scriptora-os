@@ -104,7 +104,7 @@ export function DevModeBadge() {
 
   return (
     <>
-      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-1 rounded-full bg-foreground text-background shadow-lg pl-3 pr-1 py-1 text-[11px] font-mono">
+      <div className="fixed top-20 right-4 z-50 flex items-center gap-1 rounded-full bg-foreground text-background shadow-lg pl-3 pr-1 py-1 text-[11px] font-mono">
         <Terminal className="h-3 w-3" />
         <span className="font-semibold tracking-wider">DEV</span>
 
@@ -120,7 +120,7 @@ export function DevModeBadge() {
             <ChevronDown className="h-3 w-3 opacity-70" />
           </button>
           {planMenuOpen && (
-            <div className="absolute right-0 bottom-full mb-2 min-w-[200px] rounded-lg border border-border bg-popover text-popover-foreground shadow-xl overflow-hidden">
+            <div className="absolute right-0 top-full mt-2 min-w-[200px] rounded-lg border border-border bg-popover text-popover-foreground shadow-xl overflow-hidden">
               <div className="px-3 py-1.5 text-[9px] uppercase tracking-wider text-muted-foreground border-b border-border">
                 Simula piano
               </div>
