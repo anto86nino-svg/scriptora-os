@@ -5,6 +5,7 @@ import { BookOpen, X, Sparkles, PenTool } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { getGenreBlueprint } from "@/lib/genre-intelligence";
 import { getStylesForGenre, type WritingStylePreset } from "@/lib/writing-styles";
+import { usePlan } from "@/lib/plan";
 
 interface NewBookDialogProps {
   open: boolean;
@@ -80,6 +81,8 @@ const GENRES: { value: Genre; label: string; group: string }[] = [
 ];
 
 export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
+  const { plan } = usePlan();
+  const isFreePlan = plan === "free";
   const [pendingCharacterProject, setPendingCharacterProject] = useState<any | null>(null);
 
   useEffect(() => {
@@ -127,14 +130,31 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
     category: "Self Help",
     subcategory: "Mindset",
     chapterLength: "medium",
-    bookLength: "medium",
+    bookLength: "short",
     numberOfChapters: 10,
     subchaptersEnabled: true,
   });
 
+  useEffect(() => {
+    if (!open || !isFreePlan) return;
+
+    setConfig(prev => ({
+      ...prev,
+      bookLength: "short",
+      customTotalWords: Math.min(prev.customTotalWords ?? 10000, 10000),
+    }));
+  }, [open, isFreePlan]);
+
   if (!open) return null;
 
-  const update = (key: keyof BookConfig, value: any) => setConfig(prev => ({ ...prev, [key]: value }));
+  const update = (key: keyof BookConfig, value: any) => {
+    if (isFreePlan && key === "bookLength" && value !== "short") return;
+    if (isFreePlan && key === "customTotalWords") {
+      setConfig(prev => ({ ...prev, customTotalWords: Math.min(Number(value) || 10000, 10000) }));
+      return;
+    }
+    setConfig(prev => ({ ...prev, [key]: value }));
+  };
   const categories = Object.keys(CATEGORIES);
   const subcategories = CATEGORIES[config.category] || [];
 
@@ -173,21 +193,39 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
             </span>
           </div>
         )}
-              {(Object.entries(BOOK_LENGTH_CONFIG) as [BookLength, typeof BOOK_LENGTH_CONFIG[BookLength]][]).map(([key, val]) => (
-                <button key={key} type="button"
-                  onClick={() => update("bookLength", key)}
-                  className={`p-3 rounded-lg border text-center transition-all ${
-                    config.bookLength === key
-                      ? "border-primary bg-primary/10 ring-1 ring-primary/30"
-                      : "border-border bg-muted/30 hover:bg-muted/50"
-                  }`}>
-                  <p className={`text-xs font-semibold ${config.bookLength === key ? "text-primary" : "text-foreground"}`}>{val.label}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {key === "custom" ? "Choose words" : `~${(val.totalWords / 1000).toFixed(0)}k words`}
-                  </p>
-                </button>
-              ))}
+              {(Object.entries(BOOK_LENGTH_CONFIG) as [BookLength, typeof BOOK_LENGTH_CONFIG[BookLength]][]).map(([key, val]) => {
+                const lockedForFree = isFreePlan && key !== "short";
+
+                return (
+                  <button key={key} type="button"
+                    disabled={lockedForFree}
+                    title={lockedForFree ? "Il piano Free include un libro fino a 10.000 parole." : undefined}
+                    onClick={() => update("bookLength", key)}
+                    className={`p-3 rounded-lg border text-center transition-all ${
+                      config.bookLength === key
+                        ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                        : lockedForFree
+                          ? "border-border bg-muted/20 opacity-50 cursor-not-allowed"
+                          : "border-border bg-muted/30 hover:bg-muted/50"
+                    }`}>
+                    <p className={`text-xs font-semibold ${config.bookLength === key ? "text-primary" : "text-foreground"}`}>{val.label}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {key === "custom" ? "Choose words" : `~${(val.totalWords / 1000).toFixed(0)}k words`}
+                    </p>
+                    {lockedForFree && (
+                      <p className="mt-1 text-[9px] font-semibold uppercase tracking-wider text-primary">
+                        Pro
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
             </div>
+            {isFreePlan && (
+              <p className="mt-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] text-muted-foreground">
+                Il piano Free include <strong className="text-foreground">1 libro fino a 10.000 parole</strong>. I libri più lunghi sono disponibili con Pro/Premium.
+              </p>
+            )}
             {config.bookLength === "custom" && (
               <div className="mt-3 p-3 rounded-lg border border-primary/30 bg-primary/5 space-y-2">
                 <div className="flex items-center justify-between">

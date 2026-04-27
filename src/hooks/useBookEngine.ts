@@ -5,6 +5,9 @@ import { saveProject } from "@/lib/storage";
 import { generateBlueprint, generateFrontMatter, generateChapter, generateChapterChunked, generateSubchapter, generateBackMatter, rewriteChapter, evaluateChapterQuality, RewriteLevel, ChunkProgress, buildGenreLock } from "@/lib/generation";
 import { toast } from "sonner";
 import { t } from "@/lib/i18n";
+import { fetchPlan } from "@/lib/plan";
+import { isDevMode } from "@/lib/dev-mode";
+import { getDevPlanOverride } from "@/lib/dev-plan-override";
 
 // Debounce remote saves: local save is instant, but Supabase upserts are
 // throttled to avoid flooding the network during chunked generation.
@@ -69,12 +72,21 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   const getLatestProject = (): BookProject | null => projectRef.current;
 
   const startNewBook = useCallback(async (config: BookConfig) => {
+    const activePlan = isDevMode() ? getDevPlanOverride() : await fetchPlan();
+    const safeConfig: BookConfig = activePlan === "free"
+      ? {
+          ...config,
+          bookLength: "short",
+          customTotalWords: Math.min(config.customTotalWords ?? 10000, 10000),
+        }
+      : config;
+
     // Genre Lock — capture editorial blueprint at creation time so the
     // entire book stays consistent (no drift between chapters/front/back).
-    const genreLock = buildGenreLock(config);
+    const genreLock = buildGenreLock(safeConfig);
     const newProject: BookProject = {
       id: createProjectId(),
-      config,
+      config: safeConfig,
       blueprint: null, frontMatter: null, chapters: [], backMatter: null,
       phase: "blueprint",
       genreLock,
@@ -87,12 +99,12 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     saveProject(newProject);
     saveProjectAsync(newProject, syncCallbacks).catch(() => {});
 
-    addMessage("system", `Starting book: "${config.title}" — ${config.numberOfChapters} chapters, ${config.language}, ${config.genre}, ${config.bookLength} book`);
+    addMessage("system", `Starting book: "${safeConfig.title}" — ${safeConfig.numberOfChapters} chapters, ${safeConfig.language}, ${safeConfig.genre}, ${safeConfig.bookLength} book`);
     addGenerating("blueprint");
 
     try {
       addMessage("assistant", "Generating book blueprint... 🏗️");
-      const blueprint = await generateBlueprint(config, genreLock);
+      const blueprint = await generateBlueprint(safeConfig, genreLock);
       updateAndSave(p => ({ ...p, blueprint, phase: "front-matter" as GenerationPhase }));
       addMessage("assistant", `Blueprint ready! ${blueprint.chapterOutlines.length} chapters planned.`);
     } catch (e: any) {
