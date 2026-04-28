@@ -243,78 +243,6 @@ const PACKAGING_SCHEMA = {
   additionalProperties: false,
 };
 
-
-const KEYWORD_GOLD_SCHEMA = {
-  type: "object",
-  properties: {
-    marketplace: { type: "string" },
-    title: { type: "string" },
-    subtitle: { type: "string" },
-    bisacCategories: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          path: { type: "string" },
-          confidence: { type: "number" },
-          reason: { type: "string" },
-        },
-        required: ["path", "confidence", "reason"],
-      },
-    },
-    kdpBrowseCategories: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          path: { type: "string" },
-          confidence: { type: "number" },
-          reason: { type: "string" },
-        },
-        required: ["path", "confidence", "reason"],
-      },
-    },
-    backendKeywords: { type: "array", items: { type: "string" } },
-    goldKeywords: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          keyword: { type: "string" },
-          intent: { type: "string", enum: ["buyer", "problem", "genre", "audience", "benefit", "competitor-gap"] },
-          strength: { type: "number" },
-          competitionRisk: { type: "string", enum: ["low", "medium", "high"] },
-          why: { type: "string" },
-        },
-        required: ["keyword", "intent", "strength", "competitionRisk", "why"],
-      },
-    },
-    negativeKeywords: { type: "array", items: { type: "string" } },
-    positioning: {
-      type: "object",
-      properties: {
-        mainAudience: { type: "string" },
-        commercialPromise: { type: "string" },
-        strongestAngle: { type: "string" },
-        saturationWarning: { type: "string" },
-      },
-      required: ["mainAudience", "commercialPromise", "strongestAngle", "saturationWarning"],
-    },
-    finalChecklist: { type: "array", items: { type: "string" } },
-  },
-  required: [
-    "marketplace",
-    "title",
-    "bisacCategories",
-    "kdpBrowseCategories",
-    "backendKeywords",
-    "goldKeywords",
-    "negativeKeywords",
-    "positioning",
-    "finalChecklist"
-  ],
-};
-
 const TRENDING_NICHES_SCHEMA = {
   type: "object",
   properties: {
@@ -740,68 +668,6 @@ async function handleTrendingNiches(p: any) {
   return { ...meta, ...out };
 }
 
-
-async function handleKeywordGold(p: any) {
-  const title = String(p?.title || "").trim();
-  const subtitle = String(p?.subtitle || "").trim();
-  const genre = String(p?.genre || "books").trim();
-  const language = String(p?.language || "Italian").trim();
-  const marketplace = String(p?.marketplace || "amazon.it").trim();
-
-  if (!title) throw new Error("Title is required for Keyword Gold");
-
-  const site = marketplace.toLowerCase().includes(".it") ? "site:amazon.it"
-    : marketplace.toLowerCase().includes(".uk") ? "site:amazon.co.uk"
-    : "site:amazon.com";
-
-  const queries = [
-    `${site} ${title} ${subtitle} libri`,
-    `${site} ${genre} bestseller libri ${title}`,
-    `${site} ${genre} kindle bestseller keywords`,
-    `${genre} BISAC categories books ${title}`,
-    `${title} ${subtitle} amazon book reviews readers`,
-  ].filter(q => q.trim().length > 8);
-
-  const { results, text, usedQueries } = await braveMultiQuery(queries);
-
-  const sys = `You are a senior Amazon KDP metadata strategist and BISAC/category specialist.
-You create honest, publish-ready metadata from title/subtitle and real public market signals.
-Do NOT claim official Amazon data. Use public signals only.
-Return STRICT JSON only.`;
-
-  const usr =
-    `Book metadata input:\n` +
-    `- Title: ${title}\n` +
-    `- Subtitle: ${subtitle || "(none)"}\n` +
-    `- Genre: ${genre}\n` +
-    `- Language: ${language}\n` +
-    `- Marketplace: ${marketplace}\n\n` +
-    (text ? `Public market signals from Brave Search:\n${text}\n\n` : `No live results available. Use careful category reasoning.\n\n`) +
-    `Generate Keyword Gold metadata:
-- 3-5 BISAC-style category paths.
-- 3-5 Amazon/KDP browse category suggestions.
-- exactly 7 backendKeywords, KDP-safe, no repeated words, no author names, no misleading claims.
-- 10-15 goldKeywords with intent, strength 0-100, competitionRisk, and why.
-- negativeKeywords to avoid.
-- positioning: mainAudience, commercialPromise, strongestAngle, saturationWarning.
-- finalChecklist: 5 practical actions before publishing.
-Write all explanations in ${language}.`;
-
-  const out = await callAIJson(sys, usr, "keyword_gold", KEYWORD_GOLD_SCHEMA);
-
-  return {
-    ...out,
-    marketplace,
-    title,
-    subtitle,
-    groundingUsed: results.length > 0,
-    groundingProvider: results.length > 0 ? ("brave" as const) : null,
-    groundingResultsCount: results.length,
-    groundingQueries: usedQueries,
-    analyzedAt: new Date().toISOString(),
-  };
-}
-
 // ============ Server ============
 
 serve(async (req) => {
@@ -818,7 +684,6 @@ serve(async (req) => {
       case "coverIntelligence":     result = await handleCoverIntelligence(payload); break;
       case "kdpPackaging":          result = await handlePackaging(payload); break;
       case "dominateTitles":        result = await handleDominateTitles(payload); break;
-      case "keywordGold":           result = await handleKeywordGold(payload); break;
       case "trendingNiches":        result = await handleTrendingNiches(payload); break;
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), {

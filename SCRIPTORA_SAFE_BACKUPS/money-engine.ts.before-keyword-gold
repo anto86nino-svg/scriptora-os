@@ -70,48 +70,6 @@ export interface KDPPackaging extends GroundingMeta {
   bulletPoints: string[];         // 5 sales bullets
 }
 
-/* ============ Keyword Gold ============ */
-
-export interface KeywordGoldInput {
-  title: string;
-  subtitle?: string;
-  genre?: string;
-  language?: string;
-  marketplace?: "amazon.com" | "amazon.it" | "amazon.co.uk" | string;
-}
-
-export interface KeywordGoldResult extends GroundingMeta {
-  marketplace: string;
-  title: string;
-  subtitle?: string;
-  bisacCategories: Array<{
-    path: string;
-    confidence: number;
-    reason: string;
-  }>;
-  kdpBrowseCategories: Array<{
-    path: string;
-    confidence: number;
-    reason: string;
-  }>;
-  backendKeywords: string[];
-  goldKeywords: Array<{
-    keyword: string;
-    intent: "buyer" | "problem" | "genre" | "audience" | "benefit" | "competitor-gap";
-    strength: number;
-    competitionRisk: "low" | "medium" | "high";
-    why: string;
-  }>;
-  negativeKeywords: string[];
-  positioning: {
-    mainAudience: string;
-    commercialPromise: string;
-    strongestAngle: string;
-    saturationWarning: string;
-  };
-  finalChecklist: string[];
-}
-
 /* ============ Title Domination ============ */
 
 export interface DominateTitlesInput {
@@ -224,7 +182,6 @@ type Action =
   | { kind: "coverIntelligence"; genre: string; mood?: string; language?: string }
   | { kind: "kdpPackaging"; book: BookData }
   | ({ kind: "dominateTitles" } & DominateTitlesInput)
-  | ({ kind: "keywordGold" } & KeywordGoldInput)
   | ({ kind: "trendingNiches" } & TrendingNichesInput);
 
 async function invoke<T>(action: Action, plan: PlanTier): Promise<T> {
@@ -295,13 +252,6 @@ export async function dominateTitles(
   plan: PlanTier,
 ): Promise<TitleDominationResult> {
   return invoke<TitleDominationResult>({ kind: "dominateTitles", ...input }, plan);
-}
-
-export async function keywordGold(
-  input: KeywordGoldInput,
-  plan: PlanTier,
-): Promise<KeywordGoldResult> {
-  return invoke<KeywordGoldResult>({ kind: "keywordGold", ...input }, plan);
 }
 
 export async function fetchTrendingNiches(

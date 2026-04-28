@@ -18,7 +18,6 @@ import PricingPage from "./pages/PricingPage.tsx";
 import KdpLaunchPage from "./pages/KdpLaunchPage.tsx";
 import DownloadsPage from "./pages/DownloadsPage.tsx";
 import BestsellerRadarPage from "./pages/BestsellerRadarPage.tsx";
-import KeywordGoldPage from "./pages/KeywordGoldPage.tsx";
 import InstallPage from "./pages/InstallPage.tsx";
 import { DevModeBadge } from "@/components/DevModeBadge";
 import GlobalCuriosity from "./components/GlobalCuriosity";
@@ -50,7 +49,6 @@ const App = () => (
                 <Route path="/kdp-launch" element={<ProtectedRoute><KdpLaunchPage /></ProtectedRoute>} />
                 <Route path="/downloads" element={<ProtectedRoute><DownloadsPage /></ProtectedRoute>} />
                 <Route path="/bestseller-radar" element={<ProtectedRoute><BestsellerRadarPage /></ProtectedRoute>} />
-                <Route path="/keyword-gold" element={<ProtectedRoute><KeywordGoldPage /></ProtectedRoute>} />
                 <Route path="/install" element={<InstallPage />} />
 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
