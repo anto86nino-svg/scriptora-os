@@ -3,6 +3,7 @@ import { BookConfig, Language, Genre, ChapterLength, BookLength, CATEGORIES, BOO
 import { Download, Image, Loader2, FileText, FileType, Rocket, Home, Cloud, CloudOff, CheckCircle2, Lock, CreditCard, LogOut, User as UserIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { t } from "@/lib/i18n";
+import { usePlan } from "@/lib/plan";
 import type { SyncStatus } from "@/hooks/useSyncStatus";
 import { usePlan, PLAN_LIMITS, useQuota } from "@/lib/plan";
 import { isDevMode } from "@/lib/dev-mode";
@@ -49,8 +50,9 @@ const LENGTHS: { value: ChapterLength; label: string }[] = [
 ];
 
 export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExport, onExportDocx, onExportPdf, onCover, onPublish, isExporting, exportLabel, phase, syncStatus, projectId, project }: TopBarProps) {
-  const nav = useNavigate();
   const { plan } = usePlan();
+  const isFreePlan = plan === "free";
+  const nav = useNavigate();
   const dev = isDevMode();
   // Honour dev-mode plan override (Free → no export, Beta/Pro/Premium → export).
   const canExport = PLAN_LIMITS[plan].canExport;
@@ -84,13 +86,18 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
       <Divider />
       <MiniSelect label={t("genre")} value={config.genre} options={GENRES} onChange={(v) => onUpdateConfig("genre", v)} />
       <Divider />
-      <MiniSelect label={t("book")} value={config.bookLength || "medium"}
-        options={[
+      <MiniSelect label={t("book")} value={isFreePlan ? "short" : (config.bookLength || "medium")}
+        options={isFreePlan ? [
+          { value: "short", label: `${t("short")} (~10k) · Free` },
+        ] : [
           { value: "short", label: `${t("short")} (~10k)` },
           { value: "medium", label: `${t("medium")} (~50k)` },
           { value: "long", label: `${t("long")} (~100k+)` },
         ]}
-        onChange={(v) => onUpdateConfig("bookLength", v)} />
+        onChange={(v) => {
+          if (isFreePlan && v !== "short") return;
+          onUpdateConfig("bookLength", isFreePlan ? "short" : v);
+        }} />
       <Divider />
       <MiniSelect label={t("cat")} value={config.category || "Self Help"} options={categories.map(c => ({ value: c, label: c }))}
         onChange={(v) => { onUpdateConfig("category", v); onUpdateConfig("subcategory", CATEGORIES[v]?.[0] || ""); }} />

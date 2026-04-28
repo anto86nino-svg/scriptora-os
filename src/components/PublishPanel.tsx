@@ -5,6 +5,7 @@ import {
   BookOpen, Save, Edit3, Clock, Download, Rocket, Check, FilePlus
 } from "lucide-react";
 import { toast } from "sonner";
+import { usePlan } from "@/lib/plan";
 
 interface PublishPanelProps {
   project: BookProject | null;
@@ -42,6 +43,8 @@ export function PublishPanel({
   onUpdateConfig, onUpdateChapterContent, onSaveProject,
   onExportEpub, onExportPdf, onExportDocx
 }: PublishPanelProps) {
+  const { plan } = usePlan();
+  const isFreePlan = plan === "free";
   // Session-local: each Publish open starts fresh, ignoring previous projects
   const [sessionStarted, setSessionStarted] = useState(false);
   const [draftConfig, setDraftConfig] = useState<BookConfig>({ ...BLANK_CONFIG });
@@ -139,10 +142,13 @@ export function PublishPanel({
                 options={CATEGORIES[draftConfig.category] || []} />
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <ConfigSelect label="Lunghezza libro" value={draftConfig.bookLength}
-                onChange={(v) => setDraftConfig({ ...draftConfig, bookLength: v as BookLength })}
-                options={["short", "medium", "long"]}
-                labels={{ short: "Breve ~10k", medium: "Medio ~50k", long: "Lungo ~100k+" }} />
+              <ConfigSelect label="Lunghezza libro" value={isFreePlan ? "short" : draftConfig.bookLength}
+                onChange={(v) => {
+                  if (isFreePlan && v !== "short") return;
+                  setDraftConfig({ ...draftConfig, bookLength: isFreePlan ? "short" : v as BookLength });
+                }}
+                options={isFreePlan ? ["short"] : ["short", "medium", "long"]}
+                labels={{ short: "Breve ~10k · Free", medium: "Medio ~50k", long: "Lungo ~100k+" }} />
               <ConfigSelect label="Lunghezza capitolo" value={draftConfig.chapterLength}
                 onChange={(v) => setDraftConfig({ ...draftConfig, chapterLength: v as ChapterLength })}
                 options={["short", "medium", "long"]}
@@ -283,8 +289,11 @@ export function PublishPanel({
                       options={CATEGORIES[project.config.category] || []} />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    <ConfigSelect label="Lunghezza libro" value={project.config.bookLength} onChange={(v) => onUpdateConfig("bookLength", v as BookLength)}
-                      options={["short", "medium", "long"]} labels={{ short: "Breve ~10k", medium: "Medio ~50k", long: "Lungo ~100k+" }} />
+                    <ConfigSelect label="Lunghezza libro" value={isFreePlan ? "short" : project.config.bookLength} onChange={(v) => {
+                      if (isFreePlan && v !== "short") return;
+                      onUpdateConfig("bookLength", isFreePlan ? "short" : v as BookLength);
+                    }}
+                      options={isFreePlan ? ["short"] : ["short", "medium", "long"]} labels={{ short: "Breve ~10k · Free", medium: "Medio ~50k", long: "Lungo ~100k+" }} />
                     <ConfigSelect label="Lunghezza capitolo" value={project.config.chapterLength} onChange={(v) => onUpdateConfig("chapterLength", v as ChapterLength)}
                       options={["short", "medium", "long"]} labels={{ short: "Breve", medium: "Media", long: "Lunga" }} />
                   </div>
