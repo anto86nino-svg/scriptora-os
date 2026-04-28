@@ -53,18 +53,6 @@ async function getActivePlanForEngine() {
   return isDevMode() ? getDevPlanOverride() : await fetchPlan();
 }
 
-async function isFreeAiToolsLockedForProject(project: BookProject | null | undefined): Promise<boolean> {
-  const activePlan = await getActivePlanForEngine();
-  if (activePlan !== "free") return false;
-  return countProjectWordsHard(project) > 0;
-}
-
-function showFreeAiToolsLockedMessage(addMessage: (role: ChatMessage["role"], content: string) => void) {
-  const msg = "Strumenti AI bloccati nel piano Free dopo il libro gratuito. Passa a Pro/Premium per analisi, riscritture e upgrade capitoli.";
-  addMessage("assistant", `🔒 ${msg}`);
-  toast.error(msg);
-}
-
 
 // Debounce remote saves: local save is instant, but Supabase upserts are
 // throttled to avoid flooding the network during chunked generation.
@@ -425,10 +413,6 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   // AI Quality Evaluation
   const evaluateChapter = useCallback(async (index: number) => {
     const p = getLatestProject() || project;
-    if (await isFreeAiToolsLockedForProject(p)) {
-      showFreeAiToolsLockedMessage(addMessage);
-      return;
-    }
     if (!p?.chapters[index]?.content) return;
     const genKey = `eval-${index}`;
     if (generatingSet.has(genKey)) return;
@@ -453,10 +437,6 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   // Smart Rewrite with levels
   const rewriteChapterWithDepth = useCallback(async (index: number, level: RewriteLevel = "deep") => {
     const p = getLatestProject() || project;
-    if (await isFreeAiToolsLockedForProject(p)) {
-      showFreeAiToolsLockedMessage(addMessage);
-      return;
-    }
     if (!p?.blueprint || !p.chapters[index]) return;
     const genKey = `chapter-${index}`;
     if (generatingSet.has(genKey)) return;
@@ -504,10 +484,6 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   // Auto-rewrite until quality threshold met
   const autoRewriteToThreshold = useCallback(async (index: number, threshold: number, maxAttempts: number = 3) => {
     const p = getLatestProject() || project;
-    if (await isFreeAiToolsLockedForProject(p)) {
-      showFreeAiToolsLockedMessage(addMessage);
-      return;
-    }
     if (!p?.blueprint || !p.chapters[index]?.content) return;
     const genKey = `chapter-${index}`;
     if (generatingSet.has(genKey)) return;

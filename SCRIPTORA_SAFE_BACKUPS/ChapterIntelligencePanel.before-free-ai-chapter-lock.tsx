@@ -3,42 +3,12 @@ import { Sparkles, X, Loader2, AlertCircle, Check, Scissors, Flame, Wand2, Trash
 import { supabase } from "@/integrations/supabase/client";
 import { BookProject } from "@/types/book";
 import { useDomination } from "@/contexts/DominationContext";
-import { usePlan, PLAN_LIMITS, fetchPlan } from "@/lib/plan";
+import { usePlan, PLAN_LIMITS } from "@/lib/plan";
 import { isDevMode } from "@/lib/dev-mode";
-import { getDevPlanOverride } from "@/lib/dev-plan-override";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
 import { getEditorialTier } from "@/lib/editorial-mastery";
 import { toast } from "sonner";
-
-
-function countWordsForChapterLock(value: unknown): number {
-  if (!value) return 0;
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    return trimmed ? trimmed.split(/\s+/).length : 0;
-  }
-  if (Array.isArray(value)) return value.reduce((sum, item) => sum + countWordsForChapterLock(item), 0);
-  if (typeof value === "object") return Object.values(value as Record<string, unknown>).reduce((sum, item) => sum + countWordsForChapterLock(item), 0);
-  return 0;
-}
-
-function countProjectWordsForChapterLock(project: BookProject | null | undefined): number {
-  if (!project) return 0;
-  let total = 0;
-  total += countWordsForChapterLock(project.frontMatter);
-  total += countWordsForChapterLock(project.backMatter);
-  for (const chapter of project.chapters || []) {
-    total += countWordsForChapterLock(chapter?.content);
-    for (const sub of chapter?.subchapters || []) total += countWordsForChapterLock(sub?.content);
-  }
-  return total;
-}
-
-async function isFreeChapterAiLocked(project: BookProject | null | undefined): Promise<boolean> {
-  const plan = isDevMode() ? getDevPlanOverride() : await fetchPlan();
-  return plan === "free" && countProjectWordsForChapterLock(project) > 0;
-}
 
 interface ChapterIntelligencePanelProps {
   project: BookProject;
@@ -146,22 +116,12 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   const [workingContent, setWorkingContent] = useState<string>(chapter?.content || "");
   const [showRunAnalyze, setShowRunAnalyze] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
-
-  const guardFreeChapterAi = async () => {
-    if (await isFreeChapterAiLocked(project)) {
-      toast.error("AI Editor bloccato nel piano Free dopo il libro gratuito. Passa a Pro/Premium per analisi, patch e Dominate.");
-      setShowUpgrade(true);
-      return true;
-    }
-    return false;
-  };
   const { plan } = usePlan();
   // Honour dev-mode plan override: only Premium unlocks Dominate.
   // Free/Beta/Pro see the paywall exactly like real users on those tiers.
   const canDominate = PLAN_LIMITS[plan].canDominate;
 
   const runPatch = async () => {
-    if (await guardFreeChapterAi()) return;
     await startPatch(project, chapterIndex);
   };
   const applyPatch = () => {
@@ -176,7 +136,6 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   };
 
   const runDominate = async () => {
-    if (await guardFreeChapterAi()) return;
     if (!canDominate) {
       setShowUpgrade(true);
       return;
@@ -195,7 +154,6 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   };
 
   const runAnalysis = async () => {
-    if (await guardFreeChapterAi()) return;
     if (!chapter?.content) return;
     setAnalyzing(true);
     setResult(null);
