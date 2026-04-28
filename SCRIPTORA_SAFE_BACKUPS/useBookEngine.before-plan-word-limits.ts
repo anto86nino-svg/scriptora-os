@@ -8,7 +8,6 @@ import { t } from "@/lib/i18n";
 import { fetchPlan } from "@/lib/plan";
 import { isDevMode } from "@/lib/dev-mode";
 import { getDevPlanOverride } from "@/lib/dev-plan-override";
-import { getPlanLimits } from "@/lib/subscription";
 
 const FREE_MAX_PROJECT_WORDS = 10_000;
 
@@ -41,7 +40,7 @@ function countProjectWordsHard(project: BookProject | null | undefined): number 
 
 function trimTextToWordLimit(text: string, maxWords: number): string {
   if (maxWords <= 0) return "";
-  const marker = "[Limite parole del piano raggiunto.]";
+  const marker = "[Fine anteprima gratuita — limite Free raggiunto.]";
   const words = String(text || "").trim().split(/\s+/).filter(Boolean);
   if (words.length <= maxWords) return text;
 
@@ -52,15 +51,6 @@ function trimTextToWordLimit(text: string, maxWords: number): string {
 
 async function getActivePlanForEngine() {
   return isDevMode() ? getDevPlanOverride() : await fetchPlan();
-}
-
-async function getMaxProjectWordsForActivePlan(): Promise<number> {
-  const activePlan = await getActivePlanForEngine();
-  return getPlanLimits(activePlan).maxWordsPerBook;
-}
-
-function planLimitLabel(maxWords: number): string {
-  return `${maxWords.toLocaleString("it-IT")} parole`;
 }
 
 async function isFreeAiToolsLockedForProject(project: BookProject | null | undefined): Promise<boolean> {
@@ -151,19 +141,13 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       }
     }
 
-    const maxProjectWords = getPlanLimits(activePlan).maxWordsPerBook;
     const safeConfig: BookConfig = activePlan === "free"
       ? {
           ...config,
           bookLength: "short",
           customTotalWords: Math.min(config.customTotalWords ?? FREE_MAX_PROJECT_WORDS, FREE_MAX_PROJECT_WORDS),
         }
-      : {
-          ...config,
-          customTotalWords: config.bookLength === "custom"
-            ? Math.min(config.customTotalWords ?? maxProjectWords, maxProjectWords)
-            : config.customTotalWords,
-        };
+      : config;
 
     // Genre Lock — capture editorial blueprint at creation time so the
     // entire book stays consistent (no drift between chapters/front/back).
@@ -203,9 +187,9 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     const p = getLatestProject() || project;
     if (!p) return;
 
-    const maxProjectWords = await getMaxProjectWordsForActivePlan();
-    if (countProjectWordsHard(p) >= maxProjectWords) {
-      const msg = `Limite piano raggiunto: hai completato ${planLimitLabel(maxProjectWords)}.`;
+    const activePlan = await getActivePlanForEngine();
+    if (activePlan === "free" && countProjectWordsHard(p) >= FREE_MAX_PROJECT_WORDS) {
+      const msg = "Limite Free raggiunto: hai completato le 10.000 parole gratuite.";
       addMessage("assistant", `🔒 ${msg}`);
       toast.error(msg);
       updateAndSave(pr => ({ ...pr, phase: "complete" as GenerationPhase }));
@@ -262,9 +246,9 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     const genKey = `chapter-${index}`;
     if (generatingSet.has(genKey)) return;
 
-    const maxProjectWords = await getMaxProjectWordsForActivePlan();
-    if (countProjectWordsHard(p) >= maxProjectWords) {
-      const msg = `Limite piano raggiunto: hai completato ${planLimitLabel(maxProjectWords)}.`;
+    const activePlan = await getActivePlanForEngine();
+    if (activePlan === "free" && countProjectWordsHard(p) >= FREE_MAX_PROJECT_WORDS) {
+      const msg = "Limite Free raggiunto: hai completato le 10.000 parole gratuite.";
       addMessage("assistant", `🔒 ${msg}`);
       toast.error(msg);
       updateAndSave(pr => ({ ...pr, phase: "complete" as GenerationPhase }));
@@ -316,7 +300,6 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       );
 
       const activePlanAfterGeneration = await getActivePlanForEngine();
-      const maxProjectWordsAfterGeneration = getPlanLimits(activePlanAfterGeneration).maxWordsPerBook;
 
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
@@ -325,19 +308,21 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         let finalChapter = { ...chapter };
         let nextPhase: GenerationPhase = proj.phase;
 
-        const existingChapter = chapters[index];
-        chapters[index] = { ...existingChapter, content: "", subchapters: [] } as any;
-        const usedWithoutThisChapter = countProjectWordsHard({ ...proj, chapters });
-        const remaining = Math.max(0, maxProjectWordsAfterGeneration - usedWithoutThisChapter);
+        if (activePlanAfterGeneration === "free") {
+          const existingChapter = chapters[index];
+          chapters[index] = { ...existingChapter, content: "", subchapters: [] } as any;
+          const usedWithoutThisChapter = countProjectWordsHard({ ...proj, chapters });
+          const remaining = Math.max(0, FREE_MAX_PROJECT_WORDS - usedWithoutThisChapter);
 
-        finalChapter = {
-          ...chapter,
-          content: trimTextToWordLimit(chapter.content, remaining),
-          subchapters: remaining < countWordsSafe(chapter.content) ? [] : chapter.subchapters,
-        };
+          finalChapter = {
+            ...chapter,
+            content: trimTextToWordLimit(chapter.content, remaining),
+            subchapters: [],
+          };
 
-        if (remaining <= 0 || countWordsSafe(finalChapter.content) >= remaining) {
-          nextPhase = "complete" as GenerationPhase;
+          if (remaining <= 0 || countWordsSafe(finalChapter.content) >= remaining) {
+            nextPhase = "complete" as GenerationPhase;
+          }
         }
 
         chapters[index] = { ...finalChapter, status: "completed" as GenerationStatus, lengthOverride: proj.chapters[index]?.lengthOverride };
@@ -348,8 +333,8 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       const latestAfterSave = getLatestProject();
       const finalWords = countWordsSafe((latestAfterSave?.chapters?.[index]?.content || chapter.content));
       addMessage("assistant", `Chapter ${index + 1} "${chapter.title}" complete! ✅ (${finalWords} words)`);
-      if (countProjectWordsHard(getLatestProject()) >= maxProjectWordsAfterGeneration) {
-        const msg = `Limite piano raggiunto: il libro è arrivato a ${planLimitLabel(maxProjectWordsAfterGeneration)}.`;
+      if (activePlanAfterGeneration === "free" && countProjectWordsHard(getLatestProject()) >= FREE_MAX_PROJECT_WORDS) {
+        const msg = "Limite Free raggiunto: il libro gratuito è completo.";
         addMessage("assistant", `🔒 ${msg}`);
         toast.error(msg);
       }
@@ -713,16 +698,14 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       // 2) Tutti i capitoli in sequenza (coerenza garantita: ogni capitolo legge i precedenti)
       cur = getLatestProject() || start;
       const fullBookPlan = await getActivePlanForEngine();
-      const fullBookMaxWords = getPlanLimits(fullBookPlan).maxWordsPerBook;
       const total = cur.config.numberOfChapters;
       for (let i = 0; i < total; i++) {
         const latest = getLatestProject() || cur;
 
-        if (countProjectWordsHard(latest) >= fullBookMaxWords) {
+        if (fullBookPlan === "free" && countProjectWordsHard(latest) >= FREE_MAX_PROJECT_WORDS) {
           updateAndSave(p => ({ ...p, phase: "complete" as GenerationPhase }));
-          const msg = `Limite piano raggiunto: generazione fermata a ${planLimitLabel(fullBookMaxWords)}.`;
-          addMessage("assistant", `🔒 ${msg}`);
-          toast.error(msg);
+          addMessage("assistant", "🔒 Limite Free raggiunto: generazione fermata a 10.000 parole.");
+          toast.error("Limite Free raggiunto");
           break;
         }
 
@@ -736,11 +719,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
       // 3) Back matter
       cur = getLatestProject() || start;
-      if (countProjectWordsHard(cur) >= fullBookMaxWords) {
+      if (fullBookPlan === "free" && countProjectWordsHard(cur) >= FREE_MAX_PROJECT_WORDS) {
         updateAndSave(p => ({ ...p, phase: "complete" as GenerationPhase }));
-        const msg = `Limite piano raggiunto: libro completato a ${planLimitLabel(fullBookMaxWords)}.`;
-        addMessage("assistant", `🔒 ${msg}`);
-        toast.error(msg);
+        addMessage("assistant", "🔒 Demo Free completata. Passa a Pro/Premium per continuare.");
+        toast.error("Demo Free completata");
         return;
       }
 

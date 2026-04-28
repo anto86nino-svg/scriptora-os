@@ -3,6 +3,7 @@ import { BookConfig, Language, Genre, ChapterLength, BookLength, CATEGORIES, BOO
 import { Download, Image, Loader2, FileText, FileType, Rocket, Home, Cloud, CloudOff, CheckCircle2, Lock, CreditCard, LogOut, User as UserIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { t } from "@/lib/i18n";
+import { usePlan } from "@/lib/plan";
 import type { SyncStatus } from "@/hooks/useSyncStatus";
 import { usePlan, PLAN_LIMITS, useQuota } from "@/lib/plan";
 import { isDevMode } from "@/lib/dev-mode";
