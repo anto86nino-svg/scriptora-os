@@ -101,7 +101,7 @@ import("./components/GlobalCuriosity").then(({ default: GlobalCuriosity }) => {
   document.body.appendChild(el);
 
   import("react-dom/client").then(({ createRoot }) => {
-    createRoot(el).render(GlobalCuriosity({}));
+    createRoot(el).render(<GlobalCuriosity />);
   });
 });
 
@@ -111,6 +111,6 @@ import("./components/GenerationStatus").then(({ default: GenerationStatus }) => 
   document.body.appendChild(el);
 
   import("react-dom/client").then(({ createRoot }) => {
-    createRoot(el).render(GenerationStatus({}));
+    createRoot(el).render(<GenerationStatus />);
   });
 });
