@@ -195,17 +195,18 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
         )}
               {(Object.entries(BOOK_LENGTH_CONFIG) as [BookLength, typeof BOOK_LENGTH_CONFIG[BookLength]][]).map(([key, val]) => {
                 const lockedForFree = isFreePlan && key !== "short";
+                const requiredPlan = key === "medium" ? "Pro" : key === "long" || key === "custom" ? "Premium" : "";
 
                 return (
                   <button key={key} type="button"
                     disabled={lockedForFree}
-                    title={lockedForFree ? "Il piano Free include un libro fino a 10.000 parole." : undefined}
+                    title={lockedForFree ? `${requiredPlan} richiesto. Il piano Free include un libro fino a 10.000 parole.` : undefined}
                     onClick={() => update("bookLength", key)}
-                    className={`p-3 rounded-lg border text-center transition-all ${
+                    className={`relative p-3 rounded-lg border text-center transition-all ${
                       config.bookLength === key
                         ? "border-primary bg-primary/10 ring-1 ring-primary/30"
                         : lockedForFree
-                          ? "border-border bg-muted/20 opacity-50 cursor-not-allowed"
+                          ? "border-border bg-muted/20 opacity-55 cursor-not-allowed"
                           : "border-border bg-muted/30 hover:bg-muted/50"
                     }`}>
                     <p className={`text-xs font-semibold ${config.bookLength === key ? "text-primary" : "text-foreground"}`}>{val.label}</p>
@@ -213,8 +214,8 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
                       {key === "custom" ? "Choose words" : `~${(val.totalWords / 1000).toFixed(0)}k words`}
                     </p>
                     {lockedForFree && (
-                      <p className="mt-1 text-[9px] font-semibold uppercase tracking-wider text-primary">
-                        Pro
+                      <p className="mt-1 inline-flex rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
+                        {requiredPlan}
                       </p>
                     )}
                   </button>
