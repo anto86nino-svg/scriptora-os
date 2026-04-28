@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from "react";
 import { BookProject, BookConfig, ChatMessage, GenerationPhase, GenerationStatus, AIQualityRating } from "@/types/book";
-import { saveProjectAsync, createProjectId, setLastProjectId } from "@/services/storageService";
+import { saveProjectAsync, createProjectId, setLastProjectId, loadProjects as loadScopedProjects } from "@/services/storageService";
 import { saveProject } from "@/lib/storage";
 import { generateBlueprint, generateFrontMatter, generateChapter, generateChapterChunked, generateSubchapter, generateBackMatter, rewriteChapter, evaluateChapterQuality, RewriteLevel, ChunkProgress, buildGenreLock } from "@/lib/generation";
 import { toast } from "sonner";
@@ -8,6 +8,51 @@ import { t } from "@/lib/i18n";
 import { fetchPlan } from "@/lib/plan";
 import { isDevMode } from "@/lib/dev-mode";
 import { getDevPlanOverride } from "@/lib/dev-plan-override";
+
+const FREE_MAX_PROJECT_WORDS = 10_000;
+
+function countWordsSafe(value: unknown): number {
+  if (!value) return 0;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? trimmed.split(/\s+/).length : 0;
+  }
+  if (Array.isArray(value)) {
+    return value.reduce((sum, item) => sum + countWordsSafe(item), 0);
+  }
+  if (typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).reduce((sum, item) => sum + countWordsSafe(item), 0);
+  }
+  return 0;
+}
+
+function countProjectWordsHard(project: BookProject | null | undefined): number {
+  if (!project) return 0;
+  let total = 0;
+  total += countWordsSafe(project.frontMatter);
+  total += countWordsSafe(project.backMatter);
+  for (const chapter of project.chapters || []) {
+    total += countWordsSafe(chapter?.content);
+    for (const sub of chapter?.subchapters || []) total += countWordsSafe(sub?.content);
+  }
+  return total;
+}
+
+function trimTextToWordLimit(text: string, maxWords: number): string {
+  if (maxWords <= 0) return "";
+  const marker = "[Fine anteprima gratuita — limite Free raggiunto.]";
+  const words = String(text || "").trim().split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return text;
+
+  const markerWords = marker.split(/\s+/).filter(Boolean);
+  const allowedBodyWords = Math.max(0, maxWords - markerWords.length);
+  return [...words.slice(0, allowedBodyWords), ...markerWords].join(" ");
+}
+
+async function getActivePlanForEngine() {
+  return isDevMode() ? getDevPlanOverride() : await fetchPlan();
+}
+
 
 // Debounce remote saves: local save is instant, but Supabase upserts are
 // throttled to avoid flooding the network during chunked generation.
@@ -72,12 +117,23 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   const getLatestProject = (): BookProject | null => projectRef.current;
 
   const startNewBook = useCallback(async (config: BookConfig) => {
-    const activePlan = isDevMode() ? getDevPlanOverride() : await fetchPlan();
+    const activePlan = await getActivePlanForEngine();
+
+    if (activePlan === "free") {
+      const existingProjects = await loadScopedProjects().catch(() => []);
+      if (existingProjects.length > 0) {
+        const msg = "Hai già usato il libro gratuito. Passa a Pro/Premium per creare altri libri.";
+        addMessage("assistant", `🔒 ${msg}`);
+        toast.error(msg);
+        return;
+      }
+    }
+
     const safeConfig: BookConfig = activePlan === "free"
       ? {
           ...config,
           bookLength: "short",
-          customTotalWords: Math.min(config.customTotalWords ?? 10000, 10000),
+          customTotalWords: Math.min(config.customTotalWords ?? FREE_MAX_PROJECT_WORDS, FREE_MAX_PROJECT_WORDS),
         }
       : config;
 
@@ -118,6 +174,15 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   const generateNext = useCallback(async () => {
     const p = getLatestProject() || project;
     if (!p) return;
+
+    const activePlan = await getActivePlanForEngine();
+    if (activePlan === "free" && countProjectWordsHard(p) >= FREE_MAX_PROJECT_WORDS) {
+      const msg = "Limite Free raggiunto: hai completato le 10.000 parole gratuite.";
+      addMessage("assistant", `🔒 ${msg}`);
+      toast.error(msg);
+      updateAndSave(pr => ({ ...pr, phase: "complete" as GenerationPhase }));
+      return;
+    }
 
     if (p.blueprint && (!p.frontMatter || p.phase === "front-matter")) {
       addGenerating("front-matter");
@@ -169,6 +234,15 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     const genKey = `chapter-${index}`;
     if (generatingSet.has(genKey)) return;
 
+    const activePlan = await getActivePlanForEngine();
+    if (activePlan === "free" && countProjectWordsHard(p) >= FREE_MAX_PROJECT_WORDS) {
+      const msg = "Limite Free raggiunto: hai completato le 10.000 parole gratuite.";
+      addMessage("assistant", `🔒 ${msg}`);
+      toast.error(msg);
+      updateAndSave(pr => ({ ...pr, phase: "complete" as GenerationPhase }));
+      return;
+    }
+
     addGenerating(genKey);
     updateAndSave(proj => {
       const chapters = [...proj.chapters];
@@ -213,15 +287,45 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         latestP.genreLock,
       );
 
+      const activePlanAfterGeneration = await getActivePlanForEngine();
+
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
         while (chapters.length <= index) chapters.push({ title: "", content: "", subchapters: [], status: "idle" });
-        chapters[index] = { ...chapter, status: "completed" as GenerationStatus, lengthOverride: proj.chapters[index]?.lengthOverride };
+
+        let finalChapter = { ...chapter };
+        let nextPhase: GenerationPhase = proj.phase;
+
+        if (activePlanAfterGeneration === "free") {
+          const existingChapter = chapters[index];
+          chapters[index] = { ...existingChapter, content: "", subchapters: [] } as any;
+          const usedWithoutThisChapter = countProjectWordsHard({ ...proj, chapters });
+          const remaining = Math.max(0, FREE_MAX_PROJECT_WORDS - usedWithoutThisChapter);
+
+          finalChapter = {
+            ...chapter,
+            content: trimTextToWordLimit(chapter.content, remaining),
+            subchapters: [],
+          };
+
+          if (remaining <= 0 || countWordsSafe(finalChapter.content) >= remaining) {
+            nextPhase = "complete" as GenerationPhase;
+          }
+        }
+
+        chapters[index] = { ...finalChapter, status: "completed" as GenerationStatus, lengthOverride: proj.chapters[index]?.lengthOverride };
         const allGenerated = chapters.length >= proj.config.numberOfChapters && chapters.every(c => c.content.length > 0);
-        return { ...proj, chapters, phase: allGenerated ? "back-matter" as GenerationPhase : proj.phase };
+        return { ...proj, chapters, phase: nextPhase === "complete" ? nextPhase : (allGenerated ? "back-matter" as GenerationPhase : proj.phase) };
       });
-      const finalWords = chapter.content.split(/\s+/).length;
+
+      const latestAfterSave = getLatestProject();
+      const finalWords = countWordsSafe((latestAfterSave?.chapters?.[index]?.content || chapter.content));
       addMessage("assistant", `Chapter ${index + 1} "${chapter.title}" complete! ✅ (${finalWords} words)`);
+      if (activePlanAfterGeneration === "free" && countProjectWordsHard(getLatestProject()) >= FREE_MAX_PROJECT_WORDS) {
+        const msg = "Limite Free raggiunto: il libro gratuito è completo.";
+        addMessage("assistant", `🔒 ${msg}`);
+        toast.error(msg);
+      }
     } catch (e: any) {
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
@@ -569,9 +673,18 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
       // 2) Tutti i capitoli in sequenza (coerenza garantita: ogni capitolo legge i precedenti)
       cur = getLatestProject() || start;
+      const fullBookPlan = await getActivePlanForEngine();
       const total = cur.config.numberOfChapters;
       for (let i = 0; i < total; i++) {
         const latest = getLatestProject() || cur;
+
+        if (fullBookPlan === "free" && countProjectWordsHard(latest) >= FREE_MAX_PROJECT_WORDS) {
+          updateAndSave(p => ({ ...p, phase: "complete" as GenerationPhase }));
+          addMessage("assistant", "🔒 Limite Free raggiunto: generazione fermata a 10.000 parole.");
+          toast.error("Limite Free raggiunto");
+          break;
+        }
+
         if (latest.chapters[i]?.content && latest.chapters[i].content.length > 200) {
           continue; // già scritto, salta
         }
@@ -582,6 +695,13 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
       // 3) Back matter
       cur = getLatestProject() || start;
+      if (fullBookPlan === "free" && countProjectWordsHard(cur) >= FREE_MAX_PROJECT_WORDS) {
+        updateAndSave(p => ({ ...p, phase: "complete" as GenerationPhase }));
+        addMessage("assistant", "🔒 Demo Free completata. Passa a Pro/Premium per continuare.");
+        toast.error("Demo Free completata");
+        return;
+      }
+
       if (!cur.backMatter) {
         // forza phase a back-matter se necessario
         if (cur.phase !== "back-matter") {
