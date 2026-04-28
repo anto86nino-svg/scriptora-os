@@ -180,15 +180,6 @@ export default function Home() {
     setShowNewBook(true);
   };
 
-  const guardFreeAiFeature = (action: () => void) => () => {
-    if (freeBookUsed) {
-      toast.error("Funzione bloccata nel piano Free dopo il libro gratuito. Passa a Pro/Premium per continuare.");
-      navigate("/pricing");
-      return;
-    }
-    action();
-  };
-
   const lastId = getLastProjectId();
   // Only surface "continue last" when the project still belongs to the active
   // environment (DEV vs USER). Cross-scope ids are silently ignored.
@@ -338,13 +329,13 @@ export default function Home() {
 
   const cards = [
     { icon: Plus, title: freeBookUsed ? "Libro gratuito usato" : t("new_book"), desc: freeBookUsed ? "Passa a Pro/Premium per creare altri libri" : t("new_book_desc"), color: freeBookUsed ? "text-muted-foreground" : "text-primary", action: openNewBookGuarded },
-    { icon: Settings, title: freeBookUsed ? "Impostazioni avanzate Pro" : "Impostazioni avanzate", desc: freeBookUsed ? "Sblocca con Pro/Premium" : "Lingua app, sfondo Scriptora e font di scrittura", color: freeBookUsed ? "text-muted-foreground" : "text-amber-300", action: guardFreeAiFeature(() => setShowAdvancedSettings(true)), feature: freeBookUsed ? "export_epub" as const : undefined },
-    { icon: Users, title: freeBookUsed ? "Personaggi Pro" : "Personaggi", desc: freeBookUsed ? "Sblocca con Pro/Premium" : "Crea cast, ferite, segreti e continuità del romanzo", color: freeBookUsed ? "text-muted-foreground" : "text-pink-400", action: guardFreeAiFeature(() => setShowCharacterStudio(true)), feature: freeBookUsed ? "export_epub" as const : undefined },
+    { icon: Settings, title: "Impostazioni avanzate", desc: "Lingua app, sfondo Scriptora e font di scrittura", color: "text-amber-300", action: () => setShowAdvancedSettings(true) },
+    { icon: Users, title: "Personaggi", desc: "Crea cast, ferite, segreti e continuità del romanzo", color: "text-pink-400", action: () => setShowCharacterStudio(true) },
     { icon: FolderOpen, title: t("projects"), desc: t("projects_desc"), color: "text-blue-400", action: () => setShowProjects(!showProjects) },
     { icon: Rocket, title: t("publish"), desc: t("publish_desc"), color: "text-purple-400", action: () => goApp({ section: "publish" }), feature: "export_epub" as const },
-    { icon: Zap, title: freeBookUsed ? "Title Intelligence Pro" : t("title_intelligence"), desc: freeBookUsed ? "Sblocca con Pro/Premium" : t("title_intelligence_desc"), color: freeBookUsed ? "text-muted-foreground" : "text-cyan-400", action: guardFreeAiFeature(() => setShowTitleIntel(true)), feature: "title_intelligence_base" as const },
+    { icon: Zap, title: t("title_intelligence"), desc: t("title_intelligence_desc"), color: "text-cyan-400", action: () => setShowTitleIntel(true), feature: "title_intelligence_base" as const },
     { icon: Library, title: "Biblioteca", desc: "Libri completati", color: "text-emerald-400", action: () => setShowLibrary(true) },
-    { icon: TrendingUp, title: freeBookUsed ? "Bestseller Radar Pro" : "Bestseller Radar", desc: freeBookUsed ? "Sblocca con Pro/Premium" : "Studia titoli, domanda e concorrenza", color: freeBookUsed ? "text-muted-foreground" : "text-emerald-400", action: guardFreeAiFeature(() => navigate("/bestseller-radar")), feature: freeBookUsed ? "export_epub" as const : undefined },
+    { icon: TrendingUp, title: "Bestseller Radar", desc: "Studia titoli, domanda e concorrenza", color: "text-emerald-400", action: () => navigate("/bestseller-radar") },
     { icon: FileDown, title: t("export_label"), desc: t("export_desc"), color: "text-orange-400", action: () => setShowExport(true), feature: "export_epub" as const },
   ];
 
