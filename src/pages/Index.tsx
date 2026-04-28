@@ -22,7 +22,7 @@ import { t, getUILanguage, UILanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu, X, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useQuota } from "@/lib/plan";
+import { useQuota, usePlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
 
 const Index = () => {
@@ -51,6 +51,17 @@ const Index = () => {
     },
   });
   const { quota } = useQuota(engine.project?.id || null);
+  const { plan } = usePlan();
+  const freeBookUsed = plan === "free" && projects.length > 0;
+
+  const openNewBookGuarded = () => {
+    if (freeBookUsed) {
+      setUpgradeReason("books-limit");
+      toast.error("Hai già usato il libro gratuito. Passa a Pro/Premium per crearne altri.");
+      return;
+    }
+    setShowNewBook(true);
+  };
 
   // Token guard for free users — gracefully stop generation when limit is reached
   useEffect(() => {
@@ -290,7 +301,7 @@ const Index = () => {
         ) : (
           <>
             <div className="p-2">
-              <button onClick={() => setShowNewBook(true)}
+              <button onClick={openNewBookGuarded}
                 className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
                 <Plus className="h-3 w-3" /> {t("new_book")}
               </button>
@@ -440,7 +451,7 @@ const Index = () => {
 
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
                   <button
-                    onClick={() => setShowNewBook(true)}
+                    onClick={openNewBookGuarded}
                     className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                   >
                     <Plus className="h-4 w-4" />
@@ -484,6 +495,12 @@ const Index = () => {
         open={showNewBook}
         onClose={() => setShowNewBook(false)}
         onSubmit={(config) => {
+          if (freeBookUsed) {
+            setShowNewBook(false);
+            setUpgradeReason("books-limit");
+            toast.error("Hai già usato il libro gratuito. Passa a Pro/Premium per crearne altri.");
+            return;
+          }
           engine.startNewBook(config);
           setShowNewBook(false);
           setActiveSection("blueprint");
@@ -505,6 +522,11 @@ const Index = () => {
           project={engine.project}
           onClose={() => setShowPublish(false)}
           onStartFresh={(config) => {
+            if (freeBookUsed) {
+              setUpgradeReason("books-limit");
+              toast.error("Hai già usato il libro gratuito. Passa a Pro/Premium per crearne altri.");
+              return;
+            }
             engine.startNewBook(config);
             setActiveSection("blueprint");
             setTimeout(refreshProjects, 500);

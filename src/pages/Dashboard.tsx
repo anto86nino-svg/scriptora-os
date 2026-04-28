@@ -169,6 +169,17 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idea]);
 
+  const freeBookUsed = currentPlan === "free" && projects.length > 0;
+
+  const openNewBookGuarded = () => {
+    if (freeBookUsed) {
+      toast.error("Hai già usato il libro gratuito. Passa a Pro/Premium per crearne altri.");
+      navigate("/pricing");
+      return;
+    }
+    setShowNewBook(true);
+  };
+
   const lastId = getLastProjectId();
   // Only surface "continue last" when the project still belongs to the active
   // environment (DEV vs USER). Cross-scope ids are silently ignored.
@@ -203,7 +214,7 @@ export default function Home() {
   useEffect(() => {
     const openFromCharacterStudio = () => {
       setShowCharacterStudio(false);
-      setShowNewBook(true);
+      openNewBookGuarded();
     };
 
     window.addEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
@@ -317,7 +328,7 @@ export default function Home() {
   const currentLangLabel = UI_LANGUAGES.find(l => l.value === currentLang)?.label || "English";
 
   const cards = [
-    { icon: Plus, title: t("new_book"), desc: t("new_book_desc"), color: "text-primary", action: () => setShowNewBook(true) },
+    { icon: Plus, title: freeBookUsed ? "Libro gratuito usato" : t("new_book"), desc: freeBookUsed ? "Passa a Pro/Premium per creare altri libri" : t("new_book_desc"), color: freeBookUsed ? "text-muted-foreground" : "text-primary", action: openNewBookGuarded },
     { icon: Settings, title: "Impostazioni avanzate", desc: "Lingua app, sfondo Scriptora e font di scrittura", color: "text-amber-300", action: () => setShowAdvancedSettings(true) },
     { icon: Users, title: "Personaggi", desc: "Crea cast, ferite, segreti e continuità del romanzo", color: "text-pink-400", action: () => setShowCharacterStudio(true) },
     { icon: FolderOpen, title: t("projects"), desc: t("projects_desc"), color: "text-blue-400", action: () => setShowProjects(!showProjects) },
@@ -640,7 +651,19 @@ export default function Home() {
         <PlansSection />
       </div>
 
-      <NewBookDialog open={showNewBook} onClose={() => setShowNewBook(false)} onSubmit={handleNewBook} />
+      <NewBookDialog
+        open={showNewBook}
+        onClose={() => setShowNewBook(false)}
+        onSubmit={(config) => {
+          if (freeBookUsed) {
+            setShowNewBook(false);
+            toast.error("Hai già usato il libro gratuito. Passa a Pro/Premium per crearne altri.");
+            navigate("/pricing");
+            return;
+          }
+          handleNewBook(config);
+        }}
+      />
       <HomeExportDialog open={showExport} projects={projects} onClose={() => setShowExport(false)} />
       <TitleIntelligenceDialog open={showTitleIntel} onClose={() => setShowTitleIntel(false)} />
       <AdvancedAppearanceDialog open={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} onLanguageChanged={() => setLangTick(p => p + 1)} />
