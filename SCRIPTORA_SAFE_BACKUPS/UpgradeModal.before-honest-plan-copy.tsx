@@ -84,10 +84,10 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
               price={PLAN_PRICING.premium.price}
               period={PLAN_PRICING.premium.period}
               features={[
-                "Libri illimitati con uso corretto",
+                "Libri illimitati (fair use)",
                 "Dominate Mode completo",
-                "Analisi su segnali di mercato live",
-                "Dominate Mode con controllo qualità avanzato",
+                "Ricerche di mercato in tempo reale",
+                "Massima qualità di output",
               ]}
               cta="Sblocca Premium"
               badge={recommendPremium ? "Max Power" : undefined}
