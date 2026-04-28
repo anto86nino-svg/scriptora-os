@@ -95,22 +95,3 @@ hydrateFromIndexedDB().catch(() => {});
   }
 })();
 
-// 🔥 Mount globale Curiosita
-import("./components/GlobalCuriosity").then(({ default: GlobalCuriosity }) => {
-  const el = document.createElement("div");
-  document.body.appendChild(el);
-
-  import("react-dom/client").then(({ createRoot }) => {
-    createRoot(el).render(<GlobalCuriosity />);
-  });
-});
-
-// 🔥 Mount GenerationStatus globale
-import("./components/GenerationStatus").then(({ default: GenerationStatus }) => {
-  const el = document.createElement("div");
-  document.body.appendChild(el);
-
-  import("react-dom/client").then(({ createRoot }) => {
-    createRoot(el).render(<GenerationStatus />);
-  });
-});
