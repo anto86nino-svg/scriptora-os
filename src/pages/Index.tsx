@@ -11,7 +11,7 @@ import { ProgressTracker } from "@/components/ProgressTracker";
 import { DominationTray } from "@/components/DominationTray";
 import { useBookEngine } from "@/hooks/useBookEngine";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
-import { loadProjects as loadLocalProjects, deleteProject as removeProject, getLastProjectId } from "@/lib/storage";
+import { deleteProject as removeProject, getLastProjectId } from "@/lib/storage";
 import { loadProjects as loadRemoteProjects, deleteProjectAsync, saveProjectAsync } from "@/services/storageService";
 import { generateEpub, downloadEpub, validateEpubStructure } from "@/lib/epub";
 import { generateDocx, downloadDocx } from "@/lib/docx-export";
@@ -33,7 +33,10 @@ const Index = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showCoach, setShowCoach] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
+    const saved = localStorage.getItem("scriptora-sidebar-open");
+    return saved ? JSON.parse(saved) : false;
+  });
   const [coverDataUrl, setCoverDataUrl] = useState<string | undefined>();
   const [isExporting, setIsExporting] = useState(false);
   const [exportLabel, setExportLabel] = useState("");
@@ -64,6 +67,10 @@ const Index = () => {
     setShowNewBook(true);
   };
 
+  useEffect(() => {
+    localStorage.setItem("scriptora-sidebar-open", JSON.stringify(sidebarOpen));
+  }, [sidebarOpen]);
+
   // Token guard for free users — gracefully stop generation when limit is reached
   useEffect(() => {
     if (quota?.isOverTokenLimit && engine.isAnythingGenerating) {
@@ -83,8 +90,6 @@ const Index = () => {
 
   useEffect(() => {
     const init = async () => {
-      // Optimistic: returns local instantly, then refreshes from server in
-      // background. Removes the perceptible "freeze" on app open.
       const loaded = await loadRemoteProjects((fresh) => setProjects(fresh));
       setProjects(loaded);
 
@@ -218,7 +223,6 @@ const Index = () => {
     setLangTick(prev => prev + 1);
   };
 
-  // Focus mode — show only editor
   if (focusMode && engine.project) {
     return (
       <div className="scriptora-ios-screen flex h-screen flex-col">
@@ -264,10 +268,11 @@ const Index = () => {
 
   return (
     <div className="scriptora-ios-screen relative flex h-screen overflow-hidden">
-      {/* Mobile menu button */}
+      {/* Floating sidebar toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="ios-toolbar-button fixed left-3 top-3 z-50 p-2 text-foreground md:hidden"
+        className="ios-toolbar-button fixed left-3 top-3 z-50 p-2 text-foreground shadow-lg backdrop-blur-xl"
+        title={sidebarOpen ? "Hide Sidebar" : "Show Sidebar"}
       >
         {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
@@ -278,8 +283,14 @@ const Index = () => {
       )}
 
       {/* Left Sidebar */}
-      <aside className={`ios-sidebar fixed z-40 flex h-screen w-[272px] shrink-0 flex-col transition-transform duration-200 md:static ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className="flex items-center justify-between border-b border-white/10 p-3">
+      <aside
+        className={`ios-sidebar fixed z-40 flex h-screen shrink-0 flex-col transition-all duration-300 ease-out md:relative ${
+          sidebarOpen
+            ? "translate-x-0 w-[272px] opacity-100"
+            : "-translate-x-full md:translate-x-0 md:w-0 md:opacity-0 overflow-hidden"
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-white/10 p-3 pl-14 md:pl-3">
           <div className="flex items-center gap-2 min-w-0">
             <span className="ios-icon ios-icon-blue h-9 w-9 shrink-0">
               <BookOpen className="h-4 w-4" />
@@ -287,7 +298,7 @@ const Index = () => {
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase text-muted-foreground">Scriptora OS</p>
               <h1 className="truncate text-xs font-bold text-foreground">
-              {engine.project ? (engine.project.config.title || "Untitled") : "SCRIPTORA"}
+                {engine.project ? (engine.project.config.title || "Untitled") : "SCRIPTORA"}
               </h1>
             </div>
           </div>
@@ -391,15 +402,19 @@ const Index = () => {
       </aside>
 
       {/* Main Area */}
-      <div className="flex min-w-0 flex-1 flex-col p-2 md:p-3">
+      <div
+        className={`flex min-w-0 flex-1 flex-col transition-all duration-300 ${
+          sidebarOpen ? "p-2 md:p-3" : "p-2 md:px-6 md:py-4"
+        }`}
+      >
         <TopBar
           config={engine.project?.config || null}
           onUpdateConfig={engine.updateConfig}
           isGenerating={engine.isAnythingGenerating}
           hasProject={!!engine.project}
-          onExport={handleExport}
-          onExportDocx={handleExportDocx}
-          onExportPdf={handleExportPdf}
+          onExport={guardedExportEpub}
+          onExportDocx={guardedExportDocx}
+          onExportPdf={guardedExportPdf}
           onCover={() => setShowCover(true)}
           onPublish={() => setShowPublish(true)}
           isExporting={isExporting}
@@ -572,7 +587,6 @@ const Index = () => {
             engine.updateChapterContent(chapterIndex, newContent);
             toast.success("Chapter updated 🔥");
           } else {
-            // Apply to a different project: patch + save remotely
             const target = projects.find(p => p.id === projectId);
             if (!target) { toast.error("Project not found"); return; }
             const updated: BookProject = {
