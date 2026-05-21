@@ -135,8 +135,13 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
           <section className="rounded-2xl border border-border/70 bg-background/40 p-4">
             <div className="mb-3 flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold">Sfondi Scriptora</h3>
+              <h3 className="font-semibold">Writing Atmospheres</h3>
             </div>
+
+            <p className="mb-4 text-sm text-muted-foreground">
+              Trasforma Scriptora nel tuo spazio creativo. Ogni atmosfera cambia
+              completamente il modo in cui vivi la scrittura.
+            </p>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {SCRIPTORA_BACKGROUNDS.map((bg) => {
@@ -149,11 +154,11 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
                     onPointerDown={(e) => { e.preventDefault(); applyBackground(bg.id); }}
                     onTouchStart={(e) => { e.preventDefault(); applyBackground(bg.id); }}
                     onClick={() => applyBackground(bg.id)}
-                    className={`overflow-hidden rounded-2xl border text-left transition-all ${
+                    className={`group overflow-hidden rounded-3xl border text-left transition-all duration-300 hover:scale-[1.02] ${
                       active ? "border-primary ring-2 ring-primary/30" : "border-border/70 hover:border-primary/50"
                     }`}
                   >
-                    <div className="h-24" style={{ background: bg.css }} />
+                    <div className="h-32 transition-transform duration-500 group-hover:scale-105" style={{ background: bg.css }} />
                     <div className="space-y-1 bg-card/90 p-3">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-sm font-semibold">{bg.name}</p>
