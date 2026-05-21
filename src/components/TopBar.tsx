@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { BookConfig, Language, Genre, ChapterLength, BookLength, CATEGORIES, BOOK_LENGTH_CONFIG } from "@/types/book";
-import { Download, Image, Loader2, FileText, FileType, Rocket, Home, Cloud, CloudOff, CheckCircle2, Lock, CreditCard, LogOut, User as UserIcon } from "lucide-react";
+import { Download, Image, Loader2, FileText, FileType, Rocket, Home, Cloud, CloudOff, Lock, CreditCard, LogOut, User as UserIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { t } from "@/lib/i18n";
 import type { SyncStatus } from "@/hooks/useSyncStatus";
@@ -65,19 +65,26 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
   const budgetTone = !budget ? "" : budget.exceeded ? "bg-destructive/15 text-destructive border-destructive/40" :
     budget.percent >= 85 ? "bg-amber-500/15 text-amber-500 border-amber-500/40" :
     "bg-muted/40 text-muted-foreground border-border";
+  const syncTone = syncStatus === "offline"
+    ? "border-red-500/20 bg-red-500/10"
+    : syncStatus === "saving"
+      ? "border-amber-500/20 bg-amber-500/10"
+      : syncStatus === "pending"
+        ? "border-sky-500/20 bg-sky-500/10"
+      : "border-emerald-500/20 bg-emerald-500/10";
 
   const categories = Object.keys(CATEGORIES);
   const subcategories = CATEGORIES[config.category] || [];
 
   return (
-    <div className="h-11 border-b border-border bg-card/80 backdrop-blur-sm flex items-center px-3 gap-2 shrink-0 overflow-x-auto">
-      <button onClick={() => nav("/dashboard")} className="h-7 px-2 flex items-center gap-1 rounded text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors shrink-0">
+    <div className="ios-glass-soft mb-2 ml-12 flex h-14 shrink-0 items-center gap-2 overflow-x-auto rounded-lg px-3 md:ml-0">
+      <button onClick={() => nav("/dashboard")} className="ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground">
         <Home className="h-3.5 w-3.5" /> {t("home")}
       </button>
-      <button onClick={() => nav("/pricing")} className="h-7 px-2 flex items-center gap-1 rounded text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors shrink-0" title="Pricing">
+      <button onClick={() => nav("/pricing")} className="ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" title="Pricing">
         <CreditCard className="h-3.5 w-3.5" /> Pricing
       </button>
-      <button onClick={() => nav("/downloads")} className="h-7 px-2 flex items-center gap-1 rounded text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors shrink-0" title="Downloads">
+      <button onClick={() => nav("/downloads")} className="ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" title="Downloads">
         <Download className="h-3.5 w-3.5" /> Downloads
       </button>
       <Divider />
@@ -106,33 +113,50 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
       <MiniSelect label={t("ch_len")} value={config.chapterLength} options={LENGTHS.map(l => ({ ...l, label: t(l.value) }))} onChange={(v) => onUpdateConfig("chapterLength", v)} />
       <Divider />
       <div className="flex items-center gap-1">
-        <span className="text-[10px] text-muted-foreground uppercase">{t("tone")}</span>
+        <span className="text-[10px] uppercase text-muted-foreground">{t("tone")}</span>
         <input value={config.tone} onChange={e => onUpdateConfig("tone", e.target.value)}
-          className="h-6 w-24 bg-muted/50 border border-border rounded px-1.5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="h-8 w-28 rounded-lg border border-white/10 bg-white/[0.07] px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           placeholder="warm, direct" />
       </div>
 
       <div className="flex-1" />
 
       {/* Sync Status */}
-      {syncStatus && syncStatus !== "idle" && (
-        <div className="flex items-center gap-1 shrink-0 mr-1">
+      {syncStatus && (
+        <div
+          className={`mr-1 flex h-7 shrink-0 items-center gap-1 rounded-lg border px-2 ${syncTone}`}
+          title={
+            syncStatus === "offline"
+              ? t("sync_offline")
+              : syncStatus === "pending"
+                ? t("sync_pending")
+                : syncStatus === "saving"
+                  ? t("sync_saving")
+                  : t("sync_saved")
+          }
+        >
           {syncStatus === "saving" && (
             <>
-              <Loader2 className="h-3 w-3 animate-spin text-yellow-500" />
-              <span className="text-[10px] text-yellow-500 font-medium">{t("sync_saving")}</span>
+              <Loader2 className="h-3 w-3 animate-spin text-amber-500" />
+              <span className="text-[10px] font-semibold text-amber-500">{t("sync_saving")}</span>
             </>
           )}
-          {syncStatus === "saved" && (
+          {syncStatus === "pending" && (
             <>
-              <CheckCircle2 className="h-3 w-3 text-green-500" />
-              <span className="text-[10px] text-green-500 font-medium">{t("sync_saved")}</span>
+              <Cloud className="h-3 w-3 text-sky-500" />
+              <span className="text-[10px] font-semibold text-sky-500">{t("sync_pending")}</span>
+            </>
+          )}
+          {(syncStatus === "saved" || syncStatus === "idle") && (
+            <>
+              <Cloud className="h-3 w-3 text-emerald-500" />
+              <span className="text-[10px] font-semibold text-emerald-500">{t("sync_saved")}</span>
             </>
           )}
           {syncStatus === "offline" && (
             <>
               <CloudOff className="h-3 w-3 text-red-500" />
-              <span className="text-[10px] text-red-500 font-medium">{t("sync_offline")}</span>
+              <span className="text-[10px] font-semibold text-red-500">{t("sync_offline")}</span>
             </>
           )}
         </div>
@@ -141,35 +165,35 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
       {hasProject && (
         <div className="flex items-center gap-1.5 shrink-0">
           {isGenerating && (
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-primary/10 mr-1">
+        <div className="mr-1 flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-2 py-1">
               <Loader2 className="h-3 w-3 animate-spin text-primary" />
               <span className="text-[10px] text-primary font-medium">{t("generating")}</span>
             </div>
           )}
           <button onClick={onCover}
-            className="h-7 px-2.5 flex items-center gap-1 rounded text-[11px] font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors">
+            className="ios-toolbar-button px-2.5 text-[11px] font-medium">
             <Image className="h-3 w-3" /> {t("cover")}
           </button>
           <button onClick={guard(onExportDocx)} disabled={isExporting || phase !== "complete"}
             title={canExport ? "Export DOCX" : "Finish your book — unlock export"}
-            className="h-7 px-2.5 flex items-center gap-1 rounded text-[11px] font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors disabled:opacity-40">
+            className="ios-toolbar-button px-2.5 text-[11px] font-medium disabled:opacity-40">
             {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
             {!canExport ? "Unlock DOCX" : "DOCX"}
           </button>
           <button onClick={guard(onExportPdf)} disabled={isExporting || phase !== "complete"}
             title={canExport ? "Export PDF" : "Finish your book — unlock export"}
-            className="h-7 px-2.5 flex items-center gap-1 rounded text-[11px] font-medium bg-muted text-foreground hover:bg-muted/80 transition-colors disabled:opacity-40">
+            className="ios-toolbar-button px-2.5 text-[11px] font-medium disabled:opacity-40">
             {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <FileType className="h-3 w-3" />}
             {!canExport ? "Unlock PDF" : "PDF"}
           </button>
           <button onClick={guard(onExport)} disabled={isExporting || phase !== "complete"}
             title={canExport ? "Export EPUB" : "Finish your book — unlock export"}
-            className="h-7 px-2.5 flex items-center gap-1 rounded text-[11px] font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-40">
+            className="flex h-[34px] items-center gap-1 rounded-lg bg-white px-2.5 text-[11px] font-semibold text-slate-950 transition-colors hover:bg-slate-100 disabled:opacity-40">
             {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <Download className="h-3 w-3" />}
             {!canExport ? "Unlock EPUB" : "EPUB"}
           </button>
           <button onClick={onPublish} disabled={phase !== "complete"}
-            className="h-7 px-2.5 flex items-center gap-1 rounded text-[11px] font-medium bg-accent text-accent-foreground hover:bg-accent/90 transition-colors disabled:opacity-40">
+            className="flex h-[34px] items-center gap-1 rounded-lg bg-accent px-2.5 text-[11px] font-semibold text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-40">
             <Rocket className="h-3 w-3" /> Publish
           </button>
         </div>
@@ -193,7 +217,7 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
         <button
           onClick={async () => { await signOut(); toast.success("Disconnesso"); nav("/auth"); }}
           title={user.email || "Esci"}
-          className="ml-1 h-7 px-2 flex items-center gap-1 rounded text-[11px] font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+          className="ios-toolbar-button ml-1 shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-destructive"
         >
           <LogOut className="h-3 w-3" />
         </button>
@@ -208,7 +232,7 @@ function formatCount(n: number): string {
 }
 
 function Divider() {
-  return <div className="h-5 w-px bg-border/50 shrink-0" />;
+  return <div className="h-6 w-px shrink-0 bg-white/10" />;
 }
 
 function MiniSelect({ label, value, options, onChange }: {
@@ -216,9 +240,9 @@ function MiniSelect({ label, value, options, onChange }: {
 }) {
   return (
     <div className="flex items-center gap-1 shrink-0">
-      {label && <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{label}</span>}
+      {label && <span className="text-[10px] uppercase text-muted-foreground">{label}</span>}
       <select value={value} onChange={e => onChange(e.target.value)}
-        className="h-6 bg-muted/50 border border-border rounded px-1 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary appearance-none cursor-pointer pr-4"
+        className="h-8 cursor-pointer appearance-none rounded-lg border border-white/10 bg-white/[0.07] px-2 pr-5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 3px center' }}>
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>

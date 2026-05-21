@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useDomination } from "@/contexts/DominationContext";
 import type { BookProject } from "@/types/book";
+import { getCurrentUserId } from "@/services/storageService";
 
 interface AutoFixRule {
   triggers: string[];
@@ -72,6 +73,8 @@ export function GenreCoachPanel({
           donts: p.donts,
           chapterEnding: p.chapterEnding,
         },
+        projectId: project?.id || null,
+        userId: getCurrentUserId(),
       };
       const { data, error } = await supabase.functions.invoke("genre-coach", { body: payload });
       if (error) throw new Error(error.message);

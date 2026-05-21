@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BookProject } from "@/types/book";
 import { resolveGenreKey } from "@/lib/genre-intelligence";
 import { getEditorialTier } from "@/lib/editorial-mastery";
+import { getCurrentUserId } from "@/services/storageService";
 import { toast } from "sonner";
 
 export type JobKind = "dominate" | "patch";
@@ -96,6 +97,8 @@ export function DominationProvider({ children }: { children: ReactNode }) {
             iteration: iter,
             genreAutoFixBlock: opts?.genreAutoFixBlock || "",
             masteryMode,
+            projectId: project.id,
+            userId: getCurrentUserId(),
           },
         });
         if (error) throw new Error(error.message || "Edge function error");
@@ -199,6 +202,8 @@ export function DominationProvider({ children }: { children: ReactNode }) {
           genre: project.config.genre,
           tone: project.config.tone,
           language: project.config.language,
+          projectId: project.id,
+          userId: getCurrentUserId(),
         },
       });
       if (error) throw new Error(error.message || "Edge function error");

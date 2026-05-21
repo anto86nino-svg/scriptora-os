@@ -1,3 +1,5 @@
+import { estimateTokens, logAIUsage } from "../_shared/ai-tracking.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -80,6 +82,8 @@ Deno.serve(async (req) => {
     const genre = String(body.genre || "romance");
     const keyword = String(body.keyword || "").trim();
     const marketplace = String(body.marketplace || "Amazon.it");
+    const userId = body.userId ? String(body.userId) : null;
+    const projectId = body.projectId ? String(body.projectId) : null;
 
     const query = `${marketplace} bestseller libri ${genre} ${keyword}`.trim();
     const brave = await searchBrave(BRAVE_SEARCH_API_KEY, query);
@@ -139,6 +143,22 @@ Formato:
     });
 
     const content = ai?.choices?.[0]?.message?.content || "{}";
+    const usage = ai?.usage || {};
+    const promptText = `${system}\n${user}`;
+    const promptTokens = typeof usage.prompt_tokens === "number" ? usage.prompt_tokens : estimateTokens(promptText);
+    const completionTokens = typeof usage.completion_tokens === "number" ? usage.completion_tokens : estimateTokens(content);
+    logAIUsage({
+      provider: "deepseek",
+      model: "deepseek-chat",
+      taskType: "bestseller_radar",
+      promptTokens,
+      completionTokens,
+      promptCacheHitTokens: typeof usage.prompt_cache_hit_tokens === "number" ? usage.prompt_cache_hit_tokens : 0,
+      promptCacheMissTokens: typeof usage.prompt_cache_miss_tokens === "number" ? usage.prompt_cache_miss_tokens : promptTokens,
+      projectId,
+      userId,
+      metadata: { genre, keyword, marketplace },
+    });
     const parsed = safeJsonParse(content);
 
     const results: RadarBook[] = Array.isArray(parsed.results) ? parsed.results : [];

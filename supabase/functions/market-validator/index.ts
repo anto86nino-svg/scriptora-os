@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { logAIUsage, estimateTokens } from "../_shared/ai-tracking.ts";
 
-let __trackCtx: { projectId?: string | null } = {};
+let __trackCtx: { projectId?: string | null; userId?: string | null } = {};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -93,7 +93,10 @@ async function callDeepSeek(apiKey: string, system: string, user: string, temper
     taskType,
     promptTokens: usage.prompt_tokens ?? estimateTokens(system + user),
     completionTokens: usage.completion_tokens ?? estimateTokens(content),
+    promptCacheHitTokens: usage.prompt_cache_hit_tokens,
+    promptCacheMissTokens: usage.prompt_cache_miss_tokens,
     projectId: __trackCtx.projectId || null,
+    userId: __trackCtx.userId || null,
   });
   return content;
 }
@@ -102,8 +105,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { title, subtitle, genre, description, targetAudience, projectId = null } = await req.json();
-    __trackCtx = { projectId };
+    const { title, subtitle, genre, description, targetAudience, projectId = null, userId = null } = await req.json();
+    __trackCtx = { projectId, userId };
 
     if (!title || typeof title !== "string") {
       return new Response(JSON.stringify({ error: "title required" }),

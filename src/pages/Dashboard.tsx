@@ -1,15 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { loadProjects, deleteProjectAsync, getLastProjectId } from "@/services/storageService";
+import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { NewBookDialog } from "@/components/NewBookDialog";
 import { HomeExportDialog } from "@/components/HomeExportDialog";
 import { TitleIntelligenceDialog } from "@/components/TitleIntelligenceDialog";
 import { AdvancedAppearanceDialog } from "@/components/AdvancedAppearanceDialog";
 import { CharacterStudioDialog, SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/components/CharacterStudioDialog";
+import { NotepadDialog } from "@/components/NotepadDialog";
 import { InProgressSection } from "@/components/Home/InProgressSection";
 import { LibrarySection } from "@/components/Home/LibrarySection";
-import { PlansSection } from "@/components/PlansSection";
 import { PaywallGuard } from "@/components/PaywallGuard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,12 +17,13 @@ import {
   BookOpen, Plus, FolderOpen, Trash2, Rocket, Zap,
   FileDown, ArrowRight, Clock, Globe, Flame, Loader2, Sparkles, Wand2,
   Library, Home as HomeIcon, X, BarChart3,
-  TrendingUp, LogOut, CreditCard, Download as DownloadIcon, Settings, Users
+  TrendingUp, LogOut, CreditCard, Download as DownloadIcon, Settings, Users,
+  CheckCircle2, NotebookPen
 } from "lucide-react";
 import { BookConfig, BookProject } from "@/types/book";
 import { t, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage } from "@/lib/i18n";
 import { DevModeUnlockDialog } from "@/components/DevModeUnlockDialog";
-import { isDevMode, exitDevMode, useDevMode } from "@/lib/dev-mode";
+import { enableDevMode, isDevMode, exitDevMode, useDevMode } from "@/lib/dev-mode";
 import { BetaActivationDialog } from "@/components/BetaActivationDialog";
 import { usePlan } from "@/lib/plan";
 import { FlaskConical } from "lucide-react";
@@ -109,6 +110,7 @@ export default function Home() {
   const [showTitleIntel, setShowTitleIntel] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [showCharacterStudio, setShowCharacterStudio] = useState(false);
+  const [showNotepad, setShowNotepad] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const [showIdeaModal, setShowIdeaModal] = useState(false);
   const [projects, setProjects] = useState<BookProject[]>([]);
@@ -279,7 +281,7 @@ export default function Home() {
     setDetecting(true);
     try {
       const { data, error } = await supabase.functions.invoke("detect-book-intent", {
-        body: { idea: idea.trim(), language: bookLang },
+        body: { idea: idea.trim(), language: bookLang, userId: getCurrentUserId() },
       });
       if (error) throw error;
       if (data?.fallback) {
@@ -335,119 +337,129 @@ export default function Home() {
 
   const currentLang = getUILanguage();
   const currentLangLabel = UI_LANGUAGES.find(l => l.value === currentLang)?.label || "English";
+  const completedProjects = projects.filter(isProjectComplete);
+  const draftProjects = projects.filter((p) => !isProjectComplete(p));
+  const totalChapters = projects.reduce((sum, p) => sum + (p.chapters?.length || 0), 0);
+  const totalWords = projects.reduce(
+    (sum, p) => sum + (p.chapters || []).reduce(
+      (chapterSum, ch) => chapterSum + (ch.content?.split(/\s+/).filter(Boolean).length || 0),
+      0,
+    ),
+    0,
+  );
+  const planLabel = currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1);
+  const workspaceStats = [
+    { label: "Projects", value: projects.length.toLocaleString(), detail: `${draftProjects.length} drafts`, icon: FolderOpen, iconBg: "ios-icon-blue" },
+    { label: "Completed", value: completedProjects.length.toLocaleString(), detail: "ready to export", icon: CheckCircle2, iconBg: "ios-icon-green" },
+    { label: "Chapters", value: totalChapters.toLocaleString(), detail: "generated", icon: BookOpen, iconBg: "ios-icon-orange" },
+    { label: "Words", value: totalWords > 0 ? totalWords.toLocaleString() : "0", detail: "in library", icon: FileDown, iconBg: "ios-icon-pink" },
+  ];
 
   const cards = [
-    { icon: Plus, title: freeBookUsed ? "Libro gratuito usato" : t("new_book"), desc: freeBookUsed ? "Passa a Pro/Premium per creare altri libri" : t("new_book_desc"), color: freeBookUsed ? "text-muted-foreground" : "text-primary", action: openNewBookGuarded },
-    { icon: Settings, title: freeBookUsed ? "Impostazioni avanzate Pro" : "Impostazioni avanzate", desc: freeBookUsed ? "Sblocca con Pro/Premium" : "Lingua app, sfondo Scriptora e font di scrittura", color: freeBookUsed ? "text-muted-foreground" : "text-amber-300", action: guardFreeAiFeature(() => setShowAdvancedSettings(true)), feature: freeBookUsed ? "export_epub" as const : undefined },
-    { icon: Users, title: freeBookUsed ? "Personaggi Pro" : "Personaggi", desc: freeBookUsed ? "Sblocca con Pro/Premium" : "Crea cast, ferite, segreti e continuità del romanzo", color: freeBookUsed ? "text-muted-foreground" : "text-pink-400", action: guardFreeAiFeature(() => setShowCharacterStudio(true)), feature: freeBookUsed ? "export_epub" as const : undefined },
-    { icon: FolderOpen, title: t("projects"), desc: t("projects_desc"), color: "text-blue-400", action: () => setShowProjects(!showProjects) },
-    { icon: Rocket, title: t("publish"), desc: t("publish_desc"), color: "text-purple-400", action: () => goApp({ section: "publish" }), feature: "export_epub" as const },
-    { icon: Zap, title: freeBookUsed ? "Title Intelligence Pro" : t("title_intelligence"), desc: freeBookUsed ? "Sblocca con Pro/Premium" : t("title_intelligence_desc"), color: freeBookUsed ? "text-muted-foreground" : "text-cyan-400", action: guardFreeAiFeature(() => setShowTitleIntel(true)), feature: "title_intelligence_base" as const },
-    { icon: Library, title: "Biblioteca", desc: "Libri completati", color: "text-emerald-400", action: () => setShowLibrary(true) },
-    { icon: TrendingUp, title: freeBookUsed ? "Bestseller Radar Pro" : "Bestseller Radar", desc: freeBookUsed ? "Sblocca con Pro/Premium" : "Studia titoli, domanda e concorrenza", color: freeBookUsed ? "text-muted-foreground" : "text-emerald-400", action: guardFreeAiFeature(() => navigate("/bestseller-radar")), feature: freeBookUsed ? "export_epub" as const : undefined },
-    { icon: BarChart3, title: freeBookUsed ? "Keyword Gold Pro" : "Keyword Gold", desc: freeBookUsed ? "Sblocca con Pro/Premium" : "BISAC, keyword KDP e categorie dal titolo", color: freeBookUsed ? "text-muted-foreground" : "text-yellow-400", action: guardFreeAiFeature(() => navigate("/keyword-gold")), feature: freeBookUsed ? "export_epub" as const : "kdp_market_base" as const },
-    { icon: FileDown, title: t("export_label"), desc: t("export_desc"), color: "text-orange-400", action: () => setShowExport(true), feature: "export_epub" as const },
+    { icon: Plus, title: freeBookUsed ? "Libro gratuito usato" : t("new_book"), desc: freeBookUsed ? "Passa a Pro/Premium per creare altri libri" : t("new_book_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-blue", action: openNewBookGuarded },
+    { icon: Settings, title: freeBookUsed ? "Impostazioni Pro" : "Impostazioni", desc: freeBookUsed ? "Sblocca con Pro/Premium" : "Lingua, sfondo e font", iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-yellow", action: guardFreeAiFeature(() => setShowAdvancedSettings(true)), feature: freeBookUsed ? "export_epub" as const : undefined },
+    { icon: Users, title: freeBookUsed ? "Personaggi Pro" : "Personaggi", desc: freeBookUsed ? "Sblocca con Pro/Premium" : "Cast e continuità", iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-pink", action: guardFreeAiFeature(() => setShowCharacterStudio(true)), feature: freeBookUsed ? "export_epub" as const : undefined },
+    { icon: NotebookPen, title: "Block Notes", desc: "Appunti e idee", iconBg: "ios-icon-yellow", action: () => setShowNotepad(true) },
+    { icon: FolderOpen, title: t("projects"), desc: t("projects_desc"), iconBg: "ios-icon-cyan", action: () => setShowProjects(!showProjects) },
+    { icon: Rocket, title: t("publish"), desc: t("publish_desc"), iconBg: "ios-icon-violet", action: () => goApp({ section: "publish" }), feature: "export_epub" as const },
+    { icon: Zap, title: freeBookUsed ? "Title Pro" : t("title_intelligence"), desc: freeBookUsed ? "Sblocca con Pro/Premium" : "Titoli che convertono", iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-teal", action: guardFreeAiFeature(() => setShowTitleIntel(true)), feature: "title_intelligence_base" as const },
+    { icon: Library, title: "Biblioteca", desc: "Libri completati", iconBg: "ios-icon-green", action: () => setShowLibrary(true) },
+    { icon: TrendingUp, title: freeBookUsed ? "Radar Pro" : "Bestseller Radar", desc: freeBookUsed ? "Sblocca con Pro/Premium" : "Domanda e concorrenza", iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: guardFreeAiFeature(() => navigate("/bestseller-radar")), feature: freeBookUsed ? "export_epub" as const : undefined },
+    { icon: BarChart3, title: freeBookUsed ? "Keyword Pro" : "Keyword Gold", desc: freeBookUsed ? "Sblocca con Pro/Premium" : "BISAC e keyword KDP", iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-yellow", action: guardFreeAiFeature(() => navigate("/keyword-gold")), feature: freeBookUsed ? "export_epub" as const : "kdp_market_base" as const },
+    { icon: FileDown, title: t("export_label"), desc: t("export_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const },
   ];
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      {/* Ambient background — subtle radial glow, pro feel */}
-      <div className="pointer-events-none absolute inset-0 -z-0">
-        <div
-          className="absolute -top-40 left-1/2 -translate-x-1/2 h-[480px] w-[820px] rounded-full opacity-[0.18] blur-3xl"
-          style={{ background: "radial-gradient(closest-side, hsl(var(--primary)), transparent 70%)" }}
-        />
-        <div
-          className="absolute top-1/3 -right-40 h-[360px] w-[360px] rounded-full opacity-[0.10] blur-3xl"
-          style={{ background: "radial-gradient(closest-side, hsl(var(--accent)), transparent 70%)" }}
-        />
-      </div>
-
-      {/* Sticky top bar */}
-      <header className="sticky top-0 z-20 backdrop-blur-md bg-background/70 border-b border-border/50">
-        <div className="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              const now = Date.now();
-              const recent = [...logoClicks.filter(t => now - t < 1500), now];
-              if (recent.length >= 5) {
-                setLogoClicks([]);
-                if (isDevMode()) {
+    <div className="scriptora-ios-screen min-h-screen relative overflow-hidden">
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              onClick={() => {
+                const now = Date.now();
+                const recent = [...logoClicks.filter(t => now - t < 1500), now];
+                if (recent.length >= 3) {
+                  setLogoClicks([]);
+                  if (!isDevMode()) {
+                    enableDevMode();
+                    toast.success("Developer Mode attivato");
+                  }
                   navigate("/usage");
-                } else {
-                  setShowDevUnlock(true);
+                  return;
                 }
-                return;
-              }
-              setLogoClicks(recent);
-              if (recent.length === 1) {
-                // Single click → normal navigation after a short delay if no follow-ups
-                setTimeout(() => {
-                  setLogoClicks(curr => {
-                    if (curr.length === 1 && curr[0] === now) {
-                      navigate("/dashboard");
-                      return [];
-                    }
-                    return curr;
-                  });
-                }, 400);
-              }
-            }}
-            className="group flex items-center gap-2 text-sm select-none"
-            title="SCRIPTORA"
-          >
-            <span className="h-7 w-7 rounded-md bg-primary/15 text-primary flex items-center justify-center group-hover:bg-primary/25 transition-colors">
-              <BookOpen className="h-3.5 w-3.5" />
-            </span>
-            <span className="font-bold tracking-[0.2em] text-foreground text-[13px]">SCRIPTORA</span>
-          </button>
-
-          {user && (
-            <>
-            <button
-              onClick={() => navigate("/pricing")}
-              title={displayName}
-              className="ml-1 flex items-center gap-2 h-8 pl-1 pr-2 rounded-full bg-secondary/60 hover:bg-secondary border border-border/50 transition-colors"
-            >
-              <Avatar className="h-6 w-6">
-                {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
-                <AvatarFallback className="text-[10px] font-semibold bg-primary/15 text-primary">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <span className="hidden sm:inline text-[11px] font-medium text-foreground max-w-[120px] truncate">
-                {displayName}
-              </span>
-            </button>
-            <button
-              onClick={async () => {
-                try {
-                  await signOut();
-                  toast.success("Disconnesso");
-                } catch { /* noop */ }
-                navigate("/auth");
+                setLogoClicks(recent);
+                if (recent.length === 1) {
+                  setTimeout(() => {
+                    setLogoClicks(curr => {
+                      if (curr.length === 1 && curr[0] === now) {
+                        navigate("/dashboard");
+                        return [];
+                      }
+                      return curr;
+                    });
+                  }, 400);
+                }
               }}
-              title="Esci dall'account"
-              className="h-8 w-8 flex items-center justify-center rounded-full bg-secondary/60 hover:bg-destructive/15 hover:text-destructive border border-border/50 text-muted-foreground transition-colors"
+              className="group flex items-center gap-2 text-sm select-none"
+              title="SCRIPTORA"
             >
-              <LogOut className="h-3.5 w-3.5" />
+              <span className="ios-icon ios-icon-blue h-9 w-9 transition-transform group-hover:scale-[1.03]">
+                <BookOpen className="h-3.5 w-3.5" />
+              </span>
+              <span className="hidden text-[13px] font-bold text-foreground sm:inline">SCRIPTORA</span>
             </button>
-            </>
-          )}
+
+            <div className="hidden h-5 w-px bg-white/10 sm:block" />
+            <span className="hidden items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground sm:inline-flex">
+              <HomeIcon className="h-3 w-3" />
+              Studio
+            </span>
+
+            {user && (
+              <>
+                <button
+                  onClick={() => navigate("/pricing")}
+                  title={displayName}
+                  className="ml-1 flex h-8 min-w-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] pl-1 pr-2 transition-colors hover:bg-white/[0.12]"
+                >
+                  <Avatar className="h-6 w-6">
+                    {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
+                    <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="hidden max-w-[120px] truncate text-[11px] font-medium text-foreground md:inline">
+                    {displayName}
+                  </span>
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await signOut();
+                      toast.success("Disconnesso");
+                    } catch { /* noop */ }
+                    navigate("/auth");
+                  }}
+                  title="Esci dall'account"
+                  className="ios-toolbar-button h-8 w-8 text-muted-foreground hover:text-destructive"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => navigate("/pricing")}
-              className="h-8 px-3 hidden sm:flex items-center gap-1.5 rounded-lg text-xs font-medium bg-secondary/60 text-secondary-foreground hover:bg-secondary transition-colors border border-border/50"
+              className="ios-toolbar-button hidden px-3 text-xs font-medium sm:flex"
               title="Pricing"
             >
               <CreditCard className="h-3.5 w-3.5" /> Pricing
             </button>
             <button
               onClick={() => navigate("/downloads")}
-              className="h-8 px-3 hidden sm:flex items-center gap-1.5 rounded-lg text-xs font-medium bg-secondary/60 text-secondary-foreground hover:bg-secondary transition-colors border border-border/50"
+              className="ios-toolbar-button hidden px-3 text-xs font-medium sm:flex"
               title="Downloads"
             >
               <DownloadIcon className="h-3.5 w-3.5" /> Downloads
@@ -456,14 +468,14 @@ export default function Home() {
               <>
                 <button
                   onClick={() => navigate("/usage")}
-                  className="h-8 px-3 flex items-center gap-1.5 rounded-lg text-xs font-semibold bg-foreground text-background hover:opacity-90 transition-opacity"
+                  className="flex h-8 items-center gap-1.5 rounded-lg bg-white px-3 text-xs font-semibold text-slate-950 transition-opacity hover:opacity-90"
                   title="Open Dev Dashboard"
                 >
-                  <BarChart3 className="h-3.5 w-3.5" /> Dashboard
+                  <BarChart3 className="h-3.5 w-3.5" /> DEV
                 </button>
                 <button
                   onClick={() => exitDevMode()}
-                  className="h-8 w-8 flex items-center justify-center rounded-lg text-xs bg-secondary/60 text-secondary-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors border border-border/50"
+                  className="ios-toolbar-button h-8 w-8 text-xs hover:bg-destructive hover:text-destructive-foreground"
                   title="Exit Dev Mode"
                 >
                   <LogOut className="h-3.5 w-3.5" />
@@ -471,18 +483,20 @@ export default function Home() {
               </>
             )}
             <div className="relative">
-              <button onClick={() => setShowLangMenu(!showLangMenu)}
-                className="h-8 px-3 flex items-center gap-1.5 rounded-lg text-xs font-medium bg-secondary/60 text-secondary-foreground hover:bg-secondary transition-colors border border-border/50">
+              <button
+                onClick={() => setShowLangMenu(!showLangMenu)}
+                className="ios-toolbar-button h-8 px-3 text-xs font-medium"
+              >
                 <Globe className="h-3.5 w-3.5" /> {currentLangLabel}
               </button>
               {showLangMenu && (
                 <>
                   <div className="fixed inset-0" onClick={() => setShowLangMenu(false)} />
-                  <div className="absolute right-0 mt-1 w-40 bg-card border border-border rounded-lg shadow-xl py-1 z-50">
+                  <div className="ios-glass absolute right-0 z-50 mt-1 w-40 rounded-lg py-1">
                     {UI_LANGUAGES.map(lang => (
                       <button key={lang.value} onClick={() => changeLang(lang.value)}
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-muted/50 transition-colors ${
-                          lang.value === currentLang ? "text-primary font-medium" : "text-foreground"
+                        className={`w-full px-3 py-2 text-left text-xs transition-colors hover:bg-muted/50 ${
+                          lang.value === currentLang ? "font-medium text-primary" : "text-foreground"
                         }`}>
                         {lang.label}
                       </button>
@@ -495,98 +509,146 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="relative max-w-3xl mx-auto px-6 pt-10 pb-16">
-        <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
-
-        {/* Hero header — compact pro */}
-        <div className="text-center mb-6 mt-2">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-semibold text-primary uppercase tracking-[0.18em] mb-3">
-            <Sparkles className="h-3 w-3" /> AI Book Studio
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight mb-1.5 leading-tight">
-            Welcome back.
-          </h1>
-          <p className="text-xs text-muted-foreground max-w-md mx-auto">
-            Start a new bestseller, manage drafts, or open your library.
-          </p>
-        </div>
-
-        {/* PRIMARY CTA — opens idea modal */}
-        <button
-          onClick={() => setShowIdeaModal(true)}
-          className="w-full mb-8 group relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-r from-primary/15 via-primary/10 to-accent/15 hover:from-primary/20 hover:via-primary/15 hover:to-accent/20 transition-all duration-300 p-5 text-left shadow-lg shadow-primary/10 hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-0.5"
-        >
-          <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
-              <Flame className="h-5 w-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-0.5">
-                <p className="text-sm font-bold text-foreground">Generate a new bestseller</p>
-                <span className="px-1.5 py-0.5 rounded-md bg-primary/20 text-primary text-[9px] font-semibold uppercase tracking-wider">AI</span>
-              </div>
-              <p className="text-xs text-muted-foreground">Drop your idea — we handle genre, title and full draft.</p>
-            </div>
-            <ArrowRight className="h-4 w-4 text-primary group-hover:translate-x-1 transition-transform flex-shrink-0" />
-          </div>
-        </button>
-
-        {/* Continue Last Project */}
-        {lastProject && (
-          <div onClick={() => goApp({ projectId: lastProject.id })}
-            className="mb-8 p-4 rounded-xl border border-border/60 bg-gradient-to-r from-card to-card/40 hover:border-primary/40 cursor-pointer transition-all duration-200 group">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-[0.18em] mb-1 flex items-center gap-1.5">
-                  <Clock className="h-3 w-3" /> {t("continue_project")}
-                </p>
-                <p className="text-sm font-semibold text-foreground truncate">{lastProject.config.title || "Untitled"}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {lastProject.chapters?.length || 0} {t("chapters").toLowerCase()} · {lastProject.phase}
+      <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6 lg:px-8">
+        <div className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.85fr)]">
+          <section className="ios-panel p-5">
+            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+              <div className="min-w-0">
+                <div className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground">
+                  <Sparkles className="h-3 w-3 text-sky-300" /> AI Book Studio
+                </div>
+                <h1 className="max-w-2xl text-2xl font-semibold text-foreground sm:text-3xl">
+                  Scriptora OS
+                </h1>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+                  Piano {devOn ? "DEV" : planLabel} attivo. Tutto quello che serve per scrivere, rifinire e pubblicare vive in una home elegante, veloce e pronta.
                 </p>
               </div>
               <button
-                type="button"
-                title="Elimina progetto"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  deleteHomeProject(lastProject.id, lastProject.config.title);
-                }}
-                className="h-9 w-9 rounded-full border border-destructive/30 bg-destructive/10 text-destructive flex items-center justify-center hover:bg-destructive hover:text-destructive-foreground transition-colors flex-shrink-0"
+                onClick={() => setShowIdeaModal(true)}
+                className="group inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-semibold text-slate-950 shadow-lg shadow-black/20 transition-all hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
               >
-                <Trash2 className="h-4 w-4" />
+                <Flame className="h-4 w-4" />
+                Generate Book
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
-              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary transition-colors flex-shrink-0">
-                <ArrowRight className="h-4 w-4 text-primary group-hover:text-primary-foreground transition-colors" />
+            </div>
+          </section>
+
+          <section className="ios-panel p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Workspace status</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">
+                  {activeRun ? "Generation running" : "Ready"}
+                </p>
+              </div>
+              <div className={`rounded-lg border px-2.5 py-1 text-[10px] font-semibold uppercase ${
+                activeRun
+                  ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
+                  : "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
+              }`}>
+                {activeRun ? "Live" : "Stable"}
               </div>
             </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                onClick={() => setShowProjects(true)}
+                className="rounded-lg border border-white/10 bg-white/[0.07] p-3 text-left transition-colors hover:border-sky-300/40 hover:bg-sky-400/10"
+              >
+                <p className="text-[10px] uppercase text-muted-foreground">Drafts</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{draftProjects.length}</p>
+              </button>
+              <button
+                onClick={() => setShowLibrary(true)}
+                className="rounded-lg border border-white/10 bg-white/[0.07] p-3 text-left transition-colors hover:border-emerald-300/40 hover:bg-emerald-400/10"
+              >
+                <p className="text-[10px] uppercase text-muted-foreground">Library</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{completedProjects.length}</p>
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
+
+        <div className="mb-6 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+          {workspaceStats.map((stat) => (
+            <div key={stat.label} className="ios-glass-soft rounded-lg p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase text-muted-foreground">{stat.label}</p>
+                  <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{stat.value}</p>
+                </div>
+                <span className={`ios-icon ${stat.iconBg} h-9 w-9 rounded-[14px]`}>
+                  <stat.icon className="h-4 w-4" />
+                </span>
+              </div>
+              <p className="mt-1 truncate text-[11px] text-muted-foreground">{stat.detail}</p>
+            </div>
+          ))}
+        </div>
+
+        {lastProject && (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => goApp({ projectId: lastProject.id })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                goApp({ projectId: lastProject.id });
+              }
+            }}
+            className="ios-panel group mb-6 flex w-full cursor-pointer items-center justify-between gap-3 p-3 text-left transition-colors hover:border-primary/40"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="mb-1 flex items-center gap-1.5 text-[10px] uppercase text-muted-foreground">
+                <Clock className="h-3 w-3" /> {t("continue_project")}
+              </p>
+              <p className="truncate text-sm font-semibold text-foreground">{lastProject.config.title || "Untitled"}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {lastProject.chapters?.length || 0} {t("chapters").toLowerCase()} · {lastProject.phase}
+              </p>
+            </div>
+            <button
+              type="button"
+              title="Elimina progetto"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                deleteHomeProject(lastProject.id, lastProject.config.title);
+              }}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-destructive/30 bg-destructive/10 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 transition-colors group-hover:bg-primary">
+              <ArrowRight className="h-4 w-4 text-primary transition-colors group-hover:text-primary-foreground" />
+            </span>
           </div>
         )}
 
-        {/* Section divider */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-px flex-1 bg-border/50" />
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em]">Quick Actions</span>
-          <div className="h-px flex-1 bg-border/50" />
+        <div className="mb-3 flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase text-muted-foreground">Home screen</p>
+            <h2 className="mt-1 text-base font-semibold text-foreground">App Scriptora</h2>
+          </div>
+          <span className="hidden text-[11px] text-muted-foreground sm:inline">
+            {projects.length} total · {planLabel}
+          </span>
         </div>
 
-        {/* Secondary Actions — pro grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-8">
+        <div className="mb-8 grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-5 lg:grid-cols-10">
           {cards.map(card => {
             const inner = (
               <button key={card.title} onClick={card.action}
-                className="relative w-full p-3.5 rounded-xl border border-border/60 bg-card/60 hover:bg-card hover:border-primary/30 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/5 cursor-pointer transition-all duration-200 group text-left overflow-hidden">
-                <div className="flex items-center gap-2.5">
-                  <div className={`p-2 rounded-lg bg-muted/40 group-hover:bg-muted/70 transition-colors ${card.color}`}>
-                    <card.icon className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-foreground truncate">{card.title}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{card.desc}</p>
-                  </div>
-                </div>
+                className="group flex min-h-[96px] w-full flex-col items-center justify-start gap-2 rounded-lg p-1 text-center transition-all duration-200 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
+                <span className={`ios-icon ${card.iconBg} h-14 w-14`}>
+                  <card.icon className="h-6 w-6" />
+                </span>
+                <span className="max-w-full truncate text-[11px] font-semibold leading-4 text-foreground">{card.title}</span>
+                <span className="hidden max-w-[88px] text-[10px] leading-3 text-muted-foreground lg:block">{card.desc}</span>
               </button>
             );
             return (card as any).feature
@@ -595,70 +657,76 @@ export default function Home() {
           })}
         </div>
 
-        {/* Project List (drafts only — completed go to Library) */}
         {showProjects && (() => {
-          const drafts = projects.filter((p) => !isProjectComplete(p));
+          const drafts = draftProjects;
           return (
-            <div className="bg-card border border-border rounded-xl p-3 space-y-1">
-              <p className="px-2 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">
-                {t("my_projects")} — Bozze ({drafts.length})
-              </p>
+            <div className="ios-panel mb-6 p-3">
+              <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                  {t("my_projects")} · Bozze ({drafts.length})
+                </p>
+                <button
+                  onClick={() => setShowProjects(false)}
+                  className="rounded-md px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                >
+                  Chiudi
+                </button>
+              </div>
               {drafts.length === 0 && (
-                <p className="text-xs text-muted-foreground/50 px-2 py-2">
+                <p className="px-2 py-3 text-xs text-muted-foreground/70">
                   Nessuna bozza. I progetti completati appaiono nella Biblioteca.
                 </p>
               )}
-              {drafts.map(p => (
-                <div key={p.id}
-                  className="group flex items-center justify-between px-3 py-2 rounded-md text-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
-                  onClick={() => goApp({ projectId: p.id })}>
-                  <div className="flex-1 min-w-0">
-                    <span className="truncate block text-sm">{p.config.title || "Untitled"}</span>
-                    <span className="text-[10px] text-muted-foreground/60">{p.config.genre} · {p.chapters?.length || 0} ch · {p.phase}</span>
+              <div className="divide-y divide-white/10">
+                {drafts.map(p => (
+                  <div key={p.id}
+                    className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
+                    onClick={() => goApp({ projectId: p.id })}>
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">{p.config.title || "Untitled"}</span>
+                      <span className="text-[10px] text-muted-foreground/70">{p.config.genre} · {p.chapters?.length || 0} ch · {p.phase}</span>
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                      className="rounded-md p-1 text-muted-foreground opacity-70 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
-                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1">
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           );
         })()}
 
-        {/* Beta access banner — visible only when user is NOT yet on beta/pro/premium and not in dev mode */}
         {!devOn && currentPlan === "free" && (
-          <div className="rounded-xl border border-fuchsia-500/30 bg-gradient-to-br from-fuchsia-500/10 via-background to-background p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-fuchsia-500/20 flex items-center justify-center shrink-0">
-              <FlaskConical className="h-5 w-5 text-fuchsia-400" />
+          <div className="ios-panel mb-4 flex items-center gap-3 p-4">
+            <div className="ios-icon ios-icon-pink h-10 w-10 shrink-0 rounded-[16px]">
+              <FlaskConical className="h-5 w-5" />
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-foreground">Have a Beta access code?</p>
-              <p className="text-xs text-muted-foreground">Unlock 3 books with export — limited beta tester program.</p>
+              <p className="text-xs text-muted-foreground">Unlock 3 books with export.</p>
             </div>
             <button
               onClick={() => setShowBetaDialog(true)}
-              className="px-3 py-2 rounded-md bg-fuchsia-500/20 hover:bg-fuchsia-500/30 text-fuchsia-300 border border-fuchsia-500/40 text-xs font-bold transition-colors"
+              className="rounded-lg border border-fuchsia-500/40 bg-fuchsia-500/15 px-3 py-2 text-xs font-bold text-fuchsia-200 transition-colors hover:bg-fuchsia-500/25"
             >
-              Activate Beta
+              Activate
             </button>
           </div>
         )}
 
-        {/* Active beta badge */}
         {currentPlan === "beta" && (
-          <div className="rounded-xl border border-fuchsia-500/30 bg-fuchsia-500/5 p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-fuchsia-500/20 flex items-center justify-center shrink-0">
-              <FlaskConical className="h-5 w-5 text-fuchsia-400" />
+          <div className="ios-panel mb-4 flex items-center gap-3 p-4">
+            <div className="ios-icon ios-icon-pink h-10 w-10 shrink-0 rounded-[16px]">
+              <FlaskConical className="h-5 w-5" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-fuchsia-300">Beta Tester</p>
-              <p className="text-xs text-muted-foreground">Beta access: limited to 3 books · 15k tokens each</p>
+              <p className="text-sm font-semibold text-fuchsia-200">Beta Tester</p>
+              <p className="text-xs text-muted-foreground">Beta access: 3 books · 15k tokens each</p>
             </div>
           </div>
         )}
 
-        <PlansSection />
       </div>
 
       <NewBookDialog
@@ -678,21 +746,22 @@ export default function Home() {
       <TitleIntelligenceDialog open={showTitleIntel} onClose={() => setShowTitleIntel(false)} />
       <AdvancedAppearanceDialog open={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} onLanguageChanged={() => setLangTick(p => p + 1)} />
       <CharacterStudioDialog open={showCharacterStudio} onClose={() => setShowCharacterStudio(false)} />
+      <NotepadDialog open={showNotepad} onClose={() => setShowNotepad(false)} />
 
       {/* Idea modal — primary generation flow */}
       {showIdeaModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-2xl"
           onClick={() => !launching && !detecting && setShowIdeaModal(false)}
         >
           <div
-            className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
+            className="ios-panel relative max-h-[90vh] w-full max-w-xl overflow-y-auto p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
             <div className="mb-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
+                <div className="ios-icon ios-icon-blue flex h-10 w-10 items-center justify-center rounded-[16px]">
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <div>
@@ -710,7 +779,7 @@ export default function Home() {
               </button>
             </div>
 
-            <label htmlFor="idea-modal" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.18em] mb-2 flex items-center gap-1.5">
+            <label htmlFor="idea-modal" className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
               <Sparkles className="h-3 w-3 text-primary" /> Your Book Idea
             </label>
             <textarea
@@ -721,11 +790,11 @@ export default function Home() {
               rows={3}
               autoFocus
               disabled={launching}
-              className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+              className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.07] px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
             />
 
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mr-1 flex items-center gap-1">
+              <span className="mr-1 flex items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground">
                 <Globe className="h-3 w-3" /> Book language
               </span>
               {BOOK_LANGUAGES.map(l => (
@@ -734,10 +803,10 @@ export default function Home() {
                   type="button"
                   onClick={() => setBookLang(l.value)}
                   disabled={launching || detecting}
-                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors disabled:opacity-50 ${
+                  className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 ${
                     bookLang === l.value
                       ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                      : "bg-white/[0.07] text-secondary-foreground hover:bg-white/[0.12]"
                   }`}
                 >
                   {l.label}
@@ -746,9 +815,9 @@ export default function Home() {
             </div>
 
             {intent && (
-              <div className="mt-3 p-3 rounded-lg bg-muted/30 border border-border space-y-2 text-xs">
+              <div className="ios-glass-soft mt-3 space-y-2 rounded-lg p-3 text-xs">
                 <div className="flex flex-wrap gap-2">
-                  <span className="px-2 py-0.5 rounded-md bg-primary/15 text-primary font-semibold uppercase tracking-wider text-[10px]">
+                  <span className="rounded-md bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-primary">
                     {intent.genre}
                   </span>
                   {intent.subcategory && (
@@ -764,7 +833,7 @@ export default function Home() {
                   </span>
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Suggested title</p>
+                  <p className="text-[10px] font-semibold uppercase text-muted-foreground">Suggested title</p>
                   <p className="text-sm font-semibold text-foreground mt-0.5">
                     {intent.suggestedTitles?.[intent.bestTitleIndex] || intent.suggestedTitles?.[0]}
                   </p>
@@ -782,7 +851,7 @@ export default function Home() {
               <button
                 onClick={launchOneClick}
                 disabled={!heroValid || launching || detecting}
-                className="flex-1 h-11 inline-flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
+                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-white text-sm font-semibold text-slate-950 shadow-lg shadow-black/20 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {launching || detecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
                 {launching ? "Launching…" : detecting ? "Detecting…" : "Generate Full Book"}
@@ -791,7 +860,7 @@ export default function Home() {
                 <button
                   onClick={detectIntent}
                   disabled={!heroValid || detecting || launching}
-                  className="h-11 px-4 inline-flex items-center justify-center gap-2 rounded-lg bg-secondary text-secondary-foreground font-medium text-sm hover:bg-secondary/80 transition-colors disabled:opacity-50"
+                  className="ios-toolbar-button h-11 px-4 text-sm font-medium disabled:opacity-50"
                 >
                   <Wand2 className="h-3.5 w-3.5" /> Preview
                 </button>
@@ -799,7 +868,7 @@ export default function Home() {
                 <button
                   onClick={() => { setShowIdeaModal(false); navigate("/auto-bestseller"); }}
                   disabled={launching}
-                  className="h-11 px-4 inline-flex items-center justify-center gap-2 rounded-lg bg-secondary text-secondary-foreground font-medium text-sm hover:bg-secondary/80 transition-colors disabled:opacity-50"
+                  className="ios-toolbar-button h-11 px-4 text-sm font-medium disabled:opacity-50"
                 >
                   Advanced <ArrowRight className="h-3.5 w-3.5" />
                 </button>
@@ -817,11 +886,11 @@ export default function Home() {
       {/* Library modal — opens via the Biblioteca card */}
       {showLibrary && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-2xl"
           onClick={() => setShowLibrary(false)}
         >
           <div
-            className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl"
+            className="ios-panel relative max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">

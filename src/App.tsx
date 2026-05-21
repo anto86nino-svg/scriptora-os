@@ -22,7 +22,6 @@ import KeywordGoldPage from "./pages/KeywordGoldPage.tsx";
 import InstallPage from "./pages/InstallPage.tsx";
 import { DevModeBadge } from "@/components/DevModeBadge";
 import GlobalCuriosity from "./components/GlobalCuriosity";
-import MollyLive from "./molly/MollyLive";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 
 
@@ -58,8 +57,7 @@ const App = () => (
               </Routes>
               </AppErrorBoundary>
               <DevModeBadge />
-<MollyLive />
-<GlobalCuriosity />
+              <GlobalCuriosity />
             </MollyProvider>
           </DominationProvider>
         </AuthProvider>

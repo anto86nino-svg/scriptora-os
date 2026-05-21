@@ -1,6 +1,7 @@
 // Fast blueprint generator — DeepSeek Chat in NON-streaming JSON mode.
 // Optimized for speed: smaller max_tokens, json_object response, 60s timeout.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { estimateTokens, logAIUsage } from "../_shared/ai-tracking.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +13,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { systemPrompt, userPrompt } = await req.json();
+    const { systemPrompt, userPrompt, taskType = "generate_blueprint", projectId = null, userId = null, metadata = {} } = await req.json();
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 
@@ -60,6 +61,25 @@ serve(async (req) => {
 
     const data = await res.json();
     const content = data?.choices?.[0]?.message?.content ?? "";
+    const usage = data?.usage || {};
+    const promptTokens = typeof usage.prompt_tokens === "number"
+      ? usage.prompt_tokens
+      : estimateTokens(`${systemPrompt}${userPrompt}`);
+    const completionTokens = typeof usage.completion_tokens === "number"
+      ? usage.completion_tokens
+      : estimateTokens(content);
+    logAIUsage({
+      provider: "deepseek",
+      model: "deepseek-chat",
+      taskType,
+      promptTokens,
+      completionTokens,
+      promptCacheHitTokens: typeof usage.prompt_cache_hit_tokens === "number" ? usage.prompt_cache_hit_tokens : 0,
+      promptCacheMissTokens: typeof usage.prompt_cache_miss_tokens === "number" ? usage.prompt_cache_miss_tokens : promptTokens,
+      projectId,
+      userId,
+      metadata: { ...metadata, jsonMode: true, estimated: !data?.usage },
+    });
     return new Response(JSON.stringify({ content }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

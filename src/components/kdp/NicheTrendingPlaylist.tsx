@@ -57,6 +57,79 @@ interface Props {
 
 type TabKey = "trending" | "watchlist";
 
+function buildDevFallbackTrending(input: {
+  focus: string;
+  language: string;
+  marketplaces: TrendingNichesResult["marketplaces"];
+  seed?: number;
+}): TrendingNichesResult {
+  const topic = input.focus.trim() || "self-help";
+  const parent = topic
+    .replace(/\s+/g, " ")
+    .replace(/^./, (c) => c.toUpperCase());
+  const market = (i: number): TrendingNiche["marketplace"] =>
+    i % 4 === 0 ? "amazon.com" : i % 4 === 1 ? "amazon.it" : i % 4 === 2 ? "apple-books" : "cross-market";
+
+  const ideas = [
+    ["30 giorni pratici", "lettori che vogliono risultati misurabili", "un piano guidato con micro-azioni quotidiane", "trasforma il tema in una challenge progressiva"],
+    ["per principianti assoluti", "chi parte da zero e teme la complessità", "una strada semplice senza gergo", "posizionati come guida chiara e rassicurante"],
+    ["anti-burnout", "professionisti saturi e creator stanchi", "recuperare energia senza mollare tutto", "usa esempi concreti e rituali minimi"],
+    ["per genitori occupati", "famiglie con poco tempo", "ottenere benefici in sessioni brevi", "promessa low-friction con checklist"],
+    ["con AI e template", "autori indie e solopreneur", "risparmiare tempo con sistemi pronti", "offri prompt, schede e workflow replicabili"],
+    ["minimalista", "lettori che vogliono meno teoria", "fare meglio con meno passaggi", "taglia il superfluo e vendi chiarezza"],
+    ["per over 40", "lettori maturi con bisogni specifici", "adattare il metodo alla vita reale", "nicchia per età e contesto emotivo"],
+    ["workbook guidato", "lettori che comprano libri esercizi", "passare dalla lettura all'azione", "aggiungi esercizi, tracker e autovalutazioni"],
+    ["errori da evitare", "chi ha già provato senza riuscire", "capire cosa blocca i risultati", "angolo diagnostico ad alta conversione"],
+    ["premium checklist", "utenti che vogliono una soluzione pronta", "controllare ogni passaggio prima di agire", "formato operativo, vendibile anche come companion"],
+  ];
+
+  const niches: TrendingNiche[] = ideas.map(([name, reader, promise, angle], i) => ({
+    name: `${parent} ${name}`,
+    parentGenre: parent,
+    marketplace: market(i),
+    demandLevel: i % 5 === 2 ? "medium" : "high",
+    competitionLevel: i % 4 === 0 ? "low" : "medium",
+    opportunityScore: Math.max(68, 92 - i * 3 + ((input.seed || 0) % 3)),
+    trendDirection: i % 3 === 1 ? "stable" : "rising",
+    dominantPromise: promise,
+    targetReader: reader,
+    suggestedAngle: angle,
+    dominantKeywords: [
+      topic,
+      "workbook",
+      "passo passo",
+      "principianti",
+      "piano pratico",
+    ].slice(0, 5),
+    whyItMatters: "Fallback dev per testare UI, import e playlist quando la Edge Function non risponde.",
+    saturationRisk: i % 4 === 0 ? "low" : "medium",
+  }));
+
+  return {
+    groundingUsed: false,
+    groundingProvider: null,
+    groundingResultsCount: 0,
+    groundingQueries: [],
+    marketplaces: input.marketplaces,
+    analyzedAt: new Date().toISOString(),
+    marketOverview:
+      input.language === "Italian"
+        ? "Modalità dev fallback: la Edge Function non ha risposto. Usa questa playlist simulata per testare flusso, salvataggio e import senza addebiti."
+        : "Dev fallback mode: the Edge Function did not respond. Use this simulated playlist to test browsing, saving and import without billing.",
+    niches,
+  };
+}
+
+function friendlyTrendingError(e: any): string {
+  const raw = String(e?.message || e || "");
+  if (raw.includes("non-2xx") || raw.includes("FunctionsHttpError")) {
+    return "Radar temporaneamente non disponibile: la Edge Function ha risposto con errore.";
+  }
+  if (raw.toLowerCase().includes("deepseek")) return raw;
+  if (raw.toLowerCase().includes("api key")) return "Backend AI non configurato: manca una chiave API.";
+  return raw || "Errore nel caricamento delle nicchie.";
+}
+
 export function NicheTrendingPlaylist({ language = "Italian", onImport, initialFocus = "" }: Props) {
   const [tab, setTab] = useState<TabKey>("trending");
   const [focus, setFocus] = useState(initialFocus);
@@ -161,8 +234,21 @@ export function NicheTrendingPlaylist({ language = "Italian", onImport, initialF
         toast.success("Trend aggiornati · click beta gratuito utilizzato");
       }
     } catch (e: any) {
-      setError(e?.message || "Errore nel caricamento delle nicchie");
-      toast.error(e?.message || "Errore");
+      const message = friendlyTrendingError(e);
+      if (g.isDev) {
+        const fallback = buildDevFallbackTrending({
+          language,
+          focus,
+          marketplaces: ["amazon.com", "amazon.it", "apple-books"],
+          seed: regen ? Math.floor(Math.random() * 1_000_000) : undefined,
+        });
+        setData(fallback);
+        setError(null);
+        toast.success("Fallback dev attivo · nessun addebito");
+        return;
+      }
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }

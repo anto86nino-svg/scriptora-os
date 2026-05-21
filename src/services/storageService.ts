@@ -70,6 +70,29 @@ export function getCurrentUserId(): string {
   return getRealAuthUserId() ?? "public-user";
 }
 
+async function getSessionUserId(): Promise<string | null> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session?.user?.id || getRealAuthUserId();
+  } catch {
+    return getRealAuthUserId();
+  }
+}
+
+async function getCloudWriteUserId(): Promise<string | null> {
+  const realUid = await getSessionUserId();
+  if (realUid) return realUid;
+
+  // Current RLS allows anonymous dev rows to be read, but not written.
+  // Without an authenticated Supabase session we keep local save instant and
+  // mark cloud as pending instead of incorrectly calling it offline.
+  return null;
+}
+
+async function getCloudReadUserId(): Promise<string | null> {
+  return (await getCloudWriteUserId()) || getCurrentUserId();
+}
+
 /** Returns true when current dev-mode tier is reserved for the owner's REAL projects. */
 export function isProtectedDevTier(): boolean {
   return isDevMode() && getDevPlanOverride() === "premium";
@@ -129,10 +152,13 @@ export async function loadProjects(
 
   const refresh = async (): Promise<BookProject[]> => {
     try {
+      const cloudUserId = await getCloudReadUserId();
+      if (!cloudUserId) return local;
+
       const { data, error } = await supabase
         .from("projects")
         .select("*")
-        .eq("user_id", getCurrentUserId())
+        .eq("user_id", cloudUserId)
         .order("updated_at", { ascending: false });
 
       if (error || !data || data.length === 0) return local;
@@ -188,7 +214,7 @@ export { isProjectComplete };
 
 export async function saveProjectAsync(
   project: BookProject,
-  callbacks?: { onSaving?: () => void; onSaved?: () => void; onOffline?: () => void }
+  callbacks?: { onSaving?: () => void; onSaved?: () => void; onPending?: () => void; onOffline?: () => void }
 ): Promise<void> {
   // Always save locally first (instant, reliable)
   const tagged = tagWithCurrentUser(project);
@@ -198,14 +224,21 @@ export async function saveProjectAsync(
   callbacks?.onSaving?.();
 
   try {
+    const cloudUserId = await getCloudWriteUserId();
+    if (!cloudUserId) {
+      callbacks?.onPending?.();
+      return;
+    }
+
+    const cloudProject = { ...project, userId: cloudUserId } as BookProject;
     const { error } = await supabase
       .from("projects")
       .upsert(
         {
           id: project.id,
-          user_id: getCurrentUserId(),
+          user_id: cloudUserId,
           title: project.config.title || "Untitled",
-          data: project as any,
+          data: cloudProject as any,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "id" }
@@ -213,12 +246,14 @@ export async function saveProjectAsync(
 
     if (error) {
       console.warn("Supabase save failed, localStorage used:", error.message);
-      callbacks?.onOffline?.();
+      if (typeof navigator !== "undefined" && navigator.onLine === false) callbacks?.onOffline?.();
+      else callbacks?.onPending?.();
     } else {
       callbacks?.onSaved?.();
     }
   } catch {
-    callbacks?.onOffline?.();
+    if (typeof navigator !== "undefined" && navigator.onLine === false) callbacks?.onOffline?.();
+    else callbacks?.onPending?.();
   }
 }
 
@@ -226,7 +261,9 @@ export async function deleteProjectAsync(id: string): Promise<void> {
   deleteLocal(id);
 
   try {
-    await supabase.from("projects").delete().eq("id", id);
+    const cloudUserId = await getCloudWriteUserId();
+    if (!cloudUserId) return;
+    await supabase.from("projects").delete().eq("id", id).eq("user_id", cloudUserId);
   } catch {
     // silent
   }

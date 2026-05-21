@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-let __trackCtx: { projectId?: string | null } = {};
+let __trackCtx: { projectId?: string | null; userId?: string | null } = {};
 
 async function callDeepSeek(apiKey: string, system: string, user: string, jsonMode = false, temperature = 0.4, maxTokens = 4000, taskType = "patch_chapter") {
   const body: any = {
@@ -40,7 +40,10 @@ async function callDeepSeek(apiKey: string, system: string, user: string, jsonMo
     taskType,
     promptTokens: usage.prompt_tokens ?? estimateTokens(system + user),
     completionTokens: usage.completion_tokens ?? estimateTokens(content),
+    promptCacheHitTokens: usage.prompt_cache_hit_tokens,
+    promptCacheMissTokens: usage.prompt_cache_miss_tokens,
     projectId: __trackCtx.projectId || null,
+    userId: __trackCtx.userId || null,
   });
   return content;
 }
@@ -108,8 +111,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { chapterTitle, chapterText, genre, tone, language, projectId = null } = await req.json();
-    __trackCtx = { projectId };
+    const { chapterTitle, chapterText, genre, tone, language, projectId = null, userId = null } = await req.json();
+    __trackCtx = { projectId, userId };
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 

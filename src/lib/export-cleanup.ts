@@ -1,3 +1,5 @@
+import { resolveChapterTitle } from "@/lib/chapter-titles";
+
 type AnyBookProject = any;
 
 const DEFAULT_AUTHOR = "Antonino Campanella";
@@ -285,7 +287,11 @@ export function normalizeExportProject(project: AnyBookProject): AnyBookProject 
 
   const chapters = Array.isArray(project?.chapters)
     ? project.chapters.map((chapter: any, index: number) => {
-        const title = cleanExportText(chapter?.title || "");
+        const title = cleanExportText(resolveChapterTitle(chapter?.title, index, {
+          config,
+          summary: project?.blueprint?.chapterOutlines?.[index]?.summary,
+          totalChapters: config.numberOfChapters,
+        }));
         return {
           ...chapter,
           title,

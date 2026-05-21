@@ -18,6 +18,8 @@ interface Body {
   history?: { role: "user" | "assistant"; content: string }[];
   spontaneousKind?: "joke" | "curiosity" | "motivation" | "question" | "news" | "random";
   bookTitle?: string;
+  projectId?: string | null;
+  userId?: string | null;
 }
 
 serve(async (req) => {
@@ -150,6 +152,10 @@ Mandagli un messaggio spontaneo SORPRENDENTE in ${lang}. Solo JSON.`;
       taskType: `live_coach_${body.mode}`,
       promptTokens: usage.prompt_tokens ?? estimateTokens(messages.map((m: any) => m.content).join("\n")),
       completionTokens: usage.completion_tokens ?? estimateTokens(content),
+      promptCacheHitTokens: usage.prompt_cache_hit_tokens,
+      promptCacheMissTokens: usage.prompt_cache_miss_tokens,
+      projectId: body.projectId || null,
+      userId: body.userId || null,
       metadata: { mode: body.mode, language: lang, genre },
     });
 

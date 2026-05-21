@@ -17,6 +17,7 @@ import { LeavePageDialog } from "@/components/AutoBestseller/LeavePageDialog";
 import { getBookProgress } from "@/lib/book-progress";
 import { ProgressBar } from "@/components/AutoBestseller/ProgressBar";
 import { BookConfig } from "@/types/book";
+import { ensureBookTitleMetadata } from "@/lib/title-shadow";
 
 const VARIATION_ANGLES = [
   "emotional / personal transformation angle",
@@ -74,7 +75,7 @@ function autoBestsellerInputToBookConfig(input: AutoBestsellerInput): BookConfig
   const subtitle = String(input.prefilledSubtitle || input.readerPromise || "").trim().slice(0, 180);
   const authorName = String(input.authorName || "").trim();
 
-  return {
+  return ensureBookTitleMetadata({
     title,
     subtitle,
     authorName,
@@ -91,7 +92,14 @@ function autoBestsellerInputToBookConfig(input: AutoBestsellerInput): BookConfig
     numberOfChapters: Math.max(3, Math.min(20, Number(input.numberOfChapters) || 8)),
     subchaptersEnabled: false,
     characters: charactersFromSetupText(input.charactersText),
-  } as any;
+  } as any, {
+    idea: input.idea,
+    readerPromise: input.readerPromise,
+    genre: input.genre,
+    subcategory: input.subcategory,
+    targetAudience: input.targetAudience,
+    language: input.language,
+  });
 }
 
 

@@ -7,9 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getCurrentUserId } from "@/services/storageService";
 
 export const SCRIPTORA_CHARACTER_BIBLE_KEY = "scriptora-character-bible-v1";
 export const SCRIPTORA_CHARACTER_PROJECT_KEY = "scriptora-character-project-v1";
+const SCRIPTORA_IDEA_HISTORY_KEY = "scriptora-character-idea-history-v1";
 
 type ChoiceOption = string | { value: string; label: string };
 
@@ -202,14 +204,53 @@ function fallbackCharacterBible(input: {
   protagonistType?: string;
   language: string;
 }) {
-  const isItalian = input.language === "Italian";
-  const protagonistName = isItalian ? "Laura" : "Laura";
-  const loveName = input.genre.includes("romance") ? (isItalian ? "Elias" : "Elias") : (isItalian ? "Marco" : "Marcus");
+  const hash = Array.from(`${input.idea}|${input.genre}|${input.subcategory}|${input.centralDynamic || ""}`)
+    .reduce((sum, char) => Math.imul(sum ^ char.charCodeAt(0), 16777619), 2166136261) >>> 0;
+  const namePairs = input.language === "Italian"
+    ? [
+      ["Livia", "D'Amico", "Nicolò", "Serra"],
+      ["Marta", "Riva", "Elia", "Valenti"],
+      ["Adele", "Ferri", "Tommaso", "Neri"],
+      ["Bianca", "Moretti", "Damiano", "Greco"],
+      ["Iris", "Leoni", "Vittorio", "Mancini"],
+      ["Clara", "Santoro", "Enea", "Bellini"],
+    ]
+    : [
+      ["Mara", "Voss", "Elias", "Reed"],
+      ["Iris", "Vale", "Jonah", "Cross"],
+      ["Nora", "Blake", "Theo", "Marsh"],
+      ["Ada", "Rowe", "Julian", "Stone"],
+      ["Celia", "Hart", "Noah", "Wren"],
+      ["Vera", "Lane", "Silas", "Cole"],
+    ];
+  const professions = [
+    "restauratrice di archivi e memoria familiare",
+    "fotografa investigativa abituata a leggere dettagli invisibili",
+    "traduttrice freelance che vive tra lingue, bugie e omissioni",
+    "architetta di interni specializzata in case lasciate a metà",
+    "ricercatrice che ha trasformato una colpa in metodo",
+    "musicista che controlla tutto perché teme l'imprevisto",
+  ];
+  const counterpartRoles = [
+    "antagonista emotivo / alleato necessario",
+    "figura di svolta con agenda nascosta",
+    "rivale professionale che conosce una parte della verità",
+    "custode del luogo e della memoria che la protagonista evita",
+    "testimone ambiguo, attrazione e minaccia insieme",
+    "partner obbligato in una scelta che non lascia innocenti",
+  ];
+  const pair = namePairs[hash % namePairs.length];
+  const profession = professions[hash % professions.length];
+  const counterpartRole = counterpartRoles[(hash >>> 3) % counterpartRoles.length];
+  const protagonistName = pair[0];
+  const protagonistSurname = pair[1];
+  const loveName = pair[2];
+  const loveSurname = pair[3];
 
   return `Nome: ${protagonistName}
-Cognome:
+Cognome: ${protagonistSurname}
 Età: 32
-Ruolo nella storia: Protagonista
+Ruolo nella storia: Protagonista / ${profession}
 Aspetto fisico: Da definire con coerenza durante la scrittura, senza contraddizioni.
 Carattere: Sensibile, osservatrice, ferita ma non fragile. Tende a scappare quando una verità emotiva diventa troppo vicina.
 Ferita interiore: Ha perso fiducia nella possibilità di appartenere davvero a qualcuno o a un luogo.
@@ -220,9 +261,9 @@ Rapporto con gli altri personaggi: Il suo rapporto con ${loveName} deve crescere
 Regole di continuità: Non rinominare mai ${protagonistName}. Non trasformarla in un'altra persona. Ogni capitolo deve rispettare la sua ferita, il suo desiderio e il suo arco emotivo.
 
 Nome: ${loveName}
-Cognome:
+Cognome: ${loveSurname}
 Età: 35
-Ruolo nella storia: Interesse romantico / figura di svolta
+Ruolo nella storia: ${input.genre.includes("romance") ? "Interesse romantico / " : ""}${counterpartRole}
 Aspetto fisico: Presenza intensa, concreta, non patinata. Deve sembrare una persona reale, non un archetipo generico.
 Carattere: Riservato, magnetico, segnato dal passato. Mostra più con i gesti che con le parole.
 Ferita interiore: Porta una perdita o un fallimento che lo ha reso prudente nell'amore.
@@ -231,6 +272,87 @@ Bisogno interiore: Accettare che amare di nuovo non significa tradire il passato
 Segreto: C'è una parte della sua storia che non racconta subito.
 Rapporto con gli altri personaggi: Con ${protagonistName} deve esserci attrazione, paura, resistenza e progressiva fiducia.
 Regole di continuità: Non rinominare mai ${loveName}. Non farlo confessare troppo presto. Ogni intimità deve avere una conseguenza narrativa.`;
+}
+
+function readIdeaHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(SCRIPTORA_IDEA_HISTORY_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed)
+      ? parsed.map((item) => String(item || "").trim()).filter(Boolean).slice(0, 12)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveIdeaToHistory(nextIdea: string): void {
+  const clean = nextIdea.replace(/\s+/g, " ").trim();
+  if (!clean) return;
+  const existing = readIdeaHistory().filter((item) => item.toLowerCase() !== clean.toLowerCase());
+  try {
+    localStorage.setItem(SCRIPTORA_IDEA_HISTORY_KEY, JSON.stringify([clean, ...existing].slice(0, 12)));
+  } catch {
+    /* noop */
+  }
+}
+
+function buildLocalNovelIdea(input: {
+  genre: string;
+  subcategory: string;
+  tone: string;
+  intensity: string;
+  centralDynamic: string;
+  protagonistType: string;
+  language: string;
+}) {
+  const scenes = [
+    {
+      protagonist: "una restauratrice di mappe antiche",
+      place: "un archivio sotterraneo sotto una città termale",
+      wound: "ha falsificato un documento per salvare qualcuno e non si è mai perdonata",
+      desire: "ritrovare l'origine di una mappa senza proprietario",
+      conflict: "ogni strada disegnata sulla carta anticipa una scelta che qualcuno farà davvero",
+    },
+    {
+      protagonist: "un ex medico di bordo radiato",
+      place: "una nave-laboratorio bloccata in un porto senza nome",
+      wound: "ha lasciato morire una persona seguendo il protocollo invece del cuore",
+      desire: "dimostrare che un'epidemia impossibile non è naturale",
+      conflict: "la sola testimone è anche la persona che potrebbe distruggergli la reputazione",
+    },
+    {
+      protagonist: "una violinista che sente le bugie come note stonate",
+      place: "un conservatorio chiuso per restauri durante l'inverno",
+      wound: "ha perso la sorella dopo aver ignorato l'ultima richiesta d'aiuto",
+      desire: "suonare l'opera incompiuta che nessuno riesce a decifrare",
+      conflict: "la partitura rivela confessioni che i vivi vogliono seppellire",
+    },
+    {
+      protagonist: "un'erede che lavora sotto falso nome in un hotel sul lago",
+      place: "una località elegante fuori stagione, piena di stanze vuote",
+      wound: "crede che l'amore sia sempre una transazione mascherata",
+      desire: "vendere l'hotel prima che la famiglia lo trasformi in un monumento alla menzogna",
+      conflict: "l'uomo incaricato della perizia conosce il suo vero cognome e il motivo della sua fuga",
+    },
+    {
+      protagonist: "una fotografa forense incapace di dimenticare i volti",
+      place: "una valle dove la nebbia cancella i confini tra case e bosco",
+      wound: "ha testimoniato contro la persona sbagliata",
+      desire: "ricostruire l'ultimo giorno di una ragazza scomparsa",
+      conflict: "le foto sviluppano dettagli che lei non ha mai scattato",
+    },
+    {
+      protagonist: "un traduttore di lingue morte che non parla più con nessuno",
+      place: "una biblioteca privata costruita dentro un faro",
+      wound: "ha tradito il maestro che lo aveva salvato dalla strada",
+      desire: "tradurre un diario che cambia lingua ogni notte",
+      conflict: "la donna che lo sorveglia sembra conoscere tutte le frasi prima che vengano scritte",
+    },
+  ];
+  const seed = Math.floor(Math.random() * scenes.length);
+  const pick = scenes[seed];
+  return `${pick.protagonist} arriva in ${pick.place} con una ferita precisa: ${pick.wound}. Vuole ${pick.desire}, ma scopre che ${pick.conflict}. La storia intreccia ${input.centralDynamic || "desiderio, conflitto e segreto"} con un tono ${input.tone || "cinematografico"} e intensità ${input.intensity || "media"}, evitando il solito schema di fuga romantica e costruendo una promessa narrativa più riconoscibile. La protagonista resta ${input.protagonistType || "contraddittoria e attiva"}, con lingua narrativa ${input.language}. Genere: ${optionLabel(ROMAN_GENRES_PRO.find(o => optionValue(o) === input.genre) || input.genre)}. Filone: ${optionLabel(SUBGENRES_PRO.find(o => optionValue(o) === input.subcategory) || input.subcategory)}.`;
 }
 
 export function CharacterStudioDialog({ open, onClose }: Props) {
@@ -276,8 +398,13 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
     setIdeaLoading(true);
 
     try {
+      const previousIdeas = readIdeaHistory();
+      const diversitySeed = typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const { data, error } = await supabase.functions.invoke("scriptora-novel-idea", {
         body: {
+          seedIdea: idea.trim(),
           genre,
           subcategory: subcategory.trim(),
           tone: tone.trim(),
@@ -285,6 +412,9 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
           centralDynamic,
           protagonistType: protagonistType.trim(),
           language,
+          diversitySeed,
+          previousIdeas,
+          userId: getCurrentUserId(),
         },
       });
 
@@ -294,16 +424,20 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
       if (!generated) throw new Error("Idea vuota");
 
       setIdea(generated);
-      toast.success("Idea romanzo generata da Scriptora.");
+      saveIdeaToHistory(generated);
+      toast.success("Idea romanzo generata da Scriptora con variante nuova.");
     } catch {
-      const fallbackIdeas = [
-        `Una donna torna nella città che aveva giurato di dimenticare e scopre che l’uomo che l’ha salvata anni prima custodisce il segreto che può distruggerla.`,
-        `Dopo una perdita mai superata, una protagonista ferita accetta un incarico in un luogo isolato e incontra qualcuno che conosce troppo bene il prezzo del silenzio.`,
-        `Una relazione nata come fuga diventa una trappola emotiva quando il passato della protagonista riemerge attraverso un segreto familiare.`,
-        `In una comunità apparentemente tranquilla, una donna cerca di ricominciare, ma ogni gesto dell’uomo che la attrae sembra nascondere una verità pericolosa.`,
-      ];
-      const picked = fallbackIdeas[Math.floor(Math.random() * fallbackIdeas.length)];
-      setIdea(`${picked}\n\nGenere: ${optionLabel(ROMAN_GENRES_PRO.find(o => optionValue(o) === genre) || genre)}. Filone: ${optionLabel(SUBGENRES_PRO.find(o => optionValue(o) === subcategory) || subcategory)}. Tono: ${tone}. Dinamica centrale: ${centralDynamic}.`);
+      const generated = buildLocalNovelIdea({
+        genre,
+        subcategory,
+        tone,
+        intensity,
+        centralDynamic,
+        protagonistType,
+        language,
+      });
+      setIdea(generated);
+      saveIdeaToHistory(generated);
       toast.warning("AI non disponibile: Scriptora ha creato un’idea locale di sicurezza.");
     } finally {
       setIdeaLoading(false);
@@ -343,6 +477,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
           centralDynamic,
           protagonistType: protagonistType.trim(),
           language,
+          userId: getCurrentUserId(),
         },
       });
 

@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUserId } from "@/services/storageService";
 
 export type Level = "low" | "medium" | "high";
 
@@ -63,7 +64,7 @@ export function useTitleIntelligence() {
     if (!regenerate) setData(null);
     try {
       const { data: res, error: err } = await supabase.functions.invoke("title-intelligence", {
-        body: { ...input, regenerate },
+        body: { ...input, regenerate, userId: getCurrentUserId() },
       });
       if (err) throw new Error(err.message);
       if ((res as any)?.error) throw new Error((res as any).error);

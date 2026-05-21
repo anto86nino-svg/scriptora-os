@@ -1,4 +1,5 @@
 import { normalizeExportProject, exportLabel, cleanExportText, parseExportBlocks, cleanMarkdownInline } from "@/lib/export-cleanup";
+import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import jsPDF from "jspdf";
 import { BookProject } from "@/types/book";
 
@@ -319,7 +320,11 @@ export async function generatePdf(project: BookProject): Promise<Blob> {
       if (!ch) continue;
       ensureSpace(state, LINE_HEIGHT);
       const num = String(i + 1).padStart(2, " ");
-      const title = cleanMarkdown(ch.title || `${exportLabel("chapter", config.language)} ${i + 1}`);
+      const title = cleanMarkdown(formatChapterDisplayTitle(i, ch.title, {
+        config,
+        summary: project.blueprint?.chapterOutlines?.[i]?.summary,
+        totalChapters: config.numberOfChapters,
+      }));
       doc.text(`${num}.   ${title}`, ml, state.y, { maxWidth: CONTENT_W });
       state.y += LINE_HEIGHT * 1.3;
     }
@@ -331,7 +336,12 @@ export async function generatePdf(project: BookProject): Promise<Blob> {
     const ch = chapters[i];
     if (!ch || (!ch.content && (!ch.subchapters || ch.subchapters.length === 0))) continue;
 
-    state.currentChapterTitle = cleanMarkdown(ch.title);
+    const chapterTitle = cleanMarkdown(resolveChapterTitle(ch.title, i, {
+      config,
+      summary: project.blueprint?.chapterOutlines?.[i]?.summary,
+      totalChapters: config.numberOfChapters,
+    }));
+    state.currentChapterTitle = chapterTitle;
     ensureRectoPage(state);
     if (i === 0) {
       // Reset page number to 1 at first chapter
@@ -346,7 +356,7 @@ export async function generatePdf(project: BookProject): Promise<Blob> {
     doc.text(`${exportLabel("chapter", config.language)} ${i + 1}`, getMarginLeft(state.pageNum) + CONTENT_W / 2, state.y, { align: "center" });
     doc.setTextColor(0, 0, 0);
     state.y += 30;
-    writeCenteredTitle(state, ch.title, HEADING_SIZE);
+    writeCenteredTitle(state, chapterTitle, HEADING_SIZE);
     state.y += 30;
     // Ornamental separator
     doc.setFontSize(10);

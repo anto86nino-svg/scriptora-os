@@ -9,6 +9,8 @@ import { fetchPlan } from "@/lib/plan";
 import { isDevMode } from "@/lib/dev-mode";
 import { getDevPlanOverride } from "@/lib/dev-plan-override";
 import { getPlanLimits } from "@/lib/subscription";
+import { normalizeProjectChapterTitles, resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import { ensureBookTitleMetadata } from "@/lib/title-shadow";
 
 const FREE_MAX_PROJECT_WORDS = 10_000;
 
@@ -63,6 +65,16 @@ function planLimitLabel(maxWords: number): string {
   return `${maxWords.toLocaleString("it-IT")} parole`;
 }
 
+function getMissingChapterIndexes(project: BookProject): number[] {
+  const total = Math.max(0, project.config?.numberOfChapters || 0);
+  return Array.from({ length: total }, (_, i) => i)
+    .filter((i) => !((project.chapters?.[i]?.content || "").trim().length > 50));
+}
+
+function allTargetChaptersGenerated(project: BookProject): boolean {
+  return getMissingChapterIndexes(project).length === 0;
+}
+
 async function isFreeAiToolsLockedForProject(project: BookProject | null | undefined): Promise<boolean> {
   const activePlan = await getActivePlanForEngine();
   if (activePlan !== "free") return false;
@@ -75,6 +87,14 @@ function showFreeAiToolsLockedMessage(addMessage: (role: ChatMessage["role"], co
   toast.error(msg);
 }
 
+function resolveProjectChapterTitle(project: BookProject, index: number, rawTitle?: string): string {
+  const outline = project.blueprint?.chapterOutlines?.[index];
+  return resolveChapterTitle(rawTitle || outline?.title, index, {
+    config: project.config,
+    summary: outline?.summary,
+    totalChapters: project.config?.numberOfChapters,
+  });
+}
 
 // Debounce remote saves: local save is instant, but Supabase upserts are
 // throttled to avoid flooding the network during chunked generation.
@@ -94,6 +114,7 @@ function scheduleRemoteSave(project: BookProject, cbs?: any) {
 export interface SyncCallbacks {
   onSaving?: () => void;
   onSaved?: () => void;
+  onPending?: () => void;
   onOffline?: () => void;
 }
 export function useBookEngine(syncCallbacks?: SyncCallbacks) {
@@ -151,18 +172,25 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       }
     }
 
+    const titleSafeInput = ensureBookTitleMetadata(config, {
+      genre: config.genre,
+      category: config.category,
+      subcategory: config.subcategory,
+      targetAudience: config.tone,
+      language: config.language,
+    });
     const maxProjectWords = getPlanLimits(activePlan).maxWordsPerBook;
     const safeConfig: BookConfig = activePlan === "free"
       ? {
-          ...config,
+          ...titleSafeInput,
           bookLength: "short",
-          customTotalWords: Math.min(config.customTotalWords ?? FREE_MAX_PROJECT_WORDS, FREE_MAX_PROJECT_WORDS),
+          customTotalWords: Math.min(titleSafeInput.customTotalWords ?? FREE_MAX_PROJECT_WORDS, FREE_MAX_PROJECT_WORDS),
         }
       : {
-          ...config,
-          customTotalWords: config.bookLength === "custom"
-            ? Math.min(config.customTotalWords ?? maxProjectWords, maxProjectWords)
-            : config.customTotalWords,
+          ...titleSafeInput,
+          customTotalWords: titleSafeInput.bookLength === "custom"
+            ? Math.min(titleSafeInput.customTotalWords ?? maxProjectWords, maxProjectWords)
+            : titleSafeInput.customTotalWords,
         };
 
     // Genre Lock — capture editorial blueprint at creation time so the
@@ -188,7 +216,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
     try {
       addMessage("assistant", "Generating book blueprint... 🏗️");
-      const blueprint = await generateBlueprint(safeConfig, genreLock);
+      const blueprint = await generateBlueprint(safeConfig, genreLock, { projectId: newProject.id });
       updateAndSave(p => ({ ...p, blueprint, phase: "front-matter" as GenerationPhase }));
       addMessage("assistant", `Blueprint ready! ${blueprint.chapterOutlines.length} chapters planned.`);
     } catch (e: any) {
@@ -199,9 +227,9 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     }
   }, [addMessage, updateAndSave]);
 
-  const generateNext = useCallback(async () => {
+  const generateFrontMatterSection = useCallback(async () => {
     const p = getLatestProject() || project;
-    if (!p) return;
+    if (!p?.blueprint) return;
 
     const maxProjectWords = await getMaxProjectWordsForActivePlan();
     if (countProjectWordsHard(p) >= maxProjectWords) {
@@ -212,49 +240,96 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       return;
     }
 
-    if (p.blueprint && (!p.frontMatter || p.phase === "front-matter")) {
-      addGenerating("front-matter");
-      updateAndSave(pr => ({ ...pr, frontMatterStatus: "generating" as GenerationStatus }));
-      try {
-        addMessage("assistant", "Generating front matter... 📖");
-        const fm = await generateFrontMatter(p.config, p.blueprint, p.genreLock);
-        updateAndSave(pr => ({
-          ...pr,
-          frontMatter: fm,
-          // Only advance phase if we were still on front-matter; otherwise keep current phase.
-          phase: pr.phase === "front-matter" ? "chapters" : pr.phase,
-          frontMatterStatus: "completed" as GenerationStatus,
-        }));
-        addMessage("assistant", "Front matter complete!");
-      } catch (e: any) {
-        updateAndSave(pr => ({ ...pr, frontMatterStatus: "error" as GenerationStatus }));
-        addMessage("assistant", `❌ Error: ${e.message}`);
-        toast.error(t("toast_gen_failed"));
-      } finally {
-        removeGenerating("front-matter");
-      }
-    } else if (p.blueprint && !p.backMatter) {
-      addGenerating("back-matter");
+    addGenerating("front-matter");
+    updateAndSave(pr => ({ ...pr, frontMatterStatus: "generating" as GenerationStatus }));
+    try {
+      addMessage("assistant", p.frontMatter ? "Regenerating front matter... 📖" : "Generating front matter... 📖");
+      const latestP = getLatestProject() || p;
+      const fm = await generateFrontMatter(latestP.config, latestP.blueprint!, latestP.genreLock, { projectId: latestP.id });
       updateAndSave(pr => ({
         ...pr,
-        phase: "back-matter" as GenerationPhase,
-        backMatterStatus: "generating" as GenerationStatus,
+        frontMatter: fm,
+        phase: pr.phase === "front-matter" ? "chapters" : pr.phase,
+        frontMatterStatus: "completed" as GenerationStatus,
       }));
-      try {
-        addMessage("assistant", "Generating back matter... 📝");
-        const latestP = getLatestProject() || p;
-        const bm = await generateBackMatter(latestP.config, latestP.blueprint!, latestP.chapters, latestP.genreLock);
-        updateAndSave(pr => ({ ...pr, backMatter: bm, phase: "complete", backMatterStatus: "completed" as GenerationStatus }));
-        addMessage("assistant", "🎉 Book generation complete!");
-      } catch (e: any) {
-        updateAndSave(pr => ({ ...pr, backMatterStatus: "error" as GenerationStatus }));
-        addMessage("assistant", `❌ Error: ${e.message}`);
-        toast.error(t("toast_gen_failed"));
-      } finally {
-        removeGenerating("back-matter");
-      }
+      addMessage("assistant", "Front matter complete!");
+    } catch (e: any) {
+      updateAndSave(pr => ({ ...pr, frontMatterStatus: "error" as GenerationStatus }));
+      addMessage("assistant", `❌ Error: ${e.message}`);
+      toast.error(t("toast_gen_failed"));
+    } finally {
+      removeGenerating("front-matter");
     }
   }, [project, addMessage, updateAndSave]);
+
+  const generateBackMatterSection = useCallback(async () => {
+    const p = getLatestProject() || project;
+    if (!p?.blueprint) return;
+
+    const missing = getMissingChapterIndexes(p);
+    if (missing.length > 0) {
+      const shown = missing.slice(0, 5).map((i) => i + 1).join(", ");
+      const suffix = missing.length > 5 ? ` +${missing.length - 5}` : "";
+      const msg = `Completa prima tutti i capitoli. Mancano: ${shown}${suffix}.`;
+      addMessage("assistant", `⚠️ ${msg}`);
+      toast.error(msg);
+      updateAndSave(pr => ({ ...pr, phase: "chapters" as GenerationPhase }));
+      return;
+    }
+
+    const maxProjectWords = await getMaxProjectWordsForActivePlan();
+    if (countProjectWordsHard(p) >= maxProjectWords) {
+      const msg = `Limite piano raggiunto: hai completato ${planLimitLabel(maxProjectWords)}.`;
+      addMessage("assistant", `🔒 ${msg}`);
+      toast.error(msg);
+      updateAndSave(pr => ({ ...pr, phase: "complete" as GenerationPhase }));
+      return;
+    }
+
+    addGenerating("back-matter");
+    updateAndSave(pr => ({
+      ...pr,
+      phase: "back-matter" as GenerationPhase,
+      backMatterStatus: "generating" as GenerationStatus,
+    }));
+    try {
+      addMessage("assistant", p.backMatter ? "Regenerating back matter... 📝" : "Generating back matter... 📝");
+      const latestP = getLatestProject() || p;
+      const bm = await generateBackMatter(latestP.config, latestP.blueprint!, latestP.chapters, latestP.genreLock, { projectId: latestP.id });
+      updateAndSave(pr => ({ ...pr, backMatter: bm, phase: "complete", backMatterStatus: "completed" as GenerationStatus }));
+      addMessage("assistant", "🎉 Book generation complete!");
+    } catch (e: any) {
+      updateAndSave(pr => ({ ...pr, backMatterStatus: "error" as GenerationStatus }));
+      addMessage("assistant", `❌ Error: ${e.message}`);
+      toast.error(t("toast_gen_failed"));
+    } finally {
+      removeGenerating("back-matter");
+    }
+  }, [project, addMessage, updateAndSave]);
+
+  const generateNext = useCallback(async () => {
+    const p = getLatestProject() || project;
+    if (!p) return;
+
+    if (!p.frontMatter || p.phase === "front-matter") {
+      await generateFrontMatterSection();
+      return;
+    }
+
+    if (!allTargetChaptersGenerated(p)) {
+      const missing = getMissingChapterIndexes(p);
+      const first = missing[0] + 1;
+      const msg = `Prima del back matter devi generare i capitoli mancanti. Prossimo: capitolo ${first}.`;
+      addMessage("assistant", `⚠️ ${msg}`);
+      toast.error(msg);
+      updateAndSave(pr => ({ ...pr, phase: "chapters" as GenerationPhase }));
+      return;
+    }
+
+    if (!p.backMatter || p.phase === "back-matter") {
+      await generateBackMatterSection();
+    }
+  }, [project, addMessage, updateAndSave, generateFrontMatterSection, generateBackMatterSection]);
 
   const generateSingleChapter = useCallback(async (index: number) => {
     const p = getLatestProject() || project;
@@ -274,8 +349,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     addGenerating(genKey);
     updateAndSave(proj => {
       const chapters = [...proj.chapters];
-      while (chapters.length <= index) chapters.push({ title: "", content: "", subchapters: [], status: "idle" });
-      chapters[index] = { ...chapters[index], status: "generating" };
+      while (chapters.length <= index) {
+        chapters.push({ title: resolveProjectChapterTitle(proj, chapters.length), content: "", subchapters: [], status: "idle" });
+      }
+      chapters[index] = { ...chapters[index], title: resolveProjectChapterTitle(proj, index, chapters[index]?.title), status: "generating" };
       return { ...proj, chapters };
     });
 
@@ -303,9 +380,12 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
           lastSaveAt.current.set(key, now);
           updateAndSave(proj => {
             const chapters = [...proj.chapters];
-            while (chapters.length <= index) chapters.push({ title: "", content: "", subchapters: [], status: "idle" });
+            while (chapters.length <= index) {
+              chapters.push({ title: resolveProjectChapterTitle(proj, chapters.length), content: "", subchapters: [], status: "idle" });
+            }
             chapters[index] = {
               ...chapters[index],
+              title: resolveProjectChapterTitle(proj, index, chapters[index]?.title),
               content: progress.content,
               status: "generating" as GenerationStatus,
             };
@@ -313,6 +393,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
           });
         },
         latestP.genreLock,
+        { usage: { projectId: latestP.id } },
       );
 
       const activePlanAfterGeneration = await getActivePlanForEngine();
@@ -320,7 +401,9 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
-        while (chapters.length <= index) chapters.push({ title: "", content: "", subchapters: [], status: "idle" });
+        while (chapters.length <= index) {
+          chapters.push({ title: resolveProjectChapterTitle(proj, chapters.length), content: "", subchapters: [], status: "idle" });
+        }
 
         let finalChapter = { ...chapter };
         let nextPhase: GenerationPhase = proj.phase;
@@ -332,6 +415,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
         finalChapter = {
           ...chapter,
+          title: resolveProjectChapterTitle(proj, index, chapter.title),
           content: trimTextToWordLimit(chapter.content, remaining),
           subchapters: remaining < countWordsSafe(chapter.content) ? [] : chapter.subchapters,
         };
@@ -347,7 +431,13 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
       const latestAfterSave = getLatestProject();
       const finalWords = countWordsSafe((latestAfterSave?.chapters?.[index]?.content || chapter.content));
-      addMessage("assistant", `Chapter ${index + 1} "${chapter.title}" complete! ✅ (${finalWords} words)`);
+      const finalTitle = latestAfterSave
+        ? formatChapterDisplayTitle(index, latestAfterSave.chapters?.[index]?.title || chapter.title, {
+            config: latestAfterSave.config,
+            summary: latestAfterSave.blueprint?.chapterOutlines?.[index]?.summary,
+          })
+        : formatChapterDisplayTitle(index, chapter.title, { config: p.config });
+      addMessage("assistant", `${finalTitle} complete! ✅ (${finalWords} words)`);
       if (countProjectWordsHard(getLatestProject()) >= maxProjectWordsAfterGeneration) {
         const msg = `Limite piano raggiunto: il libro è arrivato a ${planLimitLabel(maxProjectWordsAfterGeneration)}.`;
         addMessage("assistant", `🔒 ${msg}`);
@@ -381,7 +471,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     try {
       addMessage("assistant", `Writing Subchapter ${subIndex + 1} of Chapter ${chapterIndex + 1}... ✍️`);
       const prevChapters = p.chapters.filter((_, i) => i < chapterIndex);
-      const sub = await generateSubchapter(p.config, p.blueprint, chapterIndex, subIndex, chapter, prevChapters, p.genreLock);
+      const sub = await generateSubchapter(p.config, p.blueprint, chapterIndex, subIndex, chapter, prevChapters, p.genreLock, { projectId: p.id });
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
         const ch = { ...chapters[chapterIndex] };
@@ -417,10 +507,15 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       addMessage("assistant", `Regenerating Chapter ${index + 1}... 🔄`);
       const latestP = getLatestProject() || p;
       const prevChapters = latestP.chapters.slice(0, index);
-      const chapter = await generateChapter(latestP.config, latestP.blueprint!, index, prevChapters, latestP.chapters[index]?.lengthOverride);
+      const chapter = await generateChapter(latestP.config, latestP.blueprint!, index, prevChapters, latestP.chapters[index]?.lengthOverride, latestP.genreLock, { projectId: latestP.id });
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
-        chapters[index] = { ...chapter, status: "completed" as GenerationStatus, lengthOverride: proj.chapters[index]?.lengthOverride };
+        chapters[index] = {
+          ...chapter,
+          title: resolveProjectChapterTitle(proj, index, chapter.title),
+          status: "completed" as GenerationStatus,
+          lengthOverride: proj.chapters[index]?.lengthOverride,
+        };
         return { ...proj, chapters };
       });
       addMessage("assistant", `Chapter ${index + 1} regenerated!`);
@@ -451,7 +546,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     addGenerating(genKey);
     try {
       addMessage("assistant", `Evaluating Chapter ${index + 1} quality... 🔍`);
-      const rating = await evaluateChapterQuality(p.config, p.chapters[index], index);
+      const rating = await evaluateChapterQuality(p.config, p.chapters[index], index, { projectId: p.id });
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
         chapters[index] = { ...chapters[index], aiRating: rating, qualityRating: rating.score };
@@ -495,11 +590,18 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       const latestP = getLatestProject() || p;
       const chapter = await rewriteChapter(
         latestP.config, latestP.blueprint!, latestP.chapters[index], index,
-        latestP.chapters.slice(0, index), instruction, aiRating, level
+        latestP.chapters.slice(0, index), instruction, aiRating, level, { projectId: latestP.id }
       );
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
-        chapters[index] = { ...chapter, status: "completed" as GenerationStatus, aiRating: undefined, qualityRating: undefined, lengthOverride: proj.chapters[index]?.lengthOverride };
+        chapters[index] = {
+          ...chapter,
+          title: resolveProjectChapterTitle(proj, index, chapter.title),
+          status: "completed" as GenerationStatus,
+          aiRating: undefined,
+          qualityRating: undefined,
+          lengthOverride: proj.chapters[index]?.lengthOverride,
+        };
         return { ...proj, chapters };
       });
       addMessage("assistant", `Chapter ${index + 1} — ${levelLabels[level]} complete! Re-evaluate to measure improvement.`);
@@ -535,7 +637,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       let rating: AIQualityRating;
       try {
         const latestP = getLatestProject() || p;
-        rating = await evaluateChapterQuality(latestP.config, latestP.chapters[index], index);
+        rating = await evaluateChapterQuality(latestP.config, latestP.chapters[index], index, { projectId: latestP.id });
         updateAndSave(proj => {
           const chapters = [...proj.chapters];
           chapters[index] = { ...chapters[index], aiRating: rating, qualityRating: rating.score };
@@ -578,14 +680,17 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   const updateChapterTitle = useCallback((chapterIndex: number, title: string) => {
     updateAndSave(p => {
       const chapters = [...p.chapters];
-      while (chapters.length <= chapterIndex) chapters.push({ title: "", content: "", subchapters: [], status: "idle" });
-      chapters[chapterIndex] = { ...chapters[chapterIndex], title };
+      while (chapters.length <= chapterIndex) {
+        chapters.push({ title: resolveProjectChapterTitle(p, chapters.length), content: "", subchapters: [], status: "idle" });
+      }
+      const safeTitle = resolveProjectChapterTitle(p, chapterIndex, title);
+      chapters[chapterIndex] = { ...chapters[chapterIndex], title: safeTitle };
       // Also sync the blueprint outline title so TOC, exports & sidebar stay aligned
       const blueprint = p.blueprint
         ? {
             ...p.blueprint,
             chapterOutlines: p.blueprint.chapterOutlines.map((o, i) =>
-              i === chapterIndex ? { ...o, title } : o
+              i === chapterIndex ? { ...o, title: safeTitle } : o
             ),
           }
         : p.blueprint;
@@ -620,7 +725,9 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   const setChapterLengthOverride = useCallback((chapterIndex: number, length: string) => {
     updateAndSave(p => {
       const chapters = [...p.chapters];
-      while (chapters.length <= chapterIndex) chapters.push({ title: "", content: "", subchapters: [], status: "idle" });
+      while (chapters.length <= chapterIndex) {
+        chapters.push({ title: resolveProjectChapterTitle(p, chapters.length), content: "", subchapters: [], status: "idle" });
+      }
       chapters[chapterIndex] = { ...chapters[chapterIndex], lengthOverride: length as any };
       return { ...p, chapters };
     });
@@ -639,7 +746,14 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       if (!p.blueprint) return p;
       const chapterOutlines = [...p.blueprint.chapterOutlines];
       if (!chapterOutlines[index]) return p;
-      chapterOutlines[index] = { ...chapterOutlines[index], title };
+      chapterOutlines[index] = {
+        ...chapterOutlines[index],
+        title: resolveChapterTitle(title, index, {
+          config: p.config,
+          summary: chapterOutlines[index]?.summary,
+          totalChapters: p.config.numberOfChapters,
+        }),
+      };
       return { ...p, blueprint: { ...p.blueprint, chapterOutlines } };
     });
   }, [updateAndSave]);
@@ -671,16 +785,25 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   }, [updateAndSave]);
 
   const loadProject = useCallback((p: BookProject) => {
-    if (!p.config.category) p.config.category = "Self Help";
-    if (!p.config.subcategory) p.config.subcategory = "Mindset";
-    if (!p.config.genre) p.config.genre = "self-help";
-    if (!p.config.bookLength) p.config.bookLength = "medium";
+    const hydrated: BookProject = {
+      ...p,
+      config: {
+        ...p.config,
+        category: p.config.category || "Self Help",
+        subcategory: p.config.subcategory || "Mindset",
+        genre: p.config.genre || "self-help",
+        bookLength: p.config.bookLength || "medium",
+      },
+    };
+    const normalized = normalizeProjectChapterTitles(hydrated);
 
-    setProject(p);
-    syncRef(p);
-    setLastProjectId(p.id);
-    setMessages([{ id: crypto.randomUUID(), role: "system", content: `Loaded project: "${p.config.title}" — Phase: ${p.phase}`, timestamp: new Date().toISOString() }]);
-  }, []);
+    setProject(normalized);
+    syncRef(normalized);
+    setLastProjectId(normalized.id);
+    saveProject(normalized);
+    scheduleRemoteSave(normalized, syncCallbacks);
+    setMessages([{ id: crypto.randomUUID(), role: "system", content: `Loaded project: "${normalized.config.title}" — Phase: ${normalized.phase}`, timestamp: new Date().toISOString() }]);
+  }, [syncCallbacks]);
 
   const handleUserMessage = useCallback((content: string) => {
     addMessage("user", content);
@@ -706,7 +829,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       let cur = getLatestProject() || start;
       if (!cur.frontMatter) {
         onSectionFocus?.("front-matter");
-        await generateNext();
+        await generateFrontMatterSection();
         await new Promise(r => setTimeout(r, 300));
       }
 
@@ -751,7 +874,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
           await new Promise(r => setTimeout(r, 200));
         }
         onSectionFocus?.("back-matter");
-        await generateNext();
+        await generateBackMatterSection();
       }
 
       addMessage("assistant", "🎉 Libro completo! Pronto per l'esportazione.");
@@ -760,7 +883,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       addMessage("assistant", `❌ Errore generazione completa: ${e.message}`);
       toast.error("Generazione interrotta — riprova dalla sezione fallita");
     }
-  }, [project, addMessage, generateNext, generateSingleChapter, updateAndSave]);
+  }, [project, addMessage, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, updateAndSave]);
 
   // === PARALLEL CHAPTER GENERATION (max 3 in flight) ===
   // Permette di generare più capitoli contemporaneamente mentre l'utente
@@ -823,7 +946,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
   return {
     project, messages, isAnythingGenerating, generatingSet, chunkProgress,
-    startNewBook, generateNext, generateSingleChapter, generateSingleSubchapter,
+    startNewBook, generateNext, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter,
     regenerateChapter, rewriteChapterWithDepth, evaluateChapter, autoRewriteToThreshold,
     updateConfig, updateChapterContent, updateChapterTitle, updateSubchapterContent, updateSubchapterTitle,
     updateBlueprintField, updateBlueprintOutlineTitle, updateBlueprintOutlineSummary,

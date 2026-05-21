@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import type { LiveBook } from "@/hooks/useAutoBestseller";
 import { getBookProgress, getChapterProgress } from "@/lib/book-progress";
 import { ProgressBar } from "@/components/AutoBestseller/ProgressBar";
+import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 
 /**
  * Typewriter hook — reveals `text` character-by-character for a "live writing" feel.
@@ -240,9 +241,11 @@ function ChapterCard({
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Chapter {ch.index + 1}
+              {formatChapterDisplayTitle(ch.index, ch.title, { language: "Italian" })}
             </p>
-            <h3 className="mt-0.5 text-lg font-semibold leading-tight">{ch.title}</h3>
+            <h3 className="mt-0.5 text-lg font-semibold leading-tight">
+              {resolveChapterTitle(ch.title, ch.index, { language: "Italian" })}
+            </h3>
           </div>
           <ChapterStatusBadge phase={ch.phase} score={ch.score} />
         </div>

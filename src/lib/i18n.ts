@@ -166,8 +166,9 @@ const translations: Record<string, Record<UILanguage, string>> = {
   bestseller_pick: { en: "Bestseller Pick", it: "Scelta Bestseller", es: "Selección Bestseller", fr: "Choix Bestseller", de: "Bestseller-Auswahl" },
 
   // Sync status
-  sync_saving: { en: "Saving...", it: "Salvataggio...", es: "Guardando...", fr: "Sauvegarde...", de: "Speichern..." },
-  sync_saved: { en: "Saved", it: "Salvato", es: "Guardado", fr: "Sauvegardé", de: "Gespeichert" },
+  sync_saving: { en: "Cloud sync...", it: "Sync cloud...", es: "Sync cloud...", fr: "Sync cloud...", de: "Cloud-Sync..." },
+  sync_saved: { en: "Cloud active", it: "Cloud attivo", es: "Cloud activo", fr: "Cloud actif", de: "Cloud aktiv" },
+  sync_pending: { en: "Cloud pending", it: "Cloud in attesa", es: "Cloud pendiente", fr: "Cloud en attente", de: "Cloud wartet" },
   sync_offline: { en: "Offline (local only)", it: "Offline (solo locale)", es: "Sin conexión (solo local)", fr: "Hors ligne (local)", de: "Offline (nur lokal)" },
 
   // Toast messages

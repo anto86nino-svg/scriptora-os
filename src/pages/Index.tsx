@@ -41,10 +41,11 @@ const Index = () => {
   const [writingSettings, setWritingSettings] = useState<WritingSettings>(loadSettings());
   const [, setLangTick] = useState(0);
   const [upgradeReason, setUpgradeReason] = useState<null | "export" | "token-limit" | "dominate" | "books-limit">(null);
-  const { syncStatus, markSaving, markSaved, markOffline } = useSyncStatus();
+  const { syncStatus, markSaving, markSaved, markPending, markOffline } = useSyncStatus();
   const engine = useBookEngine({
     onSaving: markSaving,
     onSaved: markSaved,
+    onPending: markPending,
     onOffline: () => {
       markOffline();
       toast.warning(t("toast_saved_locally"));
@@ -220,19 +221,21 @@ const Index = () => {
   // Focus mode — show only editor
   if (focusMode && engine.project) {
     return (
-      <div className="h-screen bg-background flex flex-col">
-        <div className="h-10 border-b border-border/30 flex items-center justify-between px-4 shrink-0 bg-card/30">
+      <div className="scriptora-ios-screen flex h-screen flex-col">
+        <div className="ios-glass-soft flex h-12 shrink-0 items-center justify-between px-4">
           <span className="text-xs text-muted-foreground">{t("focus_mode")}</span>
           <button onClick={() => setFocusMode(false)}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            className="ios-toolbar-button px-3 text-xs text-muted-foreground hover:text-foreground">
             <Minimize2 className="h-3.5 w-3.5" /> {t("exit_focus")}
           </button>
         </div>
-        <div className="flex-1 min-h-0">
+        <div className="min-h-0 flex-1 px-3 pb-3">
           <EditorPanel
             project={engine.project}
             activeSection={activeSection}
             onGenerateNext={engine.generateNext}
+            onGenerateFrontMatter={engine.generateFrontMatterSection}
+            onGenerateBackMatter={engine.generateBackMatterSection}
             onGenerateChapter={(...args) => engine.generateSingleChapter(...args, { onChunkProgress: (progress) => { console.log("🔥 PROGRESS:", progress); } })}
             onRegenerateChapter={engine.regenerateChapter}
             onRewriteChapter={engine.rewriteChapterWithDepth}
@@ -260,30 +263,35 @@ const Index = () => {
   }
 
   return (
-    <div className="flex h-screen bg-background relative">
+    <div className="scriptora-ios-screen relative flex h-screen overflow-hidden">
       {/* Mobile menu button */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="md:hidden fixed top-2 left-2 z-50 p-2 rounded-lg bg-card border border-border shadow-md text-foreground"
+        className="ios-toolbar-button fixed left-3 top-3 z-50 p-2 text-foreground md:hidden"
       >
         {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
 
       {/* Overlay for mobile */}
       {sidebarOpen && (
-        <div className="md:hidden fixed inset-0 bg-black/50 z-30" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 z-30 bg-black/[0.55] backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Left Sidebar */}
-      <aside className={`w-56 shrink-0 border-r border-border bg-[hsl(var(--sidebar-background))] flex flex-col h-screen fixed md:static z-40 transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-        <div className="p-3 border-b border-border flex items-center justify-between">
+      <aside className={`ios-sidebar fixed z-40 flex h-screen w-[272px] shrink-0 flex-col transition-transform duration-200 md:static ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <div className="flex items-center justify-between border-b border-white/10 p-3">
           <div className="flex items-center gap-2 min-w-0">
-            <BookOpen className="h-4 w-4 text-primary shrink-0" />
-            <h1 className="text-xs font-bold text-foreground tracking-wide truncate">
+            <span className="ios-icon ios-icon-blue h-9 w-9 shrink-0">
+              <BookOpen className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Scriptora OS</p>
+              <h1 className="truncate text-xs font-bold text-foreground">
               {engine.project ? (engine.project.config.title || "Untitled") : "SCRIPTORA"}
-            </h1>
+              </h1>
+            </div>
           </div>
-          <button onClick={() => setShowSettings(true)} className="text-muted-foreground hover:text-foreground transition-colors shrink-0" title={t("settings")}>
+          <button onClick={() => setShowSettings(true)} className="ios-toolbar-button h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground" title={t("settings")}>
             <Settings className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -293,7 +301,7 @@ const Index = () => {
           <div className="p-2">
             <Link
               to="/dashboard"
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-card border border-border text-foreground hover:bg-muted/40 transition-colors"
+              className="ios-toolbar-button flex w-full justify-start px-3 py-2 text-xs font-medium"
             >
               <ArrowLeft className="h-3 w-3" /> My Books
             </Link>
@@ -302,18 +310,18 @@ const Index = () => {
           <>
             <div className="p-2">
               <button onClick={openNewBookGuarded}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                className="flex w-full items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-950 transition-colors hover:bg-slate-100">
                 <Plus className="h-3 w-3" /> {t("new_book")}
               </button>
             </div>
 
             <div className="px-2">
-              <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground/70">
                 <FolderOpen className="h-3 w-3" /> {t("projects")}
               </div>
               {projects.map(p => (
                 <div key={p.id}
-                  className="group flex items-center justify-between px-2 py-1.5 rounded-md text-xs cursor-pointer transition-colors text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                  className="group flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
                   onClick={() => handleSelectProject(p.id)}>
                   <span className="truncate">{p.config.title || "Untitled"}</span>
                   <button onClick={(e) => { e.stopPropagation(); handleDeleteProject(p.id); }}
@@ -326,7 +334,7 @@ const Index = () => {
           </>
         )}
 
-        {engine.project && <div className="mx-3 my-2 border-t border-border/50" />}
+        {engine.project && <div className="mx-3 my-2 border-t border-white/10" />}
 
         {/* ONE-CLICK FULL BOOK + PARALLEL */}
         {engine.project?.blueprint && engine.project.phase !== "complete" && (
@@ -334,7 +342,7 @@ const Index = () => {
             <button
               onClick={guardedGenerateFullBook}
               disabled={engine.isAnythingGenerating}
-              className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-semibold bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2 text-[11px] font-semibold text-slate-950 shadow-sm transition-opacity hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
               title="Genera l'intero libro in sequenza con coerenza tra capitoli"
             >
               <Sparkles className="h-3 w-3" />
@@ -343,8 +351,8 @@ const Index = () => {
             <button
               onClick={() => engine.generateAllChaptersParallel()}
               disabled={!engine.project.blueprint}
-              className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-medium bg-accent/30 text-foreground hover:bg-accent/50 transition-colors border border-accent/40"
-              title="Genera tutti i capitoli mancanti 3 alla volta — puoi continuare a chattare con Molly"
+              className="ios-toolbar-button w-full px-3 py-1.5 text-[10px] font-medium disabled:opacity-40"
+              title="Genera tutti i capitoli mancanti 3 alla volta"
             >
               <Sparkles className="h-3 w-3" />
               Tutti i capitoli in parallelo (×3)
@@ -362,20 +370,20 @@ const Index = () => {
 
         {engine.project && (
           <>
-            <div className="mx-3 my-1 border-t border-border/50" />
+            <div className="mx-3 my-1 border-t border-white/10" />
             <ProgressTracker project={engine.project} />
           </>
         )}
 
         {/* Bottom actions */}
         {engine.project && (
-          <div className="mt-auto p-2 border-t border-border/50 space-y-1">
+          <div className="mt-auto space-y-1 border-t border-white/10 p-2">
             <button onClick={() => setFocusMode(true)}
-              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors">
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground">
               <Minimize2 className="h-3 w-3" /> {t("focus_mode")}
             </button>
             <button onClick={() => setShowCoach(!showCoach)}
-              className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors">
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground">
               <Sparkles className="h-3 w-3" /> {t("ai_coach")}
             </button>
           </div>
@@ -383,7 +391,7 @@ const Index = () => {
       </aside>
 
       {/* Main Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col p-2 md:p-3">
         <TopBar
           config={engine.project?.config || null}
           onUpdateConfig={engine.updateConfig}
@@ -402,14 +410,16 @@ const Index = () => {
           project={engine.project}
         />
 
-        <div className="flex-1 flex min-h-0">
+        <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm">
           {engine.project ? (
             <>
-              <div className="flex-1 min-w-0">
+              <div className="min-w-0 flex-1">
                 <EditorPanel
                   project={engine.project}
                   activeSection={activeSection}
                   onGenerateNext={engine.generateNext}
+                  onGenerateFrontMatter={engine.generateFrontMatterSection}
+                  onGenerateBackMatter={engine.generateBackMatterSection}
                   onGenerateChapter={(...args) => engine.generateSingleChapter(...args, { onChunkProgress: (progress) => { console.log("🔥 PROGRESS:", progress); } })}
                   onRegenerateChapter={engine.regenerateChapter}
                   onRewriteChapter={engine.rewriteChapterWithDepth}
@@ -441,9 +451,11 @@ const Index = () => {
               )}
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center px-4">
-              <div className="w-full max-w-md rounded-2xl border border-border bg-card/60 p-6 text-center shadow-xl backdrop-blur-sm space-y-4">
-                <BookOpen className="h-10 w-10 text-primary/70 mx-auto" />
+            <div className="flex flex-1 items-center justify-center px-4">
+              <div className="ios-panel w-full max-w-md space-y-4 p-6 text-center">
+                <span className="ios-icon ios-icon-blue mx-auto h-16 w-16">
+                  <BookOpen className="h-7 w-7" />
+                </span>
                 <div className="space-y-1">
                   <p className="text-base font-semibold text-foreground">Scriptora</p>
                   <p className="text-sm text-muted-foreground">{t("no_project")}</p>
@@ -452,14 +464,14 @@ const Index = () => {
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
                   <button
                     onClick={openNewBookGuarded}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-100"
                   >
                     <Plus className="h-4 w-4" />
                     {t("new_book")}
                   </button>
                   <Link
                     to="/dashboard"
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/40"
+                    className="ios-toolbar-button h-10 px-4 text-sm font-medium"
                   >
                     <ArrowLeft className="h-4 w-4" />
                     Torna alla dashboard
@@ -467,8 +479,8 @@ const Index = () => {
                 </div>
 
                 {projects.length > 0 && (
-                  <div className="rounded-xl border border-border/70 bg-background/70 p-3 text-left">
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <div className="ios-glass-soft rounded-lg p-3 text-left">
+                    <p className="mb-2 text-[11px] font-semibold uppercase text-muted-foreground">
                       Progetti recenti
                     </p>
                     <div className="space-y-1.5">
@@ -476,7 +488,7 @@ const Index = () => {
                         <button
                           key={p.id}
                           onClick={() => handleSelectProject(p.id)}
-                          className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted/40"
+                          className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-white/[0.07]"
                         >
                           <span className="truncate">{p.config.title || "Untitled"}</span>
                           <span className="text-[11px] text-muted-foreground">Apri</span>

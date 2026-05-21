@@ -4,8 +4,7 @@ import { ArrowRight, Sparkles, ShieldCheck, FileText, Lock, CheckCircle2 } from 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { isDevMode, useDevMode } from "@/lib/dev-mode";
-import { DevModeUnlockDialog } from "@/components/DevModeUnlockDialog";
+import { enableDevMode, isDevMode, useDevMode } from "@/lib/dev-mode";
 import { PRIVACY_POLICY, TERMS_OF_SERVICE, LEGAL_VERSION, LEGAL_UPDATED } from "@/lib/legal-content";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,7 +35,7 @@ function writeConsent(rec: ConsentRecord) {
 /**
  * SCRIPTORA — Premium landing.
  * Flow: utente apre la Home → deve accettare privacy/termini + confermare 16+
- * prima di poter cliccare Start. Dev Mode (5 click sul logo + password) bypassa
+ * prima di poter cliccare Start. Dev Mode (3 click sul logo) bypassa
  * il consenso per evitare di re-inserirlo ogni volta in sviluppo.
  */
 export default function Home() {
@@ -64,9 +63,8 @@ export default function Home() {
   const privacyRef = useRef<HTMLDivElement | null>(null);
   const termsRef = useRef<HTMLDivElement | null>(null);
 
-  // Hidden dev-mode trigger (5 clicks on the logo)
+  // Hidden dev-mode trigger (3 clicks on the logo)
   const [logoClicks, setLogoClicks] = useState(0);
-  const [unlockOpen, setUnlockOpen] = useState(false);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
@@ -85,12 +83,13 @@ export default function Home() {
 
   const handleLogoClick = () => {
     const next = logoClicks + 1;
-    if (next >= 5) {
+    if (next >= 3) {
       setLogoClicks(0);
-      setUnlockOpen(true);
+      enableDevMode();
+      toast.success("Developer Mode attivato");
+      navigate("/dashboard");
     } else {
       setLogoClicks(next);
-      if (next === 3) toast.message("2 click rimasti…");
     }
   };
 
@@ -155,7 +154,7 @@ export default function Home() {
         }`}
       >
         <div className="flex items-center gap-2">
-          {/* Hidden dev-mode trigger: 5 taps on the logo */}
+          {/* Hidden dev-mode trigger: 3 taps on the logo */}
           <button
             type="button"
             onClick={handleLogoClick}
@@ -369,13 +368,6 @@ export default function Home() {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Hidden dev-mode unlock */}
-      <DevModeUnlockDialog
-        open={unlockOpen}
-        onOpenChange={setUnlockOpen}
-        onUnlocked={() => navigate("/dashboard")}
-      />
     </main>
   );
 }

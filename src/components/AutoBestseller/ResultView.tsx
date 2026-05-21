@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { CheckCircle2, AlertTriangle, XCircle, Sparkles, BookOpen, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AutoBestsellerResult } from "@/services/autoBestsellerService";
+import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 
 interface Props {
   result: AutoBestsellerResult;
@@ -54,7 +55,13 @@ export function ResultView({ result, onSaveAsProject }: Props) {
                 <li key={`stable-${i}`} className="p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-medium truncate">Ch {i + 1}. {ch.title}</p>
+                      <p className="font-medium truncate">
+                        {formatChapterDisplayTitle(i, ch.title, {
+                          summary: result.blueprint?.chapterOutlines?.[i]?.summary,
+                          totalChapters: result.chapters.length,
+                          language: "Italian",
+                        })}
+                      </p>
                       <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">
                         {ch.content?.slice(0, 280) || "(no content)"}
                       </p>

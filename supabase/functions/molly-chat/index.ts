@@ -11,6 +11,8 @@ interface Body {
   history?: { role: "user" | "assistant"; content: string }[];
   mood?: string;
   bond?: number;
+  projectId?: string | null;
+  userId?: string | null;
 }
 
 const SYSTEM_PROMPT = `You are Molly, an intelligent dog companion living inside a writing app. You are playful, curious, emotionally aware, and natural. Keep answers SHORT (1-2 sentences max), human, and slightly witty. Never use long paragraphs. Never break character.`;
@@ -88,6 +90,10 @@ serve(async (req) => {
       taskType: "molly_chat",
       promptTokens: usage.prompt_tokens ?? estimateTokens(messages.map((m: any) => m.content).join("\n")),
       completionTokens: usage.completion_tokens ?? estimateTokens(reply),
+      promptCacheHitTokens: usage.prompt_cache_hit_tokens,
+      promptCacheMissTokens: usage.prompt_cache_miss_tokens,
+      projectId: body.projectId || null,
+      userId: body.userId || null,
       metadata: { mood, bond },
     });
     return new Response(JSON.stringify({ reply }), {

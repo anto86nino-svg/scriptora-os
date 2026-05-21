@@ -2,6 +2,7 @@ import { AutoBestsellerResult, AutoBestsellerInput } from "@/services/autoBestse
 import { BookProject, BookConfig, Chapter, BookBlueprint, Genre, Language } from "@/types/book";
 import { createProjectId } from "@/lib/storage";
 import type { LiveBook } from "@/hooks/useAutoBestseller";
+import { normalizeProjectChapterTitles } from "@/lib/chapter-titles";
 
 const ALLOWED_GENRES: Genre[] = [
   "self-help", "romance", "dark-romance", "thriller", "fantasy", "philosophy", "business", "memoir",
@@ -92,7 +93,7 @@ const config: BookConfig = {
     qualityRating: typeof c.finalScore === "number" ? c.finalScore : undefined,
   }));
 
-  return {
+  return normalizeProjectChapterTitles({
     id: createProjectId(),
     config,
     blueprint,
@@ -102,7 +103,7 @@ const config: BookConfig = {
     phase: "complete",
     createdAt: now,
     updatedAt: now,
-  };
+  });
 }
 
 /**
@@ -162,7 +163,7 @@ const config: BookConfig = {
       qualityRating: typeof c.score === "number" ? c.score : undefined,
     }));
 
-  return {
+  return normalizeProjectChapterTitles({
     id: existingId || createProjectId(),
     config,
     blueprint,
@@ -172,5 +173,5 @@ const config: BookConfig = {
     phase: chapters.length > 0 ? "chapters" : "blueprint",
     createdAt: now,
     updatedAt: now,
-  };
+  });
 }

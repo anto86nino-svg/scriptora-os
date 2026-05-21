@@ -15,7 +15,7 @@ interface GoNoGoVerdict {
 
 import { logAIUsage, estimateTokens } from "../_shared/ai-tracking.ts";
 
-let __trackCtx: { projectId?: string | null } = {};
+let __trackCtx: { projectId?: string | null; userId?: string | null } = {};
 
 async function callDeepSeek(apiKey: string, system: string, user: string, temperature = 0.3, maxTokens = 1200, taskType = "go_no_go") {
   const r = await fetch("https://api.deepseek.com/chat/completions", {
@@ -47,7 +47,10 @@ async function callDeepSeek(apiKey: string, system: string, user: string, temper
     taskType,
     promptTokens: usage.prompt_tokens ?? estimateTokens(system + user),
     completionTokens: usage.completion_tokens ?? estimateTokens(content),
+    promptCacheHitTokens: usage.prompt_cache_hit_tokens,
+    promptCacheMissTokens: usage.prompt_cache_miss_tokens,
     projectId: __trackCtx.projectId || null,
+    userId: __trackCtx.userId || null,
   });
   return content;
 }
@@ -92,8 +95,9 @@ serve(async (req) => {
       voiceData,
       genreAnalysis,
       projectId = null,
+      userId = null,
     } = await req.json();
-    __trackCtx = { projectId };
+    __trackCtx = { projectId, userId };
 
     if (!chapterText || typeof chapterText !== "string") {
       return new Response(JSON.stringify({ error: "chapterText required" }),

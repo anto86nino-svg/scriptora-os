@@ -1,4 +1,5 @@
 import { normalizeExportProject, exportLabel, cleanExportText, parseExportBlocks, cleanMarkdownInline } from "@/lib/export-cleanup";
+import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel,
   AlignmentType, PageBreak, Header, Footer, PageNumber,
@@ -201,12 +202,17 @@ export async function generateDocx(project: BookProject): Promise<Blob> {
   for (let i = 0; i < chapters.length; i++) {
     const ch = chapters[i];
     if (!ch) continue;
-    const num = String(i + 1).padStart(2, " ");
-    children.push(new Paragraph({
-      spacing: { after: 120 },
-      tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
-      children: [
-        new TextRun({ text: `${num}.   ${cleanMarkdown(ch.title || `${exportLabel("chapter", config.language)} ${i + 1}`)}`, font: "Garamond", size: 22 }),
+      const num = String(i + 1).padStart(2, " ");
+      const title = formatChapterDisplayTitle(i, ch.title, {
+        config,
+        summary: project.blueprint?.chapterOutlines?.[i]?.summary,
+        totalChapters: config.numberOfChapters,
+      });
+      children.push(new Paragraph({
+        spacing: { after: 120 },
+        tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
+        children: [
+        new TextRun({ text: `${num}.   ${cleanMarkdown(title)}`, font: "Garamond", size: 22 }),
       ],
     }));
   }

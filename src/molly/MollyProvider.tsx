@@ -5,11 +5,9 @@ import {
   drink as drinkFn,
   sleep as sleepFn,
   play as playFn,
-  tick,
   type MollyState,
   type MollyVisual,
 } from "./mollyEngine";
-import { decideBehavior, pickFlowLine } from "./mollyBehavior";
 import { loadState, saveState } from "./mollyStorage";
 import { askMolly, type ChatTurn } from "./mollyAI";
 
@@ -35,9 +33,6 @@ interface MollyContextValue {
 
 const MollyContext = createContext<MollyContextValue | null>(null);
 const MAX_MESSAGES = 30;
-const TICK_MS = 30000;
-const FLOW_MIN_LEN = 200;
-const FLOW_COOLDOWN_MS = 60000;
 const ACTION_VISUAL_MS = 4500;
 
 export function MollyProvider({ children }: { children: React.ReactNode }) {
@@ -45,14 +40,17 @@ export function MollyProvider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<MollyMessage[]>([]);
   const [isThinking, setThinking] = useState(false);
 
-  const lastSpokeAtRef = useRef(0);
-  const lastFlowAtRef = useRef(0);
-  const actionVisualUntilRef = useRef(0);
+  const actionResetRef = useRef<number | null>(null);
 
   useEffect(() => { saveState(state); }, [state]);
 
+  useEffect(() => {
+    return () => {
+      if (actionResetRef.current) window.clearTimeout(actionResetRef.current);
+    };
+  }, []);
+
   const pushMolly = useCallback((text: string) => {
-    lastSpokeAtRef.current = Date.now();
     setMessages(prev => [
       ...prev,
       { id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, role: "molly" as const, text, ts: Date.now() },
@@ -66,48 +64,36 @@ export function MollyProvider({ children }: { children: React.ReactNode }) {
     ].slice(-MAX_MESSAGES));
   }, []);
 
-  // Tick loop — decay + behavior decision
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      const now = Date.now();
-      setState(prev => {
-        const decayed = tick(prev, now);
-        if (now < actionVisualUntilRef.current) return decayed; // hold action visual briefly
-        const decision = decideBehavior(decayed, lastSpokeAtRef.current, now);
-        if (decision.message) pushMolly(decision.message);
-        return { ...decayed, visual: decision.visual };
-      });
-    }, TICK_MS);
-    return () => window.clearInterval(id);
-  }, [pushMolly]);
-
-  const lockVisualFor = (ms: number) => {
-    actionVisualUntilRef.current = Date.now() + ms;
-  };
+  const resetVisualAfter = useCallback((ms: number) => {
+    if (actionResetRef.current) window.clearTimeout(actionResetRef.current);
+    actionResetRef.current = window.setTimeout(() => {
+      setState(prev => ({ ...prev, visual: "idle" }));
+    }, ms);
+  }, []);
 
   const feed = useCallback(() => {
     setState(prev => feedFn(prev));
-    lockVisualFor(ACTION_VISUAL_MS);
+    resetVisualAfter(ACTION_VISUAL_MS);
     pushMolly("Mmm. Thank you.");
-  }, [pushMolly]);
+  }, [pushMolly, resetVisualAfter]);
 
   const drink = useCallback(() => {
     setState(prev => drinkFn(prev));
-    lockVisualFor(3500);
+    resetVisualAfter(3500);
     pushMolly("Better.");
-  }, [pushMolly]);
+  }, [pushMolly, resetVisualAfter]);
 
   const sleep = useCallback(() => {
     setState(prev => sleepFn(prev));
-    lockVisualFor(7000);
+    resetVisualAfter(7000);
     pushMolly("Just a quick nap…");
-  }, [pushMolly]);
+  }, [pushMolly, resetVisualAfter]);
 
   const play = useCallback(() => {
     setState(prev => playFn(prev));
-    lockVisualFor(ACTION_VISUAL_MS);
+    resetVisualAfter(ACTION_VISUAL_MS);
     pushMolly("Yes! Again!");
-  }, [pushMolly]);
+  }, [pushMolly, resetVisualAfter]);
 
   const sendUserMessage = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -127,15 +113,9 @@ export function MollyProvider({ children }: { children: React.ReactNode }) {
     }
   }, [messages, state.mood, state.bond, pushMolly, pushUser]);
 
-  const notifyUserWroteText = useCallback((text: string) => {
-    if (!text || text.length < FLOW_MIN_LEN) return;
-    const now = Date.now();
-    if (now - lastFlowAtRef.current < FLOW_COOLDOWN_MS) return;
-    if (Math.random() < 0.35) {
-      lastFlowAtRef.current = now;
-      pushMolly(pickFlowLine());
-    }
-  }, [pushMolly]);
+  const notifyUserWroteText = useCallback((_text: string) => {
+    // Molly is now manual-only: no background flow comments from editor text.
+  }, []);
 
   const clearMessages = useCallback(() => setMessages([]), []);
 

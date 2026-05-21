@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MollySprite } from "@/components/molly/MollySprite";
 import { useMolly } from "@/molly/MollyProvider";
+import { getCurrentUserId } from "@/services/storageService";
 
 interface LiveCoachTabProps {
   project: BookProject;
@@ -48,7 +49,7 @@ function getActiveContent(project: BookProject, activeSection: SectionId | null)
 }
 
 export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
-  const [enabled, setEnabled] = useState(true);
+  const [enabled, setEnabled] = useState(false);
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [thinking, setThinking] = useState(false);
   const [input, setInput] = useState("");
@@ -59,7 +60,6 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
   const lastFiredAtRef = useRef<number>(0);
   const lastActivityRef = useRef<number>(Date.now());
   const pendingTimerRef = useRef<number | null>(null);
-  const spontaneousTimerRef = useRef<number | null>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   const active = getActiveContent(project, activeSection);
@@ -86,6 +86,8 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
           recentText,
           fullChapter: activeContent,
           chapterTitle: activeTitle,
+          projectId: project.id,
+          userId: getCurrentUserId(),
         },
       });
       if (error) throw error;
@@ -125,6 +127,8 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
           tone: project.config.tone,
           chapterTitle: activeTitle,
           bookTitle: project.config.title,
+          projectId: project.id,
+          userId: getCurrentUserId(),
         },
       });
       if (error) throw error;
@@ -163,30 +167,6 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
     };
   }, [activeContent, enabled, active, fireLiveComment]);
 
-  // Spontaneous companion: ogni 30-60s controlla, se silenzio >=45s manda messaggio amichevole
-  useEffect(() => {
-    if (!enabled) return;
-    const tick = () => {
-      const silenceMs = Date.now() - lastActivityRef.current;
-      if (silenceMs >= 45_000 && !thinking && !chatLoading) {
-        lastActivityRef.current = Date.now();
-        fireSpontaneous();
-      }
-    };
-    const scheduleNext = () => {
-      const delay = 30_000 + Math.random() * 30_000;
-      spontaneousTimerRef.current = window.setTimeout(() => {
-        tick();
-        scheduleNext();
-      }, delay);
-    };
-    scheduleNext();
-    return () => {
-      if (spontaneousTimerRef.current) window.clearTimeout(spontaneousTimerRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, fireSpontaneous]);
-
   // Auto-scroll
   useEffect(() => {
     scrollerRef.current?.scrollTo({ top: scrollerRef.current.scrollHeight, behavior: "smooth" });
@@ -212,6 +192,8 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
           tone: project.config.tone,
           question: `Contesto capitolo "${activeTitle}":\n${activeContent.substring(0, 2000)}\n\nDomanda autore: ${q}`,
           history,
+          projectId: project.id,
+          userId: getCurrentUserId(),
         },
       });
       if (error) throw error;
@@ -273,7 +255,7 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
         <div className="flex items-center gap-1.5 min-w-0">
           <div className={`h-1.5 w-1.5 rounded-full shrink-0 ${enabled ? "bg-primary animate-pulse" : "bg-muted-foreground/30"}`} />
           <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider truncate">
-            {enabled ? "Live attivo" : "Live spento"}
+            {enabled ? "Ascolto attivo" : "Ascolto manuale"}
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -281,15 +263,15 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
             onClick={fireSpontaneous}
             disabled={thinking || chatLoading}
             className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-accent/20 text-accent-foreground hover:bg-accent/30 disabled:opacity-40 transition-colors"
-            title="Mandami una sorpresa"
+            title="Chiedi uno spunto a Molly"
           >
-            🎁 Sorprendimi
+            Spunto
           </button>
           <button
             onClick={() => setEnabled((v) => !v)}
             className="text-[10px] font-medium text-primary hover:underline"
           >
-            {enabled ? "Pausa" : "Attiva"}
+            {enabled ? "Pausa" : "Attiva ascolto"}
           </button>
         </div>
       </div>
@@ -299,15 +281,15 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
         {!active ? (
           <div className="text-center py-8 space-y-2">
             <Heart className="h-6 w-6 text-muted-foreground/30 mx-auto" />
-            <p className="text-xs text-muted-foreground/60">Apri un capitolo, sono qui con te. — Molly 💛</p>
+            <p className="text-xs text-muted-foreground/60">Apri un capitolo e richiama Molly quando ti serve.</p>
           </div>
         ) : bubbles.length === 0 && !thinking ? (
           <div className="text-center py-8 space-y-2">
             <Sparkles className="h-6 w-6 text-primary/40 mx-auto" />
             <p className="text-xs text-muted-foreground/70">
-              Ciao, sono Molly. Scrivi pure: quando finisci una frase ti lascio un pensiero.
+              Ciao, sono Molly. Scrivimi una domanda oppure attiva l'ascolto quando vuoi un feedback live.
             </p>
-            <p className="text-[10px] text-muted-foreground/50">O chiedimi qualsiasi cosa qui sotto 👇</p>
+            <p className="text-[10px] text-muted-foreground/50">Resto in silenzio finche non mi richiami.</p>
           </div>
         ) : (
           <>

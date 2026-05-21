@@ -15,6 +15,7 @@ import { liveBookToPartialProject } from "@/lib/auto-bestseller-to-project";
 import { saveProjectAsync } from "@/services/storageService";
 import { createProjectId } from "@/lib/storage";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveChapterTitle } from "@/lib/chapter-titles";
 
 const INITIAL_STAGES: StageState[] = [
   { id: "titles", label: "Generating Titles", status: "pending" },
@@ -93,6 +94,30 @@ function writeRunSnapshot(runId: string, snapshot: PersistedRunSnapshot) {
   } catch {
     // Ignore cache failures — DB persistence is still the main source of truth.
   }
+}
+
+function resolveAutoChapterTitle(rawTitle: unknown, index: number, opts?: { summary?: string; total?: number; language?: string }) {
+  return resolveChapterTitle(rawTitle, index, {
+    summary: opts?.summary,
+    totalChapters: opts?.total,
+    language: opts?.language || "Italian",
+  });
+}
+
+function normalizeAutoResult(result: AutoBestsellerResult | null): AutoBestsellerResult | null {
+  if (!result) return result;
+  const outlines = result.blueprint?.chapterOutlines || result.blueprint?.outlines || [];
+  const total = result.chapters?.length || outlines.length || 0;
+  return {
+    ...result,
+    chapters: (result.chapters || []).map((chapter, index) => ({
+      ...chapter,
+      title: resolveAutoChapterTitle(chapter?.title || outlines[index]?.title, index, {
+        summary: outlines[index]?.summary,
+        total,
+      }),
+    })),
+  };
 }
 
 export function useAutoBestseller() {
@@ -292,21 +317,27 @@ export function useAutoBestseller() {
       onChapter: (c) => {
         let updatedLiveBook: LiveBook | null = null;
         setState((prev) => {
+          const outline = prev.liveBook.outlines?.[c.index];
+          const safeTitle = resolveAutoChapterTitle(c.title || outline?.title, c.index, {
+            summary: outline?.summary,
+            total: c.total,
+          });
+          const safeChapter = { ...c, title: safeTitle };
           const existing = prev.chapters.find((x) => x.index === c.index);
           const chapters = existing
-            ? prev.chapters.map((x) => (x.index === c.index ? c : x))
-            : [...prev.chapters, c];
+            ? prev.chapters.map((x) => (x.index === c.index ? safeChapter : x))
+            : [...prev.chapters, safeChapter];
 
           const liveExisting = prev.liveBook.chapters.find((x) => x.index === c.index);
           const liveChapters = liveExisting
             ? prev.liveBook.chapters.map((x) =>
                 x.index === c.index
-                  ? { ...x, phase: c.phase, title: c.title, score: c.score, content: c.content ?? x.content }
+                  ? { ...x, phase: c.phase, title: safeTitle, score: c.score, content: c.content ?? x.content }
                   : x,
               )
             : [
                 ...prev.liveBook.chapters,
-                { index: c.index, title: c.title, phase: c.phase, score: c.score, content: c.content },
+                { index: c.index, title: safeTitle, phase: c.phase, score: c.score, content: c.content },
               ].sort((a, b) => a.index - b.index);
 
           const liveLabel =
@@ -328,33 +359,34 @@ export function useAutoBestseller() {
         if (c.phase === "done" && updatedLiveBook) {
           void savePartialNow(updatedLiveBook);
         }
-        progressLog.push({ type: "chapter", ...c, ts: Date.now() });
+        progressLog.push({ type: "chapter", ...c, title: resolveAutoChapterTitle(c.title, c.index, { total: c.total }), ts: Date.now() });
         queueProgressSync();
       },
       onDone: (r) => {
         clearSyncTimer();
-        lastResult = r;
+        const normalizedResult = normalizeAutoResult(r) || r;
+        lastResult = normalizedResult;
         setState((prev) => ({
           ...prev,
-          result: r,
+          result: normalizedResult,
           isRunning: false,
           liveBook: { ...prev.liveBook, currentStageLabel: "Book complete" },
         }));
         progressLog.push({ type: "done", ts: Date.now() });
-        persistSnapshot(r.status, {
-          result: r,
+        persistSnapshot(normalizedResult.status, {
+          result: normalizedResult,
           error: null,
-          finalScore: r.finalScore,
-          marketScore: r.marketScore,
+          finalScore: normalizedResult.finalScore,
+          marketScore: normalizedResult.marketScore,
         });
         if (runId) {
           void updateRunRow(runId, {
-            result: r,
+            result: normalizedResult,
             progress: [...progressLog],
-            status: r.status,
+            status: normalizedResult.status,
             retry_count: retryCount,
-            final_score: r.finalScore,
-            market_score: r.marketScore,
+            final_score: normalizedResult.finalScore,
+            market_score: normalizedResult.marketScore,
           });
         }
       },
@@ -464,14 +496,19 @@ export function useAutoBestseller() {
         }
       } else if (e?.type === "chapter") {
         const prev = liveChapters.get(e.index);
+        const outline = outlines?.[e.index];
+        const safeTitle = resolveAutoChapterTitle(e.title || prev?.title || outline?.title, e.index, {
+          summary: outline?.summary,
+          total: e.total,
+        });
         liveChapters.set(e.index, {
           index: e.index,
-          title: e.title || prev?.title || `Chapter ${e.index + 1}`,
+          title: safeTitle,
           phase: e.phase,
           score: e.score ?? prev?.score,
           content: e.content ?? prev?.content,
         });
-        chaptersList.push({ index: e.index, total: e.total, phase: e.phase, title: e.title, score: e.score, content: e.content });
+        chaptersList.push({ index: e.index, total: e.total, phase: e.phase, title: safeTitle, score: e.score, content: e.content });
         lastLabel =
           e.phase === "done"
             ? `Chapter ${e.index + 1}/${e.total} ready`
@@ -503,7 +540,7 @@ export function useAutoBestseller() {
       retries,
       chapters: chaptersList,
       liveBook,
-      result: row?.result?.title ? (row.result as AutoBestsellerResult) : prev.result,
+      result: row?.result?.title ? normalizeAutoResult(row.result as AutoBestsellerResult) : prev.result,
       error: row?.error || null,
       runId: row?.id || prev.runId,
     }));

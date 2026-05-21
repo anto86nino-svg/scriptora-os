@@ -1,21 +1,50 @@
 // Shared AI call layer with token tracking + cost calculation
-// All edge functions should route DeepSeek/Lovable AI calls through this module.
+// All Edge Functions should route DeepSeek calls through this module.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 // ===== PRICING (USD per token) =====
-// DeepSeek official pricing (Nov 2024+): input $0.27/1M, output $1.10/1M
-export const AI_PRICING: Record<string, Record<string, { input: number; output: number }>> = {
+// DeepSeek official pricing checked on 2026-05-20:
+// https://api-docs.deepseek.com/quick_start/pricing/
+// DeepSeek returns prompt_cache_hit_tokens / prompt_cache_miss_tokens in usage.
+type TokenPricing = {
+  inputCacheHit: number;
+  inputCacheMiss: number;
+  output: number;
+  sourceLabel?: string;
+};
+
+const perMillion = (usd: number) => usd / 1_000_000;
+
+export const AI_PRICING: Record<string, Record<string, TokenPricing>> = {
   deepseek: {
-    "deepseek-chat": { input: 0.00000027, output: 0.0000011 },
-    "deepseek-reasoner": { input: 0.00000055, output: 0.0000022 },
-  },
-  lovable: {
-    "google/gemini-3-flash-preview": { input: 0, output: 0 },
-    "google/gemini-2.5-flash": { input: 0, output: 0 },
-    "google/gemini-2.5-pro": { input: 0, output: 0 },
-    "openai/gpt-5": { input: 0, output: 0 },
-    "openai/gpt-5-mini": { input: 0, output: 0 },
+    // Compatibility aliases. DeepSeek docs map deepseek-chat / deepseek-reasoner
+    // to DeepSeek-V4-Flash non-thinking / thinking modes.
+    "deepseek-chat": {
+      inputCacheHit: perMillion(0.0028),
+      inputCacheMiss: perMillion(0.14),
+      output: perMillion(0.28),
+      sourceLabel: "DeepSeek V4 Flash",
+    },
+    "deepseek-reasoner": {
+      inputCacheHit: perMillion(0.0028),
+      inputCacheMiss: perMillion(0.14),
+      output: perMillion(0.28),
+      sourceLabel: "DeepSeek V4 Flash thinking",
+    },
+    "deepseek-v4-flash": {
+      inputCacheHit: perMillion(0.0028),
+      inputCacheMiss: perMillion(0.14),
+      output: perMillion(0.28),
+      sourceLabel: "DeepSeek V4 Flash",
+    },
+    // Promo price published by DeepSeek, extended until 2026-05-31 15:59 UTC.
+    "deepseek-v4-pro": {
+      inputCacheHit: perMillion(0.003625),
+      inputCacheMiss: perMillion(0.435),
+      output: perMillion(0.87),
+      sourceLabel: "DeepSeek V4 Pro promo",
+    },
   },
 };
 
@@ -29,11 +58,15 @@ export function calculateCost(
   provider: string,
   model: string,
   promptTokens: number,
-  completionTokens: number
+  completionTokens: number,
+  promptCacheHitTokens?: number,
+  promptCacheMissTokens?: number
 ): CostBreakdown {
   const p = AI_PRICING[provider]?.[model];
   if (!p) return { inputCost: 0, outputCost: 0, totalCost: 0 };
-  const inputCost = promptTokens * p.input;
+  const cacheHitTokens = Math.max(0, promptCacheHitTokens ?? 0);
+  const cacheMissTokens = Math.max(0, promptCacheMissTokens ?? Math.max(0, promptTokens - cacheHitTokens));
+  const inputCost = (cacheHitTokens * p.inputCacheHit) + (cacheMissTokens * p.inputCacheMiss);
   const outputCost = completionTokens * p.output;
   return { inputCost, outputCost, totalCost: inputCost + outputCost };
 }
@@ -50,6 +83,8 @@ export interface UsageLogInput {
   taskType: string;
   promptTokens: number;
   completionTokens: number;
+  promptCacheHitTokens?: number;
+  promptCacheMissTokens?: number;
   projectId?: string | null;
   userId?: string | null;
   metadata?: Record<string, unknown>;
@@ -67,15 +102,18 @@ export async function logAIUsage(input: UsageLogInput): Promise<void> {
       input.provider,
       input.model,
       input.promptTokens,
-      input.completionTokens
+      input.completionTokens,
+      input.promptCacheHitTokens,
+      input.promptCacheMissTokens
     );
+    const pricing = AI_PRICING[input.provider]?.[input.model];
 
     const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
     await supabase.from("ai_usage_logs").insert({
-      user_id: input.userId || "local-user",
+      user_id: input.userId || "local-user-free",
       project_id: input.projectId || null,
       provider: input.provider,
       model: input.model,
@@ -86,7 +124,13 @@ export async function logAIUsage(input: UsageLogInput): Promise<void> {
       input_cost: inputCost,
       output_cost: outputCost,
       total_cost: totalCost,
-      metadata: input.metadata || {},
+      metadata: {
+        ...(input.metadata || {}),
+        prompt_cache_hit_tokens: input.promptCacheHitTokens ?? null,
+        prompt_cache_miss_tokens: input.promptCacheMissTokens ?? null,
+        pricing_source: pricing?.sourceLabel || null,
+        pricing_checked_at: "2026-05-20",
+      },
     });
   } catch (e) {
     console.error("[ai-tracking] log failed (silent):", e instanceof Error ? e.message : e);
@@ -112,6 +156,8 @@ export interface CallDeepSeekResult {
   content: string;
   usage: {
     promptTokens: number;
+    promptCacheHitTokens: number;
+    promptCacheMissTokens: number;
     completionTokens: number;
     totalTokens: number;
   };
@@ -156,12 +202,20 @@ export async function callDeepSeekTracked(
     typeof usage.prompt_tokens === "number"
       ? usage.prompt_tokens
       : estimateTokens(params.systemPrompt + params.userPrompt);
+  const promptCacheHitTokens =
+    typeof usage.prompt_cache_hit_tokens === "number"
+      ? usage.prompt_cache_hit_tokens
+      : 0;
+  const promptCacheMissTokens =
+    typeof usage.prompt_cache_miss_tokens === "number"
+      ? usage.prompt_cache_miss_tokens
+      : promptTokens;
   const completionTokens =
     typeof usage.completion_tokens === "number"
       ? usage.completion_tokens
       : estimateTokens(content);
   const totalTokens = promptTokens + completionTokens;
-  const cost = calculateCost("deepseek", model, promptTokens, completionTokens);
+  const cost = calculateCost("deepseek", model, promptTokens, completionTokens, promptCacheHitTokens, promptCacheMissTokens);
 
   // fire-and-forget
   logAIUsage({
@@ -170,10 +224,12 @@ export async function callDeepSeekTracked(
     taskType: params.taskType,
     promptTokens,
     completionTokens,
+    promptCacheHitTokens,
+    promptCacheMissTokens,
     projectId: params.projectId,
     userId: params.userId,
     metadata: params.metadata,
   });
 
-  return { content, usage: { promptTokens, completionTokens, totalTokens }, cost };
+  return { content, usage: { promptTokens, promptCacheHitTokens, promptCacheMissTokens, completionTokens, totalTokens }, cost };
 }

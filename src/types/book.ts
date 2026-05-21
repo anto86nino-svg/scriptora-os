@@ -133,6 +133,30 @@ export interface BookCharacter {
   strictRules?: string;
 }
 
+export interface AuthorIdentity {
+  id: string;
+  /** Internal profile label shown in Scriptora. */
+  name: string;
+  /** Legal/real person or company name, kept configurable and private unless used for copyright. */
+  realName?: string;
+  /** Public author name printed in the book, cover and exports. */
+  penName: string;
+  /** Copyright holder. Defaults to realName, then penName. */
+  copyrightName?: string;
+  archetype: string;
+  /** Public author biography used in front matter. */
+  biography: string;
+  /** Optional personal note used in back matter. */
+  authorNote?: string;
+  voice: string;
+  signatureMoves: string;
+  forbiddenMoves: string;
+  recurringThemes: string;
+  language?: Language;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface BookConfig {
   title: string;
   subtitle: string;
@@ -145,6 +169,8 @@ export interface BookConfig {
   author?: string;
   authorName?: string;
   writerName?: string;
+  authorIdentityId?: string;
+  authorIdentity?: AuthorIdentity;
   authorStyle: string;
   language: Language;
   genre: Genre;
@@ -156,6 +182,16 @@ export interface BookConfig {
   numberOfChapters: number;
   subchaptersEnabled: boolean;
   characters?: BookCharacter[];
+  shadowTitleOptions?: {
+    title: string;
+    subtitle: string;
+    angle?: string;
+    keywords?: string[];
+    confidence?: number;
+  }[];
+  editorialMapId?: string;
+  kdpSeriesName?: string;
+  kdpRoadmapPosition?: number;
 }
 
 /**

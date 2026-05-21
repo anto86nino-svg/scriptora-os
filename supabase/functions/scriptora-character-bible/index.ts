@@ -1,5 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { callDeepSeekTracked } from "../_shared/ai-tracking.ts";
 
 const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY") || "";
 
@@ -9,33 +10,21 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-async function callDeepSeek(system: string, user: string) {
+async function callDeepSeek(system: string, user: string, context: { userId?: string | null; projectId?: string | null; metadata?: Record<string, unknown> } = {}) {
   if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY missing");
-
-  const r = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "deepseek-chat",
-      temperature: 0.72,
-      max_tokens: 3500,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
+  const result = await callDeepSeekTracked({
+    apiKey: DEEPSEEK_API_KEY,
+    systemPrompt: system,
+    userPrompt: user,
+    model: "deepseek-chat",
+    temperature: 0.72,
+    maxTokens: 3500,
+    taskType: "scriptora_character_bible",
+    projectId: context.projectId,
+    userId: context.userId,
+    metadata: context.metadata,
   });
-
-  if (!r.ok) {
-    const t = await r.text();
-    throw new Error(`DeepSeek error ${r.status}: ${t.slice(0, 300)}`);
-  }
-
-  const data = await r.json();
-  return String(data?.choices?.[0]?.message?.content || "").trim();
+  return result.content.trim();
 }
 
 serve(async (req) => {
@@ -54,6 +43,8 @@ serve(async (req) => {
     const centralDynamic = String(body.centralDynamic || "").trim();
     const protagonistType = String(body.protagonistType || "").trim();
     const count = Math.max(2, Math.min(8, Number(body.count || 4)));
+    const userId = body.userId ? String(body.userId) : null;
+    const projectId = body.projectId ? String(body.projectId) : null;
 
     if (idea.length < 10) {
       return new Response(JSON.stringify({ error: "Inserisci un'idea più specifica per generare i personaggi." }), {
@@ -73,7 +64,8 @@ Obiettivo:
 - evitare che nei capitoli futuri i personaggi cambino nome o identità;
 - creare tensione narrativa vera, non personaggi generici;
 - adattare cast, ferite, desideri, segreti e relazioni al genere, sottogenere, tono, intensità e dinamica centrale;
-- progettare personaggi che producano trama, conflitto e continuità.`;
+- progettare personaggi che producano trama, conflitto e continuità;
+- creare cast diversi ogni volta: professioni, età, classi sociali, ferite, segreti, modi di parlare e rapporti non devono sembrare intercambiabili.`;
 
     const user = `IDEA ROMANZO:
 ${idea}
@@ -122,12 +114,19 @@ REGOLE IMPORTANTI:
 - Il protagonista deve essere chiarissimo.
 - I nomi devono restare canonici per tutto il romanzo.
 - Non creare doppioni con nomi simili.
+- Non usare sempre coppie generiche tipo donna ferita + uomo misterioso: se l'idea non lo richiede, varia genere dei ruoli, professioni, desideri, età, status, famiglia, colpa e tipo di segreto.
+- Evita nomi e ruoli placeholder ricorrenti. Ogni nome deve sembrare scelto per questa storia, lingua e ambientazione.
+- Ogni personaggio deve avere un tratto concreto verificabile in scena: gesto, lavoro, ossessione, oggetto, modo di mentire o paura specifica.
 - Ogni personaggio deve avere una funzione narrativa precisa.
 - Ogni rapporto deve contenere tensione, desiderio, paura o conflitto.
 - Le regole di continuità devono impedire al motore di cambiare nome, età, ruolo o relazione.
 - Non scrivere spiegazioni fuori dalla scheda personaggi.`;
 
-    const characterBible = await callDeepSeek(system, user);
+    const characterBible = await callDeepSeek(system, user, {
+      userId,
+      projectId,
+      metadata: { genre, subcategory, language, count, source: "character_studio" },
+    });
 
     return new Response(JSON.stringify({ characterBible }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

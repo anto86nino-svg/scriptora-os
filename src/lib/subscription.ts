@@ -34,6 +34,7 @@ export type FeatureKey =
   | "title_intelligence_base"
   | "trending_niches_limited"
   | "cover_studio_template"
+  | "scene_image_generation"
   | "support_standard"
   // Premium
   | "unlimited_books_fair_use"
@@ -69,6 +70,7 @@ export const FEATURE_REQUIREMENTS: Record<FeatureKey, "free" | "pro" | "premium"
   title_intelligence_base: "pro",
   trending_niches_limited: "pro",
   cover_studio_template: "pro",
+  scene_image_generation: "pro",
   support_standard: "pro",
   // Premium
   unlimited_books_fair_use: "premium",
@@ -101,6 +103,9 @@ export interface PlanLimitsV2 {
   canUseLiveMarketResearch: boolean;
   canExport: boolean;
   canUseDominateMode: boolean;
+  /** Low-cost cinematic scene previews generated during Studio Live. */
+  sceneImagesPerMonth: number | FairUse;
+  sceneImagesPerChapter: number;
 }
 
 /** Resolved limits per *normalized* tier. Beta resolves to Pro upstream. */
@@ -114,6 +119,8 @@ export const PLAN_LIMITS_V2: Record<"free" | "pro" | "premium", PlanLimitsV2> = 
     canUseLiveMarketResearch: false,
     canExport: false,
     canUseDominateMode: false,
+    sceneImagesPerMonth: 0,
+    sceneImagesPerChapter: 0,
   },
   pro: {
     activeBooks: 10,
@@ -124,6 +131,8 @@ export const PLAN_LIMITS_V2: Record<"free" | "pro" | "premium", PlanLimitsV2> = 
     canUseLiveMarketResearch: true,
     canExport: true,
     canUseDominateMode: false,
+    sceneImagesPerMonth: 300,
+    sceneImagesPerChapter: 5,
   },
   premium: {
     activeBooks: "unlimited",
@@ -134,6 +143,8 @@ export const PLAN_LIMITS_V2: Record<"free" | "pro" | "premium", PlanLimitsV2> = 
     canUseLiveMarketResearch: true,
     canExport: true,
     canUseDominateMode: true,
+    sceneImagesPerMonth: 1200,
+    sceneImagesPerChapter: 12,
   },
 };
 

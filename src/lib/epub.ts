@@ -1,4 +1,5 @@
 import { normalizeExportProject, exportLabel, cleanExportText, parseExportBlocks, cleanMarkdownInline } from "@/lib/export-cleanup";
+import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import { BookProject } from "@/types/book";
 
 function escapeXml(str: unknown): string {
@@ -343,7 +344,16 @@ export async function generateEpub(project: BookProject, coverDataUrl?: string):
   // --- Chapters (each as separate file, with bestseller chapter opener) ---
   chapters.forEach((ch, i) => {
     const chId = `chapter${i + 1}`;
-    const chTitle = ch.title;
+    const chTitle = resolveChapterTitle(ch.title, i, {
+      config,
+      summary: project.blueprint?.chapterOutlines?.[i]?.summary,
+      totalChapters: config.numberOfChapters,
+    });
+    const displayTitle = formatChapterDisplayTitle(i, chTitle, {
+      config,
+      summary: project.blueprint?.chapterOutlines?.[i]?.summary,
+      totalChapters: config.numberOfChapters,
+    });
     const chapterNumLabel = lang === "Italian" ? `Capitolo ${i + 1}`
       : lang === "Spanish" ? `Capítulo ${i + 1}`
       : lang === "French" ? `Chapitre ${i + 1}`
@@ -362,7 +372,7 @@ ${textToHtml(ch.content, { dropCap: true })}`;
       });
     }
     entries.push({
-      id: chId, filename: `${chId}.xhtml`, title: chTitle, body, children,
+      id: chId, filename: `${chId}.xhtml`, title: displayTitle, body, children,
       landmark: i === 0 ? "bodymatter" : undefined,
     });
   });
@@ -655,7 +665,11 @@ export function validateEpubStructure(project: BookProject): string[] {
 
   chapters.forEach((ch, i) => {
     const chId = `chapter${i + 1}`;
-    tocLinks.push({ filename: `${chId}.xhtml`, label: ch.title });
+    tocLinks.push({ filename: `${chId}.xhtml`, label: formatChapterDisplayTitle(i, ch.title, {
+      config,
+      summary: project.blueprint?.chapterOutlines?.[i]?.summary,
+      totalChapters: config.numberOfChapters,
+    }) });
   });
 
   if (backMatter) {

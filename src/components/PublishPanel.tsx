@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { usePlan } from "@/lib/plan";
+import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 
 interface PublishPanelProps {
   project: BookProject | null;
@@ -523,7 +524,13 @@ function BookPreviewModal({
             <div key={`stable-${i}`} className="border border-border/50 rounded-lg overflow-hidden">
               <div className="px-4 py-2.5 bg-muted/30 flex items-center justify-between border-b border-border/50">
                 <div className="min-w-0 flex-1">
-                  <h4 className="text-sm font-bold text-foreground truncate">Capitolo {i + 1}: {ch.title || "Senza titolo"}</h4>
+                  <h4 className="text-sm font-bold text-foreground truncate">
+                    {formatChapterDisplayTitle(i, ch.title, {
+                      config: project.config,
+                      summary: project.blueprint?.chapterOutlines?.[i]?.summary,
+                      totalChapters: project.config.numberOfChapters,
+                    })}
+                  </h4>
                   <p className="text-[10px] text-muted-foreground">{ch.content?.split(/\s+/).filter(Boolean).length || 0} parole</p>
                 </div>
                 <button

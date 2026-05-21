@@ -1,11 +1,13 @@
 import { useState, useMemo, useEffect, forwardRef } from "react";
 import { SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/components/CharacterStudioDialog";
-import { BookConfig, Language, Genre, ChapterLength, BookLength, CATEGORIES, BOOK_LENGTH_CONFIG } from "@/types/book";
-import { BookOpen, X, Sparkles, PenTool } from "lucide-react";
+import { BookConfig, Language, Genre, ChapterLength, BookLength, CATEGORIES, BOOK_LENGTH_CONFIG, AuthorIdentity } from "@/types/book";
+import { BookOpen, X, Sparkles, PenTool, UserRound, Save, Fingerprint, PlusCircle, Trash2 } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { getGenreBlueprint } from "@/lib/genre-intelligence";
 import { getStylesForGenre, type WritingStylePreset } from "@/lib/writing-styles";
 import { usePlan } from "@/lib/plan";
+import { DEFAULT_AUTHOR_IDENTITIES, deleteAuthorIdentity, loadAuthorIdentities, normalizeAuthorIdentity, saveAuthorIdentity } from "@/lib/author-identity";
+import { ensureBookTitleMetadata, generateShadowTitleSet } from "@/lib/title-shadow";
 
 interface NewBookDialogProps {
   open: boolean;
@@ -122,9 +124,11 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
     subtitle: "",
     tone: "warm, insightful, transformative",
     authorStyle: "Brianna Wiest",
-    authorName: "",
-    author: "",
-    writerName: "",
+    authorIdentityId: DEFAULT_AUTHOR_IDENTITIES[0].id,
+    authorIdentity: DEFAULT_AUTHOR_IDENTITIES[0],
+    authorName: DEFAULT_AUTHOR_IDENTITIES[0].penName,
+    author: DEFAULT_AUTHOR_IDENTITIES[0].penName,
+    writerName: DEFAULT_AUTHOR_IDENTITIES[0].penName,
     language: "English",
     genre: "self-help",
     category: "Self Help",
@@ -134,6 +138,32 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
     numberOfChapters: 10,
     subchaptersEnabled: true,
   });
+  const [authorIdentities, setAuthorIdentities] = useState<AuthorIdentity[]>(() => loadAuthorIdentities());
+  const [authorDraft, setAuthorDraft] = useState<AuthorIdentity>(() => DEFAULT_AUTHOR_IDENTITIES[0]);
+  const shadowTitleOptions = useMemo(() => generateShadowTitleSet({
+    title: config.title,
+    subtitle: config.subtitle,
+    genre: config.genre,
+    category: config.category,
+    subcategory: config.subcategory,
+    targetAudience: config.tone,
+    language: config.language,
+  }, 4), [config.title, config.subtitle, config.genre, config.category, config.subcategory, config.tone, config.language]);
+  const primaryShadowTitle = shadowTitleOptions[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const identities = loadAuthorIdentities();
+    setAuthorIdentities(identities);
+    const selected =
+      identities.find((item) => item.id === config.authorIdentityId) ||
+      normalizeAuthorIdentity(config.authorIdentity) ||
+      identities[0] ||
+      DEFAULT_AUTHOR_IDENTITIES[0];
+    setAuthorDraft(selected);
+    if (!config.authorIdentity) applyAuthorIdentity(selected, identities);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (!open || !isFreePlan) return;
@@ -155,12 +185,94 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
     }
     setConfig(prev => ({ ...prev, [key]: value }));
   };
+
+  const applyAuthorIdentity = (identity: AuthorIdentity | null, sourceList = authorIdentities) => {
+    const normalized = normalizeAuthorIdentity(identity);
+    if (!normalized) {
+      setConfig(prev => ({
+        ...prev,
+        authorIdentityId: "",
+        authorIdentity: undefined,
+        authorName: "",
+        author: "",
+        writerName: "",
+      }));
+      return;
+    }
+    const fromList = sourceList.find((item) => item.id === normalized.id) || normalized;
+    setAuthorDraft(fromList);
+    setConfig(prev => ({
+      ...prev,
+      authorIdentityId: fromList.id,
+      authorIdentity: fromList,
+      authorName: fromList.penName,
+      author: fromList.penName,
+      writerName: fromList.penName,
+    }));
+  };
+
+  const updateAuthorDraft = (patch: Partial<AuthorIdentity>) => {
+    const next = { ...authorDraft, ...patch };
+    if (patch.realName !== undefined && (!authorDraft.copyrightName || authorDraft.copyrightName === authorDraft.realName || authorDraft.copyrightName === authorDraft.penName)) {
+      next.copyrightName = patch.realName;
+    }
+    if (patch.penName !== undefined && !next.name.trim()) {
+      next.name = patch.penName;
+    }
+    setAuthorDraft(next);
+    setConfig(prev => ({
+      ...prev,
+      authorIdentityId: next.id,
+      authorIdentity: next,
+      authorName: next.penName,
+      author: next.penName,
+      writerName: next.penName,
+    }));
+  };
+
+  const persistAuthorDraft = () => {
+    const saved = saveAuthorIdentity(authorDraft);
+    const identities = loadAuthorIdentities();
+    setAuthorIdentities(identities);
+    applyAuthorIdentity(saved, identities);
+  };
+
+  const createBlankAuthor = () => {
+    const now = new Date().toISOString();
+    const fresh: AuthorIdentity = {
+      id: `custom-${crypto.randomUUID()}`,
+      name: "Nuovo autore",
+      realName: "",
+      penName: "",
+      copyrightName: "",
+      archetype: "",
+      biography: "",
+      authorNote: "",
+      voice: "",
+      signatureMoves: "",
+      forbiddenMoves: "",
+      recurringThemes: "",
+      language: config.language,
+      createdAt: now,
+      updatedAt: now,
+    };
+    setAuthorDraft(fresh);
+    applyAuthorIdentity(fresh);
+  };
+
+  const deleteAuthorDraft = () => {
+    if (!authorDraft.id.startsWith("custom-")) return;
+    deleteAuthorIdentity(authorDraft.id);
+    const identities = loadAuthorIdentities();
+    setAuthorIdentities(identities);
+    applyAuthorIdentity(identities[0] || DEFAULT_AUTHOR_IDENTITIES[0], identities);
+  };
   const categories = Object.keys(CATEGORIES);
   const subcategories = CATEGORIES[config.category] || [];
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl border border-border shadow-2xl w-full max-w-lg">
+      <div className="bg-card rounded-xl border border-border shadow-2xl w-full max-w-3xl">
         <div className="p-5 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-primary" />
@@ -181,6 +293,36 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
               className="w-full h-9 bg-muted/50 border border-border rounded-lg px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               placeholder="A guide to inner peace" />
           </Field>
+
+          {primaryShadowTitle && (
+            <div className="rounded-lg border border-sky-400/25 bg-sky-400/10 p-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase text-sky-300">Shadow title sempre attivo</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-foreground">{primaryShadowTitle.title}</p>
+                  <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{primaryShadowTitle.subtitle}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setConfig(prev => ({ ...prev, title: primaryShadowTitle.title, subtitle: primaryShadowTitle.subtitle, shadowTitleOptions }))}
+                  className="h-8 shrink-0 rounded-lg border border-sky-300/30 bg-sky-300/10 px-3 text-xs font-semibold text-sky-100 transition-colors hover:bg-sky-300/20"
+                >
+                  Usa titolo
+                </button>
+              </div>
+            </div>
+          )}
+
+          <AuthorIdentitySection
+            identities={authorIdentities}
+            draft={authorDraft}
+            selectedId={config.authorIdentityId || ""}
+            onSelect={(id) => applyAuthorIdentity(authorIdentities.find((item) => item.id === id) || null)}
+            onCreate={createBlankAuthor}
+            onSave={persistAuthorDraft}
+            onDelete={deleteAuthorDraft}
+            onChange={updateAuthorDraft}
+          />
 
           <Field label={t("book_length")}>
             <div className="grid grid-cols-4 gap-2">
@@ -347,10 +489,23 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
             {t("cancel")}
           </button>
           <button onClick={() => {
-            if (!config.title) return;
-            const authorName = (config.authorName || config.author || config.writerName || "").trim();
-            onSubmit({ ...config, authorName, author: authorName, writerName: authorName });
-          }} disabled={!config.title}
+            const identity = normalizeAuthorIdentity(config.authorIdentity);
+            const authorName = (identity?.penName || config.authorName || config.author || config.writerName || "").trim();
+            onSubmit(ensureBookTitleMetadata({
+              ...config,
+              authorIdentity: identity || undefined,
+              authorIdentityId: identity?.id || config.authorIdentityId,
+              authorName,
+              author: authorName,
+              writerName: authorName,
+            }, {
+              genre: config.genre,
+              category: config.category,
+              subcategory: config.subcategory,
+              targetAudience: config.tone,
+              language: config.language,
+            }));
+          }}
             className="h-9 px-6 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors">
             {t("create_book")}
           </button>
@@ -370,6 +525,212 @@ const Field = forwardRef<HTMLDivElement, { label: string; children: React.ReactN
     );
   }
 );
+
+function AuthorIdentitySection({
+  identities,
+  draft,
+  selectedId,
+  onSelect,
+  onCreate,
+  onSave,
+  onDelete,
+  onChange,
+}: {
+  identities: AuthorIdentity[];
+  draft: AuthorIdentity;
+  selectedId: string;
+  onSelect: (id: string) => void;
+  onCreate: () => void;
+  onSave: () => void;
+  onDelete: () => void;
+  onChange: (patch: Partial<AuthorIdentity>) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-primary/25 bg-primary/5 p-3 space-y-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <div className="ios-icon ios-icon-blue h-9 w-9 rounded-[14px]">
+            <Fingerprint className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Identità autore</p>
+            <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+              Scegli o crea una penna: nome reale, pen name, bio e nota autore verranno usati nel libro e nella voce di scrittura.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onCreate}
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-2.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted/50"
+        >
+          <PlusCircle className="h-3.5 w-3.5" />
+          Nuova
+        </button>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <select
+          value={selectedId}
+          onChange={(e) => onSelect(e.target.value)}
+          className="h-9 rounded-lg border border-border bg-muted/50 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+        >
+          {identities.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.penName} · {item.realName || item.name}
+            </option>
+          ))}
+        </select>
+        <div className="flex gap-2">
+          {draft.id.startsWith("custom-") && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 text-xs font-semibold text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Elimina
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={!draft.penName.trim()}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+          >
+            <Save className="h-3.5 w-3.5" />
+            Salva autore
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-border/60 bg-background/40 p-3 text-[11px] leading-5 text-muted-foreground">
+        Nel libro verrà dichiarato come <strong className="text-foreground">{draft.penName || "pen name non impostato"}</strong>
+        {draft.realName ? `, profilo reale ${draft.realName}` : ""}. Copyright: <strong className="text-foreground">{draft.copyrightName || draft.realName || draft.penName || "da impostare"}</strong>.
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <MiniAuthorField label="Nome profilo">
+          <input
+            value={draft.name}
+            onChange={(e) => onChange({ name: e.target.value })}
+            className="h-9 w-full rounded-lg border border-border bg-muted/50 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            placeholder="Es. Thriller legale, Penna Romance..."
+          />
+        </MiniAuthorField>
+        <MiniAuthorField label="Nome reale">
+          <input
+            value={draft.realName || ""}
+            onChange={(e) => onChange({ realName: e.target.value })}
+            className="h-9 w-full rounded-lg border border-border bg-muted/50 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            placeholder="Nome reale autore o società"
+          />
+        </MiniAuthorField>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <MiniAuthorField label="Pen name pubblico">
+          <input
+            value={draft.penName}
+            onChange={(e) => onChange({ penName: e.target.value })}
+            className="h-9 w-full rounded-lg border border-border bg-muted/50 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            placeholder="Nome in copertina"
+          />
+        </MiniAuthorField>
+        <MiniAuthorField label="Nome copyright">
+          <input
+            value={draft.copyrightName || ""}
+            onChange={(e) => onChange({ copyrightName: e.target.value })}
+            className="h-9 w-full rounded-lg border border-border bg-muted/50 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            placeholder="Nome legale o pen name per copyright"
+          />
+        </MiniAuthorField>
+      </div>
+
+      <MiniAuthorField label="Archetipo">
+        <input
+          value={draft.archetype}
+          onChange={(e) => onChange({ archetype: e.target.value })}
+          className="h-9 w-full rounded-lg border border-border bg-muted/50 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          placeholder="Es. narratore oscuro, coach pratico, saggista poetico"
+        />
+      </MiniAuthorField>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <MiniAuthorField label="Voce">
+          <textarea
+            value={draft.voice}
+            onChange={(e) => onChange({ voice: e.target.value })}
+            rows={3}
+            className="w-full resize-none rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            placeholder="Ritmo, tono, fraseggio, lessico..."
+          />
+        </MiniAuthorField>
+        <MiniAuthorField label="Biografia pubblica">
+          <textarea
+            value={draft.biography}
+            onChange={(e) => onChange({ biography: e.target.value })}
+            rows={3}
+            className="w-full resize-none rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            placeholder="Bio che apparirà nella sezione autore del libro..."
+          />
+        </MiniAuthorField>
+      </div>
+
+      <MiniAuthorField label="Nota autore">
+        <textarea
+          value={draft.authorNote || ""}
+          onChange={(e) => onChange({ authorNote: e.target.value })}
+          rows={3}
+          className="w-full resize-none rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+          placeholder="Nota personale da usare nella postfazione / nota dell'autore..."
+        />
+      </MiniAuthorField>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <MiniAuthorField label="Firma">
+          <textarea
+            value={draft.signatureMoves}
+            onChange={(e) => onChange({ signatureMoves: e.target.value })}
+            rows={3}
+            className="w-full resize-none rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            placeholder="Aperture, immagini, finali..."
+          />
+        </MiniAuthorField>
+        <MiniAuthorField label="Divieti">
+          <textarea
+            value={draft.forbiddenMoves}
+            onChange={(e) => onChange({ forbiddenMoves: e.target.value })}
+            rows={3}
+            className="w-full resize-none rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            placeholder="Cosa non deve mai fare..."
+          />
+        </MiniAuthorField>
+        <MiniAuthorField label="Ossessioni">
+          <textarea
+            value={draft.recurringThemes}
+            onChange={(e) => onChange({ recurringThemes: e.target.value })}
+            rows={3}
+            className="w-full resize-none rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            placeholder="Temi ricorrenti..."
+          />
+        </MiniAuthorField>
+      </div>
+    </div>
+  );
+}
+
+function MiniAuthorField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground">
+        <UserRound className="h-3 w-3" />
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
 
 function GenreStructurePreview({ genre, subcategory }: { genre: string; subcategory?: string }) {
   const bp = useMemo(() => getGenreBlueprint(genre, subcategory), [genre, subcategory]);

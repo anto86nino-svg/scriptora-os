@@ -1,5 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { callDeepSeekTracked } from "../_shared/ai-tracking.ts";
 
 const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY") || "";
 
@@ -9,33 +10,34 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-async function callDeepSeek(system: string, user: string) {
-  if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY missing");
-
-  const r = await fetch("https://api.deepseek.com/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "deepseek-chat",
-      temperature: 0.95,
-      max_tokens: 1100,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
-  });
-
-  if (!r.ok) {
-    const t = await r.text();
-    throw new Error(`DeepSeek error ${r.status}: ${t.slice(0, 300)}`);
+function hashSeed(value: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
   }
+  return hash >>> 0;
+}
 
-  const data = await r.json();
-  return String(data?.choices?.[0]?.message?.content || "").trim();
+function pick<T>(items: T[], seed: number, offset = 0): T {
+  return items[(seed + offset * 9973) % items.length];
+}
+
+async function callDeepSeek(system: string, user: string, context: { userId?: string | null; projectId?: string | null; metadata?: Record<string, unknown> } = {}) {
+  if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY missing");
+  const result = await callDeepSeekTracked({
+    apiKey: DEEPSEEK_API_KEY,
+    systemPrompt: system,
+    userPrompt: user,
+    model: "deepseek-chat",
+    temperature: 1.05,
+    maxTokens: 1300,
+    taskType: "scriptora_novel_idea",
+    projectId: context.projectId,
+    userId: context.userId,
+    metadata: context.metadata,
+  });
+  return result.content.trim();
 }
 
 serve(async (req) => {
@@ -47,18 +49,93 @@ serve(async (req) => {
     const body = await req.json().catch(() => ({}));
 
     const genre = String(body.genre || "romance").trim();
+    const seedIdea = String(body.seedIdea || body.idea || "").trim();
     const subcategory = String(body.subcategory || "").trim();
     const tone = String(body.tone || "").trim();
     const intensity = String(body.intensity || "").trim();
     const centralDynamic = String(body.centralDynamic || "").trim();
     const protagonistType = String(body.protagonistType || "").trim();
     const language = String(body.language || "Italian").trim();
+    const diversitySeed = String(body.diversitySeed || crypto.randomUUID()).trim();
+    const previousIdeas: string[] = Array.isArray(body.previousIdeas)
+      ? body.previousIdeas.map((item: unknown) => String(item || "").replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, 10)
+      : [];
+    const userId = body.userId ? String(body.userId) : null;
+    const projectId = body.projectId ? String(body.projectId) : null;
+    const seed = hashSeed(`${diversitySeed}|${genre}|${subcategory}|${tone}|${previousIdeas.join("|")}`);
+
+    const protagonistRoles = [
+      "restauratrice di mappe antiche",
+      "fotografo forense",
+      "traduttrice di lingue morte",
+      "ex medico di bordo",
+      "architetta acustica",
+      "cuoco fallito diventato investigatore privato",
+      "erede sotto falso nome",
+      "guardiana di un osservatorio abbandonato",
+      "violoncellista che ha perso l'udito da un orecchio",
+      "avvocato dei casi impossibili",
+      "geologa specializzata in frane e memorie sepolte",
+      "bibliotecario che riconosce le bugie dalla calligrafia",
+    ];
+    const settings = [
+      "un faro trasformato in biblioteca privata",
+      "un hotel sul lago fuori stagione",
+      "un archivio sotterraneo sotto una città termale",
+      "una nave-laboratorio ferma in porto",
+      "un conservatorio chiuso per restauri",
+      "un quartiere verticale in una metropoli piovosa",
+      "una valle dove la nebbia cancella i confini",
+      "una corte nobiliare in decadenza",
+      "una clinica sperimentale costruita in una ex abbazia",
+      "un'isola mineraria quasi disabitata",
+      "una stazione orbitale turistica al collasso",
+      "un teatro di provincia riaperto dopo un incendio",
+    ];
+    const conflictEngines = [
+      "una prova materiale che cambia significato a ogni nuova scena",
+      "un patto firmato anni prima con una clausola emotiva impossibile",
+      "una scomparsa che tutti ricordano in modo diverso",
+      "un oggetto ereditato che rende visibile una colpa nascosta",
+      "un'indagine privata che diventa confessione sentimentale",
+      "una rivalità professionale che obbliga due persone a dipendere l'una dall'altra",
+      "un segreto pubblico che nessuno osa nominare",
+      "una memoria falsa che protegge la verità sbagliata",
+    ];
+    const relationshipShapes = [
+      "alleanza forzata con fiducia guadagnata per sottrazione",
+      "attrazione trattenuta tra due persone che hanno ragione entrambe",
+      "rivalità professionale che diventa vulnerabilità",
+      "relazione epistolare nata da un errore d'identità",
+      "protezione reciproca senza salvataggi facili",
+      "amicizia spezzata che deve diventare qualcosa di più per sopravvivere",
+    ];
+    const sensoryAnchors = [
+      "odore di carta bagnata",
+      "musica sentita attraverso le pareti",
+      "luce fredda di neon in piena notte",
+      "sale sulle mani",
+      "vetro appannato",
+      "polvere dorata nei fasci di sole",
+      "metallo caldo dopo la pioggia",
+      "inchiostro che macchia le dita",
+    ];
+
+    const creativeCoordinates = {
+      protagonistRole: pick(protagonistRoles, seed, 1),
+      setting: pick(settings, seed, 2),
+      conflictEngine: pick(conflictEngines, seed, 3),
+      relationshipShape: pick(relationshipShapes, seed, 4),
+      sensoryAnchor: pick(sensoryAnchors, seed, 5),
+    };
 
     const system = `Sei Scriptora Novel Concept Architect.
 Crei idee di romanzo commerciali, emotive, fresche e non ripetitive.
 Scrivi in ${language}.
 Output SOLO l'idea del romanzo, niente elenco, niente spiegazioni, niente markdown.
-Ogni generazione deve sembrare nuova, concreta, vendibile e pronta per creare personaggi e trama.`;
+Ogni generazione deve sembrare nuova, concreta, vendibile e pronta per creare personaggi e trama.
+Se l'utente non specifica una trama precisa, devi cambiare davvero: professione, luogo, ferita, conflitto, segreto, dinamica e promessa narrativa.
+Non riciclare protagoniste generiche, uomini misteriosi indistinti, città del passato, segreti familiari vaghi o lo schema “torna nel luogo che aveva dimenticato”, salvo richiesta esplicita.`;
 
     const user = `Crea UNA idea di romanzo originale usando queste coordinate:
 
@@ -68,6 +145,18 @@ Tono: ${tone || "cinematografico, emotivo, bestseller"}
 Intensità: ${intensity || "medium"}
 Dinamica centrale: ${centralDynamic || "desiderio, conflitto e segreto"}
 Tipo protagonista: ${protagonistType || "protagonista ferita ma attiva"}
+${seedIdea ? `Seme dato dall'utente da rispettare e trasformare senza clonare idee precedenti: ${seedIdea}` : "Nessun seme trama specifico: inventa una direzione nuova usando le coordinate creative."}
+
+Coordinate creative obbligatorie per differenziare questa generazione:
+- Ruolo/professione protagonista: ${creativeCoordinates.protagonistRole}
+- Location principale: ${creativeCoordinates.setting}
+- Motore del conflitto: ${creativeCoordinates.conflictEngine}
+- Geometria relazionale: ${creativeCoordinates.relationshipShape}
+- Ancora sensoriale: ${creativeCoordinates.sensoryAnchor}
+- Seed interno: ${diversitySeed}
+
+Idee recenti da NON imitare:
+${previousIdeas.length ? previousIdeas.map((item, index) => `${index + 1}. ${item}`).join("\n") : "Nessuna idea recente disponibile."}
 
 Regole:
 - 4-7 frasi massimo.
@@ -75,11 +164,17 @@ Regole:
 - Deve essere specifica, non generica.
 - Deve evitare cliché banali.
 - Deve poter alimentare una Character Bible e un romanzo completo.
-- Non ripetere formule tipo “una donna arriva…” se non necessario.
+- Se non hai un seme utente preciso, NON usare la formula “una donna arriva/torna/scappa” come apertura.
+- Non creare due protagonisti con ferite o segreti simili alle idee recenti.
+- I personaggi devono avere identità, lavoro, desiderio e contraddizione riconoscibili, non archetipi intercambiabili.
 - Non usare titoli.
 - Non scrivere note tecniche.`;
 
-    const idea = await callDeepSeek(system, user);
+    const idea = await callDeepSeek(system, user, {
+      userId,
+      projectId,
+      metadata: { genre, subcategory, language, source: "character_studio", diversitySeed, previousIdeas: previousIdeas.length },
+    });
 
     return new Response(JSON.stringify({ idea }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

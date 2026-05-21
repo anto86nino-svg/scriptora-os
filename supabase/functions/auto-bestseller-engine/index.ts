@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 // Per-request tracking context (set at request entry, used by all callDeepSeek* helpers)
-let __trackCtx: { projectId?: string | null; runId?: string | null } = {};
+let __trackCtx: { projectId?: string | null; runId?: string | null; userId?: string | null } = {};
 
 // =====================================================================
 // AUTO-BESTSELLER ENGINE — SSE-streaming Publishing Brain™ orchestrator
@@ -43,6 +43,8 @@ interface OrchestratorInput {
   prefilledTitle?: string;
   prefilledSubtitle?: string;
   charactersText?: string;
+  bookType?: string;
+  userId?: string;
 }
 
 // =============================================================
@@ -114,6 +116,7 @@ interface OrchestratorOutput {
   }>;
   finalScore: number;
   marketScore: number;
+  characterBible?: string;
   status: "ready_for_kdp" | "needs_revision" | "failed";
   pipeline: {
     titleCandidates: Array<{ title: string; subtitle: string; marketScore: number; verdict: string }>;
@@ -205,7 +208,10 @@ async function callDeepSeek(
         taskType,
         promptTokens,
         completionTokens,
+        promptCacheHitTokens: attempt.usage?.prompt_cache_hit_tokens,
+        promptCacheMissTokens: attempt.usage?.prompt_cache_miss_tokens,
         projectId: __trackCtx.projectId || null,
+        userId: __trackCtx.userId || null,
         metadata: { runId: __trackCtx.runId || null, json, attempts: i },
       });
       return attempt.content;
@@ -336,6 +342,7 @@ async function callDeepSeekStream(
           promptTokens: estimateTokens(system + user),
           completionTokens: estimateTokens(text),
           projectId: __trackCtx.projectId || null,
+          userId: __trackCtx.userId || null,
           metadata: { runId: __trackCtx.runId || null, stream: true, estimated: true, attempts: i },
         });
         return text;
@@ -1109,11 +1116,11 @@ Length: ~800 words. Self-contained, no preamble. Plain prose, no JSON.`;
         refineChapter(inputForWriting, outline.title, draft),
         30_000,
         `refineChapter ch${i + 1}`,
-        { finalText: draft, rewriteConfidence: 0.5, finalScore: 6 },
+        { finalText: draft, coachReport: null, voice: null, rewriteConfidence: 0.5, finalScore: 6 },
       );
     } catch (e) {
       console.error(`[runPipeline] refineChapter ch${i + 1} failed — using draft as-is:`, e);
-      refined = { finalText: draft, rewriteConfidence: 0.5, finalScore: 6 };
+      refined = { finalText: draft, coachReport: null, voice: null, rewriteConfidence: 0.5, finalScore: 6 };
     }
 
     chapters.push({
@@ -1210,7 +1217,7 @@ serve(async (req) => {
       return new Response("Missing payload param", { status: 400, headers: corsHeaders });
     }
 
-    let input: OrchestratorInput & { runId?: string };
+    let input: OrchestratorInput & { runId?: string; userId?: string };
     try {
       input = JSON.parse(atob(payloadParam));
     } catch {
@@ -1225,7 +1232,7 @@ serve(async (req) => {
     }
 
     const runId = input.runId;
-    __trackCtx = { projectId: runId || null, runId: runId || null };
+    __trackCtx = { projectId: runId || null, runId: runId || null, userId: input.userId || null };
 
     // Buffer of all progress events — used to PATCH the DB row periodically so
     // the run keeps making visible progress even if the client tab disconnects.
@@ -1320,7 +1327,7 @@ serve(async (req) => {
 
   // ---- Legacy POST mode (single JSON response) ----
   try {
-    const input = (await req.json()) as OrchestratorInput & { runId?: string };
+    const input = (await req.json()) as OrchestratorInput & { runId?: string; userId?: string };
     if (!input.genre || !(input.idea || input.topic) || !input.targetAudience) {
       return new Response(JSON.stringify({ error: "genre, idea/topic, and targetAudience are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -1328,7 +1335,7 @@ serve(async (req) => {
     if (!DEEPSEEK_API_KEY || !SUPABASE_URL || !SERVICE_ROLE) {
       throw new Error("Missing required environment configuration");
     }
-    __trackCtx = { projectId: input.runId || null, runId: input.runId || null };
+    __trackCtx = { projectId: input.runId || null, runId: input.runId || null, userId: input.userId || null };
     const result = await runPipeline(input);
     return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {

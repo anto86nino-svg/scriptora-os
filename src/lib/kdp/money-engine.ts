@@ -9,6 +9,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import type { PlanTier } from "@/lib/plan";
+import { getCurrentUserId } from "@/services/storageService";
 
 /* ============ Types ============ */
 
@@ -229,9 +230,12 @@ type Action =
 
 async function invoke<T>(action: Action, plan: PlanTier): Promise<T> {
   const { data, error } = await supabase.functions.invoke("kdp-money-engine", {
-    body: { action: action.kind, payload: action, plan },
+    body: { action: action.kind, payload: action, plan, userId: getCurrentUserId() },
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    const detail = (data as any)?.error || error.message;
+    throw new Error(detail);
+  }
   if ((data as any)?.error) throw new Error((data as any).error);
   return data as T;
 }

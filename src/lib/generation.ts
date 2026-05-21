@@ -5,6 +5,9 @@ import { buildWritingStyleBlock, findStylePresetById, findStylePresetByLabel } f
 import { buildEditorialMasteryBlock } from "@/lib/editorial-mastery";
 import { validateEditorial } from "@/lib/editorial-validator";
 import { withRetry, getBreakerCooldown } from "@/lib/api-resilience";
+import { normalizeAuthorIdentity } from "@/lib/author-identity";
+import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import { getCurrentUserId } from "@/services/storageService";
 
 /**
  * Verbose streaming logs are off by default — they intasavano la console
@@ -66,7 +69,37 @@ class AICreditsError extends Error {
   }
 }
 
-async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: number = 300000): Promise<string> {
+export interface AIUsageContext {
+  projectId?: string | null;
+  userId?: string | null;
+  taskType?: string;
+  metadata?: Record<string, unknown>;
+}
+
+function usagePayload(usage?: AIUsageContext) {
+  return {
+    taskType: usage?.taskType || "generate_book",
+    projectId: usage?.projectId || null,
+    userId: usage?.userId || getCurrentUserId(),
+    metadata: usage?.metadata || {},
+  };
+}
+
+function notifyUsageChanged() {
+  try {
+    window.dispatchEvent(new Event("nexora-usage-change"));
+  } catch { /* noop */ }
+}
+
+function withUsage(base: AIUsageContext | undefined, patch: AIUsageContext): AIUsageContext {
+  return {
+    ...base,
+    ...patch,
+    metadata: { ...(base?.metadata || {}), ...(patch.metadata || {}) },
+  };
+}
+
+async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: number = 300000, usage?: AIUsageContext): Promise<string> {
   const controller = new AbortController();
   // Use a watchdog: reset whenever we receive bytes (DeepSeek can be slow but
   // streaming → we only abort on TRUE silence).
@@ -81,13 +114,17 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
   if (DEV_DEBUG_STREAM) console.log("[Nexora] AI request started (streaming)");
   try {
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-book`;
+    const currentUsage = usagePayload(usage);
+    const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: { session: null } } as any));
+    const bearer = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        "Authorization": `Bearer ${bearer}`,
       },
-      body: JSON.stringify({ systemPrompt, userPrompt }),
+      body: JSON.stringify({ systemPrompt, userPrompt, ...currentUsage }),
       signal: controller.signal,
     });
 
@@ -125,6 +162,7 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
     }
     if (!parsed.content) throw new Error("Empty response from AI");
     if (DEV_DEBUG_STREAM) console.log("[Nexora] AI response received:", parsed.content.length, "chars");
+    notifyUsageChanged();
     return parsed.content;
   } catch (e: any) {
     clearInterval(watchdog);
@@ -137,13 +175,13 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
  * Resilient AI call with circuit breaker + exponential backoff.
  * Retries up to 3 times; never blocks the caller forever.
  */
-async function callAI(systemPrompt: string, userPrompt: string): Promise<string> {
+async function callAI(systemPrompt: string, userPrompt: string, usage?: AIUsageContext): Promise<string> {
   const cooldown = getBreakerCooldown("deepseek");
   if (cooldown > 0) {
     throw new Error(`AI temporarily unavailable. Retry in ${Math.ceil(cooldown / 1000)}s.`);
   }
   return withRetry(
-    () => callAIOnce(systemPrompt, userPrompt, 180000),
+    () => callAIOnce(systemPrompt, userPrompt, 180000, usage),
     {
       maxAttempts: 3,
       baseDelayMs: 2000,
@@ -155,15 +193,15 @@ async function callAI(systemPrompt: string, userPrompt: string): Promise<string>
 }
 
 // Reduced chunk size fallback for resilience
-async function callAIReduced(systemPrompt: string, userPrompt: string): Promise<string> {
-  return callAIOnce(systemPrompt, userPrompt, 180000);
+async function callAIReduced(systemPrompt: string, userPrompt: string, usage?: AIUsageContext): Promise<string> {
+  return callAIOnce(systemPrompt, userPrompt, 180000, usage);
 }
 
 /**
- * FAST blueprint call — uses Lovable AI (Gemini Flash, non-streaming JSON).
- * 60s hard timeout; far faster than DeepSeek streaming for short structured output.
+ * FAST blueprint call — uses DeepSeek non-streaming JSON mode.
+ * 90s hard timeout; faster than streaming for short structured output.
  */
-async function callBlueprintFast(systemPrompt: string, userPrompt: string): Promise<string> {
+async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage?: AIUsageContext): Promise<string> {
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-blueprint-fast`;
   const callOnce = async (): Promise<string> => {
     const res = await fetch(url, {
@@ -173,7 +211,7 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string): Prom
         Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
       },
-      body: JSON.stringify({ systemPrompt, userPrompt }),
+      body: JSON.stringify({ systemPrompt, userPrompt, ...usagePayload({ ...usage, taskType: usage?.taskType || "generate_blueprint" }) }),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -188,13 +226,14 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string): Prom
       throw new Error(error);
     }
     if (!content) throw new Error("Empty blueprint response");
+    notifyUsageChanged();
     return content as string;
   };
   return withRetry(callOnce, {
     maxAttempts: 2,
     baseDelayMs: 1500,
     maxDelayMs: 4000,
-    serviceKey: "lovable-ai",
+    serviceKey: "deepseek-blueprint",
     shouldRetry: (err) => !(err instanceof AICreditsError),
   });
 }
@@ -263,6 +302,7 @@ function getStyleLock(config: BookConfig): string {
   const preset = findStylePresetById(config.authorStyle) ?? findStylePresetByLabel(config.authorStyle);
   const styleLabel = preset?.label ?? config.authorStyle;
   const styleBlock = buildWritingStyleBlock(config.authorStyle);
+  const authorBlock = buildAuthorIdentityBlock(config);
 
   return `STYLE LOCK — MAINTAIN CONSISTENTLY:
 - Tone: "${config.tone}" — NEVER deviate from this voice
@@ -272,7 +312,75 @@ function getStyleLock(config: BookConfig): string {
 
 ${styleBlock}
 
+${authorBlock}
+
 If previous chapters established a specific vocabulary, rhythm, or narrative device, CONTINUE using it. Style drift = failure.`;
+}
+
+function buildAuthorIdentityBlock(config: BookConfig): string {
+  const identity = normalizeAuthorIdentity(config.authorIdentity);
+  const penName = identity?.penName || config.authorName || config.author || config.writerName || "";
+  const copyrightName = identity?.copyrightName || identity?.realName || penName;
+  if (!identity && !String(penName || "").trim()) return "";
+
+  if (!identity) {
+    return `AUTHOR ATTRIBUTION LOCK:
+- Publishing author / pen name: ${penName}
+- Write as a coherent original authorial voice attributable to this name.
+- Maintain one consistent sensibility, vocabulary, rhythm, and worldview across the entire book.`;
+  }
+
+  return `AUTHOR IDENTITY LOCK — THIS BOOK MUST SOUND ATTRIBUTABLE TO THIS AUTHOR:
+Publishing author / pen name: ${identity.penName}
+Real/legal author name: ${identity.realName || "not specified"}
+Copyright holder: ${copyrightName || "not specified"}
+Internal identity/profile name: ${identity.name}
+Author archetype: ${identity.archetype || "not specified"}
+Public author biography: ${identity.biography || "not specified"}
+Author note / personal afterword: ${identity.authorNote || "not specified"}
+Core voice: ${identity.voice || "not specified"}
+Signature moves to repeat naturally: ${identity.signatureMoves || "not specified"}
+Forbidden moves / never do this: ${identity.forbiddenMoves || "not specified"}
+Recurring themes and obsessions: ${identity.recurringThemes || "not specified"}
+
+MANDATORY AUTHORSHIP RULES:
+- The prose must feel written by ${identity.penName}, not by a generic AI.
+- Use this identity as the authorial worldview behind metaphors, examples, emotional priorities, and chapter endings.
+- Use the public pen name exactly as "${identity.penName}" in book attribution, title page, cover metadata and author-facing sections.
+- Use the copyright holder exactly as "${copyrightName || identity.penName}" when copyright/legal ownership is needed.
+- Use the public biography and author note in front/back matter when those sections are generated.
+- Keep the signature moves recognizable but never copy-paste the same sentence pattern.
+- Never mention this identity block or explain the style rules inside the book.`;
+}
+
+function getAuthorPenName(config: BookConfig): string {
+  const identity = normalizeAuthorIdentity(config.authorIdentity);
+  return (identity?.penName || config.authorName || config.author || config.writerName || "").trim();
+}
+
+function getAuthorCopyrightName(config: BookConfig): string {
+  const identity = normalizeAuthorIdentity(config.authorIdentity);
+  return (identity?.copyrightName || identity?.realName || identity?.penName || config.authorName || config.author || config.writerName || "").trim();
+}
+
+function buildAuthorBookDeclaration(config: BookConfig): string {
+  const identity = normalizeAuthorIdentity(config.authorIdentity);
+  const penName = getAuthorPenName(config) || "Not specified";
+  const copyrightName = getAuthorCopyrightName(config) || penName;
+  if (!identity) {
+    return `AUTHOR DECLARATION:
+- Pen name/public author: ${penName}
+- Copyright holder: ${copyrightName}`;
+  }
+  return `AUTHOR DECLARATION:
+- Pen name/public author printed in the book: ${identity.penName}
+- Real/legal name: ${identity.realName || "not specified"}
+- Copyright holder: ${copyrightName}
+- Public biography to use in "About the Author": ${identity.biography || "not specified"}
+- Personal author note to use in back matter: ${identity.authorNote || "not specified"}
+- Authorial voice: ${identity.voice || "not specified"}
+- Signature moves: ${identity.signatureMoves || "not specified"}
+- Forbidden moves: ${identity.forbiddenMoves || "not specified"}`;
 }
 
 /* ============ Word Budget System ============ */
@@ -543,6 +651,103 @@ Every sentence must feel intentional and polished.`;
   return "";
 }
 
+function cleanJsonFence(value: string): string {
+  return String(value || "").replace(/```json\n?|```/g, "").trim();
+}
+
+function stringifyField(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value == null) return "";
+  if (Array.isArray(value)) return value.map(stringifyField).filter(Boolean).join("\n\n");
+  if (typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, val]) => `${key}: ${stringifyField(val)}`)
+      .filter((line) => line.trim().length > 0)
+      .join("\n");
+  }
+  return String(value);
+}
+
+function normalizeBlueprint(raw: unknown, config: BookConfig): BookBlueprint {
+  const source = raw && typeof raw === "object" ? raw as Partial<BookBlueprint> : {};
+  const outlines = Array.isArray(source.chapterOutlines) ? source.chapterOutlines : [];
+  const chapterOutlines = Array.from({ length: config.numberOfChapters }, (_, i) => {
+    const item = outlines[i] || {};
+    const summary = stringifyField((item as any).summary).trim() || `Develop chapter ${i + 1} of "${config.title}".`;
+    const title = resolveChapterTitle(stringifyField((item as any).title).trim(), i, {
+      config,
+      summary,
+      totalChapters: config.numberOfChapters,
+    });
+    const rawSubs = Array.isArray((item as any).subchapters) ? (item as any).subchapters : [];
+    const subchapters = config.subchaptersEnabled
+      ? rawSubs.map((sub: any, j: number) => ({
+          title: stringifyField(sub?.title).trim() || `${title} · ${j + 1}`,
+          summary: stringifyField(sub?.summary).trim() || summary,
+        })).filter((sub: any) => sub.title || sub.summary)
+      : undefined;
+
+    return subchapters?.length ? { title, summary, subchapters } : { title, summary };
+  });
+
+  const themes = Array.isArray(source.themes)
+    ? source.themes.map(stringifyField).map((x) => x.trim()).filter(Boolean)
+    : [];
+
+  return {
+    overview: stringifyField(source.overview).trim() || stringifyField(raw).trim() || `Blueprint for "${config.title}".`,
+    chapterOutlines,
+    themes,
+    emotionalArc: stringifyField(source.emotionalArc).trim(),
+  };
+}
+
+function normalizeFrontMatter(raw: unknown, config: BookConfig): FrontMatter {
+  const source = raw && typeof raw === "object" ? raw as Partial<FrontMatter> : {};
+  const identity = normalizeAuthorIdentity(config.authorIdentity);
+  const penName = getAuthorPenName(config);
+  const copyrightName = getAuthorCopyrightName(config);
+  const year = new Date().getFullYear();
+  const titlePageFallback = [config.title, config.subtitle, penName ? `di ${penName}` : ""].filter(Boolean).join("\n\n");
+  const copyrightFallback = copyrightName
+    ? `© ${year} ${copyrightName}. Tutti i diritti riservati.\nAutore / pen name: ${penName || copyrightName}.`
+    : `© ${year}`;
+  const result: FrontMatter = {
+    titlePage: stringifyField(source.titlePage).trim() || titlePageFallback,
+    copyright: stringifyField(source.copyright).trim() || copyrightFallback,
+    dedication: stringifyField(source.dedication).trim(),
+    aboutAuthor: stringifyField(source.aboutAuthor).trim() || (identity?.biography ? `${penName ? `${penName}. ` : ""}${identity.biography}` : ""),
+    howToUse: stringifyField(source.howToUse).trim(),
+    letterToReader: stringifyField(source.letterToReader).trim() || (typeof raw === "string" ? raw : ""),
+  };
+
+  if (penName && !result.titlePage.toLowerCase().includes(penName.toLowerCase())) {
+    result.titlePage = [result.titlePage, `di ${penName}`].filter(Boolean).join("\n\n");
+  }
+  if (copyrightName && !result.copyright.toLowerCase().includes(copyrightName.toLowerCase())) {
+    result.copyright = [result.copyright, `© ${year} ${copyrightName}.`].filter(Boolean).join("\n");
+  }
+  if (penName && !result.copyright.toLowerCase().includes(penName.toLowerCase())) {
+    result.copyright = [result.copyright, `Autore / pen name: ${penName}.`].filter(Boolean).join("\n");
+  }
+
+  return result;
+}
+
+function normalizeBackMatter(raw: unknown, config?: BookConfig): BackMatter {
+  const source = raw && typeof raw === "object" ? raw as Partial<BackMatter> : {};
+  const identity = config ? normalizeAuthorIdentity(config.authorIdentity) : null;
+  const penName = config ? getAuthorPenName(config) : "";
+  const authorNoteFallback = identity?.authorNote || (identity?.biography ? `${penName ? `${penName}. ` : ""}${identity.biography}` : "");
+  return {
+    conclusion: stringifyField(source.conclusion).trim() || (typeof raw === "string" ? raw : ""),
+    authorNote: stringifyField(source.authorNote).trim() || authorNoteFallback,
+    callToAction: stringifyField(source.callToAction).trim(),
+    reviewRequest: stringifyField(source.reviewRequest).trim(),
+    otherBooks: stringifyField(source.otherBooks).trim(),
+  };
+}
+
 /* ============ Chunked Chapter Generation ============ */
 
 export interface ChunkProgress {
@@ -563,9 +768,20 @@ export async function generateChapterChunked(
   chapterLengthOverride?: string,
   onChunkProgress?: (progress: ChunkProgress) => void,
   genreLock?: GenreLock,
-  opts?: { adaptive?: { plan: import("@/lib/plan").PlanTier } },
+  opts?: { adaptive?: { plan: import("@/lib/plan").PlanTier }; usage?: AIUsageContext },
 ): Promise<Chapter> {
-  const outline = blueprint.chapterOutlines[chapterIndex];
+  const rawOutline = blueprint.chapterOutlines[chapterIndex] || {
+    title: "",
+    summary: `Develop chapter ${chapterIndex + 1} of "${config.title}".`,
+  };
+  const outline = {
+    ...rawOutline,
+    title: resolveChapterTitle(rawOutline.title, chapterIndex, {
+      config,
+      summary: rawOutline.summary,
+      totalChapters: config.numberOfChapters,
+    }),
+  };
   const targetWords = getChapterTargetWords(config, chapterIndex, config.numberOfChapters, chapterLengthOverride);
   const contextMemory = buildContextMemory(config, blueprint, previousChapters, chapterIndex);
   const systemBase = getSystemPrompt(config, genreLock);
@@ -690,7 +906,15 @@ Write in ${config.language}.${adaptiveSuffix}`;
     let chunkText: string | null = null;
 
     try {
-      chunkText = await callAIOnce(systemPrompt, chunkPrompt, sizeConfig.timeout);
+      chunkText = await callAIOnce(
+        systemPrompt,
+        chunkPrompt,
+        sizeConfig.timeout,
+        withUsage(opts?.usage, {
+          taskType: "generate_chapter_chunk",
+          metadata: { chapterIndex: chapterIndex + 1, chunkIndex: chunkIndex + 1, phase, chunkSize },
+        }),
+      );
       consecutiveFailures = 0; // Reset on success
     } catch (e: any) {
       consecutiveFailures++;
@@ -709,6 +933,10 @@ Write in ${config.language}.${adaptiveSuffix}`;
               `You are a ${config.genre} author writing in ${config.language}. Be concise and complete.`,
               `Write the opening section (~600 words) of chapter "${outline.title}" for the book "${config.title}". Outline: ${outline.summary}. Plain prose only.`,
               90000,
+              withUsage(opts?.usage, {
+                taskType: "generate_chapter_fallback",
+                metadata: { chapterIndex: chapterIndex + 1, chunkIndex: chunkIndex + 1 },
+              }),
             );
             consecutiveFailures = 0;
           } catch {
@@ -735,8 +963,12 @@ Write in ${config.language}.${adaptiveSuffix}`;
     chunkText = chunkText.replace(/^```[a-z]*\n?/g, "").replace(/\n?```$/g, "").trim();
     if (isFirstChunk) {
       const lines = chunkText.split("\n");
-      if (lines[0] && lines[0].startsWith("#")) {
-        chapterTitle = lines[0].replace(/^#+\s*/, "").trim();
+    if (lines[0] && lines[0].startsWith("#")) {
+        chapterTitle = resolveChapterTitle(lines[0].replace(/^#+\s*/, "").trim(), chapterIndex, {
+          config,
+          summary: outline.summary,
+          totalChapters: config.numberOfChapters,
+        });
         chunkText = lines.slice(1).join("\n").trim();
       }
     }
@@ -749,7 +981,11 @@ Write in ${config.language}.${adaptiveSuffix}`;
         try {
           chunkText = await callAI(
             systemPrompt + " CRITICAL: Your previous attempt repeated content. Write ENTIRELY NEW prose that continues from the last sentence.",
-            chunkPrompt + "\n\nWARNING: Previous attempt overlapped. Write COMPLETELY NEW content."
+            chunkPrompt + "\n\nWARNING: Previous attempt overlapped. Write COMPLETELY NEW content.",
+            withUsage(opts?.usage, {
+              taskType: "generate_chapter_overlap_fix",
+              metadata: { chapterIndex: chapterIndex + 1, chunkIndex },
+            }),
           );
           chunkText = chunkText.replace(/^```[a-z]*\n?/g, "").replace(/\n?```$/g, "").trim();
         } catch {
@@ -816,7 +1052,14 @@ Write in ${config.language}.${adaptiveSuffix}`;
             const sysBase = getSystemPrompt(config, genreLock);
             const sysPrompt = `${sysBase}\n\n${instructions}`;
             const userPrompt = `Original chapter text to revise (in ${config.language}):\n\n${text}`;
-            return await callAI(sysPrompt, userPrompt);
+            return await callAI(
+              sysPrompt,
+              userPrompt,
+              withUsage(opts.usage, {
+                taskType: "adaptive_rewrite",
+                metadata: { chapterIndex: chapterIndex + 1, mode: _mode },
+              }),
+            );
           },
         },
       );
@@ -827,7 +1070,11 @@ Write in ${config.language}.${adaptiveSuffix}`;
   }
 
   return {
-    title: chapterTitle,
+    title: resolveChapterTitle(chapterTitle, chapterIndex, {
+      config,
+      summary: outline.summary,
+      totalChapters: config.numberOfChapters,
+    }),
     content: accumulatedContent,
     subchapters: [],
   };
@@ -835,7 +1082,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
 
 /* ============ Blueprint ============ */
 
-export async function generateBlueprint(config: BookConfig, genreLock?: GenreLock): Promise<BookBlueprint> {
+export async function generateBlueprint(config: BookConfig, genreLock?: GenreLock, usage?: AIUsageContext): Promise<BookBlueprint> {
   const bookInfo = BOOK_LENGTH_CONFIG[config.bookLength];
   const totalWords = getBookTotalWords(config);
   const editorialBP = resolveLockedBlueprint(config, genreLock);
@@ -846,6 +1093,8 @@ export async function generateBlueprint(config: BookConfig, genreLock?: GenreLoc
   const prompt = `Create a detailed book blueprint for:
 Title: "${config.title}"
 Subtitle: "${config.subtitle}"
+Author / Pen name: "${config.authorIdentity?.penName || config.authorName || config.author || config.writerName || "Not specified"}"
+${buildAuthorBookDeclaration(config)}
 Genre: ${config.genre}
 Tone: ${config.tone}
 Language: ${config.language} — ALL content MUST be in ${config.language}
@@ -859,6 +1108,8 @@ ${buildGenreBlueprintBlock(config.genre, (config as any).subcategory)}
 CRITICAL — BESTSELLER QUALITY TITLES:
 - Chapter titles must be EMOTIONALLY COMPELLING — the kind that make readers flip to that page
 - Titles should be evocative, intriguing, or provocative — NOT generic or descriptive
+- NEVER use bare titles like "Chapter 1", "Chapter 2", "Capitolo 1", "Capitolo 2"
+- Every chapter must have a real specific title; the app will display it as "${formatChapterDisplayTitle(0, "Real specific title", { config })}"
 - Think bestseller table of contents that sells the book on its own
 
 Return a JSON object with:
@@ -872,17 +1123,19 @@ Return a JSON object with:
   const result = await callBlueprintFast(
     getSystemPrompt(config, genreLock) + " You are creating a book architecture optimized for the genre profile above.",
     prompt,
+    withUsage(usage, { taskType: "generate_blueprint" }),
   );
   try {
-    return JSON.parse(result.replace(/```json\n?|```/g, "").trim());
+    return normalizeBlueprint(JSON.parse(cleanJsonFence(result)), config);
   } catch {
-    return {
+    return normalizeBlueprint({
       overview: result,
       chapterOutlines: Array.from({ length: config.numberOfChapters }, (_, i) => ({
-        title: `Chapter ${i + 1}`, summary: "To be generated",
+        title: resolveChapterTitle("", i, { config, summary: "", totalChapters: config.numberOfChapters }),
+        summary: "To be generated",
       })),
       themes: [], emotionalArc: "",
-    };
+    }, config);
   }
 }
 
@@ -897,6 +1150,7 @@ export async function generateFrontMatter(
   config: BookConfig,
   blueprint: BookBlueprint,
   genreLock?: GenreLock,
+  usage?: AIUsageContext,
 ): Promise<FrontMatter> {
   const bp = resolveLockedBlueprint(config, genreLock);
   const genreKey = resolveGenreKey(config.genre, (config as any).subcategory);
@@ -909,6 +1163,8 @@ export async function generateFrontMatter(
 BOOK:
 - Title: "${config.title}"
 - Subtitle: "${config.subtitle}"
+- Author / Pen name: "${config.authorIdentity?.penName || config.authorName || config.author || config.writerName || "Not specified"}"
+${buildAuthorBookDeclaration(config)}
 - Genre: ${genreKey}
 - Language: ${config.language} — ALL content MUST be in ${config.language}
 - Overview: ${blueprint.overview}
@@ -919,6 +1175,9 @@ ${sectionsList.map((s, i) => `${i + 1}. ${s}`).join("\n")}
 CRITICAL EDITORIAL RULES:
 - Tone of every section must match: ${bp.tone}
 - Use the genre's authentic vocabulary and conventions (e.g. recipes → kitchen equipment notes; medical → disclaimers; software → version notes)
+- Title page MUST declare the exact public pen name.
+- Copyright MUST declare the exact copyright holder from AUTHOR DECLARATION.
+- About Author MUST use the public biography from AUTHOR DECLARATION when available; never invent a different author history.
 - NEVER produce generic placeholders. Each section must feel domain-native.
 - Every field MUST be in ${config.language}.
 
@@ -934,11 +1193,11 @@ Map your sections to this JSON shape (combine extra sections into the closest fi
 
 Return ONLY valid JSON. No markdown.`;
 
-  const result = await callAI(getSystemPrompt(config, genreLock), prompt);
+  const result = await callAI(getSystemPrompt(config, genreLock), prompt, withUsage(usage, { taskType: "generate_front_matter" }));
   try {
-    return JSON.parse(result.replace(/```json\n?|```/g, "").trim());
+    return normalizeFrontMatter(JSON.parse(cleanJsonFence(result)), config);
   } catch {
-    return { titlePage: config.title, copyright: `© ${new Date().getFullYear()}`, dedication: "", aboutAuthor: "", howToUse: "", letterToReader: result };
+    return normalizeFrontMatter({ titlePage: config.title, letterToReader: result }, config);
   }
 }
 
@@ -948,9 +1207,10 @@ export async function generateChapter(
   config: BookConfig, blueprint: BookBlueprint, chapterIndex: number,
   previousChapters: Chapter[], chapterLengthOverride?: string,
   genreLock?: GenreLock,
+  usage?: AIUsageContext,
 ): Promise<Chapter> {
   // Delegate to chunked generation
-  return generateChapterChunked(config, blueprint, chapterIndex, previousChapters, chapterLengthOverride, undefined, genreLock);
+  return generateChapterChunked(config, blueprint, chapterIndex, previousChapters, chapterLengthOverride, undefined, genreLock, { usage });
 }
 
 /* ============ Subchapter ============ */
@@ -959,8 +1219,20 @@ export async function generateSubchapter(
   config: BookConfig, blueprint: BookBlueprint, chapterIndex: number,
   subchapterIndex: number, chapter: Chapter, previousChapters: Chapter[],
   genreLock?: GenreLock,
+  usage?: AIUsageContext,
 ): Promise<{ title: string; content: string }> {
-  const outline = blueprint.chapterOutlines[chapterIndex];
+  const rawOutline = blueprint.chapterOutlines[chapterIndex] || {
+    title: "",
+    summary: `Develop chapter ${chapterIndex + 1} of "${config.title}".`,
+  };
+  const outline = {
+    ...rawOutline,
+    title: resolveChapterTitle(rawOutline.title, chapterIndex, {
+      config,
+      summary: rawOutline.summary,
+      totalChapters: config.numberOfChapters,
+    }),
+  };
   const subOutline = (outline as any).subchapters?.[subchapterIndex];
   const contextMemory = buildContextMemory(config, blueprint, previousChapters, chapterIndex);
   const existingSubs = chapter.subchapters.map((s, i) =>
@@ -999,10 +1271,18 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
 
   const result = await callAI(
     getSystemPrompt(config, genreLock) + ` You are writing a subchapter for chapter ${chapterIndex + 1}. Maintain style lock.`,
-    prompt
+    prompt,
+    withUsage(usage, {
+      taskType: "generate_subchapter",
+      metadata: { chapterIndex: chapterIndex + 1, subchapterIndex: subchapterIndex + 1 },
+    }),
   );
   try {
-    return JSON.parse(result.replace(/```json\n?|```/g, "").trim());
+    const parsed = JSON.parse(cleanJsonFence(result));
+    return {
+      title: stringifyField(parsed?.title).trim() || subOutline?.title || `Subchapter ${subchapterIndex + 1}`,
+      content: stringifyField(parsed?.content).trim() || result,
+    };
   } catch {
     return { title: subOutline?.title || `Subchapter ${subchapterIndex + 1}`, content: result };
   }
@@ -1015,10 +1295,15 @@ export async function generateBackMatter(
   blueprint: BookBlueprint,
   chapters: Chapter[],
   genreLock?: GenreLock,
+  usage?: AIUsageContext,
 ): Promise<BackMatter> {
   const bp = resolveLockedBlueprint(config, genreLock);
   const genreKey = resolveGenreKey(config.genre, (config as any).subcategory);
-  const chapterTitles = chapters.map((c, i) => `${i + 1}. ${c.title}`).join("\n");
+  const chapterTitles = chapters.map((c, i) => formatChapterDisplayTitle(i, c.title, {
+    config,
+    summary: blueprint.chapterOutlines[i]?.summary,
+    totalChapters: config.numberOfChapters,
+  })).join("\n");
   const sectionsList = bp.backMatterTemplate.length
     ? bp.backMatterTemplate
     : ["Conclusione", "Nota dell’autore", "Prossimo passo", "Richiesta recensione", "Letture consigliate"];
@@ -1027,6 +1312,8 @@ export async function generateBackMatter(
 
 BOOK:
 - Title: "${config.title}"
+- Author / Pen name: "${config.authorIdentity?.penName || config.authorName || config.author || config.writerName || "Not specified"}"
+${buildAuthorBookDeclaration(config)}
 - Genre: ${genreKey}
 - Language: ${config.language} — ALL content MUST be in ${config.language}
 - Chapters:\n${chapterTitles}
@@ -1037,6 +1324,8 @@ ${sectionsList.map((s, i) => `${i + 1}. ${s}`).join("\n")}
 CRITICAL EDITORIAL RULES:
 - Tone: ${bp.tone}
 - Use authentic genre conventions (cookbook → conversion tables; medical → references; software → shortcuts; fitness → progression tables; gardening → seasonal calendar; etc.)
+- Author note MUST sound like the selected author and use the personal author note from AUTHOR DECLARATION when available.
+- Review request and closing note must be attributable to the selected pen name, not a generic narrator.
 - NEVER produce generic placeholders. Each section must feel domain-native.
 - All in ${config.language}.
 
@@ -1051,18 +1340,18 @@ Map your sections to this JSON shape (combine extra/domain-specific sections int
 
 Return ONLY valid JSON.`;
 
-  const result = await callAI(getSystemPrompt(config, genreLock), prompt);
+  const result = await callAI(getSystemPrompt(config, genreLock), prompt, withUsage(usage, { taskType: "generate_back_matter" }));
   try {
-    return JSON.parse(result.replace(/```json\n?|```/g, "").trim());
+    return normalizeBackMatter(JSON.parse(cleanJsonFence(result)), config);
   } catch {
-    return { conclusion: result, authorNote: "", callToAction: "", reviewRequest: "", otherBooks: "" };
+    return normalizeBackMatter({ conclusion: result }, config);
   }
 }
 
 /* ============ AI Quality Evaluation ============ */
 
 export async function evaluateChapterQuality(
-  config: BookConfig, chapter: Chapter, chapterIndex: number
+  config: BookConfig, chapter: Chapter, chapterIndex: number, usage?: AIUsageContext
 ): Promise<AIQualityRating> {
   const prompt = `You are a professional book editor and literary critic. Evaluate this chapter with BRUTAL HONESTY.
 
@@ -1094,7 +1383,11 @@ Return ONLY valid JSON.`;
 
   const result = await callAI(
     "You are a world-class literary editor. Evaluate writing quality with precision and honesty. Never inflate scores.",
-    prompt
+    prompt,
+    withUsage(usage, {
+      taskType: "evaluate_chapter_quality",
+      metadata: { chapterIndex: chapterIndex + 1 },
+    }),
   );
   try {
     return JSON.parse(result.replace(/```json\n?|```/g, "").trim());
@@ -1140,7 +1433,7 @@ function getRewriteLevelInstruction(level: RewriteLevel): string {
 export async function rewriteChapter(
   config: BookConfig, blueprint: BookBlueprint, chapter: Chapter,
   chapterIndex: number, previousChapters: Chapter[], instruction: string,
-  aiRating?: AIQualityRating, level: RewriteLevel = "deep"
+  aiRating?: AIQualityRating, level: RewriteLevel = "deep", usage?: AIUsageContext,
 ): Promise<Chapter> {
   const weaknessTarget = aiRating
     ? `\n\nAI EDITOR FEEDBACK (you MUST address these weaknesses):
@@ -1181,7 +1474,11 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
 
   const result = await callAI(
     getSystemPrompt(config) + ` You are performing a ${level.toUpperCase()} rewrite. The new version must be superior.`,
-    prompt
+    prompt,
+    withUsage(usage, {
+      taskType: "rewrite_chapter",
+      metadata: { chapterIndex: chapterIndex + 1, level },
+    }),
   );
   try {
     return JSON.parse(result.replace(/```json\n?|```/g, "").trim());

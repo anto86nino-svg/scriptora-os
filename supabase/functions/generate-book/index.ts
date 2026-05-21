@@ -10,7 +10,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { systemPrompt, userPrompt, taskType = "generate_book", projectId = null } = await req.json();
+    const { systemPrompt, userPrompt, taskType = "generate_book", projectId = null, userId = null, metadata = {} } = await req.json();
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 
@@ -116,7 +116,8 @@ serve(async (req) => {
             promptTokens: promptTokensEstimate,
             completionTokens: estimateTokens(accumulated),
             projectId,
-            metadata: { stream: true, estimated: true },
+            userId,
+            metadata: { ...metadata, stream: true, estimated: true },
           });
 
           if (!closed) {

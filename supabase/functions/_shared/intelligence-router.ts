@@ -5,6 +5,8 @@
  * Supabase Edge Functions (Deno). Keep the two files in sync when changing rules.
  */
 
+import { estimateTokens, logAIUsage } from "./ai-tracking.ts";
+
 export type Complexity = "low" | "medium" | "high" | "premium";
 export type ContentType = "title" | "chapter" | "full_book" | "rewrite" | "analysis";
 export type GenerationMode = "fast" | "smart" | "pro" | "dominate";
@@ -134,6 +136,10 @@ export interface CallAIOptions {
   forceMode?: GenerationMode;
   /** Append a mastery prompt block when the router decides to inject it. */
   masteryBlock?: string;
+  taskType?: string;
+  projectId?: string | null;
+  userId?: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 export interface CallAIResult {
@@ -188,6 +194,19 @@ export async function callAIWithRouting(opts: CallAIOptions): Promise<CallAIResu
 
   const data = await res.json();
   const text: string = data?.choices?.[0]?.message?.content ?? "";
+  const usage = data?.usage || {};
+  logAIUsage({
+    provider: "deepseek",
+    model: config.model,
+    taskType: opts.taskType || opts.signal.task || "routed_ai_call",
+    promptTokens: usage.prompt_tokens ?? estimateTokens(`${systemPrompt}${opts.userPrompt}`),
+    completionTokens: usage.completion_tokens ?? estimateTokens(text),
+    promptCacheHitTokens: usage.prompt_cache_hit_tokens,
+    promptCacheMissTokens: usage.prompt_cache_miss_tokens,
+    projectId: opts.projectId || null,
+    userId: opts.userId || null,
+    metadata: { ...(opts.metadata || {}), mode, routeComplexity: routed.classification.complexity },
+  });
 
   return { text, mode, classification: routed.classification, config };
 }

@@ -6,6 +6,7 @@ import { CoverGenerator } from "./CoverGenerator";
 import { usePlan, PLAN_LIMITS } from "@/lib/plan";
 import { isDevMode } from "@/lib/dev-mode";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 
 interface BookPreviewProps {
   project: BookProject;
@@ -136,7 +137,9 @@ export function BookPreview({
             <div key={`stable-${i}`} className="border border-border rounded-lg p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Ch {i + 1}: {outline.title}</h3>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {formatChapterDisplayTitle(i, outline.title, { config, summary: outline.summary, totalChapters: config.numberOfChapters })}
+                  </h3>
                   <p className="text-xs text-muted-foreground">{outline.summary}</p>
                 </div>
                 {!isChapterGenerated(i) ? (
@@ -204,7 +207,9 @@ export function BookPreview({
           {chapters.map((ch, i) => (
             <div key={`stable-${i}`} className="border border-border rounded-lg p-4 space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-foreground">Chapter {i + 1}: {ch.title}</h3>
+                <h3 className="text-sm font-semibold text-foreground">
+                  {formatChapterDisplayTitle(i, ch.title, { config, summary: blueprint?.chapterOutlines?.[i]?.summary, totalChapters: config.numberOfChapters })}
+                </h3>
                 <div className="flex gap-1">
                   <button onClick={() => onRegenerateChapter(i)} disabled={isGenerating}
                     className="p-1 rounded text-muted-foreground hover:text-foreground disabled:opacity-40" title="Regenerate">

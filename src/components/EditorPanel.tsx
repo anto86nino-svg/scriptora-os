@@ -11,11 +11,16 @@ import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { Progress } from "@/components/ui/progress";
+import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
+import { usePlan } from "@/lib/plan";
+import { canUseSceneImages, requestSceneImage, type SceneImageResult } from "@/lib/scene-images";
 
 interface EditorPanelProps {
   project: BookProject;
   activeSection: SectionId | null;
   onGenerateNext: () => void;
+  onGenerateFrontMatter?: () => void;
+  onGenerateBackMatter?: () => void;
   onGenerateChapter: (index: number) => void;
   onRegenerateChapter: (index: number) => void;
   onRewriteChapter: (index: number, level?: RewriteLevel) => void;
@@ -40,7 +45,7 @@ interface EditorPanelProps {
 
 export function EditorPanel({
   project, activeSection,
-  onGenerateNext, onGenerateChapter, onRegenerateChapter,
+  onGenerateNext, onGenerateFrontMatter, onGenerateBackMatter, onGenerateChapter, onRegenerateChapter,
   onRewriteChapter, onEvaluateChapter, onGenerateSubchapter,
   onAutoRewrite,
   onUpdateChapterContent, onUpdateChapterTitle, onUpdateSubchapterContent, onUpdateSubchapterTitle,
@@ -77,24 +82,27 @@ export function EditorPanel({
           : !!blueprint;
 
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div className="flex h-full flex-1 flex-col">
       {hasContent && (
-        <div className="h-10 border-b border-border/50 flex items-center justify-center gap-1 shrink-0 bg-card/50">
+        <div className="flex h-12 shrink-0 items-center justify-center border-b border-white/10 bg-white/[0.035]">
+          <div className="ios-segment">
           <button onClick={() => setMode("edit")}
-            className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-              mode === "edit" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/40")}>
+            className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+              mode === "edit" ? "bg-white text-slate-950 shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-white/[0.07]")}>
             <PenLine className="h-3.5 w-3.5" /> {t("edit")}
           </button>
           <button onClick={() => setMode("preview")}
-            className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors",
-              mode === "preview" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/40")}>
+            className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+              mode === "preview" ? "bg-white text-slate-950 shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-white/[0.07]")}>
             <Eye className="h-3.5 w-3.5" /> {t("preview")}
           </button>
+          </div>
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
-        <div className={cn("mx-auto py-10 px-8", mode === "preview" ? "max-w-2xl" : "max-w-3xl")}>
+      <div className="scrollbar-thin flex-1 overflow-y-auto">
+        <div className={cn("mx-auto px-4 py-6 sm:px-8", mode === "preview" ? "max-w-2xl" : "max-w-4xl")}>
+          <div className={cn("ios-editor-paper p-5 sm:p-7", mode === "preview" && "bg-white/[0.055]")}>
           {mode === "preview" && hasContent ? (
             <PreviewMode project={project} view={view} ws={ws} />
           ) : (
@@ -117,7 +125,7 @@ export function EditorPanel({
                 />
               )}
               {view.type === "front-matter" && (
-                <FrontMatterView project={project} frontMatter={frontMatter} phase={phase} isGenerating={isGeneratingSection("front-matter")} onGenerate={onGenerateNext} ws={ws} onUpdateField={onUpdateFrontMatterField} />
+                <FrontMatterView project={project} frontMatter={frontMatter} isGenerating={isGeneratingSection("front-matter")} onGenerate={onGenerateFrontMatter || onGenerateNext} ws={ws} onUpdateField={onUpdateFrontMatterField} />
               )}
               {view.type === "chapter" && blueprint && (
                 <ChapterView
@@ -160,10 +168,11 @@ export function EditorPanel({
                 );
               })()}
               {view.type === "back-matter" && (
-                <BackMatterView backMatter={backMatter} phase={phase} isGenerating={isGeneratingSection("back-matter")} onGenerate={onGenerateNext} ws={ws} onUpdateField={onUpdateBackMatterField} />
+                <BackMatterView project={project} backMatter={backMatter} phase={phase} isGenerating={isGeneratingSection("back-matter")} onGenerate={onGenerateBackMatter || onGenerateNext} ws={ws} onUpdateField={onUpdateBackMatterField} />
               )}
             </>
           )}
+          </div>
         </div>
       </div>
     </div>
@@ -177,16 +186,16 @@ function PreviewMode({ project, view, ws }: { project: BookProject; view: any; w
   const proseStyle = { fontFamily: ws.fontFamily, fontSize: `${ws.fontSize}px`, lineHeight: `${ws.lineSpacing}` };
 
   return (
-    <div className="bg-card rounded-xl shadow-lg border border-border/30 overflow-hidden">
+    <div className="overflow-hidden rounded-lg bg-white/[0.045]">
       <div className="p-10 space-y-6" style={proseStyle}>
         {view.type === "blueprint" && blueprint && (
           <>
             <div className="text-center py-8 border-b border-border/20">
-              <h1 className="text-2xl font-bold text-foreground tracking-tight">{config.title}</h1>
+              <h1 className="text-2xl font-bold text-foreground">{config.title}</h1>
               {config.subtitle && <p className="text-base text-muted-foreground mt-2 italic">{config.subtitle}</p>}
             </div>
             <div>
-              <p className="text-xs uppercase tracking-widest text-muted-foreground/50 mb-3">{t("table_of_contents")}</p>
+              <p className="text-xs uppercase text-muted-foreground/50 mb-3">{t("table_of_contents")}</p>
               <ol className="space-y-1.5">
                 {blueprint.chapterOutlines.map((o, i) => (
                   <li key={`row-${i}`} className="text-foreground/70" style={{ fontSize: `${ws.fontSize}px` }}>
@@ -203,7 +212,7 @@ function PreviewMode({ project, view, ws }: { project: BookProject; view: any; w
             <h2 className="text-lg font-bold text-foreground text-center pb-4 border-b border-border/20">{t("front_matter")}</h2>
             {Object.entries(frontMatter).map(([key, val]) => (
               <div key={key}>
-                <h3 className="text-xs uppercase tracking-widest text-muted-foreground/70 mb-2">{key.replace(/([A-Z])/g, " $1").trim()}</h3>
+                <h3 className="text-xs uppercase text-muted-foreground/70 mb-2">{key.replace(/([A-Z])/g, " $1").trim()}</h3>
                 <p className="text-foreground/80 whitespace-pre-wrap">{val}</p>
               </div>
             ))}
@@ -215,7 +224,7 @@ function PreviewMode({ project, view, ws }: { project: BookProject; view: any; w
           return (
             <div className="space-y-6">
               <div className="text-center pb-6 border-b border-border/20">
-                <p className="text-xs uppercase tracking-widest text-primary/60 mb-1">{t("chapters")} {view.chapterIndex + 1}</p>
+                <p className="text-xs uppercase text-primary/60 mb-1">{t("chapters")} {view.chapterIndex + 1}</p>
                 <h2 className="text-xl font-bold text-foreground">{ch.title}</h2>
               </div>
               <div className="text-foreground/80 whitespace-pre-wrap">{ch.content}</div>
@@ -234,7 +243,7 @@ function PreviewMode({ project, view, ws }: { project: BookProject; view: any; w
           return (
             <div className="space-y-4">
               <div className="pb-4 border-b border-border/20">
-                <p className="text-xs uppercase tracking-widest text-primary/60 mb-1">{t("chapters")} {view.chapterIndex + 1} › {view.subIndex + 1}</p>
+                <p className="text-xs uppercase text-primary/60 mb-1">{t("chapters")} {view.chapterIndex + 1} › {view.subIndex + 1}</p>
                 <h2 className="text-lg font-bold text-foreground">{sub.title}</h2>
               </div>
               <div className="text-foreground/80 whitespace-pre-wrap">{sub.content}</div>
@@ -246,7 +255,7 @@ function PreviewMode({ project, view, ws }: { project: BookProject; view: any; w
             <h2 className="text-lg font-bold text-foreground text-center pb-4 border-b border-border/20">{t("back_matter")}</h2>
             {Object.entries(backMatter).map(([key, val]) => (
               <div key={key}>
-                <h3 className="text-xs uppercase tracking-widest text-muted-foreground/70 mb-2">{key.replace(/([A-Z])/g, " $1").trim()}</h3>
+                <h3 className="text-xs uppercase text-muted-foreground/70 mb-2">{key.replace(/([A-Z])/g, " $1").trim()}</h3>
                 <p className="text-foreground/80 whitespace-pre-wrap">{val}</p>
               </div>
             ))}
@@ -278,12 +287,12 @@ function BlueprintView({ blueprint, isGenerating, onUpdateField, onUpdateOutline
               onChange={(e) => onUpdateField?.("overview", e.target.value)}
               readOnly={!onUpdateField}
               rows={Math.max(4, blueprint.overview.split("\n").length + 1)}
-              className="w-full bg-transparent border border-transparent hover:border-border/40 focus:border-primary/50 focus:outline-none rounded-md p-2 text-[15px] leading-8 text-foreground/85 font-serif resize-none"
+              className="w-full bg-transparent border border-transparent hover:border-border/40 focus:border-primary/50 focus:outline-none rounded-md p-2 text-[15px] leading-8 text-foreground/[0.85] font-serif resize-none"
             />
           </div>
           {blueprint.themes.length > 0 && (
             <div>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("themes")}</p>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-3">{t("themes")}</p>
               <div className="flex flex-wrap gap-2">
                 {blueprint.themes.map((th, i) => (
                   <span key={`row-${i}`} className="text-xs px-3 py-1.5 rounded-full bg-primary/10 text-primary font-medium">{th}</span>
@@ -292,8 +301,8 @@ function BlueprintView({ blueprint, isGenerating, onUpdateField, onUpdateOutline
             </div>
           )}
           {blueprint.emotionalArc && (
-            <div className="p-5 rounded-xl bg-muted/20 border border-border/40">
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("emotional_arc")}</p>
+            <div className="p-5 rounded-lg bg-muted/20 border border-border/40">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-2">{t("emotional_arc")}</p>
               <textarea
                 value={blueprint.emotionalArc}
                 onChange={(e) => onUpdateField?.("emotionalArc", e.target.value)}
@@ -304,10 +313,10 @@ function BlueprintView({ blueprint, isGenerating, onUpdateField, onUpdateOutline
             </div>
           )}
           <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-4">{t("chapter_outlines")}</p>
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-4">{t("chapter_outlines")}</p>
             <div className="space-y-3">
               {blueprint.chapterOutlines.map((o, i) => (
-                <div key={`row-${i}`} className="flex gap-4 p-4 rounded-xl bg-muted/15 border border-border/30 hover:bg-muted/25 transition-colors">
+                <div key={`row-${i}`} className="flex gap-4 p-4 rounded-lg bg-muted/15 border border-border/30 hover:bg-muted/25 transition-colors">
                   <span className="text-sm font-bold text-primary/50 shrink-0 pt-0.5 w-6 text-right">{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <input
@@ -336,8 +345,8 @@ function BlueprintView({ blueprint, isGenerating, onUpdateField, onUpdateOutline
   );
 }
 
-function FrontMatterView({ project, frontMatter, phase, isGenerating, onGenerate, ws, onUpdateField }: {
-  project: BookProject; frontMatter: BookProject["frontMatter"]; phase: string; isGenerating: boolean; onGenerate: () => void; ws: WritingSettings;
+function FrontMatterView({ project, frontMatter, isGenerating, onGenerate, ws, onUpdateField }: {
+  project: BookProject; frontMatter: BookProject["frontMatter"]; isGenerating: boolean; onGenerate: () => void; ws: WritingSettings;
   onUpdateField?: (field: string, value: string) => void;
 }) {
   // Front matter can be generated/regenerated any time the blueprint exists.
@@ -359,13 +368,13 @@ function FrontMatterView({ project, frontMatter, phase, isGenerating, onGenerate
         <div className="space-y-8">
           {Object.entries(frontMatter).map(([key, val]) => (
             <div key={key}>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">{key.replace(/([A-Z])/g, " $1").trim()}</p>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-3">{key.replace(/([A-Z])/g, " $1").trim()}</p>
               <textarea
                 value={val as string}
                 onChange={(e) => onUpdateField?.(key, e.target.value)}
                 readOnly={!onUpdateField}
                 rows={Math.max(3, String(val).split("\n").length + 1)}
-                className="w-full bg-transparent border border-transparent hover:border-border/40 focus:border-primary/50 focus:outline-none rounded-md p-2 text-foreground/85 resize-none"
+                className="w-full bg-transparent border border-transparent hover:border-border/40 focus:border-primary/50 focus:outline-none rounded-md p-2 text-foreground/[0.85] resize-none"
                 style={{ fontFamily: ws.fontFamily, fontSize: `${ws.fontSize}px`, lineHeight: `${ws.lineSpacing}` }}
               />
             </div>
@@ -403,14 +412,23 @@ function ChapterView({
   const [showRewriteMenu, setShowRewriteMenu] = useState(false);
   const [showIntelligence, setShowIntelligence] = useState(false);
 
-  const displayedTitle = isGenerated ? (chapter!.title || outline.title) : outline.title;
+  const displayedTitle = resolveChapterTitle(isGenerated ? (chapter!.title || outline.title) : outline.title, chapterIndex, {
+    config: project.config,
+    summary: outline.summary,
+    totalChapters: project.config.numberOfChapters,
+  });
+  const chapterDisplayLabel = formatChapterDisplayTitle(chapterIndex, displayedTitle, {
+    config: project.config,
+    summary: outline.summary,
+    totalChapters: project.config.numberOfChapters,
+  });
 
   return (
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
         <div className="mb-2 flex-1 min-w-0">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-            {`${t("chapters")} ${chapterIndex + 1}`}
+          <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1">
+            {chapterDisplayLabel}
           </p>
           <EditableTitle
             value={displayedTitle}
@@ -447,7 +465,7 @@ function ChapterView({
                   <ChevronDown className="h-3 w-3" />
                 </button>
                 {showRewriteMenu && (
-                  <div className="absolute right-0 top-10 z-20 bg-card border border-border rounded-xl shadow-xl py-1 w-48">
+                  <div className="absolute right-0 top-10 z-20 bg-card border border-border rounded-lg shadow-xl py-1 w-48">
                     {([
                       { level: "light" as RewriteLevel, label: "Light Polish", desc: "Fix phrasing, tighten prose" },
                       { level: "deep" as RewriteLevel, label: "Deep Rewrite", desc: "Restructure + fresh insights" },
@@ -480,7 +498,7 @@ function ChapterView({
       </div>
 
       <div className="flex items-center gap-3">
-        <span className="text-[11px] text-muted-foreground uppercase tracking-wider">{t("chapter_length")}</span>
+        <span className="text-[11px] text-muted-foreground uppercase">{t("chapter_length")}</span>
         {(["short", "medium", "long"] as const).map(len => (
           <button key={len} onClick={() => onSetLengthOverride(len)}
             className={cn(
@@ -494,12 +512,20 @@ function ChapterView({
         ))}
       </div>
 
-      {isGenerating && <GenerationProgress onCancel={onCancel} chunkProgress={chunkProgress} />}
+      {isGenerating && (
+        <GenerationProgress
+          project={project}
+          chapterIndex={chapterIndex}
+          outline={outline}
+          onCancel={onCancel}
+          chunkProgress={chunkProgress}
+        />
+      )}
       {isEvaluating && <LoadingBanner text={`${t("evaluate")}...`} />}
 
       {/* Error retry state */}
       {!isGenerating && chapter?.status === "error" && (
-        <div className="flex items-center gap-3 px-5 py-3 rounded-xl bg-destructive/5 border border-destructive/20 animate-fade-in">
+        <div className="flex items-center gap-3 px-5 py-3 rounded-lg bg-destructive/5 border border-destructive/20 animate-fade-in">
           <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
           <span className="text-sm text-destructive font-medium flex-1">{t("generation_failed")}</span>
           <button onClick={onGenerate}
@@ -512,7 +538,7 @@ function ChapterView({
       {!isGenerated && !isGenerating && chapter?.status !== "error" && (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">{outline.summary}</p>
-          <div className="p-10 rounded-xl border border-dashed border-border/50 bg-muted/5 text-center">
+          <div className="p-10 rounded-lg border border-dashed border-border/50 bg-muted/5 text-center">
             <p className="text-sm text-muted-foreground/50">Click {t("generate")} to write this chapter</p>
           </div>
         </div>
@@ -526,7 +552,7 @@ function ChapterView({
           {chapter.subchapters.length > 0 && (
             <div className="space-y-6 mt-10">
               <div className="border-t border-border/30 pt-8">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-6">{t("subchapters")}</p>
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-6">{t("subchapters")}</p>
               </div>
               {chapter.subchapters.map((sub, j) => {
                 const subGenerating = isGeneratingSection(`chapter-${chapterIndex}-sub-${j}`);
@@ -560,7 +586,7 @@ function ChapterView({
 
       {isGenerated && (
         <GenreCoachPanel
-          chapterTitle={chapter?.title || outline.title}
+          chapterTitle={displayedTitle}
           chapterText={chapter?.content || ""}
           genre={project.config.genre}
           subcategory={project.config.subcategory}
@@ -589,9 +615,9 @@ function AIRatingCard({ rating }: { rating?: AIQualityRating }) {
   const scoreColor = rating.score >= 4 ? "text-[hsl(var(--success))]" : rating.score >= 3 ? "text-[hsl(var(--warning))]" : "text-destructive";
 
   return (
-    <div className="p-5 rounded-xl bg-muted/15 border border-border/40 space-y-3">
+    <div className="p-5 rounded-lg bg-muted/15 border border-border/40 space-y-3">
       <div className="flex items-center gap-3">
-        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("ai_quality_rating")}</span>
+        <span className="text-[11px] font-semibold text-muted-foreground uppercase">{t("ai_quality_rating")}</span>
         <div className="flex items-center gap-1">
           {[1, 2, 3, 4, 5].map(s => (
             <Star key={s} className={cn("h-4 w-4", s <= rating.score ? `${scoreColor} fill-current` : "text-muted-foreground/20")} />
@@ -602,13 +628,13 @@ function AIRatingCard({ rating }: { rating?: AIQualityRating }) {
       <p className="text-sm text-foreground/80 leading-relaxed">{rating.explanation}</p>
       {rating.missing && (
         <div>
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t("whats_missing")}</p>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">{t("whats_missing")}</p>
           <p className="text-xs text-foreground/60 leading-relaxed">{rating.missing}</p>
         </div>
       )}
       {rating.improvements && (
         <div>
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">{t("how_to_improve")}</p>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">{t("how_to_improve")}</p>
           <p className="text-xs text-foreground/60 leading-relaxed">{rating.improvements}</p>
         </div>
       )}
@@ -628,7 +654,7 @@ function SubchapterView({
   return (
     <div className="space-y-8">
       <div className="mb-2">
-        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+        <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1">
           {`${t("chapters")} ${chapterIndex + 1}: ${chapterTitle}`}
         </p>
         <div className="flex items-baseline gap-2">
@@ -646,34 +672,50 @@ function SubchapterView({
   );
 }
 
-function BackMatterView({ backMatter, phase, isGenerating, onGenerate, ws, onUpdateField }: {
-  backMatter: BookProject["backMatter"]; phase: string; isGenerating: boolean; onGenerate: () => void; ws: WritingSettings;
+function BackMatterView({ project, backMatter, phase, isGenerating, onGenerate, ws, onUpdateField }: {
+  project: BookProject; backMatter: BookProject["backMatter"]; phase: string; isGenerating: boolean; onGenerate: () => void; ws: WritingSettings;
   onUpdateField?: (field: string, value: string) => void;
 }) {
+  const missingChapters = Array.from({ length: project.config.numberOfChapters }, (_, i) => i)
+    .filter((i) => !((project.chapters[i]?.content || "").trim().length > 50));
+  const canGenerate = !!project.blueprint && missingChapters.length === 0;
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <PageHeader title={t("back_matter")} subtitle="Conclusion, author note, and closing content" />
         {!backMatter && (
-          <button onClick={onGenerate} disabled={isGenerating}
+          <button onClick={onGenerate} disabled={isGenerating || !canGenerate}
             className="flex items-center gap-2 h-10 px-5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors">
             {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             {t("generate")}
           </button>
         )}
       </div>
+      {!canGenerate && !backMatter && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 px-5 py-4">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+          <div>
+            <p className="text-sm font-medium text-foreground">Completa prima tutti i capitoli.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Mancano {missingChapters.length} capitoli: {missingChapters.slice(0, 8).map((i) => i + 1).join(", ")}
+              {missingChapters.length > 8 ? ` +${missingChapters.length - 8}` : ""}.
+            </p>
+          </div>
+        </div>
+      )}
       {isGenerating && <LoadingBanner text={`${t("generating")}...`} />}
       {backMatter ? (
         <div className="space-y-8">
           {Object.entries(backMatter).map(([key, val]) => (
             <div key={key}>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">{key.replace(/([A-Z])/g, " $1").trim()}</p>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-3">{key.replace(/([A-Z])/g, " $1").trim()}</p>
               <textarea
                 value={val as string}
                 onChange={(e) => onUpdateField?.(key, e.target.value)}
                 readOnly={!onUpdateField}
                 rows={Math.max(3, String(val).split("\n").length + 1)}
-                className="w-full bg-transparent border border-transparent hover:border-border/40 focus:border-primary/50 focus:outline-none rounded-md p-2 text-foreground/85 resize-none"
+                className="w-full bg-transparent border border-transparent hover:border-border/40 focus:border-primary/50 focus:outline-none rounded-md p-2 text-foreground/[0.85] resize-none"
                 style={{ fontFamily: ws.fontFamily, fontSize: `${ws.fontSize}px`, lineHeight: `${ws.lineSpacing}` }}
               />
             </div>
@@ -698,7 +740,7 @@ function BackMatterView({ backMatter, phase, isGenerating, onGenerate, ws, onUpd
 function PageHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="mb-2">
-      <h1 className="text-2xl font-bold text-foreground tracking-tight">{title}</h1>
+      <h1 className="text-2xl font-bold text-foreground">{title}</h1>
       {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
     </div>
   );
@@ -741,7 +783,7 @@ const EditableTitle = memo(function EditableTitle({
   const cancel = () => { setDraft(value); setEditing(false); };
 
   const baseClass = size === "lg"
-    ? "text-2xl font-bold text-foreground tracking-tight"
+    ? "text-2xl font-bold text-foreground"
     : "text-base font-semibold text-foreground/90";
 
   if (editing && !disabled) {
@@ -789,12 +831,276 @@ const EditableTitle = memo(function EditableTitle({
 );
 
 
-const GenerationProgress = memo(function GenerationProgress({ onCancel, chunkProgress }: { onCancel?: () => void; chunkProgress?: ChunkProgress }) {
-  const [fakePct, setFakePct] = useState(0);
+const generationPhaseMeta: Record<string, { label: string; title: string; detail: string; index: number }> = {
+  OPENING: {
+    label: "Hook",
+    title: "Apertura in presa diretta",
+    detail: "Sta cercando il primo colpo narrativo: promessa, atmosfera e tensione iniziale.",
+    index: 0,
+  },
+  DEVELOPMENT: {
+    label: "Sviluppo",
+    title: "La scena prende corpo",
+    detail: "Personaggi, conflitto e ritmo vengono intrecciati nel flusso del capitolo.",
+    index: 1,
+  },
+  EXPANSION: {
+    label: "Densità",
+    title: "Profondità e texture",
+    detail: "Aggiunge dettagli sensoriali, micro-tensione e continuita emotiva.",
+    index: 2,
+  },
+  TRANSITION: {
+    label: "Ponte",
+    title: "Connessione narrativa",
+    detail: "Allinea la scena al prossimo movimento senza perdere energia.",
+    index: 3,
+  },
+  CLOSURE: {
+    label: "Chiusura",
+    title: "Finale del blocco",
+    detail: "Sta serrando l'ultima pagina con ritmo, payoff e aggancio.",
+    index: 4,
+  },
+};
 
-  // Fake progress for when no chunk data yet
+const generationPipeline = [
+  { phase: "OPENING", label: "Hook" },
+  { phase: "DEVELOPMENT", label: "Sviluppo" },
+  { phase: "EXPANSION", label: "Densità" },
+  { phase: "TRANSITION", label: "Ponte" },
+  { phase: "CLOSURE", label: "Chiusura" },
+];
+
+const generationBars = [38, 64, 46, 78, 54, 92, 66, 48, 84, 58, 72, 42, 88, 52, 68, 36];
+
+type LiveSceneTone = "noir" | "warm" | "storm" | "dawn" | "glass";
+
+interface LiveSceneAnalysis {
+  phaseLabel: string;
+  title: string;
+  detail: string;
+  sceneLabel: string;
+  emotionLabel: string;
+  rhythmLabel: string;
+  subjectLabel: string;
+  cameraLabel: string;
+  tone: LiveSceneTone;
+  rain: boolean;
+  night: boolean;
+  interior: boolean;
+  dialogue: boolean;
+  conflict: boolean;
+  closeness: boolean;
+  touch: boolean;
+  phone: boolean;
+  doorway: boolean;
+  bed: boolean;
+  table: boolean;
+  road: boolean;
+  nature: boolean;
+  people: boolean;
+  paragraphPulse: number;
+}
+
+const emotionKeywords = {
+  tensione: ["tensione", "paura", "ansia", "silenzio", "ombra", "rischio", "pericolo", "segreto", "sospetto", "trem", "minaccia"],
+  desiderio: ["desiderio", "attrazione", "bacio", "pelle", "cuore", "sfior", "vicino", "labbra", "calore", "respiro"],
+  conflitto: ["rabbia", "accusa", "ferita", "tradimento", "bugia", "colpa", "litig", "rottura", "distanza", "urlo"],
+  malinconia: ["ricordo", "perdita", "nostalgia", "vuoto", "lacrime", "addio", "solitudine", "mancanza", "rimpianto"],
+  speranza: ["speranza", "fiducia", "promessa", "sorriso", "luce", "alba", "respiro", "possibile", "futuro"],
+};
+
+const settingKeywords = {
+  notte: ["notte", "buio", "luna", "ombra", "lampione", "madrugada", "stelle"],
+  interno: ["stanza", "camera", "cucina", "salotto", "ufficio", "casa", "porta", "finestra", "tavolo"],
+  citta: ["strada", "auto", "traffico", "palazzo", "bar", "marciapiede", "ascensore", "hotel"],
+  natura: ["mare", "lago", "riva", "vento", "pioggia", "bosco", "giardino", "terra", "fango", "acqua", "fiume", "neve", "tempesta"],
+};
+
+function keywordScore(text: string, words: string[]): number {
+  const lower = text.toLowerCase();
+  return words.reduce((score, word) => score + (lower.includes(word) ? 1 : 0), 0);
+}
+
+function bestKey<T extends string>(text: string, groups: Record<T, string[]>, fallback: T): T {
+  let best = fallback;
+  let bestScore = -1;
+  for (const [key, words] of Object.entries(groups) as [T, string[]][]) {
+    const score = keywordScore(text, words);
+    if (score > bestScore) {
+      best = key;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+function extractNames(text: string, project: BookProject): string[] {
+  const cleanName = (value: unknown) => String(value || "")
+    .replace(/[*_`:#.-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const isLikelyName = (value: string) =>
+    value.length >= 3 &&
+    value.length <= 34 &&
+    /^[A-ZÀ-Ü][A-Za-zÀ-ÿ]+(?:\s+[A-ZÀ-Ü][A-Za-zÀ-ÿ]+)?$/.test(value) &&
+    !["Capitolo", "Scriptora", "Quando", "Perche", "Perché", "Ecco", "Character Bible", "Piccole", "Domani"].includes(value);
+  const configured = (project.config.characters || [])
+    .map((character) => cleanName([character.name, character.surname].filter(Boolean).join(" ")))
+    .filter(isLikelyName);
+  const found = Array.from(text.matchAll(/\b[A-ZÀ-Ü][a-zà-ÿ]{2,}(?:\s+[A-ZÀ-Ü][a-zà-ÿ]{2,})?/g))
+    .map((match) => cleanName(match[0]))
+    .filter(isLikelyName);
+  return Array.from(new Set([...configured, ...found])).slice(0, 3);
+}
+
+function getLiveParagraph(content: string, fallback: string): string {
+  const normalized = (content || "").replace(/\r/g, "").trim();
+  if (!normalized) return fallback;
+  const paragraphs = normalized
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return paragraphs.slice(-2).join("\n\n") || paragraphs[paragraphs.length - 1] || normalized;
+}
+
+function rhythmFromText(text: string, pct: number): string {
+  const punctuation = (text.match(/[.!?;]/g) || []).length;
+  const quotes = (text.match(/[“”"«»]/g) || []).length;
+  const words = text.split(/\s+/).filter(Boolean).length;
+  if (quotes >= 4) return "dialogo serrato";
+  if (punctuation > 0 && words / punctuation < 11) return "tagli brevi";
+  if (pct > 70) return "chiusura in spinta";
+  if (words > 260) return "respiro largo";
+  return "costruzione controllata";
+}
+
+function analyzeLiveScene({
+  project,
+  outline,
+  chapterIndex,
+  phase,
+  content,
+  pct,
+}: {
+  project: BookProject;
+  outline?: { title: string; summary: string };
+  chapterIndex: number;
+  phase: string;
+  content: string;
+  pct: number;
+}): LiveSceneAnalysis {
+  const outlineText = `${outline?.title || ""}. ${outline?.summary || ""}`.trim();
+  const recent = getLiveParagraph(content, outlineText || `${project.config.title} ${project.config.genre}`).slice(-1100);
+  const emotion = bestKey(recent, emotionKeywords, "tensione");
+  const setting = bestKey(recent, settingKeywords, "interno");
+  const names = extractNames(recent, project);
+  const dialogue = /[“”"«»]/.test(recent) || keywordScore(recent, ["disse", "chiese", "rispose", "sussurr", "voce"]) > 0;
+  const conflict = emotion === "conflitto" || keywordScore(recent, ["no", "mai", "basta", "bugia", "colpa", "segreto"]) >= 2;
+  const rain = keywordScore(recent, ["pioggia", "tempesta", "vento", "neve", "gocce"]) > 0;
+  const night = setting === "notte" || keywordScore(recent, ["notte", "buio", "luna", "ombra"]) > 0;
+  const interior = setting === "interno";
+  const closeness = keywordScore(recent, ["vicin", "braccio", "spalle", "pelle", "calore", "corpo", "respiro", "petto", "abbraccio", "sfior", "bacio", "odore"]) > 0;
+  const touch = keywordScore(recent, ["braccio", "spalle", "mano", "dita", "pelle", "sfior", "tocc", "abbraccio", "bacio"]) > 0;
+  const phone = keywordScore(recent, ["messaggio", "telefono", "cellulare", "scrisse", "risposta", "chat", "sms"]) > 0;
+  const doorway = keywordScore(recent, ["porta", "soglia", "affrontare", "domani", "uscire", "entrò", "entro", "chiave"]) > 0;
+  const bed = keywordScore(recent, ["letto", "cuscino", "lenzuola", "sonno", "dorm", "svegli"]) > 0;
+  const table = keywordScore(recent, ["tavolo", "cucina", "bicchiere", "tazza", "caffè", "lettera"]) > 0;
+  const road = setting === "citta" || keywordScore(recent, ["strada", "auto", "marciapiede", "hotel", "bar"]) > 0;
+  const nature = setting === "natura";
+  const people = dialogue || closeness || touch || conflict || names.length > 0;
+  const tone: LiveSceneTone =
+    rain || conflict ? "storm"
+      : night || emotion === "tensione" ? "noir"
+        : emotion === "desiderio" ? "warm"
+          : emotion === "speranza" ? "dawn"
+            : "glass";
+  const sceneLabel = setting === "citta"
+    ? "esterno urbano"
+    : setting === "natura"
+      ? "spazio aperto"
+      : setting === "notte"
+        ? "notte tesa"
+        : "interno ravvicinato";
+  const subjectLabel = names.length > 0 ? names.join(" · ") : `Capitolo ${chapterIndex + 1}`;
+  const rhythmLabel = rhythmFromText(recent, pct);
+  const cameraLabel = dialogue
+    ? "campo/controcampo"
+    : conflict
+      ? "camera stretta"
+      : interior
+        ? "dettaglio su oggetti"
+        : "inquadratura ampia";
+  const phaseMeta = generationPhaseMeta[phase] ?? generationPhaseMeta.OPENING;
+  const action = content
+    ? dialogue
+      ? "sta facendo emergere il sottotesto nei dialoghi"
+      : conflict
+        ? "sta alzando la pressione emotiva della scena"
+        : rain || night
+          ? "sta usando atmosfera e luce per guidare la tensione"
+          : "sta sviluppando ritmo, immagini e continuita"
+    : "sta preparando il capitolo dal brief e dalla struttura";
+
+  return {
+    phaseLabel: phaseMeta.label,
+    title: `${phaseMeta.label}: ${sceneLabel}`,
+    detail: `Scriptora ${action}: tono ${emotion}, ritmo ${rhythmLabel}, focus su ${subjectLabel}.`,
+    sceneLabel,
+    emotionLabel: emotion,
+    rhythmLabel,
+    subjectLabel,
+    cameraLabel,
+    tone,
+    rain,
+    night,
+    interior,
+    dialogue,
+    conflict,
+    closeness,
+    touch,
+    phone,
+    doorway,
+    bed,
+    table,
+    road,
+    nature,
+    people,
+    paragraphPulse: Math.abs(recent.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0)) % 7,
+  };
+}
+
+const sceneParticles = Array.from({ length: 16 }, (_, index) => ({
+  index,
+  x: `${4 + ((index * 17) % 88)}%`,
+  y: `${9 + ((index * 23) % 58)}%`,
+  delay: `${index * -90}ms`,
+}));
+
+const GenerationProgress = memo(function GenerationProgress({
+  project,
+  chapterIndex,
+  outline,
+  onCancel,
+  chunkProgress,
+}: {
+  project: BookProject;
+  chapterIndex: number;
+  outline?: { title: string; summary: string };
+  onCancel?: () => void;
+  chunkProgress?: ChunkProgress;
+}) {
+  const [fakePct, setFakePct] = useState(0);
+  const [showTitleCard, setShowTitleCard] = useState(true);
+  const [sceneImage, setSceneImage] = useState<SceneImageResult | null>(null);
+  const [isSceneImageLoading, setIsSceneImageLoading] = useState(false);
+  const sceneRequestRef = useRef(0);
+  const { plan } = usePlan();
+  const paidVisuals = canUseSceneImages(plan);
+
   useEffect(() => {
-    if (!chunkProgress) return;
+    if (chunkProgress) return;
     const start = Date.now();
     const interval = setInterval(() => {
       const elapsed = (Date.now() - start) / 1000;
@@ -807,75 +1113,307 @@ const GenerationProgress = memo(function GenerationProgress({ onCancel, chunkPro
     return () => clearInterval(interval);
   }, [chunkProgress]);
 
+  useEffect(() => {
+    setShowTitleCard(true);
+    setSceneImage(null);
+    setIsSceneImageLoading(false);
+    const timer = setTimeout(() => setShowTitleCard(false), 6000);
+    return () => clearTimeout(timer);
+  }, [project.id, chapterIndex, outline?.title]);
+
+  const currentWords = chunkProgress?.currentWords ?? 0;
+  const targetWords = Math.max(chunkProgress?.targetWords ?? 1, 1);
   const realPct = chunkProgress
-    ? Math.min(Math.round((chunkProgress.currentWords / chunkProgress.targetWords) * 100), 99)
+    ? Math.min(Math.round((currentWords / targetWords) * 100), 99)
     : Math.round(fakePct);
+  const phase = chunkProgress?.phase ?? "OPENING";
+  const phaseMeta = generationPhaseMeta[phase] ?? generationPhaseMeta.OPENING;
+  const liveContent = chunkProgress?.content?.trim() ?? "";
+  const scene = analyzeLiveScene({ project, outline, chapterIndex, phase, content: liveContent, pct: realPct });
+  const imageSnippet = getLiveParagraph(
+    liveContent,
+    `${outline?.title || ""}. ${outline?.summary || ""}`.trim() || `${project.config.title} ${project.config.genre}`,
+  );
+  const overlayTitle = resolveChapterTitle(outline?.title || "", chapterIndex, {
+    config: project.config,
+    summary: outline?.summary,
+    totalChapters: project.config.numberOfChapters,
+  });
+  const visualBlock = chunkProgress ? Math.min(4, Math.max(0, Math.floor(realPct / 20))) : 0;
+  const sceneImageSignature = [
+    project.id,
+    chapterIndex,
+    overlayTitle,
+    visualBlock,
+    phase,
+    scene.sceneLabel,
+    scene.emotionLabel,
+    scene.subjectLabel,
+    scene.cameraLabel,
+    imageSnippet.slice(-520),
+  ].join("|");
+  const hasRealSceneImage = paidVisuals && Boolean(sceneImage?.imageUrl);
+  const showChapterTitleOverlay = showTitleCard || !paidVisuals;
 
-  const phaseLabels: Record<string, string> = {
-    OPENING: t("progress_analyzing") || "🪝 Inizio potente — hooking the reader...",
-    DEVELOPMENT: t("progress_writing") || "✍️ Developing — building depth...",
-    EXPANSION: t("progress_enhancing") || "🧠 Expanding — adding richness...",
-    TRANSITION: t("progress_refining") || "🔥 Transitioning — guiding toward closure...",
-    CLOSURE: t("progress_finalizing") || "🎯 Finalizing — writing the ending...",
-  };
+  useEffect(() => {
+    if (!paidVisuals) {
+      setSceneImage(null);
+      setIsSceneImageLoading(false);
+      return;
+    }
+    if (showTitleCard) return;
 
-  const statusText = chunkProgress
-    ? phaseLabels[chunkProgress.phase] || `Writing...`
-    : t("progress_analyzing") || "Preparing...";
+    let cancelled = false;
+    const requestId = sceneRequestRef.current + 1;
+    sceneRequestRef.current = requestId;
+    setSceneImage(null);
+    setIsSceneImageLoading(true);
+
+    const timer = window.setTimeout(() => {
+      requestSceneImage({
+        projectId: project.id,
+        chapterIndex,
+        chapterTitle: overlayTitle,
+        chapterSummary: outline?.summary,
+        genre: project.config.genre,
+        subcategory: project.config.subcategory,
+        tone: project.config.tone,
+        language: project.config.language,
+        plan,
+        sceneLabel: scene.sceneLabel,
+        emotionLabel: scene.emotionLabel,
+        subjectLabel: scene.subjectLabel,
+        cameraLabel: scene.cameraLabel,
+        rhythmLabel: scene.rhythmLabel,
+        contentSnippet: imageSnippet,
+      }).then((result) => {
+        if (cancelled || sceneRequestRef.current !== requestId) return;
+        setSceneImage(result);
+      }).finally(() => {
+        if (cancelled || sceneRequestRef.current !== requestId) return;
+        setIsSceneImageLoading(false);
+      });
+    }, 650);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    paidVisuals,
+    showTitleCard,
+    sceneImageSignature,
+    project.id,
+    project.config.genre,
+    project.config.language,
+    project.config.subcategory,
+    project.config.tone,
+    chapterIndex,
+    overlayTitle,
+    outline?.summary,
+    plan,
+    scene.cameraLabel,
+    scene.emotionLabel,
+    scene.rhythmLabel,
+    scene.sceneLabel,
+    scene.subjectLabel,
+    imageSnippet,
+  ]);
 
   const wordInfo = chunkProgress
-    ? `${chunkProgress.currentWords.toLocaleString()} / ${chunkProgress.targetWords.toLocaleString()} parole`
-    : "";
+    ? `${currentWords.toLocaleString()} / ${targetWords.toLocaleString()} parole`
+    : "Preparazione motore narrativo";
+  const chunkSizeLabel = chunkProgress?.chunkSize
+    ? `${chunkProgress.chunkSize === "LARGE" ? "Passaggio lungo" : chunkProgress.chunkSize === "MEDIUM" ? "Passaggio medio" : "Passaggio rapido"}`
+    : "Setup creativo";
 
   return (
-    <div className="space-y-3 px-5 py-4 rounded-xl bg-primary/5 border border-primary/15 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          <span className="text-sm text-primary font-medium">{statusText}</span>
+    <div className="scriptora-generation-stage animate-fade-in">
+      <div className="scriptora-generation-topline">
+        <div className="scriptora-generation-live-pill">
+          <span className="scriptora-generation-live-dot" />
+          <Sparkles className="h-4 w-4" />
+          <span>Scriptora Studio Live</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-primary/60 font-mono tabular-nums">{realPct}%</span>
+        <div className="scriptora-generation-actions">
+          <span className="scriptora-generation-percent">{realPct}%</span>
           {onCancel && (
             <button onClick={onCancel} title={t("stop_generation")}
-              className="h-6 w-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors">
+              className="h-8 w-8 flex items-center justify-center rounded-lg text-white/65 hover:text-white hover:bg-red-500/15 transition-colors">
               <Square className="h-3 w-3" />
             </button>
           )}
         </div>
       </div>
-      <Progress value={realPct} className="h-1.5 bg-primary/10" />
-      {wordInfo && (
-        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>{wordInfo}</span>
-          <div className="flex items-center gap-3">
-            {chunkProgress?.chunkSize && (
-              <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium",
-                chunkProgress.chunkSize === "LARGE" ? "bg-primary/10 text-primary" :
-                chunkProgress.chunkSize === "MEDIUM" ? "bg-[hsl(var(--warning))]/10 text-[hsl(var(--warning))]" :
-                "bg-destructive/10 text-destructive"
-              )}>{chunkProgress.chunkSize}</span>
-            )}
-            {chunkProgress && <span>Chunk {chunkProgress.chunkIndex} / ~{chunkProgress.totalChunks}</span>}
+
+      <div className="scriptora-generation-grid">
+        <div className="scriptora-generation-engine">
+          <div className="scriptora-generation-wave" aria-hidden="true">
+            {generationBars.map((height, index) => (
+              <span
+                key={`${height}-${index}`}
+                style={{ height: `${height}%`, animationDelay: `${index * 72}ms` }}
+              />
+            ))}
+          </div>
+          <div className="scriptora-generation-scan" aria-hidden="true" />
+          <div className="relative z-10 space-y-2">
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-cyan-100/65">
+              <Zap className="h-3.5 w-3.5 text-cyan-200" />
+              {scene.phaseLabel}
+            </div>
+            <h3 className="text-xl font-semibold text-white leading-tight">{scene.title}</h3>
+            <p className="max-w-xl text-sm leading-relaxed text-white/68">{scene.detail}</p>
+            <div className="scriptora-generation-signals">
+              <span>{scene.emotionLabel}</span>
+              <span>{scene.rhythmLabel}</span>
+              <span>{scene.cameraLabel}</span>
+            </div>
           </div>
         </div>
-      )}
+
+        <div className="scriptora-generation-manuscript">
+          <div className="scriptora-generation-manuscript-header">
+            <div className="flex items-center gap-2">
+              <PenLine className="h-4 w-4 text-emerald-200" />
+              <span>Anteprima viva</span>
+            </div>
+            <span aria-hidden="true" className="scriptora-scene-status">
+              <i /><i /><i />
+            </span>
+          </div>
+          <div
+            className={cn(
+              "scriptora-scene-board",
+              `tone-${scene.tone}`,
+              `pulse-${scene.paragraphPulse}`,
+              scene.rain && "has-rain",
+              scene.night && "is-night",
+              scene.interior && "is-interior",
+              scene.dialogue && "has-dialogue",
+              scene.conflict && "has-conflict",
+              scene.closeness && "is-close",
+              scene.touch && "has-touch",
+              scene.phone && "has-phone",
+              scene.doorway && "has-doorway",
+              scene.bed && "has-bed",
+              scene.table && "has-table",
+              scene.road && "has-road",
+              scene.nature && "is-nature",
+              scene.people && "has-people",
+              paidVisuals ? "is-pro-visuals" : "is-free-visuals",
+              hasRealSceneImage && "has-real-image",
+              isSceneImageLoading && "is-ai-loading",
+              showChapterTitleOverlay && "is-title-card",
+            )}
+            aria-label={`Anteprima cinematografica: ${scene.sceneLabel}, ${scene.emotionLabel}`}
+          >
+            {hasRealSceneImage && (
+              <img
+                src={sceneImage?.imageUrl || ""}
+                alt="Anteprima cinematografica generata da Scriptora"
+                className="scriptora-scene-real-image"
+                referrerPolicy="no-referrer"
+              />
+            )}
+            <div className="scriptora-scene-sky" aria-hidden="true">
+              <span className="scriptora-scene-backdrop" />
+              <span className="scriptora-scene-depth far" />
+              <span className="scriptora-scene-depth near" />
+              <span className="scriptora-scene-light" />
+              <span className="scriptora-scene-horizon" />
+              <span className="scriptora-scene-water" />
+              <span className="scriptora-scene-window" />
+              <span className="scriptora-scene-door" />
+              <span className="scriptora-scene-road" />
+              <span className="scriptora-scene-bed" />
+              <span className="scriptora-scene-table" />
+              <span className="scriptora-scene-figure primary" />
+              <span className="scriptora-scene-figure secondary" />
+              <span className="scriptora-scene-shadow primary" />
+              <span className="scriptora-scene-shadow secondary" />
+              <span className="scriptora-scene-touchline" />
+              <span className="scriptora-scene-phone" />
+              <span className="scriptora-scene-message" />
+              <span className="scriptora-scene-prop" />
+              <span className="scriptora-scene-foreground" />
+              {sceneParticles.map((particle) => (
+                <span
+                  key={particle.index}
+                  className="scriptora-scene-particle"
+                  style={{
+                    "--x": particle.x,
+                    "--y": particle.y,
+                    "--delay": particle.delay,
+                  } as React.CSSProperties}
+                />
+              ))}
+            </div>
+            {paidVisuals && isSceneImageLoading && !hasRealSceneImage && (
+              <div className="scriptora-scene-ai-loader" aria-hidden="true">
+                <span /><span /><span />
+              </div>
+            )}
+            {showChapterTitleOverlay && (
+              <div className="scriptora-scene-title-card">
+                <span>Capitolo {chapterIndex + 1}</span>
+                <strong>{overlayTitle}</strong>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="scriptora-generation-meter">
+        <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-white/45">
+          <span>{wordInfo}</span>
+          <span>{chunkSizeLabel}</span>
+        </div>
+        <Progress value={realPct} className="h-2 bg-white/10" />
+      </div>
+
+      <div className="scriptora-generation-pipeline">
+        {generationPipeline.map((step, index) => {
+          const state = index < phaseMeta.index ? "done" : index === phaseMeta.index ? "active" : "pending";
+          return (
+            <div key={step.phase} className={cn("scriptora-generation-step", `is-${state}`)}>
+              <span>{index + 1}</span>
+              <strong>{step.label}</strong>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }, (prev, next) =>
   prev.onCancel === next.onCancel &&
+  prev.project?.id === next.project?.id &&
+  prev.project?.config?.genre === next.project?.config?.genre &&
+  prev.project?.config?.tone === next.project?.config?.tone &&
+  prev.chapterIndex === next.chapterIndex &&
+  prev.outline?.title === next.outline?.title &&
+  prev.outline?.summary === next.outline?.summary &&
   prev.chunkProgress?.currentWords === next.chunkProgress?.currentWords &&
   prev.chunkProgress?.targetWords === next.chunkProgress?.targetWords &&
   prev.chunkProgress?.phase === next.chunkProgress?.phase &&
   prev.chunkProgress?.chunkSize === next.chunkProgress?.chunkSize &&
-  prev.chunkProgress?.chunkIndex === next.chunkProgress?.chunkIndex,
+  prev.chunkProgress?.chunkIndex === next.chunkProgress?.chunkIndex &&
+  prev.chunkProgress?.content === next.chunkProgress?.content,
 );
 
 function LoadingBanner({ text }: { text: string }) {
   return (
-    <div className="flex items-center gap-2.5 px-5 py-3 rounded-xl bg-primary/5 border border-primary/15 animate-fade-in">
-      <Loader2 className="h-4 w-4 animate-spin text-primary" />
-      <span className="text-sm text-primary font-medium">{text}</span>
+    <div className="scriptora-loading-banner animate-fade-in">
+      <div className="scriptora-loading-icon">
+        <Loader2 className="h-4 w-4 animate-spin" />
+      </div>
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-white">{text}</div>
+        <div className="scriptora-loading-subline">
+          <span>Studio attivo</span>
+          <span className="scriptora-loading-dots" aria-hidden="true"><i /><i /><i /></span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -929,17 +1467,17 @@ const EditableBlock = memo(function EditableBlock({
         <textarea ref={textareaRef} value={editValue}
           onChange={e => { setEditValue(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
           onBlur={() => { onChange(editValue); setIsEditing(false); }}
-          className="w-full text-foreground/85 bg-muted/10 border border-primary/20 rounded-xl p-5 resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="w-full text-foreground/[0.85] bg-muted/10 border border-primary/20 rounded-lg p-5 resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
           style={fontStyle}
           autoFocus />
-        <span className="absolute top-3 right-4 text-[9px] text-primary/50 uppercase tracking-wider font-sans">{t("editing")}</span>
+        <span className="absolute top-3 right-4 text-[9px] text-primary/50 uppercase font-sans">{t("editing")}</span>
       </div>
     );
   }
 
   return (
     <div onClick={() => setIsEditing(true)}
-      className="text-foreground/85 whitespace-pre-wrap cursor-text rounded-xl p-5 hover:bg-muted/10 transition-colors border border-transparent hover:border-border/20 min-h-[120px]"
+      className="text-foreground/[0.85] whitespace-pre-wrap cursor-text rounded-lg p-5 hover:bg-muted/10 transition-colors border border-transparent hover:border-border/20 min-h-[120px]"
       style={fontStyle}
       title={t("click_to_edit")}>
       {content || <span className="text-muted-foreground/40 italic">{t("empty_click_to_add")}</span>}

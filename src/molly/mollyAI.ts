@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUserId } from "@/services/storageService";
 
 export interface ChatTurn {
   role: "user" | "assistant";
@@ -43,7 +44,7 @@ export async function askMolly(
 
   try {
     const { data, error } = await supabase.functions.invoke("molly-chat", {
-      body: { message, history, mood, bond },
+      body: { message, history, mood, bond, userId: getCurrentUserId() },
     });
     if (error) throw error;
     const payload = data as { reply?: string; error?: string };

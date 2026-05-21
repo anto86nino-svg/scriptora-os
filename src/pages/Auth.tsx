@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Sparkles, Mail, Lock, Loader2, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { enableDevMode } from "@/lib/dev-mode";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -24,11 +25,30 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [logoClicks, setLogoClicks] = useState(0);
 
   // Già autenticato → vai via
   useEffect(() => {
     if (!loading && user) navigate(from, { replace: true });
   }, [user, loading, navigate, from]);
+
+  useEffect(() => {
+    if (logoClicks === 0) return;
+    const t = setTimeout(() => setLogoClicks(0), 1500);
+    return () => clearTimeout(t);
+  }, [logoClicks]);
+
+  const handleLogoClick = () => {
+    const next = logoClicks + 1;
+    if (next >= 3) {
+      setLogoClicks(0);
+      enableDevMode();
+      toast.success("Developer Mode attivato");
+      navigate("/dashboard", { replace: true });
+      return;
+    }
+    setLogoClicks(next);
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,9 +127,15 @@ export default function AuthPage() {
           Indietro
         </Link>
         <div className="flex items-center gap-2">
-          <div className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-primary to-accent">
+          <button
+            type="button"
+            onClick={handleLogoClick}
+            aria-label="Attiva Developer Mode"
+            title="SCRIPTORA"
+            className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-primary to-accent outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+          >
             <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
-          </div>
+          </button>
           <span className="text-sm font-semibold tracking-[0.25em]">SCRIPTORA</span>
         </div>
       </header>

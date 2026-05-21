@@ -8,6 +8,7 @@ import { getUILanguage } from "@/lib/i18n";
 import { X, Sparkles, RefreshCw, Check, Copy, Zap, Target, Brain, TrendingUp, Loader2, Flame, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { useFeatureGate } from "@/components/PaywallGuard";
+import { getCurrentUserId } from "@/services/storageService";
 
 interface Props {
   open: boolean;
@@ -46,6 +47,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
     try {
       // Invisible routing: pass plan so the edge function picks the cheapest viable mode.
       const { fetchPlan } = await import("@/lib/plan");
+      const plan = await fetchPlan();
       const { data: res, error: err } = await supabase.functions.invoke("title-autofill", {
         body: {
           bookGenre: bookGenre || "Self-help",
@@ -53,6 +55,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
           seed: Math.floor(Math.random() * 1000000),
           currentTitle: bookTitle,
           plan,
+          userId: getCurrentUserId(),
         },
       });
       if (err) throw new Error(err.message);

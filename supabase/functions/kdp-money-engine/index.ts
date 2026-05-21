@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { estimateTokens, logAIUsage } from "../_shared/ai-tracking.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,6 +21,7 @@ const BRAVE_SEARCH_API_KEY = Deno.env.get("BRAVE_SEARCH_API_KEY"); // optional w
 
 const DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions";
 const DEEPSEEK_MODEL = "deepseek-chat";
+let __trackCtx: { projectId?: string | null; userId?: string | null; action?: string | null } = {};
 
 /**
  * Call DeepSeek with strict JSON output via OpenAI-compatible tool calling.
@@ -68,6 +70,20 @@ async function callAIJson(systemPrompt: string, userPrompt: string, schemaName: 
   const msg = data?.choices?.[0]?.message;
   const finishReason = data?.choices?.[0]?.finish_reason;
   const args = msg?.tool_calls?.[0]?.function?.arguments;
+  const contentForUsage = typeof args === "string" ? args : (args ? JSON.stringify(args) : String(msg?.content || ""));
+  const usage = data?.usage || {};
+  logAIUsage({
+    provider: "deepseek",
+    model: DEEPSEEK_MODEL,
+    taskType: `kdp_${__trackCtx.action || schemaName}`,
+    promptTokens: usage.prompt_tokens ?? estimateTokens(`${systemPrompt}${userPrompt}`),
+    completionTokens: usage.completion_tokens ?? estimateTokens(contentForUsage),
+    promptCacheHitTokens: usage.prompt_cache_hit_tokens,
+    promptCacheMissTokens: usage.prompt_cache_miss_tokens,
+    projectId: __trackCtx.projectId || null,
+    userId: __trackCtx.userId || null,
+    metadata: { schemaName, finishReason },
+  });
   if (args) {
     if (typeof args !== "string") return args;
     try {
@@ -808,7 +824,13 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { action, payload } = (await req.json()) as ToolCallPayload;
+    const body = await req.json();
+    const { action, payload } = body as ToolCallPayload;
+    __trackCtx = {
+      projectId: String((body as any).projectId || (payload as any)?.projectId || "") || null,
+      userId: String((body as any).userId || (payload as any)?.userId || "") || null,
+      action,
+    };
     let result: unknown;
 
     switch (action) {

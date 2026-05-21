@@ -10,6 +10,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
 import { getEditorialTier } from "@/lib/editorial-mastery";
 import { toast } from "sonner";
+import { getCurrentUserId } from "@/services/storageService";
 
 
 function countWordsForChapterLock(value: unknown): number {
@@ -209,6 +210,8 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
           genre: project.config.genre,
           tone: project.config.tone,
           language: project.config.language,
+          projectId: project.id,
+          userId: getCurrentUserId(),
         },
       });
       if (error) throw new Error(error.message || "Edge function error");
@@ -236,6 +239,8 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
           language: project.config.language,
           chapterContext: chapter.content,
           mode: fixMode,
+          projectId: project.id,
+          userId: getCurrentUserId(),
         },
       });
       if (error) throw new Error(error.message || "Edge function error");

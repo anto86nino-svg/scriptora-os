@@ -1,5 +1,6 @@
 import { BookProject, SectionId } from "@/types/book";
 import { useEffect, useRef, useMemo } from "react";
+import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 
 interface PreviewPanelProps {
   project: BookProject | null;
@@ -61,8 +62,11 @@ export function PreviewPanel({ project, activeSection }: PreviewPanelProps) {
                       <ol className="space-y-1.5">
                         {blueprint.chapterOutlines.map((o, i) => (
                           <li key={`stable-${i}`} className="text-sm text-foreground/70">
-                            <span className="text-muted-foreground mr-2">{i + 1}.</span>
-                            {chapters[i]?.title || o.title}
+                            {formatChapterDisplayTitle(i, chapters[i]?.title || o.title, {
+                              config,
+                              summary: o.summary,
+                              totalChapters: config.numberOfChapters,
+                            })}
                           </li>
                         ))}
                       </ol>
@@ -97,8 +101,20 @@ export function PreviewPanel({ project, activeSection }: PreviewPanelProps) {
                 return (
                   <div className="space-y-4">
                     <div className="text-center pb-4 border-b border-border/30">
-                      <p className="text-xs uppercase tracking-widest text-primary/60 mb-1">Chapter {previewContent.index + 1}</p>
-                      <h2 className="text-xl font-bold text-foreground">{ch.title}</h2>
+                      <p className="text-xs uppercase tracking-widest text-primary/60 mb-1">
+                        {formatChapterDisplayTitle(previewContent.index, ch.title, {
+                          config,
+                          summary: blueprint?.chapterOutlines?.[previewContent.index]?.summary,
+                          totalChapters: config.numberOfChapters,
+                        })}
+                      </p>
+                      <h2 className="text-xl font-bold text-foreground">
+                        {resolveChapterTitle(ch.title, previewContent.index, {
+                          config,
+                          summary: blueprint?.chapterOutlines?.[previewContent.index]?.summary,
+                          totalChapters: config.numberOfChapters,
+                        })}
+                      </h2>
                     </div>
                     <div className="text-sm leading-7 text-foreground/80 whitespace-pre-wrap">{ch.content}</div>
                     {ch.subchapters.map((sub, j) => (
@@ -124,7 +140,11 @@ export function PreviewPanel({ project, activeSection }: PreviewPanelProps) {
                   <div className="space-y-4">
                     <div className="pb-4 border-b border-border/30">
                       <p className="text-xs uppercase tracking-widest text-primary/60 mb-1">
-                        Chapter {previewContent.chapterIndex + 1} › Subchapter {previewContent.subIndex + 1}
+                        {formatChapterDisplayTitle(previewContent.chapterIndex, ch?.title, {
+                          config,
+                          summary: blueprint?.chapterOutlines?.[previewContent.chapterIndex]?.summary,
+                          totalChapters: config.numberOfChapters,
+                        })} › Subchapter {previewContent.subIndex + 1}
                       </p>
                       <h2 className="text-lg font-bold text-foreground">{sub.title}</h2>
                     </div>
