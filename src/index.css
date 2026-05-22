@@ -194,6 +194,24 @@ body {
   transform: scale(0.98);
 }
 
+.ios-toolbar-button.hidden {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .ios-toolbar-button.hidden.sm\:flex,
+  .ios-toolbar-button.hidden.sm\:inline-flex {
+    display: inline-flex;
+  }
+}
+
+@media (min-width: 1024px) {
+  .ios-toolbar-button.hidden.lg\:flex,
+  .ios-toolbar-button.hidden.lg\:inline-flex {
+    display: inline-flex;
+  }
+}
+
 .ios-icon {
   position: relative;
   display: inline-flex;

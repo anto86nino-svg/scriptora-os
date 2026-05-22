@@ -18,7 +18,7 @@ import { generateDocx, downloadDocx } from "@/lib/docx-export";
 import { generatePdf, downloadPdf } from "@/lib/pdf-export";
 import { BookProject, SectionId } from "@/types/book";
 import { WritingSettings, loadSettings, saveSettings } from "@/lib/settings";
-import { t, getUILanguage, UILanguage } from "@/lib/i18n";
+import { t, tt, UILanguage, useUILanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu, X, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -26,6 +26,7 @@ import { useQuota, usePlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
 
 const Index = () => {
+  useUILanguage();
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [showNewBook, setShowNewBook] = useState(false);
   const [showCover, setShowCover] = useState(false);
@@ -42,7 +43,6 @@ const Index = () => {
   const [exportLabel, setExportLabel] = useState("");
   const [activeSection, setActiveSection] = useState<SectionId | null>("blueprint");
   const [writingSettings, setWritingSettings] = useState<WritingSettings>(loadSettings());
-  const [, setLangTick] = useState(0);
   const [upgradeReason, setUpgradeReason] = useState<null | "export" | "token-limit" | "dominate" | "books-limit">(null);
   const { syncStatus, markSaving, markSaved, markPending, markOffline } = useSyncStatus();
   const engine = useBookEngine({
@@ -61,7 +61,7 @@ const Index = () => {
   const openNewBookGuarded = () => {
     if (freeBookUsed) {
       setUpgradeReason("books-limit");
-      toast.error("Hai già usato il libro gratuito. Passa a Pro/Premium per crearne altri.");
+      toast.error(t("toast_free_book_used"));
       return;
     }
     setShowNewBook(true);
@@ -76,7 +76,7 @@ const Index = () => {
     if (quota?.isOverTokenLimit && engine.isAnythingGenerating) {
       engine.cancelGeneration();
       setUpgradeReason("token-limit");
-      toast.warning("You've reached the free generation limit.");
+      toast.warning(t("free_generation_limit"));
     }
   }, [quota?.isOverTokenLimit, engine.isAnythingGenerating]);
 
@@ -98,6 +98,14 @@ const Index = () => {
 
       const applySection = () => {
         if (openSection === "publish") setShowPublish(true);
+        else if (
+          openSection === "blueprint" ||
+          openSection === "front-matter" ||
+          openSection === "back-matter" ||
+          /^chapter-\d+(?:-sub-\d+)?$/.test(openSection || "")
+        ) {
+          setActiveSection(openSection as SectionId);
+        }
       };
 
       const openId = sessionStorage.getItem("nexora-open-project");
@@ -165,11 +173,11 @@ const Index = () => {
     if (!engine.project) return;
     const errors = validateEpubStructure(engine.project);
     if (errors.length > 0) {
-      alert(`EPUB export blocked:\n\n${errors.join("\n")}`);
+      alert(`${t("export_blocked_epub")}:\n\n${errors.join("\n")}`);
       return;
     }
     setIsExporting(true);
-    setExportLabel("Exporting EPUB...");
+    setExportLabel(t("exporting_epub"));
     try {
       const blob = await generateEpub(engine.project, coverDataUrl);
       const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
@@ -185,7 +193,7 @@ const Index = () => {
   const handleExportDocx = async () => {
     if (!engine.project) return;
     setIsExporting(true);
-    setExportLabel("Preparing DOCX...");
+    setExportLabel(t("preparing_docx"));
     try {
       const blob = await generateDocx(engine.project);
       const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
@@ -201,7 +209,7 @@ const Index = () => {
   const handleExportPdf = async () => {
     if (!engine.project) return;
     setIsExporting(true);
-    setExportLabel("Formatting PDF...");
+    setExportLabel(t("formatting_pdf"));
     try {
       const blob = await generatePdf(engine.project);
       const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
@@ -220,7 +228,7 @@ const Index = () => {
   };
 
   const handleLanguageChange = (_lang: UILanguage) => {
-    setLangTick(prev => prev + 1);
+    // SettingsPanel calls this after saving; useUILanguage handles the rerender.
   };
 
   if (focusMode && engine.project) {
@@ -272,7 +280,7 @@ const Index = () => {
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
         className="ios-toolbar-button fixed left-3 top-3 z-50 p-2 text-foreground shadow-lg backdrop-blur-xl"
-        title={sidebarOpen ? "Hide Sidebar" : "Show Sidebar"}
+        title={sidebarOpen ? t("hide_sidebar") : t("show_sidebar")}
       >
         {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
@@ -298,7 +306,7 @@ const Index = () => {
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase text-muted-foreground">Scriptora OS</p>
               <h1 className="truncate text-xs font-bold text-foreground">
-                {engine.project ? (engine.project.config.title || "Untitled") : "SCRIPTORA"}
+                {engine.project ? (engine.project.config.title || t("untitled")) : "SCRIPTORA"}
               </h1>
             </div>
           </div>
@@ -314,7 +322,7 @@ const Index = () => {
               to="/dashboard"
               className="ios-toolbar-button flex w-full justify-start px-3 py-2 text-xs font-medium"
             >
-              <ArrowLeft className="h-3 w-3" /> My Books
+              <ArrowLeft className="h-3 w-3" /> {t("back_to_my_books")}
             </Link>
           </div>
         ) : (
@@ -334,7 +342,7 @@ const Index = () => {
                 <div key={p.id}
                   className="group flex cursor-pointer items-center justify-between rounded-lg px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
                   onClick={() => handleSelectProject(p.id)}>
-                  <span className="truncate">{p.config.title || "Untitled"}</span>
+                  <span className="truncate">{p.config.title || t("untitled")}</span>
                   <button onClick={(e) => { e.stopPropagation(); handleDeleteProject(p.id); }}
                     className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive">
                     <Trash2 className="h-3 w-3" />
@@ -354,19 +362,19 @@ const Index = () => {
               onClick={guardedGenerateFullBook}
               disabled={engine.isAnythingGenerating}
               className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-white px-3 py-2 text-[11px] font-semibold text-slate-950 shadow-sm transition-opacity hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-              title="Genera l'intero libro in sequenza con coerenza tra capitoli"
+              title={t("generate_full_book_title")}
             >
               <Sparkles className="h-3 w-3" />
-              {engine.isAnythingGenerating ? "Generazione in corso..." : "Genera libro completo"}
+              {engine.isAnythingGenerating ? t("generation_running") : t("generate_full_book")}
             </button>
             <button
               onClick={() => engine.generateAllChaptersParallel()}
               disabled={!engine.project.blueprint}
               className="ios-toolbar-button w-full px-3 py-1.5 text-[10px] font-medium disabled:opacity-40"
-              title="Genera tutti i capitoli mancanti 3 alla volta"
+              title={t("generate_parallel_title")}
             >
               <Sparkles className="h-3 w-3" />
-              Tutti i capitoli in parallelo (×3)
+              {t("generate_parallel_all")}
             </button>
           </div>
         )}
@@ -489,14 +497,14 @@ const Index = () => {
                     className="ios-toolbar-button h-10 px-4 text-sm font-medium"
                   >
                     <ArrowLeft className="h-4 w-4" />
-                    Torna alla dashboard
+                    {t("back_to_dashboard")}
                   </Link>
                 </div>
 
                 {projects.length > 0 && (
                   <div className="ios-glass-soft rounded-lg p-3 text-left">
                     <p className="mb-2 text-[11px] font-semibold uppercase text-muted-foreground">
-                      Progetti recenti
+                      {t("recent_projects")}
                     </p>
                     <div className="space-y-1.5">
                       {projects.slice(0, 3).map((p) => (
@@ -505,8 +513,8 @@ const Index = () => {
                           onClick={() => handleSelectProject(p.id)}
                           className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-white/[0.07]"
                         >
-                          <span className="truncate">{p.config.title || "Untitled"}</span>
-                          <span className="text-[11px] text-muted-foreground">Apri</span>
+                          <span className="truncate">{p.config.title || t("untitled")}</span>
+                          <span className="text-[11px] text-muted-foreground">{t("open_action")}</span>
                         </button>
                       ))}
                     </div>
@@ -525,7 +533,7 @@ const Index = () => {
           if (freeBookUsed) {
             setShowNewBook(false);
             setUpgradeReason("books-limit");
-            toast.error("Hai già usato il libro gratuito. Passa a Pro/Premium per crearne altri.");
+            toast.error(t("toast_free_book_used"));
             return;
           }
           engine.startNewBook(config);
@@ -551,7 +559,7 @@ const Index = () => {
           onStartFresh={(config) => {
             if (freeBookUsed) {
               setUpgradeReason("books-limit");
-              toast.error("Hai già usato il libro gratuito. Passa a Pro/Premium per crearne altri.");
+              toast.error(t("toast_free_book_used"));
               return;
             }
             engine.startNewBook(config);
@@ -585,10 +593,10 @@ const Index = () => {
         onApplyToChapter={async (projectId, chapterIndex, newContent) => {
           if (engine.project?.id === projectId) {
             engine.updateChapterContent(chapterIndex, newContent);
-            toast.success("Chapter updated 🔥");
+            toast.success(t("chapter_updated"));
           } else {
             const target = projects.find(p => p.id === projectId);
-            if (!target) { toast.error("Project not found"); return; }
+            if (!target) { toast.error(t("project_not_found")); return; }
             const updated: BookProject = {
               ...target,
               chapters: target.chapters.map((ch, i) =>
@@ -598,7 +606,7 @@ const Index = () => {
             };
             await saveProjectAsync(updated);
             await refreshProjects();
-            toast.success(`Applied to "${target.config.title}" 🔥`);
+            toast.success(tt("applied_to_project", { title: target.config.title || t("untitled") }));
           }
         }}
         onJumpToChapter={(projectId, chapterIndex) => {

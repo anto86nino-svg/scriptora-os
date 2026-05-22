@@ -99,6 +99,14 @@ function withUsage(base: AIUsageContext | undefined, patch: AIUsageContext): AIU
   };
 }
 
+function describeAIHttpError(status: number, message: string): string {
+  const clean = message.trim();
+  if (status === 429) return clean || "AI rate limit reached. Please retry in a moment.";
+  if (status === 401 || status === 402) return clean || "AI provider credentials or credits need attention.";
+  if (status >= 500) return clean || "AI provider temporarily unavailable. Please try again.";
+  return clean || `AI generation failed (${status})`;
+}
+
 async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: number = 300000, usage?: AIUsageContext): Promise<string> {
   const controller = new AbortController();
   // Use a watchdog: reset whenever we receive bytes (DeepSeek can be slow but
@@ -114,6 +122,9 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
   if (DEV_DEBUG_STREAM) console.log("[Nexora] AI request started (streaming)");
   try {
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-book`;
+    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
+      throw new Error("Missing Supabase configuration for AI generation.");
+    }
     const currentUsage = usagePayload(usage);
     const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: { session: null } } as any));
     const bearer = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -135,10 +146,11 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
       if (errMsg.includes("credits exhausted") || errMsg.includes("API key invalid") || res.status === 402) {
         throw new AICreditsError(errMsg);
       }
-      throw new Error(errMsg || `AI generation failed (${res.status})`);
+      throw new Error(describeAIHttpError(res.status, errMsg));
     }
 
-    const reader = res.body!.getReader();
+    if (!res.body) throw new Error("AI stream unavailable. Please retry generation.");
+    const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = "";
     while (true) {
@@ -155,7 +167,13 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
       throw new Error("Empty response from AI");
     }
     const jsonStr = buffer.slice(marker + "__RESULT__".length).trim();
-    const parsed = JSON.parse(jsonStr);
+    let parsed: { content?: string; error?: string };
+    try {
+      parsed = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.error("[Nexora] Failed to parse AI result payload:", parseError);
+      throw new Error("AI response was incomplete. Please retry generation.");
+    }
     if (parsed.error) {
       if (parsed.error.includes("credits exhausted")) throw new AICreditsError(parsed.error);
       throw new Error(parsed.error);
@@ -488,8 +506,12 @@ ${narrativeMode ? `FICTION / ROMANCE / MEMOIR EXTRA RULES:
 }
 
 function getChapterTargetWords(config: BookConfig, chapterIndex: number, totalChapters: number, chapterLengthOverride?: string): number {
-  const bookTotal = getBookTotalWords(config);
-  const chapterBase = Math.round(bookTotal / totalChapters);
+  const configuredTotal = getBookTotalWords(config);
+  const bookTotal = Number.isFinite(configuredTotal) && configuredTotal > 0
+    ? configuredTotal
+    : BOOK_LENGTH_CONFIG.medium.totalWords;
+  const safeTotalChapters = Number.isFinite(totalChapters) && totalChapters > 0 ? totalChapters : 1;
+  const chapterBase = Math.round(bookTotal / safeTotalChapters);
   const localLength = chapterLengthOverride || config.chapterLength;
   const multiplier = localLength === "short" ? 0.6 : localLength === "long" ? 1.5 : 1.0;
   return Math.round(chapterBase * multiplier);

@@ -39,27 +39,35 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { t, tt, useUILanguage } from "@/lib/i18n";
 
-const PLAN_META: Record<PlanTier, { label: string; icon: React.ReactNode; hint: string }> = {
-  free:    { label: "Free",    icon: <Sparkles className="h-3 w-3" />,    hint: "1 libro · no export" },
-  beta:    { label: "Beta",    icon: <FlaskConical className="h-3 w-3" />, hint: "3 libri · export" },
-  pro:     { label: "Pro",     icon: <Zap className="h-3 w-3" />,         hint: "10 libri · export" },
-  premium: { label: "Premium", icon: <Crown className="h-3 w-3" />,       hint: "Illimitato + Dominate" },
+const PLAN_META: Record<PlanTier, { icon: React.ReactNode; hintKey: string }> = {
+  free:    { icon: <Sparkles className="h-3 w-3" />,    hintKey: "dev_free_hint" },
+  beta:    { icon: <FlaskConical className="h-3 w-3" />, hintKey: "dev_beta_hint" },
+  pro:     { icon: <Zap className="h-3 w-3" />,         hintKey: "dev_pro_hint" },
+  premium: { icon: <Crown className="h-3 w-3" />,       hintKey: "dev_premium_hint" },
 };
 
 export function DevModeBadge() {
+  useUILanguage();
   const on = useDevMode();
   const overridePlan = useDevPlanOverride();
   const navigate = useNavigate();
   const [planMenuOpen, setPlanMenuOpen] = useState(false);
   const [wipeOpen, setWipeOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 639px)").matches;
+  });
 
   if (!on) return null;
+
+  const planLabel = (plan: PlanTier) => plan === "free" ? t("free") : plan.charAt(0).toUpperCase() + plan.slice(1);
 
   const handlePickPlan = (plan: PlanTier) => {
     setDevPlanOverride(plan);
     setPlanMenuOpen(false);
-    toast.success(`Dev: piano simulato → ${PLAN_META[plan].label}`);
+    toast.success(tt("dev_plan_toast", { plan: planLabel(plan) }));
   };
 
   // Wipes ONLY non-Premium dev projects (free / beta / pro test sandboxes).
@@ -91,20 +99,42 @@ export function DevModeBadge() {
       window.dispatchEvent(new Event("nexora-usage-change"));
       toast.success(
         removedCount > 0
-          ? `Cancellati ${removedCount} progetti di test · Premium intatto`
-          : "Nessun progetto di test da cancellare · Premium intatto"
+          ? tt("dev_projects_deleted", { count: removedCount })
+          : t("dev_no_projects_deleted")
       );
       setWipeOpen(false);
       // Soft reload so in-memory caches (React Query, storage memCache) drop.
       setTimeout(() => window.location.reload(), 300);
     } catch {
-      toast.error("Reset fallito");
+      toast.error(t("dev_reset_failed"));
     }
   };
 
   return (
     <>
-      <div className="fixed bottom-4 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-1 rounded-full bg-foreground text-background shadow-lg pl-3 pr-1 py-1 text-[11px] font-mono">
+      {collapsed && (
+        <button
+          type="button"
+          onClick={() => setCollapsed(false)}
+          title="Dev Mode"
+          className="fixed bottom-3 right-3 z-50 inline-flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-background/75 px-3 text-[10px] font-semibold uppercase tracking-wider text-foreground shadow-lg backdrop-blur-xl sm:hidden"
+        >
+          <Terminal className="h-3 w-3 text-sky-300" />
+          DEV
+        </button>
+      )}
+
+      <div className={`fixed bottom-3 right-3 z-50 max-w-[calc(100vw-1rem)] items-center gap-1 rounded-2xl bg-foreground/95 text-background shadow-lg backdrop-blur-xl pl-2 pr-1 py-1 text-[11px] font-mono sm:bottom-4 sm:right-4 sm:flex sm:max-w-[calc(100vw-2rem)] sm:rounded-full sm:bg-foreground ${
+        collapsed ? "hidden" : "flex"
+      }`}>
+        <button
+          type="button"
+          onClick={() => setCollapsed(true)}
+          title={t("close")}
+          className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-background/15 sm:hidden"
+        >
+          <ChevronDown className="h-3 w-3" />
+        </button>
         <Terminal className="h-3 w-3" />
         <span className="font-semibold tracking-wider">DEV</span>
 
@@ -112,17 +142,17 @@ export function DevModeBadge() {
         <div className="relative ml-2">
           <button
             onClick={() => setPlanMenuOpen((o) => !o)}
-            title="Simula piano (solo dev)"
+            title={t("dev_simulate_plan_title")}
             className="h-6 px-2 rounded-full hover:bg-background/15 inline-flex items-center gap-1"
           >
             {PLAN_META[overridePlan].icon}
-            <span className="uppercase tracking-wider">{PLAN_META[overridePlan].label}</span>
+            <span className="uppercase tracking-wider">{planLabel(overridePlan)}</span>
             <ChevronDown className="h-3 w-3 opacity-70" />
           </button>
           {planMenuOpen && (
             <div className="absolute bottom-full right-0 mb-2 min-w-[200px] rounded-lg border border-border bg-popover text-popover-foreground shadow-xl overflow-hidden">
               <div className="px-3 py-1.5 text-[9px] uppercase tracking-wider text-muted-foreground border-b border-border">
-                Simula piano
+                {t("dev_simulate_plan")}
               </div>
               {(Object.keys(PLAN_META) as PlanTier[]).map((tier) => {
                 const meta = PLAN_META[tier];
@@ -137,8 +167,8 @@ export function DevModeBadge() {
                   >
                     <span className="opacity-80">{meta.icon}</span>
                     <div className="flex-1 leading-tight">
-                      <div className="font-semibold">{meta.label}</div>
-                      <div className="text-[9px] text-muted-foreground">{meta.hint}</div>
+                      <div className="font-semibold">{planLabel(tier)}</div>
+                      <div className="text-[9px] text-muted-foreground">{t(meta.hintKey)}</div>
                     </div>
                     {active && <Check className="h-3 w-3 text-primary" />}
                   </button>
@@ -150,14 +180,14 @@ export function DevModeBadge() {
 
         <button
           onClick={() => navigate("/usage")}
-          title="Usage dashboard"
+          title={t("usage_dashboard")}
           className="h-6 w-6 rounded-full hover:bg-background/15 flex items-center justify-center"
         >
           <BarChart3 className="h-3 w-3" />
         </button>
         <button
           onClick={() => setWipeOpen(true)}
-          title="Cancella progetti di test (Free/Beta/Pro) · Premium intatto"
+          title={t("wipe_test_projects_title")}
           className="h-6 w-6 rounded-full hover:bg-background/15 flex items-center justify-center"
         >
           <Trash2 className="h-3 w-3" />
@@ -165,9 +195,9 @@ export function DevModeBadge() {
         <button
           onClick={() => {
             exitDevMode();
-            toast.message("Developer Mode disattivato");
+            toast.message(t("dev_mode_disabled"));
           }}
-          title="Esci da Dev Mode"
+          title={t("exit_dev_mode")}
           className="h-6 w-6 rounded-full hover:bg-background/15 flex items-center justify-center"
         >
           <X className="h-3 w-3" />
@@ -177,11 +207,9 @@ export function DevModeBadge() {
       <Dialog open={wipeOpen} onOpenChange={setWipeOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Cancella progetti di test</DialogTitle>
+            <DialogTitle>{t("wipe_dialog_title")}</DialogTitle>
             <DialogDescription>
-              Elimina <strong>solo</strong> i progetti creati nei piani simulati <strong>Free</strong>, <strong>Beta</strong> e <strong>Pro</strong> (sandbox di test).
-              I progetti del piano <strong>Premium</strong> sono salvati sul tuo account Google e nel cloud — restano <strong>intatti</strong> anche dopo logout.
-              L'app verrà ricaricata.
+              {t("wipe_dialog_desc")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-2">
@@ -189,13 +217,13 @@ export function DevModeBadge() {
               onClick={() => setWipeOpen(false)}
               className="px-3 py-2 rounded-md text-xs border border-border hover:bg-muted/50"
             >
-              Annulla
+              {t("cancel")}
             </button>
             <button
               onClick={handleWipeTestProjects}
               className="px-3 py-2 rounded-md text-xs font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Cancella test (Premium intatto)
+              {t("wipe_confirm")}
             </button>
           </DialogFooter>
         </DialogContent>

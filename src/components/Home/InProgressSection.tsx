@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadProjects, getCurrentUserId, deleteProjectAsync } from "@/services/storageService";
 import { BookProject } from "@/types/book";
 import { isProjectComplete } from "@/lib/project-status";
+import { t, tt, useUILanguage } from "@/lib/i18n";
 
 interface RunRow {
   id: string;
@@ -26,14 +27,15 @@ interface Props {
  *  - Local partial projects whose phase is not yet 'complete'
  */
 export function InProgressSection({ refreshKey = 0 }: Props) {
+  useUILanguage();
   const navigate = useNavigate();
   const [runs, setRuns] = useState<RunRow[]>([]);
   const [drafts, setDrafts] = useState<BookProject[]>([]);
   const [scopeTick, setScopeTick] = useState(0);
 
   const deleteDraft = async (projectId: string, title?: string) => {
-    const name = title || "questa bozza";
-    const ok = window.confirm(`Eliminare "${name}" dai libri in corso? Questa azione non si annulla.`);
+    const name = title || t("this_draft");
+    const ok = window.confirm(tt("confirm_delete_draft", { name }));
     if (!ok) return;
 
     await deleteProjectAsync(projectId);
@@ -91,7 +93,7 @@ export function InProgressSection({ refreshKey = 0 }: Props) {
     <div className="mb-6">
       <p className="px-1 mb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
         <Loader2 className="h-3 w-3 animate-spin text-primary" />
-        In corso ({totalCount})
+        {t("in_progress")} ({totalCount})
       </p>
       <div className="space-y-2">
         {runs.map((r) => {
@@ -100,7 +102,7 @@ export function InProgressSection({ refreshKey = 0 }: Props) {
           const pct = Math.min(100, Math.round((chaptersDone / Math.max(1, total)) * 100));
           const title =
             r.input?.prefilledTitle ||
-            (r.input?.idea ? r.input.idea.slice(0, 70) : "Generating book…");
+            (r.input?.idea ? r.input.idea.slice(0, 70) : t("generating_book"));
           return (
             <button
               key={r.id}
@@ -146,7 +148,7 @@ export function InProgressSection({ refreshKey = 0 }: Props) {
               >
                 <Save className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-foreground">{p.config.title || "Untitled"}</p>
+                  <p className="truncate text-sm font-semibold text-foreground">{p.config.title || t("untitled")}</p>
                   <div className="mt-1.5 flex items-center gap-2">
                     <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
                       <div className="h-full bg-amber-500 transition-all" style={{ width: `${pct}%` }} />
@@ -155,7 +157,7 @@ export function InProgressSection({ refreshKey = 0 }: Props) {
                       {pct}%
                     </span>
                     <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-                      Bozza · {done}/{total}
+                      {t("draft")} · {done}/{total}
                     </span>
                   </div>
                 </div>
@@ -164,8 +166,8 @@ export function InProgressSection({ refreshKey = 0 }: Props) {
 
               <button
                 type="button"
-                aria-label="Elimina bozza"
-                title="Elimina bozza"
+                aria-label={t("delete_draft")}
+                title={t("delete_draft")}
                 onClick={() => deleteDraft(p.id, p.config.title)}
                 className="shrink-0 rounded-md border border-destructive/30 bg-destructive/5 p-2 text-destructive opacity-80 transition hover:bg-destructive/10 hover:opacity-100"
               >

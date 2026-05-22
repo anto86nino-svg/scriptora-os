@@ -2,7 +2,7 @@ import { useState } from "react";
 import { BookProject, SectionId, GenerationStatus } from "@/types/book";
 import { ChevronRight, ChevronDown, FileText, Layers, Archive, ScrollText, Loader2, CheckCircle2, AlertCircle, Circle, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { t } from "@/lib/i18n";
+import { t, tt, useUILanguage } from "@/lib/i18n";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 
 interface NavigationTreeProps {
@@ -14,6 +14,7 @@ interface NavigationTreeProps {
 }
 
 export function NavigationTree({ project, activeSection, onSelectSection, generatingSet, onGenerateChaptersParallel }: NavigationTreeProps) {
+  useUILanguage();
   const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -21,7 +22,8 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
   const toggleChapter = (i: number) => {
     setExpandedChapters(prev => {
       const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
       return next;
     });
   };
@@ -29,7 +31,8 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
   const toggleSelected = (i: number) => {
     setSelected(prev => {
       const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
       return next;
     });
   };
@@ -100,22 +103,22 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
                     ? "bg-primary/20 text-primary border border-primary/30"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                 )}
-                title="Multi-selezione per generazione parallela"
+                title={t("parallel_selection_title")}
               >
-                {selectMode ? "✕ Annulla" : "☰ Selez."}
+                {selectMode ? `✕ ${t("cancel")}` : `☰ ${t("select_short")}`}
               </button>
             )}
           </div>
 
           {selectMode && (
             <div className="ios-glass-soft mb-1.5 flex items-center justify-between gap-2 rounded-lg p-1.5">
-              <span className="text-[10px] text-foreground/70">{selected.size} selezionati</span>
+              <span className="text-[10px] text-foreground/70">{tt("selected_count", { count: selected.size })}</span>
               <button
                 onClick={handleBulkGenerate}
                 disabled={selected.size === 0}
                 className="flex items-center gap-1 rounded-lg bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-950 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                <Sparkles className="h-2.5 w-2.5" /> Genera ×3
+                <Sparkles className="h-2.5 w-2.5" /> {t("generate_x3")}
               </button>
             </div>
           )}
@@ -139,7 +142,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleSelected(i); }}
                       className="pl-2 pr-0.5 py-1.5"
-                      title={isSelected ? "Deseleziona" : "Seleziona"}
+                      title={isSelected ? t("deselect") : t("select")}
                     >
                       <span className={cn(
                         "h-3 w-3 rounded border flex items-center justify-center text-[8px]",

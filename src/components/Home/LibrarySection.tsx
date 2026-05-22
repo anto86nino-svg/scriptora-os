@@ -3,6 +3,7 @@ import { Library, ArrowRight, FileDown, Trash2, CheckCircle2 } from "lucide-reac
 import { BookProject } from "@/types/book";
 import { isProjectComplete } from "@/lib/project-status";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
+import { t, useUILanguage } from "@/lib/i18n";
 
 interface Props {
   projects: BookProject[];
@@ -18,6 +19,7 @@ interface Props {
  * InProgressSection).
  */
 export function LibrarySection({ projects, onOpen, onDelete, onExport }: Props) {
+  useUILanguage();
   const [expanded, setExpanded] = useState(true);
   const completed = projects.filter(isProjectComplete);
 
@@ -31,13 +33,13 @@ export function LibrarySection({ projects, onOpen, onDelete, onExport }: Props) 
           className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 hover:text-foreground transition-colors"
         >
           <Library className="h-3 w-3 text-emerald-500" />
-          Biblioteca ({completed.length})
+          {t("library")} ({completed.length})
         </button>
         <button
           onClick={onExport}
           className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
         >
-          <FileDown className="h-3 w-3" /> Esporta
+          <FileDown className="h-3 w-3" /> {t("export_label")}
         </button>
       </div>
 
@@ -61,18 +63,18 @@ export function LibrarySection({ projects, onOpen, onDelete, onExport }: Props) 
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <p className="truncate text-sm font-semibold text-foreground">
-                      {p.config.title || "Untitled"}
+                      {p.config.title || t("untitled")}
                     </p>
                     <EditorialMasteryBadge genre={p.config.genre} subcategory={(p.config as any).subcategory} size="xs" />
                   </div>
                   <div className="mt-0.5 flex items-center gap-2 text-[10px] text-muted-foreground">
                     <span className="capitalize">{p.config.genre}</span>
                     <span>·</span>
-                    <span>{ch} capitoli</span>
+                    <span>{ch} {t("chapters_unit")}</span>
                     <span>·</span>
-                    <span>{words.toLocaleString()} parole</span>
+                    <span>{words.toLocaleString()} {t("words_unit")}</span>
                     <span className="ml-1 px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-semibold uppercase tracking-wider">
-                      Pronto
+                      {t("ready")}
                     </span>
                   </div>
                 </button>
@@ -82,7 +84,7 @@ export function LibrarySection({ projects, onOpen, onDelete, onExport }: Props) 
                     onDelete(p.id);
                   }}
                   className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 transition-opacity"
-                  title="Elimina"
+                  title={t("delete")}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

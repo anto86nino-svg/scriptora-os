@@ -7,6 +7,7 @@ import { HomeExportDialog } from "@/components/HomeExportDialog";
 import { TitleIntelligenceDialog } from "@/components/TitleIntelligenceDialog";
 import { AdvancedAppearanceDialog } from "@/components/AdvancedAppearanceDialog";
 import { CharacterStudioDialog, SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/components/CharacterStudioDialog";
+import { ManuscriptAnalyzerDialog } from "@/components/ManuscriptAnalyzerDialog";
 import { NotepadDialog } from "@/components/NotepadDialog";
 import { InProgressSection } from "@/components/Home/InProgressSection";
 import { LibrarySection } from "@/components/Home/LibrarySection";
@@ -21,7 +22,7 @@ import {
   CheckCircle2, NotebookPen
 } from "lucide-react";
 import { BookConfig, BookProject } from "@/types/book";
-import { t, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage } from "@/lib/i18n";
+import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
 import { DevModeUnlockDialog } from "@/components/DevModeUnlockDialog";
 import { enableDevMode, isDevMode, exitDevMode, useDevMode } from "@/lib/dev-mode";
 import { BetaActivationDialog } from "@/components/BetaActivationDialog";
@@ -110,12 +111,13 @@ export default function Home() {
   const [showTitleIntel, setShowTitleIntel] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [showCharacterStudio, setShowCharacterStudio] = useState(false);
+  const [showManuscriptAnalyzer, setShowManuscriptAnalyzer] = useState(false);
   const [showNotepad, setShowNotepad] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const [showIdeaModal, setShowIdeaModal] = useState(false);
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [showLangMenu, setShowLangMenu] = useState(false);
-  const [, setLangTick] = useState(0);
+  const currentLang = useUILanguage();
   const [activeRun, setActiveRun] = useState<{ runId: string; title: string; startedAt: number } | null>(null);
 
   // One-click idea state
@@ -175,7 +177,7 @@ export default function Home() {
 
   const openNewBookGuarded = () => {
     if (freeBookUsed) {
-      toast.error("Hai già usato il libro gratuito. Passa a Pro/Premium per crearne altri.");
+      toast.error(t("toast_free_book_used"));
       navigate("/pricing");
       return;
     }
@@ -184,7 +186,7 @@ export default function Home() {
 
   const guardFreeAiFeature = (action: () => void) => () => {
     if (freeBookUsed) {
-      toast.error("Funzione bloccata nel piano Free dopo il libro gratuito. Passa a Pro/Premium per continuare.");
+      toast.error(t("toast_free_feature_locked"));
       navigate("/pricing");
       return;
     }
@@ -197,8 +199,8 @@ export default function Home() {
   const lastProject = lastId ? projects.find(p => p.id === lastId) : null;
 
   const deleteHomeProject = async (projectId: string, title?: string) => {
-    const name = title || "questo progetto";
-    const ok = window.confirm(`Eliminare "${name}" dalla home? Questa azione non si annulla.`);
+    const name = title || t("this_project");
+    const ok = window.confirm(tt("confirm_delete_project", { name }));
     if (!ok) return;
 
     await deleteProjectAsync(projectId);
@@ -212,7 +214,6 @@ export default function Home() {
 
   const changeLang = (lang: UILanguage) => {
     setUILanguage(lang);
-    setLangTick(p => p + 1);
     setShowLangMenu(false);
   };
 
@@ -256,7 +257,7 @@ export default function Home() {
           characters: charactersFromBibleText(bible),
         } as BookConfig;
 
-        toast.success(`Personaggi collegati al romanzo · ${finalConfig.genre}${finalConfig.subcategory ? " / " + finalConfig.subcategory : ""}`);
+        toast.success(tt("characters_attached_to_novel", { genre: `${finalConfig.genre}${finalConfig.subcategory ? " / " + finalConfig.subcategory : ""}` }));
       }
     } catch {
       finalConfig = config;
@@ -286,11 +287,11 @@ export default function Home() {
       if (error) throw error;
       if (data?.fallback) {
         if (data.code === "CREDITS_EXHAUSTED") {
-          toast.error("AI credits exhausted. Open Advanced to fill the brief manually.");
+          toast.error(t("ai_credits_exhausted"));
         } else if (data.code === "RATE_LIMIT") {
-          toast.error("Rate limit hit, retry in a moment.");
+          toast.error(t("rate_limit_retry"));
         } else {
-          toast.error(data.error || "Detection unavailable");
+          toast.error(data.error || t("detection_unavailable"));
         }
         return null;
       }
@@ -298,7 +299,7 @@ export default function Home() {
       setIntent(data as DetectedIntent);
       return data as DetectedIntent;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Detection failed");
+      toast.error(e instanceof Error ? e.message : t("detection_failed"));
       return null;
     } finally {
       setDetecting(false);
@@ -335,7 +336,6 @@ export default function Home() {
 
   const heroValid = idea.trim().length >= 6;
 
-  const currentLang = getUILanguage();
   const currentLangLabel = UI_LANGUAGES.find(l => l.value === currentLang)?.label || "English";
   const completedProjects = projects.filter(isProjectComplete);
   const draftProjects = projects.filter((p) => !isProjectComplete(p));
@@ -348,32 +348,58 @@ export default function Home() {
     0,
   );
   const planLabel = currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1);
+  const lastProjectDoneChapters = lastProject?.chapters?.filter((chapter) => (chapter.content || "").trim().length > 50).length || 0;
+  const lastProjectTargetChapters = lastProject?.config?.numberOfChapters || lastProject?.chapters?.length || 0;
+  const lastProjectProgress = lastProject
+    ? lastProject.phase === "complete"
+      ? 100
+      : lastProjectTargetChapters > 0
+        ? Math.min(100, Math.round((lastProjectDoneChapters / lastProjectTargetChapters) * 100))
+        : 0
+    : 0;
   const workspaceStats = [
-    { label: "Projects", value: projects.length.toLocaleString(), detail: `${draftProjects.length} drafts`, icon: FolderOpen, iconBg: "ios-icon-blue" },
-    { label: "Completed", value: completedProjects.length.toLocaleString(), detail: "ready to export", icon: CheckCircle2, iconBg: "ios-icon-green" },
-    { label: "Chapters", value: totalChapters.toLocaleString(), detail: "generated", icon: BookOpen, iconBg: "ios-icon-orange" },
-    { label: "Words", value: totalWords > 0 ? totalWords.toLocaleString() : "0", detail: "in library", icon: FileDown, iconBg: "ios-icon-pink" },
+    { label: t("projects"), value: projects.length.toLocaleString(), detail: tt("draft_count", { count: draftProjects.length }), icon: FolderOpen, iconBg: "ios-icon-blue" },
+    { label: t("completed"), value: completedProjects.length.toLocaleString(), detail: t("ready_to_export"), icon: CheckCircle2, iconBg: "ios-icon-green" },
+    { label: t("chapters"), value: totalChapters.toLocaleString(), detail: t("generated_detail"), icon: BookOpen, iconBg: "ios-icon-orange" },
+    { label: t("words_unit"), value: totalWords > 0 ? totalWords.toLocaleString() : "0", detail: t("in_library"), icon: FileDown, iconBg: "ios-icon-pink" },
   ];
 
   const cards = [
-    { icon: Plus, title: freeBookUsed ? "Libro gratuito usato" : t("new_book"), desc: freeBookUsed ? "Passa a Pro/Premium per creare altri libri" : t("new_book_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-blue", action: openNewBookGuarded },
-    { icon: Settings, title: freeBookUsed ? "Impostazioni Pro" : "Impostazioni", desc: freeBookUsed ? "Sblocca con Pro/Premium" : "Lingua, sfondo e font", iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-yellow", action: guardFreeAiFeature(() => setShowAdvancedSettings(true)), feature: freeBookUsed ? "export_epub" as const : undefined },
-    { icon: Users, title: freeBookUsed ? "Personaggi Pro" : "Personaggi", desc: freeBookUsed ? "Sblocca con Pro/Premium" : "Cast e continuità", iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-pink", action: guardFreeAiFeature(() => setShowCharacterStudio(true)), feature: freeBookUsed ? "export_epub" as const : undefined },
-    { icon: NotebookPen, title: "Block Notes", desc: "Appunti e idee", iconBg: "ios-icon-yellow", action: () => setShowNotepad(true) },
-    { icon: FolderOpen, title: t("projects"), desc: t("projects_desc"), iconBg: "ios-icon-cyan", action: () => setShowProjects(!showProjects) },
-    { icon: Rocket, title: t("publish"), desc: t("publish_desc"), iconBg: "ios-icon-violet", action: () => goApp({ section: "publish" }), feature: "export_epub" as const },
-    { icon: Zap, title: freeBookUsed ? "Title Pro" : t("title_intelligence"), desc: freeBookUsed ? "Sblocca con Pro/Premium" : "Titoli che convertono", iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-teal", action: guardFreeAiFeature(() => setShowTitleIntel(true)), feature: "title_intelligence_base" as const },
-    { icon: Library, title: "Biblioteca", desc: "Libri completati", iconBg: "ios-icon-green", action: () => setShowLibrary(true) },
-    { icon: TrendingUp, title: freeBookUsed ? "Radar Pro" : "Bestseller Radar", desc: freeBookUsed ? "Sblocca con Pro/Premium" : "Domanda e concorrenza", iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: guardFreeAiFeature(() => navigate("/bestseller-radar")), feature: freeBookUsed ? "export_epub" as const : undefined },
-    { icon: BarChart3, title: freeBookUsed ? "Keyword Pro" : "Keyword Gold", desc: freeBookUsed ? "Sblocca con Pro/Premium" : "BISAC e keyword KDP", iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-yellow", action: guardFreeAiFeature(() => navigate("/keyword-gold")), feature: freeBookUsed ? "export_epub" as const : "kdp_market_base" as const },
-    { icon: FileDown, title: t("export_label"), desc: t("export_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const },
+    { group: "create", icon: Flame, title: t("generate_bestseller_title"), desc: t("generate_bestseller_desc"), iconBg: "ios-icon-blue", action: () => setShowIdeaModal(true), emphasis: true },
+    { group: "create", icon: HomeIcon, title: t("dashboard_overview"), desc: t("dashboard_overview_desc"), iconBg: "ios-icon-cyan", action: () => navigate("/dashboard") },
+    { group: "create", icon: BookOpen, title: t("editor"), desc: t("write_desc"), iconBg: "ios-icon-violet", action: () => goApp() },
+    { group: "create", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("new_book"), desc: freeBookUsed ? t("upgrade_more_books") : t("new_book_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: openNewBookGuarded },
+
+    { group: "editorial", icon: Wand2, title: t("analyze_manuscript"), desc: t("analyze_manuscript_desc"), iconBg: "ios-icon-teal", action: () => setShowManuscriptAnalyzer(true) },
+    { group: "editorial", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_studio_desc"), iconBg: "ios-icon-pink", action: () => goApp() },
+    { group: "editorial", icon: Users, title: freeBookUsed ? `${t("characters")} ${t("pro_feature_suffix")}` : t("characters"), desc: freeBookUsed ? t("unlock_pro") : t("characters_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-pink", action: guardFreeAiFeature(() => setShowCharacterStudio(true)), feature: freeBookUsed ? "export_epub" as const : undefined },
+    { group: "editorial", icon: NotebookPen, title: t("block_notes"), desc: t("block_notes_desc"), iconBg: "ios-icon-yellow", action: () => setShowNotepad(true) },
+
+    { group: "publishing", icon: Rocket, title: t("kdp_tools"), desc: t("kdp_tools_desc"), iconBg: "ios-icon-violet", action: () => navigate("/kdp-launch"), feature: "kdp_market_base" as const },
+    { group: "publishing", icon: Zap, title: freeBookUsed ? `Title ${t("pro_feature_suffix")}` : t("title_intelligence"), desc: freeBookUsed ? t("unlock_pro") : t("title_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-teal", action: guardFreeAiFeature(() => setShowTitleIntel(true)), feature: "title_intelligence_base" as const },
+    { group: "publishing", icon: TrendingUp, title: freeBookUsed ? `Radar ${t("pro_feature_suffix")}` : "Bestseller Radar", desc: freeBookUsed ? t("unlock_pro") : t("radar_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: guardFreeAiFeature(() => navigate("/bestseller-radar")), feature: freeBookUsed ? "export_epub" as const : undefined },
+    { group: "publishing", icon: BarChart3, title: freeBookUsed ? `Keyword ${t("pro_feature_suffix")}` : "Keyword Gold", desc: freeBookUsed ? t("unlock_pro") : t("keyword_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-yellow", action: guardFreeAiFeature(() => navigate("/keyword-gold")), feature: freeBookUsed ? "export_epub" as const : "kdp_market_base" as const },
+    { group: "publishing", icon: FileDown, title: t("export_label"), desc: t("export_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const },
+    { group: "publishing", icon: Library, title: t("library"), desc: t("library_desc"), iconBg: "ios-icon-green", action: () => setShowLibrary(true) },
+
+    { group: "system", icon: Users, title: t("author_identity"), desc: t("author_identity_desc"), iconBg: "ios-icon-blue", action: openNewBookGuarded },
+    { group: "system", icon: Settings, title: t("background_atmosphere"), desc: t("background_atmosphere_desc"), iconBg: "ios-icon-slate", action: guardFreeAiFeature(() => setShowAdvancedSettings(true)), feature: freeBookUsed ? "export_epub" as const : undefined },
+    { group: "system", icon: FolderOpen, title: t("projects"), desc: t("projects_desc"), iconBg: "ios-icon-cyan", action: () => setShowProjects(!showProjects) },
+    { group: "system", icon: Settings, title: freeBookUsed ? `${t("settings")} ${t("pro_feature_suffix")}` : t("settings"), desc: freeBookUsed ? t("unlock_pro") : t("settings_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-yellow", action: guardFreeAiFeature(() => setShowAdvancedSettings(true)), feature: freeBookUsed ? "export_epub" as const : undefined },
+  ];
+
+  const cardGroups = [
+    { id: "create", title: t("creation_suite"), desc: t("creation_suite_desc") },
+    { id: "editorial", title: t("editorial_suite"), desc: t("editorial_suite_desc") },
+    { id: "publishing", title: t("publishing_suite"), desc: t("publishing_suite_desc") },
+    { id: "system", title: t("system_suite"), desc: t("system_suite_desc") },
   ];
 
   return (
     <div className="scriptora-ios-screen min-h-screen relative overflow-hidden">
       <header className="sticky top-0 z-20 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <div className="flex min-w-0 items-center gap-2">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             <button
               onClick={() => {
                 const now = Date.now();
@@ -382,7 +408,7 @@ export default function Home() {
                   setLogoClicks([]);
                   if (!isDevMode()) {
                     enableDevMode();
-                    toast.success("Developer Mode attivato");
+                    toast.success(t("toast_dev_enabled"));
                   }
                   navigate("/usage");
                   return;
@@ -412,7 +438,7 @@ export default function Home() {
             <div className="hidden h-5 w-px bg-white/10 sm:block" />
             <span className="hidden items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground sm:inline-flex">
               <HomeIcon className="h-3 w-3" />
-              Studio
+              {t("studio")}
             </span>
 
             {user && (
@@ -420,7 +446,7 @@ export default function Home() {
                 <button
                   onClick={() => navigate("/pricing")}
                   title={displayName}
-                  className="ml-1 flex h-8 min-w-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] pl-1 pr-2 transition-colors hover:bg-white/[0.12]"
+                  className="ml-1 flex h-8 min-w-0 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] pl-1 pr-2 transition-colors hover:bg-white/[0.12]"
                 >
                   <Avatar className="h-6 w-6">
                     {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
@@ -428,7 +454,7 @@ export default function Home() {
                       {initials}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="hidden max-w-[120px] truncate text-[11px] font-medium text-foreground md:inline">
+                  <span className="hidden max-w-[120px] truncate text-[11px] font-medium text-foreground lg:inline">
                     {displayName}
                   </span>
                 </button>
@@ -436,11 +462,11 @@ export default function Home() {
                   onClick={async () => {
                     try {
                       await signOut();
-                      toast.success("Disconnesso");
+                      toast.success(t("toast_signed_out"));
                     } catch { /* noop */ }
                     navigate("/auth");
                   }}
-                  title="Esci dall'account"
+                  title={t("toast_signed_out")}
                   className="ios-toolbar-button h-8 w-8 text-muted-foreground hover:text-destructive"
                 >
                   <LogOut className="h-3.5 w-3.5" />
@@ -449,34 +475,34 @@ export default function Home() {
             )}
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
             <button
               onClick={() => navigate("/pricing")}
-              className="ios-toolbar-button hidden px-3 text-xs font-medium sm:flex"
-              title="Pricing"
+              className="ios-toolbar-button hidden px-3 text-xs font-medium lg:flex"
+              title={t("pricing")}
             >
-              <CreditCard className="h-3.5 w-3.5" /> Pricing
+              <CreditCard className="h-3.5 w-3.5" /> {t("pricing")}
             </button>
             <button
               onClick={() => navigate("/downloads")}
-              className="ios-toolbar-button hidden px-3 text-xs font-medium sm:flex"
-              title="Downloads"
+              className="ios-toolbar-button hidden px-3 text-xs font-medium lg:flex"
+              title={t("downloads")}
             >
-              <DownloadIcon className="h-3.5 w-3.5" /> Downloads
+              <DownloadIcon className="h-3.5 w-3.5" /> {t("downloads")}
             </button>
             {devOn && (
               <>
                 <button
                   onClick={() => navigate("/usage")}
-                  className="flex h-8 items-center gap-1.5 rounded-lg bg-white px-3 text-xs font-semibold text-slate-950 transition-opacity hover:opacity-90"
-                  title="Open Dev Dashboard"
+                  className="hidden h-8 items-center gap-1.5 rounded-lg bg-white px-3 text-xs font-semibold text-slate-950 transition-opacity hover:opacity-90 md:flex"
+                  title="Dev Dashboard"
                 >
                   <BarChart3 className="h-3.5 w-3.5" /> DEV
                 </button>
                 <button
                   onClick={() => exitDevMode()}
-                  className="ios-toolbar-button h-8 w-8 text-xs hover:bg-destructive hover:text-destructive-foreground"
-                  title="Exit Dev Mode"
+                  className="ios-toolbar-button hidden h-8 w-8 text-xs hover:bg-destructive hover:text-destructive-foreground md:inline-flex"
+                  title="Dev Mode"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                 </button>
@@ -485,9 +511,9 @@ export default function Home() {
             <div className="relative">
               <button
                 onClick={() => setShowLangMenu(!showLangMenu)}
-                className="ios-toolbar-button h-8 px-3 text-xs font-medium"
+                className="ios-toolbar-button h-8 w-8 px-0 text-xs font-medium min-[420px]:w-auto min-[420px]:px-3"
               >
-                <Globe className="h-3.5 w-3.5" /> {currentLangLabel}
+                <Globe className="h-3.5 w-3.5" /> <span className="hidden min-[420px]:inline">{currentLangLabel}</span>
               </button>
               {showLangMenu && (
                 <>
@@ -509,38 +535,47 @@ export default function Home() {
         </div>
       </header>
 
-      <div className="relative mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6 lg:px-8">
-        <div className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.85fr)]">
-          <section className="ios-panel p-5">
-            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+      <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 sm:pt-8 lg:px-8">
+        <div className="mb-4 grid gap-3 sm:mb-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
+          <section className="ios-panel p-4 sm:p-6">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div className="min-w-0">
-                <div className="mb-3 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground">
-                  <Sparkles className="h-3 w-3 text-sky-300" /> AI Book Studio
+                <div className="mb-2 flex flex-wrap items-center gap-2 sm:mb-3">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[10px] font-semibold uppercase text-foreground/65">
+                    <Sparkles className="h-3 w-3 text-sky-300" /> {t("ai_book_studio")}
+                  </span>
+                  <span className={`inline-flex items-center rounded-lg border px-2 py-1 text-[10px] font-semibold uppercase sm:hidden ${
+                    activeRun
+                      ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
+                      : "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
+                  }`}>
+                    {activeRun ? t("live") : t("stable")}
+                  </span>
                 </div>
-                <h1 className="max-w-2xl text-2xl font-semibold text-foreground sm:text-3xl">
+                <h1 className="max-w-2xl text-2xl font-semibold leading-tight text-foreground sm:text-4xl">
                   Scriptora OS
                 </h1>
-                <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-                  Piano {devOn ? "DEV" : planLabel} attivo. Tutto quello che serve per scrivere, rifinire e pubblicare vive in una home elegante, veloce e pronta.
+                <p className="mt-2 max-h-10 max-w-xl overflow-hidden text-xs leading-5 text-foreground/62 sm:mt-3 sm:max-h-none sm:text-sm sm:leading-6">
+                  {tt("plan_active_sentence", { plan: devOn ? "DEV" : planLabel })}
                 </p>
               </div>
               <button
                 onClick={() => setShowIdeaModal(true)}
-                className="group inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-semibold text-slate-950 shadow-lg shadow-black/20 transition-all hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-3 text-xs font-semibold text-slate-950 shadow-lg shadow-black/20 transition-all hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:h-12 sm:px-5 sm:text-sm"
               >
                 <Flame className="h-4 w-4" />
-                Generate Book
+                {t("generate_bestseller_title")}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
             </div>
           </section>
 
-          <section className="ios-panel p-5">
+          <section className="ios-panel hidden p-5 sm:block sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">Workspace status</p>
+                <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("workspace_status")}</p>
                 <p className="mt-1 text-sm font-semibold text-foreground">
-                  {activeRun ? "Generation running" : "Ready"}
+                  {activeRun ? t("generation_running") : t("ready")}
                 </p>
               </div>
               <div className={`rounded-lg border px-2.5 py-1 text-[10px] font-semibold uppercase ${
@@ -548,7 +583,7 @@ export default function Home() {
                   ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
                   : "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
               }`}>
-                {activeRun ? "Live" : "Stable"}
+                {activeRun ? t("live") : t("stable")}
               </div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
@@ -556,14 +591,14 @@ export default function Home() {
                 onClick={() => setShowProjects(true)}
                 className="rounded-lg border border-white/10 bg-white/[0.07] p-3 text-left transition-colors hover:border-sky-300/40 hover:bg-sky-400/10"
               >
-                <p className="text-[10px] uppercase text-muted-foreground">Drafts</p>
+                <p className="text-[10px] uppercase text-muted-foreground">{t("drafts")}</p>
                 <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{draftProjects.length}</p>
               </button>
               <button
                 onClick={() => setShowLibrary(true)}
                 className="rounded-lg border border-white/10 bg-white/[0.07] p-3 text-left transition-colors hover:border-emerald-300/40 hover:bg-emerald-400/10"
               >
-                <p className="text-[10px] uppercase text-muted-foreground">Library</p>
+                <p className="text-[10px] uppercase text-muted-foreground">{t("library")}</p>
                 <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{completedProjects.length}</p>
               </button>
             </div>
@@ -572,19 +607,19 @@ export default function Home() {
 
         <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
 
-        <div className="mb-6 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+        <div className="mb-4 grid grid-cols-4 gap-1.5 sm:mb-6 sm:grid-cols-2 sm:gap-2.5 lg:grid-cols-4">
           {workspaceStats.map((stat) => (
-            <div key={stat.label} className="ios-glass-soft rounded-lg p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-semibold uppercase text-muted-foreground">{stat.label}</p>
-                  <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{stat.value}</p>
+            <div key={stat.label} className="ios-glass-soft rounded-lg p-2 sm:p-3">
+              <div className="flex items-center justify-between gap-2 sm:gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-[8px] font-semibold uppercase text-foreground/58 sm:text-[10px]">{stat.label}</p>
+                  <p className="mt-0.5 text-base font-semibold tabular-nums text-foreground sm:mt-1 sm:text-xl">{stat.value}</p>
                 </div>
-                <span className={`ios-icon ${stat.iconBg} h-9 w-9 rounded-[14px]`}>
+                <span className={`ios-icon ${stat.iconBg} hidden h-9 w-9 rounded-[14px] sm:inline-flex`}>
                   <stat.icon className="h-4 w-4" />
                 </span>
               </div>
-              <p className="mt-1 truncate text-[11px] text-muted-foreground">{stat.detail}</p>
+              <p className="mt-1 hidden truncate text-[11px] text-foreground/60 sm:block">{stat.detail}</p>
             </div>
           ))}
         </div>
@@ -600,62 +635,113 @@ export default function Home() {
                 goApp({ projectId: lastProject.id });
               }
             }}
-            className="ios-panel group mb-6 flex w-full cursor-pointer items-center justify-between gap-3 p-3 text-left transition-colors hover:border-primary/40"
+            className="ios-panel group mb-6 w-full cursor-pointer overflow-hidden p-0 text-left transition-colors hover:border-primary/40"
           >
-            <div className="min-w-0 flex-1">
-              <p className="mb-1 flex items-center gap-1.5 text-[10px] uppercase text-muted-foreground">
-                <Clock className="h-3 w-3" /> {t("continue_project")}
-              </p>
-              <p className="truncate text-sm font-semibold text-foreground">{lastProject.config.title || "Untitled"}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {lastProject.chapters?.length || 0} {t("chapters").toLowerCase()} · {lastProject.phase}
-              </p>
+            <div className="bg-gradient-to-r from-sky-400/10 via-white/[0.055] to-emerald-400/10 p-4 sm:p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="mb-2 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[10px] font-semibold uppercase text-foreground/70">
+                    <Clock className="h-3 w-3 text-sky-300" /> {t("continue_project")}
+                  </p>
+                  <p className="truncate text-lg font-semibold leading-6 text-foreground sm:text-xl">
+                    {lastProject.config.title || t("untitled")}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-foreground/65">
+                    {lastProjectDoneChapters}/{lastProjectTargetChapters || lastProject.chapters?.length || 0} {t("chapters").toLowerCase()} · {lastProject.phase}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  title={t("delete")}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    deleteHomeProject(lastProject.id, lastProject.config.title);
+                  }}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-destructive/30 bg-destructive/10 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="mt-4 flex items-center gap-3">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-sky-300 to-emerald-300 transition-all"
+                    style={{ width: `${lastProjectProgress}%` }}
+                  />
+                </div>
+                <span className="min-w-10 text-right text-[11px] font-semibold tabular-nums text-foreground/70">
+                  {lastProjectProgress}%
+                </span>
+              </div>
+              <div className="mt-4 flex items-center justify-between gap-3">
+                <span className="text-[11px] leading-4 text-foreground/60">
+                  {t("continue_project_hint")}
+                </span>
+                <span className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-white px-3 text-xs font-semibold text-slate-950 shadow-lg shadow-black/20 transition-colors group-hover:bg-slate-100">
+                  {t("continue_action")}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </span>
+              </div>
             </div>
-            <button
-              type="button"
-              title="Elimina progetto"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                deleteHomeProject(lastProject.id, lastProject.config.title);
-              }}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-destructive/30 bg-destructive/10 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 transition-colors group-hover:bg-primary">
-              <ArrowRight className="h-4 w-4 text-primary transition-colors group-hover:text-primary-foreground" />
-            </span>
           </div>
         )}
 
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-semibold uppercase text-muted-foreground">Home screen</p>
-            <h2 className="mt-1 text-base font-semibold text-foreground">App Scriptora</h2>
+        <section className="mb-10">
+          <div className="mb-5 flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("home_screen")}</p>
+              <h2 className="mt-1 text-xl font-semibold text-foreground">{t("launchpad")}</h2>
+              <p className="mt-1 max-w-xl text-xs leading-5 text-foreground/65">{t("launchpad_desc")}</p>
+            </div>
+            <span className="hidden text-[11px] text-muted-foreground sm:inline">
+              {tt("total_suffix", { count: projects.length, plan: planLabel })}
+            </span>
           </div>
-          <span className="hidden text-[11px] text-muted-foreground sm:inline">
-            {projects.length} total · {planLabel}
-          </span>
-        </div>
 
-        <div className="mb-8 grid grid-cols-3 gap-x-3 gap-y-5 sm:grid-cols-5 lg:grid-cols-10">
-          {cards.map(card => {
-            const inner = (
-              <button key={card.title} onClick={card.action}
-                className="group flex min-h-[96px] w-full flex-col items-center justify-start gap-2 rounded-lg p-1 text-center transition-all duration-200 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50">
-                <span className={`ios-icon ${card.iconBg} h-14 w-14`}>
-                  <card.icon className="h-6 w-6" />
-                </span>
-                <span className="max-w-full truncate text-[11px] font-semibold leading-4 text-foreground">{card.title}</span>
-                <span className="hidden max-w-[88px] text-[10px] leading-3 text-muted-foreground lg:block">{card.desc}</span>
-              </button>
-            );
-            return (card as any).feature
-              ? <PaywallGuard key={card.title} feature={(card as any).feature} compact>{inner}</PaywallGuard>
-              : <div key={card.title}>{inner}</div>;
-          })}
-        </div>
+          <div className="space-y-7">
+            {cardGroups.map((group) => {
+              const groupCards = cards.filter((card) => card.group === group.id);
+              return (
+                <div key={group.id}>
+                  <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/10 pb-2">
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>
+                      <p className="mt-0.5 text-[11px] text-foreground/62">{group.desc}</p>
+                    </div>
+                    <span className="text-[10px] font-semibold tabular-nums text-muted-foreground">
+                      {groupCards.length}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+                    {groupCards.map(card => {
+                      const Icon = card.icon;
+                      const inner = (
+                        <button
+                          key={card.title}
+                          onClick={card.action}
+                          className={`group flex min-h-[128px] w-full flex-col items-start justify-between rounded-lg border border-white/10 bg-white/[0.055] p-3 text-left shadow-[0_10px_30px_rgba(0,0,0,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.09] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${
+                            (card as any).emphasis ? "sm:col-span-2 lg:col-span-2" : ""
+                          }`}
+                        >
+                          <span className={`ios-icon ${card.iconBg} h-12 w-12 rounded-[18px] sm:h-14 sm:w-14`}>
+                            <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                          </span>
+                          <span className="mt-3 text-sm font-semibold leading-5 text-foreground">{card.title}</span>
+                          <span className="mt-1 text-[11px] leading-4 text-foreground/64">{card.desc}</span>
+                        </button>
+                      );
+                      return (card as any).feature
+                        ? <PaywallGuard key={card.title} feature={(card as any).feature} compact>{inner}</PaywallGuard>
+                        : <div key={card.title}>{inner}</div>;
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
 
         {showProjects && (() => {
           const drafts = draftProjects;
@@ -663,18 +749,18 @@ export default function Home() {
             <div className="ios-panel mb-6 p-3">
               <div className="mb-2 flex items-center justify-between gap-3 px-1">
                 <p className="text-[10px] font-semibold uppercase text-muted-foreground">
-                  {t("my_projects")} · Bozze ({drafts.length})
+                  {tt("my_projects_drafts", { count: drafts.length })}
                 </p>
                 <button
                   onClick={() => setShowProjects(false)}
                   className="rounded-md px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                 >
-                  Chiudi
+                  {t("close")}
                 </button>
               </div>
               {drafts.length === 0 && (
                 <p className="px-2 py-3 text-xs text-muted-foreground/70">
-                  Nessuna bozza. I progetti completati appaiono nella Biblioteca.
+                  {t("no_drafts_library_hint")}
                 </p>
               )}
               <div className="divide-y divide-white/10">
@@ -683,7 +769,7 @@ export default function Home() {
                     className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
                     onClick={() => goApp({ projectId: p.id })}>
                     <div className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{p.config.title || "Untitled"}</span>
+                      <span className="block truncate text-sm font-medium">{p.config.title || t("untitled")}</span>
                       <span className="text-[10px] text-muted-foreground/70">{p.config.genre} · {p.chapters?.length || 0} ch · {p.phase}</span>
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
@@ -703,14 +789,14 @@ export default function Home() {
               <FlaskConical className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-foreground">Have a Beta access code?</p>
-              <p className="text-xs text-muted-foreground">Unlock 3 books with export.</p>
+              <p className="text-sm font-semibold text-foreground">{t("beta_code_prompt")}</p>
+              <p className="text-xs text-muted-foreground">{t("beta_code_desc")}</p>
             </div>
             <button
               onClick={() => setShowBetaDialog(true)}
               className="rounded-lg border border-fuchsia-500/40 bg-fuchsia-500/15 px-3 py-2 text-xs font-bold text-fuchsia-200 transition-colors hover:bg-fuchsia-500/25"
             >
-              Activate
+              {t("activate")}
             </button>
           </div>
         )}
@@ -722,7 +808,7 @@ export default function Home() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-semibold text-fuchsia-200">Beta Tester</p>
-              <p className="text-xs text-muted-foreground">Beta access: 3 books · 15k tokens each</p>
+              <p className="text-xs text-muted-foreground">{t("beta_access_desc")}</p>
             </div>
           </div>
         )}
@@ -735,7 +821,7 @@ export default function Home() {
         onSubmit={(config) => {
           if (freeBookUsed) {
             setShowNewBook(false);
-            toast.error("Hai già usato il libro gratuito. Passa a Pro/Premium per crearne altri.");
+            toast.error(t("toast_free_book_used"));
             navigate("/pricing");
             return;
           }
@@ -744,8 +830,14 @@ export default function Home() {
       />
       <HomeExportDialog open={showExport} projects={projects} onClose={() => setShowExport(false)} />
       <TitleIntelligenceDialog open={showTitleIntel} onClose={() => setShowTitleIntel(false)} />
-      <AdvancedAppearanceDialog open={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} onLanguageChanged={() => setLangTick(p => p + 1)} />
+      <AdvancedAppearanceDialog open={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} />
       <CharacterStudioDialog open={showCharacterStudio} onClose={() => setShowCharacterStudio(false)} />
+      <ManuscriptAnalyzerDialog
+        open={showManuscriptAnalyzer}
+        onClose={() => setShowManuscriptAnalyzer(false)}
+        canCreateProject={!freeBookUsed}
+        onLimitReached={() => navigate("/pricing")}
+      />
       <NotepadDialog open={showNotepad} onClose={() => setShowNotepad(false)} />
 
       {/* Idea modal — primary generation flow */}
@@ -765,28 +857,28 @@ export default function Home() {
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-foreground">Generate a new bestseller</h2>
-                  <p className="text-[11px] text-muted-foreground">Describe your idea — AI does the rest.</p>
+                  <h2 className="text-sm font-bold text-foreground">{t("generate_bestseller_title")}</h2>
+                  <p className="text-[11px] text-muted-foreground">{t("generate_bestseller_desc")}</p>
                 </div>
               </div>
               <button
                 onClick={() => !launching && !detecting && setShowIdeaModal(false)}
                 disabled={launching || detecting}
                 className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                aria-label="Close"
+                aria-label={t("close")}
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <label htmlFor="idea-modal" className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
-              <Sparkles className="h-3 w-3 text-primary" /> Your Book Idea
+              <Sparkles className="h-3 w-3 text-primary" /> {t("your_book_idea")}
             </label>
             <textarea
               id="idea-modal"
               value={idea}
               onChange={(e) => setIdea(e.target.value)}
-              placeholder="e.g. beekeeping for beginners… or how to use ChatGPT for business…"
+              placeholder={t("book_idea_placeholder")}
               rows={3}
               autoFocus
               disabled={launching}
@@ -795,7 +887,7 @@ export default function Home() {
 
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
               <span className="mr-1 flex items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground">
-                <Globe className="h-3 w-3" /> Book language
+                <Globe className="h-3 w-3" /> {t("book_language_label")}
               </span>
               {BOOK_LANGUAGES.map(l => (
                 <button
@@ -829,11 +921,11 @@ export default function Home() {
                     {intent.level}
                   </span>
                   <span className="px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-[10px]">
-                    {intent.numberOfChapters} chapters
+                    {intent.numberOfChapters} {t("chapters").toLowerCase()}
                   </span>
                 </div>
                 <div>
-                  <p className="text-[10px] font-semibold uppercase text-muted-foreground">Suggested title</p>
+                  <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("suggested_title")}</p>
                   <p className="text-sm font-semibold text-foreground mt-0.5">
                     {intent.suggestedTitles?.[intent.bestTitleIndex] || intent.suggestedTitles?.[0]}
                   </p>
@@ -842,7 +934,7 @@ export default function Home() {
                   </p>
                 </div>
                 <p className="text-[11px] text-muted-foreground">
-                  <span className="font-semibold">Promise:</span> {intent.readerPromise}
+                  <span className="font-semibold">{t("promise")}:</span> {intent.readerPromise}
                 </p>
               </div>
             )}
@@ -854,7 +946,7 @@ export default function Home() {
                 className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-white text-sm font-semibold text-slate-950 shadow-lg shadow-black/20 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {launching || detecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
-                {launching ? "Launching…" : detecting ? "Detecting…" : "Generate Full Book"}
+                {launching ? t("launching") : detecting ? t("detecting") : t("generate_full_book")}
               </button>
               {!intent ? (
                 <button
@@ -862,7 +954,7 @@ export default function Home() {
                   disabled={!heroValid || detecting || launching}
                   className="ios-toolbar-button h-11 px-4 text-sm font-medium disabled:opacity-50"
                 >
-                  <Wand2 className="h-3.5 w-3.5" /> Preview
+                  <Wand2 className="h-3.5 w-3.5" /> {t("preview_action")}
                 </button>
               ) : (
                 <button
@@ -870,13 +962,13 @@ export default function Home() {
                   disabled={launching}
                   className="ios-toolbar-button h-11 px-4 text-sm font-medium disabled:opacity-50"
                 >
-                  Advanced <ArrowRight className="h-3.5 w-3.5" />
+                  {t("advanced")} <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
             {!heroValid && (
               <p className="mt-2 text-[11px] text-muted-foreground">
-                Type at least 6 characters to launch.
+                {t("min_idea_chars")}
               </p>
             )}
           </div>
@@ -896,12 +988,12 @@ export default function Home() {
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
                 <Library className="h-4 w-4 text-emerald-500" />
-                Biblioteca
+                {t("library")}
               </h2>
               <button
                 onClick={() => setShowLibrary(false)}
                 className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label="Chiudi"
+                aria-label={t("close")}
               >
                 <X className="h-4 w-4" />
               </button>

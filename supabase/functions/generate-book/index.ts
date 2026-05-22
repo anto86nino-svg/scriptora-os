@@ -6,15 +6,49 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function jsonResponse(payload: Record<string, unknown>, status: number) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function publicErrorMessage(status: number): string {
+  if (status === 429) return "Rate limited. Please wait a moment and try again.";
+  if (status === 402 || status === 401) return "DeepSeek API key invalid or credits exhausted. Check your API key.";
+  if (status >= 500) return "AI provider temporarily unavailable. Please try again.";
+  return `AI provider rejected the request (${status}).`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
   try {
-    const { systemPrompt, userPrompt, taskType = "generate_book", projectId = null, userId = null, metadata = {} } = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return jsonResponse({ error: "Invalid JSON request body." }, 400);
+    }
+
+    const {
+      systemPrompt,
+      userPrompt,
+      taskType = "generate_book",
+      projectId = null,
+      userId = null,
+      metadata = {},
+    } = body;
+    if (typeof systemPrompt !== "string" || typeof userPrompt !== "string" || !systemPrompt.trim() || !userPrompt.trim()) {
+      return jsonResponse({ error: "Missing systemPrompt or userPrompt." }, 400);
+    }
+
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 
     const promptTokensEstimate = estimateTokens(systemPrompt + userPrompt);
+    console.log(`[generate-book] start task=${String(taskType)} project=${projectId || "none"}`);
 
     const response = await fetch("https://api.deepseek.com/chat/completions", {
       method: "POST",
@@ -35,25 +69,15 @@ serve(async (req) => {
     });
 
     if (!response.ok) {
-      const status = response.status;
-      if (status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limited. Please wait a moment and try again." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (status === 402 || status === 401) {
-        return new Response(JSON.stringify({ error: "DeepSeek API key invalid or credits exhausted. Check your API key." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
       const t = await response.text();
-      console.error("DeepSeek API error:", status, t);
-      throw new Error(`DeepSeek API error: ${status} - ${t}`);
+      console.error("[generate-book] DeepSeek API error:", response.status, t);
+      return jsonResponse({ error: publicErrorMessage(response.status) }, response.status === 401 ? 402 : response.status);
     }
 
     // Read SSE stream from DeepSeek and accumulate full content,
     // while writing keepalive whitespace to the client to prevent idle timeout.
-    const reader = response.body!.getReader();
+    if (!response.body) return jsonResponse({ error: "AI provider returned an empty stream." }, 502);
+    const reader = response.body.getReader();
     const decoder = new TextDecoder();
     const encoder = new TextEncoder();
 
@@ -112,19 +136,24 @@ serve(async (req) => {
           logAIUsage({
             provider: "deepseek",
             model: "deepseek-chat",
-            taskType,
+            taskType: String(taskType),
             promptTokens: promptTokensEstimate,
             completionTokens: estimateTokens(accumulated),
-            projectId,
-            userId,
-            metadata: { ...metadata, stream: true, estimated: true },
+            projectId: typeof projectId === "string" ? projectId : null,
+            userId: typeof userId === "string" ? userId : null,
+            metadata: {
+              ...(metadata && typeof metadata === "object" && !Array.isArray(metadata) ? metadata : {}),
+              stream: true,
+              estimated: true,
+            },
           });
+          console.log(`[generate-book] complete task=${String(taskType)} chars=${accumulated.length}`);
 
           if (!closed) {
             try { controller.close(); } catch { /* already closed by client abort */ }
           }
         } catch (e) {
-          console.error("Stream error:", e);
+          console.error("[generate-book] stream error:", e instanceof Error ? e.message : e);
           try { reader.cancel(); } catch { /* ignore */ }
           if (!closed) {
             try { controller.error(e); } catch { /* already closed */ }

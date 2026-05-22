@@ -10,7 +10,7 @@ import {
   type ScriptoraBackgroundId,
   type ScriptoraWritingFont,
 } from "@/lib/scriptora-appearance";
-import { getUILanguage, setUILanguage, UI_LANGUAGES, type UILanguage } from "@/lib/i18n";
+import { getUILanguage, setUILanguage, t, UI_LANGUAGES, useUILanguage, type UILanguage } from "@/lib/i18n";
 
 interface Props {
   open: boolean;
@@ -28,6 +28,7 @@ function normalizeLanguageOption(option: any): { value: UILanguage; label: strin
 }
 
 export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: Props) {
+  useUILanguage();
   const [backgroundId, setBackgroundId] = useState<ScriptoraBackgroundId>("midnight-ink");
   const [writingFont, setWritingFont] = useState<ScriptoraWritingFont>("system");
   const [uiLanguage, setUiLanguage] = useState<UILanguage>(getUILanguage());
@@ -46,31 +47,29 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
     setBackgroundId(id);
     saveScriptoraAppearance({ backgroundId: id, writingFont });
     window.dispatchEvent(new Event("scriptora-appearance-change"));
-    toast.success("Sfondo salvato.");
+    toast.success(t("toast_background_saved"));
   };
 
   const applyFont = (id: ScriptoraWritingFont) => {
     setWritingFont(id);
     saveScriptoraAppearance({ backgroundId, writingFont: id });
     window.dispatchEvent(new Event("scriptora-appearance-change"));
-    toast.success("Carattere salvato.");
+    toast.success(t("toast_font_saved"));
   };
 
   const applyLanguage = (lang: UILanguage) => {
     setUiLanguage(lang);
     setUILanguage(lang);
     onLanguageChanged?.();
-    window.dispatchEvent(new Event("scriptora-language-change"));
-    toast.success("Lingua app salvata.");
+    toast.success(t("toast_language_saved"));
   };
 
   const finish = () => {
     saveScriptoraAppearance({ backgroundId, writingFont });
     setUILanguage(uiLanguage);
     onLanguageChanged?.();
-    window.dispatchEvent(new Event("scriptora-language-change"));
     window.dispatchEvent(new Event("scriptora-appearance-change"));
-    toast.success("Impostazioni applicate.");
+    toast.success(t("toast_settings_applied"));
     onClose();
   };
 
@@ -83,14 +82,14 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
               <Settings className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold">Impostazioni avanzate Scriptora</h2>
+              <h2 className="text-lg font-semibold">{t("advanced_settings_title")}</h2>
               <p className="text-xs text-muted-foreground">
-                Ogni scelta viene salvata subito. Il pulsante finale chiude soltanto la finestra.
+                {t("advanced_settings_desc")}
               </p>
             </div>
           </div>
 
-          <Button variant="ghost" size="icon" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label={t("close")}>
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -99,11 +98,11 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
           <section className="rounded-2xl border border-border/70 bg-background/40 p-4">
             <div className="mb-3 flex items-center gap-2">
               <Languages className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold">Lingua dell’app</h3>
+              <h3 className="font-semibold">{t("app_language")}</h3>
             </div>
 
             <p className="mb-3 text-xs text-muted-foreground">
-              Cambia solo l’interfaccia. La lingua dei libri resta dentro “Nuovo Libro”.
+              {t("app_language_desc")}
             </p>
 
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -135,12 +134,11 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
           <section className="rounded-2xl border border-border/70 bg-background/40 p-4">
             <div className="mb-3 flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold">Writing Atmospheres</h3>
+              <h3 className="font-semibold">{t("writing_atmospheres")}</h3>
             </div>
 
             <p className="mb-4 text-sm text-muted-foreground">
-              Trasforma Scriptora nel tuo spazio creativo. Ogni atmosfera cambia
-              completamente il modo in cui vivi la scrittura.
+              {t("writing_atmospheres_desc")}
             </p>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -175,7 +173,7 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
           <section className="rounded-2xl border border-border/70 bg-background/40 p-4">
             <div className="mb-3 flex items-center gap-2">
               <Type className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold">Carattere di scrittura</h3>
+              <h3 className="font-semibold">{t("writing_font")}</h3>
             </div>
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -199,7 +197,7 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
                       {active && <Check className="h-4 w-4 text-primary" />}
                     </div>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      La prima frase è una porta. La seconda decide se il lettore entra.
+                      {t("font_sample")}
                     </p>
                   </button>
                 );
@@ -215,7 +213,7 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
               onClick={onClose}
               className="rounded-xl border border-border px-4 py-2 text-sm text-muted-foreground hover:bg-muted/40 hover:text-foreground"
             >
-              Chiudi
+              {t("close")}
             </button>
 
             <button
@@ -226,7 +224,7 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
               className="inline-flex items-center justify-center rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
             >
               <Save className="mr-2 h-4 w-4" />
-              Fatto
+              {t("done")}
             </button>
           </div>
         </div>
