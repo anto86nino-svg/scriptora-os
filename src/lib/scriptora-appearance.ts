@@ -1,6 +1,7 @@
 export const SCRIPTORA_APPEARANCE_KEY = "nexora-appearance-v1";
 export const SCRIPTORA_APPEARANCE_LEGACY_KEY = "scriptora-appearance-v1";
 export const SCRIPTORA_APPEARANCE_OLD_SETTINGS_KEY = "scriptora-appearance-settings";
+export const SCRIPTORA_CUSTOM_BACKGROUND_KEY = "scriptora-custom-background-data-url-v1";
 
 export type ScriptoraBackgroundId =
   | "midnight-ink" | "dark-academia" | "velvet-night" | "obsidian" | "storm-library"
@@ -9,7 +10,8 @@ export type ScriptoraBackgroundId =
   | "gothic-violet" | "soft-parchment" | "emerald-focus" | "blood-moon" | "clean-pro"
   | "paris-cafe" | "fantasy-kingdom" | "luxury-penthouse" | "gothic-manor" | "noir-office"
   | "old-library" | "vintage-manuscript" | "publisher-office" | "ocean-morning"
-  | "coffee-house" | "tokyo-night" | "tuscany-writer" | "nordic-cabin" | "ancient-rome";
+  | "coffee-house" | "tokyo-night" | "tuscany-writer" | "nordic-cabin" | "ancient-rome"
+  | "custom-personal";
 
 export type ScriptoraWritingFont = "system" | "serif" | "literary" | "mono" | "editorial" | "classic";
 
@@ -53,6 +55,7 @@ export const SCRIPTORA_BACKGROUNDS: Array<{ id: ScriptoraBackgroundId; name: str
   { id: "tuscany-writer", name: "🍷 Tuscany Writer", description: "Collina, luce calda e scrittura mediterranea.", css: "linear-gradient(rgba(20,12,4,.34), rgba(20,12,4,.34)), url('/backgrounds/scriptora-atmospheres/tuscany-writer.webp') center center / cover no-repeat" },
   { id: "nordic-cabin", name: "🏔 Nordic Cabin", description: "Cabin nordica, neve e isolamento creativo.", css: "linear-gradient(rgba(5,10,16,.38), rgba(5,10,16,.38)), url('/backgrounds/scriptora-atmospheres/nordic-cabin.webp') center center / cover no-repeat" },
   { id: "ancient-rome", name: "🏛 Ancient Rome", description: "Marmo, storia e tono epico-classico.", css: "linear-gradient(rgba(14,10,6,.36), rgba(14,10,6,.36)), url('/backgrounds/scriptora-atmospheres/ancient-rome.webp') center center / cover no-repeat" },
+  { id: "custom-personal", name: "🖼 Sfondo personale", description: "La tua immagine, la tua stanza creativa.", css: "linear-gradient(rgba(4,5,8,.42), rgba(4,5,8,.42)), linear-gradient(135deg, #050816, #111827)" },
 ];
 
 export const WRITING_FONTS: Array<{ id: ScriptoraWritingFont; name: string; css: string; }> = [
@@ -68,6 +71,30 @@ export const DEFAULT_SCRIPTORA_APPEARANCE: ScriptoraAppearanceSettings = {
   backgroundId: "midnight-ink",
   writingFont: "system",
 };
+
+export function getCustomScriptoraBackground(): string | null {
+  try {
+    return localStorage.getItem(SCRIPTORA_CUSTOM_BACKGROUND_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function saveCustomScriptoraBackground(dataUrl: string) {
+  try {
+    localStorage.setItem(SCRIPTORA_CUSTOM_BACKGROUND_KEY, dataUrl);
+  } catch {
+    // ignore storage errors
+  }
+}
+
+export function removeCustomScriptoraBackground() {
+  try {
+    localStorage.removeItem(SCRIPTORA_CUSTOM_BACKGROUND_KEY);
+  } catch {
+    // ignore storage errors
+  }
+}
 
 function normalizeAppearanceSettings(value: any): ScriptoraAppearanceSettings {
   const backgroundId = SCRIPTORA_BACKGROUNDS.some((b) => b.id === value?.backgroundId)
@@ -101,7 +128,14 @@ export function applyScriptoraAppearance(settings: ScriptoraAppearanceSettings =
   const bg = SCRIPTORA_BACKGROUNDS.find((b) => b.id === settings.backgroundId) || SCRIPTORA_BACKGROUNDS[0];
   const font = WRITING_FONTS.find((f) => f.id === settings.writingFont) || WRITING_FONTS[0];
 
-  document.documentElement.style.setProperty("--scriptora-app-bg", bg.css);
+  const customBackground = getCustomScriptoraBackground();
+
+  const finalBackground =
+    settings.backgroundId === "custom-personal" && customBackground
+      ? `linear-gradient(rgba(4,5,8,.42), rgba(4,5,8,.42)), url("${customBackground}") center center / cover no-repeat`
+      : bg.css;
+
+  document.documentElement.style.setProperty("--scriptora-app-bg", finalBackground);
   document.documentElement.style.setProperty("--scriptora-writing-font", font.css);
 }
 

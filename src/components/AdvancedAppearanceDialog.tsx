@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Settings, X, Check, Languages, Type, Image as ImageIcon, Save } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Settings, X, Check, Languages, Type, Image as ImageIcon, Save, Upload, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -7,6 +7,9 @@ import {
   WRITING_FONTS,
   loadScriptoraAppearance,
   saveScriptoraAppearance,
+  getCustomScriptoraBackground,
+  saveCustomScriptoraBackground,
+  removeCustomScriptoraBackground,
   type ScriptoraBackgroundId,
   type ScriptoraWritingFont,
 } from "@/lib/scriptora-appearance";
@@ -27,23 +30,67 @@ function normalizeLanguageOption(option: any): { value: UILanguage; label: strin
   };
 }
 
+async function compressImageToDataUrl(file: File): Promise<string> {
+  const image = new Image();
+  const objectUrl = URL.createObjectURL(file);
+
+  await new Promise<void>((resolve, reject) => {
+    image.onload = () => resolve();
+    image.onerror = () => reject(new Error("Image load failed"));
+    image.src = objectUrl;
+  });
+
+  const maxWidth = 1920;
+  const scale = Math.min(1, maxWidth / image.width);
+  const width = Math.round(image.width * scale);
+  const height = Math.round(image.height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    URL.revokeObjectURL(objectUrl);
+    throw new Error("Canvas not supported");
+  }
+
+  ctx.drawImage(image, 0, 0, width, height);
+  URL.revokeObjectURL(objectUrl);
+
+  return canvas.toDataURL("image/webp", 0.82);
+}
+
 export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: Props) {
   useUILanguage();
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [backgroundId, setBackgroundId] = useState<ScriptoraBackgroundId>("midnight-ink");
   const [writingFont, setWritingFont] = useState<ScriptoraWritingFont>("system");
   const [uiLanguage, setUiLanguage] = useState<UILanguage>(getUILanguage());
+  const [hasCustomBackground, setHasCustomBackground] = useState(false);
+  const [isUploadingCustomBackground, setIsUploadingCustomBackground] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+
     const saved = loadScriptoraAppearance();
+
     setBackgroundId(saved.backgroundId);
     setWritingFont(saved.writingFont);
     setUiLanguage(getUILanguage());
+    setHasCustomBackground(Boolean(getCustomScriptoraBackground()));
   }, [open]);
 
   if (!open) return null;
 
   const applyBackground = (id: ScriptoraBackgroundId) => {
+    if (id === "custom-personal" && !getCustomScriptoraBackground()) {
+      toast.error("Carica prima una tua immagine personale.");
+      return;
+    }
+
     setBackgroundId(id);
     saveScriptoraAppearance({ backgroundId: id, writingFont });
     window.dispatchEvent(new Event("scriptora-appearance-change"));
@@ -62,6 +109,50 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
     setUILanguage(lang);
     onLanguageChanged?.();
     toast.success(t("toast_language_saved"));
+  };
+
+  const handleCustomBackgroundUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Carica un file immagine valido.");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      setIsUploadingCustomBackground(true);
+
+      const dataUrl = await compressImageToDataUrl(file);
+
+      saveCustomScriptoraBackground(dataUrl);
+      setHasCustomBackground(true);
+
+      setBackgroundId("custom-personal");
+      saveScriptoraAppearance({ backgroundId: "custom-personal", writingFont });
+
+      window.dispatchEvent(new Event("scriptora-appearance-change"));
+      toast.success("Sfondo personale salvato.");
+    } catch {
+      toast.error("Non sono riuscito a caricare lo sfondo.");
+    } finally {
+      setIsUploadingCustomBackground(false);
+      event.target.value = "";
+    }
+  };
+
+  const removePersonalBackground = () => {
+    removeCustomScriptoraBackground();
+    setHasCustomBackground(false);
+
+    if (backgroundId === "custom-personal") {
+      setBackgroundId("midnight-ink");
+      saveScriptoraAppearance({ backgroundId: "midnight-ink", writingFont });
+    }
+
+    window.dispatchEvent(new Event("scriptora-appearance-change"));
+    toast.success("Sfondo personale rimosso.");
   };
 
   const finish = () => {
@@ -140,6 +231,59 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
             <p className="mb-4 text-sm text-muted-foreground">
               {t("writing_atmospheres_desc")}
             </p>
+
+            <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Sfondo personale</p>
+                  <p className="text-xs leading-5 text-muted-foreground">
+                    Carica una tua foto: famiglia, mare, scrivania, città o qualsiasi immagine che ti ispira.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    className="hidden"
+                    onChange={handleCustomBackgroundUpload}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadingCustomBackground}
+                    className="inline-flex items-center rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-semibold text-foreground hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <Upload className="mr-2 h-3.5 w-3.5" />
+                    {isUploadingCustomBackground ? "Caricamento..." : "Carica immagine"}
+                  </button>
+
+                  {hasCustomBackground && (
+                    <button
+                      type="button"
+                      onClick={() => applyBackground("custom-personal")}
+                      className="inline-flex items-center rounded-full border border-primary/30 bg-primary/20 px-4 py-2 text-xs font-semibold text-primary hover:bg-primary/25"
+                    >
+                      <Check className="mr-2 h-3.5 w-3.5" />
+                      Usa sfondo personale
+                    </button>
+                  )}
+
+                  {hasCustomBackground && (
+                    <button
+                      type="button"
+                      onClick={removePersonalBackground}
+                      className="inline-flex items-center rounded-full border border-red-400/30 bg-red-500/10 px-4 py-2 text-xs font-semibold text-red-200 hover:bg-red-500/15"
+                    >
+                      <Trash2 className="mr-2 h-3.5 w-3.5" />
+                      Rimuovi
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {SCRIPTORA_BACKGROUNDS.map((bg) => {
