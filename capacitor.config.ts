@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.scriptora.lamiaapp',
-  appName: 'La mia app',
+  appName: 'Scriptora OS',
   webDir: 'dist',
 };
 
