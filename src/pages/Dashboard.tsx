@@ -537,11 +537,11 @@ export default function Home() {
 
       <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 sm:pt-8 lg:px-8">
         <div className="mb-4 grid gap-3 sm:mb-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
-          <section className="ios-panel p-4 sm:p-6">
+          <section className="ios-panel border-white/15 bg-slate-950/34 p-4 shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur-2xl sm:p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div className="min-w-0">
                 <div className="mb-2 flex flex-wrap items-center gap-2 sm:mb-3">
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[10px] font-semibold uppercase text-foreground/65">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/[0.10] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/78 shadow-sm">
                     <Sparkles className="h-3 w-3 text-sky-300" /> {t("ai_book_studio")}
                   </span>
                   <span className={`inline-flex items-center rounded-lg border px-2 py-1 text-[10px] font-semibold uppercase sm:hidden ${
@@ -552,16 +552,16 @@ export default function Home() {
                     {activeRun ? t("live") : t("stable")}
                   </span>
                 </div>
-                <h1 className="max-w-2xl text-2xl font-semibold leading-tight text-foreground sm:text-4xl">
+                <h1 className="max-w-2xl text-2xl font-semibold leading-tight text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.45)] sm:text-4xl">
                   Scriptora OS
                 </h1>
-                <p className="mt-2 max-h-10 max-w-xl overflow-hidden text-xs leading-5 text-foreground/62 sm:mt-3 sm:max-h-none sm:text-sm sm:leading-6">
+                <p className="mt-2 max-h-10 max-w-xl overflow-hidden text-xs font-medium leading-5 text-white/74 drop-shadow-[0_1px_10px_rgba(0,0,0,0.45)] sm:mt-3 sm:max-h-none sm:text-sm sm:leading-6">
                   {tt("plan_active_sentence", { plan: devOn ? "DEV" : planLabel })}
                 </p>
               </div>
               <button
                 onClick={() => setShowIdeaModal(true)}
-                className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-3 text-xs font-semibold text-slate-950 shadow-lg shadow-black/20 transition-all hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 sm:h-12 sm:px-5 sm:text-sm"
+                className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-200/70 bg-amber-50 px-3 text-xs font-bold text-slate-950 shadow-[0_16px_42px_rgba(251,191,36,0.28)] ring-1 ring-white/50 transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_18px_48px_rgba(251,191,36,0.36)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
               >
                 <Flame className="h-4 w-4" />
                 {t("generate_bestseller_title")}
@@ -570,7 +570,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="ios-panel hidden p-5 sm:block sm:p-6">
+          <section className="ios-panel hidden border-white/15 bg-slate-950/30 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.20)] backdrop-blur-2xl sm:block sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("workspace_status")}</p>
@@ -589,14 +589,14 @@ export default function Home() {
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button
                 onClick={() => setShowProjects(true)}
-                className="rounded-lg border border-white/10 bg-white/[0.07] p-3 text-left transition-colors hover:border-sky-300/40 hover:bg-sky-400/10"
+                className="rounded-xl border border-white/15 bg-white/[0.10] p-3 text-left shadow-[0_10px_28px_rgba(0,0,0,0.14)] transition-colors hover:border-sky-300/45 hover:bg-sky-400/14"
               >
                 <p className="text-[10px] uppercase text-muted-foreground">{t("drafts")}</p>
                 <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{draftProjects.length}</p>
               </button>
               <button
                 onClick={() => setShowLibrary(true)}
-                className="rounded-lg border border-white/10 bg-white/[0.07] p-3 text-left transition-colors hover:border-emerald-300/40 hover:bg-emerald-400/10"
+                className="rounded-xl border border-white/15 bg-white/[0.10] p-3 text-left shadow-[0_10px_28px_rgba(0,0,0,0.14)] transition-colors hover:border-emerald-300/45 hover:bg-emerald-400/14"
               >
                 <p className="text-[10px] uppercase text-muted-foreground">{t("library")}</p>
                 <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{completedProjects.length}</p>
@@ -609,7 +609,7 @@ export default function Home() {
 
         <div className="mb-4 grid grid-cols-4 gap-1.5 sm:mb-6 sm:grid-cols-2 sm:gap-2.5 lg:grid-cols-4">
           {workspaceStats.map((stat) => (
-            <div key={stat.label} className="ios-glass-soft rounded-lg p-2 sm:p-3">
+            <div key={stat.label} className="ios-glass-soft rounded-xl border-white/15 bg-white/[0.075] p-2 shadow-[0_10px_32px_rgba(0,0,0,0.14)] backdrop-blur-xl sm:p-3">
               <div className="flex items-center justify-between gap-2 sm:gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-[8px] font-semibold uppercase text-foreground/58 sm:text-[10px]">{stat.label}</p>
@@ -635,18 +635,18 @@ export default function Home() {
                 goApp({ projectId: lastProject.id });
               }
             }}
-            className="ios-panel group mb-6 w-full cursor-pointer overflow-hidden p-0 text-left transition-colors hover:border-primary/40"
+            className="ios-panel group mb-5 w-full cursor-pointer overflow-hidden p-0 text-left transition-colors hover:border-primary/40"
           >
-            <div className="bg-gradient-to-r from-sky-400/10 via-white/[0.055] to-emerald-400/10 p-4 sm:p-5">
+            <div className="bg-gradient-to-r from-sky-400/10 via-white/[0.055] to-emerald-400/10 p-3 sm:p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="mb-2 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[10px] font-semibold uppercase text-foreground/70">
+                  <p className="mb-1.5 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[9px] font-semibold uppercase text-foreground/70">
                     <Clock className="h-3 w-3 text-sky-300" /> {t("continue_project")}
                   </p>
-                  <p className="truncate text-lg font-semibold leading-6 text-foreground sm:text-xl">
+                  <p className="truncate text-base font-semibold leading-5 text-foreground sm:text-lg">
                     {lastProject.config.title || t("untitled")}
                   </p>
-                  <p className="mt-1 text-xs leading-5 text-foreground/65">
+                  <p className="mt-0.5 text-[11px] leading-4 text-foreground/65">
                     {lastProjectDoneChapters}/{lastProjectTargetChapters || lastProject.chapters?.length || 0} {t("chapters").toLowerCase()} · {lastProject.phase}
                   </p>
                 </div>
@@ -658,12 +658,12 @@ export default function Home() {
                     e.stopPropagation();
                     deleteHomeProject(lastProject.id, lastProject.config.title);
                   }}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-destructive/30 bg-destructive/10 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-destructive/30 bg-destructive/10 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <div className="mt-4 flex items-center gap-3">
+              <div className="mt-3 flex items-center gap-3">
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-sky-300 to-emerald-300 transition-all"
@@ -674,11 +674,11 @@ export default function Home() {
                   {lastProjectProgress}%
                 </span>
               </div>
-              <div className="mt-4 flex items-center justify-between gap-3">
+              <div className="mt-3 flex items-center justify-between gap-3">
                 <span className="text-[11px] leading-4 text-foreground/60">
                   {t("continue_project_hint")}
                 </span>
-                <span className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-white px-3 text-xs font-semibold text-slate-950 shadow-lg shadow-black/20 transition-colors group-hover:bg-slate-100">
+                <span className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-white px-2.5 text-[11px] font-semibold text-slate-950 shadow-lg shadow-black/20 transition-colors group-hover:bg-slate-100">
                   {t("continue_action")}
                   <ArrowRight className="h-3.5 w-3.5" />
                 </span>
@@ -691,8 +691,8 @@ export default function Home() {
           <div className="mb-5 flex items-end justify-between gap-3">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("home_screen")}</p>
-              <h2 className="mt-1 text-xl font-semibold text-foreground">{t("launchpad")}</h2>
-              <p className="mt-1 max-w-xl text-xs leading-5 text-foreground/65">{t("launchpad_desc")}</p>
+              <h2 className="mt-1 text-xl font-semibold text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.38)]">{t("launchpad")}</h2>
+              <p className="mt-1 max-w-xl text-xs font-medium leading-5 text-white/72 drop-shadow-[0_1px_10px_rgba(0,0,0,0.38)]">{t("launchpad_desc")}</p>
             </div>
             <span className="hidden text-[11px] text-muted-foreground sm:inline">
               {tt("total_suffix", { count: projects.length, plan: planLabel })}
@@ -704,7 +704,7 @@ export default function Home() {
               const groupCards = cards.filter((card) => card.group === group.id);
               return (
                 <div key={group.id}>
-                  <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/10 pb-2">
+                  <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/15 pb-2">
                     <div>
                       <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>
                       <p className="mt-0.5 text-[11px] text-foreground/62">{group.desc}</p>
@@ -721,15 +721,15 @@ export default function Home() {
                         <button
                           key={card.title}
                           onClick={card.action}
-                          className={`group flex min-h-[128px] w-full flex-col items-start justify-between rounded-lg border border-white/10 bg-white/[0.055] p-3 text-left shadow-[0_10px_30px_rgba(0,0,0,0.12)] transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.09] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${
+                          className={`group flex min-h-[136px] w-full flex-col items-start justify-between rounded-xl border border-white/15 bg-slate-950/28 p-3.5 text-left shadow-[0_14px_38px_rgba(0,0,0,0.18)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.105] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${
                             (card as any).emphasis ? "sm:col-span-2 lg:col-span-2" : ""
                           }`}
                         >
-                          <span className={`ios-icon ${card.iconBg} h-12 w-12 rounded-[18px] sm:h-14 sm:w-14`}>
+                          <span className={`ios-icon ${card.iconBg} h-11 w-11 rounded-[17px] shadow-[0_10px_24px_rgba(0,0,0,0.20)] ring-1 ring-white/18 sm:h-12 sm:w-12`}>
                             <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                           </span>
-                          <span className="mt-3 text-sm font-semibold leading-5 text-foreground">{card.title}</span>
-                          <span className="mt-1 text-[11px] leading-4 text-foreground/64">{card.desc}</span>
+                          <span className="mt-3 text-sm font-bold leading-5 text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">{card.title}</span>
+                          <span className="mt-1 text-[11px] font-medium leading-4 text-white/72 drop-shadow-[0_1px_8px_rgba(0,0,0,0.32)]">{card.desc}</span>
                         </button>
                       );
                       return (card as any).feature
