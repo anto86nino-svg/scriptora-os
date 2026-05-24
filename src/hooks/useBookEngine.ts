@@ -11,6 +11,7 @@ import { getDevPlanOverride } from "@/lib/dev-plan-override";
 import { getPlanLimits } from "@/lib/subscription";
 import { normalizeProjectChapterTitles, resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { ensureBookTitleMetadata } from "@/lib/title-shadow";
+import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
 
 const FREE_MAX_PROJECT_WORDS = 10_000;
 
@@ -179,18 +180,22 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       targetAudience: config.tone,
       language: config.language,
     });
+    const authorSafeInput = applyAuthorIdentityToConfig(
+      titleSafeInput,
+      resolveAuthorIdentity(titleSafeInput.authorIdentity, titleSafeInput.authorIdentityId) || getSelectedAuthorIdentity(),
+    ) as BookConfig;
     const maxProjectWords = getPlanLimits(activePlan).maxWordsPerBook;
     const safeConfig: BookConfig = activePlan === "free"
       ? {
-          ...titleSafeInput,
+          ...authorSafeInput,
           bookLength: "short",
-          customTotalWords: Math.min(titleSafeInput.customTotalWords ?? FREE_MAX_PROJECT_WORDS, FREE_MAX_PROJECT_WORDS),
+          customTotalWords: Math.min(authorSafeInput.customTotalWords ?? FREE_MAX_PROJECT_WORDS, FREE_MAX_PROJECT_WORDS),
         }
       : {
-          ...titleSafeInput,
-          customTotalWords: titleSafeInput.bookLength === "custom"
-            ? Math.min(titleSafeInput.customTotalWords ?? maxProjectWords, maxProjectWords)
-            : titleSafeInput.customTotalWords,
+          ...authorSafeInput,
+          customTotalWords: authorSafeInput.bookLength === "custom"
+            ? Math.min(authorSafeInput.customTotalWords ?? maxProjectWords, maxProjectWords)
+            : authorSafeInput.customTotalWords,
         };
 
     // Genre Lock — capture editorial blueprint at creation time so the
@@ -785,15 +790,22 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   }, [updateAndSave]);
 
   const loadProject = useCallback((p: BookProject) => {
+    const baseConfig: BookConfig = {
+      ...p.config,
+      category: p.config.category || "Self Help",
+      subcategory: p.config.subcategory || "Mindset",
+      genre: p.config.genre || "self-help",
+      bookLength: p.config.bookLength || "medium",
+    };
+    const resolvedAuthor = resolveAuthorIdentity(baseConfig.authorIdentity, baseConfig.authorIdentityId);
+    const hasAuthorName = !!String(baseConfig.authorName || baseConfig.author || baseConfig.writerName || "").trim();
     const hydrated: BookProject = {
       ...p,
-      config: {
-        ...p.config,
-        category: p.config.category || "Self Help",
-        subcategory: p.config.subcategory || "Mindset",
-        genre: p.config.genre || "self-help",
-        bookLength: p.config.bookLength || "medium",
-      },
+      config: resolvedAuthor
+        ? applyAuthorIdentityToConfig(baseConfig, resolvedAuthor) as BookConfig
+        : hasAuthorName
+          ? baseConfig
+          : applyAuthorIdentityToConfig(baseConfig, getSelectedAuthorIdentity()) as BookConfig,
     };
     const normalized = normalizeProjectChapterTitles(hydrated);
 

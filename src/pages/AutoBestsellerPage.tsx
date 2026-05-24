@@ -18,6 +18,7 @@ import { getBookProgress } from "@/lib/book-progress";
 import { ProgressBar } from "@/components/AutoBestseller/ProgressBar";
 import { BookConfig } from "@/types/book";
 import { ensureBookTitleMetadata } from "@/lib/title-shadow";
+import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
 
 const VARIATION_ANGLES = [
   "emotional / personal transformation angle",
@@ -73,9 +74,10 @@ function charactersFromSetupText(text?: string): any[] {
 function autoBestsellerInputToBookConfig(input: AutoBestsellerInput): BookConfig {
   const title = String(input.prefilledTitle || input.idea || "Untitled Book").trim().slice(0, 120);
   const subtitle = String(input.prefilledSubtitle || input.readerPromise || "").trim().slice(0, 180);
-  const authorName = String(input.authorName || "").trim();
+  const authorIdentity = resolveAuthorIdentity(input.authorIdentity, input.authorIdentityId) || getSelectedAuthorIdentity();
+  const authorName = String(authorIdentity?.penName || input.authorName || "").trim();
 
-  return ensureBookTitleMetadata({
+  return ensureBookTitleMetadata(applyAuthorIdentityToConfig({
     title,
     subtitle,
     authorName,
@@ -92,7 +94,7 @@ function autoBestsellerInputToBookConfig(input: AutoBestsellerInput): BookConfig
     numberOfChapters: Math.max(3, Math.min(20, Number(input.numberOfChapters) || 8)),
     subchaptersEnabled: false,
     characters: charactersFromSetupText(input.charactersText),
-  } as any, {
+  } as any, authorIdentity), {
     idea: input.idea,
     readerPromise: input.readerPromise,
     genre: input.genre,
@@ -141,6 +143,8 @@ export default function AutoBestsellerPage() {
             prefilledTitle: parsed.prefilledTitle,
             prefilledSubtitle: parsed.prefilledSubtitle,
             authorName: parsed.authorName,
+            authorIdentityId: parsed.authorIdentityId,
+            authorIdentity: parsed.authorIdentity,
             totalWordTarget: parsed.totalWordTarget,
             charactersText: parsed.charactersText,
           };

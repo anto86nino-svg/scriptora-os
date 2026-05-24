@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Bomb, Flame, Loader2 } from "lucide-react";
 import { AutoBestsellerInput } from "@/services/autoBestsellerService";
+import { getSelectedAuthorIdentity } from "@/lib/author-identity";
 
 interface Props {
   isRunning: boolean;
@@ -30,8 +31,9 @@ const TONES = [
 const LANGUAGES = ["English", "Italian", "Spanish", "French", "German", "Portuguese"];
 
 export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, onGenerateBatch }: Props) {
+  const selectedAuthor = getSelectedAuthorIdentity();
   const [idea, setIdea] = useState(initialInput?.idea ?? "");
-  const [authorName, setAuthorName] = useState(initialInput?.authorName ?? "");
+  const [authorName, setAuthorName] = useState(initialInput?.authorName ?? selectedAuthor.penName);
   const [genre, setGenre] = useState(initialInput?.genre ?? "self-help");
   const [subcategory, setSubcategory] = useState(initialInput?.subcategory ?? "");
   const [targetAudience, setTargetAudience] = useState(initialInput?.targetAudience ?? "");
@@ -108,7 +110,9 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
 
   const buildInput = (): AutoBestsellerInput => ({
     idea: idea.trim(),
-    authorName: authorName.trim() || "",
+    authorName: authorName.trim() || selectedAuthor.penName,
+    authorIdentityId: initialInput?.authorIdentityId || selectedAuthor.id,
+    authorIdentity: initialInput?.authorIdentity || selectedAuthor,
     genre,
     subcategory: subcategory.trim() || undefined,
     targetAudience: targetAudience.trim(),

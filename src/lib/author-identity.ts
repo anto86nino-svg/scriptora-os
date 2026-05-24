@@ -1,6 +1,8 @@
 import type { AuthorIdentity } from "@/types/book";
 
 const AUTHOR_IDENTITIES_KEY = "scriptora-author-identities-v1";
+export const SELECTED_AUTHOR_IDENTITY_KEY = "scriptora-selected-author-identity-v1";
+export const AUTHOR_IDENTITY_CHANGED_EVENT = "scriptora-author-identity-change";
 
 export const DEFAULT_AUTHOR_IDENTITIES: AuthorIdentity[] = [
   {
@@ -71,6 +73,27 @@ export function loadAuthorIdentities(): AuthorIdentity[] {
   ];
 }
 
+export function getSelectedAuthorIdentityId(): string {
+  if (typeof window === "undefined") return DEFAULT_AUTHOR_IDENTITIES[0].id;
+  return localStorage.getItem(SELECTED_AUTHOR_IDENTITY_KEY) || DEFAULT_AUTHOR_IDENTITIES[0].id;
+}
+
+export function setSelectedAuthorIdentityId(id: string): void {
+  if (typeof window === "undefined" || !id) return;
+  localStorage.setItem(SELECTED_AUTHOR_IDENTITY_KEY, id);
+  window.dispatchEvent(new CustomEvent(AUTHOR_IDENTITY_CHANGED_EVENT, { detail: { id } }));
+}
+
+export function getSelectedAuthorIdentity(): AuthorIdentity {
+  const identities = loadAuthorIdentities();
+  const selectedId = getSelectedAuthorIdentityId();
+  const selected = identities.find((item) => item.id === selectedId) || identities[0] || DEFAULT_AUTHOR_IDENTITIES[0];
+  if (typeof window !== "undefined" && selected.id !== selectedId) {
+    localStorage.setItem(SELECTED_AUTHOR_IDENTITY_KEY, selected.id);
+  }
+  return selected;
+}
+
 export function saveAuthorIdentity(identity: AuthorIdentity): AuthorIdentity {
   const now = new Date().toISOString();
   const saved: AuthorIdentity = {
@@ -104,6 +127,10 @@ export function findAuthorIdentity(id?: string): AuthorIdentity | null {
   return loadAuthorIdentities().find((item) => item.id === id) || null;
 }
 
+export function resolveAuthorIdentity(identity?: AuthorIdentity | null, id?: string): AuthorIdentity | null {
+  return normalizeAuthorIdentity(identity) || normalizeAuthorIdentity(findAuthorIdentity(id));
+}
+
 export function normalizeAuthorIdentity(identity?: AuthorIdentity | null): AuthorIdentity | null {
   if (!identity) return null;
   const penName = String(identity.penName || identity.name || "").trim();
@@ -121,5 +148,21 @@ export function normalizeAuthorIdentity(identity?: AuthorIdentity | null): Autho
     signatureMoves: String(identity.signatureMoves || "").trim(),
     forbiddenMoves: String(identity.forbiddenMoves || "").trim(),
     recurringThemes: String(identity.recurringThemes || "").trim(),
+  };
+}
+
+export function applyAuthorIdentityToConfig<T extends { [key: string]: any }>(
+  config: T,
+  identity: AuthorIdentity | null = getSelectedAuthorIdentity(),
+): T {
+  const normalized = normalizeAuthorIdentity(identity);
+  if (!normalized) return config;
+  return {
+    ...config,
+    authorIdentityId: normalized.id,
+    authorIdentity: normalized,
+    authorName: normalized.penName,
+    author: normalized.penName,
+    writerName: normalized.penName,
   };
 }

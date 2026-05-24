@@ -6,7 +6,7 @@ import { t } from "@/lib/i18n";
 import { getGenreBlueprint } from "@/lib/genre-intelligence";
 import { getStylesForGenre, type WritingStylePreset } from "@/lib/writing-styles";
 import { usePlan } from "@/lib/plan";
-import { DEFAULT_AUTHOR_IDENTITIES, deleteAuthorIdentity, loadAuthorIdentities, normalizeAuthorIdentity, saveAuthorIdentity } from "@/lib/author-identity";
+import { DEFAULT_AUTHOR_IDENTITIES, deleteAuthorIdentity, getSelectedAuthorIdentity, loadAuthorIdentities, normalizeAuthorIdentity, saveAuthorIdentity, setSelectedAuthorIdentityId } from "@/lib/author-identity";
 import { ensureBookTitleMetadata, generateShadowTitleSet } from "@/lib/title-shadow";
 
 interface NewBookDialogProps {
@@ -86,6 +86,7 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
   const { plan } = usePlan();
   const isFreePlan = plan === "free";
   const [pendingCharacterProject, setPendingCharacterProject] = useState<any | null>(null);
+  const initialAuthorIdentity = getSelectedAuthorIdentity();
 
   useEffect(() => {
     if (!open) return;
@@ -124,11 +125,11 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
     subtitle: "",
     tone: "warm, insightful, transformative",
     authorStyle: "Brianna Wiest",
-    authorIdentityId: DEFAULT_AUTHOR_IDENTITIES[0].id,
-    authorIdentity: DEFAULT_AUTHOR_IDENTITIES[0],
-    authorName: DEFAULT_AUTHOR_IDENTITIES[0].penName,
-    author: DEFAULT_AUTHOR_IDENTITIES[0].penName,
-    writerName: DEFAULT_AUTHOR_IDENTITIES[0].penName,
+    authorIdentityId: initialAuthorIdentity.id,
+    authorIdentity: initialAuthorIdentity,
+    authorName: initialAuthorIdentity.penName,
+    author: initialAuthorIdentity.penName,
+    writerName: initialAuthorIdentity.penName,
     language: "English",
     genre: "self-help",
     category: "Self Help",
@@ -139,7 +140,7 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
     subchaptersEnabled: true,
   });
   const [authorIdentities, setAuthorIdentities] = useState<AuthorIdentity[]>(() => loadAuthorIdentities());
-  const [authorDraft, setAuthorDraft] = useState<AuthorIdentity>(() => DEFAULT_AUTHOR_IDENTITIES[0]);
+  const [authorDraft, setAuthorDraft] = useState<AuthorIdentity>(() => initialAuthorIdentity);
   const shadowTitleOptions = useMemo(() => generateShadowTitleSet({
     title: config.title,
     subtitle: config.subtitle,
@@ -156,12 +157,13 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
     const identities = loadAuthorIdentities();
     setAuthorIdentities(identities);
     const selected =
+      getSelectedAuthorIdentity() ||
       identities.find((item) => item.id === config.authorIdentityId) ||
       normalizeAuthorIdentity(config.authorIdentity) ||
       identities[0] ||
       DEFAULT_AUTHOR_IDENTITIES[0];
     setAuthorDraft(selected);
-    if (!config.authorIdentity) applyAuthorIdentity(selected, identities);
+    applyAuthorIdentity(selected, identities);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -201,6 +203,7 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
     }
     const fromList = sourceList.find((item) => item.id === normalized.id) || normalized;
     setAuthorDraft(fromList);
+    setSelectedAuthorIdentityId(fromList.id);
     setConfig(prev => ({
       ...prev,
       authorIdentityId: fromList.id,
@@ -234,6 +237,7 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
     const saved = saveAuthorIdentity(authorDraft);
     const identities = loadAuthorIdentities();
     setAuthorIdentities(identities);
+    setSelectedAuthorIdentityId(saved.id);
     applyAuthorIdentity(saved, identities);
   };
 
@@ -491,6 +495,7 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
           <button onClick={() => {
             const identity = normalizeAuthorIdentity(config.authorIdentity);
             const authorName = (identity?.penName || config.authorName || config.author || config.writerName || "").trim();
+            if (identity?.id) setSelectedAuthorIdentityId(identity.id);
             onSubmit(ensureBookTitleMetadata({
               ...config,
               authorIdentity: identity || undefined,

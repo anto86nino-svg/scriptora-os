@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { BookConfig, Language, Genre, ChapterLength, BookLength, CATEGORIES, BOOK_LENGTH_CONFIG } from "@/types/book";
-import { Download, Image, Loader2, FileText, FileType, Rocket, Home, Cloud, CloudOff, Lock, CreditCard, LogOut, User as UserIcon } from "lucide-react";
+import { Download, Image, Loader2, FileText, FileType, Rocket, Home, Cloud, CloudOff, Lock, CreditCard, LogOut, Fingerprint } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 import type { SyncStatus } from "@/hooks/useSyncStatus";
@@ -12,6 +12,7 @@ import { getWordBudget } from "@/lib/subscription";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { BookProject } from "@/types/book";
+import { AUTHOR_IDENTITY_CHANGED_EVENT, findAuthorIdentity, getSelectedAuthorIdentity, loadAuthorIdentities, normalizeAuthorIdentity, setSelectedAuthorIdentityId } from "@/lib/author-identity";
 
 interface TopBarProps {
   config: BookConfig | null;
@@ -59,7 +60,19 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
   const { quota } = useQuota(projectId || null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const { user, signOut } = useAuth();
+  const [authorIdentities, setAuthorIdentities] = useState(() => loadAuthorIdentities());
   const guard = (fn: () => void) => () => (canExport ? fn() : setShowUpgrade(true));
+
+  useEffect(() => {
+    const refreshAuthors = () => setAuthorIdentities(loadAuthorIdentities());
+    window.addEventListener(AUTHOR_IDENTITY_CHANGED_EVENT, refreshAuthors);
+    window.addEventListener("storage", refreshAuthors);
+    return () => {
+      window.removeEventListener(AUTHOR_IDENTITY_CHANGED_EVENT, refreshAuthors);
+      window.removeEventListener("storage", refreshAuthors);
+    };
+  }, []);
+
   if (!config) return null;
 
   const budget = project ? getWordBudget(plan, project) : null;
@@ -76,6 +89,24 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
 
   const categories = Object.keys(CATEGORIES);
   const subcategories = CATEGORIES[config.category] || [];
+  const selectedAuthor =
+    normalizeAuthorIdentity(config.authorIdentity) ||
+    findAuthorIdentity(config.authorIdentityId) ||
+    getSelectedAuthorIdentity();
+
+  const changeProjectAuthor = (id: string) => {
+    const identity = authorIdentities.find((item) => item.id === id);
+    if (!identity) return;
+    const normalized = normalizeAuthorIdentity(identity);
+    if (!normalized) return;
+    setSelectedAuthorIdentityId(normalized.id);
+    onUpdateConfig("authorIdentityId", normalized.id);
+    onUpdateConfig("authorIdentity", normalized);
+    onUpdateConfig("authorName", normalized.penName);
+    onUpdateConfig("author", normalized.penName);
+    onUpdateConfig("writerName", normalized.penName);
+    toast.success(tt("author_identity_selected", { name: normalized.penName }));
+  };
 
   return (
     <div className="ios-glass-soft mb-2 ml-12 flex h-14 shrink-0 items-center gap-2 overflow-x-auto rounded-lg px-3 md:ml-0">
@@ -90,6 +121,14 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
       </button>
       <Divider />
       <MiniSelect label={t("lang")} value={config.language} options={LANGUAGES.map(l => ({ value: l, label: l }))} onChange={(v) => onUpdateConfig("language", v)} />
+      <Divider />
+      <MiniSelect
+        label={t("author_identity")}
+        value={selectedAuthor.id}
+        icon={<Fingerprint className="h-3 w-3 text-sky-300" />}
+        options={authorIdentities.map((identity) => ({ value: identity.id, label: identity.penName }))}
+        onChange={changeProjectAuthor}
+      />
       <Divider />
       <MiniSelect label={t("genre")} value={config.genre} options={GENRES} onChange={(v) => onUpdateConfig("genre", v)} />
       <Divider />
@@ -236,11 +275,12 @@ function Divider() {
   return <div className="h-6 w-px shrink-0 bg-white/10" />;
 }
 
-function MiniSelect({ label, value, options, onChange }: {
-  label: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void;
+function MiniSelect({ label, value, options, onChange, icon }: {
+  label: string; value: string; options: { value: string; label: string }[]; onChange: (v: string) => void; icon?: ReactNode;
 }) {
   return (
     <div className="flex items-center gap-1 shrink-0">
+      {icon}
       {label && <span className="text-[10px] uppercase text-muted-foreground">{label}</span>}
       <select value={value} onChange={e => onChange(e.target.value)}
         className="h-8 cursor-pointer appearance-none rounded-lg border border-white/10 bg-white/[0.07] px-2 pr-5 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"

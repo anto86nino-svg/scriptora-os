@@ -19,10 +19,11 @@ import {
   FileDown, ArrowRight, Clock, Globe, Flame, Loader2, Sparkles, Wand2,
   Library, Home as HomeIcon, X, BarChart3,
   TrendingUp, LogOut, CreditCard, Download as DownloadIcon, Settings, Users,
-  CheckCircle2, NotebookPen
+  CheckCircle2, NotebookPen, Fingerprint
 } from "lucide-react";
 import { BookConfig, BookProject } from "@/types/book";
 import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
+import { AUTHOR_IDENTITY_CHANGED_EVENT, applyAuthorIdentityToConfig, getSelectedAuthorIdentity, loadAuthorIdentities, setSelectedAuthorIdentityId } from "@/lib/author-identity";
 import { DevModeUnlockDialog } from "@/components/DevModeUnlockDialog";
 import { enableDevMode, isDevMode, exitDevMode, useDevMode } from "@/lib/dev-mode";
 import { BetaActivationDialog } from "@/components/BetaActivationDialog";
@@ -139,6 +140,8 @@ export default function Home() {
     const ui = getUILanguage();
     return ({ en: "English", it: "Italian", es: "Spanish", fr: "French", de: "German" } as Record<string, string>)[ui] || "English";
   });
+  const [authorIdentities, setAuthorIdentities] = useState(() => loadAuthorIdentities());
+  const [activeAuthor, setActiveAuthor] = useState(() => getSelectedAuthorIdentity());
 
   const BOOK_LANGUAGES = [
     { value: "English", label: "🇬🇧 English" },
@@ -165,6 +168,19 @@ export default function Home() {
     };
     window.addEventListener("nexora-dev-mode-change", onDevChange);
     return () => window.removeEventListener("nexora-dev-mode-change", onDevChange);
+  }, []);
+
+  useEffect(() => {
+    const refreshAuthors = () => {
+      setAuthorIdentities(loadAuthorIdentities());
+      setActiveAuthor(getSelectedAuthorIdentity());
+    };
+    window.addEventListener(AUTHOR_IDENTITY_CHANGED_EVENT, refreshAuthors);
+    window.addEventListener("storage", refreshAuthors);
+    return () => {
+      window.removeEventListener(AUTHOR_IDENTITY_CHANGED_EVENT, refreshAuthors);
+      window.removeEventListener("storage", refreshAuthors);
+    };
   }, []);
 
   // Reset intent if user edits the idea after detection
@@ -217,6 +233,14 @@ export default function Home() {
     setShowLangMenu(false);
   };
 
+  const changeAuthorIdentity = (id: string) => {
+    const identity = authorIdentities.find((item) => item.id === id);
+    if (!identity) return;
+    setSelectedAuthorIdentityId(identity.id);
+    setActiveAuthor(identity);
+    toast.success(tt("author_identity_selected", { name: identity.penName }));
+  };
+
   const goApp = (opts?: { section?: string; projectId?: string }) => {
     if (opts?.projectId) sessionStorage.setItem("nexora-open-project", opts.projectId);
     if (opts?.section) sessionStorage.setItem("nexora-open-section", opts.section);
@@ -263,6 +287,8 @@ export default function Home() {
       finalConfig = config;
     }
 
+    finalConfig = applyAuthorIdentityToConfig(finalConfig, activeAuthor) as BookConfig;
+    setSelectedAuthorIdentityId(activeAuthor.id);
     sessionStorage.setItem("nexora-new-book", JSON.stringify(finalConfig));
     setShowNewBook(false);
     navigate("/app");
@@ -328,6 +354,9 @@ export default function Home() {
         readerPromise: i.readerPromise,
         prefilledTitle: i.suggestedTitles?.[best],
         prefilledSubtitle: i.suggestedSubtitles?.[best],
+        authorIdentityId: activeAuthor.id,
+        authorIdentity: activeAuthor,
+        authorName: activeAuthor.penName,
         autoStart: true,
       })
     );
@@ -508,6 +537,24 @@ export default function Home() {
                 </button>
               </>
             )}
+            <div
+              className="flex h-8 max-w-[150px] shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 text-xs text-foreground"
+              title={`${t("author_identity")}: ${activeAuthor.penName}`}
+            >
+              <Fingerprint className="h-3.5 w-3.5 shrink-0 text-sky-300" />
+              <select
+                aria-label={t("author_identity")}
+                value={activeAuthor.id}
+                onChange={(e) => changeAuthorIdentity(e.target.value)}
+                className="min-w-0 max-w-[108px] cursor-pointer appearance-none bg-transparent text-[11px] font-semibold text-foreground outline-none sm:max-w-[132px]"
+              >
+                {authorIdentities.map((identity) => (
+                  <option key={identity.id} value={identity.id}>
+                    {identity.penName}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="relative">
               <button
                 onClick={() => setShowLangMenu(!showLangMenu)}

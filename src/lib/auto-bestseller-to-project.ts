@@ -3,6 +3,7 @@ import { BookProject, BookConfig, Chapter, BookBlueprint, Genre, Language } from
 import { createProjectId } from "@/lib/storage";
 import type { LiveBook } from "@/hooks/useAutoBestseller";
 import { normalizeProjectChapterTitles } from "@/lib/chapter-titles";
+import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
 
 const ALLOWED_GENRES: Genre[] = [
   "self-help", "romance", "dark-romance", "thriller", "fantasy", "philosophy", "business", "memoir",
@@ -48,10 +49,11 @@ export function autoBestsellerToProject(
   const now = new Date().toISOString();
   const genre = normalizeGenre(input?.genre);
   const language = normalizeLanguage(input?.language);
-  const authorName = (input?.authorName || "").trim();
+  const authorIdentity = resolveAuthorIdentity(input?.authorIdentity, input?.authorIdentityId) || getSelectedAuthorIdentity();
+  const authorName = (authorIdentity?.penName || input?.authorName || "").trim();
   const characters = charactersFromText(input?.charactersText || (result as any)?.characterBible);
 
-const config: BookConfig = {
+const config: BookConfig = applyAuthorIdentityToConfig({
     title: result.title || "Untitled Bestseller",
     subtitle: result.subtitle || "",
     authorName,
@@ -68,7 +70,7 @@ const config: BookConfig = {
     numberOfChapters: result.chapters?.length || input?.numberOfChapters || 8,
     subchaptersEnabled: false,
     characters,
-  };
+  }, authorIdentity) as BookConfig;
 
   const blueprint: BookBlueprint | null = result.blueprint
     ? {
@@ -118,10 +120,11 @@ export function liveBookToPartialProject(
   const now = new Date().toISOString();
   const genre = normalizeGenre(input?.genre);
   const language = normalizeLanguage(input?.language);
-  const authorName = (input?.authorName || "").trim();
+  const authorIdentity = resolveAuthorIdentity(input?.authorIdentity, input?.authorIdentityId) || getSelectedAuthorIdentity();
+  const authorName = (authorIdentity?.penName || input?.authorName || "").trim();
   const characters = charactersFromText(input?.charactersText || (liveBook as any)?.characterBible);
 
-const config: BookConfig = {
+const config: BookConfig = applyAuthorIdentityToConfig({
     title: liveBook.title || input?.prefilledTitle || "Generating…",
     subtitle: liveBook.subtitle || input?.prefilledSubtitle || "",
     authorName,
@@ -138,7 +141,7 @@ const config: BookConfig = {
     numberOfChapters: input?.numberOfChapters || liveBook.outlines?.length || liveBook.chapters.length || 8,
     subchaptersEnabled: false,
     characters,
-  };
+  }, authorIdentity) as BookConfig;
 
   const blueprint: BookBlueprint | null = liveBook.outlines
     ? {
