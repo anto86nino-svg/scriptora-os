@@ -118,6 +118,7 @@ export default function Home() {
   const [showNotepad, setShowNotepad] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const [showIdeaModal, setShowIdeaModal] = useState(false);
+  const [showMobileStats, setShowMobileStats] = useState(false);
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const currentLang = useUILanguage();
@@ -665,7 +666,7 @@ export default function Home() {
       </header>
 
       <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 sm:pt-8 lg:px-8">
-        <div className="mb-4 grid gap-3 sm:mb-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
+        <div className="mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
           <section className="ios-panel border-white/15 bg-slate-950/34 p-4 shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur-2xl sm:p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div className="min-w-0">
@@ -699,7 +700,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="ios-panel hidden border-white/15 bg-slate-950/30 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.20)] backdrop-blur-2xl sm:block sm:p-6">
+          <section className="ios-panel hidden border-white/15 bg-slate-950/30 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.20)] backdrop-blur-2xl xl:block xl:p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("workspace_status")}</p>
@@ -736,7 +737,76 @@ export default function Home() {
 
         <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
 
-        <div className="mb-4 grid gap-2 sm:mb-6 sm:grid-cols-2 lg:grid-cols-5">
+        <section className="mb-4 xl:hidden">
+          <button
+            type="button"
+            onClick={() => setShowMobileStats((value) => !value)}
+            className="ios-panel flex w-full items-center justify-between gap-3 border-white/15 bg-slate-950/30 p-3 text-left shadow-[0_12px_36px_rgba(0,0,0,0.16)] backdrop-blur-2xl"
+            aria-expanded={showMobileStats}
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <span className="ios-icon ios-icon-blue h-10 w-10 shrink-0 rounded-[16px]">
+                <BarChart3 className="h-4 w-4" />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold leading-5 text-white">{t("mobile_status_summary")}</span>
+                <span className="mt-0.5 block truncate text-[11px] font-medium text-white/62">
+                  {projects.length.toLocaleString()} {t("projects").toLowerCase()} · {draftProjects.length.toLocaleString()} {t("drafts").toLowerCase()}
+                </span>
+              </span>
+            </span>
+            <span className="flex shrink-0 items-center gap-2">
+              <span className={`rounded-lg border px-2 py-1 text-[10px] font-semibold uppercase ${
+                activeRun
+                  ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
+                  : "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
+              }`}>
+                {activeRun ? t("live") : t("stable")}
+              </span>
+              <span className="hidden rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[10px] font-semibold text-white/70 min-[420px]:inline">
+                {showMobileStats ? t("hide_metrics") : t("show_metrics")}
+              </span>
+              <ArrowRight className={`h-4 w-4 text-white/55 transition-transform ${showMobileStats ? "rotate-90" : ""}`} />
+            </span>
+          </button>
+
+          {showMobileStats && (
+            <div className="mt-2 space-y-2 rounded-2xl border border-white/15 bg-slate-950/28 p-2 shadow-[0_16px_44px_rgba(0,0,0,0.18)] backdrop-blur-2xl">
+              <div className="grid grid-cols-2 gap-2">
+                {dashboardWidgets.slice(0, 4).map((widget) => (
+                  <button
+                    key={widget.label}
+                    type="button"
+                    onClick={widget.action}
+                    className={`rounded-xl border border-white/12 bg-gradient-to-br ${widget.tone} p-2.5 text-left`}
+                  >
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="truncate text-[9px] font-bold uppercase tracking-[0.13em] text-white/55">{widget.label}</span>
+                      <widget.icon className="h-3.5 w-3.5 shrink-0 text-white/75" />
+                    </span>
+                    <span className="mt-1 block truncate text-sm font-semibold text-white">{widget.value}</span>
+                    <span className="mt-0.5 block truncate text-[10px] text-white/58">{widget.detail}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {workspaceStats.map((stat) => (
+                  <button
+                    key={stat.label}
+                    type="button"
+                    onClick={() => stat.label === t("completed") ? setShowLibrary(true) : setShowProjects(true)}
+                    className="rounded-xl border border-white/12 bg-white/[0.07] p-2 text-center"
+                  >
+                    <span className="block truncate text-[8px] font-semibold uppercase text-white/48">{stat.label}</span>
+                    <span className="mt-0.5 block text-sm font-semibold tabular-nums text-white">{stat.value}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        <div className="mb-4 hidden gap-2 sm:mb-6 xl:grid xl:grid-cols-5">
           {dashboardWidgets.map((widget) => (
             <button
               key={widget.label}
@@ -759,7 +829,7 @@ export default function Home() {
           ))}
         </div>
 
-        <div className="mb-4 grid grid-cols-4 gap-1.5 sm:mb-6 sm:grid-cols-2 sm:gap-2.5 lg:grid-cols-4">
+        <div className="mb-4 hidden grid-cols-4 gap-1.5 sm:mb-6 sm:grid-cols-2 sm:gap-2.5 xl:grid xl:grid-cols-4">
           {workspaceStats.map((stat) => (
             <div key={stat.label} className="ios-glass-soft rounded-xl border-white/15 bg-white/[0.075] p-2 shadow-[0_10px_32px_rgba(0,0,0,0.14)] backdrop-blur-xl sm:p-3">
               <div className="flex items-center justify-between gap-2 sm:gap-3">
