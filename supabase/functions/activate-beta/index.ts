@@ -11,7 +11,7 @@ const corsHeaders = {
 };
 
 // Server-side beta code (could be moved to a secret later)
-const BETA_CODE = "Betatester";
+const BETA_CODE = "betatester01";
 const MAX_BETA_PER_IP = 2;
 
 Deno.serve(async (req) => {

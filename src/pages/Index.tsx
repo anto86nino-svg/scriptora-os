@@ -547,6 +547,9 @@ const Index = () => {
         <CoverGenerator
           title={engine.project.config.title}
           subtitle={engine.project.config.subtitle}
+          authorName={engine.project.config.authorName || engine.project.config.author || engine.project.config.writerName}
+          description={engine.project.blueprint?.overview || engine.project.config.subtitle}
+          authorBio={engine.project.frontMatter?.aboutAuthor || engine.project.config.authorIdentity?.biography}
           onGenerate={(dataUrl) => { setCoverDataUrl(dataUrl); setShowCover(false); }}
           onClose={() => setShowCover(false)}
         />

@@ -52,7 +52,7 @@ export default function KeywordGoldPage() {
         plan,
       );
       setResult(out);
-      toast.success("Keyword Gold generato");
+      toast.success(out.fallbackReason ? "Analisi base generata" : "Keyword Gold generato");
     } catch (e: any) {
       toast.error(e?.message || "Keyword Gold fallito");
     } finally {
@@ -131,6 +131,14 @@ export default function KeywordGoldPage() {
 
         {result && (
           <div className="space-y-6">
+            {result.fallbackReason && (
+              <Card className="border-amber-500/30 bg-amber-500/10">
+                <CardContent className="py-3 text-sm text-amber-950 dark:text-amber-100">
+                  {result.fallbackReason}
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center justify-between text-base">

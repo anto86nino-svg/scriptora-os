@@ -268,6 +268,8 @@ const translations: Record<string, Record<UILanguage, string>> = {
 	  rewrite_studio_desc: { en: "Improve chapters with depth", it: "Migliora capitoli in profondità", es: "Mejora capítulos en profundidad", fr: "Améliorer les chapitres en profondeur", de: "Kapitel gründlich verbessern" },
 	  kdp_tools: { en: "KDP Tools", it: "KDP Tools", es: "Herramientas KDP", fr: "Outils KDP", de: "KDP-Tools" },
 	  kdp_tools_desc: { en: "Launch packaging and market prep", it: "Packaging e preparazione mercato", es: "Packaging y preparación de mercado", fr: "Packaging et préparation marché", de: "Packaging und Marktvorbereitung" },
+	  cover_studio: { en: "Cover Studio", it: "Cover Studio", es: "Cover Studio", fr: "Cover Studio", de: "Cover Studio" },
+	  cover_studio_desc: { en: "Create EPUB, KDP, Lulu, or custom covers", it: "Crea copertine EPUB, KDP, Lulu o custom", es: "Crea portadas EPUB, KDP, Lulu o custom", fr: "Créer des couvertures EPUB, KDP, Lulu ou custom", de: "EPUB-, KDP-, Lulu- oder Custom-Cover erstellen" },
 	  author_identity: { en: "Author Identity", it: "Identità autore", es: "Identidad de autor", fr: "Identité auteur", de: "Autoridentität" },
 	  author_identity_desc: { en: "Voice and author profile", it: "Voce e profilo autore", es: "Voz y perfil de autor", fr: "Voix et profil auteur", de: "Stimme und Autorenprofil" },
 	  author_identity_selected: { en: "Active author: {name}", it: "Autore attivo: {name}", es: "Autor activo: {name}", fr: "Auteur actif : {name}", de: "Aktiver Autor: {name}" },

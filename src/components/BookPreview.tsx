@@ -278,6 +278,9 @@ export function BookPreview({
         <CoverGenerator
           title={config.title}
           subtitle={config.subtitle}
+          authorName={config.authorName || config.author || config.writerName}
+          description={blueprint?.overview || config.subtitle}
+          authorBio={frontMatter?.aboutAuthor || config.authorIdentity?.biography}
           onGenerate={(dataUrl) => { setCoverDataUrl(dataUrl); setShowCover(false); }}
           onClose={() => setShowCover(false)}
         />

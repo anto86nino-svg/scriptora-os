@@ -6,6 +6,7 @@ import { NewBookDialog } from "@/components/NewBookDialog";
 import { HomeExportDialog } from "@/components/HomeExportDialog";
 import { TitleIntelligenceDialog } from "@/components/TitleIntelligenceDialog";
 import { AdvancedAppearanceDialog } from "@/components/AdvancedAppearanceDialog";
+import { CoverGenerator } from "@/components/CoverGenerator";
 import { CharacterStudioDialog, SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/components/CharacterStudioDialog";
 import { ManuscriptAnalyzerDialog } from "@/components/ManuscriptAnalyzerDialog";
 import { NotepadDialog } from "@/components/NotepadDialog";
@@ -19,7 +20,7 @@ import {
   FileDown, ArrowRight, Clock, Globe, Flame, Loader2, Sparkles, Wand2,
   Library, Home as HomeIcon, X, BarChart3,
   TrendingUp, LogOut, CreditCard, Download as DownloadIcon, Settings, Users,
-  CheckCircle2, NotebookPen, Fingerprint
+  CheckCircle2, NotebookPen, Fingerprint, ImagePlus
 } from "lucide-react";
 import { BookConfig, BookProject } from "@/types/book";
 import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
@@ -112,6 +113,7 @@ export default function Home() {
   const [showTitleIntel, setShowTitleIntel] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [showCharacterStudio, setShowCharacterStudio] = useState(false);
+  const [showCoverStudio, setShowCoverStudio] = useState(false);
   const [showManuscriptAnalyzer, setShowManuscriptAnalyzer] = useState(false);
   const [showNotepad, setShowNotepad] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
@@ -405,6 +407,7 @@ export default function Home() {
     { group: "editorial", icon: NotebookPen, title: t("block_notes"), desc: t("block_notes_desc"), iconBg: "ios-icon-yellow", action: () => setShowNotepad(true) },
 
     { group: "publishing", icon: Rocket, title: t("kdp_tools"), desc: t("kdp_tools_desc"), iconBg: "ios-icon-violet", action: () => navigate("/kdp-launch"), feature: "kdp_market_base" as const },
+    { group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: () => setShowCoverStudio(true) },
     { group: "publishing", icon: Zap, title: freeBookUsed ? `Title ${t("pro_feature_suffix")}` : t("title_intelligence"), desc: freeBookUsed ? t("unlock_pro") : t("title_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-teal", action: guardFreeAiFeature(() => setShowTitleIntel(true)), feature: "title_intelligence_base" as const },
     { group: "publishing", icon: TrendingUp, title: freeBookUsed ? `Radar ${t("pro_feature_suffix")}` : "Bestseller Radar", desc: freeBookUsed ? t("unlock_pro") : t("radar_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: guardFreeAiFeature(() => navigate("/bestseller-radar")), feature: freeBookUsed ? "export_epub" as const : undefined },
     { group: "publishing", icon: BarChart3, title: freeBookUsed ? `Keyword ${t("pro_feature_suffix")}` : "Keyword Gold", desc: freeBookUsed ? t("unlock_pro") : t("keyword_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-yellow", action: guardFreeAiFeature(() => navigate("/keyword-gold")), feature: freeBookUsed ? "export_epub" as const : "kdp_market_base" as const },
@@ -879,6 +882,18 @@ export default function Home() {
       <TitleIntelligenceDialog open={showTitleIntel} onClose={() => setShowTitleIntel(false)} />
       <AdvancedAppearanceDialog open={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} />
       <CharacterStudioDialog open={showCharacterStudio} onClose={() => setShowCharacterStudio(false)} />
+      {showCoverStudio && (
+        <CoverGenerator
+          title={t("untitled")}
+          subtitle=""
+          authorName={activeAuthor.penName}
+          description=""
+          authorBio={activeAuthor.biography}
+          showPrimaryAction={false}
+          onGenerate={() => undefined}
+          onClose={() => setShowCoverStudio(false)}
+        />
+      )}
       <ManuscriptAnalyzerDialog
         open={showManuscriptAnalyzer}
         onClose={() => setShowManuscriptAnalyzer(false)}

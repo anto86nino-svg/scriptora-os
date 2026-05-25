@@ -1,1 +1,4 @@
 project_id = "lesxmntzrwjaooacvpko"
+
+[functions.kdp-money-engine]
+verify_jwt = false
