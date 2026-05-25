@@ -160,6 +160,7 @@ export interface AuthorIdentity {
 export interface BookConfig {
   title: string;
   subtitle: string;
+  titleLanguage?: Language;
   tone: string;
   /**
    * Real publishing author / pen name.

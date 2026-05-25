@@ -17,6 +17,14 @@ interface CoverGeneratorProps {
 type CoverMode = "epub" | "kdp" | "lulu" | "custom";
 type PaperType = "white" | "cream" | "color";
 type ImageFit = "cover" | "contain" | "soft";
+type ScriptoraMotif = "thriller" | "romance" | "business" | "fantasy" | "memoir" | "historical" | "scifi" | "literary";
+
+type ScriptoraArtDirection = {
+  motif: ScriptoraMotif;
+  label: string;
+  templateIndex: number;
+  seed: number;
+};
 
 type CoverTemplate = {
   name: string;
@@ -180,6 +188,8 @@ const PAPER_SPINE_FACTORS: Record<PaperType, number> = {
 const BLEED_IN = 0.125;
 const EPUB_WIDTH = 1600;
 const EPUB_HEIGHT = 2560;
+const FONT_OPTIONS = ["Template", "Georgia", "Times New Roman", "Palatino", "Arial", "Helvetica", "Verdana", "Trebuchet MS", "Courier New"];
+const TEXT_COLOR_SWATCHES = ["#fff8e8", "#111827", "#e6c36a", "#f8fafc", "#c72d2d", "#7dd3fc", "#f0b8c8", "#064e3b", "#8f5f2d", "#f5d27a"];
 
 export function CoverGenerator({
   title,
@@ -230,8 +240,20 @@ export function CoverGenerator({
   const [showAuthorPhoto, setShowAuthorPhoto] = useState(false);
   const [scriptoraSeed, setScriptoraSeed] = useState(1);
   const [showGuides, setShowGuides] = useState(false);
+  const [coverGenreBrief, setCoverGenreBrief] = useState("");
+  const [scriptoraArtDirection, setScriptoraArtDirection] = useState<ScriptoraArtDirection | null>(null);
+  const [titleFont, setTitleFont] = useState("Template");
+  const [subtitleFont, setSubtitleFont] = useState("Template");
+  const [authorFont, setAuthorFont] = useState("Template");
+  const [titleColor, setTitleColor] = useState(TEMPLATES[0].textColor);
+  const [subtitleColor, setSubtitleColor] = useState(TEMPLATES[0].mutedText);
+  const [authorColor, setAuthorColor] = useState(TEMPLATES[0].textColor);
+  const [titleScale, setTitleScale] = useState(100);
+  const [subtitleScale, setSubtitleScale] = useState(100);
+  const [authorScale, setAuthorScale] = useState(100);
 
   const template = TEMPLATES[selectedTemplate];
+  const resolveFont = (font: string) => (font === "Template" ? template.font : font);
   const spec = useMemo(
     () => getCoverSpec(mode, trimId, pageCount, paperType, customWidth, customHeight, customSpine, dpi),
     [mode, trimId, pageCount, paperType, customWidth, customHeight, customSpine, dpi],
@@ -253,7 +275,17 @@ export function CoverGenerator({
     showAuthorPhoto,
     imageFit,
     scriptoraSeed,
+    scriptoraArtDirection,
     showGuides,
+    titleFont,
+    subtitleFont,
+    authorFont,
+    titleColor,
+    subtitleColor,
+    authorColor,
+    titleScale,
+    subtitleScale,
+    authorScale,
   ]);
 
   async function drawCover() {
@@ -269,11 +301,19 @@ export function CoverGenerator({
     drawTemplateBackground(ctx, { x: 0, y: 0, w: spec.width, h: spec.height }, template, scriptoraSeed);
 
     if (spec.isPrint && spec.backRect && spec.spineRect) {
+      let authorImage: HTMLImageElement | null = null;
+      if (showAuthorPhoto && authorPhoto) {
+        try {
+          authorImage = await loadImage(authorPhoto);
+        } catch {
+          authorImage = null;
+        }
+      }
       drawPanelTint(ctx, spec.backRect, template, 0.06);
       drawPanelTint(ctx, spec.spineRect, template, 0.12);
       drawPanelTint(ctx, spec.frontRect, template, 0.04);
       await drawFrontCover(ctx, spec.frontRect, template, uploadedImage, imageFit);
-      drawBackCover(ctx, spec.backRect, template);
+      drawBackCover(ctx, spec.backRect, template, authorImage);
       drawSpine(ctx, spec.spineRect, template);
       if (showGuides) drawPrintGuides(ctx, spec, template);
     } else {
@@ -299,25 +339,17 @@ export function CoverGenerator({
       ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     } else {
       drawTemplateBackground(ctx, rect, coverTemplate, scriptoraSeed + 11);
+      drawScriptoraAiScene(ctx, rect, coverTemplate, scriptoraSeed, scriptoraArtDirection);
       drawCoverOrnaments(ctx, rect, coverTemplate, scriptoraSeed);
-    }
-
-    if (showAuthorPhoto && authorPhoto) {
-      try {
-        const photo = await loadImage(authorPhoto);
-        drawAuthorPhotoBadge(ctx, rect, coverTemplate, photo);
-      } catch {
-        // Ignore image decode failures; the cover remains usable.
-      }
     }
 
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
     const marginX = rect.w * 0.105;
-    const titleSize = clamp(Math.round(rect.w * (coverTitle.length > 36 ? 0.066 : coverTitle.length > 22 ? 0.078 : 0.091)), 46, 150);
-    const subtitleSize = clamp(Math.round(rect.w * 0.034), 24, 58);
-    const authorSize = clamp(Math.round(rect.w * 0.032), 24, 50);
+    const titleSize = clamp(Math.round(rect.w * (coverTitle.length > 36 ? 0.066 : coverTitle.length > 22 ? 0.078 : 0.091) * (titleScale / 100)), 32, 190);
+    const subtitleSize = clamp(Math.round(rect.w * 0.034 * (subtitleScale / 100)), 18, 78);
+    const authorSize = clamp(Math.round(rect.w * 0.032 * (authorScale / 100)), 18, 72);
     const x = rect.x + rect.w / 2;
 
     ctx.fillStyle = coverTemplate.accentColor;
@@ -327,44 +359,56 @@ export function CoverGenerator({
 
     drawAccentRule(ctx, rect.x + marginX, rect.y + rect.h * 0.24, rect.w - marginX * 2, coverTemplate);
 
-    ctx.fillStyle = coverTemplate.textColor;
-    ctx.font = `700 ${titleSize}px ${coverTemplate.font}, serif`;
+    ctx.fillStyle = titleColor || coverTemplate.textColor;
+    ctx.font = `700 ${titleSize}px ${canvasFontFamily(resolveFont(titleFont), "serif")}`;
     wrapText(ctx, coverTitle.toUpperCase(), x, rect.y + rect.h * 0.43, rect.w - marginX * 2, titleSize * 1.05, 5);
 
     if (coverSubtitle) {
-      ctx.fillStyle = coverTemplate.mutedText;
-      ctx.font = `italic ${subtitleSize}px ${coverTemplate.font}, serif`;
+      ctx.fillStyle = subtitleColor || coverTemplate.mutedText;
+      ctx.font = `italic ${subtitleSize}px ${canvasFontFamily(resolveFont(subtitleFont), "serif")}`;
       wrapText(ctx, coverSubtitle, x, rect.y + rect.h * 0.61, rect.w - marginX * 2.3, subtitleSize * 1.28, 3);
     }
 
     if (coverAuthor) {
-      ctx.fillStyle = coverTemplate.textColor;
-      ctx.font = `600 ${authorSize}px Arial, sans-serif`;
+      ctx.fillStyle = authorColor || coverTemplate.textColor;
+      ctx.font = `600 ${authorSize}px ${canvasFontFamily(resolveFont(authorFont), "sans-serif")}`;
       ctx.fillText(coverAuthor.toUpperCase(), x, rect.y + rect.h * 0.84);
     }
 
     drawAccentRule(ctx, rect.x + rect.w * 0.42, rect.y + rect.h * 0.91, rect.w * 0.16, coverTemplate);
   }
 
-  function drawBackCover(ctx: CanvasRenderingContext2D, rect: Rect, coverTemplate: CoverTemplate) {
+  function drawBackCover(ctx: CanvasRenderingContext2D, rect: Rect, coverTemplate: CoverTemplate, authorImage: HTMLImageElement | null) {
     const pad = rect.w * 0.1;
     const top = rect.y + rect.h * 0.12;
     const textX = rect.x + pad;
     const maxWidth = rect.w - pad * 2;
+    const photoGap = rect.w * 0.045;
+    const photoW = authorImage ? clamp(Math.round(rect.w * 0.22), 120, 260) : 0;
+    const photoH = authorImage ? Math.round(photoW * 1.22) : 0;
+    const headlineX = authorImage ? textX + photoW + photoGap : textX;
+    const headlineWidth = authorImage ? maxWidth - photoW - photoGap : maxWidth;
+    const descriptionTop = authorImage
+      ? Math.max(top + photoH + rect.h * 0.05, top + rect.h * 0.24)
+      : top + rect.h * 0.17;
     ctx.textAlign = "left";
     ctx.textBaseline = "top";
 
+    if (authorImage) {
+      drawAuthorPhotoBackMatter(ctx, { x: textX, y: top, w: photoW, h: photoH }, coverTemplate, authorImage);
+    }
+
     ctx.fillStyle = coverTemplate.accentColor;
     ctx.font = `700 ${clamp(Math.round(rect.w * 0.043), 28, 54)}px ${coverTemplate.font}, serif`;
-    wrapText(ctx, backTagline || "Il libro", textX, top, maxWidth, rect.w * 0.058, 3, "left");
+    wrapText(ctx, backTagline || "Il libro", headlineX, top, headlineWidth, rect.w * 0.058, authorImage ? 4 : 3, "left");
 
     ctx.fillStyle = coverTemplate.mutedText;
     ctx.font = `${clamp(Math.round(rect.w * 0.026), 18, 34)}px Georgia, serif`;
-    wrapText(ctx, bookDescription, textX, top + rect.h * 0.17, maxWidth, rect.w * 0.041, 10, "left");
+    wrapText(ctx, bookDescription, textX, descriptionTop, maxWidth, rect.w * 0.041, authorImage ? 7 : 10, "left");
 
     const bioTop = rect.y + rect.h * 0.61;
-    ctx.fillStyle = coverTemplate.textColor;
-    ctx.font = `700 ${clamp(Math.round(rect.w * 0.025), 18, 30)}px Arial, sans-serif`;
+    ctx.fillStyle = authorColor || coverTemplate.textColor;
+    ctx.font = `700 ${clamp(Math.round(rect.w * 0.025 * (authorScale / 100)), 16, 42)}px ${canvasFontFamily(resolveFont(authorFont), "sans-serif")}`;
     ctx.fillText(coverAuthor || "Autore", textX, bioTop);
 
     ctx.fillStyle = coverTemplate.mutedText;
@@ -495,14 +539,23 @@ export function CoverGenerator({
   }
 
   function generateScriptoraBackground() {
+    const direction = inferScriptoraArtDirection([
+      coverGenreBrief,
+      coverTitle,
+      coverSubtitle,
+      bookDescription,
+      backTagline,
+    ].join(" "));
     setUploadedImage(null);
-    setScriptoraSeed((current) => current + 1);
+    setSelectedTemplate(direction.templateIndex);
+    setScriptoraArtDirection(direction);
+    setScriptoraSeed(direction.seed + Date.now() % 997);
   }
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
-      <div className="bg-card/95 border border-border/80 rounded-2xl shadow-2xl max-w-6xl w-full max-h-[92vh] overflow-hidden">
-        <div className="px-4 sm:px-5 py-4 border-b border-border/70 flex items-center justify-between gap-3">
+      <div className="bg-card/95 border border-border/80 rounded-2xl shadow-2xl max-w-6xl lg:max-w-[1500px] w-full max-h-[92vh] lg:max-h-[94vh] overflow-hidden lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)]">
+        <div className="px-4 sm:px-5 lg:px-7 py-4 lg:py-5 border-b border-border/70 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary">
               <BookOpen className="h-4 w-4" />
@@ -519,27 +572,35 @@ export function CoverGenerator({
           </button>
         </div>
 
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_390px] max-h-[calc(92vh-78px)] overflow-y-auto">
-          <div className="p-4 sm:p-6 bg-black/20 flex flex-col items-center justify-center gap-4">
-            <div className="w-full flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_460px] xl:grid-cols-[minmax(0,1fr)_500px] max-h-[calc(92vh-78px)] lg:max-h-[calc(94vh-86px)] overflow-y-auto lg:overflow-hidden">
+          <div className="relative p-4 sm:p-6 lg:p-8 xl:p-10 bg-black/20 lg:bg-gradient-to-br lg:from-black/45 lg:via-background/80 lg:to-primary/10 flex flex-col items-center justify-center gap-4 lg:min-h-[calc(94vh-86px)] lg:overflow-hidden">
+            <div className="w-full flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:absolute lg:left-8 lg:right-8 lg:top-6 lg:w-auto lg:rounded-2xl lg:border lg:border-white/10 lg:bg-background/35 lg:px-4 lg:py-3 lg:backdrop-blur-xl">
               <span>{spec.label}</span>
               <span>{spec.width} x {spec.height}px - {spec.exportNote}</span>
             </div>
-            <div className="w-full min-h-[360px] flex items-center justify-center">
-              <canvas
-                ref={canvasRef}
-                className="max-h-[66vh] w-auto max-w-full rounded-xl shadow-2xl ring-1 ring-white/10"
-              />
+            <div className="w-full min-h-[360px] lg:min-h-0 lg:h-full flex items-center justify-center lg:pt-8">
+              <div className="w-full flex items-center justify-center lg:rounded-[2rem] lg:border lg:border-white/10 lg:bg-white/[0.035] lg:p-6 xl:p-8 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_28px_80px_rgba(0,0,0,0.45)]">
+                <canvas
+                  ref={canvasRef}
+                  className="max-h-[66vh] lg:max-h-[72vh] xl:max-h-[76vh] w-auto max-w-full rounded-xl lg:rounded-2xl shadow-2xl lg:shadow-[0_26px_80px_rgba(0,0,0,0.62)] ring-1 ring-white/10"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="p-4 sm:p-5 space-y-5 bg-background/55">
-            <section className="space-y-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                <Settings2 className="h-4 w-4 text-primary" />
-                Formato
+          <div className="p-4 sm:p-5 lg:p-6 space-y-5 lg:space-y-6 bg-background/55 lg:bg-background/75 lg:max-h-[calc(94vh-86px)] lg:overflow-y-auto">
+            <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Settings2 className="h-4 w-4 text-primary" />
+                  <span className="lg:hidden">Formato</span>
+                  <span className="hidden lg:inline">COVER STYLE</span>
+                </div>
+                <p className="hidden lg:block text-xs leading-5 text-muted-foreground">
+                  Formato editoriale, dimensioni di stampa e direzione visiva della copertina.
+                </p>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 lg:gap-3">
                 {[
                   ["epub", "EPUB"],
                   ["kdp", "Amazon KDP"],
@@ -549,10 +610,10 @@ export function CoverGenerator({
                   <button
                     key={value}
                     onClick={() => setMode(value as CoverMode)}
-                    className={`rounded-xl border px-3 py-2 text-xs font-semibold transition-colors ${
+                    className={`rounded-xl border px-3 py-2 lg:py-3 text-xs lg:text-sm font-semibold transition-colors ${
                       mode === value
-                        ? "border-primary bg-primary/15 text-primary"
-                        : "border-border/70 bg-surface/60 text-muted-foreground hover:text-foreground"
+                        ? "border-primary bg-primary/15 text-primary shadow-[0_10px_30px_rgba(0,0,0,0.16)]"
+                        : "border-border/70 bg-surface/60 text-muted-foreground hover:text-foreground hover:bg-surface"
                     }`}
                   >
                     {label}
@@ -561,13 +622,13 @@ export function CoverGenerator({
               </div>
 
               {(mode === "kdp" || mode === "lulu") && (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2 lg:gap-3">
                   <label className="space-y-1">
                     <span className="text-xs font-medium text-muted-foreground">Trim size</span>
                     <select
                       value={trimId}
                       onChange={(e) => setTrimId(e.target.value)}
-                      className="w-full bg-surface border border-border rounded-lg px-2 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-2 lg:px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                     >
                       {TRIM_PRESETS.map((trim) => (
                         <option key={trim.id} value={trim.id}>{trim.label}</option>
@@ -582,7 +643,7 @@ export function CoverGenerator({
                       max={828}
                       value={pageCount}
                       onChange={(e) => setPageCount(Number(e.target.value) || 24)}
-                      className="w-full bg-surface border border-border rounded-lg px-2 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-2 lg:px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </label>
                   <label className="space-y-1">
@@ -590,14 +651,14 @@ export function CoverGenerator({
                     <select
                       value={paperType}
                       onChange={(e) => setPaperType(e.target.value as PaperType)}
-                      className="w-full bg-surface border border-border rounded-lg px-2 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-2 lg:px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                     >
                       <option value="cream">Cream</option>
                       <option value="white">White</option>
                       <option value="color">Color</option>
                     </select>
                   </label>
-                  <label className="flex items-end gap-2 rounded-lg border border-border/70 bg-surface/40 px-3 py-2 text-xs text-muted-foreground">
+                  <label className="flex items-end gap-2 rounded-lg lg:rounded-xl border border-border/70 bg-surface/40 px-3 py-2 lg:py-2.5 text-xs text-muted-foreground">
                     <input
                       type="checkbox"
                       checked={showGuides}
@@ -609,21 +670,54 @@ export function CoverGenerator({
               )}
 
               {mode === "custom" && (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2 lg:gap-3">
                   <NumberField label="Larghezza in" value={customWidth} min={1} max={30} step={0.1} onChange={setCustomWidth} />
                   <NumberField label="Altezza in" value={customHeight} min={1} max={30} step={0.1} onChange={setCustomHeight} />
                   <NumberField label="Dorso in" value={customSpine} min={0} max={3} step={0.01} onChange={setCustomSpine} />
                   <NumberField label="DPI" value={dpi} min={72} max={450} step={1} onChange={setDpi} />
                 </div>
               )}
+
+              <div className="hidden lg:grid grid-cols-2 gap-2 lg:gap-3">
+                {TEMPLATES.map((t, i) => (
+                  <button
+                    key={t.name}
+                    onClick={() => setSelectedTemplate(i)}
+                    className={`min-h-16 lg:min-h-[76px] rounded-xl lg:rounded-2xl border p-2 lg:p-3 text-left transition-all duration-200 ${
+                      i === selectedTemplate
+                        ? "border-primary bg-primary/15 shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
+                        : "border-border/70 bg-surface/50 hover:bg-surface hover:-translate-y-0.5"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2 lg:gap-3">
+                      <span
+                        className="h-7 w-7 lg:h-9 lg:w-9 rounded-lg lg:rounded-xl border border-white/20 shadow-inner"
+                        style={{ background: `linear-gradient(135deg, ${t.palette[0]}, ${t.palette[1]}, ${t.palette[3]})` }}
+                      />
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs lg:text-sm font-semibold text-foreground">{t.name}</span>
+                        <span className="block truncate text-[10px] lg:text-[11px] text-muted-foreground">{t.mood}</span>
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
             </section>
 
-            <section className="space-y-3">
-              <p className="text-sm font-semibold text-foreground">Testi copertina</p>
+            <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">
+                  <span className="lg:hidden">Testi copertina</span>
+                  <span className="hidden lg:inline">TEXT SETTINGS</span>
+                </p>
+                <p className="hidden lg:block text-xs leading-5 text-muted-foreground">
+                  Titolo, sottotitolo, autore e copy editoriale per fronte e retro.
+                </p>
+              </div>
               <label className="space-y-1 block">
                 <span className="text-xs font-medium text-muted-foreground">Titolo</span>
                 <input
-                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   value={coverTitle}
                   onChange={(e) => setCoverTitle(e.target.value)}
                 />
@@ -631,7 +725,7 @@ export function CoverGenerator({
               <label className="space-y-1 block">
                 <span className="text-xs font-medium text-muted-foreground">Sottotitolo</span>
                 <input
-                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   value={coverSubtitle}
                   onChange={(e) => setCoverSubtitle(e.target.value)}
                 />
@@ -639,19 +733,51 @@ export function CoverGenerator({
               <label className="space-y-1 block">
                 <span className="text-xs font-medium text-muted-foreground">Autore</span>
                 <input
-                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   value={coverAuthor}
                   onChange={(e) => setCoverAuthor(e.target.value)}
                 />
               </label>
+              <div className="grid gap-3 pt-2 lg:grid-cols-3">
+                <TextStyleControls
+                  label="Titolo"
+                  fontValue={titleFont}
+                  onFontChange={setTitleFont}
+                  colorValue={titleColor}
+                  onColorChange={setTitleColor}
+                  scale={titleScale}
+                  onScaleChange={setTitleScale}
+                />
+                <TextStyleControls
+                  label="Sottotitolo"
+                  fontValue={subtitleFont}
+                  onFontChange={setSubtitleFont}
+                  colorValue={subtitleColor}
+                  onColorChange={setSubtitleColor}
+                  scale={subtitleScale}
+                  onScaleChange={setSubtitleScale}
+                />
+                <TextStyleControls
+                  label="Autore"
+                  fontValue={authorFont}
+                  onFontChange={setAuthorFont}
+                  colorValue={authorColor}
+                  onColorChange={setAuthorColor}
+                  scale={authorScale}
+                  onScaleChange={setAuthorScale}
+                />
+              </div>
             </section>
 
-            <section className="space-y-3">
-              <p className="text-sm font-semibold text-foreground">Retro copertina</p>
+            <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+              <p className="text-sm font-semibold text-foreground">
+                <span className="lg:hidden">Retro copertina</span>
+                <span className="hidden lg:inline">BACK MATTER</span>
+              </p>
               <label className="space-y-1 block">
                 <span className="text-xs font-medium text-muted-foreground">Headline retro</span>
                 <input
-                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   value={backTagline}
                   onChange={(e) => setBackTagline(e.target.value)}
                 />
@@ -660,7 +786,7 @@ export function CoverGenerator({
                 <span className="text-xs font-medium text-muted-foreground">Descrizione libro</span>
                 <textarea
                   rows={4}
-                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
                   value={bookDescription}
                   onChange={(e) => setBookDescription(e.target.value)}
                 />
@@ -669,20 +795,37 @@ export function CoverGenerator({
                 <span className="text-xs font-medium text-muted-foreground">Bio autore</span>
                 <textarea
                   rows={3}
-                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
                   value={coverAuthorBio}
                   onChange={(e) => setCoverAuthorBio(e.target.value)}
                 />
               </label>
             </section>
 
-            <section className="space-y-3">
-              <p className="text-sm font-semibold text-foreground">Immagine e stile</p>
-              <div className="grid grid-cols-2 gap-2">
+            <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">
+                  <span className="lg:hidden">Immagine e stile</span>
+                  <span className="hidden lg:inline">AI ENHANCEMENT</span>
+                </p>
+                <p className="hidden lg:block text-xs leading-5 text-muted-foreground">
+                  Scriptora interpreta genere e tono per creare solo lo sfondo. Titolo, sottotitolo e autore restano modificabili dai controlli testo.
+                </p>
+              </div>
+              <label className="space-y-1 block">
+                <span className="text-xs font-medium text-muted-foreground">Genere / atmosfera AI</span>
+                <input
+                  value={coverGenreBrief}
+                  onChange={(e) => setCoverGenreBrief(e.target.value)}
+                  placeholder="es. thriller psicologico, romance dark, business self-help..."
+                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-2 lg:gap-3">
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-border/70 bg-surface/60 px-3 py-2 text-xs font-semibold text-foreground hover:bg-surface transition-colors"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-border/70 bg-surface/60 px-3 py-2 lg:py-3 text-xs lg:text-sm font-semibold text-foreground hover:bg-surface transition-colors"
                 >
                   <Upload className="h-4 w-4" />
                   Carica immagine
@@ -690,12 +833,18 @@ export function CoverGenerator({
                 <button
                   type="button"
                   onClick={generateScriptoraBackground}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/12 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/18 transition-colors"
+                  className="flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/12 px-3 py-2 lg:py-3 text-xs lg:text-sm font-semibold text-primary hover:bg-primary/18 transition-colors"
                 >
                   <Wand2 className="h-4 w-4" />
-                  Sfondo Scriptora
+                  <span className="lg:hidden">Genera cover</span>
+                  <span className="hidden lg:inline">Genera copertina Scriptora</span>
                 </button>
               </div>
+              {scriptoraArtDirection && (
+                <div className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] leading-4 text-primary">
+                  Direzione AI: {scriptoraArtDirection.label}. Sfondo generato senza testo incorporato.
+                </div>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -717,7 +866,7 @@ export function CoverGenerator({
                 <select
                   value={imageFit}
                   onChange={(e) => setImageFit(e.target.value as ImageFit)}
-                  className="w-full bg-surface border border-border rounded-lg px-2 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-2 lg:px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 >
                   <option value="soft">Cover morbida</option>
                   <option value="cover">Riempi</option>
@@ -725,60 +874,62 @@ export function CoverGenerator({
                 </select>
               </label>
 
-              <div className="rounded-xl border border-border/70 bg-surface/40 p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold text-foreground">Foto autore opzionale</p>
-                    <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
-                      Se la carichi, appare in alto a sinistra come badge editoriale.
-                    </p>
+              {mode !== "epub" && (
+                <div className="rounded-xl lg:rounded-2xl border border-border/70 bg-surface/40 p-3 lg:p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">Foto autore opzionale</p>
+                      <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+                        Disponibile solo per KDP, Lulu e Custom: viene inserita rettangolare nel back matter.
+                      </p>
+                    </div>
+                    <label className="flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={showAuthorPhoto && Boolean(authorPhoto)}
+                        disabled={!authorPhoto}
+                        onChange={(e) => setShowAuthorPhoto(e.target.checked)}
+                      />
+                      Mostra
+                    </label>
                   </div>
-                  <label className="flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      checked={showAuthorPhoto && Boolean(authorPhoto)}
-                      disabled={!authorPhoto}
-                      onChange={(e) => setShowAuthorPhoto(e.target.checked)}
-                    />
-                    Mostra
-                  </label>
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => authorPhotoInputRef.current?.click()}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-border/70 bg-background/45 px-3 py-2 text-xs font-semibold text-foreground hover:bg-background/70 transition-colors"
-                  >
-                    <Upload className="h-3.5 w-3.5" />
-                    Carica foto
-                  </button>
-                  {authorPhoto ? (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => {
-                        setAuthorPhoto(null);
-                        setShowAuthorPhoto(false);
-                      }}
-                      className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive hover:bg-destructive/15 transition-colors"
+                      onClick={() => authorPhotoInputRef.current?.click()}
+                      className="flex items-center justify-center gap-2 rounded-lg lg:rounded-xl border border-border/70 bg-background/45 px-3 py-2 lg:py-2.5 text-xs font-semibold text-foreground hover:bg-background/70 transition-colors"
                     >
-                      Rimuovi
+                      <Upload className="h-3.5 w-3.5" />
+                      Carica foto
                     </button>
-                  ) : (
-                    <div className="rounded-lg border border-dashed border-border/70 px-3 py-2 text-center text-xs text-muted-foreground">
-                      Nessuna foto
-                    </div>
-                  )}
+                    {authorPhoto ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAuthorPhoto(null);
+                          setShowAuthorPhoto(false);
+                        }}
+                        className="rounded-lg lg:rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 lg:py-2.5 text-xs font-semibold text-destructive hover:bg-destructive/15 transition-colors"
+                      >
+                        Rimuovi
+                      </button>
+                    ) : (
+                      <div className="rounded-lg lg:rounded-xl border border-dashed border-border/70 px-3 py-2 lg:py-2.5 text-center text-xs text-muted-foreground">
+                        Nessuna foto
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    ref={authorPhotoInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleAuthorPhotoUpload(e.target.files?.[0])}
+                  />
                 </div>
-                <input
-                  ref={authorPhotoInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => handleAuthorPhotoUpload(e.target.files?.[0])}
-                />
-              </div>
+              )}
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 lg:hidden">
                 {TEMPLATES.map((t, i) => (
                   <button
                     key={t.name}
@@ -802,12 +953,17 @@ export function CoverGenerator({
                   </button>
                 ))}
               </div>
+
             </section>
 
-            <div className={`sticky bottom-0 -mx-4 sm:-mx-5 -mb-4 sm:-mb-5 grid gap-2 border-t border-border/70 bg-background/90 p-4 backdrop-blur-xl sm:p-5 ${showPrimaryAction ? "grid-cols-2" : "grid-cols-1"}`}>
+            <div className={`-mx-4 sm:-mx-5 lg:mx-0 -mb-4 sm:-mb-5 lg:mb-0 grid gap-2 lg:gap-3 border-t lg:border border-border/70 bg-background/90 lg:bg-card/75 p-4 backdrop-blur-xl sm:p-5 lg:rounded-2xl lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)] ${showPrimaryAction ? "grid-cols-2" : "grid-cols-1"}`}>
+              <div className="hidden lg:block col-span-full">
+                <p className="text-sm font-semibold text-foreground">EXPORT</p>
+                <p className="mt-1 text-xs text-muted-foreground">Scarica, salva o applica la cover al progetto corrente.</p>
+              </div>
               <button
                 onClick={handleDownload}
-                className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold text-foreground hover:bg-surface/80 transition-colors"
+                className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-3 lg:py-3.5 text-sm font-semibold text-foreground hover:bg-surface/80 transition-colors"
               >
                 <Download className="h-4 w-4" />
                 Scarica PNG
@@ -815,7 +971,7 @@ export function CoverGenerator({
               {showPrimaryAction && (
                 <button
                   onClick={handleUseForEpub}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-3 lg:py-3.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
                 >
                   <ImagePlus className="h-4 w-4" />
                   {primaryActionLabel}
@@ -857,6 +1013,81 @@ function NumberField({
         className="w-full bg-surface border border-border rounded-lg px-2 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
       />
     </label>
+  );
+}
+
+function TextStyleControls({
+  label,
+  fontValue,
+  onFontChange,
+  colorValue,
+  onColorChange,
+  scale,
+  onScaleChange,
+}: {
+  label: string;
+  fontValue: string;
+  onFontChange: (value: string) => void;
+  colorValue: string;
+  onColorChange: (value: string) => void;
+  scale: number;
+  onScaleChange: (value: number) => void;
+}) {
+  return (
+    <div className="rounded-xl border border-border/70 bg-surface/35 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold text-foreground">{label}</p>
+        <span className="text-[10px] font-medium text-muted-foreground">{scale}%</span>
+      </div>
+      <label className="space-y-1 block">
+        <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Font</span>
+        <select
+          value={fontValue}
+          onChange={(e) => onFontChange(e.target.value)}
+          className="w-full rounded-lg border border-border bg-background/70 px-2 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        >
+          {FONT_OPTIONS.map((font) => (
+            <option key={font} value={font}>{font}</option>
+          ))}
+        </select>
+      </label>
+      <label className="mt-2 space-y-1 block">
+        <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Grandezza</span>
+        <input
+          type="range"
+          min={70}
+          max={150}
+          step={5}
+          value={scale}
+          onChange={(e) => onScaleChange(Number(e.target.value))}
+          className="w-full accent-primary"
+        />
+      </label>
+      <div className="mt-2 space-y-2">
+        <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Colore</span>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={colorValue}
+            onChange={(e) => onColorChange(e.target.value)}
+            className="h-8 w-10 rounded-lg border border-border bg-background p-1"
+            aria-label={`Colore ${label}`}
+          />
+          <div className="flex flex-wrap gap-1.5">
+            {TEXT_COLOR_SWATCHES.slice(0, 8).map((color) => (
+              <button
+                key={`${label}-${color}`}
+                type="button"
+                onClick={() => onColorChange(color)}
+                className="h-5 w-5 rounded-full border border-white/20 shadow-sm transition-transform hover:scale-110"
+                style={{ backgroundColor: color }}
+                aria-label={`Usa colore ${color}`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -958,6 +1189,222 @@ function drawTemplateBackground(ctx: CanvasRenderingContext2D, rect: Rect, templ
       if (pseudo(x + y + seed) > 0.76) ctx.fillRect(x, y, 1.2, 1.2);
     }
   }
+  ctx.restore();
+}
+
+function inferScriptoraArtDirection(source: string): ScriptoraArtDirection {
+  const text = source.toLowerCase();
+  const profiles: Array<{
+    motif: ScriptoraMotif;
+    label: string;
+    templateIndex: number;
+    keywords: string[];
+  }> = [
+    {
+      motif: "thriller",
+      label: "thriller cinematico",
+      templateIndex: 2,
+      keywords: ["thriller", "noir", "crime", "giallo", "mistero", "detective", "killer", "dark", "suspense", "horror", "paura", "segreto"],
+    },
+    {
+      motif: "romance",
+      label: "romance emozionale",
+      templateIndex: 4,
+      keywords: ["romance", "amore", "love", "cuore", "passione", "sentimenti", "relazione", "dark romance", "bacio", "desiderio"],
+    },
+    {
+      motif: "business",
+      label: "business / self-help premium",
+      templateIndex: 3,
+      keywords: ["business", "self-help", "self help", "crescita", "produttivita", "successo", "mindset", "marketing", "finanza", "manuale", "guida"],
+    },
+    {
+      motif: "fantasy",
+      label: "fantasy epico",
+      templateIndex: 9,
+      keywords: ["fantasy", "magia", "mago", "regno", "drago", "spada", "epico", "mito", "destino", "strega", "incantesimo"],
+    },
+    {
+      motif: "scifi",
+      label: "sci-fi futuristico",
+      templateIndex: 7,
+      keywords: ["sci-fi", "scifi", "fantascienza", "futuro", "cyber", "robot", "ai", "spazio", "astronave", "tecnologia", "distopia"],
+    },
+    {
+      motif: "memoir",
+      label: "memoir editoriale",
+      templateIndex: 5,
+      keywords: ["memoir", "biografia", "autobiografia", "memorie", "vita", "ricordo", "famiglia", "viaggio", "testimonianza"],
+    },
+    {
+      motif: "historical",
+      label: "storico classico",
+      templateIndex: 8,
+      keywords: ["storico", "storia", "guerra", "antico", "medioevo", "rinascimento", "vintage", "epoca", "classico"],
+    },
+    {
+      motif: "literary",
+      label: "narrativa letteraria",
+      templateIndex: 0,
+      keywords: ["romanzo", "narrativa", "literary", "letterario", "dramma", "famiglia", "segreti", "citta", "psicologico"],
+    },
+  ];
+
+  const best = profiles
+    .map((profile) => ({
+      ...profile,
+      score: profile.keywords.reduce((total, keyword) => total + (text.includes(keyword) ? 1 : 0), 0),
+    }))
+    .sort((a, b) => b.score - a.score)[0];
+  const fallback = profiles[profiles.length - 1];
+  const selected = best && best.score > 0 ? best : fallback;
+
+  return {
+    motif: selected.motif,
+    label: selected.label,
+    templateIndex: selected.templateIndex,
+    seed: stableSeed(`${selected.motif}-${source}`),
+  };
+}
+
+function drawScriptoraAiScene(
+  ctx: CanvasRenderingContext2D,
+  rect: Rect,
+  template: CoverTemplate,
+  seed: number,
+  direction: ScriptoraArtDirection | null,
+) {
+  if (!direction) return;
+  ctx.save();
+  ctx.globalCompositeOperation = template.dark ? "screen" : "multiply";
+
+  if (direction.motif === "thriller") {
+    drawSoftCircle(ctx, rect.x + rect.w * 0.68, rect.y + rect.h * 0.22, rect.w * 0.48, template.accentColor, 0.2);
+    ctx.globalAlpha = 0.34;
+    ctx.strokeStyle = template.accentColor;
+    ctx.lineWidth = Math.max(2, rect.w * 0.004);
+    for (let i = 0; i < 26; i += 1) {
+      const x = rect.x + pseudo(seed + i * 3) * rect.w;
+      const y = rect.y + pseudo(seed + i * 7) * rect.h;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - rect.w * 0.08, y + rect.h * 0.16);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = template.accentColor;
+    ctx.beginPath();
+    ctx.moveTo(rect.x + rect.w * 0.76, rect.y);
+    ctx.lineTo(rect.x + rect.w * 0.98, rect.y);
+    ctx.lineTo(rect.x + rect.w * 0.56, rect.y + rect.h);
+    ctx.lineTo(rect.x + rect.w * 0.34, rect.y + rect.h);
+    ctx.closePath();
+    ctx.fill();
+  } else if (direction.motif === "romance") {
+    drawSoftCircle(ctx, rect.x + rect.w * 0.32, rect.y + rect.h * 0.18, rect.w * 0.42, template.accentColor, 0.3);
+    drawSoftCircle(ctx, rect.x + rect.w * 0.72, rect.y + rect.h * 0.72, rect.w * 0.5, template.palette[2], 0.24);
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = template.accentColor;
+    for (let i = 0; i < 16; i += 1) {
+      const x = rect.x + pseudo(seed + i * 11) * rect.w;
+      const y = rect.y + pseudo(seed + i * 13) * rect.h;
+      ctx.beginPath();
+      ctx.ellipse(x, y, rect.w * 0.018, rect.h * 0.008, pseudo(seed + i) * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (direction.motif === "business") {
+    ctx.globalAlpha = 0.18;
+    ctx.strokeStyle = template.accentColor;
+    ctx.lineWidth = Math.max(2, rect.w * 0.003);
+    for (let i = 0; i < 9; i += 1) {
+      const y = rect.y + rect.h * (0.18 + i * 0.075);
+      ctx.beginPath();
+      ctx.moveTo(rect.x + rect.w * 0.1, y);
+      ctx.lineTo(rect.x + rect.w * 0.9, y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 0.42;
+    ctx.beginPath();
+    ctx.moveTo(rect.x + rect.w * 0.18, rect.y + rect.h * 0.74);
+    ctx.lineTo(rect.x + rect.w * 0.38, rect.y + rect.h * 0.58);
+    ctx.lineTo(rect.x + rect.w * 0.55, rect.y + rect.h * 0.62);
+    ctx.lineTo(rect.x + rect.w * 0.82, rect.y + rect.h * 0.38);
+    ctx.stroke();
+    drawSoftCircle(ctx, rect.x + rect.w * 0.78, rect.y + rect.h * 0.32, rect.w * 0.32, template.accentColor, 0.18);
+  } else if (direction.motif === "fantasy") {
+    drawSoftCircle(ctx, rect.x + rect.w * 0.72, rect.y + rect.h * 0.18, rect.w * 0.22, template.accentColor, 0.34);
+    ctx.globalAlpha = 0.24;
+    ctx.fillStyle = template.accentColor;
+    for (let i = 0; i < 42; i += 1) {
+      const x = rect.x + pseudo(seed + i * 5) * rect.w;
+      const y = rect.y + pseudo(seed + i * 17) * rect.h * 0.78;
+      ctx.fillRect(x, y, Math.max(2, rect.w * 0.004), Math.max(2, rect.w * 0.004));
+    }
+    ctx.globalAlpha = 0.22;
+    for (let i = 0; i < 5; i += 1) {
+      const baseX = rect.x + rect.w * (0.08 + i * 0.2);
+      ctx.beginPath();
+      ctx.moveTo(baseX, rect.y + rect.h * 0.9);
+      ctx.lineTo(baseX + rect.w * 0.11, rect.y + rect.h * (0.42 + pseudo(seed + i) * 0.14));
+      ctx.lineTo(baseX + rect.w * 0.22, rect.y + rect.h * 0.9);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if (direction.motif === "scifi") {
+    ctx.globalAlpha = 0.26;
+    ctx.strokeStyle = template.accentColor;
+    ctx.lineWidth = Math.max(2, rect.w * 0.003);
+    for (let i = 0; i < 12; i += 1) {
+      const y = rect.y + rect.h * (0.2 + i * 0.055);
+      ctx.beginPath();
+      ctx.moveTo(rect.x + rect.w * 0.16, y);
+      ctx.lineTo(rect.x + rect.w * 0.84, y + rect.h * 0.16);
+      ctx.stroke();
+    }
+    for (let i = 0; i < 4; i += 1) {
+      ctx.beginPath();
+      ctx.ellipse(rect.x + rect.w * 0.52, rect.y + rect.h * 0.42, rect.w * (0.22 + i * 0.06), rect.h * (0.055 + i * 0.02), -0.38, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    drawSoftCircle(ctx, rect.x + rect.w * 0.5, rect.y + rect.h * 0.42, rect.w * 0.25, template.accentColor, 0.22);
+  } else if (direction.motif === "memoir") {
+    drawSoftCircle(ctx, rect.x + rect.w * 0.25, rect.y + rect.h * 0.2, rect.w * 0.44, template.accentColor, 0.18);
+    ctx.globalAlpha = 0.26;
+    ctx.strokeStyle = template.accentColor;
+    ctx.lineWidth = Math.max(3, rect.w * 0.006);
+    ctx.beginPath();
+    ctx.moveTo(rect.x + rect.w * 0.14, rect.y + rect.h * 0.58);
+    ctx.bezierCurveTo(rect.x + rect.w * 0.34, rect.y + rect.h * 0.5, rect.x + rect.w * 0.62, rect.y + rect.h * 0.64, rect.x + rect.w * 0.88, rect.y + rect.h * 0.52);
+    ctx.stroke();
+    ctx.globalAlpha = 0.16;
+    roundRect(ctx, rect.x + rect.w * 0.14, rect.y + rect.h * 0.18, rect.w * 0.28, rect.h * 0.22, rect.w * 0.015, false, true);
+  } else if (direction.motif === "historical") {
+    ctx.globalAlpha = 0.16;
+    ctx.strokeStyle = template.accentColor;
+    ctx.lineWidth = Math.max(2, rect.w * 0.003);
+    for (let i = 0; i < 8; i += 1) {
+      ctx.beginPath();
+      const y = rect.y + rect.h * (0.18 + i * 0.08);
+      ctx.moveTo(rect.x + rect.w * 0.1, y);
+      ctx.bezierCurveTo(rect.x + rect.w * 0.32, y - rect.h * 0.04, rect.x + rect.w * 0.56, y + rect.h * 0.05, rect.x + rect.w * 0.9, y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 0.28;
+    roundRect(ctx, rect.x + rect.w * 0.11, rect.y + rect.h * 0.11, rect.w * 0.78, rect.h * 0.78, rect.w * 0.018, false, true);
+  } else {
+    drawSoftCircle(ctx, rect.x + rect.w * 0.72, rect.y + rect.h * 0.22, rect.w * 0.44, template.accentColor, 0.2);
+    ctx.globalAlpha = 0.18;
+    ctx.strokeStyle = template.accentColor;
+    ctx.lineWidth = Math.max(2, rect.w * 0.004);
+    for (let i = 0; i < 7; i += 1) {
+      const y = rect.y + rect.h * (0.22 + i * 0.085);
+      ctx.beginPath();
+      ctx.moveTo(rect.x + rect.w * 0.16, y);
+      ctx.lineTo(rect.x + rect.w * 0.84, y + rect.h * (pseudo(seed + i) * 0.035));
+      ctx.stroke();
+    }
+  }
+
   ctx.restore();
 }
 
@@ -1065,46 +1512,71 @@ function drawImageInRect(ctx: CanvasRenderingContext2D, image: HTMLImageElement,
   ctx.drawImage(image, x, y, drawW, drawH);
 }
 
-function drawAuthorPhotoBadge(
+function canvasFontFamily(font: string, generic: "serif" | "sans-serif" | "monospace") {
+  const cleanFont = font.replace(/"/g, "");
+  return cleanFont.includes(" ") ? `"${cleanFont}", ${generic}` : `${cleanFont}, ${generic}`;
+}
+
+function drawSoftCircle(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  color: string,
+  alpha: number,
+) {
+  ctx.save();
+  const glow = ctx.createRadialGradient(x, y, 0, x, y, radius);
+  glow.addColorStop(0, colorWithAlpha(color, alpha));
+  glow.addColorStop(1, colorWithAlpha(color, 0));
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function colorWithAlpha(hex: string, alpha: number) {
+  const clean = hex.replace("#", "");
+  if (clean.length !== 6) return hex;
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function stableSeed(value: string) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  }
+  return hash || 1;
+}
+
+function drawAuthorPhotoBackMatter(
   ctx: CanvasRenderingContext2D,
   rect: Rect,
   template: CoverTemplate,
   image: HTMLImageElement,
 ) {
-  const size = clamp(Math.round(rect.w * 0.13), 72, 220);
-  const x = rect.x + rect.w * 0.085;
-  const y = rect.y + rect.h * 0.06;
-  const cx = x + size / 2;
-  const cy = y + size / 2;
-
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.45)";
-  ctx.shadowBlur = size * 0.14;
-  ctx.shadowOffsetY = size * 0.035;
+  ctx.shadowBlur = rect.w * 0.16;
+  ctx.shadowOffsetY = rect.w * 0.045;
   ctx.fillStyle = template.dark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.72)";
-  ctx.beginPath();
-  ctx.arc(cx, cy, size * 0.57, 0, Math.PI * 2);
-  ctx.fill();
+  roundRect(ctx, rect.x - rect.w * 0.045, rect.y - rect.w * 0.045, rect.w * 1.09, rect.h * 1.07, rect.w * 0.035, true, false);
   ctx.restore();
 
   ctx.save();
-  ctx.beginPath();
-  ctx.arc(cx, cy, size * 0.5, 0, Math.PI * 2);
+  roundRect(ctx, rect.x, rect.y, rect.w, rect.h, rect.w * 0.025, false, false);
   ctx.clip();
-  drawImageCover(ctx, image, x, y, size, size);
+  drawImageCover(ctx, image, rect.x, rect.y, rect.w, rect.h);
   ctx.restore();
 
   ctx.save();
-  ctx.lineWidth = Math.max(3, size * 0.035);
+  ctx.lineWidth = Math.max(3, rect.w * 0.022);
   ctx.strokeStyle = template.accentColor;
-  ctx.beginPath();
-  ctx.arc(cx, cy, size * 0.5, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.lineWidth = Math.max(1, size * 0.012);
-  ctx.strokeStyle = template.dark ? "rgba(255,255,255,0.72)" : "rgba(0,0,0,0.22)";
-  ctx.beginPath();
-  ctx.arc(cx, cy, size * 0.56, 0, Math.PI * 2);
-  ctx.stroke();
+  roundRect(ctx, rect.x, rect.y, rect.w, rect.h, rect.w * 0.025, false, true);
   ctx.restore();
 }
 

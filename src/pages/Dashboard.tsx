@@ -388,6 +388,85 @@ export default function Home() {
         ? Math.min(100, Math.round((lastProjectDoneChapters / lastProjectTargetChapters) * 100))
         : 0
     : 0;
+
+  const wordCountForProject = (project: BookProject) =>
+    (project.chapters || []).reduce(
+      (sum, chapter) => sum + (chapter.content?.split(/\s+/).filter(Boolean).length || 0),
+      0,
+    );
+  const dayKey = (date: Date) => date.toISOString().slice(0, 10);
+  const todayKey = dayKey(new Date());
+  const wordsToday = projects
+    .filter((project) => {
+      const updated = new Date(project.updatedAt);
+      return !Number.isNaN(updated.getTime()) && dayKey(updated) === todayKey;
+    })
+    .reduce((sum, project) => sum + wordCountForProject(project), 0);
+  const updateDays = new Set(
+    projects
+      .map((project) => {
+        const updated = new Date(project.updatedAt);
+        return Number.isNaN(updated.getTime()) ? "" : dayKey(updated);
+      })
+      .filter(Boolean),
+  );
+  let writingStreak = 0;
+  for (const cursor = new Date(); updateDays.has(dayKey(cursor)); cursor.setDate(cursor.getDate() - 1)) {
+    writingStreak += 1;
+  }
+  const aiQualityValues = projects.flatMap((project) =>
+    (project.chapters || []).map((chapter) => {
+      const c = chapter as any;
+      if (typeof c?.aiRating?.score === "number") return Math.round(c.aiRating.score * 20);
+      if (typeof c?.qualityRating === "number") return Math.round(c.qualityRating * 20);
+      return null;
+    }).filter((value): value is number => typeof value === "number"),
+  );
+  const aiQualityScore = aiQualityValues.length
+    ? Math.round(aiQualityValues.reduce((sum, value) => sum + value, 0) / aiQualityValues.length)
+    : null;
+  const dashboardWidgets = [
+    {
+      label: t("active_book_widget"),
+      value: lastProject?.config.title || t("no_active_book"),
+      detail: lastProject ? t("open_manuscript") : t("start_or_import_book"),
+      icon: BookOpen,
+      tone: "from-sky-400/18 to-cyan-300/8",
+      action: lastProject ? () => goApp({ projectId: lastProject.id }) : openNewBookGuarded,
+    },
+    {
+      label: t("words_today_widget"),
+      value: wordsToday.toLocaleString(),
+      detail: t("from_updated_projects"),
+      icon: NotebookPen,
+      tone: "from-emerald-400/18 to-lime-300/8",
+      action: () => goApp(),
+    },
+    {
+      label: t("writing_streak_widget"),
+      value: writingStreak.toLocaleString(),
+      detail: t("consecutive_days"),
+      icon: Flame,
+      tone: "from-amber-400/20 to-orange-300/8",
+      action: () => goApp(),
+    },
+    {
+      label: t("project_progress_widget"),
+      value: lastProject ? `${lastProjectProgress}%` : "0%",
+      detail: lastProject ? t("active_draft_progress") : t("no_active_book"),
+      icon: BarChart3,
+      tone: "from-violet-400/18 to-fuchsia-300/8",
+      action: lastProject ? () => goApp({ projectId: lastProject.id }) : () => setShowProjects(true),
+    },
+    {
+      label: t("ai_quality_score_widget"),
+      value: aiQualityScore == null ? "—" : `${aiQualityScore}`,
+      detail: aiQualityScore == null ? t("run_analysis_to_score") : t("analysis_based_score"),
+      icon: Sparkles,
+      tone: "from-rose-400/18 to-pink-300/8",
+      action: () => setShowManuscriptAnalyzer(true),
+    },
+  ];
   const workspaceStats = [
     { label: t("projects"), value: projects.length.toLocaleString(), detail: tt("draft_count", { count: draftProjects.length }), icon: FolderOpen, iconBg: "ios-icon-blue" },
     { label: t("completed"), value: completedProjects.length.toLocaleString(), detail: t("ready_to_export"), icon: CheckCircle2, iconBg: "ios-icon-green" },
@@ -396,35 +475,35 @@ export default function Home() {
   ];
 
   const cards = [
-    { group: "create", icon: Flame, title: t("generate_bestseller_title"), desc: t("generate_bestseller_desc"), iconBg: "ios-icon-blue", action: () => setShowIdeaModal(true), emphasis: true },
-    { group: "create", icon: HomeIcon, title: t("dashboard_overview"), desc: t("dashboard_overview_desc"), iconBg: "ios-icon-cyan", action: () => navigate("/dashboard") },
-    { group: "create", icon: BookOpen, title: t("editor"), desc: t("write_desc"), iconBg: "ios-icon-violet", action: () => goApp() },
-    { group: "create", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("new_book"), desc: freeBookUsed ? t("upgrade_more_books") : t("new_book_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: openNewBookGuarded },
+    { group: "writer", icon: BookOpen, title: t("writer_studio_title"), desc: t("writer_studio_desc"), iconBg: "ios-icon-violet", action: () => goApp(), tag: t("os_tag_write"), emphasis: true },
+    { group: "writer", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("story_architect_title"), desc: freeBookUsed ? t("upgrade_more_books") : t("story_architect_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: openNewBookGuarded, tag: t("os_tag_plan") },
+    { group: "writer", icon: Wand2, title: t("manuscript_lab_title"), desc: t("manuscript_lab_desc"), iconBg: "ios-icon-teal", action: () => setShowManuscriptAnalyzer(true), tag: t("os_tag_score") },
+    { group: "writer", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_premium_desc"), iconBg: "ios-icon-pink", action: () => goApp(), tag: t("os_tag_rewrite") },
+    { group: "writer", icon: Users, title: freeBookUsed ? `${t("character_studio_title")} ${t("pro_feature_suffix")}` : t("character_studio_title"), desc: freeBookUsed ? t("unlock_pro") : t("character_studio_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-pink", action: guardFreeAiFeature(() => setShowCharacterStudio(true)), feature: freeBookUsed ? "export_epub" as const : undefined, tag: t("os_tag_cast") },
+    { group: "writer", icon: NotebookPen, title: t("block_notes"), desc: t("notepad_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowNotepad(true), tag: t("os_tag_notes") },
 
-    { group: "editorial", icon: Wand2, title: t("analyze_manuscript"), desc: t("analyze_manuscript_desc"), iconBg: "ios-icon-teal", action: () => setShowManuscriptAnalyzer(true) },
-    { group: "editorial", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_studio_desc"), iconBg: "ios-icon-pink", action: () => goApp() },
-    { group: "editorial", icon: Users, title: freeBookUsed ? `${t("characters")} ${t("pro_feature_suffix")}` : t("characters"), desc: freeBookUsed ? t("unlock_pro") : t("characters_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-pink", action: guardFreeAiFeature(() => setShowCharacterStudio(true)), feature: freeBookUsed ? "export_epub" as const : undefined },
-    { group: "editorial", icon: NotebookPen, title: t("block_notes"), desc: t("block_notes_desc"), iconBg: "ios-icon-yellow", action: () => setShowNotepad(true) },
+    { group: "bestseller", icon: Flame, title: t("bestseller_engine_title"), desc: t("bestseller_engine_desc"), iconBg: "ios-icon-blue", action: () => setShowIdeaModal(true), emphasis: true, tag: t("os_tag_launch") },
+    { group: "bestseller", icon: Rocket, title: t("kdp_intelligence_title"), desc: t("kdp_intelligence_desc"), iconBg: "ios-icon-violet", action: () => navigate("/kdp-launch"), feature: "kdp_market_base" as const, tag: t("os_tag_market") },
+    { group: "bestseller", icon: Zap, title: freeBookUsed ? `Title ${t("pro_feature_suffix")}` : t("title_intelligence"), desc: freeBookUsed ? t("unlock_pro") : t("title_premium_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-teal", action: guardFreeAiFeature(() => setShowTitleIntel(true)), feature: "title_intelligence_base" as const, tag: t("os_tag_titles") },
+    { group: "bestseller", icon: TrendingUp, title: freeBookUsed ? `Radar ${t("pro_feature_suffix")}` : "Bestseller Radar", desc: freeBookUsed ? t("unlock_pro") : t("radar_premium_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: guardFreeAiFeature(() => navigate("/bestseller-radar")), feature: freeBookUsed ? "export_epub" as const : undefined, tag: t("os_tag_signal") },
+    { group: "bestseller", icon: BarChart3, title: freeBookUsed ? `Keyword ${t("pro_feature_suffix")}` : "Keyword Gold", desc: freeBookUsed ? t("unlock_pro") : t("keyword_premium_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-yellow", action: guardFreeAiFeature(() => navigate("/keyword-gold")), feature: freeBookUsed ? "export_epub" as const : "kdp_market_base" as const, tag: t("os_tag_metadata") },
 
-    { group: "publishing", icon: Rocket, title: t("kdp_tools"), desc: t("kdp_tools_desc"), iconBg: "ios-icon-violet", action: () => navigate("/kdp-launch"), feature: "kdp_market_base" as const },
-    { group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: () => setShowCoverStudio(true) },
-    { group: "publishing", icon: Zap, title: freeBookUsed ? `Title ${t("pro_feature_suffix")}` : t("title_intelligence"), desc: freeBookUsed ? t("unlock_pro") : t("title_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-teal", action: guardFreeAiFeature(() => setShowTitleIntel(true)), feature: "title_intelligence_base" as const },
-    { group: "publishing", icon: TrendingUp, title: freeBookUsed ? `Radar ${t("pro_feature_suffix")}` : "Bestseller Radar", desc: freeBookUsed ? t("unlock_pro") : t("radar_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: guardFreeAiFeature(() => navigate("/bestseller-radar")), feature: freeBookUsed ? "export_epub" as const : undefined },
-    { group: "publishing", icon: BarChart3, title: freeBookUsed ? `Keyword ${t("pro_feature_suffix")}` : "Keyword Gold", desc: freeBookUsed ? t("unlock_pro") : t("keyword_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-yellow", action: guardFreeAiFeature(() => navigate("/keyword-gold")), feature: freeBookUsed ? "export_epub" as const : "kdp_market_base" as const },
-    { group: "publishing", icon: FileDown, title: t("export_label"), desc: t("export_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const },
-    { group: "publishing", icon: Library, title: t("library"), desc: t("library_desc"), iconBg: "ios-icon-green", action: () => setShowLibrary(true) },
+    { group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: () => setShowCoverStudio(true), tag: t("os_tag_cover") },
+    { group: "publishing", icon: FileDown, title: t("export_studio_title"), desc: t("export_studio_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const, tag: t("os_tag_export") },
+    { group: "publishing", icon: Library, title: t("library"), desc: t("library_premium_desc"), iconBg: "ios-icon-green", action: () => setShowLibrary(true), tag: t("os_tag_archive") },
 
-    { group: "system", icon: Users, title: t("author_identity"), desc: t("author_identity_desc"), iconBg: "ios-icon-blue", action: openNewBookGuarded },
-    { group: "system", icon: Settings, title: t("background_atmosphere"), desc: t("background_atmosphere_desc"), iconBg: "ios-icon-slate", action: guardFreeAiFeature(() => setShowAdvancedSettings(true)), feature: freeBookUsed ? "export_epub" as const : undefined },
-    { group: "system", icon: FolderOpen, title: t("projects"), desc: t("projects_desc"), iconBg: "ios-icon-cyan", action: () => setShowProjects(!showProjects) },
-    { group: "system", icon: Settings, title: freeBookUsed ? `${t("settings")} ${t("pro_feature_suffix")}` : t("settings"), desc: freeBookUsed ? t("unlock_pro") : t("settings_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-yellow", action: guardFreeAiFeature(() => setShowAdvancedSettings(true)), feature: freeBookUsed ? "export_epub" as const : undefined },
+    { group: "system", icon: HomeIcon, title: t("command_center_title"), desc: t("command_center_desc"), iconBg: "ios-icon-cyan", action: () => navigate("/dashboard"), tag: t("os_tag_overview") },
+    { group: "system", icon: Users, title: t("author_identity"), desc: t("author_identity_premium_desc"), iconBg: "ios-icon-blue", action: openNewBookGuarded, tag: t("os_tag_identity") },
+    { group: "system", icon: Settings, title: t("background_atmosphere"), desc: t("atmosphere_premium_desc"), iconBg: "ios-icon-slate", action: guardFreeAiFeature(() => setShowAdvancedSettings(true)), feature: freeBookUsed ? "export_epub" as const : undefined, tag: t("os_tag_space") },
+    { group: "system", icon: FolderOpen, title: t("projects"), desc: t("projects_premium_desc"), iconBg: "ios-icon-cyan", action: () => setShowProjects(!showProjects), tag: t("os_tag_library") },
+    { group: "system", icon: Settings, title: freeBookUsed ? `${t("settings")} ${t("pro_feature_suffix")}` : t("settings"), desc: freeBookUsed ? t("unlock_pro") : t("settings_premium_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-yellow", action: guardFreeAiFeature(() => setShowAdvancedSettings(true)), feature: freeBookUsed ? "export_epub" as const : undefined, tag: t("os_tag_control") },
   ];
 
   const cardGroups = [
-    { id: "create", title: t("creation_suite"), desc: t("creation_suite_desc") },
-    { id: "editorial", title: t("editorial_suite"), desc: t("editorial_suite_desc") },
-    { id: "publishing", title: t("publishing_suite"), desc: t("publishing_suite_desc") },
-    { id: "system", title: t("system_suite"), desc: t("system_suite_desc") },
+    { id: "writer", title: t("writer_os"), desc: t("writer_os_desc") },
+    { id: "bestseller", title: t("bestseller_os"), desc: t("bestseller_os_desc") },
+    { id: "publishing", title: t("publishing_os"), desc: t("publishing_os_desc") },
+    { id: "system", title: t("system_os"), desc: t("system_os_desc") },
   ];
 
   return (
@@ -657,6 +736,29 @@ export default function Home() {
 
         <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
 
+        <div className="mb-4 grid gap-2 sm:mb-6 sm:grid-cols-2 lg:grid-cols-5">
+          {dashboardWidgets.map((widget) => (
+            <button
+              key={widget.label}
+              type="button"
+              onClick={widget.action}
+              className={`group relative min-h-[104px] overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-br ${widget.tone} p-3 text-left shadow-[0_14px_44px_rgba(0,0,0,0.18)] backdrop-blur-2xl transition-all duration-200 hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/[0.10] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50`}
+            >
+              <div className="absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-60" />
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/58">{widget.label}</p>
+                  <p className="mt-2 truncate text-lg font-semibold leading-6 text-white sm:text-xl">{widget.value}</p>
+                </div>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/[0.10] text-white/85 shadow-lg shadow-black/20 transition-transform group-hover:scale-105">
+                  <widget.icon className="h-4 w-4" />
+                </span>
+              </div>
+              <p className="mt-2 line-clamp-2 text-[11px] font-medium leading-4 text-white/66">{widget.detail}</p>
+            </button>
+          ))}
+        </div>
+
         <div className="mb-4 grid grid-cols-4 gap-1.5 sm:mb-6 sm:grid-cols-2 sm:gap-2.5 lg:grid-cols-4">
           {workspaceStats.map((stat) => (
             <div key={stat.label} className="ios-glass-soft rounded-xl border-white/15 bg-white/[0.075] p-2 shadow-[0_10px_32px_rgba(0,0,0,0.14)] backdrop-blur-xl sm:p-3">
@@ -771,15 +873,27 @@ export default function Home() {
                         <button
                           key={card.title}
                           onClick={card.action}
-                          className={`group flex min-h-[136px] w-full flex-col items-start justify-between rounded-xl border border-white/15 bg-slate-950/28 p-3.5 text-left shadow-[0_14px_38px_rgba(0,0,0,0.18)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.105] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 ${
+                          className={`group relative flex min-h-[154px] w-full overflow-hidden flex-col items-start justify-between rounded-2xl border border-white/15 bg-slate-950/30 p-3.5 text-left shadow-[0_18px_46px_rgba(0,0,0,0.20)] ring-1 ring-white/[0.03] backdrop-blur-xl transition-all duration-200 hover:-translate-y-1 hover:border-white/30 hover:bg-white/[0.11] hover:shadow-[0_24px_58px_rgba(0,0,0,0.26)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-safe:hover:scale-[1.012] ${
                             (card as any).emphasis ? "sm:col-span-2 lg:col-span-2" : ""
                           }`}
                         >
-                          <span className={`ios-icon ${card.iconBg} h-11 w-11 rounded-[17px] shadow-[0_10px_24px_rgba(0,0,0,0.20)] ring-1 ring-white/18 sm:h-12 sm:w-12`}>
-                            <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                          <span className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-70" />
+                          <span className="flex w-full items-start justify-between gap-3">
+                            <span className={`ios-icon ${card.iconBg} h-11 w-11 rounded-[17px] shadow-[0_10px_24px_rgba(0,0,0,0.22)] ring-1 ring-white/18 sm:h-12 sm:w-12`}>
+                              <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                            </span>
+                            {(card as any).tag && (
+                              <span className="rounded-full border border-white/10 bg-white/[0.07] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/54">
+                                {(card as any).tag}
+                              </span>
+                            )}
                           </span>
-                          <span className="mt-3 text-sm font-bold leading-5 text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">{card.title}</span>
+                          <span className="mt-3 text-[15px] font-bold leading-5 text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">{card.title}</span>
                           <span className="mt-1 text-[11px] font-medium leading-4 text-white/72 drop-shadow-[0_1px_8px_rgba(0,0,0,0.32)]">{card.desc}</span>
+                          <span className="mt-3 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45 transition-colors group-hover:text-white/78">
+                            {t("open_studio")}
+                            <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                          </span>
                         </button>
                       );
                       return (card as any).feature

@@ -42,6 +42,9 @@ serve(async (req) => {
     const intensity = String(body.intensity || "").trim();
     const centralDynamic = String(body.centralDynamic || "").trim();
     const protagonistType = String(body.protagonistType || "").trim();
+    const manualCharacterNames = Array.isArray(body.manualCharacterNames)
+      ? body.manualCharacterNames.map((item: unknown) => String(item || "").trim()).filter(Boolean).slice(0, 8)
+      : [];
     const count = Math.max(2, Math.min(8, Number(body.count || 4)));
     const userId = body.userId ? String(body.userId) : null;
     const projectId = body.projectId ? String(body.projectId) : null;
@@ -88,6 +91,9 @@ ${centralDynamic || "tensione emotiva, desiderio e conflitto"}
 TIPO PROTAGONISTA:
 ${protagonistType || "protagonista memorabile, contraddittoria, ferita ma attiva"}
 
+NOMI CANONICI MANUALI / SAGA:
+${manualCharacterNames.length ? manualCharacterNames.map((name, index) => `${index + 1}. ${name}`).join("\n") : "nessuno"}
+
 NUMERO PERSONAGGI:
 ${count}
 
@@ -109,6 +115,8 @@ Rapporto con gli altri personaggi:
 Regole di continuità:
 
 REGOLE IMPORTANTI:
+- Se NOMI CANONICI MANUALI contiene nomi, usali ESATTAMENTE nell'ordine dato per i personaggi principali. Non tradurli, non modificarli, non sostituirli e non inventare varianti.
+- Se l'utente sta continuando una saga, quei nomi sono legge canonica: costruisci ruoli, ferite, relazioni e continuità attorno a loro.
 - Rispetta in modo specifico genere, sottogenere, tono, intensità, dinamica centrale e tipo protagonista.
 - Il cast deve essere diverso per romance, dark romance, thriller, fantasy, horror, sci-fi, historical, literary fiction, young adult, family saga e memoir narrativo.
 - Il protagonista deve essere chiarissimo.
@@ -125,7 +133,7 @@ REGOLE IMPORTANTI:
     const characterBible = await callDeepSeek(system, user, {
       userId,
       projectId,
-      metadata: { genre, subcategory, language, count, source: "character_studio" },
+      metadata: { genre, subcategory, language, count, hasManualCharacterNames: manualCharacterNames.length > 0, source: "character_studio" },
     });
 
     return new Response(JSON.stringify({ characterBible }), {

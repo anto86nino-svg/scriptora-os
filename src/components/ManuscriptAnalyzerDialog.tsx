@@ -497,6 +497,10 @@ function scoreTone(score: number): string {
   return "text-rose-300";
 }
 
+function clampScore(value: number): number {
+  return Math.max(35, Math.min(98, Math.round(value)));
+}
+
 export function ManuscriptAnalyzerDialog({
   open,
   onClose,
@@ -518,6 +522,21 @@ export function ManuscriptAnalyzerDialog({
 
   const wordCount = useMemo(() => countWords(rawText), [rawText]);
   const canAnalyze = wordCount >= MIN_ANALYSIS_WORDS && !reading && !saving;
+  const premiumMetrics = analysis ? (() => {
+    const slowOpenings = analysis.chapters.filter(chapter => chapter.issues.some(issue => issue.key === "manuscript_issue_slow_opening")).length;
+    const weakChapters = analysis.chapters.filter(chapter => chapter.score < 70).length;
+    const denseChapters = analysis.chapters.filter(chapter => chapter.issues.some(issue => issue.key === "manuscript_issue_dense_blocks")).length;
+    const repetitionChapters = analysis.chapters.filter(chapter => chapter.issues.some(issue => issue.key === "manuscript_issue_repetition")).length;
+    const dialogueChapters = analysis.chapters.filter(chapter => chapter.strengths.some(strength => strength.key === "manuscript_strength_dialogue")).length;
+
+    return [
+      { label: t("metric_hook_strength"), value: clampScore(analysis.score - slowOpenings * 6), detail: t("metric_hook_strength_desc") },
+      { label: t("metric_emotional_intensity"), value: clampScore(analysis.score + dialogueChapters * 2 - denseChapters * 3), detail: t("metric_emotional_intensity_desc") },
+      { label: t("metric_commercial_potential"), value: clampScore(analysis.score - weakChapters * 4), detail: t("metric_commercial_potential_desc") },
+      { label: t("metric_reader_retention"), value: clampScore(analysis.score - denseChapters * 4 - repetitionChapters * 3), detail: t("metric_reader_retention_desc") },
+      { label: t("metric_market_strength"), value: clampScore(analysis.score + (analysis.words > 18000 ? 4 : 0) - weakChapters * 3), detail: t("metric_market_strength_desc") },
+    ];
+  })() : [];
 
   const runAnalysis = (textOverride?: string, titleOverride?: string, sourceOverride?: string) => {
     const nextText = (textOverride ?? rawText).trim();
@@ -772,6 +791,19 @@ export function ManuscriptAnalyzerDialog({
                       <p className="mt-1 text-xs leading-5 text-muted-foreground">{t(analysis.summaryKey)}</p>
                     </div>
                   </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                  {premiumMetrics.map((metric) => (
+                    <div key={metric.label} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.075] to-white/[0.035] p-3 shadow-[0_12px_34px_rgba(0,0,0,0.16)]">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{metric.label}</p>
+                        <p className={cn("text-lg font-semibold tabular-nums", scoreTone(metric.value))}>{metric.value}</p>
+                      </div>
+                      <Progress value={metric.value} className="mt-2 h-1.5" />
+                      <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{metric.detail}</p>
+                    </div>
+                  ))}
                 </div>
 
                 <div className="rounded-lg border border-white/10 bg-white/[0.055] p-4">

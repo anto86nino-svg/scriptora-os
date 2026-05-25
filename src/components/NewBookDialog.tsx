@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, forwardRef } from "react";
 import { SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/components/CharacterStudioDialog";
 import { BookConfig, Language, Genre, ChapterLength, BookLength, CATEGORIES, BOOK_LENGTH_CONFIG, AuthorIdentity } from "@/types/book";
-import { BookOpen, X, Sparkles, PenTool, UserRound, Save, Fingerprint, PlusCircle, Trash2 } from "lucide-react";
+import { BookOpen, X, Sparkles, PenTool, UserRound, Save, Fingerprint, PlusCircle, Trash2, RefreshCw } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { getGenreBlueprint } from "@/lib/genre-intelligence";
 import { getStylesForGenre, type WritingStylePreset } from "@/lib/writing-styles";
@@ -50,6 +50,12 @@ function titleFromCharacterIdea(value?: string): string {
     .trim();
 }
 
+function looksLikePlotInsteadOfTitle(value?: string): boolean {
+  const clean = String(value || "").replace(/\s+/g, " ").trim();
+  if (!clean) return true;
+  return clean.length > 78 || (clean.length > 48 && /[,.;:]/.test(clean));
+}
+
 const GENRES: { value: Genre; label: string; group: string }[] = [
   { value: "self-help", label: "Self-Help", group: "Non-Fiction" },
   { value: "business", label: "Business", group: "Non-Fiction" },
@@ -86,6 +92,8 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
   const { plan } = usePlan();
   const isFreePlan = plan === "free";
   const [pendingCharacterProject, setPendingCharacterProject] = useState<any | null>(null);
+  const [titleDominationRound, setTitleDominationRound] = useState(0);
+  const [titleLanguage, setTitleLanguage] = useState<Language>("English");
   const initialAuthorIdentity = getSelectedAuthorIdentity();
 
   useEffect(() => {
@@ -99,21 +107,37 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
       if (pending?.characterBible) {
         const nextGenre = normalizeCharacterStudioGenre(pending.genre);
         const nextLanguage = normalizeCharacterStudioLanguage(pending.language);
+        const nextTitleLanguage = normalizeCharacterStudioLanguage(pending.titleLanguage || pending.language);
         const nextSubcategory = String(pending.subcategory || "").trim();
         const nextTone = String(pending.tone || "").trim();
-        const ideaTitle = titleFromCharacterIdea(pending.idea);
+        setTitleLanguage(nextTitleLanguage);
+        const titleOptions = generateShadowTitleSet({
+          idea: pending.idea,
+          genre: nextGenre,
+          category: "Fiction",
+          subcategory: nextSubcategory,
+          targetAudience: nextTone,
+          language: nextLanguage,
+          titleLanguage: nextTitleLanguage,
+          characterBible: pending.characterBible,
+          manualCharacterNames: pending.manualCharacterNames,
+          seed: Date.now(),
+        }, 8);
+        const bestTitle = titleOptions[0];
 
         setConfig(prev => ({
           ...prev,
-          title: prev.title || ideaTitle || "Romanzo senza titolo",
-          subtitle: prev.subtitle || nextSubcategory || "",
+          title: !prev.title || looksLikePlotInsteadOfTitle(prev.title) ? (bestTitle?.title || titleFromCharacterIdea(pending.idea) || "Romanzo senza titolo") : prev.title,
+          subtitle: !prev.subtitle || looksLikePlotInsteadOfTitle(prev.subtitle) ? (bestTitle?.subtitle || nextSubcategory || "") : prev.subtitle,
           language: nextLanguage,
+          titleLanguage: nextTitleLanguage,
           genre: nextGenre,
           category: "Fiction",
           subcategory: nextSubcategory || prev.subcategory || "",
           tone: nextTone || prev.tone || "poetico e cinematografico",
           authorStyle: nextTone || prev.authorStyle || "cinematic, emotional, bestseller-level",
           subchaptersEnabled: false,
+          shadowTitleOptions: titleOptions,
         } as BookConfig));
       }
     } catch {
@@ -123,6 +147,7 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
   const [config, setConfig] = useState<BookConfig>({
     title: "",
     subtitle: "",
+    titleLanguage: "English",
     tone: "warm, insightful, transformative",
     authorStyle: "Brianna Wiest",
     authorIdentityId: initialAuthorIdentity.id,
@@ -144,13 +169,29 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
   const shadowTitleOptions = useMemo(() => generateShadowTitleSet({
     title: config.title,
     subtitle: config.subtitle,
+    idea: pendingCharacterProject?.idea,
     genre: config.genre,
     category: config.category,
     subcategory: config.subcategory,
     targetAudience: config.tone,
     language: config.language,
-  }, 4), [config.title, config.subtitle, config.genre, config.category, config.subcategory, config.tone, config.language]);
+    titleLanguage,
+    characterBible: pendingCharacterProject?.characterBible,
+    manualCharacterNames: pendingCharacterProject?.manualCharacterNames,
+    seed: titleDominationRound,
+  }, 6), [config.title, config.subtitle, pendingCharacterProject?.idea, pendingCharacterProject?.characterBible, pendingCharacterProject?.manualCharacterNames, config.genre, config.category, config.subcategory, config.tone, config.language, titleLanguage, titleDominationRound]);
   const primaryShadowTitle = shadowTitleOptions[0];
+
+  const applyShadowTitle = (candidate = primaryShadowTitle) => {
+    if (!candidate) return;
+    setConfig(prev => ({ ...prev, title: candidate.title, subtitle: candidate.subtitle, titleLanguage, shadowTitleOptions }));
+  };
+
+  const changeTitleLanguage = (next: Language) => {
+    setTitleLanguage(next);
+    setTitleDominationRound((round) => round + 1);
+    setConfig(prev => ({ ...prev, titleLanguage: next }));
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -298,22 +339,64 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
               placeholder="A guide to inner peace" />
           </Field>
 
+          <Field label={t("title_language")}>
+            <select
+              value={titleLanguage}
+              onChange={e => changeTitleLanguage(e.target.value as Language)}
+              className="w-full h-9 bg-muted/50 border border-border rounded-lg px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            >
+              {LANGUAGES.map(l => <option key={l} value={l}>{l}</option>)}
+            </select>
+            <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+              {t("title_language_hint")}
+            </p>
+          </Field>
+
           {primaryShadowTitle && (
-            <div className="rounded-lg border border-sky-400/25 bg-sky-400/10 p-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="rounded-xl border border-sky-400/25 bg-sky-400/10 p-3 space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold uppercase text-sky-300">Shadow title sempre attivo</p>
                   <p className="mt-1 truncate text-sm font-semibold text-foreground">{primaryShadowTitle.title}</p>
                   <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{primaryShadowTitle.subtitle}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setConfig(prev => ({ ...prev, title: primaryShadowTitle.title, subtitle: primaryShadowTitle.subtitle, shadowTitleOptions }))}
-                  className="h-8 shrink-0 rounded-lg border border-sky-300/30 bg-sky-300/10 px-3 text-xs font-semibold text-sky-100 transition-colors hover:bg-sky-300/20"
-                >
-                  Usa titolo
-                </button>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTitleDominationRound((round) => round + 1)}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-sky-300/30 bg-sky-300/10 px-3 text-xs font-semibold text-sky-100 transition-colors hover:bg-sky-300/20"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Rigenera dominazione
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyShadowTitle()}
+                    className="h-8 rounded-lg border border-sky-300/30 bg-sky-300/10 px-3 text-xs font-semibold text-sky-100 transition-colors hover:bg-sky-300/20"
+                  >
+                    Usa titolo
+                  </button>
+                </div>
               </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {shadowTitleOptions.slice(1, 5).map((candidate) => (
+                  <button
+                    key={`${candidate.title}-${candidate.subtitle}`}
+                    type="button"
+                    onClick={() => applyShadowTitle(candidate)}
+                    className="rounded-lg border border-sky-300/15 bg-background/35 p-2 text-left transition-colors hover:border-sky-300/35 hover:bg-sky-300/10"
+                  >
+                    <p className="truncate text-xs font-semibold text-foreground">{candidate.title}</p>
+                    <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{candidate.subtitle}</p>
+                    <p className="mt-1 text-[10px] uppercase tracking-wider text-sky-300/80">{candidate.angle} · {candidate.confidence}%</p>
+                  </button>
+                ))}
+              </div>
+              {pendingCharacterProject?.characterBible && (
+                <p className="text-[11px] leading-4 text-muted-foreground">
+                  Prima scegli titolo e sottotitolo. Poi Scriptora userà trama, cast e Character Lock senza mettere la descrizione nel campo titolo.
+                </p>
+              )}
             </div>
           )}
 
@@ -498,17 +581,22 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
             if (identity?.id) setSelectedAuthorIdentityId(identity.id);
             onSubmit(ensureBookTitleMetadata({
               ...config,
+              titleLanguage,
               authorIdentity: identity || undefined,
               authorIdentityId: identity?.id || config.authorIdentityId,
               authorName,
               author: authorName,
               writerName: authorName,
             }, {
+              idea: pendingCharacterProject?.idea,
               genre: config.genre,
               category: config.category,
               subcategory: config.subcategory,
               targetAudience: config.tone,
               language: config.language,
+              titleLanguage,
+              characterBible: pendingCharacterProject?.characterBible,
+              manualCharacterNames: pendingCharacterProject?.manualCharacterNames,
             }));
           }}
             className="h-9 px-6 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors">

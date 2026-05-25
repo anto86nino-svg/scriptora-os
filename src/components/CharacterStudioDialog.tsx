@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Users, Wand2, Save, X, Loader2, BookOpen, CheckCircle2 } from "lucide-react";
+import { Users, Wand2, Save, X, Loader2, BookOpen, CheckCircle2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,11 @@ function optionValue(option: ChoiceOption): string {
 function optionLabel(option: ChoiceOption): string {
   return typeof option === "string" ? option : option.label;
 }
+
+type CharacterName = {
+  name: string;
+  surname: string;
+};
 
 const ROMAN_GENRES_PRO: ChoiceOption[] = [
   { value: "romance", label: "Romance" },
@@ -135,6 +140,81 @@ const CHARACTER_DYNAMICS_PRO: ChoiceOption[] = [
   "nemici costretti a collaborare"
 ];
 
+const CHARACTER_NAME_POOLS: Record<string, CharacterName[]> = {
+  Italian: [
+    { name: "Livia", surname: "D'Amico" },
+    { name: "Nicolò", surname: "Serra" },
+    { name: "Marta", surname: "Riva" },
+    { name: "Elia", surname: "Valenti" },
+    { name: "Adele", surname: "Ferri" },
+    { name: "Tommaso", surname: "Neri" },
+    { name: "Bianca", surname: "Moretti" },
+    { name: "Damiano", surname: "Greco" },
+    { name: "Iris", surname: "Leoni" },
+    { name: "Vittorio", surname: "Mancini" },
+    { name: "Clara", surname: "Santoro" },
+    { name: "Enea", surname: "Bellini" },
+    { name: "Ginevra", surname: "Marini" },
+    { name: "Leonardo", surname: "Costa" },
+    { name: "Viola", surname: "Ruggeri" },
+    { name: "Mattia", surname: "Conti" },
+    { name: "Sveva", surname: "Barbieri" },
+    { name: "Lorenzo", surname: "Vitale" },
+    { name: "Nina", surname: "De Luca" },
+    { name: "Samuele", surname: "Rinaldi" },
+    { name: "Alma", surname: "Pellegrini" },
+    { name: "Dario", surname: "Ferretti" },
+    { name: "Greta", surname: "Monti" },
+    { name: "Riccardo", surname: "Valli" },
+  ],
+  English: [
+    { name: "Mara", surname: "Voss" },
+    { name: "Elias", surname: "Reed" },
+    { name: "Iris", surname: "Vale" },
+    { name: "Jonah", surname: "Cross" },
+    { name: "Nora", surname: "Blake" },
+    { name: "Theo", surname: "Marsh" },
+    { name: "Ada", surname: "Rowe" },
+    { name: "Julian", surname: "Stone" },
+    { name: "Celia", surname: "Hart" },
+    { name: "Noah", surname: "Wren" },
+    { name: "Vera", surname: "Lane" },
+    { name: "Silas", surname: "Cole" },
+    { name: "Elena", surname: "Price" },
+    { name: "Caleb", surname: "Shaw" },
+    { name: "Maeve", surname: "Sinclair" },
+    { name: "Rowan", surname: "Hale" },
+    { name: "Lena", surname: "Arden" },
+    { name: "Ezra", surname: "Monroe" },
+  ],
+  Spanish: [
+    { name: "Lucía", surname: "Vargas" },
+    { name: "Mateo", surname: "Salazar" },
+    { name: "Inés", surname: "Roldán" },
+    { name: "Bruno", surname: "Soler" },
+    { name: "Clara", surname: "Mendoza" },
+    { name: "Nicolás", surname: "Vega" },
+    { name: "Alma", surname: "Cortés" },
+    { name: "Diego", surname: "Luna" },
+  ],
+  French: [
+    { name: "Camille", surname: "Moreau" },
+    { name: "Adrien", surname: "Lefèvre" },
+    { name: "Élise", surname: "Roux" },
+    { name: "Mathis", surname: "Garnier" },
+    { name: "Noémie", surname: "Valentin" },
+    { name: "Julien", surname: "Marchand" },
+  ],
+  German: [
+    { name: "Marlene", surname: "Vogel" },
+    { name: "Jonas", surname: "Weber" },
+    { name: "Anika", surname: "Keller" },
+    { name: "Felix", surname: "Brandt" },
+    { name: "Lena", surname: "Hoffmann" },
+    { name: "Emil", surname: "Schreiber" },
+  ],
+};
+
 
 
 function ChoiceGrid({
@@ -194,6 +274,110 @@ const GENRES = [
 
 const LANGUAGES = ["Italian", "English", "Spanish", "French", "German"];
 
+function cleanManualNameLine(value: string): string {
+  return value
+    .replace(/^[\s\-*•\d.)]+/, "")
+    .replace(/^(nome|name|personaggio|character)\s*[:\-]\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseManualCharacterNames(value: string): CharacterName[] {
+  return value
+    .split(/[\n;,]+/)
+    .map(cleanManualNameLine)
+    .filter(Boolean)
+    .map((line) => {
+      const parts = line.split(" ").filter(Boolean);
+      return {
+        name: parts[0] || "",
+        surname: parts.slice(1).join(" "),
+      };
+    })
+    .filter((item) => item.name)
+    .slice(0, 8);
+}
+
+function characterNameLabel(item: CharacterName): string {
+  return [item.name, item.surname].filter(Boolean).join(" ");
+}
+
+function pickCharacterNames(input: {
+  language: string;
+  seed: number;
+  manualCharacterNames?: string;
+}): CharacterName[] {
+  const manual = parseManualCharacterNames(input.manualCharacterNames || "");
+  if (manual.length >= 2) return manual;
+
+  const pool = CHARACTER_NAME_POOLS[input.language] || CHARACTER_NAME_POOLS.English;
+  const first = pool[input.seed % pool.length];
+  let second = pool[(input.seed + 7) % pool.length];
+  if (characterNameLabel(first).toLowerCase() === characterNameLabel(second).toLowerCase()) {
+    second = pool[(input.seed + 11) % pool.length];
+  }
+  return manual.length === 1 ? [manual[0], second] : [first, second];
+}
+
+function replaceAllLiteral(text: string, from: string, to: string): string {
+  const cleanFrom = from.trim();
+  const cleanTo = to.trim();
+  if (!cleanFrom || !cleanTo || cleanFrom === cleanTo) return text;
+  return text.split(cleanFrom).join(cleanTo);
+}
+
+function applyManualNamesToBible(text: string, manualCharacterNames: string): string {
+  const manual = parseManualCharacterNames(manualCharacterNames);
+  if (!text.trim() || manual.length === 0) return text;
+
+  const blocks = text.split(/\n(?=Nome:|Name:)/g);
+  const replacements: Array<{ from: CharacterName; to: CharacterName }> = [];
+
+  const nextBlocks = blocks.map((block, index) => {
+    const target = manual[index];
+    if (!target) return block;
+
+    const oldName = block.match(/^(Nome|Name):\s*(.+)$/im)?.[2]?.trim() || "";
+    const oldSurname = block.match(/^(Cognome|Surname):\s*(.+)$/im)?.[2]?.trim() || "";
+    replacements.push({
+      from: { name: oldName, surname: oldSurname },
+      to: target,
+    });
+
+    let next = block;
+    if (/^(Nome|Name):/im.test(next)) {
+      next = next.replace(/^(Nome|Name):\s*.*$/im, (line, label) => `${label}: ${target.name}`);
+    }
+    if (/^(Cognome|Surname):/im.test(next)) {
+      next = next.replace(/^(Cognome|Surname):\s*.*$/im, (line, label) => `${label}: ${target.surname || ""}`);
+    }
+    if (/^Regole di continuità:/im.test(next)) {
+      next = next.replace(
+        /^Regole di continuità:\s*(.*)$/im,
+        `Regole di continuità: Non rinominare mai ${characterNameLabel(target)}. Questo nome è canonico per la saga. $1`,
+      );
+    } else if (/^Continuity rules:/im.test(next)) {
+      next = next.replace(
+        /^Continuity rules:\s*(.*)$/im,
+        `Continuity rules: Never rename ${characterNameLabel(target)}. This name is canonical for the saga. $1`,
+      );
+    }
+    return next;
+  });
+
+  let nextText = nextBlocks.join("\n");
+  for (const replacement of replacements) {
+    const oldFull = characterNameLabel(replacement.from);
+    const newFull = characterNameLabel(replacement.to);
+    nextText = replaceAllLiteral(nextText, oldFull, newFull);
+    nextText = replaceAllLiteral(nextText, replacement.from.name, replacement.to.name);
+    if (replacement.from.surname && replacement.to.surname) {
+      nextText = replaceAllLiteral(nextText, replacement.from.surname, replacement.to.surname);
+    }
+  }
+  return nextText;
+}
+
 function fallbackCharacterBible(input: {
   idea: string;
   genre: string;
@@ -203,33 +387,27 @@ function fallbackCharacterBible(input: {
   centralDynamic?: string;
   protagonistType?: string;
   language: string;
+  manualCharacterNames?: string;
 }) {
   const hash = Array.from(`${input.idea}|${input.genre}|${input.subcategory}|${input.centralDynamic || ""}`)
     .reduce((sum, char) => Math.imul(sum ^ char.charCodeAt(0), 16777619), 2166136261) >>> 0;
-  const namePairs = input.language === "Italian"
-    ? [
-      ["Livia", "D'Amico", "Nicolò", "Serra"],
-      ["Marta", "Riva", "Elia", "Valenti"],
-      ["Adele", "Ferri", "Tommaso", "Neri"],
-      ["Bianca", "Moretti", "Damiano", "Greco"],
-      ["Iris", "Leoni", "Vittorio", "Mancini"],
-      ["Clara", "Santoro", "Enea", "Bellini"],
-    ]
-    : [
-      ["Mara", "Voss", "Elias", "Reed"],
-      ["Iris", "Vale", "Jonah", "Cross"],
-      ["Nora", "Blake", "Theo", "Marsh"],
-      ["Ada", "Rowe", "Julian", "Stone"],
-      ["Celia", "Hart", "Noah", "Wren"],
-      ["Vera", "Lane", "Silas", "Cole"],
-    ];
+  const selectedNames = pickCharacterNames({
+    language: input.language,
+    seed: hash,
+    manualCharacterNames: input.manualCharacterNames,
+  });
   const professions = [
-    "restauratrice di archivi e memoria familiare",
     "fotografa investigativa abituata a leggere dettagli invisibili",
     "traduttrice freelance che vive tra lingue, bugie e omissioni",
     "architetta di interni specializzata in case lasciate a metà",
     "ricercatrice che ha trasformato una colpa in metodo",
     "musicista che controlla tutto perché teme l'imprevisto",
+    "cartografa climatica che misura confini che non restano fermi",
+    "ex magistrata radiata che riconosce le confessioni false",
+    "apicoltrice urbana con una memoria quasi fotografica",
+    "pilota di droni subacquei per relitti industriali",
+    "chef di navi merci che custodisce ricette come prove",
+    "matematica del rischio assunta per prevedere tradimenti",
   ];
   const counterpartRoles = [
     "antagonista emotivo / alleato necessario",
@@ -239,13 +417,12 @@ function fallbackCharacterBible(input: {
     "testimone ambiguo, attrazione e minaccia insieme",
     "partner obbligato in una scelta che non lascia innocenti",
   ];
-  const pair = namePairs[hash % namePairs.length];
   const profession = professions[hash % professions.length];
   const counterpartRole = counterpartRoles[(hash >>> 3) % counterpartRoles.length];
-  const protagonistName = pair[0];
-  const protagonistSurname = pair[1];
-  const loveName = pair[2];
-  const loveSurname = pair[3];
+  const protagonistName = selectedNames[0]?.name || "Livia";
+  const protagonistSurname = selectedNames[0]?.surname || "D'Amico";
+  const loveName = selectedNames[1]?.name || "Nicolò";
+  const loveSurname = selectedNames[1]?.surname || "Serra";
 
   return `Nome: ${protagonistName}
 Cognome: ${protagonistSurname}
@@ -305,15 +482,9 @@ function buildLocalNovelIdea(input: {
   centralDynamic: string;
   protagonistType: string;
   language: string;
+  previousIdeas?: string[];
 }) {
   const scenes = [
-    {
-      protagonist: "una restauratrice di mappe antiche",
-      place: "un archivio sotterraneo sotto una città termale",
-      wound: "ha falsificato un documento per salvare qualcuno e non si è mai perdonata",
-      desire: "ritrovare l'origine di una mappa senza proprietario",
-      conflict: "ogni strada disegnata sulla carta anticipa una scelta che qualcuno farà davvero",
-    },
     {
       protagonist: "un ex medico di bordo radiato",
       place: "una nave-laboratorio bloccata in un porto senza nome",
@@ -349,10 +520,66 @@ function buildLocalNovelIdea(input: {
       desire: "tradurre un diario che cambia lingua ogni notte",
       conflict: "la donna che lo sorveglia sembra conoscere tutte le frasi prima che vengano scritte",
     },
+    {
+      protagonist: "una tassidermista di creature estinte accusata di fabbricare miracoli",
+      place: "un museo privato aperto solo durante gli equinozi",
+      wound: "ha venduto una creatura falsa a una famiglia in lutto",
+      desire: "dimostrare che un animale impossibile è tornato vivo",
+      conflict: "ogni corpo esposto nel museo conserva una memoria che non appartiene al morto",
+    },
+    {
+      protagonist: "un cartografo di soglie che disegna confini tra mondi instabili",
+      place: "una dogana costruita sopra un cratere pieno di porte",
+      wound: "ha chiuso il passaggio mentre sua sorella era ancora dall'altra parte",
+      desire: "riaprire una sola porta senza risvegliare tutte le altre",
+      conflict: "la mappa risponde soltanto alle bugie che lui riesce a confessare",
+    },
+    {
+      protagonist: "una fabbricante di campane che sente il futuro nel metallo incrinato",
+      place: "un ducato in cui nessuno può morire finché una campana resta muta",
+      wound: "ha fuso l'ultima campana usando il nome di una persona amata",
+      desire: "spezzare il patto che tiene viva una città sbagliata",
+      conflict: "ogni rintocco salva un innocente e condanna qualcuno che lei conosce",
+    },
+    {
+      protagonist: "una ladra liturgica che ruba reliquie non per rivenderle ma per farle tacere",
+      place: "una cattedrale sospesa sopra una palude di nebbia",
+      wound: "ha scambiato una preghiera vera con una salvezza falsa",
+      desire: "liberarsi da una voce sacra che parla sotto la sua pelle",
+      conflict: "la reliquia più pericolosa porta il suo stesso volto",
+    },
+    {
+      protagonist: "un notaio dei morti incaricato di registrare testamenti impossibili",
+      place: "una città portuale dove i defunti tornano solo per firmare",
+      wound: "ha cancellato l'ultima volontà di sua madre",
+      desire: "ritrovare un testamento che può sciogliere un'intera casata",
+      conflict: "il documento nomina come erede una persona che non è ancora nata",
+    },
   ];
-  const seed = Math.floor(Math.random() * scenes.length);
-  const pick = scenes[seed];
+  const recentText = (input.previousIdeas || []).join(" ").toLowerCase();
+  const availableScenes = scenes.filter((scene) => {
+    const firstKeyword = scene.protagonist.split(" ").slice(1, 3).join(" ").toLowerCase();
+    return !firstKeyword || !recentText.includes(firstKeyword);
+  });
+  const scenePool = availableScenes.length ? availableScenes : scenes;
+  const seed = Math.floor(Math.random() * scenePool.length);
+  const pick = scenePool[seed];
   return `${pick.protagonist} arriva in ${pick.place} con una ferita precisa: ${pick.wound}. Vuole ${pick.desire}, ma scopre che ${pick.conflict}. La storia intreccia ${input.centralDynamic || "desiderio, conflitto e segreto"} con un tono ${input.tone || "cinematografico"} e intensità ${input.intensity || "media"}, evitando il solito schema di fuga romantica e costruendo una promessa narrativa più riconoscibile. La protagonista resta ${input.protagonistType || "contraddittoria e attiva"}, con lingua narrativa ${input.language}. Genere: ${optionLabel(ROMAN_GENRES_PRO.find(o => optionValue(o) === input.genre) || input.genre)}. Filone: ${optionLabel(SUBGENRES_PRO.find(o => optionValue(o) === input.subcategory) || input.subcategory)}.`;
+}
+
+function buildLocalUserStoryDevelopment(input: {
+  idea: string;
+  genre: string;
+  subcategory: string;
+  tone: string;
+  intensity: string;
+  centralDynamic: string;
+  protagonistType: string;
+  language: string;
+}) {
+  const cleanIdea = input.idea.replace(/\s+/g, " ").trim();
+  const base = cleanIdea.replace(/[.!?]*$/, ".");
+  return `${base} Scriptora la sviluppa come premessa editoriale completa: il cuore della storia resta quello indicato dall'utente, ma la traiettoria viene chiarita in ferita, desiderio, posta in gioco e conseguenza finale. Il genere resta ${optionLabel(ROMAN_GENRES_PRO.find(o => optionValue(o) === input.genre) || input.genre)}, con filone ${optionLabel(SUBGENRES_PRO.find(o => optionValue(o) === input.subcategory) || input.subcategory)}, tono ${input.tone || "cinematografico"} e intensità ${input.intensity || "media"}. La protagonista deve restare coerente con l'idea originale, ma ogni scena dovrà aumentare conflitto, scelta morale e tensione emotiva senza tradire la storia che l'utente vuole raccontare.`;
 }
 
 export function CharacterStudioDialog({ open, onClose }: Props) {
@@ -364,6 +591,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
   const [centralDynamic, setCentralDynamic] = useState("attrazione e colpa");
   const [protagonistType, setProtagonistType] = useState("protagonista ferita ma combattiva");
   const [language, setLanguage] = useState("Italian");
+  const [manualCharacterNames, setManualCharacterNames] = useState("");
   const [characterBible, setCharacterBible] = useState("");
   const [loading, setLoading] = useState(false);
   const [ideaLoading, setIdeaLoading] = useState(false);
@@ -384,6 +612,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
         if (parsed.centralDynamic) setCentralDynamic(parsed.centralDynamic);
         if (parsed.protagonistType) setProtagonistType(parsed.protagonistType);
         if (parsed.language) setLanguage(parsed.language);
+        if (parsed.manualCharacterNames) setManualCharacterNames(parsed.manualCharacterNames);
         if (parsed.characterBible) setCharacterBible(parsed.characterBible);
       } else if (savedBible) {
         setCharacterBible(savedBible);
@@ -398,13 +627,18 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
     setIdeaLoading(true);
 
     try {
-      const previousIdeas = readIdeaHistory();
+      const currentIdea = idea.trim();
+      const currentLooksLikeGeneratedIdea = currentIdea.length > 180;
+      const previousIdeas = [
+        ...(currentLooksLikeGeneratedIdea ? [currentIdea] : []),
+        ...readIdeaHistory(),
+      ].filter(Boolean).slice(0, 12);
       const diversitySeed = typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const { data, error } = await supabase.functions.invoke("scriptora-novel-idea", {
         body: {
-          seedIdea: idea.trim(),
+          seedIdea: currentLooksLikeGeneratedIdea ? "" : currentIdea,
           genre,
           subcategory: subcategory.trim(),
           tone: tone.trim(),
@@ -435,10 +669,69 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
         centralDynamic,
         protagonistType,
         language,
+        previousIdeas,
       });
       setIdea(generated);
       saveIdeaToHistory(generated);
       toast.warning("AI non disponibile: Scriptora ha creato un’idea locale di sicurezza.");
+    } finally {
+      setIdeaLoading(false);
+    }
+  };
+
+  const developUserStory = async () => {
+    if (ideaLoading || loading) return;
+    const userStory = idea.trim();
+    if (userStory.length < 20) {
+      toast.error("Scrivi prima la tua storia o almeno un seme narrativo più specifico.");
+      return;
+    }
+
+    setIdeaLoading(true);
+
+    try {
+      const diversitySeed = typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const { data, error } = await supabase.functions.invoke("scriptora-novel-idea", {
+        body: {
+          seedIdea: userStory,
+          preserveUserStory: true,
+          genre,
+          subcategory: subcategory.trim(),
+          tone: tone.trim(),
+          intensity,
+          centralDynamic,
+          protagonistType: protagonistType.trim(),
+          language,
+          diversitySeed,
+          previousIdeas: readIdeaHistory(),
+          userId: getCurrentUserId(),
+        },
+      });
+
+      if (error) throw error;
+
+      const developed = String(data?.idea || data?.text || "").trim();
+      if (!developed) throw new Error("Idea elaborata vuota");
+
+      setIdea(developed);
+      saveIdeaToHistory(developed);
+      toast.success("La tua storia è stata elaborata mantenendo il nucleo originale.");
+    } catch {
+      const developed = buildLocalUserStoryDevelopment({
+        idea: userStory,
+        genre,
+        subcategory,
+        tone,
+        intensity,
+        centralDynamic,
+        protagonistType,
+        language,
+      });
+      setIdea(developed);
+      saveIdeaToHistory(developed);
+      toast.warning("AI non disponibile: Scriptora ha elaborato localmente la tua storia.");
     } finally {
       setIdeaLoading(false);
     }
@@ -457,9 +750,10 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
     language,
     category: "Fiction",
     bookType: "novel",
+    manualCharacterNames: manualCharacterNames.trim(),
     characterBible: characterBible.trim(),
     createdAt: new Date().toISOString(),
-  }), [idea, genre, subcategory, tone, intensity, centralDynamic, protagonistType, language, characterBible]);
+  }), [idea, genre, subcategory, tone, intensity, centralDynamic, protagonistType, language, manualCharacterNames, characterBible]);
 
   const generate = async () => {
     if (!canGenerate || loading) return;
@@ -476,6 +770,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
           intensity,
           centralDynamic,
           protagonistType: protagonistType.trim(),
+          manualCharacterNames: parseManualCharacterNames(manualCharacterNames).map(characterNameLabel),
           language,
           userId: getCurrentUserId(),
         },
@@ -496,9 +791,10 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
         subcategory,
         tone,
         language,
+        manualCharacterNames,
       });
 
-      setCharacterBible(finalText);
+      setCharacterBible(applyManualNamesToBible(finalText, manualCharacterNames));
       toast.success("Personaggi generati. Ora salvali e collegali a Nuovo Libro.");
     } catch (e) {
       const finalText = fallbackCharacterBible({
@@ -507,8 +803,12 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
         subcategory,
         tone,
         language,
+        intensity,
+        centralDynamic,
+        protagonistType,
+        manualCharacterNames,
       });
-      setCharacterBible(finalText);
+      setCharacterBible(applyManualNamesToBible(finalText, manualCharacterNames));
       toast.warning("AI non disponibile: ho creato una Character Bible locale di sicurezza.");
     } finally {
       setLoading(false);
@@ -534,6 +834,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
       language,
       category: "Fiction",
       bookType: "novel",
+      manualCharacterNames: manualCharacterNames.trim(),
       characterBible: bible,
       savedAt: new Date().toISOString(),
     };
@@ -575,6 +876,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
     localStorage.removeItem(SCRIPTORA_CHARACTER_PROJECT_KEY);
     sessionStorage.removeItem(SCRIPTORA_CHARACTER_PROJECT_KEY);
     setCharacterBible("");
+    setManualCharacterNames("");
     setSaved(false);
     toast.info("Character Bible rimossa.");
   };
@@ -605,25 +907,58 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
           <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
             <div>
               <div className="flex items-center justify-between gap-2">
-              <Label>Idea del romanzo</Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={generateNovelIdea}
-                disabled={ideaLoading || loading}
-                className="h-8 px-2 text-xs"
-              >
-                {ideaLoading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Wand2 className="mr-1 h-3 w-3" />}
-                Genera idea con Scriptora
-              </Button>
-            </div>
+                <Label>Idea del romanzo</Label>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={developUserStory}
+                    disabled={ideaLoading || loading || idea.trim().length < 20}
+                    className="h-8 px-2 text-xs"
+                  >
+                    {ideaLoading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Sparkles className="mr-1 h-3 w-3" />}
+                    Elabora la mia storia
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={generateNovelIdea}
+                    disabled={ideaLoading || loading}
+                    className="h-8 px-2 text-xs"
+                  >
+                    {ideaLoading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Wand2 className="mr-1 h-3 w-3" />}
+                    Genera idea con Scriptora
+                  </Button>
+                </div>
+              </div>
               <Textarea
                 value={idea}
                 onChange={(e) => setIdea(e.target.value)}
                 rows={3}
-                placeholder="Descrivi il seme del romanzo oppure lascia che Scriptora generi un’idea diversa ogni volta..."
+                placeholder="Scrivi la tua storia da raccontare, oppure lascia vuoto e usa Genera idea con Scriptora..."
               />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Se hai già una storia, scrivila qui e usa “Elabora la mia storia”. Se vuoi una proposta nuova, usa “Genera idea con Scriptora”.
+              </p>
+            </div>
+
+            <div>
+              <Label>Nomi protagonisti / saga (opzionale)</Label>
+              <Textarea
+                value={manualCharacterNames}
+                onChange={(e) => {
+                  setManualCharacterNames(e.target.value);
+                  setSaved(false);
+                }}
+                rows={2}
+                placeholder={"Se continui una saga, inserisci qui i nomi canonici, uno per riga.\nEsempio: Elena Ferri\nMarco Greco"}
+                className="text-sm"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Se compili questo campo, Scriptora deve usare questi nomi e non rinominare i protagonisti.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
