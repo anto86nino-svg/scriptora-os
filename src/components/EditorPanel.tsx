@@ -12,8 +12,6 @@ import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { Progress } from "@/components/ui/progress";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
-import { usePlan } from "@/lib/plan";
-import { canUseSceneImages, requestSceneImage, type SceneImageResult } from "@/lib/scene-images";
 
 interface EditorPanelProps {
   project: BookProject;
@@ -965,6 +963,46 @@ function getLiveParagraph(content: string, fallback: string): string {
   return paragraphs.slice(-2).join("\n\n") || paragraphs[paragraphs.length - 1] || normalized;
 }
 
+function compactPreviewLine(value: string, max = 170): string {
+  const clean = value
+    .replace(/^#+\s*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (clean.length <= max) return clean;
+  return `${clean.slice(0, max).replace(/\s+\S*$/, "").trim()}...`;
+}
+
+function getLiveWritingPreviewLines(content: string, fallback: string, chapterIndex: number): string[] {
+  const normalized = content
+    .replace(/\r/g, "")
+    .replace(/^#+\s*.+$/gm, "")
+    .trim();
+
+  if (!normalized) {
+    const direction = compactPreviewLine(fallback || "Scriptora sta preparando struttura, tono e continuità del capitolo.", 190);
+    return [
+      `Capitolo ${chapterIndex + 1}: impostazione narrativa in corso.`,
+      `Direzione: ${direction}`,
+      "Le prime righe reali appariranno qui appena Scriptora completa il primo blocco.",
+    ];
+  }
+
+  const recent = getLiveParagraph(normalized, fallback)
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  const sentences = recent
+    .replace(/\n+/g, " ")
+    .match(/[^.!?…]+[.!?…]?/g)
+    ?.map((part) => compactPreviewLine(part, 190))
+    .filter((part) => part.length > 24) || [];
+
+  const lines = sentences.length >= 2
+    ? sentences.slice(-4)
+    : recent.split(/\n+/).map((part) => compactPreviewLine(part, 190)).filter(Boolean).slice(-4);
+
+  return lines.length ? lines : [compactPreviewLine(recent, 190)];
+}
+
 function rhythmFromText(text: string, pct: number): string {
   const punctuation = (text.match(/[.!?;]/g) || []).length;
   const quotes = (text.match(/[“”"«»]/g) || []).length;
@@ -1071,13 +1109,6 @@ function analyzeLiveScene({
   };
 }
 
-const sceneParticles = Array.from({ length: 16 }, (_, index) => ({
-  index,
-  x: `${4 + ((index * 17) % 88)}%`,
-  y: `${9 + ((index * 23) % 58)}%`,
-  delay: `${index * -90}ms`,
-}));
-
 const GenerationProgress = memo(function GenerationProgress({
   project,
   chapterIndex,
@@ -1092,12 +1123,6 @@ const GenerationProgress = memo(function GenerationProgress({
   chunkProgress?: ChunkProgress;
 }) {
   const [fakePct, setFakePct] = useState(0);
-  const [showTitleCard, setShowTitleCard] = useState(true);
-  const [sceneImage, setSceneImage] = useState<SceneImageResult | null>(null);
-  const [isSceneImageLoading, setIsSceneImageLoading] = useState(false);
-  const sceneRequestRef = useRef(0);
-  const { plan } = usePlan();
-  const paidVisuals = canUseSceneImages(plan);
 
   useEffect(() => {
     if (chunkProgress) return;
@@ -1113,14 +1138,6 @@ const GenerationProgress = memo(function GenerationProgress({
     return () => clearInterval(interval);
   }, [chunkProgress]);
 
-  useEffect(() => {
-    setShowTitleCard(true);
-    setSceneImage(null);
-    setIsSceneImageLoading(false);
-    const timer = setTimeout(() => setShowTitleCard(false), 6000);
-    return () => clearTimeout(timer);
-  }, [project.id, chapterIndex, outline?.title]);
-
   const currentWords = chunkProgress?.currentWords ?? 0;
   const targetWords = Math.max(chunkProgress?.targetWords ?? 1, 1);
   const realPct = chunkProgress
@@ -1130,95 +1147,18 @@ const GenerationProgress = memo(function GenerationProgress({
   const phaseMeta = generationPhaseMeta[phase] ?? generationPhaseMeta.OPENING;
   const liveContent = chunkProgress?.content?.trim() ?? "";
   const scene = analyzeLiveScene({ project, outline, chapterIndex, phase, content: liveContent, pct: realPct });
-  const imageSnippet = getLiveParagraph(
+  const previewFallback = `${outline?.title || ""}. ${outline?.summary || ""}`.trim() || `${project.config.title} ${project.config.genre}`;
+  const livePreviewLines = getLiveWritingPreviewLines(liveContent, previewFallback, chapterIndex);
+  const livePreviewLabel = liveContent ? "Ultime righe generate" : "Direzione del capitolo";
+  const livePreviewSnippet = getLiveParagraph(
     liveContent,
-    `${outline?.title || ""}. ${outline?.summary || ""}`.trim() || `${project.config.title} ${project.config.genre}`,
+    previewFallback,
   );
   const overlayTitle = resolveChapterTitle(outline?.title || "", chapterIndex, {
     config: project.config,
     summary: outline?.summary,
     totalChapters: project.config.numberOfChapters,
   });
-  const visualBlock = chunkProgress ? Math.min(4, Math.max(0, Math.floor(realPct / 20))) : 0;
-  const sceneImageSignature = [
-    project.id,
-    chapterIndex,
-    overlayTitle,
-    visualBlock,
-    phase,
-    scene.sceneLabel,
-    scene.emotionLabel,
-    scene.subjectLabel,
-    scene.cameraLabel,
-    imageSnippet.slice(-520),
-  ].join("|");
-  const hasRealSceneImage = paidVisuals && Boolean(sceneImage?.imageUrl);
-  const showChapterTitleOverlay = showTitleCard || !paidVisuals;
-
-  useEffect(() => {
-    if (!paidVisuals) {
-      setSceneImage(null);
-      setIsSceneImageLoading(false);
-      return;
-    }
-    if (showTitleCard) return;
-
-    let cancelled = false;
-    const requestId = sceneRequestRef.current + 1;
-    sceneRequestRef.current = requestId;
-    setSceneImage(null);
-    setIsSceneImageLoading(true);
-
-    const timer = window.setTimeout(() => {
-      requestSceneImage({
-        projectId: project.id,
-        chapterIndex,
-        chapterTitle: overlayTitle,
-        chapterSummary: outline?.summary,
-        genre: project.config.genre,
-        subcategory: project.config.subcategory,
-        tone: project.config.tone,
-        language: project.config.language,
-        plan,
-        sceneLabel: scene.sceneLabel,
-        emotionLabel: scene.emotionLabel,
-        subjectLabel: scene.subjectLabel,
-        cameraLabel: scene.cameraLabel,
-        rhythmLabel: scene.rhythmLabel,
-        contentSnippet: imageSnippet,
-      }).then((result) => {
-        if (cancelled || sceneRequestRef.current !== requestId) return;
-        setSceneImage(result);
-      }).finally(() => {
-        if (cancelled || sceneRequestRef.current !== requestId) return;
-        setIsSceneImageLoading(false);
-      });
-    }, 650);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [
-    paidVisuals,
-    showTitleCard,
-    sceneImageSignature,
-    project.id,
-    project.config.genre,
-    project.config.language,
-    project.config.subcategory,
-    project.config.tone,
-    chapterIndex,
-    overlayTitle,
-    outline?.summary,
-    plan,
-    scene.cameraLabel,
-    scene.emotionLabel,
-    scene.rhythmLabel,
-    scene.sceneLabel,
-    scene.subjectLabel,
-    imageSnippet,
-  ]);
 
   const wordInfo = chunkProgress
     ? `${currentWords.toLocaleString()} / ${targetWords.toLocaleString()} parole`
@@ -1282,84 +1222,24 @@ const GenerationProgress = memo(function GenerationProgress({
               <i /><i /><i />
             </span>
           </div>
-          <div
-            className={cn(
-              "scriptora-scene-board",
-              `tone-${scene.tone}`,
-              `pulse-${scene.paragraphPulse}`,
-              scene.rain && "has-rain",
-              scene.night && "is-night",
-              scene.interior && "is-interior",
-              scene.dialogue && "has-dialogue",
-              scene.conflict && "has-conflict",
-              scene.closeness && "is-close",
-              scene.touch && "has-touch",
-              scene.phone && "has-phone",
-              scene.doorway && "has-doorway",
-              scene.bed && "has-bed",
-              scene.table && "has-table",
-              scene.road && "has-road",
-              scene.nature && "is-nature",
-              scene.people && "has-people",
-              paidVisuals ? "is-pro-visuals" : "is-free-visuals",
-              hasRealSceneImage && "has-real-image",
-              isSceneImageLoading && "is-ai-loading",
-              showChapterTitleOverlay && "is-title-card",
-            )}
-            aria-label={`Anteprima cinematografica: ${scene.sceneLabel}, ${scene.emotionLabel}`}
-          >
-            {hasRealSceneImage && (
-              <img
-                src={sceneImage?.imageUrl || ""}
-                alt="Anteprima cinematografica generata da Scriptora"
-                className="scriptora-scene-real-image"
-                referrerPolicy="no-referrer"
-              />
-            )}
-            <div className="scriptora-scene-sky" aria-hidden="true">
-              <span className="scriptora-scene-backdrop" />
-              <span className="scriptora-scene-depth far" />
-              <span className="scriptora-scene-depth near" />
-              <span className="scriptora-scene-light" />
-              <span className="scriptora-scene-horizon" />
-              <span className="scriptora-scene-water" />
-              <span className="scriptora-scene-window" />
-              <span className="scriptora-scene-door" />
-              <span className="scriptora-scene-road" />
-              <span className="scriptora-scene-bed" />
-              <span className="scriptora-scene-table" />
-              <span className="scriptora-scene-figure primary" />
-              <span className="scriptora-scene-figure secondary" />
-              <span className="scriptora-scene-shadow primary" />
-              <span className="scriptora-scene-shadow secondary" />
-              <span className="scriptora-scene-touchline" />
-              <span className="scriptora-scene-phone" />
-              <span className="scriptora-scene-message" />
-              <span className="scriptora-scene-prop" />
-              <span className="scriptora-scene-foreground" />
-              {sceneParticles.map((particle) => (
-                <span
-                  key={particle.index}
-                  className="scriptora-scene-particle"
-                  style={{
-                    "--x": particle.x,
-                    "--y": particle.y,
-                    "--delay": particle.delay,
-                  } as React.CSSProperties}
-                />
-              ))}
+          <div className="scriptora-live-writing-board" aria-label={`Anteprima testuale live: ${overlayTitle}`}>
+            <div className="scriptora-live-writing-paper">
+              <div className="scriptora-live-writing-kicker">
+                <span>{livePreviewLabel}</span>
+                <span>{scene.sceneLabel}</span>
+              </div>
+              <h4>{overlayTitle}</h4>
+              <div className="scriptora-generation-live-text">
+                {livePreviewLines.map((line, index) => (
+                  <p key={`${line}-${index}`}>{line}</p>
+                ))}
+              </div>
             </div>
-            {paidVisuals && isSceneImageLoading && !hasRealSceneImage && (
-              <div className="scriptora-scene-ai-loader" aria-hidden="true">
-                <span /><span /><span />
-              </div>
-            )}
-            {showChapterTitleOverlay && (
-              <div className="scriptora-scene-title-card">
-                <span>Capitolo {chapterIndex + 1}</span>
-                <strong>{overlayTitle}</strong>
-              </div>
-            )}
+            <div className="scriptora-live-writing-footer">
+              <span>{scene.emotionLabel}</span>
+              <span>{scene.rhythmLabel}</span>
+              <span>{compactPreviewLine(livePreviewSnippet, 70)}</span>
+            </div>
           </div>
         </div>
       </div>
