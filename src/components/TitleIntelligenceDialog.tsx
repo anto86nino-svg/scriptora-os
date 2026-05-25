@@ -287,6 +287,12 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
           {/* RESULTS */}
           {data && (
             <div className="space-y-6">
+              {data.fallbackReason && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-950 dark:text-amber-100">
+                  {data.fallbackReason}
+                </div>
+              )}
+
               {/* Market snapshot */}
               {data.marketSnapshot && (
                 <div className="space-y-3">

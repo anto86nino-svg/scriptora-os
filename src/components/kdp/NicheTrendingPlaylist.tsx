@@ -114,8 +114,12 @@ function buildDevFallbackTrending(input: {
     analyzedAt: new Date().toISOString(),
     marketOverview:
       input.language === "Italian"
-        ? "Modalità dev fallback: la Edge Function non ha risposto. Usa questa playlist simulata per testare flusso, salvataggio e import senza addebiti."
-        : "Dev fallback mode: the Edge Function did not respond. Use this simulated playlist to test browsing, saving and import without billing.",
+        ? "Analisi base locale: Scriptora ha generato nicchie strategiche senza consumare click o addebiti."
+        : "Local base analysis: Scriptora generated strategic niches without consuming clicks or charges.",
+    fallbackReason:
+      input.language === "Italian"
+        ? "Analisi base locale: il radar live non e' disponibile in questo ambiente."
+        : "Local base analysis: the live radar is unavailable in this environment.",
     niches,
   };
 }
@@ -225,6 +229,10 @@ export function NicheTrendingPlaylist({ language = "Italian", onImport, initialF
         plan,
       );
       setData(res);
+      if (res.fallbackReason) {
+        toast.success("Analisi base generata · nessun addebito");
+        return;
+      }
       // Log click ONLY on success (so failed Brave/DeepSeek don't burn beta credit
       // or charge paid plans).
       await logTrendingClick(plan);
@@ -291,7 +299,7 @@ export function NicheTrendingPlaylist({ language = "Italian", onImport, initialF
               )}
               {data && !data.groundingUsed && (
                 <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-muted text-muted-foreground border border-border">
-                  AI only
+                  Analisi base
                 </span>
               )}
             </h3>
@@ -400,6 +408,11 @@ export function NicheTrendingPlaylist({ language = "Italian", onImport, initialF
       )}
 
       {/* OVERVIEW */}
+      {tab === "trending" && data?.fallbackReason && (
+        <p className="text-[11px] text-amber-950 dark:text-amber-100 leading-relaxed px-2 py-1.5 rounded bg-amber-500/10 border border-amber-500/30">
+          {data.fallbackReason}
+        </p>
+      )}
       {tab === "trending" && data?.marketOverview && (
         <p className="text-[11px] text-foreground/80 leading-relaxed px-2 py-1.5 rounded bg-card/50 border border-border/50">
           <Globe2 className="inline h-3 w-3 mr-1 text-cyan-400" />
@@ -410,8 +423,17 @@ export function NicheTrendingPlaylist({ language = "Italian", onImport, initialF
       {/* META */}
       {tab === "trending" && data && (
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap">
-          <span>📡 {data.groundingResultsCount} risultati live</span>
-          <span>·</span>
+          {data.groundingUsed ? (
+            <>
+              <span>📡 {data.groundingResultsCount} risultati live</span>
+              <span>·</span>
+            </>
+          ) : (
+            <>
+              <span>Analisi base locale</span>
+              <span>·</span>
+            </>
+          )}
           <span>🌍 {data.marketplaces?.join(" / ")}</span>
           {data.groundingQueries?.length ? (
             <>

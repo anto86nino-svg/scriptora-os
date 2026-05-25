@@ -130,7 +130,7 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
       setStage("done");
       persist({ result: r });
       if (!r?.titleCandidates?.length) toast.warning("Nessun candidato generato — riprova con un'idea più specifica");
-      else toast.success(`${r.titleCandidates.length} titoli generati`);
+      else toast.success(r.fallbackReason ? `${r.titleCandidates.length} titoli base generati` : `${r.titleCandidates.length} titoli generati`);
     } catch (e: any) {
       const msg = e?.message || "Errore sconosciuto";
       setError(msg);
@@ -262,6 +262,12 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
         {result && (
           <div className="space-y-4 pt-2">
             <Separator />
+
+            {result.fallbackReason && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-950 dark:text-amber-100">
+                {result.fallbackReason}
+              </div>
+            )}
 
             {/* Queries used */}
             {result.groundingQueries && result.groundingQueries.length > 0 && (

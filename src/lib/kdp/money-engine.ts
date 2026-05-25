@@ -244,8 +244,12 @@ async function invoke<T>(action: Action, plan: PlanTier): Promise<T> {
 type KeywordGoldItem = KeywordGoldResult["goldKeywords"][number];
 type KeywordIntent = KeywordGoldItem["intent"];
 type KeywordRisk = KeywordGoldItem["competitionRisk"];
+type TitleDominationCandidate = TitleDominationResult["titleCandidates"][number];
+type TitleDominationRisk = TitleDominationCandidate["saturationRisk"];
 
 const KEYWORD_FALLBACK_TIMEOUT_MS = 30_000;
+const TITLE_DOMINATION_FALLBACK_TIMEOUT_MS = 45_000;
+const TRENDING_NICHES_FALLBACK_TIMEOUT_MS = 45_000;
 
 const KEYWORD_STOP_WORDS = new Set([
   "the", "and", "for", "with", "from", "that", "this", "your", "you",
@@ -525,6 +529,254 @@ function buildKeywordGoldFallback(input: KeywordGoldInput): KeywordGoldResult {
   };
 }
 
+function titleDominationCandidate(
+  title: string,
+  subtitle: string,
+  score: number,
+  input: DominateTitlesInput,
+  opts: {
+    positioning: string;
+    hook: string;
+    angle: string;
+    risk: TitleDominationRisk;
+    weakness: string;
+    improvement: string;
+    keywords: string[];
+  },
+): TitleDominationCandidate {
+  const keywordScore = Math.max(55, score - 6);
+  const clarityScore = Math.min(96, score + 2);
+  const emotionScore = Math.max(58, score - 3);
+  const originalityScore = Math.max(56, score - (opts.risk === "high" ? 12 : 5));
+
+  return {
+    title: normalizePhrase(title),
+    subtitle: normalizePhrase(subtitle),
+    positioning: opts.positioning,
+    targetReader: normalizePhrase(input.targetReader || "Lettori con un problema urgente e desiderio di risultato concreto"),
+    mainKeyword: opts.keywords[0] || normalizePhrase(input.genre || "self-help"),
+    secondaryKeywords: uniqueKeywords(opts.keywords.slice(1), 5),
+    emotionalHook: opts.hook,
+    commercialPromise: normalizePhrase(input.desiredPromise || input.mainProblem || input.idea),
+    differentiationAngle: opts.angle,
+    kdpScore: score,
+    clarityScore,
+    emotionScore,
+    keywordScore,
+    originalityScore,
+    saturationRisk: opts.risk,
+    whyItCanSell: "Promessa chiara, keyword leggibile e beneficio immediatamente comprensibile.",
+    weakness: opts.weakness,
+    improvementSuggestion: opts.improvement,
+  };
+}
+
+function buildTitleDominationFallback(input: DominateTitlesInput): TitleDominationResult {
+  const italian = isItalianLanguage(input.language);
+  const genre = normalizePhrase(input.genre || input.bookType || (italian ? "Self-help" : "Self-help"));
+  const marketplace = normalizePhrase(input.marketplace || (italian ? "amazon.it" : "amazon.com"));
+  const problem = normalizePhrase(input.mainProblem || input.idea || (italian ? "procrastinazione e blocco" : "procrastination and stuck energy"));
+  const promise = normalizePhrase(input.desiredPromise || (italian ? "ottenere piu' focus e risultati concreti" : "gain focus and concrete results"));
+  const reader = normalizePhrase(input.targetReader || (italian ? "lettori che vogliono un metodo semplice" : "readers who want a simple method"));
+  const signals = extractSignalWords({
+    title: input.idea || problem,
+    subtitle: `${problem} ${promise}`,
+    genre,
+  });
+  const mainKeyword = signals.slice(0, 2).join(" ") || genre.toLowerCase();
+  const keywords = italian
+    ? uniqueKeywords([mainKeyword, genre, "metodo pratico", "30 giorni", "focus", "abitudini", "workbook", "anti burnout"], 8)
+    : uniqueKeywords([mainKeyword, genre, "practical method", "30 days", "focus", "habits", "workbook", "anti burnout"], 8);
+
+  const templates = italian
+    ? [
+        ["Basta Rimandare", `Il metodo pratico per ${promise} senza forza di volonta' infinita`, 88, "low" as const],
+        ["Il Metodo dei 30 Giorni", `Piccole azioni quotidiane per superare ${problem}`, 85, "medium" as const],
+        ["Focus Senza Burnout", `Una guida operativa per ritrovare energia, chiarezza e controllo`, 83, "low" as const],
+        ["Sbloccati Oggi", `Esercizi semplici per trasformare blocco mentale in movimento`, 81, "medium" as const],
+        ["La Disciplina Gentile", `Costruisci abitudini sostenibili quando motivazione e tempo mancano`, 80, "medium" as const],
+        ["Prima Fai Questo", `Il sistema essenziale per iniziare, finire e non mollare`, 78, "medium" as const],
+        ["Meno Caos, Piu' Azione", `Un percorso chiaro per decidere cosa conta e farlo davvero`, 77, "low" as const],
+        ["Il Tuo Reset Operativo", `Routine, checklist e micro-obiettivi per ripartire con metodo`, 75, "medium" as const],
+        ["Zero Scuse Pratiche", `Come ridurre attrito, distrazioni e autosabotaggio ogni giorno`, 73, "high" as const],
+        ["Piccoli Passi, Risultati Veri", `Workbook guidato per trasformare intenzioni in progressi misurabili`, 72, "medium" as const],
+      ]
+    : [
+        ["Stop Putting It Off", `A practical method to ${promise} without endless willpower`, 88, "low" as const],
+        ["The 30-Day Method", `Daily micro-actions to move through ${problem}`, 85, "medium" as const],
+        ["Focus Without Burnout", `An operational guide to regain energy, clarity and control`, 83, "low" as const],
+        ["Unstuck Today", `Simple exercises that turn mental friction into movement`, 81, "medium" as const],
+        ["Gentle Discipline", `Build sustainable habits when motivation and time are low`, 80, "medium" as const],
+        ["Do This First", `The essential system to start, finish and stop drifting`, 78, "medium" as const],
+        ["Less Chaos, More Action", `A clear path to decide what matters and actually do it`, 77, "low" as const],
+        ["Your Operating Reset", `Routines, checklists and micro-goals to restart with method`, 75, "medium" as const],
+        ["Practical Zero Excuses", `How to reduce friction, distraction and self-sabotage daily`, 73, "high" as const],
+        ["Small Steps, Real Results", `A guided workbook to turn intention into measurable progress`, 72, "medium" as const],
+      ];
+
+  const titleCandidates = templates.map(([title, subtitle, score, risk], index) =>
+    titleDominationCandidate(title, subtitle, Number(score), input, {
+      positioning: italian
+        ? `${genre}: promessa pratica per ${reader}.`
+        : `${genre}: practical promise for ${reader}.`,
+      hook: italian
+        ? index < 3 ? "Sollievo immediato da blocco e sovraccarico." : "Metodo semplice, concreto e ripetibile."
+        : index < 3 ? "Immediate relief from stuckness and overload." : "A simple, concrete and repeatable method.",
+      angle: italian
+        ? risk === "low" ? "Angolo operativo meno saturo rispetto ai titoli motivazionali generici." : "Da rendere piu' specifico con audience o timeframe."
+        : risk === "low" ? "Operational angle, less saturated than generic motivational titles." : "Make it more specific with audience or timeframe.",
+      risk,
+      weakness: italian
+        ? risk === "high" ? "Rischia di sembrare troppo aggressivo se non supportato da metodo reale." : "Richiede un sottotitolo molto specifico per evitare genericita'."
+        : risk === "high" ? "Can feel too aggressive unless backed by a real method." : "Needs a very specific subtitle to avoid generic positioning.",
+      improvement: italian
+        ? "Aggiungi nel sottotitolo pubblico, timeframe o formato workbook se coerente."
+        : "Add audience, timeframe or workbook format to the subtitle when it fits.",
+      keywords,
+    }),
+  );
+
+  const winner = titleCandidates[0];
+
+  return {
+    groundingUsed: false,
+    groundingProvider: null,
+    groundingResultsCount: 0,
+    groundingQuery: null,
+    groundingQueries: [],
+    analyzedAt: new Date().toISOString(),
+    fallbackReason: italian
+      ? "Analisi base locale: il cloud Title Domination non e' disponibile in questo ambiente, quindi Scriptora ha generato titoli strategici sicuri da rifinire."
+      : "Local base analysis: Title Domination cloud is unavailable in this environment, so Scriptora generated safe strategic titles to refine.",
+    marketSignals: {
+      dominantKeywords: keywords.slice(0, 6),
+      recurringPromises: italian
+        ? ["risultato in 30 giorni", "metodo pratico", "meno stress", "focus quotidiano"]
+        : ["30-day result", "practical method", "less stress", "daily focus"],
+      competitorPatterns: italian
+        ? ["titoli motivazionali ampi", "promesse senza meccanismo", "sottotitoli poco specifici"]
+        : ["broad motivational titles", "promises without mechanism", "generic subtitles"],
+      saturatedAngles: italian
+        ? ["cambia la tua vita", "segreto del successo", "motivazione infinita"]
+        : ["change your life", "secret of success", "endless motivation"],
+      openAngles: italian
+        ? ["metodo operativo", "workbook guidato", "anti-burnout", "micro-azioni"]
+        : ["operational method", "guided workbook", "anti-burnout", "micro-actions"],
+      readerPainPoints: [problem],
+      emotionalTriggers: italian
+        ? ["sollievo", "controllo", "chiarezza", "ripartenza"]
+        : ["relief", "control", "clarity", "restart"],
+    },
+    competitorInsights: [
+      {
+        titleSignal: italian ? "Promessa numerica + metodo" : "Numbered promise + method",
+        source: "local-analysis",
+        whyItMatters: italian
+          ? "Aumenta chiarezza e percezione di percorso."
+          : "Increases clarity and the sense of a concrete path.",
+        riskLevel: "low",
+      },
+      {
+        titleSignal: italian ? "Titoli motivazionali generici" : "Generic motivational titles",
+        source: "local-analysis",
+        whyItMatters: italian
+          ? "Sono saturi: meglio puntare su problema, pubblico e formato."
+          : "They are saturated: better use problem, audience and format.",
+        riskLevel: "medium",
+      },
+    ],
+    titleCandidates,
+    winner: {
+      title: winner.title,
+      subtitle: winner.subtitle,
+      reason: italian
+        ? "E' il migliore equilibrio tra chiarezza, promessa commerciale e keyword leggibile."
+        : "Best balance between clarity, commercial promise and readable keyword.",
+      bestMarketplace: marketplace,
+      finalScore: winner.kdpScore,
+    },
+    nextActions: italian
+      ? [
+          "Scegli un titolo e rendi il sottotitolo piu' specifico sul pubblico.",
+          "Verifica che la promessa sia sostenuta dall'indice del libro.",
+          "Usa keyword principali anche in descrizione KDP e categorie.",
+          "Rilancia l'analisi live appena la funzione cloud e' deployata correttamente.",
+        ]
+      : [
+          "Pick one title and make the subtitle more specific to the audience.",
+          "Check that the promise is supported by the book outline.",
+          "Use primary keywords in KDP description and categories.",
+          "Run live analysis again once the cloud function is deployed correctly.",
+        ],
+  };
+}
+
+function buildTrendingNichesFallback(input: TrendingNichesInput): TrendingNichesResult {
+  const language = input.language || "Italian";
+  const italian = isItalianLanguage(language);
+  const topic = normalizePhrase(input.focus || (italian ? "self-help" : "self-help"));
+  const parentGenre = topic.replace(/^./, (char) => char.toUpperCase());
+  const marketplaces = input.marketplaces?.length ? input.marketplaces : ["amazon.com", "amazon.it", "apple-books"];
+  const marketFor = (index: number): TrendingNiche["marketplace"] =>
+    marketplaces[index % marketplaces.length] || "cross-market";
+
+  const baseIdeas = italian
+    ? [
+        ["30 giorni pratici", "lettori che vogliono risultati misurabili", "un piano guidato con micro-azioni quotidiane", "trasformare il tema in una challenge progressiva", ["30 giorni", "workbook", "passo passo", "piano pratico"]],
+        ["per principianti assoluti", "chi parte da zero e teme la complessita'", "una strada semplice senza gergo", "posizionamento come guida chiara e rassicurante", ["principianti", "guida semplice", "senza gergo", "base pratica"]],
+        ["anti-burnout", "professionisti saturi e creator stanchi", "recuperare energia senza mollare tutto", "rituali minimi e applicabili subito", ["anti burnout", "energia", "focus", "routine"]],
+        ["workbook guidato", "lettori che comprano libri-esercizi", "passare dalla lettura all'azione", "esercizi, tracker e autovalutazioni", ["workbook", "esercizi", "tracker", "azione"]],
+        ["minimalista", "lettori che vogliono meno teoria", "fare meglio con meno passaggi", "tagliare il superfluo e vendere chiarezza", ["minimalismo", "meno caos", "chiarezza", "azioni semplici"]],
+        ["errori da evitare", "chi ha gia' provato senza riuscire", "capire cosa blocca i risultati", "angolo diagnostico ad alta conversione", ["errori", "blocchi", "diagnosi", "soluzioni"]],
+        ["per over 40", "lettori maturi con bisogni specifici", "adattare il metodo alla vita reale", "nicchia per eta' e contesto emotivo", ["over 40", "vita reale", "metodo sostenibile", "ripartenza"]],
+        ["con AI e template", "autori indie e solopreneur", "risparmiare tempo con sistemi pronti", "prompt, schede e workflow replicabili", ["AI", "template", "workflow", "sistemi pronti"]],
+      ]
+    : [
+        ["30-day practical plan", "readers who want measurable results", "a guided plan with daily micro-actions", "turn the topic into a progressive challenge", ["30 days", "workbook", "step by step", "practical plan"]],
+        ["for absolute beginners", "people starting from zero", "a simple path without jargon", "position as a clear reassuring guide", ["beginners", "simple guide", "no jargon", "practical basics"]],
+        ["anti-burnout", "overloaded professionals and tired creators", "regain energy without quitting everything", "tiny rituals usable immediately", ["anti burnout", "energy", "focus", "routine"]],
+        ["guided workbook", "readers who buy exercise-driven books", "move from reading to action", "exercises, trackers and self-assessments", ["workbook", "exercises", "tracker", "action"]],
+        ["minimalist", "readers who want less theory", "do better with fewer steps", "cut noise and sell clarity", ["minimalism", "less chaos", "clarity", "simple actions"]],
+        ["mistakes to avoid", "people who already tried and failed", "understand what blocks results", "diagnostic angle with strong conversion", ["mistakes", "blocks", "diagnosis", "solutions"]],
+        ["for over 40", "mature readers with specific needs", "adapt the method to real life", "age and context-based positioning", ["over 40", "real life", "sustainable method", "restart"]],
+        ["with AI and templates", "indie authors and solopreneurs", "save time with ready systems", "prompts, sheets and repeatable workflows", ["AI", "templates", "workflow", "ready systems"]],
+      ];
+
+  const niches: TrendingNiche[] = baseIdeas.map(([name, targetReader, dominantPromise, suggestedAngle, keywords], index) => ({
+    name: `${parentGenre} ${name}`,
+    parentGenre,
+    marketplace: marketFor(index),
+    demandLevel: index % 3 === 1 ? "medium" : "high",
+    competitionLevel: index % 4 === 0 ? "low" : "medium",
+    opportunityScore: Math.max(70, 91 - index * 3 + ((input.seed || 0) % 4)),
+    trendDirection: index % 4 === 1 ? "stable" : "rising",
+    dominantPromise,
+    targetReader,
+    suggestedAngle,
+    dominantKeywords: [topic, ...(keywords as string[])].slice(0, 6),
+    whyItMatters: italian
+      ? "Analisi base generata da Scriptora quando il radar live non e' disponibile."
+      : "Base analysis generated by Scriptora when the live radar is unavailable.",
+    saturationRisk: index % 4 === 0 ? "low" : "medium",
+  }));
+
+  return {
+    groundingUsed: false,
+    groundingProvider: null,
+    groundingResultsCount: 0,
+    groundingQueries: [],
+    marketplaces,
+    analyzedAt: new Date().toISOString(),
+    fallbackReason: italian
+      ? "Analisi base locale: il radar live non e' disponibile in questo ambiente. Nessun click o addebito e' stato consumato."
+      : "Local base analysis: the live radar is unavailable in this environment. No click or charge was consumed.",
+    marketOverview: italian
+      ? "Analisi base locale: Scriptora ha generato nicchie strategiche da usare per configurare il progetto. Appena la Edge Function cloud sara' deployata correttamente, qui torneranno i segnali live."
+      : "Local base analysis: Scriptora generated strategic niches to configure the project. Once the cloud Edge Function is deployed correctly, live signals will return here.",
+    niches,
+  };
+}
+
 /* ============ Public API ============ */
 
 export async function analyzeMarket(
@@ -583,7 +835,16 @@ export async function dominateTitles(
   input: DominateTitlesInput,
   plan: PlanTier,
 ): Promise<TitleDominationResult> {
-  return invoke<TitleDominationResult>({ kind: "dominateTitles", ...input }, plan);
+  try {
+    return await withTimeout(
+      invoke<TitleDominationResult>({ kind: "dominateTitles", ...input }, plan),
+      TITLE_DOMINATION_FALLBACK_TIMEOUT_MS,
+      "Title Domination cloud timeout",
+    );
+  } catch (error) {
+    console.warn("[title-domination] cloud analysis unavailable; using local base analysis", error);
+    return buildTitleDominationFallback(input);
+  }
 }
 
 export async function keywordGold(
@@ -606,7 +867,16 @@ export async function fetchTrendingNiches(
   input: TrendingNichesInput,
   plan: PlanTier,
 ): Promise<TrendingNichesResult> {
-  return invoke<TrendingNichesResult>({ kind: "trendingNiches", ...input }, plan);
+  try {
+    return await withTimeout(
+      invoke<TrendingNichesResult>({ kind: "trendingNiches", ...input }, plan),
+      TRENDING_NICHES_FALLBACK_TIMEOUT_MS,
+      "Trending niches cloud timeout",
+    );
+  } catch (error) {
+    console.warn("[trending-niches] cloud analysis unavailable; using local base analysis", error);
+    return buildTrendingNichesFallback(input);
+  }
 }
 
 /* ============ UX score helpers ============ */
