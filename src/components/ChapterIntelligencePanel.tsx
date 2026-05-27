@@ -335,30 +335,53 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
           const style = LEVEL_STYLE[level];
 
           if (patch) {
-            // GitHub-style diff: red removed line + green added line
             return (
-              <div key={`stable-${i}`} className={`rounded-lg border border-border/40 overflow-hidden ${style.border} border-l-4`}>
-                <div className="px-3 py-1.5 bg-muted/30 flex items-center justify-between">
+              <div
+                key={`stable-${i}`}
+                className={`rounded-xl border border-border/40 overflow-hidden ${style.border} border-l-4`}
+              >
+                <div className="px-4 py-2 bg-muted/30 flex items-center justify-between border-b border-border/30">
                   <div className="flex items-center gap-2">
                     <span className={`h-2 w-2 rounded-full ${style.dot}`} />
-                    <span className="text-[10px] font-mono text-muted-foreground">¶{i + 1}</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-foreground/70">{patch.type}</span>
+                    <span className="text-[10px] font-mono text-muted-foreground">
+                      ¶{i + 1}
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-primary">
+                      {patch.type}
+                    </span>
                   </div>
-                  <span className="text-[10px] italic text-muted-foreground truncate max-w-[60%]">{patch.reason}</span>
+
+                  <span className="text-[10px] italic text-muted-foreground max-w-[55%] text-right">
+                    {patch.reason}
+                  </span>
                 </div>
-                <div className="divide-y divide-border/30">
-                  <div className="flex bg-rose-500/10 border-l-2 border-rose-500/60">
-                    <span className="px-2 py-1.5 text-rose-500/70 font-mono text-[11px] select-none shrink-0">−</span>
-                    <p className="py-1.5 pr-3 text-[12px] text-foreground/80 whitespace-pre-wrap leading-relaxed line-through decoration-rose-500/40">
-                      {patch.original}
+
+                <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border/30">
+                  
+                  <div className="bg-rose-500/5 p-4">
+                    <p className="text-[10px] uppercase font-bold tracking-widest text-rose-500 mb-3">
+                      Prima
                     </p>
+
+                    <div className="rounded-lg bg-rose-500/10 border border-rose-500/20 p-3">
+                      <p className="text-[13px] text-foreground/80 whitespace-pre-wrap leading-relaxed line-through decoration-rose-500/50">
+                        {patch.original}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex bg-emerald-500/10 border-l-2 border-emerald-500/60">
-                    <span className="px-2 py-1.5 text-emerald-500/70 font-mono text-[11px] select-none shrink-0">+</span>
-                    <p className="py-1.5 pr-3 text-[12px] text-foreground whitespace-pre-wrap leading-relaxed font-medium">
-                      {patch.patched}
+
+                  <div className="bg-emerald-500/5 p-4">
+                    <p className="text-[10px] uppercase font-bold tracking-widest text-emerald-500 mb-3">
+                      Dopo
                     </p>
+
+                    <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 shadow-sm">
+                      <p className="text-[13px] text-foreground whitespace-pre-wrap leading-relaxed font-medium">
+                        {patch.patched}
+                      </p>
+                    </div>
                   </div>
+
                 </div>
               </div>
             );
