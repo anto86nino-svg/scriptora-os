@@ -204,7 +204,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
         }
 
         toast.info(
-          "Diagnostica completata: capitolo già molto forte. Nessun intervento rilevante."
+          "Diagnostica completata: nessuna modifica automatica sicura applicata. Il capitolo è stato analizzato: prova una modalità più intensa o usa la diagnosi paragrafo per paragrafo per vedere i punti migliorabili."
         );
         return;
       }

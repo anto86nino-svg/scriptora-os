@@ -667,3 +667,46 @@ function applyUniversalItalianMicroPolish(
     editsApplied,
   };
 }
+
+function applyUniversalMultilingualMicroPolish(
+  text: string
+): SurgicalResult {
+  let edited = text;
+  const editsApplied: string[] = [];
+
+  const replacements: Array<[RegExp, string]> = [
+    // Italian
+    [/(\bNon era paura\.\s*)\n\s*Non era speranza\./g, "$1Non ancora speranza."],
+    [/Era la certezza che,/g, "Era qualcosa di più vicino a una certezza:"],
+    [/come un secondo cuore che batteva fuori tempo/g, "come un cuore fuori tempo"],
+    [/come un macigno sul petto/g, "contro il petto"],
+
+    // English
+    [/\bIt was not fear\.\s*It was not hope\./gi, "It was not fear. Not hope yet."],
+    [/\bIt was the certainty that\b/gi, "It was something closer to certainty:"],
+    [/\blike a second heart beating out of time\b/gi, "like a heart out of time"],
+
+    // Spanish
+    [/\bNo era miedo\.\s*No era esperanza\./gi, "No era miedo. Todavía no esperanza."],
+    [/\bEra la certeza de que\b/gi, "Era algo parecido a una certeza:"],
+
+    // French
+    [/\bCe n'était pas de la peur\.\s*Ce n'était pas de l'espoir\./gi, "Ce n'était pas de la peur. Pas encore de l'espoir."],
+    [/\bC'était la certitude que\b/gi, "C'était quelque chose de plus proche d'une certitude:"],
+
+    // German
+    [/\bEs war keine Angst\.\s*Es war keine Hoffnung\./gi, "Es war keine Angst. Noch keine Hoffnung."],
+    [/\bEs war die Gewissheit, dass\b/gi, "Es war eher eine Gewissheit:"],
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    const next = edited.replace(pattern, replacement);
+    if (next !== edited) edited = next;
+  }
+
+  if (edited !== text) {
+    editsApplied.push("universal_multilingual_micro_polish");
+  }
+
+  return { text: edited, editsApplied };
+}
