@@ -184,8 +184,15 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
       if (
         !surgicalResult.editsApplied?.length
       ) {
+        const testText =
+          chapter.content +
+          "\n\n[TEST DIAGNOSTICA EDITORIALE ATTIVA]";
+
+        setWorkingContent(testText);
+        onApplyContent(testText);
+
         toast.info(
-          "Diagnostica completata: capitolo già molto forte. Nessun intervento rilevante."
+          "Test Diagnostica: nessun fix trovato, ma il bottone aggiorna il capitolo."
         );
         return;
       }
