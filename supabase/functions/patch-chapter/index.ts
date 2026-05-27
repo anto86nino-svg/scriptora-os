@@ -164,7 +164,77 @@ serve(async (req) => {
     // Enforce global 15% cap (keep most severe = "weak" segments first)
     const weakSet = new Set(segments.filter((s) => s.level === "weak").map((s) => s.idx));
     patches.sort((a, b) => (weakSet.has(b.idx) ? 1 : 0) - (weakSet.has(a.idx) ? 1 : 0));
-    const cappedPatches = patches.slice(0, globalMaxPatches);
+    let cappedPatches = patches.slice(0, globalMaxPatches);
+
+    // FORCE at least one editorial intervention
+    // if DeepSeek found improvable paragraphs
+    // but returned zero patches.
+    if (
+      cappedPatches.length === 0
+    ) {
+      const improvable =
+        segments.find(
+          (s) =>
+            s.level ===
+              "improvable" ||
+            s.level ===
+              "weak"
+        );
+
+      if (improvable) {
+        const paragraph =
+          paragraphs.find(
+            (p) =>
+              p.idx ===
+              improvable.idx
+          );
+
+        if (
+          paragraph?.text
+        ) {
+          const forcedRaw =
+            await callDeepSeek(
+              DEEPSEEK_API_KEY,
+              `Sei un editor Big-5. Lavori in ${language}.
+NON riscrivere.
+Fai UNA SOLA micro-patch chirurgica.
+Mantieni voce, POV, canon e ritmo.
+Riduci spiegazione emotiva.
+Aumenta subtext.
+Massimo 10% modifica.
+Output SOLO testo patchato.`,
+
+              paragraph.text,
+              false,
+              0.3,
+              400,
+              "forced_editorial_patch"
+            );
+
+          if (
+            forcedRaw &&
+            forcedRaw.trim() &&
+            forcedRaw.trim() !==
+              paragraph.text.trim()
+          ) {
+            cappedPatches = [
+              {
+                idx:
+                  paragraph.idx,
+                original:
+                  paragraph.text,
+                patched:
+                  forcedRaw.trim(),
+                type:
+                  "forced-editorial",
+                reason:
+                  "Micro miglioramento editoriale automatico",
+              },
+            ];
+          }
+        }
+      }
+    }
 
     // Build patched text
     const patchMap = new Map<number, string>();
