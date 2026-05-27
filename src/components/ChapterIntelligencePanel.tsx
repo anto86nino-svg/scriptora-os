@@ -202,7 +202,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
               originalAnalysis.characterConsistencyScore +
               originalAnalysis.pacingConsistencyScore +
               originalAnalysis.emotionalRedundancyScore
-            ) / 5
+            ) / 5 / 10
           ).toFixed(1)
         )
       : null;
@@ -217,41 +217,21 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
               patchedAnalysis.characterConsistencyScore +
               patchedAnalysis.pacingConsistencyScore +
               patchedAnalysis.emotionalRedundancyScore
-            ) / 5
+            ) / 5 / 10
           ).toFixed(1)
         )
       : patchResult?.evaluation?.score ?? null;
 
   const scoreDelta =
     estimatedBeforeScore !== null &&
-    patchResult?.evaluation?.score
+    realAfterScore !== null
       ? Number(
           (
-            patchResult.evaluation.score -
+            realAfterScore -
             estimatedBeforeScore
           ).toFixed(1)
         )
       : null;
-
-
-  const runDominate = async () => {
-    if (await guardFreeChapterAi()) return;
-    if (!canDominate) {
-      setShowUpgrade(true);
-      return;
-    }
-    await startDominate(project, chapterIndex);
-  };
-  const applyDominate = () => {
-    if (!dominateJob) return;
-    applyJob(dominateJob.id, (text) => {
-      setWorkingContent(text);
-      onApplyContent(text);
-    });
-  };
-  const discardDominate = () => {
-    if (dominateJob) dismissJob(dominateJob.id);
-  };
 
   const runAnalysis = async () => {
     if (await guardFreeChapterAi()) return;
