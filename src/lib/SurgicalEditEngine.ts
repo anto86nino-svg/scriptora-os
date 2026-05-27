@@ -114,8 +114,8 @@ export function applyDialogueRoughening(
 
   
   if (
-    hasWarning(
-      analysis.warnings,
+    shouldApplyFix(
+      topWarnings,
       "weak_subtext"
     )
   ) {
@@ -133,8 +133,8 @@ export function applyDialogueRoughening(
 
   
   if (
-    hasWarning(
-      analysis.warnings,
+    shouldApplyFix(
+      topWarnings,
       "overwritten_scene"
     )
   ) {
@@ -171,12 +171,12 @@ export function applyDialogueRoughening(
 
   
   if (
-    hasWarning(
-      analysis.warnings,
+    shouldApplyFix(
+      topWarnings,
       "character_flattening"
     ) ||
-    hasWarning(
-      analysis.warnings,
+    shouldApplyFix(
+      topWarnings,
       "emotional_redundancy"
     )
   ) {
@@ -251,12 +251,18 @@ export function applySurgicalEditingFromWarnings(
 ): SurgicalResult {
   const analysis = analyzeNovel(text);
 
+  const topWarnings =
+    getTopWarnings(
+      analysis.warnings,
+      3
+    );
+
   let edited = text;
   const editsApplied: string[] = [];
 
   if (
-    hasWarning(
-      analysis.warnings,
+    shouldApplyFix(
+      topWarnings,
       "dialogue_perfection"
     )
   ) {
@@ -671,4 +677,13 @@ function getTopWarnings(
     )
     .slice(0, limit)
     .map((w) => w.type);
+}
+
+function shouldApplyFix(
+  topWarnings: string[],
+  warningType: string
+): boolean {
+  return topWarnings.includes(
+    warningType
+  );
 }
