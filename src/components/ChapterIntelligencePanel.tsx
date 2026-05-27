@@ -464,7 +464,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
               {/* Summary */}
               <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Patch completata</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Diagnostica Editoriale completata</span>
                   <span className="text-[10px] text-muted-foreground">
                     {patchResult.patches.length} interventi su {patchResult.totalParagraphs} ¶ — {patchResult.modificationPercent}% modificato
                   </span>
