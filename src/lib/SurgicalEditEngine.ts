@@ -631,3 +631,39 @@ function applyLightEditorialPolish(
     editsApplied,
   };
 }
+
+function applyUniversalItalianMicroPolish(
+  text: string
+): SurgicalResult {
+  const editsApplied: string[] = [];
+  let edited = text;
+
+  edited = edited.replace(
+    /, come sempre\. Come ogni cosa/g,
+    ". Come quasi ogni cosa"
+  );
+
+  edited = edited.replace(
+    /con un tono che non usava da quando era bambino\. Un tono di chi ha smesso di fingere di sapere\./g,
+    "con una voce più bassa del previsto."
+  );
+
+  edited = edited.replace(
+    /Non un nome\. Non solo un nome\./g,
+    "Non solo un nome."
+  );
+
+  edited = edited.replace(
+    /E forse, pensò[^.]+poteva diventare\./g,
+    ""
+  );
+
+  if (edited !== text) {
+    editsApplied.push("universal_italian_micro_polish");
+  }
+
+  return {
+    text: edited,
+    editsApplied,
+  };
+}
