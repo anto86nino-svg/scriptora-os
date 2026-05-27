@@ -215,6 +215,11 @@ export function applyDialogueRoughening(
     );
   }
 
+  edited = preserveVoice(
+    text,
+    edited
+  );
+
   return {
     text: edited,
     editsApplied: limitEdits(
@@ -553,4 +558,86 @@ function limitEdits(
     0,
     max
   );
+}
+
+interface VoiceSignature {
+  averageSentenceLength: number;
+  dialogueDensity: number;
+  emotionalDensity: number;
+}
+
+function analyzeVoiceSignature(
+  text: string
+): VoiceSignature {
+  const sentences =
+    text.split(/[.!?]+/).filter(Boolean);
+
+  const words =
+    text.split(/\s+/).filter(Boolean);
+
+  const dialogueMatches =
+    text.match(/"[^"]*"/g) || [];
+
+  const emotionalWords = [
+    "love",
+    "hurt",
+    "pain",
+    "fear",
+    "anger",
+    "hope",
+    "cry",
+    "heart",
+    "miss",
+    "alone"
+  ];
+
+  const emotionalDensity =
+    emotionalWords.filter((word) =>
+      text.toLowerCase().includes(word)
+    ).length;
+
+  return {
+    averageSentenceLength:
+      words.length /
+      Math.max(
+        sentences.length,
+        1
+      ),
+
+    dialogueDensity:
+      dialogueMatches.length /
+      Math.max(
+        sentences.length,
+        1
+      ),
+
+    emotionalDensity,
+  };
+}
+
+function preserveVoice(
+  original: string,
+  edited: string
+): string {
+  const originalVoice =
+    analyzeVoiceSignature(
+      original
+    );
+
+  const editedVoice =
+    analyzeVoiceSignature(
+      edited
+    );
+
+  const sentenceDrift =
+    Math.abs(
+      originalVoice.averageSentenceLength -
+      editedVoice.averageSentenceLength
+    );
+
+  if (sentenceDrift > 8) {
+    return original;
+  }
+
+  return edited;
 }
