@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { analyzeNovel, calculateEditorialChapterScore, detectEditorialGenre } from "@/lib/EditorialIntelligence";
+import { analyzeNovel } from "@/lib/EditorialIntelligence";
 import { useNavigate } from "react-router-dom";
 import JSZip from "jszip";
 import {
@@ -39,8 +39,6 @@ interface ManuscriptAnalyzerDialogProps {
 interface EditorialSignal {
   key: string;
   values?: Record<string, string | number>;
-  text?: string;
-  priority?: boolean;
 }
 
 interface ManuscriptChapterAnalysis {
@@ -79,21 +77,11 @@ const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
 
 const GENRE_OPTIONS: { value: Genre; labelKey: string }[] = [
   { value: "self-help", labelKey: "genre_self_help" },
-  { value: "business", labelKey: "genre_business" },
-  { value: "productivity", labelKey: "genre_productivity" },
-  { value: "psychology", labelKey: "genre_psychology" },
-  { value: "health", labelKey: "genre_health" },
-  { value: "spirituality", labelKey: "genre_spirituality" },
-  { value: "memoir", labelKey: "genre_memoir" },
   { value: "romance", labelKey: "genre_romance" },
-  { value: "dark-romance", labelKey: "genre_dark_romance" },
   { value: "thriller", labelKey: "genre_thriller" },
-  { value: "mystery", labelKey: "genre_mystery" },
-  { value: "crime", labelKey: "genre_crime" },
   { value: "fantasy", labelKey: "genre_fantasy" },
-  { value: "sci-fi", labelKey: "genre_sci_fi" },
-  { value: "literary-fiction", labelKey: "genre_literary_fiction" },
-  { value: "education", labelKey: "genre_education" },
+  { value: "business", labelKey: "genre_business" },
+  { value: "memoir", labelKey: "genre_memoir" },
   { value: "manual", labelKey: "genre_manual" },
 ];
 
@@ -222,6 +210,17 @@ function detectLanguage(text: string): Language {
   return (Object.entries(scores).sort((a, b) => b[1] - a[1])[0]?.[0] as Language) || "English";
 }
 
+function detectGenre(text: string): Genre {
+  const lower = text.toLowerCase();
+  const dialogueMarks = (text.match(/[“”"]/g) || []).length;
+  if (dialogueMarks > 20 || /\b(prologue|capitolo|chapter)\b/i.test(text)) return "memoir";
+  if (/\b(marketing|business|sales|company|cliente|azienda|vendite|mercato)\b/.test(lower)) return "business";
+  if (/\b(manuale|tutorial|procedura|installazione|step|passo|software)\b/.test(lower)) return "manual";
+  if (/\b(amore|heart|love|relationship|romance)\b/.test(lower)) return "romance";
+  if (/\b(murder|killer|detective|omicidio|indagine|suspense)\b/.test(lower)) return "thriller";
+  return "self-help";
+}
+
 function repetitionDensity(words: string[]): number {
   const counts = new Map<string, number>();
   for (const word of words) {
@@ -232,7 +231,7 @@ function repetitionDensity(words: string[]): number {
   return words.length ? repeated / words.length : 0;
 }
 
-function analyzeChapter(title: string, content: string, genre: Genre): ManuscriptChapterAnalysis {
+function analyzeChapter(title: string, content: string): ManuscriptChapterAnalysis {
   const words = wordList(content);
   const wordCount = words.length;
   const paragraphs = content.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
@@ -256,28 +255,14 @@ function analyzeChapter(title: string, content: string, genre: Genre): Manuscrip
   const strengths: EditorialSignal[] = [];
   const issues: EditorialSignal[] = [];
   const advice: EditorialSignal[] = [];
-  let score = calculateEditorialChapterScore({
-    wordCount,
-    paragraphs: paragraphs.length,
-    avgSentenceWords,
-    longSentenceRatio,
-    repeatDensity,
-    openingWords,
-    quoteMarks,
-    warningTypes,
-    genre,
-  });
+  let score = 62;
 
-  if (wordCount < 400) {
-    score -= 8;
-    issues.push({ key: "manuscript_issue_short_chapter" });
-    advice.push({ key: "manuscript_advice_expand_chapter" });
-  } else if (wordCount < 700) {
-    score -= 4;
+  if (wordCount < 700) {
+    score -= 14;
     issues.push({ key: "manuscript_issue_short_chapter" });
     advice.push({ key: "manuscript_advice_expand_chapter" });
   } else if (wordCount > 5200) {
-    score -= 8;
+    score -= 10;
     issues.push({ key: "manuscript_issue_long_chapter" });
     advice.push({ key: "manuscript_advice_split_chapter" });
   } else {
@@ -285,7 +270,7 @@ function analyzeChapter(title: string, content: string, genre: Genre): Manuscrip
   }
 
   if (avgSentenceWords > 28) {
-    score -= genre === "self-help" ? 5 : 8;
+    score -= 10;
     issues.push({ key: "manuscript_issue_long_sentences" });
     advice.push({ key: "manuscript_advice_sentence_rhythm" });
   } else if (avgSentenceWords > 0) {
@@ -293,7 +278,7 @@ function analyzeChapter(title: string, content: string, genre: Genre): Manuscrip
   }
 
   if (paragraphs.length < Math.max(3, Math.floor(wordCount / 650))) {
-    score -= genre === "self-help" ? 1 : 2;
+    score -= 3;
     issues.push({ key: "manuscript_issue_dense_blocks" });
     advice.push({ key: "manuscript_advice_add_air" });
   } else {
@@ -301,12 +286,12 @@ function analyzeChapter(title: string, content: string, genre: Genre): Manuscrip
   }
 
   if (longSentenceRatio > 0.28) {
-    score -= 2;
+    score -= 3;
     issues.push({ key: "manuscript_issue_many_long_sentences" });
   }
 
   if (repeatDensity > 0.075) {
-    score -= 2;
+    score -= 3;
     issues.push({ key: "manuscript_issue_repetition" });
     advice.push({ key: "manuscript_advice_reduce_repetition" });
   } else {
@@ -314,145 +299,72 @@ function analyzeChapter(title: string, content: string, genre: Genre): Manuscrip
   }
 
   if (openingWords > 150) {
-    score -= genre === "self-help" ? 1 : 2;
+    score -= 3;
     issues.push({ key: "manuscript_issue_slow_opening" });
     advice.push({ key: "manuscript_advice_stronger_hook" });
   }
 
   if (quoteMarks > 8) strengths.push({ key: "manuscript_strength_dialogue" });
 
-  if (warningTypes.includes("weak_subtext")) {
-    score -= 1;
+  if (warningTypes.includes("emotional_redundancy")) {
+    score -= 3;
   }
 
   if (warningTypes.includes("dialogue_perfection")) {
-    score -= 1;
+    score -= 2;
   }
 
   if (warningTypes.includes("character_flattening")) {
-    score -= 1;
+    score -= 2;
+  }
+
+  if (warningTypes.includes("weak_subtext")) {
+    score -= 2;
+  }
+
+  if (warningTypes.includes("climax_oversaturation")) {
+    score -= 2;
+  }
+
+  if (warningTypes.includes("overwritten_scene")) {
+    score -= 3;
+  }
+
+  if (warningTypes.includes("weak_subtext")) {
+    score -= 2;
+  }
+
+  if (warningTypes.includes("dialogue_perfection")) {
+    score -= 2;
+  }
+
+  if (warningTypes.includes("character_flattening")) {
+    score -= 2;
   }
 
   if (warningTypes.includes("emotional_predictability")) {
-    score -= 2;
+    score -= 3;
   }
 
   if (warningTypes.includes("conflict_collapse")) {
-    score -= 2;
+    score -= 3;
   }
 
   if (warningTypes.includes("emotional_redundancy")) {
-    score -= 2;
+    score -= 3;
   }
 
   if (warningTypes.includes("emotional_monologues")) {
-    score -= 1;
-  }
-
-  if (warningTypes.includes("repetitive_scene_purpose")) {
     score -= 2;
   }
 
-  if (warningTypes.includes("weak_subtext")) {
-    advice.push({
-      priority: true,
-      key: "premium_feedback",
-      text: "Le emozioni vengono spesso spiegate invece di emergere da tensione, comportamento o sottotesto."
-    });
-  }
-
-  if (warningTypes.includes("dialogue_perfection")) {
-    advice.push({
-      priority: true,
-      key: "premium_feedback",
-      text: "I dialoghi risultano ancora troppo puliti o emotivamente perfetti. Più attrito e imperfezione aumenterebbero il realismo."
-    });
-  }
-
-  if (warningTypes.includes("character_flattening")) {
-    advice.push({
-      priority: true,
-      key: "premium_feedback",
-      text: "Alcuni personaggi risultano ancora troppo archetipici o poco distintivi."
-    });
-  }
-
-  if (warningTypes.includes("emotional_predictability")) {
-    advice.push({
-      priority: true,
-      key: "premium_feedback",
-      text: "Alcune svolte emotive risultano prevedibili. Più contrasto e tensione aumenterebbero il coinvolgimento."
-    });
-  }
-
-  if (warningTypes.includes("emotional_redundancy")) {
-    advice.push({
-      priority: true,
-      key: "premium_feedback",
-      text: "Alcuni concetti o emozioni vengono ribaditi più volte riducendo impatto e memorabilità."
-    });
-  }
-
   if (warningTypes.includes("repetitive_scene_purpose")) {
-    advice.push({
-      priority: true,
-      key: "premium_feedback",
-      text: "Alcune sezioni sembrano svolgere funzioni narrative simili. Rafforza progressione e payoff."
-    });
+    score -= 3;
   }
 
-  
-  // SELF-HELP EDITORIAL INTELLIGENCE
-  const lowerContent = content.toLowerCase();
-
-  const isSelfHelp =
-    /\b(cambiamento|abitudine|mindset|motivazione|autostima|paura|disciplina|consapevolezza|mentalità|bloccat|obiettivo|crescita personale|vita sbagliata|vita diversa|relazione|ansia|paura|cervello|decisione|trasformazione|migliorare|pronti davvero)\b/i.test(lowerContent)
-    || (quoteMarks > 1 && wordCount > 300 && repeatDensity > 0.02);
-
-  if (isSelfHelp) {
-
-    if (repeatDensity > 0.04) {
-      advice.unshift({
-        priority: true,
-        key: "premium_feedback",
-        text: "Alcuni concetti vengono ripetuti con formulazioni simili riducendo impatto e memorabilità."
-      });
-    }
-
-    if (wordCount > 300 && quoteMarks < 3) {
-      advice.unshift({
-        priority: true,
-        key: "premium_feedback",
-        text: "La riflessione è chiara ma ancora poco concreta. Più esempi specifici aumenterebbero credibilità e coinvolgimento."
-      });
-    }
-
-    if (openingWords > 120) {
-      advice.unshift({
-        priority: true,
-        key: "premium_feedback",
-        text: "L'apertura funziona ma potrebbe creare una promessa più forte nelle prime righe."
-      });
-    }
-  }
-
-if (issues.length === 0 && advice.length === 0) {
+  if (issues.length === 0) {
     advice.push({ key: "manuscript_advice_polish_micro" });
   }
-
-  console.log("SCRIPTORA DEBUG", {
-    warningTypes,
-    advice,
-    repeatDensity,
-    openingWords,
-    quoteMarks,
-    wordCount,
-    isSelfHelp
-  });
-
-  advice.sort((a, b) =>
-    (b.priority ? 1 : 0) - (a.priority ? 1 : 0)
-  );
 
   return {
     title,
@@ -470,15 +382,14 @@ if (issues.length === 0 && advice.length === 0) {
 }
 
 function summaryKeyForScore(score: number): string {
-  if (score >= 91) return "manuscript_summary_exceptional";
-  if (score >= 80) return "manuscript_summary_strong";
-  if (score >= 65) return "manuscript_summary_good";
-  if (score >= 50) return "manuscript_summary_needs_work";
+  if (score >= 86) return "manuscript_summary_strong";
+  if (score >= 74) return "manuscript_summary_good";
+  if (score >= 62) return "manuscript_summary_needs_work";
   return "manuscript_summary_fragile";
 }
 
-function analyzeManuscript(text: string, title: string, sourceName: string, genre: Genre): ManuscriptAnalysis {
-  const chapters = splitIntoChapters(text).map(chapter => analyzeChapter(chapter.title, chapter.content, genre));
+function analyzeManuscript(text: string, title: string, sourceName: string): ManuscriptAnalysis {
+  const chapters = splitIntoChapters(text).map(chapter => analyzeChapter(chapter.title, chapter.content));
   const totalWords = chapters.reduce((sum, chapter) => sum + chapter.words, 0);
   const score = chapters.length
     ? Math.round(chapters.reduce((sum, chapter) => sum + chapter.score, 0) / chapters.length)
@@ -566,7 +477,6 @@ function bookLengthFromWords(words: number): "short" | "medium" | "long" | "cust
 }
 
 function signalText(signal: EditorialSignal): string {
-  if (signal.text) return signal.text;
   return signal.values ? tt(signal.key, signal.values) : t(signal.key);
 }
 
@@ -691,11 +601,10 @@ export function ManuscriptAnalyzerDialog({
     ];
   })() : [];
 
-  const runAnalysis = (textOverride?: string, titleOverride?: string, sourceOverride?: string, genreOverride?: Genre) => {
+  const runAnalysis = (textOverride?: string, titleOverride?: string, sourceOverride?: string) => {
     const nextText = (textOverride ?? rawText).trim();
     const nextTitle = (titleOverride ?? title).trim() || t("untitled");
     const nextSource = sourceOverride || sourceName || t("manuscript_manual_source");
-    const nextGenre = genreOverride ?? genre;
     const words = countWords(nextText);
 
     if (words < MIN_ANALYSIS_WORDS) {
@@ -705,7 +614,7 @@ export function ManuscriptAnalyzerDialog({
     }
 
     setError("");
-    setAnalysis(analyzeManuscript(nextText, nextTitle, nextSource, nextGenre));
+    setAnalysis(analyzeManuscript(nextText, nextTitle, nextSource));
   };
 
   const handleFile = async (file: File) => {
@@ -715,13 +624,13 @@ export function ManuscriptAnalyzerDialog({
       const text = await readManuscriptFile(file);
       const detectedTitle = cleanTitle(file.name) || t("untitled");
       const detectedLanguage = detectLanguage(text);
-      const detectedGenre = detectEditorialGenre(text);
+      const detectedGenre = detectGenre(text);
       setRawText(text);
       setSourceName(file.name);
       setTitle(detectedTitle);
       setBookLanguage(detectedLanguage);
       setGenre(detectedGenre);
-      runAnalysis(text, detectedTitle, file.name, detectedGenre);
+      runAnalysis(text, detectedTitle, file.name);
     } catch (err) {
       setAnalysis(null);
       setError(err instanceof Error ? err.message : t("manuscript_file_error"));
@@ -863,11 +772,7 @@ export function ManuscriptAnalyzerDialog({
               </span>
               <select
                 value={genre}
-                onChange={(event) => {
-                  const nextGenre = event.target.value as Genre;
-                  setGenre(nextGenre);
-                  if (rawText.trim()) runAnalysis(undefined, undefined, undefined, nextGenre);
-                }}
+                onChange={(event) => setGenre(event.target.value as Genre)}
                 className="h-10 w-full rounded-lg border border-white/10 bg-white/[0.07] px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary"
               >
                 {GENRE_OPTIONS.map(option => (

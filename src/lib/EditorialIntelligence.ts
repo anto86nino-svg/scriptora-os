@@ -1,3 +1,5 @@
+import { Genre } from "@/types/book";
+
 export interface EditorialWarning {
   type:
     | "emotional_redundancy"
@@ -17,6 +19,19 @@ export interface EditorialWarning {
   suggestion: string;
 }
 
+export interface EditorialGenreProfile {
+  genre: Genre;
+  label: string;
+  expectations: string[];
+  scoreWeights: {
+    hook: number;
+    clarity: number;
+    originality: number;
+    emotionalImpact: number;
+    pacing: number;
+  };
+}
+
 export interface EditorialReport {
   emotionalRedundancyScore: number;
   dialogueHumanityScore: number;
@@ -26,6 +41,489 @@ export interface EditorialReport {
   characterConsistencyScore: number;
 
   warnings: EditorialWarning[];
+}
+
+const EDITORIAL_GENRE_PROFILES: Partial<Record<Genre, EditorialGenreProfile>> = {
+  "self-help": {
+    genre: "self-help",
+    label: "Self-help",
+    expectations: [
+      "Strong conceptual clarity and an immediately compelling promise.",
+      "Memorable insight rather than generic advice.",
+      "Practical specificity with examples readers can apply.",
+      "Low repetition and a confident, authentic voice."
+    ],
+    scoreWeights: {
+      hook: 0.17,
+      clarity: 0.17,
+      originality: 0.22,
+      emotionalImpact: 0.14,
+      pacing: 0.15,
+    },
+  },
+  "business": {
+    genre: "business",
+    label: "Business",
+    expectations: [
+      "Clear commercial framing and actionable reasoning.",
+      "Credible examples or case studies that ground the argument.",
+      "A strong authorial voice with practical authority.",
+      "Concise structure that avoids generic management platitudes."
+    ],
+    scoreWeights: {
+      hook: 0.15,
+      clarity: 0.18,
+      originality: 0.16,
+      emotionalImpact: 0.13,
+      pacing: 0.15,
+    },
+  },
+  "productivity": {
+    genre: "productivity",
+    label: "Productivity",
+    expectations: [
+      "A clear opening promise backed by useful mechanics.",
+      "Specific, memorable routines rather than vague motivation.",
+      "Smart sequencing of ideas with practical next steps.",
+      "A confident tone that feels expert and human, not generic."
+    ],
+    scoreWeights: {
+      hook: 0.18,
+      clarity: 0.19,
+      originality: 0.16,
+      emotionalImpact: 0.12,
+      pacing: 0.15,
+    },
+  },
+  "psychology": {
+    genre: "psychology",
+    label: "Psychology",
+    expectations: [
+      "Psychological nuance and grounded emotional reasoning.",
+      "Clear, evidence-aware voice that remains accessible.",
+      "Ideas presented with nuance, not pop-psychology generalities.",
+      "A strong authorial perspective that feels both credible and empathetic."
+    ],
+    scoreWeights: {
+      hook: 0.14,
+      clarity: 0.18,
+      originality: 0.18,
+      emotionalImpact: 0.14,
+      pacing: 0.14,
+    },
+  },
+  "education": {
+    genre: "education",
+    label: "Education",
+    expectations: [
+      "Clear learning outcomes and structured progression.",
+      "Concrete examples, explanations, and accessible pacing.",
+      "A strong sense of why each section matters for the reader.",
+      "Precise definitions and less generic teaching language."
+    ],
+    scoreWeights: {
+      hook: 0.14,
+      clarity: 0.2,
+      originality: 0.15,
+      emotionalImpact: 0.12,
+      pacing: 0.14,
+    },
+  },
+  "health": {
+    genre: "health",
+    label: "Health",
+    expectations: [
+      "Practical credibility and relatable wellbeing guidance.",
+      "Specific examples or evidence rather than broad wellness slogans.",
+      "A calm, trustworthy tone that supports the reader's confidence.",
+      "Clear structure and a grounded, actionable style."
+    ],
+    scoreWeights: {
+      hook: 0.14,
+      clarity: 0.19,
+      originality: 0.14,
+      emotionalImpact: 0.12,
+      pacing: 0.14,
+    },
+  },
+  "health-medicine": {
+    genre: "health-medicine",
+    label: "Health",
+    expectations: [
+      "Practical credibility and relatable wellbeing guidance.",
+      "Specific examples or evidence rather than broad wellness slogans.",
+      "A calm, trustworthy tone that supports the reader's confidence.",
+      "Clear structure and a grounded, actionable style."
+    ],
+    scoreWeights: {
+      hook: 0.14,
+      clarity: 0.19,
+      originality: 0.14,
+      emotionalImpact: 0.12,
+      pacing: 0.14,
+    },
+  },
+  "spirituality": {
+    genre: "spirituality",
+    label: "Spirituality",
+    expectations: [
+      "Clear spiritual promise with grounded language.",
+      "Concrete practice or insight rather than abstract clichés.",
+      "Emotional resonance without losing practical clarity.",
+      "A distinct voice that feels wise and present."
+    ],
+    scoreWeights: {
+      hook: 0.14,
+      clarity: 0.16,
+      originality: 0.16,
+      emotionalImpact: 0.17,
+      pacing: 0.13,
+    },
+  },
+  "memoir": {
+    genre: "memoir",
+    label: "Memoir",
+    expectations: [
+      "Authentic scenes with emotional specificity.",
+      "A strong personal voice that feels grounded and honest.",
+      "Meaningful reflection rooted in concrete experience.",
+      "Clear pacing and narrative shape rather than loose memoir fragments."
+    ],
+    scoreWeights: {
+      hook: 0.16,
+      clarity: 0.16,
+      originality: 0.16,
+      emotionalImpact: 0.18,
+      pacing: 0.14,
+    },
+  },
+  "romance": {
+    genre: "romance",
+    label: "Romance",
+    expectations: [
+      "Strong chemistry and a clear attraction/conflict balance.",
+      "Emotion shown through behavior, not only through talk.",
+      "Tension that keeps desire and stakes alive.",
+      "Subtext that makes the relationship feel specific and urgent."
+    ],
+    scoreWeights: {
+      hook: 0.16,
+      clarity: 0.14,
+      originality: 0.16,
+      emotionalImpact: 0.2,
+      pacing: 0.16,
+    },
+  },
+  "dark-romance": {
+    genre: "dark-romance",
+    label: "Dark Romance",
+    expectations: [
+      "Dangerous chemistry and emotional friction.",
+      "Controlled emotional pacing with push/pull tension.",
+      "Subtext and conflict that keep the romance from resolving too fast.",
+      "A sense of risk and emotional ambiguity rather than tidy reassurance."
+    ],
+    scoreWeights: {
+      hook: 0.16,
+      clarity: 0.12,
+      originality: 0.16,
+      emotionalImpact: 0.2,
+      pacing: 0.18,
+    },
+  },
+  "thriller": {
+    genre: "thriller",
+    label: "Thriller",
+    expectations: [
+      "Escalating suspense and clear stakes.",
+      "Information withheld with smart reveals.",
+      "Momentum that keeps the reader moving chapter to chapter.",
+      "A sense of danger and urgency without losing coherence."
+    ],
+    scoreWeights: {
+      hook: 0.2,
+      clarity: 0.12,
+      originality: 0.14,
+      emotionalImpact: 0.15,
+      pacing: 0.2,
+    },
+  },
+  "fantasy": {
+    genre: "fantasy",
+    label: "Fantasy",
+    expectations: [
+      "Immersive world detail and consistent concept logic.",
+      "Emotional stakes tied to the world and characters.",
+      "Mystery that feels grounded in the setting.",
+      "Sensory specificity that makes the world feel distinct."
+    ],
+    scoreWeights: {
+      hook: 0.15,
+      clarity: 0.14,
+      originality: 0.18,
+      emotionalImpact: 0.15,
+      pacing: 0.16,
+    },
+  },
+  "sci-fi": {
+    genre: "sci-fi",
+    label: "Sci-Fi",
+    expectations: [
+      "Clear concept and believable world rules.",
+      "Emotional stakes that connect to the speculative idea.",
+      "Specific technological or futuristic detail.",
+      "A balance between plot momentum and idea clarity."
+    ],
+    scoreWeights: {
+      hook: 0.18,
+      clarity: 0.16,
+      originality: 0.18,
+      emotionalImpact: 0.14,
+      pacing: 0.16,
+    },
+  },
+  "mystery": {
+    genre: "mystery",
+    label: "Mystery",
+    expectations: [
+      "A compelling question or secret at the center of the story.",
+      "Clues and suspense that feel purposefully layered.",
+      "Character motivation that explains the investigation.",
+      "A controlled reveal that preserves intrigue and payoff."
+    ],
+    scoreWeights: {
+      hook: 0.18,
+      clarity: 0.14,
+      originality: 0.16,
+      emotionalImpact: 0.14,
+      pacing: 0.18,
+    },
+  },
+  "crime": {
+    genre: "crime",
+    label: "Crime",
+    expectations: [
+      "Threat and authority that feel real and structured.",
+      "A clear procedural or moral axis for the conflict.",
+      "Behavioral detail and stakes rooted in crime world reality.",
+      "Tension that is driven by risk, consequences, and choice."
+    ],
+    scoreWeights: {
+      hook: 0.16,
+      clarity: 0.14,
+      originality: 0.15,
+      emotionalImpact: 0.16,
+      pacing: 0.18,
+    },
+  },
+  "literary-fiction": {
+    genre: "literary-fiction",
+    label: "Literary Fiction",
+    expectations: [
+      "Language with precision and emotional specificity.",
+      "Depth of ideas without losing narrative grip.",
+      "A strong authorial voice and thematic coherence.",
+      "Scenes that resonate through detail, mood, and subtext."
+    ],
+    scoreWeights: {
+      hook: 0.14,
+      clarity: 0.16,
+      originality: 0.2,
+      emotionalImpact: 0.18,
+      pacing: 0.14,
+    },
+  },
+  "manual": {
+    genre: "manual",
+    label: "Manual",
+    expectations: [
+      "Straightforward guidance and easy-to-follow structure.",
+      "Useful, concrete examples and clear language.",
+      "A helpful tone that feels practical rather than preachy.",
+      "A strong sense of what the reader can do next."
+    ],
+    scoreWeights: {
+      hook: 0.14,
+      clarity: 0.2,
+      originality: 0.13,
+      emotionalImpact: 0.12,
+      pacing: 0.14,
+    },
+  },
+  "default": {
+    genre: "self-help",
+    label: "General",
+    expectations: [
+      "A clear editorial focus and readable pacing.",
+      "Stronger specificity instead of generic phrasing.",
+      "A sense that the manuscript has a distinct voice.",
+      "Editorial coherence that matches the material's category."
+    ],
+    scoreWeights: {
+      hook: 0.15,
+      clarity: 0.15,
+      originality: 0.15,
+      emotionalImpact: 0.15,
+      pacing: 0.15,
+    },
+  },
+};
+
+export function getEditorialGenreProfile(genre: Genre): EditorialGenreProfile {
+  return EDITORIAL_GENRE_PROFILES[genre] || EDITORIAL_GENRE_PROFILES["default"]!;
+}
+
+function editorialWarningPenalty(type: EditorialWarning["type"]): number {
+  switch (type) {
+    case "emotional_redundancy":
+      return 1;
+    case "dialogue_perfection":
+      return 1;
+    case "climax_oversaturation":
+      return 1;
+    case "weak_subtext":
+      return 1;
+    case "character_flattening":
+      return 1;
+    case "repetitive_symbolism":
+      return 1;
+    case "overwritten_scene":
+      return 1;
+    default:
+      return 1;
+  }
+}
+
+export function calculateEditorialChapterScore(
+  params: {
+    wordCount: number;
+    paragraphs: number;
+    avgSentenceWords: number;
+    longSentenceRatio: number;
+    repeatDensity: number;
+    openingWords: number;
+    quoteMarks: number;
+    warningTypes: string[];
+    genre: Genre;
+  }
+): number {
+  const {
+    wordCount,
+    paragraphs,
+    avgSentenceWords,
+    longSentenceRatio,
+    repeatDensity,
+    openingWords,
+    quoteMarks,
+    warningTypes,
+    genre,
+  } = params;
+
+  const profile = getEditorialGenreProfile(genre).scoreWeights;
+  const lengthScore =
+    wordCount < 400 ? -3 : wordCount < 700 ? -1 : wordCount > 5200 ? -3 : 2;
+  const sentenceScore = avgSentenceWords <= 18 ? 2 : avgSentenceWords <= 24 ? 1 : avgSentenceWords <= 28 ? 0 : -1;
+  const paragraphScore = paragraphs >= Math.max(3, Math.floor(wordCount / 650)) ? 1 : genre === "self-help" ? 0 : -1;
+  const repeatScore = repeatDensity < 0.03 ? 2 : repeatDensity < 0.055 ? 1 : repeatDensity < 0.08 ? 0 : -1;
+  const openingScore = openingWords < 110 ? 2 : openingWords < 140 ? 0 : openingWords < 165 ? -1 : -2;
+  const dialogueScore = quoteMarks >= 8 ? 2 : quoteMarks >= 4 ? 1 : 0;
+  const sentenceFlowScore = Math.max(-2, Math.min(2, Math.round((0.22 - longSentenceRatio) * 8)));
+  const selfHelpBonus =
+    genre === "self-help" && repeatDensity < 0.055 && openingWords <= 150 && paragraphs >= Math.max(2, Math.floor(wordCount / 700))
+      ? 1
+      : 0;
+  const fantasyBonus =
+    genre === "fantasy" && repeatDensity < 0.25 && longSentenceRatio < 0.28
+      ? 1
+      : 0;
+
+  const baseScore = 65;
+  const weightedSum =
+    lengthScore * profile.clarity +
+    sentenceScore * profile.clarity +
+    sentenceFlowScore * profile.clarity +
+    paragraphScore * profile.clarity +
+    repeatScore * profile.originality +
+    openingScore * profile.hook +
+    dialogueScore * profile.emotionalImpact;
+
+  const warningPenalty = Math.min(
+    warningTypes.reduce((sum, type) => {
+      return sum + editorialWarningPenalty(type as EditorialWarning["type"]);
+    }, 0),
+    6
+  );
+
+  const score =
+    baseScore +
+    weightedSum * 1.45 -
+    warningPenalty * (1 + profile.pacing * 0.22) +
+    selfHelpBonus;
+
+  return Math.max(35, Math.min(98, Math.round(score)));
+}
+
+export function detectEditorialGenre(text: string): Genre {
+  const lower = text.toLowerCase();
+  const wordCount = (text.match(/[\p{L}\p{N}]+/gu) || []).length;
+  const quoteCount = (text.match(/[“”"]/g) || []).length;
+  const dramaSignals = [
+    /\b(dark romance|dark-romance|ossessione|passione pericolosa|attrazione pericolosa|amore proibito|chemistry|tensione erotica)\b/i,
+    /\b(amore|relazione|romance|love|cuore|bacio|incontro romantico)\b/i,
+  ];
+  const thrillerSignals = [
+    /\b(thriller|suspense|murder|killer|kidnap|investigation|investigazione|detective|police|hunt|caccia|segreto|shadow|omicidio)\b/i,
+  ];
+  const fantasySignals = [
+    /\b(fantasy|magic|magia|kingdom|reame|wizard|wizardry|dragon|portal|myth|mythic|sorcery)\b/i,
+  ];
+  const scifiSignals = [
+    /\b(scifi|sci-fi|science fiction|space|alien|robot|cyborg|futuristic|futuro|AI|intelligenza artificiale|technology|tecnologia)\b/i,
+  ];
+  const mysterySignals = [
+    /\b(mystery|mistero|clue|enigma|detective|indagine|whodunit|sospetto)\b/i,
+  ];
+  const crimeSignals = [
+    /\b(crime|criminal|mafia|gang|noir|cartel|mob|police procedural|polizia|poliziotto|detective|omicidio|furto|rapina)\b/i,
+  ];
+  const nonfictionSignals = [
+    /\b(self-help|self help|mindset|personal growth|cambiamento|abitudine|habit|motivation|motivazione|marketing|business|sales|azienda|cliente|vendite|mercato|health|wellness|salute|medicina|therapy|terapia|educazione|education|learning|imparare|guide|manual|tutorial|istruzioni)\b/i,
+  ];
+  const memoirSignals = [
+    /\b(memoir|memoria|ricordo|vita reale|autobiography|autobiografico|my story|mia storia|il mio)\b/i,
+  ];
+  const spiritualitySignals = [
+    /\b(spirituality|spirituale|sacred|sacrale|faith|fede|meditation|meditazione|soul|anima|energia|chakra|rituale)\b/i,
+  ];
+  const psychologySignals = [
+    /\b(psychology|psicologia|therapy|terapia|trauma|cognitive|emotional|emozionale|mind|mente|neuroscience|neuroscienza)\b/i,
+  ];
+  const productivitySignals = [
+    /\b(productivity|produttività|efficiency|efficienza|focus|obiettivi|goals|time management|gestione del tempo|routine|habits|abitudini)\b/i,
+  ];
+  const educationSignals = [
+    /\b(education|educazione|learning|apprendimento|lesson|lezione|course|corso|study|studiare|teaching|insegnare)\b/i,
+  ];
+  const healthSignals = [
+    /\b(health|wellness|wellbeing|salute|fitness|nutrition|dieta|doctor|medico|medicina|medical|nutrizione)\b/i,
+  ];
+
+  if (crimeSignals.some((pattern) => pattern.test(lower)) && !fantasySignals.some((pattern) => pattern.test(lower))) return "crime";
+  if (thrillerSignals.some((pattern) => pattern.test(lower)) && quoteCount < 50) return "thriller";
+  if (fantasySignals.some((pattern) => pattern.test(lower))) return "fantasy";
+  if (scifiSignals.some((pattern) => pattern.test(lower))) return "sci-fi";
+  if (mysterySignals.some((pattern) => pattern.test(lower)) && !thrillerSignals.some((pattern) => pattern.test(lower))) return "mystery";
+  if (dramaSignals.some((pattern) => pattern.test(lower)) && !crimeSignals.some((pattern) => pattern.test(lower))) return "romance";
+  if (spiritualitySignals.some((pattern) => pattern.test(lower))) return "spirituality";
+  if (psychologySignals.some((pattern) => pattern.test(lower))) return "psychology";
+  if (productivitySignals.some((pattern) => pattern.test(lower))) return "productivity";
+  if (educationSignals.some((pattern) => pattern.test(lower))) return "education";
+  if (healthSignals.some((pattern) => pattern.test(lower))) return "health";
+  if (memoirSignals.some((pattern) => pattern.test(lower)) && quoteCount < 40) return "memoir";
+  if (nonfictionSignals.some((pattern) => pattern.test(lower)) && wordCount < 12000) return "self-help";
+  if (quoteCount > 20 && /\b(chapter|capitolo|prologue|epilogue|section|sezione)\b/i.test(lower)) return "mystery";
+
+  return "self-help";
 }
 
 const REPETITIVE_PHRASES = [
