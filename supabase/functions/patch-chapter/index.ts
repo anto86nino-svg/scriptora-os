@@ -52,14 +52,15 @@ async function callDeepSeek(apiKey: string, system: string, user: string, jsonMo
 async function patchBatch(
   apiKey: string,
   batch: { idx: number; text: string }[],
-  ctx: { genre: string; tone: string; language: string; chapterTitle: string; maxPatchesInBatch: number; blueprintIntegrityBlock?: string }
+  ctx: { genre: string; tone: string; language: string; chapterTitle: string; maxPatchesInBatch: number; blueprintIntegrityBlock?: string; intensity?: string }
 ) {
   const numbered = batch.map((p) => `[¶${p.idx}]\n${p.text}`).join("\n\n");
 
   const system = `Sei un editor narrativo senior da casa editrice Big-5. Lavori in ${ctx.language}.
 Modalità: DIAGNOSTICA EDITORIALE CHIRURGICA.
 NON riscrivere il capitolo. NON cambiare trama, canon, voce, POV o struttura.
-Devi però trovare micro-miglioramenti reali: subtext, ritmo, dialoghi meno perfetti, compressione di spiegazioni emotive, tensione, finali meno sovraspiegati.
+Devi trovare miglioramenti editoriali percepibili: subtext, ritmo, dialoghi meno perfetti, compressione di spiegazioni emotive, tensione, finali meno sovraspiegati. 
+Se intensity è "balanced" o "aggressive", non limitarti a micro-cosmesi: applica tagli e riformulazioni visibili ma chirurgiche.
 Anche se il testo è forte, individua almeno 1 intervento leggero se esiste una frase migliorabile.
 Massimo 15% del capitolo. Stessa voce. Meno AI. Più umano. Più narrativo.
 Output SOLO JSON valido.`;
@@ -76,6 +77,7 @@ Per ognuno:
 - "improvable" 🟡 = migliorabile: frase troppo spiegata, dialogo troppo pulito, ritmo piatto, subtext debole, immagine generica
 - "weak" 🔴 = debole: ridondanza, spiegazione emotiva, finale sovraspiegato, cliché, dialogo artificiale
 
+Intensità richiesta: ${ctx.intensity || "balanced"}.
 Genera patch per i punti più utili (max ${ctx.maxPatchesInBatch} patch in questo batch).
 Non restituire patches vuote se nel batch esiste almeno una frase migliorabile.
 Ogni patch deve essere chirurgica: stesso significato, stessa voce, più subtext, più tensione, meno spiegazione.
@@ -119,7 +121,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { chapterTitle, chapterText, genre, tone, language, blueprintIntegrityBlock = "", projectId = null, userId = null } = await req.json();
+    const { chapterTitle, chapterText, genre, tone, language, blueprintIntegrityBlock = "", projectId = null, userId = null, intensity = "balanced" } = await req.json();
     __trackCtx = { projectId, userId };
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
@@ -143,10 +145,17 @@ serve(async (req) => {
     }
 
     // 15% global cap → distribute per batch
-    const globalMaxPatches = Math.max(1, Math.ceil(paragraphs.length * 0.15));
+    const intensityCap =
+      intensity === "aggressive"
+        ? 0.22
+        : intensity === "light"
+          ? 0.10
+          : 0.16;
+
+    const globalMaxPatches = Math.max(1, Math.ceil(paragraphs.length * intensityCap));
     const perBatchCap = Math.max(1, Math.ceil(globalMaxPatches / batches.length));
 
-    const ctx = { genre, tone, language, chapterTitle, maxPatchesInBatch: perBatchCap, blueprintIntegrityBlock };
+    const ctx = { genre, tone, language, chapterTitle, maxPatchesInBatch: perBatchCap, blueprintIntegrityBlock, intensity };
 
     // Run all batches IN PARALLEL — total wall time ≈ slowest batch (~30s)
     const batchResults = await Promise.all(

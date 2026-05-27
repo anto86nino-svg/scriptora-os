@@ -276,6 +276,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
           language: project.config.language,
           projectId: project.id,
           userId: getCurrentUserId(),
+          intensity: "balanced",
         },
       });
       if (error) throw new Error(error.message || "Edge function error");
@@ -309,6 +310,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
           mode: fixMode,
           projectId: project.id,
           userId: getCurrentUserId(),
+          intensity: "balanced",
         },
       });
       if (error) throw new Error(error.message || "Edge function error");
