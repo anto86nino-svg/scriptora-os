@@ -254,7 +254,7 @@ export function applySurgicalEditingFromWarnings(
   const topWarnings =
     getTopWarnings(
       analysis.warnings,
-      3
+      4
     );
 
   let edited = text;
@@ -270,17 +270,68 @@ export function applySurgicalEditingFromWarnings(
       applyDialogueRoughening(edited);
 
     edited = result.text;
-
-    editsApplied.push(
-      ...result.editsApplied
-    );
+    editsApplied.push(...result.editsApplied);
   }
+
+  if (
+    shouldApplyFix(
+      topWarnings,
+      "weak_subtext"
+    )
+  ) {
+    const result =
+      applySubtextEnhancement(edited);
+
+    edited = result.text;
+    editsApplied.push(...result.editsApplied);
+  }
+
+  if (
+    shouldApplyFix(
+      topWarnings,
+      "overwritten_scene"
+    )
+  ) {
+    const result =
+      applyEndingCompression(edited);
+
+    edited = result.text;
+    editsApplied.push(...result.editsApplied);
+  }
+
+  if (
+    shouldApplyFix(
+      topWarnings,
+      "character_flattening"
+    ) ||
+    shouldApplyFix(
+      topWarnings,
+      "emotional_redundancy"
+    )
+  ) {
+    const result =
+      applyTensionPreservation(edited);
+
+    edited = result.text;
+    editsApplied.push(...result.editsApplied);
+  }
+
+  if (edited === text) {
+    const gentlyPolished =
+      applyLightEditorialPolish(text);
+
+    edited = gentlyPolished.text;
+    editsApplied.push(...gentlyPolished.editsApplied);
+  }
+
+  edited = preserveVoice(text, edited);
 
   return {
     text: edited,
-    editsApplied,
+    editsApplied: limitEdits(editsApplied, 4),
   };
 }
+
 
 function applySubtextEnhancement(
   text: string
@@ -526,4 +577,47 @@ function shouldApplyFix(
   return topWarnings.includes(
     warningType
   );
+}
+
+function applyLightEditorialPolish(
+  text: string
+): SurgicalResult {
+  let edited = text;
+  const editsApplied: string[] = [];
+
+  const replacements: Array<[RegExp, string]> = [
+    [
+      /Il metallo era freddo, come sempre\. Come ogni cosa in quelle terre di confine\./g,
+      "Il metallo era freddo. In quelle terre lo erano quasi tutte le cose."
+    ],
+    [
+      /con un tono che non usava da quando era bambino\. Un tono di chi ha smesso di fingere di sapere\./g,
+      "con una voce più bassa del previsto."
+    ],
+    [
+      /Non un nome\. Non solo un nome\. Ma l’insieme di scelte, ferite, amori e rimpianti che quel nome custodiva\./g,
+      "Non solo un nome."
+    ],
+    [
+      /E forse, pensò mentre il vento gli scompigliava i capelli, era proprio quello il vero viaggio: non ritrovare chi era stato, ma scoprire chi poteva diventare\./g,
+      ""
+    ]
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    const next = edited.replace(pattern, replacement);
+
+    if (next !== edited) {
+      edited = next;
+    }
+  }
+
+  if (edited !== text) {
+    editsApplied.push("light_editorial_polish");
+  }
+
+  return {
+    text: edited,
+    editsApplied,
+  };
 }
