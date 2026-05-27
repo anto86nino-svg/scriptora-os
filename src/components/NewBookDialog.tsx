@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, forwardRef } from "react";
 import { SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/components/CharacterStudioDialog";
-import { BookConfig, Language, Genre, ChapterLength, BookLength, CATEGORIES, BOOK_LENGTH_CONFIG, AuthorIdentity } from "@/types/book";
+import { BookConfig, Language, Genre, ChapterLength, BookLength, CATEGORIES, BOOK_LENGTH_CONFIG, AuthorIdentity, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { BookOpen, X, Sparkles, PenTool, UserRound, Save, Fingerprint, PlusCircle, Trash2, RefreshCw } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { getGenreBlueprint } from "@/lib/genre-intelligence";
@@ -137,6 +137,7 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
           tone: nextTone || prev.tone || "poetico e cinematografico",
           authorStyle: nextTone || prev.authorStyle || "cinematic, emotional, bestseller-level",
           subchaptersEnabled: false,
+          subchaptersPerChapter: prev.subchaptersPerChapter || DEFAULT_SUBCHAPTERS_PER_CHAPTER,
           shadowTitleOptions: titleOptions,
         } as BookConfig));
       }
@@ -163,6 +164,7 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
     bookLength: "short",
     numberOfChapters: 10,
     subchaptersEnabled: true,
+    subchaptersPerChapter: DEFAULT_SUBCHAPTERS_PER_CHAPTER,
   });
   const [authorIdentities, setAuthorIdentities] = useState<AuthorIdentity[]>(() => loadAuthorIdentities());
   const [authorDraft, setAuthorDraft] = useState<AuthorIdentity>(() => initialAuthorIdentity);
@@ -400,17 +402,6 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
             </div>
           )}
 
-          <AuthorIdentitySection
-            identities={authorIdentities}
-            draft={authorDraft}
-            selectedId={config.authorIdentityId || ""}
-            onSelect={(id) => applyAuthorIdentity(authorIdentities.find((item) => item.id === id) || null)}
-            onCreate={createBlankAuthor}
-            onSave={persistAuthorDraft}
-            onDelete={deleteAuthorDraft}
-            onChange={updateAuthorDraft}
-          />
-
           <Field label={t("book_length")}>
             <div className="grid grid-cols-4 gap-2">
 
@@ -547,8 +538,8 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
 
           <div className="grid grid-cols-3 gap-4">
             <Field label={t("num_chapters")}>
-              <input type="number" min={3} max={30} value={config.numberOfChapters}
-                onChange={e => update("numberOfChapters", parseInt(e.target.value) || 10)}
+              <input type="number" min={3} max={50} value={config.numberOfChapters}
+                onChange={e => update("numberOfChapters", Math.max(3, Math.min(50, parseInt(e.target.value) || 10)))}
                 className="w-full h-9 bg-muted/50 border border-border rounded-lg px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
             </Field>
             <Field label={t("default_length")}>
@@ -568,6 +559,27 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
               </label>
             </Field>
           </div>
+
+          {config.subchaptersEnabled && (
+            <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+              <div className="grid gap-3 sm:grid-cols-[1fr_120px] sm:items-center">
+                <div>
+                  <p className="text-xs font-semibold text-foreground">Sottocapitoli reali per capitolo</p>
+                  <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                    Scriptora userà questo numero nel blueprint e genererà sottocapitoli con sviluppo narrativo vero, non preview finte.
+                  </p>
+                </div>
+                <input
+                  type="number"
+                  min={1}
+                  max={8}
+                  value={config.subchaptersPerChapter ?? DEFAULT_SUBCHAPTERS_PER_CHAPTER}
+                  onChange={e => update("subchaptersPerChapter", Math.max(1, Math.min(8, parseInt(e.target.value) || DEFAULT_SUBCHAPTERS_PER_CHAPTER)))}
+                  className="h-9 w-full rounded-lg border border-border bg-muted/50 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="p-5 border-t border-border flex justify-end gap-2">

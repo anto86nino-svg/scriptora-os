@@ -11,6 +11,7 @@ import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
 import { getEditorialTier } from "@/lib/editorial-mastery";
 import { toast } from "sonner";
 import { getCurrentUserId } from "@/services/storageService";
+import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
 
 
 function countWordsForChapterLock(value: unknown): number {
@@ -238,6 +239,10 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
           tone: project.config.tone,
           language: project.config.language,
           chapterContext: chapter.content,
+          blueprintIntegrityBlock: buildBlueprintIntegrityRuntimeBlock(project.config, project.blueprint, {
+            chapterIndex,
+            compact: true,
+          }),
           mode: fixMode,
           projectId: project.id,
           userId: getCurrentUserId(),

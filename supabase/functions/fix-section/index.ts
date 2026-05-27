@@ -20,7 +20,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { paragraphText, action, problem, genre, tone, language, chapterContext, mode, projectId = null } = await req.json();
+    const { paragraphText, action, problem, genre, tone, language, chapterContext, blueprintIntegrityBlock = "", mode, projectId = null } = await req.json();
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 
@@ -63,6 +63,8 @@ CRITICAL RULES:
 Mode: ${fixMode === "power" ? "POWER UPGRADE — transform, don't just fix" : "CLEAN FIX — surgical correction"}
 Action: ${ACTION_INSTRUCTIONS[act]}
 Problem to fix: ${problem || "low impact"}
+
+${blueprintIntegrityBlock ? `${blueprintIntegrityBlock}\n` : ""}
 
 ${chapterContext ? `Chapter context (for coherence — do NOT rewrite this):\n${chapterContext.substring(0, 1500)}\n\n` : ""}Paragraph to rewrite:
 """

@@ -10,6 +10,8 @@ import { CoverGenerator } from "@/components/CoverGenerator";
 import { CharacterStudioDialog, SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/components/CharacterStudioDialog";
 import { ManuscriptAnalyzerDialog } from "@/components/ManuscriptAnalyzerDialog";
 import { NotepadDialog } from "@/components/NotepadDialog";
+import { AuthorIdentityDialog } from "@/components/AuthorIdentityDialog";
+import { FocusMusicControl } from "@/components/FocusMusicControl";
 import { InProgressSection } from "@/components/Home/InProgressSection";
 import { LibrarySection } from "@/components/Home/LibrarySection";
 import { PaywallGuard } from "@/components/PaywallGuard";
@@ -22,13 +24,14 @@ import {
   TrendingUp, LogOut, CreditCard, Download as DownloadIcon, Settings, Users,
   CheckCircle2, NotebookPen, Fingerprint, ImagePlus
 } from "lucide-react";
-import { BookConfig, BookProject } from "@/types/book";
+import { BOOK_LENGTH_CONFIG, BookConfig, BookLength, BookProject, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
 import { AUTHOR_IDENTITY_CHANGED_EVENT, applyAuthorIdentityToConfig, getSelectedAuthorIdentity, loadAuthorIdentities, setSelectedAuthorIdentityId } from "@/lib/author-identity";
 import { DevModeUnlockDialog } from "@/components/DevModeUnlockDialog";
 import { enableDevMode, isDevMode, exitDevMode, useDevMode } from "@/lib/dev-mode";
 import { BetaActivationDialog } from "@/components/BetaActivationDialog";
 import { usePlan } from "@/lib/plan";
+import { canUseFeature, type FeatureKey } from "@/lib/subscription";
 import { FlaskConical } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -116,6 +119,7 @@ export default function Home() {
   const [showCoverStudio, setShowCoverStudio] = useState(false);
   const [showManuscriptAnalyzer, setShowManuscriptAnalyzer] = useState(false);
   const [showNotepad, setShowNotepad] = useState(false);
+  const [showAuthorIdentity, setShowAuthorIdentity] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const [showIdeaModal, setShowIdeaModal] = useState(false);
   const [showMobileStats, setShowMobileStats] = useState(false);
@@ -143,6 +147,14 @@ export default function Home() {
     const ui = getUILanguage();
     return ({ en: "English", it: "Italian", es: "Spanish", fr: "French", de: "German" } as Record<string, string>)[ui] || "English";
   });
+  const [titleLang, setTitleLang] = useState<string>("English");
+  const [briefTitle, setBriefTitle] = useState("");
+  const [briefSubtitle, setBriefSubtitle] = useState("");
+  const [bookLength, setBookLength] = useState<BookLength>("medium");
+  const [customTotalWords, setCustomTotalWords] = useState(30000);
+  const [oneClickChapters, setOneClickChapters] = useState(10);
+  const [oneClickSubchaptersEnabled, setOneClickSubchaptersEnabled] = useState(false);
+  const [oneClickSubchaptersPerChapter, setOneClickSubchaptersPerChapter] = useState(DEFAULT_SUBCHAPTERS_PER_CHAPTER);
   const [authorIdentities, setAuthorIdentities] = useState(() => loadAuthorIdentities());
   const [activeAuthor, setActiveAuthor] = useState(() => getSelectedAuthorIdentity());
 
@@ -186,6 +198,44 @@ export default function Home() {
     };
   }, []);
 
+  useEffect(() => {
+    const route =
+      showIdeaModal ? "idea" :
+      showNewBook ? "newbook" :
+      showAuthorIdentity ? "author" :
+      showCoverStudio ? "cover" :
+      showCharacterStudio ? "character" :
+      showManuscriptAnalyzer ? "manuscript" :
+      showNotepad ? "notepad" :
+      showTitleIntel ? "title" :
+      showExport ? "export" :
+      showAdvancedSettings ? "settings" :
+      showLibrary || showProjects ? "library" :
+      showBetaDialog ? "beta" :
+      showDevUnlock ? "usage" :
+      null;
+
+    window.dispatchEvent(new CustomEvent("scriptora-guide-context", { detail: { route } }));
+    return () => {
+      window.dispatchEvent(new CustomEvent("scriptora-guide-context", { detail: { route: null } }));
+    };
+  }, [
+    showAdvancedSettings,
+    showAuthorIdentity,
+    showBetaDialog,
+    showCharacterStudio,
+    showCoverStudio,
+    showDevUnlock,
+    showExport,
+    showIdeaModal,
+    showLibrary,
+    showManuscriptAnalyzer,
+    showNewBook,
+    showNotepad,
+    showProjects,
+    showTitleIntel,
+  ]);
+
   // Reset intent if user edits the idea after detection
   useEffect(() => {
     if (intent) setIntent(null);
@@ -193,6 +243,12 @@ export default function Home() {
   }, [idea]);
 
   const freeBookUsed = currentPlan === "free" && projects.length > 0;
+
+  useEffect(() => {
+    if (currentPlan === "free" && bookLength !== "short") {
+      setBookLength("short");
+    }
+  }, [bookLength, currentPlan]);
 
   const openNewBookGuarded = () => {
     if (freeBookUsed) {
@@ -203,9 +259,9 @@ export default function Home() {
     setShowNewBook(true);
   };
 
-  const guardFreeAiFeature = (action: () => void) => () => {
-    if (freeBookUsed) {
-      toast.error(t("toast_free_feature_locked"));
+  const guardPlanFeature = (feature: FeatureKey, action: () => void) => () => {
+    if (!canUseFeature(currentPlan, feature)) {
+      toast.error(t("unlock_pro"));
       navigate("/pricing");
       return;
     }
@@ -325,8 +381,13 @@ export default function Home() {
         return null;
       }
       if (data?.error) throw new Error(data.error);
-      setIntent(data as DetectedIntent);
-      return data as DetectedIntent;
+      const detected = data as DetectedIntent;
+      const best = Math.max(0, Math.min(2, detected.bestTitleIndex || 0));
+      setIntent(detected);
+      setOneClickChapters(Math.max(3, Math.min(50, Number(detected.numberOfChapters) || oneClickChapters)));
+      if (!briefTitle.trim()) setBriefTitle(detected.suggestedTitles?.[best] || detected.suggestedTitles?.[0] || "");
+      if (!briefSubtitle.trim()) setBriefSubtitle(detected.suggestedSubtitles?.[best] || detected.suggestedSubtitles?.[0] || "");
+      return detected;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("detection_failed"));
       return null;
@@ -343,6 +404,7 @@ export default function Home() {
     if (!i) { setLaunching(false); return; }
 
     const best = Math.max(0, Math.min(2, i.bestTitleIndex || 0));
+    const safeBookLength = currentPlan === "free" ? "short" : bookLength;
     sessionStorage.setItem(
       "nexora-auto-brief",
       JSON.stringify({
@@ -352,11 +414,19 @@ export default function Home() {
         targetAudience: i.targetAudience,
         tone: i.tone,
         language: bookLang,
-        numberOfChapters: i.numberOfChapters,
+        titleLanguage: titleLang || bookLang,
+        numberOfChapters: Math.max(3, Math.min(50, Number(oneClickChapters || i.numberOfChapters) || 10)),
+        subchaptersEnabled: oneClickSubchaptersEnabled,
+        subchaptersPerChapter: oneClickSubchaptersEnabled
+          ? Math.max(1, Math.min(8, Number(oneClickSubchaptersPerChapter) || DEFAULT_SUBCHAPTERS_PER_CHAPTER))
+          : undefined,
+        bookLength: safeBookLength,
+        customTotalWords: safeBookLength === "custom" ? customTotalWords : undefined,
+        totalWordTarget: safeBookLength === "custom" ? customTotalWords : BOOK_LENGTH_CONFIG[safeBookLength].totalWords,
         level: i.level,
         readerPromise: i.readerPromise,
-        prefilledTitle: i.suggestedTitles?.[best],
-        prefilledSubtitle: i.suggestedSubtitles?.[best],
+        prefilledTitle: briefTitle.trim() || i.suggestedTitles?.[best],
+        prefilledSubtitle: briefSubtitle.trim() || i.suggestedSubtitles?.[best],
         authorIdentityId: activeAuthor.id,
         authorIdentity: activeAuthor,
         authorName: activeAuthor.penName,
@@ -465,7 +535,7 @@ export default function Home() {
       detail: aiQualityScore == null ? t("run_analysis_to_score") : t("analysis_based_score"),
       icon: Sparkles,
       tone: "from-rose-400/18 to-pink-300/8",
-      action: () => setShowManuscriptAnalyzer(true),
+      action: guardPlanFeature("chapter_improvement", () => setShowManuscriptAnalyzer(true)),
     },
   ];
   const workspaceStats = [
@@ -477,27 +547,27 @@ export default function Home() {
 
   const cards = [
     { group: "writer", icon: BookOpen, title: t("writer_studio_title"), desc: t("writer_studio_desc"), iconBg: "ios-icon-violet", action: () => goApp(), tag: t("os_tag_write"), emphasis: true },
-    { group: "writer", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("story_architect_title"), desc: freeBookUsed ? t("upgrade_more_books") : t("story_architect_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: openNewBookGuarded, tag: t("os_tag_plan") },
-    { group: "writer", icon: Wand2, title: t("manuscript_lab_title"), desc: t("manuscript_lab_desc"), iconBg: "ios-icon-teal", action: () => setShowManuscriptAnalyzer(true), tag: t("os_tag_score") },
-    { group: "writer", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_premium_desc"), iconBg: "ios-icon-pink", action: () => goApp(), tag: t("os_tag_rewrite") },
-    { group: "writer", icon: Users, title: freeBookUsed ? `${t("character_studio_title")} ${t("pro_feature_suffix")}` : t("character_studio_title"), desc: freeBookUsed ? t("unlock_pro") : t("character_studio_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-pink", action: guardFreeAiFeature(() => setShowCharacterStudio(true)), feature: freeBookUsed ? "export_epub" as const : undefined, tag: t("os_tag_cast") },
+    { group: "writer", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("story_architect_title"), desc: freeBookUsed ? t("upgrade_more_books") : t("story_architect_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: openNewBookGuarded, feature: "book_engine_full" as const, tag: t("os_tag_plan") },
+    { group: "writer", icon: Wand2, title: t("manuscript_lab_title"), desc: t("manuscript_lab_desc"), iconBg: "ios-icon-teal", action: () => setShowManuscriptAnalyzer(true), feature: "chapter_improvement" as const, tag: t("os_tag_score") },
+    { group: "writer", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_premium_desc"), iconBg: "ios-icon-pink", action: () => goApp(), feature: "chapter_rewrite" as const, tag: t("os_tag_rewrite") },
+    { group: "writer", icon: Users, title: t("character_studio_title"), desc: t("character_studio_desc"), iconBg: "ios-icon-pink", action: () => setShowCharacterStudio(true), feature: "book_engine_full" as const, tag: t("os_tag_cast") },
     { group: "writer", icon: NotebookPen, title: t("block_notes"), desc: t("notepad_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowNotepad(true), tag: t("os_tag_notes") },
 
     { group: "bestseller", icon: Flame, title: t("bestseller_engine_title"), desc: t("bestseller_engine_desc"), iconBg: "ios-icon-blue", action: () => setShowIdeaModal(true), emphasis: true, tag: t("os_tag_launch") },
     { group: "bestseller", icon: Rocket, title: t("kdp_intelligence_title"), desc: t("kdp_intelligence_desc"), iconBg: "ios-icon-violet", action: () => navigate("/kdp-launch"), feature: "kdp_market_base" as const, tag: t("os_tag_market") },
-    { group: "bestseller", icon: Zap, title: freeBookUsed ? `Title ${t("pro_feature_suffix")}` : t("title_intelligence"), desc: freeBookUsed ? t("unlock_pro") : t("title_premium_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-teal", action: guardFreeAiFeature(() => setShowTitleIntel(true)), feature: "title_intelligence_base" as const, tag: t("os_tag_titles") },
-    { group: "bestseller", icon: TrendingUp, title: freeBookUsed ? `Radar ${t("pro_feature_suffix")}` : "Bestseller Radar", desc: freeBookUsed ? t("unlock_pro") : t("radar_premium_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: guardFreeAiFeature(() => navigate("/bestseller-radar")), feature: freeBookUsed ? "export_epub" as const : undefined, tag: t("os_tag_signal") },
-    { group: "bestseller", icon: BarChart3, title: freeBookUsed ? `Keyword ${t("pro_feature_suffix")}` : "Keyword Gold", desc: freeBookUsed ? t("unlock_pro") : t("keyword_premium_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-yellow", action: guardFreeAiFeature(() => navigate("/keyword-gold")), feature: freeBookUsed ? "export_epub" as const : "kdp_market_base" as const, tag: t("os_tag_metadata") },
+    { group: "bestseller", icon: Zap, title: t("title_intelligence"), desc: t("title_premium_desc"), iconBg: "ios-icon-teal", action: () => setShowTitleIntel(true), feature: "title_intelligence_base" as const, tag: t("os_tag_titles") },
+    { group: "bestseller", icon: TrendingUp, title: "Bestseller Radar", desc: t("radar_premium_desc"), iconBg: "ios-icon-green", action: () => navigate("/bestseller-radar"), feature: "trending_niches_limited" as const, tag: t("os_tag_signal") },
+    { group: "bestseller", icon: BarChart3, title: "Keyword Gold", desc: t("keyword_premium_desc"), iconBg: "ios-icon-yellow", action: () => navigate("/keyword-gold"), feature: "kdp_market_base" as const, tag: t("os_tag_metadata") },
 
-    { group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: () => setShowCoverStudio(true), tag: t("os_tag_cover") },
+    { group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: () => setShowCoverStudio(true), feature: "cover_studio_template" as const, tag: t("os_tag_cover") },
     { group: "publishing", icon: FileDown, title: t("export_studio_title"), desc: t("export_studio_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const, tag: t("os_tag_export") },
-    { group: "publishing", icon: Library, title: t("library"), desc: t("library_premium_desc"), iconBg: "ios-icon-green", action: () => setShowLibrary(true), tag: t("os_tag_archive") },
+    { group: "publishing", icon: Library, title: t("library"), desc: t("library_premium_desc"), iconBg: "ios-icon-green", action: () => setShowLibrary(true), feature: "export_epub" as const, tag: t("os_tag_archive") },
 
     { group: "system", icon: HomeIcon, title: t("command_center_title"), desc: t("command_center_desc"), iconBg: "ios-icon-cyan", action: () => navigate("/dashboard"), tag: t("os_tag_overview") },
-    { group: "system", icon: Users, title: t("author_identity"), desc: t("author_identity_premium_desc"), iconBg: "ios-icon-blue", action: openNewBookGuarded, tag: t("os_tag_identity") },
-    { group: "system", icon: Settings, title: t("background_atmosphere"), desc: t("atmosphere_premium_desc"), iconBg: "ios-icon-slate", action: guardFreeAiFeature(() => setShowAdvancedSettings(true)), feature: freeBookUsed ? "export_epub" as const : undefined, tag: t("os_tag_space") },
-    { group: "system", icon: FolderOpen, title: t("projects"), desc: t("projects_premium_desc"), iconBg: "ios-icon-cyan", action: () => setShowProjects(!showProjects), tag: t("os_tag_library") },
-    { group: "system", icon: Settings, title: freeBookUsed ? `${t("settings")} ${t("pro_feature_suffix")}` : t("settings"), desc: freeBookUsed ? t("unlock_pro") : t("settings_premium_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-yellow", action: guardFreeAiFeature(() => setShowAdvancedSettings(true)), feature: freeBookUsed ? "export_epub" as const : undefined, tag: t("os_tag_control") },
+    { group: "system", icon: Users, title: t("author_identity"), desc: t("author_identity_premium_desc"), iconBg: "ios-icon-blue", action: () => setShowAuthorIdentity(true), feature: "book_engine_full" as const, tag: t("os_tag_identity") },
+    { group: "system", icon: Settings, title: t("background_atmosphere"), desc: t("atmosphere_premium_desc"), iconBg: "ios-icon-slate", action: () => setShowAdvancedSettings(true), feature: "book_engine_full" as const, tag: t("os_tag_space") },
+    { group: "system", icon: FolderOpen, title: t("projects"), desc: t("projects_premium_desc"), iconBg: "ios-icon-cyan", action: () => setShowProjects(!showProjects), feature: "book_engine_full" as const, tag: t("os_tag_library") },
+    { group: "system", icon: Settings, title: t("settings"), desc: t("settings_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowAdvancedSettings(true), feature: "book_engine_full" as const, tag: t("os_tag_control") },
   ];
 
   const cardGroups = [
@@ -638,6 +708,15 @@ export default function Home() {
                 ))}
               </select>
             </div>
+            <FocusMusicControl />
+            <button
+              type="button"
+              onClick={() => setShowAuthorIdentity(true)}
+              className="ios-toolbar-button h-8 w-8 text-sky-200"
+              title={t("author_identity")}
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </button>
             <div className="relative">
               <button
                 onClick={() => setShowLangMenu(!showLangMenu)}
@@ -689,14 +768,25 @@ export default function Home() {
                   {tt("plan_active_sentence", { plan: devOn ? "DEV" : planLabel })}
                 </p>
               </div>
-              <button
-                onClick={() => setShowIdeaModal(true)}
-                className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-200/70 bg-amber-50 px-3 text-xs font-bold text-slate-950 shadow-[0_16px_42px_rgba(251,191,36,0.28)] ring-1 ring-white/50 transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_18px_48px_rgba(251,191,36,0.36)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
-              >
-                <Flame className="h-4 w-4" />
-                {t("generate_bestseller_title")}
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </button>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                <button
+                  onClick={() => setShowIdeaModal(true)}
+                  className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-200/70 bg-amber-50 px-3 text-xs font-bold text-slate-950 shadow-[0_16px_42px_rgba(251,191,36,0.28)] ring-1 ring-white/50 transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_18px_48px_rgba(251,191,36,0.36)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
+                >
+                  <Flame className="h-4 w-4" />
+                  {t("generate_bestseller_title")}
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/")}
+                  className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-3 text-xs font-bold text-white/82 shadow-[0_12px_32px_rgba(0,0,0,0.18)] transition-all hover:-translate-y-0.5 hover:border-cyan-200/40 hover:bg-cyan-300/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:h-12 sm:px-4 sm:text-sm"
+                  title={t("public_site")}
+                >
+                  <HomeIcon className="h-4 w-4 text-cyan-200" />
+                  {t("public_site")}
+                </button>
+              </div>
             </div>
           </section>
 
@@ -1085,6 +1175,7 @@ export default function Home() {
         onLimitReached={() => navigate("/pricing")}
       />
       <NotepadDialog open={showNotepad} onClose={() => setShowNotepad(false)} />
+      <AuthorIdentityDialog open={showAuthorIdentity} onClose={() => setShowAuthorIdentity(false)} />
 
       {/* Idea modal — primary generation flow */}
       {showIdeaModal && (
@@ -1131,6 +1222,49 @@ export default function Home() {
               className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.07] px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
             />
 
+            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.05] p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Titolo e sottotitolo reali
+                </p>
+                <span className="text-[10px] text-muted-foreground">Scrivili tu o usa quelli generati dal rilevamento.</span>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  value={briefTitle}
+                  onChange={(e) => setBriefTitle(e.target.value)}
+                  placeholder="Titolo del libro"
+                  disabled={launching || detecting}
+                  className="h-9 rounded-lg border border-white/10 bg-white/[0.07] px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                />
+                <input
+                  value={briefSubtitle}
+                  onChange={(e) => setBriefSubtitle(e.target.value)}
+                  placeholder="Sottotitolo / tagline"
+                  disabled={launching || detecting}
+                  className="h-9 rounded-lg border border-white/10 bg-white/[0.07] px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                />
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <span className="mr-1 text-[10px] font-semibold uppercase text-muted-foreground">Lingua titolo</span>
+                {BOOK_LANGUAGES.map(l => (
+                  <button
+                    key={`title-${l.value}`}
+                    type="button"
+                    onClick={() => setTitleLang(l.value)}
+                    disabled={launching || detecting}
+                    className={`rounded-lg px-2 py-1 text-[10px] font-medium transition-colors disabled:opacity-50 ${
+                      titleLang === l.value
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-white/[0.07] text-secondary-foreground hover:bg-white/[0.12]"
+                    }`}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
               <span className="mr-1 flex items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground">
                 <Globe className="h-3 w-3" /> {t("book_language_label")}
@@ -1150,6 +1284,112 @@ export default function Home() {
                   {l.label}
                 </button>
               ))}
+            </div>
+
+            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.05] p-3">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Lunghezza libro
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {(Object.entries(BOOK_LENGTH_CONFIG) as [BookLength, typeof BOOK_LENGTH_CONFIG[BookLength]][]).map(([key, value]) => {
+                  const locked = currentPlan === "free" && key !== "short";
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      disabled={launching || detecting || locked}
+                      onClick={() => setBookLength(key)}
+                      className={`rounded-lg border px-2.5 py-2 text-left text-[11px] transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                        (currentPlan === "free" ? "short" : bookLength) === key
+                          ? "border-primary bg-primary/15 text-primary"
+                          : "border-white/10 bg-white/[0.06] text-foreground hover:bg-white/[0.1]"
+                      }`}
+                      title={locked ? "Disponibile con Pro/Premium" : undefined}
+                    >
+                      <span className="block font-semibold">{value.label}</span>
+                      <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                        {key === "custom" ? "Custom" : `~${(value.totalWords / 1000).toFixed(0)}k parole`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {currentPlan === "free" && (
+                <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
+                  Il piano Free resta su libro breve. Gli altri piani possono scegliere lunghezze maggiori.
+                </p>
+              )}
+              {bookLength === "custom" && currentPlan !== "free" && (
+                <div className="mt-3 grid gap-2 sm:grid-cols-[1fr,120px]">
+                  <input
+                    type="range"
+                    min={5000}
+                    max={200000}
+                    step={1000}
+                    value={customTotalWords}
+                    onChange={(e) => setCustomTotalWords(Number(e.target.value) || 30000)}
+                    disabled={launching || detecting}
+                    className="w-full accent-primary"
+                  />
+                  <input
+                    type="number"
+                    min={1000}
+                    step={500}
+                    value={customTotalWords}
+                    onChange={(e) => setCustomTotalWords(Math.max(1000, Number(e.target.value) || 30000))}
+                    disabled={launching || detecting}
+                    className="h-8 rounded-lg border border-white/10 bg-white/[0.07] px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.05] p-3">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Struttura reale del libro
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-[10px] text-muted-foreground uppercase tracking-wider">N° capitoli</label>
+                  <input
+                    type="number"
+                    min={3}
+                    max={50}
+                    value={oneClickChapters}
+                    onChange={(e) => setOneClickChapters(Math.max(3, Math.min(50, Number(e.target.value) || 10)))}
+                    disabled={launching || detecting}
+                    className="h-9 w-full rounded-lg border border-white/10 bg-white/[0.07] px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                  />
+                </div>
+                <div className="flex items-end">
+                  <label className="flex h-9 items-center gap-2 text-xs text-foreground/80">
+                    <input
+                      type="checkbox"
+                      checked={oneClickSubchaptersEnabled}
+                      onChange={(e) => setOneClickSubchaptersEnabled(e.target.checked)}
+                      disabled={launching || detecting}
+                      className="rounded border-border accent-primary"
+                    />
+                    Attiva sottocapitoli
+                  </label>
+                </div>
+              </div>
+              {oneClickSubchaptersEnabled && (
+                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_110px] sm:items-center">
+                  <p className="text-[11px] leading-4 text-muted-foreground">
+                    Ogni capitolo avrà sottosezioni scritte davvero e coerenti con il blueprint.
+                  </p>
+                  <input
+                    type="number"
+                    min={1}
+                    max={8}
+                    value={oneClickSubchaptersPerChapter}
+                    onChange={(e) => setOneClickSubchaptersPerChapter(Math.max(1, Math.min(8, Number(e.target.value) || DEFAULT_SUBCHAPTERS_PER_CHAPTER)))}
+                    disabled={launching || detecting}
+                    className="h-9 rounded-lg border border-white/10 bg-white/[0.07] px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+                  />
+                </div>
+              )}
             </div>
 
             {intent && (

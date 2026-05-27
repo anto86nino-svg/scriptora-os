@@ -16,7 +16,7 @@ import { saveProjectAsync } from "@/services/storageService";
 import { LeavePageDialog } from "@/components/AutoBestseller/LeavePageDialog";
 import { getBookProgress } from "@/lib/book-progress";
 import { ProgressBar } from "@/components/AutoBestseller/ProgressBar";
-import { BookConfig } from "@/types/book";
+import { BookConfig, type BookLength } from "@/types/book";
 import { ensureBookTitleMetadata } from "@/lib/title-shadow";
 import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
 
@@ -71,11 +71,20 @@ function charactersFromSetupText(text?: string): any[] {
     });
 }
 
+function normalizeSetupBookLength(value?: string, totalWordTarget?: number): BookLength {
+  if (value === "short" || value === "medium" || value === "long" || value === "custom") return value;
+  return totalWordTarget ? "custom" : "medium";
+}
+
 function autoBestsellerInputToBookConfig(input: AutoBestsellerInput): BookConfig {
-  const title = String(input.prefilledTitle || input.idea || "Untitled Book").trim().slice(0, 120);
-  const subtitle = String(input.prefilledSubtitle || input.readerPromise || "").trim().slice(0, 180);
+  const title = String(input.prefilledTitle || "").trim().slice(0, 120);
+  const subtitle = String(input.prefilledSubtitle || "").trim().slice(0, 180);
   const authorIdentity = resolveAuthorIdentity(input.authorIdentity, input.authorIdentityId) || getSelectedAuthorIdentity();
   const authorName = String(authorIdentity?.penName || input.authorName || "").trim();
+  const bookLength = normalizeSetupBookLength(input.bookLength, input.totalWordTarget);
+  const customTotalWords = bookLength === "custom"
+    ? Math.max(1000, Number(input.customTotalWords || input.totalWordTarget || 30000))
+    : undefined;
 
   return ensureBookTitleMetadata(applyAuthorIdentityToConfig({
     title,
@@ -83,6 +92,7 @@ function autoBestsellerInputToBookConfig(input: AutoBestsellerInput): BookConfig
     authorName,
     author: authorName,
     writerName: authorName,
+    titleLanguage: normalizeSetupLanguage(input.titleLanguage || input.language),
     tone: input.tone || "warm, insightful, bestseller-level",
     authorStyle: input.tone || "",
     language: normalizeSetupLanguage(input.language),
@@ -90,9 +100,11 @@ function autoBestsellerInputToBookConfig(input: AutoBestsellerInput): BookConfig
     category: input.genre || "Self Help",
     subcategory: input.subcategory || "",
     chapterLength: "medium",
-    bookLength: "medium",
-    numberOfChapters: Math.max(3, Math.min(20, Number(input.numberOfChapters) || 8)),
-    subchaptersEnabled: false,
+    bookLength,
+    customTotalWords,
+    numberOfChapters: Math.max(3, Math.min(50, Number(input.numberOfChapters) || 8)),
+    subchaptersEnabled: Boolean(input.subchaptersEnabled),
+    subchaptersPerChapter: Math.max(1, Math.min(8, Number(input.subchaptersPerChapter) || 3)),
     characters: charactersFromSetupText(input.charactersText),
   } as any, authorIdentity), {
     idea: input.idea,
@@ -101,6 +113,7 @@ function autoBestsellerInputToBookConfig(input: AutoBestsellerInput): BookConfig
     subcategory: input.subcategory,
     targetAudience: input.targetAudience,
     language: input.language,
+    titleLanguage: input.titleLanguage,
   });
 }
 
@@ -137,7 +150,13 @@ export default function AutoBestsellerPage() {
             targetAudience: parsed.targetAudience,
             tone: parsed.tone,
             language: parsed.language || "English",
+            titleLanguage: parsed.titleLanguage || parsed.language || "English",
             numberOfChapters: parsed.numberOfChapters,
+            subchaptersEnabled: parsed.subchaptersEnabled,
+            subchaptersPerChapter: parsed.subchaptersPerChapter,
+            bookLength: parsed.bookLength,
+            customTotalWords: parsed.customTotalWords,
+            totalWordTarget: parsed.totalWordTarget,
             level: parsed.level,
             readerPromise: parsed.readerPromise,
             prefilledTitle: parsed.prefilledTitle,
@@ -145,7 +164,6 @@ export default function AutoBestsellerPage() {
             authorName: parsed.authorName,
             authorIdentityId: parsed.authorIdentityId,
             authorIdentity: parsed.authorIdentity,
-            totalWordTarget: parsed.totalWordTarget,
             charactersText: parsed.charactersText,
           };
           handleGenerateOne(fullInput);

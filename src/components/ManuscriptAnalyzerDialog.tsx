@@ -418,13 +418,13 @@ function signalText(signal: EditorialSignal): string {
   return signal.values ? tt(signal.key, signal.values) : t(signal.key);
 }
 
-function buildProjectFromAnalysis(analysis: ManuscriptAnalysis, genre: Genre, language: Language): BookProject {
+function buildProjectFromAnalysis(analysis: ManuscriptAnalysis, genre: Genre, language: Language, subtitle = ""): BookProject {
   const now = new Date().toISOString();
   const category = categoryForGenre(genre);
   const avgChapterWords = analysis.chapters.length ? Math.round(analysis.words / analysis.chapters.length) : 0;
   const config: BookConfig = {
     title: analysis.title,
-    subtitle: t("manuscript_imported_subtitle"),
+    subtitle: subtitle.trim(),
     tone: "clear, polished, emotionally precise, editorial",
     authorStyle: "editorial rewrite guided by manuscript diagnosis",
     language,
@@ -513,6 +513,7 @@ export function ManuscriptAnalyzerDialog({
   const [rawText, setRawText] = useState("");
   const [sourceName, setSourceName] = useState("");
   const [title, setTitle] = useState("");
+  const [subtitle, setSubtitle] = useState("");
   const [bookLanguage, setBookLanguage] = useState<Language>("Italian");
   const [genre, setGenre] = useState<Genre>("self-help");
   const [analysis, setAnalysis] = useState<ManuscriptAnalysis | null>(null);
@@ -586,7 +587,7 @@ export function ManuscriptAnalyzerDialog({
 
     setSaving(true);
     try {
-      const project = buildProjectFromAnalysis(analysis, genre, bookLanguage);
+      const project = buildProjectFromAnalysis(analysis, genre, bookLanguage, subtitle);
       await saveProjectAsync(project);
       try {
         sessionStorage.setItem("nexora-open-project", project.id);
@@ -607,6 +608,7 @@ export function ManuscriptAnalyzerDialog({
     setRawText("");
     setSourceName("");
     setTitle("");
+    setSubtitle("");
     setAnalysis(null);
     setError("");
   };
@@ -672,6 +674,20 @@ export function ManuscriptAnalyzerDialog({
                 />
               </label>
 
+              <label className="block">
+                <span className="mb-1.5 block text-[10px] font-semibold uppercase text-muted-foreground">
+                  Sottotitolo reale
+                </span>
+                <input
+                  value={subtitle}
+                  onChange={(event) => setSubtitle(event.target.value)}
+                  placeholder="Tagline o sottotitolo del libro"
+                  className="h-10 w-full rounded-lg border border-white/10 bg-white/[0.07] px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary"
+                />
+              </label>
+            </div>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <label className="block">
                 <span className="mb-1.5 block text-[10px] font-semibold uppercase text-muted-foreground">
                   {t("book_language_label")}

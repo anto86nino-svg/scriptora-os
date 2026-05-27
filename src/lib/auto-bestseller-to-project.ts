@@ -1,9 +1,10 @@
 import { AutoBestsellerResult, AutoBestsellerInput } from "@/services/autoBestsellerService";
-import { BookProject, BookConfig, Chapter, BookBlueprint, Genre, Language } from "@/types/book";
+import { BookProject, BookConfig, Chapter, BookBlueprint, Genre, Language, BookLength } from "@/types/book";
 import { createProjectId } from "@/lib/storage";
 import type { LiveBook } from "@/hooks/useAutoBestseller";
 import { normalizeProjectChapterTitles } from "@/lib/chapter-titles";
 import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
+import { humanizeChapter } from "@/lib/HumanizerLayer";
 
 const ALLOWED_GENRES: Genre[] = [
   "self-help", "romance", "dark-romance", "thriller", "fantasy", "philosophy", "business", "memoir",
@@ -41,6 +42,16 @@ function normalizeLanguage(l?: string): Language {
   const cap = l.charAt(0).toUpperCase() + l.slice(1).toLowerCase();
   return (ALLOWED_LANGUAGES.find((x) => x === cap) ?? "English") as Language;
 }
+function normalizeBookLength(value?: string, totalWordTarget?: number): BookLength {
+  if (value === "short" || value === "medium" || value === "long" || value === "custom") return value;
+  return totalWordTarget ? "custom" : "medium";
+}
+
+function normalizeCustomWords(input?: Partial<AutoBestsellerInput>): number | undefined {
+  const bookLength = normalizeBookLength(input?.bookLength, input?.totalWordTarget);
+  if (bookLength !== "custom") return undefined;
+  return Math.max(1000, Number(input?.customTotalWords || input?.totalWordTarget || 30000));
+}
 
 export function autoBestsellerToProject(
   result: AutoBestsellerResult,
@@ -52,6 +63,8 @@ export function autoBestsellerToProject(
   const authorIdentity = resolveAuthorIdentity(input?.authorIdentity, input?.authorIdentityId) || getSelectedAuthorIdentity();
   const authorName = (authorIdentity?.penName || input?.authorName || "").trim();
   const characters = charactersFromText(input?.charactersText || (result as any)?.characterBible);
+  const bookLength = normalizeBookLength(input?.bookLength, input?.totalWordTarget);
+  const customTotalWords = normalizeCustomWords(input);
 
 const config: BookConfig = applyAuthorIdentityToConfig({
     title: result.title || "Untitled Bestseller",
@@ -59,6 +72,7 @@ const config: BookConfig = applyAuthorIdentityToConfig({
     authorName,
     author: authorName,
     writerName: authorName,
+    titleLanguage: normalizeLanguage(input?.titleLanguage || input?.language),
     tone: input?.tone || "Engaging, authoritative, accessible",
     authorStyle: input?.tone || "",
     language,
@@ -66,9 +80,11 @@ const config: BookConfig = applyAuthorIdentityToConfig({
     category: "Self Help",
     subcategory: input?.subcategory || "",
     chapterLength: "medium",
-    bookLength: "medium",
+    bookLength,
+    customTotalWords,
     numberOfChapters: result.chapters?.length || input?.numberOfChapters || 8,
-    subchaptersEnabled: false,
+    subchaptersEnabled: Boolean(input?.subchaptersEnabled),
+    subchaptersPerChapter: Math.max(1, Math.min(8, Number(input?.subchaptersPerChapter) || 3)),
     characters,
   }, authorIdentity) as BookConfig;
 
@@ -87,13 +103,22 @@ const config: BookConfig = applyAuthorIdentityToConfig({
       }
     : null;
 
-  const chapters: Chapter[] = result.chapters.map((c) => ({
-    title: c.title || "Untitled Chapter",
-    content: c.content || "",
-    subchapters: [],
-    status: "completed",
-    qualityRating: typeof c.finalScore === "number" ? c.finalScore : undefined,
-  }));
+  const chapters: Chapter[] = result.chapters.reduce<Chapter[]>((acc, c, index) => {
+    const chapter = humanizeChapter({
+      title: c.title || "Untitled Chapter",
+      content: c.content || "",
+      subchapters: [],
+      status: "completed",
+      qualityRating: typeof c.finalScore === "number" ? c.finalScore : undefined,
+    }, {
+      config,
+      previousChapters: acc,
+      chapterIndex: index,
+      outlineSummary: blueprint?.chapterOutlines?.[index]?.summary,
+    });
+    acc.push(chapter);
+    return acc;
+  }, []);
 
   return normalizeProjectChapterTitles({
     id: createProjectId(),
@@ -123,6 +148,8 @@ export function liveBookToPartialProject(
   const authorIdentity = resolveAuthorIdentity(input?.authorIdentity, input?.authorIdentityId) || getSelectedAuthorIdentity();
   const authorName = (authorIdentity?.penName || input?.authorName || "").trim();
   const characters = charactersFromText(input?.charactersText || (liveBook as any)?.characterBible);
+  const bookLength = normalizeBookLength(input?.bookLength, input?.totalWordTarget);
+  const customTotalWords = normalizeCustomWords(input);
 
 const config: BookConfig = applyAuthorIdentityToConfig({
     title: liveBook.title || input?.prefilledTitle || "Generating…",
@@ -130,6 +157,7 @@ const config: BookConfig = applyAuthorIdentityToConfig({
     authorName,
     author: authorName,
     writerName: authorName,
+    titleLanguage: normalizeLanguage(input?.titleLanguage || input?.language),
     tone: input?.tone || "Engaging, authoritative, accessible",
     authorStyle: input?.tone || "",
     language,
@@ -137,9 +165,11 @@ const config: BookConfig = applyAuthorIdentityToConfig({
     category: "Self Help",
     subcategory: input?.subcategory || "",
     chapterLength: "medium",
-    bookLength: "medium",
+    bookLength,
+    customTotalWords,
     numberOfChapters: input?.numberOfChapters || liveBook.outlines?.length || liveBook.chapters.length || 8,
-    subchaptersEnabled: false,
+    subchaptersEnabled: Boolean(input?.subchaptersEnabled),
+    subchaptersPerChapter: Math.max(1, Math.min(8, Number(input?.subchaptersPerChapter) || 3)),
     characters,
   }, authorIdentity) as BookConfig;
 
@@ -158,13 +188,22 @@ const config: BookConfig = applyAuthorIdentityToConfig({
 
   const chapters: Chapter[] = liveBook.chapters
     .filter((c) => c.phase === "done" && c.content)
-    .map((c) => ({
-      title: c.title || "Untitled Chapter",
-      content: c.content || "",
-      subchapters: [],
-      status: "completed" as const,
-      qualityRating: typeof c.score === "number" ? c.score : undefined,
-    }));
+    .reduce<Chapter[]>((acc, c, index) => {
+      const chapter = humanizeChapter({
+        title: c.title || "Untitled Chapter",
+        content: c.content || "",
+        subchapters: [],
+        status: "completed" as const,
+        qualityRating: typeof c.score === "number" ? c.score : undefined,
+      }, {
+        config,
+        previousChapters: acc,
+        chapterIndex: index,
+        outlineSummary: blueprint?.chapterOutlines?.[index]?.summary,
+      });
+      acc.push(chapter);
+      return acc;
+    }, []);
 
   return normalizeProjectChapterTitles({
     id: existingId || createProjectId(),

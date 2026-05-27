@@ -2,7 +2,7 @@
  * Auto Bestseller service — wraps SSE streaming + persistence to Supabase.
  */
 import { supabase } from "@/integrations/supabase/client";
-import type { AuthorIdentity } from "@/types/book";
+import type { AuthorIdentity, BookLength } from "@/types/book";
 
 export interface AutoBestsellerInput {
   idea: string;
@@ -11,7 +11,12 @@ export interface AutoBestsellerInput {
   targetAudience: string;
   tone?: string;
   language?: string;
+  titleLanguage?: string;
   numberOfChapters?: number;
+  subchaptersEnabled?: boolean;
+  subchaptersPerChapter?: number;
+  bookLength?: BookLength;
+  customTotalWords?: number;
   authorName?: string;
   authorIdentityId?: string;
   authorIdentity?: AuthorIdentity;

@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BookProject } from "@/types/book";
 import { resolveGenreKey } from "@/lib/genre-intelligence";
 import { getEditorialTier } from "@/lib/editorial-mastery";
+import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
 import { getCurrentUserId } from "@/services/storageService";
 import { toast } from "sonner";
 
@@ -82,6 +83,10 @@ export function DominationProvider({ children }: { children: ReactNode }) {
       let finalScores: any = null;
 
       const genreKey = resolveGenreKey(project.config.genre, (project.config as any).subcategory);
+      const blueprintIntegrityBlock = buildBlueprintIntegrityRuntimeBlock(project.config, project.blueprint, {
+        chapterIndex,
+        compact: true,
+      });
 
       for (let iter = 1; iter <= maxIterations; iter++) {
         const { data, error } = await supabase.functions.invoke("dominate-chapter", {
@@ -96,6 +101,7 @@ export function DominationProvider({ children }: { children: ReactNode }) {
             threshold,
             iteration: iter,
             genreAutoFixBlock: opts?.genreAutoFixBlock || "",
+            blueprintIntegrityBlock,
             masteryMode,
             projectId: project.id,
             userId: getCurrentUserId(),
@@ -202,6 +208,10 @@ export function DominationProvider({ children }: { children: ReactNode }) {
           genre: project.config.genre,
           tone: project.config.tone,
           language: project.config.language,
+          blueprintIntegrityBlock: buildBlueprintIntegrityRuntimeBlock(project.config, project.blueprint, {
+            chapterIndex,
+            compact: true,
+          }),
           projectId: project.id,
           userId: getCurrentUserId(),
         },

@@ -52,7 +52,7 @@ async function callDeepSeek(apiKey: string, system: string, user: string, jsonMo
 async function patchBatch(
   apiKey: string,
   batch: { idx: number; text: string }[],
-  ctx: { genre: string; tone: string; language: string; chapterTitle: string; maxPatchesInBatch: number }
+  ctx: { genre: string; tone: string; language: string; chapterTitle: string; maxPatchesInBatch: number; blueprintIntegrityBlock?: string }
 ) {
   const numbered = batch.map((p) => `[¶${p.idx}]\n${p.text}`).join("\n\n");
 
@@ -62,6 +62,8 @@ Se un paragrafo è già forte, NON toccarlo. Mantieni voce, struttura, ritmo.
 Output SOLO JSON valido.`;
 
   const user = `Genere: ${ctx.genre} | Tono: ${ctx.tone} | Capitolo: "${ctx.chapterTitle}"
+
+${ctx.blueprintIntegrityBlock ? `${ctx.blueprintIntegrityBlock}\n` : ""}
 
 PARAGRAFI (batch):
 ${numbered}
@@ -111,7 +113,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { chapterTitle, chapterText, genre, tone, language, projectId = null, userId = null } = await req.json();
+    const { chapterTitle, chapterText, genre, tone, language, blueprintIntegrityBlock = "", projectId = null, userId = null } = await req.json();
     __trackCtx = { projectId, userId };
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
@@ -138,7 +140,7 @@ serve(async (req) => {
     const globalMaxPatches = Math.max(1, Math.ceil(paragraphs.length * 0.15));
     const perBatchCap = Math.max(1, Math.ceil(globalMaxPatches / batches.length));
 
-    const ctx = { genre, tone, language, chapterTitle, maxPatchesInBatch: perBatchCap };
+    const ctx = { genre, tone, language, chapterTitle, maxPatchesInBatch: perBatchCap, blueprintIntegrityBlock };
 
     // Run all batches IN PARALLEL — total wall time ≈ slowest batch (~30s)
     const batchResults = await Promise.all(

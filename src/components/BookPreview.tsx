@@ -3,6 +3,7 @@ import { BookProject } from "@/types/book";
 import { RefreshCw, ChevronRight, Sparkles, Loader2, Download, Image, Plus, Lock } from "lucide-react";
 import { generateEpub, downloadEpub, validateEpubStructure } from "@/lib/epub";
 import { CoverGenerator } from "./CoverGenerator";
+import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { usePlan, PLAN_LIMITS } from "@/lib/plan";
 import { isDevMode } from "@/lib/dev-mode";
 import { UpgradeModal } from "@/components/UpgradeModal";
@@ -27,12 +28,14 @@ export function BookPreview({
   const [isExporting, setIsExporting] = useState(false);
   const [showCover, setShowCover] = useState(false);
   const [coverDataUrl, setCoverDataUrl] = useState<string | undefined>();
+  const [coverGateOpen, setCoverGateOpen] = useState(false);
+  const [exportAfterCover, setExportAfterCover] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const { plan } = usePlan();
   // Honour dev-mode plan override: Free does NOT export, Beta/Pro/Premium do.
   const canExport = PLAN_LIMITS[plan].canExport;
 
-  const handleExportEpub = async () => {
+  const performExportEpub = async (coverOverride?: string) => {
     if (!canExport) {
       setShowUpgrade(true);
       return;
@@ -47,7 +50,7 @@ export function BookPreview({
 
     setIsExporting(true);
     try {
-      const blob = await generateEpub(project, coverDataUrl);
+      const blob = await generateEpub(project, coverOverride ?? coverDataUrl);
       const filename = config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadEpub(blob, filename);
     } catch (e) {
@@ -55,6 +58,22 @@ export function BookPreview({
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const handleExportEpub = async () => {
+    if (!canExport) {
+      setShowUpgrade(true);
+      return;
+    }
+    if (phase !== "complete") {
+      alert("Completa tutto il libro prima di esportare.");
+      return;
+    }
+    if (phase === "complete" && !coverDataUrl) {
+      setCoverGateOpen(true);
+      return;
+    }
+    await performExportEpub();
   };
 
   const isChapterGenerated = (i: number) => chapters[i] && chapters[i].content.length > 0;
@@ -75,7 +94,10 @@ export function BookPreview({
         {chapters.length > 0 && (
           <div className="flex items-center justify-center gap-2 mt-4">
             <button
-              onClick={() => setShowCover(true)}
+              onClick={() => {
+                setExportAfterCover(false);
+                setShowCover(true);
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-secondary text-secondary-foreground hover:opacity-90 transition-opacity"
             >
               <Image className="h-3 w-3" />
@@ -83,8 +105,8 @@ export function BookPreview({
             </button>
             <button
               onClick={handleExportEpub}
-              disabled={isExporting}
-              title={canExport ? "Export EPUB" : "Finish your book — unlock export"}
+              disabled={isExporting || phase !== "complete"}
+              title={phase !== "complete" ? "Completa tutto il libro prima di esportare" : canExport ? "Export EPUB" : "Finish your book — unlock export"}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40"
             >
               {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <Download className="h-3 w-3" />}
@@ -281,10 +303,34 @@ export function BookPreview({
           authorName={config.authorName || config.author || config.writerName}
           description={blueprint?.overview || config.subtitle}
           authorBio={frontMatter?.aboutAuthor || config.authorIdentity?.biography}
-          onGenerate={(dataUrl) => { setCoverDataUrl(dataUrl); setShowCover(false); }}
-          onClose={() => setShowCover(false)}
+          onGenerate={(dataUrl) => {
+            setCoverDataUrl(dataUrl);
+            setShowCover(false);
+            if (exportAfterCover) {
+              setExportAfterCover(false);
+              void performExportEpub(dataUrl);
+            }
+          }}
+          onClose={() => {
+            setShowCover(false);
+            setExportAfterCover(false);
+          }}
         />
       )}
+      <CoverBeforeExportDialog
+        open={coverGateOpen}
+        format="EPUB"
+        onCreateCover={() => {
+          setCoverGateOpen(false);
+          setExportAfterCover(true);
+          setShowCover(true);
+        }}
+        onShipWithoutCover={() => {
+          setCoverGateOpen(false);
+          void performExportEpub();
+        }}
+        onClose={() => setCoverGateOpen(false)}
+      />
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} reason="export" currentPlan={plan} />
     </div>
   );

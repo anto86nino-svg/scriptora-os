@@ -4,11 +4,13 @@ import { TopBar } from "@/components/TopBar";
 import { EditorPanel } from "@/components/EditorPanel";
 import { NewBookDialog } from "@/components/NewBookDialog";
 import { CoverGenerator } from "@/components/CoverGenerator";
+import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { PublishPanel } from "@/components/PublishPanel";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { AICoachPanel } from "@/components/AICoachPanel";
 import { ProgressTracker } from "@/components/ProgressTracker";
 import { DominationTray } from "@/components/DominationTray";
+import { GuidedProjectFlow } from "@/components/GuidedProjectFlow";
 import { useBookEngine } from "@/hooks/useBookEngine";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { deleteProject as removeProject, getLastProjectId } from "@/lib/storage";
@@ -24,6 +26,9 @@ import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu
 import { Link } from "react-router-dom";
 import { useQuota, usePlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { isProjectComplete } from "@/lib/project-status";
+
+type ExportFormat = "epub" | "docx" | "pdf";
 
 const Index = () => {
   useUILanguage();
@@ -34,11 +39,17 @@ const Index = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showCoach, setShowCoach] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+  const [guidedFlowEnabled, setGuidedFlowEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem("scriptora-guided-flow");
+    return saved !== "off";
+  });
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
     const saved = localStorage.getItem("scriptora-sidebar-open");
     return saved ? JSON.parse(saved) : false;
   });
   const [coverDataUrl, setCoverDataUrl] = useState<string | undefined>();
+  const [coverGateOpen, setCoverGateOpen] = useState(false);
+  const [pendingExportFormat, setPendingExportFormat] = useState<ExportFormat | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportLabel, setExportLabel] = useState("");
   const [activeSection, setActiveSection] = useState<SectionId | null>("blueprint");
@@ -71,6 +82,10 @@ const Index = () => {
     localStorage.setItem("scriptora-sidebar-open", JSON.stringify(sidebarOpen));
   }, [sidebarOpen]);
 
+  useEffect(() => {
+    localStorage.setItem("scriptora-guided-flow", guidedFlowEnabled ? "on" : "off");
+  }, [guidedFlowEnabled]);
+
   // Token guard for free users — gracefully stop generation when limit is reached
   useEffect(() => {
     if (quota?.isOverTokenLimit && engine.isAnythingGenerating) {
@@ -84,9 +99,33 @@ const Index = () => {
     if (quota?.isOverTokenLimit) { setUpgradeReason("token-limit"); return; }
     engine.generateFullBook((section) => setActiveSection(section as SectionId));
   };
-  const guardedExportEpub = () => { if (!quota?.canExport) { setUpgradeReason("export"); return; } handleExport(); };
-  const guardedExportDocx = () => { if (!quota?.canExport) { setUpgradeReason("export"); return; } handleExportDocx(); };
-  const guardedExportPdf  = () => { if (!quota?.canExport) { setUpgradeReason("export"); return; } handleExportPdf();  };
+  const runExport = (format: ExportFormat, coverOverride?: string) => {
+    if (format === "epub") void handleExport(coverOverride);
+    if (format === "docx") void handleExportDocx();
+    if (format === "pdf") void handleExportPdf();
+  };
+
+  const requestExport = (format: ExportFormat) => {
+    if (!quota?.canExport) {
+      setUpgradeReason("export");
+      return;
+    }
+    if (!engine.project) return;
+    if (!isProjectComplete(engine.project)) {
+      toast.error("Completa tutto il libro prima di esportare.");
+      return;
+    }
+    if (!coverDataUrl) {
+      setPendingExportFormat(format);
+      setCoverGateOpen(true);
+      return;
+    }
+    runExport(format);
+  };
+
+  const guardedExportEpub = () => requestExport("epub");
+  const guardedExportDocx = () => requestExport("docx");
+  const guardedExportPdf  = () => requestExport("pdf");
 
   useEffect(() => {
     const init = async () => {
@@ -169,7 +208,7 @@ const Index = () => {
     refreshProjects();
   };
 
-  const handleExport = async () => {
+  const handleExport = async (coverOverride?: string) => {
     if (!engine.project) return;
     const errors = validateEpubStructure(engine.project);
     if (errors.length > 0) {
@@ -179,7 +218,7 @@ const Index = () => {
     setIsExporting(true);
     setExportLabel(t("exporting_epub"));
     try {
-      const blob = await generateEpub(engine.project, coverDataUrl);
+      const blob = await generateEpub(engine.project, coverOverride ?? coverDataUrl);
       const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadEpub(blob, filename);
     } catch (e) {
@@ -279,7 +318,9 @@ const Index = () => {
       {/* Floating sidebar toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="ios-toolbar-button fixed left-3 top-3 z-50 p-2 text-foreground shadow-lg backdrop-blur-xl"
+        className={`ios-toolbar-button fixed left-3 top-3 z-50 p-2 text-foreground shadow-lg backdrop-blur-xl ${
+          guidedFlowEnabled && !!engine.project?.blueprint && !sidebarOpen ? "scriptora-guide-pulse" : ""
+        }`}
         title={sidebarOpen ? t("hide_sidebar") : t("show_sidebar")}
       >
         {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -433,6 +474,19 @@ const Index = () => {
           project={engine.project}
         />
 
+        <GuidedProjectFlow
+          project={engine.project}
+          activeSection={activeSection}
+          sidebarOpen={sidebarOpen}
+          enabled={guidedFlowEnabled}
+          onEnabledChange={setGuidedFlowEnabled}
+          onOpenSidebar={() => setSidebarOpen(true)}
+          onSelectSection={(section) => {
+            setActiveSection(section);
+            setSidebarOpen(false);
+          }}
+        />
+
         <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm">
           {engine.project ? (
             <>
@@ -550,10 +604,40 @@ const Index = () => {
           authorName={engine.project.config.authorName || engine.project.config.author || engine.project.config.writerName}
           description={engine.project.blueprint?.overview || engine.project.config.subtitle}
           authorBio={engine.project.frontMatter?.aboutAuthor || engine.project.config.authorIdentity?.biography}
-          onGenerate={(dataUrl) => { setCoverDataUrl(dataUrl); setShowCover(false); }}
-          onClose={() => setShowCover(false)}
+          onGenerate={(dataUrl) => {
+            setCoverDataUrl(dataUrl);
+            setShowCover(false);
+            if (pendingExportFormat) {
+              const format = pendingExportFormat;
+              setPendingExportFormat(null);
+              runExport(format, dataUrl);
+            }
+          }}
+          onClose={() => {
+            setShowCover(false);
+            if (pendingExportFormat) setPendingExportFormat(null);
+          }}
         />
       )}
+
+      <CoverBeforeExportDialog
+        open={coverGateOpen && !!pendingExportFormat}
+        format={(pendingExportFormat || "epub").toUpperCase() as "EPUB" | "PDF" | "DOCX"}
+        onCreateCover={() => {
+          setCoverGateOpen(false);
+          setShowCover(true);
+        }}
+        onShipWithoutCover={() => {
+          const format = pendingExportFormat;
+          setCoverGateOpen(false);
+          setPendingExportFormat(null);
+          if (format) runExport(format);
+        }}
+        onClose={() => {
+          setCoverGateOpen(false);
+          setPendingExportFormat(null);
+        }}
+      />
 
       {showPublish && (
         <PublishPanel
@@ -577,9 +661,9 @@ const Index = () => {
             if (engine.project) await saveProjectAsync(engine.project);
             await refreshProjects();
           }}
-          onExportEpub={handleExport}
-          onExportPdf={handleExportPdf}
-          onExportDocx={handleExportDocx}
+          onExportEpub={guardedExportEpub}
+          onExportPdf={guardedExportPdf}
+          onExportDocx={guardedExportDocx}
         />
       )}
 

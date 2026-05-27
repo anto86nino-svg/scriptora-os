@@ -186,7 +186,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { chapterTitle, chapterText, genre, subcategory, genreKey: clientGenreKey, tone, language, threshold = 8.5, iteration = 1, genreAutoFixBlock = "", masteryMode = false, projectId = null, userId = null } = await req.json();
+    const { chapterTitle, chapterText, genre, subcategory, genreKey: clientGenreKey, tone, language, threshold = 8.5, iteration = 1, genreAutoFixBlock = "", blueprintIntegrityBlock = "", masteryMode = false, projectId = null, userId = null } = await req.json();
     __trackCtx = { projectId, userId };
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
@@ -198,6 +198,8 @@ serve(async (req) => {
     const analysisSystem = `You are a senior international editor. Brutally honest. Output ONLY JSON. Speak entirely in ${language}.`;
     const analysisUser = `Genre: ${genre} | Tone: ${tone}
 Chapter title: "${chapterTitle}"
+
+${blueprintIntegrityBlock ? `${blueprintIntegrityBlock}\n` : ""}
 
 CHAPTER:
 ${currentText}
@@ -235,7 +237,12 @@ VOICE PRESERVATION LAW (non-negotiable):
 - If a fix would improve structure but weaken voice → SKIP IT.
 - If a fix would remove emotional uniqueness → SKIP IT.
 - If a fix would make the text sound more "standard AI" → SKIP IT.
-- Sharper, clearer, more intentional. Never safer, flatter, generic.${masteryAmplifier}`;
+- Sharper, clearer, more intentional. Never safer, flatter, generic.
+
+BLUEPRINT INTEGRITY LAW:
+- Do not change names, places, relationship status, wounds, motivations, lore, timeline, reveals or canon facts.
+- Canon continuity outranks prose upgrade. If a stronger sentence would mutate canon, skip it.
+- Rewrite texture, clarity and rhythm only; never rewrite the book identity.${masteryAmplifier}`;
 
     const rewriteUser = `Genre: ${genre} | Tone: ${tone}
 Chapter title: "${chapterTitle}"
@@ -244,6 +251,7 @@ DIAGNOSIS to fix (apply ONLY where it does not violate VOICE PRESERVATION LAW):
 ${analysis.diagnosis.map((d: string, i: number) => `${i + 1}. ${d}`).join("\n")}
 
 ${genreAutoFixBlock ? genreAutoFixBlock + "\n" : ""}
+${blueprintIntegrityBlock ? `${blueprintIntegrityBlock}\n` : ""}
 ORIGINAL CHAPTER:
 ${currentText}
 

@@ -122,6 +122,7 @@ const translations: Record<string, Record<UILanguage, string>> = {
 	  untitled: { en: "Untitled", it: "Senza titolo", es: "Sin título", fr: "Sans titre", de: "Ohne Titel" },
 	  pricing: { en: "Pricing", it: "Piani", es: "Precios", fr: "Tarifs", de: "Preise" },
 	  downloads: { en: "Downloads", it: "Download", es: "Descargas", fr: "Téléchargements", de: "Downloads" },
+	  public_site: { en: "Public site", it: "Sito pubblico", es: "Sitio público", fr: "Site public", de: "Öffentliche Seite" },
 	  free: { en: "Free", it: "Gratis", es: "Gratis", fr: "Gratuit", de: "Kostenlos" },
 	  preview_action: { en: "Preview", it: "Anteprima", es: "Vista previa", fr: "Aperçu", de: "Vorschau" },
 	  advanced: { en: "Advanced", it: "Avanzate", es: "Avanzado", fr: "Avancé", de: "Erweitert" },
@@ -511,6 +512,25 @@ const translations: Record<string, Record<UILanguage, string>> = {
 	  export_locked_title: { en: "Finish your book to unlock export", it: "Completa il libro per sbloccare l'export", es: "Termina el libro para desbloquear la exportación", fr: "Terminez le livre pour débloquer l'export", de: "Schließe das Buch ab, um den Export freizuschalten" },
 	  unlock_format: { en: "Unlock {format}", it: "Sblocca {format}", es: "Desbloquear {format}", fr: "Débloquer {format}", de: "{format} freischalten" },
 	  word_limit_reached: { en: "Word limit reached — upgrade to a higher plan", it: "Limite parole raggiunto — passa a un piano superiore", es: "Límite de palabras alcanzado — sube de plan", fr: "Limite de mots atteinte — passez à un forfait supérieur", de: "Wortlimit erreicht — upgrade auf einen höheren Tarif" },
+
+	  // Guided app flow
+	  guided_title: { en: "Guided workflow", it: "Percorso guidato", es: "Flujo guiado", fr: "Parcours guidé", de: "Geführter Ablauf" },
+	  guided_desc: { en: "Follow the book flow visually. You can hide this once Scriptora feels familiar.", it: "Segui il libro passo dopo passo. Puoi nasconderlo quando Scriptora ti diventa familiare.", es: "Sigue el libro paso a paso. Puedes ocultarlo cuando Scriptora te resulte familiar.", fr: "Suivez le livre étape par étape. Vous pouvez le masquer quand Scriptora devient familier.", de: "Folge dem Buch Schritt für Schritt. Du kannst es ausblenden, sobald Scriptora vertraut ist." },
+	  guided_enable: { en: "Show guide", it: "Mostra guida", es: "Mostrar guía", fr: "Afficher le guide", de: "Guide anzeigen" },
+	  guided_disable: { en: "Hide guide", it: "Nascondi guida", es: "Ocultar guía", fr: "Masquer le guide", de: "Guide ausblenden" },
+	  guided_open_index: { en: "Open chapter index", it: "Apri indice capitoli", es: "Abrir índice de capítulos", fr: "Ouvrir l'index des chapitres", de: "Kapitelindex öffnen" },
+	  guided_go_chapter: { en: "Go to chapter", it: "Vai al capitolo", es: "Ir al capítulo", fr: "Aller au chapitre", de: "Zum Kapitel" },
+	  guided_step_label: { en: "Step {count}", it: "Step {count}", es: "Paso {count}", fr: "Étape {count}", de: "Schritt {count}" },
+	  guided_step_structure: { en: "Book structure", it: "Struttura libro", es: "Estructura del libro", fr: "Structure du livre", de: "Buchstruktur" },
+	  guided_step_structure_desc: { en: "Scriptora prepares blueprint, promise, and chapter map.", it: "Scriptora prepara blueprint, promessa e mappa dei capitoli.", es: "Scriptora prepara blueprint, promesa y mapa de capítulos.", fr: "Scriptora prépare blueprint, promesse et carte des chapitres.", de: "Scriptora erstellt Blueprint, Versprechen und Kapitelplan." },
+	  guided_step_index: { en: "Open the index", it: "Apri l'indice", es: "Abre el índice", fr: "Ouvrez l'index", de: "Index öffnen" },
+	  guided_step_index_desc: { en: "The left sidebar contains the real writing sections.", it: "La sidebar a sinistra contiene le sezioni dove si scrive davvero.", es: "La barra izquierda contiene las secciones reales de escritura.", fr: "La barre de gauche contient les vraies sections d'écriture.", de: "Die linke Seitenleiste enthält die echten Schreibbereiche." },
+	  guided_step_chapter: { en: "Choose a chapter", it: "Scegli un capitolo", es: "Elige un capítulo", fr: "Choisissez un chapitre", de: "Kapitel wählen" },
+	  guided_step_chapter_desc: { en: "Select a chapter from the index to open its editor.", it: "Seleziona un capitolo dall'indice per aprire il suo editor.", es: "Selecciona un capítulo del índice para abrir su editor.", fr: "Sélectionnez un chapitre dans l'index pour ouvrir son éditeur.", de: "Wähle ein Kapitel im Index, um den Editor zu öffnen." },
+	  guided_step_write: { en: "Write and refine", it: "Scrivi e rifinisci", es: "Escribe y refina", fr: "Rédigez et peaufinez", de: "Schreiben und verfeinern" },
+	  guided_step_write_desc: { en: "Generate, edit, analyze, or rewrite inside the chapter page.", it: "Genera, modifica, analizza o riscrivi dentro la pagina del capitolo.", es: "Genera, edita, analiza o reescribe dentro del capítulo.", fr: "Générez, modifiez, analysez ou réécrivez dans le chapitre.", de: "Generiere, bearbeite, analysiere oder überarbeite im Kapitel." },
+	  guided_step_export: { en: "Prepare export", it: "Prepara export", es: "Prepara exportación", fr: "Préparer l'export", de: "Export vorbereiten" },
+	  guided_step_export_desc: { en: "When the book is complete, export or publish from the top bar.", it: "Quando il libro è completo, esporta o pubblica dalla barra in alto.", es: "Cuando el libro esté completo, exporta o publica desde la barra superior.", fr: "Quand le livre est terminé, exportez ou publiez depuis la barre du haut.", de: "Wenn das Buch fertig ist, exportiere oder veröffentliche oben." },
 
 	  // Developer mode
 	  dev_free_hint: { en: "1 book · no export", it: "1 libro · no export", es: "1 libro · sin exportación", fr: "1 livre · pas d'export", de: "1 Buch · kein Export" },

@@ -8,6 +8,9 @@ import { saveBlobAs } from "@/lib/save-file";
 import { useToast } from "@/hooks/use-toast";
 import { usePlan, PLAN_LIMITS } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { CoverGenerator } from "@/components/CoverGenerator";
+import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
+import { isProjectComplete } from "@/lib/project-status";
 
 type Format = "epub" | "docx" | "pdf";
 
@@ -23,6 +26,9 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   const [format, setFormat] = useState<Format>("epub");
   const [isExporting, setIsExporting] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [coverGateOpen, setCoverGateOpen] = useState(false);
+  const [showCover, setShowCover] = useState(false);
+  const [coverDataUrls, setCoverDataUrls] = useState<Record<string, string>>({});
   const { plan } = usePlan();
   // Honour the dev-mode plan override: only the simulated tier's permissions
   // apply (Premium/Pro/Beta unlock export, Free does not).
@@ -30,24 +36,13 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
 
   if (!open) return null;
 
-  const exportableProjects = projects.filter(
-    p => (p.chapters?.length || 0) > 0 && p.chapters.some(c => c.content && c.content.length > 0)
-  );
+  const exportableProjects = projects.filter(isProjectComplete);
+  const selectedProject = projects.find(p => p.id === selectedId) || null;
 
   const filenameOf = (p: BookProject) =>
     (p.config.title || "book").replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
 
-  const handleExport = async () => {
-    if (!canExport) {
-      setShowUpgrade(true);
-      return;
-    }
-    const project = projects.find(p => p.id === selectedId);
-    if (!project) {
-      toast({ title: "Seleziona un progetto", variant: "destructive" });
-      return;
-    }
-
+  const performExport = async (project: BookProject, coverOverride?: string) => {
     setIsExporting(true);
     try {
       const filename = filenameOf(project);
@@ -67,7 +62,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           setIsExporting(false);
           return;
         }
-        blob = await generateEpub(project);
+        blob = await generateEpub(project, coverOverride ?? coverDataUrls[project.id]);
         ext = "epub";
         mime = "application/epub+zip";
         description = "EPUB Book";
@@ -104,6 +99,32 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const handleExport = async () => {
+    if (!canExport) {
+      setShowUpgrade(true);
+      return;
+    }
+    const project = selectedProject;
+    if (!project) {
+      toast({ title: "Seleziona un progetto", variant: "destructive" });
+      return;
+    }
+    if (!isProjectComplete(project)) {
+      toast({
+        title: "Libro non completo",
+        description: "Completa tutti i capitoli prima di esportare.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!coverDataUrls[project.id]) {
+      setCoverGateOpen(true);
+      return;
+    }
+
+    await performExport(project);
   };
 
   const formatOptions: { value: Format; icon: any; label: string; desc: string }[] = [
@@ -144,10 +165,10 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
             {exportableProjects.length === 0 ? (
               <div className="p-4 rounded-lg border border-dashed border-border text-center">
                 <p className="text-sm text-muted-foreground">
-                  Nessun progetto con capitoli generati.
+                  Nessun libro completo pronto per export.
                 </p>
                 <p className="text-xs text-muted-foreground/70 mt-1">
-                  Crea un libro e genera almeno un capitolo per esportarlo.
+                  Completa tutti i capitoli: poi Scriptora ti fara passare da Cover Studio o potrai spedire senza cover.
                 </p>
               </div>
             ) : (
@@ -258,6 +279,34 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
         </div>
       </div>
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} reason="export" currentPlan={plan} />
+      <CoverBeforeExportDialog
+        open={coverGateOpen && !!selectedProject}
+        format={format.toUpperCase() as "EPUB" | "PDF" | "DOCX"}
+        onCreateCover={() => {
+          setCoverGateOpen(false);
+          setShowCover(true);
+        }}
+        onShipWithoutCover={() => {
+          setCoverGateOpen(false);
+          if (selectedProject) void performExport(selectedProject);
+        }}
+        onClose={() => setCoverGateOpen(false)}
+      />
+      {showCover && selectedProject && (
+        <CoverGenerator
+          title={selectedProject.config.title}
+          subtitle={selectedProject.config.subtitle}
+          authorName={selectedProject.config.authorName || selectedProject.config.author || selectedProject.config.writerName}
+          description={selectedProject.blueprint?.overview || selectedProject.config.subtitle}
+          authorBio={selectedProject.frontMatter?.aboutAuthor || selectedProject.config.authorIdentity?.biography}
+          onGenerate={(dataUrl) => {
+            setCoverDataUrls((current) => ({ ...current, [selectedProject.id]: dataUrl }));
+            setShowCover(false);
+            void performExport(selectedProject, dataUrl);
+          }}
+          onClose={() => setShowCover(false)}
+        />
+      )}
     </div>
   );
 }

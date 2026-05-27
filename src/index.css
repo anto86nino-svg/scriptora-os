@@ -102,6 +102,1845 @@
   }
 }
 
+/* Scriptora public landing */
+.scriptora-landing {
+  position: relative;
+  isolation: isolate;
+}
+
+.scriptora-landing-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(118deg, rgba(8, 12, 26, 0.90), rgba(2, 3, 10, 0.98) 42%, rgba(10, 5, 28, 0.94)),
+    linear-gradient(180deg, rgba(2, 3, 10, 0.54), rgba(2, 3, 10, 0.96)),
+    radial-gradient(ellipse at 50% -10%, rgba(34, 211, 238, 0.20), transparent 54%),
+    radial-gradient(ellipse at 50% 110%, rgba(217, 70, 239, 0.16), transparent 58%);
+}
+
+.scriptora-landing-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, transparent, black 16%, black 72%, transparent);
+}
+
+.scriptora-landing-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.08), transparent),
+    linear-gradient(180deg, transparent, rgba(217, 70, 239, 0.08), transparent);
+  filter: blur(46px);
+  opacity: 0.82;
+}
+
+.scriptora-landing-nav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px clamp(18px, 4vw, 56px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(2, 3, 10, 0.55);
+  backdrop-filter: blur(24px);
+}
+
+.scriptora-landing-brand,
+.scriptora-landing-nav-cta,
+.scriptora-landing-primary,
+.scriptora-landing-secondary,
+.scriptora-landing-actions,
+.scriptora-landing-language {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
+.scriptora-landing-brand {
+  min-width: 0;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.scriptora-landing-brand-mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.22), rgba(217, 70, 239, 0.18));
+  color: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 0 34px rgba(34, 211, 238, 0.18);
+}
+
+.scriptora-landing-dev {
+  border-radius: 999px;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  padding: 2px 7px;
+  color: rgba(165, 243, 252, 0.9);
+  font-size: 10px;
+}
+
+.scriptora-landing-nav a {
+  transition: color 180ms ease;
+}
+
+.scriptora-landing-nav a:hover {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.scriptora-landing-actions {
+  flex-shrink: 0;
+}
+
+.scriptora-landing-language {
+  min-height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.07);
+  padding: 0 10px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.scriptora-landing-language select {
+  max-width: 118px;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 12px;
+  font-weight: 750;
+  outline: none;
+}
+
+.scriptora-landing-language option {
+  color: #02030a;
+}
+
+.scriptora-landing-nav-cta {
+  min-height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0 14px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.scriptora-landing-hero {
+  position: relative;
+  display: grid;
+  min-height: 86svh;
+  grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
+  gap: clamp(28px, 5vw, 72px);
+  align-items: center;
+  padding: clamp(38px, 7vw, 92px) clamp(18px, 5vw, 72px) clamp(28px, 5vw, 64px);
+}
+
+.scriptora-landing-hero::before {
+  content: "";
+  position: absolute;
+  inset: 10% clamp(12px, 4vw, 54px) 4%;
+  z-index: -1;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(115deg, rgba(34, 211, 238, 0.13), transparent 36%),
+    linear-gradient(245deg, rgba(217, 70, 239, 0.14), transparent 44%),
+    rgba(255, 255, 255, 0.035);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 34px 120px rgba(0, 0, 0, 0.36);
+}
+
+.scriptora-landing-hero-copy {
+  max-width: 720px;
+}
+
+.scriptora-landing-kicker,
+.scriptora-landing-section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 18px;
+  color: rgba(165, 243, 252, 0.78);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.scriptora-landing-kicker span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #22d3ee;
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.88);
+}
+
+.scriptora-landing-hero h1,
+.scriptora-landing-section h2,
+.scriptora-landing-final h2 {
+  max-width: 980px;
+  color: rgba(255, 255, 255, 0.96);
+  font-weight: 850;
+  line-height: 0.95;
+}
+
+.scriptora-landing-hero h1 {
+  font-size: clamp(48px, 9vw, 126px);
+}
+
+.scriptora-landing-hero p {
+  max-width: 650px;
+  margin: 24px 0 34px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: clamp(17px, 2.3vw, 23px);
+  line-height: 1.55;
+}
+
+.scriptora-landing-primary {
+  min-height: 52px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #67e8f9, #d946ef 52%, #a78bfa);
+  padding: 0 24px;
+  color: #02030a;
+  font-size: 14px;
+  font-weight: 850;
+  box-shadow: 0 18px 52px rgba(217, 70, 239, 0.22), 0 0 42px rgba(34, 211, 238, 0.14);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.scriptora-landing-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 24px 68px rgba(217, 70, 239, 0.28), 0 0 54px rgba(34, 211, 238, 0.18);
+}
+
+.scriptora-landing-secondary {
+  min-height: 52px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  padding: 0 22px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 14px;
+  font-weight: 750;
+  backdrop-filter: blur(18px);
+}
+
+.scriptora-landing-proof {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 28px;
+}
+
+.scriptora-landing-proof span {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 7px 10px;
+  color: rgba(255, 255, 255, 0.56);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.scriptora-landing-hero-visual {
+  min-width: 0;
+}
+
+.scriptora-product-stage {
+  position: relative;
+  isolation: isolate;
+  max-width: 900px;
+  margin-inline: auto;
+  padding-top: 0;
+}
+
+.scriptora-product-stage::before,
+.scriptora-product-stage::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.scriptora-product-stage::before {
+  inset: 18px 8% auto;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(103, 232, 249, 0.74), rgba(217, 70, 239, 0.66), transparent);
+  box-shadow: 0 0 42px rgba(103, 232, 249, 0.25);
+}
+
+.scriptora-product-stage::after {
+  right: 2%;
+  bottom: -7%;
+  width: 76%;
+  height: 38%;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.10), rgba(217, 70, 239, 0.12));
+  filter: blur(38px);
+  opacity: 0.74;
+  z-index: -1;
+}
+
+.scriptora-mini-screen {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 184px;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(2, 3, 10, 0.98)),
+    radial-gradient(circle at 12% 8%, rgba(34, 211, 238, 0.18), transparent 36%),
+    radial-gradient(circle at 92% 88%, rgba(217, 70, 239, 0.16), transparent 38%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.scriptora-mini-screen.is-dashboard {
+  background:
+    linear-gradient(135deg, rgba(12, 22, 42, 0.98), rgba(3, 7, 18, 0.98)),
+    radial-gradient(circle at 85% 12%, rgba(34, 211, 238, 0.20), transparent 38%);
+}
+
+.scriptora-mini-screen.is-character {
+  background:
+    linear-gradient(135deg, rgba(23, 16, 35, 0.98), rgba(3, 7, 18, 0.98)),
+    radial-gradient(circle at 14% 12%, rgba(168, 85, 247, 0.20), transparent 36%);
+}
+
+.scriptora-mini-screen.is-writer {
+  background:
+    linear-gradient(135deg, rgba(13, 20, 32, 0.98), rgba(3, 7, 18, 0.98)),
+    radial-gradient(circle at 78% 20%, rgba(251, 191, 36, 0.14), transparent 36%);
+}
+
+.scriptora-mini-screen.is-publishing {
+  background:
+    linear-gradient(135deg, rgba(11, 24, 30, 0.98), rgba(3, 7, 18, 0.98)),
+    radial-gradient(circle at 80% 18%, rgba(45, 212, 191, 0.18), transparent 34%);
+}
+
+.scriptora-mini-topbar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 8px 10px;
+}
+
+.scriptora-mini-topbar > span {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.18), rgba(217, 70, 239, 0.15));
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.scriptora-mini-topbar div {
+  min-width: 0;
+  flex: 1;
+}
+
+.scriptora-mini-topbar strong,
+.scriptora-mini-topbar em,
+.scriptora-mini-topbar b {
+  display: block;
+}
+
+.scriptora-mini-topbar strong {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scriptora-mini-topbar em {
+  margin-top: 2px;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.scriptora-mini-topbar b {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  border: 1px solid rgba(52, 211, 153, 0.26);
+  background: rgba(52, 211, 153, 0.11);
+  padding: 4px 7px;
+  color: rgba(167, 243, 208, 0.9);
+  font-size: 9px;
+  font-weight: 850;
+}
+
+.scriptora-mini-body {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 0.52fr 1fr;
+}
+
+.scriptora-mini-body aside {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+  padding: 9px 7px;
+}
+
+.scriptora-mini-body aside i {
+  overflow: hidden;
+  border-radius: 8px;
+  padding: 6px 7px;
+  color: rgba(255, 255, 255, 0.46);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scriptora-mini-body aside i.is-active {
+  border: 1px solid rgba(103, 232, 249, 0.20);
+  background: rgba(103, 232, 249, 0.08);
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.scriptora-mini-body section {
+  min-width: 0;
+  padding: 9px;
+}
+
+.scriptora-mini-metrics,
+.scriptora-mini-tools {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.scriptora-mini-metrics span,
+.scriptora-mini-tools span {
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 7px 6px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 9px;
+  font-weight: 780;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scriptora-mini-tools {
+  margin-top: 6px;
+}
+
+.scriptora-mini-tools span {
+  background: rgba(0, 0, 0, 0.18);
+  color: rgba(255, 255, 255, 0.54);
+}
+
+.scriptora-mini-lines {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.scriptora-mini-lines p {
+  margin: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  padding: 7px 8px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 9.5px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.scriptora-mini-screen.is-compact {
+  min-height: 126px;
+}
+
+.scriptora-mini-screen.is-compact .scriptora-mini-topbar {
+  min-height: 40px;
+}
+
+.scriptora-mini-screen.is-compact .scriptora-mini-body {
+  display: block;
+}
+
+.scriptora-mini-screen.is-compact aside,
+.scriptora-mini-screen.is-compact .scriptora-mini-lines {
+  display: none;
+}
+
+.scriptora-mini-screen.is-compact .scriptora-mini-body section {
+  padding: 8px;
+}
+
+.scriptora-mini-screen.is-compact .scriptora-mini-metrics,
+.scriptora-mini-screen.is-compact .scriptora-mini-tools {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.scriptora-mini-screen.is-compact .scriptora-mini-topbar b {
+  display: none;
+}
+
+.scriptora-real-product-shot {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  min-height: 540px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(5, 7, 18, 0.88));
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.48), 0 0 80px rgba(34, 211, 238, 0.10);
+  backdrop-filter: blur(26px);
+}
+
+.scriptora-real-product-shot::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, 0.08), transparent 34%),
+    linear-gradient(225deg, rgba(217, 70, 239, 0.08), transparent 42%);
+}
+
+.scriptora-real-product-shot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.scriptora-real-product-shot.is-compact {
+  min-height: 226px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.scriptora-real-product-shot.is-compact img {
+  min-height: 226px;
+}
+
+.scriptora-real-product-video {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  min-height: 540px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(5, 7, 18, 0.88));
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.48), 0 0 80px rgba(34, 211, 238, 0.10);
+  backdrop-filter: blur(26px);
+}
+
+.scriptora-real-product-video::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, 0.08), transparent 34%),
+    linear-gradient(225deg, rgba(217, 70, 239, 0.08), transparent 42%);
+}
+
+.scriptora-real-product-video video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.scriptora-live-product-frame {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  min-height: 540px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(5, 7, 18, 0.88));
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.48), 0 0 80px rgba(34, 211, 238, 0.10);
+  backdrop-filter: blur(26px);
+}
+
+.scriptora-live-product-frame::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, 0.10), transparent 34%),
+    linear-gradient(225deg, rgba(217, 70, 239, 0.10), transparent 42%);
+}
+
+.scriptora-live-product-frame iframe {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  border: 0;
+  pointer-events: none;
+  background: #02030a;
+}
+
+.scriptora-live-product-frame.is-compact {
+  min-height: 226px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transform: translateZ(0);
+}
+
+.scriptora-live-product-frame.is-compact iframe {
+  min-height: 226px;
+}
+
+.scriptora-dashboard-preview {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  min-height: 540px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(5, 7, 18, 0.88));
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.48), 0 0 80px rgba(34, 211, 238, 0.10);
+  backdrop-filter: blur(26px);
+}
+
+.scriptora-dashboard-preview aside {
+  width: 188px;
+  border-right: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.scriptora-dashboard-preview aside strong {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+}
+
+.scriptora-dashboard-preview aside > span {
+  display: block;
+  margin: 6px 10px;
+  border-radius: 8px;
+  padding: 9px 10px;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.scriptora-dashboard-preview aside > span.is-active {
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  background: rgba(34, 211, 238, 0.10);
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.scriptora-dashboard-preview h2 {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: clamp(28px, 4vw, 44px);
+  font-weight: 850;
+  line-height: 1;
+}
+
+.scriptora-dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.scriptora-dashboard-stats span,
+.scriptora-dashboard-card-grid div,
+.scriptora-dashboard-bottom,
+.scriptora-workflow-card,
+.scriptora-use-card,
+.scriptora-system-row,
+.scriptora-live-demo,
+.scriptora-pricing-card {
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.065);
+  backdrop-filter: blur(18px);
+}
+
+.scriptora-dashboard-stats span {
+  padding: 12px;
+}
+
+.scriptora-dashboard-stats strong,
+.scriptora-dashboard-stats em {
+  display: block;
+}
+
+.scriptora-dashboard-stats strong {
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 12px;
+}
+
+.scriptora-dashboard-stats em {
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.scriptora-dashboard-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.scriptora-dashboard-card-grid div {
+  min-height: 128px;
+  padding: 14px;
+}
+
+.scriptora-dashboard-card-grid span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.18), rgba(217, 70, 239, 0.16));
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.scriptora-dashboard-card-grid strong {
+  display: block;
+  margin-top: 14px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 14px;
+}
+
+.scriptora-dashboard-card-grid p {
+  margin-top: 5px;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.scriptora-dashboard-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  color: rgba(255, 255, 255, 0.60);
+  font-size: 12px;
+}
+
+.scriptora-landing-section {
+  position: relative;
+  padding: clamp(54px, 9vw, 116px) clamp(18px, 5vw, 72px);
+}
+
+.scriptora-landing-section > * {
+  max-width: 1180px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.scriptora-landing-section h2,
+.scriptora-landing-final h2 {
+  font-size: clamp(34px, 6vw, 78px);
+}
+
+.scriptora-workflow-grid,
+.scriptora-pricing-grid,
+.scriptora-use-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.scriptora-workflow-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.scriptora-pricing-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.scriptora-use-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.72fr);
+  gap: clamp(18px, 4vw, 48px);
+  align-items: end;
+  margin-bottom: 26px;
+}
+
+.scriptora-use-header p {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.scriptora-use-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.scriptora-use-card {
+  overflow: hidden;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.scriptora-use-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(103, 232, 249, 0.28);
+  background: rgba(255, 255, 255, 0.085);
+  box-shadow: 0 26px 62px rgba(0, 0, 0, 0.32), 0 0 34px rgba(34, 211, 238, 0.10);
+}
+
+.scriptora-use-image {
+  position: relative;
+  height: 226px;
+  overflow: hidden;
+}
+
+.scriptora-use-image::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, transparent 34%, rgba(2, 3, 10, 0.76)),
+    linear-gradient(135deg, rgba(34, 211, 238, 0.16), transparent 54%);
+}
+
+.scriptora-use-image span {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 1;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(2, 3, 10, 0.58);
+  padding: 6px 9px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 10px;
+  font-weight: 850;
+  backdrop-filter: blur(14px);
+}
+
+.scriptora-use-body {
+  padding: 18px;
+}
+
+.scriptora-use-step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: rgba(165, 243, 252, 0.78);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.scriptora-use-card h3 {
+  margin-top: 16px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 20px;
+  font-weight: 840;
+  line-height: 1.1;
+}
+
+.scriptora-use-card p {
+  margin-top: 10px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 13px;
+  line-height: 1.62;
+}
+
+.scriptora-workflow-card {
+  padding: 22px;
+}
+
+.scriptora-workflow-card span {
+  color: rgba(34, 211, 238, 0.78);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.scriptora-workflow-card h3,
+.scriptora-system-row h3,
+.scriptora-live-demo h3,
+.scriptora-pricing-card h3 {
+  margin-top: 14px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 21px;
+  font-weight: 820;
+  line-height: 1.1;
+}
+
+.scriptora-workflow-card p,
+.scriptora-system-row span,
+.scriptora-live-demo p,
+.scriptora-pricing-card p {
+  margin-top: 12px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.scriptora-system-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.85fr);
+  gap: 24px;
+  align-items: center;
+  padding: 24px;
+}
+
+.scriptora-system-row p {
+  color: rgba(165, 243, 252, 0.78);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.scriptora-system-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scriptora-system-tools span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(0, 0, 0, 0.18);
+  padding: 10px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.scriptora-landing-split {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(320px, 1fr);
+  gap: clamp(22px, 5vw, 56px);
+  align-items: center;
+}
+
+.scriptora-landing-split p {
+  margin-top: 22px;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.scriptora-live-demo {
+  padding: 24px;
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, 0.12), transparent 45%),
+    rgba(255, 255, 255, 0.06);
+}
+
+.scriptora-live-demo h3 {
+  margin-top: 18px;
+}
+
+.scriptora-live-generation-section {
+  padding-top: clamp(42px, 7vw, 92px);
+}
+
+.scriptora-live-generation-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.58fr);
+  gap: clamp(18px, 4vw, 46px);
+  align-items: end;
+  margin-bottom: 24px;
+}
+
+.scriptora-live-generation-header p {
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.scriptora-live-video {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background:
+    radial-gradient(circle at 16% 12%, rgba(34, 211, 238, 0.18), transparent 31%),
+    radial-gradient(circle at 78% 8%, rgba(217, 70, 239, 0.18), transparent 34%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(2, 3, 10, 0.92));
+  padding: 14px;
+  box-shadow: 0 36px 110px rgba(0, 0, 0, 0.46), 0 0 72px rgba(34, 211, 238, 0.12);
+  backdrop-filter: blur(24px);
+}
+
+.scriptora-live-video::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 18%, rgba(255, 255, 255, 0.08) 45%, transparent 64%);
+  opacity: 0.34;
+  transform: translateX(-42%);
+  animation: scriptora-live-scan 8s ease-in-out infinite;
+}
+
+.scriptora-live-video-chrome {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px 12px;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 11px;
+  font-weight: 820;
+}
+
+.scriptora-window-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.scriptora-window-dots span {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.20);
+}
+
+.scriptora-window-dots span:nth-child(1) {
+  background: rgba(251, 113, 133, 0.72);
+}
+
+.scriptora-window-dots span:nth-child(2) {
+  background: rgba(250, 204, 21, 0.68);
+}
+
+.scriptora-window-dots span:nth-child(3) {
+  background: rgba(52, 211, 153, 0.72);
+}
+
+.scriptora-live-video-status,
+.scriptora-live-pulse {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(103, 232, 249, 0.22);
+  background: rgba(34, 211, 238, 0.10);
+  padding: 6px 9px;
+  color: rgba(207, 250, 254, 0.9);
+}
+
+.scriptora-live-video-frame {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(180px, 0.58fr) minmax(0, 1.35fr) minmax(230px, 0.72fr);
+  gap: 12px;
+  min-height: 462px;
+}
+
+.scriptora-live-chapter-rail,
+.scriptora-live-editor,
+.scriptora-live-inspector {
+  min-width: 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.055);
+  backdrop-filter: blur(18px);
+}
+
+.scriptora-live-chapter-rail {
+  padding: 14px;
+}
+
+.scriptora-live-book-head {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding-bottom: 14px;
+}
+
+.scriptora-live-book-head > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  place-items: center;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.18), rgba(217, 70, 239, 0.14));
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.scriptora-live-book-head strong,
+.scriptora-live-book-head em {
+  display: block;
+}
+
+.scriptora-live-book-head strong {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  font-weight: 850;
+  line-height: 1.22;
+}
+
+.scriptora-live-book-head em {
+  margin-top: 5px;
+  color: rgba(165, 243, 252, 0.72);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 760;
+}
+
+.scriptora-live-chapter-list {
+  display: grid;
+  gap: 7px;
+}
+
+.scriptora-live-chapter-list div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.16);
+  padding: 9px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.scriptora-live-chapter-list div.is-active {
+  border-color: rgba(217, 70, 239, 0.32);
+  background: linear-gradient(135deg, rgba(217, 70, 239, 0.18), rgba(34, 211, 238, 0.10));
+  color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 30px rgba(217, 70, 239, 0.13);
+}
+
+.scriptora-live-chapter-list em {
+  color: rgba(165, 243, 252, 0.72);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.scriptora-live-editor {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(16px, 3vw, 28px);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.035)),
+    rgba(2, 3, 10, 0.34);
+}
+
+.scriptora-live-editor-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.scriptora-live-editor-head span {
+  color: rgba(165, 243, 252, 0.72);
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.scriptora-live-editor h3 {
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.94);
+  font-size: clamp(26px, 3.5vw, 46px);
+  font-weight: 850;
+  line-height: 1.02;
+}
+
+.scriptora-live-pulse {
+  flex: 0 0 auto;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 11px;
+  font-weight: 820;
+}
+
+.scriptora-live-pulse i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgb(52, 211, 153);
+  box-shadow: 0 0 18px rgba(52, 211, 153, 0.9);
+  animation: scriptora-live-pulse 1.4s ease-in-out infinite;
+}
+
+.scriptora-live-manuscript {
+  display: grid;
+  gap: 14px;
+  margin-top: auto;
+  padding-top: 34px;
+}
+
+.scriptora-live-manuscript-line {
+  max-width: 680px;
+  color: rgba(255, 255, 255, 0.74);
+  font-size: clamp(15px, 1.5vw, 19px);
+  line-height: 1.72;
+  opacity: 0.46;
+  transform: translateY(8px);
+  animation: scriptora-live-line 9s ease-in-out infinite;
+}
+
+.scriptora-live-manuscript-line.is-line-2 {
+  max-width: 620px;
+  animation-delay: 1.4s;
+}
+
+.scriptora-live-manuscript-line.is-line-3 {
+  max-width: 640px;
+  animation-delay: 2.8s;
+}
+
+.scriptora-live-cursor {
+  display: inline-block;
+  width: 10px;
+  height: 24px;
+  border-radius: 4px;
+  background: rgba(34, 211, 238, 0.85);
+  box-shadow: 0 0 22px rgba(34, 211, 238, 0.58);
+  animation: scriptora-cursor-blink 1s steps(2, start) infinite;
+}
+
+.scriptora-live-player-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 28px;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 11px;
+  font-weight: 820;
+}
+
+.scriptora-live-progress-track {
+  height: 6px;
+  flex: 1;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.scriptora-live-progress-track span {
+  display: block;
+  height: 100%;
+  width: 72%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(34, 211, 238, 0.9), rgba(217, 70, 239, 0.92), rgba(167, 139, 250, 0.94));
+  animation: scriptora-live-progress 9s ease-in-out infinite;
+}
+
+.scriptora-live-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+
+.scriptora-live-inspector-card,
+.scriptora-live-score-grid div,
+.scriptora-live-step-stack span {
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.scriptora-live-inspector-card {
+  padding: 14px;
+}
+
+.scriptora-live-inspector-card.is-strong {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.14), rgba(217, 70, 239, 0.10));
+}
+
+.scriptora-live-inspector-card span,
+.scriptora-live-score-grid span {
+  display: block;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.scriptora-live-inspector-card strong,
+.scriptora-live-score-grid strong {
+  display: block;
+  margin-top: 7px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 17px;
+  font-weight: 850;
+}
+
+.scriptora-live-score-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.scriptora-live-score-grid div {
+  padding: 12px;
+}
+
+.scriptora-live-score-grid div:last-child {
+  grid-column: 1 / -1;
+}
+
+.scriptora-live-step-stack {
+  display: grid;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.scriptora-live-step-stack span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.scriptora-live-step-stack span.is-done {
+  color: rgba(209, 250, 229, 0.9);
+}
+
+.scriptora-live-step-stack svg {
+  flex: 0 0 auto;
+  color: rgba(52, 211, 153, 0.86);
+}
+
+@keyframes scriptora-live-scan {
+  0%, 28% { transform: translateX(-58%); opacity: 0; }
+  44%, 70% { opacity: 0.32; }
+  100% { transform: translateX(58%); opacity: 0; }
+}
+
+@keyframes scriptora-live-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.55); opacity: 1; }
+}
+
+@keyframes scriptora-live-line {
+  0%, 16% { opacity: 0.34; transform: translateY(8px); }
+  32%, 74% { opacity: 0.92; transform: translateY(0); }
+  100% { opacity: 0.54; transform: translateY(0); }
+}
+
+@keyframes scriptora-cursor-blink {
+  0%, 48% { opacity: 1; }
+  49%, 100% { opacity: 0.2; }
+}
+
+@keyframes scriptora-live-progress {
+  0% { width: 18%; }
+  42% { width: 58%; }
+  72% { width: 78%; }
+  100% { width: 92%; }
+}
+
+.scriptora-testimonials-section {
+  padding-top: clamp(44px, 7vw, 92px);
+  padding-bottom: clamp(44px, 7vw, 92px);
+}
+
+.scriptora-testimonials-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.62fr);
+  gap: clamp(18px, 4vw, 44px);
+  align-items: end;
+  margin-bottom: 22px;
+}
+
+.scriptora-testimonials-header p {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.scriptora-testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.scriptora-testimonial-card {
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, 0.08), transparent 38%),
+    rgba(255, 255, 255, 0.06);
+  padding: 18px;
+  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(18px);
+}
+
+.scriptora-testimonial-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scriptora-testimonial-person img {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  object-fit: cover;
+  box-shadow: 0 0 28px rgba(34, 211, 238, 0.13);
+}
+
+.scriptora-testimonial-person strong,
+.scriptora-testimonial-person span {
+  display: block;
+}
+
+.scriptora-testimonial-person strong {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 14px;
+  font-weight: 850;
+}
+
+.scriptora-testimonial-person span {
+  margin-top: 2px;
+  color: rgba(165, 243, 252, 0.76);
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.scriptora-testimonial-card p {
+  margin-top: 16px;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 14px;
+  line-height: 1.72;
+}
+
+.scriptora-testimonial-metric {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(52, 211, 153, 0.22);
+  background: rgba(52, 211, 153, 0.10);
+  padding: 6px 9px;
+  color: rgba(209, 250, 229, 0.9);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.scriptora-pricing-card {
+  padding: 22px;
+}
+
+.scriptora-pricing-card.is-highlight {
+  border-color: rgba(217, 70, 239, 0.32);
+  background: linear-gradient(135deg, rgba(217, 70, 239, 0.13), rgba(34, 211, 238, 0.07));
+}
+
+.scriptora-pricing-card strong {
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 34px;
+  font-weight: 850;
+}
+
+.scriptora-pricing-card span {
+  margin-left: 6px;
+  color: rgba(255, 255, 255, 0.52);
+  font-size: 13px;
+}
+
+.scriptora-pricing-card ul {
+  margin-top: 20px;
+  display: grid;
+  gap: 9px;
+}
+
+.scriptora-pricing-card li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.scriptora-pricing-card li svg {
+  margin-top: 1px;
+  flex-shrink: 0;
+  color: rgba(103, 232, 249, 0.78);
+}
+
+.scriptora-landing-final {
+  margin: 40px clamp(18px, 5vw, 72px) 72px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, 0.14), transparent 42%),
+    linear-gradient(225deg, rgba(217, 70, 239, 0.16), transparent 48%),
+    rgba(255, 255, 255, 0.065);
+  padding: clamp(34px, 7vw, 82px);
+  text-align: center;
+  backdrop-filter: blur(22px);
+}
+
+.scriptora-landing-final p {
+  max-width: 680px;
+  margin: 24px auto 30px;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 17px;
+  line-height: 1.7;
+}
+
+@media (max-width: 1100px) {
+  .scriptora-landing-hero,
+  .scriptora-landing-split {
+    grid-template-columns: 1fr;
+  }
+
+  .scriptora-landing-hero {
+    min-height: auto;
+  }
+
+  .scriptora-landing-hero-visual {
+    display: none;
+  }
+
+  .scriptora-use-header,
+  .scriptora-use-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .scriptora-live-video-frame {
+    grid-template-columns: minmax(160px, 0.48fr) minmax(0, 1fr);
+  }
+
+  .scriptora-live-inspector {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(220px, 0.8fr) minmax(240px, 0.8fr) minmax(260px, 1fr);
+    align-items: stretch;
+  }
+
+  .scriptora-live-step-stack {
+    margin-top: 0;
+  }
+
+  .scriptora-testimonials-header,
+  .scriptora-testimonials-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scriptora-testimonials-grid {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 820px) {
+  .scriptora-landing-bg::before {
+    opacity: 0.28;
+    background-size: 96px 96px;
+  }
+
+  .scriptora-landing-bg::after {
+    opacity: 0.52;
+  }
+
+  .scriptora-landing-nav {
+    gap: 10px;
+    padding-block: 12px;
+  }
+
+  .scriptora-landing-actions {
+    gap: 6px;
+  }
+
+  .scriptora-landing-language {
+    max-width: 118px;
+    padding-inline: 8px;
+  }
+
+  .scriptora-landing-language select {
+    max-width: 82px;
+  }
+
+  .scriptora-landing-nav-cta {
+    min-height: 34px;
+    padding-inline: 11px;
+  }
+
+  .scriptora-landing-hero {
+    padding: 30px 16px 18px;
+  }
+
+  .scriptora-landing-hero::before {
+    display: none;
+  }
+
+  .scriptora-landing-kicker,
+  .scriptora-landing-section-label {
+    margin-bottom: 12px;
+    font-size: 10px;
+  }
+
+  .scriptora-landing-hero h1 {
+    font-size: clamp(42px, 13vw, 72px);
+    line-height: 0.98;
+  }
+
+  .scriptora-landing-hero p {
+    margin: 16px 0 22px;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+
+  .scriptora-landing-proof {
+    margin-top: 18px;
+  }
+
+  .scriptora-landing-proof span:nth-child(n + 3) {
+    display: none;
+  }
+
+  .scriptora-landing-section {
+    padding: 38px 16px;
+  }
+
+  .scriptora-landing-section h2,
+  .scriptora-landing-final h2 {
+    font-size: clamp(30px, 10vw, 48px);
+    line-height: 1.02;
+  }
+
+  .scriptora-dashboard-preview aside {
+    display: none;
+  }
+
+  .scriptora-workflow-grid,
+  .scriptora-pricing-grid,
+  .scriptora-use-grid,
+  .scriptora-use-header,
+  .scriptora-live-generation-header,
+  .scriptora-system-row {
+    grid-template-columns: 1fr;
+  }
+
+  .scriptora-live-generation-header {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .scriptora-live-generation-header p {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .scriptora-live-video {
+    padding: 10px;
+  }
+
+  .scriptora-live-video-frame {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .scriptora-live-chapter-rail,
+  .scriptora-live-inspector {
+    display: none;
+  }
+
+  .scriptora-live-video-chrome {
+    min-height: 36px;
+    padding-bottom: 8px;
+  }
+
+  .scriptora-live-editor {
+    min-height: 390px;
+    padding: 16px;
+  }
+
+  .scriptora-live-editor-head {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .scriptora-live-pulse {
+    align-self: flex-start;
+  }
+
+  .scriptora-live-manuscript {
+    margin-top: 22px;
+    padding-top: 0;
+  }
+
+  .scriptora-dashboard-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .scriptora-dashboard-card-grid,
+  .scriptora-system-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .scriptora-product-stage {
+    padding-top: 0;
+  }
+
+  .scriptora-use-header {
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .scriptora-use-header p,
+  .scriptora-landing-split p,
+  .scriptora-testimonials-header p {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .scriptora-use-image {
+    display: none;
+  }
+
+  .scriptora-use-body,
+  .scriptora-workflow-card,
+  .scriptora-system-row,
+  .scriptora-live-demo,
+  .scriptora-pricing-card,
+  .scriptora-testimonial-card {
+    padding: 15px;
+  }
+
+  .scriptora-workflow-card p,
+  .scriptora-system-row span,
+  .scriptora-live-demo p,
+  .scriptora-pricing-card p,
+  .scriptora-use-card p,
+  .scriptora-testimonial-card p {
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .scriptora-system-tools {
+    display: none;
+  }
+
+  .scriptora-testimonials-header {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .scriptora-testimonial-person img {
+    width: 46px;
+    height: 46px;
+    flex-basis: 46px;
+  }
+
+  .scriptora-landing-final {
+    margin: 12px 16px 46px;
+    padding: 28px 18px;
+  }
+}
+
+@media (max-width: 560px) {
+  .scriptora-landing-nav {
+    padding-inline: 14px;
+  }
+
+  .scriptora-landing-brand {
+    font-size: 12px;
+  }
+
+  .scriptora-landing-hero {
+    padding-inline: 14px;
+  }
+
+  .scriptora-dashboard-preview {
+    min-height: auto;
+  }
+
+  .scriptora-landing-primary,
+  .scriptora-landing-secondary {
+    width: 100%;
+  }
+
+  .scriptora-landing-proof span {
+    width: 100%;
+  }
+
+  .scriptora-live-video-status {
+    display: none;
+  }
+
+  .scriptora-live-editor h3 {
+    font-size: 28px;
+  }
+
+  .scriptora-live-manuscript-line {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scriptora-live-video::before,
+  .scriptora-live-pulse i,
+  .scriptora-live-manuscript-line,
+  .scriptora-live-cursor,
+  .scriptora-live-progress-track span {
+    animation: none;
+  }
+}
+
 
 /* Scriptora Advanced Appearance */
 :root {
@@ -1427,6 +3266,110 @@ textarea,
   transform: translateY(0) scale(0.98);
 }
 
+.scriptora-guide-pulse {
+  border-color: rgba(125, 211, 252, 0.42);
+  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.18), 0 0 28px rgba(14, 165, 233, 0.28);
+  animation: scriptora-guide-pulse 1.65s ease-in-out infinite;
+}
+
+.scriptora-guide-panel {
+  background:
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.12), transparent 34%),
+    radial-gradient(circle at top right, rgba(168, 85, 247, 0.10), transparent 28%),
+    rgba(255, 255, 255, 0.055);
+}
+
+.scriptora-step-guide,
+.scriptora-step-guide-button {
+  position: fixed;
+  right: 18px;
+  z-index: 60;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background:
+    radial-gradient(circle at top left, rgba(14, 165, 233, 0.16), transparent 38%),
+    radial-gradient(circle at top right, rgba(217, 70, 239, 0.12), transparent 34%),
+    rgba(5, 8, 18, 0.82);
+  color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 24px 62px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(22px);
+}
+
+.scriptora-step-guide {
+  bottom: 86px;
+  width: min(338px, calc(100vw - 28px));
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.scriptora-step-guide-button {
+  bottom: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  border-radius: 999px;
+  padding: 0 13px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.scriptora-step-guide-icon {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.62);
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.scriptora-step-guide-icon:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.author-input,
+.author-textarea {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.06);
+  color: hsl(var(--foreground));
+  outline: none;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+}
+
+.author-input {
+  height: 38px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.author-textarea {
+  min-height: 110px;
+  resize: vertical;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.author-input:focus,
+.author-textarea:focus {
+  border-color: hsl(var(--primary) / 0.55);
+  background: rgba(255, 255, 255, 0.075);
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.18);
+}
+
+@keyframes scriptora-guide-pulse {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1px);
+  }
+}
+
 @media (max-width: 760px) {
   .scriptora-generation-stage {
     padding: 14px;
@@ -1456,6 +3399,19 @@ textarea,
   .scriptora-studio-button {
     right: 16px;
     bottom: 16px;
+  }
+
+  .scriptora-step-guide {
+    right: 12px;
+    bottom: 78px;
+    width: calc(100vw - 24px);
+    max-height: min(62vh, 430px);
+    overflow-y: auto;
+  }
+
+  .scriptora-step-guide-button {
+    right: 12px;
+    bottom: 12px;
   }
 }
 

@@ -1,5 +1,5 @@
 // Fast blueprint generator — DeepSeek Chat in NON-streaming JSON mode.
-// Optimized for speed: smaller max_tokens, json_object response, 60s timeout.
+// Optimized for structured blueprint JSON: non-streaming, json_object response, 90s timeout.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { estimateTokens, logAIUsage } from "../_shared/ai-tracking.ts";
 
@@ -33,10 +33,10 @@ serve(async (req) => {
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        // SPEED-FIRST settings:
+        // Structured blueprint settings:
         stream: false,            // no streaming — single fast call
         response_format: { type: "json_object" },
-        max_tokens: 4096,         // blueprint never needs more
+        max_tokens: 6500,         // room for Blueprint Integrity Engine without truncating JSON
         temperature: 0.7,
       }),
     }).finally(() => clearTimeout(t));

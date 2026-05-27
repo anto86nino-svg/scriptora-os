@@ -27,6 +27,7 @@ export interface ShadowTitleInput {
 
 const WEAK_TITLE_RE = /^(untitled|untitled book|untitled bestseller|generating|generating book|to be generated|senza titolo|libro senza titolo|romanzo senza titolo)$/i;
 const WEAK_SUBTITLE_RE = /^(subtitle|sottotitolo|to be generated|da generare|n\/a|-|_)$/i;
+const DESCRIPTION_VERBS_RE = /\b(is|are|was|were|becomes|discovers|must|has to|viene|deve|scopre|porta|arriva|vuole|crede|cerca|trova|impara)\b/i;
 
 function cleanPhrase(value?: string, fallback = ""): string {
   return String(value || fallback)
@@ -42,12 +43,17 @@ function isFictionGenre(value?: string): boolean {
 
 export function isWeakBookTitle(value?: string): boolean {
   const title = cleanPhrase(value);
-  return !title || WEAK_TITLE_RE.test(title) || title.length < 4;
+  const looksLikeDescription =
+    title.length > 78 ||
+    (title.length > 48 && /[,.;:]/.test(title)) ||
+    (title.split(/\s+/).length > 11 && DESCRIPTION_VERBS_RE.test(title));
+  return !title || WEAK_TITLE_RE.test(title) || title.length < 4 || looksLikeDescription;
 }
 
 export function isWeakBookSubtitle(value?: string): boolean {
   const subtitle = cleanPhrase(value);
-  return !subtitle || WEAK_SUBTITLE_RE.test(subtitle) || subtitle.length < 8;
+  const looksLikeFullPlot = subtitle.length > 180 || (subtitle.split(/\s+/).length > 24 && DESCRIPTION_VERBS_RE.test(subtitle));
+  return !subtitle || WEAK_SUBTITLE_RE.test(subtitle) || subtitle.length < 8 || looksLikeFullPlot;
 }
 
 function topicFromInput(input: ShadowTitleInput): string {

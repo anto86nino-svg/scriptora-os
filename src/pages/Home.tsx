@@ -1,55 +1,33 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Sparkles, ShieldCheck, FileText, Lock, CheckCircle2 } from "lucide-react";
+import { ShieldCheck, FileText, Lock, CheckCircle2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { enableDevMode, isDevMode, useDevMode } from "@/lib/dev-mode";
+import { enableDevMode, useDevMode } from "@/lib/dev-mode";
 import { PRIVACY_POLICY, TERMS_OF_SERVICE, LEGAL_VERSION, LEGAL_UPDATED } from "@/lib/legal-content";
+import { hasValidConsent, readConsent, writeConsent, type ConsentRecord } from "@/lib/legal-consent";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { ScriptoraLanding } from "@/components/landing/ScriptoraLanding";
 
-const CONSENT_KEY = "nexora_consent_v1";
-
-type ConsentRecord = {
-  privacy: boolean;
-  terms: boolean;
-  age: boolean;
-  ts: string;
-  version?: string;
-};
-
-function readConsent(): ConsentRecord | null {
-  try {
-    const raw = localStorage.getItem(CONSENT_KEY);
-    return raw ? (JSON.parse(raw) as ConsentRecord) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeConsent(rec: ConsentRecord) {
-  try { localStorage.setItem(CONSENT_KEY, JSON.stringify(rec)); } catch { /* noop */ }
-}
+type HomeLocationState = {
+  legalRequired?: boolean;
+  legalReturnTo?: string;
+} | null;
 
 /**
  * SCRIPTORA — Premium landing.
  * Flow: utente apre la Home → deve accettare privacy/termini + confermare 16+
- * prima di poter cliccare Start. Dev Mode (3 click sul logo) bypassa
- * il consenso per evitare di re-inserirlo ogni volta in sviluppo.
+ * prima di poter entrare nelle rotte protette di Scriptora OS.
  */
 export default function Home() {
   const navigate = useNavigate();
+  const location = useLocation();
   const devOn = useDevMode();
   const [mounted, setMounted] = useState(false);
-  const { user, loading: authLoading } = useAuth();
-
-  // Utente già loggato → vai dritto alla dashboard, non perde il flusso
-  useEffect(() => {
-    if (!authLoading && user && !isDevMode()) {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [user, authLoading, navigate]);
+  const { user } = useAuth();
+  const legalState = location.state as HomeLocationState;
+  const legalReturnTo = legalState?.legalReturnTo || "/dashboard";
 
   // Consent state
   const [consent, setConsent] = useState<ConsentRecord | null>(() => readConsent());
@@ -78,8 +56,15 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [logoClicks]);
 
-  const consentValid = !!(consent?.privacy && consent?.terms && consent?.age && consent?.version === LEGAL_VERSION);
-  const canStart = devOn || isDevMode() || consentValid;
+  const consentValid = hasValidConsent(consent);
+  const canStart = consentValid;
+
+  useEffect(() => {
+    if (legalState?.legalRequired && !consentValid) {
+      openConsent();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [legalState?.legalRequired, consentValid]);
 
   const handleLogoClick = () => {
     const next = logoClicks + 1;
@@ -87,7 +72,11 @@ export default function Home() {
       setLogoClicks(0);
       enableDevMode();
       toast.success("Developer Mode attivato");
-      navigate("/dashboard");
+      if (consentValid) {
+        navigate("/dashboard");
+      } else {
+        openConsent();
+      }
     } else {
       setLogoClicks(next);
     }
@@ -124,7 +113,7 @@ export default function Home() {
     setConsent(rec);
     setConsentOpen(false);
     toast.success("Consenso registrato");
-    navigate("/dashboard");
+    navigate(legalReturnTo, { replace: !!legalState?.legalRequired });
   };
 
   // Mark a document as "read" when user scrolls to the bottom (within 24px tolerance).
@@ -137,111 +126,15 @@ export default function Home() {
   };
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-background text-foreground">
-      {/* Animated aurora background */}
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.18),transparent_55%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,hsl(var(--accent)/0.14),transparent_60%)]" />
-        <div className="nexora-aurora absolute -top-1/3 left-1/2 h-[120vh] w-[120vh] -translate-x-1/2 rounded-full bg-[conic-gradient(from_120deg,hsl(var(--primary)/0.25),transparent_40%,hsl(var(--accent)/0.22),transparent_70%,hsl(var(--primary)/0.25))] opacity-60 blur-3xl" />
-        <div className="nexora-grid absolute inset-0 opacity-[0.07]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
-      </div>
-
-      {/* Top brand bar */}
-      <header
-        className={`relative z-10 flex items-center justify-between px-6 py-5 sm:px-10 transition-all duration-700 ${
-          mounted ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2"
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          {/* Hidden dev-mode trigger: 3 taps on the logo */}
-          <button
-            type="button"
-            onClick={handleLogoClick}
-            aria-label="SCRIPTORA"
-            title="SCRIPTORA"
-            className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/30 outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
-          </button>
-          <span className="text-sm font-semibold tracking-[0.25em] text-foreground">
-            SCRIPTORA
-          </span>
-          {devOn && (
-            <span className="ml-2 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-primary">
-              Dev
-            </span>
-          )}
-        </div>
-        <span className="hidden text-[11px] uppercase tracking-[0.3em] text-muted-foreground sm:block">
-          Build Books That Sell
-        </span>
-      </header>
-
-      {/* Hero */}
-      <section className="relative z-10 flex min-h-[calc(100vh-72px)] flex-col items-center justify-center px-6 text-center">
-        <div
-          className={`mb-6 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/40 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-muted-foreground backdrop-blur-md transition-all duration-700 delay-100 ${
-            mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
-          }`}
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_12px_hsl(var(--primary))]" />
-          AI-native publishing engine
-        </div>
-
-        <h1
-          className={`nexora-title bg-gradient-to-b from-foreground via-foreground to-foreground/60 bg-clip-text text-6xl font-bold tracking-tight text-transparent sm:text-8xl md:text-9xl transition-all duration-1000 ${
-            mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
-          style={{ letterSpacing: "-0.04em" }}
-        >
-          SCRIPTORA
-        </h1>
-
-        <p
-          className={`mt-5 max-w-xl text-base text-muted-foreground sm:text-lg md:text-xl transition-all duration-1000 delay-200 ${
-            mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
-          }`}
-        >
-          From idea to bestselling book — powered by AI.
-        </p>
-
-        <div
-          className={`mt-10 flex flex-col items-center gap-3 transition-all duration-1000 delay-300 ${
-            mounted ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"
-          }`}
-        >
-          <button
-            onClick={handleStart}
-            className="nexora-cta group relative inline-flex h-14 items-center gap-3 overflow-hidden rounded-full bg-gradient-to-r from-primary to-accent px-10 text-base font-semibold text-primary-foreground shadow-[0_10px_40px_-10px_hsl(var(--primary)/0.7)] transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_15px_60px_-10px_hsl(var(--primary)/0.9)] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            aria-label="Start SCRIPTORA"
-          >
-            <span className="relative z-10">Start</span>
-            <ArrowRight className="relative z-10 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-            <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-          </button>
-
-          {!canStart && (
-            <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground/80">
-              <ShieldCheck className="h-3 w-3" />
-              Privacy, Termini ed età richiesti prima di iniziare
-            </p>
-          )}
-          {canStart && !devOn && (
-            <p className="text-[11px] text-muted-foreground/60">
-              Consenso registrato ✓
-            </p>
-          )}
-        </div>
-
-        <p
-          className={`mt-8 text-[11px] uppercase tracking-[0.3em] text-muted-foreground/60 transition-all duration-1000 delay-500 ${
-            mounted ? "opacity-100" : "opacity-0"
-          }`}
-        >
-          Premium · Intelligent · AI-native
-        </p>
-      </section>
+    <>
+      <ScriptoraLanding
+        mounted={mounted}
+        devOn={devOn}
+        canStart={canStart}
+        isSignedIn={!!user}
+        onEnter={handleStart}
+        onLogoClick={handleLogoClick}
+      />
 
       {/* Consent dialog with inline scrollable Privacy + Terms */}
       <Dialog open={consentOpen} onOpenChange={setConsentOpen}>
@@ -368,6 +261,6 @@ export default function Home() {
           </div>
         </DialogContent>
       </Dialog>
-    </main>
+    </>
   );
 }

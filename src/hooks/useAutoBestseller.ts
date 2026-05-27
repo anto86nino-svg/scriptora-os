@@ -16,6 +16,7 @@ import { saveProjectAsync } from "@/services/storageService";
 import { createProjectId } from "@/lib/storage";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveChapterTitle } from "@/lib/chapter-titles";
+import { humanizeNarrativeText } from "@/lib/HumanizerLayer";
 
 const INITIAL_STAGES: StageState[] = [
   { id: "titles", label: "Generating Titles", status: "pending" },
@@ -104,19 +105,38 @@ function resolveAutoChapterTitle(rawTitle: unknown, index: number, opts?: { summ
   });
 }
 
-function normalizeAutoResult(result: AutoBestsellerResult | null): AutoBestsellerResult | null {
+function humanizerConfigFromInput(input?: AutoBestsellerInput | null) {
+  return {
+    genre: input?.genre as any,
+    subcategory: input?.subcategory || "",
+    category: "Fiction",
+    language: (input?.language || "Italian") as any,
+    tone: input?.tone || "",
+  };
+}
+
+function normalizeAutoResult(result: AutoBestsellerResult | null, input?: AutoBestsellerInput | null): AutoBestsellerResult | null {
   if (!result) return result;
   const outlines = result.blueprint?.chapterOutlines || result.blueprint?.outlines || [];
   const total = result.chapters?.length || outlines.length || 0;
+  const config = humanizerConfigFromInput(input);
+  const previousChapters: Array<{ title: string; content: string }> = [];
   return {
     ...result,
-    chapters: (result.chapters || []).map((chapter, index) => ({
-      ...chapter,
-      title: resolveAutoChapterTitle(chapter?.title || outlines[index]?.title, index, {
+    chapters: (result.chapters || []).map((chapter, index) => {
+      const title = resolveAutoChapterTitle(chapter?.title || outlines[index]?.title, index, {
         summary: outlines[index]?.summary,
         total,
-      }),
-    })),
+      });
+      const content = humanizeNarrativeText(chapter?.content || "", {
+        config,
+        previousChapters,
+        chapterIndex: index,
+        outlineSummary: outlines[index]?.summary,
+      });
+      previousChapters.push({ title, content });
+      return { ...chapter, title, content };
+    }),
   };
 }
 
@@ -316,13 +336,26 @@ export function useAutoBestseller() {
       },
       onChapter: (c) => {
         let updatedLiveBook: LiveBook | null = null;
+        let safeChapterForLog: ChapterProgress | null = null;
         setState((prev) => {
           const outline = prev.liveBook.outlines?.[c.index];
           const safeTitle = resolveAutoChapterTitle(c.title || outline?.title, c.index, {
             summary: outline?.summary,
             total: c.total,
           });
-          const safeChapter = { ...c, title: safeTitle };
+          const previousChapters = prev.liveBook.chapters
+            .filter((chapter) => chapter.index < c.index && chapter.content)
+            .map((chapter) => ({ title: chapter.title, content: chapter.content || "" }));
+          const safeContent = c.phase === "done" && c.content
+            ? humanizeNarrativeText(c.content, {
+                config: humanizerConfigFromInput(lastInputRef.current),
+                previousChapters,
+                chapterIndex: c.index,
+                outlineSummary: outline?.summary,
+              })
+            : c.content;
+          const safeChapter = { ...c, title: safeTitle, content: safeContent };
+          safeChapterForLog = safeChapter;
           const existing = prev.chapters.find((x) => x.index === c.index);
           const chapters = existing
             ? prev.chapters.map((x) => (x.index === c.index ? safeChapter : x))
@@ -359,12 +392,17 @@ export function useAutoBestseller() {
         if (c.phase === "done" && updatedLiveBook) {
           void savePartialNow(updatedLiveBook);
         }
-        progressLog.push({ type: "chapter", ...c, title: resolveAutoChapterTitle(c.title, c.index, { total: c.total }), ts: Date.now() });
+        progressLog.push({
+          type: "chapter",
+          ...(safeChapterForLog || c),
+          title: resolveAutoChapterTitle((safeChapterForLog || c).title, c.index, { total: c.total }),
+          ts: Date.now(),
+        });
         queueProgressSync();
       },
       onDone: (r) => {
         clearSyncTimer();
-        const normalizedResult = normalizeAutoResult(r) || r;
+        const normalizedResult = normalizeAutoResult(r, lastInputRef.current || input) || r;
         lastResult = normalizedResult;
         setState((prev) => ({
           ...prev,
@@ -540,7 +578,7 @@ export function useAutoBestseller() {
       retries,
       chapters: chaptersList,
       liveBook,
-      result: row?.result?.title ? normalizeAutoResult(row.result as AutoBestsellerResult) : prev.result,
+      result: row?.result?.title ? normalizeAutoResult(row.result as AutoBestsellerResult, input) : prev.result,
       error: row?.error || null,
       runId: row?.id || prev.runId,
     }));

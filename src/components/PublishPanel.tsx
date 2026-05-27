@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { BookProject, BookConfig, CATEGORIES, BOOK_LENGTH_CONFIG, Language, Genre, ChapterLength, BookLength } from "@/types/book";
+import { BookProject, BookConfig, CATEGORIES, BOOK_LENGTH_CONFIG, Language, Genre, ChapterLength, BookLength, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import {
   X, Loader2, Sparkles, ChevronDown, ChevronRight, Settings2,
   BookOpen, Save, Edit3, Clock, Download, Rocket, Check, FilePlus
@@ -30,12 +30,14 @@ const BLANK_CONFIG: BookConfig = {
   category: "Self Help",
   subcategory: "Mindset",
   bookLength: "medium",
+  customTotalWords: 30000,
   chapterLength: "medium",
   numberOfChapters: 10,
   tone: "ispirante",
   authorStyle: "",
   audience: "",
   subchaptersEnabled: false,
+  subchaptersPerChapter: DEFAULT_SUBCHAPTERS_PER_CHAPTER,
 } as BookConfig;
 
 export function PublishPanel({
@@ -146,15 +148,46 @@ export function PublishPanel({
               <ConfigSelect label="Lunghezza libro" value={isFreePlan ? "short" : draftConfig.bookLength}
                 onChange={(v) => {
                   if (isFreePlan && v !== "short") return;
-                  setDraftConfig({ ...draftConfig, bookLength: isFreePlan ? "short" : v as BookLength });
+                  setDraftConfig({
+                    ...draftConfig,
+                    bookLength: isFreePlan ? "short" : v as BookLength,
+                    customTotalWords: v === "custom" ? draftConfig.customTotalWords || 30000 : draftConfig.customTotalWords,
+                  });
                 }}
-                options={isFreePlan ? ["short"] : ["short", "medium", "long"]}
-                labels={{ short: "Breve ~10k · Free", medium: "Medio ~50k", long: "Lungo ~100k+" }} />
+                options={isFreePlan ? ["short"] : ["short", "medium", "long", "custom"]}
+                labels={{ short: "Breve ~10k · Free", medium: "Medio ~50k", long: "Lungo ~100k+", custom: "Custom" }} />
               <ConfigSelect label="Lunghezza capitolo" value={draftConfig.chapterLength}
                 onChange={(v) => setDraftConfig({ ...draftConfig, chapterLength: v as ChapterLength })}
                 options={["short", "medium", "long"]}
                 labels={{ short: "Breve", medium: "Media", long: "Lunga" }} />
             </div>
+            {draftConfig.bookLength === "custom" && !isFreePlan && (
+              <div className="rounded-lg border border-primary/25 bg-primary/5 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Parole totali</label>
+                  <span className="text-xs font-semibold text-primary">{(draftConfig.customTotalWords || 30000).toLocaleString()}</span>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-[1fr,120px]">
+                  <input
+                    type="range"
+                    min={5000}
+                    max={200000}
+                    step={1000}
+                    value={draftConfig.customTotalWords || 30000}
+                    onChange={(e) => setDraftConfig({ ...draftConfig, customTotalWords: Number(e.target.value) || 30000 })}
+                    className="w-full accent-primary"
+                  />
+                  <input
+                    type="number"
+                    min={1000}
+                    step={500}
+                    value={draftConfig.customTotalWords || 30000}
+                    onChange={(e) => setDraftConfig({ ...draftConfig, customTotalWords: Math.max(1000, Number(e.target.value) || 30000) })}
+                    className="w-full h-9 bg-background border border-border rounded px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[10px] text-muted-foreground uppercase tracking-wider block mb-1">N° Capitoli</label>
@@ -176,6 +209,24 @@ export function PublishPanel({
                 className="rounded border-border" />
               Abilita sottocapitoli
             </label>
+            {draftConfig.subchaptersEnabled && (
+              <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider block mb-1">Sottocapitoli per capitolo</label>
+                <div className="grid gap-2 sm:grid-cols-[1fr_110px] sm:items-center">
+                  <p className="text-[11px] leading-4 text-muted-foreground">
+                    Verranno generati come sezioni reali del libro, con titolo e contenuto coerenti.
+                  </p>
+                  <input
+                    type="number"
+                    min={1}
+                    max={8}
+                    value={draftConfig.subchaptersPerChapter || DEFAULT_SUBCHAPTERS_PER_CHAPTER}
+                    onChange={(e) => setDraftConfig({ ...draftConfig, subchaptersPerChapter: Math.max(1, Math.min(8, parseInt(e.target.value) || DEFAULT_SUBCHAPTERS_PER_CHAPTER)) })}
+                    className="w-full h-9 bg-background border border-border rounded px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              </div>
+            )}
             <p className="text-[11px] text-muted-foreground italic pt-1">
               💡 Questa sessione è isolata: non userà né modificherà i progetti già salvati.
             </p>
@@ -272,7 +323,7 @@ export function PublishPanel({
                   <ConfigChip label={`${project.config.numberOfChapters} cap.`} />
                   <ConfigChip label={BOOK_LENGTH_CONFIG[project.config.bookLength]?.label || project.config.bookLength} />
                   <ConfigChip label={project.config.tone} />
-                  {project.config.subchaptersEnabled && <ConfigChip label="+ sottocap." />}
+                  {project.config.subchaptersEnabled && <ConfigChip label={`${project.config.subchaptersPerChapter || DEFAULT_SUBCHAPTERS_PER_CHAPTER} sottocap./cap.`} />}
                 </div>
               )}
               {showConfigWizard && (
@@ -293,11 +344,39 @@ export function PublishPanel({
                     <ConfigSelect label="Lunghezza libro" value={isFreePlan ? "short" : project.config.bookLength} onChange={(v) => {
                       if (isFreePlan && v !== "short") return;
                       onUpdateConfig("bookLength", isFreePlan ? "short" : v as BookLength);
+                      if (v === "custom" && !project.config.customTotalWords) onUpdateConfig("customTotalWords", 30000);
                     }}
-                      options={isFreePlan ? ["short"] : ["short", "medium", "long"]} labels={{ short: "Breve ~10k · Free", medium: "Medio ~50k", long: "Lungo ~100k+" }} />
+                      options={isFreePlan ? ["short"] : ["short", "medium", "long", "custom"]} labels={{ short: "Breve ~10k · Free", medium: "Medio ~50k", long: "Lungo ~100k+", custom: "Custom" }} />
                     <ConfigSelect label="Lunghezza capitolo" value={project.config.chapterLength} onChange={(v) => onUpdateConfig("chapterLength", v as ChapterLength)}
                       options={["short", "medium", "long"]} labels={{ short: "Breve", medium: "Media", long: "Lunga" }} />
                   </div>
+                  {project.config.bookLength === "custom" && !isFreePlan && (
+                    <div className="rounded-lg border border-primary/25 bg-primary/5 p-3">
+                      <div className="mb-2 flex items-center justify-between">
+                        <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Parole totali</label>
+                        <span className="text-xs font-semibold text-primary">{(project.config.customTotalWords || 30000).toLocaleString()}</span>
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-[1fr,120px]">
+                        <input
+                          type="range"
+                          min={5000}
+                          max={200000}
+                          step={1000}
+                          value={project.config.customTotalWords || 30000}
+                          onChange={(e) => onUpdateConfig("customTotalWords", Number(e.target.value) || 30000)}
+                          className="w-full accent-primary"
+                        />
+                        <input
+                          type="number"
+                          min={1000}
+                          step={500}
+                          value={project.config.customTotalWords || 30000}
+                          onChange={(e) => onUpdateConfig("customTotalWords", Math.max(1000, Number(e.target.value) || 30000))}
+                          className="w-full h-8 bg-background border border-border rounded px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="text-[10px] text-muted-foreground uppercase tracking-wider block mb-1">N° Capitoli</label>
@@ -318,6 +397,24 @@ export function PublishPanel({
                       className="rounded border-border" />
                     Abilita sottocapitoli
                   </label>
+                  {project.config.subchaptersEnabled && (
+                    <div className="rounded-lg border border-border/70 bg-background/40 p-3">
+                      <label className="text-[10px] text-muted-foreground uppercase tracking-wider block mb-1">Sottocapitoli per capitolo</label>
+                      <div className="grid gap-2 sm:grid-cols-[1fr_100px] sm:items-center">
+                        <p className="text-[11px] leading-4 text-muted-foreground">
+                          Numero usato da blueprint e generazione reale prima del back matter.
+                        </p>
+                        <input
+                          type="number"
+                          min={1}
+                          max={8}
+                          value={project.config.subchaptersPerChapter || DEFAULT_SUBCHAPTERS_PER_CHAPTER}
+                          onChange={(e) => onUpdateConfig("subchaptersPerChapter", Math.max(1, Math.min(8, parseInt(e.target.value) || DEFAULT_SUBCHAPTERS_PER_CHAPTER)))}
+                          className="w-full h-8 bg-background border border-border rounded px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

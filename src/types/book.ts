@@ -83,11 +83,85 @@ export interface BackMatter {
   otherBooks: string;
 }
 
+export interface BookSubchapterOutline {
+  title: string;
+  summary: string;
+  purpose?: string;
+  emotionalFunction?: string;
+  narrativeProgression?: string;
+  conflictProgression?: string;
+  tensionProgression?: string;
+  romanceProgression?: string;
+  psychologicalProgression?: string;
+  canonNotes?: string[];
+}
+
+export interface BookChapterOutline {
+  title: string;
+  summary: string;
+  subchapters?: BookSubchapterOutline[];
+  purpose?: string;
+  emotionalFunction?: string;
+  narrativeProgression?: string;
+  characterEvolutionCheckpoint?: string;
+  conflictProgression?: string;
+  tensionProgression?: string;
+  romanceProgression?: string;
+  psychologicalProgression?: string;
+  canonNotes?: string[];
+}
+
+export interface BlueprintIntegrityCharacterMemory {
+  canonicalName: string;
+  role?: string;
+  age?: string;
+  physicalPresence?: string;
+  emotionalWounds?: string;
+  coreDesire?: string;
+  coreFear?: string;
+  internalContradiction?: string;
+  personalityProfile?: string;
+  speechPattern?: string;
+  vocabularyStyle?: string;
+  emotionalOpennessLevel?: string;
+  trustLevel?: string;
+  loveLanguage?: string;
+  angerStyle?: string;
+  lieStyle?: string;
+  traumaMarkers?: string;
+  bodyLanguage?: string;
+  habitsAndRecurringGestures?: string;
+  relationshipMap?: string;
+  characterArc?: string;
+  forbiddenBehaviors?: string[];
+  neverSay?: string[];
+  secretNeed?: string;
+}
+
+export interface BlueprintIntegrity {
+  bookCoreDNA: Record<string, string | string[]>;
+  worldLoreFoundation: Record<string, string | string[]>;
+  characterMemoryEngine: BlueprintIntegrityCharacterMemory[];
+  structuralStoryArchitecture: Record<string, string | string[]>;
+  relationshipTensionEngine: Record<string, string | string[]>;
+  canonProtectionLayer: {
+    immutableCanonRules: string[];
+    forbiddenMutations: string[];
+    priorityOrder: string[];
+  };
+  narrativeImmersionRules: {
+    prioritize: string[];
+    avoid: string[];
+    sceneLaws: string[];
+  };
+}
+
 export interface BookBlueprint {
   overview: string;
-  chapterOutlines: { title: string; summary: string; subchapters?: { title: string; summary: string }[] }[];
+  chapterOutlines: BookChapterOutline[];
   themes: string[];
   emotionalArc: string;
+  integrity?: BlueprintIntegrity;
 }
 
 export const CATEGORIES: Record<string, string[]> = {
@@ -110,11 +184,19 @@ export const BOOK_LENGTH_CONFIG: Record<BookLength, { label: string; totalWords:
   custom: { label: "Custom", totalWords: 30000, description: "Choose your exact word count" },
 };
 
+export const DEFAULT_SUBCHAPTERS_PER_CHAPTER = 3;
+
 export function getBookTotalWords(config: { bookLength: BookLength; customTotalWords?: number }): number {
   if (config.bookLength === "custom" && config.customTotalWords && config.customTotalWords > 0) {
     return config.customTotalWords;
   }
   return BOOK_LENGTH_CONFIG[config.bookLength].totalWords;
+}
+
+export function getSubchaptersPerChapter(config: { subchaptersEnabled?: boolean; subchaptersPerChapter?: number }): number {
+  if (!config.subchaptersEnabled) return 0;
+  const raw = Number(config.subchaptersPerChapter || DEFAULT_SUBCHAPTERS_PER_CHAPTER);
+  return Math.max(1, Math.min(8, Number.isFinite(raw) ? Math.round(raw) : DEFAULT_SUBCHAPTERS_PER_CHAPTER));
 }
 
 
@@ -182,6 +264,7 @@ export interface BookConfig {
   customTotalWords?: number;
   numberOfChapters: number;
   subchaptersEnabled: boolean;
+  subchaptersPerChapter?: number;
   characters?: BookCharacter[];
   shadowTitleOptions?: {
     title: string;

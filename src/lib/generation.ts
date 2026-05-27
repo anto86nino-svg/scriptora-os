@@ -1,4 +1,4 @@
-import { BookConfig, Chapter, FrontMatter, BackMatter, BookBlueprint, Genre, AIQualityRating, BOOK_LENGTH_CONFIG, getBookTotalWords, GenreLock } from "@/types/book";
+import { BookConfig, Chapter, FrontMatter, BackMatter, BookBlueprint, Genre, AIQualityRating, BOOK_LENGTH_CONFIG, getBookTotalWords, getSubchaptersPerChapter, GenreLock } from "@/types/book";
 import { supabase } from "@/integrations/supabase/client";
 import { buildGenreSystemBlock, buildGenreBlueprintBlock, buildGenreEditorialBlock, getGenreBlueprint, buildPromptByGenre, resolveGenreKey } from "@/lib/genre-intelligence";
 import { buildWritingStyleBlock, findStylePresetById, findStylePresetByLabel } from "@/lib/writing-styles";
@@ -8,6 +8,15 @@ import { withRetry, getBreakerCooldown } from "@/lib/api-resilience";
 import { normalizeAuthorIdentity } from "@/lib/author-identity";
 import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { getCurrentUserId } from "@/services/storageService";
+import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
+import {
+  buildBlueprintIntegrityBlueprintRequest,
+  buildBlueprintIntegrityFoundationBlock,
+  buildBlueprintIntegrityRuntimeBlock,
+  normalizeBlueprintIntegrity,
+  normalizeChapterOutlineExtras,
+  normalizeSubchapterOutlineExtras,
+} from "@/lib/BlueprintIntegrityEngine";
 
 /**
  * Verbose streaming logs are off by default — they intasavano la console
@@ -303,6 +312,8 @@ BOOK ARCHITECTURE:
 - Arc position: Chapter ${chapterIndex + 1} of ${config.numberOfChapters} — ${arcPhase}
 - Core themes: ${blueprint.themes.join(", ")}
 
+${buildBlueprintIntegrityRuntimeBlock(config, blueprint, { chapterIndex })}
+
 CONTINUITY RULES (MANDATORY):
 - Reference and BUILD UPON ideas from previous chapters — create callbacks
 - NEVER repeat examples, metaphors, anecdotes, or structural patterns
@@ -566,6 +577,8 @@ ${bp.contentRules.map(r => `• ${r}`).join("\n")}`;
 
   return `${genrePrompt}
 
+${buildBlueprintIntegrityFoundationBlock(config)}
+
 ${editorialBlock}
 
 ${getStyleLock(config)}
@@ -702,14 +715,21 @@ function normalizeBlueprint(raw: unknown, config: BookConfig): BookBlueprint {
       totalChapters: config.numberOfChapters,
     });
     const rawSubs = Array.isArray((item as any).subchapters) ? (item as any).subchapters : [];
-    const subchapters = config.subchaptersEnabled
-      ? rawSubs.map((sub: any, j: number) => ({
-          title: stringifyField(sub?.title).trim() || `${title} · ${j + 1}`,
-          summary: stringifyField(sub?.summary).trim() || summary,
-        })).filter((sub: any) => sub.title || sub.summary)
+    const subchapterCount = getSubchaptersPerChapter(config);
+    const subchapters = subchapterCount > 0
+      ? Array.from({ length: subchapterCount }, (_, j) => {
+          const sub = rawSubs[j] || {};
+          const fallbackTitle = buildFallbackSubchapterTitle(title, j, config.language);
+          return {
+            title: stringifyField(sub?.title).trim() || fallbackTitle,
+            summary: stringifyField(sub?.summary).trim() || `${summary} Focus this section on ${fallbackTitle.toLowerCase()}.`,
+            ...normalizeSubchapterOutlineExtras(sub),
+          };
+        })
       : undefined;
 
-    return subchapters?.length ? { title, summary, subchapters } : { title, summary };
+    const extras = normalizeChapterOutlineExtras(item);
+    return subchapters?.length ? { title, summary, ...extras, subchapters } : { title, summary, ...extras };
   });
 
   const themes = Array.isArray(source.themes)
@@ -721,7 +741,18 @@ function normalizeBlueprint(raw: unknown, config: BookConfig): BookBlueprint {
     chapterOutlines,
     themes,
     emotionalArc: stringifyField(source.emotionalArc).trim(),
+    integrity: normalizeBlueprintIntegrity((source as any).integrity || (source as any).blueprintIntegrity, config, chapterOutlines),
   };
+}
+
+function buildFallbackSubchapterTitle(chapterTitle: string, index: number, language: string): string {
+  const italian = String(language || "").toLowerCase().includes("ital");
+  const beats = italian
+    ? ["Apertura", "Pressione", "Scelta", "Conseguenza", "Rivelazione", "Ferita", "Svolta", "Aftershock"]
+    : ["Opening Move", "Pressure Point", "Choice", "Consequence", "Revelation", "Wound", "Turn", "Aftershock"];
+  const beat = beats[index % beats.length];
+  const cleanTitle = stringifyField(chapterTitle).replace(/^chapter\s+\d+[:.\-\s]*/i, "").trim();
+  return cleanTitle ? `${cleanTitle} · ${beat}` : beat;
 }
 
 function normalizeFrontMatter(raw: unknown, config: BookConfig): FrontMatter {
@@ -816,6 +847,12 @@ export async function generateChapterChunked(
     chapterSummary: outline.summary,
     language: config.language,
   });
+  const humanizerBlock = buildHumanizerPromptBlock({
+    config,
+    previousChapters,
+    chapterIndex,
+    outlineSummary: outline.summary,
+  });
 
   let accumulatedContent = "";
   let chapterTitle = outline.title;
@@ -875,6 +912,8 @@ ${scriptoraWritingBrain}
 
 ${characterLock}
 
+${humanizerBlock}
+
 BESTSELLER QUALITY REQUIREMENTS:
 - Open with a line that stops the reader — a hook they'll remember
 - Include 2-3 highlight-worthy sentences
@@ -902,6 +941,8 @@ ${lastTextSegment}
 CURRENT PROGRESS: ${currentWords} / ${targetWords} words written
 REMAINING: ~${remainingWords} words needed
 PHASE: ${phase} — ${phaseInstruction}
+
+${humanizerBlock}
 
 TARGET for this chunk: Write approximately ${chunkTarget} words.
 
@@ -1091,7 +1132,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
     }
   }
 
-  return {
+  const finalChapter = humanizeChapter({
     title: resolveChapterTitle(chapterTitle, chapterIndex, {
       config,
       summary: outline.summary,
@@ -1099,7 +1140,9 @@ Write in ${config.language}.${adaptiveSuffix}`;
     }),
     content: accumulatedContent,
     subchapters: [],
-  };
+  }, { config, previousChapters, chapterIndex, outlineSummary: outline.summary });
+
+  return finalChapter;
 }
 
 /* ============ Blueprint ============ */
@@ -1107,6 +1150,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
 export async function generateBlueprint(config: BookConfig, genreLock?: GenreLock, usage?: AIUsageContext): Promise<BookBlueprint> {
   const bookInfo = BOOK_LENGTH_CONFIG[config.bookLength];
   const totalWords = getBookTotalWords(config);
+  const subchapterCount = getSubchaptersPerChapter(config);
   const editorialBP = resolveLockedBlueprint(config, genreLock);
   const structureScaffold = editorialBP.structure.length
     ? `\nGENRE STRUCTURE SCAFFOLD${genreLock ? " (LOCKED)" : ""} (use as backbone, expand into ${config.numberOfChapters} chapters):\n${editorialBP.structure.map((s, i) => `${i + 1}. ${s}`).join("\n")}\nMap and expand this scaffold across the ${config.numberOfChapters} chapters — fold/split sections so EVERY chapter advances the editorial structure above.`
@@ -1122,10 +1166,12 @@ Tone: ${config.tone}
 Language: ${config.language} — ALL content MUST be in ${config.language}
 Book length: ${bookInfo.label} (~${totalWords.toLocaleString()} total words)
 Number of chapters: ${config.numberOfChapters}
-${config.subchaptersEnabled ? "Include 2-4 subchapters per chapter." : "No subchapters."}
+${subchapterCount > 0 ? `Include EXACTLY ${subchapterCount} real subchapters per chapter. Each subchapter must have a specific title, a clear narrative/editorial purpose, and a distinct beat. They must not be decorative labels.` : "No subchapters."}
 ${structureScaffold}
 
 ${buildGenreBlueprintBlock(config.genre, (config as any).subcategory)}
+
+${buildBlueprintIntegrityBlueprintRequest(config)}
 
 CRITICAL — BESTSELLER QUALITY TITLES:
 - Chapter titles must be EMOTIONALLY COMPELLING — the kind that make readers flip to that page
@@ -1136,7 +1182,7 @@ CRITICAL — BESTSELLER QUALITY TITLES:
 
 Return a JSON object with:
 - overview: A 2-3 paragraph overview of the book's thesis and emotional journey (in ${config.language})
-- chapterOutlines: Array of {title, summary${config.subchaptersEnabled ? ', subchapters: [{title, summary}]' : ''}} (in ${config.language})
+- chapterOutlines: Array of {title, summary${subchapterCount > 0 ? `, subchapters: exactly ${subchapterCount} items [{title, summary}]` : ''}} (in ${config.language})
 - themes: Array of core themes (in ${config.language})
 - emotionalArc: Description of the emotional progression (in ${config.language})
 
@@ -1190,6 +1236,8 @@ ${buildAuthorBookDeclaration(config)}
 - Genre: ${genreKey}
 - Language: ${config.language} — ALL content MUST be in ${config.language}
 - Overview: ${blueprint.overview}
+
+${buildBlueprintIntegrityRuntimeBlock(config, blueprint, { compact: true })}
 
 GENRE-SPECIFIC FRONT MATTER SECTIONS TO PRODUCE (in this exact spirit):
 ${sectionsList.map((s, i) => `${i + 1}. ${s}`).join("\n")}
@@ -1262,7 +1310,8 @@ export async function generateSubchapter(
   ).join("\n");
 
   const bookTotal = getBookTotalWords(config);
-  const subWordTarget = Math.round((bookTotal / config.numberOfChapters) / 3);
+  const subchapterCount = getSubchaptersPerChapter(config) || 3;
+  const subWordTarget = Math.round((bookTotal / config.numberOfChapters) / subchapterCount);
   const subMin = Math.max(400, Math.round(subWordTarget * 0.8));
   const subMax = Math.round(subWordTarget * 1.2);
 
@@ -1273,8 +1322,14 @@ export async function generateSubchapter(
     chapterSummary: subOutline?.summary || "",
     language: config.language,
   });
+  const humanizerBlock = buildHumanizerPromptBlock({
+    config,
+    previousChapters,
+    chapterIndex,
+    outlineSummary: subOutline?.summary || outline.summary,
+  });
 
-  const prompt = `Write Subchapter ${subchapterIndex + 1} of Chapter ${chapterIndex + 1} "${chapter.title}" in "${config.title}".
+  const prompt = `Write Subchapter ${subchapterIndex + 1} of ${subchapterCount} for Chapter ${chapterIndex + 1} "${chapter.title}" in "${config.title}".
 ${subOutline ? `Subchapter plan: "${subOutline.title}" — ${subOutline.summary}` : `Write the ${subchapterIndex + 1}th subchapter.`}
 Genre: ${config.genre}
 Language: ${config.language} — WRITE ENTIRELY IN ${config.language}
@@ -1286,7 +1341,12 @@ Parent chapter intro: ${chapter.content.substring(0, 500)}...
 ${existingSubs ? `Already written subchapters (do NOT repeat):\n${existingSubs}` : ""}
 ${contextMemory}
 
+${buildBlueprintIntegrityRuntimeBlock(config, blueprint, { chapterIndex, subchapterIndex, compact: true })}
+
+${humanizerBlock}
+
 BESTSELLER QUALITY — same standard as main chapters. HONOR the genre directive above.
+This must be a real written section with scene/argument progression, not a heading preview.
 
 Return JSON: { "title": "...", "content": "..." }
 ALL in ${config.language}. Return ONLY valid JSON.`;
@@ -1303,10 +1363,23 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
     const parsed = JSON.parse(cleanJsonFence(result));
     return {
       title: stringifyField(parsed?.title).trim() || subOutline?.title || `Subchapter ${subchapterIndex + 1}`,
-      content: stringifyField(parsed?.content).trim() || result,
+      content: humanizeNarrativeText(stringifyField(parsed?.content).trim() || result, {
+        config,
+        previousChapters,
+        chapterIndex,
+        outlineSummary: subOutline?.summary || outline.summary,
+      }),
     };
   } catch {
-    return { title: subOutline?.title || `Subchapter ${subchapterIndex + 1}`, content: result };
+    return {
+      title: subOutline?.title || `Subchapter ${subchapterIndex + 1}`,
+      content: humanizeNarrativeText(result, {
+        config,
+        previousChapters,
+        chapterIndex,
+        outlineSummary: subOutline?.summary || outline.summary,
+      }),
+    };
   }
 }
 
@@ -1339,6 +1412,8 @@ ${buildAuthorBookDeclaration(config)}
 - Genre: ${genreKey}
 - Language: ${config.language} — ALL content MUST be in ${config.language}
 - Chapters:\n${chapterTitles}
+
+${buildBlueprintIntegrityRuntimeBlock(config, blueprint, { compact: true })}
 
 GENRE-SPECIFIC BACK MATTER SECTIONS TO PRODUCE (in this exact spirit):
 ${sectionsList.map((s, i) => `${i + 1}. ${s}`).join("\n")}
@@ -1468,6 +1543,12 @@ export async function rewriteChapter(
   const contextMemory = buildContextMemory(config, blueprint, previousChapters, chapterIndex);
   const lengthInstruction = getChapterLengthInstruction(config, chapterIndex, config.numberOfChapters);
   const levelInstruction = getRewriteLevelInstruction(level);
+  const humanizerBlock = buildHumanizerPromptBlock({
+    config,
+    previousChapters,
+    chapterIndex,
+    outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary,
+  });
 
   const prompt = `${level.toUpperCase()} REWRITE — Chapter ${chapterIndex + 1}: "${chapter.title}"
 
@@ -1480,6 +1561,8 @@ Current content (to be rewritten):
 ${chapter.content.substring(0, 2500)}...
 
 ${contextMemory}
+
+${humanizerBlock}
 
 Book: "${config.title}"
 Genre: ${config.genre}
@@ -1503,8 +1586,25 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
     }),
   );
   try {
-    return JSON.parse(result.replace(/```json\n?|```/g, "").trim());
+    const parsed = JSON.parse(result.replace(/```json\n?|```/g, "").trim());
+    return humanizeChapter(
+      {
+        ...chapter,
+        ...parsed,
+        content: stringifyField(parsed?.content).trim() || chapter.content,
+        subchapters: Array.isArray(parsed?.subchapters) ? parsed.subchapters : chapter.subchapters,
+      },
+      { config, previousChapters, chapterIndex, outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary },
+    );
   } catch {
-    return { ...chapter, content: result };
+    return {
+      ...chapter,
+      content: humanizeNarrativeText(result, {
+        config,
+        previousChapters,
+        chapterIndex,
+        outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary,
+      }),
+    };
   }
 }

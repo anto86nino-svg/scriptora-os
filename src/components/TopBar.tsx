@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { BookConfig, Language, Genre, ChapterLength, BookLength, CATEGORIES, BOOK_LENGTH_CONFIG } from "@/types/book";
+import { BookConfig, Language, Genre, ChapterLength, BookLength, CATEGORIES, BOOK_LENGTH_CONFIG, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { Download, Image, Loader2, FileText, FileType, Rocket, Home, Cloud, CloudOff, Lock, CreditCard, LogOut, Fingerprint } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { t, tt, useUILanguage } from "@/lib/i18n";
@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { BookProject } from "@/types/book";
 import { AUTHOR_IDENTITY_CHANGED_EVENT, findAuthorIdentity, getSelectedAuthorIdentity, loadAuthorIdentities, normalizeAuthorIdentity, setSelectedAuthorIdentityId } from "@/lib/author-identity";
+import { FocusMusicControl } from "@/components/FocusMusicControl";
 
 interface TopBarProps {
   config: BookConfig | null;
@@ -129,6 +130,7 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
         options={authorIdentities.map((identity) => ({ value: identity.id, label: identity.penName }))}
         onChange={changeProjectAuthor}
       />
+      <FocusMusicControl />
       <Divider />
       <MiniSelect label={t("genre")} value={config.genre} options={GENRES} onChange={(v) => onUpdateConfig("genre", v)} />
       <Divider />
@@ -139,10 +141,12 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
           { value: "short", label: `${t("short")} (~10k)` },
           { value: "medium", label: `${t("medium")} (~50k)` },
           { value: "long", label: `${t("long")} (~100k+)` },
+          { value: "custom", label: `Custom (${(config.customTotalWords || 30000).toLocaleString()})` },
         ]}
         onChange={(v) => {
           if (isFreePlan && v !== "short") return;
           onUpdateConfig("bookLength", isFreePlan ? "short" : v);
+          if (v === "custom" && !config.customTotalWords) onUpdateConfig("customTotalWords", 30000);
         }} />
       <Divider />
       <MiniSelect label={t("cat")} value={config.category || "Self Help"} options={categories.map(c => ({ value: c, label: c }))}
@@ -151,6 +155,34 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
         onChange={(v) => onUpdateConfig("subcategory", v)} />
       <Divider />
       <MiniSelect label={t("ch_len")} value={config.chapterLength} options={LENGTHS.map(l => ({ ...l, label: t(l.value) }))} onChange={(v) => onUpdateConfig("chapterLength", v)} />
+      <MiniSelect
+        label="cap."
+        value={String(config.numberOfChapters || 10)}
+        options={Array.from({ length: 48 }, (_, i) => {
+          const value = String(i + 3);
+          return { value, label: value };
+        })}
+        onChange={(v) => onUpdateConfig("numberOfChapters", Math.max(3, Math.min(50, Number(v) || 10)))}
+      />
+      <MiniSelect
+        label="sub"
+        value={config.subchaptersEnabled ? String(config.subchaptersPerChapter || DEFAULT_SUBCHAPTERS_PER_CHAPTER) : "off"}
+        options={[
+          { value: "off", label: "Off" },
+          ...Array.from({ length: 8 }, (_, i) => {
+            const value = String(i + 1);
+            return { value, label: value };
+          }),
+        ]}
+        onChange={(v) => {
+          if (v === "off") {
+            onUpdateConfig("subchaptersEnabled", false);
+            return;
+          }
+          onUpdateConfig("subchaptersEnabled", true);
+          onUpdateConfig("subchaptersPerChapter", Math.max(1, Math.min(8, Number(v) || DEFAULT_SUBCHAPTERS_PER_CHAPTER)));
+        }}
+      />
       <Divider />
       <div className="flex items-center gap-1">
         <span className="text-[10px] uppercase text-muted-foreground">{t("tone")}</span>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTitleIntelligence, TitleCard, Level } from "@/hooks/useTitleIntelligence";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { X, Sparkles, RefreshCw, Check, Copy, Zap, Target, Brain, TrendingUp, Lo
 import { toast } from "sonner";
 import { useFeatureGate } from "@/components/PaywallGuard";
 import { getCurrentUserId } from "@/services/storageService";
+import { AUTHOR_IDENTITY_CHANGED_EVENT, getSelectedAuthorIdentity } from "@/lib/author-identity";
 
 interface Props {
   open: boolean;
@@ -29,7 +30,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
   const [bookGenre, setBookGenre] = useState(initialGenre || "");
   const [targetAudience, setTargetAudience] = useState("");
   const [bookPromise, setBookPromise] = useState("");
-  const [authorName, setAuthorName] = useState("");
+  const [authorIdentity, setAuthorIdentity] = useState(() => getSelectedAuthorIdentity());
   const [tone, setTone] = useState<"professionale" | "emotivo" | "aggressivo">("professionale");
   // Default = system UI language, but user can override per-book (5 supported languages).
   const uiLang = getUILanguage();
@@ -39,6 +40,18 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
   const { data, loading, error, generate, regenerate, reset } = useTitleIntelligence();
   // Gate: needs at least Pro (title_intelligence_base). Free users see paywall instead.
   const gate = useFeatureGate("title_intelligence_base");
+
+  useEffect(() => {
+    if (!open) return;
+    const refreshAuthor = () => setAuthorIdentity(getSelectedAuthorIdentity());
+    refreshAuthor();
+    window.addEventListener(AUTHOR_IDENTITY_CHANGED_EVENT, refreshAuthor);
+    window.addEventListener("storage", refreshAuthor);
+    return () => {
+      window.removeEventListener(AUTHOR_IDENTITY_CHANGED_EVENT, refreshAuthor);
+      window.removeEventListener("storage", refreshAuthor);
+    };
+  }, [open]);
 
   const canSubmit = bookGenre.trim() && targetAudience.trim() && bookPromise.trim() && !loading;
 
@@ -117,7 +130,9 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
       readerPromise: n.bookPromise || bookPromise || "",
       prefilledTitle: "",
       prefilledSubtitle: "",
-      authorName: authorName?.trim() || "",
+      authorName: authorIdentity.penName,
+      authorIdentityId: authorIdentity.id,
+      authorIdentity,
       autoStart: false,
     }));
 
@@ -154,7 +169,9 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
       readerPromise: bookPromise || card.subtitle,
       prefilledTitle: card.title,
       prefilledSubtitle: card.subtitle,
-      authorName: authorName.trim() || "",
+      authorName: authorIdentity.penName,
+      authorIdentityId: authorIdentity.id,
+      authorIdentity,
       autoStart: false,
     }));
 
@@ -244,11 +261,13 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
                   className="w-full px-3 py-2 text-sm rounded-md bg-background border border-border focus:border-primary outline-none resize-none" />
               </Field>
 
-              <Field label="Nome autore / Pen name">
-                <input value={authorName} onChange={e => setAuthorName(e.target.value)}
-                  placeholder="Es. Il nome che vuoi mostrare in copertina"
-                  className="w-full px-3 py-2 text-sm rounded-md bg-background border border-border focus:border-primary outline-none" />
-              </Field>
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">Author Identity Lock</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">{authorIdentity.penName}</p>
+                <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                  Title Intelligence usa l'autore globale attivo. Cambialo dalla funzione Identità autore nella home.
+                </p>
+              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Tono">

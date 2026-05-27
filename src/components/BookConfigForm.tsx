@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookConfig, Language, ChapterLength } from "@/types/book";
+import { BOOK_LENGTH_CONFIG, BookConfig, BookLength, Language, ChapterLength, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 
 interface BookConfigFormProps {
   onSubmit: (config: BookConfig) => void;
@@ -26,6 +26,7 @@ export function BookConfigForm({ onSubmit }: BookConfigFormProps) {
     bookLength: "medium",
     numberOfChapters: 10,
     subchaptersEnabled: true,
+    subchaptersPerChapter: DEFAULT_SUBCHAPTERS_PER_CHAPTER,
   });
 
   const update = (key: keyof BookConfig, value: any) => setConfig(prev => ({ ...prev, [key]: value }));
@@ -103,10 +104,10 @@ export function BookConfigForm({ onSubmit }: BookConfigFormProps) {
             <input
               type="number"
               min={3}
-              max={30}
+              max={50}
               className="w-full bg-surface border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               value={config.numberOfChapters}
-              onChange={e => update("numberOfChapters", parseInt(e.target.value) || 10)}
+              onChange={e => update("numberOfChapters", Math.max(3, Math.min(50, parseInt(e.target.value) || 10)))}
             />
           </div>
 
@@ -121,6 +122,65 @@ export function BookConfigForm({ onSubmit }: BookConfigFormProps) {
               <span className="text-sm text-foreground">Subchapters</span>
             </label>
           </div>
+        </div>
+
+        {config.subchaptersEnabled && (
+          <div>
+            <label className="text-xs font-medium text-muted-foreground mb-1 block">Subchapters per chapter</label>
+            <input
+              type="number"
+              min={1}
+              max={8}
+              className="w-full bg-surface border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              value={config.subchaptersPerChapter ?? DEFAULT_SUBCHAPTERS_PER_CHAPTER}
+              onChange={e => update("subchaptersPerChapter", Math.max(1, Math.min(8, parseInt(e.target.value) || DEFAULT_SUBCHAPTERS_PER_CHAPTER)))}
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">Used by the blueprint and real subchapter generation.</p>
+          </div>
+        )}
+
+        <div className="space-y-2 rounded-lg border border-border bg-muted/20 p-3">
+          <label className="text-xs font-medium text-muted-foreground block">Book Length</label>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {(Object.entries(BOOK_LENGTH_CONFIG) as [BookLength, typeof BOOK_LENGTH_CONFIG[BookLength]][]).map(([key, value]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => update("bookLength", key)}
+                className={`rounded-md border px-2 py-2 text-left text-xs transition-colors ${
+                  config.bookLength === key
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-background/50 text-foreground hover:bg-muted/40"
+                }`}
+              >
+                <span className="block font-semibold">{value.label}</span>
+                <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                  {key === "custom" ? "Custom words" : `~${(value.totalWords / 1000).toFixed(0)}k words`}
+                </span>
+              </button>
+            ))}
+          </div>
+          {config.bookLength === "custom" && (
+            <div className="grid gap-2 sm:grid-cols-[1fr,120px]">
+              <input
+                type="range"
+                min={5000}
+                max={200000}
+                step={1000}
+                value={config.customTotalWords ?? 30000}
+                onChange={(e) => update("customTotalWords", Number(e.target.value) || 30000)}
+                className="w-full accent-primary"
+              />
+              <input
+                type="number"
+                min={1000}
+                step={500}
+                value={config.customTotalWords ?? 30000}
+                onChange={(e) => update("customTotalWords", Math.max(1000, Number(e.target.value) || 30000))}
+                className="w-full bg-surface border border-border rounded-md px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          )}
         </div>
       </div>
 

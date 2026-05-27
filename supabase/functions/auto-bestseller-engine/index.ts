@@ -552,13 +552,24 @@ TONE: ${input.tone || "natural for genre"}
 READER LEVEL: ${input.level || "beginner"}
 READER PROMISE: ${input.readerPromise || "deliver a clear, concrete transformation"}
 
+${buildBlueprintIntegrityEngineForAuto(input, title, subtitle)}
+
 Return JSON:
 {
   "overview": "2-3 sentences — the book's market promise + transformation",
   "themes": ["3-5 themes that sell in this category"],
   "emotionalArc": "the reader's emotional/practical journey from chapter 1 to last",
+  "integrity": {
+    "bookCoreDNA": { "title": "", "subtitle": "", "genre": "", "subgenre": "", "narrativePromise": "", "emotionalPromise": "", "coreTheme": "", "coreFear": "", "coreDesire": "", "readerFantasy": "", "tone": "", "atmosphere": "", "writingStyle": "", "emotionalDensity": "", "violenceLevel": "", "spiceRomanceLevel": "", "endingDirection": "", "targetAudience": "", "bestsellerPositioning": "" },
+    "worldLoreFoundation": { "worldRules": "", "socialStructure": "", "geography": "", "politicalTensions": "", "religionsBeliefs": "", "technologyOrMagicSystems": "", "forbiddenElements": "", "historicalScars": "", "culturalTensions": "", "environmentalTone": "", "symbolicRecurringElements": "" },
+    "characterMemoryEngine": [],
+    "structuralStoryArchitecture": { "actStructure": "", "narrativeEscalation": "", "emotionalEscalation": "", "midpointShift": "", "characterReversals": "", "betrayals": "", "tensionSpikes": "", "quietMoments": "", "setupsPayoffs": "", "cliffhangers": "", "revelationTiming": "", "finalPayoffStrategy": "" },
+    "relationshipTensionEngine": { "attraction": "", "resistance": "", "trustEvolution": "", "emotionalDependency": "", "jealousy": "", "vulnerability": "", "powerImbalance": "", "conflictChemistry": "", "emotionalDistance": "", "unresolvedTension": "", "emotionalPayoffTiming": "" },
+    "canonProtectionLayer": { "immutableCanonRules": [], "forbiddenMutations": [], "priorityOrder": [] },
+    "narrativeImmersionRules": { "prioritize": [], "avoid": [], "sceneLaws": [] }
+  },
   "chapterOutlines": [
-    { "title": "specific, hook-driven", "summary": "2-3 sentences: what this chapter delivers, what payoff" }
+    { "title": "specific, hook-driven", "summary": "2-3 sentences: what this chapter delivers, what payoff", "purpose": "", "emotionalFunction": "", "narrativeProgression": "", "characterEvolutionCheckpoint": "", "conflictProgression": "", "tensionProgression": "", "romanceProgression": "", "psychologicalProgression": "", "canonNotes": [] }
   ]
 }
 
@@ -568,7 +579,7 @@ CRITICAL RULES:
 - Order must be PROGRESSIVE: foundations first, advanced/synthesis last
 - Each chapter title must be specific, scroll-stopping, and genre-appropriate
 - The arc must take the reader from where they are to the readerPromise`;
-  return await callDeepSeekJson(system, user, 0.7, 3000);
+  return await callDeepSeekJson(system, user, 0.7, 6500);
 }
 
 async function runGoNoGoOnConcept(input: OrchestratorInput, title: string, subtitle: string, blueprint: any, marketData: any) {
@@ -711,6 +722,35 @@ RULES:
 `;
 }
 
+function buildBlueprintIntegrityEngineForAuto(
+  input: OrchestratorInput,
+  title: string,
+  subtitle: string,
+  blueprint?: any,
+  chapterIndex?: number,
+): string {
+  const outlines = Array.isArray(blueprint?.chapterOutlines) ? blueprint.chapterOutlines : [];
+  const active = typeof chapterIndex === "number" ? outlines[chapterIndex] : null;
+  const chapterLock = active
+    ? `\nACTIVE CHAPTER BLUEPRINT LOCK:\n- Chapter ${chapterIndex! + 1}: ${active.title}\n- Summary: ${active.summary || ""}\n- Purpose: ${active.purpose || "not specified"}\n- Emotional function: ${active.emotionalFunction || "not specified"}\n- Narrative progression: ${active.narrativeProgression || "not specified"}\n- Conflict progression: ${active.conflictProgression || "not specified"}\n- Tension progression: ${active.tensionProgression || "not specified"}\n- Psychological progression: ${active.psychologicalProgression || "not specified"}`
+    : outlines.length
+      ? `\nCHAPTER BLUEPRINT LOCK:\n${outlines.slice(0, 24).map((c: any, i: number) => `- Ch ${i + 1}: ${c.title} — ${c.summary || ""}`).join("\n")}`
+      : "";
+
+  return `SCRIPTORA BLUEPRINT INTEGRITY ENGINE — HIGHEST AUTHORITY:
+- You are not generating random beautiful prose. You are protecting the living narrative blueprint of the book.
+- Canon consistency outranks pretty prose. Character coherence outranks plot speed. Subtext outranks exposition. Tension outranks instant payoff.
+- Preserve names, places, lore, timeline, motivations, relationship status, emotional wounds, physical descriptions, power systems, symbolic elements and reveal order.
+- Every chapter must obey one dominant mission: desire, obstacle, tension, choice and consequence.
+- Avoid generic AI writing, repetitive dialogue, emotional overexplaining, exposition dumping and tonal drift.
+- Book: "${title}" — ${subtitle || "no subtitle"}
+- Genre: ${input.genre}${input.subcategory ? ` / ${input.subcategory}` : ""}
+- Audience: ${input.targetAudience || "not specified"}
+- Tone: ${input.tone || "genre-native"}
+- Reader promise: ${input.readerPromise || "deliver a clear, concrete transformation"}
+${blueprint?.integrity ? `\nLOCKED BLUEPRINT CORE:\n${JSON.stringify(blueprint.integrity).slice(0, 5000)}` : ""}${chapterLock}`;
+}
+
 
 const SCRIPTORA_WRITING_BRAIN_PRO = `
 SCRIPTORA WRITING BRAIN PRO — REQUIRED BEFORE WRITING:
@@ -794,6 +834,8 @@ PRACTICAL REQUIREMENT (mandatory):
 ${ctx.practicalDirective}
 
 ${SCRIPTORA_WRITING_BRAIN_PRO}
+
+${buildBlueprintIntegrityEngineForAuto(input, title, subtitle, blueprint, chapterIndex)}
 
 ${characterLock}
 

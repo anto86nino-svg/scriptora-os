@@ -10,8 +10,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Server-side beta code (could be moved to a secret later)
-const BETA_CODE = "betatester01";
+// Server-side beta codes (could be moved to a secret later).
+// Keep the legacy code active, but accept the public tester code requested for onboarding.
+const BETA_CODES = new Set(["betatester", "betatester01"]);
 const MAX_BETA_PER_IP = 2;
 
 Deno.serve(async (req) => {
@@ -22,6 +23,7 @@ Deno.serve(async (req) => {
   try {
     const body = await req.json().catch(() => ({}));
     const code: string = (body.code || "").toString().trim();
+    const normalizedCode = code.toLowerCase();
     const userId: string = (body.userId || "local-user").toString();
     const deviceId: string = (body.deviceId || "").toString();
     const userAgent: string = (body.userAgent || "").toString().slice(0, 500);
@@ -29,7 +31,7 @@ Deno.serve(async (req) => {
     if (!deviceId) {
       return json({ ok: false, error: "Missing device fingerprint" }, 400);
     }
-    if (code !== BETA_CODE) {
+    if (!BETA_CODES.has(normalizedCode)) {
       return json({ ok: false, error: "Invalid beta code" }, 401);
     }
 

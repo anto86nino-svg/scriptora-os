@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { BookProject, BookConfig, ChatMessage, GenerationPhase, GenerationStatus, AIQualityRating } from "@/types/book";
+import { BookProject, BookConfig, ChatMessage, GenerationPhase, GenerationStatus, AIQualityRating, getSubchaptersPerChapter } from "@/types/book";
 import { saveProjectAsync, createProjectId, setLastProjectId, loadProjects as loadScopedProjects } from "@/services/storageService";
 import { saveProject } from "@/lib/storage";
 import { generateBlueprint, generateFrontMatter, generateChapter, generateChapterChunked, generateSubchapter, generateBackMatter, rewriteChapter, evaluateChapterQuality, RewriteLevel, ChunkProgress, buildGenreLock } from "@/lib/generation";
@@ -74,6 +74,21 @@ function getMissingChapterIndexes(project: BookProject): number[] {
 
 function allTargetChaptersGenerated(project: BookProject): boolean {
   return getMissingChapterIndexes(project).length === 0;
+}
+
+function getMissingSubchapterRefs(project: BookProject): Array<{ chapterIndex: number; subIndex: number }> {
+  const target = getSubchaptersPerChapter(project.config);
+  if (target <= 0) return [];
+  const missing: Array<{ chapterIndex: number; subIndex: number }> = [];
+  for (let chapterIndex = 0; chapterIndex < Math.max(0, project.config?.numberOfChapters || 0); chapterIndex += 1) {
+    const chapter = project.chapters?.[chapterIndex];
+    if (!chapter?.content || chapter.content.trim().length <= 50) continue;
+    for (let subIndex = 0; subIndex < target; subIndex += 1) {
+      const sub = chapter.subchapters?.[subIndex];
+      if (!sub?.content || sub.content.trim().length <= 50) missing.push({ chapterIndex, subIndex });
+    }
+  }
+  return missing;
 }
 
 async function isFreeAiToolsLockedForProject(project: BookProject | null | undefined): Promise<boolean> {
@@ -276,6 +291,17 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       const shown = missing.slice(0, 5).map((i) => i + 1).join(", ");
       const suffix = missing.length > 5 ? ` +${missing.length - 5}` : "";
       const msg = `Completa prima tutti i capitoli. Mancano: ${shown}${suffix}.`;
+      addMessage("assistant", `⚠️ ${msg}`);
+      toast.error(msg);
+      updateAndSave(pr => ({ ...pr, phase: "chapters" as GenerationPhase }));
+      return;
+    }
+
+    const missingSubchapters = getMissingSubchapterRefs(p);
+    if (missingSubchapters.length > 0) {
+      const shown = missingSubchapters.slice(0, 4).map((item) => `${item.chapterIndex + 1}.${item.subIndex + 1}`).join(", ");
+      const suffix = missingSubchapters.length > 4 ? ` +${missingSubchapters.length - 4}` : "";
+      const msg = `Completa prima i sottocapitoli attivati. Mancano: ${shown}${suffix}.`;
       addMessage("assistant", `⚠️ ${msg}`);
       toast.error(msg);
       updateAndSave(pr => ({ ...pr, phase: "chapters" as GenerationPhase }));
@@ -867,6 +893,19 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         onSectionFocus?.(`chapter-${i}`);
         await generateSingleChapter(i);
         await new Promise(r => setTimeout(r, 400));
+
+        const afterChapter = getLatestProject() || latest;
+        const targetSubchapters = getSubchaptersPerChapter(afterChapter.config);
+        if (targetSubchapters > 0) {
+          for (let subIndex = 0; subIndex < targetSubchapters; subIndex += 1) {
+            const current = getLatestProject() || afterChapter;
+            const existingSub = current.chapters?.[i]?.subchapters?.[subIndex];
+            if (existingSub?.content && existingSub.content.length > 50) continue;
+            onSectionFocus?.(`chapter-${i}-sub-${subIndex}`);
+            await generateSingleSubchapter(i, subIndex);
+            await new Promise(r => setTimeout(r, 250));
+          }
+        }
       }
 
       // 3) Back matter
@@ -895,7 +934,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       addMessage("assistant", `❌ Errore generazione completa: ${e.message}`);
       toast.error("Generazione interrotta — riprova dalla sezione fallita");
     }
-  }, [project, addMessage, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, updateAndSave]);
+  }, [project, addMessage, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter, updateAndSave]);
 
   // === PARALLEL CHAPTER GENERATION (max 3 in flight) ===
   // Permette di generare più capitoli contemporaneamente mentre l'utente
