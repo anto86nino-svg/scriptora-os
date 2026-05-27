@@ -181,13 +181,26 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
         console.warn("Surgical benchmark failed:", benchmarkError);
       }
 
-      if (!surgicalResult.text || surgicalResult.text === chapter.content) {
-        toast.info("Diagnostica completata: nessun intervento chirurgico necessario.");
+      if (
+        !surgicalResult.editsApplied?.length
+      ) {
+        toast.info(
+          "Diagnostica completata: capitolo già molto forte. Nessun intervento rilevante."
+        );
         return;
       }
 
-      setWorkingContent(surgicalResult.text);
-      onApplyContent(surgicalResult.text);
+      const testText =
+        surgicalResult.text +
+        "\n\n[TEST SCRIPTORA SURGICAL ENGINE]";
+
+      setWorkingContent(testText);
+      onApplyContent(testText);
+
+      console.log(
+        "SCRIPTORA SURGICAL UPDATE:",
+        testText
+      );
 
       toast.success(
         `Diagnostica Editoriale applicata: ${surgicalResult.editsApplied.length || 1} interventi · rischio overediting ${overeditingRisk}%`
