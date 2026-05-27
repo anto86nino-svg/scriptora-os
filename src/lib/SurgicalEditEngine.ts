@@ -641,3 +641,34 @@ function preserveVoice(
 
   return edited;
 }
+
+const EDITORIAL_PRIORITY: Record<
+  string,
+  number
+> = {
+  character_flattening: 100,
+  weak_subtext: 95,
+  dialogue_perfection: 90,
+  emotional_redundancy: 85,
+  overwritten_scene: 80,
+  climax_oversaturation: 70,
+  repetitive_symbolism: 50,
+};
+
+function getTopWarnings(
+  warnings: EditorialWarning[],
+  limit = 3
+): string[] {
+  return warnings
+    .sort(
+      (a, b) =>
+        (EDITORIAL_PRIORITY[
+          b.type
+        ] || 0) -
+        (EDITORIAL_PRIORITY[
+          a.type
+        ] || 0)
+    )
+    .slice(0, limit)
+    .map((w) => w.type);
+}
