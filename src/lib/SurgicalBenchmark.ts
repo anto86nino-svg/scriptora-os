@@ -30,29 +30,29 @@ export function benchmarkSurgicalEdit(
     );
 
   const improvements = {
-    emotionalRealism:
+    emotionalRealismScore:
       edited.scores
-        .emotionalRealism -
+        .emotionalRealismScore -
       original.scores
-        .emotionalRealism,
+        .emotionalRealismScore,
 
-    dialogueHumanity:
+    dialogueHumanityScore:
       edited.scores
-        .dialogueHumanity -
+        .dialogueHumanityScore -
       original.scores
-        .dialogueHumanity,
+        .dialogueHumanityScore,
 
-    subtextStrength:
+    subtextStrengthScore:
       edited.scores
-        .subtextStrength -
+        .subtextStrengthScore -
       original.scores
-        .subtextStrength,
+        .subtextStrengthScore,
 
-    characterDepth:
+    characterDepthScore:
       edited.scores
-        .characterDepth -
+        .characterDepthScore -
       original.scores
-        .characterDepth,
+        .characterDepthScore,
   };
 
   const voicePreserved =
