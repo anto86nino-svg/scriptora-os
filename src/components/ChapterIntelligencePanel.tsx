@@ -12,8 +12,6 @@ import { getEditorialTier } from "@/lib/editorial-mastery";
 import { toast } from "sonner";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
-import { applySurgicalEditingFromWarnings } from "@/lib/SurgicalEditEngine";
-import { benchmarkSurgicalEdit } from "@/lib/SurgicalBenchmark";
 
 
 function countWordsForChapterLock(value: unknown): number {
@@ -166,68 +164,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
 
   const runPatch = async () => {
     if (await guardFreeChapterAi()) return;
-    if (!chapter?.content?.trim()) {
-      toast.error("Nessun testo capitolo da migliorare.");
-      return;
-    }
-
-    try {
-      const surgicalResult = applySurgicalEditingFromWarnings(chapter.content);
-      let overeditingRisk = 0;
-      try {
-        const benchmark = benchmarkSurgicalEdit(chapter.content);
-        overeditingRisk = benchmark.overeditingRisk || 0;
-      } catch (benchmarkError) {
-        console.warn("Surgical benchmark failed:", benchmarkError);
-      }
-
-      if (
-        !surgicalResult.editsApplied?.length
-      ) {
-        const fallbackResult =
-          applySurgicalEditingFromWarnings(
-            chapter.content + "\n\nIl metallo era freddo, come sempre. Come ogni cosa in quelle terre di confine."
-          );
-
-        if (fallbackResult.editsApplied?.length) {
-          const cleanedText =
-            fallbackResult.text.replace(
-              "\n\nIl metallo era freddo. In quelle terre lo erano quasi tutte le cose.",
-              ""
-            );
-
-          setWorkingContent(cleanedText);
-          onApplyContent(cleanedText);
-
-          toast.success("Diagnostica Editoriale applicata: intervento leggero.");
-          return;
-        }
-
-        toast.info(
-          "Diagnostica completata: nessuna modifica automatica sicura applicata. Il capitolo è stato analizzato: prova una modalità più intensa o usa la diagnosi paragrafo per paragrafo per vedere i punti migliorabili."
-        );
-        return;
-      }
-
-      const testText =
-        surgicalResult.text +
-        "\n\n[TEST SCRIPTORA SURGICAL ENGINE]";
-
-      setWorkingContent(testText);
-      onApplyContent(testText);
-
-      console.log(
-        "SCRIPTORA SURGICAL UPDATE:",
-        testText
-      );
-
-      toast.success(
-        `Diagnostica Editoriale applicata: ${surgicalResult.editsApplied.length || 1} interventi · rischio overediting ${overeditingRisk}%`
-      );
-    } catch (error) {
-      console.error("Surgical edit failed:", error);
-      toast.error(error instanceof Error ? error.message : "Diagnostica Editoriale fallita. Riprova.");
-    }
+    await startPatch(project, chapterIndex);
   };
   const applyPatch = () => {
     if (!patchJob) return;
