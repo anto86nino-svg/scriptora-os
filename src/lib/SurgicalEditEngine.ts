@@ -112,6 +112,25 @@ export function applyDialogueRoughening(
     editsApplied.push("emotional_trimming");
   }
 
+  
+  if (
+    hasWarning(
+      analysis.warnings,
+      "weak_subtext"
+    )
+  ) {
+    const result =
+      applySubtextEnhancement(
+        edited
+      );
+
+    edited = result.text;
+
+    editsApplied.push(
+      ...result.editsApplied
+    );
+  }
+
   return {
     text: edited,
     editsApplied,
@@ -156,6 +175,62 @@ export function applySurgicalEditingFromWarnings(
 
     editsApplied.push(
       ...result.editsApplied
+    );
+  }
+
+  return {
+    text: edited,
+    editsApplied,
+  };
+}
+
+function applySubtextEnhancement(
+  text: string
+): SurgicalResult {
+  let edited = text;
+  const editsApplied: string[] = [];
+
+  const replacements: Array<[RegExp, string]> = [
+    [
+      /\b(she|he) felt devastated\b/gi,
+      "$1 went quiet"
+    ],
+    [
+      /\b(she|he) felt broken\b/gi,
+      "$1 looked away"
+    ],
+    [
+      /\b(she|he) felt abandoned\b/gi,
+      "$1 checked the phone again"
+    ],
+    [
+      /\b(she|he) was heartbroken\b/gi,
+      "$1 stopped speaking"
+    ],
+    [
+      /\b(she|he) felt scared\b/gi,
+      "$1 hesitated"
+    ],
+    [
+      /\b(she|he) felt angry\b/gi,
+      "$1 clenched their jaw"
+    ]
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    const next = edited.replace(
+      pattern,
+      replacement
+    );
+
+    if (next !== edited) {
+      edited = next;
+    }
+  }
+
+  if (edited !== text) {
+    editsApplied.push(
+      "subtext_enhancement"
     );
   }
 
