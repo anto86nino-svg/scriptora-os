@@ -1289,7 +1289,6 @@ function LoadingBanner({ text }: { text: string }) {
       <div className="min-w-0">
         <div className="text-sm font-semibold text-white">{text}</div>
         <div className="scriptora-loading-subline">
-          <span>Studio attivo</span>
           <span className="scriptora-loading-dots" aria-hidden="true"><i /><i /><i /></span>
         </div>
       </div>
