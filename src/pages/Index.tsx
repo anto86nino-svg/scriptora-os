@@ -9,7 +9,6 @@ import { PublishPanel } from "@/components/PublishPanel";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { AICoachPanel } from "@/components/AICoachPanel";
 import { ProgressTracker } from "@/components/ProgressTracker";
-import { DominationTray } from "@/components/DominationTray";
 import { GuidedProjectFlow } from "@/components/GuidedProjectFlow";
 import { useBookEngine } from "@/hooks/useBookEngine";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
@@ -342,6 +341,25 @@ const Index = () => {
 </>
       </button>
 
+      <button
+        onClick={() => setGuidedFlowEnabled(true)}
+        className="
+          ios-toolbar-button
+          fixed top-4 left-[270px]
+          z-50
+          px-3 py-3
+          text-xs font-semibold
+          text-muted-foreground
+          hover:text-foreground
+          rounded-2xl
+          shadow-lg
+          backdrop-blur-xl
+        "
+        title="Apri guida"
+      >
+        ✨ Guida
+      </button>
+
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-30 bg-black/[0.55] backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)} />
@@ -663,36 +681,6 @@ const Index = () => {
         onLanguageChange={handleLanguageChange}
       />
 
-      <DominationTray
-        currentProjectId={engine.project?.id}
-        onApplyToChapter={async (projectId, chapterIndex, newContent) => {
-          if (engine.project?.id === projectId) {
-            engine.updateChapterContent(chapterIndex, newContent);
-            toast.success(t("chapter_updated"));
-          } else {
-            const target = projects.find(p => p.id === projectId);
-            if (!target) { toast.error(t("project_not_found")); return; }
-            const updated: BookProject = {
-              ...target,
-              chapters: target.chapters.map((ch, i) =>
-                i === chapterIndex ? { ...ch, content: newContent } : ch
-              ),
-              updatedAt: new Date().toISOString(),
-            };
-            await saveProjectAsync(updated);
-            await refreshProjects();
-            toast.success(tt("applied_to_project", { title: target.config.title || t("untitled") }));
-          }
-        }}
-        onJumpToChapter={(projectId, chapterIndex) => {
-          if (engine.project?.id !== projectId) {
-            const target = projects.find(p => p.id === projectId);
-            if (target) engine.loadProject(target);
-          }
-          setActiveSection(`chapter-${chapterIndex}` as SectionId);
-          setSidebarOpen(false);
-        }}
-      />
       <UpgradeModal
         open={!!upgradeReason}
         reason={upgradeReason || "export"}

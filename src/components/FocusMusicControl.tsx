@@ -316,8 +316,7 @@ export function FocusMusicControl() {
             className={`ios-toolbar-button px-2 text-[11px] font-medium ${playing ? "text-sky-200" : "text-muted-foreground hover:text-foreground"}`}
             title="Musica focus"
           >
-            <Music2 className="h-3.5 w-3.5 text-sky-300" />
-            Musica
+            <Music2 className="h-4 w-4 text-sky-300" />
           </button>
         </PopoverTrigger>
         <button

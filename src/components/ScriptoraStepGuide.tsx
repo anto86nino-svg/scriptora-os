@@ -329,27 +329,11 @@ export function ScriptoraStepGuide() {
   const guide = text.routes[activeRoute] || copy.en.routes[activeRoute];
 
   if (!enabled) {
-    return (
-      <button
-        onClick={() => {
-          setEnabled(true);
-          setCollapsed(false);
-        }}
-        className="scriptora-step-guide-button"
-      >
-        <HelpCircle className="h-4 w-4" />
-        {text.show}
-      </button>
-    );
+    return <>{/* moved near music toolbar */}</>;
   }
 
   if (collapsed) {
-    return (
-      <button onClick={() => setCollapsed(false)} className="scriptora-step-guide-button">
-        <Compass className="h-4 w-4" />
-        {text.label}
-      </button>
-    );
+    return <>{/* moved near music toolbar */}</>;
   }
 
   return (

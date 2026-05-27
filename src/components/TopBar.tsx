@@ -57,6 +57,7 @@ export function TopBar({
   const location = useLocation();
 
   const isFocusMode =
+    location.pathname.includes("/app") ||
     location.pathname.includes("editor") ||
     location.pathname.includes("book") ||
     location.pathname.includes("writer");
@@ -150,6 +151,20 @@ export function TopBar({
         onChange={changeProjectAuthor}
       />
       <FocusMusicControl />
+
+      <button
+        onClick={() => {
+          localStorage.setItem(
+            "scriptora-guided-flow",
+            "on"
+          );
+          window.location.reload();
+        }}
+        className="ios-toolbar-button shrink-0 px-3 py-2 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
+        title="Apri guida"
+      >
+        ✨ Guida
+      </button>
       <Divider />
       <MiniSelect label={t("genre")} value={config.genre} options={GENRES} onChange={(v) => onUpdateConfig("genre", v)} />
       <Divider />
