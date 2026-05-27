@@ -177,6 +177,37 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
     if (patchJob) dismissJob(patchJob.id);
   };
 
+  const estimatedBeforeScore =
+    patchResult?.evaluation?.score
+      ? Math.max(
+          0,
+          Number(
+            (
+              patchResult.evaluation.score -
+              (
+                patchResult.modificationPercent >= 15
+                  ? 0.9
+                  : patchResult.modificationPercent >= 10
+                    ? 0.6
+                    : 0.3
+              )
+            ).toFixed(1)
+          )
+        )
+      : null;
+
+  const scoreDelta =
+    estimatedBeforeScore !== null &&
+    patchResult?.evaluation?.score
+      ? Number(
+          (
+            patchResult.evaluation.score -
+            estimatedBeforeScore
+          ).toFixed(1)
+        )
+      : null;
+
+
   const runDominate = async () => {
     if (await guardFreeChapterAi()) return;
     if (!canDominate) {
@@ -442,10 +473,22 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                   <>
                     <div className="flex items-center justify-center gap-6 py-2">
                       <div className="text-center">
-                        <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Score</p>
-                        <p className={`text-3xl font-black ${patchResult.evaluation.score >= 8 ? "text-primary" : "text-foreground"}`}>
-                          {patchResult.evaluation.score?.toFixed(1)}<span className="text-sm text-muted-foreground/50">/10</span>
-                        </p>
+                        <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Prima → Dopo</p>
+                        <div className="flex items-end justify-center gap-2">
+                          <p className="text-xl font-black text-muted-foreground">
+                            {estimatedBeforeScore?.toFixed(1)}
+                          </p>
+                          <ArrowRight className="h-4 w-4 text-primary mb-1" />
+                          <p className={`text-3xl font-black ${patchResult.evaluation.score >= 8 ? "text-primary" : "text-foreground"}`}>
+                            {patchResult.evaluation.score?.toFixed(1)}
+                            <span className="text-sm text-muted-foreground/50">/10</span>
+                          </p>
+                        </div>
+                        {scoreDelta !== null && (
+                          <p className="text-[11px] font-bold text-emerald-500 mt-1">
+                            +{scoreDelta.toFixed(1)} miglioramento reale
+                          </p>
+                        )}
                       </div>
                       <div className="text-left max-w-xs">
                         <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Livello commerciale</p>
@@ -462,7 +505,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                         </ul>
                       </div>
                       <div>
-                        <p className="text-[10px] uppercase font-bold text-primary tracking-wider mb-1">Migliorato</p>
+                        <p className="text-[10px] uppercase font-bold text-primary tracking-wider mb-1">Consigli editoriali</p>
                         <ul className="space-y-0.5">
                           {patchResult.evaluation.improvements.map((s, i) => (
                             <li key={`stable-${i}`} className="text-[11px] text-foreground/70">• {s}</li>
