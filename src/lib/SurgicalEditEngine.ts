@@ -150,6 +150,25 @@ export function applyDialogueRoughening(
     );
   }
 
+  
+  if (
+    hasWarning(
+      analysis.warnings,
+      "overwritten_scene"
+    )
+  ) {
+    const result =
+      applyEndingCompression(
+        edited
+      );
+
+    edited = result.text;
+
+    editsApplied.push(
+      ...result.editsApplied
+    );
+  }
+
   return {
     text: edited,
     editsApplied,
@@ -250,6 +269,63 @@ function applySubtextEnhancement(
   if (edited !== text) {
     editsApplied.push(
       "subtext_enhancement"
+    );
+  }
+
+  return {
+    text: edited,
+    editsApplied,
+  };
+}
+
+function applyEndingCompression(
+  text: string
+): SurgicalResult {
+  let edited = text;
+  const editsApplied: string[] = [];
+
+  const patterns: Array<[RegExp, string]> = [
+    [
+      /\b(she|he) thought about everything that had happened\./gi,
+      ""
+    ],
+    [
+      /\bmaybe nothing would ever be the same\./gi,
+      ""
+    ],
+    [
+      /\bit felt like the end of something\./gi,
+      ""
+    ],
+    [
+      /\b(she|he) felt sad and overwhelmed\./gi,
+      "$1 stayed quiet."
+    ],
+    [
+      /\b(she|he) didn't know what to say\./gi,
+      "$1 said nothing."
+    ]
+  ];
+
+  for (const [pattern, replacement] of patterns) {
+    const next = edited.replace(
+      pattern,
+      replacement
+    );
+
+    if (next !== edited) {
+      edited = next;
+    }
+  }
+
+  edited = edited.replace(
+    /(\.|\!|\?)\s+([A-Z])/g,
+    "$1\n\n$2"
+  );
+
+  if (edited !== text) {
+    editsApplied.push(
+      "ending_compression"
     );
   }
 
