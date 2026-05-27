@@ -12,6 +12,7 @@ import { getEditorialTier } from "@/lib/editorial-mastery";
 import { toast } from "sonner";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
+import { analyzeNovel } from "@/lib/EditorialIntelligence";
 
 
 function countWordsForChapterLock(value: unknown): number {
@@ -177,24 +178,49 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
     if (patchJob) dismissJob(patchJob.id);
   };
 
-  const estimatedBeforeScore =
-    patchResult?.evaluation?.score
-      ? Math.max(
-          0,
-          Number(
-            (
-              patchResult.evaluation.score -
-              (
-                patchResult.modificationPercent >= 15
-                  ? 0.9
-                  : patchResult.modificationPercent >= 10
-                    ? 0.6
-                    : 0.3
-              )
-            ).toFixed(1)
-          )
+  const originalAnalysis =
+    patchResult?.originalText
+      ? analyzeNovel(
+          patchResult.originalText
         )
       : null;
+
+  const patchedAnalysis =
+    patchResult?.patchedText
+      ? analyzeNovel(
+          patchResult.patchedText
+        )
+      : null;
+
+  const estimatedBeforeScore =
+    originalAnalysis
+      ? Number(
+          (
+            (
+              originalAnalysis.dialogueHumanityScore +
+              originalAnalysis.subtextScore +
+              originalAnalysis.characterConsistencyScore +
+              originalAnalysis.pacingConsistencyScore +
+              originalAnalysis.emotionalRedundancyScore
+            ) / 5
+          ).toFixed(1)
+        )
+      : null;
+
+  const realAfterScore =
+    patchedAnalysis
+      ? Number(
+          (
+            (
+              patchedAnalysis.dialogueHumanityScore +
+              patchedAnalysis.subtextScore +
+              patchedAnalysis.characterConsistencyScore +
+              patchedAnalysis.pacingConsistencyScore +
+              patchedAnalysis.emotionalRedundancyScore
+            ) / 5
+          ).toFixed(1)
+        )
+      : patchResult?.evaluation?.score ?? null;
 
   const scoreDelta =
     estimatedBeforeScore !== null &&
@@ -480,7 +506,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                           </p>
                           <ArrowRight className="h-4 w-4 text-primary mb-1" />
                           <p className={`text-3xl font-black ${patchResult.evaluation.score >= 8 ? "text-primary" : "text-foreground"}`}>
-                            {patchResult.evaluation.score?.toFixed(1)}
+                            {realAfterScore?.toFixed(1)}
                             <span className="text-sm text-muted-foreground/50">/10</span>
                           </p>
                         </div>
