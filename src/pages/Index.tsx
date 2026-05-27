@@ -456,25 +456,8 @@ const Index = () => {
           sidebarOpen ? "p-2 md:p-3" : "p-2 md:px-6 md:py-4"
         }`}
       >
-        <TopBar
-          config={engine.project?.config || null}
-          onUpdateConfig={engine.updateConfig}
-          isGenerating={engine.isAnythingGenerating}
-          hasProject={!!engine.project}
-          onExport={guardedExportEpub}
-          onExportDocx={guardedExportDocx}
-          onExportPdf={guardedExportPdf}
-          onCover={() => setShowCover(true)}
-          onPublish={() => setShowPublish(true)}
-          isExporting={isExporting}
-          exportLabel={exportLabel}
-          phase={engine.project?.phase || "idle"}
-          syncStatus={syncStatus}
-          projectId={engine.project?.id || null}
-          project={engine.project}
-        />
-
-        <GuidedProjectFlow
+{/* TopBar removed for clean writing experience */}
+<GuidedProjectFlow
           project={engine.project}
           activeSection={activeSection}
           sidebarOpen={sidebarOpen}
