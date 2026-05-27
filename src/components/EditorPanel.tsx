@@ -1149,7 +1149,7 @@ const GenerationProgress = memo(function GenerationProgress({
   const scene = analyzeLiveScene({ project, outline, chapterIndex, phase, content: liveContent, pct: realPct });
   const previewFallback = `${outline?.title || ""}. ${outline?.summary || ""}`.trim() || `${project.config.title} ${project.config.genre}`;
   const livePreviewLines = getLiveWritingPreviewLines(liveContent, previewFallback, chapterIndex);
-  const livePreviewLabel = liveContent ? "Ultime righe generate" : "Direzione del capitolo";
+  const livePreviewLabel = liveContent ? "Ultime righe generate" : "Direzione";
   const livePreviewSnippet = getLiveParagraph(
     liveContent,
     previewFallback,
@@ -1162,10 +1162,10 @@ const GenerationProgress = memo(function GenerationProgress({
 
   const wordInfo = chunkProgress
     ? `${currentWords.toLocaleString()} / ${targetWords.toLocaleString()} parole`
-    : "Preparazione motore narrativo";
+    : "Motore narrativo";
   const chunkSizeLabel = chunkProgress?.chunkSize
     ? `${chunkProgress.chunkSize === "LARGE" ? "Passaggio lungo" : chunkProgress.chunkSize === "MEDIUM" ? "Passaggio medio" : "Passaggio rapido"}`
-    : "Setup creativo";
+    : "Setup";
 
   return (
     <div className="scriptora-generation-stage animate-fade-in">
@@ -1202,7 +1202,7 @@ const GenerationProgress = memo(function GenerationProgress({
               {scene.phaseLabel}
             </div>
             <h3 className="text-xl font-semibold text-white leading-tight">{scene.title}</h3>
-            <p className="max-w-xl text-sm leading-relaxed text-white/68">{scene.detail}</p>
+            <p className="max-w-xl text-[11px] leading-relaxed text-white/68">{scene.detail}</p>
             <div className="scriptora-generation-signals">
               <span>{scene.emotionLabel}</span>
               <span>{scene.rhythmLabel}</span>
@@ -1215,7 +1215,7 @@ const GenerationProgress = memo(function GenerationProgress({
           <div className="scriptora-generation-manuscript-header">
             <div className="flex items-center gap-2">
               <PenLine className="h-4 w-4 text-emerald-200" />
-              <span>Anteprima viva</span>
+              <span>Live Preview</span>
             </div>
             <span aria-hidden="true" className="scriptora-scene-status">
               <i /><i /><i />
