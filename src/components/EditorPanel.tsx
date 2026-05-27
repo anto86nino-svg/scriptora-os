@@ -447,10 +447,10 @@ function ChapterView({
               <button
                 onClick={() => setShowIntelligence(true)}
                 disabled={isGenerating || isEvaluating}
-                title="AI Analysis Pro — score reali e fix mirati"
+                title="AI Diagnostica Editoriale — score reali e fix mirati"
                 className="h-9 flex items-center gap-1.5 px-3 rounded-lg text-[11px] font-semibold bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:opacity-90 disabled:opacity-30 transition-opacity"
               >
-                <Zap className="h-3.5 w-3.5" /> Analysis Pro
+                <Zap className="h-3.5 w-3.5" /> Diagnostica Editoriale
               </button>
               <ActionButton icon={<Search className="h-3.5 w-3.5" />} title={t("evaluate")} onClick={onEvaluate} disabled={isGenerating || isEvaluating} />
               <ActionButton icon={<RefreshCw className="h-3.5 w-3.5" />} title={t("regenerate")} onClick={onRegenerate} disabled={isGenerating} />
