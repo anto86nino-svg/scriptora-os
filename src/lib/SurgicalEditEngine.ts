@@ -217,7 +217,10 @@ export function applyDialogueRoughening(
 
   return {
     text: edited,
-    editsApplied,
+    editsApplied: limitEdits(
+      editsApplied,
+      3
+    ),
   };
 }
 
@@ -540,4 +543,14 @@ function applyTensionPreservation(
     text: edited,
     editsApplied,
   };
+}
+
+function limitEdits(
+  edits: string[],
+  max = 3
+): string[] {
+  return [...new Set(edits)].slice(
+    0,
+    max
+  );
 }
