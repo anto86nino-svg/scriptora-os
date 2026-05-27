@@ -1,4 +1,4 @@
-import { ArrowRight, X } from "lucide-react";
+import { ArrowRight, Sparkles, Shield, Crown, X } from "lucide-react";
 
 interface Props {
   originalText: string;
@@ -20,116 +20,165 @@ export default function EditorialCompareView({
   onClose,
 }: Props) {
   return (
-    <div className="fixed inset-0 z-[99999] bg-background overflow-hidden p-3">
+    <div className="fixed inset-0 z-[99999] bg-[#050816] overflow-hidden">
 
-<div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(120,119,198,0.12),transparent_45%)] pointer-events-none" />
+      {/* BACKGROUND */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.12),transparent_40%)]" />
 
-<div className="relative z-10 flex flex-col h-screen">
+      <div className="relative z-10 h-screen flex flex-col p-5 gap-4">
 
-      {/* HEADER */}
-      <div className="border-b border-border/40 bg-card/95 backdrop-blur-xl px-6 py-4 shrink-0 rounded-2xl border border-border/50 mb-3">
-        <div className="flex items-center justify-between">
+        {/* HEADER */}
+        <div className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-2xl px-8 py-6">
 
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.25em] text-primary font-black">
-              Editorial Review
-            </p>
+          <div className="flex items-start justify-between">
 
-            <h1 className="text-3xl font-black tracking-tight text-foreground mt-1">
-              Prima vs Dopo
-            </h1>
+            <div>
+              <button
+                onClick={onClose}
+                className="text-sm text-muted-foreground hover:text-white transition mb-4"
+              >
+                ← Torna alla Diagnostica
+              </button>
 
-            <p className="text-sm text-muted-foreground mt-1">
-              Scriptora Editorial Intelligence — confronta le revisioni prima dell'applicazione
-            </p>
+              <h1 className="text-5xl font-black tracking-tight text-white">
+                Prima vs Dopo
+              </h1>
+
+              <p className="text-white/60 text-lg mt-2">
+                Confronta le modifiche editoriali prima di applicarle
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+
+              <button
+                onClick={onApply}
+                className="h-14 px-8 rounded-2xl bg-blue-600 hover:bg-blue-500 transition text-white font-black text-lg shadow-[0_0_30px_rgba(37,99,235,0.35)] inline-flex items-center gap-2"
+              >
+                <Sparkles className="h-5 w-5" />
+                Conferma versione patchata
+              </button>
+
+              <button
+                onClick={onClose}
+                className="h-14 px-6 rounded-2xl border border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/[0.06] transition inline-flex items-center gap-2"
+              >
+                <X className="h-5 w-5" />
+                Chiudi
+              </button>
+
+            </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="h-11 px-5 rounded-xl border border-border hover:bg-accent transition inline-flex items-center gap-2"
-          >
-            <X className="h-4 w-4" />
-            Torna indietro
-          </button>
-        </div>
+          {/* SCORE CARDS */}
+          <div className="grid grid-cols-[1fr_auto_1fr_1fr] gap-5 mt-8">
 
-        {/* SCORE */}
-        <div className="mt-5 flex items-center gap-3">
-          <span className="text-2xl font-black text-muted-foreground">
-            {beforeScore?.toFixed(1)}
-          </span>
+            <div className="rounded-[28px] border border-rose-500/20 bg-rose-500/[0.04] p-6">
+              <p className="text-rose-400 uppercase text-sm font-black tracking-[0.2em]">
+                Prima
+              </p>
 
-          <ArrowRight className="h-5 w-5 text-primary" />
+              <p className="text-white/60 mt-1">
+                Versione originale
+              </p>
 
-          <span className="text-4xl font-black text-primary">
-            {afterScore?.toFixed(1)}
-          </span>
+              <div className="mt-5 text-6xl font-black text-rose-300">
+                {beforeScore?.toFixed(1)}
+                <span className="text-xl text-white/30">/10</span>
+              </div>
+            </div>
 
-          {scoreDelta !== null && (
-            <span className="text-sm font-bold text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full">
-              +{scoreDelta?.toFixed(1)} miglioramento
-            </span>
-          )}
-        </div>
-      </div>
+            <div className="flex flex-col justify-center items-center text-center">
+              <ArrowRight className="h-10 w-10 text-white/30" />
 
-      {/* SPLIT SCREEN */}
-      <div className="grid grid-cols-2 gap-3 flex-1 overflow-hidden">
+              <div className="text-emerald-400 font-black text-2xl mt-3">
+                +{scoreDelta?.toFixed(1)}
+              </div>
 
-        {/* PRIMA */}
-        <div className="overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-2xl shadow-2xl">
-          <div className="sticky top-0 bg-background border-b border-border px-6 py-4 z-20">
-            <p className="text-xs uppercase tracking-[0.25em] font-black text-rose-500">
-              Prima
-            </p>
+              <p className="text-xs text-white/40 uppercase tracking-widest">
+                miglioramento reale
+              </p>
+            </div>
 
-            <p className="text-sm text-muted-foreground">
-              Draft originale
-            </p>
-          </div>
+            <div className="rounded-[28px] border border-emerald-500/20 bg-emerald-500/[0.04] p-6">
+              <p className="text-emerald-400 uppercase text-sm font-black tracking-[0.2em]">
+                Dopo
+              </p>
 
-          <div className="p-8 whitespace-pre-wrap leading-8 text-[15px] text-foreground/75">
-            {originalText}
-          </div>
-        </div>
+              <p className="text-white/60 mt-1">
+                Versione migliorata
+              </p>
 
-        {/* DOPO */}
-        <div className="overflow-y-auto rounded-2xl border border-primary/15 bg-primary/[0.03] backdrop-blur-2xl shadow-2xl">
-          <div className="sticky top-0 bg-background border-b border-border px-6 py-4 z-20">
-            <p className="text-xs uppercase tracking-[0.25em] font-black text-emerald-500">
-              Dopo
-            </p>
+              <div className="mt-5 text-6xl font-black text-emerald-300">
+                {afterScore?.toFixed(1)}
+                <span className="text-xl text-white/30">/10</span>
+              </div>
+            </div>
 
-            <p className="text-sm text-muted-foreground">
-              Versione migliorata da Scriptora
-            </p>
-          </div>
+            <div className="rounded-[28px] border border-yellow-500/20 bg-yellow-500/[0.04] p-6">
+              <div className="flex items-center gap-2 text-yellow-400 font-bold mb-3">
+                <Crown className="h-5 w-5" />
+                Livello commerciale
+              </div>
 
-          <div className="p-8 whitespace-pre-wrap leading-8 text-[15px] text-foreground">
-            {patchedText}
+              <p className="text-white/75 leading-7">
+                Pronto per pubblicazione premium.
+                Raffinazione editoriale avanzata applicata.
+              </p>
+            </div>
+
           </div>
         </div>
-      </div>
 
-      {/* FOOTER */}
-      <div className="border border-border/50 bg-card/95 backdrop-blur-xl px-5 py-4 shrink-0 rounded-2xl mt-3">
-        <div className="flex items-center justify-end gap-3">
+        {/* COMPARE */}
+        <div className="grid grid-cols-2 gap-4 flex-1 overflow-hidden">
 
-          <button
-            onClick={onClose}
-            className="h-12 px-6 rounded-xl border border-border hover:bg-accent transition font-semibold"
-          >
-            Scarta
-          </button>
+          <div className="rounded-[32px] border border-white/10 bg-white/[0.03] backdrop-blur-2xl overflow-hidden">
+            <div className="sticky top-0 z-10 border-b border-white/10 bg-[#0a1020]/90 backdrop-blur-xl px-6 py-5">
+              <div className="flex items-center gap-3">
+                <Shield className="text-rose-400 h-5 w-5" />
 
-          <button
-            onClick={onApply}
-            className="h-12 px-8 rounded-xl bg-primary text-primary-foreground font-black hover:opacity-90 transition"
-          >
-            ✦ Applica revisione editoriale
-          </button>
+                <div>
+                  <p className="text-rose-400 uppercase text-sm font-black tracking-[0.2em]">
+                    Prima
+                  </p>
+
+                  <p className="text-white/50 text-sm">
+                    Versione originale
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-y-auto h-full px-8 py-8 text-[17px] leading-9 text-white/75 whitespace-pre-wrap">
+              {originalText}
+            </div>
+          </div>
+
+          <div className="rounded-[32px] border border-emerald-500/10 bg-emerald-500/[0.03] backdrop-blur-2xl overflow-hidden">
+            <div className="sticky top-0 z-10 border-b border-white/10 bg-[#0a1020]/90 backdrop-blur-xl px-6 py-5">
+              <div className="flex items-center gap-3">
+                <Sparkles className="text-emerald-400 h-5 w-5" />
+
+                <div>
+                  <p className="text-emerald-400 uppercase text-sm font-black tracking-[0.2em]">
+                    Dopo
+                  </p>
+
+                  <p className="text-white/50 text-sm">
+                    Versione migliorata da Scriptora
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-y-auto h-full px-8 py-8 text-[17px] leading-9 text-white whitespace-pre-wrap">
+              {patchedText}
+            </div>
+          </div>
 
         </div>
+
       </div>
     </div>
   );
