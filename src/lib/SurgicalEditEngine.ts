@@ -554,21 +554,31 @@ const EDITORIAL_PRIORITY: Record<
 
 function getTopWarnings(
   warnings: EditorialWarning[],
-  limit = 3
+  limit = 5
 ): string[] {
   return warnings
+    .filter(
+      (w) =>
+        w.severity === "medium" ||
+        w.severity === "high"
+    )
     .sort(
       (a, b) =>
-        (EDITORIAL_PRIORITY[
-          b.type
-        ] || 0) -
-        (EDITORIAL_PRIORITY[
-          a.type
-        ] || 0)
+        (
+          EDITORIAL_PRIORITY[
+            b.type
+          ] || 0
+        ) -
+        (
+          EDITORIAL_PRIORITY[
+            a.type
+          ] || 0
+        )
     )
     .slice(0, limit)
     .map((w) => w.type);
 }
+
 
 function shouldApplyFix(
   topWarnings: string[],
