@@ -12,6 +12,8 @@ import { getEditorialTier } from "@/lib/editorial-mastery";
 import { toast } from "sonner";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
+import { applySurgicalEditingFromWarnings } from "@/lib/SurgicalEditEngine";
+import { benchmarkSurgicalEdit } from "@/lib/SurgicalBenchmark";
 
 
 function countWordsForChapterLock(value: unknown): number {
@@ -164,7 +166,30 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
 
   const runPatch = async () => {
     if (await guardFreeChapterAi()) return;
-    await startPatch(project, chapterIndex);
+    if (!chapter?.content?.trim()) {
+      toast.error("Nessun testo capitolo da migliorare.");
+      return;
+    }
+
+    try {
+      const surgicalResult = applySurgicalEditingFromWarnings(chapter.content);
+      const benchmark = benchmarkSurgicalEdit(chapter.content);
+
+      if (!surgicalResult.text || surgicalResult.text === chapter.content) {
+        toast.info("Diagnostica completata: nessun intervento chirurgico necessario.");
+        return;
+      }
+
+      setWorkingContent(surgicalResult.text);
+      onApplyContent(surgicalResult.text);
+
+      toast.success(
+        `Diagnostica Editoriale applicata: ${surgicalResult.editsApplied.length || 1} interventi · rischio overediting ${benchmark.overeditingRisk}%`
+      );
+    } catch (error) {
+      console.error("Surgical edit failed:", error);
+      toast.error("Diagnostica Editoriale fallita. Riprova.");
+    }
   };
   const applyPatch = () => {
     if (!patchJob) return;
@@ -354,10 +379,10 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-sm font-bold text-foreground">AI Editor — Surgical Patch</h2>
+                <h2 className="text-sm font-bold text-foreground">Diagnostica Editoriale</h2>
                 <EditorialMasteryBadge genre={project.config.genre} subcategory={(project.config as any).subcategory} size="xs" />
               </div>
-              <p className="text-xs text-muted-foreground italic">"L'AI non riscrive. L'AI interviene."</p>
+              <p className="text-xs text-muted-foreground italic">"Analizza salute narrativa, subtext, tensione e rischi di overediting."</p>
             </div>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
@@ -372,7 +397,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
             <div className="text-center py-8 space-y-5">
               <Scissors className="h-10 w-10 text-primary mx-auto" />
               <div>
-                <p className="text-base font-bold text-foreground">Patch chirurgica</p>
+                <p className="text-base font-bold text-foreground">Diagnostica del capitolo</p>
                 <p className="text-xs text-muted-foreground mt-1.5 max-w-md mx-auto">
                   Analizza il capitolo, segna 🟢 forte / 🟡 migliorabile / 🔴 debole, e modifica <strong>solo</strong> ciò che serve.
                   Mai oltre il <strong>15%</strong>. Voce e struttura intatte.
@@ -380,7 +405,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
               </div>
               <button onClick={runPatch}
                 className="inline-flex items-center gap-2 h-11 px-6 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-md">
-                <Eye className="h-4 w-4" /> Analizza & Patch
+                <Eye className="h-4 w-4" /> ✦ Migliora il capitolo
               </button>
 
               {/* Advanced toggle */}
@@ -388,22 +413,22 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                 <button onClick={() => setShowAdvanced(s => !s)}
                   className="flex items-center gap-1.5 mx-auto text-[11px] text-muted-foreground hover:text-foreground transition-colors">
                   <ChevronDown className={`h-3 w-3 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
-                  Modalità avanzate
+                  Strumenti avanzati
                 </button>
                 {showAdvanced && (
                   <div className="mt-3 space-y-2">
                     <button onClick={() => { setShowRunAnalyze(true); runAnalysis(); }}
                       className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-lg text-xs font-semibold bg-card border border-border hover:bg-accent transition-colors">
-                      <Sparkles className="h-3.5 w-3.5" /> Analyze paragraph-by-paragraph
+                      <Sparkles className="h-3.5 w-3.5" /> Diagnosi paragrafo per paragrafo
                     </button>
                     <button onClick={runDominate}
-                      title={canDominate ? "Dominate Chapter — full rewrite" : "Unlock Dominate Mode (Premium)"}
+                      title={canDominate ? "Ricostruzione totale — riscrittura completa" : "Sblocca modalità premium"}
                       className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-lg text-xs font-bold bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 text-white hover:opacity-90 transition-all shadow-sm">
                       {canDominate ? <Swords className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-                      {canDominate ? "Dominate Chapter" : "Unlock Dominate"}
+                      {canDominate ? "Ricostruzione totale" : "Modalità premium"}
                     </button>
                     <p className="text-[10px] text-muted-foreground/70 italic px-2">
-                      ⚠️ Dominate riscrive tutto il capitolo. Usa solo se vuoi distruggere e ricostruire.
+                      ⚠️ La ricostruzione totale riscrive l’intero capitolo. Usala solo quando vuoi demolire e ricostruire, non per una correzione chirurgica.
                     </p>
                   </div>
                 )}
