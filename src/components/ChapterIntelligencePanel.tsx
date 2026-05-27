@@ -173,7 +173,13 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
 
     try {
       const surgicalResult = applySurgicalEditingFromWarnings(chapter.content);
-      const benchmark = benchmarkSurgicalEdit(chapter.content);
+      let overeditingRisk = 0;
+      try {
+        const benchmark = benchmarkSurgicalEdit(chapter.content);
+        overeditingRisk = benchmark.overeditingRisk || 0;
+      } catch (benchmarkError) {
+        console.warn("Surgical benchmark failed:", benchmarkError);
+      }
 
       if (!surgicalResult.text || surgicalResult.text === chapter.content) {
         toast.info("Diagnostica completata: nessun intervento chirurgico necessario.");
@@ -184,11 +190,11 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
       onApplyContent(surgicalResult.text);
 
       toast.success(
-        `Diagnostica Editoriale applicata: ${surgicalResult.editsApplied.length || 1} interventi · rischio overediting ${benchmark.overeditingRisk}%`
+        `Diagnostica Editoriale applicata: ${surgicalResult.editsApplied.length || 1} interventi · rischio overediting ${overeditingRisk}%`
       );
     } catch (error) {
       console.error("Surgical edit failed:", error);
-      toast.error("Diagnostica Editoriale fallita. Riprova.");
+      toast.error(error instanceof Error ? error.message : "Diagnostica Editoriale fallita. Riprova.");
     }
   };
   const applyPatch = () => {
