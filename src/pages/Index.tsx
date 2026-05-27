@@ -341,25 +341,6 @@ const Index = () => {
 </>
       </button>
 
-      <button
-        onClick={() => setGuidedFlowEnabled(true)}
-        className="
-          ios-toolbar-button
-          fixed top-4 left-[270px]
-          z-50
-          px-3 py-3
-          text-xs font-semibold
-          text-muted-foreground
-          hover:text-foreground
-          rounded-2xl
-          shadow-lg
-          backdrop-blur-xl
-        "
-        title="Apri guida"
-      >
-        ✨ Guida
-      </button>
-
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-30 bg-black/[0.55] backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)} />

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Fingerprint, PlusCircle, Save, ShieldCheck, Sparkles, Trash2, UserRound, X } from "lucide-react";
+import { CheckCircle2, Fingerprint, HelpCircle, PlusCircle, Save, ShieldCheck, Sparkles, Trash2, UserRound, X } from "lucide-react";
 import type { AuthorIdentity } from "@/types/book";
 import {
   DEFAULT_AUTHOR_IDENTITIES,
@@ -59,6 +59,7 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
   useUILanguage();
   const [identities, setIdentities] = useState<AuthorIdentity[]>(() => loadAuthorIdentities());
   const [draft, setDraft] = useState<AuthorIdentity>(() => getSelectedAuthorIdentity());
+  const [guideEnabled, setGuideEnabled] = useState(() => localStorage.getItem("scriptora-guided-flow") === "on");
 
   useEffect(() => {
     if (!open) return;
@@ -67,6 +68,16 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
     setIdentities(loaded);
     setDraft(selected);
   }, [open]);
+
+  useEffect(() => {
+    const syncGuideToggle = (event: Event) => {
+      const detail = (event as CustomEvent<{ enabled?: boolean }>).detail;
+      if (typeof detail?.enabled === "boolean") setGuideEnabled(detail.enabled);
+    };
+
+    window.addEventListener("scriptora-guided-flow-change", syncGuideToggle as EventListener);
+    return () => window.removeEventListener("scriptora-guided-flow-change", syncGuideToggle as EventListener);
+  }, []);
 
   const score = useMemo(() => completeness(draft), [draft]);
   const selectedId = getSelectedAuthorIdentity().id;
@@ -96,6 +107,13 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
       }
       return next;
     });
+  };
+
+  const toggleGuide = () => {
+    const next = !guideEnabled;
+    localStorage.setItem("scriptora-guided-flow", next ? "on" : "off");
+    setGuideEnabled(next);
+    window.dispatchEvent(new CustomEvent("scriptora-guided-flow-change", { detail: { enabled: next } }));
   };
 
   const saveDraft = () => {
@@ -294,6 +312,28 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
               <AuthorField label="Temi ricorrenti">
                 <textarea value={draft.recurringThemes} onChange={(e) => updateDraft({ recurringThemes: e.target.value })} rows={4} className="author-textarea" placeholder="Ossessioni creative, valori, temi, tensioni..." />
               </AuthorField>
+            </section>
+
+            <section className="rounded-2xl border border-primary/20 bg-primary/10 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <HelpCircle className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Guida Scriptora</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      Mostra istruzioni step-by-step nelle funzioni di Scriptora.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleGuide}
+                  className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${guideEnabled ? "bg-primary/20 text-primary border border-primary/30" : "bg-white/[0.07] text-foreground hover:bg-white/[0.12] border border-white/10"}`}
+                  aria-pressed={guideEnabled}
+                >
+                  {guideEnabled ? "ON" : "OFF"}
+                </button>
+              </div>
             </section>
 
             <section className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-4">

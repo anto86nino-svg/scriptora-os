@@ -3295,14 +3295,18 @@ textarea,
 }
 
 .scriptora-step-guide {
-  bottom: 86px;
+  top: 86px;
+  right: 18px;
+  bottom: auto;
   width: min(338px, calc(100vw - 28px));
   border-radius: 8px;
   padding: 12px;
 }
 
 .scriptora-step-guide-button {
-  bottom: 18px;
+  top: 18px;
+  right: 18px;
+  bottom: auto;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -3403,7 +3407,8 @@ textarea,
 
   .scriptora-step-guide {
     right: 12px;
-    bottom: 78px;
+    top: 78px;
+    bottom: auto;
     width: calc(100vw - 24px);
     max-height: min(62vh, 430px);
     overflow-y: auto;
@@ -3411,7 +3416,8 @@ textarea,
 
   .scriptora-step-guide-button {
     right: 12px;
-    bottom: 12px;
+    top: 12px;
+    bottom: auto;
   }
 }
 

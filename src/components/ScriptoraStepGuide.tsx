@@ -37,8 +37,19 @@ type GuideCopy = {
   routes: Record<GuideRoute, { title: string; subtitle: string; cta?: string; ctaPath?: string; steps: string[] }>;
 };
 
+const SCRIPTORA_GUIDED_FLOW_KEY = "scriptora-guided-flow";
 const GUIDE_ENABLED_KEY = "scriptora-global-step-guide";
 const GUIDE_COLLAPSED_KEY = "scriptora-global-step-guide-collapsed";
+
+function readInitialGuideEnabled() {
+  const stored = localStorage.getItem(SCRIPTORA_GUIDED_FLOW_KEY);
+  if (stored === "on") return true;
+  if (stored === "off") return false;
+  const legacy = localStorage.getItem(GUIDE_ENABLED_KEY);
+  if (legacy === "on") return true;
+  if (legacy === "off") return false;
+  return false;
+}
 
 const copy: Record<UILanguage, GuideCopy> = {
   en: {
@@ -286,7 +297,9 @@ export function ScriptoraStepGuide() {
   const lang = useUILanguage();
   const location = useLocation();
   const navigate = useNavigate();
-  const [enabled, setEnabled] = useState(() => localStorage.getItem(GUIDE_ENABLED_KEY) !== "off");
+  const [enabled, setEnabled] = useState(readInitialGuideEnabled);
+  const [isGuideOpen, setIsGuideOpen] = useState(true);
+const [isMinimized, setIsMinimized] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(GUIDE_COLLAPSED_KEY) === "yes");
   const [overrideRoute, setOverrideRoute] = useState<GuideRoute | null>(null);
 
@@ -305,7 +318,7 @@ export function ScriptoraStepGuide() {
   }, [location.pathname]);
 
   useEffect(() => {
-    localStorage.setItem(GUIDE_ENABLED_KEY, enabled ? "on" : "off");
+    localStorage.setItem(SCRIPTORA_GUIDED_FLOW_KEY, enabled ? "on" : "off");
   }, [enabled]);
 
   useEffect(() => {
@@ -313,13 +326,28 @@ export function ScriptoraStepGuide() {
   }, [collapsed]);
 
   useEffect(() => {
+    const syncGuideState = (event: Event) => {
+      const detail = (event as CustomEvent<{ enabled?: boolean; resetCollapsed?: boolean }>).detail;
+      if (typeof detail?.enabled === "boolean") {
+        setEnabled(detail.enabled);
+        if (detail.enabled && detail.resetCollapsed !== false) {
+          setCollapsed(false);
+          setIsGuideOpen(true);
+        }
+      }
+    };
+
     const syncGuideContext = (event: Event) => {
       const next = (event as CustomEvent<{ route?: GuideRoute | null }>).detail?.route || null;
       setOverrideRoute(next);
     };
 
+    window.addEventListener("scriptora-guided-flow-change", syncGuideState as EventListener);
     window.addEventListener("scriptora-guide-context", syncGuideContext as EventListener);
-    return () => window.removeEventListener("scriptora-guide-context", syncGuideContext as EventListener);
+    return () => {
+      window.removeEventListener("scriptora-guided-flow-change", syncGuideState as EventListener);
+      window.removeEventListener("scriptora-guide-context", syncGuideContext as EventListener);
+    };
   }, []);
 
   const activeRoute = overrideRoute || route;
@@ -330,6 +358,24 @@ export function ScriptoraStepGuide() {
 
   if (!enabled) {
     return <>{/* moved near music toolbar */}</>;
+  }
+
+  if (!isGuideOpen && isMinimized) {
+    return (
+      <button
+        onClick={() => {
+          setIsGuideOpen(true);
+          setIsMinimized(false);
+        }}
+        className="fixed bottom-5 right-5 z-[9999] rounded-2xl border border-white/10 bg-black/70 px-4 py-3 text-xs font-semibold text-white shadow-2xl backdrop-blur-xl"
+      >
+        ✨ Guida
+      </button>
+    );
+  }
+
+  if (!isGuideOpen) {
+    return null;
   }
 
   if (collapsed) {
@@ -356,7 +402,10 @@ export function ScriptoraStepGuide() {
             <ChevronDown className="h-3.5 w-3.5" />
           </button>
           <button
-            onClick={() => setEnabled(false)}
+            onClick={() => {
+  setIsMinimized(true);
+  setIsGuideOpen(false);
+}}
             className="scriptora-step-guide-icon"
             title={text.hide}
           >
@@ -392,7 +441,10 @@ export function ScriptoraStepGuide() {
       )}
 
       <button
-        onClick={() => setEnabled(false)}
+        onClick={() => {
+  setIsMinimized(true);
+  setIsGuideOpen(false);
+}}
         className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
       >
         <EyeOff className="h-3 w-3" />

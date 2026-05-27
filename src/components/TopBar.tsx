@@ -84,11 +84,7 @@ export function TopBar({
     const refreshAuthors = () => setAuthorIdentities(loadAuthorIdentities());
     window.addEventListener(AUTHOR_IDENTITY_CHANGED_EVENT, refreshAuthors);
     window.addEventListener("storage", refreshAuthors);
-    if (isFocusMode) {
-    return null;
-  }
-
-  return () => {
+    return () => {
       window.removeEventListener(AUTHOR_IDENTITY_CHANGED_EVENT, refreshAuthors);
       window.removeEventListener("storage", refreshAuthors);
     };
@@ -151,20 +147,6 @@ export function TopBar({
         onChange={changeProjectAuthor}
       />
       <FocusMusicControl />
-
-      <button
-        onClick={() => {
-          localStorage.setItem(
-            "scriptora-guided-flow",
-            "on"
-          );
-          window.location.reload();
-        }}
-        className="ios-toolbar-button shrink-0 px-3 py-2 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
-        title="Apri guida"
-      >
-        ✨ Guida
-      </button>
       <Divider />
       <MiniSelect label={t("genre")} value={config.genre} options={GENRES} onChange={(v) => onUpdateConfig("genre", v)} />
       <Divider />
