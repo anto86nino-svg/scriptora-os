@@ -56,12 +56,9 @@ async function patchBatch(
 ) {
   const numbered = batch.map((p) => `[¶${p.idx}]\n${p.text}`).join("\n\n");
 
-  const system = `Sei un editor narrativo senior da casa editrice Big-5. Lavori in ${ctx.language}.
-Modalità: DIAGNOSTICA EDITORIALE CHIRURGICA.
-NON riscrivere il capitolo. NON cambiare trama, canon, voce, POV o struttura.
-Devi però trovare micro-miglioramenti reali: subtext, ritmo, dialoghi meno perfetti, compressione di spiegazioni emotive, tensione, finali meno sovraspiegati.
-Anche se il testo è forte, individua almeno 1 intervento leggero se esiste una frase migliorabile.
-Massimo 15% del capitolo. Stessa voce. Meno AI. Più umano. Più narrativo.
+  const system = `Sei un editor narrativo bestseller. Lavori in ${ctx.language}.
+REGOLA D'ORO: NON riscrivere. INTERVIENI solo dove serve.
+Se un paragrafo è già forte, NON toccarlo. Mantieni voce, struttura, ritmo.
 Output SOLO JSON valido.`;
 
   const user = `Genere: ${ctx.genre} | Tono: ${ctx.tone} | Capitolo: "${ctx.chapterTitle}"
@@ -72,14 +69,11 @@ PARAGRAFI (batch):
 ${numbered}
 
 Per ognuno:
-- "strong" 🟢 = forte: non riscrivere, ma puoi segnare una micro-opportunità se esiste
-- "improvable" 🟡 = migliorabile: frase troppo spiegata, dialogo troppo pulito, ritmo piatto, subtext debole, immagine generica
-- "weak" 🔴 = debole: ridondanza, spiegazione emotiva, finale sovraspiegato, cliché, dialogo artificiale
+- "strong" 🟢 = forte, NON toccare
+- "improvable" 🟡 = migliorabile
+- "weak" 🔴 = ridondanza/debolezza reale
 
-Genera patch per i punti più utili (max ${ctx.maxPatchesInBatch} patch in questo batch).
-Non restituire patches vuote se nel batch esiste almeno una frase migliorabile.
-Ogni patch deve essere chirurgica: stesso significato, stessa voce, più subtext, più tensione, meno spiegazione.
-Lunghezza ±15%, stessa voce.
+Genera patch SOLO per i più critici (max ${ctx.maxPatchesInBatch} patch in questo batch). Lunghezza ±20%, stessa voce.
 
 Restituisci JSON in ${ctx.language}:
 {
