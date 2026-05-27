@@ -39,10 +39,6 @@ const Index = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showCoach, setShowCoach] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [guidedFlowEnabled, setGuidedFlowEnabled] = useState<boolean>(() => {
-    const saved = localStorage.getItem("scriptora-guided-flow");
-    return saved !== "off";
-  });
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
     const saved = localStorage.getItem("scriptora-sidebar-open");
     return saved ? JSON.parse(saved) : false;
@@ -82,10 +78,7 @@ const Index = () => {
     localStorage.setItem("scriptora-sidebar-open", JSON.stringify(sidebarOpen));
   }, [sidebarOpen]);
 
-  useEffect(() => {
-    localStorage.setItem("scriptora-guided-flow", guidedFlowEnabled ? "on" : "off");
-  }, [guidedFlowEnabled]);
-
+  
   // Token guard for free users — gracefully stop generation when limit is reached
   useEffect(() => {
     if (quota?.isOverTokenLimit && engine.isAnythingGenerating) {
@@ -319,11 +312,34 @@ const Index = () => {
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
         className={`ios-toolbar-button fixed left-3 top-3 z-50 p-2 text-foreground shadow-lg backdrop-blur-xl ${
-          guidedFlowEnabled && !!engine.project?.blueprint && !sidebarOpen ? "scriptora-guide-pulse" : ""
+          ""
         }`}
-        title={sidebarOpen ? t("hide_sidebar") : t("show_sidebar")}
+        title={sidebarOpen ? "Chiudi pannello" : "Capitoli & Libro"}
       >
-        {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        <>
+  <div className="
+    h-10 w-10 rounded-xl
+    bg-primary/10
+    flex items-center justify-center
+    text-lg shrink-0
+  ">
+    {sidebarOpen ? "✕" : "📚"}
+  </div>
+
+  <div className="text-left leading-tight">
+    <p className="text-sm font-bold text-foreground">
+      {sidebarOpen
+        ? "Chiudi pannello"
+        : "Capitoli & Libro"}
+    </p>
+
+    <p className="text-[11px] text-muted-foreground">
+      {sidebarOpen
+        ? "Torna alla scrittura"
+        : "Apri navigazione"}
+    </p>
+  </div>
+</>
       </button>
 
       {/* Overlay for mobile */}
@@ -457,18 +473,7 @@ const Index = () => {
         }`}
       >
 {/* TopBar removed for clean writing experience */}
-<GuidedProjectFlow
-          project={engine.project}
-          activeSection={activeSection}
-          sidebarOpen={sidebarOpen}
-          enabled={guidedFlowEnabled}
-          onEnabledChange={setGuidedFlowEnabled}
-          onOpenSidebar={() => setSidebarOpen(true)}
-          onSelectSection={(section) => {
-            setActiveSection(section);
-            setSidebarOpen(false);
-          }}
-        />
+
 
         <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm">
           {engine.project ? (

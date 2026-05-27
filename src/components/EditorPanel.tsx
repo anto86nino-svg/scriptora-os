@@ -1173,7 +1173,6 @@ const GenerationProgress = memo(function GenerationProgress({
         <div className="scriptora-generation-live-pill">
           <span className="scriptora-generation-live-dot" />
           <Sparkles className="h-4 w-4" />
-          <span>Scriptora Studio Live</span>
         </div>
         <div className="scriptora-generation-actions">
           <span className="scriptora-generation-percent">{realPct}%</span>
