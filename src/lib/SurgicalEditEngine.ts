@@ -169,6 +169,29 @@ export function applyDialogueRoughening(
     );
   }
 
+  
+  if (
+    hasWarning(
+      analysis.warnings,
+      "character_flattening"
+    ) ||
+    hasWarning(
+      analysis.warnings,
+      "emotional_redundancy"
+    )
+  ) {
+    const result =
+      applyTensionPreservation(
+        edited
+      );
+
+    edited = result.text;
+
+    editsApplied.push(
+      ...result.editsApplied
+    );
+  }
+
   return {
     text: edited,
     editsApplied,
@@ -383,6 +406,58 @@ function applyEndingCompression(
   if (edited !== text) {
     editsApplied.push(
       "ending_compression"
+    );
+  }
+
+  return {
+    text: edited,
+    editsApplied,
+  };
+}
+
+function applyTensionPreservation(
+  text: string
+): SurgicalResult {
+  let edited = text;
+  const editsApplied: string[] = [];
+
+  const replacements: Array<[RegExp, string]> = [
+    [
+      /\bI missed you too\b/gi,
+      "She looked away."
+    ],
+    [
+      /\bI love you too\b/gi,
+      "Nobody answered immediately."
+    ],
+    [
+      /\bI forgive you\b/gi,
+      "It wasn't that simple."
+    ],
+    [
+      /\bEverything is okay now\b/gi,
+      "Not everything felt fixed."
+    ],
+    [
+      /\bWe can finally be happy\b/gi,
+      "It still felt fragile."
+    ]
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    const next = edited.replace(
+      pattern,
+      replacement
+    );
+
+    if (next !== edited) {
+      edited = next;
+    }
+  }
+
+  if (edited !== text) {
+    editsApplied.push(
+      "tension_preservation"
     );
   }
 
