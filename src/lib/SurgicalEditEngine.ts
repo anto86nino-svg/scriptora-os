@@ -117,3 +117,50 @@ export function applyDialogueRoughening(
     editsApplied,
   };
 }
+
+import {
+  analyzeNovel,
+  type EditorialWarning,
+} from "./EditorialIntelligence";
+
+function hasWarning(
+  warnings: EditorialWarning[],
+  type: string
+): boolean {
+  return warnings.some(
+    (w) =>
+      w.type === type &&
+      (w.severity === "medium" ||
+        w.severity === "high")
+  );
+}
+
+export function applySurgicalEditingFromWarnings(
+  text: string
+): SurgicalResult {
+  const analysis = analyzeNovel(text);
+
+  let edited = text;
+  const editsApplied: string[] = [];
+
+  if (
+    hasWarning(
+      analysis.warnings,
+      "dialogue_perfection"
+    )
+  ) {
+    const result =
+      applyDialogueRoughening(edited);
+
+    edited = result.text;
+
+    editsApplied.push(
+      ...result.editsApplied
+    );
+  }
+
+  return {
+    text: edited,
+    editsApplied,
+  };
+}
