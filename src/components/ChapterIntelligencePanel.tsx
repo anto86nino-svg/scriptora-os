@@ -734,6 +734,15 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                 )}
               </div>
 
+              {patchResult.patches.length > 0 && (
+                <button
+                  onClick={applyPatch}
+                  className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-sm shadow-lg shadow-blue-500/20 transition inline-flex items-center justify-center gap-2"
+                >
+                  ✦ Apri confronto Prima/Dopo
+                </button>
+              )}
+
               {/* Diff GitHub-style */}
               {patchResult.patches.length === 0 ? (
                 <div className="p-6 text-center rounded-lg border border-emerald-500/30 bg-emerald-500/5">
