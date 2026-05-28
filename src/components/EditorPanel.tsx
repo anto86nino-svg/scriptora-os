@@ -5,8 +5,6 @@ import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel"
 import { GenreProfileBadge } from "@/components/GenreProfileBadge";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
 import { GenreCoachPanel } from "@/components/GenreCoachPanel";
-import { AudioStudio } from "@/components/AudioStudio";
-import { useFeatureGate } from "@/components/PaywallGuard";
 import { downloadText } from "@/lib/download";
 import { RewriteLevel, ChunkProgress } from "@/lib/generation";
 import { cn } from "@/lib/utils";
@@ -14,7 +12,6 @@ import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { Progress } from "@/components/ui/progress";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
-import { ReadAloudModal } from "@/components/ReadAloudModal";
 
 interface EditorPanelProps {
   project: BookProject;
@@ -44,6 +41,7 @@ interface EditorPanelProps {
   onUpdateBlueprintOutlineSummary?: (index: number, summary: string) => void;
   onUpdateFrontMatterField?: (field: string, value: string) => void;
   onUpdateBackMatterField?: (field: string, value: string) => void;
+  onNarrateChapter?: (chapterIndex: number) => void;
 }
 
 export function EditorPanel({
@@ -60,13 +58,10 @@ export function EditorPanel({
   writingSettings,
   onUpdateBlueprintField, onUpdateBlueprintOutlineTitle, onUpdateBlueprintOutlineSummary,
   onUpdateFrontMatterField, onUpdateBackMatterField,
+  onNarrateChapter,
 }: EditorPanelProps) {
   const { blueprint, frontMatter, chapters, backMatter, config, phase } = project;
   const [mode, setMode] = useState<"edit" | "preview">(editorMode);
-  const [showReadAloud, setShowReadAloud] = useState(false);
-  const [showAudioStudio, setShowAudioStudio] = useState(false);
-  const audioGate = useFeatureGate("audio_studio");
-  const openAudioStudio = audioGate.guard(() => setShowAudioStudio(true));
 
   const ws = writingSettings || { fontFamily: "'Times New Roman', Times, serif", fontSize: 16, lineSpacing: 2 };
 
@@ -168,7 +163,7 @@ export function EditorPanel({
                   onCancel={onCancelGeneration ? () => onCancelGeneration(`chapter-${view.chapterIndex}`) : undefined}
                   chunkProgress={chunkProgress?.[`chapter-${view.chapterIndex}`]}
                   ws={ws}
-                  openAudioStudio={openAudioStudio}
+                  onNarrateChapter={onNarrateChapter}
                 />
               )}
               {view.type === "subchapter" && (() => {
@@ -417,7 +412,7 @@ function ChapterView({
   project, chapterIndex, outline, chapter, isGenerating, isEvaluating,
   onGenerate, onRegenerate, onRewrite, onEvaluate, onAutoRewrite, onGenerateSubchapter,
   onUpdateContent, onUpdateTitle, onUpdateSubContent, onUpdateSubTitle, onSetLengthOverride, isGeneratingSection, onCancel, chunkProgress, ws,
-  openAudioStudio,
+  onNarrateChapter,
 }: {
   project: BookProject; chapterIndex: number;
   outline: { title: string; summary: string }; chapter: Chapter | undefined;
@@ -433,7 +428,7 @@ function ChapterView({
   onCancel?: () => void;
   chunkProgress?: ChunkProgress;
   ws: WritingSettings;
-  openAudioStudio: () => void;
+  onNarrateChapter?: (chapterIndex: number) => void;
 }) {
   const isGenerated = chapter && chapter.content.length > 0;
   const currentLength = chapter?.lengthOverride || project.config.chapterLength;
@@ -486,8 +481,8 @@ function ChapterView({
 
               <ActionButton
                 icon={<Headphones className="h-3.5 w-3.5" />}
-                title="Leggi Capitolo"
-                onClick={() => setShowReadAloud(true)}
+                title="Narrate Chapter"
+                onClick={() => onNarrateChapter?.(chapterIndex)}
                 disabled={!isGenerated || isGenerating || isEvaluating}
               />
               <ActionButton icon={<RefreshCw className="h-3.5 w-3.5" />} title={t("regenerate")} onClick={onRegenerate} disabled={isGenerating} />

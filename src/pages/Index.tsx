@@ -10,6 +10,7 @@ import { SettingsPanel } from "@/components/SettingsPanel";
 import { AICoachPanel } from "@/components/AICoachPanel";
 import { ProgressTracker } from "@/components/ProgressTracker";
 import { GuidedProjectFlow } from "@/components/GuidedProjectFlow";
+import { VoiceStudioDialog } from "@/components/VoiceStudioDialog";
 import { useBookEngine } from "@/hooks/useBookEngine";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { deleteProject as removeProject, getLastProjectId } from "@/lib/storage";
@@ -40,6 +41,8 @@ const Index = () => {
   const [showPublish, setShowPublish] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCoach, setShowCoach] = useState(false);
+  const [showVoiceStudio, setShowVoiceStudio] = useState(false);
+  const [voiceStudioChapterIndex, setVoiceStudioChapterIndex] = useState<number>(0);
   const [focusMode, setFocusMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
     const saved = localStorage.getItem("scriptora-sidebar-open");
@@ -93,6 +96,9 @@ const Index = () => {
   }, [sidebarOpen]);
 
   const effectiveProject = engine.project || recoveredProject;
+  const nextVoiceProjectList = effectiveProject
+    ? [effectiveProject, ...projects.filter((p) => p.id !== effectiveProject.id)]
+    : projects;
 
   useEffect(() => {
     localStorage.setItem(WRITING_ROOM_MODE_KEY, editorMode);
@@ -306,6 +312,15 @@ const Index = () => {
   const handleUpdateSettings = (s: WritingSettings) => {
     setWritingSettings(s);
     saveSettings(s);
+  };
+
+  const openVoiceStudioForChapter = (chapterIndex: number) => {
+    setVoiceStudioChapterIndex(chapterIndex);
+    setShowVoiceStudio(true);
+  };
+
+  const closeVoiceStudio = () => {
+    setShowVoiceStudio(false);
   };
 
   const handleLanguageChange = (_lang: UILanguage) => {
@@ -558,6 +573,7 @@ const Index = () => {
                   onUpdateBlueprintOutlineSummary={engine.updateBlueprintOutlineSummary}
                   onUpdateFrontMatterField={engine.updateFrontMatterField}
                   onUpdateBackMatterField={engine.updateBackMatterField}
+                  onNarrateChapter={openVoiceStudioForChapter}
                 />
               </div>
               {showCoach && (
@@ -567,6 +583,14 @@ const Index = () => {
                     else engine.updateChapterContent(chapterIdx, text);
                   }} />
               )}
+              <VoiceStudioDialog
+                open={showVoiceStudio}
+                onClose={closeVoiceStudio}
+                projects={nextVoiceProjectList}
+                initialProjectId={effectiveProject?.id}
+                initialChapterIndex={voiceStudioChapterIndex}
+                autoPlayOnOpen
+              />
             </>
           ) : (
             <div className="flex flex-1 items-center justify-center px-4">
