@@ -571,7 +571,7 @@ export function VoiceStudioDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
-      <DialogContent className="max-h-[92dvh] w-[calc(100vw-1rem)] max-w-3xl overflow-y-auto border-white/15 bg-slate-950/94 p-4 text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-6">
+      <DialogContent className="flex max-h-[88dvh] w-[calc(100vw-0.75rem)] max-w-3xl flex-col overflow-hidden border-white/15 bg-slate-950/94 p-3 text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:max-h-[90dvh] sm:p-5">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Waves className="h-5 w-5 text-sky-300" />
@@ -582,7 +582,7 @@ export function VoiceStudioDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1f2937] p-3 sm:p-4">
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1f2937] p-3 sm:p-4">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
             <div>
               <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">Immersive Player</p>
@@ -601,7 +601,7 @@ export function VoiceStudioDialog({
             />
           </div>
           <div className="mb-5 flex items-center justify-between text-xs text-white/60">
-            <span>Mobile audio v4 · {status}</span>
+            <span>Mobile audio v4 compact · {status}</span>
             <span>{progress}%</span>
           </div>
 
@@ -616,7 +616,7 @@ export function VoiceStudioDialog({
             />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <select
               value={projectId}
               onChange={(e) => {
@@ -686,7 +686,7 @@ export function VoiceStudioDialog({
             </div>
           )}
 
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="sticky bottom-0 z-20 mt-4 flex flex-col gap-2 rounded-2xl border border-white/10 bg-slate-950/90 p-2 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center">
             <button
               onClick={testMobileVoice}
               className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-emerald-300/40 bg-emerald-300/15 px-4 text-sm font-semibold text-emerald-100 hover:bg-emerald-300/20 sm:w-auto"
@@ -717,7 +717,7 @@ export function VoiceStudioDialog({
             )}
           </div>
 
-          <div className={"mt-6 rounded-3xl border border-white/10 bg-slate-900/90 p-4 shadow-[inset_0_0_30px_rgba(15,23,42,0.35)] " + (immersiveMode ? "ring-1 ring-cyan-300/20" : "")}>
+          <div className={"mt-4 rounded-2xl border border-white/10 bg-slate-900/90 p-3 shadow-[inset_0_0_30px_rgba(15,23,42,0.35)] sm:p-4 " + (immersiveMode ? "ring-1 ring-cyan-300/20" : "")}>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">Karaoke Reading</p>
@@ -737,14 +737,14 @@ export function VoiceStudioDialog({
               <span>{currentChapter ? currentChapter.title || `Chapter ${chapterIndex + 1}` : "No chapter selected"}</span>
             </div>
 
-            <div className={`max-h-[24rem] overflow-y-auto rounded-3xl border border-white/10 bg-slate-950/80 p-4 ${immersiveMode ? "backdrop-blur-sm" : ""}`}>
+            <div className={`max-h-[34dvh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/80 p-3 sm:max-h-[24rem] sm:p-4 ${immersiveMode ? "backdrop-blur-sm" : ""}`}>
               {sentences.length > 0 ? (
                 <div className="space-y-3">
                   {sentences.map((sentence, idx) => (
                     <p
                       key={`${idx}-${sentence.slice(0, 20)}`}
                       ref={(node) => { sentenceRefs.current[idx] = node; }}
-                      className={`rounded-2xl px-4 py-3 transition-all duration-300 ${idx === currentSentence ? "bg-cyan-400/10 text-white shadow-[0_0_20px_rgba(56,189,248,0.18)] ring-1 ring-cyan-300/30" : immersiveMode ? "text-slate-400/80 opacity-80" : "text-slate-300"}`}
+                      className={`rounded-xl px-3 py-2 text-sm leading-relaxed transition-all duration-300 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-base ${idx === currentSentence ? "bg-cyan-400/10 text-white shadow-[0_0_20px_rgba(56,189,248,0.18)] ring-1 ring-cyan-300/30" : immersiveMode ? "text-slate-400/80 opacity-80" : "text-slate-300"}`}
                     >
                       {sentence}
                     </p>
