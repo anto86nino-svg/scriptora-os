@@ -500,7 +500,7 @@ export default function Home() {
     : null;
   const focusAtmosphereCard = (
   <div className="relative overflow-hidden rounded-3xl border border-sky-300/10 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950/40 p-6 shadow-2xl">
-    <div className="absolute inset-0 bg-\[radial-gradient\(circle_at_top_right,rgba\(56,189,248,0.18\),transparent_45%\)\]" />
+    <div className="absolute inset-0 bg-\[radial-gradient(circle_at_top_right,rgba(56,189,248,0.18),transparent_45%)\]" />
 
     <div className="relative z-10 flex flex-col gap-5">
       <div className="flex items-start justify-between gap-4">
@@ -531,18 +531,18 @@ export default function Home() {
           "Deep focus",
           "Camino notte",
           "Biblioteca"
-        ].map\(\(label\) => \(
+        ].map((label) => (
           <div
             key={label}
             className="rounded-2xl border border-white/10 bg-white/\[0.04\] px-4 py-3 text-sm font-medium text-slate-200 backdrop-blur-xl"
           >
             {label}
           </div>
-        \)\)}
+        ))}
       </div>
     </div>
   </div>
-\);
+);
 
 const dashboardWidgets = [
     {
