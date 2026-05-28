@@ -192,7 +192,7 @@ try {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="w-full max-w-xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-4">
         <DialogHeader>
           <DialogTitle>
             🎧 Scriptora Read Aloud
@@ -219,7 +219,7 @@ try {
             type="button"
             onClick={() => {
               console.log("TEST PLAY CLICKED");
-              alert("TEST PLAY CLICKED");
+              
               handlePlay();
             }}
             disabled={isPlaying}
@@ -240,7 +240,7 @@ try {
             {status}
           </div>
 
-          <div className="mt-4 w-full max-w-full overflow-hidden">
+          <div className="mt-6 pb-6 w-full max-w-full overflow-visible">
             <AudioPlayer
               autoPlay={false}
               src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
