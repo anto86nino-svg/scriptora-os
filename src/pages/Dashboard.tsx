@@ -498,7 +498,53 @@ export default function Home() {
   const aiQualityScore = aiQualityValues.length
     ? Math.round(aiQualityValues.reduce((sum, value) => sum + value, 0) / aiQualityValues.length)
     : null;
-  const dashboardWidgets = [
+  const focusAtmosphereCard = (
+  <div className="relative overflow-hidden rounded-3xl border border-sky-300/10 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950/40 p-6 shadow-2xl">
+    <div className="absolute inset-0 bg-\[radial-gradient\(circle_at_top_right,rgba\(56,189,248,0.18\),transparent_45%\)\]" />
+
+    <div className="relative z-10 flex flex-col gap-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1 text-\[11px\] font-semibold uppercase tracking-\[0.18em\] text-sky-200">
+            <AudioLines className="h-3.5 w-3.5" />
+            Focus Atmosphere
+          </div>
+
+          <h2 className="mt-4 text-2xl font-bold text-white">
+            Write inside your own world.
+          </h2>
+
+          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
+            Atmosfere sonore cinematiche progettate per immersione, focus e ritmo narrativo.
+          </p>
+        </div>
+
+        <div className="hidden md:block">
+          <FocusMusicControl />
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {[
+          "Pioggia calma",
+          "Onde lente",
+          "Deep focus",
+          "Camino notte",
+          "Biblioteca"
+        ].map\(\(label\) => \(
+          <div
+            key={label}
+            className="rounded-2xl border border-white/10 bg-white/\[0.04\] px-4 py-3 text-sm font-medium text-slate-200 backdrop-blur-xl"
+          >
+            {label}
+          </div>
+        \)\)}
+      </div>
+    </div>
+  </div>
+\);
+
+const dashboardWidgets = [
     {
       label: t("active_book_widget"),
       value: lastProject?.config.title || t("no_active_book"),
@@ -900,6 +946,8 @@ export default function Home() {
         </section>
 
         <div className="mb-4 hidden gap-2 sm:mb-6 xl:grid xl:grid-cols-5">
+          {focusAtmosphereCard}
+
           {dashboardWidgets.map((widget) => (
             <button
               key={widget.label}
