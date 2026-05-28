@@ -316,7 +316,7 @@ export function VoiceStudioDialog({
       const voices = voicesRef.current || synth.getVoices() || [];
       const preferredVoice = chooseBestVoice(voices, targetLanguage);
 
-      const test = new SpeechSynthesisUtterance(`${selectedVoicePersona.name}. Scriptora voice test.`);
+      const test = new SpeechSynthesisUtterance(`${selectedVoicePersona.name}. Scriptora voice test... I am ready to read your chapter.`);
       test.lang = preferredVoice?.lang || languageToLocale(targetLanguage);
       if (preferredVoice) test.voice = preferredVoice;
       test.rate = Math.max(0.5, Math.min(1.6, selectedVoicePersona.rate));
@@ -455,6 +455,67 @@ export function VoiceStudioDialog({
     return candidates[0] || null;
   };
 
+  const cleanNarrationText = (text: string) => {
+    return text
+      .replace(/```[\s\S]*?```/g, " ")
+      .replace(/#{1,6}\s+/g, "")
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/\*(.*?)\*/g, "$1")
+      .replace(/_{1,2}(.*?)_{1,2}/g, "$1")
+      .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  };
+
+  const addHumanNarrationPauses = (text: string) => {
+    let human = text;
+
+    // Paragraphs need breath. Mobile speech engines respond better to punctuation than raw line breaks.
+    human = human.replace(/\n\s*\n/g, ". ... ");
+
+    // Dialogue needs a small dramatic landing before and after quoted speech.
+    human = human.replace(/([.!?])\s*(["”»])/g, "$1$2 ... ");
+    human = human.replace(/(["“«])\s*/g, "$1");
+    human = human.replace(/\s*(["”»])/g, "$1");
+
+    // Em dashes are often read too flat; turn them into a small breath.
+    human = human.replace(/\s+[—–]\s+/g, "... ");
+
+    // Suspense and emotional punctuation should breathe, but not become ridiculous.
+    human = human.replace(/([!?])\s+/g, "$1 ... ");
+    human = human.replace(/;\s+/g, "; ... ");
+    human = human.replace(/:\s+/g, ": ... ");
+
+    // Very long comma chains sound robotic; add a few controlled breath points.
+    human = human.replace(/,\s+(ma|però|eppure|tuttavia|because|but|however|yet)\s+/gi, ", ... $1 ");
+
+    // Avoid endless ellipses.
+    human = human.replace(/(\.\s*){4,}/g, "... ");
+    human = human.replace(/(\.\.\.\s*){2,}/g, "... ");
+
+    return human.trim();
+  };
+
+  const softenLongSentencesForSpeech = (text: string) => {
+    return text
+      .split(/(?<=[.!?…])\s+/)
+      .map((sentence) => {
+        if (sentence.length < 220) return sentence;
+
+        return sentence
+          .replace(/,\s+(che|quando|mentre|perché|anche se|come se|which|when|while|because|although|as if)\s+/gi, ", ... $1 ")
+          .replace(/\s+(e|and)\s+/gi, " $1 ");
+      })
+      .join(" ");
+  };
+
+  const prepareHumanNarrationText = (text: string) => {
+    const cleaned = cleanNarrationText(text);
+    const breathed = addHumanNarrationPauses(cleaned);
+    return softenLongSentencesForSpeech(breathed);
+  };
+
   const detectNarrativeTone = (text: string) => {
     const lower = text.toLowerCase();
 
@@ -538,8 +599,9 @@ export function VoiceStudioDialog({
     const synth = window.speechSynthesis;
     synth.cancel();
 
-    const { text: directedText, telemetry } = applyNarrativeReadDirectives(currentChapter.content || "", style);
-    const { allSentences, chunks } = buildNarrationChunks(directedText, 950);
+    const { text: rawDirectedText, telemetry } = applyNarrativeReadDirectives(currentChapter.content || "", style);
+    const directedText = prepareHumanNarrationText(rawDirectedText);
+    const { allSentences, chunks } = buildNarrationChunks(directedText, 820);
 
     if (chunks.length === 0) {
       setStatus("No readable text found in this chapter.");
@@ -555,7 +617,7 @@ export function VoiceStudioDialog({
     setCurrentSentence(0);
     setProgress(0);
     setIsPlaying(true);
-    setStatus(`Reading full chapter · ${chunks.length} parts`);
+    setStatus(`Human narration ready · ${chunks.length} breathing parts`);
 
     emitVoiceStudioTelemetry({ ...telemetry, chapterTitle: currentChapter.title || "Untitled chapter" });
 
@@ -598,7 +660,7 @@ export function VoiceStudioDialog({
         localStarts[idx] = position >= 0 ? position : searchFrom;
       });
 
-      setStatus(`Reading part ${chunkIndex + 1}/${chunks.length} · ${selectedVoicePersona.name} · ${tone.label}`);
+      setStatus(`Human reading ${chunkIndex + 1}/${chunks.length} · ${selectedVoicePersona.name} · ${tone.label}`);
       setCurrentSentence(chunk.startSentence);
       setProgress(Math.round((chunkIndex / chunks.length) * 100));
 
@@ -730,7 +792,7 @@ export function VoiceStudioDialog({
             />
           </div>
           <div className="mb-5 flex items-center justify-between text-xs text-white/60">
-            <span>Narrator voices v6 · {status}</span>
+            <span>Human narration v7 · {status}</span>
             <span>{progress}%</span>
           </div>
 
