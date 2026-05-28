@@ -19,6 +19,8 @@ import { ReadAloudModal } from "@/components/ReadAloudModal";
 interface EditorPanelProps {
   project: BookProject;
   activeSection: SectionId | null;
+  editorMode?: "edit" | "preview";
+  onEditorModeChange?: (mode: "edit" | "preview") => void;
   onGenerateNext: () => void;
   onGenerateFrontMatter?: () => void;
   onGenerateBackMatter?: () => void;
@@ -46,6 +48,8 @@ interface EditorPanelProps {
 
 export function EditorPanel({
   project, activeSection,
+  editorMode = "edit",
+  onEditorModeChange,
   onGenerateNext, onGenerateFrontMatter, onGenerateBackMatter, onGenerateChapter, onRegenerateChapter,
   onRewriteChapter, onEvaluateChapter, onGenerateSubchapter,
   onAutoRewrite,
@@ -58,13 +62,22 @@ export function EditorPanel({
   onUpdateFrontMatterField, onUpdateBackMatterField,
 }: EditorPanelProps) {
   const { blueprint, frontMatter, chapters, backMatter, config, phase } = project;
-  const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const [mode, setMode] = useState<"edit" | "preview">(editorMode);
   const [showReadAloud, setShowReadAloud] = useState(false);
   const [showAudioStudio, setShowAudioStudio] = useState(false);
   const audioGate = useFeatureGate("audio_studio");
   const openAudioStudio = audioGate.guard(() => setShowAudioStudio(true));
 
   const ws = writingSettings || { fontFamily: "'Times New Roman', Times, serif", fontSize: 16, lineSpacing: 2 };
+
+  useEffect(() => {
+    setMode(editorMode);
+  }, [editorMode]);
+
+  const handleModeChange = useCallback((nextMode: "edit" | "preview") => {
+    setMode(nextMode);
+    onEditorModeChange?.(nextMode);
+  }, [onEditorModeChange]);
 
   const view = useMemo(() => {
     if (!activeSection) return { type: "blueprint" as const };
@@ -91,12 +104,12 @@ export function EditorPanel({
       {hasContent && (
         <div className="flex h-12 shrink-0 items-center justify-center border-b border-white/10 bg-white/[0.035]">
           <div className="ios-segment">
-          <button onClick={() => setMode("edit")}
+          <button onClick={() => handleModeChange("edit")}
             className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
               mode === "edit" ? "bg-white text-slate-950 shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-white/[0.07]")}>
             <PenLine className="h-3.5 w-3.5" /> {t("edit")}
           </button>
-          <button onClick={() => setMode("preview")}
+          <button onClick={() => handleModeChange("preview")}
             className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
               mode === "preview" ? "bg-white text-slate-950 shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-white/[0.07]")}>
             <Eye className="h-3.5 w-3.5" /> {t("preview")}
@@ -440,7 +453,7 @@ function ChapterView({
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="mb-2 flex-1 min-w-0">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1">
             {chapterDisplayLabel}
@@ -451,7 +464,7 @@ function ChapterView({
             disabled={!onUpdateTitle}
           />
         </div>
-        <div className="flex items-center gap-2 shrink-0 pt-1">
+        <div className="flex flex-wrap items-center gap-2 pt-1 sm:shrink-0 sm:justify-end">
           {!isGenerated ? (
             <button onClick={onGenerate} disabled={isGenerating || !project.blueprint}
               className="flex items-center gap-2 h-10 px-5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 transition-colors">
@@ -487,7 +500,7 @@ function ChapterView({
                   <ChevronDown className="h-3 w-3" />
                 </button>
                 {showRewriteMenu && (
-                  <div className="absolute right-0 top-10 z-20 bg-card border border-border rounded-lg shadow-xl py-1 w-48">
+                  <div className="absolute right-0 top-10 z-20 w-56 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-card py-1 shadow-xl">
                     {([
                       { level: "light" as RewriteLevel, label: "Light Polish", desc: "Fix phrasing, tighten prose" },
                       { level: "deep" as RewriteLevel, label: "Deep Rewrite", desc: "Restructure + fresh insights" },
@@ -519,7 +532,7 @@ function ChapterView({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <span className="text-[11px] text-muted-foreground uppercase">{t("chapter_length")}</span>
         {(["short", "medium", "long"] as const).map(len => (
           <button key={len} onClick={() => onSetLengthOverride(len)}
@@ -1339,7 +1352,7 @@ function EmptyState({ text }: { text: string }) {
 function ActionButton({ icon, title, onClick, disabled }: { icon: React.ReactNode; title: string; onClick: () => void; disabled: boolean }) {
   return (
     <button onClick={onClick} disabled={disabled} title={title}
-      className="h-9 w-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-30 transition-colors">
+      className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-30 sm:h-9 sm:w-9">
       {icon}
     </button>
   );

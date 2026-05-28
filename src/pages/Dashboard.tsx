@@ -11,6 +11,7 @@ import { CharacterStudioDialog, SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACT
 import { ManuscriptAnalyzerDialog } from "@/components/ManuscriptAnalyzerDialog";
 import { NotepadDialog } from "@/components/NotepadDialog";
 import { AuthorIdentityDialog } from "@/components/AuthorIdentityDialog";
+import { VoiceStudioDialog } from "@/components/VoiceStudioDialog";
 import { FocusMusicControl } from "@/components/FocusMusicControl";
 import { InProgressSection } from "@/components/Home/InProgressSection";
 import { LibrarySection } from "@/components/Home/LibrarySection";
@@ -22,7 +23,7 @@ import {
   FileDown, ArrowRight, Clock, Globe, Flame, Loader2, Sparkles, Wand2,
   Library, Home as HomeIcon, X, BarChart3,
   TrendingUp, LogOut, CreditCard, Download as DownloadIcon, Settings, Users,
-  CheckCircle2, NotebookPen, Fingerprint, ImagePlus
+  CheckCircle2, NotebookPen, Fingerprint, ImagePlus, AudioLines
 } from "lucide-react";
 import { BOOK_LENGTH_CONFIG, BookConfig, BookLength, BookProject, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
@@ -121,6 +122,7 @@ export default function Home() {
   const [showNotepad, setShowNotepad] = useState(false);
   const [showAuthorIdentity, setShowAuthorIdentity] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [showVoiceStudio, setShowVoiceStudio] = useState(false);
   const [showIdeaModal, setShowIdeaModal] = useState(false);
   const [showMobileStats, setShowMobileStats] = useState(false);
   const [projects, setProjects] = useState<BookProject[]>([]);
@@ -551,6 +553,7 @@ export default function Home() {
     { group: "writer", icon: Wand2, title: t("manuscript_lab_title"), desc: t("manuscript_lab_desc"), iconBg: "ios-icon-teal", action: () => setShowManuscriptAnalyzer(true), feature: "chapter_improvement" as const, tag: t("os_tag_score") },
     { group: "writer", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_premium_desc"), iconBg: "ios-icon-pink", action: () => goApp(), feature: "chapter_rewrite" as const, tag: t("os_tag_rewrite") },
     { group: "writer", icon: Users, title: t("character_studio_title"), desc: t("character_studio_desc"), iconBg: "ios-icon-pink", action: () => setShowCharacterStudio(true), feature: "book_engine_full" as const, tag: t("os_tag_cast") },
+    { group: "writer", icon: AudioLines, title: "Voice Studio", desc: "Hear your story breathe with cinematic narration.", iconBg: "ios-icon-cyan", action: () => setShowVoiceStudio(true), feature: "book_engine_full" as const, tag: "IMMERSIVE", emphasis: true },
     { group: "writer", icon: NotebookPen, title: t("block_notes"), desc: t("notepad_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowNotepad(true), tag: t("os_tag_notes") },
 
     { group: "bestseller", icon: Flame, title: t("bestseller_engine_title"), desc: t("bestseller_engine_desc"), iconBg: "ios-icon-blue", action: () => setShowIdeaModal(true), emphasis: true, tag: t("os_tag_launch") },
@@ -1176,6 +1179,15 @@ export default function Home() {
       />
       <NotepadDialog open={showNotepad} onClose={() => setShowNotepad(false)} />
       <AuthorIdentityDialog open={showAuthorIdentity} onClose={() => setShowAuthorIdentity(false)} />
+      <VoiceStudioDialog
+        open={showVoiceStudio}
+        onClose={() => setShowVoiceStudio(false)}
+        projects={projects}
+        onOpenProject={(id) => {
+          setShowVoiceStudio(false);
+          goApp({ projectId: id });
+        }}
+      />
 
       {/* Idea modal — primary generation flow */}
       {showIdeaModal && (

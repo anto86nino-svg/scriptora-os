@@ -28,6 +28,9 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { isProjectComplete } from "@/lib/project-status";
 
 type ExportFormat = "epub" | "docx" | "pdf";
+const WRITING_ROOM_PROJECT_KEY = "scriptora-writing-room-last-project";
+const WRITING_ROOM_SECTION_KEY = "scriptora-writing-room-active-section";
+const WRITING_ROOM_MODE_KEY = "scriptora-writing-room-editor-mode";
 
 const Index = () => {
   useUILanguage();
@@ -48,6 +51,18 @@ const Index = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportLabel, setExportLabel] = useState("");
   const [activeSection, setActiveSection] = useState<SectionId | null>("blueprint");
+  const [editorMode, setEditorMode] = useState<"edit" | "preview">(() => {
+    const saved = localStorage.getItem(WRITING_ROOM_MODE_KEY);
+    return saved === "preview" ? "preview" : "edit";
+  });
+  const [recoveredProject, setRecoveredProject] = useState<BookProject | null>(() => {
+    try {
+      const raw = sessionStorage.getItem(WRITING_ROOM_PROJECT_KEY);
+      return raw ? JSON.parse(raw) as BookProject : null;
+    } catch {
+      return null;
+    }
+  });
   const [writingSettings, setWritingSettings] = useState<WritingSettings>(loadSettings());
   const [upgradeReason, setUpgradeReason] = useState<null | "export" | "token-limit" | "dominate" | "books-limit">(null);
   const { syncStatus, markSaving, markSaved, markPending, markOffline } = useSyncStatus();
@@ -77,6 +92,30 @@ const Index = () => {
     localStorage.setItem("scriptora-sidebar-open", JSON.stringify(sidebarOpen));
   }, [sidebarOpen]);
 
+  const effectiveProject = engine.project || recoveredProject;
+
+  useEffect(() => {
+    localStorage.setItem(WRITING_ROOM_MODE_KEY, editorMode);
+  }, [editorMode]);
+
+  useEffect(() => {
+    if (!activeSection) return;
+    sessionStorage.setItem(WRITING_ROOM_SECTION_KEY, activeSection);
+    console.info("[writing-room] activeSection changed", { activeSection });
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (engine.project) {
+      setRecoveredProject(engine.project);
+      sessionStorage.setItem(WRITING_ROOM_PROJECT_KEY, JSON.stringify(engine.project));
+      console.info("[writing-room] project loaded", { projectId: engine.project.id, title: engine.project.config?.title });
+      return;
+    }
+    if (!recoveredProject) return;
+    console.warn("[writing-room] project lost, attempting recovery", { projectId: recoveredProject.id });
+    engine.loadProject(recoveredProject);
+  }, [engine.project, recoveredProject]);
+
   
   // Token guard for free users — gracefully stop generation when limit is reached
   useEffect(() => {
@@ -102,8 +141,8 @@ const Index = () => {
       setUpgradeReason("export");
       return;
     }
-    if (!engine.project) return;
-    if (!isProjectComplete(engine.project)) {
+    if (!effectiveProject) return;
+    if (!isProjectComplete(effectiveProject)) {
       toast.error("Completa tutto il libro prima di esportare.");
       return;
     }
@@ -128,14 +167,19 @@ const Index = () => {
       if (openSection) sessionStorage.removeItem("nexora-open-section");
 
       const applySection = () => {
+        const persistedSection = sessionStorage.getItem(WRITING_ROOM_SECTION_KEY);
+        const sectionToApply = openSection || persistedSection;
+        if (sectionToApply && sectionToApply !== openSection) {
+          console.info("[writing-room] restoring persisted activeSection", { activeSection: sectionToApply });
+        }
         if (openSection === "publish") setShowPublish(true);
         else if (
-          openSection === "blueprint" ||
-          openSection === "front-matter" ||
-          openSection === "back-matter" ||
-          /^chapter-\d+(?:-sub-\d+)?$/.test(openSection || "")
+          sectionToApply === "blueprint" ||
+          sectionToApply === "front-matter" ||
+          sectionToApply === "back-matter" ||
+          /^chapter-\d+(?:-sub-\d+)?$/.test(sectionToApply || "")
         ) {
-          setActiveSection(openSection as SectionId);
+          setActiveSection(sectionToApply as SectionId);
         }
       };
 
@@ -148,6 +192,8 @@ const Index = () => {
           if (!target.config.subcategory) target.config.subcategory = "Mindset";
           if (!target.config.genre) target.config.genre = "self-help";
           engine.loadProject(target);
+          setRecoveredProject(target);
+          sessionStorage.setItem(WRITING_ROOM_PROJECT_KEY, JSON.stringify(target));
           applySection();
           return;
         }
@@ -173,6 +219,8 @@ const Index = () => {
           if (!last.config.subcategory) last.config.subcategory = "Mindset";
           if (!last.config.genre) last.config.genre = "self-help";
           engine.loadProject(last);
+          setRecoveredProject(last);
+          sessionStorage.setItem(WRITING_ROOM_PROJECT_KEY, JSON.stringify(last));
           applySection();
         }
       }
@@ -189,6 +237,8 @@ const Index = () => {
       if (!p.config.subcategory) p.config.subcategory = "Mindset";
       if (!p.config.genre) p.config.genre = "self-help";
       engine.loadProject(p);
+      setRecoveredProject(p);
+      sessionStorage.setItem(WRITING_ROOM_PROJECT_KEY, JSON.stringify(p));
       setActiveSection("blueprint");
       setShowNewBook(false);
       setSidebarOpen(false);
@@ -201,8 +251,8 @@ const Index = () => {
   };
 
   const handleExport = async (coverOverride?: string) => {
-    if (!engine.project) return;
-    const errors = validateEpubStructure(engine.project);
+    if (!effectiveProject) return;
+    const errors = validateEpubStructure(effectiveProject);
     if (errors.length > 0) {
       alert(`${t("export_blocked_epub")}:\n\n${errors.join("\n")}`);
       return;
@@ -210,8 +260,8 @@ const Index = () => {
     setIsExporting(true);
     setExportLabel(t("exporting_epub"));
     try {
-      const blob = await generateEpub(engine.project, coverOverride ?? coverDataUrl);
-      const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
+      const blob = await generateEpub(effectiveProject, coverOverride ?? coverDataUrl);
+      const filename = effectiveProject.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadEpub(blob, filename);
     } catch (e) {
       console.error("EPUB export failed:", e);
@@ -222,12 +272,12 @@ const Index = () => {
   };
 
   const handleExportDocx = async () => {
-    if (!engine.project) return;
+    if (!effectiveProject) return;
     setIsExporting(true);
     setExportLabel(t("preparing_docx"));
     try {
-      const blob = await generateDocx(engine.project);
-      const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
+      const blob = await generateDocx(effectiveProject);
+      const filename = effectiveProject.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadDocx(blob, filename);
     } catch (e) {
       console.error("DOCX export failed:", e);
@@ -238,12 +288,12 @@ const Index = () => {
   };
 
   const handleExportPdf = async () => {
-    if (!engine.project) return;
+    if (!effectiveProject) return;
     setIsExporting(true);
     setExportLabel(t("formatting_pdf"));
     try {
-      const blob = await generatePdf(engine.project);
-      const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
+      const blob = await generatePdf(effectiveProject);
+      const filename = effectiveProject.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadPdf(blob, filename);
     } catch (e) {
       console.error("PDF export failed:", e);
@@ -262,10 +312,10 @@ const Index = () => {
     // SettingsPanel calls this after saving; useUILanguage handles the rerender.
   };
 
-  if (focusMode && engine.project) {
+  if (focusMode && effectiveProject) {
     return (
-      <div className="scriptora-ios-screen flex h-screen flex-col">
-        <div className="ios-glass-soft flex h-12 shrink-0 items-center justify-between px-4">
+      <div className="scriptora-ios-screen flex h-safe-screen min-h-[100dvh] flex-col pb-safe">
+        <div className="ios-glass-soft flex h-12 shrink-0 items-center justify-between px-4 pt-safe">
           <span className="text-xs text-muted-foreground">{t("focus_mode")}</span>
           <button onClick={() => setFocusMode(false)}
             className="ios-toolbar-button px-3 text-xs text-muted-foreground hover:text-foreground">
@@ -274,8 +324,10 @@ const Index = () => {
         </div>
         <div className="min-h-0 flex-1 px-3 pb-3">
           <EditorPanel
-            project={engine.project}
+            project={effectiveProject}
             activeSection={activeSection}
+            editorMode={editorMode}
+            onEditorModeChange={setEditorMode}
             onGenerateNext={engine.generateNext}
             onGenerateFrontMatter={engine.generateFrontMatterSection}
             onGenerateBackMatter={engine.generateBackMatterSection}
@@ -306,11 +358,11 @@ const Index = () => {
   }
 
   return (
-    <div className="scriptora-ios-screen relative flex h-screen overflow-hidden">
+    <div className="scriptora-ios-screen relative flex h-safe-screen min-h-[100dvh] overflow-hidden pb-safe">
       {/* Floating sidebar toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className={`ios-toolbar-button fixed left-3 top-3 z-50 p-2 text-foreground shadow-lg backdrop-blur-xl ${
+        className={`ios-toolbar-button fixed left-3 top-3 z-50 h-11 min-w-11 p-2 text-foreground shadow-lg backdrop-blur-xl ${
           ""
         }`}
         title={sidebarOpen ? "Chiudi pannello" : "Capitoli & Libro"}
@@ -325,7 +377,7 @@ const Index = () => {
     {sidebarOpen ? "✕" : "📚"}
   </div>
 
-  <div className="text-left leading-tight">
+  <div className="hidden text-left leading-tight sm:block">
     <p className="text-sm font-bold text-foreground">
       {sidebarOpen
         ? "Chiudi pannello"
@@ -348,7 +400,7 @@ const Index = () => {
 
       {/* Left Sidebar */}
       <aside
-        className={`ios-sidebar fixed z-40 flex h-screen shrink-0 flex-col transition-all duration-300 ease-out md:relative ${
+        className={`ios-sidebar fixed z-40 flex h-[100dvh] shrink-0 flex-col pb-safe transition-all duration-300 ease-out md:relative ${
           sidebarOpen
             ? "translate-x-0 w-[272px] opacity-100"
             : "-translate-x-full md:translate-x-0 md:w-0 md:opacity-0 overflow-hidden"
@@ -362,7 +414,7 @@ const Index = () => {
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase text-muted-foreground">Scriptora OS</p>
               <h1 className="truncate text-xs font-bold text-foreground">
-                {engine.project ? (engine.project.config.title || t("untitled")) : "SCRIPTORA"}
+                {effectiveProject ? (effectiveProject.config.title || t("untitled")) : "SCRIPTORA"}
               </h1>
             </div>
           </div>
@@ -372,7 +424,7 @@ const Index = () => {
         </div>
 
         {/* When a project is OPEN: show only "Back to My Books" */}
-        {engine.project ? (
+        {effectiveProject ? (
           <div className="p-2">
             <Link
               to="/dashboard"
@@ -409,10 +461,10 @@ const Index = () => {
           </>
         )}
 
-        {engine.project && <div className="mx-3 my-2 border-t border-white/10" />}
+        {effectiveProject && <div className="mx-3 my-2 border-t border-white/10" />}
 
         {/* ONE-CLICK FULL BOOK + PARALLEL */}
-        {engine.project?.blueprint && engine.project.phase !== "complete" && (
+        {effectiveProject?.blueprint && effectiveProject.phase !== "complete" && (
           <div className="px-2 pb-2 space-y-1.5">
             <button
               onClick={guardedGenerateFullBook}
@@ -425,7 +477,7 @@ const Index = () => {
             </button>
             <button
               onClick={() => engine.generateAllChaptersParallel()}
-              disabled={!engine.project.blueprint}
+              disabled={!effectiveProject.blueprint}
               className="ios-toolbar-button w-full px-3 py-1.5 text-[10px] font-medium disabled:opacity-40"
               title={t("generate_parallel_title")}
             >
@@ -436,22 +488,22 @@ const Index = () => {
         )}
 
         <NavigationTree
-          project={engine.project}
+          project={effectiveProject}
           activeSection={activeSection}
           onSelectSection={(s) => { setActiveSection(s); setSidebarOpen(false); }}
           generatingSet={engine.generatingSet}
           onGenerateChaptersParallel={engine.generateChaptersParallel}
         />
 
-        {engine.project && (
+        {effectiveProject && (
           <>
             <div className="mx-3 my-1 border-t border-white/10" />
-            <ProgressTracker project={engine.project} />
+            <ProgressTracker project={effectiveProject} />
           </>
         )}
 
         {/* Bottom actions */}
-        {engine.project && (
+        {effectiveProject && (
           <div className="mt-auto space-y-1 border-t border-white/10 p-2">
             <button onClick={() => setFocusMode(true)}
               className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground">
@@ -468,19 +520,21 @@ const Index = () => {
       {/* Main Area */}
       <div
         className={`flex min-w-0 flex-1 flex-col transition-all duration-300 ${
-          sidebarOpen ? "p-2 md:p-3" : "p-2 md:px-6 md:py-4"
+          sidebarOpen ? "p-2 md:p-3" : "p-2 pb-3 md:px-6 md:py-4"
         }`}
       >
 {/* TopBar removed for clean writing experience */}
 
 
         <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm">
-          {engine.project ? (
+          {effectiveProject ? (
             <>
               <div className="min-w-0 flex-1">
                 <EditorPanel
-                  project={engine.project}
+                  project={effectiveProject}
                   activeSection={activeSection}
+                  editorMode={editorMode}
+                  onEditorModeChange={setEditorMode}
                   onGenerateNext={engine.generateNext}
                   onGenerateFrontMatter={engine.generateFrontMatterSection}
                   onGenerateBackMatter={engine.generateBackMatterSection}
@@ -507,7 +561,7 @@ const Index = () => {
                 />
               </div>
               {showCoach && (
-                <AICoachPanel project={engine.project} activeSection={activeSection} onClose={() => setShowCoach(false)}
+                <AICoachPanel project={effectiveProject} activeSection={activeSection} onClose={() => setShowCoach(false)}
                   onApplyRewrite={(chapterIdx, subIdx, text) => {
                     if (subIdx !== null) engine.updateSubchapterContent(chapterIdx, subIdx, text);
                     else engine.updateChapterContent(chapterIdx, text);
@@ -578,19 +632,21 @@ const Index = () => {
             return;
           }
           engine.startNewBook(config);
+          const restoredSection = "blueprint" as SectionId;
+          sessionStorage.setItem(WRITING_ROOM_SECTION_KEY, restoredSection);
           setShowNewBook(false);
-          setActiveSection("blueprint");
+          setActiveSection(restoredSection);
           setTimeout(refreshProjects, 500);
         }}
       />
 
-      {showCover && engine.project && (
+      {showCover && effectiveProject && (
         <CoverGenerator
-          title={engine.project.config.title}
-          subtitle={engine.project.config.subtitle}
-          authorName={engine.project.config.authorName || engine.project.config.author || engine.project.config.writerName}
-          description={engine.project.blueprint?.overview || engine.project.config.subtitle}
-          authorBio={engine.project.frontMatter?.aboutAuthor || engine.project.config.authorIdentity?.biography}
+          title={effectiveProject.config.title}
+          subtitle={effectiveProject.config.subtitle}
+          authorName={effectiveProject.config.authorName || effectiveProject.config.author || effectiveProject.config.writerName}
+          description={effectiveProject.blueprint?.overview || effectiveProject.config.subtitle}
+          authorBio={effectiveProject.frontMatter?.aboutAuthor || effectiveProject.config.authorIdentity?.biography}
           onGenerate={(dataUrl) => {
             setCoverDataUrl(dataUrl);
             setShowCover(false);
@@ -628,7 +684,7 @@ const Index = () => {
 
       {showPublish && (
         <PublishPanel
-          project={engine.project}
+          project={effectiveProject}
           onClose={() => setShowPublish(false)}
           onStartFresh={(config) => {
             if (freeBookUsed) {
@@ -645,7 +701,7 @@ const Index = () => {
           onUpdateConfig={engine.updateConfig}
           onUpdateChapterContent={engine.updateChapterContent}
           onSaveProject={async () => {
-            if (engine.project) await saveProjectAsync(engine.project);
+            if (effectiveProject) await saveProjectAsync(effectiveProject);
             await refreshProjects();
           }}
           onExportEpub={guardedExportEpub}

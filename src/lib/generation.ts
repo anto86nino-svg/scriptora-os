@@ -17,6 +17,11 @@ import {
   normalizeChapterOutlineExtras,
   normalizeSubchapterOutlineExtras,
 } from "@/lib/BlueprintIntegrityEngine";
+import {
+  buildNarrativeIntelligenceSystemBlock,
+  buildNarrativeIntelligenceRuntimeBlock,
+  getNarrativeTelemetrySnapshot,
+} from "@/lib/narrative-intelligence";
 
 /**
  * Verbose streaming logs are off by default — they intasavano la console
@@ -33,6 +38,32 @@ const DEV_DEBUG_STREAM: boolean = (() => {
     return localStorage.getItem("nexora-debug-stream") === "1";
   } catch { return false; }
 })();
+
+const DEV_DEBUG_NARRATIVE: boolean = (() => {
+  try {
+    if (typeof window === "undefined") return false;
+    if ((window as any).__SCRIPTORA_DEBUG_NARRATIVE__ === true) return true;
+    return localStorage.getItem("scriptora-debug-narrative") === "1";
+  } catch {
+    return false;
+  }
+})();
+
+function emitNarrativeTelemetry(event: string, config: BookConfig, chapterIndex: number, text?: string) {
+  if (!DEV_DEBUG_NARRATIVE) return;
+  try {
+    const snapshot = getNarrativeTelemetrySnapshot({ config, currentText: text });
+    const payload = {
+      event,
+      chapterIndex: chapterIndex + 1,
+      ...snapshot,
+    };
+    console.info("[NarrativeTelemetry]", payload);
+    window.dispatchEvent(new CustomEvent("scriptora:narrative-telemetry", { detail: payload }));
+  } catch (error) {
+    console.warn("[NarrativeTelemetry] emission failed", error);
+  }
+}
 
 /* ============ Genre Lock helper ============ */
 /**
@@ -574,6 +605,7 @@ ${bp.contentRules.map(r => `• ${r}`).join("\n")}`;
     tone: config.tone,
     dominateMode: opts?.dominateMode,
   });
+  const narrativeSystemBlock = buildNarrativeIntelligenceSystemBlock(config);
 
   return `${genrePrompt}
 
@@ -584,6 +616,8 @@ ${editorialBlock}
 ${getStyleLock(config)}
 
 ${masteryBlock}
+
+${narrativeSystemBlock}
 
 ABSOLUTE RULES — BESTSELLER STANDARD:
 1. WRITE EVERYTHING IN ${lang.toUpperCase()}. Every word, title, sentence MUST be in ${lang}. No exceptions.
@@ -853,6 +887,12 @@ export async function generateChapterChunked(
     chapterIndex,
     outlineSummary: outline.summary,
   });
+  const narrativeRuntimeBlock = buildNarrativeIntelligenceRuntimeBlock({
+    config,
+    blueprint,
+    previousChapters,
+    chapterIndex,
+  });
 
   let accumulatedContent = "";
   let chapterTitle = outline.title;
@@ -912,6 +952,8 @@ ${scriptoraWritingBrain}
 
 ${characterLock}
 
+${narrativeRuntimeBlock}
+
 ${humanizerBlock}
 
 BESTSELLER QUALITY REQUIREMENTS:
@@ -941,6 +983,8 @@ ${lastTextSegment}
 CURRENT PROGRESS: ${currentWords} / ${targetWords} words written
 REMAINING: ~${remainingWords} words needed
 PHASE: ${phase} — ${phaseInstruction}
+
+${narrativeRuntimeBlock}
 
 ${humanizerBlock}
 
@@ -1073,6 +1117,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
       content: accumulatedContent,
       chunkSize,
     });
+    emitNarrativeTelemetry("chunk-progress", config, chapterIndex, accumulatedContent);
 
     // Stop conditions
     if (phase === "CLOSURE" && updatedWords >= targetWords * 0.85) {
@@ -1087,6 +1132,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
 
   // Completion log is essential — kept always on (1 line per chapter).
   console.log(`[Nexora] Chapter ${chapterIndex + 1} complete: ${countWords(accumulatedContent)} words in ${chunkIndex} chunks`);
+  emitNarrativeTelemetry("chapter-complete", config, chapterIndex, accumulatedContent);
 
   // Editorial QA gate (non-blocking — surfaces in console + Mastery diagnostic)
   let qaScore: number | undefined;
@@ -1328,6 +1374,13 @@ export async function generateSubchapter(
     chapterIndex,
     outlineSummary: subOutline?.summary || outline.summary,
   });
+  const narrativeRuntimeBlock = buildNarrativeIntelligenceRuntimeBlock({
+    config,
+    blueprint,
+    previousChapters,
+    chapterIndex,
+    currentText: chapter.content,
+  });
 
   const prompt = `Write Subchapter ${subchapterIndex + 1} of ${subchapterCount} for Chapter ${chapterIndex + 1} "${chapter.title}" in "${config.title}".
 ${subOutline ? `Subchapter plan: "${subOutline.title}" — ${subOutline.summary}` : `Write the ${subchapterIndex + 1}th subchapter.`}
@@ -1342,6 +1395,8 @@ ${existingSubs ? `Already written subchapters (do NOT repeat):\n${existingSubs}`
 ${contextMemory}
 
 ${buildBlueprintIntegrityRuntimeBlock(config, blueprint, { chapterIndex, subchapterIndex, compact: true })}
+
+${narrativeRuntimeBlock}
 
 ${humanizerBlock}
 
@@ -1549,6 +1604,13 @@ export async function rewriteChapter(
     chapterIndex,
     outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary,
   });
+  const narrativeRuntimeBlock = buildNarrativeIntelligenceRuntimeBlock({
+    config,
+    blueprint,
+    previousChapters,
+    chapterIndex,
+    currentText: chapter.content,
+  });
 
   const prompt = `${level.toUpperCase()} REWRITE — Chapter ${chapterIndex + 1}: "${chapter.title}"
 
@@ -1561,6 +1623,8 @@ Current content (to be rewritten):
 ${chapter.content.substring(0, 2500)}...
 
 ${contextMemory}
+
+${narrativeRuntimeBlock}
 
 ${humanizerBlock}
 

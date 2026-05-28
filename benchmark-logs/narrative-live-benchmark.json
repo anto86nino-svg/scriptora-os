@@ -1,0 +1,1383 @@
+{
+  "generatedAt": "2026-05-28T08:50:04.741Z",
+  "totalSamples": 28,
+  "genres": [
+    "Dark Romance",
+    "Mafia Romance",
+    "Thriller",
+    "Psychological Horror",
+    "Cozy Fantasy",
+    "Enemies-to-Lovers",
+    "Emotional Literary Fiction"
+  ],
+  "samples": [
+    {
+      "genreId": "dark-romance",
+      "genreLabel": "Dark Romance",
+      "scene": "opening",
+      "title": "Dark Romance opening",
+      "content": "The first time I saw him, I should have run.\n\nInstead, I stood frozen at the edge of the ballroom, my champagne glass sweating against my palm, watching the way he moved through the crowd like a blade through silk. Everyone else parted for him without knowing they were doing it. He didn't look at them. He looked at me.\n\nAnd he smiled.\n\nNot a kind smile. Not a polite one. It was the smile of a man who had already decided something about me, something I hadn't agreed to yet. My spine went cold and hot at the same time.\n\nI knew his reputation. Everyone did. Julian Creed, the man who bought companies and bled them dry. The one who had buried three rivals before they even knew they were in a war. But reputation is just a story, and stories don't have hands.\n\nHis hands were gloved. Black leather. He wore them even indoors.\n\n\"You're staring,\" my sister whispered beside me, her fingers digging into my elbow. \"Don't stare.\"\n\n\"I'm not staring.\"\n\n\"You're holding your glass like a weapon.\"\n\nI forced my fingers to loosen. The champagne trembled anyway.\n\nHe was closer now. Twenty feet. He moved with a deliberate slowness, like he had all the time in the world and knew I had none. The crowd seemed to thicken around him, a shield of bodies that parted at the last possible moment, as if even proximity required permission.\n\nI felt the heat before he reached me. A shift in the air. A change in the light.\n\n\"Miss Ashford.\"\n\nHis voice was low and smooth, the kind that settled in your chest and stayed there. He didn't ask. He stated. Like my name was a fact he had already verified.\n\n\"Mr. Creed.\"\n\nI kept my voice even, but I felt the tremor in my throat. I hoped he didn't hear it.\n\nHe stopped a foot away. Close enough that I could smell leather and cedar and something darker underneath, something metallic and clean, like rain on concrete. His eyes were gray, the color of winter water, and they held mine without blinking.\n\n\"You don't belong here,\" he said.\n\nNot an insult. A statement. As if he knew exactly where I did belong, and it wasn't in this room full of crystal and lies.\n\n\"I was invited.\"\n\n\"Invitations are meaningless.\" He tilted his head, studying me like a painting he was deciding whether to buy. \"What matters is who lets you stay.\"For a moment, there was only the sound of a breath being held.\n\nMy heart was beating too fast. I could feel it in my wrists, in my throat, in the place where my dress met my skin. I wanted to step back. I wanted to step closer. Both impulses were dangerous.\"And who lets me stay?\" I asked.\n\nHe smiled again. Slower this time. It changed his face, softened the hard lines around his mouth, but the eyes stayed cold.\n\n\"That depends on what you're willing to surrender.\"\n\nMy sister tugged at my arm again, harder this time. I barely felt it.\n\n\"I'm not surrendering anything.\"\n\n\"Everyone surrenders something, Miss Ashford. The question is whether they choose what they give up, or whether it's taken from them.\"\n\nHe reached out, and my breath caught. But he didn't touch me. He took the champagne glass from my hand, set it on a passing tray, and then his fingers brushed mine—barely, a whisper of leather against skin.\n\n\"I'll find you later,\" he said.\n\nIt wasn't a promise. It was a threat dressed in silk.\n\nHe turned and walked away, and the crowd closed behind him like water over a stone. I stood there, my hand still raised where he had touched it, my skin burning under the chandelier light.\n\nMy sister was saying something. I couldn't hear her. The room was too loud, or too quiet, or I was somewhere else entirely.\n\nI looked down at my hand.\n\nThere was a white card pressed between my fingers. I hadn't seen him put it there.\n\nIt was blank except for an address, written in black ink, and a time.\n\n11:47 PM.\n\nNot midnight. Not eleven forty-five. Eleven forty-seven.\n\nI folded the card into my palm and felt the edges cut into my skin.\n\nI knew I should throw it away. I knew I should leave the gala, go home, lock the door, forget the color of his eyes.\n\nBut my hand stayed closed.\n\nAnd I was already imagining what I would wear.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "romance",
+          "subgenre": "dark romance",
+          "emotionalIntensity": 9,
+          "pacingStyle": "slow-burn",
+          "proseDensity": "lush",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.92,
+          "commercialCategory": "Romance > Dark",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "DarkRomanceBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 97,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 52,
+          "subtextDensity": 48,
+          "commercialMomentumScore": 56,
+          "readerDropRiskEstimate": 72
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 751,
+        "dialogueDensity": 3.99,
+        "interruptionDensity": 0.93,
+        "overExplainDensity": 0.27,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.67,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "dark-romance",
+      "genreLabel": "Dark Romance",
+      "scene": "confrontation",
+      "title": "Dark Romance confrontation",
+      "content": "He found me before I could leave.\n\nI was halfway to the exit, my heels silent on the marble, when his hand closed around my wrist. Not hard. Not yet. Just enough to stop me.\n\n\"Running?\" His voice was low, amused, like he already knew the answer.\nThe word stay rose in the throat and went nowhere.\n\nI turned, schooling my face into something neutral. \"I have an early meeting.\"\n\n\"Liar.\"\n\nThe word landed like a touch. I felt it on my skin.\n\nHe stepped closer, and I stepped back until my spine hit the cold wall. He didn't touch me again, but he didn't need to. The space between us was electric, charged with something I refused to name.\n\n\"I saw you watching me,\" he said. \"All night.\"\n\n\"I wasn't.\"\n\n\"Your glass was empty for twenty minutes. You didn't drink. You just held it.\" His eyes dropped to my mouth, then back up. \"You were waiting.\"\n\nMy throat tightened. I hated that he noticed. Hated that he was right.\n\n\"You don't know what I was doing.\"\n\n\"I know exactly what you were doing.\" He leaned in, his breath warm against my ear. \"You were wondering what it would feel like. If I'd be gentle. If you'd let me.\" I should have pushed him away. Should have laughed, walked out, never looked back.\n\nInstead, I said nothing.... he smiled that smile again — the one that said he'd already won.\" You can tell yourself it was nothing,\" he murmured, his lips brushing my temple. \"You can go home and pretend you don't remember my name. But we both know you'll be thinking about this tomorrow. And the day after.\" Somewhere down the hall, a floorboard creaked. Neither of them moved.\n\nHe pulled back, just enough to meet my eyes.\n\n\"The question is,\" he said, \"how long are you going to lie to yourself?\"I wanted to slap him. I wanted to kiss him. I wanted to disappear into the night... never feel this again.\n\nWhat I did was lift my chin and say,\"I'm not lying to anyone.\"\n\nHis laugh was soft, almost kind. \"That's the first lie you've told tonight.\"\n\nHe let go of my wrist. The absence of his hand was a cold shock.\n\n\"Same time tomorrow,\" he said, already walking away. \"Don't keep me waiting.\"\n\nI stood there, pressed against the wall, my heart hammering, my skin burning where he'd touched me.\n\nI didn't say yes.\n\nBut I didn't say no.\n\nAnd he knew it.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "romance",
+          "subgenre": "dark romance",
+          "emotionalIntensity": 9,
+          "pacingStyle": "slow-burn",
+          "proseDensity": "lush",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.92,
+          "commercialCategory": "Romance > Dark",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "DarkRomanceBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 97,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 22,
+          "pacingPressure": 52,
+          "subtextDensity": 100,
+          "commercialMomentumScore": 74,
+          "readerDropRiskEstimate": 38
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 416,
+        "dialogueDensity": 9.13,
+        "interruptionDensity": 1.92,
+        "overExplainDensity": 0.24,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.24,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "dark-romance",
+      "genreLabel": "Dark Romance",
+      "scene": "dialogue",
+      "title": "Dark Romance dialogue",
+      "content": "I found him waiting on the terrace the next afternoon, as if he'd known I'd come. The sun was low, casting long shadows across the stone tiles, and he stood with his back to me, one hand in his pocket, the other holding a glass of whiskey that caught the light like liquid amber.\n\n\"You're late,\" he said without turning around.\n\nI stopped at the threshold, the glass door still open behind me. \"I didn't agree to a time.\"\n\n\"No.\" He finally turned, and that smile was there again—the one that said he'd already read the ending of this story. \"But you came anyway.\"\nThe glass stayed in their hand, held too tightly to be casual.\n\nI should have left. The word was already forming on my tongue, a refusal I could almost taste. But my feet stayed planted, and my mouth stayed dry.\n\nHe walked toward me slowly, the way a predator measures distance before the strike. \"You want to know why I chose you.\"\n\nIt wasn't a question. I didn't answer.\n\n\"Because you're the only one in that room who wasn't trying to be seen.\" He stopped a foot away, close enough that I could smell the cedar and smoke on his skin. \"You were trying to disappear. And I wanted to know what you were hiding from.\"\n\n\"Maybe I was hiding from you.\"\n\nHis laugh was low, rough, like gravel under silk. \"No. You weren't. You were standing exactly where I could find you.\" My throat tightened. He was wrong. He had to be wrong. But the words wouldn't come. some part of me—the part I didn't want to acknowledge—knew he wasn't.\" I have a proposition,\" he said, his voice dropping to something almost intimate. \"One week. You give me seven days. And at the end, if you want to walk away, I'll let you.\"\n\n\"Let me?\" The word came out sharper than I intended. \"You don't own me.\"\n\n\"No.\" His hand reached out, and his fingers brushed the curve of my jaw—featherlight, barely there, but I felt it everywhere. \"But I could.\" The silence between us stretched, filled with everything we weren't saying. I could feel the heat of his palm without him touching me, the space between his hand... my skin charged like the air before a storm.\" One week,\" I heard myself say.\n\nHis smile deepened. \"One week.\"\n\nHe stepped back, and the cold rushed in to fill the space he'd left. I watched him walk away, his silhouette sharp against the dying light, and I didn't move until the door clicked shut behind him.\n\nOnly then did I realize I'd never asked for his name.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "romance",
+          "subgenre": "dark romance",
+          "emotionalIntensity": 9,
+          "pacingStyle": "slow-burn",
+          "proseDensity": "lush",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.92,
+          "commercialCategory": "Romance > Dark",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "DarkRomanceBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 97,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 52,
+          "subtextDensity": 92,
+          "commercialMomentumScore": 56,
+          "readerDropRiskEstimate": 72
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 442,
+        "dialogueDensity": 7.69,
+        "interruptionDensity": 2.71,
+        "overExplainDensity": 0.23,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.23,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "dark-romance",
+      "genreLabel": "Dark Romance",
+      "scene": "cliffhanger",
+      "title": "Dark Romance cliffhanger",
+      "content": "He came to me that night.\n\nI was still in my car, the engine idling in the garage of my apartment building, when a shadow broke the light from the stairwell. My heart seized before my mind caught up. Then he stepped into the glow, and I saw his face.\n\nHe didn't knock on the window. He just stood there, watching me through the glass, his hands loose at his sides, his coat dark against the concrete walls. The security light flickered, catching the edge of his jaw, the hollow beneath his throat. He looked like he'd been waiting. The space between them stayed small. Small enough to hurt.\n\nI killed the engine. The silence rushed in, thick and cold. My fingers stayed on the key, trembling, and I couldn't tell if it was fear or something I didn't want to name.\n\nWhen I opened the door, he didn't move. The air between us was charged, humming, like the moment before a storm breaks.\n\n\"You didn't ask my name,\" I said. My voice came out steadier than I felt.\n\n\"I know your name.\"\n\nHe said it without hesitation. Without a flicker. And something in his tone told me he'd known it long before the ballroom, long before the terrace, long before I'd ever laid eyes on him.\n\nI should have asked how. I should have stepped back, demanded answers, called the security guard who was probably watching the lobby camera. But the night was too quiet, and his voice was too low, and my skin was still burning from where he'd touched me yesterday.\n\n\"What do you want?\" I whispered.\n\nHe took a step closer. Then another. The space between us collapsed until I could smell the cold on his coat, the faint trace of whiskey and something darker — cedar, smoke, the ghost of a fire long extinguished.\n\n\"To finish what we started.\" His hand came up. I didn't flinch. I watched his fingers trace the curve of my jaw, featherlight, almost reverent,... then slide down to the pulse point at my throat. He pressed there, just enough to feel the blood hammering beneath his thumb.\" You feel that?\" he murmured. \"That's not fear.\"\n\nI couldn't breathe. I couldn't think. The garage was too dark, and his eyes were too bright, and somewhere in the distance a car door slammed, but it sounded like it belonged to another world.\n\n\"I should go inside,\" I said, but my body didn't move. My body was leaning toward him like a plant toward a killing sun.\n\n\"Then go.\"\n\nHe didn't release me. His thumb stayed on my pulse, counting every wild beat. His other hand found my hip, pulling me closer, and the heat of him bled through the fabric of my coat, through the thin silk of my dress, until I couldn't tell where I ended and he began.\n\n\"Go,\" he repeated, but his voice was darker now, rougher, and his mouth was so close to mine that I could taste the words before he spoke them.\nSomewhere down the hall, a floorboard creaked. Neither of them moved.\n\nI didn't go.\n\nI stood there, pinned between his body and the cold metal of my car, and I let him hold me. I let him feel the tremor running through my bones. I let him see that I wasn't running anymore.\n\nAnd then he kissed me.\n\nNot gentle. Not patient. It was the kiss of a man who had already decided that I belonged to him — and worse, the kiss of a woman who was starting to believe it.\n\nHis hands were in my hair, at my waist, pressing me harder against the car, and I was clutching his coat, pulling him closer, drowning in the taste of him — salt and smoke and something I couldn't name but already craved.\n\nWhen he pulled back, I was gasping. My lips were bruised, my knees weak, my mind a white static of wanting.\n\nHe pressed his forehead to mine. His breathing was ragged, uneven, and I felt the tremor in his hands as they cupped my face.\n\n\"Tomorrow,\" he said. \"Nine o'clock. The Ravenswood Hotel. Room 614.\"\n\nHe waited until I met his eyes. They were dark, hungry, and something else — something almost vulnerable, buried beneath the control.\n\n\"Don't keep me waiting.\"\n\nAnd then he was gone, swallowed by the shadows, leaving me alone in the humming silence of the garage, my lips still burning, my heart still racing, my fingers pressed to my mouth as if I could hold onto the taste of him.\n\nI didn't know who he was. I didn't know what he wanted. I didn't know why he'd been watching me, or how he'd found me, or what waited for me in room 614.\n\nBut I knew, with a certainty that terrified me, that I would be there.\n\nAnd I knew, with a certainty that thrilled me, that I wouldn't tell anyone where I was going.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "romance",
+          "subgenre": "dark romance",
+          "emotionalIntensity": 9,
+          "pacingStyle": "slow-burn",
+          "proseDensity": "lush",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.92,
+          "commercialCategory": "Romance > Dark",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "DarkRomanceBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 97,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 52,
+          "subtextDensity": 35,
+          "commercialMomentumScore": 74,
+          "readerDropRiskEstimate": 38
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 829,
+        "dialogueDensity": 2.9,
+        "interruptionDensity": 2.77,
+        "overExplainDensity": 0.24,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.24,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "mafia-romance",
+      "genreLabel": "Mafia Romance",
+      "scene": "opening",
+      "title": "Mafia Romance opening",
+      "content": "The whiskey was a lie. Neat pour, amber glint, the weight of cut crystal in my palm—all theater. I didn't drink it. I held it like a shield while the men around me carved up a city I'd never see on a map.\n\nMy father's study smelled of leather and old money. The kind of money that didn't need to be explained. The kind that bought judges, buried bodies, and kept daughters in private schools where they learned French and forgot how to scream.\n\nI'd forgotten nothing.\n\nThey were six of them. Suits tailored within an inch of intimidation. Voices low, deliberate, the cadence of men who'd never been interrupted. I sat in the corner like a porcelain doll my father had forgotten to put away, knees pressed together, spine straight, the whiskey sweating against my fingers.\n\nAnd he watched me.\n\nThe man at the far end of the table. Not one of my father's usual wolves. Younger. Sharper. His suit was charcoal, his shirt unbuttoned at the collar, and his eyes—dark, flat, hungry—hadn't left me since I walked in.\n\nI should have looked away. That's what girls like me did. We looked away. We became furniture. We survived.\n\nI held his gaze.\n\nA mistake. I knew it the way you know a storm is coming by the pressure in your bones. His mouth curved. Not a smile. A recognition.\n\n\"This is business, Alessio.\" My father's voice cut through the smoke. \"Family stays out of business.\"\n\n\"She's not staying out of anything.\" The man—Alessio—tipped his chair back, arms crossed, eyes still on me. \"She's right here. She hears everything.\"\n\n\"She hears nothing.\"\n\n\"Then she's stupid or she's brave.\" He tilted his head, studying me like I was a chess piece he'd already decided to move. \"Which one are you?\"\nSomewhere down the hall, a floorboard creaked. Neither of them moved.\n\nThe room went quiet. The other men shifted. My father's jaw tightened.\n\nI should have answered. Should have played the part. But the words stuck in my throat, barbed and wrong. So I lifted the glass instead, the whiskey burning a path I didn't swallow, and I let the silence answer for me.\n\nAlessio's smile deepened.\n\n\"Brave,\" he said softly. \"That's more dangerous.\"\n\nHe stood. The meeting was over. The other men rose, shadows obeying a sun I couldn't see. My father moved to intercept him, hand extended, words smooth as oil, but Alessio stepped around him like he wasn't there.\n\nHe stopped in front of me.\n\nClose enough that I caught his scent—cedar, smoke, something metallic I didn't want to name. Close enough that I saw the scar splitting his left eyebrow, the pulse in his throat, the way his fingers twitched at his side like they were memorizing the shape of a trigger.\n\n\"You don't belong in this room,\" he said. Not cruel. Not kind. A fact.\n\n\"I know.\"\n\n\"Then why are you here?\"\n\nI could have lied. Could have said I was waiting for my father, that I'd wandered in by accident, that I was just a girl who didn't know better.\n\nInstead I said, \"Because I'm not stupid.\"\n\nHis eyes changed. Something flickered behind the flatness—interest, hunger, a warning. He leaned in, his breath brushing my ear.\n\n\"Smart girls don't last long in this world, principessa.\"\n\nHe straightened, nodded once at my father, and walked out.\n\nThe door clicked shut. The air rushed back into the room. My father was already talking, already spinning, already erasing what had just happened.\n\nBut I felt it. The shape of his voice still pressed against my skin. The way he'd called me princess like it was a threat.\n\nAnd I knew, with the certainty of a girl who'd learned to read danger in a father's silence, that I hadn't seen the last of Alessio Vieri.\n\nI set the whiskey down, untouched.\n\nThe glass was warm now. Like a hand I'd never held.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "romance",
+          "subgenre": "mafia empire romance",
+          "emotionalIntensity": 9,
+          "pacingStyle": "slow-burn",
+          "proseDensity": "lush",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.92,
+          "commercialCategory": "Romance > Dark",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "MafiaEmpireBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 97,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 52,
+          "subtextDensity": 51,
+          "commercialMomentumScore": 74,
+          "readerDropRiskEstimate": 38
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 653,
+        "dialogueDensity": 4.29,
+        "interruptionDensity": 2.45,
+        "overExplainDensity": 0.15,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.46,
+        "continuationPressure": 0
+      }
+    },
+    {
+      "genreId": "mafia-romance",
+      "genreLabel": "Mafia Romance",
+      "scene": "confrontation",
+      "title": "Mafia Romance confrontation",
+      "content": "The men left in waves, trailing smoke and promises I wasn't meant to hear. I stayed by the window, watching my reflection fade into the dark glass as the last car pulled through the iron gates. My father's hand found my shoulder—heavy, deliberate, a claim more than a comfort.\n\n\"He asked about you.\"\n\nThe words landed like stones in still water. I didn't need to ask who.\n\n\"Alessio Vieri wants a meeting. Private.\"\n\nMy throat closed. The whiskey sat warm and undrunk on the desk behind me, and I wished I'd swallowed it after all.\n\n\"I told him you'd be at the gallery tomorrow. Seven o'clock.\"\n\nI turned, slow, careful. My father's face was carved from the same marble as every other decision he'd ever made for me. \"You sold me a Tuesday evening.\"\nFor a moment, there was only the sound of a breath being held.\n\n\"I bought you time.\" His jaw tightened. \"Vieri is not a man who waits, Elena. He's a man who takes. The only question is whether you walk into his world on your feet or get dragged in by your hair.\"\n\nMy blood ran cold and hot at once. Fear and fury, tangled like lovers who couldn't let go.\n\n\"And if I say no?\"\n\nMy father's silence was the loudest thing I'd ever heard.\n\nI thought of Alessio's hands—the way they'd rested on the table, still and patient, like they knew exactly what they wanted and had all the time in the world to take it. I thought of his eyes, dark and flat, the kind that watched you undress without ever touching your clothes.\n\n\"One meeting,\" I said, and the words tasted like surrender. \"One.\"\n\nMy father nodded, already walking away. He didn't thank me. He never did.\n\nI picked up the whiskey. Drank it this time. The burn was a reminder that I was still here, still choosing, still pretending the cage had a door.\n\nBut I knew, with the certainty of a girl who'd learned to read danger in a father's silence, that I hadn't seen the last of Alessio Vieri.\n\nI set the glass down. Empty now.\n\nLike the space beside me where a different life might have stood.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "romance",
+          "subgenre": "mafia empire romance",
+          "emotionalIntensity": 9,
+          "pacingStyle": "slow-burn",
+          "proseDensity": "lush",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.92,
+          "commercialCategory": "Romance > Dark",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "MafiaEmpireBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 97,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 52,
+          "subtextDensity": 59,
+          "commercialMomentumScore": 56,
+          "readerDropRiskEstimate": 72
+        },
+        "flags": {
+          "momentumConfidence": "medium",
+          "aiPatternConfidence": "medium",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 369,
+        "dialogueDensity": 4.88,
+        "interruptionDensity": 1.9,
+        "overExplainDensity": 0,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0,
+        "continuationPressure": 0
+      }
+    },
+    {
+      "genreId": "mafia-romance",
+      "genreLabel": "Mafia Romance",
+      "scene": "dialogue",
+      "title": "Mafia Romance dialogue",
+      "content": "The door didn't open. It surrendered—a soft click of the latch, then the slow swing of oak on oiled hinges. I didn't turn around. I knew the weight of that silence.\n\n\"You're still here.\"\n\nHis voice was a blade wrapped in velvet. Low. Precise. The kind of voice that didn't ask questions unless it already knew the answers.\nSomeone started to speak, then lost the nerve.\n\n\"I live here.\"\n\n\"No.\" A step. The floorboards groaned under his weight. \"You exist here. There's a difference.\"\n\nI turned then. Slowly. Let him see that I wasn't afraid of the dark shapes he cast against the lamplight.\n\nAlessio Vieri stood in the doorway like he owned the frame. He didn't. But he'd made my father believe he did, and that was close enough. He'd shed the jacket somewhere between the front gate and this room—his sleeves were rolled to the elbow, forearms corded with the kind of muscle that came from work, not weights. The gun at his hip wasn't a prop. It was a punctuation mark.\n\n\"You don't belong in this room,\" he said.\n\n\"And you do?\"\n\nHe smiled. It didn't reach his eyes. \"I belong wherever I'm standing.\"\n\nI felt the heat rise in my chest—anger or something worse, something that lived closer to my spine. I pressed my palm flat against the desk to keep it steady.\n\n\"What do you want, Mr. Vieri?\"\n\n\"Alessio.\" He took another step. Then another. Each one measured, deliberate. The space between us shrank like a wound closing. \"We're past formalities, aren't we? After tonight.\" The glass stayed in their hand, held too tightly to be casual.\n\n\"Tonight was business. I was furniture.\"\n\n\"Furniture doesn't watch the way you watched.\"\n\nHe stopped just short of the desk. Close enough that I could smell the smoke on his clothes, the whiskey he hadn't drunk either. His eyes moved over my face like he was reading something written in a language only he almost said something, then did not.\n\n\"You saw everything,\" he said. \"The handshake. The envelope. The way your father's hand trembled when he signed.\"\n\n\"I saw nothing.\"\n\n\"Liar.\"\n\nThe word landed soft. Almost tender. And that was worse than if he'd shouted.\n\n\"I've been watching you watch,\" he continued. \"All night. You think you're invisible because you're quiet. But quiet isn't invisible. It's just quieter.\"\n\n\"Is there a point to this?\"\n\n\"The point is that I don't trust people who see things and pretend they didn't.\"\n\n\"Then leave.\" The words came out sharper than I intended. \"Take your business and your threats and go back to wherever you came from. I'll forget your face by morning.\"\n\n\"No. You won't.\"\n\nHe reached across the desk. Slow enough that I could have pulled away. I didn't. His fingers brushed the crystal tumbler I'd abandoned earlier—the whiskey untouched, still amber in the low light.\n\n\"You didn't drink,\" he said.\n\n\"I don't drink with strangers.\"\n\n\"We're not strangers.\" He lifted the glass. Held it up to the light like he was testing its clarity. \"I know more about you than you think.\"\n\n\"Then you know I'm not afraid of you.\"\n\n\"I know that's what you want me to believe.\"\n\nHe set the glass down. The sound was too loud in the quiet room. A full stop. A period at the end of a sentence I hadn't finished writing.\n\n\"Your father owes me,\" he said. \"Not money. Something more valuable.\"\n\n\"I don't want to know.\"\n\n\"You don't get to choose.\" His voice dropped. Lost its edge. What remained was worse—something quiet... certain, the patience of a man who had never been told no and survived the experience.\" He's going to give me something to settle the debt.\"\n\nI felt it then. The shift. The room didn't change, but the air did—thicker, heavier, harder to breathe.\n\n\"What?\"\n\nHe didn't answer. He just looked at me. And in the space between his silence and my understanding, I already knew.\n\n\"No.\"\n\n\"It's done.\"\n\n\"It can't be.\"\n\n\"It is.\"\n\nI shook my head. Once. Twice. The motion felt disconnected from my body, like watching someone else fall apart from a great distance.\n\n\"He wouldn't.\"\n\n\"He did.\"\n\nAlessio reached into his pocket. Pulled out a folded piece of paper—cream-colored, heavy stock. The kind of paper used for contracts that couldn't be broken. He laid it on the desk between us, smooth and flat, and I saw my father's signature at the bottom.\n\n\"I don't want to take you against your will,\" he said. \"But I will.\"\n\n\"That's not—\"\n\n\"It's not romantic. I know.\" His jaw tightened. For a fraction of a second, something flickered behind his eyes. Not regret. Something older. Colder. \"But I didn't build my empire on romance. I built it on leverage.\"\n\n\"You're a monster.\"\n\n\"Yes.\" He didn't flinch. \"And you're going to learn to live with it.\"\n\nHe picked up the paper. Folded it. Slipped it back into his pocket like it was nothing. Like I was nothing.\n\n\"You have until sunrise to say goodbye to this house,\" he said. \"Then you're mine.\"\n\nHe turned. Walked to the door. Stopped with his hand on the frame.\n\n\"One more thing.\"\n\nI didn't answer. I couldn't.\n\n\"The way you looked at me tonight,\" he said, without turning around. \"I've been looked at a thousand ways. Fear. Hatred. Greed. But you—\" He paused. \"You looked at me like you were trying to decide if I was worth saving.\"\n\n\"I wasn't.\"\n\n\"You were.\" His voice softened. Almost imperceptibly. \"Don't bother. I'm not.\"\n\nHe left. The door closed behind him with the same soft click as before. And I stood there, alone, with the weight of a future I hadn't chosen pressing down on my chest like a second heartbeat.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "romance",
+          "subgenre": "mafia empire romance",
+          "emotionalIntensity": 9,
+          "pacingStyle": "slow-burn",
+          "proseDensity": "lush",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.92,
+          "commercialCategory": "Romance > Dark",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "MafiaEmpireBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 97,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 52,
+          "subtextDensity": 100,
+          "commercialMomentumScore": 98,
+          "readerDropRiskEstimate": 38
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 955,
+        "dialogueDensity": 12.15,
+        "interruptionDensity": 3.14,
+        "overExplainDensity": 0.21,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.21,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "mafia-romance",
+      "genreLabel": "Mafia Romance",
+      "scene": "cliffhanger",
+      "title": "Mafia Romance cliffhanger",
+      "content": "I didn't move when the door clicked shut. The silence he left behind was heavier than his presence had been—a vacuum pulling at my ribs, daring me to fill it with something stupid like hope or fear.\n\nI chose anger instead.\n\nMy fingers found the edge of my father's desk, the wood smooth and cold from a century of hands that had signed death warrants disguised as contracts. I traced the grain like a blind woman reading a language she'd been taught to forget.\n\nAlessio Vieri.\n\nThe name sat in my chest like a splinter I couldn't dig out. He'd called me princess like it was a collar, like he already owned the leash. And I'd stood there. Let him look at me the way men look at things they intend to break slowly.\n\nBut I hadn't broken yet.\n\nI walked to the window, pressed my palm flat against the glass. The estate stretched below—black iron gates, manicured hedges, the fountain my mother had filled with coins before she disappeared. Every inch of it a cage built with silk wallpaper and lies.\n\nAnd I had spent twenty-two years learning how to be pretty inside it.\n\nMy phone buzzed. I didn't look. Then again. Insistent. The kind of rhythm that meant news, not conversation.\n\nI picked it up. Unknown number. One line of text:\n\n*Your father just sold you to the wrong man.*\n\nThe air left my lungs. I read it again. Then a third time, watching the words blur at the edges like a photograph left in the rain.\n\nBefore I could respond, another message came through. A photo. My face, taken tonight—through the window of my father's study. I could see the amber lights of the chandelier reflected in my own eyes. The glass I'd never drunk from. The ghost of Alessio's hand still somewhere in the frame.\n\nSomeone had been watching.\n\nSomeone was still watching.\n\nI turned from the window so fast the room tilted. The curtains swayed. The garden was empty. The driveway, empty. The tree line, a wall of black nothing.\n\nMy phone buzzed a third time.\n\n*Don't go to sleep, principessa. I'll come for you before morning.*\n\nI didn't recognize the number. But I recognized the word. The same word Alessio had carved into the air between us. The same word that had made my father's men go quiet.\n\n*Principessa.*\n\nNot a term of endearment. A claim.\n\nI stood in the center of the room, the phone cold in my hand, the weight of a future I hadn't chosen pressing down on my chest like a second heartbeat. The house breathed around me—old pipes, settling wood, the ghost of my mother's footsteps on the stairs.\n\nAnd somewhere in the dark, between the iron gates and the tree line, someone was counting the minutes until I was theirs.\n\nThe whiskey sat untouched on my father's desk. I picked it up. Drank it in one swallow.\n\nIt burned going down.\n\nLike the truth I'd been swallowing my whole life.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "romance",
+          "subgenre": "mafia empire romance",
+          "emotionalIntensity": 9,
+          "pacingStyle": "slow-burn",
+          "proseDensity": "lush",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.92,
+          "commercialCategory": "Romance > Dark",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "MafiaEmpireBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 97,
+          "emotionalRealismScore": 76,
+          "aiRiskScore": 0,
+          "pacingPressure": 52,
+          "subtextDensity": 0,
+          "commercialMomentumScore": 56,
+          "readerDropRiskEstimate": 72
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 502,
+        "dialogueDensity": 0,
+        "interruptionDensity": 1.79,
+        "overExplainDensity": 0,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.8,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "thriller",
+      "genreLabel": "Thriller",
+      "scene": "opening",
+      "title": "Thriller opening",
+      "content": "The first thing I noticed was the smell. Copper and salt, the way blood tastes when you bite your tongue hard enough to draw. I was standing in my own kitchen and didn't remember walking here.\n\nThree hours missing. The clock on the microwave blinked 2:47 AM, but the last thing I remembered was pouring wine at 11:30, the bottle sweating in my hand, the television mumbling about a storm coming up the coast. Now the glass was empty, upside down in the sink, and my fingernails were clean.\n\nToo clean.\n\nI looked at my hands. The cuticles were raw, scrubbed pink. I don't scrub my hands. I bite my nails when I'm anxious, pick at the skin until it bleeds. But there was no blood. No torn edges. Someone had cleaned me.\n\nThe knife block sat on the counter, third slot empty. I never use the third slot. That's the boning knife, the one with the curved blade that my father gave me when I bought this house, the one I keep because it feels like a threat hanging in the kitchen. I told myself it was for deboning chicken. I've never deboned a chicken in my life.\n\nI opened the drawer under the phone. The knife was there, wrapped in a dish towel, the blade wiped clean but the handle still damp. Dark damp, not water. I touched it and my fingers came away red.\n\nThe front door was unlocked. I always lock it. Three deadbolts, a chain, a security bar my therapist called excessive after what happened. I'd laughed at her. Now the bar was leaning against the wall, the chain swinging, and the third deadbolt was thrown back into the door frame like someone had opened it from the inside.\n\nI didn't remember opening it.\n\nMy phone was on the counter, screen dark. I picked it up. No new messages. No missed calls. The last call was to my sister at 9:14 PM, and I didn't remember making that call either. I checked the voicemail. A recording of my own voice, slurred, apologetic, saying words I couldn't piece together even after three plays.\n\n\"...I know what you did. I know, and I'm sorry, but I—\"\n\nThe recording cut off. I deleted it before I could stop myself, thumb moving without permission, the way you swat a spider before you register it's there.\n\nNow there was no evidence. No message. No knife in the block. Just my clean hands and three missing hours and a front door that was still swinging open into the dark. I could hear the storm now, the first rain hitting the windows, the wind working its way through the crack under the door like something trying to get in.\n\nOr out.\n\nThe security camera on the porch. I installed it myself after the break-in last year, the one the police said was random, the one my ex-husband said was my fault for living alone. I pulled up the feed on my phone. The timestamp showed nothing but static from 11:34 PM to 2:47 AM. A gap. A deletion. A three-hour hole in the world.\n\nMy reflection stared back from the dark kitchen window. Hair wet at the temples. Eyes too wide, pupils blown. I was wearing a shirt I didn't recognize, gray cotton with a stain on the collar I couldn't name. Dark, fresh, spreading.\n\nI touched my throat. The skin was warm, and beneath my fingers, my pulse was running too fast, like a heart trying to escape a body that might not deserve to keep it.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "thriller",
+          "subgenre": "psychological thriller",
+          "emotionalIntensity": 8,
+          "pacingStyle": "fast-escalation",
+          "proseDensity": "lean",
+          "tensionStyle": "mystery-loop",
+          "bookTokPotential": 0.8,
+          "commercialCategory": "Thriller & Suspense",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "ThrillerBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 86,
+          "emotionalRealismScore": 76,
+          "aiRiskScore": 0,
+          "pacingPressure": 78,
+          "subtextDensity": 4,
+          "commercialMomentumScore": 56,
+          "readerDropRiskEstimate": 72
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 596,
+        "dialogueDensity": 0.34,
+        "interruptionDensity": 1.34,
+        "overExplainDensity": 0,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.34,
+        "continuationPressure": 0
+      }
+    },
+    {
+      "genreId": "thriller",
+      "genreLabel": "Thriller",
+      "scene": "confrontation",
+      "title": "Thriller confrontation",
+      "content": "I called her because that's what you do when you're afraid of yourself. You reach for the person who knows you best, the one who can tell you you're still you.\n\nShe answered on the first ring. \"It's two in the morning.\"\n\n\"I know.\"\n\nA pause. I could hear her breathing, the soft shift of sheets. \"What's wrong?\"\n\n\"I don't know.\" The words came out wrong—too honest, too raw. \"I'm in my kitchen and I don't remember getting here.\"\n\n\"You probably walked.\" Her voice was flat, the way it gets when she's deciding whether to be worried or annoyed.\n\n\"I'm wearing a shirt I've never seen before.\"\n\nSilence. Then: \"What color?\"\n\n\"Gray.\"\n\n\"Describe it.\"\n\nI looked down, forced myself to see. \"Cotton. Cheap. There's a logo on the chest—something faded, maybe a bird. And a stain on the collar.\"\nSomewhere down the hall, a floorboard creaked. Neither of them moved.\n\n\"What kind of stain?\"\n\n\"I don't know.\" But I did. I knew exactly what it looked like. I just couldn't say it out loud.\n\n\"Is it blood?\" she asked, and the question landed like a stone in still water. Ripples spread through everything.\n\n\"I don't think so.\"\n\n\"You don't think so, or you don't want to think so?\"\n\nI didn't answer. The microwave clock blinked 2:48 now. A minute had passed. A minute I couldn't account for, stacked on top of the three hours I'd already lost.\n\n\"Where's your phone?\" she asked.\n\nI patted my pockets. Empty. \"I don't have it.\"\n\n\"Then how are you calling me?\"\n\nI looked at my hand. I was holding a phone. A phone I didn't recognize. Black case, no cracks, no scratches. Not mine.\n\n\"I don't know.\"\n\n\"Listen to me.\" Her voice shifted, harder now, the way it gets when she's scared but won't show it. \"Check your hands. Are they clean?\"\n\nI held them up to the light. The kitchen fluorescents hummed above me, buzzing like trapped flies. My palms were pale, the lines deep and ordinary. Clean. But under my nails—\n\n\"There's something under my nails.\"\n\n\"What?\"\n\n\"I don't know. Dirt. Or—\" I stopped. Because it wasn't dirt. It was dark, and it was packed into the crescents of my cuticles like I'd been digging.\n\n\"I'm coming over,\" she said.\n\n\"No.\"\n\n\"You don't get to say no. You're scared,... you should be. Something's wrong, and you're calling me at two in the morning because you know I'm the only one who'll tell you the truth.\"\n\n\"What truth?\"\n\n\"That you're not safe.\" Her voice cracked on the last word. \"Not from whatever you did. Not from whoever you were with. And not from yourself.\"\n\nI wanted to argue. I wanted to tell her she was wrong, that I was fine, that this was just a moment, a glitch, a thing that would pass. But the words wouldn't come. Because under my nails, the dark stuff was starting to dry, and it flaked when I touched it, and it smelled like copper and salt.\n\n\"I'll be there in ten minutes,\" she said. \"Don't go anywhere. And don't touch anything.\"\n\nThe line went dead.\n\nI stood in the kitchen, holding a stranger's phone, wearing a stranger's shirt, with a stranger's dirt under my nails. The house was silent except for the refrigerator's low hum and the drip of the faucet I couldn't remember leaving on.\n\nAnd then I heard it. A sound from the living room. Soft. Deliberate.\n\nThe creak of a floorboard under weight that wasn't mine.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "thriller",
+          "subgenre": "psychological thriller",
+          "emotionalIntensity": 8,
+          "pacingStyle": "fast-escalation",
+          "proseDensity": "lean",
+          "tensionStyle": "mystery-loop",
+          "bookTokPotential": 0.8,
+          "commercialCategory": "Thriller & Suspense",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "ThrillerBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 86,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 78,
+          "subtextDensity": 100,
+          "commercialMomentumScore": 98,
+          "readerDropRiskEstimate": 38
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 583,
+        "dialogueDensity": 11.32,
+        "interruptionDensity": 2.06,
+        "overExplainDensity": 0,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.17,
+        "continuationPressure": 0
+      }
+    },
+    {
+      "genreId": "thriller",
+      "genreLabel": "Thriller",
+      "scene": "dialogue",
+      "title": "Thriller dialogue",
+      "content": "I didn't move. The creak hung in the air like a held breath, and I stood frozen in the kitchen doorway, my fingers still pressed to my own throat where the pulse hammered against my skin.\n\n\"Who's there?\" My voice came out wrong—too thin, too young. A child's voice in a woman's body.\n\nSilence. Then the floorboard again, closer now. The sound of someone who knows exactly where the weak spots are in an old house. I backed toward the knife block without looking, my hand finding the handle of the chef's knife by memory. They looked at the door as if it had already chosen for them. Dust caught in her throat.\n\n\"I can hear you breathing.\" A woman's voice. Low. Familiar in a way that made my stomach drop. \"Put the knife down, Nora.\"\nFor a moment, there was only the sound of a breath being held.\n\nShe stepped into the kitchen light and I almost didn't recognize her. Detective Marlene Chen. We'd met twice before—once at a neighborhood watch meeting, once when she'd knocked on my door to ask if I'd seen anything the night Mrs. Pavlik's car was broken into. She'd been wearing jeans both times. Now she was in full uniform, her holster unclipped, her hand resting on the grip of her service weapon like it was a habit she couldn't break.\n\n\"Detective.\" I didn't put the knife down. \"It's two in the morning.\"\n\n\"I know what time it is.\" She didn't step closer. Her eyes moved past me, scanning the kitchen, landing on the sink where the wine glass sat upside down. On the stain on my collar I couldn't name. On the clock that said I'd lost three hours. \"You want to tell me why your front door was open?\"\n\n\"It wasn't.\"\n\n\"It is now.\"\n\nI looked past her, down the hallway. The door was standing wide open, the night pouring in like black water. I didn't remember unlocking it. I didn't remember turning the deadbolt. I didn't remember anything after the wine and the television and the storm coming up the coast.\n\n\"I don't know,\" I said. \"I don't know how that happened.\"\n\nChen's face didn't change. That was the worst part. She looked at me the way you look at a dog that might bite—calm, careful, ready. \"You called someone tonight. A woman named Grace. You told her you were afraid of yourself.\"\n\nMy chest went cold. \"You listened to my call?\"\n\n\"You called the non-emergency line first, Nora. You hung up before anyone answered. But we log those numbers. And when a patrol car drove past your house twenty minutes later and saw your door open, I put it together.\" She took a step forward now, slow, deliberate. \"So I'm going to ask you again. Why is your door open?\"\n\n\"I don't know.\"\n\n\"Why are you holding a knife?\"\n\nI looked down at my hand. The blade caught the fluorescent light, and I could see something on it. A thin smear, dark against the steel. Not water. Not wine.\n\n\"Nora. Put the knife on the counter.\"\n\nI didn't move. My hand wouldn't open. My fingers were locked around the handle like they'd been wired there.\n\n\"I can't,\" I said. \"I can't remember.\"\n\n\"Remember what?\"\n\n\"Anything.\" My voice cracked on the word. \"I don't remember the last three hours. I don't remember opening the door. I don't remember—\" I stopped. Looked at the knife again. At the dark smear that wasn't mine but had to be. \"I don't remember whose blood that is.\"\n\nChen's hand tightened on her weapon. Not drawing. Just ready. \"Nora, I need you to take a breath and put the knife down. We're going to figure this out together.\"\n\n\"Together?\" I laughed, and it sounded like glass breaking. \"You came here ready to arrest me. You've got your hand on your gun.\"\n\n\"I came here because you called for help and then you disappeared.\"\n\n\"I'm standing right here.\"\n\n\"No.\" Her voice went flat. \"You're standing in your kitchen at two in the morning with a knife in your hand and blood on your shirt, and you don't remember how any of it got there. That's not 'standing right here.' That's somewhere else entirely.\"\n\nShe was right. I knew she was right. But knowing didn't help me remember. It just made the fear worse, because if I couldn't trust my own memory, I couldn't trust anything. Not the knife in my hand. Not the blood on my shirt. Not the woman in front of me who was supposed to help.\n\n\"I'll put it down,\" I said. \"But I need you to tell me something first.\"\n\n\"What?\"\n\n\"Am I the only one who's been here tonight?\"\n\nChen's eyes flickered. Just for a second. A crack in the professional mask. \"Why do you ask?\"\n\n\"Because I heard something. Before you came. A floorboard in the living room. But I was in the kitchen by then,... I didn't see anyone, and I thought maybe I imagined it, but if the door was open—\"\n\n\"The door was open when I got here. No one else was inside.\"\n\n\"You checked?\"\n\n\"I cleared the house before I came to find you.\"\n\n\"Then why did you ask about the blood?\"\n\n\"What?\"\n\n\"You asked if it was mine. But you already knew it wasn't. You checked the house. You didn't see a body. So whose blood did you think it was?\"\n\nShe didn't answer. The silence stretched between us, thin as wire, and in that silence I understood something I hadn't before: she wasn't here to help me. She was here to find out what I'd done.\n\n\"Nora,\" she said, and her voice was softer now, almost gentle, which made it worse. \"Put the knife down. We'll talk about this at the station.\"\n\n\"At the station.\"\n\n\"Yes.\"\n\n\"You're arresting me.\"\n\n\"I'm bringing you in for questioning.\"\n\n\"That's the same thing.\"\n\n\"It doesn't have to be.\"\n\nI looked at the knife one last time. The smear was drying now, turning brown at the edges. I didn't know whose it was. I didn't know if I'd hurt someone or found someone already hurt or if the blood was something else entirely, something I'd spilled in my own sleep without waking up.\n\nI laid the knife on the counter. The metal clicked against the granite, and the sound was final, like a door closing.\n\nChen nodded. \"Thank you.\"\n\n\"I didn't do anything.\"\n\n\"I know.\"\n\n\"You don't believe me.\"\n\n\"It doesn't matter what I believe, Nora. It matters what we find.\"\n\nShe stepped forward and cuffed me. The metal was cold against my wrists, tight enough to leave marks. She read me my rights in a flat, practiced voice, and I stood there in my own kitchen, in a shirt I didn't recognize, with three hours I couldn't account for, and let her lead me out the open door into the night.\n\nAs she guided me toward the patrol car, I looked back at the house. The kitchen light was still on. The knife was still on the counter. And in the window, just for a second, I thought I saw someone watching.\n\nBut when I blinked, there was no one there.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "thriller",
+          "subgenre": "psychological thriller",
+          "emotionalIntensity": 8,
+          "pacingStyle": "fast-escalation",
+          "proseDensity": "lean",
+          "tensionStyle": "mystery-loop",
+          "bookTokPotential": 0.8,
+          "commercialCategory": "Thriller & Suspense",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "ThrillerBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 86,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 78,
+          "subtextDensity": 100,
+          "commercialMomentumScore": 98,
+          "readerDropRiskEstimate": 38
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 1202,
+        "dialogueDensity": 9.32,
+        "interruptionDensity": 2.66,
+        "overExplainDensity": 0,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.25,
+        "continuationPressure": 2
+      }
+    },
+    {
+      "genreId": "thriller",
+      "genreLabel": "Thriller",
+      "scene": "cliffhanger",
+      "title": "Thriller cliffhanger",
+      "content": "I didn't call her back. The phone was still in my hand, the screen dark, and I couldn't remember ending the call. I couldn't remember her voice after the creak. I couldn't remember anything after the floorboard sang.\n\nThe knife was still on the counter. I picked it up because it was the only thing in the room that felt real—the weight of it, the cold handle against my palm. The blade caught the microwave's green glow, and I saw my reflection in it, warped and wrong. A stranger's face wearing my fear.\n\nI moved toward the living room. One step. Two. The floorboards groaned under my weight, and I thought: if someone is here, they know exactly where I am now.\n\nThe room was empty. The curtains moved—a window I didn't remember opening, a draft that smelled like wet earth and something metallic, something that made my stomach clench. I crossed to the window and looked out.\n\nThe street was dark. The streetlight at the corner flickered, casting the wet asphalt in jaundiced pools. And on the sidewalk, directly below my window, there was a footprint. Fresh. The tread pattern sharp, the edges still holding their shape.\n\nA single footprint. Facing my house.\n\nI stepped back, and my heel hit something soft. I looked down.\n\nA photograph. Face-up on the hardwood floor. A picture of me—but not me. Me asleep, maybe. Me in this kitchen, the same shirt, the same stain on the collar. The angle was from the window. From outside.\n\nAnd on the back, in handwriting I didn't recognize: \"You don't remember because I made you forget.\"\n\nThe phone buzzed in my hand. A text from an unknown number. One word.\n\n\"Look up.\"\n\nI didn't want to. Every instinct screamed at me to drop the phone, to run, to call her back, to do anything but lift my eyes to the window. But I did it anyway.\n\nBecause the worst part wasn't what I saw.\n\nThe worst part was that I already knew who would be there.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "thriller",
+          "subgenre": "psychological thriller",
+          "emotionalIntensity": 8,
+          "pacingStyle": "fast-escalation",
+          "proseDensity": "lean",
+          "tensionStyle": "mystery-loop",
+          "bookTokPotential": 0.8,
+          "commercialCategory": "Thriller & Suspense",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "ThrillerBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 86,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 78,
+          "subtextDensity": 14,
+          "commercialMomentumScore": 56,
+          "readerDropRiskEstimate": 72
+        },
+        "flags": {
+          "momentumConfidence": "medium",
+          "aiPatternConfidence": "medium",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 340,
+        "dialogueDensity": 1.18,
+        "interruptionDensity": 2.94,
+        "overExplainDensity": 0,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0,
+        "continuationPressure": 2
+      }
+    },
+    {
+      "genreId": "psychological-horror",
+      "genreLabel": "Psychological Horror",
+      "scene": "opening",
+      "title": "The First Crack",
+      "content": "The clock on the nightstand read 3:14 AM, but the light under the door was wrong.\n\nMaya had memorized the geometry of her apartment in the dark—the way the streetlamp through the blinds threw diagonal bars across the ceiling, the faint glow from the microwave’s clock in the kitchen. She knew the patterns the way a prisoner knows the cracks in his cell. But this light was different: a pale, sickly yellow, pulsing like a slow heartbeat under the bedroom door.\n\nShe hadn't left the hall light on.\n\nHer hand found the cold metal of the lamp base. She didn't turn it on. Instead, she listened. The building was old, full of its own noises—the groan of pipes, the creak of settling wood, the occasional shuffle from the neighbor above. But tonight, the silence was different. It had weight. It pressed against her eardrums like water.\n\nThen the floorboard outside her door sighed.\n\nNot a creak. A sigh. Long, low, human.\n\nMaya's breath locked in her chest. She counted to ten, counting the spaces between her heartbeats. The light under the door held steady, that sickly pulse. She told herself it was the moon. But the moon didn't pulse. And the moon didn't cast shadows that moved when nothing was there.\n\nThe doorknob began to turn.\n\nSlow. Deliberate. The metal scraping against the latch plate like a whisper she wasn't meant to hear.\n\nShe didn't scream. She didn't move. She watched the knob rotate a quarter turn, then stop. The light flickered once. Twice. Then went dark.\n\nThe silence that followed was worse than the sound. It was the silence of something holding its breath.\n\nMaya lay frozen for what felt like hours, the lamp base still in her grip, her eyes fixed on the door that had not opened. When dawn finally bled through the blinds, she made herself get up. She crossed the room, her bare feet cold on the hardwood, and opened the door.\n\nThe hall was empty. The light was off. The lock was still engaged.\n\nBut on the floor, just outside her bedroom, was a single wet footprint. Barefoot. Smaller than hers.\n\nAnd it was still warm.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "thriller",
+          "subgenre": "psychological horror",
+          "emotionalIntensity": 8,
+          "pacingStyle": "fast-escalation",
+          "proseDensity": "lean",
+          "tensionStyle": "psychological",
+          "bookTokPotential": 0.8,
+          "commercialCategory": "Thriller & Suspense",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "PsychologicalHorrorBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 91,
+          "emotionalRealismScore": 76,
+          "aiRiskScore": 0,
+          "pacingPressure": 78,
+          "subtextDensity": 0,
+          "commercialMomentumScore": 56,
+          "readerDropRiskEstimate": 72
+        },
+        "flags": {
+          "momentumConfidence": "medium",
+          "aiPatternConfidence": "medium",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 362,
+        "dialogueDensity": 0,
+        "interruptionDensity": 2.76,
+        "overExplainDensity": 0,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.55,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "psychological-horror",
+      "genreLabel": "Psychological Horror",
+      "scene": "confrontation",
+      "title": "The Wet Print",
+      "content": "She didn't turn on the light. She knew better.\n\nMaya knelt, her knees pressing into the cold hardwood, and touched the footprint. The moisture was cool now, but the impression was fresh—the ridges of a heel, the spread of five toes, the arch barely touching the floor. Someone had stood here, right outside her door, and they had been wet.\n\nThe bathroom was dry. She'd checked. The kitchen sink hadn't dripped. The rain had stopped hours ago.\n\nShe followed the trail with her fingers, not her eyes, because she didn't want to see where it led. But her hand moved on its own, tracing the path down the hallway, past the framed photograph of her mother that she'd never hung straight, past the coat rack where her jacket hung like a second skin. The prints were spaced evenly. No running. No stumbling. Whoever had made them had walked with purpose.\n\nThey stopped at the front door.\n\nMaya looked up. The deadbolt was still thrown. The chain was still on. But the door was open a crack—a sliver of darkness, no wider than a finger, and through it came the smell of wet earth and something else, something metallic and sweet.\n\nShe should have closed it. She should have locked it. She should have called someone.\n\nInstead, she pressed her eye to the gap.\n\nThe hallway was empty. The emergency light at the far end cast its sickly yellow glow across the carpet. Nothing moved. No sound. But the smell was stronger now, and she realized it was coming from her own apartment—from behind her.\n\nShe turned.\n\nThe footprints were gone.\n\nThe floor was bone-dry.\n\nAnd the light under her bedroom door had changed from yellow to the pure, cold white of a bare bulb.\n\nMaya stood in the dark of her own home, her hand still on the chain lock, and understood that she had already made a choice she couldn't undo. The door was open. Something had come in. And now it was waiting for her to find it.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "thriller",
+          "subgenre": "psychological horror",
+          "emotionalIntensity": 8,
+          "pacingStyle": "fast-escalation",
+          "proseDensity": "lean",
+          "tensionStyle": "psychological",
+          "bookTokPotential": 0.8,
+          "commercialCategory": "Thriller & Suspense",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "PsychologicalHorrorBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 91,
+          "emotionalRealismScore": 76,
+          "aiRiskScore": 0,
+          "pacingPressure": 78,
+          "subtextDensity": 0,
+          "commercialMomentumScore": 56,
+          "readerDropRiskEstimate": 72
+        },
+        "flags": {
+          "momentumConfidence": "medium",
+          "aiPatternConfidence": "medium",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 340,
+        "dialogueDensity": 0,
+        "interruptionDensity": 2.35,
+        "overExplainDensity": 0.29,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.29,
+        "continuationPressure": 0
+      }
+    },
+    {
+      "genreId": "psychological-horror",
+      "genreLabel": "Psychological Horror",
+      "scene": "dialogue",
+      "title": "The Voice in the Dark",
+      "content": "Maya's phone buzzed against the kitchen counter. She stared at the screen, her reflection a ghost in the black glass. The caller ID read: Mom.\n\nShe hadn't spoken to her mother in three months. Not since the night her mother had called her a liar, called her sick, called her everything Maya had spent years trying not to be.\n\nHer thumb hovered over the green button. The light under the door was still pulsing behind her, a slow, sick heartbeat she could feel in her chest.\n\nShe answered.\n\n\"Maya.\" Her mother's voice was thin, stretched tight like a wire about to snap. \"I need you to listen to me.\"\n\n\"It's three in the morning.\"\n\n\"I know what time it is. I know what you're seeing.\"\n\nMaya's throat closed. The hardwood was cold under her feet. The footprint was still there, the moisture darker now, spreading into the grain like a bruise.\n\n\"What do you mean?\"\n\n\"The light under the door,\" her mother said. \"The wet footprint. The way the air changes before you turn around.\"\n\nMaya pressed her palm flat against the counter. The granite was cold, solid, real. \"How do you know about that?\"\n\n\"Because it happened to me. When I was your age. In the same apartment.\" The words didn't make sense. Her mother had never lived in this building. Maya had grown up in a house with a yard... a dog and a father who left before she turned ten.\" You're lying.\"\n\n\"I'm not.\" A pause. Something clicked on the other end of the line—a lighter, maybe. Her mother had quit smoking ten years ago. \"I moved into that apartment when I was twenty-three. I lasted six weeks. You've been there three days.\" Somewhere down the hall, a floorboard creaked. Neither of them moved.\n\nMaya's vision blurred at the edges. She looked at the footprint again. The toes were pointing toward the bedroom. Toward her.\n\n\"What is it?\" she whispered.\n\n\"I don't know. I never found out. But I know what it wants.\"\n\n\"What?\"\n\n\"You to ask the right question.\"\n\nMaya's breath caught. The light under the door flickered. Not pulsed—flickered. Like someone had walked between her and the source.\n\n\"What's the right question?\"\n\nSilence. Then, so quiet Maya almost missed it: \"You already know.\"\n\nThe line went dead.\n\nMaya lowered the phone. The screen was black. No call log. No recent calls. The last call listed was from three days ago—the real estate agent, confirming the lease.\n\nHer thumb was shaking. She pressed the phone to her ear again. Dead air.\n\nShe looked at the door. The light was still there. But now it was brighter. And the footprint was gone.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "thriller",
+          "subgenre": "psychological horror",
+          "emotionalIntensity": 8,
+          "pacingStyle": "fast-escalation",
+          "proseDensity": "lean",
+          "tensionStyle": "psychological",
+          "bookTokPotential": 0.8,
+          "commercialCategory": "Thriller & Suspense",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "PsychologicalHorrorBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 91,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 78,
+          "subtextDensity": 97,
+          "commercialMomentumScore": 98,
+          "readerDropRiskEstimate": 38
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 445,
+        "dialogueDensity": 8.09,
+        "interruptionDensity": 1.35,
+        "overExplainDensity": 0,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.45,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "psychological-horror",
+      "genreLabel": "Psychological Horror",
+      "scene": "cliffhanger",
+      "title": "Psychological Horror cliffhanger",
+      "content": "Maya's hand moved before her mind caught up. She pressed the phone to her ear again. Nothing. Not even static now—just the hollow silence of a dead connection.\n\nShe looked at the door. The light was still there. But now it was brighter. And the footprint was gone.\n\nNo. She stepped closer, her bare feet sticking slightly to the floor where the moisture had been. The wood was dry. Completely dry. As if the print had never existed. As if she had imagined the whole thing—the cold water, the ridges of toes, the warmth that had clung to her fingertips.\n\nBut she hadn't imagined the light.\n\nIt pulsed under the door frame, a slow, rhythmic glow like a dying bulb. Maya watched it for a full minute, counting the beats. One. Two. Three. Then darkness. One. Two. Three. Then light again. The pattern was too regular to be random. Too deliberate.\n\nShe thought about calling out. Her throat tightened at the idea. What would she say? Who would answer?\n\nHer phone buzzed again. She didn't look at it. She already knew what it would show: Mom. Or maybe a different name this time. Someone she hadn't spoken to in years. Someone who wasn't supposed to be able to reach her.\n\nThe light under the door flickered once, twice, then held steady.\n\nMaya took a step toward it. Then another. Her hand reached for the knob, but she stopped before her fingers touched the brass. The metal was cold. Too cold. Colder than the air around it, colder than the floor beneath her feet.\n\nShe pulled her hand back.\n\nAnd then the light went out.\n\nComplete darkness. Not the familiar dark of her apartment at night, with its soft edges and known shadows. This was absolute. A black so thick it felt solid, pressing against her eyes like a hand over her face.\n\nMaya stood still, her breath caught in her chest. She listened.\n\nNothing. No hum from the refrigerator. No tick of the clock. No traffic from the street below. The silence was a presence, a weight in the room with her.\n\nAnd then, from the other side of the door, a whisper. So faint she almost convinced herself she hadn't heard it. But she had.\n\n\"You're not supposed to be here.\"\n\nMaya's blood turned to ice. The voice was wrong. It was hers—her own voice, her own cadence, her own mouth shaping the words. But the tone was hollow, as if spoken from the bottom of a well.\n\nShe backed away, her heel hitting the wall. The phone slipped from her fingers, clattering on the hardwood. The screen was dark.\n\nThe whisper came again, closer now, as if the speaker had pressed their lips to the crack under the door.\n\n\"You let me in.\"\n\nMaya wanted to scream. But her throat was sealed, her lungs empty. She pressed her palms flat against the wall, feeling the cold plaster, trying to anchor herself to something real.\n\nThe doorknob turned.\n\nNot all the way. Just a fraction of an inch. A test. A promise.\n\nMaya stared at the crack of darkness where the door met the frame. She could feel something on the other side. Not a person. Not a thing. A presence that had no shape, no weight, no name—but it knew hers.\n\nAnd it had been waiting.\n\nThe clock on the nightstand ticked forward. 3:15 AM.\n\nOne minute since she had woken up. One minute since the world had cracked open and let something through.\n\nMaya closed her eyes. When she opened them, the light was back. But it was wrong now—not yellow, but red. A deep, arterial red that painted the walls in streaks of rust.\n\nShe didn't look at the door again. She couldn't.\n\nBut she heard it. The soft click of the latch. The slow creak of hinges. The sound of something stepping into her room.\n\nAnd the whisper, right behind her ear, warm and wet:\n\n\"I've been here the whole time.\"",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "thriller",
+          "subgenre": "psychological horror",
+          "emotionalIntensity": 8,
+          "pacingStyle": "fast-escalation",
+          "proseDensity": "lean",
+          "tensionStyle": "psychological",
+          "bookTokPotential": 0.8,
+          "commercialCategory": "Thriller & Suspense",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "PsychologicalHorrorBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 91,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 78,
+          "subtextDensity": 11,
+          "commercialMomentumScore": 74,
+          "readerDropRiskEstimate": 38
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 666,
+        "dialogueDensity": 0.9,
+        "interruptionDensity": 1.65,
+        "overExplainDensity": 0,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.9,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "cozy-fantasy",
+      "genreLabel": "Cozy Fantasy",
+      "scene": "opening",
+      "title": "The Last Ember",
+      "content": "The morning light arrived like a held breath, pale and tentative through the warped glass of the cottage window. Elara pressed her palm flat against the cold pane, feeling the frost spider outward from her touch—a small magic she had never bothered to name. The garden below was silver with rime, each blade of winter grass bent under its own weight of frozen dew.\n\nShe had been awake since the hour before dawn, when the hearth-fire burned down to its last ember and the silence of the valley pressed against the walls like something alive. It was always like this in deep winter: the world contracted to the reach of candlelight, and a woman alone in a stone cottage learned to listen to the dark.\n\nThe kettle began to sing.\n\nElara turned from the window and crossed the flagstone floor in her bare feet, the cold seeping up through the stone like an old memory. She had lived in this cottage for twelve years—long enough that the damp had settled into her bones, long enough that she no longer startled at the creak of the roof beams or the scratch of branches against the shutters. Long enough to believe she had escaped.\n\nShe poured the steaming water over dried chamomile and watched the petals unfurl in the clay cup. The smell of honey and earth rose with the steam, and she closed her eyes, letting the warmth find the hollow places inside her.\n\nOutside, the valley lay hushed under its blanket of frost. The river that ran through the bottomlands had slowed to a murmur, its banks edged with ice like lace. Smoke rose from the chimneys of the village half a mile down the slope—thin, cautious columns against the grey sky. No one would come up the path today. No one ever did, this time of year.\n\nThat was the point.\n\nElara wrapped her fingers around the cup and let the heat sting her palms. The cottage held its quiet around her: the ticking of the mantel clock, the whisper of ash settling in the grate, the distant call of a crow crossing the white fields. She had chosen this solitude, piece by piece, until it fit her like a second skin.\n\nBut this morning, something was different.\n\nShe felt it before she almost answered, then did not it—a shift in the quality of the stillness, as if the air itself had grown heavier. The frost on the window began to melt in thin, vertical streaks, as though the glass were weeping. Elara set down her cup and watched the patterns form and dissolve, her breath catching in her throat.\n\nThere was a knock at the door.\n\nThree slow, deliberate beats. The sound of wood against wood, patient and inevitable.\n\nElara did not move. The cottage held its breath with her. The fire crackled once, then fell silent.\n\nShe had not had a visitor in seven months. The path to her door was overgrown with brambles and winter-bare rose canes. No one came up that path without reason, and no reason had ever been good enough to bring them.\n\nBut the knock came again—not louder, but more certain, as if the one outside knew she was standing three feet from the door, counting the seconds until she would decide.\n\nElara looked down at her hands. They were trembling, just slightly, the way they always did before a choice she could not take back.\n\nThe frost had cleared from the window. Through the glass, she could see a shape standing on her threshold, wrapped in a cloak the colour of old blood. The face was hidden, but the posture spoke of patience born from long journeys.\n\nShe had not escaped. She had only been hidden.\n\nAnd now she had been found.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "fantasy",
+          "subgenre": "cozy fantasy",
+          "emotionalIntensity": 6,
+          "pacingStyle": "balanced",
+          "proseDensity": "lush",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.76,
+          "commercialCategory": "Fantasy > Cozy",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "CozyFantasyBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 59,
+          "emotionalRealismScore": 76,
+          "aiRiskScore": 0,
+          "pacingPressure": 64,
+          "subtextDensity": 0,
+          "commercialMomentumScore": 56,
+          "readerDropRiskEstimate": 72
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 631,
+        "dialogueDensity": 0,
+        "interruptionDensity": 0.95,
+        "overExplainDensity": 0.16,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.95,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "cozy-fantasy",
+      "genreLabel": "Cozy Fantasy",
+      "scene": "confrontation",
+      "title": "The Weight of Silence",
+      "content": "Elara did not open the door. She stood on the other side of the wood, one hand resting on the iron latch, and let the silence stretch until it became its own kind of answer. The frost on the window had begun to melt, tracing thin rivers down the glass like veins on a leaf.\n\nA knock came again—three slow, deliberate raps. The kind of knock that knew exactly who lived here.\n\n\"I can smell the rosemary tea,\" said a voice from outside. Low, worn at the edges, but unmistakably feminine. \"And the bread you burned this morning. You always forget the timer when you're afraid.\" Somewhere down the hall, a floorboard creaked. Neither of them moved.\n\nElara closed her eyes. Of course. Of course it would be someone who knew her habits, her small failures, the shape of her silences.\n\nShe lifted the latch.\n\nThe woman on the threshold was taller than memory had allowed, her cloak dark with melted frost, hood thrown back to reveal a face lined by weather and worry. Grey streaked the dark hair at her temples, and her eyes—the colour of rain on stone—held a weariness that looked older than the body carrying it.\n\n\"Hello, Elara.\"\n\n\"Sera.\" The name came out flat, a shield raised before she could think.\n\nSera did not step forward. She stood on the frozen path, breath clouding in the cold, and waited. It was the kind of patience learned from watching things grow—or from watching things die.\n\n\"You found me,\" Elara said.\n\n\"I never lost you.\" A pause. \"I just let you hide until you were ready.\"\n\nElara's hand tightened on the doorframe. The wood was rough beneath her fingers, splintered from winters of neglect. She had meant to sand it smooth come spring. She had meant to do a lot of things.\n\n\"I'm not ready.\"\n\n\"I know.\" Sera's voice was gentle, but it carried the weight of something unyielding. \"But the valley is flooding. The eastern fields are already under three feet of water, and the current is taking the soil—the dark earth, Elara, the kind that takes generations to build. The elders sent me because they remembered what you could do. What you promised to do.\"\n\nThe word promised landed like a stone dropped into still water.\n\nElara looked down at her own hands. They were still capable of frost, still capable of the small magic that had once been her signature—a touch that could coax winter into retreat, could warm the ground from beneath. But the larger gift, the one that could pull a river back into its banks, the one that could speak to the deep currents of the world... she had buried it. Deliberately. Painfully.\n\n\"I can't,\" she said.\n\n\"You won't.\"\n\n\"Same thing.\"\n\nSera shook her head slowly, a motion that seemed to cost her something. \"No, it's not. 'Can't' means the river has dried up. 'Won't' means you're choosing to let people drown.\"\n\nElara's breath caught. The air between them grew heavy, charged with the unsaid. She wanted to explain—about the price of that magic, about the year she had spent learning that every gift demanded a wound in return, about the night she had stopped the landslide and woken three days later with no memory of her own name. But the words would sound like excuses, and Sera had never been kind to excuses.\n\n\"I'm not the same person who made that promise.\"\n\n\"No,\" Sera agreed. Her gaze softened, just slightly, like frost beginning to yield. \"You're harder now. And sadder. And that's what makes you exactly who we need.\"\n\nElara let her hand fall from the doorframe. The cold bit at her fingers, but she did not summon warmth. She let it hurt.\n\n\"Come inside,\" she said at last. \"Before your voice freezes.\"\n\nSera smiled—a thin, tired thing, but real. She stepped over the threshold, and the cottage seemed to shrink around her presence, as if the walls remembered her from another life.\n\nElara closed the door behind them, and the latch clicked shut like the end of a held breath.\n\nShe had not said yes. But she had not said no either.\n\nAnd Sera, wise woman that she was, knew that silence was sometimes the first step toward surrender.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "fantasy",
+          "subgenre": "cozy fantasy",
+          "emotionalIntensity": 6,
+          "pacingStyle": "balanced",
+          "proseDensity": "lush",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.76,
+          "commercialCategory": "Fantasy > Cozy",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "CozyFantasyBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 59,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 64,
+          "subtextDensity": 64,
+          "commercialMomentumScore": 40,
+          "readerDropRiskEstimate": 72
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 709,
+        "dialogueDensity": 5.36,
+        "interruptionDensity": 1.83,
+        "overExplainDensity": 0,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.28,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "cozy-fantasy",
+      "genreLabel": "Cozy Fantasy",
+      "scene": "dialogue",
+      "title": "The Weight of Words",
+      "content": "Sera did not wait for an invitation. She crossed the threshold with the ease of someone who had entered a hundred cottages just like this one, and Elara watched her shed the blood-red cloak like a snake shedding a skin she no longer needed. Beneath it, the woman wore a simple wool dress the colour of oak bark, and her grey hair was braided tight against her scalp in a crown that caught the firelight.\n\n'You've let the hearth dwindle,' Sera said, kneeling by the grate. 'A fire this low in winter is an invitation to sorrow.'\n\nElara remained by the door, her hand still resting on the latch as if she might yet lift it and walk out into the frost. 'I wasn't expecting company.'\nThe space between them stayed small. Small enough to hurt.\n\n'No,' Sera agreed, and there was no mockery in her voice. 'You never do.'\n\nShe fed the fire with practiced hands—a twist of kindling, a breath that smelled of ash and something older, and the flames rose obediently, casting long shadows across the flagstones. Elara watched the woman work and felt something shift in her chest, a loosening she had not asked for and did not want.\n\n'I didn't send for you,' Elara said.\n\n'I know. ' Sera sat back on her heels and looked up at her, and her eyes were the grey of winter seas. 'But you lit a beacon three nights ago, whether you meant to or not. The old paths remember your magic, Elara. You cannot hide what you are by simply refusing to name it.\n\n'I wasn't trying to hide.' The words came out sharper than she intended. 'I was trying to live.'\n\nSera's expression softened, but she did not look away. 'And how is that going for you?'\n\nElara laughed despite herself—a short, hollow sound that died in the silence between them. 'The roof leaks. The garden is frozen. And I have eaten porridge for every meal this week because I forgot to buy flour.'\n\n'That is not what I meant, and you know it.'\n\nThe fire crackled and settled. Elara finally let her hand fall from the latch and crossed the room to the small table where two chipped mugs sat waiting. She filled them with water from the pitcher, though the water was cold and the tea had run out days ago.\n\n'I do not want to go back,' she said, setting one mug in front of Sera. 'I do not want to be found. I do not want to be useful to anyone ever again.'\n\nSera wrapped her hands around the mug, not drinking, just holding it as if it were something precious. 'And yet here I am. Found you anyway.'\n\n'Because you have always been able to find me.'\n\n'Because I have always been looking.'\n\nThe admission hung between them, heavy and simple. Elara sat down across from her, the chair creaking under her weight, and for a long moment neither of them spoke. The fire threw its warmth across the room, and the frost on the window began to weep.\n\n'You look tired,' Sera said finally.\n\n'I am tired.'\n\n'Then rest. I am not here to drag you anywhere.' She took a sip of the cold water, her nose wrinkling slightly. 'Though I might insist on proper tea before I leave. This is a crime against hospitality.'\n\nElara felt the corner of her mouth twitch. 'The merchant comes on Tuesdays. If he comes at all.'\n\n'Then we have three days to teach you how to make something drinkable from pine needles and desperation.'\n\n'We?'\n\nSera set the mug down and folded her hands on the table. Her knuckles were cracked from cold, her nails short and practical. 'I am not asking you to come with me, Elara. I am asking you to let me stay long enough to remember that you are not alone.\n\nElara looked down at her own hands, pale and still against the scarred wood. She had not touched another person in months. She had not let anyone see her weep. She had built this cottage like a shell, and now the shell had been cracked open by a woman who smelled of woodsmoke and carried the patience of mountains.\n\n'I do not know how to do this,' she whispered.\n\n'Neither do I,' Sera said, and her voice was gentle. 'But I have found that doing it badly together is better than doing it perfectly alone.'\n\nOutside, the wind picked up, rattling the warped glass in its frame. Inside, the fire held steady, and two women sat across from each other at a small table, each holding a mug of cold water like it was a promise they were not yet ready to make.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "fantasy",
+          "subgenre": "cozy fantasy",
+          "emotionalIntensity": 6,
+          "pacingStyle": "balanced",
+          "proseDensity": "lush",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.76,
+          "commercialCategory": "Fantasy > Cozy",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "CozyFantasyBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 59,
+          "emotionalRealismScore": 76,
+          "aiRiskScore": 0,
+          "pacingPressure": 64,
+          "subtextDensity": 0,
+          "commercialMomentumScore": 74,
+          "readerDropRiskEstimate": 38
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 794,
+        "dialogueDensity": 0,
+        "interruptionDensity": 0.5,
+        "overExplainDensity": 0,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.5,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "cozy-fantasy",
+      "genreLabel": "Cozy Fantasy",
+      "scene": "cliffhanger",
+      "title": "The Tender Unresolved",
+      "content": "Sera set down her mug, the water inside barely touched. The fire had found its rhythm again, casting long shadows that swayed like dancers across the cottage walls. Elara watched the older woman's hands—calloused, sure, the hands of someone who had mended fences and held dying things and never once looked away.\n\n'You don't have to decide tonight,' Sera said. Her voice was quiet, almost lost in the crackle of the hearth. 'But I'll be here at first light, whether you're ready or not.'\n\nElara wanted to ask why. Why this cottage, why her, why after all these years. But the question lodged somewhere between her throat and her chest, and what came out instead was: 'The road is dangerous this time of year.'\n\nA ghost of a smile crossed Sera's face. 'I know.'\n\nShe rose, and the blood-red cloak settled around her shoulders like a second skin. At the door, she paused, one hand on the iron latch. The frost had returned to the window, tracing delicate ferns across the glass.\n\n'Elara.'\n\nThe name hung in the air between them, soft and heavy as falling snow. 'The world is not what you remember. But you already knew that, didn't you?'\n\nElara said nothing. She stood by the fire, her arms crossed tight, and watched Sera step out into the cold. The door clicked shut, and the latch fell into place with a sound like a held breath finally released.\n\nThe cottage was quiet again. The fire murmured to itself. And Elara pressed her palm against her chest, feeling the small magic beneath her ribs—the one she had never bothered to name—stir like something waking from a long, long sleep.\n\nShe did not know what she would do at first light. But for the first time in years, she wanted to find out.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "fantasy",
+          "subgenre": "cozy fantasy",
+          "emotionalIntensity": 6,
+          "pacingStyle": "balanced",
+          "proseDensity": "lush",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.76,
+          "commercialCategory": "Fantasy > Cozy",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "CozyFantasyBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 59,
+          "emotionalRealismScore": 76,
+          "aiRiskScore": 0,
+          "pacingPressure": 64,
+          "subtextDensity": 0,
+          "commercialMomentumScore": 56,
+          "readerDropRiskEstimate": 72
+        },
+        "flags": {
+          "momentumConfidence": "medium",
+          "aiPatternConfidence": "medium",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 303,
+        "dialogueDensity": 0,
+        "interruptionDensity": 1.65,
+        "overExplainDensity": 0,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.66,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "enemies-to-lovers",
+      "genreLabel": "Enemies-to-Lovers",
+      "scene": "opening",
+      "title": "Enemies-to-Lovers opening",
+      "content": "The first time I saw Julian Croft, I wanted to throw my copy of The Anxiety of Influence at his head.\n\nIt was the first day of the PhD orientation, and he was holding court by the coffee urn in the English department lounge, one shoulder propped against the wall as if he owned the room. His voice carried—that low, unhurried cadence that made everything sound like a verdict. The floor was cold through the sole of her boot. I caught the tail end of his sentence: \"—which is why Derrida is essentially a parlor trick dressed up as philosophy.\" For a moment, there was only the sound of a breath being held.\n\nA few heads nodded. Someone laughed.\n\nI felt my jaw tighten. I'd spent the summer annotating Glas until my margins bled ink.\n\n\"You're joking, right?\"\n\nThe words left my mouth before I'd decided to speak. The group turned. Julian's eyes found me across the room, and something in them flickered—surprise, maybe, or recognition of a threat he hadn't anticipated.\n\nHe didn't flinch. \"Do I look like I'm joking?\"\n\n\"You sound like someone who read the first ten pages of Of Grammatology and decided he'd gotten the gist.\"\n\nA beat of silence. Someone coughed. Julian straightened off the wall, and I watched him take me in—the stack of books in my arms, the frayed strap of my messenger bag, the way I was already bracing for a fight.\n\n\"You're the new hire from Chicago,\" he said. Not a question. \"The one who thinks narrative theory died with Genette.\"\n\n\"I think narrative theory evolved. You wouldn't know—you're still citing the same three sources from your dissertation.\"\n\nHis mouth twitched. Not quite a smile. \"You've read my dissertation?\" I had. I'd read it cover to cover, annotated it in red,... written a six-page rebuttal that I'd never sent. But I wasn't about to admit that.\" Enough to know you have a blind spot the size of the Atlantic when it comes to reader-response theory.\"\n\nHe took a step closer. The group around us had gone quiet, watching like spectators at a tennis match. I could smell coffee and something else—cedar, maybe, or the starch of a pressed shirt.\n\n\"Let me guess,\" he said, low enough that only I could hear. \"You're going to spend the entire semester proving me wrong.\"\n\n\"I was planning to spend it doing actual research. But if you keep making yourself a target, I might reconsider.\"\n\nThe flicker in his eyes again. This time I caught its name: interest.\n\n\"Good,\" he said, and the word landed somewhere in my chest, warm and unwelcome. \"I was worried this year would be boring.\"\n\nHe turned back to his coffee without waiting for a reply. But I saw the slight shift in his posture—the way his shoulders pulled back, as if he was already bracing for the next round.\n\nAnd I saw my own reflection in the window behind him, caught in the afternoon light: my lips pressed together, my pulse visible in my throat.\n\nI was already looking forward to proving him wrong. I just wasn't ready to ask myself why that felt so much like wanting him to look at me again.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "narrative",
+          "subgenre": "academic enemies to lovers",
+          "emotionalIntensity": 6,
+          "pacingStyle": "balanced",
+          "proseDensity": "balanced",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.6,
+          "commercialCategory": "Commercial Fiction",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "AcademicEnemiesToLoversBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 62,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 64,
+          "subtextDensity": 63,
+          "commercialMomentumScore": 74,
+          "readerDropRiskEstimate": 38
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 535,
+        "dialogueDensity": 5.23,
+        "interruptionDensity": 1.87,
+        "overExplainDensity": 0.19,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.56,
+        "continuationPressure": 0
+      }
+    },
+    {
+      "genreId": "enemies-to-lovers",
+      "genreLabel": "Enemies-to-Lovers",
+      "scene": "confrontation",
+      "title": "Enemies-to-Lovers confrontation",
+      "content": "The seminar room had gone quiet. Professor Voss had just posed the question—a deceptively simple one about influence and originality—and the silence stretched like a held breath. I had the answer, knew it the way I knew the weight of my own hand, but before I could speak, Julian's voice cut through from across the table.\n\n'It's a false binary, isn't it? ' he said, leaning forward, his fingers splayed flat on the polished wood. 'The anxiety isn't about influence at all. It's about the fear that we're never truly original. That we're just rearranging old furniture.\n\nMy jaw tightened. He hadn't even looked at me, but I felt the words land like a deliberate provocation. 'That's a reductive reading,' I said, and the room tilted toward me. 'Bloom's anxiety is productive. It forces the poet to misread, to distort, to create something new out of the pressure of the predecessor. You're calling it fear, but it's actually ambition.\n\nNow he looked at me. Finally. His eyes were pale in the afternoon light, almost colorless, and they held mine with an unnerving stillness. 'Ambition,' he repeated, as if tasting the word and finding it sour. 'And what happens when the ambition is just performance? When the misreading is just a mask for the fact that there's nothing underneath?\n\nThe air between us seemed to thicken. I could feel the others watching, the weight of their attention like a hand on my shoulder. 'You think there's nothing underneath? ' I heard myself ask, and the question came out sharper than I'd intended—not defensive, but somehow more dangerous.\n\nJulian's mouth curved, but it wasn't a smile. 'I think most of us are afraid to find out.'\n\nSomething in my chest tightened. He was talking about the text, I told myself. The seminar. The theory. But the way he held my gaze said something else entirely. I wanted to look away, but pride kept me pinned.\n\n'Then maybe you're not reading carefully enough,' I said, and my voice was steady, even as my pulse hammered in my throat.\n\nHe tilted his head, a slow, deliberate movement. 'Maybe I'm reading exactly what's there.'\n\nThe silence that followed was not empty. It was filled with everything we weren't saying—the challenge, the recognition, the strange, electric charge that had been building since the first time I heard his voice by the coffee urn. I wanted to prove him wrong. I wanted him to see me, really see me, and find something underneath.\n\nBut I couldn't say that. So instead, I turned back to my notes, and let the conversation move on without me.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "narrative",
+          "subgenre": "academic enemies to lovers",
+          "emotionalIntensity": 6,
+          "pacingStyle": "balanced",
+          "proseDensity": "balanced",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.6,
+          "commercialCategory": "Commercial Fiction",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "AcademicEnemiesToLoversBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 62,
+          "emotionalRealismScore": 76,
+          "aiRiskScore": 0,
+          "pacingPressure": 64,
+          "subtextDensity": 0,
+          "commercialMomentumScore": 98,
+          "readerDropRiskEstimate": 38
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 437,
+        "dialogueDensity": 0,
+        "interruptionDensity": 1.6,
+        "overExplainDensity": 0.23,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.92,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "enemies-to-lovers",
+      "genreLabel": "Enemies-to-Lovers",
+      "scene": "dialogue",
+      "title": "Enemies-to-Lovers dialogue",
+      "content": "I found him in the archives three days later, alone among the stacks where the light fell in dusty columns. He was reading something—head bent, fingers tracing the spine—and I should have walked past. I knew I should have walked past.\n\nInstead, I stopped.\n\n'You're always reading other people's work,' I said. 'Ever write your own?'\n\nHe looked up slowly, and that unhurried gaze landed on me like a hand I hadn't asked for. 'Is that a challenge, Dr. Mercer?'\n\n'Not yet a doctor.'\n\n'Not yet a doctor,' he repeated, as if tasting the words. 'Then yes, I write. Don't you?'\n\n'Poetry.' I said it flat, daring him to laugh.\n\nHe didn't. His thumb stopped moving along the book's edge. 'What about?'\n\n'Things that don't translate.'\n\nA beat. The air between us tightened. He set the book down—slow, deliberate—and turned to face me fully. 'That's either very honest or very evasive.'\n\n'It can be both.'\n\n'Can it?' He took a step closer. Not threatening. Testing. 'Tell me one thing you've written about that won't translate.'\n\nI should have deflected. I should have laughed and walked away. But the light was gold on his collarbone, and the silence between us had teeth.\n\n'Want,' I said.\n\nHis breath caught. I saw it—the fractional stillness in his chest. 'That translates perfectly well.'\n\n'Not when it's for something you shouldn't have.'\n\nThe words hung there, heavy and electric. He didn't look away. Neither did I.\n\n'And what,' he said, voice low, 'is it you shouldn't have?'\n\nI could feel the shape of the answer in my throat, dangerous and warm. But I had learned, years ago, how to swallow things whole.\n\n'A good night's sleep,' I said instead. 'Now if you'll excuse me, I have a seminar to prepare for.'\n\nI turned and walked out, heart hammering, and I didn't look back. But I felt his gaze on my spine all the way down the corridor, and I knew—I knew—this wasn't over.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "narrative",
+          "subgenre": "academic enemies to lovers",
+          "emotionalIntensity": 6,
+          "pacingStyle": "balanced",
+          "proseDensity": "balanced",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.6,
+          "commercialCategory": "Commercial Fiction",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "AcademicEnemiesToLoversBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 62,
+          "emotionalRealismScore": 76,
+          "aiRiskScore": 0,
+          "pacingPressure": 64,
+          "subtextDensity": 0,
+          "commercialMomentumScore": 98,
+          "readerDropRiskEstimate": 38
+        },
+        "flags": {
+          "momentumConfidence": "medium",
+          "aiPatternConfidence": "medium",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 328,
+        "dialogueDensity": 0,
+        "interruptionDensity": 3.96,
+        "overExplainDensity": 0.3,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.61,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "enemies-to-lovers",
+      "genreLabel": "Enemies-to-Lovers",
+      "scene": "cliffhanger",
+      "title": "Enemies-to-Lovers cliffhanger",
+      "content": "I made it to the stairwell before my knees gave out.\n\nI leaned against the concrete wall, the cold seeping through my shirt, and pressed the heels of my hands against my eyes until I saw stars. His voice was still in my ears—that low, unhurried thing that had just asked me to stay. Not a command. Not a challenge. An invitation, wrapped in the same quiet certainty he used for everything.\n\nI should have stayed. The thought hit me like a physical blow, and I hated it. I hated that he had carved a space for himself in my head, that I had walked away not because I was done, but because I was afraid of what might happen if I didn't. The breath got smaller.\n\nI pushed off the wall and started down the stairs, each step deliberate, measured. I would go back to my desk. I would write. I would pretend that the archives didn't exist, that he didn't exist, that the heat of his gaze on my spine had been a trick of the light.\n\nBut I felt him everywhere. In the weight of the air. In the silence of the corridor. In the way my hands were still shaking.\n\nI was three floors down when my phone buzzed. I pulled it out, expecting a departmental email.\n\nIt was a text from an unknown number.\n\n\"You left your scarf.\"\n\nI stopped breathing. I looked at the message for a long time, reading it over and over, as if the words might rearrange themselves into something less dangerous.\n\nI didn't respond. I slipped the phone back into my pocket and kept walking.\n\nBut I knew—I knew—that scarf was still in the archives. And I knew he knew I'd have to come back for it.\n\nThe question was whether I would.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "narrative",
+          "subgenre": "academic enemies to lovers",
+          "emotionalIntensity": 6,
+          "pacingStyle": "balanced",
+          "proseDensity": "balanced",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.6,
+          "commercialCategory": "Commercial Fiction",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain",
+            "AcademicEnemiesToLoversBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 62,
+          "emotionalRealismScore": 76,
+          "aiRiskScore": 0,
+          "pacingPressure": 64,
+          "subtextDensity": 8,
+          "commercialMomentumScore": 56,
+          "readerDropRiskEstimate": 72
+        },
+        "flags": {
+          "momentumConfidence": "medium",
+          "aiPatternConfidence": "medium",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 303,
+        "dialogueDensity": 0.66,
+        "interruptionDensity": 2.97,
+        "overExplainDensity": 0.33,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.66,
+        "continuationPressure": 1
+      }
+    },
+    {
+      "genreId": "emotional-literary-fiction",
+      "genreLabel": "Emotional Literary Fiction",
+      "scene": "opening",
+      "title": "The First Cut",
+      "content": "My mother’s hands were never still. Even when she sat, which was rare, her fingers moved—tracing the hem of her apron, smoothing a strand of hair behind her ear, tapping a rhythm only she could hear against the arm of the chair. But the sound I remember most is the knife. The way it met the cutting board with a soft, percussive thump, over and over, as if the vegetables were confessing something to her. It was late afternoon, the kitchen filled with the smell of onions and the low hum of the refrigerator. I was eight, maybe nine, sitting on the floor with my back against the cabinets, coloring in a book that had long lost its glossy cover. The sun came through the window in a single golden sheet, lighting the dust motes that hung in the air like tiny, suspended worlds. She didn't look at me. She rarely did when she was cutting. Her focus was absolute, her shoulders curved forward, her breath even. I watched her knuckles, pale and sharp against the dark handle of the knife. She was making soup, the same soup she made every Tuesday, the one with the barley that swelled into soft, obedient pearls. I wanted to tell her something—I don't remember what, maybe about the boy at school who had pulled my hair, or the bird I'd found with a broken wing—but the rhythm of the knife held me silent. It was a sound that said: wait. And so I waited, my crayon poised over the page, my ears tuned to the only music in the house. The knife fell. The onions wept. And my mother, in her quiet kingdom of steam and repetition, kept her secrets close to her chest, where I could not reach them.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "narrative",
+          "subgenre": "general",
+          "emotionalIntensity": 6,
+          "pacingStyle": "balanced",
+          "proseDensity": "balanced",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.6,
+          "commercialCategory": "Commercial Fiction",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 62,
+          "emotionalRealismScore": 76,
+          "aiRiskScore": 0,
+          "pacingPressure": 64,
+          "subtextDensity": 0,
+          "commercialMomentumScore": 56,
+          "readerDropRiskEstimate": 72
+        },
+        "flags": {
+          "momentumConfidence": "medium",
+          "aiPatternConfidence": "medium",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 297,
+        "dialogueDensity": 0,
+        "interruptionDensity": 1.35,
+        "overExplainDensity": 0,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.34,
+        "continuationPressure": 0
+      }
+    },
+    {
+      "genreId": "emotional-literary-fiction",
+      "genreLabel": "Emotional Literary Fiction",
+      "scene": "confrontation",
+      "title": "The Knife's Confession",
+      "content": "I asked her once, straight out, while she was peeling potatoes. The skin fell from her hands in a single long ribbon, curling into the sink like a question mark. \"Why don't you ever sit with us?\" She didn't stop. The blade caught the light, and for a moment I saw myself reflected in the steel—small, warped, my face stretched across the edge. \"I'm right here,\" she said, but she wasn't looking at me. Her eyes were on the potato, turning it in her palm like she was searching for a bruise. I wanted to grab her wrist, make her drop the knife, make her see me. But my hands stayed on the table, flat and useless. The kitchen clock ticked. The water dripped. I could hear my own breath, shallow and too loud. \"You're always here,\" I said, \"but you're not.\" She placed the knife down slowly, deliberately, as if she was afraid of breaking something. Then she looked at me. Really looked. Her eyes were the color of the sky before a storm—gray, heavy, full of something she would not let fall. \"What do you want me to say?\" she asked. The question hung between us like the smell of cut onion. I didn't know. I only knew that I wanted her to stop being so far away, even when she was right in front of me. She picked up the knife again. The ribbon of skin broke. And I understood, in the way children understand things they cannot name, that some distances are not measured in inches. They are measured in the things we do not say, in the silences we learn to fill with the sound of a blade against a board.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "narrative",
+          "subgenre": "general",
+          "emotionalIntensity": 6,
+          "pacingStyle": "balanced",
+          "proseDensity": "balanced",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.6,
+          "commercialCategory": "Commercial Fiction",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 62,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 64,
+          "subtextDensity": 42,
+          "commercialMomentumScore": 74,
+          "readerDropRiskEstimate": 38
+        },
+        "flags": {
+          "momentumConfidence": "medium",
+          "aiPatternConfidence": "medium",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 286,
+        "dialogueDensity": 3.5,
+        "interruptionDensity": 1.75,
+        "overExplainDensity": 0,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.7,
+        "continuationPressure": 0
+      }
+    },
+    {
+      "genreId": "emotional-literary-fiction",
+      "genreLabel": "Emotional Literary Fiction",
+      "scene": "dialogue",
+      "title": "Emotional Literary Fiction dialogue",
+      "content": "{\n  \"title\": \"The Space Between Words\",\n  \"content\": \"The afternoon had settled into that hour when the light turns amber and the kitchen feels smaller, as if the walls have been breathing in all day and are finally holding their breath. My mother stood at the counter, her back to me, slicing carrots into perfect coins. I sat at the table with a glass of milk I did not want. \\n\\n\\\"You don't have to stay,\\\" she said, without turning. \\n\\nI didn't answer. The refrigerator hummed. A fly tapped against the window screen. \\n\\n\\\"I know you have homework. \\\"\\n\\n\\\"I finished it. \\\"\\n\\nShe picked up another carrot. The knife fell. Thump. Thump. Thump. Each slice was a punctuation mark in a sentence she would not speak. I watched her shoulders, the way they held tension like a secret she was still deciding whether to keep. \\n\\n\\\"Dad said you used to sing. \\\"\\n\\nThe knife stopped. Just for a second. Then it resumed, slower now. \\n\\n\\\"Did he. \\\"\\n\\n\\\"Before I was born. He said you sang in the church choir. \\\"\\n\\nShe reached for the onion, peeled it with the same mechanical precision. When she spoke, her voice was flat, careful—a voice that had learned to walk on broken glass without bleeding where anyone could see. \\n\\n\\\"That was a long time ago. \\\"\\n\\n\\\"Why did you stop? \\\"\\n\\nThe knife hesitated. She set it down and turned, finally, to face me. But she did not look at me. She looked at the window over my shoulder, at the light falling through the glass, at something I could not see. \\n\\n\\\"Some things,\\\" she said, \\\"just dry up. Like a well. \\\"\\n\\nShe wiped her hands on her apron. The gesture was final, a period at the end of a sentence she would not expand. \\n\\nI wanted to ask more. I wanted to ask what had dried it up, whether it was my father or the farm or the weight of three children before she was thirty. But the silence between us was not empty. It was full—full of the things she had already given me without my knowing: the meals made, the clothes washed, the hours spent standing at this counter while the world outside demanded nothing from her but this. This quiet, repetitive, faithful labor. \\n\\nShe picked up the knife again. The onion wept into her hands. \\n\\nAnd I understood, sitting there in the amber light, that some questions are not meant to be answered. They are meant to be witnessed. They are meant to be held, like a glass of milk you do not want, because the person who poured it for you had nothing else to give. \\n\\n\\\"I'll set the table,\\\" I said. \\n\\nShe nodded. The knife kept falling. And that was enough.\"",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "narrative",
+          "subgenre": "general",
+          "emotionalIntensity": 6,
+          "pacingStyle": "balanced",
+          "proseDensity": "balanced",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.6,
+          "commercialCategory": "Commercial Fiction",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 62,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 64,
+          "subtextDensity": 79,
+          "commercialMomentumScore": 56,
+          "readerDropRiskEstimate": 72
+        },
+        "flags": {
+          "momentumConfidence": "high",
+          "aiPatternConfidence": "high",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 455,
+        "dialogueDensity": 6.59,
+        "interruptionDensity": 1.32,
+        "overExplainDensity": 0,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.88,
+        "continuationPressure": 0
+      }
+    },
+    {
+      "genreId": "emotional-literary-fiction",
+      "genreLabel": "Emotional Literary Fiction",
+      "scene": "cliffhanger",
+      "title": "The Weight of Waiting",
+      "content": "I stayed at the table after she turned back to the sink. The milk was still there, untouched, the glass sweating a ring onto the wood. I watched her hands move—rinsing the knife, wiping the blade on her apron, reaching for another carrot. The sound of it: a clean, repeating thud, like a heartbeat I could not match.\n\n\"Mom?\"\n\nShe did not turn. But her hands paused. Just for a second. The knife hovered above the board.\n\n\"Yes?\" I had nothing. No question that would fit the shape of what I felt. Only the knowledge that something was wrong—had always been wrong—and that she knew it too,... that neither of us would name it.\" Nothing,\" I said. Somewhere down the hall, a floorboard creaked. Neither of them moved.\n\nThe knife came down. The carrot split. And I understood, in that amber light, that she would never tell me. Not tonight. Not ever. The space between us was not a silence I could fill with words. It was a door she had chosen to keep closed, and I was too young to know if I had the right to knock.\n\nI slid off the chair. My legs felt heavy, as if the afternoon had settled into my bones. I walked to the doorway and stopped, my hand on the frame.\n\nShe was still cutting. Steady. Methodical. Her back to me, a wall of bone and cloth.\n\nI wanted to say something that would break through. Something that would make her turn. But I did not know the password to her kingdom, and so I stood there, watching her hands move in the dying light, and waited for a word that never came.",
+      "telemetry": {
+        "genreDNA": {
+          "macroGenre": "narrative",
+          "subgenre": "general",
+          "emotionalIntensity": 6,
+          "pacingStyle": "balanced",
+          "proseDensity": "balanced",
+          "tensionStyle": "relational",
+          "bookTokPotential": 0.6,
+          "commercialCategory": "Commercial Fiction",
+          "brains": [
+            "CoreNarrativeBrain",
+            "BookTokViralBrain"
+          ]
+        },
+        "scores": {
+          "tensionScore": 62,
+          "emotionalRealismScore": 84,
+          "aiRiskScore": 0,
+          "pacingPressure": 64,
+          "subtextDensity": 26,
+          "commercialMomentumScore": 74,
+          "readerDropRiskEstimate": 38
+        },
+        "flags": {
+          "momentumConfidence": "medium",
+          "aiPatternConfidence": "medium",
+          "weakHookRisk": false,
+          "earlyPayoffRisk": false,
+          "pacingCollapseRisk": false
+        }
+      },
+      "humanAudit": {
+        "words": 281,
+        "dialogueDensity": 2.14,
+        "interruptionDensity": 2.49,
+        "overExplainDensity": 0.36,
+        "aiCleanDensity": 0,
+        "metaphorDensity": 0.71,
+        "continuationPressure": 1
+      }
+    }
+  ]
+}
