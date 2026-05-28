@@ -762,12 +762,60 @@ export function VoiceStudioDialog({
       utterance.onstart = () => {
         if (session !== playbackSessionRef.current) return;
         setIsPlaying(true);
+
+        const isTouchDevice =
+          typeof window !== "undefined" &&
+          (window.matchMedia?.("(pointer: coarse)")?.matches ||
+            "ontouchstart" in window ||
+            navigator.maxTouchPoints > 0);
+
+        const isLikelyMobile =
+          typeof navigator !== "undefined" &&
+          /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent || "");
+
+        const shouldUseManualKaraokeFallback = isTouchDevice || isLikelyMobile;
+
+        clearTimer();
+
+        if (shouldUseManualKaraokeFallback) {
+          // Mobile fallback: many mobile browsers do not fire onboundary reliably.
+          // Desktop keeps the native boundary events only, otherwise the karaoke follows two different rhythms.
+          const chunkWords = chunk.text.split(/\s+/).filter(Boolean).length;
+          const chunkEstimatedSec = Math.max(4, (chunkWords / (150 * utterance.rate)) * 60);
+          const chunkStartedAt = Date.now();
+
+          timerRef.current = window.setInterval(() => {
+            if (session !== playbackSessionRef.current || pausedRef.current) return;
+
+            const elapsed = (Date.now() - chunkStartedAt) / 1000;
+            const localRatio = Math.min(0.98, elapsed / chunkEstimatedSec);
+            const localSentence = Math.min(
+              Math.max(0, chunkSentences.length - 1),
+              Math.floor(localRatio * Math.max(1, chunkSentences.length)),
+            );
+
+            const globalSentence = Math.min(
+              allSentences.length - 1,
+              chunk.startSentence + localSentence,
+            );
+
+            setCurrentSentence(globalSentence);
+
+            const fullProgress = allSentences.length > 0
+              ? Math.round(((globalSentence + 1) / allSentences.length) * 100)
+              : Math.round(((chunkIndex + localRatio) / chunks.length) * 100);
+
+            setProgress(Math.min(99, fullProgress));
+          }, 650);
+        }
+
         logDebug("chunk-start", {
           chunk: chunkIndex + 1,
           total: chunks.length,
           tone: tone.label,
           rate: utterance.rate,
           pitch: utterance.pitch,
+          manualFallback: shouldUseManualKaraokeFallback,
         });
       };
 
@@ -777,6 +825,7 @@ export function VoiceStudioDialog({
           setStatus("Paused — tap Resume to continue");
           return;
         }
+        clearTimer();
         setProgress(Math.min(99, Math.round(((chunkIndex + 1) / chunks.length) * 100)));
         window.setTimeout(() => playChunk(chunkIndex + 1), 120);
       };
@@ -867,7 +916,7 @@ export function VoiceStudioDialog({
             />
           </div>
           <div className="mb-5 flex items-center justify-between text-xs text-white/60">
-            <span>Voice system note v11 · {status}</span>
+            <span>Smart karaoke v13 · {status}</span>
             <span>{progress}%</span>
           </div>
 
@@ -1039,14 +1088,14 @@ export function VoiceStudioDialog({
               <span>{currentChapter ? currentChapter.title || `Chapter ${chapterIndex + 1}` : "No chapter selected"}</span>
             </div>
 
-            <div className={`max-h-[34dvh] overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/80 p-3 sm:max-h-[24rem] sm:p-4 ${immersiveMode ? "backdrop-blur-sm" : ""}`}>
+            <div className={`max-h-[42dvh] overflow-y-auto overscroll-contain scroll-smooth rounded-2xl border border-white/10 bg-slate-950/80 p-3 sm:max-h-[24rem] sm:p-4 ${immersiveMode ? "backdrop-blur-sm" : ""}`}>
               {sentences.length > 0 ? (
                 <div className="space-y-3">
                   {sentences.map((sentence, idx) => (
                     <p
                       key={`${idx}-${sentence.slice(0, 20)}`}
                       ref={(node) => { sentenceRefs.current[idx] = node; }}
-                      className={`rounded-xl px-3 py-2 text-sm leading-relaxed transition-all duration-300 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-base ${idx === currentSentence ? "bg-cyan-400/10 text-white shadow-[0_0_20px_rgba(56,189,248,0.18)] ring-1 ring-cyan-300/30" : immersiveMode ? "text-slate-400/80 opacity-80" : "text-slate-300"}`}
+                      className={`rounded-xl px-3 py-2 text-[15px] leading-7 transition-all duration-300 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-base ${idx === currentSentence ? "bg-cyan-400/10 text-white shadow-[0_0_20px_rgba(56,189,248,0.18)] ring-1 ring-cyan-300/30" : immersiveMode ? "text-slate-400/80 opacity-80" : "text-slate-300"}`}
                     >
                       {sentence}
                     </p>
@@ -1061,9 +1110,6 @@ export function VoiceStudioDialog({
           </div>
         </div>
 
-        <p className="text-xs text-white/55">
-          Developer telemetry is optional. Enable with <code>localStorage.setItem("scriptora-debug-voice-studio","1")</code>.
-        </p>
       </DialogContent>
     </Dialog>
   );
