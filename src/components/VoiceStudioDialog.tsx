@@ -12,46 +12,6 @@ import {
 
 const SPEED_OPTIONS = [0.75, 1, 1.25, 1.5, 2] as const;
 
-const VOICE_PERSONAS = [
-  {
-    id: "anna",
-    name: "Anna",
-    label: "Anna · Warm Storyteller",
-    description: "Warm, emotional, intimate narration. Best for romance, drama, reflective chapters.",
-    rate: 0.95,
-    pitch: 1.04,
-    preferredVoiceNames: ["anna", "samantha", "serena", "alice", "olivia", "amelia", "sara", "marta", "google italiano"],
-  },
-  {
-    id: "luisa",
-    name: "Luisa",
-    label: "Luisa · Soft Literary Voice",
-    description: "Soft, elegant, controlled. Best for emotional scenes, literary fiction, inner monologue.",
-    rate: 0.88,
-    pitch: 0.98,
-    preferredVoiceNames: ["luisa", "lucia", "susan", "monica", "elsa", "paola", "laura", "siri female"],
-  },
-  {
-    id: "marco",
-    name: "Marco",
-    label: "Marco · Deep Cinematic Voice",
-    description: "Deeper, slower, more dramatic. Best for thriller, dark romance, fantasy, suspense.",
-    rate: 0.9,
-    pitch: 0.88,
-    preferredVoiceNames: ["marco", "luca", "mario", "daniel", "alex", "thomas", "google italiano", "siri male"],
-  },
-  {
-    id: "luca",
-    name: "Luca",
-    label: "Luca · Young Dynamic Voice",
-    description: "Faster, brighter, energetic. Best for YA, action, adventure, modern scenes.",
-    rate: 1.04,
-    pitch: 1.02,
-    preferredVoiceNames: ["luca", "matthew", "alex", "daniel", "microsoft", "google"],
-  },
-] as const;
-
-type VoicePersonaId = typeof VOICE_PERSONAS[number]["id"];
 
 interface VoiceStudioDialogProps {
   open: boolean;
@@ -76,7 +36,6 @@ export function VoiceStudioDialog({
   const [projectId, setProjectId] = useState<string>("");
   const [chapterIndex, setChapterIndex] = useState<number>(0);
   const [styleId, setStyleId] = useState<NarratorStyleId>("cinematic");
-  const [voicePersonaId, setVoicePersonaId] = useState<VoicePersonaId>("anna");
   const [speed, setSpeed] = useState<typeof SPEED_OPTIONS[number]>(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -97,7 +56,7 @@ export function VoiceStudioDialog({
   const [voicesLoaded, setVoicesLoaded] = useState(false);
   const [voicesCount, setVoicesCount] = useState(0);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [manualVoiceURI, setManualVoiceURI] = useState<string>("auto");
+  const [manualVoiceKey, setManualVoiceKey] = useState<string>("auto");
   const [activeVoiceLabel, setActiveVoiceLabel] = useState<string>("Auto voice");
   const userInteractedRef = useRef(false);
   const debugEnabled = typeof window !== "undefined" && !!window.localStorage.getItem("scriptora-debug-voice-studio");
@@ -154,7 +113,6 @@ export function VoiceStudioDialog({
   const firstPlayableChapter = chapterOptions[0]?.index ?? 0;
   const currentChapter = selectedProject?.chapters[chapterIndex] || null;
   const style = VOICE_STUDIO_STYLES.find((item) => item.id === styleId) || VOICE_STUDIO_STYLES[0];
-  const selectedVoicePersona = VOICE_PERSONAS.find((item) => item.id === voicePersonaId) || VOICE_PERSONAS[0];
   const prep = prepareVoiceStudioProfiles(selectedProject);
 
   useEffect(() => {
@@ -327,11 +285,11 @@ export function VoiceStudioDialog({
       const voices = voicesRef.current || synth.getVoices() || [];
       const preferredVoice = chooseManualOrBestVoice(voices, targetLanguage);
 
-      const test = new SpeechSynthesisUtterance(`${selectedVoicePersona.name}. Scriptora voice test... I am ready to read your chapter.`);
+      const test = new SpeechSynthesisUtterance("Scriptora voice test... I am ready to read your chapter.");
       test.lang = preferredVoice?.lang || languageToLocale(targetLanguage);
       if (preferredVoice) test.voice = preferredVoice;
-      test.rate = Math.max(0.5, Math.min(1.6, selectedVoicePersona.rate));
-      test.pitch = Math.max(0.7, Math.min(1.35, selectedVoicePersona.pitch));
+      test.rate = 1;
+      test.pitch = 1;
       test.volume = 1;
 
       test.onstart = () => {
@@ -437,20 +395,53 @@ export function VoiceStudioDialog({
     return score;
   };
 
+  const getFreshVoices = () => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return [];
+    const fresh = window.speechSynthesis.getVoices() || [];
+    if (fresh.length > 0) {
+      voicesRef.current = fresh;
+      setAvailableVoices(fresh);
+      setVoicesLoaded(true);
+      setVoicesCount(fresh.length);
+    }
+    return fresh;
+  };
+
+  const getVoiceKey = (voice: SpeechSynthesisVoice, index: number) => {
+    return `${index}::${voice.name}::${voice.lang}::${voice.voiceURI}`;
+  };
+
   const chooseManualOrBestVoice = (voices: SpeechSynthesisVoice[], language: Language) => {
-    if (manualVoiceURI !== "auto") {
-      const manual = voices.find((voice) => voice.voiceURI === manualVoiceURI || voice.name === manualVoiceURI);
+    const freshVoices = getFreshVoices();
+    const usableVoices = freshVoices.length > 0 ? freshVoices : voices;
+
+    if (manualVoiceKey !== "auto") {
+      const manualIndex = Number(manualVoiceKey.split("::")[0]);
+      const manual = Number.isFinite(manualIndex) ? usableVoices[manualIndex] : null;
+
       if (manual) {
-        setActiveVoiceLabel(`${manual.name} · ${manual.lang}`);
+        setActiveVoiceLabel(`Selected → ${manual.name} · ${manual.lang}`);
+        logDebug("manual-voice-selected", {
+          index: manualIndex,
+          name: manual.name,
+          lang: manual.lang,
+          uri: manual.voiceURI,
+          localService: manual.localService,
+          default: manual.default,
+        });
         return manual;
       }
+
+      setActiveVoiceLabel("Selected voice unavailable — using system fallback");
+      logDebug("manual-voice-missing", { manualVoiceKey, voices: usableVoices.map((v, i) => getVoiceKey(v, i)) });
+      return null;
     }
 
-    const chosen = chooseBestVoice(voices, language);
+    const chosen = chooseBestVoice(usableVoices, language);
     if (chosen) {
-      setActiveVoiceLabel(`${selectedVoicePersona.name} → ${chosen.name} · ${chosen.lang}`);
+      setActiveVoiceLabel(`Auto → ${chosen.name} · ${chosen.lang}`);
     } else {
-      setActiveVoiceLabel(`${selectedVoicePersona.name} → system fallback`);
+      setActiveVoiceLabel("System fallback voice");
     }
     return chosen;
   };
@@ -470,16 +461,7 @@ export function VoiceStudioDialog({
     }
     if (candidates.length === 0) candidates = voices;
 
-    const personaBoost = (voice: SpeechSynthesisVoice) => {
-      const haystack = `${voice.name || ""} ${voice.lang || ""}`.toLowerCase();
-      return selectedVoicePersona.preferredVoiceNames.some((name) => haystack.includes(name.toLowerCase())) ? 12 : 0;
-    };
-
-    candidates.sort((a, b) => {
-      const scoreA = scoreVoice(a, targetPrefix) + personaBoost(a);
-      const scoreB = scoreVoice(b, targetPrefix) + personaBoost(b);
-      return scoreB - scoreA;
-    });
+    candidates.sort((a, b) => scoreVoice(b, targetPrefix) - scoreVoice(a, targetPrefix));
 
     return candidates[0] || null;
   };
@@ -716,8 +698,8 @@ export function VoiceStudioDialog({
         utterance.lang = languageToLocale(targetLanguage);
       }
 
-      utterance.rate = Math.max(0.5, Math.min(1.55, getEffectiveRate() * tone.rate * selectedVoicePersona.rate));
-      utterance.pitch = Math.max(0.7, Math.min(1.35, style.pitch * tone.pitch * selectedVoicePersona.pitch));
+      utterance.rate = Math.max(0.5, Math.min(1.55, getEffectiveRate() * tone.rate));
+      utterance.pitch = Math.max(0.7, Math.min(1.35, style.pitch * tone.pitch));
       utterance.volume = 1;
 
       utteranceRef.current = utterance;
@@ -729,7 +711,7 @@ export function VoiceStudioDialog({
         localStarts[idx] = position >= 0 ? position : searchFrom;
       });
 
-      setStatus(`Human reading ${chunkIndex + 1}/${chunks.length} · ${selectedVoicePersona.name} · ${tone.label}`);
+      setStatus(`Human reading ${chunkIndex + 1}/${chunks.length} · ${tone.label} · ${activeVoiceLabel}`);
       setCurrentSentence(chunk.startSentence);
       setProgress(Math.round((chunkIndex / chunks.length) * 100));
 
@@ -916,7 +898,7 @@ export function VoiceStudioDialog({
             />
           </div>
           <div className="mb-5 flex items-center justify-between text-xs text-white/60">
-            <span>Smart karaoke v13 · {status}</span>
+            <span>Force selected voice v15 · {status}</span>
             <span>{progress}%</span>
           </div>
 
@@ -931,7 +913,7 @@ export function VoiceStudioDialog({
             />
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             <select
               value={projectId}
               onChange={(e) => {
@@ -975,28 +957,26 @@ export function VoiceStudioDialog({
                 </option>
               ))}
             </select>
-
             <select
-              value={voicePersonaId}
-              onChange={(e) => setVoicePersonaId(e.target.value as VoicePersonaId)}
+              value={manualVoiceKey}
+              onChange={(e) => {
+                setManualVoiceKey(e.target.value);
+                const fresh = getFreshVoices();
+                if (e.target.value === "auto") {
+                  setActiveVoiceLabel("Auto voice");
+                } else {
+                  const selectedIndex = Number(e.target.value.split("::")[0]);
+                  const selected = fresh[selectedIndex] || availableVoices[selectedIndex];
+                  setActiveVoiceLabel(selected ? `Selected → ${selected.name} · ${selected.lang}` : "Selected voice");
+                }
+              }}
+              onFocus={() => getFreshVoices()}
               className="h-10 rounded-xl border border-white/15 bg-white/[0.06] px-3 text-sm text-white"
             >
-              {VOICE_PERSONAS.map((persona) => (
-                <option key={persona.id} value={persona.id} className="text-black">
-                  {persona.label}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={manualVoiceURI}
-              onChange={(e) => setManualVoiceURI(e.target.value)}
-              className="h-10 rounded-xl border border-white/15 bg-white/[0.06] px-3 text-sm text-white"
-            >
-              <option value="auto" className="text-black">Auto system voice</option>
-              {availableVoices.map((voice) => (
-                <option key={voice.voiceURI || voice.name} value={voice.voiceURI || voice.name} className="text-black">
-                  {voice.name} · {voice.lang}
+              <option value="auto" className="text-black">Auto voice based on language</option>
+              {availableVoices.map((voice, index) => (
+                <option key={getVoiceKey(voice, index)} value={getVoiceKey(voice, index)} className="text-black">
+                  {index + 1}. {voice.name} · {voice.lang}
                 </option>
               ))}
             </select>
@@ -1026,13 +1006,10 @@ export function VoiceStudioDialog({
             <div className="mb-4 rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white/80">
               Effective playback rate: <span className="font-semibold text-white">{getEffectiveRate().toFixed(2)}x</span>
               <span className="mx-2 text-white/30">·</span>
-              <span className="font-semibold text-cyan-100">{selectedVoicePersona.name}</span>
-              <span className="mx-2 text-white/30">·</span>
               <span className="font-semibold text-emerald-100">{activeVoiceLabel}</span>
-              <span className="block pt-1 text-xs text-white/55">{selectedVoicePersona.description}</span>
-              <span className="block pt-1 text-xs text-white/45">Available voices on this device: {voicesCount}</span>
+              <span className="block pt-1 text-xs text-white/45">Available voices on this device/browser: {voicesCount}</span>
               <span className="mt-2 block rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs leading-relaxed text-amber-100/90">
-                Le voci disponibili dipendono dal dispositivo e dal browser in uso. Scriptora ottimizza ritmo, tono e stile narrativo in base al profilo scelto; le voci reali mostrate nel menu sono quelle offerte dal sistema.
+                Le voci disponibili dipendono dal dispositivo e dal browser in uso. Scriptora usa la voce reale selezionata nel menu; ritmo, tono e stile narrativo vengono ottimizzati durante la lettura.
               </span>
             </div>
           )}
