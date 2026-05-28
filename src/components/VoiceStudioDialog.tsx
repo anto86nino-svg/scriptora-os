@@ -346,6 +346,11 @@ export function VoiceStudioDialog({
   };
 
   const handlePlayPause = () => {
+    setStatus("Tap received — checking chapter and audio...");
+    try {
+      window.alert("Voice Studio tap received");
+    } catch {}
+
     if (typeof window === "undefined" || !window.speechSynthesis) {
       setStatus("Speech synthesis is not available in this browser.");
       return;
@@ -355,7 +360,7 @@ export function VoiceStudioDialog({
     userInteractedRef.current = true;
 
     if (!currentChapter || !(currentChapter.content || "").trim().length) {
-      setStatus("Select a chapter with content.");
+      setStatus("Tap works, but no readable chapter was found. Select/generate a chapter first.");
       return;
     }
 
@@ -535,7 +540,7 @@ export function VoiceStudioDialog({
             />
           </div>
           <div className="mb-5 flex items-center justify-between text-xs text-white/60">
-            <span>Mobile audio patch v2 · {status}</span>
+            <span>Mobile audio debug v3 · {status}</span>
             <span>{progress}%</span>
           </div>
 
@@ -624,7 +629,7 @@ export function VoiceStudioDialog({
             <button
               onClick={handlePlayPause}
               className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-100 sm:w-auto"
-              disabled={!currentChapter}
+              disabled={false}
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
               {isPlaying ? "Pause / Stop" : "Play Narration"}
