@@ -277,26 +277,29 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   const deltaMode: "visible" | "refinement" | "minimal" = (() => {
     if (!patchResult || !patchResult.patches.length) return "minimal";
     if (scoreDelta === null) return "minimal";
-    if (Math.abs(scoreDelta) >= 0.1) return "visible";
+    if (!patchResult || !patchResult.patches.length) return "minimal";
+    if (scoreDelta === null) return "minimal";
 
-    // If original is already very high, allow refinement wording/mode
-    if ((estimatedBeforeScore ?? 0) >= 8.8) {
-      // only promote to refinement if heuristics indicate improvement
-      const beforeWarnings = (_originalAnalysis?.warnings?.length || 0);
-      const afterWarnings = (_patchedAnalysis?.warnings?.length || 0);
+    const hasMeaningfulRefinement = (() => {
+      if (!_originalAnalysis || !_patchedAnalysis) return false;
+      const beforeWarnings = (_originalAnalysis.warnings?.length || 0);
+      const afterWarnings = (_patchedAnalysis.warnings?.length || 0);
       const warningDelta = Math.max(0, beforeWarnings - afterWarnings);
       const positiveMetricCount = [
-        _patchedAnalysis!.dialogueHumanityScore > _originalAnalysis!.dialogueHumanityScore,
-        _patchedAnalysis!.subtextScore > _originalAnalysis!.subtextScore,
-        _patchedAnalysis!.characterConsistencyScore > _originalAnalysis!.characterConsistencyScore,
-        _patchedAnalysis!.pacingConsistencyScore > _originalAnalysis!.pacingConsistencyScore,
-        _patchedAnalysis!.emotionalRedundancyScore > _originalAnalysis!.emotionalRedundancyScore,
+        _patchedAnalysis.dialogueHumanityScore > _originalAnalysis.dialogueHumanityScore,
+        _patchedAnalysis.subtextScore > _originalAnalysis.subtextScore,
+        _patchedAnalysis.characterConsistencyScore > _originalAnalysis.characterConsistencyScore,
+        _patchedAnalysis.pacingConsistencyScore > _originalAnalysis.pacingConsistencyScore,
+        _patchedAnalysis.emotionalRedundancyScore > _originalAnalysis.emotionalRedundancyScore,
       ].filter(Boolean).length;
+      return warningDelta >= 1 || positiveMetricCount >= 1;
+    })();
 
-      if (warningDelta >= 1 || positiveMetricCount >= 1) return "refinement";
-      return "minimal";
+    if ((estimatedBeforeScore ?? 0) >= 9.7 && Math.abs(scoreDelta) < 0.2 && hasMeaningfulRefinement) {
+      return "refinement";
     }
 
+    if (Math.abs(scoreDelta) >= 0.1) return "visible";
     return "minimal";
   })();
 

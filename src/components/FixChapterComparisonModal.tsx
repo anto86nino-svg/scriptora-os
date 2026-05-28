@@ -212,6 +212,52 @@ export default function FixChapterComparisonModal({
     remove: "Removed",
   };
 
+  const isHighScoreRefinement = deltaMode === "refinement" && beforeScore !== null && scoreDelta !== null && beforeScore >= 9.7 && Math.abs(scoreDelta) < 0.2;
+  const modificationSummary = deltaMode === "visible"
+    ? `${patchResult.modificationPercent}% strengthened`
+    : patchResult.modificationPercent >= 20
+    ? `${patchResult.modificationPercent}% editorially refined`
+    : patchResult.modificationPercent >= 10
+    ? `${patchResult.modificationPercent}% precision refinement`
+    : `${Math.max(1, Math.round(patchResult.modificationPercent / 10))} editorial micro-optimizations applied`;
+
+  const refinementHighlights = useMemo(() => {
+    const categories = new Map<string, string>();
+
+    const normalize = (value: string) => value.toLowerCase();
+    const matches = (value: string, patterns: RegExp[]) => patterns.some(pattern => pattern.test(value));
+
+    for (const patch of patchResult.patches) {
+      const reason = normalize(patch.reason || "");
+      const type = normalize(patch.type || "");
+      let category = "Editorial polish";
+
+      if (type === "compress" || matches(reason, [/ripet/, /redund/, /repeat/, /ridond/, /ripetizione/])) {
+        category = "Redundancy reduction";
+      } else if (type === "tighten" || matches(reason, [/pacing/, /rhythm/, /ritmo/, /tempo/, /scorre/, /snellezz/, /compressione/])) {
+        category = "Pacing compression";
+      } else if (type === "rewrite" && matches(reason, [/dialogue/, /dialoghi/, /convers/, /speech/, /stacco/])) {
+        category = "Dialogue tightening";
+      } else if (matches(reason, [/dialogue/, /dialoghi/, /convers/, /speech/])) {
+        category = "Dialogue tightening";
+      } else if (matches(reason, [/readab/, /clarit/, /leggibil/, /scorrevolezza/, /comprens/, /phrasing/, /sentence/, /frase/])) {
+        category = "Readability improvement";
+      } else if (matches(reason, [/emot/, /emotion/, /feeling/, /tone/, /impatto/, /sentiment/, /pathos/])) {
+        category = "Emotional clarity";
+      } else if (matches(reason, [/flow/, /structure/, /transit/, /scena/, /sequenza/, /ordine/, /arrangiamento/, /flusso/])) {
+        category = "Structural flow";
+      } else if (type === "intensify") {
+        category = "Emotional clarity";
+      } else if (type === "remove") {
+        category = "Redundancy reduction";
+      }
+
+      categories.set(category, category);
+    }
+
+    return Array.from(categories.values()).slice(0, 6);
+  }, [patchResult.patches]);
+
   return (
     <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-lg text-white overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.18),transparent_25%)] pointer-events-none" />
@@ -246,18 +292,36 @@ export default function FixChapterComparisonModal({
 
         <div className="mt-6 grid gap-4 lg:grid-cols-[1.3fr_1fr]">
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
-                <p className="text-xs uppercase tracking-[0.25em] text-white/50">Before</p>
-                <p className="mt-4 text-5xl font-black text-rose-300">{beforeScore?.toFixed(1) ?? "—"}</p>
-                <p className="text-xs text-white/50 mt-1">Editorial score</p>
+            {isHighScoreRefinement ? (
+              <div className="grid gap-3">
+                <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6">
+                  <p className="text-xs uppercase tracking-[0.25em] text-white/50">Refinement score</p>
+                  <div className="mt-4 flex items-end gap-3">
+                    <p className="text-6xl font-black text-white">{beforeScore?.toFixed(1) ?? "—"}</p>
+                    <p className="text-sm uppercase tracking-[0.35em] text-white/60">/ 10</p>
+                  </div>
+                  <span className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-100">
+                    ✨ Editorial refinement completed
+                  </span>
+                  <p className="mt-4 text-sm leading-6 text-white/70 max-w-xl">
+                    Chapter already very strong. Scriptora applied precision editorial optimizations for pacing, redundancy, clarity, emotional rhythm and readability.
+                  </p>
+                </div>
               </div>
-              <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
-                <p className="text-xs uppercase tracking-[0.25em] text-white/50">After</p>
-                <p className="mt-4 text-5xl font-black text-emerald-300">{afterScore?.toFixed(1) ?? "—"}</p>
-                <p className="text-xs text-white/50 mt-1">Expected improvement</p>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
+                  <p className="text-xs uppercase tracking-[0.25em] text-white/50">Before</p>
+                  <p className="mt-4 text-5xl font-black text-rose-300">{beforeScore?.toFixed(1) ?? "—"}</p>
+                  <p className="text-xs text-white/50 mt-1">Editorial score</p>
+                </div>
+                <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
+                  <p className="text-xs uppercase tracking-[0.25em] text-white/50">After</p>
+                  <p className="mt-4 text-5xl font-black text-emerald-300">{afterScore?.toFixed(1) ?? "—"}</p>
+                  <p className="text-xs text-white/50 mt-1">Expected improvement</p>
+                </div>
               </div>
-            </div>
+            )}
 
               <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
               <div className="flex items-center justify-between gap-4">
@@ -266,11 +330,25 @@ export default function FixChapterComparisonModal({
                   <p className="mt-2 text-3xl font-black text-white">{deltaVisible ? `${scoreDelta! > 0 ? "+" : ""}${scoreDelta!.toFixed(1)}` : deltaMode === "refinement" ? "Editorial refinement completed" : "Minimal editorial change"}</p>
                 </div>
                 <div className="rounded-3xl bg-primary/10 px-4 py-3 text-xs uppercase tracking-[0.2em] text-primary font-semibold">
-                  {deltaMode === "visible" ? `${patchResult.modificationPercent}% strengthened` : `${patchResult.modificationPercent}% editorially optimized`}
+                  {modificationSummary}
                 </div>
               </div>
               <p className="mt-3 text-sm text-white/60">Edits: {patchResult.patches.length} / {patchResult.totalParagraphs} paragraphs</p>
             </div>
+
+            {deltaMode === "refinement" && refinementHighlights.length > 0 && (
+              <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
+                <p className="text-xs uppercase tracking-[0.25em] text-white/50 mb-4">Refinement highlights</p>
+                <div className="space-y-3">
+                  {refinementHighlights.map((item) => (
+                    <div key={item} className="flex items-start gap-3 rounded-3xl border border-white/10 bg-black/10 p-3">
+                      <Check className="h-4 w-4 text-emerald-300 mt-1" />
+                      <p className="text-sm text-white/80">{item}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {metricRows.length > 0 && (
               <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
