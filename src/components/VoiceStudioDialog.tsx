@@ -867,7 +867,7 @@ export function VoiceStudioDialog({
             />
           </div>
           <div className="mb-5 flex items-center justify-between text-xs text-white/60">
-            <span>Device voice note v10 · {status}</span>
+            <span>Voice system note v11 · {status}</span>
             <span>{progress}%</span>
           </div>
 
@@ -983,7 +983,7 @@ export function VoiceStudioDialog({
               <span className="block pt-1 text-xs text-white/55">{selectedVoicePersona.description}</span>
               <span className="block pt-1 text-xs text-white/45">Available voices on this device: {voicesCount}</span>
               <span className="mt-2 block rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs leading-relaxed text-amber-100/90">
-                Le voci disponibili dipendono dal dispositivo. Se il telefono non offre una voce maschile reale, Scriptora adatta tono e ritmo ma non può creare una nuova voce locale.
+                Le voci disponibili dipendono dal dispositivo e dal browser in uso. Scriptora ottimizza ritmo, tono e stile narrativo in base al profilo scelto; le voci reali mostrate nel menu sono quelle offerte dal sistema.
               </span>
             </div>
           )}
