@@ -259,6 +259,63 @@ export function VoiceStudioDialog({
     return Math.max(0.5, Math.min(2, speed * style.rate));
   };
 
+  const testMobileVoice = () => {
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      setStatus("Speech synthesis is not available in this browser.");
+      return;
+    }
+
+    try {
+      const synth = window.speechSynthesis;
+      synth.cancel();
+
+      const targetLanguage = getTargetLanguage();
+      const voices = voicesRef.current || synth.getVoices() || [];
+      const preferredVoice = chooseBestVoice(voices, targetLanguage);
+
+      const test = new SpeechSynthesisUtterance("Scriptora voice test.");
+      test.lang = preferredVoice?.lang || languageToLocale(targetLanguage);
+      if (preferredVoice) test.voice = preferredVoice;
+      test.rate = 1;
+      test.pitch = 1;
+      test.volume = 1;
+
+      test.onstart = () => {
+        setIsPlaying(true);
+        setStatus("Test voice live");
+        logDebug("test-voice-start");
+      };
+
+      test.onend = () => {
+        setIsPlaying(false);
+        setStatus("Test voice complete — now try Play Narration.");
+        logDebug("test-voice-end");
+      };
+
+      test.onerror = (err) => {
+        setIsPlaying(false);
+        setStatus("Test voice blocked by this browser/device.");
+        logDebug("test-voice-error", err);
+      };
+
+      setStatus("Starting test voice...");
+      synth.speak(test);
+      if (synth.paused) synth.resume();
+
+      window.setTimeout(() => {
+        if (!synth.speaking && !synth.pending) {
+          setIsPlaying(false);
+          setStatus("No voice started. Browser/device blocked speech synthesis.");
+          logDebug("test-voice-no-start");
+        }
+      }, 900);
+    } catch (err) {
+      setIsPlaying(false);
+      setStatus("Test voice failed.");
+      logDebug("test-voice-exception", err);
+    }
+  };
+
   const splitIntoSentences = (text: string): string[] => {
     return String(text || "")
       .replace(/\s+/g, " ")
@@ -346,10 +403,7 @@ export function VoiceStudioDialog({
   };
 
   const handlePlayPause = () => {
-    setStatus("Tap received — checking chapter and audio...");
-    try {
-      window.alert("Voice Studio tap received");
-    } catch {}
+    setStatus("Tap received — starting audio...");
 
     if (typeof window === "undefined" || !window.speechSynthesis) {
       setStatus("Speech synthesis is not available in this browser.");
@@ -374,7 +428,14 @@ export function VoiceStudioDialog({
     const synth = window.speechSynthesis;
     synth.cancel();
 
-    const { text: directedText, telemetry } = applyNarrativeReadDirectives(currentChapter.content || "", style);
+    const { text: rawDirectedText, telemetry } = applyNarrativeReadDirectives(currentChapter.content || "", style);
+
+    // Mobile browsers are fragile with very long utterances.
+    // Start with a safe narrated excerpt; later we can chunk full chapters.
+    const directedText = rawDirectedText.length > 1400
+      ? rawDirectedText.slice(0, 1400) + "..."
+      : rawDirectedText;
+
     const voices = voicesRef.current || synth.getVoices() || [];
     const targetLanguage = getTargetLanguage();
     const preferredVoice = chooseBestVoice(voices, targetLanguage);
@@ -540,7 +601,7 @@ export function VoiceStudioDialog({
             />
           </div>
           <div className="mb-5 flex items-center justify-between text-xs text-white/60">
-            <span>Mobile audio debug v3 · {status}</span>
+            <span>Mobile audio v4 · {status}</span>
             <span>{progress}%</span>
           </div>
 
@@ -627,9 +688,15 @@ export function VoiceStudioDialog({
 
           <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <button
+              onClick={testMobileVoice}
+              className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-emerald-300/40 bg-emerald-300/15 px-4 text-sm font-semibold text-emerald-100 hover:bg-emerald-300/20 sm:w-auto"
+            >
+              Test Voice
+            </button>
+            <button
               onClick={handlePlayPause}
               className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-100 sm:w-auto"
-              disabled={false}
+              disabled={!currentChapter}
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
               {isPlaying ? "Pause / Stop" : "Play Narration"}
