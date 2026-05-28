@@ -346,9 +346,12 @@ export function VoiceStudioDialog({
   };
 
   const handlePlayPause = () => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      setStatus("Speech synthesis is not available in this browser.");
+      return;
+    }
 
-    // require explicit user gesture to start playback — prevents autoplay blocks
+    // Mobile browsers require speech to start directly from the tap gesture.
     userInteractedRef.current = true;
 
     if (!currentChapter || !(currentChapter.content || "").trim().length) {
@@ -362,105 +365,122 @@ export function VoiceStudioDialog({
     }
 
     clearTimer();
-    window.speechSynthesis.cancel();
 
-    // load voices (user gesture allows us to start async operations)
-    ensureVoicesReady().then(() => {
-      (async () => {
-        const { text: directedText, telemetry } = applyNarrativeReadDirectives(currentChapter.content || "", style);
+    const synth = window.speechSynthesis;
+    synth.cancel();
 
-        // small safety: if no voices loaded, still proceed using locale fallback
-        const voices = voicesRef.current || window.speechSynthesis.getVoices() || [];
-        const targetLanguage = getTargetLanguage();
-        const preferredVoice = chooseBestVoice(voices, targetLanguage);
+    const { text: directedText, telemetry } = applyNarrativeReadDirectives(currentChapter.content || "", style);
+    const voices = voicesRef.current || synth.getVoices() || [];
+    const targetLanguage = getTargetLanguage();
+    const preferredVoice = chooseBestVoice(voices, targetLanguage);
 
-        const utterance = new SpeechSynthesisUtterance(directedText);
-        if (preferredVoice) {
-          utterance.voice = preferredVoice;
-          utterance.lang = preferredVoice.lang;
-          logDebug("selected-voice", preferredVoice.name, preferredVoice.lang);
-        } else {
-          utterance.lang = languageToLocale(targetLanguage);
-          logDebug("fallback-locale", utterance.lang);
-        }
+    const utterance = new SpeechSynthesisUtterance(directedText);
 
-        utterance.rate = getEffectiveRate();
-        utterance.pitch = style.pitch;
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+      utterance.lang = preferredVoice.lang;
+      logDebug("selected-voice-direct", preferredVoice.name, preferredVoice.lang);
+    } else {
+      utterance.lang = languageToLocale(targetLanguage);
+      logDebug("fallback-locale-direct", utterance.lang);
+    }
 
-        const sentenceList = splitIntoSentences(directedText);
-        setSentences(sentenceList);
-        setCurrentSentence(0);
-        setProgress(0);
+    utterance.rate = getEffectiveRate();
+    utterance.pitch = style.pitch;
+    utterance.volume = 1;
 
-        const startIndexes: number[] = [];
-        sentenceList.forEach((sentence, idx) => {
-          const searchFrom = idx === 0 ? 0 : startIndexes[idx - 1] + sentenceList[idx - 1].length;
-          const position = directedText.indexOf(sentence, searchFrom);
-          startIndexes[idx] = position >= 0 ? position : searchFrom;
-        });
-        sentenceStarts.current = startIndexes;
+    const sentenceList = splitIntoSentences(directedText);
+    setSentences(sentenceList);
+    setCurrentSentence(0);
+    setProgress(0);
+    setStatus("Starting mobile narration...");
 
-        const words = directedText.split(/\s+/).filter(Boolean).length;
-        const estimatedSec = Math.max(8, (words / (150 * utterance.rate)) * 60);
-
-        const startedAt = Date.now();
-        timerRef.current = window.setInterval(() => {
-          const elapsed = (Date.now() - startedAt) / 1000;
-          setProgress((prev) => {
-            const elapsedProgress = Math.min(100, Math.round((elapsed / estimatedSec) * 100));
-            return Math.max(prev, elapsedProgress);
-          });
-        }, 300);
-
-        const session = ++playbackSessionRef.current;
-
-        utterance.onboundary = (event) => {
-          if (session !== playbackSessionRef.current) return;
-          if (typeof (event as any).charIndex === "number" && sentenceStarts.current.length > 0) {
-            const charIndex = (event as any).charIndex as number;
-            const active = sentenceStarts.current.findIndex((start, idx) => {
-              const next = sentenceStarts.current[idx + 1] ?? Infinity;
-              return charIndex >= start && charIndex < next;
-            });
-            const sentenceIndex = active >= 0 ? active : 0;
-            setCurrentSentence(sentenceIndex);
-            setProgress(Math.min(100, Math.round(((sentenceIndex + 1) / sentenceList.length) * 100)));
-          }
-        };
-
-        utterance.onstart = () => {
-          if (session !== playbackSessionRef.current) return;
-          setIsPlaying(true);
-          setStatus("Narration live");
-          emitVoiceStudioTelemetry({ ...telemetry, chapterTitle: currentChapter.title || "Untitled chapter" });
-          logDebug("playback-start", { session, projectId: selectedProject?.id, chapterIndex });
-        };
-        utterance.onend = () => {
-          if (session !== playbackSessionRef.current) return;
-          setIsPlaying(false);
-          setStatus("Playback complete");
-          setProgress(100);
-          setCurrentSentence(sentenceList.length > 0 ? sentenceList.length - 1 : 0);
-          clearTimer();
-          logDebug("playback-end", { session });
-        };
-        utterance.onerror = (err) => {
-          if (session !== playbackSessionRef.current) return;
-          setIsPlaying(false);
-          setStatus("Audio playback unavailable in this browser.");
-          clearTimer();
-          logDebug("playback-error", err);
-        };
-
-        utteranceRef.current = utterance;
-        try {
-          window.speechSynthesis.speak(utterance);
-        } catch (e) {
-          setStatus("Playback failed to start");
-          logDebug("speak-exception", e);
-        }
-      })();
+    const startIndexes: number[] = [];
+    sentenceList.forEach((sentence, idx) => {
+      const searchFrom = idx === 0 ? 0 : startIndexes[idx - 1] + sentenceList[idx - 1].length;
+      const position = directedText.indexOf(sentence, searchFrom);
+      startIndexes[idx] = position >= 0 ? position : searchFrom;
     });
+    sentenceStarts.current = startIndexes;
+
+    const words = directedText.split(/\s+/).filter(Boolean).length;
+    const estimatedSec = Math.max(8, (words / (150 * utterance.rate)) * 60);
+    const session = ++playbackSessionRef.current;
+    const startedAt = Date.now();
+
+    timerRef.current = window.setInterval(() => {
+      const elapsed = (Date.now() - startedAt) / 1000;
+      setProgress((prev) => {
+        const elapsedProgress = Math.min(100, Math.round((elapsed / estimatedSec) * 100));
+        return Math.max(prev, elapsedProgress);
+      });
+    }, 300);
+
+    utterance.onboundary = (event) => {
+      if (session !== playbackSessionRef.current) return;
+      if (typeof (event as any).charIndex === "number" && sentenceStarts.current.length > 0) {
+        const charIndex = (event as any).charIndex as number;
+        const active = sentenceStarts.current.findIndex((start, idx) => {
+          const next = sentenceStarts.current[idx + 1] ?? Infinity;
+          return charIndex >= start && charIndex < next;
+        });
+        const sentenceIndex = active >= 0 ? active : 0;
+        setCurrentSentence(sentenceIndex);
+        setProgress(Math.min(100, Math.round(((sentenceIndex + 1) / sentenceList.length) * 100)));
+      }
+    };
+
+    utterance.onstart = () => {
+      if (session !== playbackSessionRef.current) return;
+      setIsPlaying(true);
+      setStatus("Narration live");
+      emitVoiceStudioTelemetry({ ...telemetry, chapterTitle: currentChapter.title || "Untitled chapter" });
+      logDebug("playback-start-direct", { session, projectId: selectedProject?.id, chapterIndex });
+    };
+
+    utterance.onend = () => {
+      if (session !== playbackSessionRef.current) return;
+      setIsPlaying(false);
+      setStatus("Playback complete");
+      setProgress(100);
+      setCurrentSentence(sentenceList.length > 0 ? sentenceList.length - 1 : 0);
+      clearTimer();
+      logDebug("playback-end-direct", { session });
+    };
+
+    utterance.onerror = (err) => {
+      if (session !== playbackSessionRef.current) return;
+      setIsPlaying(false);
+      setStatus("Audio blocked or unavailable. Tap Play again.");
+      clearTimer();
+      logDebug("playback-error-direct", err);
+    };
+
+    utteranceRef.current = utterance;
+
+    try {
+      synth.speak(utterance);
+
+      // Some mobile browsers start paused. Resume immediately while still inside the tap action.
+      if (synth.paused) {
+        synth.resume();
+      }
+
+      window.setTimeout(() => {
+        if (session !== playbackSessionRef.current) return;
+        if (!synth.speaking && !synth.pending) {
+          setStatus("Audio did not start. Tap Play again.");
+          setIsPlaying(false);
+          clearTimer();
+          logDebug("mobile-start-check-failed");
+        }
+      }, 900);
+    } catch (e) {
+      setStatus("Playback failed to start.");
+      setIsPlaying(false);
+      clearTimer();
+      logDebug("speak-exception-direct", e);
+    }
   };
 
   useEffect(() => {
@@ -515,7 +535,7 @@ export function VoiceStudioDialog({
             />
           </div>
           <div className="mb-5 flex items-center justify-between text-xs text-white/60">
-            <span>{status}</span>
+            <span>Mobile audio patch v2 · {status}</span>
             <span>{progress}%</span>
           </div>
 
