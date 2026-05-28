@@ -239,6 +239,16 @@ try {
           <div className="text-sm text-center text-muted-foreground">
             {status}
           </div>
+
+          <div className="mt-4 w-full max-w-full overflow-hidden">
+            <AudioPlayer
+              autoPlay={false}
+              src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+              onPlay={() => console.log("audio started")}
+              showSkipControls={false}
+              showJumpControls={false}
+            />
+          </div>
         </div>
       </DialogContent>
     </Dialog>
