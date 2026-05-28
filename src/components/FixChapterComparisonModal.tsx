@@ -35,6 +35,7 @@ interface Props {
   beforeScore: number | null;
   afterScore: number | null;
   scoreDelta?: number | null;
+  deltaMode?: "visible" | "refinement" | "minimal";
   metrics: MetricDelta[];
   explanations: string[];
   onApply: () => void;
@@ -125,6 +126,7 @@ export default function FixChapterComparisonModal({
   beforeScore,
   afterScore,
   scoreDelta,
+  deltaMode = "minimal",
   metrics,
   explanations,
   onApply,
@@ -191,7 +193,7 @@ export default function FixChapterComparisonModal({
   };
 
   const metricRows = metrics.length > 0 ? metrics : [];
-  const deltaVisible = typeof scoreDelta === "number" && Math.abs(scoreDelta) >= 0.1;
+  const deltaVisible = deltaMode === "visible" && typeof scoreDelta === "number" && Math.abs(scoreDelta) >= 0.1;
 
   function humanizeExplanation(text: string | undefined) {
     if (!text) return "Editorial refinement.";
@@ -261,10 +263,10 @@ export default function FixChapterComparisonModal({
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-white/50">Score delta</p>
-                  <p className="mt-2 text-3xl font-black text-white">{deltaVisible ? `${scoreDelta! > 0 ? "+" : ""}${scoreDelta!.toFixed(1)}` : "—"}</p>
+                  <p className="mt-2 text-3xl font-black text-white">{deltaVisible ? `${scoreDelta! > 0 ? "+" : ""}${scoreDelta!.toFixed(1)}` : deltaMode === "refinement" ? "Editorial refinement completed" : "Minimal editorial change"}</p>
                 </div>
                 <div className="rounded-3xl bg-primary/10 px-4 py-3 text-xs uppercase tracking-[0.2em] text-primary font-semibold">
-                  {patchResult.modificationPercent}% strengthened
+                  {deltaMode === "visible" ? `${patchResult.modificationPercent}% strengthened` : `${patchResult.modificationPercent}% editorially optimized`}
                 </div>
               </div>
               <p className="mt-3 text-sm text-white/60">Edits: {patchResult.patches.length} / {patchResult.totalParagraphs} paragraphs</p>
