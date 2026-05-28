@@ -12,6 +12,47 @@ import {
 
 const SPEED_OPTIONS = [0.75, 1, 1.25, 1.5, 2] as const;
 
+const VOICE_PERSONAS = [
+  {
+    id: "anna",
+    name: "Anna",
+    label: "Anna · Warm Storyteller",
+    description: "Warm, emotional, intimate narration. Best for romance, drama, reflective chapters.",
+    rate: 0.95,
+    pitch: 1.04,
+    preferredVoiceNames: ["anna", "samantha", "serena", "alice", "olivia", "amelia", "sara", "marta", "google italiano"],
+  },
+  {
+    id: "luisa",
+    name: "Luisa",
+    label: "Luisa · Soft Literary Voice",
+    description: "Soft, elegant, controlled. Best for emotional scenes, literary fiction, inner monologue.",
+    rate: 0.88,
+    pitch: 0.98,
+    preferredVoiceNames: ["luisa", "lucia", "susan", "monica", "elsa", "paola", "laura", "siri female"],
+  },
+  {
+    id: "marco",
+    name: "Marco",
+    label: "Marco · Deep Cinematic Voice",
+    description: "Deeper, slower, more dramatic. Best for thriller, dark romance, fantasy, suspense.",
+    rate: 0.9,
+    pitch: 0.88,
+    preferredVoiceNames: ["marco", "luca", "mario", "daniel", "alex", "thomas", "google italiano", "siri male"],
+  },
+  {
+    id: "luca",
+    name: "Luca",
+    label: "Luca · Young Dynamic Voice",
+    description: "Faster, brighter, energetic. Best for YA, action, adventure, modern scenes.",
+    rate: 1.04,
+    pitch: 1.02,
+    preferredVoiceNames: ["luca", "matthew", "alex", "daniel", "microsoft", "google"],
+  },
+] as const;
+
+type VoicePersonaId = typeof VOICE_PERSONAS[number]["id"];
+
 interface VoiceStudioDialogProps {
   open: boolean;
   onClose: () => void;
@@ -35,6 +76,7 @@ export function VoiceStudioDialog({
   const [projectId, setProjectId] = useState<string>("");
   const [chapterIndex, setChapterIndex] = useState<number>(0);
   const [styleId, setStyleId] = useState<NarratorStyleId>("cinematic");
+  const [voicePersonaId, setVoicePersonaId] = useState<VoicePersonaId>("anna");
   const [speed, setSpeed] = useState<typeof SPEED_OPTIONS[number]>(1);
   const [isPlaying, setIsPlaying] = useState(false);
   const [status, setStatus] = useState("Ready");
@@ -106,6 +148,7 @@ export function VoiceStudioDialog({
   const firstPlayableChapter = chapterOptions[0]?.index ?? 0;
   const currentChapter = selectedProject?.chapters[chapterIndex] || null;
   const style = VOICE_STUDIO_STYLES.find((item) => item.id === styleId) || VOICE_STUDIO_STYLES[0];
+  const selectedVoicePersona = VOICE_PERSONAS.find((item) => item.id === voicePersonaId) || VOICE_PERSONAS[0];
   const prep = prepareVoiceStudioProfiles(selectedProject);
 
   useEffect(() => {
@@ -273,11 +316,11 @@ export function VoiceStudioDialog({
       const voices = voicesRef.current || synth.getVoices() || [];
       const preferredVoice = chooseBestVoice(voices, targetLanguage);
 
-      const test = new SpeechSynthesisUtterance("Scriptora voice test.");
+      const test = new SpeechSynthesisUtterance(`${selectedVoicePersona.name}. Scriptora voice test.`);
       test.lang = preferredVoice?.lang || languageToLocale(targetLanguage);
       if (preferredVoice) test.voice = preferredVoice;
-      test.rate = 1;
-      test.pitch = 1;
+      test.rate = Math.max(0.5, Math.min(1.6, selectedVoicePersona.rate));
+      test.pitch = Math.max(0.7, Math.min(1.35, selectedVoicePersona.pitch));
       test.volume = 1;
 
       test.onstart = () => {
@@ -398,7 +441,17 @@ export function VoiceStudioDialog({
     }
     if (candidates.length === 0) candidates = voices;
 
-    candidates.sort((a, b) => scoreVoice(b, targetPrefix) - scoreVoice(a, targetPrefix));
+    const personaBoost = (voice: SpeechSynthesisVoice) => {
+      const haystack = `${voice.name || ""} ${voice.lang || ""}`.toLowerCase();
+      return selectedVoicePersona.preferredVoiceNames.some((name) => haystack.includes(name.toLowerCase())) ? 12 : 0;
+    };
+
+    candidates.sort((a, b) => {
+      const scoreA = scoreVoice(a, targetPrefix) + personaBoost(a);
+      const scoreB = scoreVoice(b, targetPrefix) + personaBoost(b);
+      return scoreB - scoreA;
+    });
+
     return candidates[0] || null;
   };
 
@@ -532,8 +585,8 @@ export function VoiceStudioDialog({
         utterance.lang = languageToLocale(targetLanguage);
       }
 
-      utterance.rate = Math.max(0.5, Math.min(1.55, getEffectiveRate() * tone.rate));
-      utterance.pitch = Math.max(0.7, Math.min(1.35, style.pitch * tone.pitch));
+      utterance.rate = Math.max(0.5, Math.min(1.55, getEffectiveRate() * tone.rate * selectedVoicePersona.rate));
+      utterance.pitch = Math.max(0.7, Math.min(1.35, style.pitch * tone.pitch * selectedVoicePersona.pitch));
       utterance.volume = 1;
 
       utteranceRef.current = utterance;
@@ -545,7 +598,7 @@ export function VoiceStudioDialog({
         localStarts[idx] = position >= 0 ? position : searchFrom;
       });
 
-      setStatus(`Reading part ${chunkIndex + 1}/${chunks.length} · ${tone.label}`);
+      setStatus(`Reading part ${chunkIndex + 1}/${chunks.length} · ${selectedVoicePersona.name} · ${tone.label}`);
       setCurrentSentence(chunk.startSentence);
       setProgress(Math.round((chunkIndex / chunks.length) * 100));
 
@@ -677,7 +730,7 @@ export function VoiceStudioDialog({
             />
           </div>
           <div className="mb-5 flex items-center justify-between text-xs text-white/60">
-            <span>Full chapter tonal reading v5 · {status}</span>
+            <span>Narrator voices v6 · {status}</span>
             <span>{progress}%</span>
           </div>
 
@@ -692,7 +745,7 @@ export function VoiceStudioDialog({
             />
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             <select
               value={projectId}
               onChange={(e) => {
@@ -737,7 +790,20 @@ export function VoiceStudioDialog({
               ))}
             </select>
 
+            <select
+              value={voicePersonaId}
+              onChange={(e) => setVoicePersonaId(e.target.value as VoicePersonaId)}
+              className="h-10 rounded-xl border border-white/15 bg-white/[0.06] px-3 text-sm text-white"
+            >
+              {VOICE_PERSONAS.map((persona) => (
+                <option key={persona.id} value={persona.id} className="text-black">
+                  {persona.label}
+                </option>
+              ))}
+            </select>
+
             <div className="space-y-2">
+
               <div className="flex items-center justify-between text-[11px] text-white/70">
                 <span>Speed</span>
                 <span className="font-semibold text-white">{speed.toFixed(2)}x</span>
@@ -759,6 +825,9 @@ export function VoiceStudioDialog({
           {selectedProject && chapterOptions.length > 0 && (
             <div className="mb-4 rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white/80">
               Effective playback rate: <span className="font-semibold text-white">{getEffectiveRate().toFixed(2)}x</span>
+              <span className="mx-2 text-white/30">·</span>
+              <span className="font-semibold text-cyan-100">{selectedVoicePersona.name}</span>
+              <span className="block pt-1 text-xs text-white/55">{selectedVoicePersona.description}</span>
             </div>
           )}
 
