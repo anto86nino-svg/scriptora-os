@@ -309,20 +309,23 @@ export function FocusMusicControl() {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center gap-2 rounded-full border border-sky-300/15 bg-slate-900/70 px-2 py-1 shadow-lg backdrop-blur-xl">
         <PopoverTrigger asChild>
           <button
             type="button"
-            className={`ios-toolbar-button px-2 text-[11px] font-medium ${playing ? "text-sky-200" : "text-muted-foreground hover:text-foreground"}`}
+            className={`ios-toolbar-button h-9 px-3 text-xs font-semibold rounded-full ${playing ? "text-sky-200 shadow-[0_0_18px_rgba(56,189,248,0.45)]" : "text-muted-foreground hover:text-foreground"}`}
             title="Musica focus"
           >
             <Music2 className="h-4 w-4 text-sky-300" />
+            <span className="hidden md:inline text-xs font-semibold tracking-wide">
+              {activePreset.label}
+            </span>
           </button>
         </PopoverTrigger>
         <button
           type="button"
           onClick={toggle}
-          className={`ios-toolbar-button h-8 w-8 justify-center px-0 ${playing ? "text-sky-200" : "text-muted-foreground hover:text-foreground"}`}
+          className={`ios-toolbar-button h-8 w-8 justify-center px-0 ${playing ? "text-sky-200 shadow-[0_0_18px_rgba(56,189,248,0.45)]" : "text-muted-foreground hover:text-foreground"}`}
           title={playing ? "Pausa musica" : "Avvia musica"}
         >
           {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
@@ -376,7 +379,7 @@ export function FocusMusicControl() {
               <Volume2 className="h-3.5 w-3.5" />
               Volume
             </span>
-            <span className="text-[11px] font-semibold text-sky-200">{Math.round((volume / MAX_VOLUME) * 100)}%</span>
+            <span className="text-[11px] font-semibold text-sky-200 shadow-[0_0_18px_rgba(56,189,248,0.45)]">{Math.round((volume / MAX_VOLUME) * 100)}%</span>
           </div>
           <Slider
             value={[volume]}
