@@ -79,6 +79,7 @@ export function VoiceStudioDialog({
   const [voicePersonaId, setVoicePersonaId] = useState<VoicePersonaId>("anna");
   const [speed, setSpeed] = useState<typeof SPEED_OPTIONS[number]>(1);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [status, setStatus] = useState("Ready");
   const [progress, setProgress] = useState(0);
   const [currentSentence, setCurrentSentence] = useState(0);
@@ -89,6 +90,8 @@ export function VoiceStudioDialog({
   const sentenceRefs = useRef<Array<HTMLParagraphElement | null>>([]);
   const sentenceStarts = useRef<number[]>([]);
   const playbackSessionRef = useRef(0);
+  const pausedRef = useRef(false);
+  const currentChunkIndexRef = useRef(0);
   const autoPlayRequestedRef = useRef(false);
   const voicesRef = useRef<SpeechSynthesisVoice[] | null>(null);
   const [voicesLoaded, setVoicesLoaded] = useState(false);
@@ -271,6 +274,9 @@ export function VoiceStudioDialog({
     } catch {}
 
     utteranceRef.current = null;
+    pausedRef.current = false;
+    setIsPaused(false);
+    currentChunkIndexRef.current = 0;
     setIsPlaying(false);
     setStatus("Stopped");
     setProgress(0);
@@ -584,19 +590,55 @@ export function VoiceStudioDialog({
 
     userInteractedRef.current = true;
 
+    const synth = window.speechSynthesis;
+
+    // Real pause: do not cancel the utterance, otherwise resume starts from the beginning.
+    if (isPlaying && !isPaused) {
+      try {
+        synth.pause();
+        pausedRef.current = true;
+        setIsPaused(true);
+        setIsPlaying(false);
+        setStatus("Paused — tap Resume to continue");
+        logDebug("playback-paused", { chunk: currentChunkIndexRef.current });
+      } catch (err) {
+        setStatus("Pause failed. Use Stop if needed.");
+        logDebug("pause-exception", err);
+      }
+      return;
+    }
+
+    // Real resume: continue the current utterance when browser supports it.
+    if (isPaused) {
+      try {
+        pausedRef.current = false;
+        setIsPaused(false);
+        setIsPlaying(true);
+        synth.resume();
+        setStatus("Resuming narration...");
+        logDebug("playback-resumed", { chunk: currentChunkIndexRef.current });
+
+        window.setTimeout(() => {
+          if (!pausedRef.current && !synth.speaking && synth.pending) {
+            synth.resume();
+          }
+        }, 350);
+      } catch (err) {
+        setStatus("Resume failed. Tap Play again.");
+        setIsPaused(false);
+        pausedRef.current = false;
+        logDebug("resume-exception", err);
+      }
+      return;
+    }
+
     if (!currentChapter || !(currentChapter.content || "").trim().length) {
       setStatus("Tap works, but no readable chapter was found. Select/generate a chapter first.");
       return;
     }
 
-    if (isPlaying) {
-      stopPlayback();
-      return;
-    }
-
     clearTimer();
 
-    const synth = window.speechSynthesis;
     synth.cancel();
 
     const { text: rawDirectedText, telemetry } = applyNarrativeReadDirectives(currentChapter.content || "", style);
@@ -613,6 +655,9 @@ export function VoiceStudioDialog({
     const preferredVoice = chooseBestVoice(voices, targetLanguage);
     const session = ++playbackSessionRef.current;
 
+    pausedRef.current = false;
+    setIsPaused(false);
+    currentChunkIndexRef.current = 0;
     setSentences(allSentences);
     setCurrentSentence(0);
     setProgress(0);
@@ -634,6 +679,7 @@ export function VoiceStudioDialog({
         return;
       }
 
+      currentChunkIndexRef.current = chunkIndex;
       const chunk = chunks[chunkIndex];
       const chunkSentences = splitIntoSentences(chunk.text);
       const tone = chunk.tone;
@@ -704,6 +750,10 @@ export function VoiceStudioDialog({
 
       utterance.onend = () => {
         if (session !== playbackSessionRef.current) return;
+        if (pausedRef.current) {
+          setStatus("Paused — tap Resume to continue");
+          return;
+        }
         setProgress(Math.min(99, Math.round(((chunkIndex + 1) / chunks.length) * 100)));
         window.setTimeout(() => playChunk(chunkIndex + 1), 120);
       };
@@ -711,6 +761,8 @@ export function VoiceStudioDialog({
       utterance.onerror = (err) => {
         if (session !== playbackSessionRef.current) return;
         setIsPlaying(false);
+        setIsPaused(false);
+        pausedRef.current = false;
         setStatus(`Audio stopped on part ${chunkIndex + 1}. Tap Play to retry.`);
         clearTimer();
         logDebug("chunk-error", err);
@@ -792,7 +844,7 @@ export function VoiceStudioDialog({
             />
           </div>
           <div className="mb-5 flex items-center justify-between text-xs text-white/60">
-            <span>Human narration v7 · {status}</span>
+            <span>Pause resume v8 · {status}</span>
             <span>{progress}%</span>
           </div>
 
@@ -906,13 +958,13 @@ export function VoiceStudioDialog({
               disabled={!currentChapter}
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              {isPlaying ? "Pause / Stop" : "Play Narration"}
+              {isPaused ? "Resume Narration" : isPlaying ? "Pause Narration" : "Play Narration"}
             </button>
             <button
               onClick={stopPlayback}
               className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-white/20 px-4 text-sm font-medium text-white/80 hover:bg-white/[0.08] sm:w-auto"
             >
-              Stop
+              Stop / Reset
             </button>
             {selectedProject && onOpenProject && (
               <button
