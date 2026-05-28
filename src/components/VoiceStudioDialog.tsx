@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BookProject, Language } from "@/types/book";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Pause, Play, Waves, Sparkles, Volume2 } from "lucide-react";
+import { Pause, Play, Waves, Sparkles, Volume2, ArrowDown } from "lucide-react";
 import {
   VOICE_STUDIO_STYLES,
   applyNarrativeReadDirectives,
@@ -46,8 +46,11 @@ export function VoiceStudioDialog({
   const [immersiveMode, setImmersiveMode] = useState(true);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const timerRef = useRef<number | null>(null);
+  const karaokeScrollRef = useRef<HTMLDivElement | null>(null);
+  const programmaticScrollRef = useRef(false);
   const sentenceRefs = useRef<Array<HTMLParagraphElement | null>>([]);
   const sentenceStarts = useRef<number[]>([]);
+  const [readerDetached, setReaderDetached] = useState(false);
   const playbackSessionRef = useRef(0);
   const pausedRef = useRef(false);
   const currentChunkIndexRef = useRef(0);
@@ -246,6 +249,7 @@ export function VoiceStudioDialog({
     setCurrentSentence(0);
     setSentences([]);
     sentenceStarts.current = [];
+    setReaderDetached(false);
     clearTimer();
     logDebug("playback-stopped", { session: playbackSessionRef.current });
   };
@@ -663,6 +667,7 @@ export function VoiceStudioDialog({
     pausedRef.current = false;
     setIsPaused(false);
     currentChunkIndexRef.current = 0;
+    setReaderDetached(false);
     setSentences(allSentences);
     setCurrentSentence(0);
     setProgress(0);
@@ -851,10 +856,39 @@ export function VoiceStudioDialog({
   }, [sentences.length]);
 
   useEffect(() => {
-    if (!open || sentences.length === 0) return;
+    if (!open || sentences.length === 0 || readerDetached) return;
+
     const node = sentenceRefs.current[currentSentence];
-    node?.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-  }, [currentSentence, open, sentences.length]);
+    if (!node) return;
+
+    programmaticScrollRef.current = true;
+    node.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+
+    window.setTimeout(() => {
+      programmaticScrollRef.current = false;
+    }, 450);
+  }, [currentSentence, open, sentences.length, readerDetached]);
+
+  const handleKaraokeScroll = () => {
+    if (!isPlaying && !isPaused) return;
+    if (programmaticScrollRef.current) return;
+
+    // L’utente sta esplorando il testo mentre la narrazione continua.
+    setReaderDetached(true);
+  };
+
+  const jumpToCurrentSentence = () => {
+    const node = sentenceRefs.current[currentSentence];
+    if (!node) return;
+
+    setReaderDetached(false);
+    programmaticScrollRef.current = true;
+    node.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+
+    window.setTimeout(() => {
+      programmaticScrollRef.current = false;
+    }, 450);
+  };
 
   useEffect(() => {
     // Prevent autoplay — browsers often block audio unless started by user gesture.
@@ -868,7 +902,11 @@ export function VoiceStudioDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
-      <DialogContent className="flex max-h-[88dvh] w-[calc(100vw-0.75rem)] max-w-3xl flex-col overflow-hidden border-white/15 bg-slate-950/94 p-3 text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:max-h-[90dvh] sm:p-5">
+      <DialogContent className={`flex w-[calc(100vw-0.75rem)] flex-col overflow-hidden border-white/15 bg-slate-950/94 p-3 text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-5 ${
+          immersiveMode
+            ? "h-[96dvh] max-h-[96dvh] max-w-[96vw]"
+            : "max-h-[88dvh] max-w-3xl sm:max-h-[90dvh]"
+        }`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Waves className="h-5 w-5 text-sky-300" />
@@ -879,7 +917,9 @@ export function VoiceStudioDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1f2937] p-3 sm:p-4">
+        <div className={`min-h-0 flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1f2937] p-3 sm:p-4 ${
+          immersiveMode ? "flex flex-col" : ""
+        }`}>
           <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
             <div>
               <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">Immersive Player</p>
@@ -898,7 +938,7 @@ export function VoiceStudioDialog({
             />
           </div>
           <div className="mb-5 flex items-center justify-between text-xs text-white/60">
-            <span>Force selected voice v15 · {status}</span>
+            <span>Immersive full view v18 · {status}</span>
             <span>{progress}%</span>
           </div>
 
@@ -913,7 +953,7 @@ export function VoiceStudioDialog({
             />
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <div className={`grid gap-2 sm:grid-cols-2 ${immersiveMode ? "lg:grid-cols-5" : "lg:grid-cols-5"}`}>
             <select
               value={projectId}
               onChange={(e) => {
@@ -1045,18 +1085,20 @@ export function VoiceStudioDialog({
             )}
           </div>
 
-          <div className={"mt-4 rounded-2xl border border-white/10 bg-slate-900/90 p-3 shadow-[inset_0_0_30px_rgba(15,23,42,0.35)] sm:p-4 " + (immersiveMode ? "ring-1 ring-cyan-300/20" : "")}>
+          <div className={"mt-4 rounded-2xl border border-white/10 bg-slate-900/90 p-3 shadow-[inset_0_0_30px_rgba(15,23,42,0.35)] sm:p-4 " + (immersiveMode ? "flex min-h-0 flex-1 flex-col ring-1 ring-cyan-300/20" : "")}>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">Karaoke Reading</p>
-                <p className="text-base font-semibold text-white">Follow the narration as your chapter speaks.</p>
+                <p className="text-base font-semibold text-white">
+                  {immersiveMode ? "Immersive reading view" : "Follow the narration as your chapter speaks."}
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => setImmersiveMode(!immersiveMode)}
                 className={`h-10 rounded-xl border px-3 text-sm font-semibold transition ${immersiveMode ? "border-cyan-300 bg-cyan-300/15 text-white" : "border-white/15 bg-slate-950/60 text-white/80 hover:border-cyan-300 hover:text-white"}`}
               >
-                {immersiveMode ? "Immersive mode" : "Reading mode"}
+                {immersiveMode ? "Exit immersive" : "Immersive full view"}
               </button>
             </div>
 
@@ -1065,7 +1107,28 @@ export function VoiceStudioDialog({
               <span>{currentChapter ? currentChapter.title || `Chapter ${chapterIndex + 1}` : "No chapter selected"}</span>
             </div>
 
-            <div className={`max-h-[42dvh] overflow-y-auto overscroll-contain scroll-smooth rounded-2xl border border-white/10 bg-slate-950/80 p-3 sm:max-h-[24rem] sm:p-4 ${immersiveMode ? "backdrop-blur-sm" : ""}`}>
+            <div
+              ref={karaokeScrollRef}
+              onScroll={handleKaraokeScroll}
+              className={`relative overflow-y-auto overscroll-contain scroll-smooth rounded-2xl border border-white/10 bg-slate-950/80 p-3 sm:p-4 ${
+                immersiveMode
+                  ? "min-h-[58dvh] flex-1 max-h-[68dvh] backdrop-blur-sm"
+                  : "max-h-[42dvh] sm:max-h-[24rem]"
+              }`}
+            >
+              {readerDetached && sentences.length > 0 && (isPlaying || isPaused) && (
+                <button
+                  type="button"
+                  onClick={jumpToCurrentSentence}
+                  className="sticky top-2 z-30 ml-auto mb-2 flex w-fit items-center justify-center gap-1.5 rounded-full border border-cyan-300/40 bg-slate-950/85 px-3 py-1.5 text-[11px] font-semibold text-cyan-50 shadow-[0_10px_24px_rgba(8,145,178,0.22)] backdrop-blur transition hover:bg-cyan-300/20"
+                  aria-label="Torna alla frase in lettura"
+                  title="Torna alla frase in lettura"
+                >
+                  <ArrowDown className="h-3.5 w-3.5" />
+                  Riga attuale
+                </button>
+              )}
+
               {sentences.length > 0 ? (
                 <div className="space-y-3">
                   {sentences.map((sentence, idx) => (
