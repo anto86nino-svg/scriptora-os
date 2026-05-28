@@ -88,63 +88,7 @@ export function ReadAloudModal({
     };
 
     utteranceRef.current = utterance;
-    
-try {
-      const synth = window.speechSynthesis;
-
-      // reset speech engine
-      synth.cancel();
-
-      // mobile Safari / Android unlock
-      const unlock = new SpeechSynthesisUtterance(" ");
-      unlock.volume = 0;
-      synth.speak(unlock);
-
-      setTimeout(() => {
-        try {
-          synth.cancel();
-
-          // get available voices
-          const voices = synth.getVoices() || [];
-
-          // smart language fallback
-          const preferredVoice =
-            voices.find(v =>
-              v.lang?.toLowerCase().startsWith("it")
-            ) ||
-            voices.find(v =>
-              v.lang?.toLowerCase().startsWith("en")
-            ) ||
-            voices[0];
-
-          if (preferredVoice) {
-            utterance.voice = preferredVoice;
-          }
-
-          utterance.rate = 1;
-          utterance.pitch = 1;
-          utterance.volume = 1;
-
-          synth.speak(utterance);
-
-          console.log(
-            "[SCRIPTORA MOBILE VOICE OK]",
-            preferredVoice?.name
-          );
-        } catch (error) {
-          console.error(
-            "[SCRIPTORA SPEECH PLAYBACK ERROR]",
-            error
-          );
-        }
-      }, 250);
-    } catch (error) {
-      console.error(
-        "[SCRIPTORA MOBILE SPEECH FAILED]",
-        error
-      );
-    }
-
+    window.speechSynthesis.speak(utterance);
   };
 
   useEffect(() => {
