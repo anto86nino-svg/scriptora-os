@@ -146,7 +146,22 @@ try {
       currentCharacterIndexRef.current += event.charLength || 1;
     };
 
+    if (synth.speaking) {
+      synth.cancel();
+    }
+
     synth.speak(utterance);
+
+    setTimeout(() => {
+      if (!synth.speaking) {
+        try {
+          synth.cancel();
+          synth.speak(utterance);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }, 400);
 
           console.log(
             "[SCRIPTORA MOBILE VOICE OK]",
