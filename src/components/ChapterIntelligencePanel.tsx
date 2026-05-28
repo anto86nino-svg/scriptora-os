@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, X, Loader2, AlertCircle, Check, Scissors, Flame, Wand2, Trash2, RefreshCw, TrendingUp, Swords, ArrowRight, ChevronDown, Eye, Lock, Bot, EyeOff, Quote, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { BookProject } from "@/types/book";
@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
 import { analyzeNovel } from "@/lib/EditorialIntelligence";
-
+import FixChapterComparisonModal from "@/components/FixChapterComparisonModal";
 
 function countWordsForChapterLock(value: unknown): number {
   if (!value) return 0;
@@ -150,6 +150,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   const [showRunAnalyze, setShowRunAnalyze] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showPatchPreview, setShowPatchPreview] = useState(false);
+  const [patchPreviewData, setPatchPreviewData] = useState<{ originalText: string; patchedText: string } | null>(null);
 
   const guardFreeChapterAi = async () => {
     if (await isFreeChapterAiLocked(project)) {
@@ -186,18 +187,23 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
     if (patchJob) dismissJob(patchJob.id);
   };
 
+  useEffect(() => {
+    if (patchResult) {
+      setPatchPreviewData({
+        originalText: patchResult.originalText,
+        patchedText: patchResult.patchedText,
+      });
+    }
+  }, [patchResult]);
+
   const originalAnalysis =
-    patchResult?.originalText
-      ? analyzeNovel(
-          patchResult.originalText
-        )
+    patchPreviewData?.originalText
+      ? analyzeNovel(patchPreviewData.originalText)
       : null;
 
   const patchedAnalysis =
-    patchResult?.patchedText
-      ? analyzeNovel(
-          patchResult.patchedText
-        )
+    patchPreviewData?.patchedText
+      ? analyzeNovel(patchPreviewData.patchedText)
       : null;
 
   const estimatedBeforeScore =
@@ -241,110 +247,64 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
         )
       : null;
 
-  if (showPatchPreview && patchResult) {
+  const patchMetrics = originalAnalysis && patchedAnalysis ? [
+    {
+      label: "Dialogue Humanity",
+      before: originalAnalysis.dialogueHumanityScore,
+      after: patchedAnalysis.dialogueHumanityScore,
+      delta: patchedAnalysis.dialogueHumanityScore - originalAnalysis.dialogueHumanityScore,
+    },
+    {
+      label: "Subtext Strength",
+      before: originalAnalysis.subtextScore,
+      after: patchedAnalysis.subtextScore,
+      delta: patchedAnalysis.subtextScore - originalAnalysis.subtextScore,
+    },
+    {
+      label: "Pacing Balance",
+      before: originalAnalysis.pacingConsistencyScore,
+      after: patchedAnalysis.pacingConsistencyScore,
+      delta: patchedAnalysis.pacingConsistencyScore - originalAnalysis.pacingConsistencyScore,
+    },
+    {
+      label: "Character Depth",
+      before: originalAnalysis.characterConsistencyScore,
+      after: patchedAnalysis.characterConsistencyScore,
+      delta: patchedAnalysis.characterConsistencyScore - originalAnalysis.characterConsistencyScore,
+    },
+    {
+      label: "Emotional Realism",
+      before: originalAnalysis.emotionalRedundancyScore,
+      after: patchedAnalysis.emotionalRedundancyScore,
+      delta: patchedAnalysis.emotionalRedundancyScore - originalAnalysis.emotionalRedundancyScore,
+    },
+  ] : [];
+
+  const editorialExplanations = patchResult
+    ? Array.from(
+        new Set([
+          ...patchResult.patches.map(p => p.reason),
+          ...(patchResult.evaluation?.improvements || []),
+        ])
+      ).slice(0, 6)
+    : [];
+
+  if (showPatchPreview && patchPreviewData && patchResult) {
     return (
-      <div className="fixed inset-0 z-[99999] bg-background flex flex-col">
-
-        <div className="border-b border-border/40 px-8 py-5 flex items-center justify-between bg-card shrink-0">
-          <div>
-            <h1 className="text-2xl font-black text-foreground">
-              Prima vs Dopo
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Confronta le modifiche prima di applicarle
-            </p>
-          </div>
-
-          <button
-            onClick={() => setShowPatchPreview(false)}
-            className="h-10 px-4 rounded-xl border border-border hover:bg-accent transition"
-          >
-            Torna indietro
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 flex-1 overflow-hidden">
-
-          <div className="border-r border-border overflow-y-auto bg-rose-500/5">
-            <div className="sticky top-0 z-20 bg-background border-b border-border px-6 py-4">
-              <p className="text-xs uppercase font-black tracking-[0.25em] text-rose-500">
-                Prima
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Versione originale
-              </p>
-            </div>
-
-            <div className="p-6 whitespace-pre-wrap text-[15px] leading-8 text-foreground/75">
-              {patchResult.originalText}
-            </div>
-          </div>
-
-          <div className="overflow-y-auto bg-emerald-500/5">
-            <div className="sticky top-0 z-20 bg-background border-b border-border px-6 py-4">
-              <p className="text-xs uppercase font-black tracking-[0.25em] text-emerald-500">
-                Dopo
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Versione migliorata
-              </p>
-            </div>
-
-            <div className="p-6 whitespace-pre-wrap text-[15px] leading-8 text-foreground">
-              {patchResult.patchedText}
-            </div>
-          </div>
-
-        </div>
-
-        <div className="border-t border-border bg-card p-5 shrink-0">
-          <div className="flex items-center justify-between gap-5">
-
-            <div>
-              <p className="text-xs uppercase text-muted-foreground tracking-widest">
-                Miglioramento reale
-              </p>
-
-              <div className="flex items-end gap-2 mt-1">
-                <span className="text-xl font-black text-muted-foreground">
-                  {estimatedBeforeScore?.toFixed(1)}
-                </span>
-
-                <ArrowRight className="h-4 w-4 text-primary mb-1" />
-
-                <span className="text-3xl font-black text-primary">
-                  {realAfterScore?.toFixed(1)}
-                </span>
-
-                {scoreDelta !== null && (
-                  <span className="text-sm font-bold text-emerald-500 ml-2">
-                    +{scoreDelta.toFixed(1)}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowPatchPreview(false)}
-                className="h-12 px-6 rounded-xl border border-border font-semibold hover:bg-accent transition"
-              >
-                Torna alla diagnosi
-              </button>
-
-              <button
-                onClick={confirmPatchApply}
-                className="h-12 px-8 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition"
-              >
-                Applica modifiche
-              </button>
-            </div>
-
-          </div>
-        </div>
-
-      </div>
+      <FixChapterComparisonModal
+        patchResult={patchResult}
+        beforeScore={estimatedBeforeScore}
+        afterScore={realAfterScore}
+        scoreDelta={scoreDelta}
+        metrics={patchMetrics}
+        explanations={editorialExplanations}
+        onApply={confirmPatchApply}
+        onClose={() => setShowPatchPreview(false)}
+      />
     );
+
+
+
   }
 
   const runAnalysis = async () => {
@@ -541,80 +501,6 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
           </button>
         </div>
 
-        {/* PATCH PREVIEW FULLSCREEN */}
-        {showPatchPreview && patchResult && (
-          <div className="fixed inset-0 z-[9999] bg-background flex flex-col">
-
-            <div className="border-b border-border/40 px-6 py-4 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-lg font-black text-foreground">
-                  Prima vs Dopo
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Confronta le modifiche editoriali prima di applicarle
-                </p>
-              </div>
-
-              <button
-                onClick={() => setShowPatchPreview(false)}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="grid md:grid-cols-2 flex-1 overflow-hidden">
-
-              <div className="border-r border-border/40 overflow-y-auto p-6 bg-rose-500/5">
-                <div className="sticky top-0 bg-background/80 backdrop-blur-sm pb-3 mb-4 z-10">
-                  <p className="text-xs font-black tracking-widest uppercase text-rose-500">
-                    Prima
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Versione originale
-                  </p>
-                </div>
-
-                <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">
-                  {patchResult.originalText}
-                </div>
-              </div>
-
-              <div className="overflow-y-auto p-6 bg-emerald-500/5">
-                <div className="sticky top-0 bg-background/80 backdrop-blur-sm pb-3 mb-4 z-10">
-                  <p className="text-xs font-black tracking-widest uppercase text-emerald-500">
-                    Dopo
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    Versione migliorata
-                  </p>
-                </div>
-
-                <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                  {patchResult.patchedText}
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-border/40 p-4 flex items-center gap-3 shrink-0 bg-card">
-              <button
-                onClick={confirmPatchApply}
-                className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition"
-              >
-                Applica modifiche
-              </button>
-
-              <button
-                onClick={() => setShowPatchPreview(false)}
-                className="h-11 px-6 rounded-xl border border-border font-semibold hover:bg-accent transition"
-              >
-                Torna indietro
-              </button>
-            </div>
-
-          </div>
-        )}
-
         {/* Body */}
         <div className="flex-1 overflow-y-auto scrollbar-thin p-5 space-y-5">
           {/* IDLE — Patch as default */}
@@ -630,9 +516,8 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
               </div>
               <button onClick={runPatch}
                 className="inline-flex items-center gap-2 h-11 px-6 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-md">
-                <Eye className="h-4 w-4" /> ✦ Migliora il capitolo
+                <Eye className="h-4 w-4" /> ✦ Fix Capitolo
               </button>
-
               {/* Advanced toggle */}
               <div className="pt-4 border-t border-border/30 max-w-md mx-auto">
                 <button onClick={() => setShowAdvanced(s => !s)}
@@ -739,7 +624,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                   onClick={applyPatch}
                   className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-sm shadow-lg shadow-blue-500/20 transition inline-flex items-center justify-center gap-2"
                 >
-                  ✦ Apri confronto Prima/Dopo
+                  ✦ Review premium Prima/Dopo
                 </button>
               )}
 
