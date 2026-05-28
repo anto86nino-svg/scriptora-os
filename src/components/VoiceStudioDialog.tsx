@@ -402,15 +402,72 @@ export function VoiceStudioDialog({
     return candidates[0] || null;
   };
 
-  const handlePlayPause = () => {
-    setStatus("Tap received — starting audio...");
+  const detectNarrativeTone = (text: string) => {
+    const lower = text.toLowerCase();
 
+    const hasAction = /(corse|scapp|grid|spar|colp|sangue|knife|gun|ran|fight|attack|blood|scream|shout|war|battle|explosion)/i.test(lower);
+    const hasSuspense = /(silenzio|ombra|buio|paura|trem|sussurr|nascost|dark|shadow|fear|whisper|trembl|hidden|danger)/i.test(lower);
+    const hasIntimacy = /(mano|pelle|respiro|cuore|bacio|lacrim|amore|touch|skin|breath|heart|kiss|tear|love)/i.test(lower);
+    const hasSadness = /(perd|morte|dolore|pianto|vuoto|addio|grief|death|lost|pain|cry|empty|goodbye)/i.test(lower);
+    const hasDialogue = /[«“"].{2,}?[»”"]/.test(text) || (text.match(/^\s*[—-]\s+/gm) || []).length >= 2;
+
+    if (hasAction) return { label: "Action pulse", rate: 1.08, pitch: 1.02 };
+    if (hasSuspense) return { label: "Suspense hush", rate: 0.9, pitch: 0.92 };
+    if (hasSadness) return { label: "Emotional low tone", rate: 0.86, pitch: 0.94 };
+    if (hasIntimacy) return { label: "Intimate soft tone", rate: 0.88, pitch: 0.98 };
+    if (hasDialogue) return { label: "Dialogue natural tone", rate: 0.98, pitch: 1 };
+    return { label: "Narrative cinematic tone", rate: 0.96, pitch: 1 };
+  };
+
+  const buildNarrationChunks = (text: string, maxChars = 950) => {
+    const sourceSentences = splitIntoSentences(text);
+    const chunks: Array<{ text: string; startSentence: number; sentenceCount: number; tone: ReturnType<typeof detectNarrativeTone> }> = [];
+
+    let buffer = "";
+    let startSentence = 0;
+    let sentenceCount = 0;
+
+    sourceSentences.forEach((sentence, idx) => {
+      const candidate = buffer ? `${buffer} ${sentence}` : sentence;
+
+      if (candidate.length > maxChars && buffer) {
+        chunks.push({
+          text: buffer,
+          startSentence,
+          sentenceCount,
+          tone: detectNarrativeTone(buffer),
+        });
+
+        buffer = sentence;
+        startSentence = idx;
+        sentenceCount = 1;
+      } else {
+        buffer = candidate;
+        sentenceCount += 1;
+      }
+    });
+
+    if (buffer.trim()) {
+      chunks.push({
+        text: buffer,
+        startSentence,
+        sentenceCount,
+        tone: detectNarrativeTone(buffer),
+      });
+    }
+
+    return {
+      allSentences: sourceSentences,
+      chunks,
+    };
+  };
+
+  const handlePlayPause = () => {
     if (typeof window === "undefined" || !window.speechSynthesis) {
       setStatus("Speech synthesis is not available in this browser.");
       return;
     }
 
-    // Mobile browsers require speech to start directly from the tap gesture.
     userInteractedRef.current = true;
 
     if (!currentChapter || !(currentChapter.content || "").trim().length) {
@@ -428,125 +485,144 @@ export function VoiceStudioDialog({
     const synth = window.speechSynthesis;
     synth.cancel();
 
-    const { text: rawDirectedText, telemetry } = applyNarrativeReadDirectives(currentChapter.content || "", style);
+    const { text: directedText, telemetry } = applyNarrativeReadDirectives(currentChapter.content || "", style);
+    const { allSentences, chunks } = buildNarrationChunks(directedText, 950);
 
-    // Mobile browsers are fragile with very long utterances.
-    // Start with a safe narrated excerpt; later we can chunk full chapters.
-    const directedText = rawDirectedText.length > 1400
-      ? rawDirectedText.slice(0, 1400) + "..."
-      : rawDirectedText;
+    if (chunks.length === 0) {
+      setStatus("No readable text found in this chapter.");
+      return;
+    }
 
     const voices = voicesRef.current || synth.getVoices() || [];
     const targetLanguage = getTargetLanguage();
     const preferredVoice = chooseBestVoice(voices, targetLanguage);
+    const session = ++playbackSessionRef.current;
 
-    const utterance = new SpeechSynthesisUtterance(directedText);
-
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
-      utterance.lang = preferredVoice.lang;
-      logDebug("selected-voice-direct", preferredVoice.name, preferredVoice.lang);
-    } else {
-      utterance.lang = languageToLocale(targetLanguage);
-      logDebug("fallback-locale-direct", utterance.lang);
-    }
-
-    utterance.rate = getEffectiveRate();
-    utterance.pitch = style.pitch;
-    utterance.volume = 1;
-
-    const sentenceList = splitIntoSentences(directedText);
-    setSentences(sentenceList);
+    setSentences(allSentences);
     setCurrentSentence(0);
     setProgress(0);
-    setStatus("Starting mobile narration...");
+    setIsPlaying(true);
+    setStatus(`Reading full chapter · ${chunks.length} parts`);
 
-    const startIndexes: number[] = [];
-    sentenceList.forEach((sentence, idx) => {
-      const searchFrom = idx === 0 ? 0 : startIndexes[idx - 1] + sentenceList[idx - 1].length;
-      const position = directedText.indexOf(sentence, searchFrom);
-      startIndexes[idx] = position >= 0 ? position : searchFrom;
-    });
-    sentenceStarts.current = startIndexes;
+    emitVoiceStudioTelemetry({ ...telemetry, chapterTitle: currentChapter.title || "Untitled chapter" });
 
-    const words = directedText.split(/\s+/).filter(Boolean).length;
-    const estimatedSec = Math.max(8, (words / (150 * utterance.rate)) * 60);
-    const session = ++playbackSessionRef.current;
-    const startedAt = Date.now();
+    const playChunk = (chunkIndex: number) => {
+      if (session !== playbackSessionRef.current) return;
 
-    timerRef.current = window.setInterval(() => {
-      const elapsed = (Date.now() - startedAt) / 1000;
-      setProgress((prev) => {
-        const elapsedProgress = Math.min(100, Math.round((elapsed / estimatedSec) * 100));
-        return Math.max(prev, elapsedProgress);
+      if (chunkIndex >= chunks.length) {
+        setIsPlaying(false);
+        setStatus("Full chapter complete");
+        setProgress(100);
+        setCurrentSentence(allSentences.length > 0 ? allSentences.length - 1 : 0);
+        clearTimer();
+        logDebug("full-chapter-complete", { chunks: chunks.length });
+        return;
+      }
+
+      const chunk = chunks[chunkIndex];
+      const chunkSentences = splitIntoSentences(chunk.text);
+      const tone = chunk.tone;
+
+      const utterance = new SpeechSynthesisUtterance(chunk.text);
+
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+        utterance.lang = preferredVoice.lang;
+      } else {
+        utterance.lang = languageToLocale(targetLanguage);
+      }
+
+      utterance.rate = Math.max(0.5, Math.min(1.55, getEffectiveRate() * tone.rate));
+      utterance.pitch = Math.max(0.7, Math.min(1.35, style.pitch * tone.pitch));
+      utterance.volume = 1;
+
+      utteranceRef.current = utterance;
+
+      const localStarts: number[] = [];
+      chunkSentences.forEach((sentence, idx) => {
+        const searchFrom = idx === 0 ? 0 : localStarts[idx - 1] + chunkSentences[idx - 1].length;
+        const position = chunk.text.indexOf(sentence, searchFrom);
+        localStarts[idx] = position >= 0 ? position : searchFrom;
       });
-    }, 300);
 
-    utterance.onboundary = (event) => {
-      if (session !== playbackSessionRef.current) return;
-      if (typeof (event as any).charIndex === "number" && sentenceStarts.current.length > 0) {
-        const charIndex = (event as any).charIndex as number;
-        const active = sentenceStarts.current.findIndex((start, idx) => {
-          const next = sentenceStarts.current[idx + 1] ?? Infinity;
-          return charIndex >= start && charIndex < next;
-        });
-        const sentenceIndex = active >= 0 ? active : 0;
-        setCurrentSentence(sentenceIndex);
-        setProgress(Math.min(100, Math.round(((sentenceIndex + 1) / sentenceList.length) * 100)));
-      }
-    };
+      setStatus(`Reading part ${chunkIndex + 1}/${chunks.length} · ${tone.label}`);
+      setCurrentSentence(chunk.startSentence);
+      setProgress(Math.round((chunkIndex / chunks.length) * 100));
 
-    utterance.onstart = () => {
-      if (session !== playbackSessionRef.current) return;
-      setIsPlaying(true);
-      setStatus("Narration live");
-      emitVoiceStudioTelemetry({ ...telemetry, chapterTitle: currentChapter.title || "Untitled chapter" });
-      logDebug("playback-start-direct", { session, projectId: selectedProject?.id, chapterIndex });
-    };
-
-    utterance.onend = () => {
-      if (session !== playbackSessionRef.current) return;
-      setIsPlaying(false);
-      setStatus("Playback complete");
-      setProgress(100);
-      setCurrentSentence(sentenceList.length > 0 ? sentenceList.length - 1 : 0);
-      clearTimer();
-      logDebug("playback-end-direct", { session });
-    };
-
-    utterance.onerror = (err) => {
-      if (session !== playbackSessionRef.current) return;
-      setIsPlaying(false);
-      setStatus("Audio blocked or unavailable. Tap Play again.");
-      clearTimer();
-      logDebug("playback-error-direct", err);
-    };
-
-    utteranceRef.current = utterance;
-
-    try {
-      synth.speak(utterance);
-
-      // Some mobile browsers start paused. Resume immediately while still inside the tap action.
-      if (synth.paused) {
-        synth.resume();
-      }
-
-      window.setTimeout(() => {
+      utterance.onboundary = (event) => {
         if (session !== playbackSessionRef.current) return;
-        if (!synth.speaking && !synth.pending) {
-          setStatus("Audio did not start. Tap Play again.");
-          setIsPlaying(false);
-          clearTimer();
-          logDebug("mobile-start-check-failed");
+
+        if (typeof (event as any).charIndex === "number" && localStarts.length > 0) {
+          const charIndex = (event as any).charIndex as number;
+          const active = localStarts.findIndex((start, idx) => {
+            const next = localStarts[idx + 1] ?? Infinity;
+            return charIndex >= start && charIndex < next;
+          });
+
+          const localSentenceIndex = active >= 0 ? active : 0;
+          const globalSentenceIndex = Math.min(
+            allSentences.length - 1,
+            chunk.startSentence + localSentenceIndex,
+          );
+
+          setCurrentSentence(globalSentenceIndex);
+
+          const sentenceProgress = allSentences.length > 0
+            ? Math.round(((globalSentenceIndex + 1) / allSentences.length) * 100)
+            : Math.round(((chunkIndex + 1) / chunks.length) * 100);
+
+          setProgress(Math.min(99, sentenceProgress));
         }
-      }, 900);
-    } catch (e) {
-      setStatus("Playback failed to start.");
-      setIsPlaying(false);
-      clearTimer();
-      logDebug("speak-exception-direct", e);
-    }
+      };
+
+      utterance.onstart = () => {
+        if (session !== playbackSessionRef.current) return;
+        setIsPlaying(true);
+        logDebug("chunk-start", {
+          chunk: chunkIndex + 1,
+          total: chunks.length,
+          tone: tone.label,
+          rate: utterance.rate,
+          pitch: utterance.pitch,
+        });
+      };
+
+      utterance.onend = () => {
+        if (session !== playbackSessionRef.current) return;
+        setProgress(Math.min(99, Math.round(((chunkIndex + 1) / chunks.length) * 100)));
+        window.setTimeout(() => playChunk(chunkIndex + 1), 120);
+      };
+
+      utterance.onerror = (err) => {
+        if (session !== playbackSessionRef.current) return;
+        setIsPlaying(false);
+        setStatus(`Audio stopped on part ${chunkIndex + 1}. Tap Play to retry.`);
+        clearTimer();
+        logDebug("chunk-error", err);
+      };
+
+      try {
+        synth.speak(utterance);
+        if (synth.paused) synth.resume();
+
+        window.setTimeout(() => {
+          if (session !== playbackSessionRef.current) return;
+          if (!synth.speaking && !synth.pending) {
+            setIsPlaying(false);
+            setStatus("Audio did not start. Tap Test Voice, then Play again.");
+            clearTimer();
+            logDebug("chunk-start-check-failed", { chunkIndex });
+          }
+        }, 900);
+      } catch (err) {
+        setIsPlaying(false);
+        setStatus("Playback failed to start.");
+        clearTimer();
+        logDebug("chunk-speak-exception", err);
+      }
+    };
+
+    playChunk(0);
   };
 
   useEffect(() => {
@@ -601,7 +677,7 @@ export function VoiceStudioDialog({
             />
           </div>
           <div className="mb-5 flex items-center justify-between text-xs text-white/60">
-            <span>Mobile audio v4 compact · {status}</span>
+            <span>Full chapter tonal reading v5 · {status}</span>
             <span>{progress}%</span>
           </div>
 
