@@ -1,0 +1,151 @@
+import { useEffect, useRef, useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+
+interface ReadAloudModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title?: string;
+  chapterText: string;
+}
+
+export function ReadAloudModal({
+  open,
+  onOpenChange,
+  title,
+  chapterText,
+}: ReadAloudModalProps) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [status, setStatus] = useState("Ready");
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const stopSpeech = () => {
+    if (typeof window === "undefined") return;
+
+    window.speechSynthesis.cancel();
+    utteranceRef.current = null;
+    setIsPlaying(false);
+    setStatus("Stopped");
+  };
+
+  useEffect(() => {
+    console.log("ReadAloudModal mounted", { open, title, chapterTextLength: chapterText?.length });
+    return () => {
+      console.log("ReadAloudModal unmounted");
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log("ReadAloudModal open state", open);
+  }, [open]);
+
+  const handlePlay = () => {
+    console.log("🎧 HANDLE PLAY CLICKED");
+    alert("PLAY CLICKED");
+    if (typeof window === "undefined") return;
+
+    if (!chapterText?.trim()) {
+      setStatus("No chapter text found.");
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(
+      chapterText.slice(0, 5000)
+    );
+
+        // Auto-detect language (simple MVP)
+    const looksEnglish =
+      /\b(the|you|and|your|mindset|chapter|spark|discipline)\b/i
+        .test(chapterText);
+
+    utterance.lang =
+      looksEnglish
+        ? "en-US"
+        : "it-IT";
+
+    utterance.rate = 1;
+
+    utterance.onstart = () => {
+      setIsPlaying(true);
+      setStatus("🎧 Reading chapter...");
+    };
+
+    utterance.onend = () => {
+      setIsPlaying(false);
+      setStatus("✨ Chapter completed");
+    };
+
+    utterance.onerror = () => {
+      setIsPlaying(false);
+      setStatus("Unable to play audio.");
+    };
+
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  useEffect(() => {
+    if (!open) stopSpeech();
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>
+            🎧 Scriptora Read Aloud
+          </DialogTitle>
+
+          <DialogDescription>
+            Listen to your chapter aloud to catch pacing,
+            repetition and unnatural prose.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4" onClickCapture={() => console.log("ReadAloudModal DialogContent clickCapture") }>
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+            <p className="text-sm text-muted-foreground uppercase tracking-wide">
+              Current chapter
+            </p>
+
+            <h3 className="text-lg font-semibold">
+              {title || "Untitled Chapter"}
+            </h3>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              console.log("TEST PLAY CLICKED");
+              alert("TEST PLAY CLICKED");
+              handlePlay();
+            }}
+            disabled={isPlaying}
+            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold"
+          >
+            TEST PLAY
+          </button>
+
+          <button
+            type="button"
+            onClick={stopSpeech}
+            className="w-full h-11 rounded-xl border border-border"
+          >
+            ⏹ Stop
+          </button>
+
+          <div className="text-sm text-center text-muted-foreground">
+            {status}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

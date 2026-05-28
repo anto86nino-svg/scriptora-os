@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo } from "react";
 import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating } from "@/types/book";
-import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, AlertTriangle, Download, Zap } from "lucide-react";
+import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, Headphones, Download, Zap } from "lucide-react";
 import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel";
 import { GenreProfileBadge } from "@/components/GenreProfileBadge";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
 import { GenreCoachPanel } from "@/components/GenreCoachPanel";
+import { AudioStudio } from "@/components/AudioStudio";
+import { useFeatureGate } from "@/components/PaywallGuard";
 import { downloadText } from "@/lib/download";
 import { RewriteLevel, ChunkProgress } from "@/lib/generation";
 import { cn } from "@/lib/utils";
@@ -12,6 +14,7 @@ import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { Progress } from "@/components/ui/progress";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
+import { ReadAloudModal } from "@/components/ReadAloudModal";
 
 interface EditorPanelProps {
   project: BookProject;
@@ -56,6 +59,10 @@ export function EditorPanel({
 }: EditorPanelProps) {
   const { blueprint, frontMatter, chapters, backMatter, config, phase } = project;
   const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const [showReadAloud, setShowReadAloud] = useState(false);
+  const [showAudioStudio, setShowAudioStudio] = useState(false);
+  const audioGate = useFeatureGate("audio_studio");
+  const openAudioStudio = audioGate.guard(() => setShowAudioStudio(true));
 
   const ws = writingSettings || { fontFamily: "'Times New Roman', Times, serif", fontSize: 16, lineSpacing: 2 };
 
@@ -148,6 +155,7 @@ export function EditorPanel({
                   onCancel={onCancelGeneration ? () => onCancelGeneration(`chapter-${view.chapterIndex}`) : undefined}
                   chunkProgress={chunkProgress?.[`chapter-${view.chapterIndex}`]}
                   ws={ws}
+                  openAudioStudio={openAudioStudio}
                 />
               )}
               {view.type === "subchapter" && (() => {
@@ -168,13 +176,17 @@ export function EditorPanel({
               {view.type === "back-matter" && (
                 <BackMatterView project={project} backMatter={backMatter} phase={phase} isGenerating={isGeneratingSection("back-matter")} onGenerate={onGenerateBackMatter || onGenerateNext} ws={ws} onUpdateField={onUpdateBackMatterField} />
               )}
-            </>
+            
+      
+    </>
+
           )}
           </div>
         </div>
       </div>
-    </div>
+</div>
   );
+
 }
 
 /* ============ Preview Mode ============ */
@@ -260,8 +272,9 @@ function PreviewMode({ project, view, ws }: { project: BookProject; view: any; w
           </div>
         )}
       </div>
-    </div>
+</div>
   );
+
 }
 
 /* ============ Section Views ============ */
@@ -339,8 +352,9 @@ function BlueprintView({ blueprint, isGenerating, onUpdateField, onUpdateOutline
       ) : (
         <EmptyState text="Blueprint will be generated when you create the book." />
       )}
-    </div>
+</div>
   );
+
 }
 
 function FrontMatterView({ project, frontMatter, isGenerating, onGenerate, ws, onUpdateField }: {
@@ -381,14 +395,16 @@ function FrontMatterView({ project, frontMatter, isGenerating, onGenerate, ws, o
       ) : (
         !isGenerating && <EmptyState text={canGenerate ? `Click ${t("generate")} to create front matter.` : "Complete the blueprint first."} />
       )}
-    </div>
+</div>
   );
+
 }
 
 function ChapterView({
   project, chapterIndex, outline, chapter, isGenerating, isEvaluating,
   onGenerate, onRegenerate, onRewrite, onEvaluate, onAutoRewrite, onGenerateSubchapter,
   onUpdateContent, onUpdateTitle, onUpdateSubContent, onUpdateSubTitle, onSetLengthOverride, isGeneratingSection, onCancel, chunkProgress, ws,
+  openAudioStudio,
 }: {
   project: BookProject; chapterIndex: number;
   outline: { title: string; summary: string }; chapter: Chapter | undefined;
@@ -404,6 +420,7 @@ function ChapterView({
   onCancel?: () => void;
   chunkProgress?: ChunkProgress;
   ws: WritingSettings;
+  openAudioStudio: () => void;
 }) {
   const isGenerated = chapter && chapter.content.length > 0;
   const currentLength = chapter?.lengthOverride || project.config.chapterLength;
@@ -453,6 +470,13 @@ function ChapterView({
                 <Zap className="h-3.5 w-3.5" /> Diagnostica Editoriale
               </button>
               <ActionButton icon={<Search className="h-3.5 w-3.5" />} title={t("evaluate")} onClick={onEvaluate} disabled={isGenerating || isEvaluating} />
+
+              <ActionButton
+                icon={<Headphones className="h-3.5 w-3.5" />}
+                title="Leggi Capitolo"
+                onClick={() => setShowReadAloud(true)}
+                disabled={!isGenerated || isGenerating || isEvaluating}
+              />
               <ActionButton icon={<RefreshCw className="h-3.5 w-3.5" />} title={t("regenerate")} onClick={onRegenerate} disabled={isGenerating} />
               
               {/* Rewrite with levels */}
@@ -602,8 +626,9 @@ function ChapterView({
           onApplyContent={(newContent) => onUpdateContent(newContent)}
         />
       )}
-    </div>
+</div>
   );
+
 }
 
 /* ============ AI Rating Card ============ */
@@ -636,8 +661,9 @@ function AIRatingCard({ rating }: { rating?: AIQualityRating }) {
           <p className="text-xs text-foreground/60 leading-relaxed">{rating.improvements}</p>
         </div>
       )}
-    </div>
+</div>
   );
+
 }
 
 function SubchapterView({
@@ -666,8 +692,9 @@ function SubchapterView({
       </div>
       {isGenerating && <LoadingBanner text={`${t("generating")}...`} />}
       <EditableBlock content={sub.content} onChange={onUpdateContent} ws={ws} />
-    </div>
+</div>
   );
+
 }
 
 function BackMatterView({ project, backMatter, phase, isGenerating, onGenerate, ws, onUpdateField }: {
@@ -729,8 +756,9 @@ function BackMatterView({ project, backMatter, phase, isGenerating, onGenerate, 
           </div>
         </div>
       )}
-    </div>
+</div>
   );
+
 }
 
 /* ============ Shared Components ============ */
@@ -740,8 +768,9 @@ function PageHeader({ title, subtitle }: { title: string; subtitle?: string }) {
     <div className="mb-2">
       <h1 className="text-2xl font-bold text-foreground">{title}</h1>
       {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
-    </div>
+</div>
   );
+
 }
 
 /**
@@ -1262,8 +1291,9 @@ const GenerationProgress = memo(function GenerationProgress({
           );
         })}
       </div>
-    </div>
+</div>
   );
+
 }, (prev, next) =>
   prev.onCancel === next.onCancel &&
   prev.project?.id === next.project?.id &&
@@ -1292,16 +1322,18 @@ function LoadingBanner({ text }: { text: string }) {
           <span className="scriptora-loading-dots" aria-hidden="true"><i /><i /><i /></span>
         </div>
       </div>
-    </div>
+</div>
   );
+
 }
 
 function EmptyState({ text }: { text: string }) {
   return (
     <div className="py-16 text-center">
       <p className="text-sm text-muted-foreground/50">{text}</p>
-    </div>
+</div>
   );
+
 }
 
 function ActionButton({ icon, title, onClick, disabled }: { icon: React.ReactNode; title: string; onClick: () => void; disabled: boolean }) {
@@ -1359,10 +1391,12 @@ const EditableBlock = memo(function EditableBlock({
       style={fontStyle}
       title={t("click_to_edit")}>
       {content || <span className="text-muted-foreground/40 italic">{t("empty_click_to_add")}</span>}
-    </div>
+</div>
   );
+
 }, (prev, next) => {
   // Skip re-render when content + ws + onChange ref are stable.
   // onChange is typically a useCallback in the parent, so reference equality holds.
   return prev.content === next.content && prev.onChange === next.onChange && prev.ws === next.ws;
-});
+}
+);
