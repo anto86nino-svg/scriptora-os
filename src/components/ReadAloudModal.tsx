@@ -23,11 +23,18 @@ export function ReadAloudModal({
   const [isPlaying, setIsPlaying] = useState(false);
   const [status, setStatus] = useState("Ready");
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const currentCharacterIndexRef = useRef(0);
+  const isPausedRef = useRef(false);
 
   const stopSpeech = () => {
     if (typeof window === "undefined") return;
 
-    window.speechSynthesis.cancel();
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+      setIsPlaying(true);
+      setStatus("🎧 Resuming...");
+      return;
+    }
     utteranceRef.current = null;
     setIsPlaying(false);
     setStatus("Stopped");
@@ -57,7 +64,7 @@ export function ReadAloudModal({
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(
-      chapterText.slice(0, 5000)
+      chapterText.slice(currentCharacterIndexRef.current, currentCharacterIndexRef.current + 2200)
     );
 
         // Auto-detect language (simple MVP)
@@ -71,8 +78,29 @@ export function ReadAloudModal({
         : "it-IT";
 
     utterance.rate = 1;
+    utterance.volume = 1;
+    utterance.pitch = 1;
 
-    utterance.onstart = () => {
+      const synth = window.speechSynthesis;
+
+      const voices = synth.getVoices() || [];
+
+      const preferredVoice =
+        voices.find(v => v.lang?.toLowerCase().startsWith("it")) ||
+        voices.find(v => v.lang?.toLowerCase().startsWith("en")) ||
+        voices[0];
+
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+
+      utterance.onboundary = (event) => {
+        currentCharacterIndexRef.current += event.charLength || 1;
+      };
+
+
+    console.log("TTS INIT");
+utterance.onstart = () => {
       setIsPlaying(true);
       setStatus("🎧 Reading chapter...");
     };
@@ -92,40 +120,33 @@ export function ReadAloudModal({
 try {
       const synth = window.speechSynthesis;
 
-      // reset speech engine
-      synth.cancel();
-
-      // mobile Safari / Android unlock
-      const unlock = new SpeechSynthesisUtterance(" ");
-      unlock.volume = 0;
-      synth.speak(unlock);
-
-      setTimeout(() => {
-        try {
-          synth.cancel();
-
-          // get available voices
-          const voices = synth.getVoices() || [];
-
-          // smart language fallback
-          const preferredVoice =
-            voices.find(v =>
-              v.lang?.toLowerCase().startsWith("it")
-            ) ||
-            voices.find(v =>
-              v.lang?.toLowerCase().startsWith("en")
-            ) ||
-            voices[0];
-
-          if (preferredVoice) {
-            utterance.voice = preferredVoice;
-          }
-
-          utterance.rate = 1;
+    
           utterance.pitch = 1;
+
+      const synth = window.speechSynthesis;
+
+      const voices = synth.getVoices() || [];
+
+      const preferredVoice =
+        voices.find(v => v.lang?.toLowerCase().startsWith("it")) ||
+        voices.find(v => v.lang?.toLowerCase().startsWith("en")) ||
+        voices[0];
+
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+
+      utterance.onboundary = (event) => {
+        currentCharacterIndexRef.current += event.charLength || 1;
+      };
+
           utterance.volume = 1;
 
-          synth.speak(utterance);
+          utterance.onboundary = (event) => {
+      currentCharacterIndexRef.current += event.charLength || 1;
+    };
+
+    synth.speak(utterance);
 
           console.log(
             "[SCRIPTORA MOBILE VOICE OK]",
