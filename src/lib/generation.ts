@@ -1,6 +1,7 @@
 import { BookConfig, Chapter, FrontMatter, BackMatter, BookBlueprint, Genre, AIQualityRating, BOOK_LENGTH_CONFIG, getBookTotalWords, getSubchaptersPerChapter, GenreLock } from "@/types/book";
 import { supabase } from "@/integrations/supabase/client";
 import { buildGenreSystemBlock, buildGenreBlueprintBlock, buildGenreEditorialBlock, getGenreBlueprint, buildPromptByGenre, resolveGenreKey } from "@/lib/genre-intelligence";
+import { getChapterTitleIntegration } from "@/lib/ChapterTitleIntegration";
 import { buildWritingStyleBlock, findStylePresetById, findStylePresetByLabel } from "@/lib/writing-styles";
 import { buildEditorialMasteryBlock } from "@/lib/editorial-mastery";
 import { validateEditorial } from "@/lib/editorial-validator";
