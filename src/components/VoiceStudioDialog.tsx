@@ -96,6 +96,9 @@ export function VoiceStudioDialog({
   const voicesRef = useRef<SpeechSynthesisVoice[] | null>(null);
   const [voicesLoaded, setVoicesLoaded] = useState(false);
   const [voicesCount, setVoicesCount] = useState(0);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [manualVoiceURI, setManualVoiceURI] = useState<string>("auto");
+  const [activeVoiceLabel, setActiveVoiceLabel] = useState<string>("Auto voice");
   const userInteractedRef = useRef(false);
   const debugEnabled = typeof window !== "undefined" && !!window.localStorage.getItem("scriptora-debug-voice-studio");
 
@@ -211,6 +214,7 @@ export function VoiceStudioDialog({
         if (v.length > 0) {
           resolved = true;
           voicesRef.current = v;
+          setAvailableVoices(v);
           setVoicesLoaded(true);
           setVoicesCount(v.length);
           logDebug("voices-loaded", v.length, v.map((x) => x.name).slice(0, 6));
@@ -239,6 +243,7 @@ export function VoiceStudioDialog({
         if (!resolved) {
           const v = window.speechSynthesis.getVoices() || [];
           voicesRef.current = v;
+          setAvailableVoices(v);
           setVoicesLoaded(v.length > 0);
           setVoicesCount(v.length);
           logDebug("voices-timeout", v.length);
@@ -320,7 +325,7 @@ export function VoiceStudioDialog({
 
       const targetLanguage = getTargetLanguage();
       const voices = voicesRef.current || synth.getVoices() || [];
-      const preferredVoice = chooseBestVoice(voices, targetLanguage);
+      const preferredVoice = chooseManualOrBestVoice(voices, targetLanguage);
 
       const test = new SpeechSynthesisUtterance(`${selectedVoicePersona.name}. Scriptora voice test... I am ready to read your chapter.`);
       test.lang = preferredVoice?.lang || languageToLocale(targetLanguage);
@@ -430,6 +435,24 @@ export function VoiceStudioDialog({
     if (voice.lang.toLowerCase().includes("x-")) score += 1;
 
     return score;
+  };
+
+  const chooseManualOrBestVoice = (voices: SpeechSynthesisVoice[], language: Language) => {
+    if (manualVoiceURI !== "auto") {
+      const manual = voices.find((voice) => voice.voiceURI === manualVoiceURI || voice.name === manualVoiceURI);
+      if (manual) {
+        setActiveVoiceLabel(`${manual.name} · ${manual.lang}`);
+        return manual;
+      }
+    }
+
+    const chosen = chooseBestVoice(voices, language);
+    if (chosen) {
+      setActiveVoiceLabel(`${selectedVoicePersona.name} → ${chosen.name} · ${chosen.lang}`);
+    } else {
+      setActiveVoiceLabel(`${selectedVoicePersona.name} → system fallback`);
+    }
+    return chosen;
   };
 
   const chooseBestVoice = (voices: SpeechSynthesisVoice[], language: Language) => {
@@ -844,7 +867,7 @@ export function VoiceStudioDialog({
             />
           </div>
           <div className="mb-5 flex items-center justify-between text-xs text-white/60">
-            <span>Pause resume v8 · {status}</span>
+            <span>Real voice picker v9 · {status}</span>
             <span>{progress}%</span>
           </div>
 
@@ -859,7 +882,7 @@ export function VoiceStudioDialog({
             />
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
             <select
               value={projectId}
               onChange={(e) => {
@@ -916,7 +939,21 @@ export function VoiceStudioDialog({
               ))}
             </select>
 
+            <select
+              value={manualVoiceURI}
+              onChange={(e) => setManualVoiceURI(e.target.value)}
+              className="h-10 rounded-xl border border-white/15 bg-white/[0.06] px-3 text-sm text-white"
+            >
+              <option value="auto" className="text-black">Auto system voice</option>
+              {availableVoices.map((voice) => (
+                <option key={voice.voiceURI || voice.name} value={voice.voiceURI || voice.name} className="text-black">
+                  {voice.name} · {voice.lang}
+                </option>
+              ))}
+            </select>
+
             <div className="space-y-2">
+
 
               <div className="flex items-center justify-between text-[11px] text-white/70">
                 <span>Speed</span>
@@ -941,7 +978,10 @@ export function VoiceStudioDialog({
               Effective playback rate: <span className="font-semibold text-white">{getEffectiveRate().toFixed(2)}x</span>
               <span className="mx-2 text-white/30">·</span>
               <span className="font-semibold text-cyan-100">{selectedVoicePersona.name}</span>
+              <span className="mx-2 text-white/30">·</span>
+              <span className="font-semibold text-emerald-100">{activeVoiceLabel}</span>
               <span className="block pt-1 text-xs text-white/55">{selectedVoicePersona.description}</span>
+              <span className="block pt-1 text-xs text-white/45">Available voices on this device: {voicesCount}</span>
             </div>
           )}
 
