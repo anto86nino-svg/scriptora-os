@@ -133,8 +133,8 @@ export function TopBar({
       <button onClick={() => nav("/pricing")} className="ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" title={t("pricing")}>
         <CreditCard className="h-3.5 w-3.5" /> {t("pricing")}
       </button>
-      <button onClick={() => nav("/downloads")} className="ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" title={t("downloads")}>
-        <Download className="h-3.5 w-3.5" /> {t("downloads")}
+      <button onClick={() => nav("/downloads")} className="ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" title={t("install_app_hint")}>
+        <Download className="h-3.5 w-3.5" /> {t("install_app")}
       </button>
       <Divider />
       <MiniSelect label={t("lang")} value={config.language} options={LANGUAGES.map(l => ({ value: l, label: l }))} onChange={(v) => onUpdateConfig("language", v)} />

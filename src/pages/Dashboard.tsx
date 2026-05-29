@@ -3,14 +3,7 @@ import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { NewBookDialog } from "@/components/NewBookDialog";
-import { HomeExportDialog } from "@/components/HomeExportDialog";
-import { TitleIntelligenceDialog } from "@/components/TitleIntelligenceDialog";
 import { AdvancedAppearanceDialog } from "@/components/AdvancedAppearanceDialog";
-import { CoverGenerator } from "@/components/CoverGenerator";
-import { CharacterStudioDialog, SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/components/CharacterStudioDialog";
-import { ManuscriptAnalyzerDialog } from "@/components/ManuscriptAnalyzerDialog";
-import { NotepadDialog } from "@/components/NotepadDialog";
-import { AuthorIdentityDialog } from "@/components/AuthorIdentityDialog";
 import { FocusMusicControl } from "@/components/FocusMusicControl";
 import { InProgressSection } from "@/components/Home/InProgressSection";
 import { LibrarySection } from "@/components/Home/LibrarySection";
@@ -34,24 +27,24 @@ import { usePlan } from "@/lib/plan";
 import { canUseFeature, type FeatureKey } from "@/lib/subscription";
 import { FlaskConical } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useIntelligentPreload } from "@/hooks/useIntelligentPreload";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const VoiceStudioDialog = lazy(() => import("@/components/VoiceStudioDialog").then(m => ({ default: m.VoiceStudioDialog })));
+const HomeExportDialog = lazy(() => import("@/components/HomeExportDialog").then(m => ({ default: m.HomeExportDialog })));
+const TitleIntelligenceDialog = lazy(() => import("@/components/TitleIntelligenceDialog").then(m => ({ default: m.TitleIntelligenceDialog })));
+const CoverGenerator = lazy(() => import("@/components/CoverGenerator").then(m => ({ default: m.CoverGenerator })));
+const CharacterStudioDialog = lazy(() => import("@/components/CharacterStudioDialog").then(m => ({ default: m.CharacterStudioDialog })));
+const ManuscriptAnalyzerDialog = lazy(() => import("@/components/ManuscriptAnalyzerDialog").then(m => ({ default: m.ManuscriptAnalyzerDialog })));
+const NotepadDialog = lazy(() => import("@/components/NotepadDialog").then(m => ({ default: m.NotepadDialog })));
+const AuthorIdentityDialog = lazy(() => import("@/components/AuthorIdentityDialog").then(m => ({ default: m.AuthorIdentityDialog })));
+
+const SCRIPTORA_CHARACTER_BIBLE_KEY = "scriptora-character-bible-v1";
+const SCRIPTORA_CHARACTER_PROJECT_KEY = "scriptora-character-project-v1";
 
 
-interface DetectedIntent {
-  genre: string;
-  subcategory: string;
-  level: "beginner" | "intermediate" | "advanced";
-  readerPromise: string;
-  targetAudience: string;
-  tone: string;
-  numberOfChapters: number;
-  suggestedTitles: string[];
-  suggestedSubtitles: string[];
-  bestTitleIndex: number;
-}
-
+import { LaunchBookModal, type LaunchMode } from "@/components/LaunchBookModal";
+import { type DetectedIntent } from "@/components/QuickLaunchPanel";
 
 function isNarrativeGenreForCharacters(genre?: string): boolean {
   const g = String(genre || "").toLowerCase();
@@ -125,7 +118,8 @@ export default function Home() {
   const [showAuthorIdentity, setShowAuthorIdentity] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const [showVoiceStudio, setShowVoiceStudio] = useState(false);
-  const [showIdeaModal, setShowIdeaModal] = useState(false);
+  const [showLaunchModal, setShowLaunchModal] = useState(false);
+  const [launchMode, setLaunchMode] = useState<LaunchMode>("quick");
   const [showMobileStats, setShowMobileStats] = useState(false);
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [showLangMenu, setShowLangMenu] = useState(false);
@@ -267,7 +261,7 @@ export default function Home() {
 
   useEffect(() => {
     const route =
-      showIdeaModal ? "idea" :
+      showLaunchModal ? (launchMode === "quick" ? "idea" : launchMode === "advanced" ? "bestseller" : "newbook") :
       showNewBook ? "newbook" :
       showAuthorIdentity ? "author" :
       showCoverStudio ? "cover" :
@@ -294,7 +288,8 @@ export default function Home() {
     showCoverStudio,
     showDevUnlock,
     showExport,
-    showIdeaModal,
+    showLaunchModal,
+    launchMode,
     showLibrary,
     showManuscriptAnalyzer,
     showNewBook,
@@ -324,6 +319,21 @@ export default function Home() {
       return;
     }
     setShowNewBook(true);
+  };
+
+  const openLaunchModal = (mode: LaunchMode = "quick") => {
+    if (mode === "manual" && freeBookUsed) {
+      toast.error(t("toast_free_book_used"));
+      navigate("/pricing");
+      return;
+    }
+    setLaunchMode(mode);
+    setShowLaunchModal(true);
+  };
+
+  const closeLaunchModal = () => {
+    if (launching || detecting) return;
+    setShowLaunchModal(false);
   };
 
   const guardPlanFeature = (feature: FeatureKey, action: () => void) => () => {
@@ -367,10 +377,22 @@ export default function Home() {
     toast.success(tt("author_identity_selected", { name: identity.penName }));
   };
 
-  const goApp = (opts?: { section?: string; projectId?: string }) => {
+  const goApp = (opts?: { section?: string; projectId?: string; mode?: "rewrite" }) => {
     if (opts?.projectId) sessionStorage.setItem("nexora-open-project", opts.projectId);
     if (opts?.section) sessionStorage.setItem("nexora-open-section", opts.section);
+    if (opts?.mode) sessionStorage.setItem("scriptora-open-mode", opts.mode);
     navigate("/app");
+  };
+
+  const openRewriteStudio = () => {
+    const target = lastProject;
+    const chapterIdx = target?.chapters?.findIndex((ch) => (ch.content || "").trim().length > 0) ?? -1;
+    const idx = chapterIdx >= 0 ? chapterIdx : 0;
+    goApp({
+      projectId: target?.id,
+      section: target ? `chapter-${idx}` : undefined,
+      mode: "rewrite",
+    });
   };
 
   useEffect(() => {
@@ -468,7 +490,10 @@ export default function Home() {
     setLaunching(true);
     let i = intent;
     if (!i) i = await detectIntent();
-    if (!i) { setLaunching(false); return; }
+    if (!i) {
+      setLaunching(false);
+      return;
+    }
 
     const best = Math.max(0, Math.min(2, i.bestTitleIndex || 0));
     const safeBookLength = currentPlan === "free" ? "short" : bookLength;
@@ -500,14 +525,15 @@ export default function Home() {
         autoStart: true,
       })
     );
+    setLaunching(false);
+    setShowLaunchModal(false);
     navigate("/auto-bestseller");
   };
-
-  const heroValid = idea.trim().length >= 6;
 
   const currentLangLabel = UI_LANGUAGES.find(l => l.value === currentLang)?.label || "English";
   const completedProjects = useMemo(() => projects.filter(isProjectComplete), [projects]);
   const draftProjects = useMemo(() => projects.filter((p) => !isProjectComplete(p)), [projects]);
+  useIntelligentPreload(projects);
   const totalChapters = useMemo(
     () => projects.reduce((sum, p) => sum + (p.chapters?.length || 0), 0),
     [projects],
@@ -697,14 +723,14 @@ const dashboardWidgets = [
 
   const cards = [
     { group: "writer", icon: BookOpen, title: t("writer_studio_title"), desc: t("writer_studio_desc"), iconBg: "ios-icon-violet", action: () => goApp(), tag: t("os_tag_write"), emphasis: true },
-    { group: "writer", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("story_architect_title"), desc: freeBookUsed ? t("upgrade_more_books") : t("story_architect_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: openNewBookGuarded, feature: "book_engine_full" as const, tag: t("os_tag_plan") },
+    { group: "writer", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("story_architect_title"), desc: freeBookUsed ? t("upgrade_more_books") : t("story_architect_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: () => openLaunchModal("manual"), feature: "book_engine_full" as const, tag: t("os_tag_plan") },
     { group: "writer", icon: Wand2, title: t("manuscript_lab_title"), desc: t("manuscript_lab_desc"), iconBg: "ios-icon-teal", action: () => setShowManuscriptAnalyzer(true), feature: "chapter_improvement" as const, tag: t("os_tag_score") },
-    { group: "writer", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_premium_desc"), iconBg: "ios-icon-pink", action: () => goApp(), feature: "chapter_rewrite" as const, tag: t("os_tag_rewrite") },
+    { group: "writer", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_studio_desc"), iconBg: "ios-icon-pink", action: openRewriteStudio, feature: "chapter_rewrite" as const, tag: t("os_tag_rewrite") },
     { group: "writer", icon: Users, title: t("character_studio_title"), desc: t("character_studio_desc"), iconBg: "ios-icon-pink", action: () => setShowCharacterStudio(true), feature: "book_engine_full" as const, tag: t("os_tag_cast") },
     { group: "writer", icon: AudioLines, title: "Voice Studio", desc: "Hear your story breathe with cinematic narration.", iconBg: "ios-icon-cyan", action: () => setShowVoiceStudio(true), feature: "book_engine_full" as const, tag: "IMMERSIVE", emphasis: true },
     { group: "writer", icon: NotebookPen, title: t("block_notes"), desc: t("notepad_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowNotepad(true), tag: t("os_tag_notes") },
 
-    { group: "bestseller", icon: Flame, title: t("bestseller_engine_title"), desc: t("bestseller_engine_desc"), iconBg: "ios-icon-blue", action: () => setShowIdeaModal(true), emphasis: true, tag: t("os_tag_launch") },
+    { group: "bestseller", icon: Flame, title: t("bestseller_engine_title"), desc: t("bestseller_engine_desc"), iconBg: "ios-icon-blue", action: () => openLaunchModal("advanced"), emphasis: true, tag: t("os_tag_launch") },
     { group: "bestseller", icon: Rocket, title: t("kdp_intelligence_title"), desc: t("kdp_intelligence_desc"), iconBg: "ios-icon-violet", action: () => navigate("/kdp-launch"), feature: "kdp_market_base" as const, tag: t("os_tag_market") },
     { group: "bestseller", icon: Zap, title: t("title_intelligence"), desc: t("title_premium_desc"), iconBg: "ios-icon-teal", action: () => setShowTitleIntel(true), feature: "title_intelligence_base" as const, tag: t("os_tag_titles") },
     { group: "bestseller", icon: TrendingUp, title: "Bestseller Radar", desc: t("radar_premium_desc"), iconBg: "ios-icon-green", action: () => navigate("/bestseller-radar"), feature: "trending_niches_limited" as const, tag: t("os_tag_signal") },
@@ -712,12 +738,11 @@ const dashboardWidgets = [
 
     { group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: () => setShowCoverStudio(true), feature: "cover_studio_template" as const, tag: t("os_tag_cover") },
     { group: "publishing", icon: FileDown, title: t("export_studio_title"), desc: t("export_studio_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const, tag: t("os_tag_export") },
-    { group: "publishing", icon: Library, title: t("library"), desc: t("library_premium_desc"), iconBg: "ios-icon-green", action: () => setShowLibrary(true), feature: "export_epub" as const, tag: t("os_tag_archive") },
+    { group: "publishing", icon: Library, title: t("completed_shelf_title"), desc: t("library_premium_desc"), iconBg: "ios-icon-green", action: () => setShowLibrary(true), feature: "export_epub" as const, tag: t("os_tag_archive") },
 
-    { group: "system", icon: HomeIcon, title: t("command_center_title"), desc: t("command_center_desc"), iconBg: "ios-icon-cyan", action: () => navigate("/dashboard"), tag: t("os_tag_overview") },
     { group: "system", icon: Users, title: t("author_identity"), desc: t("author_identity_premium_desc"), iconBg: "ios-icon-blue", action: () => setShowAuthorIdentity(true), feature: "book_engine_full" as const, tag: t("os_tag_identity") },
     { group: "system", icon: Settings, title: t("background_atmosphere"), desc: t("atmosphere_premium_desc"), iconBg: "ios-icon-slate", action: () => setShowAdvancedSettings(true), feature: "book_engine_full" as const, tag: t("os_tag_space") },
-    { group: "system", icon: FolderOpen, title: t("projects"), desc: t("projects_premium_desc"), iconBg: "ios-icon-cyan", action: () => setShowProjects(!showProjects), feature: "book_engine_full" as const, tag: t("os_tag_library") },
+    { group: "system", icon: FolderOpen, title: t("drafts_shelf_title"), desc: t("projects_premium_desc"), iconBg: "ios-icon-cyan", action: () => setShowProjects(!showProjects), feature: "book_engine_full" as const, tag: t("os_tag_library") },
     { group: "system", icon: Settings, title: t("settings"), desc: t("settings_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowAdvancedSettings(true), feature: "book_engine_full" as const, tag: t("os_tag_control") },
   ];
 
@@ -819,9 +844,9 @@ const dashboardWidgets = [
             <button
               onClick={() => navigate("/downloads")}
               className="ios-toolbar-button hidden px-3 text-xs font-medium lg:flex"
-              title={t("downloads")}
+              title={t("install_app_hint")}
             >
-              <DownloadIcon className="h-3.5 w-3.5" /> {t("downloads")}
+              <DownloadIcon className="h-3.5 w-3.5" /> {t("install_app")}
             </button>
             {devOn && (
               <>
@@ -921,11 +946,11 @@ const dashboardWidgets = [
               </div>
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                 <button
-                  onClick={() => setShowIdeaModal(true)}
+                  onClick={() => openLaunchModal("quick")}
                   className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-2xl border border-amber-200/70 bg-gradient-to-r from-amber-300/20 to-amber-200/10 px-4 text-xs font-bold text-slate-950 shadow-[0_18px_48px_rgba(251,191,36,0.22)] ring-1 ring-white/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_22px_52px_rgba(251,191,36,0.30)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
                 >
                   <Flame className="h-4 w-4" />
-                  {t("generate_bestseller_title")}
+                  {t("launch_book_title")}
                   <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                 </button>
                 <button
@@ -1275,30 +1300,56 @@ const dashboardWidgets = [
           handleNewBook(config);
         }}
       />
-      <HomeExportDialog open={showExport} projects={projects} onClose={() => setShowExport(false)} />
-      <TitleIntelligenceDialog open={showTitleIntel} onClose={() => setShowTitleIntel(false)} />
-      <AdvancedAppearanceDialog open={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} />
-      <CharacterStudioDialog open={showCharacterStudio} onClose={() => setShowCharacterStudio(false)} />
-      {showCoverStudio && (
-        <CoverGenerator
-          title={t("untitled")}
-          subtitle=""
-          authorName={activeAuthor.penName}
-          description=""
-          authorBio={activeAuthor.biography}
-          showPrimaryAction={false}
-          onGenerate={() => undefined}
-          onClose={() => setShowCoverStudio(false)}
-        />
+      {showExport && (
+        <Suspense fallback={null}>
+          <HomeExportDialog open={showExport} projects={projects} onClose={() => setShowExport(false)} />
+        </Suspense>
       )}
-      <ManuscriptAnalyzerDialog
-        open={showManuscriptAnalyzer}
-        onClose={() => setShowManuscriptAnalyzer(false)}
-        canCreateProject={!freeBookUsed}
-        onLimitReached={() => navigate("/pricing")}
-      />
-      <NotepadDialog open={showNotepad} onClose={() => setShowNotepad(false)} />
-      <AuthorIdentityDialog open={showAuthorIdentity} onClose={() => setShowAuthorIdentity(false)} />
+      {showTitleIntel && (
+        <Suspense fallback={null}>
+          <TitleIntelligenceDialog open={showTitleIntel} onClose={() => setShowTitleIntel(false)} />
+        </Suspense>
+      )}
+      <AdvancedAppearanceDialog open={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} />
+      {showCharacterStudio && (
+        <Suspense fallback={null}>
+          <CharacterStudioDialog open={showCharacterStudio} onClose={() => setShowCharacterStudio(false)} />
+        </Suspense>
+      )}
+      {showCoverStudio && (
+        <Suspense fallback={null}>
+          <CoverGenerator
+            title={t("untitled")}
+            subtitle=""
+            authorName={activeAuthor.penName}
+            description=""
+            authorBio={activeAuthor.biography}
+            showPrimaryAction={false}
+            onGenerate={() => undefined}
+            onClose={() => setShowCoverStudio(false)}
+          />
+        </Suspense>
+      )}
+      {showManuscriptAnalyzer && (
+        <Suspense fallback={null}>
+          <ManuscriptAnalyzerDialog
+            open={showManuscriptAnalyzer}
+            onClose={() => setShowManuscriptAnalyzer(false)}
+            canCreateProject={!freeBookUsed}
+            onLimitReached={() => navigate("/pricing")}
+          />
+        </Suspense>
+      )}
+      {showNotepad && (
+        <Suspense fallback={null}>
+          <NotepadDialog open={showNotepad} onClose={() => setShowNotepad(false)} />
+        </Suspense>
+      )}
+      {showAuthorIdentity && (
+        <Suspense fallback={null}>
+          <AuthorIdentityDialog open={showAuthorIdentity} onClose={() => setShowAuthorIdentity(false)} />
+        </Suspense>
+      )}
       <Suspense fallback={null}>
         <VoiceStudioDialog
           open={showVoiceStudio}
@@ -1327,7 +1378,7 @@ const dashboardWidgets = [
                   <p className="text-[10px] font-semibold uppercase text-muted-foreground">
                     {tt("my_projects_drafts", { count: drafts.length })}
                   </p>
-                  <h2 className="text-xl font-semibold text-foreground">{t("projects")}</h2>
+                  <h2 className="text-xl font-semibold text-foreground">{t("drafts_shelf_title")}</h2>
                 </div>
                 <button
                   onClick={() => setShowProjects(false)}
@@ -1336,6 +1387,7 @@ const dashboardWidgets = [
                   {t("close")}
                 </button>
               </div>
+              <p className="mb-4 text-xs text-muted-foreground">{t("projects_modal_subtitle")}</p>
               {drafts.length === 0 && (
                 <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-xs text-muted-foreground/70">
                   {t("no_drafts_library_hint")}
@@ -1367,290 +1419,50 @@ const dashboardWidgets = [
         );
       })()}
 
-      {/* Idea modal — primary generation flow */}
-      {showIdeaModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-2xl"
-          onClick={() => !launching && !detecting && setShowIdeaModal(false)}
-        >
-          <div
-            className="ios-panel relative max-h-[90vh] w-full max-w-xl overflow-y-auto p-6 animate-scriptora-dialog-entrance"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="ios-icon ios-icon-blue flex h-10 w-10 items-center justify-center rounded-[16px]">
-                  <Sparkles className="h-4 w-4" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-foreground">{t("generate_bestseller_title")}</h2>
-                  <p className="text-[11px] text-muted-foreground">{t("generate_bestseller_desc")}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => !launching && !detecting && setShowIdeaModal(false)}
-                disabled={launching || detecting}
-                className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                aria-label={t("close")}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <label htmlFor="idea-modal" className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
-              <Sparkles className="h-3 w-3 text-primary" /> {t("your_book_idea")}
-            </label>
-            <textarea
-              id="idea-modal"
-              value={idea}
-              onChange={(e) => setIdea(e.target.value)}
-              placeholder={t("book_idea_placeholder")}
-              rows={3}
-              autoFocus
-              disabled={launching}
-              className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.07] px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-            />
-
-            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.05] p-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Titolo e sottotitolo reali
-                </p>
-                <span className="text-[10px] text-muted-foreground">Scrivili tu o usa quelli generati dal rilevamento.</span>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <input
-                  value={briefTitle}
-                  onChange={(e) => setBriefTitle(e.target.value)}
-                  placeholder="Titolo del libro"
-                  disabled={launching || detecting}
-                  className="h-9 rounded-lg border border-white/10 bg-white/[0.07] px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                />
-                <input
-                  value={briefSubtitle}
-                  onChange={(e) => setBriefSubtitle(e.target.value)}
-                  placeholder="Sottotitolo / tagline"
-                  disabled={launching || detecting}
-                  className="h-9 rounded-lg border border-white/10 bg-white/[0.07] px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                />
-              </div>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                <span className="mr-1 text-[10px] font-semibold uppercase text-muted-foreground">Lingua titolo</span>
-                {BOOK_LANGUAGES.map(l => (
-                  <button
-                    key={`title-${l.value}`}
-                    type="button"
-                    onClick={() => setTitleLang(l.value)}
-                    disabled={launching || detecting}
-                    className={`rounded-lg px-2 py-1 text-[10px] font-medium transition-colors disabled:opacity-50 ${
-                      titleLang === l.value
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-white/[0.07] text-secondary-foreground hover:bg-white/[0.12]"
-                    }`}
-                  >
-                    {l.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              <span className="mr-1 flex items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground">
-                <Globe className="h-3 w-3" /> {t("book_language_label")}
-              </span>
-              {BOOK_LANGUAGES.map(l => (
-                <button
-                  key={l.value}
-                  type="button"
-                  onClick={() => setBookLang(l.value)}
-                  disabled={launching || detecting}
-                  className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 ${
-                    bookLang === l.value
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-white/[0.07] text-secondary-foreground hover:bg-white/[0.12]"
-                  }`}
-                >
-                  {l.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.05] p-3">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Lunghezza libro
-              </p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {(Object.entries(BOOK_LENGTH_CONFIG) as [BookLength, typeof BOOK_LENGTH_CONFIG[BookLength]][]).map(([key, value]) => {
-                  const locked = currentPlan === "free" && key !== "short";
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      disabled={launching || detecting || locked}
-                      onClick={() => setBookLength(key)}
-                      className={`rounded-lg border px-2.5 py-2 text-left text-[11px] transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
-                        (currentPlan === "free" ? "short" : bookLength) === key
-                          ? "border-primary bg-primary/15 text-primary"
-                          : "border-white/10 bg-white/[0.06] text-foreground hover:bg-white/[0.1]"
-                      }`}
-                      title={locked ? "Disponibile con Pro/Premium" : undefined}
-                    >
-                      <span className="block font-semibold">{value.label}</span>
-                      <span className="mt-0.5 block text-[10px] text-muted-foreground">
-                        {key === "custom" ? "Custom" : `~${(value.totalWords / 1000).toFixed(0)}k parole`}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {currentPlan === "free" && (
-                <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
-                  Il piano Free resta su libro breve. Gli altri piani possono scegliere lunghezze maggiori.
-                </p>
-              )}
-              {bookLength === "custom" && currentPlan !== "free" && (
-                <div className="mt-3 grid gap-2 sm:grid-cols-[1fr,120px]">
-                  <input
-                    type="range"
-                    min={5000}
-                    max={200000}
-                    step={1000}
-                    value={customTotalWords}
-                    onChange={(e) => setCustomTotalWords(Number(e.target.value) || 30000)}
-                    disabled={launching || detecting}
-                    className="w-full accent-primary"
-                  />
-                  <input
-                    type="number"
-                    min={1000}
-                    step={500}
-                    value={customTotalWords}
-                    onChange={(e) => setCustomTotalWords(Math.max(1000, Number(e.target.value) || 30000))}
-                    disabled={launching || detecting}
-                    className="h-8 rounded-lg border border-white/10 bg-white/[0.07] px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.05] p-3">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Struttura reale del libro
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-[10px] text-muted-foreground uppercase tracking-wider">N° capitoli</label>
-                  <input
-                    type="number"
-                    min={3}
-                    max={50}
-                    value={oneClickChapters}
-                    onChange={(e) => setOneClickChapters(Math.max(3, Math.min(50, Number(e.target.value) || 10)))}
-                    disabled={launching || detecting}
-                    className="h-9 w-full rounded-lg border border-white/10 bg-white/[0.07] px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <label className="flex h-9 items-center gap-2 text-xs text-foreground/80">
-                    <input
-                      type="checkbox"
-                      checked={oneClickSubchaptersEnabled}
-                      onChange={(e) => setOneClickSubchaptersEnabled(e.target.checked)}
-                      disabled={launching || detecting}
-                      className="rounded border-border accent-primary"
-                    />
-                    Attiva sottocapitoli
-                  </label>
-                </div>
-              </div>
-              {oneClickSubchaptersEnabled && (
-                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_110px] sm:items-center">
-                  <p className="text-[11px] leading-4 text-muted-foreground">
-                    Ogni capitolo avrà sottosezioni scritte davvero e coerenti con il blueprint.
-                  </p>
-                  <input
-                    type="number"
-                    min={1}
-                    max={8}
-                    value={oneClickSubchaptersPerChapter}
-                    onChange={(e) => setOneClickSubchaptersPerChapter(Math.max(1, Math.min(8, Number(e.target.value) || DEFAULT_SUBCHAPTERS_PER_CHAPTER)))}
-                    disabled={launching || detecting}
-                    className="h-9 rounded-lg border border-white/10 bg-white/[0.07] px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                  />
-                </div>
-              )}
-            </div>
-
-            {intent && (
-              <div className="ios-glass-soft mt-3 space-y-2 rounded-lg p-3 text-xs">
-                <div className="flex flex-wrap gap-2">
-                  <span className="rounded-md bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-primary">
-                    {intent.genre}
-                  </span>
-                  {intent.subcategory && (
-                    <span className="px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-[10px]">
-                      {intent.subcategory}
-                    </span>
-                  )}
-                  <span className="px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-[10px] capitalize">
-                    {intent.level}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-[10px]">
-                    {intent.numberOfChapters} {t("chapters").toLowerCase()}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("suggested_title")}</p>
-                  <p className="text-sm font-semibold text-foreground mt-0.5">
-                    {intent.suggestedTitles?.[intent.bestTitleIndex] || intent.suggestedTitles?.[0]}
-                  </p>
-                  <p className="text-xs text-muted-foreground italic mt-0.5">
-                    {intent.suggestedSubtitles?.[intent.bestTitleIndex] || intent.suggestedSubtitles?.[0]}
-                  </p>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  <span className="font-semibold">{t("promise")}:</span> {intent.readerPromise}
-                </p>
-              </div>
-            )}
-
-            <div className="flex flex-col sm:flex-row gap-2 mt-4">
-              <button
-                onClick={launchOneClick}
-                disabled={!heroValid || launching || detecting}
-                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-white text-sm font-semibold text-slate-950 shadow-lg shadow-black/20 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {launching || detecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
-                {launching ? t("launching") : detecting ? t("detecting") : t("generate_full_book")}
-              </button>
-              {!intent ? (
-                <button
-                  onClick={detectIntent}
-                  disabled={!heroValid || detecting || launching}
-                  className="ios-toolbar-button h-11 px-4 text-sm font-medium disabled:opacity-50"
-                >
-                  <Wand2 className="h-3.5 w-3.5" /> {t("preview_action")}
-                </button>
-              ) : (
-                <button
-                  onClick={() => { setShowIdeaModal(false); navigate("/auto-bestseller"); }}
-                  disabled={launching}
-                  className="ios-toolbar-button h-11 px-4 text-sm font-medium disabled:opacity-50"
-                >
-                  {t("advanced")} <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-            {!heroValid && (
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                {t("min_idea_chars")}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
+      <LaunchBookModal
+        open={showLaunchModal}
+        mode={launchMode}
+        onModeChange={setLaunchMode}
+        onClose={closeLaunchModal}
+        onAdvancedLaunch={() => {
+          setShowLaunchModal(false);
+          navigate("/auto-bestseller");
+        }}
+        onManualSetup={() => {
+          setShowLaunchModal(false);
+          openNewBookGuarded();
+        }}
+        manualLocked={freeBookUsed}
+        busy={launching || detecting}
+        quickLaunch={{
+          idea,
+          onIdeaChange: setIdea,
+          briefTitle,
+          onBriefTitleChange: setBriefTitle,
+          briefSubtitle,
+          onBriefSubtitleChange: setBriefSubtitle,
+          bookLang,
+          onBookLangChange: setBookLang,
+          titleLang,
+          onTitleLangChange: setTitleLang,
+          bookLength,
+          onBookLengthChange: setBookLength,
+          customTotalWords,
+          onCustomTotalWordsChange: setCustomTotalWords,
+          oneClickChapters,
+          onOneClickChaptersChange: setOneClickChapters,
+          oneClickSubchaptersEnabled,
+          onOneClickSubchaptersEnabledChange: setOneClickSubchaptersEnabled,
+          oneClickSubchaptersPerChapter,
+          onOneClickSubchaptersPerChapterChange: setOneClickSubchaptersPerChapter,
+          intent,
+          launching,
+          detecting,
+          currentPlan,
+          onLaunch: launchOneClick,
+          onDetect: detectIntent,
+        }}
+      />
       {/* Library modal — opens via the Biblioteca card */}
       {showLibrary && (
         <div
@@ -1662,10 +1474,13 @@ const dashboardWidgets = [
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-                <Library className="h-4 w-4 text-emerald-500" />
-                {t("library")}
-              </h2>
+              <div>
+                <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+                  <Library className="h-4 w-4 text-emerald-500" />
+                  {t("completed_shelf_title")}
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">{t("library_modal_subtitle")}</p>
+              </div>
               <button
                 onClick={() => setShowLibrary(false)}
                 className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"

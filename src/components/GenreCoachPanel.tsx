@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useDomination } from "@/contexts/DominationContext";
 import type { BookProject } from "@/types/book";
 import { getCurrentUserId } from "@/services/storageService";
+import { t } from "@/lib/i18n";
 
 interface AutoFixRule {
   triggers: string[];
@@ -106,8 +107,9 @@ export function GenreCoachPanel({
         className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors px-3 py-2 text-sm disabled:opacity-50"
       >
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Stethoscope className="h-4 w-4" />}
-        Genre Coach
+        {t("genre_coach_label")}
       </button>
+      <p className="text-[11px] text-muted-foreground leading-relaxed">{t("genre_coach_helper")}</p>
 
       {open && report && (
         <div className="rounded-lg border border-border bg-card p-4 space-y-4 text-sm">

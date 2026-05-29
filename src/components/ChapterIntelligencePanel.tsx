@@ -14,6 +14,7 @@ import { getCurrentUserId } from "@/services/storageService";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
 import { analyzeNovel } from "@/lib/EditorialIntelligence";
 import FixChapterComparisonModal from "@/components/FixChapterComparisonModal";
+import { t } from "@/lib/i18n";
 
 function countWordsForChapterLock(value: unknown): number {
   if (!value) return 0;
@@ -547,7 +548,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-sm font-bold text-foreground">Diagnostica Editoriale</h2>
+                <h2 className="text-sm font-bold text-foreground">{t("chapter_doctor_panel_title")}</h2>
                 <EditorialMasteryBadge genre={project.config.genre} subcategory={(project.config as any).subcategory} size="xs" />
               </div>
               <p className="text-xs text-muted-foreground italic">"Analizza salute narrativa, subtext, tensione e rischi di overediting."</p>
@@ -565,7 +566,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
             <div className="text-center py-8 space-y-5">
               <Scissors className="h-10 w-10 text-primary mx-auto" />
               <div>
-                <p className="text-base font-bold text-foreground">Diagnostica del capitolo</p>
+                <p className="text-base font-bold text-foreground">{t("chapter_doctor_panel_subtitle")}</p>
                 <p className="text-xs text-muted-foreground mt-1.5 max-w-md mx-auto">
                   Analizza il capitolo, segna 🟢 forte / 🟡 migliorabile / 🔴 debole, e modifica <strong>solo</strong> ciò che serve.
                   Mai oltre il <strong>15%</strong>. Voce e struttura intatte.
@@ -623,7 +624,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
               {/* Summary */}
               <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Diagnostica Editoriale completata</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary">{t("chapter_doctor_complete")}</span>
                   <span className="text-[10px] text-muted-foreground">
                     {patchResult.patches.length} interventi su {patchResult.totalParagraphs} ¶ — {patchResult.modificationPercent}% modificato
                   </span>

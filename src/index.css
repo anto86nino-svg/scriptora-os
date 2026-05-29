@@ -3675,6 +3675,84 @@ textarea,
   }
 }
 
+/* Scriptora OS smart boot — GPU-friendly, CSS-only */
+.scriptora-boot-horizon {
+  background:
+    radial-gradient(ellipse 120% 60% at 50% 100%, rgba(56, 189, 248, 0.14), transparent 58%),
+    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(255, 255, 255, 0.04), transparent 50%),
+    linear-gradient(180deg, #06070d 0%, #0a0c14 48%, #06070d 100%);
+}
+
+.scriptora-boot-glow {
+  background: radial-gradient(circle, rgba(125, 211, 252, 0.35) 0%, transparent 70%);
+  animation: scriptora-boot-glow 2.8s ease-in-out infinite;
+}
+
+.scriptora-boot-logo {
+  animation: scriptora-boot-breathe 2.6s ease-in-out infinite;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.scriptora-boot-logo-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.14) 50%,
+    transparent 62%
+  );
+  animation: scriptora-boot-shimmer 3.2s ease-in-out infinite;
+}
+
+.scriptora-boot-progress {
+  box-shadow: 0 0 12px rgba(186, 230, 253, 0.35);
+}
+
+.scriptora-boot-reveal {
+  animation: scriptora-boot-reveal 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes scriptora-boot-breathe {
+  0%, 100% { transform: scale(1) translateZ(0); }
+  50% { transform: scale(1.03) translateZ(0); }
+}
+
+@keyframes scriptora-boot-glow {
+  0%, 100% { opacity: 0.45; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 0.75; transform: translate(-50%, -50%) scale(1.06); }
+}
+
+@keyframes scriptora-boot-shimmer {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+@keyframes scriptora-boot-reveal {
+  from {
+    opacity: 0;
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scriptora-boot-logo,
+  .scriptora-boot-glow,
+  .scriptora-boot-logo-shimmer::after,
+  .scriptora-boot-reveal {
+    animation: none !important;
+  }
+  .scriptora-boot-progress {
+    transition: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .scriptora-ios-screen::after,
   .scriptora-ios-screen::before {

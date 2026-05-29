@@ -2,7 +2,7 @@ import { applyScriptoraAppearance } from "@/lib/scriptora-appearance";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { hydrateFromIndexedDB } from "./lib/storage";
+import { ensureStorageHydrated } from "./lib/smart-boot";
 import { supabase } from "./integrations/supabase/client";
 
 
@@ -81,7 +81,7 @@ try {
 createRoot(document.getElementById("root")!).render(<App />);
 
 // Background hydration (non-blocking).
-hydrateFromIndexedDB().catch(() => {});
+ensureStorageHydrated().catch(() => {});
 
 // Recovery: mark stale "running" generations as failed (best-effort, non-blocking).
 (async () => {

@@ -113,6 +113,15 @@ const Index = () => {
   }, [activeSection]);
 
   useEffect(() => {
+    const mode = sessionStorage.getItem("scriptora-open-mode");
+    if (!mode || !effectiveProject) return;
+    sessionStorage.removeItem("scriptora-open-mode");
+    if (mode === "rewrite") {
+      toast.info(t("rewrite_mode_hint"));
+    }
+  }, [effectiveProject?.id]);
+
+  useEffect(() => {
     const persistProjectRecovery = (project: BookProject) => {
       const sameId = lastPersistedRecoveredProjectId.current === project.id;
       const sameUpdatedAt = lastPersistedRecoveredProjectUpdatedAt.current === project.updatedAt;

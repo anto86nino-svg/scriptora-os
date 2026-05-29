@@ -342,7 +342,7 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
                 <div>
                   <p className="text-sm font-semibold text-foreground">Global Author Lock</p>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    L'autore attivo viene salvato nel cofano di Scriptora e applicato ai nuovi libri, a Bestseller Engine, front matter, back matter, copertine, export e voce di generazione. Nessun autore casuale.
+                    L'autore attivo viene salvato nel cofano di Scriptora e applicato a Launch OS, Writer OS, front matter, back matter, copertine, export e voce di generazione. Nessun autore casuale.
                   </p>
                 </div>
               </div>

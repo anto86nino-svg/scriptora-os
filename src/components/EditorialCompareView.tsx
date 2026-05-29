@@ -1,4 +1,5 @@
 import { ArrowRight, Sparkles, Shield, Crown, X } from "lucide-react";
+import { t } from "@/lib/i18n";
 
 interface Props {
   originalText: string;
@@ -37,7 +38,7 @@ export default function EditorialCompareView({
                 onClick={onClose}
                 className="text-sm text-muted-foreground hover:text-white transition mb-4"
               >
-                ← Torna alla Diagnostica
+                {t("chapter_doctor_back")}
               </button>
 
               <h1 className="text-5xl font-black tracking-tight text-white">
