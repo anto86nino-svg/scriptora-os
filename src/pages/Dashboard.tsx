@@ -795,14 +795,14 @@ const dashboardWidgets = [
 
       <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 sm:pt-8 lg:px-8">
         <div className="mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
-          <section className="ios-panel border-white/15 bg-slate-950/34 p-4 shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur-2xl sm:p-6">
+          <section className="ios-panel overflow-hidden rounded-[28px] border-white/15 bg-slate-950/40 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div className="min-w-0">
                 <div className="mb-2 flex flex-wrap items-center gap-2 sm:mb-3">
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/[0.10] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/78 shadow-sm">
+                  <span className="inline-flex items-center gap-1.5 rounded-2xl border border-white/15 bg-white/[0.10] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80 shadow-[0_8px_20px_rgba(0,0,0,0.16)]">
                     <Sparkles className="h-3 w-3 text-sky-300" /> {t("ai_book_studio")}
                   </span>
-                  <span className={`inline-flex items-center rounded-lg border px-2 py-1 text-[10px] font-semibold uppercase sm:hidden ${
+                  <span className={`inline-flex items-center rounded-full border px-2 py-1 text-[10px] font-semibold uppercase sm:hidden ${
                     activeRun
                       ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
                       : "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
@@ -813,23 +813,23 @@ const dashboardWidgets = [
                 <h1 className="max-w-2xl text-2xl font-semibold leading-tight text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.45)] sm:text-4xl">
                   Scriptora OS
                 </h1>
-                <p className="mt-2 max-h-10 max-w-xl overflow-hidden text-xs font-medium leading-5 text-white/74 drop-shadow-[0_1px_10px_rgba(0,0,0,0.45)] sm:mt-3 sm:max-h-none sm:text-sm sm:leading-6">
+                <p className="mt-2 max-w-xl text-xs font-medium leading-5 text-white/75 sm:mt-3 sm:text-sm sm:leading-6">
                   {tt("plan_active_sentence", { plan: devOn ? "DEV" : planLabel })}
                 </p>
               </div>
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                 <button
                   onClick={() => setShowIdeaModal(true)}
-                  className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-200/70 bg-amber-50 px-3 text-xs font-bold text-slate-950 shadow-[0_16px_42px_rgba(251,191,36,0.28)] ring-1 ring-white/50 transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_18px_48px_rgba(251,191,36,0.36)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
+                  className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-2xl border border-amber-200/70 bg-gradient-to-r from-amber-300/20 to-amber-200/10 px-4 text-xs font-bold text-slate-950 shadow-[0_18px_48px_rgba(251,191,36,0.22)] ring-1 ring-white/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_22px_52px_rgba(251,191,36,0.30)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
                 >
                   <Flame className="h-4 w-4" />
                   {t("generate_bestseller_title")}
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate("/")}
-                  className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-3 text-xs font-bold text-white/82 shadow-[0_12px_32px_rgba(0,0,0,0.18)] transition-all hover:-translate-y-0.5 hover:border-cyan-200/40 hover:bg-cyan-300/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:h-12 sm:px-4 sm:text-sm"
+                  className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/[0.08] px-4 text-xs font-bold text-white/85 shadow-[0_14px_36px_rgba(0,0,0,0.20)] transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-200/40 hover:bg-cyan-300/12 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:h-12 sm:px-4 sm:text-sm"
                   title={t("public_site")}
                 >
                   <HomeIcon className="h-4 w-4 text-cyan-200" />
@@ -972,18 +972,18 @@ const dashboardWidgets = [
 
         <div className="mb-4 hidden grid-cols-4 gap-1.5 sm:mb-6 sm:grid-cols-2 sm:gap-2.5 xl:grid xl:grid-cols-4">
           {workspaceStats.map((stat) => (
-            <div key={stat.label} className="ios-glass-soft rounded-xl border-white/15 bg-white/[0.075] p-2 shadow-[0_10px_32px_rgba(0,0,0,0.14)] backdrop-blur-xl sm:p-3">
-              <div className="flex items-center justify-between gap-2 sm:gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-[8px] font-semibold uppercase text-foreground/58 sm:text-[10px]">{stat.label}</p>
-                  <p className="mt-0.5 text-base font-semibold tabular-nums text-foreground sm:mt-1 sm:text-xl">{stat.value}</p>
+              <div key={stat.label} className="ios-glass-soft rounded-[24px] border-white/15 bg-white/[0.08] p-3 shadow-[0_16px_40px_rgba(0,0,0,0.18)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5">
+                <div className="flex items-center justify-between gap-2 sm:gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-[9px] font-semibold uppercase text-foreground/58 sm:text-[10px]">{stat.label}</p>
+                    <p className="mt-0.5 text-base font-semibold tabular-nums text-foreground sm:mt-1 sm:text-xl">{stat.value}</p>
+                  </div>
+                  <span className={`ios-icon ${stat.iconBg} hidden h-10 w-10 rounded-[18px] sm:inline-flex`}>
+                    <stat.icon className="h-4 w-4" />
+                  </span>
                 </div>
-                <span className={`ios-icon ${stat.iconBg} hidden h-9 w-9 rounded-[14px] sm:inline-flex`}>
-                  <stat.icon className="h-4 w-4" />
-                </span>
+                <p className="mt-1 hidden truncate text-[11px] text-foreground/60 sm:block">{stat.detail}</p>
               </div>
-              <p className="mt-1 hidden truncate text-[11px] text-foreground/60 sm:block">{stat.detail}</p>
-            </div>
           ))}
         </div>
 
@@ -1051,11 +1051,11 @@ const dashboardWidgets = [
         )}
 
         <section className="mb-10">
-          <div className="mb-5 flex items-end justify-between gap-3">
+          <div className="mb-5 flex flex-col gap-4 rounded-[28px] border border-white/10 bg-white/[0.035] p-5 shadow-[0_22px_72px_rgba(0,0,0,0.24)] backdrop-blur-2xl sm:flex-row sm:items-end sm:justify-between sm:p-6">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("home_screen")}</p>
-              <h2 className="mt-1 text-xl font-semibold text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.38)]">{t("launchpad")}</h2>
-              <p className="mt-1 max-w-xl text-xs font-medium leading-5 text-white/72 drop-shadow-[0_1px_10px_rgba(0,0,0,0.38)]">{t("launchpad_desc")}</p>
+              <h2 className="mt-1 text-2xl font-semibold text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.38)]">{t("launchpad")}</h2>
+              <p className="mt-1 max-w-xl text-sm font-medium leading-6 text-white/72">{t("launchpad_desc")}</p>
             </div>
             <span className="hidden text-[11px] text-muted-foreground sm:inline">
               {tt("total_suffix", { count: projects.length, plan: planLabel })}
