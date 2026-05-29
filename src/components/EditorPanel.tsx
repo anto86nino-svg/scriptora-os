@@ -97,16 +97,16 @@ export function EditorPanel({
   return (
     <div className="flex h-full flex-1 flex-col">
       {hasContent && (
-        <div className="flex h-12 shrink-0 items-center justify-center border-b border-white/10 bg-white/[0.035]">
+        <div className="flex h-14 shrink-0 items-center justify-center border-b border-white/10 bg-slate-950/70 backdrop-blur-xl shadow-sm shadow-slate-950/20">
           <div className="ios-segment">
           <button onClick={() => handleModeChange("edit")}
-            className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-              mode === "edit" ? "bg-white text-slate-950 shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-white/[0.07]")}>
+            className={cn("flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-colors",
+              mode === "edit" ? "bg-white text-slate-950 shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-white/[0.10]")}>
             <PenLine className="h-3.5 w-3.5" /> {t("edit")}
           </button>
           <button onClick={() => handleModeChange("preview")}
-            className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-              mode === "preview" ? "bg-white text-slate-950 shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-white/[0.07]")}>
+            className={cn("flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold transition-colors",
+              mode === "preview" ? "bg-white text-slate-950 shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-white/[0.10]")}>
             <Eye className="h-3.5 w-3.5" /> {t("preview")}
           </button>
           </div>
@@ -114,13 +114,13 @@ export function EditorPanel({
       )}
 
       <div className="scrollbar-thin flex-1 overflow-y-auto">
-        <div className={cn("mx-auto px-4 py-6 sm:px-8", mode === "preview" ? "max-w-2xl" : "max-w-4xl")}>
-          <div className={cn("ios-editor-paper p-5 sm:p-7", mode === "preview" && "bg-white/[0.055]")}>
+        <div className={cn("mx-auto px-4 py-6 sm:px-8", mode === "preview" ? "max-w-2xl" : "max-w-5xl")}>
+          <div className={cn("ios-editor-paper rounded-[32px] border border-white/10 bg-slate-950/65 shadow-[0_36px_120px_-40px_rgba(15,23,42,0.75)] ring-1 ring-white/10 p-5 sm:p-7", mode === "preview" && "bg-white/[0.055]")}>
           {mode === "preview" && hasContent ? (
             <PreviewMode project={project} view={view} ws={ws} />
           ) : (
             <>
-              <div className="flex items-center gap-2 mb-6 flex-wrap">
+              <div className="flex items-center gap-2 mb-6 flex-wrap rounded-[28px] border border-white/10 bg-white/5 p-4 shadow-[0_28px_80px_-48px_rgba(15,23,42,0.82)]">
                 <GenreProfileBadge
                   genre={config.genre}
                   subcategory={config.subcategory}
@@ -204,7 +204,7 @@ function PreviewMode({ project, view, ws }: { project: BookProject; view: any; w
   const proseStyle = { fontFamily: ws.fontFamily, fontSize: `${ws.fontSize}px`, lineHeight: `${ws.lineSpacing}` };
 
   return (
-    <div className="overflow-hidden rounded-lg bg-white/[0.045]">
+    <div className="overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/60 shadow-[0_40px_90px_-35px_rgba(15,23,42,0.75)]">
       <div className="p-10 space-y-6" style={proseStyle}>
         {view.type === "blueprint" && blueprint && (
           <>
@@ -295,7 +295,7 @@ function BlueprintView({ blueprint, isGenerating, onUpdateField, onUpdateOutline
   onUpdateOutlineSummary?: (index: number, summary: string) => void;
 }) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-[0_24px_70px_-30px_rgba(15,23,42,0.72)]">
       <PageHeader title={t("blueprint")} subtitle="Book architecture and chapter plan" />
       {isGenerating && <LoadingBanner text={`${t("generating")}...`} />}
       {blueprint ? (
@@ -372,7 +372,7 @@ function FrontMatterView({ project, frontMatter, isGenerating, onGenerate, ws, o
   // Front matter can be generated/regenerated any time the blueprint exists.
   const canGenerate = !!project.blueprint;
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-[0_24px_70px_-30px_rgba(15,23,42,0.72)]">
       <div className="flex items-center justify-between">
         <PageHeader title={t("front_matter")} subtitle="Title page, dedication, and introductory content" />
         {canGenerate && (
@@ -447,7 +447,7 @@ function ChapterView({
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-[0_24px_70px_-30px_rgba(15,23,42,0.72)]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="mb-2 flex-1 min-w-0">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1">
@@ -462,7 +462,7 @@ function ChapterView({
         <div className="flex flex-wrap items-center gap-2 pt-1 sm:shrink-0 sm:justify-end">
           {!isGenerated ? (
             <button onClick={onGenerate} disabled={isGenerating || !project.blueprint}
-              className="flex items-center gap-2 h-10 px-5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 transition-colors">
+              className="flex items-center gap-2 h-10 px-5 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 transition-colors">
               {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
               {t("generate")}
             </button>
@@ -495,24 +495,24 @@ function ChapterView({
                   <ChevronDown className="h-3 w-3" />
                 </button>
                 {showRewriteMenu && (
-                  <div className="absolute right-0 top-10 z-20 w-56 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-card py-1 shadow-xl">
+                  <div className="absolute right-0 top-10 z-20 w-56 max-w-[calc(100vw-2rem)] overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/95 p-1 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.55)]">
                     {([
                       { level: "light" as RewriteLevel, label: "Light Polish", desc: "Fix phrasing, tighten prose" },
                       { level: "deep" as RewriteLevel, label: "Deep Rewrite", desc: "Restructure + fresh insights" },
                       { level: "bestseller" as RewriteLevel, label: "Bestseller Upgrade", desc: "Total transformation" },
                     ]).map(opt => (
                       <button key={opt.level} onClick={() => { onRewrite(opt.level); setShowRewriteMenu(false); }}
-                        className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors">
-                        <p className="text-xs font-medium text-foreground">{opt.label}</p>
+                        className="w-full text-left rounded-2xl px-3 py-2 hover:bg-white/5 transition-colors">
+                        <p className="text-xs font-semibold text-white">{opt.label}</p>
                         <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
                       </button>
                     ))}
                     {onAutoRewrite && (
                       <>
-                        <div className="border-t border-border/50 my-1" />
+                        <div className="border-t border-white/10 my-1" />
                         {[3, 4, 5].map(th => (
                           <button key={th} onClick={() => { onAutoRewrite(th); setShowRewriteMenu(false); }}
-                            className="w-full text-left px-3 py-1.5 hover:bg-muted/50 transition-colors flex items-center gap-2">
+                            className="w-full text-left rounded-2xl px-3 py-1.5 hover:bg-white/5 transition-colors flex items-center gap-2">
                             <Target className="h-3 w-3 text-primary" />
                             <span className="text-[11px] text-foreground">Auto to {th}/5</span>
                           </button>
@@ -532,9 +532,9 @@ function ChapterView({
         {(["short", "medium", "long"] as const).map(len => (
           <button key={len} onClick={() => onSetLengthOverride(len)}
             className={cn(
-              "px-3 py-1 rounded-md text-[11px] font-medium transition-colors border",
+              "px-3 py-1 rounded-full text-[11px] font-semibold transition-colors border",
               currentLength === len
-                ? "border-primary bg-primary/10 text-primary"
+                ? "border-primary bg-primary/15 text-primary"
                 : "border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/30"
             )}>
             {t(len)}
@@ -568,8 +568,8 @@ function ChapterView({
       {!isGenerated && !isGenerating && chapter?.status !== "error" && (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground leading-relaxed">{outline.summary}</p>
-          <div className="p-10 rounded-lg border border-dashed border-border/50 bg-muted/5 text-center">
-            <p className="text-sm text-muted-foreground/50">Click {t("generate")} to write this chapter</p>
+          <div className="p-10 rounded-[28px] border border-dashed border-white/15 bg-white/5 text-center">
+            <p className="text-sm text-muted-foreground/60">Click {t("generate")} to write this chapter</p>
           </div>
         </div>
       )}
@@ -714,7 +714,7 @@ function BackMatterView({ project, backMatter, phase, isGenerating, onGenerate, 
   const canGenerate = !!project.blueprint && missingChapters.length === 0;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-[0_24px_70px_-30px_rgba(15,23,42,0.72)]">
       <div className="flex items-center justify-between">
         <PageHeader title={t("back_matter")} subtitle="Conclusion, author note, and closing content" />
         {!backMatter && (
@@ -773,9 +773,9 @@ function BackMatterView({ project, backMatter, phase, isGenerating, onGenerate, 
 
 function PageHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="mb-2">
-      <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-      {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+    <div className="mb-4">
+      <h1 className="text-3xl font-bold tracking-tight text-white">{title}</h1>
+      {subtitle && <p className="text-sm text-muted-foreground/70 mt-2">{subtitle}</p>}
 </div>
   );
 
@@ -1320,7 +1320,7 @@ const GenerationProgress = memo(function GenerationProgress({
 
 function LoadingBanner({ text }: { text: string }) {
   return (
-    <div className="scriptora-loading-banner animate-fade-in">
+    <div className="scriptora-loading-banner animate-fade-in rounded-3xl border border-white/10 bg-slate-950/70 p-4">
       <div className="scriptora-loading-icon">
         <Loader2 className="h-4 w-4 animate-spin" />
       </div>
@@ -1337,8 +1337,8 @@ function LoadingBanner({ text }: { text: string }) {
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="py-16 text-center">
-      <p className="text-sm text-muted-foreground/50">{text}</p>
+    <div className="py-16 text-center rounded-3xl border border-white/10 bg-white/5">
+      <p className="text-sm text-muted-foreground/60">{text}</p>
 </div>
   );
 
@@ -1347,7 +1347,7 @@ function EmptyState({ text }: { text: string }) {
 function ActionButton({ icon, title, onClick, disabled }: { icon: React.ReactNode; title: string; onClick: () => void; disabled: boolean }) {
   return (
     <button onClick={onClick} disabled={disabled} title={title}
-      className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-30 sm:h-9 sm:w-9">
+      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-muted-foreground transition-colors hover:bg-white/10 hover:text-white disabled:opacity-30 sm:h-9 sm:w-9">
       {icon}
     </button>
   );
@@ -1395,7 +1395,7 @@ const EditableBlock = memo(function EditableBlock({
 
   return (
     <div onClick={() => setIsEditing(true)}
-      className="text-foreground/[0.85] whitespace-pre-wrap cursor-text rounded-lg p-5 hover:bg-muted/10 transition-colors border border-transparent hover:border-border/20 min-h-[120px]"
+      className="text-foreground/[0.85] whitespace-pre-wrap cursor-text rounded-[28px] p-5 hover:bg-slate-950/75 transition-colors border border-white/10 bg-slate-950/30 min-h-[140px]"
       style={fontStyle}
       title={t("click_to_edit")}>
       {content || <span className="text-muted-foreground/40 italic">{t("empty_click_to_add")}</span>}
