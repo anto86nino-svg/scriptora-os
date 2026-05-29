@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { NavigationTree } from "@/components/NavigationTree";
 import { TopBar } from "@/components/TopBar";
 import { EditorPanel } from "@/components/EditorPanel";
@@ -66,6 +66,10 @@ const Index = () => {
       return null;
     }
   });
+  const recoveredProjectRef = useRef<BookProject | null>(recoveredProject);
+  const lastPersistedRecoveredProjectId = useRef<string | null>(recoveredProject?.id ?? null);
+  const lastPersistedRecoveredProjectUpdatedAt = useRef<string | null>(recoveredProject?.updatedAt ?? null);
+  const recoverProjectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [writingSettings, setWritingSettings] = useState<WritingSettings>(loadSettings());
   const [upgradeReason, setUpgradeReason] = useState<null | "export" | "token-limit" | "dominate" | "books-limit">(null);
   const { syncStatus, markSaving, markSaved, markPending, markOffline } = useSyncStatus();
@@ -111,16 +115,47 @@ const Index = () => {
   }, [activeSection]);
 
   useEffect(() => {
+    const persistProjectRecovery = (project: BookProject) => {
+      const sameId = lastPersistedRecoveredProjectId.current === project.id;
+      const sameUpdatedAt = lastPersistedRecoveredProjectUpdatedAt.current === project.updatedAt;
+      if (sameId && sameUpdatedAt) return;
+
+      if (recoverProjectTimer.current) {
+        window.clearTimeout(recoverProjectTimer.current);
+      }
+
+      recoverProjectTimer.current = window.setTimeout(() => {
+        try {
+          sessionStorage.setItem(WRITING_ROOM_PROJECT_KEY, JSON.stringify(project));
+          lastPersistedRecoveredProjectId.current = project.id;
+          lastPersistedRecoveredProjectUpdatedAt.current = project.updatedAt;
+          console.info("[writing-room] persisted recovered project", { projectId: project.id, title: project.config?.title });
+        } catch {
+          // ignore storage errors
+        }
+      }, 800);
+    };
+
     if (engine.project) {
       setRecoveredProject(engine.project);
-      sessionStorage.setItem(WRITING_ROOM_PROJECT_KEY, JSON.stringify(engine.project));
-      console.info("[writing-room] project loaded", { projectId: engine.project.id, title: engine.project.config?.title });
+      recoveredProjectRef.current = engine.project;
+      persistProjectRecovery(engine.project);
       return;
     }
+
     if (!recoveredProject) return;
     console.warn("[writing-room] project lost, attempting recovery", { projectId: recoveredProject.id });
     engine.loadProject(recoveredProject);
-  }, [engine.project, recoveredProject]);
+  }, [engine.project, recoveredProject, engine]);
+
+  useEffect(() => {
+    return () => {
+      if (recoverProjectTimer.current) {
+        window.clearTimeout(recoverProjectTimer.current);
+        recoverProjectTimer.current = null;
+      }
+    };
+  }, []);
 
   
   // Token guard for free users — gracefully stop generation when limit is reached

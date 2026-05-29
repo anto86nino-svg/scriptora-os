@@ -15,6 +15,14 @@ import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorId
 
 const FREE_MAX_PROJECT_WORDS = 10_000;
 
+type ProjectWordCountCache = {
+  id: string;
+  updatedAt: string;
+  count: number;
+} | null;
+
+let projectWordCountCache: ProjectWordCountCache = null;
+
 function countWordsSafe(value: unknown): number {
   if (!value) return 0;
   if (typeof value === "string") {
@@ -32,6 +40,10 @@ function countWordsSafe(value: unknown): number {
 
 function countProjectWordsHard(project: BookProject | null | undefined): number {
   if (!project) return 0;
+  if (projectWordCountCache?.id === project.id && projectWordCountCache.updatedAt === project.updatedAt) {
+    return projectWordCountCache.count;
+  }
+
   let total = 0;
   total += countWordsSafe(project.frontMatter);
   total += countWordsSafe(project.backMatter);
@@ -39,6 +51,8 @@ function countProjectWordsHard(project: BookProject | null | undefined): number 
     total += countWordsSafe(chapter?.content);
     for (const sub of chapter?.subchapters || []) total += countWordsSafe(sub?.content);
   }
+
+  projectWordCountCache = { id: project.id, updatedAt: project.updatedAt, count: total };
   return total;
 }
 

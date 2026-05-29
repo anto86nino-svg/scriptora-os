@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { NewBookDialog } from "@/components/NewBookDialog";
@@ -504,18 +504,27 @@ export default function Home() {
   const heroValid = idea.trim().length >= 6;
 
   const currentLangLabel = UI_LANGUAGES.find(l => l.value === currentLang)?.label || "English";
-  const completedProjects = projects.filter(isProjectComplete);
-  const draftProjects = projects.filter((p) => !isProjectComplete(p));
-  const totalChapters = projects.reduce((sum, p) => sum + (p.chapters?.length || 0), 0);
-  const totalWords = projects.reduce(
-    (sum, p) => sum + (p.chapters || []).reduce(
-      (chapterSum, ch) => chapterSum + (ch.content?.split(/\s+/).filter(Boolean).length || 0),
+  const completedProjects = useMemo(() => projects.filter(isProjectComplete), [projects]);
+  const draftProjects = useMemo(() => projects.filter((p) => !isProjectComplete(p)), [projects]);
+  const totalChapters = useMemo(
+    () => projects.reduce((sum, p) => sum + (p.chapters?.length || 0), 0),
+    [projects],
+  );
+  const totalWords = useMemo(
+    () => projects.reduce(
+      (sum, p) => sum + (p.chapters || []).reduce(
+        (chapterSum, ch) => chapterSum + (ch.content?.split(/\s+/).filter(Boolean).length || 0),
+        0,
+      ),
       0,
     ),
-    0,
+    [projects],
   );
   const planLabel = currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1);
-  const lastProjectDoneChapters = lastProject?.chapters?.filter((chapter) => (chapter.content || "").trim().length > 50).length || 0;
+  const lastProjectDoneChapters = useMemo(
+    () => lastProject?.chapters?.filter((chapter) => (chapter.content || "").trim().length > 50).length || 0,
+    [lastProject],
+  );
   const lastProjectTargetChapters = lastProject?.config?.numberOfChapters || lastProject?.chapters?.length || 0;
   const lastProjectProgress = lastProject
     ? lastProject.phase === "complete"
@@ -532,35 +541,50 @@ export default function Home() {
     );
   const dayKey = (date: Date) => date.toISOString().slice(0, 10);
   const todayKey = dayKey(new Date());
-  const wordsToday = projects
-    .filter((project) => {
-      const updated = new Date(project.updatedAt);
-      return !Number.isNaN(updated.getTime()) && dayKey(updated) === todayKey;
-    })
-    .reduce((sum, project) => sum + wordCountForProject(project), 0);
-  const updateDays = new Set(
-    projects
-      .map((project) => {
+  const wordsToday = useMemo(
+    () => projects
+      .filter((project) => {
         const updated = new Date(project.updatedAt);
-        return Number.isNaN(updated.getTime()) ? "" : dayKey(updated);
+        return !Number.isNaN(updated.getTime()) && dayKey(updated) === todayKey;
       })
-      .filter(Boolean),
+      .reduce((sum, project) => sum + wordCountForProject(project), 0),
+    [projects, todayKey],
   );
-  let writingStreak = 0;
-  for (const cursor = new Date(); updateDays.has(dayKey(cursor)); cursor.setDate(cursor.getDate() - 1)) {
-    writingStreak += 1;
-  }
-  const aiQualityValues = projects.flatMap((project) =>
-    (project.chapters || []).map((chapter) => {
-      const c = chapter as any;
-      if (typeof c?.aiRating?.score === "number") return Math.round(c.aiRating.score * 20);
-      if (typeof c?.qualityRating === "number") return Math.round(c.qualityRating * 20);
-      return null;
-    }).filter((value): value is number => typeof value === "number"),
+  const updateDays = useMemo(
+    () => new Set(
+      projects
+        .map((project) => {
+          const updated = new Date(project.updatedAt);
+          return Number.isNaN(updated.getTime()) ? "" : dayKey(updated);
+        })
+        .filter(Boolean),
+    ),
+    [projects],
   );
-  const aiQualityScore = aiQualityValues.length
-    ? Math.round(aiQualityValues.reduce((sum, value) => sum + value, 0) / aiQualityValues.length)
-    : null;
+  const writingStreak = useMemo(() => {
+    let streak = 0;
+    for (const cursor = new Date(); updateDays.has(dayKey(cursor)); cursor.setDate(cursor.getDate() - 1)) {
+      streak += 1;
+    }
+    return streak;
+  }, [updateDays]);
+  const aiQualityValues = useMemo(
+    () => projects.flatMap((project) =>
+      (project.chapters || []).map((chapter) => {
+        const c = chapter as any;
+        if (typeof c?.aiRating?.score === "number") return Math.round(c.aiRating.score * 20);
+        if (typeof c?.qualityRating === "number") return Math.round(c.qualityRating * 20);
+        return null;
+      }).filter((value): value is number => typeof value === "number"),
+    ),
+    [projects],
+  );
+  const aiQualityScore = useMemo(
+    () => (aiQualityValues.length
+      ? Math.round(aiQualityValues.reduce((sum, value) => sum + value, 0) / aiQualityValues.length)
+      : null),
+    [aiQualityValues],
+  );
   const focusAtmosphereCard = (
   <div className="relative overflow-hidden rounded-3xl border border-sky-300/10 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950/40 p-6 shadow-2xl">
     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.18),transparent_45%)]" />
