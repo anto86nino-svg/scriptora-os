@@ -120,69 +120,11 @@ utterance.onstart = () => {
 
     utteranceRef.current = utterance;
     
-try {
-      const synth = window.speechSynthesis;
 
-    
-          utterance.pitch = 1;
-
-      const synth = window.speechSynthesis;
-
-      const voices = synth.getVoices() || [];
-
-      const preferredVoice =
-        voices.find(v => v.lang?.toLowerCase().startsWith("it")) ||
-        voices.find(v => v.lang?.toLowerCase().startsWith("en")) ||
-        voices[0];
-
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-      }
-
-      utterance.onboundary = (event) => {
-        currentCharacterIndexRef.current += event.charLength || 1;
-      };
-
-          utterance.volume = 1;
-
-          utterance.onboundary = (event) => {
-      currentCharacterIndexRef.current += event.charLength || 1;
-    };
-
-    if (synth.speaking) {
-      synth.cancel();
-    }
-
+    utteranceRef.current = utterance;
     synth.speak(utterance);
 
-    setTimeout(() => {
-      if (!synth.speaking) {
-        try {
-          synth.cancel();
-          synth.speak(utterance);
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    }, 400);
-
-          console.log(
-            "[SCRIPTORA MOBILE VOICE OK]",
-            preferredVoice?.name
-          );
-        } catch (error) {
-          console.error(
-            "[SCRIPTORA SPEECH PLAYBACK ERROR]",
-            error
-          );
-        }
-      }, 250);
-    } catch (error) {
-      console.error(
-        "[SCRIPTORA MOBILE SPEECH FAILED]",
-        error
-      );
-    }
+  }
 
   };
 
