@@ -130,6 +130,7 @@ export function EditorPanel({
               </div>
               {view.type === "blueprint" && (
                 <BlueprintView
+                  project={project}
                   blueprint={blueprint}
                   isGenerating={isGeneratingSection("blueprint")}
                   onUpdateField={onUpdateBlueprintField}
@@ -287,7 +288,8 @@ function PreviewMode({ project, view, ws }: { project: BookProject; view: any; w
 
 /* ============ Section Views ============ */
 
-function BlueprintView({ blueprint, isGenerating, onUpdateField, onUpdateOutlineTitle, onUpdateOutlineSummary }: {
+function BlueprintView({ project, blueprint, isGenerating, onUpdateField, onUpdateOutlineTitle, onUpdateOutlineSummary }: {
+  project: BookProject;
   blueprint: BookProject["blueprint"];
   isGenerating: boolean;
   onUpdateField?: (field: "overview" | "emotionalArc", value: string) => void;
@@ -339,7 +341,11 @@ function BlueprintView({ blueprint, isGenerating, onUpdateField, onUpdateOutline
                   <span className="text-sm font-bold text-primary/50 shrink-0 pt-0.5 w-6 text-right">{i + 1}</span>
                   <div className="flex-1 min-w-0">
                     <input
-                      value={o.title}
+                      value={
+                        o.title?.trim()
+                          ? o.title
+                          : (project.chapters?.[i]?.title?.trim() || "")
+                      }
                       onChange={(e) => onUpdateOutlineTitle?.(i, e.target.value)}
                       readOnly={!onUpdateOutlineTitle}
                       className="w-full bg-transparent border border-transparent hover:border-border/40 focus:border-primary/50 focus:outline-none rounded px-1 text-sm font-semibold text-foreground"

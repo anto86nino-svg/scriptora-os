@@ -31,13 +31,14 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === "development" && componentTagger && componentTagger(),
-    visualizer({
-    filename: "bundle-analysis.html",
-    open: true,
-    gzipSize: true,
-    brotliSize: true,
-  }),
-].filter(Boolean),
+    process.env.ANALYZE === "true" &&
+      visualizer({
+        filename: "bundle-analysis.html",
+        open: true,
+        gzipSize: true,
+        brotliSize: true,
+      }),
+  ].filter(Boolean),
 
   resolve: {
     alias: {

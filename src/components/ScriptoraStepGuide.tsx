@@ -151,7 +151,7 @@ const copy: Record<UILanguage, GuideCopy> = {
         cta: "Apri Writer Studio",
         ctaPath: "/app",
       },
-      idea: { title: "Genera un nuovo bestseller", subtitle: "Parti da un'idea e lascia che Scriptora prepari il flusso commerciale.", steps: ["Scrivi l'idea del libro in linguaggio naturale.", "Scegli la lingua di scrittura di questo progetto.", "Guarda anteprima di genere, promessa, titolo e capitoli.", "Avvia la generazione completa o apri Bestseller Engine avanzato."] },
+      idea: { title: "Crea un bestseller con Scriptora AI", subtitle: "Parti da un'idea e lascia che Scriptora prepari il flusso commerciale.", steps: ["Scrivi l'idea del libro in linguaggio naturale.", "Scegli la lingua di scrittura di questo progetto.", "Guarda anteprima di genere, promessa, titolo e capitoli.", "Avvia la generazione completa o apri Bestseller Engine avanzato."] },
       kdp: {
         title: "KDP Intelligence",
         subtitle: "Dai forma al prodotto prima della pubblicazione.",

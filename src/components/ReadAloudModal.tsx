@@ -1,6 +1,3 @@
-import AudioPlayer from "react-h5-audio-player";
-import "react-h5-audio-player/lib/styles.css";
-
 import { useEffect, useRef, useState } from "react";
 import {
   Dialog,
@@ -26,91 +23,44 @@ export function ReadAloudModal({
   const [isPlaying, setIsPlaying] = useState(false);
   const [status, setStatus] = useState("Ready");
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const currentCharacterIndexRef = useRef(0);
-  const isPausedRef = useRef(false);
 
   const stopSpeech = () => {
     if (typeof window === "undefined") return;
 
-    if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
-      setIsPlaying(true);
-      setStatus("🎧 Resuming...");
-      return;
-    }
+    window.speechSynthesis.cancel();
     utteranceRef.current = null;
     setIsPlaying(false);
     setStatus("Stopped");
   };
 
-  useEffect(() => {
-    console.log("ReadAloudModal mounted", { open, title, chapterTextLength: chapterText?.length });
-    return () => {
-      console.log("ReadAloudModal unmounted");
-    };
-  }, []);
-
-  useEffect(() => {
-    console.log("ReadAloudModal open state", open);
-  }, [open]);
-
   const handlePlay = () => {
-    console.log("🎧 HANDLE PLAY CLICKED");
-    alert("PLAY CLICKED");
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
 
     if (!chapterText?.trim()) {
       setStatus("No chapter text found.");
       return;
     }
 
-    window.speechSynthesis.cancel();
+    const synth = window.speechSynthesis;
+    synth.cancel();
 
-    const utterance = new SpeechSynthesisUtterance(
-      chapterText.slice(currentCharacterIndexRef.current, currentCharacterIndexRef.current + 2200)
-    );
-
-        // Auto-detect language (simple MVP)
     const looksEnglish =
-      /\b(the|you|and|your|mindset|chapter|spark|discipline)\b/i
-        .test(chapterText);
+      /\b(the|you|and|your|mindset|chapter|spark|discipline)\b/i.test(chapterText);
 
-    utterance.lang =
-      looksEnglish
-        ? "en-US"
-        : "it-IT";
-
+    const utterance = new SpeechSynthesisUtterance(chapterText.slice(0, 5000));
+    utterance.lang = looksEnglish ? "en-US" : "it-IT";
     utterance.rate = 1;
-    utterance.volume = 1;
     utterance.pitch = 1;
+    utterance.volume = 1;
 
-      const synth = window.speechSynthesis;
-
-      const voices = synth.getVoices() || [];
-
-      const preferredVoice =
-        voices.find(v => v.lang?.toLowerCase().startsWith("it")) ||
-        voices.find(v => v.lang?.toLowerCase().startsWith("en")) ||
-        voices[0];
-
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-      }
-
-      utterance.onboundary = (event) => {
-        currentCharacterIndexRef.current += event.charLength || 1;
-      };
-
-
-    console.log("TTS INIT");
-utterance.onstart = () => {
+    utterance.onstart = () => {
       setIsPlaying(true);
-      setStatus("🎧 Reading chapter...");
+      setStatus("Reading chapter...");
     };
 
     utterance.onend = () => {
       setIsPlaying(false);
-      setStatus("✨ Chapter completed");
+      setStatus("Chapter completed");
     };
 
     utterance.onerror = () => {
@@ -119,13 +69,38 @@ utterance.onstart = () => {
     };
 
     utteranceRef.current = utterance;
-    
 
-    utteranceRef.current = utterance;
-    synth.speak(utterance);
+    try {
+      const unlock = new SpeechSynthesisUtterance(" ");
+      unlock.volume = 0;
+      synth.speak(unlock);
 
-  }
+      window.setTimeout(() => {
+        try {
+          synth.cancel();
 
+          const voices = synth.getVoices() || [];
+          const preferredVoice =
+            voices.find((voice) => voice.lang?.toLowerCase().startsWith(looksEnglish ? "en" : "it")) ||
+            voices.find((voice) => voice.lang?.toLowerCase().startsWith(looksEnglish ? "it" : "en")) ||
+            voices[0];
+
+          if (preferredVoice) {
+            utterance.voice = preferredVoice;
+          }
+
+          synth.speak(utterance);
+        } catch (error) {
+          console.error("[SCRIPTORA SPEECH PLAYBACK ERROR]", error);
+          setIsPlaying(false);
+          setStatus("Unable to play audio.");
+        }
+      }, 250);
+    } catch (error) {
+      console.error("[SCRIPTORA MOBILE SPEECH FAILED]", error);
+      setIsPlaying(false);
+      setStatus("Unable to play audio.");
+    }
   };
 
   useEffect(() => {
@@ -136,22 +111,17 @@ utterance.onstart = () => {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-full max-w-xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-4">
         <DialogHeader>
-          <DialogTitle>
-            🎧 Scriptora Read Aloud
-          </DialogTitle>
-
+          <DialogTitle>Scriptora Read Aloud</DialogTitle>
           <DialogDescription>
-            Listen to your chapter aloud to catch pacing,
-            repetition and unnatural prose.
+            Listen to your chapter aloud to catch pacing, repetition, and unnatural prose.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4" onClickCapture={() => console.log("ReadAloudModal DialogContent clickCapture") }>
+        <div className="space-y-4">
           <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
             <p className="text-sm text-muted-foreground uppercase tracking-wide">
               Current chapter
             </p>
-
             <h3 className="text-lg font-semibold">
               {title || "Untitled Chapter"}
             </h3>
@@ -159,15 +129,11 @@ utterance.onstart = () => {
 
           <button
             type="button"
-            onClick={() => {
-              console.log("TEST PLAY CLICKED");
-              
-              handlePlay();
-            }}
+            onClick={handlePlay}
             disabled={isPlaying}
-            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold"
+            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold disabled:opacity-50"
           >
-            TEST PLAY
+            {isPlaying ? "Reading..." : "Play Narration"}
           </button>
 
           <button
@@ -175,7 +141,7 @@ utterance.onstart = () => {
             onClick={stopSpeech}
             className="w-full h-11 rounded-xl border border-border"
           >
-            ⏹ Stop
+            Stop
           </button>
 
           <div className="text-sm text-center text-muted-foreground">
