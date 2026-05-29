@@ -2,8 +2,6 @@ import { useState } from "react";
 import { BookProject } from "@/types/book";
 import { X, FileDown, Loader2, BookOpen, FileText, FileType, Lock } from "lucide-react";
 import { generateEpub, validateEpubStructure } from "@/lib/epub";
-import { generateDocx } from "@/lib/docx-export";
-import { generatePdf } from "@/lib/pdf-export";
 import { saveBlobAs } from "@/lib/save-file";
 import { useToast } from "@/hooks/use-toast";
 import { usePlan, PLAN_LIMITS } from "@/lib/plan";
@@ -67,11 +65,13 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
         mime = "application/epub+zip";
         description = "EPUB Book";
       } else if (format === "docx") {
+        const { generateDocx } = await import("@/lib/docx-export");
         blob = await generateDocx(project);
         ext = "docx";
         mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
         description = "Word Document";
       } else {
+        const { generatePdf } = await import("@/lib/pdf-export");
         blob = await generatePdf(project);
         ext = "pdf";
         mime = "application/pdf";

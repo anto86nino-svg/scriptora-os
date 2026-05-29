@@ -11,7 +11,6 @@ import { CharacterStudioDialog, SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACT
 import { ManuscriptAnalyzerDialog } from "@/components/ManuscriptAnalyzerDialog";
 import { NotepadDialog } from "@/components/NotepadDialog";
 import { AuthorIdentityDialog } from "@/components/AuthorIdentityDialog";
-import { VoiceStudioDialog } from "@/components/VoiceStudioDialog";
 import { FocusMusicControl } from "@/components/FocusMusicControl";
 import { InProgressSection } from "@/components/Home/InProgressSection";
 import { LibrarySection } from "@/components/Home/LibrarySection";
@@ -36,6 +35,9 @@ import { canUseFeature, type FeatureKey } from "@/lib/subscription";
 import { FlaskConical } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+
+const VoiceStudioDialog = lazy(() => import("@/components/VoiceStudioDialog").then(m => ({ default: m.VoiceStudioDialog })));
+
 
 interface DetectedIntent {
   genre: string;
@@ -1353,15 +1355,17 @@ const dashboardWidgets = [
       />
       <NotepadDialog open={showNotepad} onClose={() => setShowNotepad(false)} />
       <AuthorIdentityDialog open={showAuthorIdentity} onClose={() => setShowAuthorIdentity(false)} />
-      <VoiceStudioDialog
-        open={showVoiceStudio}
-        onClose={() => setShowVoiceStudio(false)}
-        projects={projects}
-        onOpenProject={(id) => {
-          setShowVoiceStudio(false);
-          goApp({ projectId: id });
-        }}
-      />
+      <Suspense fallback={null}>
+        <VoiceStudioDialog
+          open={showVoiceStudio}
+          onClose={() => setShowVoiceStudio(false)}
+          projects={projects}
+          onOpenProject={(id) => {
+            setShowVoiceStudio(false);
+            goApp({ projectId: id });
+          }}
+        />
+      </Suspense>
 
       {/* Idea modal — primary generation flow */}
       {showIdeaModal && (

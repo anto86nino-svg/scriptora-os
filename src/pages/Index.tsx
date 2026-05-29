@@ -16,8 +16,6 @@ import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { deleteProject as removeProject, getLastProjectId } from "@/lib/storage";
 import { loadProjects as loadRemoteProjects, deleteProjectAsync, saveProjectAsync } from "@/services/storageService";
 import { generateEpub, downloadEpub, validateEpubStructure } from "@/lib/epub";
-import { generateDocx, downloadDocx } from "@/lib/docx-export";
-import { generatePdf, downloadPdf } from "@/lib/pdf-export";
 import { BookProject, SectionId } from "@/types/book";
 import { WritingSettings, loadSettings, saveSettings } from "@/lib/settings";
 import { t, tt, UILanguage, useUILanguage } from "@/lib/i18n";
@@ -317,6 +315,7 @@ const Index = () => {
     setIsExporting(true);
     setExportLabel(t("preparing_docx"));
     try {
+      const { generateDocx, downloadDocx } = await import("@/lib/docx-export");
       const blob = await generateDocx(effectiveProject);
       const filename = effectiveProject.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadDocx(blob, filename);
@@ -333,6 +332,7 @@ const Index = () => {
     setIsExporting(true);
     setExportLabel(t("formatting_pdf"));
     try {
+      const { generatePdf, downloadPdf } = await import("@/lib/pdf-export");
       const blob = await generatePdf(effectiveProject);
       const filename = effectiveProject.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadPdf(blob, filename);

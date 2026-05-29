@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import { visualizer } from "rollup-plugin-visualizer";
 
 // lovable-tagger è opzionale: dentro Lovable è installato, fuori (export su VS Code)
 // non lo è. Lo importiamo via createRequire in modo sincrono e lo ignoriamo se manca.
@@ -30,7 +31,13 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     mode === "development" && componentTagger && componentTagger(),
-  ].filter(Boolean),
+    visualizer({
+    filename: "bundle-analysis.html",
+    open: true,
+    gzipSize: true,
+    brotliSize: true,
+  }),
+].filter(Boolean),
 
   resolve: {
     alias: {
