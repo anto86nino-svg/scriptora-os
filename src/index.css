@@ -3533,7 +3533,7 @@ textarea,
 .scriptora-ios-screen {
   isolation: isolate;
 }
-.scriptora-ios-screen > * {
+.scriptora-ios-screen > *:not(.fixed):not(.sticky) {
   position: relative;
   z-index: 1;
 }

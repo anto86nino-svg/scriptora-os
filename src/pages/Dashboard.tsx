@@ -1230,62 +1230,6 @@ const dashboardWidgets = [
           </div>
         </section>
 
-        {showProjects && (() => {
-          const drafts = draftProjects;
-          return (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 p-4 backdrop-blur-2xl"
-              onClick={() => setShowProjects(false)}
-            >
-              <div
-                className="ios-panel relative max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6 animate-scriptora-dialog-entrance"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase text-muted-foreground">
-                      {tt("my_projects_drafts", { count: drafts.length })}
-                    </p>
-                    <h2 className="text-xl font-semibold text-foreground">{t("projects")}</h2>
-                  </div>
-                  <button
-                    onClick={() => setShowProjects(false)}
-                    className="rounded-md px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted/50"
-                  >
-                    {t("close")}
-                  </button>
-                </div>
-                {drafts.length === 0 && (
-                  <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-xs text-muted-foreground/70">
-                    {t("no_drafts_library_hint")}
-                  </p>
-                )}
-                <div className="space-y-3">
-                  {drafts.map(p => (
-                    <button key={p.id}
-                      type="button"
-                      onClick={() => goApp({ projectId: p.id })}
-                      className="group flex w-full items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left text-sm text-foreground transition hover:border-white/20 hover:bg-white/[0.08]"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold">{p.config.title || t("untitled")}</span>
-                        <span className="text-[10px] text-muted-foreground/70">{p.config.genre} · {p.chapters?.length || 0} ch · {p.phase}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
-                        className="rounded-lg border border-destructive/30 bg-destructive/10 p-2 text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
         {!devOn && currentPlan === "free" && (
           <div className="ios-panel mb-4 flex items-center gap-3 p-4">
             <div className="ios-icon ios-icon-pink h-10 w-10 shrink-0 rounded-[16px]">
@@ -1366,6 +1310,62 @@ const dashboardWidgets = [
           }}
         />
       </Suspense>
+
+      {showProjects && (() => {
+        const drafts = draftProjects;
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 p-4 backdrop-blur-2xl"
+            onClick={() => setShowProjects(false)}
+          >
+            <div
+              className="ios-panel relative max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6 animate-scriptora-dialog-entrance"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                    {tt("my_projects_drafts", { count: drafts.length })}
+                  </p>
+                  <h2 className="text-xl font-semibold text-foreground">{t("projects")}</h2>
+                </div>
+                <button
+                  onClick={() => setShowProjects(false)}
+                  className="rounded-md px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted/50"
+                >
+                  {t("close")}
+                </button>
+              </div>
+              {drafts.length === 0 && (
+                <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-xs text-muted-foreground/70">
+                  {t("no_drafts_library_hint")}
+                </p>
+              )}
+              <div className="space-y-3">
+                {drafts.map(p => (
+                  <button key={p.id}
+                    type="button"
+                    onClick={() => goApp({ projectId: p.id })}
+                    className="group flex w-full items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left text-sm text-foreground transition hover:border-white/20 hover:bg-white/[0.08]"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">{p.config.title || t("untitled")}</span>
+                      <span className="text-[10px] text-muted-foreground/70">{p.config.genre} · {p.chapters?.length || 0} ch · {p.phase}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                      className="rounded-lg border border-destructive/30 bg-destructive/10 p-2 text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Idea modal — primary generation flow */}
       {showIdeaModal && (
