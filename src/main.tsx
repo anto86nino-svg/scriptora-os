@@ -1,24 +1,34 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import { isSupabaseConfigured } from "./integrations/supabase/client";
+import { buildMissingEnvHints, validateSupabaseEnv } from "./lib/env-validation";
 
 function renderMissingEnvScreen() {
   const root = document.getElementById("root");
   if (!root) return;
+
+  const hints = buildMissingEnvHints();
+  const hintHtml = hints
+    .map((hint) => `<li style="margin:0 0 8px;line-height:1.5">${hint.replace(/</g, "&lt;")}</li>`)
+    .join("");
+
+  const envCheck = validateSupabaseEnv();
+  const hasUrlOnly =
+    envCheck.issues.some((issue) => issue.code === "missing_key") &&
+    !envCheck.issues.some((issue) => issue.code === "missing_url");
+
   root.innerHTML = `
     <div style="min-height:100vh;display:grid;place-items:center;background:#0a0a1a;color:#fff;font-family:system-ui;padding:24px">
       <div style="max-width:560px">
         <h1 style="font-size:24px;margin:0 0 12px">Configurazione mancante</h1>
         <p style="opacity:.8;line-height:1.5;margin:0 0 16px">
-          Scriptora non trova le variabili Supabase nel file <code>.env</code>.
-          Crea (o ripristina) un file <code>.env</code> nella root del progetto con:
+          Scriptora non trova credenziali Supabase valide nel file <code>.env</code>.
+          ${hasUrlOnly ? "L'URL del progetto è presente, ma la chiave pubblica risulta vuota o non valida." : "Crea (o ripristina) un file <code>.env</code> nella root del progetto con:"}
         </p>
         <pre style="background:#141432;padding:16px;border-radius:8px;overflow:auto;font-size:13px;line-height:1.6">VITE_SUPABASE_URL=https://&lt;project&gt;.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=&lt;anon-or-publishable-key&gt;
 VITE_SUPABASE_PROJECT_ID=&lt;project-ref&gt;</pre>
-        <p style="opacity:.6;font-size:13px;margin-top:16px">
-          In locale puoi eseguire <code>vercel env pull .env</code> oppure copiare <code>.env.example</code>.
-        </p>
+        <ul style="opacity:.75;font-size:13px;margin:16px 0 0;padding-left:20px">${hintHtml}</ul>
       </div>
     </div>`;
 }

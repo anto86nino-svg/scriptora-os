@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import { ensureStorageHydrated } from "./lib/smart-boot";
 import { getSupabaseClient, isSupabaseConfigured } from "./integrations/supabase/client";
+import { warnSupabaseEnvInDev } from "./lib/env-validation";
 
 // One-time migration: rename legacy "scriptora-*" storage keys to "nexora-*"
 (() => {
@@ -44,6 +45,8 @@ try {
 } catch {
   /* ignore appearance boot errors */
 }
+
+warnSupabaseEnvInDev();
 
 createRoot(document.getElementById("root")!).render(<App />);
 

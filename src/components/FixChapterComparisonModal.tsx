@@ -270,11 +270,11 @@ export default function FixChapterComparisonModal({
   }, [patchResult.patches]);
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-lg text-white overflow-hidden">
+    <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-lg text-white overflow-hidden pb-safe pt-safe">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.18),transparent_25%)] pointer-events-none" />
-      <div className="relative mx-auto flex h-screen max-w-[1600px] md:min-w-[720px] flex-col overflow-hidden p-4 md:p-6">
-        <div className="flex items-start justify-between gap-4 rounded-[36px] border border-white/10 bg-[#0c1223]/95 shadow-[0_0_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl p-6">
-          <div className="max-w-2xl space-y-3">
+      <div className="relative mx-auto scriptora-surgical-edit-shell flex h-[100dvh] min-h-0 max-w-[1600px] md:min-w-[720px] flex-col overflow-hidden p-3 md:p-6">
+        <div className="flex shrink-0 flex-col gap-4 rounded-[36px] border border-white/10 bg-[#0c1223]/95 shadow-[0_0_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl p-4 sm:p-6 md:flex-row md:items-start md:justify-between">
+          <div className="max-w-2xl space-y-3 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-white/70">Surgical Edit Engine</span>
               <span className="rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-1 text-[10px] uppercase tracking-[0.3em] font-semibold">Developmental Editor</span>
@@ -287,7 +287,7 @@ export default function FixChapterComparisonModal({
               Targeted editorial pass complete. Compare before and after, read why each change was made, and apply only if you agree.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
             <button
               onClick={onApply}
               className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-bold text-black shadow-[0_20px_70px_rgba(16,185,129,0.22)] transition hover:bg-emerald-400"
@@ -306,8 +306,8 @@ export default function FixChapterComparisonModal({
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-[1.3fr_1fr]">
-          <div className="space-y-4">
+        <div className="mt-4 md:mt-6 grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain lg:grid-cols-[1.3fr_1fr] lg:overflow-hidden">
+          <div className="space-y-4 min-w-0">
             {isHighScoreRefinement ? (
               <div className="grid gap-3">
                 <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6">
@@ -453,7 +453,7 @@ export default function FixChapterComparisonModal({
             </div>
           </div>
 
-          <div className="flex flex-col overflow-hidden rounded-[36px] border border-white/10 bg-[#09101f]/95 shadow-[inset_0_0_80px_rgba(255,255,255,0.02)]">
+          <div className="flex min-h-[280px] flex-col overflow-hidden rounded-[36px] border border-white/10 bg-[#09101f]/95 shadow-[inset_0_0_80px_rgba(255,255,255,0.02)] lg:min-h-0">
             <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.25em] text-white/50">Confronto testuale</p>

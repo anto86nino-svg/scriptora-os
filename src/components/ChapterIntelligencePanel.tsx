@@ -510,8 +510,8 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   const idle = !analyzing && !patching && !patchResult && !dominating && !dominateResult && !result && !patchError && !dominateError;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-      <div className="w-full max-w-4xl max-h-[92vh] bg-card border border-border/60 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 pb-safe pt-safe animate-fade-in sm:p-4">
+      <div className="w-full max-w-4xl max-h-[min(92dvh,92vh)] bg-card border border-border/60 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border/50">
           <div className="flex items-center gap-2.5 min-w-0">

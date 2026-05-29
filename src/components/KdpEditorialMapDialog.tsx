@@ -76,7 +76,7 @@ export function KdpEditorialMapDialog({ open, onClose, onUseBook }: KdpEditorial
       onClick={onClose}
     >
       <div
-        className="ios-panel flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden"
+        className="ios-panel flex max-h-[min(90dvh,90vh)] w-full max-w-6xl flex-col overflow-hidden"
         onClick={(event) => event.stopPropagation()}
       >
         <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">

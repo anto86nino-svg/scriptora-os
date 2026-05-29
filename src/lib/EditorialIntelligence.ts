@@ -580,58 +580,41 @@ export function detectEmotionalRedundancy(
 }
 
 export function analyzeNovel(text: string): EditorialReport {
-  const warnings = [
-      ...detectEmotionalRedundancy(text),
-      ...detectDialoguePerfection(text),
-      ...detectClimaxOversaturation(text),
-      ...detectWeakSubtext(text),
-      ...detectCharacterFlattening(text),
-      ...detectOverwrittenEndings(text),
-      ...detectBreathingImbalance(text),
-      ...detectEmotionalMonologues(text),
-      ...detectRepetitiveScenePurpose(text),
-      ...detectConflictCollapse(text),
-      ...detectEmotionalPredictability(text),
-      ...detectSymbolicOveruse(text),
-      ...detectEmotionalPacingUniformity(text),
-      ...detectVoiceHomogenization(text),
-      ...detectPrematureEmotionalResolution(text),
-      ...detectEmotionalConvenience(text),
-      ...detectBehavioralDeficit(text),
-      ...detectTonalRepetition(text),
-    ];
-
+  const warnings = collectEditorialWarnings(text);
   const scores = calculateEditorialScores(warnings);
 
   return {
     emotionalRedundancyScore: scores.emotionalRealismScore,
     dialogueHumanityScore: scores.dialogueHumanityScore,
     pacingConsistencyScore: scores.pacingBalanceScore,
-    climaxDensityScore: 0,
+    climaxDensityScore: calculateClimaxDensityScore(text),
     subtextScore: scores.subtextStrengthScore,
     characterConsistencyScore: scores.characterDepthScore,
-
-    warnings: [
-      ...detectEmotionalRedundancy(text),
-      ...detectDialoguePerfection(text),
-      ...detectClimaxOversaturation(text),
-      ...detectWeakSubtext(text),
-      ...detectCharacterFlattening(text),
-      ...detectOverwrittenEndings(text),
-      ...detectBreathingImbalance(text),
-      ...detectEmotionalMonologues(text),
-      ...detectRepetitiveScenePurpose(text),
-      ...detectConflictCollapse(text),
-      ...detectEmotionalPredictability(text),
-      ...detectSymbolicOveruse(text),
-      ...detectEmotionalPacingUniformity(text),
-      ...detectVoiceHomogenization(text),
-      ...detectPrematureEmotionalResolution(text),
-      ...detectEmotionalConvenience(text),
-      ...detectBehavioralDeficit(text),
-      ...detectTonalRepetition(text),
-    ],
+    warnings,
   };
+}
+
+function collectEditorialWarnings(text: string): EditorialWarning[] {
+  return [
+    ...detectEmotionalRedundancy(text),
+    ...detectDialoguePerfection(text),
+    ...detectClimaxOversaturation(text),
+    ...detectWeakSubtext(text),
+    ...detectCharacterFlattening(text),
+    ...detectOverwrittenEndings(text),
+    ...detectBreathingImbalance(text),
+    ...detectEmotionalMonologues(text),
+    ...detectRepetitiveScenePurpose(text),
+    ...detectConflictCollapse(text),
+    ...detectEmotionalPredictability(text),
+    ...detectSymbolicOveruse(text),
+    ...detectEmotionalPacingUniformity(text),
+    ...detectVoiceHomogenization(text),
+    ...detectPrematureEmotionalResolution(text),
+    ...detectEmotionalConvenience(text),
+    ...detectBehavioralDeficit(text),
+    ...detectTonalRepetition(text),
+  ];
 }
 
 const PERFECT_DIALOGUE_PATTERNS = [
@@ -687,16 +670,31 @@ const CLIMAX_PATTERNS = [
   "nostro futuro",
 ];
 
+function countClimaxPatternHits(text: string): number {
+  let hits = 0;
+  for (const pattern of CLIMAX_PATTERNS) {
+    hits += countOccurrences(text, pattern);
+  }
+  return hits;
+}
+
+/** 0–100 density index from climax declaration patterns (higher = more saturated). */
+export function calculateClimaxDensityScore(text: string): number {
+  const hits = countClimaxPatternHits(text);
+  if (hits === 0) return 0;
+
+  const wordCount = Math.max(1, (text.match(/[\p{L}\p{N}]+/gu) || []).length);
+  const perThousand = (hits / wordCount) * 1000;
+  const raw = hits * 2.2 + perThousand * 3.5;
+  return clampScore(Math.round(raw));
+}
+
 export function detectClimaxOversaturation(
   text: string
 ): EditorialWarning[] {
   const warnings: EditorialWarning[] = [];
 
-  let climaxDensity = 0;
-
-  for (const pattern of CLIMAX_PATTERNS) {
-    climaxDensity += countOccurrences(text, pattern);
-  }
+  const climaxDensity = countClimaxPatternHits(text);
 
   if (climaxDensity >= 15) {
     warnings.push({
@@ -1449,6 +1447,7 @@ export function generateEditorialReport(
     `Emotional Realism: ${report.emotionalRedundancyScore}/100`,
     `Dialogue Humanity: ${report.dialogueHumanityScore}/100`,
     `Pacing Balance: ${report.pacingConsistencyScore}/100`,
+    `Climax Density: ${report.climaxDensityScore}/100`,
     `Subtext Strength: ${report.subtextScore}/100`,
     `Character Depth: ${report.characterConsistencyScore}/100`,
     "",
