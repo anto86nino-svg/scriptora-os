@@ -3445,3 +3445,86 @@ textarea,
     animation: none !important;
   }
 }
+
+@layer base {
+  button,
+  [role="button"],
+  input,
+  textarea,
+  select {
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  }
+
+  button:hover:not(:disabled),
+  [role="button"]:hover:not(:disabled) {
+    transform: translateY(-0.5px);
+  }
+
+  button:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  [role="button"]:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22);
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.04);
+  }
+  .scrollbar-thin:hover::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--border) / 0.92);
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.14);
+  }
+
+  .ios-glass,
+  .ios-glass-soft,
+  .ios-editor-paper,
+  .ios-panel {
+    transition: background 220ms ease, border-color 220ms ease, box-shadow 220ms ease, transform 220ms ease;
+  }
+
+  .ios-glass:hover,
+  .ios-glass-soft:hover,
+  .ios-editor-paper:hover,
+  .ios-panel:hover {
+    transform: translateY(-1px);
+  }
+
+  .ios-editor-paper {
+    border-radius: 24px;
+  }
+
+  .ios-toolbar-button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22);
+  }
+
+  .ios-icon {
+    transition: transform 220ms ease, box-shadow 220ms ease;
+  }
+
+  .ios-icon:hover {
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.32), 0 14px 34px rgba(0, 0, 0, 0.30);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    button,
+    [role="button"],
+    .ios-icon,
+    .ios-glass,
+    .ios-glass-soft,
+    .ios-editor-paper,
+    .ios-panel {
+      transition: none !important;
+      transform: none !important;
+    }
+  }
+}
