@@ -13,6 +13,13 @@ export {
   ARCHITECT_PHASE_LABELS,
 } from "./types";
 
+export {
+  getArchitectPhaseLabels,
+  getArchitectFlowCopy,
+  getArchitectPageCopy,
+  normalizeArchitectLang,
+} from "./localized-copy";
+
 export { inferIdeaIntelligence } from "./idea-intelligence";
 export { buildMarketPositioning } from "./market-positioning";
 export { buildTitleConcepts } from "./titles";

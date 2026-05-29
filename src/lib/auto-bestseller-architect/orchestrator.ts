@@ -10,7 +10,7 @@ import type {
   AutoBestsellerArchitectResult,
   AutoBestsellerHandoffPack,
 } from "./types";
-import { ARCHITECT_PHASE_LABELS } from "./types";
+import { getArchitectPhaseLabels, normalizeArchitectLang } from "./localized-copy";
 
 export type ArchitectProgressCallback = (phase: ArchitectPhaseId, message: string) => void;
 
@@ -22,8 +22,9 @@ export async function runAutoBestsellerArchitect(
   input: AutoBestsellerInput,
   onProgress?: ArchitectProgressCallback,
 ): Promise<AutoBestsellerArchitectResult> {
+  const phaseLabels = getArchitectPhaseLabels(normalizeArchitectLang(input.language));
   const tick = async (phase: ArchitectPhaseId) => {
-    onProgress?.(phase, ARCHITECT_PHASE_LABELS[phase]);
+    onProgress?.(phase, phaseLabels[phase]);
     await delay(phase === "blueprint-architect" ? 0 : 280);
   };
 
@@ -95,4 +96,4 @@ export function buildHandoffPack(result: AutoBestsellerArchitectResult): AutoBes
   };
 }
 
-export { ARCHITECT_PHASE_LABELS } from "./types";
+export { getArchitectPhaseLabels } from "./localized-copy";

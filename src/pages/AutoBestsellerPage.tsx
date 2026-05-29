@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, ChevronDown, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { InputPanel } from "@/components/AutoBestseller/InputPanel";
 import { ArchitectFlow } from "@/components/AutoBestseller/ArchitectFlow";
 import { ProgressTimeline } from "@/components/AutoBestseller/ProgressTimeline";
@@ -25,11 +26,20 @@ import {
   persistAutoBestsellerHandoff,
   runAutoBestsellerArchitect,
 } from "@/lib/auto-bestseller-architect";
+import {
+  getArchitectFlowCopy,
+  getArchitectPageCopy,
+  normalizeArchitectLang,
+} from "@/lib/auto-bestseller-architect/localized-copy";
 
 const ACTIVE_RUN_KEY = "nexora-active-run";
 
+type MobileArchitectScreen = "brief" | "building" | "blueprint" | "legacy" | "result";
+
 export default function AutoBestsellerPage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const mainRef = useRef<HTMLElement>(null);
   const engine = useAutoBestseller();
   const [batchRuns, setBatchRuns] = useState<BatchRun[]>([]);
   const [batchRunning, setBatchRunning] = useState(false);
@@ -49,6 +59,13 @@ export default function AutoBestsellerPage() {
   const [architectResult, setArchitectResult] = useState<AutoBestsellerArchitectResult | null>(null);
   const [architectError, setArchitectError] = useState<string | null>(null);
   const [selectedTitleIndex, setSelectedTitleIndex] = useState(0);
+  const [forceBriefOnMobile, setForceBriefOnMobile] = useState(false);
+
+  const architectLang = normalizeArchitectLang(
+    lastInput?.language ?? architectResult?.config?.language ?? "English",
+  );
+  const pageCopy = useMemo(() => getArchitectPageCopy(architectLang), [architectLang]);
+  const flowCopy = useMemo(() => getArchitectFlowCopy(architectLang), [architectLang]);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("nexora-auto-brief");
@@ -134,6 +151,7 @@ export default function AutoBestsellerPage() {
     setLastInput(input);
     setAutoStart(false);
     setBriefCollapsed(true);
+    setForceBriefOnMobile(false);
     setArchitectRunning(true);
     setArchitectError(null);
     setArchitectResult(null);
@@ -146,9 +164,9 @@ export default function AutoBestsellerPage() {
         setArchitectMessage(message);
       });
       setArchitectResult(result);
-      toast.success("Blueprint narrativo pronto — apri la stanza di scrittura quando vuoi");
+      toast.success(getArchitectPageCopy(normalizeArchitectLang(input.language)).blueprintReady);
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Blueprint preparation failed";
+      const message = e instanceof Error ? e.message : getArchitectPageCopy(normalizeArchitectLang(input.language)).blueprintFailed;
       setArchitectError(message);
       toast.error(message);
     } finally {
@@ -162,7 +180,7 @@ export default function AutoBestsellerPage() {
 
     const selected = architectResult.titleConcepts[selectedTitleIndex] || architectResult.titleConcepts[0];
     if (!selected) {
-      toast.error("Seleziona un titolo prima di aprire la stanza di scrittura");
+      toast.error(pageCopy.selectTitleFirst);
       return;
     }
 
@@ -181,14 +199,14 @@ export default function AutoBestsellerPage() {
 
     persistAutoBestsellerHandoff(pack);
     sessionStorage.setItem("nexora-new-book", JSON.stringify(config));
-    toast.success("Apertura stanza di scrittura con blueprint completo…");
+    toast.success(pageCopy.openingWriterRoom);
     navigate("/app");
-  }, [architectResult, lastInput, navigate, selectedTitleIndex]);
+  }, [architectResult, lastInput, navigate, pageCopy, selectedTitleIndex]);
 
   const handleGenerateBatch = useCallback(async (baseInput: AutoBestsellerInput) => {
-    toast.info("Un progetto alla volta — costruiamo un blueprint solido per ogni libro.");
+    toast.info(pageCopy.oneProjectAtATime);
     await handleStartArchitect(baseInput);
-  }, [handleStartArchitect]);
+  }, [handleStartArchitect, pageCopy.oneProjectAtATime]);
 
   const handleSaveAsProject = useCallback(async (result: AutoBestsellerResult) => {
     if (savingProject) return;
@@ -233,8 +251,8 @@ export default function AutoBestsellerPage() {
     setPrefill({ ...input });
     setAutoStart(false);
     setBriefCollapsed(false);
-    toast.info("Brief loaded — adjust and build blueprint");
-  }, []);
+    toast.info(pageCopy.briefLoaded);
+  }, [pageCopy.briefLoaded]);
 
   const handleLeaveToHome = useCallback(() => {
     if (engine.isRunning) {
@@ -272,10 +290,119 @@ export default function AutoBestsellerPage() {
   const displayedResult = selectedBatchResult ?? engine.result;
   const isLegacyRunning = engine.isRunning;
   const isAnyRunning = isLegacyRunning || architectRunning;
+  const architectFocused = architectRunning || !!architectResult;
   const showLivePreview = isLegacyRunning || (!selectedBatchResult && !engine.result && engine.liveBook.chapters.length > 0);
-  const showBriefPanel = !isLegacyRunning && !briefCollapsed;
+  const showBriefPanel = !isLegacyRunning && !briefCollapsed && !architectFocused;
   const bookProgress = getBookProgress(engine.liveBook, lastInput?.numberOfChapters);
   const showHeaderProgress = isLegacyRunning && (engine.liveBook.chapters.length > 0 || !!engine.liveBook.outlines);
+
+  const mobileScreen = useMemo((): MobileArchitectScreen => {
+    if (displayedResult) return "result";
+    if (isLegacyRunning || showLivePreview) return "legacy";
+    if (isMobile && forceBriefOnMobile && !architectRunning) return "brief";
+    if (architectRunning) return "building";
+    if (architectResult) return "blueprint";
+    return "brief";
+  }, [displayedResult, isLegacyRunning, showLivePreview, isMobile, forceBriefOnMobile, architectRunning, architectResult]);
+
+  useEffect(() => {
+    if (!isMobile || !architectResult || architectRunning) return;
+    setBriefCollapsed(true);
+    setForceBriefOnMobile(false);
+    mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, [isMobile, architectResult, architectRunning]);
+
+  const openBriefOnMobile = () => {
+    setForceBriefOnMobile(true);
+    setBriefCollapsed(false);
+    mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const briefAside = (
+    <aside className="min-w-0 space-y-6">
+      <InputPanel
+        isRunning={isAnyRunning}
+        initialInput={prefill}
+        autoStart={autoStart}
+        onGenerateOne={handleStartArchitect}
+        onGenerateBatch={handleGenerateBatch}
+      />
+      {batchRuns.length > 0 && (
+        <MultiRunPanel
+          runs={batchRuns}
+          isRunning={batchRunning}
+          onSelect={(r) => r.result && setSelectedBatchResult(r.result)}
+        />
+      )}
+      <details className="rounded-lg border border-border/60 bg-card/95 md:bg-card/40">
+        <summary className="cursor-pointer px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Run recenti
+        </summary>
+        <div className="border-t border-border/60 p-2 pt-0">
+          <RecentRunsPanel
+            refreshKey={recentKey}
+            onOpenResult={handleRecentOpen}
+            onOpenRunning={handleRecentOpenRunning}
+            onRegenerate={handleRecentRegenerate}
+            onUseAsBase={handleRecentUseAsBase}
+          />
+        </div>
+      </details>
+    </aside>
+  );
+
+  const architectPanel = (
+    <ArchitectFlow
+      running={architectRunning}
+      activePhase={architectPhase}
+      phaseMessage={architectMessage}
+      result={architectResult}
+      error={architectError}
+      bookLanguage={lastInput?.language ?? architectResult?.config?.language ?? "English"}
+      onOpenWriterRoom={handleOpenWriterRoom}
+      onRetry={() => lastInput && handleStartArchitect(lastInput as AutoBestsellerInput)}
+      onSelectTitle={setSelectedTitleIndex}
+      selectedTitleIndex={selectedTitleIndex}
+      hidePrimaryAction={isMobile && mobileScreen === "blueprint"}
+    />
+  );
+
+  const legacySection = (
+    <>
+      {showLivePreview && (
+        <BookLivePreview
+          liveBook={engine.liveBook}
+          isRunning={engine.isRunning}
+          totalChaptersHint={lastInput?.numberOfChapters}
+        />
+      )}
+
+      {(engine.isRunning || engine.stages.some((s) => s.status !== "pending")) && !displayedResult && (
+        <details className="group rounded-md border border-border/60 bg-card/95 md:bg-card/40">
+          <summary className="cursor-pointer list-none px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted/30">
+            Legacy pipeline ({engine.stages.filter((s) => s.status === "done").length}/{engine.stages.length})
+          </summary>
+          <div className="p-3 pt-0">
+            <ProgressTimeline
+              stages={engine.stages}
+              retries={engine.retries}
+              chapters={engine.chapters}
+              isRunning={engine.isRunning}
+            />
+          </div>
+        </details>
+      )}
+
+      {engine.error && !displayedResult && (
+        <GenerationErrorPanel
+          message={engine.error}
+          hasPartialContent={engine.liveBook.chapters.length > 0}
+          onReset={() => { engine.reset(); setBriefCollapsed(false); }}
+          onContinue={lastInput ? () => handleStartArchitect(lastInput as AutoBestsellerInput) : undefined}
+        />
+      )}
+    </>
+  );
 
   return (
     <div className="scriptora-feature-page bg-background">
@@ -301,18 +428,74 @@ export default function AutoBestsellerPage() {
               </p>
             </div>
           </div>
-          {(isLegacyRunning || architectResult) && lastInput && (
+          {(isLegacyRunning || architectResult || isMobile) && lastInput && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setBriefCollapsed((v) => !v)}
-              className="hidden sm:inline-flex"
+              onClick={() => {
+                if (isMobile && forceBriefOnMobile && architectResult) {
+                  setForceBriefOnMobile(false);
+                  mainRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                  return;
+                }
+                if (isMobile && mobileScreen !== "brief") {
+                  openBriefOnMobile();
+                  return;
+                }
+                if (isMobile) return;
+                setBriefCollapsed((v) => !v);
+              }}
+              className={
+                isMobile && mobileScreen === "brief" && !architectResult
+                  ? "hidden"
+                  : "inline-flex"
+              }
             >
-              {briefCollapsed ? <Pencil className="mr-1.5 h-3.5 w-3.5" /> : <X className="mr-1.5 h-3.5 w-3.5" />}
-              {briefCollapsed ? "Vedi brief" : "Nascondi brief"}
+              {isMobile && forceBriefOnMobile ? (
+                <>{pageCopy.backToBlueprint}</>
+              ) : briefCollapsed || mobileScreen !== "brief" ? (
+                <>
+                  <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                  {pageCopy.editBrief}
+                </>
+              ) : (
+                <>
+                  <X className="mr-1.5 h-3.5 w-3.5" />
+                  {pageCopy.hideBrief}
+                </>
+              )}
             </Button>
           )}
         </div>
+        {isMobile && !displayedResult && (
+          <div className="mx-auto flex max-w-7xl gap-1 px-4 pb-3">
+            {([
+              ["brief", pageCopy.mobileSteps.brief],
+              ["building", pageCopy.mobileSteps.building],
+              ["blueprint", pageCopy.mobileSteps.ready],
+            ] as const).map(([key, label]) => {
+              const active = mobileScreen === key || (key === "building" && mobileScreen === "building") || (key === "blueprint" && mobileScreen === "blueprint");
+              const done =
+                (key === "brief" && (architectFocused || isLegacyRunning)) ||
+                (key === "building" && (architectResult || isLegacyRunning)) ||
+                (key === "blueprint" && architectResult);
+              return (
+                <div
+                  key={key}
+                  className={`flex-1 rounded-full border px-2 py-1 text-center text-[10px] font-semibold uppercase tracking-wide ${
+                    active
+                      ? "border-primary/40 bg-primary/10 text-primary"
+                      : done
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
+                        : "border-border/50 text-muted-foreground"
+                  }`}
+                >
+                  {label}
+                </div>
+              );
+            })}
+          </div>
+        )}
         {showHeaderProgress && (
           <div className="mx-auto max-w-7xl px-4 pb-3">
             <div className="flex items-center gap-3">
@@ -331,111 +514,74 @@ export default function AutoBestsellerPage() {
       </header>
 
       <main
+        ref={mainRef}
         className={
-          showBriefPanel
-            ? "scriptora-feature-scroll mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[400px,1fr]"
-            : "scriptora-feature-scroll mx-auto max-w-4xl px-4 py-6"
+          isMobile
+            ? "scriptora-feature-scroll mx-auto max-w-4xl px-4 py-4"
+            : showBriefPanel
+              ? "scriptora-feature-scroll mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[400px,1fr]"
+              : "scriptora-feature-scroll mx-auto max-w-4xl px-4 py-6"
         }
       >
-        {showBriefPanel && (
-          <aside className="space-y-6">
-            <InputPanel
-              isRunning={isAnyRunning}
-              initialInput={prefill}
-              autoStart={autoStart}
-              onGenerateOne={handleStartArchitect}
-              onGenerateBatch={handleGenerateBatch}
-            />
-            {batchRuns.length > 0 && (
-              <MultiRunPanel
-                runs={batchRuns}
-                isRunning={batchRunning}
-                onSelect={(r) => r.result && setSelectedBatchResult(r.result)}
-              />
+        {isMobile ? (
+          <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
+            {mobileScreen === "brief" && briefAside}
+
+            {mobileScreen === "building" && architectPanel}
+
+            {mobileScreen === "blueprint" && (
+              <>
+                {architectPanel}
+                <div className="sticky bottom-0 z-10 -mx-4 border-t border-border/60 bg-background/95 px-4 py-3 pb-safe backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+                  <Button className="w-full" size="lg" onClick={handleOpenWriterRoom} disabled={!architectResult}>
+                    {flowCopy.openWriter}
+                  </Button>
+                </div>
+              </>
             )}
-            <RecentRunsPanel
-              refreshKey={recentKey}
-              onOpenResult={handleRecentOpen}
-              onOpenRunning={handleRecentOpenRunning}
-              onRegenerate={handleRecentRegenerate}
-              onUseAsBase={handleRecentUseAsBase}
-            />
-          </aside>
+
+            {mobileScreen === "legacy" && legacySection}
+
+            {mobileScreen === "result" && displayedResult && (
+              <ResultView result={displayedResult} onSaveAsProject={handleSaveAsProject} />
+            )}
+          </div>
+        ) : (
+          <>
+            {showBriefPanel && briefAside}
+
+            {isLegacyRunning && briefCollapsed && lastInput && (
+              <button
+                onClick={() => setBriefCollapsed(false)}
+                className="mb-4 flex w-full items-center justify-between gap-3 rounded-md border border-border/60 bg-card/40 px-4 py-2.5 text-left text-xs transition-colors hover:bg-muted/30"
+              >
+                <span className="truncate text-muted-foreground">
+                  <span className="font-semibold uppercase tracking-wider text-foreground/80">Brief:</span>{" "}
+                  {lastInput.idea?.slice(0, 90)}{(lastInput.idea?.length || 0) > 90 ? "…" : ""}
+                </span>
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              </button>
+            )}
+
+            <section className="min-w-0 max-w-full space-y-6 overflow-x-hidden">
+              {!isLegacyRunning && !displayedResult && architectPanel}
+
+              {legacySection}
+
+              {displayedResult && (
+                <ResultView result={displayedResult} onSaveAsProject={handleSaveAsProject} />
+              )}
+
+              {!isAnyRunning && !displayedResult && !architectResult && !engine.error && engine.liveBook.chapters.length === 0 && !showBriefPanel && (
+                <div className="rounded-md border border-dashed border-border/60 p-10 text-center text-sm text-muted-foreground">
+                  <Button variant="outline" onClick={() => setBriefCollapsed(false)}>
+                    <Pencil className="mr-2 h-4 w-4" /> {pageCopy.openBrief}
+                  </Button>
+                </div>
+              )}
+            </section>
+          </>
         )}
-
-        {isLegacyRunning && briefCollapsed && lastInput && (
-          <button
-            onClick={() => setBriefCollapsed(false)}
-            className="mb-4 flex w-full items-center justify-between gap-3 rounded-md border border-border/60 bg-card/40 px-4 py-2.5 text-left text-xs transition-colors hover:bg-muted/30"
-          >
-            <span className="truncate text-muted-foreground">
-              <span className="font-semibold uppercase tracking-wider text-foreground/80">Brief:</span>{" "}
-              {lastInput.idea?.slice(0, 90)}{(lastInput.idea?.length || 0) > 90 ? "…" : ""}
-            </span>
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          </button>
-        )}
-
-        <section className="min-w-0 max-w-full space-y-6 overflow-x-hidden">
-          {!isLegacyRunning && !displayedResult && (
-            <ArchitectFlow
-              running={architectRunning}
-              activePhase={architectPhase}
-              phaseMessage={architectMessage}
-              result={architectResult}
-              error={architectError}
-              onOpenWriterRoom={handleOpenWriterRoom}
-              onRetry={() => lastInput && handleStartArchitect(lastInput as AutoBestsellerInput)}
-              onSelectTitle={setSelectedTitleIndex}
-              selectedTitleIndex={selectedTitleIndex}
-            />
-          )}
-
-          {showLivePreview && (
-            <BookLivePreview
-              liveBook={engine.liveBook}
-              isRunning={engine.isRunning}
-              totalChaptersHint={lastInput?.numberOfChapters}
-            />
-          )}
-
-          {(engine.isRunning || engine.stages.some((s) => s.status !== "pending")) && !displayedResult && (
-            <details className="group rounded-md border border-border/60 bg-card/40">
-              <summary className="cursor-pointer list-none px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted/30">
-                Legacy pipeline ({engine.stages.filter((s) => s.status === "done").length}/{engine.stages.length})
-              </summary>
-              <div className="p-3 pt-0">
-                <ProgressTimeline
-                  stages={engine.stages}
-                  retries={engine.retries}
-                  chapters={engine.chapters}
-                  isRunning={engine.isRunning}
-                />
-              </div>
-            </details>
-          )}
-
-          {engine.error && !displayedResult && (
-            <GenerationErrorPanel
-              message={engine.error}
-              hasPartialContent={engine.liveBook.chapters.length > 0}
-              onReset={() => { engine.reset(); setBriefCollapsed(false); }}
-              onContinue={lastInput ? () => handleStartArchitect(lastInput as AutoBestsellerInput) : undefined}
-            />
-          )}
-
-          {displayedResult && (
-            <ResultView result={displayedResult} onSaveAsProject={handleSaveAsProject} />
-          )}
-
-          {!isAnyRunning && !displayedResult && !architectResult && !engine.error && engine.liveBook.chapters.length === 0 && !showBriefPanel && (
-            <div className="rounded-md border border-dashed border-border/60 p-10 text-center text-sm text-muted-foreground">
-              <Button variant="outline" onClick={() => setBriefCollapsed(false)}>
-                <Pencil className="mr-2 h-4 w-4" /> Apri brief
-              </Button>
-            </div>
-          )}
-        </section>
       </main>
 
       <LeavePageDialog

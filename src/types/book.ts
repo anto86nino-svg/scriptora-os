@@ -3,7 +3,7 @@ import type { BestsellerChapterSnapshot } from "@/lib/bestseller-intelligence/ty
 import type { LongBookMemorySnapshot } from "@/lib/long-book-memory/types";
 import type { ChapterScenePurposeSnapshot, ReaderEmotionSnapshot } from "@/lib/narrative-intelligence-v2/types";
 
-export type Language = "English" | "Italian" | "Spanish" | "French" | "German";
+export type Language = "English" | "Italian" | "Spanish" | "French" | "German" | "Portuguese";
 export type ChapterLength = "short" | "medium" | "long";
 export type BookLength = "short" | "medium" | "long" | "custom";
 export type Genre =

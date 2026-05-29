@@ -77,10 +77,7 @@ export interface AutoBestsellerHandoffPack {
 export const AUTO_BESTSELLER_PACK_KEY = "scriptora-auto-bestseller-pack";
 export const SETUP_ORIGIN_KEY = "scriptora-setup-origin";
 
-export const ARCHITECT_PHASE_LABELS: Record<ArchitectPhaseId, string> = {
-  "idea-intelligence": "Analyzing genre expectations",
-  "market-positioning": "Mapping reader positioning",
-  "title-positioning": "Exploring commercial title angles",
-  "blueprint-architect": "Building narrative blueprint",
-  "handoff-ready": "Preparing writing architecture",
-};
+import { getArchitectPhaseLabels } from "./localized-copy";
+
+/** @deprecated Use getArchitectPhaseLabels(bookLanguage) for localized labels */
+export const ARCHITECT_PHASE_LABELS: Record<ArchitectPhaseId, string> = getArchitectPhaseLabels("English");

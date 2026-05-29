@@ -1,107 +1,119 @@
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
 import type { AutoBestsellerInput } from "@/services/autoBestsellerService";
+import { getMarketPositioningCopy, normalizeArchitectLang } from "./localized-copy";
 import type { IdeaIntelligenceResult } from "./types";
 import type { MarketPositioningResult } from "./types";
 
-function inferAudience(input: AutoBestsellerInput, idea: IdeaIntelligenceResult): string {
+function inferAudience(
+  input: AutoBestsellerInput,
+  idea: IdeaIntelligenceResult,
+  copy: ReturnType<typeof getMarketPositioningCopy>,
+): string {
   if (input.targetAudience?.trim()) return input.targetAudience.trim();
 
   const domain = idea.report.layers.domain;
   const sub = idea.subgenre.toLowerCase();
 
   if (/enemies to lovers|dark romance|romantasy|slow burn/.test(sub)) {
-    return "Adult readers who crave emotionally charged relationship arcs with high tension and delayed payoff.";
+    return copy.audiences.romance;
   }
   if (/psychological thriller|thriller|crime/.test(sub)) {
-    return "Readers who binge suspense — they want escalating dread, sharp hooks, and credible stakes.";
+    return copy.audiences.thriller;
   }
   if (/fantasy|epic|paranormal/.test(sub)) {
-    return "Speculative fiction readers who expect immersive world logic plus emotional character stakes.";
+    return copy.audiences.fantasy;
   }
   if (domain === "nonfiction" && /productivity|habit|mindset/.test(sub)) {
-    return "Professionals seeking structured behavior change — they want clarity, not motivational fluff.";
+    return copy.audiences.productivity;
   }
   if (domain === "nonfiction") {
-    return "Readers looking for credible guidance with a clear promise and practical application.";
+    return copy.audiences.nonfiction;
   }
-  return "Adult readers aligned with the genre's core emotional contract and commercial expectations.";
+  return copy.audiences.fallback;
 }
 
-function emotionalPromise(input: AutoBestsellerInput, idea: IdeaIntelligenceResult): string {
+function emotionalPromise(
+  input: AutoBestsellerInput,
+  idea: IdeaIntelligenceResult,
+  copy: ReturnType<typeof getMarketPositioningCopy>,
+): string {
   if (input.readerPromise?.trim()) return input.readerPromise.trim();
 
   const domain = idea.report.layers.domain;
   const sub = idea.subgenre.toLowerCase();
 
   if (/enemies to lovers/.test(sub)) {
-    return "The slow, charged transformation from antagonism to intimacy — without losing edge.";
+    return copy.promises.enemies;
   }
   if (/dark romance/.test(sub)) {
-    return "Forbidden desire under moral pressure — readers want intensity with consequence.";
+    return copy.promises.darkRomance;
   }
   if (/psychological thriller/.test(sub)) {
-    return "A tightening sense that nothing is safe — perception and trust become the battlefield.";
+    return copy.promises.thriller;
   }
   if (domain === "fiction") {
-    return "An emotionally earned journey where conflict, subtext, and payoff honor the premise.";
+    return copy.promises.fiction;
   }
-  return "A credible path from problem to transformation — readers should feel guided, not lectured.";
+  return copy.promises.nonfiction;
 }
 
-function commercialPositioning(idea: IdeaIntelligenceResult): string {
+function commercialPositioning(
+  idea: IdeaIntelligenceResult,
+  copy: ReturnType<typeof getMarketPositioningCopy>,
+): string {
   const sub = idea.subgenre.toLowerCase();
   const genre = idea.genre.toLowerCase();
 
   if (/romance|dark-romance|fantasy/.test(genre) && /enemies|romantasy|slow burn|dark/.test(sub)) {
-    return "Strong crossover potential between emotionally driven fantasy/romance readers and high-tension commercial fiction audiences.";
+    return copy.positioning.crossover;
   }
   if (/thriller|crime|mystery/.test(genre)) {
-    return "Positioned in the commercial suspense lane — hook-first openings and sustained escalation matter more than literary density.";
+    return copy.positioning.suspense;
   }
   if (idea.report.layers.domain === "nonfiction") {
-    return `Commercial nonfiction lane: ${idea.subgenre} — authority and specificity beat generic inspiration.`;
+    return copy.positioning.nonfiction(idea.subgenre);
   }
   return idea.commercialLane;
 }
 
-function hookExplanation(hook: number, premium: ReturnType<typeof computeMarketPremiumScores>): string {
-  if (hook >= 72) {
-    return "Opening premise carries clear commercial intrigue — the idea signals conflict or promise quickly.";
-  }
-  if (hook >= 58) {
-    return "Solid conceptual hook with room to sharpen the first-page tension or specificity.";
-  }
-  return "Concept needs a sharper opening angle — consider leading with conflict, stakes, or an unexpected image.";
+function hookExplanation(
+  hook: number,
+  copy: ReturnType<typeof getMarketPositioningCopy>,
+): string {
+  if (hook >= 72) return copy.hooks.high;
+  if (hook >= 58) return copy.hooks.mid;
+  return copy.hooks.low;
 }
 
 function buildReaderRisks(
   input: AutoBestsellerInput,
   idea: IdeaIntelligenceResult,
   premium: ReturnType<typeof computeMarketPremiumScores>,
+  copy: ReturnType<typeof getMarketPositioningCopy>,
 ): MarketPositioningResult["readerRisks"] {
   const risks: MarketPositioningResult["readerRisks"] = [];
   const ideaLen = input.idea.trim().split(/\s+/).length;
 
   if (premium.hookStrength < 55) {
-    risks.push({ severity: "high", message: "Weak opening risk — premise may not grab readers on page one." });
+    risks.push({ severity: "high", message: copy.risks.weakHook });
   }
   if (ideaLen < 12) {
-    risks.push({ severity: "medium", message: "Premise may read generic until character stakes and conflict are specified." });
+    risks.push({ severity: "medium", message: copy.risks.shortIdea });
   }
   if (premium.genreAlignment < 55) {
-    risks.push({ severity: "high", message: "Genre expectation mismatch — align tone and structure with reader norms." });
+    risks.push({ severity: "high", message: copy.risks.genreMismatch });
   }
   if (/slow burn|slow-burn/.test(idea.subgenre) && premium.emotionalMomentum < 50) {
-    risks.push({ severity: "medium", message: "Emotional tension may arrive too late for slow-burn romance expectations." });
+    risks.push({ severity: "medium", message: copy.risks.slowBurn });
   }
   if (premium.readerRetentionRisk === "high") {
-    risks.push({ severity: "high", message: "Reader retention risk — middle sections may need stronger unresolved friction." });
+    risks.push({ severity: "high", message: copy.risks.retention });
   }
   if (idea.confidence < 0.5) {
-    risks.push({ severity: "low", message: "Niche signals are mixed — refine subgenre or comp titles in the brief." });
+    risks.push({ severity: "low", message: copy.risks.mixedSignals });
   }
   if (!risks.length) {
-    risks.push({ severity: "low", message: "No major commercial red flags detected — focus on execution in the writing room." });
+    risks.push({ severity: "low", message: copy.risks.none });
   }
   return risks.slice(0, 5);
 }
@@ -110,6 +122,7 @@ export function buildMarketPositioning(
   input: AutoBestsellerInput,
   idea: IdeaIntelligenceResult,
 ): MarketPositioningResult {
+  const copy = getMarketPositioningCopy(normalizeArchitectLang(input.language));
   const premium = computeMarketPremiumScores({
     content: input.idea,
     genre: idea.genre,
@@ -119,12 +132,12 @@ export function buildMarketPositioning(
   const hookStrength = premium.hookStrength;
 
   return {
-    audienceProfile: inferAudience(input, idea),
-    emotionalPromise: emotionalPromise(input, idea),
-    commercialPositioning: commercialPositioning(idea),
+    audienceProfile: inferAudience(input, idea, copy),
+    emotionalPromise: emotionalPromise(input, idea, copy),
+    commercialPositioning: commercialPositioning(idea, copy),
     hookStrength,
-    hookExplanation: hookExplanation(hookStrength, premium),
-    readerRisks: buildReaderRisks(input, idea, premium),
+    hookExplanation: hookExplanation(hookStrength, copy),
+    readerRisks: buildReaderRisks(input, idea, premium, copy),
     premium,
   };
 }

@@ -1,5 +1,6 @@
 import { generateShadowTitleSet } from "@/lib/title-shadow";
 import type { AutoBestsellerInput } from "@/services/autoBestsellerService";
+import { getTitleRationaleCopy, normalizeArchitectLang } from "./localized-copy";
 import type { IdeaIntelligenceResult, MarketPositioningResult, TitleConcept } from "./types";
 
 function titleRationale(
@@ -8,25 +9,27 @@ function titleRationale(
   idea: IdeaIntelligenceResult,
   market: MarketPositioningResult,
   angle: string,
+  lang: ReturnType<typeof normalizeArchitectLang>,
 ): string {
+  const copy = getTitleRationaleCopy(lang);
   const parts: string[] = [];
 
   if (title.split(/\s+/).length <= 5) {
-    parts.push("Memorable, market-sized title length.");
+    parts.push(copy.shortTitle);
   } else {
-    parts.push("Descriptive title with clear genre signal.");
+    parts.push(copy.longTitle);
   }
   if (subtitle && subtitle.length > 12) {
-    parts.push("Subtitle adds emotional intrigue without explaining the whole plot.");
+    parts.push(copy.subtitle);
   }
   if (/romance|thriller|fantasy|dark/.test(idea.genre)) {
-    parts.push("Genre signal aligns with reader shelf expectations.");
+    parts.push(copy.genre);
   }
   if (market.hookStrength >= 60) {
-    parts.push("Supports a commercially informed opening hook.");
+    parts.push(copy.hook);
   }
   if (angle) {
-    parts.push(`Angle: ${angle}.`);
+    parts.push(copy.angle(angle));
   }
 
   return parts.slice(0, 4).join(" ");
@@ -37,6 +40,8 @@ export function buildTitleConcepts(
   idea: IdeaIntelligenceResult,
   market: MarketPositioningResult,
 ): TitleConcept[] {
+  const lang = normalizeArchitectLang(input.language);
+  const rationaleCopy = getTitleRationaleCopy(lang);
   const candidates = generateShadowTitleSet(
     {
       idea: input.idea,
@@ -57,7 +62,7 @@ export function buildTitleConcepts(
     title: c.title,
     subtitle: c.subtitle,
     confidence: c.confidence,
-    rationale: titleRationale(c.title, c.subtitle, idea, market, c.angle),
+    rationale: titleRationale(c.title, c.subtitle, idea, market, c.angle, lang),
   }));
 
   if (input.prefilledTitle?.trim()) {
@@ -65,7 +70,7 @@ export function buildTitleConcepts(
       title: input.prefilledTitle.trim(),
       subtitle: (input.prefilledSubtitle || "").trim(),
       confidence: 0.85,
-      rationale: "Author-selected title preserved from brief.",
+      rationale: rationaleCopy.manual,
     };
     const exists = concepts.some(
       (c) => c.title.toLowerCase() === manual.title.toLowerCase(),

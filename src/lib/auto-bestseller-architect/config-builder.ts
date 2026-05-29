@@ -10,13 +10,14 @@ import {
 } from "@/lib/author-identity";
 import { applyBookIntelligenceToConfig, detectBookIntelligence } from "@/lib/book-intelligence";
 import type { IdeaIntelligenceResult, MarketPositioningResult, TitleConcept } from "./types";
+import { getCharacterStrictRules, normalizeArchitectLang } from "./localized-copy";
 
 const ALLOWED_GENRES = [
   "self-help", "romance", "dark-romance", "thriller", "fantasy", "philosophy", "business", "memoir",
   "literary-fiction", "mystery", "crime", "horror", "sci-fi", "productivity", "psychology",
   "spirituality", "manual", "gardening", "cookbook", "education", "health-medicine", "fitness",
 ];
-const ALLOWED_LANGUAGES: Language[] = ["English", "Italian", "Spanish", "French", "German"];
+const ALLOWED_LANGUAGES: Language[] = ["English", "Italian", "Spanish", "French", "German", "Portuguese"];
 
 function normalizeGenre(value: string, idea?: string, subcategory?: string): Genre {
   if (idea?.trim()) {
@@ -38,7 +39,8 @@ function normalizeBookLength(value?: string, totalWordTarget?: number): BookLeng
   return totalWordTarget ? "custom" : "medium";
 }
 
-function charactersFromText(text?: string) {
+function charactersFromText(text?: string, language?: string) {
+  const strictRules = getCharacterStrictRules(normalizeArchitectLang(language));
   const raw = String(text || "").trim();
   if (!raw) return [];
   return raw
@@ -52,7 +54,7 @@ function charactersFromText(text?: string) {
         name,
         role: "",
         personality: block,
-        strictRules: "Never rename this character. Preserve role, personality, relationships and continuity.",
+        strictRules,
       };
     });
 }
@@ -100,7 +102,7 @@ export function buildArchitectBookConfig(
             1,
             Math.min(8, Number(input.subchaptersPerChapter) || DEFAULT_SUBCHAPTERS_PER_CHAPTER),
           ),
-          characters: charactersFromText(input.charactersText),
+          characters: charactersFromText(input.charactersText, input.language),
         } as BookConfig,
         authorIdentity,
       ) as BookConfig,
