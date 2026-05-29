@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { NewBookDialog } from "@/components/NewBookDialog";
@@ -165,6 +165,64 @@ export default function Home() {
   const [authorIdentities, setAuthorIdentities] = useState(() => loadAuthorIdentities());
   const [activeAuthor, setActiveAuthor] = useState(() => getSelectedAuthorIdentity());
 
+  const closeAllDashboardOverlays = useCallback(() => {
+    setShowNewBook(false);
+    setShowProjects(false);
+    setShowExport(false);
+    setShowTitleIntel(false);
+    setShowAdvancedSettings(false);
+    setShowCharacterStudio(false);
+    setShowCoverStudio(false);
+    setShowManuscriptAnalyzer(false);
+    setShowNotepad(false);
+    setShowAuthorIdentity(false);
+    setShowLibrary(false);
+    setShowVoiceStudio(false);
+    setShowLaunchModal(false);
+    setShowBetaDialog(false);
+    setShowDevUnlock(false);
+    setShowLangMenu(false);
+  }, []);
+
+  const openDashboardOverlay = useCallback((opener: () => void) => {
+    closeAllDashboardOverlays();
+    opener();
+  }, [closeAllDashboardOverlays]);
+
+  const dashboardOverlayOpen =
+    showNewBook ||
+    showProjects ||
+    showExport ||
+    showTitleIntel ||
+    showAdvancedSettings ||
+    showCharacterStudio ||
+    showCoverStudio ||
+    showManuscriptAnalyzer ||
+    showNotepad ||
+    showAuthorIdentity ||
+    showLibrary ||
+    showVoiceStudio ||
+    showLaunchModal ||
+    showBetaDialog ||
+    showDevUnlock;
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const syncBodyLock = () => {
+      if (mq.matches && dashboardOverlayOpen) {
+        document.body.classList.add("scriptora-mobile-overlay-open");
+      } else {
+        document.body.classList.remove("scriptora-mobile-overlay-open");
+      }
+    };
+    syncBodyLock();
+    mq.addEventListener("change", syncBodyLock);
+    return () => {
+      mq.removeEventListener("change", syncBodyLock);
+      document.body.classList.remove("scriptora-mobile-overlay-open");
+    };
+  }, [dashboardOverlayOpen]);
+
   const BOOK_LANGUAGES = [
     { value: "English", label: "🇬🇧 English" },
     { value: "Italian", label: "🇮🇹 Italiano" },
@@ -271,7 +329,7 @@ export default function Home() {
       navigate("/pricing");
       return;
     }
-    setShowNewBook(true);
+    openDashboardOverlay(() => setShowNewBook(true));
   };
 
   const openLaunchModal = (mode: LaunchMode = "quick") => {
@@ -280,8 +338,10 @@ export default function Home() {
       navigate("/pricing");
       return;
     }
-    setLaunchMode(mode);
-    setShowLaunchModal(true);
+    openDashboardOverlay(() => {
+      setLaunchMode(mode);
+      setShowLaunchModal(true);
+    });
   };
 
   const closeLaunchModal = () => {
@@ -295,7 +355,7 @@ export default function Home() {
       navigate("/pricing");
       return;
     }
-    action();
+    openDashboardOverlay(action);
   };
 
   const lastId = getLastProjectId();
@@ -333,6 +393,7 @@ export default function Home() {
   };
 
   const goApp = (opts?: { section?: string; projectId?: string; mode?: "rewrite" }) => {
+    closeAllDashboardOverlays();
     if (opts?.projectId) sessionStorage.setItem("nexora-open-project", opts.projectId);
     if (opts?.section) sessionStorage.setItem("nexora-open-section", opts.section);
     if (opts?.mode) sessionStorage.setItem("scriptora-open-mode", opts.mode);
@@ -610,7 +671,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fill,minmax(260px,360px))]">
         {ATMOSPHERE_PROFILES.map((profile) => (
           <button
             key={profile.id}
@@ -618,7 +679,7 @@ export default function Home() {
             disabled={!profile.available}
             onClick={() => profile.available && selectProfile(profile.id)}
             aria-pressed={profileId === profile.id}
-            className={`atmo-profile-tile group relative overflow-hidden rounded-3xl border p-4 text-left text-sm font-medium transition ${
+            className={`atmo-profile-tile group relative min-w-0 max-w-[360px] overflow-hidden rounded-3xl border p-4 text-left text-sm font-medium transition ${
               profileId === profile.id
                 ? "is-active border-white/14 bg-white/[0.07] text-white"
                 : profile.available
@@ -702,7 +763,7 @@ const dashboardWidgets = [
       detail: lastProject ? t("active_draft_progress") : t("no_active_book"),
       icon: BarChart3,
       tone: "from-violet-400/18 to-fuchsia-300/8",
-      action: lastProject ? () => goApp({ projectId: lastProject.id }) : () => setShowProjects(true),
+      action: lastProject ? () => goApp({ projectId: lastProject.id }) : () => openDashboardOverlay(() => setShowProjects(true)),
     },
     {
       label: t("ai_quality_score_widget"),
@@ -723,26 +784,26 @@ const dashboardWidgets = [
   const cards = [
     { group: "writer", icon: BookOpen, title: t("writer_studio_title"), desc: t("writer_studio_desc"), iconBg: "ios-icon-violet", action: () => goApp(), tag: t("os_tag_write"), emphasis: true },
     { group: "writer", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("story_architect_title"), desc: freeBookUsed ? t("upgrade_more_books") : t("story_architect_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: () => openLaunchModal("manual"), feature: "book_engine_full" as const, tag: t("os_tag_plan") },
-    { group: "writer", icon: Wand2, title: t("manuscript_lab_title"), desc: t("manuscript_lab_desc"), iconBg: "ios-icon-teal", action: () => setShowManuscriptAnalyzer(true), feature: "chapter_improvement" as const, tag: t("os_tag_score") },
+    { group: "writer", icon: Wand2, title: t("manuscript_lab_title"), desc: t("manuscript_lab_desc"), iconBg: "ios-icon-teal", action: () => openDashboardOverlay(() => setShowManuscriptAnalyzer(true)), feature: "chapter_improvement" as const, tag: t("os_tag_score") },
     { group: "writer", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_studio_desc"), iconBg: "ios-icon-pink", action: openRewriteStudio, feature: "chapter_rewrite" as const, tag: t("os_tag_rewrite") },
-    { group: "writer", icon: Users, title: t("character_studio_title"), desc: t("character_studio_desc"), iconBg: "ios-icon-pink", action: () => setShowCharacterStudio(true), feature: "book_engine_full" as const, tag: t("os_tag_cast") },
-    { group: "writer", icon: AudioLines, title: "Voice Studio", desc: "Hear your story breathe with cinematic narration.", iconBg: "ios-icon-cyan", action: () => setShowVoiceStudio(true), feature: "book_engine_full" as const, tag: "IMMERSIVE", emphasis: true },
-    { group: "writer", icon: NotebookPen, title: t("block_notes"), desc: t("notepad_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowNotepad(true), tag: t("os_tag_notes") },
+    { group: "writer", icon: Users, title: t("character_studio_title"), desc: t("character_studio_desc"), iconBg: "ios-icon-pink", action: () => openDashboardOverlay(() => setShowCharacterStudio(true)), feature: "book_engine_full" as const, tag: t("os_tag_cast") },
+    { group: "writer", icon: AudioLines, title: "Voice Studio", desc: "Hear your story breathe with cinematic narration.", iconBg: "ios-icon-cyan", action: () => openDashboardOverlay(() => setShowVoiceStudio(true)), feature: "book_engine_full" as const, tag: "IMMERSIVE", emphasis: true },
+    { group: "writer", icon: NotebookPen, title: t("block_notes"), desc: t("notepad_premium_desc"), iconBg: "ios-icon-yellow", action: () => openDashboardOverlay(() => setShowNotepad(true)), tag: t("os_tag_notes") },
 
     { group: "bestseller", icon: Flame, title: t("bestseller_engine_title"), desc: t("bestseller_engine_desc"), iconBg: "ios-icon-blue", action: () => openLaunchModal("advanced"), emphasis: true, tag: t("os_tag_launch") },
     { group: "bestseller", icon: Rocket, title: t("kdp_intelligence_title"), desc: t("kdp_intelligence_desc"), iconBg: "ios-icon-violet", action: () => navigate("/kdp-launch"), feature: "kdp_market_base" as const, tag: t("os_tag_market") },
-    { group: "bestseller", icon: Zap, title: t("title_intelligence"), desc: t("title_premium_desc"), iconBg: "ios-icon-teal", action: () => setShowTitleIntel(true), feature: "title_intelligence_base" as const, tag: t("os_tag_titles") },
+    { group: "bestseller", icon: Zap, title: t("title_intelligence"), desc: t("title_premium_desc"), iconBg: "ios-icon-teal", action: () => openDashboardOverlay(() => setShowTitleIntel(true)), feature: "title_intelligence_base" as const, tag: t("os_tag_titles") },
     { group: "bestseller", icon: TrendingUp, title: "Bestseller Radar", desc: t("radar_premium_desc"), iconBg: "ios-icon-green", action: () => navigate("/bestseller-radar"), feature: "trending_niches_limited" as const, tag: t("os_tag_signal") },
     { group: "bestseller", icon: BarChart3, title: "Keyword Gold", desc: t("keyword_premium_desc"), iconBg: "ios-icon-yellow", action: () => navigate("/keyword-gold"), feature: "kdp_market_base" as const, tag: t("os_tag_metadata") },
 
-    { group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: () => setShowCoverStudio(true), feature: "cover_studio_template" as const, tag: t("os_tag_cover") },
-    { group: "publishing", icon: FileDown, title: t("export_studio_title"), desc: t("export_studio_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const, tag: t("os_tag_export") },
-    { group: "publishing", icon: Library, title: t("completed_shelf_title"), desc: t("library_premium_desc"), iconBg: "ios-icon-green", action: () => setShowLibrary(true), feature: "export_epub" as const, tag: t("os_tag_archive") },
+    { group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: () => openDashboardOverlay(() => setShowCoverStudio(true)), feature: "cover_studio_template" as const, tag: t("os_tag_cover") },
+    { group: "publishing", icon: FileDown, title: t("export_studio_title"), desc: t("export_studio_desc"), iconBg: "ios-icon-orange", action: () => openDashboardOverlay(() => setShowExport(true)), feature: "export_epub" as const, tag: t("os_tag_export") },
+    { group: "publishing", icon: Library, title: t("completed_shelf_title"), desc: t("library_premium_desc"), iconBg: "ios-icon-green", action: () => openDashboardOverlay(() => setShowLibrary(true)), feature: "export_epub" as const, tag: t("os_tag_archive") },
 
-    { group: "system", icon: Users, title: t("author_identity"), desc: t("author_identity_premium_desc"), iconBg: "ios-icon-blue", action: () => setShowAuthorIdentity(true), feature: "book_engine_full" as const, tag: t("os_tag_identity") },
-    { group: "system", icon: Settings, title: t("background_atmosphere"), desc: t("atmosphere_premium_desc"), iconBg: "ios-icon-slate", action: () => setShowAdvancedSettings(true), feature: "book_engine_full" as const, tag: t("os_tag_space") },
-    { group: "system", icon: FolderOpen, title: t("drafts_shelf_title"), desc: t("projects_premium_desc"), iconBg: "ios-icon-cyan", action: () => setShowProjects(!showProjects), feature: "book_engine_full" as const, tag: t("os_tag_library") },
-    { group: "system", icon: Settings, title: t("settings"), desc: t("settings_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowAdvancedSettings(true), feature: "book_engine_full" as const, tag: t("os_tag_control") },
+    { group: "system", icon: Users, title: t("author_identity"), desc: t("author_identity_premium_desc"), iconBg: "ios-icon-blue", action: () => openDashboardOverlay(() => setShowAuthorIdentity(true)), feature: "book_engine_full" as const, tag: t("os_tag_identity") },
+    { group: "system", icon: Settings, title: t("background_atmosphere"), desc: t("atmosphere_premium_desc"), iconBg: "ios-icon-slate", action: () => openDashboardOverlay(() => setShowAdvancedSettings(true)), feature: "book_engine_full" as const, tag: t("os_tag_space") },
+    { group: "system", icon: FolderOpen, title: t("drafts_shelf_title"), desc: t("projects_premium_desc"), iconBg: "ios-icon-cyan", action: () => openDashboardOverlay(() => setShowProjects(true)), feature: "book_engine_full" as const, tag: t("os_tag_library") },
+    { group: "system", icon: Settings, title: t("settings"), desc: t("settings_premium_desc"), iconBg: "ios-icon-yellow", action: () => openDashboardOverlay(() => setShowAdvancedSettings(true)), feature: "book_engine_full" as const, tag: t("os_tag_control") },
   ];
 
   const cardGroups = [
@@ -886,7 +947,7 @@ const dashboardWidgets = [
             <FocusMusicControl />
             <button
               type="button"
-              onClick={() => setShowAuthorIdentity(true)}
+              onClick={() => openDashboardOverlay(() => setShowAuthorIdentity(true))}
               className="ios-toolbar-button h-8 w-8 text-sky-200"
               title={t("author_identity")}
             >
@@ -894,7 +955,14 @@ const dashboardWidgets = [
             </button>
             <div className="relative">
               <button
-                onClick={() => setShowLangMenu(!showLangMenu)}
+                onClick={() => {
+                  if (showLangMenu) {
+                    setShowLangMenu(false);
+                  } else {
+                    closeAllDashboardOverlays();
+                    setShowLangMenu(true);
+                  }
+                }}
                 className="ios-toolbar-button h-8 w-8 px-0 text-xs font-medium min-[420px]:w-auto min-[420px]:px-3"
               >
                 <Globe className="h-3.5 w-3.5" /> <span className="hidden min-[420px]:inline">{currentLangLabel}</span>
@@ -983,14 +1051,14 @@ const dashboardWidgets = [
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button
-                onClick={() => setShowProjects(true)}
+                onClick={() => openDashboardOverlay(() => setShowProjects(true))}
                 className="rounded-xl border border-white/15 bg-white/[0.10] p-3 text-left shadow-[0_10px_28px_rgba(0,0,0,0.14)] transition-colors hover:border-sky-300/45 hover:bg-sky-400/14"
               >
                 <p className="text-[10px] uppercase text-muted-foreground">{t("drafts")}</p>
                 <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{draftProjects.length}</p>
               </button>
               <button
-                onClick={() => setShowLibrary(true)}
+                onClick={() => openDashboardOverlay(() => setShowLibrary(true))}
                 className="rounded-xl border border-white/15 bg-white/[0.10] p-3 text-left shadow-[0_10px_28px_rgba(0,0,0,0.14)] transition-colors hover:border-emerald-300/45 hover:bg-emerald-400/14"
               >
                 <p className="text-[10px] uppercase text-muted-foreground">{t("library")}</p>
@@ -1059,7 +1127,7 @@ const dashboardWidgets = [
                   <button
                     key={stat.label}
                     type="button"
-                    onClick={() => stat.label === t("completed") ? setShowLibrary(true) : setShowProjects(true)}
+                    onClick={() => openDashboardOverlay(() => (stat.label === t("completed") ? setShowLibrary(true) : setShowProjects(true)))}
                     className="rounded-xl border border-white/12 bg-white/[0.07] p-2 text-center"
                   >
                     <span className="block truncate text-[8px] font-semibold uppercase text-white/48">{stat.label}</span>
@@ -1071,9 +1139,9 @@ const dashboardWidgets = [
           )}
         </section>
 
-        <div className="mb-4 grid gap-2 sm:mb-6 xl:grid xl:grid-cols-5">
-          {focusAtmosphereCard}
-
+        <div className="mb-4 flex flex-col gap-2 sm:mb-6">
+          <div className="min-w-0">{focusAtmosphereCard}</div>
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(240px,320px))] xl:grid-cols-4">
           {dashboardWidgets.map((widget) => (
             <button
               key={widget.label}
@@ -1094,9 +1162,10 @@ const dashboardWidgets = [
               <p className="mt-2 line-clamp-2 text-[11px] font-medium leading-4 text-white/66">{widget.detail}</p>
             </button>
           ))}
+          </div>
         </div>
 
-        <div className="mb-4 hidden grid-cols-4 gap-1.5 sm:mb-6 sm:grid-cols-2 sm:gap-2.5 xl:grid xl:grid-cols-4">
+        <div className="mb-4 hidden gap-1.5 sm:mb-6 sm:grid sm:grid-cols-2 sm:gap-2.5 xl:grid xl:grid-cols-[repeat(auto-fill,minmax(220px,280px))]">
           {workspaceStats.map((stat) => (
               <div key={stat.label} className="ios-glass-soft rounded-[24px] border-white/15 bg-white/[0.08] p-3 shadow-[0_16px_40px_rgba(0,0,0,0.18)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5">
                 <div className="flex items-center justify-between gap-2 sm:gap-3">
@@ -1203,15 +1272,15 @@ const dashboardWidgets = [
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,280px),380px))]">
                     {groupCards.map(card => {
                       const Icon = card.icon;
                       const inner = (
                         <button
                           key={card.title}
                           onClick={card.action}
-                          className={`group relative flex min-h-[170px] w-full flex-col overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/35 p-4 text-left shadow-[0_24px_80px_rgba(0,0,0,0.24)] ring-1 ring-white/[0.03] backdrop-blur-xl transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[0_26px_88px_rgba(15,23,42,0.30)] ${
-                            (card as any).emphasis ? "sm:col-span-2 lg:col-span-2" : ""
+                          className={`group relative flex min-h-[170px] w-full min-w-0 max-w-[380px] flex-col overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/35 p-4 text-left shadow-[0_24px_80px_rgba(0,0,0,0.24)] ring-1 ring-white/[0.03] backdrop-blur-xl transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[0_26px_88px_rgba(15,23,42,0.30)] ${
+                            (card as any).emphasis ? "sm:col-span-2 lg:col-span-2 lg:max-w-[760px]" : ""
                           }`}
                         >
                           <span className="pointer-events-none absolute inset-x-4 top-0 h-20 rounded-b-[28px] bg-white/5 blur-2xl opacity-70" />
@@ -1264,7 +1333,7 @@ const dashboardWidgets = [
               <p className="text-xs text-muted-foreground">{t("beta_code_desc")}</p>
             </div>
             <button
-              onClick={() => setShowBetaDialog(true)}
+              onClick={() => openDashboardOverlay(() => setShowBetaDialog(true))}
               className="rounded-lg border border-fuchsia-500/40 bg-fuchsia-500/15 px-3 py-2 text-xs font-bold text-fuchsia-200 transition-colors hover:bg-fuchsia-500/25"
             >
               {t("activate")}
@@ -1500,7 +1569,7 @@ const dashboardWidgets = [
               projects={projects}
               onOpen={(id) => { setShowLibrary(false); goApp({ projectId: id }); }}
               onDelete={handleDelete}
-              onExport={() => { setShowLibrary(false); setShowExport(true); }}
+              onExport={() => openDashboardOverlay(() => setShowExport(true))}
             />
             </div>
           </div>
