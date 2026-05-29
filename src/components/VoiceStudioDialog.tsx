@@ -116,7 +116,7 @@ export function VoiceStudioDialog({
   const firstPlayableChapter = chapterOptions[0]?.index ?? 0;
   const currentChapter = selectedProject?.chapters[chapterIndex] || null;
   const style = VOICE_STUDIO_STYLES.find((item) => item.id === styleId) || VOICE_STUDIO_STYLES[0];
-  const prep = prepareVoiceStudioProfiles(selectedProject);
+  const prep = useMemo(() => prepareVoiceStudioProfiles(selectedProject), [selectedProject]);
 
   useEffect(() => {
     if (!open || !selectedProject) return;
@@ -156,7 +156,9 @@ export function VoiceStudioDialog({
 
   const clearTimer = () => {
     if (timerRef.current != null) {
-      window.clearInterval(timerRef.current);
+      try {
+        window.clearInterval(timerRef.current);
+      } catch (e) {}
       timerRef.current = null;
     }
   };
@@ -199,8 +201,8 @@ export function VoiceStudioDialog({
       window.speechSynthesis.onvoiceschanged = onVoicesChanged;
 
       // aggressive polling as some browsers are flaky in production
-      const timer = window.setInterval(tryResolve, 200);
-      const timeoutTimer = window.setTimeout(() => {
+      let timer: number | null = window.setInterval(tryResolve, 400);
+      let timeoutTimer: number | null = window.setTimeout(() => {
         if (!resolved) {
           const v = window.speechSynthesis.getVoices() || [];
           voicesRef.current = v;
@@ -209,6 +211,7 @@ export function VoiceStudioDialog({
           setVoicesCount(v.length);
           logDebug("voices-timeout", v.length);
           cleanup();
+          resolved = true;
           resolve(v);
         }
       }, timeout);
@@ -864,9 +867,13 @@ export function VoiceStudioDialog({
     programmaticScrollRef.current = true;
     node.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
 
-    window.setTimeout(() => {
+    const scrollTimeout = window.setTimeout(() => {
       programmaticScrollRef.current = false;
     }, 450);
+
+    return () => {
+      window.clearTimeout(scrollTimeout);
+    };
   }, [currentSentence, open, sentences.length, readerDetached]);
 
   const handleKaraokeScroll = () => {
@@ -885,9 +892,12 @@ export function VoiceStudioDialog({
     programmaticScrollRef.current = true;
     node.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
 
-    window.setTimeout(() => {
+    const timeout = window.setTimeout(() => {
       programmaticScrollRef.current = false;
     }, 450);
+
+    // Return function to cleanup timeout if component unmounts
+    return () => window.clearTimeout(timeout);
   };
 
   useEffect(() => {
@@ -896,7 +906,16 @@ export function VoiceStudioDialog({
       setStatus("Tap Play to start narration");
       logDebug("autoplay-requested-but-blocked");
     }
-    return () => {};
+    return () => {
+      // Cleanup: ensure speech synthesis is stopped on unmount
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch (e) {
+          // Ignore errors in cleanup
+        }
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, autoPlayOnOpen]);
 
