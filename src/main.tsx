@@ -1,4 +1,5 @@
-import { applyScriptoraAppearance } from "@/lib/scriptora-appearance";
+import { applyVisualEnvironment } from "@/lib/atmosphere-engine";
+import { validateAuthorIdentityStorage } from "@/lib/author-identity";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
@@ -71,7 +72,8 @@ VITE_SUPABASE_PROJECT_ID=&lt;project-ref&gt;</pre>
 
 // Apply saved visual settings before first paint.
 try {
-  applyScriptoraAppearance();
+  applyVisualEnvironment();
+  validateAuthorIdentityStorage();
 } catch {
   /* ignore appearance boot errors */
 }

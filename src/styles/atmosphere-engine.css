@@ -1,0 +1,340 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Scriptora Immersive Atmosphere Engine — Layer 1
+   Fantasy Realm v2 — 70% dark luxury SaaS · 30% magical accent
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-atmosphere-profile="fantasy-realm"] {
+  /* Core UI stays professional indigo — violet reserved for micro-accents */
+  --primary: 226 48% 58%;
+  --ring: 226 48% 58%;
+  --accent: 42 72% 52%;
+  --atmo-accent-violet: rgba(139, 127, 199, 0.14);
+  --atmo-accent-gold: rgba(212, 175, 98, 0.08);
+  --atmo-accent-indigo: rgba(30, 41, 89, 0.55);
+  --atmo-card-edge: rgba(255, 255, 255, 0.07);
+  --atmo-card-hover: rgba(255, 255, 255, 0.035);
+  --scriptora-glass: rgba(11, 13, 24, 0.62);
+  --scriptora-glass-strong: rgba(9, 11, 20, 0.82);
+  --scriptora-glass-border: rgba(255, 255, 255, 0.09);
+  --scriptora-ios-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --scriptora-app-bg:
+    linear-gradient(rgba(4, 6, 14, 0.92), rgba(4, 6, 14, 0.96)),
+    radial-gradient(ellipse 70% 42% at 50% -8%, rgba(55, 48, 107, 0.12), transparent 58%),
+    radial-gradient(ellipse 40% 28% at 92% 96%, rgba(212, 175, 98, 0.04), transparent 62%),
+    linear-gradient(180deg, #060810 0%, #0a0c16 46%, #040508 100%);
+}
+
+/* ── Ambient shell — felt more than seen ── */
+[data-atmosphere-profile="fantasy-realm"] .scriptora-ios-screen {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018) 0%, transparent 28%),
+    var(--scriptora-app-bg);
+}
+
+[data-atmosphere-profile="fantasy-realm"] .scriptora-ios-screen::before {
+  background-image: var(--atmosphere-realm-overlay), var(--atmosphere-realm-image);
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  opacity: 0.62;
+  filter: saturate(0.82) brightness(0.72);
+  visibility: visible;
+}
+
+[data-atmosphere-profile="fantasy-realm"] .scriptora-ios-screen::after {
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.04), transparent 4%),
+    radial-gradient(circle at 72% 16%, rgba(139, 127, 199, 0.05), transparent 5%),
+    radial-gradient(circle at 48% 78%, rgba(212, 175, 98, 0.03), transparent 6%);
+  mix-blend-mode: normal;
+  opacity: 0.42;
+  animation: atmo-fantasy-breathe 32s ease-in-out infinite;
+}
+
+/* ── Writer OS — immersive edge, writing clarity first ── */
+[data-atmosphere-profile="fantasy-realm"] .scriptora-ios-screen:has(.ios-editor-paper)::before {
+  opacity: 0.34;
+  filter: saturate(0.65) brightness(0.58) blur(1px);
+}
+
+[data-atmosphere-profile="fantasy-realm"] .scriptora-ios-screen:has(.ios-editor-paper)::after {
+  opacity: 0.14;
+  animation: none;
+}
+
+[data-atmosphere-profile="fantasy-realm"] .ios-editor-paper {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
+    rgba(7, 9, 18, 0.9);
+  border-color: rgba(255, 255, 255, 0.085);
+  box-shadow:
+    0 28px 72px rgba(0, 0, 0, 0.48),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+[data-atmosphere-profile="fantasy-realm"] .ios-sidebar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+    rgba(8, 10, 20, 0.84);
+  border-right-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 12px 0 36px rgba(0, 0, 0, 0.28);
+}
+
+/* ── Glass system — Apple-grade depth, mystical edge only ── */
+[data-atmosphere-profile="fantasy-realm"] .ios-glass,
+[data-atmosphere-profile="fantasy-realm"] .ios-glass-soft,
+[data-atmosphere-profile="fantasy-realm"] .ios-panel {
+  border-color: var(--scriptora-glass-border);
+  box-shadow: var(--scriptora-ios-shadow);
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease,
+    background 220ms ease;
+}
+
+[data-atmosphere-profile="fantasy-realm"] .ios-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    var(--scriptora-glass-strong);
+}
+
+[data-atmosphere-profile="fantasy-realm"] .ios-glass-soft {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
+    rgba(10, 12, 22, 0.58);
+}
+
+[data-atmosphere-profile="fantasy-realm"] .ios-panel:hover,
+[data-atmosphere-profile="fantasy-realm"] .ios-glass-soft:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 20px 52px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 0 1px var(--atmo-accent-violet);
+}
+
+[data-atmosphere-profile="fantasy-realm"] .ios-panel:has(button):hover,
+[data-atmosphere-profile="fantasy-realm"] .ios-panel.group:hover {
+  transform: translateY(-1px);
+}
+
+/* ── Navbar — quiet luxury bar ── */
+[data-atmosphere-profile="fantasy-realm"] header.sticky {
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+  background-color: hsl(var(--background) / 0.62) !important;
+}
+
+[data-atmosphere-profile="fantasy-realm"] .ios-toolbar-button:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+/* ── Atmosphere engine card (Dashboard) ── */
+[data-atmosphere-profile="fantasy-realm"] .atmo-engine-card {
+  border-color: rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.03), transparent 42%),
+    linear-gradient(180deg, rgba(8, 10, 20, 0.94), rgba(6, 8, 16, 0.98));
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.32);
+}
+
+[data-atmosphere-profile="fantasy-realm"] .atmo-engine-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 88% 8%, rgba(139, 127, 199, 0.07), transparent 42%);
+}
+
+[data-atmosphere-profile="fantasy-realm"] .atmo-profile-tile.is-active {
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+[data-atmosphere-profile="fantasy-realm"] .atmo-profile-tile.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(139, 127, 199, 0.35) 28%,
+    rgba(212, 175, 98, 0.22) 72%,
+    transparent
+  );
+}
+
+/* ── Boot screen — aligned but restrained ── */
+[data-atmosphere-profile="fantasy-realm"] .scriptora-boot-overlay {
+  background:
+    linear-gradient(180deg, rgba(4, 6, 14, 0.55) 0%, rgba(8, 10, 20, 0.72) 48%, rgba(4, 5, 10, 0.84) 100%),
+    radial-gradient(ellipse 80% 50% at 50% 42%, rgba(88, 80, 141, 0.07), transparent 62%);
+}
+
+[data-atmosphere-profile="fantasy-realm"] .scriptora-boot-progress-fill {
+  background: linear-gradient(
+    90deg,
+    rgba(120, 132, 199, 0.82) 0%,
+    rgba(186, 198, 230, 0.9) 58%,
+    rgba(255, 255, 255, 0.94) 100%
+  );
+  box-shadow:
+    0 0 12px rgba(120, 132, 199, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+[data-atmosphere-profile="fantasy-realm"] .scriptora-boot-label-active {
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow:
+    0 0 10px rgba(139, 127, 199, 0.22),
+    0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+@keyframes atmo-fantasy-breathe {
+  0%, 100% {
+    opacity: 0.36;
+  }
+  50% {
+    opacity: 0.46;
+  }
+}
+
+@media (max-width: 640px) {
+  [data-atmosphere-profile="fantasy-realm"] .scriptora-ios-screen::before {
+    background-position: center 38%;
+    opacity: 0.52;
+  }
+
+  [data-atmosphere-profile="fantasy-realm"][data-background-source="realm"] .scriptora-ios-screen::before {
+    visibility: visible !important;
+    opacity: 0.52 !important;
+  }
+
+  [data-atmosphere-profile="fantasy-realm"] .scriptora-ios-screen:has(.ios-editor-paper)::before {
+    opacity: 0.42;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-atmosphere-profile="fantasy-realm"] .scriptora-ios-screen::after {
+    animation: none !important;
+    opacity: 0.38;
+  }
+
+  [data-atmosphere-profile="fantasy-realm"] .ios-panel:hover,
+  [data-atmosphere-profile="fantasy-realm"] .ios-glass-soft:hover {
+    transform: none !important;
+  }
+}
+
+/* ── Background source routing — realm image vs custom picker ── */
+[data-background-source="custom"] .scriptora-ios-screen::before,
+[data-background-source="custom"] .scriptora-ios-screen::after {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  animation: none !important;
+}
+
+[data-background-source="custom"] .scriptora-ios-screen {
+  background: var(--scriptora-app-bg);
+  background-attachment: fixed;
+}
+
+[data-background-source="custom"] body,
+[data-background-source="custom"] .bg-background {
+  background: var(--scriptora-app-bg) !important;
+  background-attachment: fixed !important;
+}
+
+/* Force realm layers back on — beats stale custom state */
+[data-atmosphere-profile="fantasy-realm"][data-background-source="realm"] .scriptora-ios-screen::before {
+  visibility: visible !important;
+  opacity: 0.62 !important;
+  filter: saturate(0.82) brightness(0.72) !important;
+  animation: none !important;
+}
+
+[data-atmosphere-profile="fantasy-realm"][data-background-source="realm"] .scriptora-ios-screen::after {
+  visibility: visible !important;
+  opacity: 0.42 !important;
+  animation: atmo-fantasy-breathe 32s ease-in-out infinite !important;
+}
+
+[data-atmosphere-profile="fantasy-realm"][data-background-source="realm"] .scriptora-ios-screen:has(.ios-editor-paper)::before {
+  opacity: 0.34 !important;
+  filter: saturate(0.65) brightness(0.58) blur(1px) !important;
+}
+
+[data-atmosphere-profile="fantasy-realm"][data-background-source="realm"] .scriptora-ios-screen:has(.ios-editor-paper)::after {
+  opacity: 0.14 !important;
+  animation: none !important;
+}
+
+[data-background-source="realm"] .scriptora-ios-screen {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.018) 0%, transparent 28%),
+    var(--scriptora-app-bg);
+  background-attachment: fixed;
+}
+
+[data-background-source="realm"] body,
+[data-background-source="realm"] .bg-background {
+  background: var(--scriptora-app-bg) !important;
+  background-attachment: fixed !important;
+}
+
+/* ── Fantasy Realm icon pass v1 — Lucide base, premium magical shell ── */
+[data-atmosphere-profile="fantasy-realm"] .ios-icon {
+  position: relative;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 8px 22px rgba(0, 0, 0, 0.26),
+    0 0 0 1px rgba(139, 127, 199, 0.07);
+  transition:
+    box-shadow 220ms ease,
+    transform 220ms ease;
+}
+
+[data-atmosphere-profile="fantasy-realm"] .ios-icon svg {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
+  stroke-width: 1.75;
+}
+
+[data-atmosphere-profile="fantasy-realm"] .ios-icon:hover,
+[data-atmosphere-profile="fantasy-realm"] .group:hover .ios-icon {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 10px 26px rgba(0, 0, 0, 0.3),
+    0 0 18px rgba(139, 127, 199, 0.1);
+}
+
+[data-atmosphere-profile="fantasy-realm"] header .ios-icon {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 6px 18px rgba(0, 0, 0, 0.22);
+}
+
+[data-atmosphere-profile="fantasy-realm"] .ios-sidebar .ios-icon {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 6px 20px rgba(0, 0, 0, 0.24),
+    0 0 0 1px rgba(139, 127, 199, 0.06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-atmosphere-profile="fantasy-realm"] .ios-icon,
+  [data-atmosphere-profile="fantasy-realm"] .ios-icon:hover,
+  [data-atmosphere-profile="fantasy-realm"] .group:hover .ios-icon {
+    transform: none !important;
+  }
+}

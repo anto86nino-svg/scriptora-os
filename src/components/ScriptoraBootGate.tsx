@@ -1,10 +1,7 @@
 import { ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScriptoraBootScreen } from "@/components/ScriptoraBootScreen";
-import {
-  bootMessageKey,
-  computeBootProgress,
-  ensureStorageHydrated,
-} from "@/lib/smart-boot";
+import { useHybridBootProgress } from "@/hooks/useHybridBootProgress";
+import { ensureStorageHydrated } from "@/lib/smart-boot";
 
 interface ScriptoraBootGateProps {
   children: ReactNode;
@@ -20,8 +17,7 @@ function ShellReadyMarker({ onReady }: { onReady: () => void }) {
 }
 
 /**
- * Premium boot overlay — tracks real init (auth, storage, plan, route chunk).
- * No artificial delay: exits as soon as work completes.
+ * Premium boot overlay — hybrid cinematic progress + real init (auth, storage, plan, route chunk).
  */
 export function ScriptoraBootGate({
   children,
@@ -58,24 +54,28 @@ export function ScriptoraBootGate({
     [authReady, planReady, shellReady, storageReady],
   );
 
-  const progress = computeBootProgress(flags);
-  const messageKey = bootMessageKey(flags);
   const bootComplete = authReady && storageReady && planReady && shellReady;
+  const { progress, step, messageKey, readyToExit } = useHybridBootProgress(flags, bootComplete);
 
   useEffect(() => {
-    if (!bootComplete || exitStartedRef.current) return;
+    if (!readyToExit || exitStartedRef.current) return;
     exitStartedRef.current = true;
     setExiting(true);
-    const id = window.setTimeout(() => setRevealed(true), 320);
+    const id = window.setTimeout(() => setRevealed(true), 520);
     return () => clearTimeout(id);
-  }, [bootComplete]);
+  }, [readyToExit]);
 
   const mountShell = authReady && storageReady && planReady;
 
   return (
     <>
       {!revealed && (
-        <ScriptoraBootScreen progress={progress} messageKey={messageKey} exiting={exiting} />
+        <ScriptoraBootScreen
+          progress={progress}
+          step={step}
+          messageKey={messageKey}
+          exiting={exiting}
+        />
       )}
 
       <div

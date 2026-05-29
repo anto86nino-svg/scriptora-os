@@ -12,6 +12,7 @@ export type GenreBrainRefinementStep =
   | "bodyBeat"
   | "therapistClarity"
   | "poetryBalance"
+  | "humanWritingV2"
   | "tension";
 
 export type GenreBrainWeights = {
@@ -48,6 +49,7 @@ const DEFAULT_STEP_WEIGHTS: Record<GenreBrainRefinementStep, number> = {
   bodyBeat: 1,
   therapistClarity: 1,
   poetryBalance: 1,
+  humanWritingV2: 1,
   tension: 1,
 };
 
@@ -116,6 +118,7 @@ const PROFILES: Record<GenreBrainId, GenreBrainProfile> = {
       explainedEmotion: 0.08,
       bodyBeat: 0.04,
       therapistClarity: 0.12,
+      humanWritingV2: 0.15,
       tension: 0.15,
     },
     "longing",
@@ -140,6 +143,7 @@ const PROFILES: Record<GenreBrainId, GenreBrainProfile> = {
       explainedEmotion: 0.15,
       bodyBeat: 0.15,
       poetryBalance: 0.15,
+      humanWritingV2: 0.1,
       tension: 0.12,
     },
     "suspense",
@@ -189,6 +193,7 @@ const PROFILES: Record<GenreBrainId, GenreBrainProfile> = {
       bodyBeat: 0.12,
       therapistClarity: 0.15,
       poetryBalance: 0.08,
+      humanWritingV2: 0.14,
       tension: 0.12,
     },
     "danger",
@@ -254,6 +259,17 @@ export function setGenreBrainEnabled(enabled: boolean) {
 }
 
 export function detectGenreBrainId(config?: Partial<BookConfig>): GenreBrainId {
+  const writingBrainId = String(config?.bookIntelligence?.layers?.writingBrainId || "");
+  if (writingBrainId) {
+    if (/dark-romance|romance|slow-burn|enemies-to-lovers|paranormal/.test(writingBrainId)) return "romance";
+    if (/thriller|psychological|horror|dystopian/.test(writingBrainId)) return "thriller";
+    if (/fantasy|epic|ya|sci-fi|cozy-mystery|mystery/.test(writingBrainId)) return "fantasy";
+    if (/crime|mafia/.test(writingBrainId)) return "crime";
+    if (/self-help|productivity|psychology|memoir|business|spirituality|education|manual|horticultural|fitness|health|finance|parenting|study|biography|cookbook|technical|practical/.test(writingBrainId)) {
+      return "nonfiction";
+    }
+  }
+
   const genre = String(config?.genre || "").toLowerCase();
   const category = String(config?.category || "").toLowerCase();
   const subcategory = String(config?.subcategory || "").toLowerCase();
@@ -300,6 +316,7 @@ export function stepBudget(profile: GenreBrainProfile, step: GenreBrainRefinemen
 
 export function orderedRefinementSteps(profile: GenreBrainProfile): GenreBrainRefinementStep[] {
   const base: GenreBrainRefinementStep[] = [
+    "humanWritingV2",
     "dialogueIntent",
     "plainEmotion",
     "perfectDialogue",

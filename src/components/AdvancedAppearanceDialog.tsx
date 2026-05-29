@@ -13,6 +13,15 @@ import {
   type ScriptoraBackgroundId,
   type ScriptoraWritingFont,
 } from "@/lib/scriptora-appearance";
+import {
+  getAtmosphereProfile,
+  loadAtmosphereProfile,
+  restoreRealmBackground,
+  setBackgroundSource,
+  applyVisualEnvironment,
+  type BackgroundSource,
+} from "@/lib/atmosphere-engine";
+import { loadBackgroundSource } from "@/lib/atmosphere-engine/background-source";
 import { getUILanguage, setUILanguage, t, UI_LANGUAGES, useUILanguage, type UILanguage } from "@/lib/i18n";
 
 interface Props {
@@ -71,6 +80,7 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
   const [uiLanguage, setUiLanguage] = useState<UILanguage>(getUILanguage());
   const [hasCustomBackground, setHasCustomBackground] = useState(false);
   const [isUploadingCustomBackground, setIsUploadingCustomBackground] = useState(false);
+  const [backgroundSource, setBackgroundSourceState] = useState<BackgroundSource>("realm");
 
   useEffect(() => {
     if (!open) return;
@@ -81,9 +91,18 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
     setWritingFont(saved.writingFont);
     setUiLanguage(getUILanguage());
     setHasCustomBackground(Boolean(getCustomScriptoraBackground()));
+    setBackgroundSourceState(loadBackgroundSource());
   }, [open]);
 
   if (!open) return null;
+
+  const activeRealm = getAtmosphereProfile(loadAtmosphereProfile());
+
+  const useRealmBackground = () => {
+    restoreRealmBackground();
+    setBackgroundSourceState("realm");
+    toast.success(t("toast_realm_background_restored"));
+  };
 
   const applyBackground = (id: ScriptoraBackgroundId) => {
     if (id === "custom-personal" && !getCustomScriptoraBackground()) {
@@ -93,6 +112,8 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
 
     setBackgroundId(id);
     saveScriptoraAppearance({ backgroundId: id, writingFont });
+    setBackgroundSource("custom");
+    setBackgroundSourceState("custom");
     window.dispatchEvent(new Event("scriptora-appearance-change"));
     toast.success(t("toast_background_saved"));
   };
@@ -131,6 +152,8 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
 
       setBackgroundId("custom-personal");
       saveScriptoraAppearance({ backgroundId: "custom-personal", writingFont });
+      setBackgroundSource("custom");
+      setBackgroundSourceState("custom");
 
       window.dispatchEvent(new Event("scriptora-appearance-change"));
       toast.success("Sfondo personale salvato.");
@@ -157,9 +180,10 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
 
   const finish = () => {
     saveScriptoraAppearance({ backgroundId, writingFont });
+    setBackgroundSource(backgroundSource);
+    applyVisualEnvironment();
     setUILanguage(uiLanguage);
     onLanguageChanged?.();
-    window.dispatchEvent(new Event("scriptora-appearance-change"));
     toast.success(t("toast_settings_applied"));
     onClose();
   };
@@ -232,7 +256,56 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
               {t("writing_atmospheres_desc")}
             </p>
 
-            <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+            <div className="mb-5 rounded-2xl border border-border/70 bg-muted/10 p-4">
+              <p className="text-sm font-semibold text-foreground">{t("bg_source_title")}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("bg_source_desc")}</p>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={useRealmBackground}
+                  className={`rounded-2xl border p-4 text-left transition ${
+                    backgroundSource === "realm"
+                      ? "border-primary bg-primary/10 ring-1 ring-primary/25"
+                      : "border-border/70 bg-background/30 hover:border-primary/40"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-foreground">{t("bg_source_realm")}</p>
+                    {backgroundSource === "realm" && <Check className="h-4 w-4 text-primary" />}
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">{t("bg_source_realm_desc")}</p>
+                  <p className="mt-3 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                    {t(activeRealm.nameKey)}
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBackgroundSource("custom");
+                    setBackgroundSourceState("custom");
+                  }}
+                  className={`rounded-2xl border p-4 text-left transition ${
+                    backgroundSource === "custom"
+                      ? "border-primary bg-primary/10 ring-1 ring-primary/25"
+                      : "border-border/70 bg-background/30 hover:border-primary/40"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-foreground">{t("bg_source_custom")}</p>
+                    {backgroundSource === "custom" && <Check className="h-4 w-4 text-primary" />}
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-muted-foreground">{t("bg_source_custom_desc")}</p>
+                </button>
+              </div>
+
+              {backgroundSource === "realm" && (
+                <p className="mt-3 text-xs font-medium text-primary/90">{t("bg_source_realm_active")}</p>
+              )}
+            </div>
+
+            <div className={`mb-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4 ${backgroundSource === "realm" ? "opacity-55" : ""}`}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-foreground">Sfondo personale</p>
@@ -285,7 +358,7 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 ${backgroundSource === "realm" ? "pointer-events-none opacity-50" : ""}`}>
               {SCRIPTORA_BACKGROUNDS.map((bg) => {
                 const active = backgroundId === bg.id;
 

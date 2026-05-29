@@ -1,8 +1,9 @@
-import type { AuthorIdentity } from "@/types/book";
+import type { AuthorIdentity, AuthorIdentityLock, BookConfig } from "@/types/book";
 
 const AUTHOR_IDENTITIES_KEY = "scriptora-author-identities-v1";
 export const SELECTED_AUTHOR_IDENTITY_KEY = "scriptora-selected-author-identity-v1";
 export const AUTHOR_IDENTITY_CHANGED_EVENT = "scriptora-author-identity-change";
+export const AUTHOR_IDENTITY_LOCK_VERSION = 2 as const;
 
 export const DEFAULT_AUTHOR_IDENTITIES: AuthorIdentity[] = [
   {
@@ -164,5 +165,119 @@ export function applyAuthorIdentityToConfig<T extends { [key: string]: any }>(
     authorName: normalized.penName,
     author: normalized.penName,
     writerName: normalized.penName,
+    authorIdentityLock: buildAuthorIdentityLock(normalized),
   };
+}
+
+/** Stable fingerprint of voice-defining fields — detects accidental identity drift */
+export function buildAuthorIdentityFingerprint(identity: AuthorIdentity): string {
+  const payload = [
+    identity.id,
+    identity.penName,
+    identity.voice,
+    identity.signatureMoves,
+    identity.forbiddenMoves,
+    identity.archetype,
+    identity.recurringThemes,
+  ]
+    .map((part) => String(part || "").trim().toLowerCase())
+    .join("|");
+  let hash = 0;
+  for (let i = 0; i < payload.length; i += 1) {
+    hash = (hash * 31 + payload.charCodeAt(i)) >>> 0;
+  }
+  return `v${AUTHOR_IDENTITY_LOCK_VERSION}-${hash.toString(16)}`;
+}
+
+export function buildAuthorIdentityLock(identity: AuthorIdentity): AuthorIdentityLock {
+  const normalized = normalizeAuthorIdentity(identity);
+  if (!normalized) {
+    throw new Error("Cannot lock invalid author identity");
+  }
+  return {
+    version: AUTHOR_IDENTITY_LOCK_VERSION,
+    identityId: normalized.id,
+    penName: normalized.penName,
+    fingerprint: buildAuthorIdentityFingerprint(normalized),
+    lockedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Enforce author identity lock on a project config.
+ * Never swaps a locked project to the globally selected author.
+ */
+export function enforceAuthorIdentityLock<T extends BookConfig>(config: T): T {
+  const lock = config.authorIdentityLock;
+  const lockedId = lock?.identityId || config.authorIdentityId;
+
+  if (lockedId) {
+    const resolved =
+      resolveAuthorIdentity(config.authorIdentity, lockedId) ||
+      findAuthorIdentity(lockedId);
+
+    if (resolved) {
+      const next = applyAuthorIdentityToConfig(config, resolved) as T;
+      const fingerprint = buildAuthorIdentityFingerprint(resolved);
+      if (lock && lock.fingerprint !== fingerprint) {
+        return {
+          ...next,
+          authorIdentityLock: {
+            ...lock,
+            penName: resolved.penName,
+            fingerprint,
+          },
+        };
+      }
+      return next;
+    }
+
+    if (config.authorIdentity && normalizeAuthorIdentity(config.authorIdentity)) {
+      const embedded = normalizeAuthorIdentity(config.authorIdentity)!;
+      return {
+        ...config,
+        authorIdentityId: embedded.id,
+        authorName: embedded.penName,
+        author: embedded.penName,
+        writerName: embedded.penName,
+        authorIdentityLock: lock || buildAuthorIdentityLock(embedded),
+      };
+    }
+  }
+
+  const hasAuthorName = !!String(config.authorName || config.author || config.writerName || "").trim();
+  if (hasAuthorName && config.authorIdentity) {
+    const embedded = normalizeAuthorIdentity(config.authorIdentity);
+    if (embedded) {
+      return {
+        ...config,
+        authorIdentityId: embedded.id,
+        authorIdentityLock: lock || buildAuthorIdentityLock(embedded),
+      } as T;
+    }
+  }
+
+  if (!lockedId && !hasAuthorName) {
+    return applyAuthorIdentityToConfig(config, getSelectedAuthorIdentity()) as T;
+  }
+
+  return config;
+}
+
+/** Validate localStorage author selection on app boot */
+export function validateAuthorIdentityStorage(): void {
+  if (typeof window === "undefined") return;
+  const identities = loadAuthorIdentities();
+  const selectedId = getSelectedAuthorIdentityId();
+  const exists = identities.some((item) => item.id === selectedId);
+  if (!exists && identities[0]) {
+    setSelectedAuthorIdentityId(identities[0].id);
+  }
+}
+
+export function assertAuthorIdentityMatch(config: BookConfig): boolean {
+  const lock = config.authorIdentityLock;
+  const identity = normalizeAuthorIdentity(config.authorIdentity);
+  if (!lock || !identity) return true;
+  return lock.identityId === identity.id && lock.penName === identity.penName;
 }

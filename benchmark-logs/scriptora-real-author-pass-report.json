@@ -1,0 +1,71 @@
+{
+  "generatedAt": "2026-05-29T16:54:22.788Z",
+  "mode": "offline-blocked",
+  "env": {
+    "deepseek": false,
+    "openai": false,
+    "anthropic": false,
+    "ready": false,
+    "mode": "offline"
+  },
+  "smoke": true,
+  "projectsTested": 0,
+  "chaptersPerProject": 0,
+  "longBookChapters": 0,
+  "overallScore": 0,
+  "ctoVerdict": "BLOCKED: Live API benchmark not executed. Simulation ≠ reality.",
+  "wouldAuthorsPreferScriptora": false,
+  "measurablySuperiorLongForm": false,
+  "vsChatGPT": {
+    "wins": 0,
+    "losses": 0,
+    "ties": 0,
+    "winRate": 0,
+    "avgMargin": 0,
+    "verdict": "Not run"
+  },
+  "vsClaude": {
+    "wins": 0,
+    "losses": 0,
+    "ties": 0,
+    "winRate": 0,
+    "avgMargin": 0,
+    "verdict": "Not run"
+  },
+  "winLossByGenre": [],
+  "longBook": [],
+  "authorIdentity": {
+    "scriptoraAntoninoVoice": 0,
+    "scriptoraLiviaVoice": 0,
+    "chatgptGenericVoice": 0,
+    "claudeGenericVoice": 0,
+    "scriptoraPreservesIdentity": false,
+    "competitorsGeneric": false,
+    "passed": false,
+    "issues": [
+      "Live run required"
+    ]
+  },
+  "chapterDoctor": {
+    "editorWouldChooseImproved": false,
+    "voicePreserved": false,
+    "deltaBelievable": false,
+    "hookImproved": false,
+    "passed": false,
+    "beforeComposite": 0,
+    "afterComposite": 0,
+    "delta": 0,
+    "scriptoraDoctorChosen": false,
+    "claudeRevisionChosen": false,
+    "competitorBaseline": "chatgpt"
+  },
+  "strongestMoat": [],
+  "weakestAreas": [
+    "Live validation not executed"
+  ],
+  "failurePoints": [
+    "Live API benchmark blocked. Set: DEEPSEEK_API_KEY (Scriptora stack), OPENAI_API_KEY (ChatGPT live), ANTHROPIC_API_KEY (Claude live)"
+  ],
+  "blindResults": [],
+  "markdown": "# Scriptora Real Author Pass Report\n\nGenerated: 2026-05-29T16:54:22.788Z\nMode: **OFFLINE BLOCKED** — live API keys not configured\n\n## Status\nLive API benchmark blocked. Set: DEEPSEEK_API_KEY (Scriptora stack), OPENAI_API_KEY (ChatGPT live), ANTHROPIC_API_KEY (Claude live)\n\n| Key | Present |\n|-----|---------|\n| DEEPSEEK_API_KEY | ❌ |\n| OPENAI_API_KEY | ❌ |\n| ANTHROPIC_API_KEY | ❌ |\n\n## How to run the real pass\n```bash\nexport DEEPSEEK_API_KEY=...\nexport OPENAI_API_KEY=...\nexport ANTHROPIC_API_KEY=...\nnpm run benchmark:live\n```\n\nFor full matrix (21 projects, 25-chapter long book):\n```bash\nLIVE_BENCHMARK_FULL=1 npm run benchmark:live\n```\n\n## Brutal verdict (pre-live)\nCannot prove or falsify superiority without live API outputs. Offline simulated validation exists in `benchmark-logs/scriptora-live-validation-report.md` — that is NOT this report."
+}

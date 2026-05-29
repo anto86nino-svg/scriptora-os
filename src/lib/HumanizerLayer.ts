@@ -15,6 +15,11 @@ import {
 } from "@/lib/GenreBrain";
 import { applyHumanImperfectionLayer } from "@/lib/HumanImperfectionLayer";
 import { applyStoryBibleLock } from "@/lib/StoryBibleLock";
+import {
+  applyHumanWritingPostProcess,
+  buildHumanWritingPromptBlock,
+  isHumanWritingEngineV2Enabled,
+} from "@/lib/human-writing-engine";
 
 export const HUMANIZER_LAYER_STORAGE_KEY = "scriptora-humanizer-v2-enabled";
 const MAX_CHANGED_PERCENT = 14.5;
@@ -161,8 +166,12 @@ export function shouldUseHumanizer(context: HumanizerContext = {}): boolean {
 }
 
 export function buildHumanizerPromptBlock(context: HumanizerContext = {}): string {
-  if (!shouldUseHumanizer(context)) return "";
-  return buildTensionPromptBlock(context);
+  const humanWritingBlock = buildHumanWritingPromptBlock(context.config);
+  if (!shouldUseHumanizer(context)) {
+    return humanWritingBlock;
+  }
+  const tensionBlock = buildTensionPromptBlock(context);
+  return [tensionBlock, humanWritingBlock].filter(Boolean).join("\n\n");
 }
 
 const GROUNDED_BEATS: Record<LanguageKey, string[]> = {
@@ -726,6 +735,18 @@ export function humanizeNarrativeText(text: string, context: HumanizerContext = 
     }
     if (step === "poetryBalance") {
       next = acceptWithinBudget(original, next, balancePoetry(next, language, poetryRunLimit(genreBrain)), genreBrain, step);
+    }
+    if (step === "humanWritingV2" && isHumanWritingEngineV2Enabled()) {
+      next = acceptWithinBudget(
+        original,
+        next,
+        applyHumanWritingPostProcess(next, {
+          config: context.config,
+          chapterIndex: context.chapterIndex,
+        }),
+        genreBrain,
+        step,
+      );
     }
     if (step === "tension") {
       next = acceptWithinBudget(original, next, applyTensionEngine(next, context), genreBrain, step);

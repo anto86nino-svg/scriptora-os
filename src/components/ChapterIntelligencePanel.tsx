@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Sparkles, X, Loader2, AlertCircle, Check, Scissors, Flame, Wand2, Trash2, RefreshCw, TrendingUp, Swords, ArrowRight, ChevronDown, Eye, Lock, Bot, EyeOff, Quote, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { BookProject } from "@/types/book";
@@ -12,9 +12,17 @@ import { getEditorialTier } from "@/lib/editorial-mastery";
 import { toast } from "sonner";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
-import { analyzeNovel } from "@/lib/EditorialIntelligence";
 import FixChapterComparisonModal from "@/components/FixChapterComparisonModal";
+import { computeDevelopmentalEditReport } from "@/lib/chapter-doctor-pro";
 import { t } from "@/lib/i18n";
+import { evaluateChapterBestsellerIntel } from "@/lib/bestseller-intelligence";
+import {
+  analyzeChapterScenePurpose,
+  formatScenePurposeLabel,
+  levelLabel,
+  readerEmotionDisplayRows,
+  simulateReaderEmotion,
+} from "@/lib/narrative-intelligence-v2";
 
 function countWordsForChapterLock(value: unknown): number {
   if (!value) return 0;
@@ -153,6 +161,55 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   const [showPatchPreview, setShowPatchPreview] = useState(false);
   const [patchPreviewData, setPatchPreviewData] = useState<{ originalText: string; patchedText: string } | null>(null);
 
+  const bestsellerIntel = useMemo(() => {
+    const content = workingContent || chapter?.content || "";
+    if (!content.trim() || content.split(/\s+/).filter(Boolean).length < 60) return null;
+    return (
+      chapter?.bestsellerIntel ||
+      evaluateChapterBestsellerIntel({
+        config: project.config,
+        chapterIndex,
+        content,
+      })
+    );
+  }, [workingContent, chapter?.content, chapter?.bestsellerIntel, project.config, chapterIndex]);
+
+  const scenePurposeIntel = useMemo(() => {
+    const content = workingContent || chapter?.content || "";
+    if (!content.trim() || content.split(/\s+/).filter(Boolean).length < 60) return null;
+    return (
+      chapter?.scenePurposeIntel ||
+      analyzeChapterScenePurpose({
+        content,
+        chapterIndex,
+        config: project.config,
+      })
+    );
+  }, [workingContent, chapter?.content, chapter?.scenePurposeIntel, project.config, chapterIndex]);
+
+  const readerEmotionState = useMemo(() => {
+    const content = workingContent || chapter?.content || "";
+    if (!content.trim() || content.split(/\s+/).filter(Boolean).length < 60) return null;
+    return (
+      chapter?.readerEmotionState ||
+      simulateReaderEmotion({
+        content,
+        chapterIndex,
+        config: project.config,
+        scenePurpose: scenePurposeIntel || undefined,
+        totalChapters: project.config.numberOfChapters,
+      })
+    );
+  }, [
+    workingContent,
+    chapter?.content,
+    chapter?.readerEmotionState,
+    project.config,
+    chapterIndex,
+    scenePurposeIntel,
+    project.config.numberOfChapters,
+  ]);
+
   const guardFreeChapterAi = async () => {
     if (await isFreeChapterAiLocked(project)) {
       toast.error("AI Editor bloccato nel piano Free dopo il libro gratuito. Passa a Pro/Premium per analisi, patch e Dominate.");
@@ -194,175 +251,53 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
         originalText: patchResult.originalText,
         patchedText: patchResult.patchedText,
       });
-    }
-  }, [patchResult]);
-  // Compute completely independent analyses from raw text to avoid shared-state bugs
-  // and derive a psychologically realistic delta using lightweight heuristics.
-  const {
-    estimatedBeforeScore,
-    realAfterScore,
-    scoreDelta,
-    originalAnalysis: _originalAnalysis,
-    patchedAnalysis: _patchedAnalysis,
-  } = (() => {
-    if (!patchPreviewData) return { estimatedBeforeScore: null, realAfterScore: null, scoreDelta: null, originalAnalysis: null, patchedAnalysis: null };
-
-    // Use plain local copies of the strings to avoid accidental mutation
-    const originalText = String(patchPreviewData.originalText || "");
-    const patchedText = String(patchPreviewData.patchedText || "");
-
-    const originalAnalysis = analyzeNovel(originalText);
-    const patchedAnalysis = analyzeNovel(patchedText);
-
-    const toScore = (a: any) => Number(((a.dialogueHumanityScore + a.subtextScore + a.characterConsistencyScore + a.pacingConsistencyScore + a.emotionalRedundancyScore) / 5 / 10).toFixed(2));
-
-    const beforeRaw = originalAnalysis ? toScore(originalAnalysis) : null;
-    const afterRaw = patchedAnalysis ? toScore(patchedAnalysis) : patchResult?.evaluation?.score ?? null;
-
-    // Basic raw delta
-    let rawDelta = (beforeRaw !== null && afterRaw !== null) ? Number((afterRaw - beforeRaw).toFixed(3)) : null;
-
-    // Heuristic adjustments to make deltas feel realistic without inflating.
-    let heuristicDelta = rawDelta;
-
-    if (rawDelta !== null && Math.abs(rawDelta) < 0.09 && patchResult && patchResult.patches.length > 0) {
-      const beforeWarnings = originalAnalysis.warnings?.length || 0;
-      const afterWarnings = patchedAnalysis.warnings?.length || 0;
-      const warningDelta = Math.max(0, beforeWarnings - afterWarnings);
-      const positiveMetricCount = [
-        patchedAnalysis.dialogueHumanityScore > originalAnalysis.dialogueHumanityScore,
-        patchedAnalysis.subtextScore > originalAnalysis.subtextScore,
-        patchedAnalysis.characterConsistencyScore > originalAnalysis.characterConsistencyScore,
-        patchedAnalysis.pacingConsistencyScore > originalAnalysis.pacingConsistencyScore,
-        patchedAnalysis.emotionalRedundancyScore > originalAnalysis.emotionalRedundancyScore,
-      ].filter(Boolean).length;
-
-      const modFactor = Math.min(1, patchResult.modificationPercent / 30);
-
-      if (warningDelta >= 1 || positiveMetricCount >= 2) {
-        // Small but perceptible improvement for modest edits
-        const base = 0.25 + 0.18 * Math.min(3, positiveMetricCount) + 0.6 * modFactor;
-        // reduce impact when chapter was already high-quality
-        const beforeQualityMultiplier = beforeRaw !== null ? Math.max(0.45, 1 - ((beforeRaw - 6) / 6)) : 1;
-        heuristicDelta = Number(Math.min(2.5, base * beforeQualityMultiplier).toFixed(2));
-      } else if (positiveMetricCount === 1 && patchResult.modificationPercent > 5) {
-        heuristicDelta = Number((0.18 + 0.4 * modFactor).toFixed(2));
+      if (patchResult.patches.length > 0) {
+        setShowPatchPreview(true);
       }
     }
+  }, [patchResult]);
 
-    // If rawDelta is notably large, cap to sensible editorial ranges
-    if (heuristicDelta !== null) {
-      if (heuristicDelta > 2.5) heuristicDelta = 2.5;
-      if (heuristicDelta < -2.5) heuristicDelta = -2.5;
-    }
+  const developmentalEditReport = useMemo(() => {
+    if (!patchPreviewData || !patchResult) return null;
+    return computeDevelopmentalEditReport({
+      originalText: patchPreviewData.originalText,
+      patchedText: patchPreviewData.patchedText,
+      patches: patchResult.patches,
+      modificationPercent: patchResult.modificationPercent,
+      genre: project.config.genre,
+      chapterIndex,
+      totalChapters: project.chapters.length,
+      chapterTitle: chapter?.title,
+      bookIntelligence: project.config.bookIntelligence,
+    });
+  }, [patchPreviewData, patchResult, project, chapterIndex, chapter?.title]);
 
-    // Final rounding to one decimal for UX
-    const finalBefore = beforeRaw !== null ? Number(beforeRaw.toFixed(1)) : null;
-    const finalAfter = afterRaw !== null ? Number((beforeRaw !== null && heuristicDelta !== null ? Number((beforeRaw + heuristicDelta).toFixed(2)) : afterRaw).toFixed(1)) : null;
+  const estimatedBeforeScore = developmentalEditReport?.beforeScore ?? null;
+  const realAfterScore = developmentalEditReport?.afterScore ?? null;
+  const scoreDelta = developmentalEditReport?.scoreDelta ?? null;
+  const deltaMode = developmentalEditReport?.deltaMode ?? "minimal";
 
-    const finalDelta = finalBefore !== null && finalAfter !== null ? Number((finalAfter - finalBefore).toFixed(1)) : null;
-
-    return {
-      estimatedBeforeScore: finalBefore,
-      realAfterScore: finalAfter,
-      scoreDelta: finalDelta,
-      originalAnalysis,
-      patchedAnalysis,
-    };
-  })();
-
-  // Decide delta presentation mode
-  // 'visible' -> show numeric delta
-  // 'refinement' -> high-quality original, small polish (show refinement wording)
-  // 'minimal' -> changes minimal, show 'Minimal editorial change'
-  const deltaMode: "visible" | "refinement" | "minimal" = (() => {
-    if (!patchResult || !patchResult.patches.length) return "minimal";
-    if (scoreDelta === null) return "minimal";
-    if (!patchResult || !patchResult.patches.length) return "minimal";
-    if (scoreDelta === null) return "minimal";
-
-    const hasMeaningfulRefinement = (() => {
-      if (!_originalAnalysis || !_patchedAnalysis) return false;
-      const beforeWarnings = (_originalAnalysis.warnings?.length || 0);
-      const afterWarnings = (_patchedAnalysis.warnings?.length || 0);
-      const warningDelta = Math.max(0, beforeWarnings - afterWarnings);
-      const positiveMetricCount = [
-        _patchedAnalysis.dialogueHumanityScore > _originalAnalysis.dialogueHumanityScore,
-        _patchedAnalysis.subtextScore > _originalAnalysis.subtextScore,
-        _patchedAnalysis.characterConsistencyScore > _originalAnalysis.characterConsistencyScore,
-        _patchedAnalysis.pacingConsistencyScore > _originalAnalysis.pacingConsistencyScore,
-        _patchedAnalysis.emotionalRedundancyScore > _originalAnalysis.emotionalRedundancyScore,
-      ].filter(Boolean).length;
-      return warningDelta >= 1 || positiveMetricCount >= 1;
-    })();
-
-    if ((estimatedBeforeScore ?? 0) >= 9.7 && Math.abs(scoreDelta) < 0.2 && hasMeaningfulRefinement) {
-      return "refinement";
-    }
-
-    if (Math.abs(scoreDelta) >= 0.1) return "visible";
-    return "minimal";
-  })();
-
-  const patchMetrics = _originalAnalysis && _patchedAnalysis ? [
-    {
-      label: "Dialogue Humanity",
-      before: _originalAnalysis.dialogueHumanityScore,
-      after: _patchedAnalysis.dialogueHumanityScore,
-      delta: _patchedAnalysis.dialogueHumanityScore - _originalAnalysis.dialogueHumanityScore,
-    },
-    {
-      label: "Subtext Strength",
-      before: _originalAnalysis.subtextScore,
-      after: _patchedAnalysis.subtextScore,
-      delta: _patchedAnalysis.subtextScore - _originalAnalysis.subtextScore,
-    },
-    {
-      label: "Pacing Balance",
-      before: _originalAnalysis.pacingConsistencyScore,
-      after: _patchedAnalysis.pacingConsistencyScore,
-      delta: _patchedAnalysis.pacingConsistencyScore - _originalAnalysis.pacingConsistencyScore,
-    },
-    {
-      label: "Character Depth",
-      before: _originalAnalysis.characterConsistencyScore,
-      after: _patchedAnalysis.characterConsistencyScore,
-      delta: _patchedAnalysis.characterConsistencyScore - _originalAnalysis.characterConsistencyScore,
-    },
-    {
-      label: "Emotional Realism",
-      before: _originalAnalysis.emotionalRedundancyScore,
-      after: _patchedAnalysis.emotionalRedundancyScore,
-      delta: _patchedAnalysis.emotionalRedundancyScore - _originalAnalysis.emotionalRedundancyScore,
-    },
-  ] : [];
-
-  const editorialExplanations = patchResult
-    ? Array.from(
-        new Set([
-          ...patchResult.patches.map(p => p.reason),
-          ...(patchResult.evaluation?.improvements || []),
-        ])
-      ).slice(0, 6)
-    : [];
-
-  if (showPatchPreview && patchPreviewData && patchResult) {
+  if (showPatchPreview && patchPreviewData && patchResult && developmentalEditReport) {
     return (
       <FixChapterComparisonModal
         patchResult={patchResult}
+        report={developmentalEditReport}
         beforeScore={estimatedBeforeScore}
         afterScore={realAfterScore}
         scoreDelta={scoreDelta}
         deltaMode={deltaMode}
-        metrics={patchMetrics}
-        explanations={editorialExplanations}
+        metrics={developmentalEditReport.metrics.map(m => ({
+          label: m.label,
+          before: m.before,
+          after: m.after,
+          delta: m.delta,
+        }))}
+        explanations={developmentalEditReport.explanations}
         onApply={confirmPatchApply}
         onClose={() => setShowPatchPreview(false)}
+        onRevert={discardPatch}
       />
     );
-
-
-
   }
 
   const runAnalysis = async () => {
@@ -561,6 +496,133 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto scrollbar-thin p-5 space-y-5">
+          {bestsellerIntel && (
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-bold uppercase tracking-wide text-foreground">Bestseller Intelligence</span>
+                </div>
+                <span
+                  className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    bestsellerIntel.grade === "bestseller"
+                      ? "bg-emerald-500/15 text-emerald-600"
+                      : bestsellerIntel.grade === "strong"
+                        ? "bg-primary/15 text-primary"
+                        : bestsellerIntel.grade === "developing"
+                          ? "bg-amber-500/15 text-amber-600"
+                          : "bg-rose-500/15 text-rose-600"
+                  }`}
+                >
+                  {bestsellerIntel.scores.overall}/100 · {bestsellerIntel.grade}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  ["Hook", bestsellerIntel.scores.hookStrength],
+                  ["Binge", bestsellerIntel.scores.bingeability],
+                  ["Retention", bestsellerIntel.scores.readerRetention],
+                  ["BookTok", bestsellerIntel.scores.bookTokIntensity],
+                ].map(([label, score]) => (
+                  <div key={label} className="rounded-lg bg-background/60 px-2 py-1.5 border border-border/40">
+                    <p className="text-[10px] text-muted-foreground">{label}</p>
+                    <p className="text-sm font-semibold text-foreground">{score}</p>
+                  </div>
+                ))}
+              </div>
+              {bestsellerIntel.optimizations[0] && (
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  <span className="font-semibold text-foreground">Top fix: </span>
+                  {bestsellerIntel.optimizations[0]}
+                </p>
+              )}
+            </div>
+          )}
+
+          {readerEmotionState && (
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-bold uppercase tracking-wide text-foreground">Reader Emotion Simulator</span>
+                </div>
+                <span className="text-[10px] font-semibold text-muted-foreground">{readerEmotionState.dominantReaderState}</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {readerEmotionDisplayRows(readerEmotionState)
+                  .filter(row => ["Curiosity", "Emotional Tension", "Boredom Risk", "Obsession Potential"].includes(row.label))
+                  .map(row => (
+                    <div key={row.label} className="rounded-lg bg-background/60 px-2 py-1.5 border border-border/40">
+                      <p className="text-[10px] text-muted-foreground">{row.label}</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {levelLabel(row.level)}
+                        <span className="text-[10px] text-muted-foreground ml-1">({row.score})</span>
+                      </p>
+                    </div>
+                  ))}
+              </div>
+              {readerEmotionState.whySummary[0] && (
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  <span className="font-semibold text-foreground">Why: </span>
+                  {readerEmotionState.whySummary.join(" · ")}
+                </p>
+              )}
+            </div>
+          )}
+
+          {scenePurposeIntel && scenePurposeIntel.scenes.length > 0 && (
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Quote className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-bold uppercase tracking-wide text-foreground">Scene Health</span>
+                </div>
+                <span
+                  className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                    scenePurposeIntel.overallHealth === "healthy"
+                      ? "bg-emerald-500/15 text-emerald-600"
+                      : scenePurposeIntel.overallHealth === "at-risk"
+                        ? "bg-amber-500/15 text-amber-600"
+                        : "bg-rose-500/15 text-rose-600"
+                  }`}
+                >
+                  {scenePurposeIntel.overallHealth} · {scenePurposeIntel.scenes.length} scenes
+                </span>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto scrollbar-thin">
+                {scenePurposeIntel.scenes.map(scene => (
+                  <div
+                    key={scene.sceneIndex}
+                    className={`rounded-lg px-3 py-2 border text-[11px] ${
+                      scene.health === "weak"
+                        ? "border-rose-500/30 bg-rose-500/5"
+                        : scene.health === "strong"
+                          ? "border-emerald-500/20 bg-emerald-500/5"
+                          : "border-border/40 bg-background/40"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-foreground">
+                        Scene {scene.sceneIndex}: {formatScenePurposeLabel(scene.primaryPurpose)}
+                      </span>
+                      <span className="text-muted-foreground capitalize">{scene.health}</span>
+                    </div>
+                    {scene.issue && <p className="text-muted-foreground mt-1">{scene.issue}</p>}
+                    {scene.recommendation && (
+                      <p className="text-primary/80 mt-0.5 italic">{scene.recommendation}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {scenePurposeIntel.recommendations[0] && (
+                <p className="text-[11px] text-muted-foreground">
+                  <span className="font-semibold text-foreground">Editor note: </span>
+                  {scenePurposeIntel.recommendations[0]}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* IDLE — Patch as default */}
           {idle && (
             <div className="text-center py-8 space-y-5">

@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 import { BOOK_LENGTH_CONFIG, BookConfig, BookLength, BookProject, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
-import { AUTHOR_IDENTITY_CHANGED_EVENT, applyAuthorIdentityToConfig, getSelectedAuthorIdentity, loadAuthorIdentities, setSelectedAuthorIdentityId } from "@/lib/author-identity";
+import { AUTHOR_IDENTITY_CHANGED_EVENT, applyAuthorIdentityToConfig, enforceAuthorIdentityLock, getSelectedAuthorIdentity, loadAuthorIdentities, setSelectedAuthorIdentityId } from "@/lib/author-identity";
+import { refineDetectedGenre } from "@/lib/book-intelligence";
 import { DevModeUnlockDialog } from "@/components/DevModeUnlockDialog";
 import { enableDevMode, isDevMode, exitDevMode, useDevMode } from "@/lib/dev-mode";
 import { BetaActivationDialog } from "@/components/BetaActivationDialog";
@@ -28,6 +29,9 @@ import { canUseFeature, type FeatureKey } from "@/lib/subscription";
 import { FlaskConical } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIntelligentPreload } from "@/hooks/useIntelligentPreload";
+import { useAtmosphereProfile } from "@/hooks/useAtmosphereProfile";
+import { useBackgroundSource } from "@/hooks/useBackgroundSource";
+import { ATMOSPHERE_PROFILES, restoreRealmBackground } from "@/lib/atmosphere-engine";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const VoiceStudioDialog = lazy(() => import("@/components/VoiceStudioDialog").then(m => ({ default: m.VoiceStudioDialog })));
@@ -124,69 +128,10 @@ export default function Home() {
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const currentLang = useUILanguage();
+  const { profileId, selectProfile } = useAtmosphereProfile();
+  const { source: backgroundSource } = useBackgroundSource();
+  const activeAtmosphere = ATMOSPHERE_PROFILES.find((profile) => profile.id === profileId) ?? ATMOSPHERE_PROFILES[0];
 
-  type AtmosphereId =
-    | "night-rain"
-    | "deep-waves"
-    | "breathing-forest"
-    | "aurora"
-    | "library-dust"
-    | "dark-stars";
-
-  const ATMOSPHERE_KEY = "scriptora-selected-atmosphere";
-  const atmosphereOptions: { id: AtmosphereId; name: string; description: string }[] = [
-    {
-      id: "night-rain",
-      name: "Night Rain",
-      description: "Soft cinematic rain and city-night focus.",
-    },
-    {
-      id: "deep-waves",
-      name: "Deep Waves",
-      description: "Oceanic motion for calm, steady writing flow.",
-    },
-    {
-      id: "breathing-forest",
-      name: "Breathing Forest",
-      description: "Warm green depth with quiet living light.",
-    },
-    {
-      id: "aurora",
-      name: "Aurora",
-      description: "Subtle northern-light ribbons and soft glow.",
-    },
-    {
-      id: "library-dust",
-      name: "Library Dust",
-      description: "Golden particle warmth over old paper textures.",
-    },
-    {
-      id: "dark-stars",
-      name: "Dark Stars",
-      description: "Cosmic ink room with distant star shimmer.",
-    },
-  ];
-
-  const [selectedAtmosphere, setSelectedAtmosphere] = useState<AtmosphereId>("night-rain");
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(ATMOSPHERE_KEY) as AtmosphereId | null;
-      if (stored && atmosphereOptions.some((option) => option.id === stored)) {
-        setSelectedAtmosphere(stored);
-      }
-    } catch {
-      // ignore storage errors
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(ATMOSPHERE_KEY, selectedAtmosphere);
-    } catch {
-      // ignore storage errors
-    }
-  }, [selectedAtmosphere]);
   const [activeRun, setActiveRun] = useState<{ runId: string; title: string; startedAt: number } | null>(null);
 
   // One-click idea state
@@ -435,7 +380,7 @@ export default function Home() {
       finalConfig = config;
     }
 
-    finalConfig = applyAuthorIdentityToConfig(finalConfig, activeAuthor) as BookConfig;
+    finalConfig = enforceAuthorIdentityLock(applyAuthorIdentityToConfig(finalConfig, activeAuthor) as BookConfig);
     setSelectedAuthorIdentityId(activeAuthor.id);
     sessionStorage.setItem("nexora-new-book", JSON.stringify(finalConfig));
     setShowNewBook(false);
@@ -471,12 +416,24 @@ export default function Home() {
       }
       if (data?.error) throw new Error(data.error);
       const detected = data as DetectedIntent;
-      const best = Math.max(0, Math.min(2, detected.bestTitleIndex || 0));
-      setIntent(detected);
-      setOneClickChapters(Math.max(3, Math.min(50, Number(detected.numberOfChapters) || oneClickChapters)));
-      if (!briefTitle.trim()) setBriefTitle(detected.suggestedTitles?.[best] || detected.suggestedTitles?.[0] || "");
-      if (!briefSubtitle.trim()) setBriefSubtitle(detected.suggestedSubtitles?.[best] || detected.suggestedSubtitles?.[0] || "");
-      return detected;
+      const refined = refineDetectedGenre({
+        idea: idea.trim(),
+        genre: detected.genre,
+        subcategory: detected.subcategory,
+        tone: detected.tone,
+      });
+      const refinedIntent: DetectedIntent = {
+        ...detected,
+        genre: refined.genre,
+        subcategory: refined.subcategory,
+        tone: refined.tone,
+      };
+      const best = Math.max(0, Math.min(2, refinedIntent.bestTitleIndex || 0));
+      setIntent(refinedIntent);
+      setOneClickChapters(Math.max(3, Math.min(50, Number(refinedIntent.numberOfChapters) || oneClickChapters)));
+      if (!briefTitle.trim()) setBriefTitle(refinedIntent.suggestedTitles?.[best] || refinedIntent.suggestedTitles?.[0] || "");
+      if (!briefSubtitle.trim()) setBriefSubtitle(refinedIntent.suggestedSubtitles?.[best] || refinedIntent.suggestedSubtitles?.[0] || "");
+      return refinedIntent;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("detection_failed"));
       return null;
@@ -614,60 +571,89 @@ export default function Home() {
     [aiQualityValues],
   );
   const focusAtmosphereCard = (
-  <div className="relative overflow-hidden rounded-3xl border border-sky-300/10 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950/40 p-6 shadow-2xl">
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.18),transparent_45%)]" />
-    <div className="absolute inset-x-6 top-6 h-16 rounded-b-[32px] bg-white/5 blur-2xl opacity-60" />
+  <div className="atmo-engine-card relative overflow-hidden rounded-3xl border p-6 shadow-2xl">
+    <div className="absolute inset-x-6 top-6 h-14 rounded-b-[32px] bg-white/[0.03] blur-2xl opacity-50" />
 
     <div className="relative z-10 flex flex-col gap-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200">
-            <AudioLines className="h-3.5 w-3.5" />
-            Focus Atmosphere
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
+            <Sparkles className="h-3.5 w-3.5 text-white/60" />
+            {t("atmo_engine_title")}
           </div>
 
-          <h2 className="mt-4 text-2xl font-bold text-white">
-            Write inside your own world.
+          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">
+            {t("atmo_engine_headline")}
           </h2>
 
-          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
-            Choose an ambient atmosphere that keeps Scriptora premium, cinematic, and quietly alive.
+          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
+            {t("atmo_engine_body")}
           </p>
         </div>
 
-        <div className="flex items-center gap-3 rounded-3xl border border-white/10 bg-white/[0.06] px-4 py-3 text-xs font-semibold text-white/80 shadow-[0_16px_50px_rgba(0,0,0,0.16)]">
-          <Sparkles className="h-4 w-4 text-cyan-200" />
-          {selectedAtmosphere.replace(/-/g, " ")}
+        <div className="flex items-center gap-3 rounded-3xl border border-white/10 bg-white/[0.04] px-4 py-3 text-xs font-medium text-white/75 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
+          <Sparkles className="h-4 w-4 text-white/50" />
+          {t(activeAtmosphere.nameKey)}
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        {atmosphereOptions.map((option) => (
+        {ATMOSPHERE_PROFILES.map((profile) => (
           <button
-            key={option.id}
+            key={profile.id}
             type="button"
-            onClick={() => setSelectedAtmosphere(option.id)}
-            aria-pressed={selectedAtmosphere === option.id}
-            className={`group relative overflow-hidden rounded-3xl border p-4 text-left text-sm font-medium transition ${
-              selectedAtmosphere === option.id
-                ? "border-white/20 bg-white/[0.12] text-white shadow-[0_18px_50px_rgba(56,189,248,0.18)]"
-                : "border-white/10 bg-white/[0.04] text-slate-200 hover:border-white/20 hover:bg-white/[0.08]"
+            disabled={!profile.available}
+            onClick={() => profile.available && selectProfile(profile.id)}
+            aria-pressed={profileId === profile.id}
+            className={`atmo-profile-tile group relative overflow-hidden rounded-3xl border p-4 text-left text-sm font-medium transition ${
+              profileId === profile.id
+                ? "is-active border-white/14 bg-white/[0.07] text-white"
+                : profile.available
+                  ? "border-white/10 bg-white/[0.03] text-slate-200 hover:border-white/14 hover:bg-white/[0.05]"
+                  : "cursor-not-allowed border-white/8 bg-white/[0.02] text-slate-500 opacity-80"
             }`}
           >
-            <span className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-cyan-300/70 via-sky-400/60 to-violet-400/70 opacity-0 transition-opacity group-hover:opacity-100" />
-            <span className="relative block text-sm font-semibold">{option.name}</span>
-            <span className="mt-2 block text-xs leading-5 text-slate-400">{option.description}</span>
-            {selectedAtmosphere === option.id && (
-              <span className="mt-4 inline-flex items-center rounded-full bg-cyan-300/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-100">
-                Active
+            <span className="relative block text-sm font-semibold">{t(profile.nameKey)}</span>
+            <span className="mt-1 block text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
+              {t(profile.moodKey)}
+            </span>
+            <span className="mt-2 block text-xs leading-5 text-slate-500">{t(profile.descriptionKey)}</span>
+            {profileId === profile.id && profile.available && (
+              <span className="mt-4 inline-flex items-center rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                {t("atmo_engine_active")}
+              </span>
+            )}
+            {!profile.available && (
+              <span className="mt-4 inline-flex items-center rounded-full bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {t("atmo_engine_coming_soon")}
               </span>
             )}
           </button>
         ))}
       </div>
-      <p className="text-xs leading-5 text-slate-400">
-        Selections persist locally, and the atmosphere stays subtle so your writing remains the focus.
+      <p className="text-xs leading-5 text-slate-500">
+        {t("atmo_engine_persist")}
       </p>
+      <div className="flex flex-col gap-2 border-t border-white/8 pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-xs text-slate-500">
+          {backgroundSource === "realm" ? t("bg_source_realm_active") : t("bg_source_custom_active")}
+          {backgroundSource === "realm" && (
+            <span className="mt-1 block text-[11px] text-slate-600">{t("atmo_bg_realm_hint")}</span>
+          )}
+        </p>
+        {backgroundSource === "custom" && (
+          <button
+            type="button"
+            onClick={() => {
+              restoreRealmBackground();
+              toast.success(t("toast_realm_background_restored"));
+            }}
+            className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/75 transition hover:border-white/18 hover:bg-white/[0.08]"
+          >
+            {t("atmo_restore_realm_bg")}
+          </button>
+        )}
+      </div>
     </div>
   </div>
 );
@@ -754,7 +740,7 @@ const dashboardWidgets = [
   ];
 
   return (
-    <div className={`scriptora-ios-screen min-h-screen relative overflow-hidden atmosphere-${selectedAtmosphere}`}>
+    <div className="scriptora-ios-screen min-h-screen relative overflow-hidden">
       <header className="sticky top-0 z-20 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
@@ -920,7 +906,7 @@ const dashboardWidgets = [
         </div>
       </header>
 
-      <div className={`relative mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 sm:pt-8 lg:px-8 atmosphere-${selectedAtmosphere}`}>
+      <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 sm:pt-8 lg:px-8">
         <div className="mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
           <section className="ios-panel overflow-hidden rounded-[28px] border-white/15 bg-slate-950/40 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">

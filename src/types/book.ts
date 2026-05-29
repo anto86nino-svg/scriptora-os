@@ -1,3 +1,8 @@
+import type { BookIntelligenceSnapshot } from "@/lib/book-intelligence/types";
+import type { BestsellerChapterSnapshot } from "@/lib/bestseller-intelligence/types";
+import type { LongBookMemorySnapshot } from "@/lib/long-book-memory/types";
+import type { ChapterScenePurposeSnapshot, ReaderEmotionSnapshot } from "@/lib/narrative-intelligence-v2/types";
+
 export type Language = "English" | "Italian" | "Spanish" | "French" | "German";
 export type ChapterLength = "short" | "medium" | "long";
 export type BookLength = "short" | "medium" | "long" | "custom";
@@ -69,6 +74,12 @@ export interface Chapter {
   qualityRating?: number;
   aiRating?: AIQualityRating;
   lengthOverride?: ChapterLength;
+  /** Live bestseller intelligence snapshot — updated after generation */
+  bestsellerIntel?: BestsellerChapterSnapshot;
+  /** Scene purpose map — Sprint V2 narrative intelligence */
+  scenePurposeIntel?: ChapterScenePurposeSnapshot;
+  /** Simulated reader emotional state — Sprint V2 */
+  readerEmotionState?: ReaderEmotionSnapshot;
 }
 
 export interface FrontMatter {
@@ -220,6 +231,14 @@ export interface BookCharacter {
   strictRules?: string;
 }
 
+export interface AuthorIdentityLock {
+  version: 2;
+  identityId: string;
+  penName: string;
+  fingerprint: string;
+  lockedAt: string;
+}
+
 export interface AuthorIdentity {
   id: string;
   /** Internal profile label shown in Scriptora. */
@@ -259,6 +278,10 @@ export interface BookConfig {
   writerName?: string;
   authorIdentityId?: string;
   authorIdentity?: AuthorIdentity;
+  /** Locked at project creation — prevents author voice drift across sessions */
+  authorIdentityLock?: AuthorIdentityLock;
+  /** Multi-layer book intelligence snapshot — locked at project creation */
+  bookIntelligence?: BookIntelligenceSnapshot;
   authorStyle: string;
   language: Language;
   genre: Genre;
@@ -314,6 +337,8 @@ export interface BookProject {
   backMatterStatus?: GenerationStatus;
   /** Locked Genre Engine blueprint — set once on creation, never mutated by AI */
   genreLock?: GenreLock;
+  /** Rolling narrative memory — updated after each written chapter */
+  longBookMemory?: LongBookMemorySnapshot;
   createdAt: string;
   updatedAt: string;
 }

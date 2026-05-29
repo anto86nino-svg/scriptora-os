@@ -124,31 +124,44 @@ export function loadScriptoraAppearance(): ScriptoraAppearanceSettings {
   }
 }
 
+/** @deprecated Prefer applyVisualEnvironment() — applies custom background only, no realm routing. */
 export function applyScriptoraAppearance(settings: ScriptoraAppearanceSettings = loadScriptoraAppearance()) {
-  const bg = SCRIPTORA_BACKGROUNDS.find((b) => b.id === settings.backgroundId) || SCRIPTORA_BACKGROUNDS[0];
+  applyScriptoraWritingFont(settings);
+  applyScriptoraCustomBackground(settings);
+}
+
+export function applyScriptoraWritingFont(settings: ScriptoraAppearanceSettings = loadScriptoraAppearance()) {
   const font = WRITING_FONTS.find((f) => f.id === settings.writingFont) || WRITING_FONTS[0];
-
-  const customBackground = getCustomScriptoraBackground();
-
-  const finalBackground =
-    settings.backgroundId === "custom-personal" && customBackground
-      ? `linear-gradient(rgba(4,5,8,.42), rgba(4,5,8,.42)), url("${customBackground}") center center / cover no-repeat`
-      : bg.css;
-
-  document.documentElement.style.setProperty("--scriptora-app-bg", finalBackground);
   document.documentElement.style.setProperty("--scriptora-writing-font", font.css);
 }
 
-export function saveScriptoraAppearance(settings: ScriptoraAppearanceSettings) {
+export function resolveScriptoraBackgroundCss(settings: ScriptoraAppearanceSettings = loadScriptoraAppearance()): string {
+  const bg = SCRIPTORA_BACKGROUNDS.find((b) => b.id === settings.backgroundId) || SCRIPTORA_BACKGROUNDS[0];
+  const customBackground = getCustomScriptoraBackground();
+
+  if (settings.backgroundId === "custom-personal" && customBackground) {
+    return `linear-gradient(rgba(4,5,8,.42), rgba(4,5,8,.42)), url("${customBackground}") center center / cover no-repeat`;
+  }
+  return bg.css;
+}
+
+export function applyScriptoraCustomBackground(settings: ScriptoraAppearanceSettings = loadScriptoraAppearance()) {
+  document.documentElement.style.setProperty("--scriptora-app-bg", resolveScriptoraBackgroundCss(settings));
+}
+
+function saveScriptoraAppearanceToStorage(settings: ScriptoraAppearanceSettings) {
   const normalized = normalizeAppearanceSettings(settings);
   localStorage.setItem(SCRIPTORA_APPEARANCE_KEY, JSON.stringify(normalized));
 
-  // Manteniamo anche la vecchia chiave per compatibilità, ma la chiave vera ora è nexora-appearance-v1.
   try {
     localStorage.setItem(SCRIPTORA_APPEARANCE_LEGACY_KEY, JSON.stringify(normalized));
   } catch {
     /* ignore legacy save */
   }
 
-  applyScriptoraAppearance(normalized);
+  return normalized;
+}
+
+export function saveScriptoraAppearance(settings: ScriptoraAppearanceSettings) {
+  return saveScriptoraAppearanceToStorage(settings);
 }

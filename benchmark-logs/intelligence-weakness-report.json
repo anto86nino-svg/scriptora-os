@@ -1,0 +1,525 @@
+{
+  "report": {
+    "generatedAt": "2026-05-29T16:43:58.552Z",
+    "overallReliabilityScore": 100,
+    "totalBenchmarks": 11,
+    "passedBenchmarks": 11,
+    "failedBenchmarks": 0,
+    "strongestSystems": [
+      {
+        "system": "Character Psychology + Human Writing",
+        "confidence": 100,
+        "status": "strong",
+        "passed": 1,
+        "total": 1,
+        "issues": []
+      },
+      {
+        "system": "Reader Emotion Simulator + Bestseller Intelligence",
+        "confidence": 100,
+        "status": "strong",
+        "passed": 1,
+        "total": 1,
+        "issues": []
+      },
+      {
+        "system": "Long Book Memory Engine",
+        "confidence": 100,
+        "status": "strong",
+        "passed": 1,
+        "total": 1,
+        "issues": []
+      },
+      {
+        "system": "Editorial Intelligence",
+        "confidence": 100,
+        "status": "strong",
+        "passed": 1,
+        "total": 1,
+        "issues": []
+      }
+    ],
+    "weakestSystems": [
+      {
+        "system": "Character Psychology + Human Writing",
+        "confidence": 100,
+        "status": "strong",
+        "passed": 1,
+        "total": 1,
+        "issues": []
+      },
+      {
+        "system": "Reader Emotion Simulator + Bestseller Intelligence",
+        "confidence": 100,
+        "status": "strong",
+        "passed": 1,
+        "total": 1,
+        "issues": []
+      },
+      {
+        "system": "Long Book Memory Engine",
+        "confidence": 100,
+        "status": "strong",
+        "passed": 1,
+        "total": 1,
+        "issues": []
+      },
+      {
+        "system": "Editorial Intelligence",
+        "confidence": 100,
+        "status": "strong",
+        "passed": 1,
+        "total": 1,
+        "issues": []
+      }
+    ],
+    "failureCases": [],
+    "calibrationRecommendations": [
+      "Monitor live author sessions; offline torture suite currently green"
+    ],
+    "summary": "Scriptora intelligence passes brutal offline validation with high reliability."
+  },
+  "results": [
+    {
+      "id": "fiction-dark-romance",
+      "category": "fiction-dark-romance",
+      "label": "Dark Romance",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "dr-score-spread",
+          "passed": true,
+          "message": "Strong (7.6) must beat fail (5.6) by ≥0.6",
+          "severity": "critical"
+        },
+        {
+          "id": "dr-fail-not-elite",
+          "passed": true,
+          "message": "Instant resolution text must not score bestseller (5.6)",
+          "severity": "critical"
+        },
+        {
+          "id": "dr-psychology-wound",
+          "passed": true,
+          "message": "Character psychology must infer wound/fear",
+          "severity": "critical"
+        },
+        {
+          "id": "dr-psychology-violation",
+          "passed": true,
+          "message": "Psychology must flag premature resolution",
+          "severity": "critical"
+        },
+        {
+          "id": "dr-reader-tension",
+          "passed": true,
+          "message": "Romance: tension should not be dwarfed by payoff",
+          "severity": "critical"
+        },
+        {
+          "id": "dr-no-therapy",
+          "passed": true,
+          "message": "Strong fixture avoids therapy resolution language",
+          "severity": "critical"
+        }
+      ],
+      "scores": {
+        "strong": 7.6,
+        "fail": 5.6
+      }
+    },
+    {
+      "id": "fiction-thriller",
+      "category": "fiction-thriller",
+      "label": "Thriller / Crime",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "th-score-order",
+          "passed": true,
+          "message": "Thriller strong (7.5) > flat (5.2)",
+          "severity": "critical"
+        },
+        {
+          "id": "th-boredom-detect",
+          "passed": true,
+          "message": "Flat thriller should show higher boredom risk",
+          "severity": "critical"
+        },
+        {
+          "id": "th-curiosity",
+          "passed": true,
+          "message": "Strong thriller should score higher curiosity",
+          "severity": "critical"
+        },
+        {
+          "id": "th-hook-tier",
+          "passed": true,
+          "message": "Flat opening should not score strong tier",
+          "severity": "critical"
+        }
+      ],
+      "scores": {
+        "strong": 7.5,
+        "flat": 5.2
+      }
+    },
+    {
+      "id": "fiction-fantasy-memory",
+      "category": "fiction-fantasy-memory",
+      "label": "Fantasy 20+ Chapter Memory",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "fm-chapters-indexed",
+          "passed": true,
+          "message": "Memory must index 20+ chapters (got 22)",
+          "severity": "critical"
+        },
+        {
+          "id": "fm-unresolved",
+          "passed": true,
+          "message": "Must retain unresolved arcs",
+          "severity": "critical"
+        },
+        {
+          "id": "fm-character",
+          "passed": true,
+          "message": "Character states must persist Kael",
+          "severity": "critical"
+        },
+        {
+          "id": "fm-psychology",
+          "passed": true,
+          "message": "Character psychology must populate",
+          "severity": "critical"
+        },
+        {
+          "id": "fm-world-rules",
+          "passed": true,
+          "message": "World rules must survive",
+          "severity": "critical"
+        },
+        {
+          "id": "fm-foreshadow",
+          "passed": true,
+          "message": "Foreshadow or continuity anchors required",
+          "severity": "critical"
+        }
+      ],
+      "scores": {
+        "chaptersIndexed": 22
+      }
+    },
+    {
+      "id": "fiction-memoir",
+      "category": "fiction-memoir",
+      "label": "Memoir / Emotional Fiction",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "mem-score-spread",
+          "passed": true,
+          "message": "Authentic (7.2) > AI poetry (5.3)",
+          "severity": "critical"
+        },
+        {
+          "id": "mem-warnings",
+          "passed": true,
+          "message": "AI poetry should trigger equal or more editorial warnings",
+          "severity": "critical"
+        },
+        {
+          "id": "mem-no-universe",
+          "passed": true,
+          "message": "Strong memoir avoids generic AI poetry",
+          "severity": "critical"
+        }
+      ],
+      "scores": {
+        "strong": 7.2,
+        "aiPoetry": 5.3
+      }
+    },
+    {
+      "id": "nonfiction-self-help",
+      "category": "nonfiction-self-help",
+      "label": "Self-help",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "sh-score-order",
+          "passed": true,
+          "message": "Practical (7.2) should beat fluff (5.4)",
+          "severity": "critical"
+        },
+        {
+          "id": "sh-fluff-tier",
+          "passed": true,
+          "message": "Motivational fluff must not hit bestseller tier",
+          "severity": "critical"
+        },
+        {
+          "id": "sh-framework",
+          "passed": true,
+          "message": "Strong fixture uses practical structure",
+          "severity": "critical"
+        }
+      ],
+      "scores": {
+        "strong": 7.2,
+        "fluff": 5.4
+      }
+    },
+    {
+      "id": "nonfiction-business",
+      "category": "nonfiction-business",
+      "label": "Business",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "biz-framework",
+          "passed": true,
+          "message": "Business fixture has framework",
+          "severity": "critical"
+        },
+        {
+          "id": "biz-no-therapy",
+          "passed": true,
+          "message": "No therapy-style contamination",
+          "severity": "critical"
+        },
+        {
+          "id": "biz-score-realistic",
+          "passed": true,
+          "message": "Business strong should not auto-inflate to elite (7.1)",
+          "severity": "critical"
+        },
+        {
+          "id": "biz-warnings-low",
+          "passed": true,
+          "message": "Clean business prose should not flood false warnings",
+          "severity": "critical"
+        }
+      ],
+      "scores": {
+        "strong": 7.1
+      }
+    },
+    {
+      "id": "nonfiction-horticultural",
+      "category": "nonfiction-horticultural",
+      "label": "Horticultural Guide (Tomato)",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "hort-brain",
+          "passed": true,
+          "message": "Must detect horticultural brain (got horticultural-guide-brain)",
+          "severity": "critical"
+        },
+        {
+          "id": "hort-not-selfhelp",
+          "passed": true,
+          "message": "Tomato manual must NOT resolve to self-help",
+          "severity": "critical"
+        },
+        {
+          "id": "hort-practical-wins",
+          "passed": true,
+          "message": "Practical (7.3) ≥ contaminated (5.4)",
+          "severity": "critical"
+        },
+        {
+          "id": "hort-no-motivation",
+          "passed": true,
+          "message": "Practical guide avoids motivational contamination",
+          "severity": "critical"
+        },
+        {
+          "id": "hort-utility-note",
+          "passed": true,
+          "message": "Reader simulator applies utility lens",
+          "severity": "critical"
+        },
+        {
+          "id": "hort-scene-purpose",
+          "passed": true,
+          "message": "Scene purpose detects instruction",
+          "severity": "critical"
+        }
+      ],
+      "scores": {
+        "practical": 7.3,
+        "contaminated": 5.4
+      }
+    },
+    {
+      "id": "score-calibration",
+      "category": "score-calibration",
+      "label": "Score Distribution Calibration",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "cal-no-ten",
+          "passed": true,
+          "message": "No sample should raw-inflate above 9.5",
+          "severity": "critical"
+        },
+        {
+          "id": "cal-spread",
+          "passed": true,
+          "message": "Score spread must be ≥0.5 (range 5.2–7.6)",
+          "severity": "critical"
+        },
+        {
+          "id": "cal-weak-band",
+          "passed": true,
+          "message": "Weak text should land weak/developing (5.5)",
+          "severity": "critical"
+        },
+        {
+          "id": "cal-no-cluster",
+          "passed": true,
+          "message": "Must not cluster multiple samples at 8.9+",
+          "severity": "critical"
+        }
+      ],
+      "scores": {
+        "sample0": 5.5,
+        "sample1": 5.2,
+        "sample2": 5.4,
+        "sample3": 7.6
+      }
+    },
+    {
+      "id": "reader-emotion",
+      "category": "reader-emotion",
+      "label": "Reader Emotion Validation",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "re-bounded",
+          "passed": true,
+          "message": "All reader scores bounded 0–100",
+          "severity": "critical"
+        },
+        {
+          "id": "re-romance-yearning",
+          "passed": true,
+          "message": "Romance: tension signal present",
+          "severity": "critical"
+        },
+        {
+          "id": "re-thriller-curiosity",
+          "passed": true,
+          "message": "Thriller: curiosity competitive with romance on strong text",
+          "severity": "critical"
+        },
+        {
+          "id": "re-utility-lens",
+          "passed": true,
+          "message": "Utility genre note applied",
+          "severity": "critical"
+        },
+        {
+          "id": "re-why-proof",
+          "passed": true,
+          "message": "Why summary must be proof-based strings",
+          "severity": "critical"
+        }
+      ],
+      "scores": {
+        "romanceTension": 67,
+        "thrillerCuriosity": 100
+      }
+    },
+    {
+      "id": "author-identity",
+      "category": "author-identity",
+      "label": "Author Identity Lock Stress",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "ai-antonino-lock",
+          "passed": true,
+          "message": "Antonino identity lock persists on config",
+          "severity": "critical"
+        },
+        {
+          "id": "ai-livia-lock",
+          "passed": true,
+          "message": "Livia identity lock persists on config",
+          "severity": "critical"
+        },
+        {
+          "id": "ai-livia-distinct",
+          "passed": true,
+          "message": "Identities remain distinct",
+          "severity": "critical"
+        },
+        {
+          "id": "ai-match",
+          "passed": true,
+          "message": "Lock matches embedded identity",
+          "severity": "critical"
+        },
+        {
+          "id": "ai-forbidden-diff",
+          "passed": true,
+          "message": "Identities carry distinct forbidden moves",
+          "severity": "critical"
+        }
+      ]
+    },
+    {
+      "id": "chapter-doctor",
+      "category": "chapter-doctor",
+      "label": "Chapter Doctor Reality Test",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "cd-improves",
+          "passed": true,
+          "message": "Doctor after (7) > before (6.8)",
+          "severity": "critical"
+        },
+        {
+          "id": "cd-delta-believable",
+          "passed": true,
+          "message": "Delta must be ≤1.0 for surgical patch (0.2)",
+          "severity": "critical"
+        },
+        {
+          "id": "cd-not-elite-jump",
+          "passed": true,
+          "message": "Mediocre chapter must not jump to elite after patch",
+          "severity": "critical"
+        },
+        {
+          "id": "cd-calibrated-cap",
+          "passed": true,
+          "message": "Calibrated delta capped (0.1)",
+          "severity": "critical"
+        },
+        {
+          "id": "cd-voice-length",
+          "passed": true,
+          "message": "Patch preserves substantial voice/material",
+          "severity": "critical"
+        },
+        {
+          "id": "cd-no-perfect",
+          "passed": true,
+          "message": "Fixed version avoids instant resolution",
+          "severity": "critical"
+        }
+      ],
+      "scores": {
+        "before": 6.8,
+        "after": 7,
+        "delta": 0.2
+      }
+    }
+  ]
+}

@@ -1,4 +1,5 @@
 import { Genre } from "@/types/book";
+import { detectBookIntelligence } from "@/lib/book-intelligence";
 
 export interface EditorialWarning {
   type:
@@ -507,6 +508,9 @@ export function detectEditorialGenre(text: string): Genre {
   const healthSignals = [
     /\b(health|wellness|wellbeing|salute|fitness|nutrition|dieta|doctor|medico|medicina|medical|nutrizione)\b/i,
   ];
+  const horticultureSignals = [
+    /\b(garden|giardin|orto|coltiv|pomod|horticultur|agricol|potatura|compost|ortaggi|frutteto|vigna)\b/i,
+  ];
 
   if (crimeSignals.some((pattern) => pattern.test(lower)) && !fantasySignals.some((pattern) => pattern.test(lower))) return "crime";
   if (thrillerSignals.some((pattern) => pattern.test(lower)) && quoteCount < 50) return "thriller";
@@ -518,12 +522,16 @@ export function detectEditorialGenre(text: string): Genre {
   if (psychologySignals.some((pattern) => pattern.test(lower))) return "psychology";
   if (productivitySignals.some((pattern) => pattern.test(lower))) return "productivity";
   if (educationSignals.some((pattern) => pattern.test(lower))) return "education";
+  if (horticultureSignals.some((pattern) => pattern.test(lower))) return "gardening";
   if (healthSignals.some((pattern) => pattern.test(lower))) return "health";
   if (memoirSignals.some((pattern) => pattern.test(lower)) && quoteCount < 40) return "memoir";
   if (nonfictionSignals.some((pattern) => pattern.test(lower)) && wordCount < 12000) return "self-help";
   if (quoteCount > 20 && /\b(chapter|capitolo|prologue|epilogue|section|sezione)\b/i.test(lower)) return "mystery";
 
-  return "self-help";
+  const intel = detectBookIntelligence({ idea: text.slice(0, 4000) });
+  if (intel.confidence >= 0.55) return intel.resolvedGenre;
+
+  return "manual";
 }
 
 const REPETITIVE_PHRASES = [

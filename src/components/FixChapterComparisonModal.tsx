@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Check, ChevronLeft, ChevronRight, Crown, Shield, Sparkles, X } from "lucide-react";
+import { ArrowRight, Check, ChevronLeft, ChevronRight, Shield, Sparkles, X } from "lucide-react";
+import type { DevelopmentalEditReport } from "@/lib/chapter-doctor-pro";
 
 type PatchSummary = {
   idx: number;
@@ -32,6 +33,7 @@ type MetricDelta = {
 
 interface Props {
   patchResult: PatchResultSummary;
+  report?: DevelopmentalEditReport;
   beforeScore: number | null;
   afterScore: number | null;
   scoreDelta?: number | null;
@@ -40,6 +42,7 @@ interface Props {
   explanations: string[];
   onApply: () => void;
   onClose: () => void;
+  onRevert?: () => void;
 }
 
 function splitTokens(value: string): string[] {
@@ -123,6 +126,7 @@ function renderDiffLine(text: string, compareText: string, side: "original" | "p
 
 export default function FixChapterComparisonModal({
   patchResult,
+  report,
   beforeScore,
   afterScore,
   scoreDelta,
@@ -131,6 +135,7 @@ export default function FixChapterComparisonModal({
   explanations,
   onApply,
   onClose,
+  onRevert,
 }: Props) {
   const [activePanel, setActivePanel] = useState<"before" | "after">("before");
   const [isMobile, setIsMobile] = useState(false);
@@ -194,6 +199,9 @@ export default function FixChapterComparisonModal({
 
   const metricRows = metrics.length > 0 ? metrics : [];
   const deltaVisible = deltaMode === "visible" && typeof scoreDelta === "number" && Math.abs(scoreDelta) >= 0.1;
+  const heroHighlights = report?.heroHighlights ?? [];
+  const interventions = report?.interventions ?? [];
+  const modificationSummary = report?.modificationSummary;
 
   function humanizeExplanation(text: string | undefined) {
     if (!text) return "Editorial refinement.";
@@ -205,21 +213,24 @@ export default function FixChapterComparisonModal({
   }
 
   const PATCH_TYPE_LABELS: Record<string, string> = {
-    tighten: "Refined",
-    rewrite: "Reworked",
-    compress: "Focused",
-    intensify: "Emotional enhancement",
+    tighten: "Pacing compression",
+    rewrite: "Subtext injection",
+    compress: "Emotional compression",
+    intensify: "Tension preservation",
+    "strengthen-dialogue": "Dialogue roughening",
+    "remove-redundancy": "Redundancy reduction",
+    "forced-editorial": "Surgical polish",
     remove: "Removed",
   };
 
-  const isHighScoreRefinement = deltaMode === "refinement" && beforeScore !== null && scoreDelta !== null && beforeScore >= 9.7 && Math.abs(scoreDelta) < 0.2;
-  const modificationSummary = deltaMode === "visible"
+  const isHighScoreRefinement = deltaMode === "refinement" && beforeScore !== null && scoreDelta !== null && beforeScore >= 9.5 && Math.abs(scoreDelta) < 0.35;
+  const modificationLabel = modificationSummary || (deltaMode === "visible"
     ? `${patchResult.modificationPercent}% strengthened`
     : patchResult.modificationPercent >= 20
     ? `${patchResult.modificationPercent}% editorially refined`
     : patchResult.modificationPercent >= 10
     ? `${patchResult.modificationPercent}% precision refinement`
-    : `${Math.max(1, Math.round(patchResult.modificationPercent / 10))} editorial micro-optimizations applied`;
+    : `${Math.max(1, Math.round(patchResult.modificationPercent / 10))} editorial micro-optimizations applied`);
 
   const refinementHighlights = useMemo(() => {
     const categories = new Map<string, string>();
@@ -269,10 +280,12 @@ export default function FixChapterComparisonModal({
               <span className="rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-1 text-[10px] uppercase tracking-[0.3em] font-semibold">Premium</span>
             </div>
             <div>
-              <p className="text-base uppercase tracking-[0.35em] text-white/40 font-bold">AI Developmental Edit</p>
-              <h1 className="mt-2 text-4xl font-black tracking-tight text-white">Scriptora completed an editorial pass</h1>
+              <p className="text-base uppercase tracking-[0.35em] text-white/40 font-bold">Chapter Doctor Pro</p>
+              <h1 className="mt-2 text-4xl font-black tracking-tight text-white">AI Developmental Edit Report</h1>
             </div>
-            <p className="max-w-2xl text-sm leading-6 text-white/70">Review changes before updating your chapter.</p>
+            <p className="max-w-2xl text-sm leading-6 text-white/70">
+              Surgical editorial pass complete. Review what changed, why it changed, and apply only if you agree.
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -282,10 +295,13 @@ export default function FixChapterComparisonModal({
               <Check className="h-4 w-4" /> Apply improved version
             </button>
             <button
-              onClick={onClose}
+              onClick={() => {
+                onRevert?.();
+                onClose();
+              }}
               className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white/80 transition hover:bg-white/10"
             >
-              <X className="h-4 w-4" /> Close
+              <X className="h-4 w-4" /> Keep original
             </button>
           </div>
         </div>
@@ -309,17 +325,34 @@ export default function FixChapterComparisonModal({
                 </div>
               </div>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
-                  <p className="text-xs uppercase tracking-[0.25em] text-white/50">Before</p>
-                  <p className="mt-4 text-5xl font-black text-rose-300">{beforeScore?.toFixed(1) ?? "—"}</p>
-                  <p className="text-xs text-white/50 mt-1">Editorial score</p>
+              <div className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
+                    <p className="text-xs uppercase tracking-[0.25em] text-white/50">Before</p>
+                    <p className="mt-4 text-5xl font-black text-rose-300">{beforeScore?.toFixed(1) ?? "—"}</p>
+                    <p className="text-xs text-white/50 mt-1">Editorial quality</p>
+                  </div>
+                  <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
+                    <p className="text-xs uppercase tracking-[0.25em] text-white/50">After</p>
+                    <p className="mt-4 text-5xl font-black text-emerald-300">{afterScore?.toFixed(1) ?? "—"}</p>
+                    <p className="text-xs text-white/50 mt-1">Projected improvement</p>
+                  </div>
                 </div>
-                <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
-                  <p className="text-xs uppercase tracking-[0.25em] text-white/50">After</p>
-                  <p className="mt-4 text-5xl font-black text-emerald-300">{afterScore?.toFixed(1) ?? "—"}</p>
-                  <p className="text-xs text-white/50 mt-1">Expected improvement</p>
-                </div>
+
+                {heroHighlights.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {heroHighlights.map(item => (
+                      <span
+                        key={item.id}
+                        className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-4 py-2 text-xs font-bold text-emerald-200"
+                      >
+                        {item.pctChange !== null && item.pctChange > 0 ? `+${item.pctChange}%` : `+${item.delta.toFixed(1)}`}
+                        {" "}
+                        {item.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -330,11 +363,30 @@ export default function FixChapterComparisonModal({
                   <p className="mt-2 text-3xl font-black text-white">{deltaVisible ? `${scoreDelta! > 0 ? "+" : ""}${scoreDelta!.toFixed(1)}` : deltaMode === "refinement" ? "Editorial refinement completed" : "Minimal editorial change"}</p>
                 </div>
                 <div className="rounded-3xl bg-primary/10 px-4 py-3 text-xs uppercase tracking-[0.2em] text-primary font-semibold">
-                  {modificationSummary}
+                  {modificationLabel}
                 </div>
               </div>
               <p className="mt-3 text-sm text-white/60">Edits: {patchResult.patches.length} / {patchResult.totalParagraphs} paragraphs</p>
             </div>
+
+            {interventions.length > 0 && (
+              <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
+                <p className="text-xs uppercase tracking-[0.25em] text-white/50 mb-4">What was improved</p>
+                <div className="space-y-3">
+                  {interventions.map(item => (
+                    <div key={item.id} className="flex items-start gap-3 rounded-3xl border border-white/10 bg-black/10 p-3">
+                      <Check className="h-4 w-4 text-emerald-300 mt-1 shrink-0" />
+                      <div>
+                        <p className="text-sm font-semibold text-white">{item.summary}</p>
+                        {item.patchCount > 1 && (
+                          <p className="text-[11px] text-white/50 mt-0.5">{item.patchCount} surgical edits</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {deltaMode === "refinement" && refinementHighlights.length > 0 && (
               <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
@@ -352,19 +404,21 @@ export default function FixChapterComparisonModal({
 
             {metricRows.length > 0 && (
               <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
-                <p className="text-xs uppercase tracking-[0.25em] text-white/50 mb-4">What's improved</p>
+                <p className="text-xs uppercase tracking-[0.25em] text-white/50 mb-4">Editorial metrics</p>
                 <div className="space-y-3">
-                  {metricRows.map(metric => (
+                  {metricRows.map(metric => {
+                    const pct = metric.before > 0 ? Math.round(((metric.after - metric.before) / metric.before) * 100) : null;
+                    return (
                     <div key={metric.label} className="flex items-center justify-between gap-3 rounded-3xl border border-white/10 bg-black/10 p-3">
                       <div>
                         <p className="text-sm font-semibold text-white">{metric.label}</p>
                         <p className="text-xs text-white/60">{metric.before.toFixed(1)} → {metric.after.toFixed(1)}</p>
                       </div>
                       <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${metric.delta >= 0 ? "bg-emerald-500/15 text-emerald-300" : "bg-rose-500/15 text-rose-300"}`}>
-                        {metric.delta >= 0 ? "+" : ""}{metric.delta.toFixed(1)}
+                        {pct !== null && pct > 0 ? `+${pct}%` : `${metric.delta >= 0 ? "+" : ""}${metric.delta.toFixed(1)}`}
                       </span>
                     </div>
-                  ))}
+                  )})}
                 </div>
               </div>
             )}

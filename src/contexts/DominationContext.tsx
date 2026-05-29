@@ -4,6 +4,7 @@ import { BookProject } from "@/types/book";
 import { resolveGenreKey } from "@/lib/genre-intelligence";
 import { getEditorialTier } from "@/lib/editorial-mastery";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
+import { buildSurgicalEditDirectiveBlock } from "@/lib/chapter-doctor-pro";
 import { getCurrentUserId } from "@/services/storageService";
 import { toast } from "sonner";
 
@@ -201,6 +202,15 @@ export function DominationProvider({ children }: { children: ReactNode }) {
     toast.success(`✂️ Patching "${chapter.title}" — surgical edit in background`);
 
     try {
+      const blueprintBlock = buildBlueprintIntegrityRuntimeBlock(project.config, project.blueprint, {
+        chapterIndex,
+        compact: true,
+      });
+      const surgicalBlock = buildSurgicalEditDirectiveBlock({
+        chapterText: chapter.content,
+        project,
+        chapterIndex,
+      });
       const { data, error } = await supabase.functions.invoke("patch-chapter", {
         body: {
           chapterTitle: chapter.title,
@@ -208,10 +218,7 @@ export function DominationProvider({ children }: { children: ReactNode }) {
           genre: project.config.genre,
           tone: project.config.tone,
           language: project.config.language,
-          blueprintIntegrityBlock: buildBlueprintIntegrityRuntimeBlock(project.config, project.blueprint, {
-            chapterIndex,
-            compact: true,
-          }),
+          blueprintIntegrityBlock: [blueprintBlock, surgicalBlock].filter(Boolean).join("\n\n"),
           projectId: project.id,
           userId: getCurrentUserId(),
         },

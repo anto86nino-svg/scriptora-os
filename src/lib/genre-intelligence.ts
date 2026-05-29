@@ -1066,6 +1066,23 @@ export function resolveGenreKey(genre: string, subcategory?: string): GenreKey {
     return "biography";
   if (g === "manual" || sub.includes("manual") || g.includes("manuale")) return "manual";
   if (
+    g.includes("garden") ||
+    sub.includes("garden") ||
+    sub.includes("orto") ||
+    sub.includes("coltiv") ||
+    sub.includes("pomod") ||
+    sub.includes("agricol") ||
+    sub.includes("hortic") ||
+    sub.includes("giardin")
+  )
+    return "gardening";
+  if (sub.includes("bee") || sub.includes("apic") || g.includes("beekeep")) return "beekeeping";
+  if (sub.includes("cook") || sub.includes("ricett") || g.includes("cookbook")) return "cookbook";
+  if (sub.includes("productiv") || g.includes("productiv")) return "productivity";
+  if (sub.includes("psych") || g.includes("psych")) return "psychology";
+  if (sub.includes("fitness") || g.includes("fitness")) return "fitness";
+  if (sub.includes("tech") || g.includes("technical")) return "technical-manual";
+  if (
     sub.includes("spirit") ||
     sub.includes("medita") ||
     sub.includes("mindful") ||
@@ -1082,7 +1099,7 @@ export function resolveGenreKey(genre: string, subcategory?: string): GenreKey {
   if (g.includes("self") || g.includes("crescita") || g.includes("ansia"))
     return "self-help";
 
-  return "self-help";
+  return "manual";
 }
 
 export function getGenreProfile(genre: string, subcategory?: string): GenreProfile {

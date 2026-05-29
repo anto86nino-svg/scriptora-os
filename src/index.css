@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "./styles/atmosphere-engine.css";
 
 @tailwind base;
 @tailwind components;
@@ -3676,20 +3677,37 @@ textarea,
 }
 
 /* Scriptora OS smart boot — GPU-friendly, CSS-only */
-.scriptora-boot-horizon {
-  background:
-    radial-gradient(ellipse 120% 60% at 50% 100%, rgba(56, 189, 248, 0.14), transparent 58%),
-    radial-gradient(ellipse 80% 40% at 50% 0%, rgba(255, 255, 255, 0.04), transparent 50%),
-    linear-gradient(180deg, #06070d 0%, #0a0c14 48%, #06070d 100%);
+.scriptora-boot-screen {
+  background-color: #040508;
 }
 
-.scriptora-boot-glow {
-  background: radial-gradient(circle, rgba(125, 211, 252, 0.35) 0%, transparent 70%);
-  animation: scriptora-boot-glow 2.8s ease-in-out infinite;
+.scriptora-boot-bg-image {
+  background-image: url("/backgrounds/scriptora-boot-sfondo.png");
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  transform: scale(1.02) translateZ(0);
+  will-change: transform;
+}
+
+.scriptora-boot-bg-blur {
+  backdrop-filter: blur(1.5px);
+  -webkit-backdrop-filter: blur(1.5px);
+  opacity: 0.35;
+}
+
+.scriptora-boot-overlay {
+  background:
+    linear-gradient(180deg, rgba(4, 5, 8, 0.52) 0%, rgba(6, 8, 14, 0.68) 45%, rgba(4, 5, 8, 0.82) 100%),
+    radial-gradient(ellipse 90% 55% at 50% 42%, rgba(56, 189, 248, 0.08), transparent 62%);
+}
+
+.scriptora-boot-vignette {
+  background: radial-gradient(ellipse 78% 68% at 50% 50%, transparent 42%, rgba(0, 0, 0, 0.62) 100%);
 }
 
 .scriptora-boot-logo {
-  animation: scriptora-boot-breathe 2.6s ease-in-out infinite;
+  animation: scriptora-boot-breathe 3s ease-in-out infinite;
   will-change: transform;
   transform: translateZ(0);
 }
@@ -3701,28 +3719,59 @@ textarea,
   background: linear-gradient(
     105deg,
     transparent 38%,
-    rgba(255, 255, 255, 0.14) 50%,
+    rgba(255, 255, 255, 0.16) 50%,
     transparent 62%
   );
-  animation: scriptora-boot-shimmer 3.2s ease-in-out infinite;
+  animation: scriptora-boot-shimmer 3.6s ease-in-out infinite;
 }
 
-.scriptora-boot-progress {
-  box-shadow: 0 0 12px rgba(186, 230, 253, 0.35);
+.scriptora-boot-progress-track {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 24px rgba(56, 189, 248, 0.08);
+}
+
+.scriptora-boot-progress-fill {
+  background: linear-gradient(
+    90deg,
+    rgba(34, 211, 238, 0.85) 0%,
+    rgba(186, 230, 253, 0.95) 48%,
+    rgba(255, 255, 255, 0.98) 100%
+  );
+  box-shadow:
+    0 0 18px rgba(125, 211, 252, 0.55),
+    0 0 36px rgba(56, 189, 248, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: width 120ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.scriptora-boot-progress-shimmer {
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.42) 50%,
+    transparent 70%
+  );
+  animation: scriptora-boot-bar-shimmer 2.4s ease-in-out infinite;
+}
+
+.scriptora-boot-label-active {
+  text-shadow:
+    0 0 12px rgba(186, 230, 253, 0.45),
+    0 0 24px rgba(56, 189, 248, 0.18);
+}
+
+.scriptora-boot-message {
+  animation: scriptora-boot-message-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .scriptora-boot-reveal {
-  animation: scriptora-boot-reveal 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: scriptora-boot-reveal 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes scriptora-boot-breathe {
   0%, 100% { transform: scale(1) translateZ(0); }
-  50% { transform: scale(1.03) translateZ(0); }
-}
-
-@keyframes scriptora-boot-glow {
-  0%, 100% { opacity: 0.45; transform: translate(-50%, -50%) scale(1); }
-  50% { opacity: 0.75; transform: translate(-50%, -50%) scale(1.06); }
+  50% { transform: scale(1.035) translateZ(0); }
 }
 
 @keyframes scriptora-boot-shimmer {
@@ -3730,10 +3779,28 @@ textarea,
   100% { transform: translateX(120%); }
 }
 
+@keyframes scriptora-boot-bar-shimmer {
+  0% { transform: translateX(-130%); opacity: 0; }
+  18% { opacity: 1; }
+  82% { opacity: 1; }
+  100% { transform: translateX(130%); opacity: 0; }
+}
+
+@keyframes scriptora-boot-message-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes scriptora-boot-reveal {
   from {
     opacity: 0;
-    filter: blur(6px);
+    filter: blur(10px);
   }
   to {
     opacity: 1;
@@ -3741,14 +3808,26 @@ textarea,
   }
 }
 
+@media (max-width: 640px) {
+  .scriptora-boot-bg-image {
+    background-position: center 38%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .scriptora-boot-logo,
-  .scriptora-boot-glow,
   .scriptora-boot-logo-shimmer::after,
-  .scriptora-boot-reveal {
+  .scriptora-boot-progress-shimmer,
+  .scriptora-boot-reveal,
+  .scriptora-boot-message,
+  .scriptora-boot-screen {
     animation: none !important;
+    transition: none !important;
   }
-  .scriptora-boot-progress {
+  .scriptora-boot-label {
+    transition: none !important;
+  }
+  .scriptora-boot-progress-fill {
     transition: none !important;
   }
 }

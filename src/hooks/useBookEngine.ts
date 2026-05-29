@@ -11,7 +11,9 @@ import { getDevPlanOverride } from "@/lib/dev-plan-override";
 import { getPlanLimits } from "@/lib/subscription";
 import { normalizeProjectChapterTitles, resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { ensureBookTitleMetadata } from "@/lib/title-shadow";
-import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
+import { applyAuthorIdentityToConfig, enforceAuthorIdentityLock, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
+import { applyBookIntelligenceToConfig } from "@/lib/book-intelligence";
+import { refreshProjectNarrativeIntelligenceV2 } from "@/lib/narrative-intelligence-v2";
 
 const FREE_MAX_PROJECT_WORDS = 10_000;
 
@@ -209,22 +211,25 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       targetAudience: config.tone,
       language: config.language,
     });
-    const authorSafeInput = applyAuthorIdentityToConfig(
-      titleSafeInput,
-      resolveAuthorIdentity(titleSafeInput.authorIdentity, titleSafeInput.authorIdentityId) || getSelectedAuthorIdentity(),
-    ) as BookConfig;
+    const authorSafeInput = enforceAuthorIdentityLock(
+      applyAuthorIdentityToConfig(
+        titleSafeInput,
+        resolveAuthorIdentity(titleSafeInput.authorIdentity, titleSafeInput.authorIdentityId) || getSelectedAuthorIdentity(),
+      ) as BookConfig,
+    );
+    const intelligenceSafeInput = applyBookIntelligenceToConfig(authorSafeInput);
     const maxProjectWords = getPlanLimits(activePlan).maxWordsPerBook;
     const safeConfig: BookConfig = activePlan === "free"
       ? {
-          ...authorSafeInput,
+          ...intelligenceSafeInput,
           bookLength: "short",
-          customTotalWords: Math.min(authorSafeInput.customTotalWords ?? FREE_MAX_PROJECT_WORDS, FREE_MAX_PROJECT_WORDS),
+          customTotalWords: Math.min(intelligenceSafeInput.customTotalWords ?? FREE_MAX_PROJECT_WORDS, FREE_MAX_PROJECT_WORDS),
         }
       : {
-          ...authorSafeInput,
-          customTotalWords: authorSafeInput.bookLength === "custom"
-            ? Math.min(authorSafeInput.customTotalWords ?? maxProjectWords, maxProjectWords)
-            : authorSafeInput.customTotalWords,
+          ...intelligenceSafeInput,
+          customTotalWords: intelligenceSafeInput.bookLength === "custom"
+            ? Math.min(intelligenceSafeInput.customTotalWords ?? maxProjectWords, maxProjectWords)
+            : intelligenceSafeInput.customTotalWords,
         };
 
     // Genre Lock — capture editorial blueprint at creation time so the
@@ -438,7 +443,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
           });
         },
         latestP.genreLock,
-        { usage: { projectId: latestP.id } },
+        { usage: { projectId: latestP.id }, longBookMemory: latestP.longBookMemory },
       );
 
       const activePlanAfterGeneration = await getActivePlanForEngine();
@@ -471,7 +476,11 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
         chapters[index] = { ...finalChapter, status: "completed" as GenerationStatus, lengthOverride: proj.chapters[index]?.lengthOverride };
         const allGenerated = chapters.length >= proj.config.numberOfChapters && chapters.every(c => c.content.length > 0);
-        return { ...proj, chapters, phase: nextPhase === "complete" ? nextPhase : (allGenerated ? "back-matter" as GenerationPhase : proj.phase) };
+        return refreshProjectNarrativeIntelligenceV2({
+          ...proj,
+          chapters,
+          phase: nextPhase === "complete" ? nextPhase : (allGenerated ? "back-matter" as GenerationPhase : proj.phase),
+        });
       });
 
       const latestAfterSave = getLatestProject();
@@ -552,7 +561,16 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       addMessage("assistant", `Regenerating Chapter ${index + 1}... 🔄`);
       const latestP = getLatestProject() || p;
       const prevChapters = latestP.chapters.slice(0, index);
-      const chapter = await generateChapter(latestP.config, latestP.blueprint!, index, prevChapters, latestP.chapters[index]?.lengthOverride, latestP.genreLock, { projectId: latestP.id });
+      const chapter = await generateChapter(
+        latestP.config,
+        latestP.blueprint!,
+        index,
+        prevChapters,
+        latestP.chapters[index]?.lengthOverride,
+        latestP.genreLock,
+        { projectId: latestP.id },
+        latestP.longBookMemory,
+      );
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
         chapters[index] = {
@@ -561,7 +579,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
           status: "completed" as GenerationStatus,
           lengthOverride: proj.chapters[index]?.lengthOverride,
         };
-        return { ...proj, chapters };
+        return refreshProjectNarrativeIntelligenceV2({ ...proj, chapters });
       });
       addMessage("assistant", `Chapter ${index + 1} regenerated!`);
     } catch (e: any) {
@@ -837,17 +855,11 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       genre: p.config.genre || "self-help",
       bookLength: p.config.bookLength || "medium",
     };
-    const resolvedAuthor = resolveAuthorIdentity(baseConfig.authorIdentity, baseConfig.authorIdentityId);
-    const hasAuthorName = !!String(baseConfig.authorName || baseConfig.author || baseConfig.writerName || "").trim();
     const hydrated: BookProject = {
       ...p,
-      config: resolvedAuthor
-        ? applyAuthorIdentityToConfig(baseConfig, resolvedAuthor) as BookConfig
-        : hasAuthorName
-          ? baseConfig
-          : applyAuthorIdentityToConfig(baseConfig, getSelectedAuthorIdentity()) as BookConfig,
+      config: enforceAuthorIdentityLock(baseConfig),
     };
-    const normalized = normalizeProjectChapterTitles(hydrated);
+    const normalized = refreshProjectNarrativeIntelligenceV2(normalizeProjectChapterTitles(hydrated));
 
     setProject(normalized);
     syncRef(normalized);

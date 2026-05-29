@@ -17,7 +17,9 @@
     "cap:sync": "npm run build && npx cap sync",
     "android:open": "npx cap open android",
     "verify": "bash ./verify-export.sh",
-    "prepare:release": "npm ci && npm run typecheck && npm run lint && npm run test && npm run build"
+    "prepare:release": "npm ci && npm run typecheck && npm run lint && npm run test && npm run build",
+    "benchmark:live": "vitest run src/lib/live-api-benchmark/live-api-benchmark.spec.ts --testTimeout=900000",
+    "benchmark:live:full": "LIVE_BENCHMARK_FULL=1 vitest run src/lib/live-api-benchmark/live-api-benchmark.spec.ts --testTimeout=3600000"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
