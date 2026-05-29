@@ -189,9 +189,9 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
-        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-card/95 p-4 backdrop-blur">
+    <div className="scriptora-modal-overlay z-[9999]">
+      <div className="scriptora-modal-panel max-w-5xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-border bg-card/95 p-4 backdrop-blur">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
               <Settings className="h-5 w-5" />
@@ -209,7 +209,7 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
           </Button>
         </div>
 
-        <div className="space-y-6 p-5">
+        <div className="scriptora-modal-body space-y-6 p-5">
           <section className="rounded-2xl border border-border/70 bg-background/40 p-4">
             <div className="mb-3 flex items-center gap-2">
               <Languages className="h-4 w-4 text-primary" />
@@ -423,8 +423,7 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
           </section>
         </div>
 
-        <div className="sticky bottom-0 z-20 border-t border-border bg-card/95 p-4 backdrop-blur">
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className="flex shrink-0 flex-col gap-2 border-t border-border bg-card/95 p-4 backdrop-blur sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={onClose}
@@ -443,7 +442,6 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
               <Save className="mr-2 h-4 w-4" />
               {t("done")}
             </button>
-          </div>
         </div>
       </div>
     </div>

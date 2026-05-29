@@ -278,8 +278,8 @@ export default function AutoBestsellerPage() {
   const showHeaderProgress = isLegacyRunning && (engine.liveBook.chapters.length > 0 || !!engine.liveBook.outlines);
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-20 border-b border-border/60 bg-card/80 backdrop-blur">
+    <div className="scriptora-feature-page bg-background">
+      <header className="z-20 shrink-0 border-b border-border/60 bg-card/80 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={handleLeaveToHome}>
@@ -333,8 +333,8 @@ export default function AutoBestsellerPage() {
       <main
         className={
           showBriefPanel
-            ? "mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[400px,1fr]"
-            : "mx-auto max-w-4xl px-4 py-6"
+            ? "scriptora-feature-scroll mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[400px,1fr]"
+            : "scriptora-feature-scroll mx-auto max-w-4xl px-4 py-6"
         }
       >
         {showBriefPanel && (

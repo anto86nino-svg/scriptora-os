@@ -194,10 +194,10 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-4xl my-8 max-h-[90vh] flex flex-col">
+    <div className="scriptora-modal-overlay">
+      <div className="scriptora-modal-panel max-w-4xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-border shrink-0">
+        <div className="flex shrink-0 items-center justify-between border-b border-border p-5">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500/20 to-purple-500/20 text-cyan-400">
               <Sparkles className="h-5 w-5" />
@@ -212,7 +212,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        <div className="scriptora-modal-body space-y-5 p-5">
           {/* INPUT FORM */}
           {!data && (
             <div className="space-y-4">

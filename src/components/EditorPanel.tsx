@@ -1,16 +1,17 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo } from "react";
 import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating } from "@/types/book";
-import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, Headphones, Download, Zap, Wand2 } from "lucide-react";
+import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Headphones, Download, Zap, Wand2 } from "lucide-react";
 import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel";
+import { ChapterGenerationExperience } from "@/components/ChapterGenerationExperience";
 import { GenreProfileBadge } from "@/components/GenreProfileBadge";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
 import { GenreCoachPanel } from "@/components/GenreCoachPanel";
 import { downloadText } from "@/lib/download";
 import { RewriteLevel, ChunkProgress } from "@/lib/generation";
+import { sanitizePlaceholderText } from "@/lib/generation-experience";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
-import { Progress } from "@/components/ui/progress";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import { authorBrainProfileHasInjectionData, buildAuthorBrainInjectionSnapshot, hasPassiveAuthorIntelligence } from "@/lib/author-brain";
 
@@ -99,7 +100,7 @@ export function EditorPanel({
           : !!blueprint;
 
   return (
-    <div className="flex h-full flex-1 flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
       {hasContent && (
         <div className="flex h-14 shrink-0 items-center justify-center border-b border-white/10 bg-slate-950/70 backdrop-blur-xl shadow-sm shadow-slate-950/20">
           <div className="ios-segment">
@@ -117,7 +118,7 @@ export function EditorPanel({
         </div>
       )}
 
-      <div className="scrollbar-thin flex-1 overflow-y-auto">
+      <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
         <div className={cn("mx-auto px-4 py-6 sm:px-8", mode === "preview" ? "max-w-2xl" : "max-w-5xl")}>
           <div className={cn("ios-editor-paper rounded-[32px] border border-white/10 bg-slate-950/65 shadow-[0_36px_120px_-40px_rgba(15,23,42,0.75)] ring-1 ring-white/10 p-5 sm:p-7", mode === "preview" && "bg-white/[0.055]")}>
           {mode === "preview" && hasContent ? (
@@ -634,7 +635,7 @@ function ChapterView({
       </div>
 
       {isGenerating && (
-        <GenerationProgress
+        <ChapterGenerationExperience
           project={project}
           chapterIndex={chapterIndex}
           outline={outline}
@@ -658,9 +659,11 @@ function ChapterView({
 
       {!isGenerated && !isGenerating && chapter?.status !== "error" && (
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground leading-relaxed">{outline.summary}</p>
+          {sanitizePlaceholderText(outline.summary) && (
+            <p className="text-sm text-muted-foreground leading-relaxed">{sanitizePlaceholderText(outline.summary)}</p>
+          )}
           <div className="p-10 rounded-[28px] border border-dashed border-white/15 bg-white/5 text-center">
-            <p className="text-sm text-muted-foreground/60">Click {t("generate")} to write this chapter</p>
+            <p className="text-sm text-muted-foreground/60">Premi {t("generate")} — Scriptora scriverà il capitolo davanti a te.</p>
           </div>
         </div>
       )}
@@ -959,457 +962,6 @@ const EditableTitle = memo(function EditableTitle({
 );
 
 
-const generationPhaseMeta: Record<string, { label: string; title: string; detail: string; index: number }> = {
-  OPENING: {
-    label: "Hook",
-    title: "Apertura in presa diretta",
-    detail: "Sta cercando il primo colpo narrativo: promessa, atmosfera e tensione iniziale.",
-    index: 0,
-  },
-  DEVELOPMENT: {
-    label: "Sviluppo",
-    title: "La scena prende corpo",
-    detail: "Personaggi, conflitto e ritmo vengono intrecciati nel flusso del capitolo.",
-    index: 1,
-  },
-  EXPANSION: {
-    label: "Densità",
-    title: "Profondità e texture",
-    detail: "Aggiunge dettagli sensoriali, micro-tensione e continuita emotiva.",
-    index: 2,
-  },
-  TRANSITION: {
-    label: "Ponte",
-    title: "Connessione narrativa",
-    detail: "Allinea la scena al prossimo movimento senza perdere energia.",
-    index: 3,
-  },
-  CLOSURE: {
-    label: "Chiusura",
-    title: "Finale del blocco",
-    detail: "Sta serrando l'ultima pagina con ritmo, payoff e aggancio.",
-    index: 4,
-  },
-};
-
-const generationPipeline = [
-  { phase: "OPENING", label: "Hook" },
-  { phase: "DEVELOPMENT", label: "Sviluppo" },
-  { phase: "EXPANSION", label: "Densità" },
-  { phase: "TRANSITION", label: "Ponte" },
-  { phase: "CLOSURE", label: "Chiusura" },
-];
-
-const generationBars = [38, 64, 46, 78, 54, 92, 66, 48, 84, 58, 72, 42, 88, 52, 68, 36];
-
-type LiveSceneTone = "noir" | "warm" | "storm" | "dawn" | "glass";
-
-interface LiveSceneAnalysis {
-  phaseLabel: string;
-  title: string;
-  detail: string;
-  sceneLabel: string;
-  emotionLabel: string;
-  rhythmLabel: string;
-  subjectLabel: string;
-  cameraLabel: string;
-  tone: LiveSceneTone;
-  rain: boolean;
-  night: boolean;
-  interior: boolean;
-  dialogue: boolean;
-  conflict: boolean;
-  closeness: boolean;
-  touch: boolean;
-  phone: boolean;
-  doorway: boolean;
-  bed: boolean;
-  table: boolean;
-  road: boolean;
-  nature: boolean;
-  people: boolean;
-  paragraphPulse: number;
-}
-
-const emotionKeywords = {
-  tensione: ["tensione", "paura", "ansia", "silenzio", "ombra", "rischio", "pericolo", "segreto", "sospetto", "trem", "minaccia"],
-  desiderio: ["desiderio", "attrazione", "bacio", "pelle", "cuore", "sfior", "vicino", "labbra", "calore", "respiro"],
-  conflitto: ["rabbia", "accusa", "ferita", "tradimento", "bugia", "colpa", "litig", "rottura", "distanza", "urlo"],
-  malinconia: ["ricordo", "perdita", "nostalgia", "vuoto", "lacrime", "addio", "solitudine", "mancanza", "rimpianto"],
-  speranza: ["speranza", "fiducia", "promessa", "sorriso", "luce", "alba", "respiro", "possibile", "futuro"],
-};
-
-const settingKeywords = {
-  notte: ["notte", "buio", "luna", "ombra", "lampione", "madrugada", "stelle"],
-  interno: ["stanza", "camera", "cucina", "salotto", "ufficio", "casa", "porta", "finestra", "tavolo"],
-  citta: ["strada", "auto", "traffico", "palazzo", "bar", "marciapiede", "ascensore", "hotel"],
-  natura: ["mare", "lago", "riva", "vento", "pioggia", "bosco", "giardino", "terra", "fango", "acqua", "fiume", "neve", "tempesta"],
-};
-
-function keywordScore(text: string, words: string[]): number {
-  const lower = text.toLowerCase();
-  return words.reduce((score, word) => score + (lower.includes(word) ? 1 : 0), 0);
-}
-
-function bestKey<T extends string>(text: string, groups: Record<T, string[]>, fallback: T): T {
-  let best = fallback;
-  let bestScore = -1;
-  for (const [key, words] of Object.entries(groups) as [T, string[]][]) {
-    const score = keywordScore(text, words);
-    if (score > bestScore) {
-      best = key;
-      bestScore = score;
-    }
-  }
-  return best;
-}
-
-function extractNames(text: string, project: BookProject): string[] {
-  const cleanName = (value: unknown) => String(value || "")
-    .replace(/[*_`:#.-]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  const isLikelyName = (value: string) =>
-    value.length >= 3 &&
-    value.length <= 34 &&
-    /^[A-ZÀ-Ü][A-Za-zÀ-ÿ]+(?:\s+[A-ZÀ-Ü][A-Za-zÀ-ÿ]+)?$/.test(value) &&
-    !["Capitolo", "Scriptora", "Quando", "Perche", "Perché", "Ecco", "Character Bible", "Piccole", "Domani"].includes(value);
-  const configured = (project.config.characters || [])
-    .map((character) => cleanName([character.name, character.surname].filter(Boolean).join(" ")))
-    .filter(isLikelyName);
-  const found = Array.from(text.matchAll(/\b[A-ZÀ-Ü][a-zà-ÿ]{2,}(?:\s+[A-ZÀ-Ü][a-zà-ÿ]{2,})?/g))
-    .map((match) => cleanName(match[0]))
-    .filter(isLikelyName);
-  return Array.from(new Set([...configured, ...found])).slice(0, 3);
-}
-
-function getLiveParagraph(content: string, fallback: string): string {
-  const normalized = (content || "").replace(/\r/g, "").trim();
-  if (!normalized) return fallback;
-  const paragraphs = normalized
-    .split(/\n{2,}/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-  return paragraphs.slice(-2).join("\n\n") || paragraphs[paragraphs.length - 1] || normalized;
-}
-
-function compactPreviewLine(value: string, max = 170): string {
-  const clean = value
-    .replace(/^#+\s*/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (clean.length <= max) return clean;
-  return `${clean.slice(0, max).replace(/\s+\S*$/, "").trim()}...`;
-}
-
-function getLiveWritingPreviewLines(content: string, fallback: string, chapterIndex: number): string[] {
-  const normalized = content
-    .replace(/\r/g, "")
-    .replace(/^#+\s*.+$/gm, "")
-    .trim();
-
-  if (!normalized) {
-    const direction = compactPreviewLine(fallback || "Scriptora sta preparando struttura, tono e continuità del capitolo.", 190);
-    return [
-      `Capitolo ${chapterIndex + 1}: impostazione narrativa in corso.`,
-      `Direzione: ${direction}`,
-      "Le prime righe reali appariranno qui appena Scriptora completa il primo blocco.",
-    ];
-  }
-
-  const recent = getLiveParagraph(normalized, fallback)
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-  const sentences = recent
-    .replace(/\n+/g, " ")
-    .match(/[^.!?…]+[.!?…]?/g)
-    ?.map((part) => compactPreviewLine(part, 190))
-    .filter((part) => part.length > 24) || [];
-
-  const lines = sentences.length >= 2
-    ? sentences.slice(-4)
-    : recent.split(/\n+/).map((part) => compactPreviewLine(part, 190)).filter(Boolean).slice(-4);
-
-  return lines.length ? lines : [compactPreviewLine(recent, 190)];
-}
-
-function rhythmFromText(text: string, pct: number): string {
-  const punctuation = (text.match(/[.!?;]/g) || []).length;
-  const quotes = (text.match(/[“”"«»]/g) || []).length;
-  const words = text.split(/\s+/).filter(Boolean).length;
-  if (quotes >= 4) return "dialogo serrato";
-  if (punctuation > 0 && words / punctuation < 11) return "tagli brevi";
-  if (pct > 70) return "chiusura in spinta";
-  if (words > 260) return "respiro largo";
-  return "costruzione controllata";
-}
-
-function analyzeLiveScene({
-  project,
-  outline,
-  chapterIndex,
-  phase,
-  content,
-  pct,
-}: {
-  project: BookProject;
-  outline?: { title: string; summary: string };
-  chapterIndex: number;
-  phase: string;
-  content: string;
-  pct: number;
-}): LiveSceneAnalysis {
-  const outlineText = `${outline?.title || ""}. ${outline?.summary || ""}`.trim();
-  const recent = getLiveParagraph(content, outlineText || `${project.config.title} ${project.config.genre}`).slice(-1100);
-  const emotion = bestKey(recent, emotionKeywords, "tensione");
-  const setting = bestKey(recent, settingKeywords, "interno");
-  const names = extractNames(recent, project);
-  const dialogue = /[“”"«»]/.test(recent) || keywordScore(recent, ["disse", "chiese", "rispose", "sussurr", "voce"]) > 0;
-  const conflict = emotion === "conflitto" || keywordScore(recent, ["no", "mai", "basta", "bugia", "colpa", "segreto"]) >= 2;
-  const rain = keywordScore(recent, ["pioggia", "tempesta", "vento", "neve", "gocce"]) > 0;
-  const night = setting === "notte" || keywordScore(recent, ["notte", "buio", "luna", "ombra"]) > 0;
-  const interior = setting === "interno";
-  const closeness = keywordScore(recent, ["vicin", "braccio", "spalle", "pelle", "calore", "corpo", "respiro", "petto", "abbraccio", "sfior", "bacio", "odore"]) > 0;
-  const touch = keywordScore(recent, ["braccio", "spalle", "mano", "dita", "pelle", "sfior", "tocc", "abbraccio", "bacio"]) > 0;
-  const phone = keywordScore(recent, ["messaggio", "telefono", "cellulare", "scrisse", "risposta", "chat", "sms"]) > 0;
-  const doorway = keywordScore(recent, ["porta", "soglia", "affrontare", "domani", "uscire", "entrò", "entro", "chiave"]) > 0;
-  const bed = keywordScore(recent, ["letto", "cuscino", "lenzuola", "sonno", "dorm", "svegli"]) > 0;
-  const table = keywordScore(recent, ["tavolo", "cucina", "bicchiere", "tazza", "caffè", "lettera"]) > 0;
-  const road = setting === "citta" || keywordScore(recent, ["strada", "auto", "marciapiede", "hotel", "bar"]) > 0;
-  const nature = setting === "natura";
-  const people = dialogue || closeness || touch || conflict || names.length > 0;
-  const tone: LiveSceneTone =
-    rain || conflict ? "storm"
-      : night || emotion === "tensione" ? "noir"
-        : emotion === "desiderio" ? "warm"
-          : emotion === "speranza" ? "dawn"
-            : "glass";
-  const sceneLabel = setting === "citta"
-    ? "esterno urbano"
-    : setting === "natura"
-      ? "spazio aperto"
-      : setting === "notte"
-        ? "notte tesa"
-        : "interno ravvicinato";
-  const subjectLabel = names.length > 0 ? names.join(" · ") : `Capitolo ${chapterIndex + 1}`;
-  const rhythmLabel = rhythmFromText(recent, pct);
-  const cameraLabel = dialogue
-    ? "campo/controcampo"
-    : conflict
-      ? "camera stretta"
-      : interior
-        ? "dettaglio su oggetti"
-        : "inquadratura ampia";
-  const phaseMeta = generationPhaseMeta[phase] ?? generationPhaseMeta.OPENING;
-  const action = content
-    ? dialogue
-      ? "sta facendo emergere il sottotesto nei dialoghi"
-      : conflict
-        ? "sta alzando la pressione emotiva della scena"
-        : rain || night
-          ? "sta usando atmosfera e luce per guidare la tensione"
-          : "sta sviluppando ritmo, immagini e continuita"
-    : "sta preparando il capitolo dal brief e dalla struttura";
-
-  return {
-    phaseLabel: phaseMeta.label,
-    title: `${phaseMeta.label}: ${sceneLabel}`,
-    detail: `Scriptora ${action}: tono ${emotion}, ritmo ${rhythmLabel}, focus su ${subjectLabel}.`,
-    sceneLabel,
-    emotionLabel: emotion,
-    rhythmLabel,
-    subjectLabel,
-    cameraLabel,
-    tone,
-    rain,
-    night,
-    interior,
-    dialogue,
-    conflict,
-    closeness,
-    touch,
-    phone,
-    doorway,
-    bed,
-    table,
-    road,
-    nature,
-    people,
-    paragraphPulse: Math.abs(recent.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0)) % 7,
-  };
-}
-
-const GenerationProgress = memo(function GenerationProgress({
-  project,
-  chapterIndex,
-  outline,
-  onCancel,
-  chunkProgress,
-}: {
-  project: BookProject;
-  chapterIndex: number;
-  outline?: { title: string; summary: string };
-  onCancel?: () => void;
-  chunkProgress?: ChunkProgress;
-}) {
-  const [fakePct, setFakePct] = useState(0);
-
-  useEffect(() => {
-    if (chunkProgress) return;
-    const start = Date.now();
-    const interval = setInterval(() => {
-      const elapsed = (Date.now() - start) / 1000;
-      let pct: number;
-      if (elapsed < 3) pct = (elapsed / 3) * 10;
-      else if (elapsed < 10) pct = 10 + ((elapsed - 3) / 7) * 10;
-      else pct = 20 + Math.min((elapsed - 10) / 30, 1) * 5;
-      setFakePct(Math.min(pct, 25));
-    }, 500);
-    return () => clearInterval(interval);
-  }, [chunkProgress]);
-
-  const currentWords = chunkProgress?.currentWords ?? 0;
-  const targetWords = Math.max(chunkProgress?.targetWords ?? 1, 1);
-  const realPct = chunkProgress
-    ? Math.min(Math.round((currentWords / targetWords) * 100), 99)
-    : Math.round(fakePct);
-  const phase = chunkProgress?.phase ?? "OPENING";
-  const phaseMeta = generationPhaseMeta[phase] ?? generationPhaseMeta.OPENING;
-  const liveContent = chunkProgress?.content?.trim() ?? "";
-  const scene = analyzeLiveScene({ project, outline, chapterIndex, phase, content: liveContent, pct: realPct });
-  const previewFallback = `${outline?.title || ""}. ${outline?.summary || ""}`.trim() || `${project.config.title} ${project.config.genre}`;
-  const livePreviewLines = getLiveWritingPreviewLines(liveContent, previewFallback, chapterIndex);
-  const livePreviewLabel = liveContent ? "Ultime righe generate" : "Direzione";
-  const livePreviewSnippet = getLiveParagraph(
-    liveContent,
-    previewFallback,
-  );
-  const overlayTitle = resolveChapterTitle(outline?.title || "", chapterIndex, {
-    config: project.config,
-    summary: outline?.summary,
-    totalChapters: project.config.numberOfChapters,
-  });
-
-  const wordInfo = chunkProgress
-    ? `${currentWords.toLocaleString()} / ${targetWords.toLocaleString()} parole`
-    : "Motore narrativo";
-  const chunkSizeLabel = chunkProgress?.chunkSize
-    ? `${chunkProgress.chunkSize === "LARGE" ? "Passaggio lungo" : chunkProgress.chunkSize === "MEDIUM" ? "Passaggio medio" : "Passaggio rapido"}`
-    : "Setup";
-
-  return (
-    <div className="scriptora-generation-stage animate-fade-in">
-      <div className="scriptora-generation-topline">
-        <div className="scriptora-generation-live-pill">
-          <span className="scriptora-generation-live-dot" />
-          <Sparkles className="h-4 w-4" />
-        </div>
-        <div className="scriptora-generation-actions">
-          <span className="scriptora-generation-percent">{realPct}%</span>
-          {onCancel && (
-            <button onClick={onCancel} title={t("stop_generation")}
-              className="h-8 w-8 flex items-center justify-center rounded-lg text-white/65 hover:text-white hover:bg-red-500/15 transition-colors">
-              <Square className="h-3 w-3" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="scriptora-generation-grid">
-        <div className="scriptora-generation-engine">
-          <div className="scriptora-generation-wave" aria-hidden="true">
-            {generationBars.map((height, index) => (
-              <span
-                key={`${height}-${index}`}
-                style={{ height: `${height}%`, animationDelay: `${index * 72}ms` }}
-              />
-            ))}
-          </div>
-          <div className="scriptora-generation-scan" aria-hidden="true" />
-          <div className="relative z-10 space-y-2">
-            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-cyan-100/65">
-              <Zap className="h-3.5 w-3.5 text-cyan-200" />
-              {scene.phaseLabel}
-            </div>
-            <h3 className="text-xl font-semibold text-white leading-tight">{scene.title}</h3>
-            <p className="max-w-xl text-[11px] leading-relaxed text-white/68">{scene.detail}</p>
-            <div className="scriptora-generation-signals">
-              <span>{scene.emotionLabel}</span>
-              <span>{scene.rhythmLabel}</span>
-              <span>{scene.cameraLabel}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="scriptora-generation-manuscript">
-          <div className="scriptora-generation-manuscript-header">
-            <div className="flex items-center gap-2">
-              <PenLine className="h-4 w-4 text-emerald-200" />
-              <span>Live Preview</span>
-            </div>
-            <span aria-hidden="true" className="scriptora-scene-status">
-              <i /><i /><i />
-            </span>
-          </div>
-          <div className="scriptora-live-writing-board" aria-label={`Anteprima testuale live: ${overlayTitle}`}>
-            <div className="scriptora-live-writing-paper">
-              <div className="scriptora-live-writing-kicker">
-                <span>{livePreviewLabel}</span>
-                <span>{scene.sceneLabel}</span>
-              </div>
-              <h4>{overlayTitle}</h4>
-              <div className="scriptora-generation-live-text">
-                {livePreviewLines.map((line, index) => (
-                  <p key={`${line}-${index}`}>{line}</p>
-                ))}
-              </div>
-            </div>
-            <div className="scriptora-live-writing-footer">
-              <span>{scene.emotionLabel}</span>
-              <span>{scene.rhythmLabel}</span>
-              <span>{compactPreviewLine(livePreviewSnippet, 70)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="scriptora-generation-meter">
-        <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] text-white/45">
-          <span>{wordInfo}</span>
-          <span>{chunkSizeLabel}</span>
-        </div>
-        <Progress value={realPct} className="h-2 bg-white/10" />
-      </div>
-
-      <div className="scriptora-generation-pipeline">
-        {generationPipeline.map((step, index) => {
-          const state = index < phaseMeta.index ? "done" : index === phaseMeta.index ? "active" : "pending";
-          return (
-            <div key={step.phase} className={cn("scriptora-generation-step", `is-${state}`)}>
-              <span>{index + 1}</span>
-              <strong>{step.label}</strong>
-            </div>
-          );
-        })}
-      </div>
-</div>
-  );
-
-}, (prev, next) =>
-  prev.onCancel === next.onCancel &&
-  prev.project?.id === next.project?.id &&
-  prev.project?.config?.genre === next.project?.config?.genre &&
-  prev.project?.config?.tone === next.project?.config?.tone &&
-  prev.chapterIndex === next.chapterIndex &&
-  prev.outline?.title === next.outline?.title &&
-  prev.outline?.summary === next.outline?.summary &&
-  prev.chunkProgress?.currentWords === next.chunkProgress?.currentWords &&
-  prev.chunkProgress?.targetWords === next.chunkProgress?.targetWords &&
-  prev.chunkProgress?.phase === next.chunkProgress?.phase &&
-  prev.chunkProgress?.chunkSize === next.chunkProgress?.chunkSize &&
-  prev.chunkProgress?.chunkIndex === next.chunkProgress?.chunkIndex &&
-  prev.chunkProgress?.content === next.chunkProgress?.content,
-);
 
 function LoadingBanner({ text }: { text: string }) {
   return (

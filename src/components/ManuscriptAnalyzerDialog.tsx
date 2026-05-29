@@ -783,8 +783,8 @@ export function ManuscriptAnalyzerDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] max-w-6xl overflow-hidden border-white/10 bg-background/95 p-0 shadow-2xl backdrop-blur-2xl">
-        <DialogHeader className="border-b border-white/10 px-5 py-4 text-left sm:px-6">
+      <DialogContent className="flex max-h-[min(92dvh,92vh)] w-[calc(100vw-1.5rem)] max-w-6xl flex-col overflow-hidden border-white/10 bg-background/95 p-0 shadow-2xl backdrop-blur-2xl">
+        <DialogHeader className="shrink-0 border-b border-white/10 px-5 py-4 text-left sm:px-6">
           <div className="flex min-w-0 items-start gap-3 pr-8">
             <div className="ios-icon ios-icon-teal h-11 w-11 shrink-0 rounded-[16px]">
               <Wand2 className="h-5 w-5" />
@@ -800,7 +800,7 @@ export function ManuscriptAnalyzerDialog({
           </div>
         </DialogHeader>
 
-        <div className="grid max-h-[calc(92vh-84px)] gap-0 overflow-y-auto lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="scriptora-modal-body grid min-h-0 gap-0 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="border-b border-white/10 p-4 sm:p-5 lg:border-b-0 lg:border-r">
             <input
               ref={fileInputRef}

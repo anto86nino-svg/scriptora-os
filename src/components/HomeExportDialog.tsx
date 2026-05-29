@@ -134,10 +134,10 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+    <div className="scriptora-modal-overlay">
+      <div className="scriptora-modal-panel max-w-lg">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-border">
+        <div className="flex shrink-0 items-center justify-between border-b border-border p-5">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
               <FileDown className="h-4 w-4" />
@@ -156,7 +156,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           </button>
         </div>
 
-        <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
+        <div className="scriptora-modal-body space-y-5 p-5">
           {/* Project Selection */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
@@ -245,7 +245,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-4 border-t border-border bg-muted/20">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/20 p-4">
           <button
             onClick={onClose}
             disabled={isExporting}

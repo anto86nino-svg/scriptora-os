@@ -318,9 +318,9 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
   const subcategories = CATEGORIES[config.category] || [];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-card rounded-xl border border-border shadow-2xl w-full max-w-3xl">
-        <div className="p-5 border-b border-border flex items-center justify-between">
+    <div className="scriptora-modal-overlay">
+      <div className="scriptora-modal-panel max-w-3xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-border p-5">
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">{t("create_new_book")}</h2>
@@ -328,7 +328,7 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
         </div>
 
-        <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin">
+        <div className="scriptora-modal-body space-y-4 p-5">
           <Field label={t("title")}>
             <input value={config.title} onChange={e => update("title", e.target.value)}
               className="w-full h-9 bg-muted/50 border border-border rounded-lg px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -582,7 +582,7 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
           )}
         </div>
 
-        <div className="p-5 border-t border-border flex justify-end gap-2">
+        <div className="flex shrink-0 justify-end gap-2 border-t border-border p-5">
           <button onClick={onClose}
             className="h-9 px-4 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             {t("cancel")}

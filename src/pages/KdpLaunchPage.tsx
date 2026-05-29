@@ -164,8 +164,8 @@ export default function KdpLaunchPage() {
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-3xl p-6 space-y-6">
+    <div className="scriptora-feature-page bg-background">
+      <main className="scriptora-feature-scroll mx-auto max-w-3xl space-y-6 p-6">
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -437,7 +437,7 @@ export default function KdpLaunchPage() {
             if (step === "idea" || step === "market") setStep("title");
           }}
         />
-      </div>
+      </main>
     </div>
   );
 }

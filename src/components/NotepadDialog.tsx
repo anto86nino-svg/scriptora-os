@@ -178,15 +178,12 @@ export function NotepadDialog({ open, ownerId, onClose }: NotepadDialogProps) {
   const activeTextColor = NOTE_TEXT_COLORS.find((item) => item.id === activeNote?.textColor) || NOTE_TEXT_COLORS[0];
 
   return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/70 p-3 backdrop-blur-2xl sm:p-4"
-      onClick={onClose}
-    >
+    <div className="scriptora-modal-overlay z-[9999]" onClick={onClose}>
       <div
-        className="ios-panel flex h-[88vh] w-full max-w-6xl flex-col overflow-hidden"
+        className="scriptora-modal-panel ios-panel max-w-6xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <span className="ios-icon ios-icon-yellow h-10 w-10 shrink-0 rounded-[16px]">
               <NotebookPen className="h-5 w-5" />

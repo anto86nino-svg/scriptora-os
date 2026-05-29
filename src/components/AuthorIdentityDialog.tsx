@@ -216,9 +216,9 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-white/10 bg-card shadow-2xl">
-        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-white/10 bg-card/95 p-4 backdrop-blur">
+    <div className="scriptora-modal-overlay z-[9999]">
+      <div className="scriptora-modal-panel max-w-5xl border-white/10">
+        <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-card/95 p-4 backdrop-blur">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
               <Fingerprint className="h-5 w-5" />
@@ -236,7 +236,7 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
           </button>
         </div>
 
-        <div className="grid gap-4 p-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+        <div className="scriptora-modal-body grid min-h-0 gap-4 p-5 lg:grid-cols-[300px_minmax(0,1fr)]">
           <aside className="space-y-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Author Vault</p>

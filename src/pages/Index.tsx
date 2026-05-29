@@ -473,7 +473,7 @@ const Index = () => {
 
       {/* Left Sidebar */}
       <aside
-        className={`ios-sidebar fixed z-40 flex h-[100dvh] shrink-0 flex-col pb-safe transition-all duration-300 ease-out md:relative ${
+        className={`ios-sidebar fixed z-40 flex h-safe-screen shrink-0 flex-col pb-safe transition-all duration-300 ease-out md:relative ${
           sidebarOpen
             ? "translate-x-0 w-[272px] opacity-100"
             : "-translate-x-full md:translate-x-0 md:w-0 md:opacity-0 overflow-hidden"
@@ -602,7 +602,7 @@ const Index = () => {
         <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm">
           {effectiveProject ? (
             <>
-              <div className="min-w-0 flex-1">
+              <div className="min-h-0 min-w-0 flex-1">
                 <EditorPanel
                   project={effectiveProject}
                   activeSection={activeSection}

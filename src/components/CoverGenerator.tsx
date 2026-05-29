@@ -699,9 +699,9 @@ export function CoverGenerator({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
-      <div className="bg-card/95 border border-border/80 rounded-2xl shadow-2xl max-w-6xl lg:max-w-[1500px] w-full max-h-[92vh] lg:max-h-[94vh] overflow-hidden lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)]">
-        <div className="px-4 sm:px-5 lg:px-7 py-4 lg:py-5 border-b border-border/70 flex items-center justify-between gap-3">
+    <div className="scriptora-modal-overlay z-50 bg-black/75 p-3 pb-safe pt-safe sm:p-5">
+      <div className="scriptora-modal-panel max-w-6xl lg:max-w-[1500px] lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)]">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 px-4 py-4 sm:px-5 lg:px-7 lg:py-5">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary">
               <BookOpen className="h-4 w-4" />
@@ -719,7 +719,7 @@ export function CoverGenerator({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)_360px] max-h-[calc(92vh-78px)] lg:max-h-[calc(94vh-96px)] overflow-y-auto xl:overflow-hidden">
+        <div className="scriptora-modal-body grid grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)_360px] xl:overflow-hidden">
           <div className="relative order-1 xl:order-none xl:col-start-2 xl:row-start-1 p-4 sm:p-6 lg:p-6 xl:p-8 bg-black/20 xl:bg-gradient-to-br xl:from-black/45 xl:via-background/80 xl:to-primary/10 flex flex-col items-center justify-center gap-4 xl:min-h-[calc(94vh-96px)] xl:overflow-hidden">
             <div className="w-full flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:absolute lg:left-8 lg:right-8 lg:top-6 lg:w-auto lg:rounded-2xl lg:border lg:border-white/10 lg:bg-background/35 lg:px-4 lg:py-3 lg:backdrop-blur-xl">
               <span>{spec.label}</span>

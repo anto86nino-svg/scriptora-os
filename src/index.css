@@ -65,6 +65,32 @@
     height: 100dvh;
   }
 
+  /* UI Consistency — shared viewport + modal shell (desktop + mobile) */
+  .scriptora-feature-page {
+    @apply scriptora-ios-screen flex h-safe-screen min-h-[100dvh] flex-col overflow-hidden pb-safe;
+  }
+
+  .scriptora-feature-scroll {
+    @apply min-h-0 flex-1 overflow-y-auto overscroll-contain;
+  }
+
+  .scriptora-modal-overlay {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 pb-safe pt-safe backdrop-blur-sm sm:p-4;
+  }
+
+  .scriptora-modal-panel {
+    @apply flex w-full max-h-[min(92dvh,92vh)] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl;
+  }
+
+  .scriptora-modal-body {
+    @apply min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin;
+  }
+
+  .scriptora-modal-panel.ios-panel:hover,
+  .ios-panel.scriptora-modal-panel:hover {
+    transform: none;
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--border)) transparent;
@@ -1951,6 +1977,425 @@
   .scriptora-live-cursor,
   .scriptora-live-progress-track span {
     animation: none;
+  }
+}
+
+/* ── Scriptora Landing V3 — transformation-first, Linear/Apple tone ── */
+.scriptora-landing-v3-bg {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56, 120, 255, 0.12), transparent 55%),
+    linear-gradient(180deg, #050608 0%, #07090e 48%, #050608 100%);
+}
+
+.scriptora-landing-v3-bg::before {
+  background-size: 48px 48px;
+  opacity: 0.35;
+}
+
+.scriptora-landing-v3-bg::after {
+  opacity: 0.35;
+}
+
+.scriptora-v3-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 1.05fr);
+  gap: clamp(28px, 5vw, 64px);
+  align-items: center;
+  padding: clamp(32px, 6vw, 80px) clamp(18px, 5vw, 72px) clamp(24px, 4vw, 48px);
+  max-width: 1280px;
+  margin-inline: auto;
+}
+
+.scriptora-v3-hero-copy {
+  max-width: 620px;
+}
+
+.scriptora-v3-headline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.06em;
+  font-size: clamp(40px, 6.5vw, 72px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 0.98;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.scriptora-v3-headline-accent {
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.scriptora-v3-subhead {
+  margin-top: 20px;
+  font-size: clamp(18px, 2.2vw, 22px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.35;
+}
+
+.scriptora-v3-body {
+  margin-top: 14px;
+  max-width: 540px;
+  font-size: clamp(15px, 1.8vw, 17px);
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.52);
+}
+
+.scriptora-v3-primary {
+  background: #ffffff;
+  color: #050608;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.scriptora-v3-primary:hover {
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.scriptora-v3-secondary {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.scriptora-v3-hero-visual {
+  min-width: 0;
+}
+
+.scriptora-v3-hero-media {
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.scriptora-v3-hero-media video,
+.scriptora-v3-hero-media img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+
+.scriptora-v3-proof {
+  padding-top: clamp(24px, 4vw, 48px);
+}
+
+.scriptora-v3-proof-head {
+  margin-bottom: 20px;
+}
+
+.scriptora-v3-proof-head h2 {
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.scriptora-v3-proof-head p {
+  margin-top: 6px;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.scriptora-v3-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.scriptora-v3-proof-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.scriptora-v3-proof-card svg {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.scriptora-v3-problem h2,
+.scriptora-v3-solution h2,
+.scriptora-v3-systems h2,
+.scriptora-v3-audience h2,
+.scriptora-v3-testimonials-header h2 {
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  max-width: 720px;
+}
+
+.scriptora-v3-problem-list {
+  margin-top: 24px;
+  display: grid;
+  gap: 10px;
+  max-width: 480px;
+}
+
+.scriptora-v3-problem-list li {
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 15px;
+}
+
+.scriptora-v3-problem-footer {
+  margin-top: 20px;
+  font-size: 17px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+  letter-spacing: -0.02em;
+}
+
+.scriptora-v3-solution-lines {
+  margin-top: 24px;
+  display: grid;
+  gap: 8px;
+  max-width: 520px;
+}
+
+.scriptora-v3-solution-lines p {
+  font-size: clamp(20px, 3vw, 28px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.2;
+}
+
+.scriptora-v3-diff {
+  text-align: center;
+  padding-block: clamp(48px, 8vw, 88px);
+}
+
+.scriptora-v3-diff-muted {
+  font-size: clamp(18px, 2.5vw, 22px);
+  color: rgba(255, 255, 255, 0.42);
+  letter-spacing: -0.02em;
+}
+
+.scriptora-v3-diff-strong {
+  margin-top: 10px;
+  font-size: clamp(28px, 4.5vw, 44px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: rgba(255, 255, 255, 0.96);
+}
+
+.scriptora-v3-systems-grid {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.scriptora-v3-system-card {
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.scriptora-v3-system-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.scriptora-v3-system-head h3 {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.scriptora-v3-system-card ul {
+  display: grid;
+  gap: 6px;
+}
+
+.scriptora-v3-system-card li {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.48);
+  line-height: 1.45;
+}
+
+.scriptora-v3-demo-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.55fr);
+  gap: 24px;
+  align-items: end;
+  margin-bottom: 20px;
+}
+
+.scriptora-v3-demo-header p {
+  font-size: 15px;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.52);
+}
+
+.scriptora-v3-demo-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.scriptora-v3-demo-tabs button {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.scriptora-v3-demo-tabs button.is-active {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.scriptora-v3-demo-frame {
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.35);
+  box-shadow: 0 32px 100px rgba(0, 0, 0, 0.45);
+}
+
+.scriptora-v3-demo-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.scriptora-v3-audience-tags {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scriptora-v3-audience-tags span {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.scriptora-v3-testimonials-header {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 20px;
+  max-width: 640px;
+}
+
+.scriptora-v3-testimonials-header p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.scriptora-v3-testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.scriptora-v3-testimonial-slot {
+  padding: 22px;
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.scriptora-v3-testimonial-avatar {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.scriptora-v3-testimonial-role {
+  display: block;
+  margin-top: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.scriptora-v3-testimonial-placeholder {
+  margin-top: 10px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.58);
+  font-style: italic;
+}
+
+.scriptora-v3-final h2 {
+  font-size: clamp(32px, 5vw, 48px);
+  letter-spacing: -0.04em;
+}
+
+@media (max-width: 1024px) {
+  .scriptora-v3-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .scriptora-v3-proof-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .scriptora-v3-systems-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scriptora-v3-demo-header {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .scriptora-v3-proof-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .scriptora-v3-systems-grid,
+  .scriptora-v3-testimonials-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scriptora-v3-headline {
+    font-size: clamp(36px, 10vw, 48px);
   }
 }
 

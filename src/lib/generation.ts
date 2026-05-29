@@ -671,7 +671,7 @@ ABSOLUTE RULES — BESTSELLER STANDARD:
 
 /* ============ Phase Logic for Chunked Writing ============ */
 
-type ChunkPhase = "OPENING" | "DEVELOPMENT" | "EXPANSION" | "TRANSITION" | "CLOSURE";
+export type ChunkPhase = "OPENING" | "DEVELOPMENT" | "EXPANSION" | "TRANSITION" | "CLOSURE";
 
 function getChunkPhase(currentWords: number, targetWords: number): ChunkPhase {
   const ratio = currentWords / targetWords;

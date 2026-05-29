@@ -753,8 +753,8 @@ const dashboardWidgets = [
   ];
 
   return (
-    <div className="scriptora-ios-screen min-h-screen relative overflow-hidden">
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
+    <div className="scriptora-feature-page relative">
+      <header className="z-20 shrink-0 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             <button
@@ -919,7 +919,7 @@ const dashboardWidgets = [
         </div>
       </header>
 
-      <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 sm:pt-8 lg:px-8">
+      <main className="scriptora-feature-scroll relative mx-auto w-full max-w-7xl px-4 pb-8 pt-4 sm:px-6 sm:pt-8 lg:px-8">
         <div className="mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
           <section className="ios-panel overflow-hidden rounded-[28px] border-white/15 bg-slate-950/40 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -1284,7 +1284,7 @@ const dashboardWidgets = [
           </div>
         )}
 
-      </div>
+      </main>
 
       <NewBookDialog
         open={showNewBook}
@@ -1370,13 +1370,14 @@ const dashboardWidgets = [
         const drafts = draftProjects;
         return (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 p-4 backdrop-blur-2xl"
+            className="scriptora-modal-overlay"
             onClick={() => setShowProjects(false)}
           >
             <div
-              className="ios-panel relative max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6 animate-scriptora-dialog-entrance"
+              className="scriptora-modal-panel ios-panel max-w-2xl animate-scriptora-dialog-entrance"
               onClick={(e) => e.stopPropagation()}
             >
+              <div className="scriptora-modal-body p-6">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[10px] font-semibold uppercase text-muted-foreground">
@@ -1417,6 +1418,7 @@ const dashboardWidgets = [
                     </button>
                   </button>
                 ))}
+              </div>
               </div>
             </div>
           </div>
@@ -1470,13 +1472,14 @@ const dashboardWidgets = [
       {/* Library modal — opens via the Biblioteca card */}
       {showLibrary && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-2xl"
+          className="scriptora-modal-overlay"
           onClick={() => setShowLibrary(false)}
         >
           <div
-            className="ios-panel relative max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6 animate-scriptora-dialog-entrance"
+            className="scriptora-modal-panel ios-panel max-w-2xl animate-scriptora-dialog-entrance"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="scriptora-modal-body p-6">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
@@ -1499,6 +1502,7 @@ const dashboardWidgets = [
               onDelete={handleDelete}
               onExport={() => { setShowLibrary(false); setShowExport(true); }}
             />
+            </div>
           </div>
         </div>
       )}

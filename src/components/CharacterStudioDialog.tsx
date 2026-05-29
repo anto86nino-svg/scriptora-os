@@ -884,9 +884,9 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card/95 p-4 backdrop-blur">
+    <div className="scriptora-modal-overlay">
+      <div className="scriptora-modal-panel max-w-4xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-border bg-card/95 p-4 backdrop-blur">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-pink-500/15 text-pink-400 flex items-center justify-center">
               <Users className="h-5 w-5" />
@@ -903,7 +903,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
           </Button>
         </div>
 
-        <div className="p-5 space-y-5">
+        <div className="scriptora-modal-body space-y-5 p-5">
           <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
             <div>
               <div className="flex items-center justify-between gap-2">

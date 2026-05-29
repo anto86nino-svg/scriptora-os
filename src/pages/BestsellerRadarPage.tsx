@@ -143,8 +143,8 @@ export default function BestsellerRadarPage() {
   }, [radarIntel, searched, genre, keyword, liveScore, results, authorIdentity]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <main className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+    <div className="scriptora-feature-page bg-background text-foreground">
+      <main className="scriptora-feature-scroll mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between gap-4">
           <Button variant="ghost" onClick={() => navigate("/dashboard")} className="gap-2">
             <ArrowLeft className="h-4 w-4" />

@@ -53,15 +53,15 @@ export default function UsagePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="scriptora-feature-page flex items-center justify-center bg-background">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-10 backdrop-blur-md bg-background/80 border-b border-border/50">
+    <div className="scriptora-feature-page bg-background text-foreground">
+      <header className="shrink-0 z-10 border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           <button onClick={() => navigate("/dashboard")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Dashboard
@@ -75,7 +75,7 @@ export default function UsagePage() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+      <main className="scriptora-feature-scroll mx-auto max-w-5xl space-y-8 px-6 py-8">
         <section>
           <h1 className="text-2xl font-bold tracking-tight">AI Usage & Cost</h1>
           <p className="text-sm text-muted-foreground mt-1">Tracking reale di tutte le chiamate AI · DeepSeek</p>

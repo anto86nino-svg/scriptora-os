@@ -35,14 +35,14 @@ export function SettingsPanel({ open, onClose, settings, onUpdateSettings, onLan
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-card rounded-xl border border-border shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-        <div className="p-5 border-b border-border flex items-center justify-between">
+    <div className="scriptora-modal-overlay" onClick={onClose}>
+      <div className="scriptora-modal-panel max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="flex shrink-0 items-center justify-between border-b border-border p-5">
           <h2 className="text-sm font-semibold text-foreground">{t("settings")}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
         </div>
 
-        <div className="p-5 space-y-6">
+        <div className="scriptora-modal-body space-y-6 p-5">
           {/* Interface Language */}
           <div>
             <div className="flex items-center gap-2 mb-2">

@@ -20,9 +20,9 @@ export function CoverBeforeExportDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-card shadow-2xl">
-        <div className="flex items-start justify-between border-b border-border p-5">
+    <div className="scriptora-modal-overlay z-[70]">
+      <div className="scriptora-modal-panel max-w-md border-white/10">
+        <div className="flex shrink-0 items-start justify-between border-b border-border p-5">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
               Ultimo passaggio
