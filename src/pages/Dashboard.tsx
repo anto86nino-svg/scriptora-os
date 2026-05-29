@@ -128,6 +128,69 @@ export default function Home() {
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const currentLang = useUILanguage();
+
+  type AtmosphereId =
+    | "night-rain"
+    | "deep-waves"
+    | "breathing-forest"
+    | "aurora"
+    | "library-dust"
+    | "dark-stars";
+
+  const ATMOSPHERE_KEY = "scriptora-selected-atmosphere";
+  const atmosphereOptions: { id: AtmosphereId; name: string; description: string }[] = [
+    {
+      id: "night-rain",
+      name: "Night Rain",
+      description: "Soft cinematic rain and city-night focus.",
+    },
+    {
+      id: "deep-waves",
+      name: "Deep Waves",
+      description: "Oceanic motion for calm, steady writing flow.",
+    },
+    {
+      id: "breathing-forest",
+      name: "Breathing Forest",
+      description: "Warm green depth with quiet living light.",
+    },
+    {
+      id: "aurora",
+      name: "Aurora",
+      description: "Subtle northern-light ribbons and soft glow.",
+    },
+    {
+      id: "library-dust",
+      name: "Library Dust",
+      description: "Golden particle warmth over old paper textures.",
+    },
+    {
+      id: "dark-stars",
+      name: "Dark Stars",
+      description: "Cosmic ink room with distant star shimmer.",
+    },
+  ];
+
+  const [selectedAtmosphere, setSelectedAtmosphere] = useState<AtmosphereId>("night-rain");
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(ATMOSPHERE_KEY) as AtmosphereId | null;
+      if (stored && atmosphereOptions.some((option) => option.id === stored)) {
+        setSelectedAtmosphere(stored);
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ATMOSPHERE_KEY, selectedAtmosphere);
+    } catch {
+      // ignore storage errors
+    }
+  }, [selectedAtmosphere]);
   const [activeRun, setActiveRun] = useState<{ runId: string; title: string; startedAt: number } | null>(null);
 
   // One-click idea state
@@ -500,12 +563,13 @@ export default function Home() {
     : null;
   const focusAtmosphereCard = (
   <div className="relative overflow-hidden rounded-3xl border border-sky-300/10 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950/40 p-6 shadow-2xl">
-    <div className="absolute inset-0 bg-\[radial-gradient(circle_at_top_right,rgba(56,189,248,0.18),transparent_45%)\]" />
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.18),transparent_45%)]" />
+    <div className="absolute inset-x-6 top-6 h-16 rounded-b-[32px] bg-white/5 blur-2xl opacity-60" />
 
     <div className="relative z-10 flex flex-col gap-5">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1 text-\[11px\] font-semibold uppercase tracking-\[0.18em\] text-sky-200">
+          <div className="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-200">
             <AudioLines className="h-3.5 w-3.5" />
             Focus Atmosphere
           </div>
@@ -514,32 +578,44 @@ export default function Home() {
             Write inside your own world.
           </h2>
 
-          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
-            Atmosfere sonore cinematiche progettate per immersione, focus e ritmo narrativo.
+          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
+            Choose an ambient atmosphere that keeps Scriptora premium, cinematic, and quietly alive.
           </p>
         </div>
 
-        <div className="hidden md:block">
-          <FocusMusicControl />
+        <div className="flex items-center gap-3 rounded-3xl border border-white/10 bg-white/[0.06] px-4 py-3 text-xs font-semibold text-white/80 shadow-[0_16px_50px_rgba(0,0,0,0.16)]">
+          <Sparkles className="h-4 w-4 text-cyan-200" />
+          {selectedAtmosphere.replace(/-/g, " ")}
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        {[
-          "Pioggia calma",
-          "Onde lente",
-          "Deep focus",
-          "Camino notte",
-          "Biblioteca"
-        ].map((label) => (
-          <div
-            key={label}
-            className="rounded-2xl border border-white/10 bg-white/\[0.04\] px-4 py-3 text-sm font-medium text-slate-200 backdrop-blur-xl"
+        {atmosphereOptions.map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            onClick={() => setSelectedAtmosphere(option.id)}
+            aria-pressed={selectedAtmosphere === option.id}
+            className={`group relative overflow-hidden rounded-3xl border p-4 text-left text-sm font-medium transition ${
+              selectedAtmosphere === option.id
+                ? "border-white/20 bg-white/[0.12] text-white shadow-[0_18px_50px_rgba(56,189,248,0.18)]"
+                : "border-white/10 bg-white/[0.04] text-slate-200 hover:border-white/20 hover:bg-white/[0.08]"
+            }`}
           >
-            {label}
-          </div>
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-cyan-300/70 via-sky-400/60 to-violet-400/70 opacity-0 transition-opacity group-hover:opacity-100" />
+            <span className="relative block text-sm font-semibold">{option.name}</span>
+            <span className="mt-2 block text-xs leading-5 text-slate-400">{option.description}</span>
+            {selectedAtmosphere === option.id && (
+              <span className="mt-4 inline-flex items-center rounded-full bg-cyan-300/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-cyan-100">
+                Active
+              </span>
+            )}
+          </button>
         ))}
       </div>
+      <p className="text-xs leading-5 text-slate-400">
+        Selections persist locally, and the atmosphere stays subtle so your writing remains the focus.
+      </p>
     </div>
   </div>
 );
@@ -627,7 +703,7 @@ const dashboardWidgets = [
   ];
 
   return (
-    <div className="scriptora-ios-screen min-h-screen relative overflow-hidden">
+    <div className={`scriptora-ios-screen min-h-screen relative overflow-hidden atmosphere-${selectedAtmosphere}`}>
       <header className="sticky top-0 z-20 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
@@ -793,7 +869,7 @@ const dashboardWidgets = [
         </div>
       </header>
 
-      <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 sm:pt-8 lg:px-8">
+      <div className={`relative mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 sm:pt-8 lg:px-8 atmosphere-${selectedAtmosphere}`}>
         <div className="mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
           <section className="ios-panel overflow-hidden rounded-[28px] border-white/15 bg-slate-950/40 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -945,7 +1021,7 @@ const dashboardWidgets = [
           )}
         </section>
 
-        <div className="mb-4 hidden gap-2 sm:mb-6 xl:grid xl:grid-cols-5">
+        <div className="mb-4 grid gap-2 sm:mb-6 xl:grid xl:grid-cols-5">
           {focusAtmosphereCard}
 
           {dashboardWidgets.map((widget) => (
@@ -1084,27 +1160,37 @@ const dashboardWidgets = [
                         <button
                           key={card.title}
                           onClick={card.action}
-                          className={`group relative flex min-h-[154px] w-full overflow-hidden flex-col items-start justify-between rounded-2xl border border-white/15 bg-slate-950/30 p-3.5 text-left shadow-[0_18px_46px_rgba(0,0,0,0.20)] ring-1 ring-white/[0.03] backdrop-blur-xl transition-all duration-200 hover:-translate-y-1 hover:border-white/30 hover:bg-white/[0.11] hover:shadow-[0_24px_58px_rgba(0,0,0,0.26)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-safe:hover:scale-[1.012] ${
+                          className={`group relative flex min-h-[170px] w-full flex-col overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/35 p-4 text-left shadow-[0_24px_80px_rgba(0,0,0,0.24)] ring-1 ring-white/[0.03] backdrop-blur-xl transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[0_26px_88px_rgba(15,23,42,0.30)] ${
                             (card as any).emphasis ? "sm:col-span-2 lg:col-span-2" : ""
                           }`}
                         >
-                          <span className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-70" />
-                          <span className="flex w-full items-start justify-between gap-3">
-                            <span className={`ios-icon ${card.iconBg} h-11 w-11 rounded-[17px] shadow-[0_10px_24px_rgba(0,0,0,0.22)] ring-1 ring-white/18 sm:h-12 sm:w-12`}>
-                              <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                          <span className="pointer-events-none absolute inset-x-4 top-0 h-20 rounded-b-[28px] bg-white/5 blur-2xl opacity-70" />
+                          <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1.5 bg-gradient-to-r from-cyan-300/60 via-sky-400/40 to-violet-400/60 opacity-60 transition-opacity group-hover:opacity-100" />
+
+                          <div className="relative z-10 flex items-start justify-between gap-3">
+                            <span className={`ios-icon ${card.iconBg} flex h-12 w-12 items-center justify-center rounded-[18px] shadow-[0_16px_48px_rgba(0,0,0,0.23)] ring-1 ring-white/10`}>
+                              <Icon className="h-5 w-5" />
                             </span>
                             {(card as any).tag && (
-                              <span className="rounded-full border border-white/10 bg-white/[0.07] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/54">
+                              <span className="rounded-full border border-white/10 bg-white/[0.08] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60 transition-colors group-hover:text-white">
                                 {(card as any).tag}
                               </span>
                             )}
-                          </span>
-                          <span className="mt-3 text-[15px] font-bold leading-5 text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">{card.title}</span>
-                          <span className="mt-1 text-[11px] font-medium leading-4 text-white/72 drop-shadow-[0_1px_8px_rgba(0,0,0,0.32)]">{card.desc}</span>
-                          <span className="mt-3 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45 transition-colors group-hover:text-white/78">
-                            {t("open_studio")}
-                            <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-                          </span>
+                          </div>
+
+                          <div className="relative z-10 mt-4">
+                            <h3 className="text-[15px] font-semibold leading-6 text-white">{card.title}</h3>
+                            <p className="mt-2 text-[11px] leading-5 text-slate-300">{card.desc}</p>
+                          </div>
+
+                          <div className="relative z-10 mt-auto flex items-center justify-between gap-3">
+                            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 transition-colors group-hover:text-white/75">
+                              {t("open_studio")}
+                            </span>
+                            <span className="inline-flex h-9 min-w-[36px] items-center justify-center rounded-full bg-white/10 px-3 text-xs font-semibold text-white/85 shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition-colors group-hover:bg-white/20">
+                              <ArrowRight className="h-3.5 w-3.5" />
+                            </span>
+                          </div>
                         </button>
                       );
                       return (card as any).feature
@@ -1121,38 +1207,54 @@ const dashboardWidgets = [
         {showProjects && (() => {
           const drafts = draftProjects;
           return (
-            <div className="ios-panel mb-6 p-3">
-              <div className="mb-2 flex items-center justify-between gap-3 px-1">
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">
-                  {tt("my_projects_drafts", { count: drafts.length })}
-                </p>
-                <button
-                  onClick={() => setShowProjects(false)}
-                  className="rounded-md px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-                >
-                  {t("close")}
-                </button>
-              </div>
-              {drafts.length === 0 && (
-                <p className="px-2 py-3 text-xs text-muted-foreground/70">
-                  {t("no_drafts_library_hint")}
-                </p>
-              )}
-              <div className="divide-y divide-white/10">
-                {drafts.map(p => (
-                  <div key={p.id}
-                    className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
-                    onClick={() => goApp({ projectId: p.id })}>
-                    <div className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{p.config.title || t("untitled")}</span>
-                      <span className="text-[10px] text-muted-foreground/70">{p.config.genre} · {p.chapters?.length || 0} ch · {p.phase}</span>
-                    </div>
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
-                      className="rounded-md p-1 text-muted-foreground opacity-70 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 p-4 backdrop-blur-2xl"
+              onClick={() => setShowProjects(false)}
+            >
+              <div
+                className="ios-panel relative max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6 animate-scriptora-dialog-entrance"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                      {tt("my_projects_drafts", { count: drafts.length })}
+                    </p>
+                    <h2 className="text-xl font-semibold text-foreground">{t("projects")}</h2>
                   </div>
-                ))}
+                  <button
+                    onClick={() => setShowProjects(false)}
+                    className="rounded-md px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted/50"
+                  >
+                    {t("close")}
+                  </button>
+                </div>
+                {drafts.length === 0 && (
+                  <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-xs text-muted-foreground/70">
+                    {t("no_drafts_library_hint")}
+                  </p>
+                )}
+                <div className="space-y-3">
+                  {drafts.map(p => (
+                    <button key={p.id}
+                      type="button"
+                      onClick={() => goApp({ projectId: p.id })}
+                      className="group flex w-full items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left text-sm text-foreground transition hover:border-white/20 hover:bg-white/[0.08]"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold">{p.config.title || t("untitled")}</span>
+                        <span className="text-[10px] text-muted-foreground/70">{p.config.genre} · {p.chapters?.length || 0} ch · {p.phase}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                        className="rounded-lg border border-destructive/30 bg-destructive/10 p-2 text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           );
@@ -1244,7 +1346,7 @@ const dashboardWidgets = [
           onClick={() => !launching && !detecting && setShowIdeaModal(false)}
         >
           <div
-            className="ios-panel relative max-h-[90vh] w-full max-w-xl overflow-y-auto p-6"
+            className="ios-panel relative max-h-[90vh] w-full max-w-xl overflow-y-auto p-6 animate-scriptora-dialog-entrance"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
@@ -1528,7 +1630,7 @@ const dashboardWidgets = [
           onClick={() => setShowLibrary(false)}
         >
           <div
-            className="ios-panel relative max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6"
+            className="ios-panel relative max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6 animate-scriptora-dialog-entrance"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
