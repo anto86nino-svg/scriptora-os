@@ -593,7 +593,7 @@ const Index = () => {
           sidebarOpen ? "p-2 md:p-3" : "p-2 pb-3 md:px-6 md:py-4"
         }`}
       >
-        <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden overflow-x-hidden rounded-lg border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/20 md:bg-black/10 md:backdrop-blur-sm">
+        <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden overflow-x-hidden rounded-lg border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/20 md:bg-slate-950/45 md:backdrop-blur-xl">
           {effectiveProject ? (
             <>
               <div className="min-h-0 min-w-0 flex-1">

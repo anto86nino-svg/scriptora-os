@@ -1,14 +1,14 @@
 /* Scriptora — mobile stability & readability (surgical pass) */
 
-html,
-body,
-#root {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-}
-
 @media (max-width: 767px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
   /* Stronger scrim — background stays atmospheric, content stays readable */
   .scriptora-ios-screen::before {
     opacity: 0.32 !important;
@@ -129,20 +129,61 @@ body,
 
   /* Modals — stay inside viewport */
   .scriptora-modal-overlay {
+    position: fixed;
+    inset: 0;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
+    overscroll-behavior: contain;
     padding: max(env(safe-area-inset-top), 12px) 12px max(env(safe-area-inset-bottom), 12px);
   }
 
   .scriptora-modal-panel {
-    width: min(100%, calc(100vw - 24px));
-    max-width: calc(100vw - 24px);
+    width: min(100%, calc(100% - 24px));
+    max-width: min(100%, calc(100% - 24px));
+    min-width: 0;
     max-height: min(92dvh, 92vh);
+  }
+
+  /* Body scroll lock while overlays/drawers are open */
+  body.scriptora-mobile-overlay-open {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  /* AI Coach — full-width drawer on mobile only (see Index.tsx when enabled) */
+  .ios-sidebar {
+    width: min(100%, 288px);
+    max-width: min(100%, 288px);
   }
 
   /* Radix dialog default shell */
   [data-radix-dialog-content] {
     max-height: min(92dvh, 92vh);
     overflow-y: auto;
+  }
+
+  /* Home legal consent — keep scrollable on small screens */
+  [data-radix-dialog-content].max-w-2xl {
+    width: min(100%, calc(100% - 24px));
+    max-height: min(90dvh, 90vh);
+  }
+
+  /* Chapter Doctor full-screen comparison — avoid address-bar clip */
+  .scriptora-surgical-edit-shell {
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  /* Public landing — prevent horizontal drift */
+  main.scriptora-landing {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
+  /* Auth shell — respect safe areas */
+  main.relative.min-h-screen.overflow-hidden {
+    min-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }

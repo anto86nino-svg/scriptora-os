@@ -92,6 +92,25 @@
     transform: none;
   }
 
+  /* Desktop (lg+) — full-width app shells; mobile/tablet rules must not apply here */
+  @media (min-width: 1024px) {
+    .scriptora-feature-page .max-w-7xl {
+      max-width: none;
+    }
+
+    .scriptora-feature-page > header .mx-auto,
+    .scriptora-feature-page > main.scriptora-feature-scroll,
+    .scriptora-feature-page > .scriptora-feature-scroll {
+      margin-inline: 0;
+      width: 100%;
+    }
+
+    .scriptora-ios-screen::before,
+    .scriptora-ios-screen::after {
+      position: fixed;
+    }
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--border)) transparent;
@@ -3993,6 +4012,13 @@ textarea,
   z-index: 0;
   opacity: 1;
   transition: opacity 240ms ease;
+}
+
+@media (min-width: 768px) {
+  .scriptora-ios-screen::before,
+  .scriptora-ios-screen::after {
+    position: fixed;
+  }
 }
 
 .atmosphere-night-rain::before {
