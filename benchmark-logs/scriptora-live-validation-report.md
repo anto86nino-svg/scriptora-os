@@ -1,6 +1,6 @@
 # Scriptora Live Author Validation Report
 
-Generated: 2026-05-29T16:47:55.394Z
+Generated: 2026-05-29T18:09:29.314Z
 Mode: **Offline real-world benchmark** (simulated ChatGPT / Claude-style competitors)
 Corpus: **35 projects** across 7 categories
 

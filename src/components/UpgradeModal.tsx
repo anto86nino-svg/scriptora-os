@@ -18,7 +18,7 @@ interface UpgradeModalProps {
 
 const REASON_COPY: Record<NonNullable<UpgradeModalProps["reason"]>, { title: string; subtitle: string }> = {
   export:        { title: "Il tuo libro è pronto. Ora sbloccalo.",     subtitle: "Esporta in EPUB, PDF e DOCX e porta il tuo manoscritto ovunque." },
-  dominate:      { title: "Sblocca la massima potenza di scrittura.",  subtitle: "Dominate Mode riscrive i capitoli finché non raggiungono qualità bestseller." },
+  dominate:      { title: "Surgical chapter editing at depth.",  subtitle: "Targeted developmental revision — voice, canon, and continuity preserved." },
   "token-limit": { title: "Sei vicino al limite del tuo libro.",       subtitle: "Continua a scrivere senza limiti e completa il tuo manoscritto." },
   "books-limit": { title: "Sei pronto per il tuo prossimo libro.",     subtitle: "Il piano Free copre 1 libro — passa a Pro per continuare." },
 };

@@ -4,8 +4,10 @@ export type SurgicalInterventionId =
   | "emotional-compression"
   | "subtext-injection"
   | "tension-preservation"
+  | "slow-burn-tension"
   | "pacing-compression"
   | "cliffhanger-optimization"
+  | "ending-compression"
   | "genre-specific";
 
 export interface SurgicalInterventionPlan {
@@ -43,6 +45,11 @@ export interface AppliedIntervention {
 
 export type DeltaPresentationMode = "visible" | "refinement" | "minimal";
 
+export interface CredibilityStat {
+  label: string;
+  value: string;
+}
+
 export interface DevelopmentalEditReport {
   beforeScore: number;
   afterScore: number;
@@ -53,6 +60,7 @@ export interface DevelopmentalEditReport {
   interventions: AppliedIntervention[];
   explanations: string[];
   modificationSummary: string;
+  credibilityStats: CredibilityStat[];
 }
 
 export interface DevelopmentalEditInput {

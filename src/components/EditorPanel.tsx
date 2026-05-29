@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo } from "react";
 import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating } from "@/types/book";
-import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, Headphones, Download, Zap } from "lucide-react";
+import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, Headphones, Download, Zap, Wand2 } from "lucide-react";
 import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel";
 import { GenreProfileBadge } from "@/components/GenreProfileBadge";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
@@ -12,6 +12,7 @@ import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { Progress } from "@/components/ui/progress";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
+import { authorBrainProfileHasInjectionData, buildAuthorBrainInjectionSnapshot, hasPassiveAuthorIntelligence } from "@/lib/author-brain";
 
 interface EditorPanelProps {
   project: BookProject;
@@ -41,6 +42,8 @@ interface EditorPanelProps {
   onUpdateBlueprintOutlineSummary?: (index: number, summary: string) => void;
   onUpdateFrontMatterField?: (field: string, value: string) => void;
   onUpdateBackMatterField?: (field: string, value: string) => void;
+  onApplyAuthorBrainFrontMatter?: () => void;
+  onApplyAuthorBrainBackMatter?: () => void;
   onNarrateChapter?: (chapterIndex: number) => void;
 }
 
@@ -58,6 +61,7 @@ export function EditorPanel({
   writingSettings,
   onUpdateBlueprintField, onUpdateBlueprintOutlineTitle, onUpdateBlueprintOutlineSummary,
   onUpdateFrontMatterField, onUpdateBackMatterField,
+  onApplyAuthorBrainFrontMatter, onApplyAuthorBrainBackMatter,
   onNarrateChapter,
 }: EditorPanelProps) {
   const { blueprint, frontMatter, chapters, backMatter, config, phase } = project;
@@ -139,7 +143,15 @@ export function EditorPanel({
                 />
               )}
               {view.type === "front-matter" && (
-                <FrontMatterView project={project} frontMatter={frontMatter} isGenerating={isGeneratingSection("front-matter")} onGenerate={onGenerateFrontMatter || onGenerateNext} ws={ws} onUpdateField={onUpdateFrontMatterField} />
+                <FrontMatterView
+                  project={project}
+                  frontMatter={frontMatter}
+                  isGenerating={isGeneratingSection("front-matter")}
+                  onGenerate={onGenerateFrontMatter || onGenerateNext}
+                  ws={ws}
+                  onUpdateField={onUpdateFrontMatterField}
+                  onApplyAuthorBrain={onApplyAuthorBrainFrontMatter}
+                />
               )}
               {view.type === "chapter" && blueprint && (
                 <ChapterView
@@ -183,7 +195,7 @@ export function EditorPanel({
                 );
               })()}
               {view.type === "back-matter" && (
-                <BackMatterView project={project} backMatter={backMatter} phase={phase} isGenerating={isGeneratingSection("back-matter")} onGenerate={onGenerateBackMatter || onGenerateNext} ws={ws} onUpdateField={onUpdateBackMatterField} />
+                <BackMatterView project={project} backMatter={backMatter} phase={phase} isGenerating={isGeneratingSection("back-matter")} onGenerate={onGenerateBackMatter || onGenerateNext} ws={ws} onUpdateField={onUpdateBackMatterField} onApplyAuthorBrain={onApplyAuthorBrainBackMatter} />
               )}
             
       
@@ -371,9 +383,81 @@ function BlueprintView({ project, blueprint, isGenerating, onUpdateField, onUpda
 
 }
 
-function FrontMatterView({ project, frontMatter, isGenerating, onGenerate, ws, onUpdateField }: {
+/* ============ Author Brain matter helpers ============ */
+
+const FRONT_MATTER_ORDER = ["titlePage", "copyright", "dedication", "aboutAuthor", "howToUse", "letterToReader"] as const;
+const BACK_MATTER_ORDER = ["conclusion", "authorNote", "callToAction", "reviewRequest", "otherBooks", "followAuthor"] as const;
+
+function matterFieldLabel(key: string): string {
+  const labels: Record<string, string> = {
+    titlePage: "Title Page",
+    copyright: "Copyright",
+    dedication: "Dedication",
+    aboutAuthor: t("matter_aboutAuthor"),
+    howToUse: "How to Use",
+    letterToReader: "Letter to the Reader",
+    conclusion: "Conclusion",
+    authorNote: "Author Note",
+    callToAction: "What's Next",
+    reviewRequest: "Review Request",
+    otherBooks: t("matter_otherBooks"),
+    followAuthor: t("matter_followAuthor"),
+  };
+  return labels[key] || key.replace(/([A-Z])/g, " $1").trim();
+}
+
+function orderedMatterEntries(record: Record<string, string> | null | undefined, order: readonly string[]) {
+  if (!record) return [] as Array<[string, string]>;
+  const optionalHideWhenEmpty = new Set(["followAuthor", "otherBooks"]);
+  return order
+    .filter((key) => key in record)
+    .map((key) => [key, String(record[key] ?? "")] as [string, string])
+    .filter(([key, val]) => !optionalHideWhenEmpty.has(key) || val.trim().length > 0);
+}
+
+function AuthorBrainMatterHint({
+  project,
+  scope,
+  onApply,
+}: {
+  project: BookProject;
+  scope: "front" | "back";
+  onApply?: () => void;
+}) {
+  if (!authorBrainProfileHasInjectionData(project.config)) return null;
+  const snapshot = buildAuthorBrainInjectionSnapshot(project.config);
+  const canApply = scope === "front" ? Boolean(snapshot.aboutAuthor) : Boolean(snapshot.otherBooks || snapshot.followAuthor);
+  if (!canApply || !onApply) return null;
+
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-fuchsia-300/20 bg-fuchsia-500/[0.08] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-start gap-2.5">
+        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-fuchsia-200" />
+        <div>
+          <p className="text-xs font-semibold text-foreground">{t("author_brain_prepared_hint")}</p>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            {hasPassiveAuthorIntelligence(project.config.authorIdentity)
+              ? t("author_brain_passive_aligned")
+              : t("author_brain_using_profile")}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onApply}
+        className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/15 px-3 text-[11px] font-bold text-primary transition-colors hover:bg-primary/25"
+      >
+        <Wand2 className="h-3.5 w-3.5" />
+        {scope === "front" ? t("author_brain_apply_front") : t("author_brain_apply_back")}
+      </button>
+    </div>
+  );
+}
+
+function FrontMatterView({ project, frontMatter, isGenerating, onGenerate, ws, onUpdateField, onApplyAuthorBrain }: {
   project: BookProject; frontMatter: BookProject["frontMatter"]; isGenerating: boolean; onGenerate: () => void; ws: WritingSettings;
   onUpdateField?: (field: string, value: string) => void;
+  onApplyAuthorBrain?: () => void;
 }) {
   // Front matter can be generated/regenerated any time the blueprint exists.
   const canGenerate = !!project.blueprint;
@@ -390,11 +474,12 @@ function FrontMatterView({ project, frontMatter, isGenerating, onGenerate, ws, o
         )}
       </div>
       {isGenerating && <LoadingBanner text={`${t("generating")}...`} />}
+      <AuthorBrainMatterHint project={project} scope="front" onApply={onApplyAuthorBrain} />
       {frontMatter ? (
         <div className="space-y-8">
-          {Object.entries(frontMatter).map(([key, val]) => (
+          {orderedMatterEntries(frontMatter as Record<string, string>, FRONT_MATTER_ORDER).map(([key, val]) => (
             <div key={key}>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-3">{key.replace(/([A-Z])/g, " $1").trim()}</p>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-3">{matterFieldLabel(key)}</p>
               <textarea
                 value={val as string}
                 onChange={(e) => onUpdateField?.(key, e.target.value)}
@@ -711,9 +796,10 @@ function SubchapterView({
 
 }
 
-function BackMatterView({ project, backMatter, phase, isGenerating, onGenerate, ws, onUpdateField }: {
+function BackMatterView({ project, backMatter, phase, isGenerating, onGenerate, ws, onUpdateField, onApplyAuthorBrain }: {
   project: BookProject; backMatter: BookProject["backMatter"]; phase: string; isGenerating: boolean; onGenerate: () => void; ws: WritingSettings;
   onUpdateField?: (field: string, value: string) => void;
+  onApplyAuthorBrain?: () => void;
 }) {
   const missingChapters = Array.from({ length: project.config.numberOfChapters }, (_, i) => i)
     .filter((i) => !((project.chapters[i]?.content || "").trim().length > 50));
@@ -744,11 +830,12 @@ function BackMatterView({ project, backMatter, phase, isGenerating, onGenerate, 
         </div>
       )}
       {isGenerating && <LoadingBanner text={`${t("generating")}...`} />}
+      <AuthorBrainMatterHint project={project} scope="back" onApply={onApplyAuthorBrain} />
       {backMatter ? (
         <div className="space-y-8">
-          {Object.entries(backMatter).map(([key, val]) => (
+          {orderedMatterEntries(backMatter as Record<string, string>, BACK_MATTER_ORDER).map(([key, val]) => (
             <div key={key}>
-              <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-3">{key.replace(/([A-Z])/g, " $1").trim()}</p>
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-3">{matterFieldLabel(key)}</p>
               <textarea
                 value={val as string}
                 onChange={(e) => onUpdateField?.(key, e.target.value)}

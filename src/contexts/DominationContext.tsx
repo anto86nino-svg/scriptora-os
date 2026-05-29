@@ -5,6 +5,7 @@ import { resolveGenreKey } from "@/lib/genre-intelligence";
 import { getEditorialTier } from "@/lib/editorial-mastery";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
 import { buildSurgicalEditDirectiveBlock } from "@/lib/chapter-doctor-pro";
+import { validateSurgicalPatchOutput } from "@/lib/surgical-edit-engine";
 import { getCurrentUserId } from "@/services/storageService";
 import { toast } from "sonner";
 
@@ -199,7 +200,7 @@ export function DominationProvider({ children }: { children: ReactNode }) {
       status: "running",
       startedAt: Date.now(),
     });
-    toast.success(`✂️ Patching "${chapter.title}" — surgical edit in background`);
+    toast.success(`✂️ Surgical Edit on "${chapter.title}" — running in background`);
 
     try {
       const blueprintBlock = buildBlueprintIntegrityRuntimeBlock(project.config, project.blueprint, {
@@ -227,6 +228,8 @@ export function DominationProvider({ children }: { children: ReactNode }) {
       if (!data) throw new Error("No response");
       if (data.error) throw new Error(data.error);
 
+      const validated = validateSurgicalPatchOutput(chapter.content, data);
+
       upsertJob({
         id,
         kind: "patch",
@@ -237,9 +240,9 @@ export function DominationProvider({ children }: { children: ReactNode }) {
         status: "ready",
         startedAt: jobs[id]?.startedAt || Date.now(),
         finishedAt: Date.now(),
-        result: data,
+        result: validated,
       });
-      toast.success(`✅ "${chapter.title}" patched — ${data.patches?.length || 0} interventi (${data.modificationPercent}%)`);
+      toast.success(`✅ "${chapter.title}" — ${validated.patches?.length || 0} surgical edits (${validated.modificationPercent}%)`);
     } catch (e: any) {
       upsertJob({
         id,

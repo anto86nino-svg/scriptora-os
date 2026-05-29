@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Fingerprint, HelpCircle, PlusCircle, Save, ShieldCheck, Sparkles, Trash2, UserRound, X } from "lucide-react";
+import { CheckCircle2, Fingerprint, HelpCircle, Loader2, PlusCircle, Save, ShieldCheck, Sparkles, Trash2, UserRound, Wand2, X } from "lucide-react";
 import type { AuthorIdentity } from "@/types/book";
 import {
   DEFAULT_AUTHOR_IDENTITIES,
@@ -10,8 +10,13 @@ import {
   saveAuthorIdentity,
   setSelectedAuthorIdentityId,
 } from "@/lib/author-identity";
+import { expandAuthorBioFromIdentity, validateAuthorBrainSeed } from "@/lib/author-brain";
+import { hasPassiveAuthorIntelligence } from "@/lib/author-brain/passive-intelligence";
+import { AuthorEcosystemPanel } from "@/components/AuthorEcosystemPanel";
+import { AuthorVoiceMemoryPanel } from "@/components/AuthorVoiceMemoryPanel";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 import { toast } from "sonner";
+import { getCurrentUserId } from "@/services/storageService";
 
 interface AuthorIdentityDialogProps {
   open: boolean;
@@ -28,6 +33,12 @@ function createBlankAuthor(): AuthorIdentity {
     copyrightName: "",
     archetype: "",
     biography: "",
+    authorBrainSeed: "",
+    publishedBooks: [],
+    authorPlatform: {},
+    authorPresence: [],
+    readerEmotionalGoals: [],
+    authorMessage: "",
     authorNote: "",
     voice: "",
     signatureMoves: "",
@@ -45,6 +56,7 @@ function completeness(identity: AuthorIdentity): number {
     identity.penName,
     identity.copyrightName || identity.realName,
     identity.archetype,
+    identity.authorBrainSeed,
     identity.biography,
     identity.authorNote,
     identity.voice,
@@ -60,6 +72,7 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
   const [identities, setIdentities] = useState<AuthorIdentity[]>(() => loadAuthorIdentities());
   const [draft, setDraft] = useState<AuthorIdentity>(() => getSelectedAuthorIdentity());
   const [guideEnabled, setGuideEnabled] = useState(() => localStorage.getItem("scriptora-guided-flow") === "on");
+  const [expandingBio, setExpandingBio] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -142,6 +155,32 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
     setIdentities(loaded);
     setDraft(fallback);
     toast.success("Identità autore eliminata.");
+  };
+
+  const handleExpandBio = async () => {
+    const seed = String(draft.authorBrainSeed || "").trim();
+    const validationError = validateAuthorBrainSeed(seed);
+    if (validationError) {
+      toast.error(t("author_brain_seed_too_short"));
+      return;
+    }
+    if (!draft.penName.trim()) {
+      toast.error("Inserisci almeno il pen name pubblico.");
+      return;
+    }
+
+    setExpandingBio(true);
+    try {
+      const result = await expandAuthorBioFromIdentity(draft, getCurrentUserId());
+      updateDraft({ biography: result.biography });
+      toast.success(
+        hasPassiveAuthorIntelligence(draft) ? t("author_brain_expand_success_passive") : t("author_brain_expand_success"),
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("toast_gen_failed"));
+    } finally {
+      setExpandingBio(false);
+    }
   };
 
   const applyPreset = (kind: "fiction" | "nonfiction" | "premium") => {
@@ -284,6 +323,51 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
               </AuthorField>
             </section>
 
+            <section className="rounded-2xl border border-fuchsia-300/20 bg-gradient-to-br from-fuchsia-500/[0.08] via-transparent to-cyan-500/[0.06] p-4">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-fuchsia-200/90">Author Brain</p>
+                  <h3 className="mt-1 text-base font-semibold text-foreground">{t("author_brain_section")}</h3>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("author_brain_section_desc")}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleExpandBio}
+                  disabled={expandingBio}
+                  className="mt-2 inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/15 px-4 text-xs font-bold text-primary transition-colors hover:bg-primary/25 disabled:cursor-not-allowed disabled:opacity-60 sm:mt-0"
+                >
+                  {expandingBio ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                  {expandingBio ? t("author_brain_expanding") : t("author_brain_expand")}
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                <AuthorField label={t("author_brain_seed_label")}>
+                  <textarea
+                    value={draft.authorBrainSeed || ""}
+                    onChange={(e) => updateDraft({ authorBrainSeed: e.target.value })}
+                    rows={3}
+                    className="author-textarea"
+                    placeholder={t("author_brain_seed_placeholder")}
+                  />
+                </AuthorField>
+                <AuthorField label={t("author_brain_bio_label")}>
+                  <p className="mb-2 text-[11px] leading-4 text-muted-foreground">{t("author_brain_bio_hint")}</p>
+                  <textarea
+                    value={draft.biography}
+                    onChange={(e) => updateDraft({ biography: e.target.value })}
+                    rows={5}
+                    className="author-textarea"
+                    placeholder="Professional author bio for front matter, exports, and author presence…"
+                  />
+                </AuthorField>
+              </div>
+            </section>
+
+            <AuthorEcosystemPanel draft={draft} onChange={updateDraft} />
+
+            <AuthorVoiceMemoryPanel draft={draft} onChange={updateDraft} />
+
             <section className="grid gap-3 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
               <AuthorField label="Archetipo autore">
                 <textarea value={draft.archetype} onChange={(e) => updateDraft({ archetype: e.target.value })} rows={4} className="author-textarea" placeholder="Che tipo di autore è? Cosa promette al lettore?" />
@@ -294,9 +378,6 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
             </section>
 
             <section className="grid gap-3 lg:grid-cols-2">
-              <AuthorField label="Biografia pubblica">
-                <textarea value={draft.biography} onChange={(e) => updateDraft({ biography: e.target.value })} rows={4} className="author-textarea" placeholder="Bio autore per back matter, profilo e pagine libro..." />
-              </AuthorField>
               <AuthorField label="Nota autore">
                 <textarea value={draft.authorNote || ""} onChange={(e) => updateDraft({ authorNote: e.target.value })} rows={4} className="author-textarea" placeholder="Nota personale, missione o messaggio finale al lettore..." />
               </AuthorField>

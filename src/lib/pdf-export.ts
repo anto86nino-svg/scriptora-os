@@ -343,10 +343,6 @@ export async function generatePdf(project: BookProject): Promise<Blob> {
     }));
     state.currentChapterTitle = chapterTitle;
     ensureRectoPage(state);
-    if (i === 0) {
-      // Reset page number to 1 at first chapter
-      state.pageNum = 1;
-    }
 
     // Chapter opener: extra space + number + title
     state.y = MARGIN_TOP + 90;
@@ -382,6 +378,7 @@ export async function generatePdf(project: BookProject): Promise<Blob> {
       [exportLabel("whatsNext", config.language), backMatter.callToAction],
       [exportLabel("smallRequest", config.language), backMatter.reviewRequest],
       [exportLabel("otherBooks", config.language), backMatter.otherBooks],
+      [exportLabel("followAuthor", config.language), backMatter.followAuthor],
     ];
     for (const [title, content] of bmSections) {
       const txt = safeText(content);

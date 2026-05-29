@@ -16,6 +16,7 @@ import { buildEditorialMasteryBlock } from "@/lib/editorial-mastery";
 import { validateEditorial } from "@/lib/editorial-validator";
 import { withRetry, getBreakerCooldown } from "@/lib/api-resilience";
 import { normalizeAuthorIdentity } from "@/lib/author-identity";
+import { applyAuthorBrainToBackMatter, applyAuthorBrainToFrontMatter } from "@/lib/author-brain";
 import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
@@ -833,14 +834,16 @@ function normalizeFrontMatter(raw: unknown, config: BookConfig): FrontMatter {
   const copyrightFallback = copyrightName
     ? `© ${year} ${copyrightName}. Tutti i diritti riservati.\nAutore / pen name: ${penName || copyrightName}.`
     : `© ${year}`;
-  const result: FrontMatter = {
+  const base: FrontMatter = {
     titlePage: stringifyField(source.titlePage).trim() || titlePageFallback,
     copyright: stringifyField(source.copyright).trim() || copyrightFallback,
     dedication: stringifyField(source.dedication).trim(),
-    aboutAuthor: stringifyField(source.aboutAuthor).trim() || (identity?.biography ? `${penName ? `${penName}. ` : ""}${identity.biography}` : ""),
+    aboutAuthor: stringifyField(source.aboutAuthor).trim(),
     howToUse: stringifyField(source.howToUse).trim(),
     letterToReader: stringifyField(source.letterToReader).trim() || (typeof raw === "string" ? raw : ""),
   };
+
+  const result: FrontMatter = { ...base, ...applyAuthorBrainToFrontMatter(base, config, "soft") };
 
   if (penName && !result.titlePage.toLowerCase().includes(penName.toLowerCase())) {
     result.titlePage = [result.titlePage, `di ${penName}`].filter(Boolean).join("\n\n");
@@ -860,13 +863,26 @@ function normalizeBackMatter(raw: unknown, config?: BookConfig): BackMatter {
   const identity = config ? normalizeAuthorIdentity(config.authorIdentity) : null;
   const penName = config ? getAuthorPenName(config) : "";
   const authorNoteFallback = identity?.authorNote || (identity?.biography ? `${penName ? `${penName}. ` : ""}${identity.biography}` : "");
-  return {
+  const base: BackMatter = {
     conclusion: stringifyField(source.conclusion).trim() || (typeof raw === "string" ? raw : ""),
     authorNote: stringifyField(source.authorNote).trim() || authorNoteFallback,
     callToAction: stringifyField(source.callToAction).trim(),
     reviewRequest: stringifyField(source.reviewRequest).trim(),
     otherBooks: stringifyField(source.otherBooks).trim(),
   };
+  const existingFollow = stringifyField(source.followAuthor).trim();
+  if (existingFollow) base.followAuthor = existingFollow;
+
+  if (!config) return base;
+
+  const injected = applyAuthorBrainToBackMatter(base, config, "soft");
+  const merged: BackMatter = {
+    ...base,
+    otherBooks: injected.otherBooks || base.otherBooks,
+  };
+  const follow = injected.followAuthor || base.followAuthor;
+  if (follow?.trim()) merged.followAuthor = follow.trim();
+  return merged;
 }
 
 /* ============ Chunked Chapter Generation ============ */

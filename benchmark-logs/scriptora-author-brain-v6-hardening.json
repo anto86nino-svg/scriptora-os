@@ -1,0 +1,204 @@
+{
+  "summary": {
+    "passed": true,
+    "totalAssertions": 32,
+    "failedAssertions": 0
+  },
+  "results": [
+    {
+      "id": "signal-consistency",
+      "label": "Signal Conflict Engine",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "coherent-high",
+          "passed": true,
+          "message": "Coherent profile score 0.94 >= 0.75"
+        },
+        {
+          "id": "conflict-low",
+          "passed": true,
+          "message": "Conflicting profile score 0.00 < 0.55"
+        },
+        {
+          "id": "conflict-damped",
+          "passed": true,
+          "message": "Conflicting profile damped or neutralized"
+        },
+        {
+          "id": "empty-neutral",
+          "passed": true,
+          "message": "Empty voice memory scores as neutral-safe"
+        },
+        {
+          "id": "coherent-signal",
+          "passed": true,
+          "message": "Coherent profile retains passive signal"
+        },
+        {
+          "id": "conflict-not-all-axes",
+          "passed": true,
+          "message": "Conflicting profile never activates all tone axes"
+        }
+      ]
+    },
+    {
+      "id": "empty-partial",
+      "label": "Empty / Partial Profile Safety",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "empty-no-about",
+          "passed": true,
+          "message": "Empty profile produces no About the Author block"
+        },
+        {
+          "id": "empty-no-other",
+          "passed": true,
+          "message": "Empty profile produces no Other Books block"
+        },
+        {
+          "id": "empty-no-follow",
+          "passed": true,
+          "message": "Empty profile produces no Follow block"
+        },
+        {
+          "id": "bio-only-about",
+          "passed": true,
+          "message": "Biography-only profile injects bio only"
+        },
+        {
+          "id": "bio-only-no-follow",
+          "passed": true,
+          "message": "Biography-only profile skips Follow"
+        },
+        {
+          "id": "links-only-follow",
+          "passed": true,
+          "message": "Links-only profile produces Follow block"
+        },
+        {
+          "id": "links-only-no-about",
+          "passed": true,
+          "message": "Links-only profile skips About"
+        },
+        {
+          "id": "goals-no-passive",
+          "passed": true,
+          "message": "Single emotional goal alone does not force passive intelligence"
+        }
+      ]
+    },
+    {
+      "id": "multi-author",
+      "label": "Multi-Author Isolation",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "a-pen",
+          "passed": true,
+          "message": "Author A uses Antonino pen name"
+        },
+        {
+          "id": "b-pen",
+          "passed": true,
+          "message": "Author B uses Livia pen name"
+        },
+        {
+          "id": "c-pen",
+          "passed": true,
+          "message": "Author C uses Verdi pen name"
+        },
+        {
+          "id": "no-bleed-ab",
+          "passed": true,
+          "message": "Author A bio has no B/C bleed"
+        },
+        {
+          "id": "no-bleed-ba",
+          "passed": true,
+          "message": "Author B bio has no A/C bleed"
+        },
+        {
+          "id": "no-bleed-cb",
+          "passed": true,
+          "message": "Author C bio has no A/B bleed"
+        },
+        {
+          "id": "lock-a",
+          "passed": true,
+          "message": "Author A lock preserved"
+        },
+        {
+          "id": "lock-b",
+          "passed": true,
+          "message": "Author B lock preserved"
+        },
+        {
+          "id": "lock-c",
+          "passed": true,
+          "message": "Author C lock preserved"
+        }
+      ]
+    },
+    {
+      "id": "export-safety",
+      "label": "Export Safety",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "exclude-current",
+          "passed": true,
+          "message": "Current book excluded from Other Books catalogue"
+        },
+        {
+          "id": "include-prior",
+          "passed": true,
+          "message": "Prior book retained in Other Books"
+        },
+        {
+          "id": "links-present",
+          "passed": true,
+          "message": "Book links preserved in export block"
+        },
+        {
+          "id": "no-triple-newline",
+          "passed": true,
+          "message": "No triple newlines in export block"
+        },
+        {
+          "id": "dedupe-heading",
+          "passed": true,
+          "message": "Duplicate headings collapsed (1 found in: \"Other Books by Elena Hart\\n\\n• Book One\")"
+        },
+        {
+          "id": "same-title-helper",
+          "passed": true,
+          "message": "Title exclusion helper is case-insensitive"
+        }
+      ]
+    },
+    {
+      "id": "over-personalization",
+      "label": "Over-Personalization Guardrails",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "single-chip-neutral-axes",
+          "passed": true,
+          "message": "Single presence chip keeps axes neutral"
+        },
+        {
+          "id": "cliche-stripped",
+          "passed": true,
+          "message": "Over-fit adjectives stripped from About block"
+        },
+        {
+          "id": "no-directive-only-emotional",
+          "passed": true,
+          "message": "Single emotional chip does not force warm cadence"
+        }
+      ]
+    }
+  ]
+}

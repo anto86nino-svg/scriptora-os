@@ -2,7 +2,7 @@ import { resolveChapterTitle } from "@/lib/chapter-titles";
 
 type AnyBookProject = any;
 
-const DEFAULT_AUTHOR = "Antonino Campanella";
+const DEFAULT_AUTHOR = "Unknown Author";
 
 function stripCodeFence(value: string): string {
   return value
@@ -147,6 +147,7 @@ function mergeMatterFromEmbeddedJson(matter: any): any {
     matter.callToAction,
     matter.reviewRequest,
     matter.otherBooks,
+    matter.followAuthor,
   ];
 
   let embedded: Record<string, any> = {};
@@ -167,6 +168,7 @@ function mergeMatterFromEmbeddedJson(matter: any): any {
     "callToAction",
     "reviewRequest",
     "otherBooks",
+    "followAuthor",
   ];
 
   const merged: Record<string, any> = { ...embedded, ...matter };
@@ -465,6 +467,7 @@ export function exportLabel(key: string, language?: string): string {
     whatsNext: "Prossimo passo",
     smallRequest: "Una piccola richiesta",
     otherBooks: "Letture consigliate",
+    followAuthor: "Segui l'autore",
   };
 
   const en: Record<string, string> = {
@@ -480,6 +483,7 @@ export function exportLabel(key: string, language?: string): string {
     whatsNext: "What's Next",
     smallRequest: "A Small Request",
     otherBooks: "Other Books",
+    followAuthor: "Follow the Author",
   };
 
   return (isItalian ? it : en)[key] || key;

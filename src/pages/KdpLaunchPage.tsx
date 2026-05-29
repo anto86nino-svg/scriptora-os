@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowRight, Loader2, Rocket, Sparkles, TrendingUp, Trophy, Wand2 } from "lucide-react";
@@ -17,8 +17,28 @@ import {
   type MarketAnalysis, type TitleVariants, type KDPPackaging, type SuccessPrediction,
 } from "@/lib/kdp/money-engine";
 import { useFeatureGate } from "@/components/PaywallGuard";
+import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
 
 type Step = "idea" | "market" | "title" | "packaging" | "predict";
+
+const KDP_PREFILL_KEY = "scriptora-kdp-prefill";
+
+function mapRadarGenre(genre: string): string {
+  const map: Record<string, string> = {
+    romance: "Romance",
+    thriller: "Thriller",
+    selfhelp: "Self-help",
+  };
+  return map[genre] || "Self-help";
+}
+
+function copyText(label: string, value: string) {
+  if (!value?.trim()) return;
+  void navigator.clipboard.writeText(value).then(
+    () => toast.success(`${label} copiato`),
+    () => toast.error(`Impossibile copiare ${label}`),
+  );
+}
 
 /** Tiny inline badge: shows whether the result was grounded with live market data. */
 function GroundingBadge({ meta }: { meta: { groundingUsed?: boolean; groundingResultsCount?: number } }) {
@@ -53,6 +73,27 @@ export default function KdpLaunchPage() {
   const [prediction, setPrediction] = useState<SuccessPrediction | null>(null);
   const [chosenTitle, setChosenTitle] = useState<string>("");
   const [chosenSubtitle, setChosenSubtitle] = useState<string>("");
+
+  const marketPremium = useMemo(() => {
+    const content = [idea, market?.recommendedAngle, market?.subNiche].filter(Boolean).join("\n\n");
+    if (content.split(/\s+/).filter(Boolean).length < 40) return null;
+    return computeMarketPremiumScores({ content, genre, language });
+  }, [idea, market?.recommendedAngle, market?.subNiche, genre, language]);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(KDP_PREFILL_KEY);
+      if (!raw) return;
+      sessionStorage.removeItem(KDP_PREFILL_KEY);
+      const data = JSON.parse(raw) as { idea?: string; genre?: string; keyword?: string };
+      const prefillIdea = [data.keyword, data.idea].filter(Boolean).join(" — ");
+      if (prefillIdea) setIdea(prefillIdea);
+      if (data.genre) setGenre(mapRadarGenre(data.genre));
+      toast.info("Brief importato da Market OS — completa l'analisi KDP");
+    } catch {
+      // non-blocking
+    }
+  }, []);
 
   async function getPlan(): Promise<PlanTier> {
     return await fetchPlan().catch(() => "free");
@@ -206,6 +247,38 @@ export default function KdpLaunchPage() {
               {market.groundingUsed && (
                 <p className="text-xs text-primary">✓ Dati di mercato in tempo reale</p>
               )}
+
+              {marketPremium && (
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold uppercase tracking-wide">Market Intelligence Premium</p>
+                    <span className="text-sm font-black text-primary">{marketPremium.composite}/100</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                    {[
+                      ["Hook strength", marketPremium.hookStrength],
+                      ["Bingeability", marketPremium.bingeability],
+                      ["Emotional momentum", marketPremium.emotionalMomentum],
+                      ["Genre alignment", marketPremium.genreAlignment],
+                      ...(marketPremium.bookTokPotential != null ? [["BookTok potential", marketPremium.bookTokPotential]] : []),
+                    ].map(([label, score]) => (
+                      <div key={label} className="rounded-lg bg-background/80 border border-border/50 px-2.5 py-2">
+                        <p className="text-muted-foreground">{label}</p>
+                        <p className="font-semibold">{score}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Retention risk:{" "}
+                    <span className={`font-semibold ${marketPremium.readerRetentionRisk === "high" ? "text-rose-500" : marketPremium.readerRetentionRisk === "medium" ? "text-amber-600" : "text-emerald-600"}`}>
+                      {marketPremium.readerRetentionRisk}
+                    </span>
+                    {" · "}
+                    {marketPremium.genreAlignmentNote}
+                  </p>
+                </div>
+              )}
+
               <div className="flex justify-end">
                 <Button onClick={runTitles} disabled={loading}>
                   {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
@@ -269,21 +342,41 @@ export default function KdpLaunchPage() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div>
-                <Label>Descrizione</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Descrizione</Label>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => copyText("Descrizione", packaging.amazonDescription)}>
+                    Copia
+                  </Button>
+                </div>
                 <Textarea rows={8} readOnly value={packaging.amazonDescription} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Keyword backend</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Keyword backend</Label>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => copyText("Keyword", packaging.backendKeywords.join(", "))}>
+                      Copia
+                    </Button>
+                  </div>
                   <ul className="text-xs space-y-1 mt-1">{packaging.backendKeywords.map((k, i) => <li key={`stable-${i}`}>• {k}</li>)}</ul>
                 </div>
                 <div>
-                  <Label>Categorie KDP</Label>
+                  <div className="flex items-center justify-between gap-2">
+                    <Label>Categorie KDP</Label>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => copyText("Categorie", packaging.categories.join(" · "))}>
+                      Copia
+                    </Button>
+                  </div>
                   <ul className="text-xs space-y-1 mt-1">{packaging.categories.map((c, i) => <li key={`stable-${i}`}>• {c}</li>)}</ul>
                 </div>
               </div>
               <div>
-                <Label>Bullet di vendita</Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label>Bullet di vendita</Label>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => copyText("Bullet", packaging.bulletPoints.join("\n"))}>
+                    Copia tutti
+                  </Button>
+                </div>
                 <ul className="text-xs space-y-1 mt-1">{packaging.bulletPoints.map((b, i) => <li key={`stable-${i}`}>• {b}</li>)}</ul>
               </div>
               <div className="flex justify-end">

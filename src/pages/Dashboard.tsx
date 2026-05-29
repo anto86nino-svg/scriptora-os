@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
-import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId } from "@/services/storageService";
+import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { NewBookDialog } from "@/components/NewBookDialog";
 import { AdvancedAppearanceDialog } from "@/components/AdvancedAppearanceDialog";
@@ -126,6 +126,7 @@ export default function Home() {
   const [launchMode, setLaunchMode] = useState<LaunchMode>("quick");
   const [showMobileStats, setShowMobileStats] = useState(false);
   const [projects, setProjects] = useState<BookProject[]>([]);
+  const [projectsReady, setProjectsReady] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const currentLang = useUILanguage();
   const { profileId, selectProfile } = useAtmosphereProfile();
@@ -175,7 +176,10 @@ export default function Home() {
   useEffect(() => {
     // Optimistic load: shows local projects immediately, refreshes from server
     // in the background. Eliminates the visible "frozen" gap on first paint.
-    loadProjects((fresh) => setProjects(fresh)).then(setProjects);
+    loadProjects((fresh) => setProjects(fresh)).then((fresh) => {
+      setProjects(fresh);
+      setProjectsReady(true);
+    });
     try {
       const raw = sessionStorage.getItem("nexora-active-run");
       if (raw) setActiveRun(JSON.parse(raw));
@@ -184,8 +188,12 @@ export default function Home() {
     // Re-load when DEV MODE is toggled — projects are scoped per environment.
     const onDevChange = () => {
       setProjects([]);
+      setProjectsReady(false);
       setActiveRun(null);
-      loadProjects((fresh) => setProjects(fresh)).then(setProjects);
+      loadProjects((fresh) => setProjects(fresh)).then((fresh) => {
+        setProjects(fresh);
+        setProjectsReady(true);
+      });
     };
     window.addEventListener("nexora-dev-mode-change", onDevChange);
     return () => window.removeEventListener("nexora-dev-mode-change", onDevChange);
@@ -305,7 +313,9 @@ export default function Home() {
     try {
       if (getLastProjectId() === projectId) setLastProjectId("");
       sessionStorage.removeItem("nexora-open-project");
-    } catch {}
+    } catch {
+      toast.error(t("delete_project_failed"));
+    }
     window.dispatchEvent(new Event("nexora-projects-change"));
   };
 
@@ -392,7 +402,10 @@ export default function Home() {
     setProjects((prev) => prev.filter((p) => p.id !== id));
     deleteProjectAsync(id).catch(() => {
       // On failure, refetch to recover state.
-      loadProjects((fresh) => setProjects(fresh)).then(setProjects);
+      loadProjects((fresh) => setProjects(fresh)).then((fresh) => {
+      setProjects(fresh);
+      setProjectsReady(true);
+    });
     });
   };
 
@@ -701,7 +714,7 @@ const dashboardWidgets = [
     },
   ];
   const workspaceStats = [
-    { label: t("projects"), value: projects.length.toLocaleString(), detail: tt("draft_count", { count: draftProjects.length }), icon: FolderOpen, iconBg: "ios-icon-blue" },
+    { label: t("projects"), value: projectsReady ? projects.length.toLocaleString() : "…", detail: projectsReady ? tt("draft_count", { count: draftProjects.length }) : "…", icon: FolderOpen, iconBg: "ios-icon-blue" },
     { label: t("completed"), value: completedProjects.length.toLocaleString(), detail: t("ready_to_export"), icon: CheckCircle2, iconBg: "ios-icon-green" },
     { label: t("chapters"), value: totalChapters.toLocaleString(), detail: t("generated_detail"), icon: BookOpen, iconBg: "ios-icon-orange" },
     { label: t("words_unit"), value: totalWords > 0 ? totalWords.toLocaleString() : "0", detail: t("in_library"), icon: FileDown, iconBg: "ios-icon-pink" },
@@ -1310,6 +1323,7 @@ const dashboardWidgets = [
             authorName={activeAuthor.penName}
             description=""
             authorBio={activeAuthor.biography}
+            projectGenre={lastProject?.config?.genre}
             showPrimaryAction={false}
             onGenerate={() => undefined}
             onClose={() => setShowCoverStudio(false)}
@@ -1344,6 +1358,10 @@ const dashboardWidgets = [
           onOpenProject={(id) => {
             setShowVoiceStudio(false);
             goApp({ projectId: id });
+          }}
+          onOpenChapterInEditor={(projectId, chapterIdx) => {
+            setShowVoiceStudio(false);
+            goApp({ projectId, section: `chapter-${chapterIdx}` });
           }}
         />
       </Suspense>

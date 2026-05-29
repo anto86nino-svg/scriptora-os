@@ -40,6 +40,7 @@ describe("Live API Benchmark Harness — Real Author Pass", () => {
     mkdirSync(outputDir, { recursive: true });
     writeFileSync(resolve(outputDir, "scriptora-real-author-pass-report.json"), JSON.stringify(report, null, 2), "utf8");
     writeFileSync(resolve(outputDir, "scriptora-real-author-pass-report.md"), report.markdown, "utf8");
+    writeFileSync(resolve(outputDir, "scriptora-real-author-pass.md"), report.markdown, "utf8");
 
     expect(report.markdown).toContain("Scriptora Real Author Pass Report");
     expect(report.ctoVerdict.length).toBeGreaterThan(20);

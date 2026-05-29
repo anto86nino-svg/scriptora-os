@@ -12,27 +12,33 @@ export const INTERVENTION_CATALOG: Record<
   },
   "dialogue-roughening": {
     label: "Dialogue Roughening",
-    summary: "Dialogue made more human",
+    summary: "Dialogue feels more natural",
     explanation:
-      "Dialogue felt emotionally resolved or too polished. We added hesitation, friction, and imperfect speech while keeping character voice.",
+      "Dialogue feels emotionally clearer than natural speech. Small imperfections were added to increase realism.",
   },
   "emotional-compression": {
     label: "Emotional Compression",
-    summary: "Emotional exposition reduced",
+    summary: "Emotions shown, not told",
     explanation:
-      "Emotions were told instead of shown. We compressed explanation into behavior, distance, and micro-actions.",
+      "Repeated emotional beats were explained instead of shown. Redundancy was reduced to preserve tension while keeping impact.",
   },
   "subtext-injection": {
     label: "Subtext Injection",
-    summary: "Subtext increased",
+    summary: "Tension now implied",
     explanation:
-      "Feelings were stated explicitly. We layered hidden meaning so the scene carries more under the surface.",
+      "More emotional tension is now implied instead of explicitly stated. The scene carries weight under the surface.",
   },
   "tension-preservation": {
     label: "Tension Preservation",
     summary: "Emotional payoff delayed",
     explanation:
       "The scene resolved tension too early. We preserved friction and push/pull so desire and suspense stay alive.",
+  },
+  "slow-burn-tension": {
+    label: "Slow Burn Tension",
+    summary: "Unresolved friction protected",
+    explanation:
+      "Emotional availability arrived too early for this genre. We protected slow-burn tension and delayed reassurance.",
   },
   "pacing-compression": {
     label: "Pacing Compression",
@@ -45,6 +51,12 @@ export const INTERVENTION_CATALOG: Record<
     summary: "Chapter ending sharpened",
     explanation:
       "The ending landed softly. We sharpened the forward pull with an unresolved emotional question.",
+  },
+  "ending-compression": {
+    label: "Ending Compression",
+    summary: "Overwritten ending trimmed",
+    explanation:
+      "The ending explained too much. We compressed closure while preserving emotional impact.",
   },
   "genre-specific": {
     label: "Genre-Specific Polish",
@@ -71,9 +83,9 @@ function inferFromReason(reason: string): SurgicalInterventionId[] {
   if (/hook|opening|apertura|inizio|primo/i.test(lower)) hits.push("hook-strengthening");
   if (/dialog|convers|speech|parl/i.test(lower)) hits.push("dialogue-roughening");
   if (/subtext|sottotesto|implicit|non detto/i.test(lower)) hits.push("subtext-injection");
-  if (/tension|tensione|attrazione|desiderio|attrito/i.test(lower)) hits.push("tension-preservation");
+  if (/tension|tensione|attrazione|desiderio|attrito|slow burn|slow-burn|yearning/i.test(lower)) hits.push("tension-preservation", "slow-burn-tension");
   if (/pacing|ritmo|momentum|drag|lento|ripet/i.test(lower)) hits.push("pacing-compression");
-  if (/cliff|finale|ending|chiusura/i.test(lower)) hits.push("cliffhanger-optimization");
+  if (/cliff|finale|ending|chiusura|overwritten/i.test(lower)) hits.push("cliffhanger-optimization", "ending-compression");
   if (/emot|feeling|spieg|tell|mostr/i.test(lower)) hits.push("emotional-compression");
 
   return hits;

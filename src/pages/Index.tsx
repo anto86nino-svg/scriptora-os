@@ -254,9 +254,15 @@ const Index = () => {
           const config = JSON.parse(newBookJson);
           engine.startNewBook(config);
           setActiveSection("blueprint");
+          if (sessionStorage.getItem("scriptora-setup-origin") === "auto-bestseller") {
+            sessionStorage.removeItem("scriptora-setup-origin");
+            toast.success("Stanza di scrittura pronta — blueprint e memoria narrativa caricati");
+          }
           setTimeout(refreshProjects, 500);
           return;
-        } catch { /* ignore */ }
+        } catch {
+          toast.error(t("toast_gen_failed"));
+        }
       }
 
       const lastId = getLastProjectId();
@@ -311,8 +317,10 @@ const Index = () => {
       const blob = await generateEpub(effectiveProject, coverOverride ?? coverDataUrl);
       const filename = effectiveProject.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadEpub(blob, filename);
+      toast.success(t("export_success_epub"));
     } catch (e) {
       console.error("EPUB export failed:", e);
+      toast.error(e instanceof Error ? e.message : t("export_failed"));
     } finally {
       setIsExporting(false);
       setExportLabel("");
@@ -328,8 +336,10 @@ const Index = () => {
       const blob = await generateDocx(effectiveProject);
       const filename = effectiveProject.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadDocx(blob, filename);
+      toast.success(t("export_success_docx"));
     } catch (e) {
       console.error("DOCX export failed:", e);
+      toast.error(e instanceof Error ? e.message : t("export_failed"));
     } finally {
       setIsExporting(false);
       setExportLabel("");
@@ -345,8 +355,10 @@ const Index = () => {
       const blob = await generatePdf(effectiveProject);
       const filename = effectiveProject.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadPdf(blob, filename);
+      toast.success(t("export_success_pdf"));
     } catch (e) {
       console.error("PDF export failed:", e);
+      toast.error(e instanceof Error ? e.message : t("export_failed"));
     } finally {
       setIsExporting(false);
       setExportLabel("");
@@ -410,6 +422,8 @@ const Index = () => {
             onUpdateBlueprintOutlineSummary={engine.updateBlueprintOutlineSummary}
             onUpdateFrontMatterField={engine.updateFrontMatterField}
             onUpdateBackMatterField={engine.updateBackMatterField}
+            onApplyAuthorBrainFrontMatter={engine.applyAuthorBrainFrontMatter}
+            onApplyAuthorBrainBackMatter={engine.applyAuthorBrainBackMatter}
           />
         </div>
       </div>
@@ -617,6 +631,8 @@ const Index = () => {
                   onUpdateBlueprintOutlineSummary={engine.updateBlueprintOutlineSummary}
                   onUpdateFrontMatterField={engine.updateFrontMatterField}
                   onUpdateBackMatterField={engine.updateBackMatterField}
+                  onApplyAuthorBrainFrontMatter={engine.applyAuthorBrainFrontMatter}
+                  onApplyAuthorBrainBackMatter={engine.applyAuthorBrainBackMatter}
                   onNarrateChapter={openVoiceStudioForChapter}
                 />
               </div>
@@ -634,6 +650,10 @@ const Index = () => {
                 initialProjectId={effectiveProject?.id}
                 initialChapterIndex={voiceStudioChapterIndex}
                 autoPlayOnOpen
+                onOpenChapterInEditor={(_projectId, chapterIdx) => {
+                  closeVoiceStudio();
+                  setActiveSection(`chapter-${chapterIdx}` as SectionId);
+                }}
               />
             </>
           ) : (
@@ -715,6 +735,7 @@ const Index = () => {
           authorName={effectiveProject.config.authorName || effectiveProject.config.author || effectiveProject.config.writerName}
           description={effectiveProject.blueprint?.overview || effectiveProject.config.subtitle}
           authorBio={effectiveProject.frontMatter?.aboutAuthor || effectiveProject.config.authorIdentity?.biography}
+          projectGenre={effectiveProject.config.genre}
           onGenerate={(dataUrl) => {
             setCoverDataUrl(dataUrl);
             setShowCover(false);

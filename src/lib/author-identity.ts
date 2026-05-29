@@ -1,4 +1,6 @@
 import type { AuthorIdentity, AuthorIdentityLock, BookConfig } from "@/types/book";
+import { normalizeAuthorPlatform, normalizePublishedBooks } from "@/lib/author-brain/ecosystem";
+import { normalizeAuthorPresence, normalizeReaderEmotionalGoals } from "@/lib/author-brain/voice-memory";
 
 const AUTHOR_IDENTITIES_KEY = "scriptora-author-identities-v1";
 export const SELECTED_AUTHOR_IDENTITY_KEY = "scriptora-selected-author-identity-v1";
@@ -105,6 +107,12 @@ export function saveAuthorIdentity(identity: AuthorIdentity): AuthorIdentity {
     penName: identity.penName.trim() || identity.name.trim() || "Autore",
     copyrightName: String(identity.copyrightName || identity.realName || identity.penName || identity.name || "").trim(),
     biography: String(identity.biography || "").trim(),
+    authorBrainSeed: String(identity.authorBrainSeed || "").trim(),
+    publishedBooks: normalizePublishedBooks(identity.publishedBooks),
+    authorPlatform: normalizeAuthorPlatform(identity.authorPlatform),
+    authorPresence: normalizeAuthorPresence(identity.authorPresence),
+    readerEmotionalGoals: normalizeReaderEmotionalGoals(identity.readerEmotionalGoals),
+    authorMessage: String(identity.authorMessage || "").trim(),
     authorNote: String(identity.authorNote || "").trim(),
     updatedAt: now,
     createdAt: identity.createdAt || now,
@@ -144,6 +152,12 @@ export function normalizeAuthorIdentity(identity?: AuthorIdentity | null): Autho
     copyrightName: String(identity.copyrightName || identity.realName || penName).trim(),
     archetype: String(identity.archetype || "").trim(),
     biography: String(identity.biography || "").trim(),
+    authorBrainSeed: String(identity.authorBrainSeed || "").trim(),
+    publishedBooks: normalizePublishedBooks(identity.publishedBooks),
+    authorPlatform: normalizeAuthorPlatform(identity.authorPlatform),
+    authorPresence: normalizeAuthorPresence(identity.authorPresence),
+    readerEmotionalGoals: normalizeReaderEmotionalGoals(identity.readerEmotionalGoals),
+    authorMessage: String(identity.authorMessage || "").trim(),
     authorNote: String(identity.authorNote || "").trim(),
     voice: String(identity.voice || "").trim(),
     signatureMoves: String(identity.signatureMoves || "").trim(),

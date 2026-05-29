@@ -1,6 +1,7 @@
 import { analyzeNovel } from "@/lib/EditorialIntelligence";
 import { evaluateBestsellerChapter } from "@/lib/bestseller-intelligence";
 import { WRITING_BRAINS } from "@/lib/book-intelligence/brains";
+import { SURGICAL_EDIT_V1_ACTION_SET } from "@/lib/surgical-edit-engine/constants";
 import type { BookProject } from "@/types/book";
 import type { SurgicalInterventionPlan } from "./types";
 
@@ -71,6 +72,7 @@ export function planSurgicalInterventions(input: {
 
   const plans: SurgicalInterventionPlan[] = [];
   const warningTypes = new Set(report.warnings.map(w => w.type));
+  const brainId = project.config.bookIntelligence?.layers?.writingBrainId;
 
   if (bestseller.scores.hookStrength < 62) {
     plans.push({
@@ -131,6 +133,29 @@ export function planSurgicalInterventions(input: {
     });
   }
 
+  if (/romance|dark-romance/.test(String(brainId || project.config.genre)) && bestseller.scores.bingeability < 65) {
+    plans.push({
+      id: "slow-burn-tension",
+      label: "Slow Burn Tension",
+      priority: "high",
+      directive: "Increase unresolved emotional friction. Delay reassurance, availability, and explicit confession.",
+      detectedReason: "Romance slow-burn tension under threshold",
+    });
+  }
+
+  if (
+    warningTypes.has("overwritten_scene") ||
+    (chapterIndex === project.chapters.length - 1 && bestseller.scores.hookStrength > 70 && report.subtextScore < 65)
+  ) {
+    plans.push({
+      id: "ending-compression",
+      label: "Ending Compression",
+      priority: "medium",
+      directive: "Trim overwritten closure. Preserve impact through implication, not explanation.",
+      detectedReason: "Ending resolves or explains too much",
+    });
+  }
+
   if (
     report.pacingConsistencyScore < 72 ||
     warningTypes.has("overwritten_scene") ||
@@ -156,7 +181,6 @@ export function planSurgicalInterventions(input: {
     });
   }
 
-  const brainId = project.config.bookIntelligence?.layers?.writingBrainId;
   const genreNotes = genreDirectives(brainId);
   if (genreNotes.length > 0) {
     plans.push({
@@ -172,23 +196,36 @@ export function planSurgicalInterventions(input: {
   return plans.sort((a, b) => priorityRank[a.priority] - priorityRank[b.priority]).slice(0, 6);
 }
 
+/** V1 — five surgical actions only */
+export function planSurgicalInterventionsV1(input: {
+  chapterText: string;
+  project: BookProject;
+  chapterIndex: number;
+}): SurgicalInterventionPlan[] {
+  return planSurgicalInterventions(input).filter((plan) => SURGICAL_EDIT_V1_ACTION_SET.has(plan.id));
+}
+
 export function buildSurgicalEditDirectiveBlock(input: {
   chapterText: string;
   project: BookProject;
   chapterIndex: number;
 }): string {
-  const plans = planSurgicalInterventions(input);
+  const plans = planSurgicalInterventionsV1(input);
   if (plans.length === 0) {
     return [
-      "CHAPTER DOCTOR PRO — SURGICAL EDIT DIRECTIVES",
-      "Even strong chapters: apply at least one precision editorial micro-move (subtext, rhythm, or dialogue friction).",
-      "Never rewrite whole paragraphs. Preserve author voice, canon, POV.",
+      "SURGICAL EDIT ENGINE V1 — DEVELOPMENTAL EDITOR DIRECTIVES",
+      "Improve what the author wrote. Never rewrite the chapter.",
+      "Apply at most one precision move: dialogue friction, emotional show-don't-tell, pacing trim, or ending compression.",
+      "Max 25% modification. Preserve author voice, POV, canon, Story Bible.",
     ].join("\n");
   }
 
   const lines = [
-    "CHAPTER DOCTOR PRO — SURGICAL EDIT DIRECTIVES",
-    "Apply ONLY targeted interventions below. Max 15% modification. Preserve author voice.",
+    "SURGICAL EDIT ENGINE V1 — DEVELOPMENTAL EDITOR DIRECTIVES",
+    "TARGETED INTERVENTIONS ONLY. Max 25% modification per chapter.",
+    "Improve what the author wrote — do NOT replace the chapter.",
+    "Preserve author voice, POV, canon, character memory, and Story Bible.",
+    "Never regenerate. Never rewrite whole paragraphs unless unavoidable for a single surgical fix.",
     "",
     ...plans.map(
       (p, i) =>

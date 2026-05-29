@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BookProject, Language } from "@/types/book";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Pause, Play, Waves, Sparkles, Volume2, ArrowDown } from "lucide-react";
+import { Pause, Play, Sparkles, ArrowDown, BookOpen, ClipboardList } from "lucide-react";
 import {
   VOICE_STUDIO_STYLES,
   applyNarrativeReadDirectives,
@@ -9,6 +9,17 @@ import {
   prepareVoiceStudioProfiles,
   type NarratorStyleId,
 } from "@/lib/voice-studio-engine";
+import {
+  FLOW_MODE_LABELS,
+  SESSION_MODE_LABELS,
+  SESSION_PRESET_LABELS,
+  useReadingSessionOrchestration,
+  type ReadingFlowMode,
+  type ReadingSessionMode,
+  type SessionPresetId,
+} from "@/lib/reading-session";
+import { ReadingSessionQuickNotes } from "@/components/ReadingSessionQuickNotes";
+import { ReadingSessionInsights } from "@/components/ReadingSessionInsights";
 
 const SPEED_OPTIONS = [0.75, 1, 1.25, 1.5, 2] as const;
 
@@ -18,6 +29,7 @@ interface VoiceStudioDialogProps {
   onClose: () => void;
   projects: BookProject[];
   onOpenProject?: (projectId: string) => void;
+  onOpenChapterInEditor?: (projectId: string, chapterIndex: number, paragraphIndex: number) => void;
   initialProjectId?: string;
   initialChapterIndex?: number;
   autoPlayOnOpen?: boolean;
@@ -28,6 +40,7 @@ export function VoiceStudioDialog({
   onClose,
   projects,
   onOpenProject,
+  onOpenChapterInEditor,
   initialProjectId,
   initialChapterIndex,
   autoPlayOnOpen = false,
@@ -117,6 +130,27 @@ export function VoiceStudioDialog({
   const currentChapter = selectedProject?.chapters[chapterIndex] || null;
   const style = VOICE_STUDIO_STYLES.find((item) => item.id === styleId) || VOICE_STUDIO_STYLES[0];
   const prep = useMemo(() => prepareVoiceStudioProfiles(selectedProject), [selectedProject]);
+
+  const reading = useReadingSessionOrchestration({
+    open,
+    projectId,
+    chapterIndex,
+    chapterTitle: currentChapter?.title || `Chapter ${chapterIndex + 1}`,
+    chapterContent: currentChapter?.content || "",
+    sentences,
+    currentSentence,
+    progress,
+    styleId,
+    speed,
+    manualVoiceKey,
+    immersiveMode,
+    setImmersiveMode,
+    chapterOptions,
+  });
+
+  const isMinimalImmersion = reading.sessionMode === "immersion";
+  const showEditorNotes = reading.sessionMode === "editor";
+  const sessionActive = isPlaying || isPaused;
 
   useEffect(() => {
     if (!open || !selectedProject) return;
@@ -264,6 +298,52 @@ export function VoiceStudioDialog({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  useEffect(() => {
+    if (!open || (!isPlaying && !isPaused)) return;
+    stopPlayback();
+    setStatus("Selection changed — tap Resume listening to restart");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, styleId, speed, manualVoiceKey]);
+
+  useEffect(() => {
+    if (!open || (!isPlaying && !isPaused)) return;
+    if (reading.autoContinuePlay) return;
+    stopPlayback();
+    setStatus("Chapter changed — tap Resume listening to restart");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chapterIndex]);
+
+  useEffect(() => {
+    if (!reading.autoContinuePlay || !open || !currentChapter) return;
+    reading.setAutoContinuePlay(false);
+    const timer = window.setTimeout(() => {
+      handlePlayPause();
+    }, 450);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reading.autoContinuePlay, chapterIndex, open, currentChapter]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onVisibility = () => {
+      if (!document.hidden) return;
+      reading.persistSession();
+      if (typeof window === "undefined" || !window.speechSynthesis) return;
+      if (!isPlaying || isPaused) return;
+      try {
+        window.speechSynthesis.pause();
+        pausedRef.current = true;
+        setIsPaused(true);
+        setIsPlaying(false);
+        setStatus("Paused while away — tap Resume to continue listening");
+      } catch {
+        // Mobile browsers may block pause — session state is still persisted.
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [open, isPlaying, isPaused, reading]);
 
   useEffect(() => {
     if (open && autoPlayOnOpen) {
@@ -611,7 +691,7 @@ export function VoiceStudioDialog({
         pausedRef.current = true;
         setIsPaused(true);
         setIsPlaying(false);
-        setStatus("Paused — tap Resume to continue");
+        setStatus("Paused — tap Resume to continue listening");
         logDebug("playback-paused", { chunk: currentChunkIndexRef.current });
       } catch (err) {
         setStatus("Pause failed. Use Stop if needed.");
@@ -664,7 +744,7 @@ export function VoiceStudioDialog({
 
     const voices = voicesRef.current || synth.getVoices() || [];
     const targetLanguage = getTargetLanguage();
-    const preferredVoice = chooseBestVoice(voices, targetLanguage);
+    const preferredVoice = chooseManualOrBestVoice(voices, targetLanguage);
     const session = ++playbackSessionRef.current;
 
     pausedRef.current = false;
@@ -675,7 +755,7 @@ export function VoiceStudioDialog({
     setCurrentSentence(0);
     setProgress(0);
     setIsPlaying(true);
-    setStatus(`Human narration ready · ${chunks.length} breathing parts`);
+    setStatus(`Reading session in progress · ${chunks.length} parts`);
 
     emitVoiceStudioTelemetry({ ...telemetry, chapterTitle: currentChapter.title || "Untitled chapter" });
 
@@ -684,11 +764,17 @@ export function VoiceStudioDialog({
 
       if (chunkIndex >= chunks.length) {
         setIsPlaying(false);
-        setStatus("Full chapter complete");
         setProgress(100);
         setCurrentSentence(allSentences.length > 0 ? allSentences.length - 1 : 0);
         clearTimer();
-        logDebug("full-chapter-complete", { chunks: chunks.length });
+        const result = reading.handleChapterPlaybackComplete();
+        if (result.type === "continue") {
+          setChapterIndex(result.nextChapterIndex);
+          setStatus(`Continuing manuscript review — Chapter ${result.nextChapterIndex + 1}`);
+        } else {
+          setStatus("Reading session complete — review your listening notes");
+        }
+        logDebug("full-chapter-complete", { chunks: chunks.length, result });
         return;
       }
 
@@ -719,7 +805,7 @@ export function VoiceStudioDialog({
         localStarts[idx] = position >= 0 ? position : searchFrom;
       });
 
-      setStatus(`Human reading ${chunkIndex + 1}/${chunks.length} · ${tone.label} · ${activeVoiceLabel}`);
+      setStatus(`Reading session · part ${chunkIndex + 1}/${chunks.length} · ${tone.label} · ${activeVoiceLabel}`);
       setCurrentSentence(chunk.startSentence);
       setProgress(Math.round((chunkIndex / chunks.length) * 100));
 
@@ -812,7 +898,7 @@ export function VoiceStudioDialog({
       utterance.onend = () => {
         if (session !== playbackSessionRef.current) return;
         if (pausedRef.current) {
-          setStatus("Paused — tap Resume to continue");
+          setStatus("Paused — tap Resume to continue listening");
           return;
         }
         clearTimer();
@@ -926,29 +1012,147 @@ export function VoiceStudioDialog({
             ? "h-[96dvh] max-h-[96dvh] max-w-[96vw]"
             : "max-h-[88dvh] max-w-3xl sm:max-h-[90dvh]"
         }`}>
-        <DialogHeader>
+        <DialogHeader className={isMinimalImmersion && sessionActive ? "sr-only" : ""}>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <Waves className="h-5 w-5 text-sky-300" />
-            Voice Studio
+            <BookOpen className="h-5 w-5 text-sky-300" />
+            Reading Session Pro
           </DialogTitle>
           <DialogDescription className="text-white/70">
-            Hear your story breathe. Turn chapters into immersive cinematic narration.
+            Professional manuscript listening — hear pacing, dialogue, and emotional beats like a reader.
           </DialogDescription>
         </DialogHeader>
 
-        <div className={`min-h-0 flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1f2937] p-3 sm:p-4 ${
+        <div className={`relative min-h-0 flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1f2937] p-3 sm:p-4 ${
           immersiveMode ? "flex flex-col" : ""
         }`}>
+          {reading.showInsights && (
+            <ReadingSessionInsights
+              notes={reading.sessionNotes}
+              onClose={() => reading.setShowInsights(false)}
+              onOpenInEditor={
+                onOpenChapterInEditor && selectedProject
+                  ? (chapterIdx, paragraphIdx) => {
+                      onOpenChapterInEditor(selectedProject.id, chapterIdx, paragraphIdx);
+                      onClose();
+                    }
+                  : undefined
+              }
+            />
+          )}
+
+          {reading.resumeOffer && !sessionActive && (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 px-3 py-3">
+              <p className="text-sm font-medium text-cyan-50">{reading.resumeOffer.label}</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => reading.dismissResumeOffer()}
+                  className="rounded-xl border border-white/15 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10"
+                >
+                  Start fresh
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    reading.acceptResumeOffer(
+                      (idx) => setChapterIndex(idx),
+                      (snap) => {
+                        setStyleId(snap.styleId as NarratorStyleId);
+                        setSpeed(snap.speed as typeof SPEED_OPTIONS[number]);
+                        setManualVoiceKey(snap.manualVoiceKey);
+                        reading.setSessionMode(snap.mode);
+                        reading.setFlowMode(snap.flowMode);
+                      },
+                    );
+                  }}
+                  className="rounded-xl bg-white px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-slate-100"
+                >
+                  Continue listening
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
             <div>
-              <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">Immersive Player</p>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">Manuscript listening</p>
               <p className="line-clamp-2 text-base font-semibold text-white sm:text-lg">{currentChapter?.title || "Select a chapter"}</p>
             </div>
             <div className="flex items-center gap-2 rounded-xl border border-sky-300/30 bg-sky-300/10 px-2.5 py-1.5 text-[11px] text-sky-200 sm:text-xs">
               <Sparkles className="h-3.5 w-3.5" />
-              Premium Narration
+              Revision workflow
             </div>
           </div>
+
+          {!isMinimalImmersion && (
+            <div className="mb-4 flex flex-wrap gap-2">
+              {(Object.keys(SESSION_MODE_LABELS) as ReadingSessionMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => {
+                    reading.setSessionMode(mode);
+                    if (mode === "immersion") setImmersiveMode(true);
+                  }}
+                  className={`rounded-xl border px-3 py-1.5 text-[11px] font-semibold transition ${
+                    reading.sessionMode === mode
+                      ? "border-cyan-300/50 bg-cyan-300/15 text-white"
+                      : "border-white/15 text-white/70 hover:border-cyan-300/40 hover:text-white"
+                  }`}
+                >
+                  {SESSION_MODE_LABELS[mode]}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {isMinimalImmersion && (
+            <div className="mb-3 flex justify-end">
+              <button
+                type="button"
+                onClick={() => reading.setSessionMode("reader")}
+                className="rounded-xl border border-white/15 px-3 py-1.5 text-[11px] font-medium text-white/70 hover:bg-white/10"
+              >
+                Exit immersion mode
+              </button>
+            </div>
+          )}
+
+          {!isMinimalImmersion && (
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-white/40">Chapter flow</span>
+              {(Object.keys(FLOW_MODE_LABELS) as ReadingFlowMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => reading.setFlowMode(mode)}
+                  className={`rounded-xl border px-2.5 py-1.5 text-[11px] font-medium ${
+                    reading.flowMode === mode
+                      ? "border-violet-300/40 bg-violet-300/10 text-violet-100"
+                      : "border-white/12 text-white/60 hover:text-white"
+                  }`}
+                >
+                  {FLOW_MODE_LABELS[mode]}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {!isMinimalImmersion && (
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] uppercase tracking-[0.14em] text-white/40">Session preset</span>
+              {(Object.keys(SESSION_PRESET_LABELS) as SessionPresetId[]).map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => reading.applySessionPreset(preset, handlePlayPause)}
+                  className="rounded-xl border border-white/12 px-2.5 py-1.5 text-[11px] font-medium text-white/65 hover:border-white/25 hover:text-white"
+                >
+                  {SESSION_PRESET_LABELS[preset]}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div className="mb-4 h-2 overflow-hidden rounded-full bg-white/10">
             <div
@@ -957,10 +1161,11 @@ export function VoiceStudioDialog({
             />
           </div>
           <div className="mb-5 flex items-center justify-between text-xs text-white/60">
-            <span>Immersive full view v18 · {status}</span>
+            <span>{sessionActive ? "Reading session in progress" : "Manuscript review"} · {status}</span>
             <span>{progress}%</span>
           </div>
 
+          {!isMinimalImmersion && (
           <div className="mb-3">
             <label className="text-[11px] uppercase tracking-[0.16em] text-white/45">Project search</label>
             <input
@@ -971,7 +1176,9 @@ export function VoiceStudioDialog({
               className="mt-2 w-full rounded-xl border border-white/15 bg-white/[0.06] px-3 py-2 text-sm text-white outline-none focus:border-sky-300/70"
             />
           </div>
+          )}
 
+          {!isMinimalImmersion && (
           <div className={`grid gap-2 sm:grid-cols-2 ${immersiveMode ? "lg:grid-cols-5" : "lg:grid-cols-5"}`}>
             <select
               value={projectId}
@@ -1061,7 +1268,8 @@ export function VoiceStudioDialog({
               </div>
             </div>
           </div>
-          {selectedProject && chapterOptions.length > 0 && (
+          )}
+          {!isMinimalImmersion && selectedProject && chapterOptions.length > 0 && (
             <div className="mb-4 rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-white/80">
               Effective playback rate: <span className="font-semibold text-white">{getEffectiveRate().toFixed(2)}x</span>
               <span className="mx-2 text-white/30">·</span>
@@ -1073,28 +1281,50 @@ export function VoiceStudioDialog({
             </div>
           )}
 
+          {showEditorNotes && sessionActive && (
+            <div className="mb-4">
+              <ReadingSessionQuickNotes
+                onNote={reading.addQuickNote}
+                lastSavedType={reading.lastNoteType}
+                compact={isMinimalImmersion}
+              />
+            </div>
+          )}
+
           <div className="sticky bottom-0 z-20 mt-4 flex flex-col gap-2 rounded-2xl border border-white/10 bg-slate-950/90 p-2 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center">
+            {!isMinimalImmersion && (
             <button
               onClick={testMobileVoice}
               className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-emerald-300/40 bg-emerald-300/15 px-4 text-sm font-semibold text-emerald-100 hover:bg-emerald-300/20 sm:w-auto"
             >
               Test Voice
             </button>
+            )}
             <button
               onClick={handlePlayPause}
               className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-100 sm:w-auto"
               disabled={!currentChapter}
             >
               {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              {isPaused ? "Resume Narration" : isPlaying ? "Pause Narration" : "Play Narration"}
+              {isPaused ? "Resume listening" : isPlaying ? "Pause listening" : "Start listening"}
             </button>
             <button
               onClick={stopPlayback}
               className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-white/20 px-4 text-sm font-medium text-white/80 hover:bg-white/[0.08] sm:w-auto"
             >
-              Stop / Reset
+              Stop session
             </button>
-            {selectedProject && onOpenProject && (
+            {(reading.sessionNotes.length > 0 || sessionActive) && (
+              <button
+                type="button"
+                onClick={reading.endSessionAndReview}
+                className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-amber-300/35 bg-amber-300/10 px-4 text-sm font-medium text-amber-100 hover:bg-amber-300/15 sm:w-auto"
+              >
+                <ClipboardList className="h-4 w-4" />
+                Session insights
+              </button>
+            )}
+            {selectedProject && onOpenProject && !isMinimalImmersion && (
               <button
                 onClick={() => onOpenProject(selectedProject.id)}
                 className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-300/10 px-4 text-sm font-medium text-cyan-100 hover:bg-cyan-300/15 sm:w-auto"
@@ -1107,18 +1337,20 @@ export function VoiceStudioDialog({
           <div className={"mt-4 rounded-2xl border border-white/10 bg-slate-900/90 p-3 shadow-[inset_0_0_30px_rgba(15,23,42,0.35)] sm:p-4 " + (immersiveMode ? "flex min-h-0 flex-1 flex-col ring-1 ring-cyan-300/20" : "")}>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">Karaoke Reading</p>
+                <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">Manuscript reader</p>
                 <p className="text-base font-semibold text-white">
-                  {immersiveMode ? "Immersive reading view" : "Follow the narration as your chapter speaks."}
+                  {immersiveMode ? "Immersion — focus on the manuscript" : "Follow the text as you listen."}
                 </p>
               </div>
+              {!isMinimalImmersion && (
               <button
                 type="button"
                 onClick={() => setImmersiveMode(!immersiveMode)}
                 className={`h-10 rounded-xl border px-3 text-sm font-semibold transition ${immersiveMode ? "border-cyan-300 bg-cyan-300/15 text-white" : "border-white/15 bg-slate-950/60 text-white/80 hover:border-cyan-300 hover:text-white"}`}
               >
-                {immersiveMode ? "Exit immersive" : "Immersive full view"}
+                {immersiveMode ? "Exit immersion" : "Immersion view"}
               </button>
+              )}
             </div>
 
             <div className="mb-4 flex items-center justify-between gap-2 text-xs text-white/60">
@@ -1162,7 +1394,7 @@ export function VoiceStudioDialog({
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-6 text-sm text-white/70">
-                  {currentChapter ? "Press Play Narration to follow the live reading." : "Select a chapter to start narration."}
+                  {currentChapter ? "Press Start listening to begin your reading session." : "Select a chapter to begin manuscript review."}
                 </div>
               )}
             </div>

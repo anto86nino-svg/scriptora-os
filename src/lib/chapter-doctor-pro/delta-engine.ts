@@ -9,6 +9,7 @@ import {
 } from "@/lib/intelligence-stabilization/score-calibration";
 import { buildAppliedInterventions, INTERVENTION_CATALOG } from "./interventions";
 import type {
+  CredibilityStat,
   DeltaPresentationMode,
   DevelopmentalEditInput,
   DevelopmentalEditReport,
@@ -115,14 +116,7 @@ function buildMetricRows(
   ];
 
   return editorialPairs.map(row => {
-    let after = row.after;
-    if (row.id === "editorial-quality") {
-      after = afterOverall;
-    } else if (after <= row.before && row.before > 0 && patchCount > 0) {
-      const minLift = row.before >= 8 ? 0.05 : row.before >= 6.5 ? 0.1 : 0.15;
-      after = Number(Math.min(9.4, row.before + minLift).toFixed(2));
-    }
-
+    const after = row.id === "editorial-quality" ? afterOverall : row.after;
     const delta = Number((after - row.before).toFixed(2));
     return {
       ...row,
@@ -131,6 +125,59 @@ function buildMetricRows(
       pctChange: pctChange(row.before, after),
     };
   });
+}
+
+function buildCredibilityStats(input: {
+  patches: DevelopmentalEditInput["patches"];
+  beforeReport: ReturnType<typeof analyzeNovel>;
+  afterReport: ReturnType<typeof analyzeNovel>;
+  beforeBest: ReturnType<typeof evaluateBestsellerChapter>;
+  afterBest: ReturnType<typeof evaluateBestsellerChapter>;
+  scoreDelta: number;
+}): CredibilityStat[] {
+  const stats: CredibilityStat[] = [];
+  const patchCount = input.patches.length;
+
+  if (patchCount > 0) {
+    stats.push({ label: "Paragraphs improved", value: `${patchCount}` });
+  }
+
+  const dialogueDelta = input.afterReport.dialogueHumanityScore - input.beforeReport.dialogueHumanityScore;
+  if (dialogueDelta > 2) {
+    stats.push({ label: "Dialogue humanity", value: `+${Math.round(dialogueDelta / 10)} pts` });
+  } else if (dialogueDelta < -2) {
+    stats.push({ label: "Dialogue humanity", value: `${Math.round(dialogueDelta / 10)} pts` });
+  }
+
+  const emotionBefore = input.beforeReport.emotionalRedundancyScore;
+  const emotionAfter = input.afterReport.emotionalRedundancyScore;
+  if (emotionAfter > emotionBefore + 3) {
+    stats.push({ label: "Emotional repetition", value: "Reduced" });
+  }
+
+  const subtextDelta = input.afterReport.subtextScore - input.beforeReport.subtextScore;
+  if (subtextDelta > 3) {
+    stats.push({ label: "Subtext strength", value: "Improved" });
+  }
+
+  const warningsResolved = Math.max(
+    0,
+    (input.beforeReport.warnings?.length || 0) - (input.afterReport.warnings?.length || 0),
+  );
+  if (warningsResolved > 0) {
+    stats.push({ label: "Editorial warnings resolved", value: `${warningsResolved}` });
+  }
+
+  const hookDelta = input.afterBest.scores.hookStrength - input.beforeBest.scores.hookStrength;
+  if (hookDelta > 5) {
+    stats.push({ label: "Opening hook", value: "Stronger" });
+  }
+
+  if (input.scoreDelta <= 0 && patchCount > 0) {
+    stats.push({ label: "Overall change", value: "Minimal — chapter already strong" });
+  }
+
+  return stats.slice(0, 6);
 }
 
 function resolveDeltaMode(
@@ -205,9 +252,18 @@ export function computeDevelopmentalEditReport(input: DevelopmentalEditInput): D
   );
 
   const heroHighlights = [...metrics]
-    .filter(m => m.id !== "editorial-quality" && (m.pctChange ?? 0) > 0)
-    .sort((a, b) => (b.pctChange ?? 0) - (a.pctChange ?? 0))
+    .filter(m => m.id !== "editorial-quality" && m.delta > 0.05)
+    .sort((a, b) => b.delta - a.delta)
     .slice(0, 4);
+
+  const credibilityStats = buildCredibilityStats({
+    patches,
+    beforeReport,
+    afterReport,
+    beforeBest,
+    afterBest,
+    scoreDelta,
+  });
 
   const deltaMode = resolveDeltaMode(
     patches.length,
@@ -250,5 +306,6 @@ export function computeDevelopmentalEditReport(input: DevelopmentalEditInput): D
     interventions: uniqueInterventions,
     explanations: Array.from(new Set(explanations)),
     modificationSummary: modificationSummary(input.modificationPercent, patches.length, deltaMode),
+    credibilityStats,
   };
 }

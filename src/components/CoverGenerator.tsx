@@ -1,6 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Download, ImagePlus, Settings2, Upload, Wand2, X } from "lucide-react";
+import { BookOpen, Download, ImagePlus, Settings2, Upload, Wand2, X, Layers } from "lucide-react";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
+import {
+  buildCoverDirectionSuggestions,
+  COVER_TEMPLATE_FAMILIES,
+  evaluateCoverReadiness,
+  generateViaProvider,
+  getActiveCoverProvider,
+  matchTemplateFamily,
+  prepareAudiobookAdaptation,
+  recommendedTemplateIndex,
+  type CoverArtDirection,
+  type CoverMotif,
+} from "@/lib/cover-studio";
+import { CoverStudioIntelligencePanel } from "@/components/CoverStudioIntelligencePanel";
 
 interface CoverGeneratorProps {
   title: string;
@@ -8,6 +21,7 @@ interface CoverGeneratorProps {
   authorName?: string;
   description?: string;
   authorBio?: string;
+  projectGenre?: string;
   primaryActionLabel?: string;
   showPrimaryAction?: boolean;
   onGenerate: (dataUrl: string) => void;
@@ -25,6 +39,33 @@ type ScriptoraArtDirection = {
   templateIndex: number;
   seed: number;
 };
+
+function mapMotifForCanvas(motif: CoverMotif): ScriptoraMotif {
+  if (motif === "dark-romance") return "romance";
+  if (motif === "romantasy") return "fantasy";
+  if (
+    motif === "thriller" ||
+    motif === "romance" ||
+    motif === "business" ||
+    motif === "fantasy" ||
+    motif === "memoir" ||
+    motif === "historical" ||
+    motif === "scifi" ||
+    motif === "literary"
+  ) {
+    return motif;
+  }
+  return "literary";
+}
+
+function toCanvasArtDirection(art: CoverArtDirection): ScriptoraArtDirection {
+  return {
+    motif: mapMotifForCanvas(art.motif),
+    label: art.label,
+    templateIndex: art.templateIndex,
+    seed: art.seed,
+  };
+}
 
 type CoverTemplate = {
   name: string;
@@ -197,6 +238,7 @@ export function CoverGenerator({
   authorName,
   description,
   authorBio,
+  projectGenre,
   primaryActionLabel = "Usa per EPUB",
   showPrimaryAction = true,
   onGenerate,
@@ -205,6 +247,7 @@ export function CoverGenerator({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const authorPhotoInputRef = useRef<HTMLInputElement>(null);
+  const drawRafRef = useRef<number | null>(null);
   const selectedIdentity = useMemo(() => {
     try {
       return getSelectedAuthorIdentity();
@@ -253,14 +296,118 @@ export function CoverGenerator({
   const [authorScale, setAuthorScale] = useState(100);
 
   const template = TEMPLATES[selectedTemplate];
+
+  const selectTemplate = (index: number) => {
+    setSelectedTemplate(index);
+    const next = TEMPLATES[index];
+    if (next) {
+      setTitleColor(next.textColor);
+      setSubtitleColor(next.mutedText);
+      setAuthorColor(next.textColor);
+    }
+  };
   const resolveFont = (font: string) => (font === "Template" ? template.font : font);
   const spec = useMemo(
     () => getCoverSpec(mode, trimId, pageCount, paperType, customWidth, customHeight, customSpine, dpi),
     [mode, trimId, pageCount, paperType, customWidth, customHeight, customSpine, dpi],
   );
 
+  const intelligenceSource = useMemo(
+    () => [projectGenre, coverGenreBrief, coverTitle, coverSubtitle, bookDescription].filter(Boolean).join(" "),
+    [projectGenre, coverGenreBrief, coverTitle, coverSubtitle, bookDescription],
+  );
+
+  const matchedFamily = useMemo(() => matchTemplateFamily(intelligenceSource), [intelligenceSource]);
+
+  const coverDirection = useMemo(
+    () => buildCoverDirectionSuggestions({
+      genreBrief: coverGenreBrief,
+      title: coverTitle,
+      subtitle: coverSubtitle,
+      description: bookDescription,
+      templateName: template.name,
+      templateMood: template.mood,
+      templateDark: template.dark,
+      titleColor,
+      titleScale,
+      hasUploadedImage: Boolean(uploadedImage),
+      hasArtDirection: Boolean(scriptoraArtDirection),
+      artDirectionLabel: scriptoraArtDirection?.label,
+      projectGenre,
+    }),
+    [
+      coverGenreBrief,
+      coverTitle,
+      coverSubtitle,
+      bookDescription,
+      template,
+      titleColor,
+      titleScale,
+      uploadedImage,
+      scriptoraArtDirection,
+      projectGenre,
+    ],
+  );
+
+  const coverReadiness = useMemo(
+    () => evaluateCoverReadiness({
+      genreBrief: coverGenreBrief,
+      title: coverTitle,
+      subtitle: coverSubtitle,
+      templateName: template.name,
+      templateDark: template.dark,
+      titleColor,
+      titleScale,
+      hasUploadedImage: Boolean(uploadedImage),
+      hasArtDirection: Boolean(scriptoraArtDirection),
+      frontWidthPx: spec.frontRect.w,
+      frontHeightPx: spec.frontRect.h,
+    }),
+    [
+      coverGenreBrief,
+      coverTitle,
+      coverSubtitle,
+      template,
+      titleColor,
+      titleScale,
+      uploadedImage,
+      scriptoraArtDirection,
+      spec.frontRect.w,
+      spec.frontRect.h,
+    ],
+  );
+
+  const audiobookPrep = useMemo(
+    () => prepareAudiobookAdaptation({
+      frontWidthPx: spec.frontRect.w,
+      frontHeightPx: spec.frontRect.h,
+      title: coverTitle,
+      titleScale,
+    }),
+    [spec.frontRect.w, spec.frontRect.h, coverTitle, titleScale],
+  );
+
+  const applyTemplateFamily = (familyId: string) => {
+    const family = COVER_TEMPLATE_FAMILIES.find((f) => f.id === familyId);
+    if (!family) return;
+    selectTemplate(recommendedTemplateIndex(family));
+    if (!coverGenreBrief.trim()) {
+      setCoverGenreBrief(family.genreKeywords.slice(0, 2).join(", "));
+    }
+  };
+
   useEffect(() => {
-    void drawCover();
+    if (drawRafRef.current != null) {
+      cancelAnimationFrame(drawRafRef.current);
+    }
+    drawRafRef.current = requestAnimationFrame(() => {
+      void drawCover();
+    });
+    return () => {
+      if (drawRafRef.current != null) {
+        cancelAnimationFrame(drawRafRef.current);
+      }
+    };
   }, [
     spec,
     template,
@@ -352,12 +499,7 @@ export function CoverGenerator({
     const authorSize = clamp(Math.round(rect.w * 0.032 * (authorScale / 100)), 18, 72);
     const x = rect.x + rect.w / 2;
 
-    ctx.fillStyle = coverTemplate.accentColor;
-    ctx.font = `600 ${clamp(Math.round(rect.w * 0.018), 14, 28)}px Arial, sans-serif`;
-    ctx.letterSpacing = "0px";
-    ctx.fillText(backTagline.toUpperCase().slice(0, 58), x, rect.y + rect.h * 0.16);
-
-    drawAccentRule(ctx, rect.x + marginX, rect.y + rect.h * 0.24, rect.w - marginX * 2, coverTemplate);
+    drawAccentRule(ctx, rect.x + marginX, rect.y + rect.h * 0.20, rect.w - marginX * 2, coverTemplate);
 
     ctx.fillStyle = titleColor || coverTemplate.textColor;
     ctx.font = `700 ${titleSize}px ${canvasFontFamily(resolveFont(titleFont), "serif")}`;
@@ -538,16 +680,20 @@ export function CoverGenerator({
     reader.readAsDataURL(file);
   }
 
-  function generateScriptoraBackground() {
-    const direction = inferScriptoraArtDirection([
-      coverGenreBrief,
-      coverTitle,
-      coverSubtitle,
-      bookDescription,
-      backTagline,
-    ].join(" "));
+  async function generateScriptoraBackground() {
+    const provider = getActiveCoverProvider();
+    const result = await generateViaProvider(provider, {
+      genreBrief: coverGenreBrief,
+      title: coverTitle,
+      subtitle: coverSubtitle,
+      prompt: [coverGenreBrief, bookDescription, backTagline].filter(Boolean).join(" "),
+      width: spec.frontRect.w,
+      height: spec.frontRect.h,
+    });
+    if (!result.ok || !result.artDirection) return;
+    const direction = toCanvasArtDirection(result.artDirection);
     setUploadedImage(null);
-    setSelectedTemplate(direction.templateIndex);
+    selectTemplate(direction.templateIndex);
     setScriptoraArtDirection(direction);
     setScriptoraSeed(direction.seed + Date.now() % 997);
   }
@@ -559,9 +705,10 @@ export function CoverGenerator({
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary">
               <BookOpen className="h-4 w-4" />
-              Scriptora Cover Studio
+              Cover Studio Pro Max
             </div>
-            <h2 className="text-lg font-semibold text-foreground truncate">Copertine EPUB, KDP e Lulu</h2>
+            <h2 className="text-lg font-semibold text-foreground truncate">Professional cover strategy + design environment</h2>
+            <p className="hidden lg:block text-xs text-muted-foreground mt-0.5">Commercial positioning, visual direction, and export-ready layouts.</p>
           </div>
           <button
             onClick={onClose}
@@ -572,8 +719,8 @@ export function CoverGenerator({
           </button>
         </div>
 
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_460px] xl:grid-cols-[minmax(0,1fr)_500px] max-h-[calc(92vh-78px)] lg:max-h-[calc(94vh-86px)] overflow-y-auto lg:overflow-hidden">
-          <div className="relative p-4 sm:p-6 lg:p-8 xl:p-10 bg-black/20 lg:bg-gradient-to-br lg:from-black/45 lg:via-background/80 lg:to-primary/10 flex flex-col items-center justify-center gap-4 lg:min-h-[calc(94vh-86px)] lg:overflow-hidden">
+        <div className="grid grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)_360px] max-h-[calc(92vh-78px)] lg:max-h-[calc(94vh-96px)] overflow-y-auto xl:overflow-hidden">
+          <div className="relative order-1 xl:order-none xl:col-start-2 xl:row-start-1 p-4 sm:p-6 lg:p-6 xl:p-8 bg-black/20 xl:bg-gradient-to-br xl:from-black/45 xl:via-background/80 xl:to-primary/10 flex flex-col items-center justify-center gap-4 xl:min-h-[calc(94vh-96px)] xl:overflow-hidden">
             <div className="w-full flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:absolute lg:left-8 lg:right-8 lg:top-6 lg:w-auto lg:rounded-2xl lg:border lg:border-white/10 lg:bg-background/35 lg:px-4 lg:py-3 lg:backdrop-blur-xl">
               <span>{spec.label}</span>
               <span>{spec.width} x {spec.height}px - {spec.exportNote}</span>
@@ -588,16 +735,46 @@ export function CoverGenerator({
             </div>
           </div>
 
-          <div className="p-4 sm:p-5 lg:p-6 space-y-5 lg:space-y-6 bg-background/55 lg:bg-background/75 lg:max-h-[calc(94vh-86px)] lg:overflow-y-auto">
+          <div className="order-2 xl:order-none xl:col-start-1 xl:row-start-1 p-4 sm:p-5 lg:p-5 xl:p-5 space-y-5 lg:space-y-5 bg-background/55 xl:bg-background/75 xl:max-h-[calc(94vh-96px)] xl:overflow-y-auto">
+            <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Layers className="h-4 w-4 text-primary" />
+                  <span className="lg:hidden">Template family</span>
+                  <span className="hidden lg:inline">TEMPLATE FAMILIES</span>
+                </div>
+                <p className="hidden lg:block text-xs leading-5 text-muted-foreground">
+                  Curated commercial directions — typography, layout, and emotional positioning.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {COVER_TEMPLATE_FAMILIES.map((family) => (
+                  <button
+                    key={family.id}
+                    type="button"
+                    onClick={() => applyTemplateFamily(family.id)}
+                    className={`rounded-xl border p-2.5 text-left transition-all ${
+                      matchedFamily?.id === family.id
+                        ? "border-primary bg-primary/12 shadow-[0_8px_24px_rgba(0,0,0,0.12)]"
+                        : "border-border/70 bg-surface/50 hover:bg-surface"
+                    }`}
+                  >
+                    <span className="block text-xs font-semibold text-foreground">{family.label}</span>
+                    <span className="block text-[10px] text-muted-foreground line-clamp-2">{family.tagline}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
             <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <Settings2 className="h-4 w-4 text-primary" />
                   <span className="lg:hidden">Formato</span>
-                  <span className="hidden lg:inline">COVER STYLE</span>
+                  <span className="hidden lg:inline">FORMAT & LAYOUT</span>
                 </div>
                 <p className="hidden lg:block text-xs leading-5 text-muted-foreground">
-                  Formato editoriale, dimensioni di stampa e direzione visiva della copertina.
+                  Visual positioning for EPUB, KDP, Lulu, or custom print specs.
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2 lg:gap-3">
@@ -682,7 +859,7 @@ export function CoverGenerator({
                 {TEMPLATES.map((t, i) => (
                   <button
                     key={t.name}
-                    onClick={() => setSelectedTemplate(i)}
+                    onClick={() => selectTemplate(i)}
                     className={`min-h-16 lg:min-h-[76px] rounded-xl lg:rounded-2xl border p-2 lg:p-3 text-left transition-all duration-200 ${
                       i === selectedTemplate
                         ? "border-primary bg-primary/15 shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
@@ -806,18 +983,18 @@ export function CoverGenerator({
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-foreground">
                   <span className="lg:hidden">Immagine e stile</span>
-                  <span className="hidden lg:inline">AI ENHANCEMENT</span>
+                  <span className="hidden lg:inline">STILE VISIVO</span>
                 </p>
                 <p className="hidden lg:block text-xs leading-5 text-muted-foreground">
                   Scriptora interpreta genere e tono per creare solo lo sfondo. Titolo, sottotitolo e autore restano modificabili dai controlli testo.
                 </p>
               </div>
               <label className="space-y-1 block">
-                <span className="text-xs font-medium text-muted-foreground">Genere / atmosfera AI</span>
+                <span className="text-xs font-medium text-muted-foreground">Visual positioning brief</span>
                 <input
                   value={coverGenreBrief}
                   onChange={(e) => setCoverGenreBrief(e.target.value)}
-                  placeholder="es. thriller psicologico, romance dark, business self-help..."
+                  placeholder="es. dark romance, thriller commerciale, authority nonfiction..."
                   className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </label>
@@ -836,13 +1013,13 @@ export function CoverGenerator({
                   className="flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/12 px-3 py-2 lg:py-3 text-xs lg:text-sm font-semibold text-primary hover:bg-primary/18 transition-colors"
                 >
                   <Wand2 className="h-4 w-4" />
-                  <span className="lg:hidden">Genera cover</span>
-                  <span className="hidden lg:inline">Genera copertina Scriptora</span>
+                  <span className="lg:hidden">Build direction</span>
+                  <span className="hidden lg:inline">Build Cover Direction</span>
                 </button>
               </div>
               {scriptoraArtDirection && (
                 <div className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] leading-4 text-primary">
-                  Direzione AI: {scriptoraArtDirection.label}. Sfondo generato senza testo incorporato.
+                  Visual direction: {scriptoraArtDirection.label}. Procedural background — title controls remain yours.
                 </div>
               )}
               <input
@@ -933,7 +1110,7 @@ export function CoverGenerator({
                 {TEMPLATES.map((t, i) => (
                   <button
                     key={t.name}
-                    onClick={() => setSelectedTemplate(i)}
+                    onClick={() => selectTemplate(i)}
                     className={`min-h-16 rounded-xl border p-2 text-left transition-colors ${
                       i === selectedTemplate
                         ? "border-primary bg-primary/15"
@@ -978,6 +1155,16 @@ export function CoverGenerator({
                 </button>
               )}
             </div>
+          </div>
+
+          <div className="order-3 xl:order-none xl:col-start-3 xl:row-start-1 p-4 sm:p-5 xl:p-5 xl:max-h-[calc(94vh-96px)] xl:overflow-y-auto bg-background/40 xl:bg-background/55">
+            <CoverStudioIntelligencePanel
+              direction={coverDirection}
+              readiness={coverReadiness}
+              audiobookPrep={audiobookPrep}
+              matchedFamily={matchedFamily}
+              onApplyFamily={(family) => applyTemplateFamily(family.id)}
+            />
           </div>
         </div>
       </div>
@@ -1190,81 +1377,6 @@ function drawTemplateBackground(ctx: CanvasRenderingContext2D, rect: Rect, templ
     }
   }
   ctx.restore();
-}
-
-function inferScriptoraArtDirection(source: string): ScriptoraArtDirection {
-  const text = source.toLowerCase();
-  const profiles: Array<{
-    motif: ScriptoraMotif;
-    label: string;
-    templateIndex: number;
-    keywords: string[];
-  }> = [
-    {
-      motif: "thriller",
-      label: "thriller cinematico",
-      templateIndex: 2,
-      keywords: ["thriller", "noir", "crime", "giallo", "mistero", "detective", "killer", "dark", "suspense", "horror", "paura", "segreto"],
-    },
-    {
-      motif: "romance",
-      label: "romance emozionale",
-      templateIndex: 4,
-      keywords: ["romance", "amore", "love", "cuore", "passione", "sentimenti", "relazione", "dark romance", "bacio", "desiderio"],
-    },
-    {
-      motif: "business",
-      label: "business / self-help premium",
-      templateIndex: 3,
-      keywords: ["business", "self-help", "self help", "crescita", "produttivita", "successo", "mindset", "marketing", "finanza", "manuale", "guida"],
-    },
-    {
-      motif: "fantasy",
-      label: "fantasy epico",
-      templateIndex: 9,
-      keywords: ["fantasy", "magia", "mago", "regno", "drago", "spada", "epico", "mito", "destino", "strega", "incantesimo"],
-    },
-    {
-      motif: "scifi",
-      label: "sci-fi futuristico",
-      templateIndex: 7,
-      keywords: ["sci-fi", "scifi", "fantascienza", "futuro", "cyber", "robot", "ai", "spazio", "astronave", "tecnologia", "distopia"],
-    },
-    {
-      motif: "memoir",
-      label: "memoir editoriale",
-      templateIndex: 5,
-      keywords: ["memoir", "biografia", "autobiografia", "memorie", "vita", "ricordo", "famiglia", "viaggio", "testimonianza"],
-    },
-    {
-      motif: "historical",
-      label: "storico classico",
-      templateIndex: 8,
-      keywords: ["storico", "storia", "guerra", "antico", "medioevo", "rinascimento", "vintage", "epoca", "classico"],
-    },
-    {
-      motif: "literary",
-      label: "narrativa letteraria",
-      templateIndex: 0,
-      keywords: ["romanzo", "narrativa", "literary", "letterario", "dramma", "famiglia", "segreti", "citta", "psicologico"],
-    },
-  ];
-
-  const best = profiles
-    .map((profile) => ({
-      ...profile,
-      score: profile.keywords.reduce((total, keyword) => total + (text.includes(keyword) ? 1 : 0), 0),
-    }))
-    .sort((a, b) => b.score - a.score)[0];
-  const fallback = profiles[profiles.length - 1];
-  const selected = best && best.score > 0 ? best : fallback;
-
-  return {
-    motif: selected.motif,
-    label: selected.label,
-    templateIndex: selected.templateIndex,
-    seed: stableSeed(`${selected.motif}-${source}`),
-  };
 }
 
 function drawScriptoraAiScene(
@@ -1543,14 +1655,6 @@ function colorWithAlpha(hex: string, alpha: number) {
   const g = parseInt(clean.slice(2, 4), 16);
   const b = parseInt(clean.slice(4, 6), 16);
   return `rgba(${r},${g},${b},${alpha})`;
-}
-
-function stableSeed(value: string) {
-  let hash = 0;
-  for (let i = 0; i < value.length; i += 1) {
-    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
-  }
-  return hash || 1;
 }
 
 function drawAuthorPhotoBackMatter(

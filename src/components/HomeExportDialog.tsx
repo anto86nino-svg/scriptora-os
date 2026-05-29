@@ -299,6 +299,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           authorName={selectedProject.config.authorName || selectedProject.config.author || selectedProject.config.writerName}
           description={selectedProject.blueprint?.overview || selectedProject.config.subtitle}
           authorBio={selectedProject.frontMatter?.aboutAuthor || selectedProject.config.authorIdentity?.biography}
+          projectGenre={selectedProject.config.genre}
           onGenerate={(dataUrl) => {
             setCoverDataUrls((current) => ({ ...current, [selectedProject.id]: dataUrl }));
             setShowCover(false);

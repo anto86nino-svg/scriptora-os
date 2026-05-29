@@ -136,39 +136,45 @@ export interface DoctorDeltaInput {
 }
 
 /**
- * Believable Chapter Doctor delta — never 7.1 → 9.6 for a surgical patch.
+ * Believable Chapter Doctor delta — diminishing returns, no fake lifts.
  */
 export function calibrateChapterDoctorDelta(input: DoctorDeltaInput): {
   afterScore: number;
   scoreDelta: number;
 } {
-  const { beforeCalibrated, patchCount } = input;
+  const { beforeCalibrated, patchCount, rawAfterCalibrated, positiveMetricCount, warningDelta, modificationPercent } =
+    input;
+
   if (patchCount === 0) {
     return { afterScore: beforeCalibrated, scoreDelta: 0 };
   }
 
-  let rawDelta = input.rawAfterCalibrated - beforeCalibrated;
+  const maxDelta =
+    beforeCalibrated > 8.2 ? 0.6 : beforeCalibrated >= 6 ? 1.2 : 1.5;
 
-  if (Math.abs(rawDelta) < 0.05) {
-    const modFactor = Math.min(1, input.modificationPercent / 20);
-    rawDelta =
-      0.12 +
-      modFactor * 0.25 +
-      Math.min(0.2, input.positiveMetricCount * 0.06) +
-      Math.min(0.15, input.warningDelta * 0.05);
+  const hasRealImprovement =
+    rawAfterCalibrated > beforeCalibrated + 0.04 ||
+    positiveMetricCount >= 2 ||
+    warningDelta >= 1;
+
+  if (!hasRealImprovement) {
+    if (modificationPercent >= 8 && positiveMetricCount >= 1) {
+      const micro = Math.min(maxDelta * 0.35, 0.25);
+      const afterScore = Number(Math.min(9.5, beforeCalibrated + micro).toFixed(1));
+      const scoreDelta = Number((afterScore - beforeCalibrated).toFixed(1));
+      return scoreDelta > 0 ? { afterScore, scoreDelta } : { afterScore: beforeCalibrated, scoreDelta: 0 };
+    }
+    return { afterScore: beforeCalibrated, scoreDelta: 0 };
   }
 
-  const band = tierFromCalibratedScore(beforeCalibrated);
-  const maxDelta =
-    band === "elite" || band === "bestseller-potential"
-      ? 0.35
-      : band === "strong"
-        ? 0.65
-        : band === "developing"
-          ? 0.85
-          : 1.1;
+  let rawDelta = rawAfterCalibrated - beforeCalibrated;
+  rawDelta = Math.max(0, Math.min(maxDelta, rawDelta));
 
-  rawDelta = Math.max(0.08, Math.min(maxDelta, rawDelta));
+  if (rawDelta < 0.1 && positiveMetricCount >= 1) {
+    rawDelta = beforeCalibrated > 8.2 ? 0.1 : beforeCalibrated >= 6 ? 0.15 : 0.25;
+  }
+
+  rawDelta = Math.min(maxDelta, rawDelta);
   const afterScore = Number(Math.min(9.5, beforeCalibrated + rawDelta).toFixed(1));
   const scoreDelta = Number((afterScore - beforeCalibrated).toFixed(1));
 

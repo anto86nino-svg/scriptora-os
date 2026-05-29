@@ -213,13 +213,13 @@ export default function FixChapterComparisonModal({
   }
 
   const PATCH_TYPE_LABELS: Record<string, string> = {
-    tighten: "Pacing compression",
-    rewrite: "Subtext injection",
-    compress: "Emotional compression",
-    intensify: "Tension preservation",
-    "strengthen-dialogue": "Dialogue roughening",
-    "remove-redundancy": "Redundancy reduction",
-    "forced-editorial": "Surgical polish",
+    tighten: "Compressing repetitive beats",
+    rewrite: "Reducing emotional over-explanation",
+    compress: "Reducing emotional over-explanation",
+    intensify: "Preserving romantic tension",
+    "strengthen-dialogue": "Strengthening dialogue realism",
+    "remove-redundancy": "Compressing repetitive beats",
+    "forced-editorial": "Precision editorial polish",
     remove: "Removed",
   };
 
@@ -272,19 +272,19 @@ export default function FixChapterComparisonModal({
   return (
     <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-lg text-white overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.18),transparent_25%)] pointer-events-none" />
-      <div className="relative mx-auto flex h-screen max-w-[1600px] flex-col overflow-hidden p-4">
+      <div className="relative mx-auto flex h-screen max-w-[1600px] md:min-w-[720px] flex-col overflow-hidden p-4 md:p-6">
         <div className="flex items-start justify-between gap-4 rounded-[36px] border border-white/10 bg-[#0c1223]/95 shadow-[0_0_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl p-6">
           <div className="max-w-2xl space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-white/70">AI Developmental Edit</span>
-              <span className="rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-1 text-[10px] uppercase tracking-[0.3em] font-semibold">Premium</span>
+              <span className="rounded-full bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-white/70">Surgical Edit Engine</span>
+              <span className="rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-1 text-[10px] uppercase tracking-[0.3em] font-semibold">Developmental Editor</span>
             </div>
             <div>
-              <p className="text-base uppercase tracking-[0.35em] text-white/40 font-bold">Chapter Doctor Pro</p>
-              <h1 className="mt-2 text-4xl font-black tracking-tight text-white">AI Developmental Edit Report</h1>
+              <p className="text-base uppercase tracking-[0.35em] text-white/40 font-bold">Your writing, improved</p>
+              <h1 className="mt-2 text-4xl font-black tracking-tight text-white">Surgical Edit Review</h1>
             </div>
             <p className="max-w-2xl text-sm leading-6 text-white/70">
-              Surgical editorial pass complete. Review what changed, why it changed, and apply only if you agree.
+              Targeted editorial pass complete. Compare before and after, read why each change was made, and apply only if you agree.
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -292,7 +292,7 @@ export default function FixChapterComparisonModal({
               onClick={onApply}
               className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-bold text-black shadow-[0_20px_70px_rgba(16,185,129,0.22)] transition hover:bg-emerald-400"
             >
-              <Check className="h-4 w-4" /> Apply improved version
+              <Check className="h-4 w-4" /> Apply changes
             </button>
             <button
               onClick={() => {
@@ -371,18 +371,36 @@ export default function FixChapterComparisonModal({
 
             {interventions.length > 0 && (
               <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
-                <p className="text-xs uppercase tracking-[0.25em] text-white/50 mb-4">What was improved</p>
+                <p className="text-xs uppercase tracking-[0.25em] text-white/50 mb-4">What changed</p>
                 <div className="space-y-3">
                   {interventions.map(item => (
                     <div key={item.id} className="flex items-start gap-3 rounded-3xl border border-white/10 bg-black/10 p-3">
                       <Check className="h-4 w-4 text-emerald-300 mt-1 shrink-0" />
                       <div>
                         <p className="text-sm font-semibold text-white">{item.summary}</p>
+                        <p className="text-[12px] leading-5 text-white/65 mt-1">{item.explanation}</p>
                         {item.patchCount > 1 && (
-                          <p className="text-[11px] text-white/50 mt-0.5">{item.patchCount} surgical edits</p>
+                          <p className="text-[11px] text-white/50 mt-0.5">{item.patchCount} paragraphs touched</p>
                         )}
                       </div>
                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {report?.credibilityStats && report.credibilityStats.length > 0 && (
+              <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
+                <p className="text-xs uppercase tracking-[0.25em] text-white/50 mb-4">Visible impact</p>
+                <div className="flex flex-wrap gap-2">
+                  {report.credibilityStats.map(stat => (
+                    <span
+                      key={stat.label}
+                      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs font-medium text-white/85"
+                    >
+                      <span className="text-white/50">{stat.label}:</span>
+                      <span className="font-bold text-emerald-200">{stat.value}</span>
+                    </span>
                   ))}
                 </div>
               </div>

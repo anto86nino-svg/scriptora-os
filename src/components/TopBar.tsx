@@ -13,7 +13,7 @@ import { getWordBudget } from "@/lib/subscription";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import type { BookProject } from "@/types/book";
-import { AUTHOR_IDENTITY_CHANGED_EVENT, findAuthorIdentity, getSelectedAuthorIdentity, loadAuthorIdentities, normalizeAuthorIdentity, setSelectedAuthorIdentityId } from "@/lib/author-identity";
+import { AUTHOR_IDENTITY_CHANGED_EVENT, findAuthorIdentity, getSelectedAuthorIdentity, loadAuthorIdentities, normalizeAuthorIdentity, setSelectedAuthorIdentityId, applyAuthorIdentityToConfig, enforceAuthorIdentityLock } from "@/lib/author-identity";
 import { FocusMusicControl } from "@/components/FocusMusicControl";
 
 interface TopBarProps {
@@ -113,12 +113,16 @@ export function TopBar({
 
   const changeProjectAuthor = (id: string) => {
     const identity = authorIdentities.find((item) => item.id === id);
-    if (!identity) return;
+    if (!identity || !config) return;
     const normalized = normalizeAuthorIdentity(identity);
     if (!normalized) return;
+    const locked = enforceAuthorIdentityLock(
+      applyAuthorIdentityToConfig({ ...config, authorStyle: config.authorStyle || normalized.archetype || config.authorStyle }, normalized),
+    );
     setSelectedAuthorIdentityId(normalized.id);
-    onUpdateConfig("authorIdentityId", normalized.id);
-    onUpdateConfig("authorIdentity", normalized);
+    onUpdateConfig("authorIdentityId", locked.authorIdentityId || normalized.id);
+    onUpdateConfig("authorIdentity", locked.authorIdentity);
+    onUpdateConfig("authorIdentityLock", locked.authorIdentityLock);
     onUpdateConfig("authorName", normalized.penName);
     onUpdateConfig("author", normalized.penName);
     onUpdateConfig("writerName", normalized.penName);

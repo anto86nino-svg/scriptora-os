@@ -78,7 +78,7 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
     if (initialInput.charactersText !== undefined) setCharactersText(initialInput.charactersText);
   }, [initialInput]);
 
-  const valid = idea.trim().length > 10 && targetAudience.trim().length > 2;
+  const valid = idea.trim().length > 10;
 
   const improveIdea = () => {
     if (isRunning) return;
@@ -110,8 +110,8 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
     }
 
     const current = tone.trim();
-    if (!current.toLowerCase().includes("bestseller")) {
-      setTone(`${current}, bestseller-level, clear, emotionally engaging`);
+    if (!current.toLowerCase().includes("insightful")) {
+      setTone(`${current}, insightful, emotionally engaging`);
     }
   };
 
@@ -157,7 +157,7 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
     authorIdentity: initialInput?.authorIdentity || selectedAuthor,
     genre,
     subcategory: subcategory.trim() || undefined,
-    targetAudience: targetAudience.trim(),
+    targetAudience: targetAudience.trim() || "",
     tone,
     language,
     titleLanguage,
@@ -187,7 +187,7 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Flame className="h-5 w-5 text-primary" />
-          Brief Strategico
+          Book Architect Brief
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -271,8 +271,8 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
           </div>
         </div>
 
-        <div>
-          <Label htmlFor="audience">Pubblico di riferimento</Label>
+          <div>
+            <Label htmlFor="audience">Target audience <span className="text-muted-foreground text-xs">(optional — inferred if empty)</span></Label>
           <Input
             id="audience"
             value={targetAudience}
@@ -403,20 +403,21 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
             onClick={() => onGenerateOne(buildInput())}
           >
             {isRunning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Flame className="mr-2 h-4 w-4" />}
-            Generate Bestseller
+            Build narrative blueprint
           </Button>
           <Button
             variant="secondary"
             className="flex-1"
             disabled={!valid || isRunning}
             onClick={() => onGenerateBatch(buildInput(), 10)}
+            title="One blueprint at a time"
           >
             <Bomb className="mr-2 h-4 w-4" />
-            Generate 10 Books
+            One book at a time
           </Button>
         </div>
         {!valid && !isRunning && (
-          <p className="text-xs text-muted-foreground">Inserisci idea e pubblico di riferimento per iniziare.</p>
+          <p className="text-xs text-muted-foreground">Describe your idea in at least a few words to begin architecture.</p>
         )}
       </CardContent>
     </Card>

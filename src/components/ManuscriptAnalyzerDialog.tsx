@@ -28,6 +28,12 @@ import { BookConfig, BookProject, Chapter, Genre, Language } from "@/types/book"
 import { cn } from "@/lib/utils";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 import { toast } from "sonner";
+import {
+  analyzeManuscriptPublishingIntel,
+  severityTone,
+  tierTone,
+  type ManuscriptPublishingIntel,
+} from "@/lib/publishing-intelligence";
 
 interface ManuscriptAnalyzerDialogProps {
   open: boolean;
@@ -68,6 +74,7 @@ interface ManuscriptAnalysis {
 }
 
 const MIN_ANALYSIS_WORDS = 80;
+const MAX_MANUSCRIPT_FILE_BYTES = 12 * 1024 * 1024;
 
 const LANGUAGE_OPTIONS: { value: Language; label: string }[] = [
   { value: "English", label: "English" },
@@ -440,16 +447,6 @@ if (issues.length === 0 && advice.length === 0) {
     advice.push({ key: "manuscript_advice_polish_micro" });
   }
 
-  console.log("SCRIPTORA DEBUG", {
-    warningTypes,
-    advice,
-    repeatDensity,
-    openingWords,
-    quoteMarks,
-    wordCount,
-    isSelfHelp
-  });
-
   advice.sort((a, b) =>
     (b.priority ? 1 : 0) - (a.priority ? 1 : 0)
   );
@@ -670,26 +667,31 @@ export function ManuscriptAnalyzerDialog({
   const [genre, setGenre] = useState<Genre>("self-help");
   const [analysis, setAnalysis] = useState<ManuscriptAnalysis | null>(null);
   const [reading, setReading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzingPhase, setAnalyzingPhase] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const wordCount = useMemo(() => countWords(rawText), [rawText]);
-  const canAnalyze = wordCount >= MIN_ANALYSIS_WORDS && !reading && !saving;
-  const premiumMetrics = analysis ? (() => {
-    const slowOpenings = analysis.chapters.filter(chapter => chapter.issues.some(issue => issue.key === "manuscript_issue_slow_opening")).length;
-    const weakChapters = analysis.chapters.filter(chapter => chapter.score < 70).length;
-    const denseChapters = analysis.chapters.filter(chapter => chapter.issues.some(issue => issue.key === "manuscript_issue_dense_blocks")).length;
-    const repetitionChapters = analysis.chapters.filter(chapter => chapter.issues.some(issue => issue.key === "manuscript_issue_repetition")).length;
-    const dialogueChapters = analysis.chapters.filter(chapter => chapter.strengths.some(strength => strength.key === "manuscript_strength_dialogue")).length;
+  const canAnalyze = wordCount >= MIN_ANALYSIS_WORDS && !reading && !analyzing && !saving;
 
-    return [
-      { label: t("metric_hook_strength"), value: clampScore(analysis.score - slowOpenings * 6), detail: t("metric_hook_strength_desc") },
-      { label: t("metric_emotional_intensity"), value: clampScore(analysis.score + dialogueChapters * 2 - denseChapters * 3), detail: t("metric_emotional_intensity_desc") },
-      { label: t("metric_commercial_potential"), value: clampScore(analysis.score - weakChapters * 4), detail: t("metric_commercial_potential_desc") },
-      { label: t("metric_reader_retention"), value: clampScore(analysis.score - denseChapters * 4 - repetitionChapters * 3), detail: t("metric_reader_retention_desc") },
-      { label: t("metric_market_strength"), value: clampScore(analysis.score + (analysis.words > 18000 ? 4 : 0) - weakChapters * 3), detail: t("metric_market_strength_desc") },
-    ];
-  })() : [];
+  const publishingIntel = useMemo((): ManuscriptPublishingIntel | null => {
+    if (!analysis) return null;
+    return analyzeManuscriptPublishingIntel({
+      fullText: analysis.chapters.map((c) => c.content).join("\n\n"),
+      chapters: analysis.chapters.map((c) => ({ title: c.title, content: c.content })),
+      genre,
+      language: bookLanguage,
+    });
+  }, [analysis, genre, bookLanguage]);
+
+  const premiumMetrics = publishingIntel
+    ? publishingIntel.marketReadiness.factors.slice(0, 5).map((f) => ({
+        label: f.label,
+        value: f.score,
+        detail: `${f.label} — weighted signal for market readiness.`,
+      }))
+    : [];
 
   const runAnalysis = (textOverride?: string, titleOverride?: string, sourceOverride?: string, genreOverride?: Genre) => {
     const nextText = (textOverride ?? rawText).trim();
@@ -705,13 +707,26 @@ export function ManuscriptAnalyzerDialog({
     }
 
     setError("");
-    setAnalysis(analyzeManuscript(nextText, nextTitle, nextSource, nextGenre));
+    setAnalyzing(true);
+    setAnalyzingPhase("Evaluating emotional momentum…");
+    try {
+      setAnalyzingPhase("Comparing genre expectations…");
+      const result = analyzeManuscript(nextText, nextTitle, nextSource, nextGenre);
+      setAnalyzingPhase("Estimating reader retention…");
+      setAnalysis(result);
+    } finally {
+      setAnalyzing(false);
+      setAnalyzingPhase("");
+    }
   };
 
   const handleFile = async (file: File) => {
     setReading(true);
     setError("");
     try {
+      if (file.size > MAX_MANUSCRIPT_FILE_BYTES) {
+        throw new Error(tt("manuscript_file_too_large", { mb: 12 }));
+      }
       const text = await readManuscriptFile(file);
       const detectedTitle = cleanTitle(file.name) || t("untitled");
       const detectedLanguage = detectLanguage(text);
@@ -802,7 +817,7 @@ export function ManuscriptAnalyzerDialog({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={reading || saving}
+                disabled={reading || analyzing || saving}
               className="flex w-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-white/20 bg-white/[0.055] px-4 py-7 text-center transition-colors hover:border-sky-300/50 hover:bg-sky-400/10 disabled:opacity-60"
             >
               <span className="ios-icon ios-icon-blue h-14 w-14 rounded-[20px]">
@@ -909,8 +924,8 @@ export function ManuscriptAnalyzerDialog({
                 disabled={!canAnalyze}
                 className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <BarChart3 className="h-4 w-4" />}
-                {t("manuscript_analyze_action")}
+                {reading || analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <BarChart3 className="h-4 w-4" />}
+                {reading || analyzing ? (analyzingPhase || "Evaluating manuscript…") : t("manuscript_analyze_action")}
               </button>
               <button
                 type="button"
@@ -927,13 +942,38 @@ export function ManuscriptAnalyzerDialog({
             {!analysis ? (
               <div className="flex min-h-[520px] flex-col items-center justify-center rounded-lg border border-white/10 bg-white/[0.035] p-8 text-center">
                 <span className="ios-icon ios-icon-teal h-16 w-16 rounded-[22px]">
-                  <FileText className="h-7 w-7" />
+                  {analyzing ? <Loader2 className="h-7 w-7 animate-spin" /> : <FileText className="h-7 w-7" />}
                 </span>
-                <h3 className="mt-4 text-base font-semibold text-foreground">{t("manuscript_empty_title")}</h3>
-                <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">{t("manuscript_empty_desc")}</p>
+                <h3 className="mt-4 text-base font-semibold text-foreground">
+                  {analyzing ? (analyzingPhase || "Evaluating manuscript…") : t("manuscript_empty_title")}
+                </h3>
+                <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+                  {analyzing ? "Publishing intelligence analysis in progress." : t("manuscript_empty_desc")}
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
+                {publishingIntel && (
+                  <div className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/10 via-transparent to-transparent p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Market Readiness</p>
+                        <p className={cn("mt-1 text-4xl font-black tabular-nums", tierTone(publishingIntel.marketReadiness.tier))}>
+                          {publishingIntel.marketReadiness.score}
+                          <span className="ml-2 text-base font-semibold text-muted-foreground">/ 100</span>
+                        </p>
+                        <p className={cn("mt-1 text-sm font-semibold", tierTone(publishingIntel.marketReadiness.tier))}>
+                          {publishingIntel.marketReadiness.tierLabel}
+                        </p>
+                      </div>
+                      <div className="max-w-xs text-[11px] leading-relaxed text-muted-foreground">
+                        {publishingIntel.trustNote}
+                      </div>
+                    </div>
+                    <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">{publishingIntel.continuityNote}</p>
+                  </div>
+                )}
+
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div className="rounded-lg border border-white/10 bg-white/[0.055] p-4">
                     <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("manuscript_book_score")}</p>
@@ -978,6 +1018,50 @@ export function ManuscriptAnalyzerDialog({
                     </div>
                   ))}
                 </div>
+
+                {publishingIntel && (
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <div className="rounded-xl border border-white/10 bg-white/[0.055] p-4 space-y-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Hook intelligence</p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="rounded-lg bg-background/50 p-2.5">
+                          <p className="text-muted-foreground">Opening</p>
+                          <p className="font-semibold text-foreground">{publishingIntel.hook.openingScore}/100</p>
+                        </div>
+                        <div className="rounded-lg bg-background/50 p-2.5">
+                          <p className="text-muted-foreground">Chapter 1</p>
+                          <p className="font-semibold text-foreground">{publishingIntel.hook.chapterOneScore}/100</p>
+                        </div>
+                      </div>
+                      <p className="text-xs leading-relaxed text-foreground/90">{publishingIntel.hook.explanation}</p>
+                      {publishingIntel.hook.flags.length > 0 && (
+                        <p className="text-[11px] text-muted-foreground">Flags: {publishingIntel.hook.flags.join(" · ")}</p>
+                      )}
+                    </div>
+
+                    <div className="rounded-xl border border-white/10 bg-white/[0.055] p-4 space-y-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Genre expectations</p>
+                      <p className={cn("text-xs font-semibold", severityTone(publishingIntel.genreExpectation.severity))}>
+                        {publishingIntel.genreExpectation.message}
+                      </p>
+                      <p className="text-xs leading-relaxed text-muted-foreground">{publishingIntel.genreExpectation.nicheNote}</p>
+                    </div>
+                  </div>
+                )}
+
+                {publishingIntel && publishingIntel.dropRiskMap.length > 0 && (
+                  <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4 space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Reader drop risk map</p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {publishingIntel.dropRiskMap.map((risk) => (
+                        <div key={`${risk.chapter}-${risk.message}`} className="flex gap-3 rounded-lg border border-white/10 bg-background/40 px-3 py-2.5 text-xs">
+                          <span className={cn("shrink-0 font-bold uppercase", severityTone(risk.severity))}>Ch.{risk.chapter}</span>
+                          <span className="text-muted-foreground">{risk.message}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="rounded-lg border border-white/10 bg-white/[0.055] p-4">
                   <div className="mb-3 flex items-center gap-2">

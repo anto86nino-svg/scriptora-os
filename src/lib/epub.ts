@@ -22,6 +22,13 @@ function typographicQuotes(s: string): string {
     .replace(/\.\.\./g, "\u2026");
 }
 
+function escapeXmlWithLinks(str: string): string {
+  const parts = str.split(/(https?:\/\/[^\s<]+)/g);
+  return parts
+    .map((part) => (/^https?:\/\//.test(part) ? `<a href="${escapeXml(part)}">${escapeXml(part)}</a>` : escapeXml(part)))
+    .join("");
+}
+
 function textToHtml(text: unknown, opts?: { dropCap?: boolean }): string {
   const blocks = parseExportBlocks(text);
   let firstParagraph = true;
@@ -32,24 +39,25 @@ function textToHtml(text: unknown, opts?: { dropCap?: boolean }): string {
     if (block.type === "scene") return `<p class="scene-break">✦ ✦ ✦</p>`;
 
     if (block.type === "bullet") {
-      return `<ul>\n${block.items.map((i) => `<li>${escapeXml(i)}</li>`).join("\n")}\n</ul>`;
+      return `<ul>\n${block.items.map((i) => `<li>${escapeXmlWithLinks(cleanMarkdownInline(i))}</li>`).join("\n")}\n</ul>`;
     }
 
     if (block.type === "numbered") {
-      return `<ol>\n${block.items.map((i) => `<li>${escapeXml(i)}</li>`).join("\n")}\n</ol>`;
+      return `<ol>\n${block.items.map((i) => `<li>${escapeXmlWithLinks(cleanMarkdownInline(i))}</li>`).join("\n")}\n</ol>`;
     }
 
     const cls = firstParagraph ? (opts?.dropCap ? "dropcap" : "first") : "";
     firstParagraph = false;
     const clean = cleanMarkdownInline(block.text);
-    return cls ? `<p class="${cls}">${escapeXml(clean)}</p>` : `<p>${escapeXml(clean)}</p>`;
+    const body = escapeXmlWithLinks(clean);
+    return cls ? `<p class="${cls}">${body}</p>` : `<p>${body}</p>`;
   }).join("\n");
 }
 
-function createXhtml(title: string, body: string, cssPath = "style.css"): string {
+function createXhtml(title: string, body: string, cssPath = "style.css", langCode = "en"): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="en">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="${langCode}">
 <head>
   <meta charset="UTF-8"/>
   <title>${escapeXml(title)}</title>
@@ -269,11 +277,11 @@ function getFrontMatterLabels(lang: string) {
 
 function getBackMatterLabels(lang: string) {
   const labels: Record<string, Record<string, string>> = {
-    English: { conclusion: exportLabel("conclusion", lang), authorNote: exportLabel("authorNote", lang), callToAction: exportLabel("whatsNext", lang), reviewRequest: exportLabel("smallRequest", lang), otherBooks: exportLabel("otherBooks", lang) },
-    Italian: { conclusion: "Conclusione", authorNote: "Nota dell'Autore", callToAction: "E Adesso?", reviewRequest: "Una Piccola Richiesta", otherBooks: "Altri Libri" },
-    Spanish: { conclusion: "Conclusión", authorNote: "Nota del Autor", callToAction: "¿Y Ahora Qué?", reviewRequest: "Una Pequeña Petición", otherBooks: "Otros Libros" },
-    French: { conclusion: exportLabel("conclusion", lang), authorNote: "Note de l'Auteur", callToAction: "Et Maintenant?", reviewRequest: "Une Petite Demande", otherBooks: "Autres Livres" },
-    German: { conclusion: "Fazit", authorNote: "Anmerkung des Autors", callToAction: "Was Kommt Als Nächstes?", reviewRequest: "Eine Kleine Bitte", otherBooks: "Weitere Bücher" },
+    English: { conclusion: exportLabel("conclusion", lang), authorNote: exportLabel("authorNote", lang), callToAction: exportLabel("whatsNext", lang), reviewRequest: exportLabel("smallRequest", lang), otherBooks: exportLabel("otherBooks", lang), followAuthor: exportLabel("followAuthor", lang) },
+    Italian: { conclusion: "Conclusione", authorNote: "Nota dell'Autore", callToAction: "E Adesso?", reviewRequest: "Una Piccola Richiesta", otherBooks: "Altri Libri", followAuthor: exportLabel("followAuthor", lang) },
+    Spanish: { conclusion: "Conclusión", authorNote: "Nota del Autor", callToAction: "¿Y Ahora Qué?", reviewRequest: "Una Pequeña Petición", otherBooks: "Otros Libros", followAuthor: exportLabel("followAuthor", lang) },
+    French: { conclusion: exportLabel("conclusion", lang), authorNote: "Note de l'Auteur", callToAction: "Et Maintenant?", reviewRequest: "Une Petite Demande", otherBooks: "Autres Livres", followAuthor: exportLabel("followAuthor", lang) },
+    German: { conclusion: "Fazit", authorNote: "Anmerkung des Autors", callToAction: "Was Kommt Als Nächstes?", reviewRequest: "Eine Kleine Bitte", otherBooks: "Weitere Bücher", followAuthor: exportLabel("followAuthor", lang) },
   };
   return labels[lang] || labels.English;
 }
@@ -299,7 +307,7 @@ export async function generateEpub(project: BookProject, coverDataUrl?: string):
     });
   }
 
-  const author = ((config as any).authorName || (config as any).author || (config as any).writerName || "Antonino Campanella").trim();
+  const author = ((config as any).authorName || (config as any).author || (config as any).writerName || "Unknown Author").trim();
 
   // --- Half title (typographic tradition) ---
   entries.push({
@@ -385,6 +393,7 @@ ${textToHtml(ch.content, { dropCap: true })}`;
       ["cta", bmLabels.callToAction, backMatter.callToAction],
       ["review", bmLabels.reviewRequest, backMatter.reviewRequest],
       ["otherbooks", bmLabels.otherBooks, backMatter.otherBooks],
+      ["followauthor", bmLabels.followAuthor, backMatter.followAuthor],
     ];
     for (const [id, title, content] of bmSections) {
       if (content) {
@@ -451,7 +460,7 @@ ${textToHtml(ch.content, { dropCap: true })}`;
   const manifestItems: string[] = [];
   const spineItems: string[] = [];
   for (const e of entries) {
-    files.push({ path: `OEBPS/${e.filename}`, content: createXhtml(e.title, e.body) });
+    files.push({ path: `OEBPS/${e.filename}`, content: createXhtml(e.title, e.body, "style.css", langCode) });
     manifestItems.push(`<item id="${e.id}" href="${e.filename}" media-type="application/xhtml+xml"/>`);
     spineItems.push(`<itemref idref="${e.id}"/>`);
   }
@@ -554,6 +563,8 @@ ${landmarkItems.join("\n")}
     <dc:identifier id="bookid">urn:uuid:${uuid}</dc:identifier>
     <dc:title>${escapeXml(config.title)}</dc:title>
     <dc:language>${langCode}</dc:language>
+    <dc:creator>${escapeXml(author)}</dc:creator>
+    ${config.subtitle ? `<dc:description>${escapeXml(config.subtitle)}</dc:description>` : ""}
     <meta property="dcterms:modified">${new Date().toISOString().split(".")[0]}Z</meta>
     ${coverMeta}
   </metadata>
@@ -589,7 +600,8 @@ ${landmarkItems.join("\n")}
 
 export function validateEpubStructure(project: BookProject): string[] {
   const errors: string[] = [];
-  const { config, chapters, frontMatter, backMatter } = project;
+  const normalized = normalizeExportProject(project);
+  const { config, chapters, frontMatter, backMatter } = normalized;
 
   // 1. Content completeness
   if (chapters.length === 0) errors.push("No chapters generated yet.");
@@ -641,6 +653,7 @@ export function validateEpubStructure(project: BookProject): string[] {
       ["cta", backMatter.callToAction],
       ["review", backMatter.reviewRequest],
       ["otherbooks", backMatter.otherBooks],
+      ["followauthor", backMatter.followAuthor],
     ];
     for (const [id, content] of bmMap) {
       if (content) addAnchor(`${id}.xhtml`, id);
@@ -677,6 +690,7 @@ export function validateEpubStructure(project: BookProject): string[] {
       ["conclusion", backMatter.conclusion], ["authornote", backMatter.authorNote],
       ["cta", backMatter.callToAction], ["review", backMatter.reviewRequest],
       ["otherbooks", backMatter.otherBooks],
+      ["followauthor", backMatter.followAuthor],
     ];
     for (const [id, content] of bmIds) {
       if (content) tocLinks.push({ filename: `${id}.xhtml`, label: id });

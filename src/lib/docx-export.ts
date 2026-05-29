@@ -106,7 +106,7 @@ function chapterOpener(num: number, title: string): Paragraph[] {
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 240 },
-      children: [new TextRun({ text: `Capitolo ${num}`, font: "Garamond", size: 22, italics: true, color: "666666" })],
+      children: [new TextRun({ text: `${exportLabel("chapter", config.language)} ${num}`, font: "Garamond", size: 22, italics: true, color: "666666" })],
     }),
     // Big title
     new Paragraph({
@@ -244,6 +244,7 @@ export async function generateDocx(project: BookProject): Promise<Blob> {
       [exportLabel("whatsNext", config.language), backMatter.callToAction],
       [exportLabel("smallRequest", config.language), backMatter.reviewRequest],
       [exportLabel("otherBooks", config.language), backMatter.otherBooks],
+      [exportLabel("followAuthor", config.language), backMatter.followAuthor],
     ];
     for (const [title, content] of bmSections) {
       const txt = safeText(content);

@@ -254,10 +254,30 @@ export const PLAN_LABEL: Record<"free" | "pro" | "premium", string> = {
 /** Reason copy for a paywall — never mentions internal providers. */
 export function paywallCopyFor(feature: FeatureKey): { title: string; subtitle: string; required: "pro" | "premium" } {
   const required = requiredPlanFor(feature);
-  const title = "Funzione Premium";
+  const copyByFeature: Partial<Record<FeatureKey, { title: string; subtitle: string }>> = {
+    dominate_mode: {
+      title: "Developmental editing at full depth",
+      subtitle: "Surgical chapter revision with voice lock, canon preservation, and editorial intelligence.",
+    },
+    export_epub: {
+      title: "Publish-ready export",
+      subtitle: "Take your manuscript to EPUB, PDF, and DOCX when the book is ready.",
+    },
+    kdp_market_base: {
+      title: "Market intelligence for authors",
+      subtitle: "KDP positioning, packaging, and commercial analysis — one professional workflow.",
+    },
+    bestseller_prediction: {
+      title: "Commercial launch analysis",
+      subtitle: "Deeper market signals for launch decisions — not hype, structured guidance.",
+    },
+  };
+  const specific = copyByFeature[feature];
+  if (specific) return { ...specific, required };
+  const title = required === "premium" ? "Premium author tools" : "Pro author tools";
   const subtitle =
     required === "premium"
-      ? "Questa funzione è inclusa nel piano Premium."
-      : "Questa funzione è inclusa nel piano Pro.";
+      ? "Included in Premium — editorial depth, export, and market intelligence in one OS."
+      : "Included in Pro — professional writing workflow beyond the free book.";
   return { title, subtitle, required };
 }

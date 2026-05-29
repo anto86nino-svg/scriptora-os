@@ -3,6 +3,8 @@ import { BookProject, BookConfig, ChatMessage, GenerationPhase, GenerationStatus
 import { saveProjectAsync, createProjectId, setLastProjectId, loadProjects as loadScopedProjects } from "@/services/storageService";
 import { saveProject } from "@/lib/storage";
 import { generateBlueprint, generateFrontMatter, generateChapter, generateChapterChunked, generateSubchapter, generateBackMatter, rewriteChapter, evaluateChapterQuality, RewriteLevel, ChunkProgress, buildGenreLock } from "@/lib/generation";
+import { applyAuthorBrainToBackMatter, applyAuthorBrainToFrontMatter } from "@/lib/author-brain";
+import type { BackMatter, FrontMatter } from "@/types/book";
 import { toast } from "sonner";
 import { t } from "@/lib/i18n";
 import { fetchPlan } from "@/lib/plan";
@@ -13,6 +15,7 @@ import { normalizeProjectChapterTitles, resolveChapterTitle, formatChapterDispla
 import { ensureBookTitleMetadata } from "@/lib/title-shadow";
 import { applyAuthorIdentityToConfig, enforceAuthorIdentityLock, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
 import { applyBookIntelligenceToConfig } from "@/lib/book-intelligence";
+import { consumeAutoBestsellerHandoffPack } from "@/lib/auto-bestseller-architect";
 import { refreshProjectNarrativeIntelligenceV2 } from "@/lib/narrative-intelligence-v2";
 
 const FREE_MAX_PROJECT_WORDS = 10_000;
@@ -139,7 +142,9 @@ function scheduleRemoteSave(project: BookProject, cbs?: any) {
     remoteSaveTimer = null;
     const p = pendingRemoteSave;
     pendingRemoteSave = null;
-    if (p) saveProjectAsync(p.project, p.cbs).catch(() => {});
+    if (p) saveProjectAsync(p.project, p.cbs).catch(() => {
+      toast.warning(t("toast_saved_locally"));
+    });
   }, 1500);
 }
 
@@ -204,12 +209,14 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       }
     }
 
-    const titleSafeInput = ensureBookTitleMetadata(config, {
-      genre: config.genre,
-      category: config.category,
-      subcategory: config.subcategory,
-      targetAudience: config.tone,
-      language: config.language,
+    const handoff = consumeAutoBestsellerHandoffPack();
+
+    const titleSafeInput = ensureBookTitleMetadata(handoff?.config || config, {
+      genre: (handoff?.config || config).genre,
+      category: (handoff?.config || config).category,
+      subcategory: (handoff?.config || config).subcategory,
+      targetAudience: (handoff?.config || config).tone,
+      language: (handoff?.config || config).language,
     });
     const authorSafeInput = enforceAuthorIdentityLock(
       applyAuthorIdentityToConfig(
@@ -248,13 +255,31 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     syncRef(newProject);
     setMessages([]);
     saveProject(newProject);
-    saveProjectAsync(newProject, syncCallbacks).catch(() => {});
+    saveProjectAsync(newProject, syncCallbacks).catch(() => {
+      toast.warning(t("toast_saved_locally"));
+    });
 
     addMessage("system", `Starting book: "${safeConfig.title}" — ${safeConfig.numberOfChapters} chapters, ${safeConfig.language}, ${safeConfig.genre}, ${safeConfig.bookLength} book`);
+
+    if (handoff?.blueprint) {
+      addMessage("assistant", `Market-aware blueprint loaded for "${handoff.summary.selectedTitle}".`);
+      addMessage(
+        "assistant",
+        `✓ Market analyzed\n✓ Blueprint created (${handoff.blueprint.chapterOutlines.length} chapters)\n✓ Emotional architecture prepared\n✓ Writing memory initialized\n\nReview the narrative architecture, then generate front matter or chapters when you're ready.`,
+      );
+      updateAndSave((p) => ({
+        ...p,
+        blueprint: handoff.blueprint,
+        longBookMemory: handoff.memorySeed,
+        phase: "front-matter" as GenerationPhase,
+      }));
+      return;
+    }
+
     addGenerating("blueprint");
 
     try {
-      addMessage("assistant", "Generating book blueprint... 🏗️");
+      addMessage("assistant", "Building narrative blueprint…");
       const blueprint = await generateBlueprint(safeConfig, genreLock, { projectId: newProject.id });
       updateAndSave(p => ({ ...p, blueprint, phase: "front-matter" as GenerationPhase }));
       addMessage("assistant", `Blueprint ready! ${blueprint.chapterOutlines.length} chapters planned.`);
@@ -847,6 +872,31 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     });
   }, [updateAndSave]);
 
+  const applyAuthorBrainFrontMatter = useCallback(() => {
+    updateAndSave((p) => {
+      const merged = applyAuthorBrainToFrontMatter(p.frontMatter || {}, p.config, "regenerate");
+      if (!merged.aboutAuthor?.trim()) return p;
+      return {
+        ...p,
+        frontMatter: { ...(p.frontMatter || {}), ...merged } as FrontMatter,
+      };
+    });
+    toast.success(t("author_brain_apply_front_success"));
+  }, [updateAndSave]);
+
+  const applyAuthorBrainBackMatter = useCallback(() => {
+    updateAndSave((p) => {
+      const merged = applyAuthorBrainToBackMatter(p.backMatter || {}, p.config, "regenerate");
+      const hasAuthorSections = Boolean(merged.otherBooks?.trim() || merged.followAuthor?.trim());
+      if (!hasAuthorSections) return p;
+      return {
+        ...p,
+        backMatter: { ...(p.backMatter || {}), ...merged } as BackMatter,
+      };
+    });
+    toast.success(t("author_brain_apply_back_success"));
+  }, [updateAndSave]);
+
   const loadProject = useCallback((p: BookProject) => {
     const baseConfig: BookConfig = {
       ...p.config,
@@ -1028,6 +1078,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     updateConfig, updateChapterContent, updateChapterTitle, updateSubchapterContent, updateSubchapterTitle,
     updateBlueprintField, updateBlueprintOutlineTitle, updateBlueprintOutlineSummary,
     updateFrontMatterField, updateBackMatterField,
+    applyAuthorBrainFrontMatter, applyAuthorBrainBackMatter,
     setChapterLengthOverride,
     loadProject, handleUserMessage, isGeneratingSection, cancelGeneration,
     generateFullBook,

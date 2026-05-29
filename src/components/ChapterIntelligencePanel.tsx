@@ -23,6 +23,8 @@ import {
   readerEmotionDisplayRows,
   simulateReaderEmotion,
 } from "@/lib/narrative-intelligence-v2";
+import { computeBookEditorialDashboard } from "@/lib/editorial-dashboard-pro";
+import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
 
 function countWordsForChapterLock(value: unknown): number {
   if (!value) return 0;
@@ -210,6 +212,18 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
     project.config.numberOfChapters,
   ]);
 
+  const bookDashboard = useMemo(() => computeBookEditorialDashboard(project), [project]);
+
+  const chapterMarketScores = useMemo(() => {
+    const content = workingContent || chapter?.content || "";
+    if (content.split(/\s+/).filter(Boolean).length < 80) return null;
+    return computeMarketPremiumScores({
+      content,
+      genre: project.config.genre,
+      language: project.config.language,
+    });
+  }, [workingContent, chapter?.content, project.config.genre, project.config.language]);
+
   const guardFreeChapterAi = async () => {
     if (await isFreeChapterAiLocked(project)) {
       toast.error("AI Editor bloccato nel piano Free dopo il libro gratuito. Passa a Pro/Premium per analisi, patch e Dominate.");
@@ -243,6 +257,25 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   };
   const discardPatch = () => {
     if (patchJob) dismissJob(patchJob.id);
+  };
+
+  const runDominate = async () => {
+    if (await guardFreeChapterAi()) return;
+    if (!canDominate) {
+      setShowUpgrade(true);
+      return;
+    }
+    await startDominate(project, chapterIndex);
+  };
+  const applyDominate = () => {
+    if (!dominateJob) return;
+    applyJob(dominateJob.id, (text) => {
+      setWorkingContent(text);
+      onApplyContent(text);
+    });
+  };
+  const discardDominate = () => {
+    if (dominateJob) dismissJob(dominateJob.id);
   };
 
   useEffect(() => {
@@ -333,6 +366,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   };
 
   const fixParagraph = async (weak: WeakParagraph, fixMode: "clean" | "power" = "clean") => {
+    if (await guardFreeChapterAi()) return;
     setFixing(weak.idx);
     try {
       const { data, error } = await supabase.functions.invoke("fix-section", {
@@ -343,7 +377,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
           genre: project.config.genre,
           tone: project.config.tone,
           language: project.config.language,
-          chapterContext: chapter.content,
+          chapterContext: workingContent,
           blueprintIntegrityBlock: buildBlueprintIntegrityRuntimeBlock(project.config, project.blueprint, {
             chapterIndex,
             compact: true,
@@ -470,7 +504,10 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
     );
   };
 
-  const idle = !analyzing && !patching && !patchResult && !dominating && !dominateResult && !result;
+  const patchError = patchJob?.status === "error" ? patchJob.error : null;
+  const dominateError = dominateJob?.status === "error" ? dominateJob.error : null;
+
+  const idle = !analyzing && !patching && !patchResult && !dominating && !dominateResult && !result && !patchError && !dominateError;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
@@ -623,6 +660,146 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
             </div>
           )}
 
+          {chapterMarketScores && (
+            <div className="rounded-xl border border-border/60 bg-gradient-to-br from-primary/5 to-transparent p-4 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-bold uppercase tracking-wide text-foreground">Commercial Readability</span>
+                <span className="text-sm font-black text-primary">{chapterMarketScores.composite}/100</span>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 text-[11px]">
+                {[
+                  ["Hook strength", chapterMarketScores.hookStrength],
+                  ["Bingeability", chapterMarketScores.bingeability],
+                  ["Emotional momentum", chapterMarketScores.emotionalMomentum],
+                  ["Genre fit", chapterMarketScores.genreAlignment],
+                  ...(chapterMarketScores.bookTokPotential != null ? [["BookTok", chapterMarketScores.bookTokPotential]] : []),
+                ].map(([label, score]) => (
+                  <div key={label} className="rounded-lg bg-background/70 border border-border/40 px-2.5 py-2">
+                    <p className="text-muted-foreground">{label}</p>
+                    <p className="font-semibold text-foreground">{score}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Retention risk:{" "}
+                <span className={`font-semibold ${chapterMarketScores.readerRetentionRisk === "high" ? "text-rose-500" : chapterMarketScores.readerRetentionRisk === "medium" ? "text-amber-600" : "text-emerald-600"}`}>
+                  {chapterMarketScores.readerRetentionRisk}
+                </span>
+                {" · "}
+                {chapterMarketScores.genreAlignmentNote}
+              </p>
+            </div>
+          )}
+
+          {bookDashboard && (
+            <div className="rounded-xl border border-border/60 bg-muted/15 p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wide text-foreground">Book Editorial Dashboard</span>
+                <span className="text-[10px] text-muted-foreground">{project.chapters.length} chapters</span>
+              </div>
+
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Emotional heatmap</p>
+                <div className="flex items-end gap-1 h-16">
+                  {bookDashboard.emotionalHeatmap.map(point => (
+                    <div key={point.chapter} className="flex-1 min-w-[6px] flex flex-col items-center gap-1">
+                      <div
+                        className={`w-full rounded-t-md ${point.label === "high" ? "bg-primary" : point.label === "medium" ? "bg-primary/45" : "bg-muted-foreground/30"}`}
+                        style={{ height: `${Math.max(12, point.intensity * 10)}%` }}
+                        title={`Ch ${point.chapter}: ${point.intensity}/10`}
+                      />
+                      <span className="text-[8px] text-muted-foreground">{point.chapter}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Tension curve</p>
+                <div className="flex items-end gap-1 h-14 rounded-lg bg-background/40 px-1 py-1">
+                  {bookDashboard.tensionCurve.map(point => (
+                    <div key={`t-${point.chapter}`} className="flex-1 min-w-[6px] flex flex-col items-center gap-0.5">
+                      <div
+                        className="w-full rounded-t-sm bg-amber-500/70"
+                        style={{ height: `${Math.max(8, point.tension * 100)}%` }}
+                        title={`Ch ${point.chapter}: ${Math.round(point.tension * 100)}%`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-2">
+                {[
+                  ["Binge", bookDashboard.commercial.bingeability],
+                  ["Pull", bookDashboard.commercial.emotionalPull],
+                  ["Pace", bookDashboard.commercial.pacingMomentum],
+                  ["Tension", bookDashboard.commercial.sceneTension],
+                  ["Payoff", bookDashboard.commercial.payoffQuality],
+                ].map(([label, score]) => (
+                  <div key={label} className="rounded-lg bg-background/60 border border-border/40 px-2 py-1.5">
+                    <p className="text-[10px] text-muted-foreground">{label}</p>
+                    <p className="text-sm font-semibold">{score}</p>
+                  </div>
+                ))}
+              </div>
+
+              {bookDashboard.warnings.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Chapter warnings</p>
+                  {bookDashboard.warnings.slice(0, 4).map(w => (
+                    <div key={`${w.chapter}-${w.code}`} className="flex gap-2 text-[11px] rounded-lg border border-border/40 bg-background/50 px-2.5 py-2">
+                      <span className={`shrink-0 font-bold ${w.severity === "high" ? "text-rose-500" : w.severity === "medium" ? "text-amber-600" : "text-muted-foreground"}`}>
+                        Ch.{w.chapter}
+                      </span>
+                      <span className="text-muted-foreground">{w.message}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {bookDashboard.dropRiskChapters.length > 0 && (
+                <p className="text-[11px] text-rose-600/90">
+                  Reader drop risk: chapters {bookDashboard.dropRiskChapters.join(", ")}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* JOB ERRORS */}
+          {(patchError || dominateError) && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Revisione non completata</p>
+                  <p className="text-xs text-muted-foreground mt-1">{patchError || dominateError}</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                {patchError && (
+                  <button onClick={runPatch}
+                    className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90">
+                    <RefreshCw className="h-3.5 w-3.5" /> Riprova Fix Capitolo
+                  </button>
+                )}
+                {dominateError && canDominate && (
+                  <button onClick={runDominate}
+                    className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold bg-card border border-border hover:bg-accent">
+                    <RefreshCw className="h-3.5 w-3.5" /> Riprova ricostruzione
+                  </button>
+                )}
+                <button onClick={() => {
+                  if (patchJob) dismissJob(patchJob.id);
+                  if (dominateJob) dismissJob(dominateJob.id);
+                }}
+                  className="h-9 px-4 rounded-lg text-xs font-semibold bg-card border border-border hover:bg-accent">
+                  Chiudi
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* IDLE — Patch as default */}
           {idle && (
             <div className="text-center py-8 space-y-5">
@@ -630,13 +807,13 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
               <div>
                 <p className="text-base font-bold text-foreground">{t("chapter_doctor_panel_subtitle")}</p>
                 <p className="text-xs text-muted-foreground mt-1.5 max-w-md mx-auto">
-                  Analizza il capitolo, segna 🟢 forte / 🟡 migliorabile / 🔴 debole, e modifica <strong>solo</strong> ciò che serve.
-                  Mai oltre il <strong>15%</strong>. Voce e struttura intatte.
+                  Migliora <strong>ciò che hai scritto</strong> — interventi mirati su dialoghi, emozioni, ritmo e chiusure.
+                  Mai oltre il <strong>25%</strong>. Voce, canon e struttura intatti.
                 </p>
               </div>
               <button onClick={runPatch}
                 className="inline-flex items-center gap-2 h-11 px-6 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-md">
-                <Eye className="h-4 w-4" /> ✦ Fix Capitolo
+                <Scissors className="h-4 w-4" /> Surgical Edit
               </button>
               {/* Advanced toggle */}
               <div className="pt-4 border-t border-border/30 max-w-md mx-auto">

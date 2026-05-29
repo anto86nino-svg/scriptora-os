@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.title-autofill]
 verify_jwt = false
+
+[functions.expand-author-bio]
+verify_jwt = false

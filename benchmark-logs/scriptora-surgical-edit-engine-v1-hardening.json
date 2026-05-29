@@ -1,0 +1,137 @@
+{
+  "summary": {
+    "passed": true,
+    "totalAssertions": 20,
+    "failedAssertions": 0
+  },
+  "results": [
+    {
+      "id": "v1-actions",
+      "label": "V1 Surgical Actions",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "dialogue",
+          "passed": true,
+          "message": "Dialogue roughening applied"
+        },
+        {
+          "id": "emotional",
+          "passed": true,
+          "message": "Emotional trimming applied"
+        },
+        {
+          "id": "slow-burn",
+          "passed": true,
+          "message": "Slow burn protection applied"
+        },
+        {
+          "id": "pacing",
+          "passed": true,
+          "message": "Pacing compression applied"
+        },
+        {
+          "id": "ending",
+          "passed": true,
+          "message": "Ending compression applied"
+        }
+      ]
+    },
+    {
+      "id": "voice-protection",
+      "label": "Voice Protection",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "ratio-cap",
+          "passed": true,
+          "message": "Modification ratio 0.00 within cap"
+        },
+        {
+          "id": "voice-preserved",
+          "passed": true,
+          "message": "Voice guard accepted or safely rejected edits"
+        },
+        {
+          "id": "not-empty",
+          "passed": true,
+          "message": "Edited text non-empty"
+        },
+        {
+          "id": "has-explanation",
+          "passed": true,
+          "message": "Human explanations when actions apply"
+        },
+        {
+          "id": "reject-overfit",
+          "passed": true,
+          "message": "Over-large edits rejected"
+        }
+      ]
+    },
+    {
+      "id": "genre-stress",
+      "label": "Genre Stress Tests",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "romance-cap",
+          "passed": true,
+          "message": "romance stays within modification cap"
+        },
+        {
+          "id": "romance-canon",
+          "passed": true,
+          "message": "romance preserves named entities when present"
+        },
+        {
+          "id": "thriller-cap",
+          "passed": true,
+          "message": "thriller stays within modification cap"
+        },
+        {
+          "id": "thriller-canon",
+          "passed": true,
+          "message": "thriller preserves named entities when present"
+        },
+        {
+          "id": "self-help-cap",
+          "passed": true,
+          "message": "self-help stays within modification cap"
+        },
+        {
+          "id": "self-help-canon",
+          "passed": true,
+          "message": "self-help preserves named entities when present"
+        },
+        {
+          "id": "fantasy-cap",
+          "passed": true,
+          "message": "fantasy stays within modification cap"
+        },
+        {
+          "id": "fantasy-canon",
+          "passed": true,
+          "message": "fantasy preserves named entities when present"
+        }
+      ]
+    },
+    {
+      "id": "patch-validation",
+      "label": "Patch Output Validation",
+      "passed": true,
+      "assertions": [
+        {
+          "id": "patch-capped",
+          "passed": true,
+          "message": "Patch output capped (0%)"
+        },
+        {
+          "id": "patch-trimmed",
+          "passed": true,
+          "message": "Excess patches trimmed when over cap"
+        }
+      ]
+    }
+  ]
+}

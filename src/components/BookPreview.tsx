@@ -7,6 +7,7 @@ import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { usePlan, PLAN_LIMITS } from "@/lib/plan";
 import { isDevMode } from "@/lib/dev-mode";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { toast } from "sonner";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 
 interface BookPreviewProps {
@@ -53,8 +54,10 @@ export function BookPreview({
       const blob = await generateEpub(project, coverOverride ?? coverDataUrl);
       const filename = config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadEpub(blob, filename);
+      toast.success("EPUB esportato con successo");
     } catch (e) {
       console.error("EPUB export failed:", e);
+      toast.error(e instanceof Error ? e.message : "Esportazione EPUB fallita");
     } finally {
       setIsExporting(false);
     }
@@ -303,6 +306,7 @@ export function BookPreview({
           authorName={config.authorName || config.author || config.writerName}
           description={blueprint?.overview || config.subtitle}
           authorBio={frontMatter?.aboutAuthor || config.authorIdentity?.biography}
+          projectGenre={config.genre}
           onGenerate={(dataUrl) => {
             setCoverDataUrl(dataUrl);
             setShowCover(false);

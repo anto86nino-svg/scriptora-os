@@ -62,7 +62,7 @@ NON riscrivere il capitolo. NON cambiare trama, canon, voce, POV o struttura.
 Devi trovare miglioramenti editoriali percepibili: subtext, ritmo, dialoghi meno perfetti, compressione di spiegazioni emotive, tensione, finali meno sovraspiegati. 
 Se intensity è "balanced" o "aggressive", non limitarti a micro-cosmesi: applica tagli e riformulazioni visibili ma chirurgiche.
 Anche se il testo è forte, individua almeno 1 intervento leggero se esiste una frase migliorabile.
-Massimo 15% del capitolo. Stessa voce. Meno AI. Più umano. Più narrativo.
+Massimo 25% del capitolo. Stessa voce. Meno AI. Più umano. Più narrativo.
 Output SOLO JSON valido.`;
 
   const user = `Genere: ${ctx.genre} | Tono: ${ctx.tone} | Capitolo: "${ctx.chapterTitle}"
@@ -81,7 +81,7 @@ Intensità richiesta: ${ctx.intensity || "balanced"}.
 Genera patch per i punti più utili (max ${ctx.maxPatchesInBatch} patch in questo batch).
 Non restituire patches vuote se nel batch esiste almeno una frase migliorabile.
 Ogni patch deve essere chirurgica: stesso significato, stessa voce, più subtext, più tensione, meno spiegazione.
-Lunghezza ±15%, stessa voce.
+Lunghezza ±25%, stessa voce.
 
 Restituisci JSON in ${ctx.language}:
 {
@@ -147,10 +147,10 @@ serve(async (req) => {
     // 15% global cap → distribute per batch
     const intensityCap =
       intensity === "aggressive"
-        ? 0.22
+        ? 0.25
         : intensity === "light"
-          ? 0.10
-          : 0.16;
+          ? 0.12
+          : 0.20;
 
     const globalMaxPatches = Math.max(1, Math.ceil(paragraphs.length * intensityCap));
     const perBatchCap = Math.max(1, Math.ceil(globalMaxPatches / batches.length));

@@ -1,0 +1,462 @@
+{
+  "corpusSize": 35,
+  "mode": "automated-proxy-local-engine",
+  "humanParticipants": 0,
+  "applyProxy": 0,
+  "rejectProxy": 35,
+  "applyRate": 0,
+  "voicePreservationRate": 1,
+  "avgModificationRatio": 0,
+  "byGenre": {
+    "romance": {
+      "n": 5,
+      "apply": 0,
+      "voice": 5,
+      "modSum": 0,
+      "applyRate": 0,
+      "voiceRate": 1,
+      "avgMod": 0
+    },
+    "thriller": {
+      "n": 5,
+      "apply": 0,
+      "voice": 5,
+      "modSum": 0,
+      "applyRate": 0,
+      "voiceRate": 1,
+      "avgMod": 0
+    },
+    "fantasy": {
+      "n": 5,
+      "apply": 0,
+      "voice": 5,
+      "modSum": 0,
+      "applyRate": 0,
+      "voiceRate": 1,
+      "avgMod": 0
+    },
+    "memoir": {
+      "n": 5,
+      "apply": 0,
+      "voice": 5,
+      "modSum": 0,
+      "applyRate": 0,
+      "voiceRate": 1,
+      "avgMod": 0
+    },
+    "selfHelp": {
+      "n": 5,
+      "apply": 0,
+      "voice": 5,
+      "modSum": 0,
+      "applyRate": 0,
+      "voiceRate": 1,
+      "avgMod": 0
+    },
+    "business": {
+      "n": 5,
+      "apply": 0,
+      "voice": 5,
+      "modSum": 0,
+      "applyRate": 0,
+      "voiceRate": 1,
+      "avgMod": 0
+    },
+    "horticultural": {
+      "n": 5,
+      "apply": 0,
+      "voice": 5,
+      "modSum": 0,
+      "applyRate": 0,
+      "voiceRate": 1,
+      "avgMod": 0
+    }
+  },
+  "rows": [
+    {
+      "id": "rw-romance-1",
+      "genre": "romance",
+      "category": "Romance / Dark Romance",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-romance-2",
+      "genre": "romance",
+      "category": "Romance / Dark Romance",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-romance-3",
+      "genre": "romance",
+      "category": "Romance / Dark Romance",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-romance-4",
+      "genre": "romance",
+      "category": "Romance / Dark Romance",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-romance-5",
+      "genre": "romance",
+      "category": "Romance / Dark Romance",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-thriller-1",
+      "genre": "thriller",
+      "category": "Thriller / Crime",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-thriller-2",
+      "genre": "thriller",
+      "category": "Thriller / Crime",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-thriller-3",
+      "genre": "thriller",
+      "category": "Thriller / Crime",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-thriller-4",
+      "genre": "thriller",
+      "category": "Thriller / Crime",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-thriller-5",
+      "genre": "thriller",
+      "category": "Thriller / Crime",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-fantasy-1",
+      "genre": "fantasy",
+      "category": "Fantasy",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-fantasy-2",
+      "genre": "fantasy",
+      "category": "Fantasy",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-fantasy-3",
+      "genre": "fantasy",
+      "category": "Fantasy",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-fantasy-4",
+      "genre": "fantasy",
+      "category": "Fantasy",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-fantasy-5",
+      "genre": "fantasy",
+      "category": "Fantasy",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-memoir-1",
+      "genre": "memoir",
+      "category": "Memoir / Emotional Fiction",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-memoir-2",
+      "genre": "memoir",
+      "category": "Memoir / Emotional Fiction",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-memoir-3",
+      "genre": "memoir",
+      "category": "Memoir / Emotional Fiction",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-memoir-4",
+      "genre": "memoir",
+      "category": "Memoir / Emotional Fiction",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-memoir-5",
+      "genre": "memoir",
+      "category": "Memoir / Emotional Fiction",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-selfhelp-1",
+      "genre": "selfHelp",
+      "category": "Self-help",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-selfhelp-2",
+      "genre": "selfHelp",
+      "category": "Self-help",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-selfhelp-3",
+      "genre": "selfHelp",
+      "category": "Self-help",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-selfhelp-4",
+      "genre": "selfHelp",
+      "category": "Self-help",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-selfhelp-5",
+      "genre": "selfHelp",
+      "category": "Self-help",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-business-1",
+      "genre": "business",
+      "category": "Business",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-business-2",
+      "genre": "business",
+      "category": "Business",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-business-3",
+      "genre": "business",
+      "category": "Business",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-business-4",
+      "genre": "business",
+      "category": "Business",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-business-5",
+      "genre": "business",
+      "category": "Business",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-hort-1",
+      "genre": "horticultural",
+      "category": "Practical Guides",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-hort-2",
+      "genre": "horticultural",
+      "category": "Practical Guides",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-hort-3",
+      "genre": "horticultural",
+      "category": "Practical Guides",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-hort-4",
+      "genre": "horticultural",
+      "category": "Practical Guides",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    },
+    {
+      "id": "rw-hort-5",
+      "genre": "horticultural",
+      "category": "Practical Guides",
+      "ratio": 0,
+      "voiceOk": true,
+      "wouldApply": false,
+      "actions": [],
+      "voiceScoreProxy": 8.6,
+      "improveScoreProxy": 7.8
+    }
+  ]
+}

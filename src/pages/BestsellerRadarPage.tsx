@@ -1,8 +1,12 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, BarChart3, BookOpen, Search, ShieldAlert, Sparkles, TrendingUp } from "lucide-react";
+import { ArrowLeft, BarChart3, BookOpen, Rocket, Search, ShieldAlert, Sparkles, TrendingUp, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { runBestsellerRadar } from "@/services/bestsellerRadarService";
+import { analyzeRadarPublishingIntel, type RadarPublishingIntel } from "@/lib/publishing-intelligence";
+import { getSelectedAuthorIdentity } from "@/lib/author-identity";
+
+const KDP_PREFILL_KEY = "scriptora-kdp-prefill";
 
 type RadarResult = {
   title: string;
@@ -110,15 +114,33 @@ export default function BestsellerRadarPage() {
   const [liveScore, setLiveScore] = useState<number | null>(null);
   const [liveSummary, setLiveSummary] = useState("");
   const [error, setError] = useState("");
+  const [loadingPhase, setLoadingPhase] = useState("");
+  const [radarIntel, setRadarIntel] = useState<RadarPublishingIntel | null>(null);
 
   const results = useMemo(() => {
     return searched ? (liveResults ?? []) : (sampleByGenre[genre] ?? fallbackResults);
-  }, [genre]);
+  }, [genre, searched, liveResults]);
 
   const marketScore = useMemo(() => {
+    if (liveScore !== null) return liveScore.toFixed(1);
+    if (!results.length) return "—";
     const avg = results.reduce((sum, item) => sum + item.potential, 0) / results.length;
-    return liveScore !== null ? liveScore.toFixed(1) : avg.toFixed(1);
-  }, [results]);
+    return Number.isFinite(avg) ? avg.toFixed(1) : "—";
+  }, [results, liveScore]);
+
+  const authorIdentity = useMemo(() => getSelectedAuthorIdentity(), []);
+
+  const previewIntel = useMemo(() => {
+    if (radarIntel) return radarIntel;
+    if (!searched) return null;
+    return analyzeRadarPublishingIntel({
+      genre,
+      keyword: keyword.trim() || genre,
+      marketScore: liveScore,
+      avgPotential: results.length ? results.reduce((s, r) => s + r.potential, 0) / results.length : null,
+      authorIdentity,
+    });
+  }, [radarIntel, searched, genre, keyword, liveScore, results, authorIdentity]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -130,7 +152,7 @@ export default function BestsellerRadarPage() {
           </Button>
 
           <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-            MVP Market Intelligence
+            Publishing Intelligence
           </div>
         </div>
 
@@ -147,8 +169,10 @@ export default function BestsellerRadarPage() {
                   Studia il mercato prima di scrivere.
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-                  {loading ? "Analisi..." : "Analizza"} titoli concorrenti, domanda, competizione e potenziale commerciale.
-                  Non per copiare. Per capire dove colpire.
+                  {loading
+                    ? loadingPhase || "Mapping competitive positioning…"
+                    : "Market x-ray for competing titles — demand, competition, and commercial momentum signals."}
+                  {" "}Non per copiare. Per capire dove colpire.
                 </p>
               </div>
 
@@ -176,7 +200,11 @@ export default function BestsellerRadarPage() {
                     setSearched(true);
                     setLoading(true);
                     setError("");
+                    setLiveSummary("");
+                    setRadarIntel(null);
+                    setLoadingPhase("Evaluating niche signals…");
                     try {
+                      setLoadingPhase("Comparing genre expectations…");
                       const res = await runBestsellerRadar({
                         genre,
                         keyword,
@@ -186,18 +214,34 @@ export default function BestsellerRadarPage() {
                       setLiveResults(res.results?.length ? res.results : null);
                       setLiveScore(typeof res.marketScore === "number" ? res.marketScore : null);
                       setLiveSummary(res.summary || "");
+                      setLoadingPhase("Estimating reader retention…");
+                      const avgPotential = res.results?.length
+                        ? res.results.reduce((s, r) => s + (r.potential || 0), 0) / res.results.length
+                        : null;
+                      setRadarIntel(
+                        analyzeRadarPublishingIntel({
+                          genre,
+                          keyword: keyword.trim() || genre,
+                          marketScore: typeof res.marketScore === "number" ? res.marketScore : null,
+                          avgPotential,
+                          authorIdentity: getSelectedAuthorIdentity(),
+                        }),
+                      );
                     } catch (err) {
-                      setError(err instanceof Error ? err.message : "Errore durante l’analisi");
+                      setError(err instanceof Error ? err.message : "Errore durante l'analisi");
                       setLiveResults(null);
                       setLiveScore(null);
+                      setLiveSummary("");
+                      setRadarIntel(null);
                     } finally {
                       setLoading(false);
+                      setLoadingPhase("");
                     }
                   }}
                   className="h-11 gap-2 rounded-xl"
                 >
                   <Search className="h-4 w-4" />
-                  Analizza
+                  {loading ? "Scanning market…" : "Analizza mercato"}
                 </Button>
               </div>
             </div>
@@ -215,6 +259,61 @@ export default function BestsellerRadarPage() {
           </div>
         </section>
 
+        {previewIntel && searched && (
+          <section className="rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-6 space-y-5">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-bold">Market Intelligence Premium</h2>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-3">
+              {previewIntel.bookTokIntensity != null && (
+                <div className="rounded-2xl border border-border/60 bg-background/70 p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">BookTok intensity</p>
+                  <p className="mt-2 text-3xl font-black text-primary">{previewIntel.bookTokIntensity}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{previewIntel.bookTokNote}</p>
+                </div>
+              )}
+
+              <div className="rounded-2xl border border-border/60 bg-background/70 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Commercial momentum</p>
+                <p className="mt-2 text-2xl font-black capitalize text-foreground">{previewIntel.commercialMomentum}</p>
+                <p className="text-sm text-muted-foreground">{previewIntel.commercialMomentumScore}/100</p>
+              </div>
+
+              <div className="rounded-2xl border border-border/60 bg-background/70 p-4">
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <Users className="h-3.5 w-3.5" />
+                  Reader persona match
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-foreground/90">{previewIntel.readerPersona}</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border/60 bg-background/50 p-4 space-y-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Market positioning map</p>
+              {[
+                ["Literary", "Commercial", previewIntel.positioningMap.literaryVsCommercial],
+                ["Emotional", "Plot-driven", previewIntel.positioningMap.emotionalVsPlot],
+                ["Slow burn", "High intensity", previewIntel.positioningMap.slowBurnVsIntensity],
+              ].map(([left, right, value]) => (
+                <div key={left} className="space-y-1.5">
+                  <div className="flex justify-between text-[10px] text-muted-foreground">
+                    <span>{left}</span>
+                    <span>{right}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-primary/70 transition-all" style={{ width: `${value}%` }} />
+                  </div>
+                </div>
+              ))}
+              <p className="text-xs leading-relaxed text-muted-foreground">{previewIntel.positioningMap.commentary}</p>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground italic">{previewIntel.trustNote}</p>
+          </section>
+        )}
+
         {error && (
           <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
             {error}
@@ -224,6 +323,18 @@ export default function BestsellerRadarPage() {
         {liveSummary && (
           <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4 text-sm leading-6 text-muted-foreground">
             {liveSummary}
+          </div>
+        )}
+
+        {!searched && (
+          <div className="rounded-2xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">Dati di esempio</span> — avvia un&apos;analisi live per risultati basati su ricerca web e AI.
+          </div>
+        )}
+
+        {searched && !loading && liveResults && (
+          <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+            <span className="font-semibold text-primary">Analisi live</span> — risultati sintetizzati da segnali pubblici. Non sono dati ufficiali Amazon.
           </div>
         )}
 
@@ -301,6 +412,34 @@ export default function BestsellerRadarPage() {
             </div>
             )}
           </section>
+        )}
+
+        {searched && results.length > 0 && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Prossimo passo: KDP Launch</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Porta keyword e angolo di mercato nel wizard titoli, categorie e packaging Amazon.
+              </p>
+            </div>
+            <Button
+              className="gap-2 shrink-0"
+              onClick={() => {
+                sessionStorage.setItem(
+                  KDP_PREFILL_KEY,
+                  JSON.stringify({
+                    idea: liveSummary || results[0]?.insight || "",
+                    keyword: keyword.trim(),
+                    genre,
+                  }),
+                );
+                navigate("/kdp-launch");
+              }}
+            >
+              <Rocket className="h-4 w-4" />
+              Apri KDP Intelligence
+            </Button>
+          </div>
         )}
 
         <section className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm leading-6 text-amber-100">

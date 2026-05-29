@@ -10,7 +10,7 @@ export type {
 } from "./types";
 
 export { INTERVENTION_CATALOG, buildAppliedInterventions, classifyPatchIntervention } from "./interventions";
-export { buildSurgicalEditDirectiveBlock, planSurgicalInterventions } from "./surgical-plan";
+export { buildSurgicalEditDirectiveBlock, planSurgicalInterventions, planSurgicalInterventionsV1 } from "./surgical-plan";
 export { computeDevelopmentalEditReport } from "./delta-engine";
 
 export const CHAPTER_DOCTOR_PRO_V1_KEY = "scriptora-chapter-doctor-pro-v1";

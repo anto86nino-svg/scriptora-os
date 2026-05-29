@@ -97,6 +97,8 @@ export interface BackMatter {
   callToAction: string;
   reviewRequest: string;
   otherBooks: string;
+  /** Author Brain V3 — follow links block (optional, back matter only) */
+  followAuthor?: string;
 }
 
 export interface BookSubchapterOutline {
@@ -239,6 +241,35 @@ export interface AuthorIdentityLock {
   lockedAt: string;
 }
 
+/** Author Brain V2 — platform links for a published book */
+export interface AuthorPublishedBookLinks {
+  amazon?: string;
+  kobo?: string;
+  goodreads?: string;
+  appleBooks?: string;
+  website?: string;
+}
+
+/** Author Brain V2 — catalogue entry */
+export interface AuthorPublishedBook {
+  id: string;
+  title: string;
+  genre: string;
+  description?: string;
+  links?: AuthorPublishedBookLinks;
+}
+
+/** Author Brain V2 — author platform / social presence */
+export interface AuthorPlatform {
+  instagram?: string;
+  tiktok?: string;
+  facebook?: string;
+  website?: string;
+  newsletter?: string;
+  amazonAuthorPage?: string;
+  goodreadsProfile?: string;
+}
+
 export interface AuthorIdentity {
   id: string;
   /** Internal profile label shown in Scriptora. */
@@ -252,6 +283,18 @@ export interface AuthorIdentity {
   archetype: string;
   /** Public author biography used in front matter. */
   biography: string;
+  /** Author Brain V1 — short raw self-description for AI bio expansion. */
+  authorBrainSeed?: string;
+  /** Author Brain V2 — published catalogue (data only, no auto-injection yet). */
+  publishedBooks?: AuthorPublishedBook[];
+  /** Author Brain V2 — platform / social links (data only). */
+  authorPlatform?: AuthorPlatform;
+  /** Author Brain V4 — how readers should perceive the author (chip ids). */
+  authorPresence?: string[];
+  /** Author Brain V4 — desired reader emotional outcomes (chip ids). */
+  readerEmotionalGoals?: string[];
+  /** Author Brain V4 — optional brand message for readers. */
+  authorMessage?: string;
   /** Optional personal note used in back matter. */
   authorNote?: string;
   voice: string;
