@@ -10,7 +10,6 @@ export type {
 export {
   AUTO_BESTSELLER_PACK_KEY,
   SETUP_ORIGIN_KEY,
-  ARCHITECT_PHASE_LABELS,
 } from "./types";
 
 export {
@@ -18,6 +17,7 @@ export {
   getArchitectFlowCopy,
   getArchitectPageCopy,
   normalizeArchitectLang,
+  ARCHITECT_PHASE_LABELS,
 } from "./localized-copy";
 
 export { inferIdeaIntelligence } from "./idea-intelligence";

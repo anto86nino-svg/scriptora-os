@@ -1,4 +1,4 @@
-import { lazy } from "react";
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -29,6 +29,14 @@ const KeywordGoldPage = lazy(() => import("./pages/KeywordGoldPage.tsx"));
 
 const queryClient = new QueryClient();
 
+function RouteLoadingFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+      <p className="text-sm">Loading…</p>
+    </div>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -39,6 +47,7 @@ const App = () => (
               <Toaster />
               <Sonner />
               <AppErrorBoundary>
+              <Suspense fallback={<RouteLoadingFallback />}>
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/auth" element={<AuthPage />} />
@@ -56,6 +65,7 @@ const App = () => (
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </Suspense>
               </AppErrorBoundary>
               <ScriptoraStepGuide />
               <DevModeBadge />

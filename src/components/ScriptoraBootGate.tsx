@@ -67,6 +67,13 @@ export function ScriptoraBootGate({
 
   const mountShell = authReady && storageReady && planReady;
 
+  // Safety: never stall forever if a lazy route chunk fails to resolve.
+  useEffect(() => {
+    if (!mountShell || shellReady) return;
+    const id = window.setTimeout(() => setShellReady(true), 12_000);
+    return () => clearTimeout(id);
+  }, [mountShell, shellReady]);
+
   return (
     <>
       {!revealed && (
@@ -87,10 +94,10 @@ export function ScriptoraBootGate({
         aria-hidden={!revealed}
       >
         {mountShell && (
-          <Suspense fallback={null}>
+          <>
             <ShellReadyMarker onReady={markShellReady} />
-            {children}
-          </Suspense>
+            <Suspense fallback={null}>{children}</Suspense>
+          </>
         )}
       </div>
     </>

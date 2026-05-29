@@ -2,6 +2,15 @@ import type { ArchitectPhaseId } from "./types";
 
 export type ArchitectLang = "English" | "Italian" | "Spanish" | "French" | "German" | "Portuguese";
 
+/** @deprecated Use getArchitectPhaseLabels(bookLanguage) for localized labels */
+export const ARCHITECT_PHASE_LABELS: Record<ArchitectPhaseId, string> = {
+  "idea-intelligence": "Analyzing genre expectations",
+  "market-positioning": "Mapping reader positioning",
+  "title-positioning": "Exploring commercial title angles",
+  "blueprint-architect": "Building narrative blueprint",
+  "handoff-ready": "Preparing writing architecture",
+};
+
 export function normalizeArchitectLang(value?: string): ArchitectLang {
   const raw = String(value || "English").trim().toLowerCase();
   if (raw.includes("ital") || raw === "it") return "Italian";

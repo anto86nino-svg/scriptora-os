@@ -76,8 +76,3 @@ export interface AutoBestsellerHandoffPack {
 
 export const AUTO_BESTSELLER_PACK_KEY = "scriptora-auto-bestseller-pack";
 export const SETUP_ORIGIN_KEY = "scriptora-setup-origin";
-
-import { getArchitectPhaseLabels } from "./localized-copy";
-
-/** @deprecated Use getArchitectPhaseLabels(bookLanguage) for localized labels */
-export const ARCHITECT_PHASE_LABELS: Record<ArchitectPhaseId, string> = getArchitectPhaseLabels("English");
