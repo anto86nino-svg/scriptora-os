@@ -183,7 +183,7 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
   }, [autoStart]);
 
   return (
-    <Card className="border-border/60">
+    <Card className="max-w-full overflow-hidden border-border/60 bg-card/95">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Flame className="h-5 w-5 text-primary" />
@@ -208,7 +208,7 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <Label htmlFor="book-title">Titolo reale del libro</Label>
             <Input
@@ -231,29 +231,29 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
           </div>
         </div>
 
-        <div className="grid grid-cols-[1fr_auto] gap-3">
-          <div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+          <div className="min-w-0">
             <Label htmlFor="title-language">Lingua titolo/sottotitolo</Label>
             <Select value={titleLanguage} onValueChange={setTitleLanguage} disabled={isRunning}>
-              <SelectTrigger id="title-language"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="title-language" className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {LANGUAGES.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-          <div className="flex items-end">
-            <Button type="button" variant="secondary" onClick={generateBookTitle} disabled={isRunning || idea.trim().length < 8} className="h-10">
+          <div className="flex items-stretch sm:items-end">
+            <Button type="button" variant="secondary" onClick={generateBookTitle} disabled={isRunning || idea.trim().length < 8} className="h-10 w-full sm:w-auto">
               <RefreshCw className="mr-2 h-4 w-4" />
               Genera titolo
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <Label htmlFor="genre">Genre</Label>
             <Select value={genre} onValueChange={setGenre} disabled={isRunning}>
-              <SelectTrigger id="genre"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="genre" className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {GENRES.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
               </SelectContent>
@@ -282,8 +282,8 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="min-w-0">
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="tone">Tono</Label>
               <Button type="button" variant="ghost" size="sm" onClick={improveTone} disabled={isRunning} className="h-7 px-2 text-xs">
@@ -291,22 +291,22 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
               </Button>
             </div>
             <Select value={tone} onValueChange={setTone} disabled={isRunning}>
-              <SelectTrigger id="tone"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="tone" className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {TONES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="min-w-0">
             <Label htmlFor="language">Language</Label>
             <Select value={language} onValueChange={setLanguage} disabled={isRunning}>
-              <SelectTrigger id="language"><SelectValue /></SelectTrigger>
+              <SelectTrigger id="language" className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {LANGUAGES.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
-          <div>
+          <div className="min-w-0">
             <Label htmlFor="chapters">Chapters</Label>
             <Input
               id="chapters"
@@ -320,7 +320,7 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
           </div>
         </div>
 
-        <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+        <div className="rounded-lg border border-border/60 bg-muted/30 p-3 md:bg-muted/20">
           <label className="flex items-center gap-2 text-sm font-medium text-foreground">
             <input
               type="checkbox"
@@ -350,9 +350,9 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
           )}
         </div>
 
-        <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+        <div className="rounded-lg border border-border/60 bg-muted/30 p-3 md:bg-muted/20">
           <Label>Book Length</Label>
-          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {(Object.entries(BOOK_LENGTH_CONFIG) as [BookLength, typeof BOOK_LENGTH_CONFIG[BookLength]][]).map(([key, value]) => (
               <button
                 key={key}
@@ -396,9 +396,9 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
           )}
         </div>
 
-        <div className="flex flex-col gap-2 pt-2 sm:flex-row">
+        <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
           <Button
-            className="flex-1"
+            className="w-full flex-1 sm:w-auto"
             disabled={!valid || isRunning}
             onClick={() => onGenerateOne(buildInput())}
           >
@@ -407,7 +407,7 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
           </Button>
           <Button
             variant="secondary"
-            className="flex-1"
+            className="w-full flex-1 sm:w-auto"
             disabled={!valid || isRunning}
             onClick={() => onGenerateBatch(buildInput(), 10)}
             title="One blueprint at a time"

@@ -59,7 +59,7 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
   );
 
   return (
-    <div className="scriptora-generation-stage animate-fade-in">
+    <div className="scriptora-generation-stage animate-fade-in min-w-0 max-w-full w-full overflow-x-hidden">
       <div className="scriptora-generation-topline">
         <div className="min-w-0 flex-1">
           <div className="scriptora-generation-live-pill mb-2">

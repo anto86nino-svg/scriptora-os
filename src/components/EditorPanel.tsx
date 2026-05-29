@@ -120,7 +120,7 @@ export function EditorPanel({
 
       <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
         <div className={cn("mx-auto px-4 py-6 sm:px-8", mode === "preview" ? "max-w-2xl" : "max-w-5xl")}>
-          <div className={cn("ios-editor-paper rounded-[32px] border border-white/10 bg-slate-950/65 shadow-[0_36px_120px_-40px_rgba(15,23,42,0.75)] ring-1 ring-white/10 p-5 sm:p-7", mode === "preview" && "bg-white/[0.055]")}>
+          <div className={cn("ios-editor-paper max-w-full rounded-[32px] border border-white/10 bg-slate-950/95 p-5 shadow-[0_36px_120px_-40px_rgba(15,23,42,0.75)] ring-1 ring-white/10 sm:p-7 md:bg-slate-950/65", mode === "preview" && "bg-white/[0.055]")}>
           {mode === "preview" && hasContent ? (
             <PreviewMode project={project} view={view} ws={ws} />
           ) : (

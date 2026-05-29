@@ -42,7 +42,7 @@ export function ArchitectFlow({
 
   if (error && !running) {
     return (
-      <div className="rounded-2xl border border-rose-500/30 bg-rose-500/5 p-6 space-y-4">
+      <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-6 space-y-4 md:bg-rose-500/5">
         <p className="text-sm font-semibold text-rose-600">Blueprint preparation failed</p>
         <p className="text-sm text-muted-foreground">{error}</p>
         <Button variant="outline" onClick={onRetry}>Try again</Button>
@@ -52,7 +52,7 @@ export function ArchitectFlow({
 
   if (running) {
     return (
-      <div className="rounded-2xl border border-border/60 bg-card/60 p-6 space-y-6">
+      <div className="rounded-2xl border border-border/60 bg-card/95 p-6 space-y-6 md:bg-card/60">
         <div className="flex items-center gap-3">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
           <div>
@@ -91,7 +91,7 @@ export function ArchitectFlow({
 
   if (!result) {
     return (
-      <div className="rounded-2xl border border-dashed border-border/60 bg-muted/10 p-10 text-center space-y-3">
+      <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 p-10 text-center space-y-3 md:bg-muted/10">
         <Sparkles className="mx-auto h-8 w-8 text-primary/70" />
         <p className="text-sm font-medium text-foreground">Market-aware narrative architecture</p>
         <p className="mx-auto max-w-md text-xs leading-relaxed text-muted-foreground">
@@ -105,8 +105,8 @@ export function ArchitectFlow({
   const { ideaIntelligence, marketPositioning, blueprint, checklist } = result;
 
   return (
-    <div className="space-y-5">
-      <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-5 space-y-4">
+    <div className="min-w-0 max-w-full space-y-5 overflow-x-hidden">
+      <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 to-transparent p-5 space-y-4 md:from-primary/5">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-primary">Commercially informed blueprint</p>
@@ -121,9 +121,9 @@ export function ArchitectFlow({
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-border/60 bg-card/40 p-4 space-y-3">
+        <div className="rounded-xl border border-border/60 bg-card/95 p-4 space-y-3 md:bg-card/40">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Idea intelligence</p>
-          <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
             <div><span className="text-muted-foreground">Subgenre</span><p className="font-medium">{ideaIntelligence.subgenre}</p></div>
             <div><span className="text-muted-foreground">Confidence</span><p className="font-medium">{Math.round(ideaIntelligence.confidence * 100)}%</p></div>
           </div>
@@ -131,7 +131,7 @@ export function ArchitectFlow({
           <p className="text-xs text-foreground/80">{ideaIntelligence.emotionalCategory}</p>
         </div>
 
-        <div className="rounded-xl border border-border/60 bg-card/40 p-4 space-y-3">
+        <div className="rounded-xl border border-border/60 bg-card/95 p-4 space-y-3 md:bg-card/40">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Market positioning</p>
           <p className="text-xs leading-relaxed"><span className="font-semibold text-foreground">Audience: </span>{marketPositioning.audienceProfile}</p>
           <p className="text-xs leading-relaxed"><span className="font-semibold text-foreground">Promise: </span>{marketPositioning.emotionalPromise}</p>
@@ -164,7 +164,7 @@ export function ArchitectFlow({
       )}
 
       {marketPositioning.readerRisks.length > 0 && (
-        <div className="rounded-xl border border-border/60 bg-muted/15 p-4 space-y-2">
+        <div className="rounded-xl border border-border/60 bg-muted/25 p-4 space-y-2 md:bg-muted/15">
           <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Reader risk warnings</p>
           {marketPositioning.readerRisks.map((risk, i) => (
             <p key={i} className={`text-xs ${
@@ -176,7 +176,7 @@ export function ArchitectFlow({
         </div>
       )}
 
-      <div className="rounded-xl border border-border/60 bg-card/50 p-4 space-y-3">
+      <div className="rounded-xl border border-border/60 bg-card/95 p-4 space-y-3 md:bg-card/50">
         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Narrative architecture</p>
         <p className="text-xs leading-relaxed text-foreground/90 line-clamp-4">{blueprint.overview}</p>
         <p className="text-xs text-muted-foreground">

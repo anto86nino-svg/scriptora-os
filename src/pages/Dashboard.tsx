@@ -921,7 +921,7 @@ const dashboardWidgets = [
 
       <main className="scriptora-feature-scroll relative mx-auto w-full max-w-7xl px-4 pb-8 pt-4 sm:px-6 sm:pt-8 lg:px-8">
         <div className="mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
-          <section className="ios-panel overflow-hidden rounded-[28px] border-white/15 bg-slate-950/40 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-6">
+          <section className="ios-panel overflow-hidden rounded-[28px] border-white/15 bg-slate-950/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-6 md:bg-slate-950/40">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div className="min-w-0">
                 <div className="mb-2 flex flex-wrap items-center gap-2 sm:mb-3">

@@ -431,52 +431,39 @@ const Index = () => {
   }
 
   return (
-    <div className="scriptora-ios-screen relative flex h-safe-screen min-h-[100dvh] overflow-hidden pb-safe">
-      {/* Floating sidebar toggle */}
+    <div className="scriptora-ios-screen relative flex h-safe-screen min-h-[100dvh] max-w-full overflow-x-hidden overflow-hidden pb-safe">
+      {/* Floating sidebar toggle — icon only on mobile */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className={`ios-toolbar-button fixed left-3 top-3 z-50 h-11 min-w-11 p-2 text-foreground shadow-lg backdrop-blur-xl ${
-          ""
-        }`}
+        className="ios-toolbar-button fixed left-3 top-3 z-50 h-11 w-11 p-0 text-foreground shadow-lg backdrop-blur-xl sm:min-w-11 sm:px-2"
         title={sidebarOpen ? "Chiudi pannello" : "Capitoli & Libro"}
+        aria-expanded={sidebarOpen}
+        aria-label={sidebarOpen ? "Chiudi pannello" : "Apri navigazione"}
       >
-        <>
-  <div className="
-    h-10 w-10 rounded-xl
-    bg-primary/10
-    flex items-center justify-center
-    text-lg shrink-0
-  ">
-    {sidebarOpen ? "✕" : "📚"}
-  </div>
-
-  <div className="hidden text-left leading-tight sm:block">
-    <p className="text-sm font-bold text-foreground">
-      {sidebarOpen
-        ? "Chiudi pannello"
-        : "Capitoli & Libro"}
-    </p>
-
-    <p className="text-[11px] text-muted-foreground">
-      {sidebarOpen
-        ? "Torna alla scrittura"
-        : "Apri navigazione"}
-    </p>
-  </div>
-</>
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-lg">
+          {sidebarOpen ? "✕" : "📚"}
+        </span>
+        <span className="hidden text-left leading-tight sm:block">
+          <span className="block text-sm font-bold text-foreground">
+            {sidebarOpen ? "Chiudi pannello" : "Capitoli & Libro"}
+          </span>
+          <span className="block text-[11px] text-muted-foreground">
+            {sidebarOpen ? "Torna alla scrittura" : "Apri navigazione"}
+          </span>
+        </span>
       </button>
 
       {/* Overlay for mobile */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-30 bg-black/[0.55] backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
       )}
 
-      {/* Left Sidebar */}
+      {/* Left Sidebar — drawer on mobile, collapsible on desktop */}
       <aside
-        className={`ios-sidebar fixed z-40 flex h-safe-screen shrink-0 flex-col pb-safe transition-all duration-300 ease-out md:relative ${
+        className={`ios-sidebar fixed inset-y-0 left-0 z-40 flex h-safe-screen w-[min(100vw-2rem,288px)] max-w-[288px] shrink-0 flex-col pb-safe transition-transform duration-300 ease-out md:relative md:inset-auto md:h-auto md:max-w-none ${
           sidebarOpen
-            ? "translate-x-0 w-[272px] opacity-100"
-            : "-translate-x-full md:translate-x-0 md:w-0 md:opacity-0 overflow-hidden"
+            ? "translate-x-0 pointer-events-auto"
+            : "-translate-x-full pointer-events-none md:translate-x-0 md:w-0 md:overflow-hidden md:pointer-events-none"
         }`}
       >
         <div className="flex items-center justify-between border-b border-white/10 p-3 pl-14 md:pl-3">
@@ -491,9 +478,19 @@ const Index = () => {
               </h1>
             </div>
           </div>
-          <button onClick={() => setShowSettings(true)} className="ios-toolbar-button h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground" title={t("settings")}>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              className="ios-toolbar-button h-8 w-8 text-muted-foreground hover:text-foreground md:hidden"
+              aria-label="Chiudi pannello"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+            <button onClick={() => setShowSettings(true)} className="ios-toolbar-button h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground" title={t("settings")}>
             <Settings className="h-3.5 w-3.5" />
           </button>
+          </div>
         </div>
 
         {/* When a project is OPEN: show only "Back to My Books" */}
@@ -592,14 +589,11 @@ const Index = () => {
 
       {/* Main Area */}
       <div
-        className={`flex min-w-0 flex-1 flex-col transition-all duration-300 ${
+        className={`flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col transition-all duration-300 ${
           sidebarOpen ? "p-2 md:p-3" : "p-2 pb-3 md:px-6 md:py-4"
         }`}
       >
-{/* TopBar removed for clean writing experience */}
-
-
-        <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm">
+        <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden overflow-x-hidden rounded-lg border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/20 md:bg-black/10 md:backdrop-blur-sm">
           {effectiveProject ? (
             <>
               <div className="min-h-0 min-w-0 flex-1">

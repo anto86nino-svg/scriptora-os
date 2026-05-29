@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "./styles/atmosphere-engine.css";
+@import "./styles/mobile-hardening.css";
 
 @tailwind base;
 @tailwind components;
@@ -67,7 +68,7 @@
 
   /* UI Consistency — shared viewport + modal shell (desktop + mobile) */
   .scriptora-feature-page {
-    @apply scriptora-ios-screen flex h-safe-screen min-h-[100dvh] flex-col overflow-hidden pb-safe;
+    @apply scriptora-ios-screen flex h-safe-screen min-h-[100dvh] max-w-full flex-col overflow-hidden overflow-x-hidden pb-safe;
   }
 
   .scriptora-feature-scroll {

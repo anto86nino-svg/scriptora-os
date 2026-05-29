@@ -279,14 +279,14 @@ export default function AutoBestsellerPage() {
 
   return (
     <div className="scriptora-feature-page bg-background">
-      <header className="z-20 shrink-0 border-b border-border/60 bg-card/80 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={handleLeaveToHome}>
+      <header className="z-20 shrink-0 border-b border-border/60 bg-card/95 backdrop-blur md:bg-card/80">
+        <div className="mx-auto flex max-w-7xl min-w-0 flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={handleLeaveToHome} className="shrink-0">
               <ArrowLeft className="mr-1 h-4 w-4" /> Home
             </Button>
-            <div>
-              <h1 className="flex items-center gap-2 text-lg font-semibold">
+            <div className="min-w-0">
+              <h1 className="flex items-center gap-2 text-base font-semibold sm:text-lg">
                 <Sparkles className="h-5 w-5 text-primary" />
                 {architectRunning
                   ? "Building your narrative blueprint…"
@@ -376,7 +376,7 @@ export default function AutoBestsellerPage() {
           </button>
         )}
 
-        <section className="space-y-6">
+        <section className="min-w-0 max-w-full space-y-6 overflow-x-hidden">
           {!isLegacyRunning && !displayedResult && (
             <ArchitectFlow
               running={architectRunning}
