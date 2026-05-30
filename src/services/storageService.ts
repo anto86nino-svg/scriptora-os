@@ -11,6 +11,7 @@ import {
 import { withNormalizedPhase, isProjectComplete } from "@/lib/project-status";
 import { isDevMode } from "@/lib/dev-mode";
 import { getDevPlanOverride } from "@/lib/dev-plan-override";
+import { hasProjectsCloud } from "@/lib/supabase-cloud-capabilities";
 
 // Three environments:
 //  - DEV MODE        → Premium tier uses the REAL Supabase user.id (so the owner's
@@ -105,15 +106,6 @@ export const RESETTABLE_DEV_USER_IDS = [
   "local-user-pro",
 ] as const;
 
-async function isSupabaseAvailable(): Promise<boolean> {
-  try {
-    const { error } = await supabase.from("projects").select("id").limit(1);
-    return !error;
-  } catch {
-    return false;
-  }
-}
-
 /**
  * Load projects with an "instant local, async remote" strategy.
  *
@@ -154,6 +146,7 @@ export async function loadProjects(
     try {
       const cloudUserId = await getCloudReadUserId();
       if (!cloudUserId) return local;
+      if (!(await hasProjectsCloud())) return local;
 
       const { data, error } = await supabase
         .from("projects")
@@ -229,6 +222,10 @@ export async function saveProjectAsync(
       callbacks?.onPending?.();
       return;
     }
+    if (!(await hasProjectsCloud())) {
+      callbacks?.onPending?.();
+      return;
+    }
 
     const cloudProject = { ...project, userId: cloudUserId } as BookProject;
     const { error } = await supabase
@@ -263,6 +260,7 @@ export async function deleteProjectAsync(id: string): Promise<void> {
   try {
     const cloudUserId = await getCloudWriteUserId();
     if (!cloudUserId) return;
+    if (!(await hasProjectsCloud())) return;
     await supabase.from("projects").delete().eq("id", id).eq("user_id", cloudUserId);
   } catch {
     // silent

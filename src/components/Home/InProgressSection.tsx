@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { hasAutoBestsellerCloud } from "@/lib/supabase-cloud-capabilities";
 import { getCurrentUserId } from "@/services/storageService";
 import { t, useUILanguage } from "@/lib/i18n";
 
@@ -39,6 +40,7 @@ export function InProgressSection({ refreshKey = 0 }: Props) {
     let cancelled = false;
     (async () => {
       try {
+        if (!(await hasAutoBestsellerCloud())) return;
         const { data } = await supabase
           .from("auto_bestseller_runs")
           .select("id, input, status, progress, created_at, updated_at")
