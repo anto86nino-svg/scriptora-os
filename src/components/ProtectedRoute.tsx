@@ -11,9 +11,11 @@ import { ScriptoraBootGate } from "@/components/ScriptoraBootGate";
 export function ProtectedRoute({
   children,
   requiredFeature,
+  ownerOnly = false,
 }: {
   children: ReactNode;
   requiredFeature?: FeatureKey;
+  ownerOnly?: boolean;
 }) {
   const { user, loading: authLoading } = useAuth();
   const { plan, loading: planLoading } = usePlan();
