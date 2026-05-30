@@ -10,92 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { t, tt, useUILanguage } from "@/lib/i18n";
+import {
+  AUTH_DEBUG_PREFIX,
+  getStorageDebugState,
+  logAuthDebug,
+  summarizeAuthError,
+  summarizeSession,
+} from "@/lib/auth-debug";
 
 const CANONICAL_APP_URL = "https://scriptora-os.vercel.app/app";
 const CANONICAL_AUTH_URL = "https://scriptora-os.vercel.app/auth";
-const AUTH_DEBUG_PREFIX = "[auth-debug]";
-
-function logAuthDebug(label: string, details?: Record<string, unknown>) {
-  if (details === undefined) {
-    console.log(AUTH_DEBUG_PREFIX, label);
-    appendAuthDebugTrace(label);
-    return;
-  }
-  console.log(AUTH_DEBUG_PREFIX, label, details);
-  appendAuthDebugTrace(label, details);
-}
-
-function appendAuthDebugTrace(label: string, details?: Record<string, unknown>) {
-  if (typeof document === "undefined") return;
-  try {
-    const attr = "data-scriptora-auth-debug";
-    const previous = document.documentElement.getAttribute(attr);
-    const logs = previous ? JSON.parse(previous) : [];
-    logs.push({
-      at: new Date().toISOString(),
-      href: typeof window !== "undefined" ? window.location.href : null,
-      label,
-      details: details ?? null,
-    });
-    document.documentElement.setAttribute(attr, JSON.stringify(logs.slice(-80)));
-  } catch {
-    // Console output remains the primary temporary diagnostic channel.
-  }
-}
-
-function summarizeSession(session: Awaited<ReturnType<typeof supabase.auth.getSession>>["data"]["session"] | null | undefined) {
-  return {
-    hasSession: !!session,
-    hasUser: !!session?.user,
-    userId: session?.user?.id ?? null,
-    email: session?.user?.email ?? null,
-    expiresAt: session?.expires_at ?? null,
-  };
-}
-
-function summarizeAuthError(error: { name?: string; message?: string; status?: number; code?: string } | null | undefined) {
-  if (!error) return null;
-  return {
-    name: error.name ?? null,
-    message: error.message ?? null,
-    status: error.status ?? null,
-    code: error.code ?? null,
-  };
-}
-
-function getStorageDebugState() {
-  if (typeof window === "undefined") {
-    return { localStorageType: "server", sessionStorageType: "server", localStorageWorks: false, sessionStorageWorks: false };
-  }
-
-  const state = {
-    localStorageType: typeof window.localStorage,
-    sessionStorageType: typeof window.sessionStorage,
-    localStorageWorks: false,
-    sessionStorageWorks: false,
-    authFlow: "pkce",
-  };
-
-  try {
-    const key = "scriptora-auth-storage-test";
-    window.localStorage.setItem(key, "1");
-    state.localStorageWorks = window.localStorage.getItem(key) === "1";
-    window.localStorage.removeItem(key);
-  } catch {
-    state.localStorageWorks = false;
-  }
-
-  try {
-    const key = "scriptora-auth-session-test";
-    window.sessionStorage.setItem(key, "1");
-    state.sessionStorageWorks = window.sessionStorage.getItem(key) === "1";
-    window.sessionStorage.removeItem(key);
-  } catch {
-    state.sessionStorageWorks = false;
-  }
-
-  return state;
-}
 
 function getAuthRedirectUrl(): string {
   if (typeof window === "undefined") return CANONICAL_AUTH_URL;

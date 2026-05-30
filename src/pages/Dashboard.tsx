@@ -16,7 +16,7 @@ import {
   FileDown, ArrowRight, Clock, Globe, Flame, Loader2, Sparkles, Wand2,
   Library, Home as HomeIcon, X, BarChart3,
   TrendingUp, LogOut, CreditCard, Download as DownloadIcon, Settings, Users,
-  CheckCircle2, NotebookPen, Fingerprint, ImagePlus, AudioLines
+  CheckCircle2, NotebookPen, Fingerprint, ImagePlus, AudioLines,
 } from "lucide-react";
 import { BOOK_LENGTH_CONFIG, BookConfig, BookLength, BookProject, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
@@ -34,10 +34,15 @@ import { useIntelligentPreload } from "@/hooks/useIntelligentPreload";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { DeviceViewToolbarControl } from "@/components/DeviceViewToggle";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { AccountIdentityBlock } from "@/components/AccountIdentityBlock";
+import { GoogleLogoMark } from "@/components/GoogleLogoMark";
+import { getAuthProfile } from "@/lib/auth-profile";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -168,11 +173,7 @@ export default function Home() {
   const { plan: currentPlan } = usePlan();
   const [logoClicks, setLogoClicks] = useState<number[]>([]);
   const { user, signOut } = useAuth();
-  const avatarUrl = (user?.user_metadata as any)?.avatar_url || (user?.user_metadata as any)?.picture || null;
-  const displayName = (user?.user_metadata as any)?.full_name || (user?.user_metadata as any)?.name || user?.email || "";
-  const initials = displayName
-    ? displayName.split(/[\s@]+/).filter(Boolean).slice(0, 2).map((s: string) => s[0]?.toUpperCase()).join("")
-    : "U";
+  const authProfile = getAuthProfile(user);
   const [bookLang, setBookLang] = useState<string>(() => {
     const ui = getUILanguage();
     return ({ en: "English", it: "Italian", es: "Spanish", fr: "French", de: "German" } as Record<string, string>)[ui] || "English";
@@ -720,8 +721,8 @@ export default function Home() {
   return (
     <div className="scriptora-feature-page relative">
       <header className="sticky top-0 z-[100] isolate shrink-0 border-b border-white/10 bg-background/[0.88] backdrop-blur-2xl">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
-          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-1.5 px-3 sm:gap-3 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
             <button
               onClick={() => {
                 const now = Date.now();
@@ -748,7 +749,7 @@ export default function Home() {
                   }, 400);
                 }
               }}
-              className="group flex items-center gap-2 text-sm select-none"
+              className="group flex shrink-0 items-center gap-2 text-sm select-none"
               title="SCRIPTORA"
             >
               <span className="ios-icon ios-icon-blue h-9 w-9 transition-transform group-hover:scale-[1.03]">
@@ -757,47 +758,80 @@ export default function Home() {
               <span className="hidden text-[13px] font-bold text-foreground sm:inline">SCRIPTORA</span>
             </button>
 
-            <div className="hidden h-5 w-px bg-white/10 sm:block" />
-            <span className="hidden items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground sm:inline-flex">
+            {user && authProfile && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    title={authProfile.displayName}
+                    aria-label={authProfile.displayName}
+                    className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.07] pl-0.5 pr-2 transition-colors hover:bg-white/[0.12]"
+                  >
+                    <span className="relative shrink-0">
+                      <Avatar className="h-7 w-7">
+                        {authProfile.avatarUrl && (
+                          <AvatarImage
+                            src={authProfile.avatarUrl}
+                            alt={authProfile.displayName}
+                            referrerPolicy="no-referrer"
+                          />
+                        )}
+                        <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary">
+                          {authProfile.initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      {authProfile.isGoogle && (
+                        <span className="absolute -bottom-0.5 -right-0.5 rounded-full border border-background bg-background p-0.5 shadow-sm">
+                          <GoogleLogoMark className="h-2.5 w-2.5" />
+                        </span>
+                      )}
+                    </span>
+                    <span className="hidden max-w-[88px] truncate text-[11px] font-medium text-foreground min-[400px]:inline md:max-w-[120px]">
+                      {authProfile.displayName}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="start"
+                  sideOffset={8}
+                  className="scriptora-toolbar-menu-content ios-glass z-[200] w-64 rounded-lg border-white/15 bg-slate-950/95 p-1 shadow-2xl backdrop-blur-xl"
+                >
+                  <DropdownMenuLabel className="px-3 py-3 font-normal">
+                    <AccountIdentityBlock user={user} size="md" />
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem
+                    className="cursor-pointer rounded-md px-3 py-2 text-xs focus:bg-white/10"
+                    onClick={() => navigate("/pricing")}
+                  >
+                    <CreditCard className="mr-2 h-3.5 w-3.5" />
+                    {t("pricing")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer rounded-md px-3 py-2 text-xs text-destructive focus:bg-destructive/10 focus:text-destructive"
+                    onClick={async () => {
+                      try {
+                        await signOut();
+                        toast.success(t("toast_signed_out"));
+                      } catch { /* noop */ }
+                      navigate("/auth");
+                    }}
+                  >
+                    <LogOut className="mr-2 h-3.5 w-3.5" />
+                    {t("sign_out")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            <div className="hidden h-5 w-px bg-white/10 lg:block" />
+            <span className="hidden items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground lg:inline-flex">
               <HomeIcon className="h-3 w-3" />
               {t("studio")}
             </span>
-
-            {user && (
-              <>
-                <button
-                  onClick={() => navigate("/pricing")}
-                  title={displayName}
-                  className="ml-1 flex h-8 min-w-0 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] pl-1 pr-2 transition-colors hover:bg-white/[0.12]"
-                >
-                  <Avatar className="h-6 w-6">
-                    {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
-                    <AvatarFallback className="bg-primary/15 text-[10px] font-semibold text-primary">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden max-w-[120px] truncate text-[11px] font-medium text-foreground lg:inline">
-                    {displayName}
-                  </span>
-                </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      await signOut();
-                      toast.success(t("toast_signed_out"));
-                    } catch { /* noop */ }
-                    navigate("/auth");
-                  }}
-                  title={t("sign_out")}
-                  className="ios-toolbar-button h-8 w-8 text-muted-foreground hover:text-destructive"
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                </button>
-              </>
-            )}
           </div>
 
-          <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+          <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
             <button
               onClick={() => navigate("/pricing")}
               className="ios-toolbar-button hidden px-3 text-xs font-medium lg:flex"
@@ -832,7 +866,7 @@ export default function Home() {
               </>
             )}
             <div
-              className="flex h-8 max-w-[150px] shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 text-xs text-foreground"
+              className="hidden h-8 max-w-[150px] shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 text-xs text-foreground lg:flex"
               title={`${t("author_identity")}: ${activeAuthor.penName}`}
             >
               <Fingerprint className="h-3.5 w-3.5 shrink-0 text-sky-300" />
@@ -840,7 +874,7 @@ export default function Home() {
                 aria-label={t("author_identity")}
                 value={activeAuthor.id}
                 onChange={(e) => changeAuthorIdentity(e.target.value)}
-                className="min-w-0 max-w-[108px] cursor-pointer appearance-none bg-transparent text-[11px] font-semibold text-foreground outline-none sm:max-w-[132px]"
+                className="min-w-0 max-w-[108px] cursor-pointer appearance-none bg-transparent text-[11px] font-semibold text-foreground outline-none xl:max-w-[132px]"
               >
                 {authorIdentities.map((identity) => (
                   <option key={identity.id} value={identity.id}>
@@ -849,18 +883,48 @@ export default function Home() {
                 ))}
               </select>
             </div>
-            <FocusMusicControl />
-            <GuidedTourTriggerButton tourId={GUIDED_TOUR_IDS.dashboard} />
-            <button
-              type="button"
-              onClick={() => openDashboardOverlay(() => setShowAuthorIdentity(true))}
-              data-guided-tour="dashboard-author"
-              className="ios-toolbar-button hidden h-8 items-center gap-1.5 px-3 text-xs font-semibold text-sky-200 sm:inline-flex"
-              title={t("author_identity")}
-            >
-              <Fingerprint className="h-3.5 w-3.5" />
-              <span>{t("author_identity")}</span>
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="ios-toolbar-button h-8 w-8 px-0 lg:hidden"
+                  aria-label={t("author_identity")}
+                  title={t("author_identity")}
+                >
+                  <Fingerprint className="h-3.5 w-3.5 text-sky-300" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                sideOffset={8}
+                className="scriptora-toolbar-menu-content ios-glass z-[200] w-52 rounded-lg border-white/15 bg-slate-950/95 p-1 shadow-2xl backdrop-blur-xl lg:hidden"
+              >
+                <DropdownMenuLabel className="px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {t("author_identity")}
+                </DropdownMenuLabel>
+                {authorIdentities.map((identity) => (
+                  <DropdownMenuItem
+                    key={identity.id}
+                    className={`cursor-pointer rounded-md px-3 py-2 text-xs focus:bg-white/10 ${
+                      identity.id === activeAuthor.id ? "font-semibold text-primary" : "text-foreground"
+                    }`}
+                    onClick={() => changeAuthorIdentity(identity.id)}
+                  >
+                    {identity.penName}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator className="bg-white/10" />
+                <DropdownMenuItem
+                  className="cursor-pointer rounded-md px-3 py-2 text-xs focus:bg-white/10"
+                  onClick={() => openDashboardOverlay(() => setShowAuthorIdentity(true))}
+                >
+                  <Settings className="mr-2 h-3.5 w-3.5" />
+                  {t("settings")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <FocusMusicControl compact={isMobileLayout} />
+            <GuidedTourTriggerButton tourId={GUIDED_TOUR_IDS.dashboard} compact={isMobileLayout} />
             <DeviceViewToolbarControl />
             <DropdownMenu
               open={showLangMenu}
@@ -872,11 +936,11 @@ export default function Home() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="ios-toolbar-button relative z-[120] h-8 w-8 px-0 text-xs font-medium min-[420px]:w-auto min-[420px]:px-3"
+                  className="ios-toolbar-button relative z-[120] h-8 w-8 shrink-0 px-0 text-xs font-medium lg:w-auto lg:px-3"
                   aria-label={t("lang")}
                 >
                   <Globe className="h-3.5 w-3.5" />
-                  <span className="hidden min-[420px]:inline">{currentLangLabel}</span>
+                  <span className="hidden lg:inline">{currentLangLabel}</span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent

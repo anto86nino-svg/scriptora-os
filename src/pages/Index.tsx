@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { NavigationTree } from "@/components/NavigationTree";
-import { TopBar } from "@/components/TopBar";
 import { EditorPanel } from "@/components/EditorPanel";
 import { ProjectConfigBlockedDialog } from "@/components/ProjectConfigBlockedDialog";
 import { ProgressTracker } from "@/components/ProgressTracker";
@@ -19,8 +18,10 @@ import { BookProject, SectionId } from "@/types/book";
 import { WritingSettings, loadSettings, saveSettings } from "@/lib/settings";
 import { t, tt, UILanguage, useUILanguage } from "@/lib/i18n";
 import { toast } from "sonner";
-import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu, X, ArrowLeft, ListTree } from "lucide-react";
-import { Link } from "react-router-dom";
+import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu, X, ArrowLeft, ListTree, LogOut } from "lucide-react";
+import { AccountIdentityBlock } from "@/components/AccountIdentityBlock";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { useQuota, usePlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { isProjectComplete } from "@/lib/project-status";
@@ -42,6 +43,8 @@ const WRITING_ROOM_MODE_KEY = "scriptora-writing-room-editor-mode";
 
 const Index = () => {
   useUILanguage();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [showNewBook, setShowNewBook] = useState(false);
   const [reconfigureMode, setReconfigureMode] = useState(false);
@@ -720,6 +723,28 @@ const Index = () => {
             <button onClick={() => setShowCoach(!showCoach)}
               className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground">
               <Sparkles className="h-3 w-3" /> {t("ai_coach")}
+            </button>
+          </div>
+        )}
+
+        {user && (
+          <div className={`${effectiveProject ? "" : "mt-auto"} space-y-2 border-t border-white/10 p-2`}>
+            <div className="rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2">
+              <AccountIdentityBlock user={user} size="sm" />
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await signOut();
+                  toast.success(t("toast_signed_out"));
+                } catch { /* noop */ }
+                navigate("/auth");
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut className="h-3.5 w-3.5 shrink-0" />
+              {t("sign_out")}
             </button>
           </div>
         )}

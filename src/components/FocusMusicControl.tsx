@@ -260,7 +260,7 @@ function PresetIcon({ icon, className = "h-3.5 w-3.5" }: { icon: MusicPreset["ic
   return <Moon className={className} />;
 }
 
-export function FocusMusicControl() {
+export function FocusMusicControl({ compact = false }: { compact?: boolean }) {
   useUILanguage();
   const initial = useMemo(readInitialSettings, []);
   const [presetId, setPresetId] = useState<PresetId>(initial.presetId);
@@ -320,6 +320,20 @@ export function FocusMusicControl() {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
+      {compact ? (
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className={`ios-toolbar-button h-8 w-8 shrink-0 px-0 ${
+              playing ? "text-sky-200 shadow-[0_0_14px_rgba(56,189,248,0.35)]" : "text-muted-foreground hover:text-foreground"
+            }`}
+            title={activePresetLabel}
+            aria-label={activePresetLabel}
+          >
+            <Music2 className={`h-3.5 w-3.5 ${playing ? "text-sky-300" : ""}`} />
+          </button>
+        </PopoverTrigger>
+      ) : (
       <div className="flex shrink-0 items-center gap-2 rounded-full border border-sky-300/15 bg-slate-900/70 px-2 py-1 shadow-lg backdrop-blur-xl">
         <PopoverTrigger asChild>
           <button
@@ -342,6 +356,7 @@ export function FocusMusicControl() {
           {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
         </button>
       </div>
+      )}
       <PopoverContent align="start" className="w-80 rounded-xl border-white/10 bg-slate-950/95 p-3 text-slate-100 shadow-2xl backdrop-blur-xl">
         <div className="flex items-start justify-between gap-3">
           <div>

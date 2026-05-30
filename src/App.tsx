@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound.tsx";
 import PricingPage from "./pages/PricingPage.tsx";
 import InstallPage from "./pages/InstallPage.tsx";
 import { DevModeBadge } from "@/components/DevModeBadge";
+import { AuthDebugPanel } from "@/components/AuthDebugPanel";
 import GlobalCuriosity from "./components/GlobalCuriosity";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { DeviceViewSync } from "@/hooks/useDeviceView";
@@ -69,6 +70,7 @@ const App = () => (
               </AppErrorBoundary>
               <DeviceViewSync />
               <DevModeBadge />
+              <AuthDebugPanel />
               <GlobalCuriosity />
             </MollyProvider>
           </DominationProvider>

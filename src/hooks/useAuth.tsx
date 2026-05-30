@@ -3,6 +3,7 @@ import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { enableDevMode, exitDevMode, isDevMode, isOwnerEmail } from "@/lib/dev-mode";
 import { clearDevPlanOverride } from "@/lib/dev-plan-override";
+import { logAuthDebug, summarizeSession } from "@/lib/auth-debug";
 
 type AuthContextValue = {
   user: User | null;
@@ -20,9 +21,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Listener FIRST (per evitare race condition), poi getSession
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
+      if (isDevMode()) {
+        logAuthDebug("useAuth.onAuthStateChange", {
+          event,
+          session: summarizeSession(newSession),
+        });
+      }
       if (isOwnerEmail(newSession?.user?.email) && !isDevMode()) {
         enableDevMode();
       }
@@ -32,6 +39,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(existing);
       setUser(existing?.user ?? null);
       setLoading(false);
+      if (isDevMode()) {
+        logAuthDebug("useAuth.getSession", { session: summarizeSession(existing) });
+      }
       if (isOwnerEmail(existing?.user?.email) && !isDevMode()) {
         enableDevMode();
       }

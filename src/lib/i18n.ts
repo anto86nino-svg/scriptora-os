@@ -142,6 +142,7 @@ const translations: Record<string, Record<UILanguage, string>> = {
 	  stable: { en: "Stable", it: "Stabile", es: "Estable", fr: "Stable", de: "Stabil" },
 	  live: { en: "Live", it: "Live", es: "En vivo", fr: "En direct", de: "Live" },
 	  sign_out: { en: "Sign out", it: "Esci", es: "Salir", fr: "Se déconnecter", de: "Abmelden" },
+	  signed_in_with_google: { en: "Signed in with Google", it: "Accesso con Google", es: "Sesión con Google", fr: "Connecté avec Google", de: "Mit Google angemeldet" },
 	  open_action: { en: "Open", it: "Apri", es: "Abrir", fr: "Ouvrir", de: "Öffnen" },
 	  recent_projects: { en: "Recent projects", it: "Progetti recenti", es: "Proyectos recientes", fr: "Projets récents", de: "Aktuelle Projekte" },
 	  back_to_dashboard: { en: "Back to dashboard", it: "Torna alla dashboard", es: "Volver al panel", fr: "Retour au tableau de bord", de: "Zurück zum Dashboard" },
