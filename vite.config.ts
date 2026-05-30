@@ -53,4 +53,51 @@ export default defineConfig(({ mode }) => ({
       "@tanstack/query-core",
     ],
   },
+
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (
+              id.includes("react-dom") ||
+              id.includes("/react/") ||
+              id.includes("react-router") ||
+              id.includes("@tanstack")
+            ) {
+              return "react-vendor";
+            }
+            if (id.includes("@radix-ui") || id.includes("framer-motion") || id.includes("lucide-react")) {
+              return "ui-vendor";
+            }
+            if (
+              id.includes("jspdf") ||
+              id.includes("html2canvas") ||
+              id.includes("jszip") ||
+              id.includes("docx") ||
+              id.includes("pdf-lib")
+            ) {
+              return "export-engine";
+            }
+            return undefined;
+          }
+
+          if (id.includes("/src/lib/pdf-export") || id.includes("/src/lib/docx-export")) {
+            return "export-engine";
+          }
+          if (
+            id.includes("money-engine") ||
+            id.includes("BestsellerRadar") ||
+            id.includes("KdpLaunchPage") ||
+            id.includes("KeywordGoldPage")
+          ) {
+            return "market-engine";
+          }
+          if (id.includes("VoiceStudio")) return "voice-engine";
+          if (id.includes("CoverGenerator")) return "cover-engine";
+          return undefined;
+        },
+      },
+    },
+  },
 }))

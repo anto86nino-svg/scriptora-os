@@ -1,18 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { NavigationTree } from "@/components/NavigationTree";
 import { TopBar } from "@/components/TopBar";
 import { EditorPanel } from "@/components/EditorPanel";
-import { NewBookDialog } from "@/components/NewBookDialog";
 import { ProjectConfigBlockedDialog } from "@/components/ProjectConfigBlockedDialog";
-import { CoverGenerator } from "@/components/CoverGenerator";
-import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
-import { PublishPanel } from "@/components/PublishPanel";
-import { SettingsPanel } from "@/components/SettingsPanel";
-import { AICoachPanel } from "@/components/AICoachPanel";
 import { ProgressTracker } from "@/components/ProgressTracker";
 import { GuidedProjectFlow } from "@/components/GuidedProjectFlow";
 import { GuidedTourTriggerButton } from "@/components/GuidedTourTriggerButton";
-import { VoiceStudioDialog } from "@/components/VoiceStudioDialog";
+import { LazyPanelFallback } from "@/components/LazyPanelFallback";
 import { useBookEngine } from "@/hooks/useBookEngine";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { deleteProject as removeProject, getLastProjectId, setLastProjectId } from "@/lib/storage";
@@ -30,6 +24,16 @@ import { Link } from "react-router-dom";
 import { useQuota, usePlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { isProjectComplete } from "@/lib/project-status";
+
+const NewBookDialog = lazy(() => import("@/components/NewBookDialog").then((m) => ({ default: m.NewBookDialog })));
+const CoverGenerator = lazy(() => import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })));
+const CoverBeforeExportDialog = lazy(() =>
+  import("@/components/CoverBeforeExportDialog").then((m) => ({ default: m.CoverBeforeExportDialog })),
+);
+const VoiceStudioDialog = lazy(() => import("@/components/VoiceStudioDialog").then((m) => ({ default: m.VoiceStudioDialog })));
+const PublishPanel = lazy(() => import("@/components/PublishPanel").then((m) => ({ default: m.PublishPanel })));
+const SettingsPanel = lazy(() => import("@/components/SettingsPanel").then((m) => ({ default: m.SettingsPanel })));
+const AICoachPanel = lazy(() => import("@/components/AICoachPanel").then((m) => ({ default: m.AICoachPanel })));
 
 type ExportFormat = "epub" | "docx" | "pdf";
 const WRITING_ROOM_PROJECT_KEY = "scriptora-writing-room-last-project";
@@ -450,39 +454,43 @@ const Index = () => {
 
   const writingRoomOverlays = (
     <>
-      <NewBookDialog
-        open={showNewBook}
-        onClose={() => {
-          setShowNewBook(false);
-          setReconfigureMode(false);
-          setConfigBlockedDraft(null);
-        }}
-        initialConfig={reconfigureInitialConfig}
-        reconfigureMode={reconfigureMode}
-        onSubmit={(config) => {
-          if (reconfigureMode) {
-            engine.applyProjectConfig(config);
-            setShowNewBook(false);
-            setReconfigureMode(false);
-            setConfigBlockedIssues(null);
-            setConfigBlockedDraft(null);
-            setTimeout(refreshProjects, 500);
-            return;
-          }
-          if (freeBookUsed) {
-            setShowNewBook(false);
-            setUpgradeReason("books-limit");
-            toast.error(t("toast_free_book_used"));
-            return;
-          }
-          engine.startNewBook(config);
-          const restoredSection = "blueprint" as SectionId;
-          sessionStorage.setItem(WRITING_ROOM_SECTION_KEY, restoredSection);
-          setShowNewBook(false);
-          setActiveSection(restoredSection);
-          setTimeout(refreshProjects, 500);
-        }}
-      />
+      {(showNewBook || reconfigureMode) && (
+        <Suspense fallback={<LazyPanelFallback />}>
+          <NewBookDialog
+            open={showNewBook}
+            onClose={() => {
+              setShowNewBook(false);
+              setReconfigureMode(false);
+              setConfigBlockedDraft(null);
+            }}
+            initialConfig={reconfigureInitialConfig}
+            reconfigureMode={reconfigureMode}
+            onSubmit={(config) => {
+              if (reconfigureMode) {
+                engine.applyProjectConfig(config);
+                setShowNewBook(false);
+                setReconfigureMode(false);
+                setConfigBlockedIssues(null);
+                setConfigBlockedDraft(null);
+                setTimeout(refreshProjects, 500);
+                return;
+              }
+              if (freeBookUsed) {
+                setShowNewBook(false);
+                setUpgradeReason("books-limit");
+                toast.error(t("toast_free_book_used"));
+                return;
+              }
+              engine.startNewBook(config);
+              const restoredSection = "blueprint" as SectionId;
+              sessionStorage.setItem(WRITING_ROOM_SECTION_KEY, restoredSection);
+              setShowNewBook(false);
+              setActiveSection(restoredSection);
+              setTimeout(refreshProjects, 500);
+            }}
+          />
+        </Suspense>
+      )}
 
       <ProjectConfigBlockedDialog
         open={!!configBlockedIssues?.length}
@@ -781,24 +789,30 @@ const Index = () => {
                 </div>
               </div>
               {showCoach && (
-                <AICoachPanel project={effectiveProject} activeSection={activeSection} onClose={() => setShowCoach(false)}
-                  onApplyRewrite={(chapterIdx, subIdx, text) => {
-                    if (subIdx !== null) engine.updateSubchapterContent(chapterIdx, subIdx, text);
-                    else engine.updateChapterContent(chapterIdx, text);
-                  }} />
+                <Suspense fallback={<LazyPanelFallback />}>
+                  <AICoachPanel project={effectiveProject} activeSection={activeSection} onClose={() => setShowCoach(false)}
+                    onApplyRewrite={(chapterIdx, subIdx, text) => {
+                      if (subIdx !== null) engine.updateSubchapterContent(chapterIdx, subIdx, text);
+                      else engine.updateChapterContent(chapterIdx, text);
+                    }} />
+                </Suspense>
               )}
-              <VoiceStudioDialog
-                open={showVoiceStudio}
-                onClose={closeVoiceStudio}
-                projects={nextVoiceProjectList}
-                initialProjectId={effectiveProject?.id}
-                initialChapterIndex={voiceStudioChapterIndex}
-                autoPlayOnOpen
-                onOpenChapterInEditor={(_projectId, chapterIdx) => {
-                  closeVoiceStudio();
-                  setActiveSection(`chapter-${chapterIdx}` as SectionId);
-                }}
-              />
+              {showVoiceStudio && (
+                <Suspense fallback={<LazyPanelFallback />}>
+                  <VoiceStudioDialog
+                    open={showVoiceStudio}
+                    onClose={closeVoiceStudio}
+                    projects={nextVoiceProjectList}
+                    initialProjectId={effectiveProject?.id}
+                    initialChapterIndex={voiceStudioChapterIndex}
+                    autoPlayOnOpen
+                    onOpenChapterInEditor={(_projectId, chapterIdx) => {
+                      closeVoiceStudio();
+                      setActiveSection(`chapter-${chapterIdx}` as SectionId);
+                    }}
+                  />
+                </Suspense>
+              )}
             </>
           ) : (
             <div className="flex flex-1 items-center justify-center px-4">
@@ -856,83 +870,95 @@ const Index = () => {
       {writingRoomOverlays}
 
       {showCover && effectiveProject && (
-        <CoverGenerator
-          title={effectiveProject.config.title}
-          subtitle={effectiveProject.config.subtitle}
-          authorName={effectiveProject.config.authorName || effectiveProject.config.author || effectiveProject.config.writerName}
-          description={effectiveProject.blueprint?.overview || effectiveProject.config.subtitle}
-          authorBio={effectiveProject.frontMatter?.aboutAuthor || effectiveProject.config.authorIdentity?.biography}
-          projectGenre={effectiveProject.config.genre}
-          onGenerate={(dataUrl) => {
-            setCoverDataUrl(dataUrl);
-            setShowCover(false);
-            if (pendingExportFormat) {
-              const format = pendingExportFormat;
-              setPendingExportFormat(null);
-              runExport(format, dataUrl);
-            }
-          }}
-          onClose={() => {
-            setShowCover(false);
-            if (pendingExportFormat) setPendingExportFormat(null);
-          }}
-        />
+        <Suspense fallback={<LazyPanelFallback />}>
+          <CoverGenerator
+            title={effectiveProject.config.title}
+            subtitle={effectiveProject.config.subtitle}
+            authorName={effectiveProject.config.authorName || effectiveProject.config.author || effectiveProject.config.writerName}
+            description={effectiveProject.blueprint?.overview || effectiveProject.config.subtitle}
+            authorBio={effectiveProject.frontMatter?.aboutAuthor || effectiveProject.config.authorIdentity?.biography}
+            projectGenre={effectiveProject.config.genre}
+            onGenerate={(dataUrl) => {
+              setCoverDataUrl(dataUrl);
+              setShowCover(false);
+              if (pendingExportFormat) {
+                const format = pendingExportFormat;
+                setPendingExportFormat(null);
+                runExport(format, dataUrl);
+              }
+            }}
+            onClose={() => {
+              setShowCover(false);
+              if (pendingExportFormat) setPendingExportFormat(null);
+            }}
+          />
+        </Suspense>
       )}
 
-      <CoverBeforeExportDialog
-        open={coverGateOpen && !!pendingExportFormat}
-        format={(pendingExportFormat || "epub").toUpperCase() as "EPUB" | "PDF" | "DOCX"}
-        onCreateCover={() => {
-          setCoverGateOpen(false);
-          setShowCover(true);
-        }}
-        onShipWithoutCover={() => {
-          const format = pendingExportFormat;
-          setCoverGateOpen(false);
-          setPendingExportFormat(null);
-          if (format) runExport(format);
-        }}
-        onClose={() => {
-          setCoverGateOpen(false);
-          setPendingExportFormat(null);
-        }}
-      />
+      {(coverGateOpen && !!pendingExportFormat) && (
+        <Suspense fallback={<LazyPanelFallback />}>
+          <CoverBeforeExportDialog
+            open={coverGateOpen && !!pendingExportFormat}
+            format={(pendingExportFormat || "epub").toUpperCase() as "EPUB" | "PDF" | "DOCX"}
+            onCreateCover={() => {
+              setCoverGateOpen(false);
+              setShowCover(true);
+            }}
+            onShipWithoutCover={() => {
+              const format = pendingExportFormat;
+              setCoverGateOpen(false);
+              setPendingExportFormat(null);
+              if (format) runExport(format);
+            }}
+            onClose={() => {
+              setCoverGateOpen(false);
+              setPendingExportFormat(null);
+            }}
+          />
+        </Suspense>
+      )}
 
       {showPublish && (
-        <PublishPanel
-          project={effectiveProject}
-          onClose={() => setShowPublish(false)}
-          onStartFresh={(config) => {
-            if (freeBookUsed) {
-              setUpgradeReason("books-limit");
-              toast.error(t("toast_free_book_used"));
-              return;
-            }
-            engine.startNewBook(config);
-            setActiveSection("blueprint");
-            setTimeout(refreshProjects, 500);
-          }}
-          onGenerateFullBook={guardedGenerateFullBook}
-          isBookGenerating={engine.isAnythingGenerating}
-          onUpdateConfig={engine.updateConfig}
-          onUpdateChapterContent={engine.updateChapterContent}
-          onSaveProject={async () => {
-            if (effectiveProject) await saveProjectAsync(effectiveProject);
-            await refreshProjects();
-          }}
-          onExportEpub={guardedExportEpub}
-          onExportPdf={guardedExportPdf}
-          onExportDocx={guardedExportDocx}
-        />
+        <Suspense fallback={<LazyPanelFallback />}>
+          <PublishPanel
+            project={effectiveProject}
+            onClose={() => setShowPublish(false)}
+            onStartFresh={(config) => {
+              if (freeBookUsed) {
+                setUpgradeReason("books-limit");
+                toast.error(t("toast_free_book_used"));
+                return;
+              }
+              engine.startNewBook(config);
+              setActiveSection("blueprint");
+              setTimeout(refreshProjects, 500);
+            }}
+            onGenerateFullBook={guardedGenerateFullBook}
+            isBookGenerating={engine.isAnythingGenerating}
+            onUpdateConfig={engine.updateConfig}
+            onUpdateChapterContent={engine.updateChapterContent}
+            onSaveProject={async () => {
+              if (effectiveProject) await saveProjectAsync(effectiveProject);
+              await refreshProjects();
+            }}
+            onExportEpub={guardedExportEpub}
+            onExportPdf={guardedExportPdf}
+            onExportDocx={guardedExportDocx}
+          />
+        </Suspense>
       )}
 
-      <SettingsPanel
-        open={showSettings}
-        onClose={() => setShowSettings(false)}
-        settings={writingSettings}
-        onUpdateSettings={handleUpdateSettings}
-        onLanguageChange={handleLanguageChange}
-      />
+      {showSettings && (
+        <Suspense fallback={<LazyPanelFallback />}>
+          <SettingsPanel
+            open={showSettings}
+            onClose={() => setShowSettings(false)}
+            settings={writingSettings}
+            onUpdateSettings={handleUpdateSettings}
+            onLanguageChange={handleLanguageChange}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

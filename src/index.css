@@ -5612,3 +5612,24 @@ textarea,
     opacity: 0.84;
   }
 }
+
+/* Performance hardening — mobile GPU (desktop unchanged) */
+@media (max-width: 768px) {
+  :where(.ios-glass, .ios-glass-soft, .ios-panel, .scriptora-feature-scroll) {
+    backdrop-filter: blur(12px) saturate(118%) !important;
+    -webkit-backdrop-filter: blur(12px) saturate(118%) !important;
+  }
+
+  :where(.scriptora-ios-screen, .scriptora-feature-page) {
+    --scriptora-mobile-blur-tier: 1;
+  }
+
+  :where([class*="backdrop-blur-"]) {
+    --tw-backdrop-blur: blur(8px) !important;
+  }
+
+  .scriptora-boot-bg-glow,
+  .scriptora-landing-glow {
+    filter: blur(22px) !important;
+  }
+}

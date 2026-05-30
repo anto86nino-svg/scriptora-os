@@ -2,11 +2,10 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
-import { NewBookDialog } from "@/components/NewBookDialog";
-import { AdvancedAppearanceDialog } from "@/components/AdvancedAppearanceDialog";
 import { DashboardGuidedFlow } from "@/components/DashboardGuidedFlow";
 import { FocusMusicControl } from "@/components/FocusMusicControl";
 import { GuidedTourTriggerButton } from "@/components/GuidedTourTriggerButton";
+import { LazyPanelFallback } from "@/components/LazyPanelFallback";
 import { InProgressSection } from "@/components/Home/InProgressSection";
 import { LibrarySection } from "@/components/Home/LibrarySection";
 import { PaywallGuard } from "@/components/PaywallGuard";
@@ -50,6 +49,8 @@ const CharacterStudioDialog = lazy(() => import("@/components/CharacterStudioDia
 const ManuscriptAnalyzerDialog = lazy(() => import("@/components/ManuscriptAnalyzerDialog").then(m => ({ default: m.ManuscriptAnalyzerDialog })));
 const NotepadDialog = lazy(() => import("@/components/NotepadDialog").then(m => ({ default: m.NotepadDialog })));
 const AuthorIdentityDialog = lazy(() => import("@/components/AuthorIdentityDialog").then(m => ({ default: m.AuthorIdentityDialog })));
+const NewBookDialog = lazy(() => import("@/components/NewBookDialog").then(m => ({ default: m.NewBookDialog })));
+const AdvancedAppearanceDialog = lazy(() => import("@/components/AdvancedAppearanceDialog").then(m => ({ default: m.AdvancedAppearanceDialog })));
 
 const SCRIPTORA_CHARACTER_BIBLE_KEY = "scriptora-character-bible-v1";
 const SCRIPTORA_CHARACTER_PROJECT_KEY = "scriptora-character-project-v1";
@@ -1244,19 +1245,23 @@ export default function Home() {
 
       </main>
 
-      <NewBookDialog
-        open={showNewBook}
-        onClose={() => setShowNewBook(false)}
-        onSubmit={(config) => {
-          if (freeBookUsed) {
-            setShowNewBook(false);
-            toast.error(t("toast_free_book_used"));
-            navigate("/pricing");
-            return;
-          }
-          handleNewBook(config);
-        }}
-      />
+      {showNewBook && (
+        <Suspense fallback={<LazyPanelFallback />}>
+          <NewBookDialog
+            open={showNewBook}
+            onClose={() => setShowNewBook(false)}
+            onSubmit={(config) => {
+              if (freeBookUsed) {
+                setShowNewBook(false);
+                toast.error(t("toast_free_book_used"));
+                navigate("/pricing");
+                return;
+              }
+              handleNewBook(config);
+            }}
+          />
+        </Suspense>
+      )}
       {showExport && (
         <Suspense fallback={null}>
           <HomeExportDialog open={showExport} projects={projects} onClose={() => setShowExport(false)} />
@@ -1267,7 +1272,11 @@ export default function Home() {
           <TitleIntelligenceDialog open={showTitleIntel} onClose={() => setShowTitleIntel(false)} />
         </Suspense>
       )}
-      <AdvancedAppearanceDialog open={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} />
+      {showAdvancedSettings && (
+        <Suspense fallback={null}>
+          <AdvancedAppearanceDialog open={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} />
+        </Suspense>
+      )}
       {showCharacterStudio && (
         <Suspense fallback={null}>
           <CharacterStudioDialog open={showCharacterStudio} onClose={() => setShowCharacterStudio(false)} />
