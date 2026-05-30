@@ -13,7 +13,6 @@ import type { ProjectConfigIssue } from "@/lib/project-config-validation";
 import type { BookConfig } from "@/types/book";
 import { GUIDED_TOUR_IDS } from "@/lib/guided-tour-events";
 import { loadProjects as loadRemoteProjects, deleteProjectAsync, saveProjectAsync } from "@/services/storageService";
-import { generateEpub, downloadEpub, validateEpubStructure } from "@/lib/epub";
 import { BookProject, SectionId } from "@/types/book";
 import { WritingSettings, loadSettings, saveSettings } from "@/lib/settings";
 import { t, tt, UILanguage, useUILanguage } from "@/lib/i18n";
@@ -399,6 +398,7 @@ const Index = () => {
 
   const handleExport = async (coverOverride?: string) => {
     if (!effectiveProject) return;
+    const { generateEpub, downloadEpub, validateEpubStructure } = await import("@/lib/epub");
     const errors = validateEpubStructure(effectiveProject);
     if (errors.length > 0) {
       alert(`${t("export_blocked_epub")}:\n\n${errors.join("\n")}`);

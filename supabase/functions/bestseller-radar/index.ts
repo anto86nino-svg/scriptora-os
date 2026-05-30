@@ -1,4 +1,5 @@
 import { estimateTokens, logAIUsage } from "../_shared/ai-tracking.ts";
+import { applyAuthContext, enforceEdgeGuard, EDGE_GUARD_PROFILES } from "../_shared/edge-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -78,11 +79,14 @@ Deno.serve(async (req) => {
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
     if (!BRAVE_SEARCH_API_KEY) throw new Error("BRAVE_SEARCH_API_KEY not configured");
 
-    const body = await req.json().catch(() => ({}));
+    const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["bestseller-radar"]);
+    if (guard instanceof Response) return guard;
+    const body = applyAuthContext(guard, rawBody);
     const genre = String(body.genre || "romance");
     const keyword = String(body.keyword || "").trim();
     const marketplace = String(body.marketplace || "Amazon.it");
-    const userId = body.userId ? String(body.userId) : null;
+    const userId = guard.userId;
     const projectId = body.projectId ? String(body.projectId) : null;
 
     const query = `${marketplace} bestseller libri ${genre} ${keyword}`.trim();

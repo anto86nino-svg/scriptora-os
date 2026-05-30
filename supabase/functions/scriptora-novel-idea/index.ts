@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { callDeepSeekTracked } from "../_shared/ai-tracking.ts";
+import { applyAuthContext, enforceEdgeGuard, EDGE_GUARD_PROFILES } from "../_shared/edge-guard.ts";
 
 const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY") || "";
 
@@ -46,7 +47,10 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json().catch(() => ({}));
+    const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["scriptora-novel-idea"]);
+    if (guard instanceof Response) return guard;
+    const body = applyAuthContext(guard, rawBody);
 
     const genre = String(body.genre || "romance").trim();
     const seedIdea = String(body.seedIdea || body.idea || "").trim();
@@ -61,7 +65,7 @@ serve(async (req) => {
     const previousIdeas: string[] = Array.isArray(body.previousIdeas)
       ? body.previousIdeas.map((item: unknown) => String(item || "").replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, 10)
       : [];
-    const userId = body.userId ? String(body.userId) : null;
+    const userId = guard.userId;
     const projectId = body.projectId ? String(body.projectId) : null;
     const seed = hashSeed(`${diversitySeed}|${genre}|${subcategory}|${tone}|${previousIdeas.join("|")}`);
 

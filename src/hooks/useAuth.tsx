@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { canUseDevTools } from "@/lib/app-environment";
 import { enableDevMode, exitDevMode, isDevMode, isOwnerEmail } from "@/lib/dev-mode";
 import { clearDevPlanOverride } from "@/lib/dev-plan-override";
 import { logAuthDebug, summarizeSession } from "@/lib/auth-debug";
@@ -46,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isDevMode()) {
         logAuthDebug("useAuth.getSession", { session: summarizeSession(existing) });
       }
-      if (isOwnerEmail(existing?.user?.email) && !isDevMode()) {
+      if (canUseDevTools() && isOwnerEmail(existing?.user?.email) && !isDevMode()) {
         enableDevMode();
       }
     });

@@ -8,11 +8,11 @@ import { DominationProvider } from "@/contexts/DominationContext";
 import { MollyProvider } from "@/molly/MollyProvider";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import Home from "./pages/Home.tsx";
-import AuthPage from "./pages/Auth.tsx";
-import NotFound from "./pages/NotFound.tsx";
-import PricingPage from "./pages/PricingPage.tsx";
-import InstallPage from "./pages/InstallPage.tsx";
+const Home = lazy(() => import("./pages/Home.tsx"));
+const AuthPage = lazy(() => import("./pages/Auth.tsx"));
+const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const PricingPage = lazy(() => import("./pages/PricingPage.tsx"));
+const InstallPage = lazy(() => import("./pages/InstallPage.tsx"));
 import { DevModeBadge } from "@/components/DevModeBadge";
 import { AuthDebugPanel } from "@/components/AuthDebugPanel";
 import GlobalCuriosity from "./components/GlobalCuriosity";
@@ -55,8 +55,8 @@ const App = () => (
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/app" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-                <Route path="/auto-bestseller" element={<ProtectedRoute><AutoBestsellerPage /></ProtectedRoute>} />
-                <Route path="/usage" element={<ProtectedRoute><UsagePage /></ProtectedRoute>} />
+                <Route path="/auto-bestseller" element={<ProtectedRoute requiredFeature="bestseller_prediction"><AutoBestsellerPage /></ProtectedRoute>} />
+                <Route path="/usage" element={<ProtectedRoute ownerOnly><UsagePage /></ProtectedRoute>} />
                 <Route path="/kdp-launch" element={<ProtectedRoute requiredFeature="kdp_market_base"><KdpLaunchPage /></ProtectedRoute>} />
                 <Route path="/downloads" element={<ProtectedRoute requiredFeature="export_epub"><DownloadsPage /></ProtectedRoute>} />
                 <Route path="/bestseller-radar" element={<ProtectedRoute requiredFeature="trending_niches_limited"><BestsellerRadarPage /></ProtectedRoute>} />

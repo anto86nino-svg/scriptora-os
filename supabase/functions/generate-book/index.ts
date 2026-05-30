@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { logAIUsage, estimateTokens } from "../_shared/ai-tracking.ts";
+import { applyAuthContext, enforceEdgeGuard, EDGE_GUARD_PROFILES } from "../_shared/edge-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -31,6 +32,10 @@ serve(async (req) => {
     } catch {
       return jsonResponse({ error: "Invalid JSON request body." }, 400);
     }
+
+    const guard = await enforceEdgeGuard(req, body, EDGE_GUARD_PROFILES["generate-book"]);
+    if (guard instanceof Response) return guard;
+    body = applyAuthContext(guard, body);
 
     const {
       systemPrompt,

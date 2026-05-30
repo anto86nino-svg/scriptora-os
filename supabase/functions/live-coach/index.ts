@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { logAIUsage, estimateTokens } from "../_shared/ai-tracking.ts";
+import { applyAuthContext, enforceEdgeGuard, EDGE_GUARD_PROFILES } from "../_shared/edge-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,7 +30,10 @@ serve(async (req) => {
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 
-    const body: Body = await req.json();
+    const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["live-coach"]);
+    if (guard instanceof Response) return guard;
+    const body = applyAuthContext(guard, rawBody) as Body;
     const lang = body.language || "English";
     const genre = body.genre || "general";
     const tone = body.tone || "neutral";

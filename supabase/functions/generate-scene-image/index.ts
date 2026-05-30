@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { applyAuthContext, enforceEdgeGuard, EDGE_GUARD_PROFILES } from "../_shared/edge-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,12 +43,6 @@ function json(payload: Record<string, unknown>, status = 200) {
 
 function compact(value: unknown, max = 1200): string {
   return String(value || "").replace(/\s+/g, " ").trim().slice(0, max);
-}
-
-function normalizePlan(plan: PlanTier | undefined): "free" | "pro" | "premium" {
-  if (plan === "premium") return "premium";
-  if (plan === "pro" || plan === "beta") return "pro";
-  return "free";
 }
 
 async function sha256(value: string): Promise<string> {
@@ -202,8 +197,11 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const body = await req.json().catch(() => ({})) as SceneImageBody;
-    const plan = normalizePlan(body.plan);
+    const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["generate-scene-image"]);
+    if (guard instanceof Response) return guard;
+    const body = applyAuthContext(guard, rawBody) as SceneImageBody;
+    const plan = guard.normalizedPlan;
     if (plan === "free") {
       return json({ ok: false, status: "disabled", imageUrl: null, reason: "paid-plan-required" });
     }
@@ -213,7 +211,7 @@ Deno.serve(async (req) => {
       return json({ ok: false, status: "unconfigured", imageUrl: null, reason: "missing-fal-key" });
     }
 
-    const userId = compact(body.userId, 120) || "local-user-pro";
+    const userId = guard.userId;
     const projectId = compact(body.projectId, 120);
     const chapterIndex = Number.isFinite(Number(body.chapterIndex)) ? Number(body.chapterIndex) : 0;
     if (!projectId) return json({ ok: false, status: "unavailable", imageUrl: null, reason: "missing-project-id" });

@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callDeepSeekTracked } from "../_shared/ai-tracking.ts";
+import { applyAuthContext, enforceEdgeGuard, EDGE_GUARD_PROFILES } from "../_shared/edge-guard.ts";
+
+let __trackCtx: { projectId?: string | null; userId?: string | null } = {};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +13,12 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { chapterTitle, chapterText, genre, tone, language, projectId = null } = await req.json();
+    const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["analyze-chapter"]);
+    if (guard instanceof Response) return guard;
+    const body = applyAuthContext(guard, rawBody);
+    const { chapterTitle, chapterText, genre, tone, language, projectId = null } = body;
+    __trackCtx = { projectId, userId: guard.userId };
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 
@@ -107,6 +115,7 @@ Rules:
         jsonMode: true,
         taskType: "analyze_chapter",
         projectId,
+        userId: __trackCtx.userId || null,
         metadata: { genre, language, paragraphs: paragraphs.length },
       });
       content = result.content || "{}";

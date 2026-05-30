@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Lock, ShieldCheck } from "lucide-react";
+import { canUseDevTools } from "@/lib/app-environment";
 import { tryUnlock } from "@/lib/dev-mode";
 import { toast } from "sonner";
 
@@ -13,6 +14,8 @@ interface Props {
 export function DevModeUnlockDialog({ open, onOpenChange, onUnlocked }: Props) {
   const [pwd, setPwd] = useState("");
   const [err, setErr] = useState(false);
+
+  if (!canUseDevTools()) return null;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();

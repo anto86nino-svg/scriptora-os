@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callDeepSeekTracked } from "../_shared/ai-tracking.ts";
+import { applyAuthContext, enforceEdgeGuard, EDGE_GUARD_PROFILES } from "../_shared/edge-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,7 +25,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { idea, language = "English", projectId = null } = await req.json();
+    const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["detect-book-intent"]);
+    if (guard instanceof Response) return guard;
+    const body = applyAuthContext(guard, rawBody);
+    const { idea, language = "English", projectId = null } = body;
     if (!idea || typeof idea !== "string" || idea.trim().length < 4) {
       return new Response(JSON.stringify({ error: "idea required (4+ chars)" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },

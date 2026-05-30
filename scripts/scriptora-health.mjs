@@ -5,7 +5,7 @@
 import { execSync } from "node:child_process";
 import { loadMergedEnv, validateSupabaseEnv, resolveEdgeJwt } from "./scriptora-env-core.mjs";
 
-async function pingFunction(url, jwt, apikey, name) {
+async function pingFunction(url, jwt, apikey, name, serviceKey) {
   const endpoint = `${url.replace(/\/$/, "")}/functions/v1/${name}`;
   const body =
     name === "generate-book"
@@ -15,13 +15,14 @@ async function pingFunction(url, jwt, apikey, name) {
           userPrompt: '{"title":"Health","chapters":[]}',
           taskType: "health_ping",
         };
+  const bearer = serviceKey || jwt;
   try {
     const res = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         apikey,
-        Authorization: `Bearer ${jwt}`,
+        Authorization: `Bearer ${bearer}`,
       },
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(25000),
@@ -67,8 +68,9 @@ if (report.env.url && report.ok) {
   if (!jwt && projectRef) jwt = tryCliAnon(projectRef);
 
   if (jwt) {
-    const bpStatus = await pingFunction(report.env.url, jwt, apikey, "generate-blueprint-fast");
-    const bookStatus = await pingFunction(report.env.url, jwt, apikey, "generate-book");
+    const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY || "";
+    const bpStatus = await pingFunction(report.env.url, jwt, apikey, "generate-blueprint-fast", serviceKey);
+    const bookStatus = await pingFunction(report.env.url, jwt, apikey, "generate-book", serviceKey);
     blueprintOk = bpStatus === 200;
     chapterOk = bookStatus === 200;
     deepseekOk = blueprintOk || chapterOk || bpStatus === 402 || bookStatus === 402;
@@ -76,6 +78,9 @@ if (report.env.url && report.ok) {
     line(blueprintOk || bpStatus === 200, "Blueprint generation OK");
     line(chapterOk || bookStatus === 200, "Chapter generation OK");
     line(bpStatus > 0 || bookStatus > 0, "Edge Functions healthy");
+    if (bpStatus === 401 || bookStatus === 401) {
+      line(false, "Edge auth enforced (deploy edge-guard to production)");
+    }
   } else {
     line(false, "DeepSeek reachable (no JWT for smoke test)");
     line(false, "Blueprint generation OK (skipped)");

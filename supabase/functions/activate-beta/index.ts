@@ -3,6 +3,7 @@
 // Code is NEVER exposed to the frontend.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { applyAuthContext, enforceEdgeGuard, EDGE_GUARD_PROFILES } from "../_shared/edge-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,10 +22,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body = await req.json().catch(() => ({}));
+    const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["activate-beta"]);
+    if (guard instanceof Response) return guard;
+    const body = applyAuthContext(guard, rawBody);
     const code: string = (body.code || "").toString().trim();
     const normalizedCode = code.toLowerCase();
-    const userId: string = (body.userId || "local-user").toString();
+    const userId: string = guard.userId;
     const deviceId: string = (body.deviceId || "").toString();
     const userAgent: string = (body.userAgent || "").toString().slice(0, 500);
 

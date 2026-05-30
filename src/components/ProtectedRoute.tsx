@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { isDevMode } from "@/lib/dev-mode";
+import { isOwnerEmail } from "@/lib/dev-mode";
 import { hasValidConsent } from "@/lib/legal-consent";
 import { usePlan } from "@/lib/plan";
 import { canUseFeature, type FeatureKey } from "@/lib/subscription";
@@ -31,20 +31,16 @@ export function ProtectedRoute({
     );
   }
 
-  if (!authLoading && !user && !isDevMode()) {
+  if (!authLoading && !user) {
     return <Navigate to="/auth" state={{ from: location.pathname }} replace />;
+  }
+
+  if (!authLoading && ownerOnly && !isOwnerEmail(user?.email)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   if (requiredFeature && !planLoading && !canUseFeature(plan, requiredFeature)) {
     return <Navigate to="/pricing" replace />;
-  }
-
-  if (isDevMode()) {
-    return (
-      <ScriptoraBootGate authReady={!authLoading} planReady={!requiredFeature || !planLoading}>
-        {children}
-      </ScriptoraBootGate>
-    );
   }
 
   return (

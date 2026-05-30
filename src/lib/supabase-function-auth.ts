@@ -161,9 +161,8 @@ export async function fetchSupabaseFunction(
   if (res.status === 401 || res.status === 403) {
     const text = await res.clone().text().catch(() => "");
     if (isSupabaseJwtAuthError(text)) {
-      console.warn("[Scriptora] Edge function JWT rejected — retrying with anon key");
+      console.warn("[Scriptora] Edge function JWT rejected — session expired");
       await getSupabaseClient().auth.signOut({ scope: "local" }).catch(() => undefined);
-      res = await run(true);
     }
   }
 

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { enforceEdgeGuard, EDGE_GUARD_PROFILES } from "../_shared/edge-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,8 +38,11 @@ serve(async (req) => {
       });
     }
 
-    const body: UsageRequest = await req.json().catch(() => ({}));
-    const userIds = cleanUserIds(body.userIds);
+    const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["ai-usage-summary"]);
+    if (guard instanceof Response) return guard;
+    const body: UsageRequest = rawBody as UsageRequest;
+    const userIds = [guard.userId];
     const projectId = body.projectId ? String(body.projectId) : null;
     const summaryLimit = Math.max(1, Math.min(5000, Number(body.summaryLimit || 1000)));
     const recentLimit = Math.max(1, Math.min(200, Number(body.recentLimit || 50)));

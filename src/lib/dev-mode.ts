@@ -1,6 +1,7 @@
-// Developer Mode — frontend-only gate for internal cost/token monitoring.
-// NOTE: This is NOT real security. It's an obfuscated MVP gate.
-// Real protection will come with backend auth later.
+// Developer Mode — local-only tooling for plan simulation and usage dashboards.
+// Production deploys: always OFF (see canUseDevTools in app-environment.ts).
+
+import { canUseDevTools } from "@/lib/app-environment";
 
 const KEY = "nexora_dev_mode";
 
@@ -18,8 +19,9 @@ export function isOwnerEmail(email: string | null | undefined): boolean {
   return OWNER_EMAILS.includes(email.trim().toLowerCase());
 }
 
-/** Force-enable Dev Mode (used by owner auto-unlock). */
+/** Force-enable Dev Mode — local dev hosts only. */
 export function enableDevMode(): void {
+  if (!canUseDevTools()) return;
   try { sessionStorage.setItem(KEY, "1"); } catch { /* noop */ }
   window.dispatchEvent(new Event("nexora-dev-mode-change"));
 }
@@ -33,6 +35,7 @@ function expectedPassword(): string {
 }
 
 export function isDevMode(): boolean {
+  if (!canUseDevTools()) return false;
   try {
     return sessionStorage.getItem(KEY) === "1";
   } catch {
@@ -41,6 +44,7 @@ export function isDevMode(): boolean {
 }
 
 export function tryUnlock(input: string): boolean {
+  if (!canUseDevTools()) return false;
   if (!input) return false;
   const ok = input === expectedPassword();
   if (ok) {

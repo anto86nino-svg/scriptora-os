@@ -86,13 +86,17 @@ function buildAutoFixPromptBlock(rules: AutoFixRule[]): string {
 }
 
 import { callDeepSeekTracked } from "../_shared/ai-tracking.ts";
+import { applyAuthContext, enforceEdgeGuard, EDGE_GUARD_PROFILES } from "../_shared/edge-guard.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const body = await req.json();
-    const { chapterTitle = "", chapterText = "", language = "Italian", genreProfile = null, projectId = null } = body || {};
+    const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["genre-coach"]);
+    if (guard instanceof Response) return guard;
+    const body = applyAuthContext(guard, rawBody);
+    const { chapterTitle = "", chapterText = "", language = "Italian", genreProfile = null, projectId = null } = body;
 
     if (!chapterText || typeof chapterText !== "string" || chapterText.length < 100) {
       return new Response(JSON.stringify({ error: "chapterText is required (min 100 chars)" }), {

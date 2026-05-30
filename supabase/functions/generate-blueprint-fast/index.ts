@@ -2,6 +2,7 @@
 // Optimized for structured blueprint JSON: non-streaming, json_object response, 90s timeout.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { estimateTokens, logAIUsage } from "../_shared/ai-tracking.ts";
+import { applyAuthContext, enforceEdgeGuard, EDGE_GUARD_PROFILES } from "../_shared/edge-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,7 +14,11 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { systemPrompt, userPrompt, taskType = "generate_blueprint", projectId = null, userId = null, metadata = {} } = await req.json();
+    const rawBody = await req.json();
+    const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["generate-blueprint-fast"]);
+    if (guard instanceof Response) return guard;
+    const body = applyAuthContext(guard, rawBody);
+    const { systemPrompt, userPrompt, taskType = "generate_blueprint", projectId = null, userId = null, metadata = {} } = body;
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 

@@ -1,7 +1,6 @@
-import { useState, useRef, useEffect, useMemo, useCallback, memo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, memo, lazy, Suspense } from "react";
 import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating } from "@/types/book";
 import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Headphones, Download, Zap, Wand2, ListTree } from "lucide-react";
-import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel";
 import { ChapterGenerationExperience } from "@/components/ChapterGenerationExperience";
 import { GenreProfileBadge } from "@/components/GenreProfileBadge";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
@@ -14,6 +13,10 @@ import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import { WriterPipelineBar } from "@/components/WriterPipelineBar";
+
+const ChapterIntelligencePanel = lazy(() =>
+  import("@/components/ChapterIntelligencePanel").then((m) => ({ default: m.ChapterIntelligencePanel })),
+);
 
 interface EditorPanelProps {
   project: BookProject;
@@ -868,12 +871,14 @@ function ChapterView({
       )}
 
       {showIntelligence && isGenerated && (
-        <ChapterIntelligencePanel
-          project={project}
-          chapterIndex={chapterIndex}
-          onClose={() => setShowIntelligence(false)}
-          onApplyContent={(newContent) => onUpdateContent(newContent)}
-        />
+        <Suspense fallback={null}>
+          <ChapterIntelligencePanel
+            project={project}
+            chapterIndex={chapterIndex}
+            onClose={() => setShowIntelligence(false)}
+            onApplyContent={(newContent) => onUpdateContent(newContent)}
+          />
+        </Suspense>
       )}
 </div>
   );

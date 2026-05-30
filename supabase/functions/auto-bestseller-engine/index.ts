@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { logAIUsage, estimateTokens } from "../_shared/ai-tracking.ts";
+import { applyAuthContext, enforceEdgeGuard, EDGE_GUARD_PROFILES } from "../_shared/edge-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1254,6 +1255,9 @@ serve(async (req) => {
   // ---- SSE mode (GET ?stream=1&payload=base64-json) ----
   const url = new URL(req.url);
   if (req.method === "GET" && url.searchParams.get("stream") === "1") {
+    const guard = await enforceEdgeGuard(req, {}, EDGE_GUARD_PROFILES["auto-bestseller-engine"]);
+    if (guard instanceof Response) return guard;
+
     const payloadParam = url.searchParams.get("payload");
     if (!payloadParam) {
       return new Response("Missing payload param", { status: 400, headers: corsHeaders });
@@ -1273,8 +1277,9 @@ serve(async (req) => {
       return new Response("Missing env config", { status: 500, headers: corsHeaders });
     }
 
+    input.userId = guard.userId;
     const runId = input.runId;
-    __trackCtx = { projectId: runId || null, runId: runId || null, userId: input.userId || null };
+    __trackCtx = { projectId: runId || null, runId: runId || null, userId: guard.userId };
 
     // Buffer of all progress events — used to PATCH the DB row periodically so
     // the run keeps making visible progress even if the client tab disconnects.
@@ -1369,7 +1374,11 @@ serve(async (req) => {
 
   // ---- Legacy POST mode (single JSON response) ----
   try {
-    const input = (await req.json()) as OrchestratorInput & { runId?: string; userId?: string };
+    const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["auto-bestseller-engine"]);
+    if (guard instanceof Response) return guard;
+    const input = applyAuthContext(guard, rawBody) as OrchestratorInput & { runId?: string; userId?: string };
+    input.userId = guard.userId;
     if (!input.genre || !(input.idea || input.topic) || !input.targetAudience) {
       return new Response(JSON.stringify({ error: "genre, idea/topic, and targetAudience are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -1377,7 +1386,7 @@ serve(async (req) => {
     if (!DEEPSEEK_API_KEY || !SUPABASE_URL || !SERVICE_ROLE) {
       throw new Error("Missing required environment configuration");
     }
-    __trackCtx = { projectId: input.runId || null, runId: input.runId || null, userId: input.userId || null };
+    __trackCtx = { projectId: input.runId || null, runId: input.runId || null, userId: guard.userId };
     const result = await runPipeline(input);
     return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e: any) {

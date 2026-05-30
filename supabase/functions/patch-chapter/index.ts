@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { logAIUsage, estimateTokens } from "../_shared/ai-tracking.ts";
+import { applyAuthContext, enforceEdgeGuard, EDGE_GUARD_PROFILES } from "../_shared/edge-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -121,8 +122,12 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { chapterTitle, chapterText, genre, tone, language, blueprintIntegrityBlock = "", projectId = null, userId = null, intensity = "balanced" } = await req.json();
-    __trackCtx = { projectId, userId };
+    const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["patch-chapter"]);
+    if (guard instanceof Response) return guard;
+    const body = applyAuthContext(guard, rawBody);
+    const { chapterTitle, chapterText, genre, tone, language, blueprintIntegrityBlock = "", projectId = null, intensity = "balanced" } = body;
+    __trackCtx = { projectId, userId: guard.userId };
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 

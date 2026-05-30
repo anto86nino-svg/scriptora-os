@@ -24,6 +24,7 @@ import { AUTHOR_IDENTITY_CHANGED_EVENT, applyAuthorIdentityToConfig, enforceAuth
 import { refineDetectedGenre } from "@/lib/book-intelligence";
 import { GUIDED_TOUR_IDS } from "@/lib/guided-tour-events";
 import { DevModeUnlockDialog } from "@/components/DevModeUnlockDialog";
+import { canUseDevTools } from "@/lib/app-environment";
 import { enableDevMode, isDevMode, exitDevMode, useDevMode } from "@/lib/dev-mode";
 import { BetaActivationDialog } from "@/components/BetaActivationDialog";
 import { usePlan } from "@/lib/plan";
@@ -729,11 +730,13 @@ export default function Home() {
                 const recent = [...logoClicks.filter(t => now - t < 1500), now];
                 if (recent.length >= 3) {
                   setLogoClicks([]);
-                  if (!isDevMode()) {
+                  if (canUseDevTools() && !isDevMode()) {
                     enableDevMode();
                     toast.success(t("toast_dev_enabled"));
                   }
-                  navigate("/usage");
+                  if (canUseDevTools()) {
+                    navigate("/usage");
+                  }
                   return;
                 }
                 setLogoClicks(recent);

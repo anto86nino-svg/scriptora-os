@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { callDeepSeekTracked } from "../_shared/ai-tracking.ts";
+import { applyAuthContext, enforceEdgeGuard, EDGE_GUARD_PROFILES } from "../_shared/edge-guard.ts";
 
 const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY") || "";
 
@@ -33,7 +34,10 @@ serve(async (req) => {
   }
 
   try {
-    const body = await req.json().catch(() => ({}));
+    const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["scriptora-character-bible"]);
+    if (guard instanceof Response) return guard;
+    const body = applyAuthContext(guard, rawBody);
     const idea = String(body.idea || "").trim();
     const genre = String(body.genre || "romance").trim();
     const language = String(body.language || "Italian").trim();
@@ -46,7 +50,7 @@ serve(async (req) => {
       ? body.manualCharacterNames.map((item: unknown) => String(item || "").trim()).filter(Boolean).slice(0, 8)
       : [];
     const count = Math.max(2, Math.min(8, Number(body.count || 4)));
-    const userId = body.userId ? String(body.userId) : null;
+    const userId = guard.userId;
     const projectId = body.projectId ? String(body.projectId) : null;
 
     if (idea.length < 10) {

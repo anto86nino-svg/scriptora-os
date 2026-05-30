@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { applyAuthContext, enforceEdgeGuard, EDGE_GUARD_PROFILES } from "../_shared/edge-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -86,6 +87,10 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const rawBody = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["go-no-go-engine"]);
+    if (guard instanceof Response) return guard;
+    const body = applyAuthContext(guard, rawBody);
     const {
       chapterText,
       title,
@@ -95,9 +100,8 @@ serve(async (req) => {
       voiceData,
       genreAnalysis,
       projectId = null,
-      userId = null,
-    } = await req.json();
-    __trackCtx = { projectId, userId };
+    } = body;
+    __trackCtx = { projectId, userId: guard.userId };
 
     if (!chapterText || typeof chapterText !== "string") {
       return new Response(JSON.stringify({ error: "chapterText required" }),
