@@ -6,6 +6,7 @@ import {
   Globe2,
   Play,
   Sparkles,
+  Star,
 } from "lucide-react";
 import { paymentsConfig } from "@/config/payments";
 import { setUILanguage, UI_LANGUAGES, useUILanguage, type UILanguage } from "@/lib/i18n";
@@ -13,15 +14,17 @@ import {
   audienceTags,
   demoScreenshots,
   ecosystemSystems,
-  heroPoster,
   L,
   landingCopy,
   landingPlans,
-  productTourVideo,
+  landingTestimonials,
   socialProofCards,
-  testimonialSlots,
   type DemoShotId,
 } from "./landing-v3-data";
+import { LandingLiveStudio } from "./LandingLiveStudio";
+import { LandingTextureBackdrop } from "./LandingTextureBackdrop";
+import { LandingWorkspacePreview } from "./LandingWorkspacePreview";
+import { LandingFooter } from "./LandingFooter";
 
 interface ScriptoraLandingProps {
   mounted: boolean;
@@ -49,24 +52,25 @@ export function ScriptoraLanding({
   );
 
   const demoIds = Object.keys(demoScreenshots) as DemoShotId[];
-  const activeShot = demoScreenshots[activeDemo];
 
   return (
-    <main className="scriptora-landing scriptora-landing-v3 min-h-screen overflow-x-hidden bg-[#050608] text-white">
-      <div className="scriptora-landing-bg scriptora-landing-v3-bg" aria-hidden="true" />
+    <main className="scriptora-landing scriptora-landing-v3 min-h-screen overflow-x-hidden text-white">
+      <div className="scriptora-landing-bg scriptora-landing-v3-bg" aria-hidden="true">
+        <LandingTextureBackdrop />
+      </div>
 
       <header className="scriptora-landing-nav">
         <button
           type="button"
           onClick={onLogoClick}
-          className="scriptora-landing-brand"
+          className="scriptora-landing-brand scriptora-v3-brand-lockup"
           aria-label="Scriptora OS"
         >
           <span className="scriptora-landing-brand-mark">
             <Sparkles className="h-4 w-4" />
           </span>
-          <span>Scriptora OS</span>
-          {devOn && <span className="scriptora-landing-dev">DEV</span>}
+          <span className="scriptora-v3-brand-name">Scriptora</span>
+          <span className="scriptora-v3-brand-os">OS</span>
         </button>
 
         <nav className="hidden items-center gap-6 text-xs font-medium text-white/55 md:flex">
@@ -104,12 +108,29 @@ export function ScriptoraLanding({
             mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
           }`}
         >
-          <h1 className="scriptora-v3-headline">
-            <span>{copy.heroLine1}</span>
-            <span>{copy.heroLine2}</span>
-            <span>{copy.heroLine3}</span>
-            <span className="scriptora-v3-headline-accent">{copy.heroLine4}</span>
-          </h1>
+          <p className="scriptora-v3-hero-essence">{copy.heroEssence}</p>
+          <div className="scriptora-v3-hero-title-row">
+            <p className="scriptora-v3-headline scriptora-v3-headline-stack">
+              <span className="scriptora-v3-line scriptora-v3-line-1">{copy.heroLine1}</span>
+              <span className="scriptora-v3-line scriptora-v3-line-2">{copy.heroLine2}</span>
+              <span className="scriptora-v3-line scriptora-v3-line-3">{copy.heroLine3}</span>
+              <span className="scriptora-v3-line scriptora-v3-line-4 scriptora-v3-headline-accent">{copy.heroLine4}</span>
+            </p>
+            <div className="scriptora-v3-wordmark-side">
+              <span className="scriptora-v3-wordmark-os-tag">OS</span>
+              <h1 className="scriptora-v3-wordmark" aria-label="Scriptora">
+                Scriptora
+              </h1>
+            </div>
+          </div>
+          <ul className="scriptora-v3-hero-pillars">
+            {copy.heroPillars.map((pillar) => (
+              <li key={pillar.title} className="scriptora-v3-hero-pillar">
+                <strong>{pillar.title}</strong>
+                <span>{pillar.desc}</span>
+              </li>
+            ))}
+          </ul>
           <p className="scriptora-v3-subhead">{copy.heroSub}</p>
           <p className="scriptora-v3-body">{copy.heroBody}</p>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -132,7 +153,7 @@ export function ScriptoraLanding({
             mounted ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
           }`}
         >
-          <HeroMedia />
+          <LandingLiveStudio variant="hero" />
         </div>
       </section>
 
@@ -202,7 +223,7 @@ export function ScriptoraLanding({
         </div>
       </section>
 
-      {/* Live demo — real screenshots */}
+      {/* Live demo — real Writer OS components */}
       <section id="demo" className="scriptora-landing-section scriptora-v3-demo">
         <div className="scriptora-v3-demo-header">
           <div>
@@ -212,7 +233,11 @@ export function ScriptoraLanding({
           <p>{copy.demoText}</p>
         </div>
 
-        <div className="scriptora-v3-demo-tabs" role="tablist" aria-label="Product screenshots">
+        <div className="scriptora-v3-demo-screens-header">
+          <p>{copy.demoScreensHint}</p>
+        </div>
+
+        <div className="scriptora-v3-demo-tabs" role="tablist" aria-label="Scriptora workspace modules">
           {demoIds.map((id) => (
             <button
               key={id}
@@ -228,15 +253,7 @@ export function ScriptoraLanding({
         </div>
 
         <div className="scriptora-v3-demo-frame" role="tabpanel">
-          <img
-            key={activeShot.src}
-            src={activeShot.src}
-            alt={`Scriptora ${L(activeShot.label, lang)}`}
-            loading="lazy"
-            decoding="async"
-            width={1440}
-            height={900}
-          />
+          <LandingWorkspacePreview id={activeDemo} />
         </div>
       </section>
 
@@ -251,7 +268,7 @@ export function ScriptoraLanding({
         </div>
       </section>
 
-      {/* Testimonials — structure only, no fake stock */}
+      {/* Testimonials */}
       <section id="testimonials" className="scriptora-landing-section scriptora-v3-testimonials">
         <div className="scriptora-landing-section-label">{copy.testimonialsLabel}</div>
         <div className="scriptora-v3-testimonials-header">
@@ -259,13 +276,29 @@ export function ScriptoraLanding({
           <p>{copy.testimonialsText}</p>
         </div>
         <div className="scriptora-v3-testimonials-grid">
-          {testimonialSlots.map((slot) => (
-            <article key={slot.role.en} className="scriptora-v3-testimonial-slot">
-              <div className="scriptora-v3-testimonial-avatar" aria-hidden="true">
-                <Sparkles className="h-4 w-4" />
+          {landingTestimonials.map((item) => (
+            <article key={item.name.en} className="scriptora-v3-testimonial-card">
+              <div className="scriptora-v3-testimonial-stars" aria-label={`${item.rating} su 5`}>
+                {Array.from({ length: item.rating }).map((_, index) => (
+                  <Star key={index} className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
+                ))}
               </div>
-              <span className="scriptora-v3-testimonial-role">{L(slot.role, lang)}</span>
-              <p className="scriptora-v3-testimonial-placeholder">{L(slot.placeholder, lang)}</p>
+              <p className="scriptora-v3-testimonial-quote">&ldquo;{L(item.quote, lang)}&rdquo;</p>
+              <p className="scriptora-v3-testimonial-metric">{L(item.metric, lang)}</p>
+              <div className="scriptora-v3-testimonial-person">
+                <img
+                  src={item.avatar}
+                  alt={L(item.name, lang)}
+                  width={52}
+                  height={52}
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div>
+                  <strong>{L(item.name, lang)}</strong>
+                  <span>{L(item.role, lang)}</span>
+                </div>
+              </div>
             </article>
           ))}
         </div>
@@ -317,39 +350,8 @@ export function ScriptoraLanding({
           <ArrowRight className="h-4 w-4" />
         </button>
       </section>
+
+      <LandingFooter onLogoClick={onLogoClick} />
     </main>
-  );
-}
-
-function HeroMedia() {
-  if (productTourVideo) {
-    return (
-      <div className="scriptora-v3-hero-media">
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          poster={heroPoster}
-          aria-label="Scriptora OS product tour"
-        >
-          <source src={productTourVideo} type="video/webm" />
-        </video>
-      </div>
-    );
-  }
-
-  return (
-    <div className="scriptora-v3-hero-media">
-      <img
-        src={heroPoster}
-        alt="Scriptora Dashboard"
-        loading="eager"
-        decoding="async"
-        width={1440}
-        height={900}
-      />
-    </div>
   );
 }

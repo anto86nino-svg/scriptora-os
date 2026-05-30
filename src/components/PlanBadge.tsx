@@ -20,7 +20,7 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [exiting, setExiting] = useState(false);
 
-  const tier = isDev ? "premium" : plan;
+  const tier = plan;
 
   const styles =
     tier === "premium"
@@ -91,7 +91,7 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
     >
       <Icon className="h-3 w-3" />
       <div className="flex flex-col items-start leading-tight">
-        <span>{isDev ? "DEV" : tier}</span>
+        <span>{tier}</span>
         <span className="text-[8px] font-normal opacity-80 normal-case tracking-normal">{hint}</span>
       </div>
     </button>

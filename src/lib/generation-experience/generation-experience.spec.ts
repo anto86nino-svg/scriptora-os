@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   editorialStatusMessage,
+  resolveOutlineSummaryForDisplay,
   sanitizePlaceholderText,
   splitManuscriptParagraphs,
 } from "@/lib/generation-experience";
@@ -11,10 +12,23 @@ describe("Generation Experience V2", () => {
     expect(sanitizePlaceholderText("Dark romance opening")).toBe("Dark romance opening");
   });
 
+  it("resolves outline summary from manuscript when blueprint is still pending", () => {
+    expect(resolveOutlineSummaryForDisplay("To be generated", "")).toBe("");
+    expect(resolveOutlineSummaryForDisplay("Hero meets the antagonist", "Long chapter body…")).toBe(
+      "Hero meets the antagonist",
+    );
+    const preview = resolveOutlineSummaryForDisplay(
+      "To be generated",
+      "The rain fell hard on the city streets as Elena stepped out of the carriage. She had waited years for this moment.",
+    );
+    expect(preview).toContain("rain fell hard");
+    expect(preview).not.toContain("To be generated");
+  });
+
   it("builds editorial status before content", () => {
-    expect(editorialStatusMessage(false, "To be generated")).toContain("preparando");
-    expect(editorialStatusMessage(false, "Hero meets the antagonist")).toContain("Obiettivo");
-    expect(editorialStatusMessage(true, "")).toContain("prendendo forma");
+    expect(editorialStatusMessage(false, "To be generated")).toContain("preparing");
+    expect(editorialStatusMessage(false, "Hero meets the antagonist")).toContain("objective");
+    expect(editorialStatusMessage(true, "")).toContain("taking shape");
   });
 
   it("splits manuscript paragraphs for preview", () => {

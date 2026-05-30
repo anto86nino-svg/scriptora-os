@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { UILanguage, UI_LANGUAGES, t, setUILanguage, getUILanguage } from "@/lib/i18n";
+import { UILanguage, UI_LANGUAGES, t, tt, setUILanguage, getUILanguage } from "@/lib/i18n";
 import { WritingSettings, FONT_OPTIONS } from "@/lib/settings";
+import { useGuidedFlow } from "@/hooks/useGuidedFlow";
 import { X, Globe, Type, HelpCircle } from "lucide-react";
 
 interface SettingsPanelProps {
@@ -15,24 +15,7 @@ export function SettingsPanel({ open, onClose, settings, onUpdateSettings, onLan
   if (!open) return null;
 
   const uiLang = getUILanguage();
-  const [guideEnabled, setGuideEnabled] = useState(() => localStorage.getItem("scriptora-guided-flow") === "on");
-
-  useEffect(() => {
-    const syncGuideToggle = (event: Event) => {
-      const detail = (event as CustomEvent<{ enabled?: boolean }>).detail;
-      if (typeof detail?.enabled === "boolean") setGuideEnabled(detail.enabled);
-    };
-
-    window.addEventListener("scriptora-guided-flow-change", syncGuideToggle as EventListener);
-    return () => window.removeEventListener("scriptora-guided-flow-change", syncGuideToggle as EventListener);
-  }, []);
-
-  const toggleGuide = () => {
-    const next = !guideEnabled;
-    localStorage.setItem("scriptora-guided-flow", next ? "on" : "off");
-    setGuideEnabled(next);
-    window.dispatchEvent(new CustomEvent("scriptora-guided-flow-change", { detail: { enabled: next, resetCollapsed: next } }));
-  };
+  const { enabled: guideEnabled, setEnabled: setGuideEnabled } = useGuidedFlow();
 
   return (
     <div className="scriptora-modal-overlay" onClick={onClose}>
@@ -102,20 +85,19 @@ export function SettingsPanel({ open, onClose, settings, onUpdateSettings, onLan
               className="w-full accent-[hsl(var(--primary))]" />
           </div>
 
-          {/* Scriptora Guide */}
           <div>
             <div className="flex items-center gap-2 mb-2">
               <HelpCircle className="h-3.5 w-3.5 text-primary" />
-              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Guida Scriptora</label>
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">{t("settings_guide_title")}</label>
             </div>
-            <p className="text-sm text-foreground/80 mb-3">Mostra istruzioni step-by-step dentro le funzioni di Scriptora.</p>
+            <p className="text-sm text-foreground/80 mb-3">{t("settings_guide_desc")}</p>
             <button
               type="button"
-              onClick={toggleGuide}
+              onClick={() => setGuideEnabled(!guideEnabled)}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${guideEnabled ? "bg-primary/15 text-primary border border-primary/30" : "bg-muted/30 text-muted-foreground hover:bg-muted/50 border border-transparent"}`}
               aria-pressed={guideEnabled}
             >
-              Guida step-by-step: {guideEnabled ? "ON" : "OFF"}
+              {tt("settings_guide_toggle", { state: guideEnabled ? t("settings_guide_on") : t("settings_guide_off") })}
             </button>
           </div>
         </div>

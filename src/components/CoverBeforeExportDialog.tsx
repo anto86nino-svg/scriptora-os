@@ -1,4 +1,5 @@
 import { Download, ImagePlus, X } from "lucide-react";
+import { t, tt, useUILanguage } from "@/lib/i18n";
 
 type ExportFormat = "EPUB" | "PDF" | "DOCX";
 
@@ -17,6 +18,7 @@ export function CoverBeforeExportDialog({
   onShipWithoutCover,
   onClose,
 }: CoverBeforeExportDialogProps) {
+  useUILanguage();
   if (!open) return null;
 
   return (
@@ -25,18 +27,18 @@ export function CoverBeforeExportDialog({
         <div className="flex shrink-0 items-start justify-between border-b border-border p-5">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
-              Ultimo passaggio
+              {t("cover_export_kicker")}
             </p>
-            <h2 className="mt-1 text-lg font-bold text-foreground">Cover prima dell'export</h2>
+            <h2 className="mt-1 text-lg font-bold text-foreground">{t("cover_export_title")}</h2>
             <p className="mt-1 text-sm leading-5 text-muted-foreground">
-              Il libro e completo. Prima di esportare in {format}, puoi creare la copertina oppure spedire il file senza cover.
+              {tt("cover_export_desc", { format })}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label="Chiudi"
+            aria-label={t("close_label")}
           >
             <X className="h-4 w-4" />
           </button>
@@ -52,9 +54,9 @@ export function CoverBeforeExportDialog({
               <ImagePlus className="h-4 w-4" />
             </span>
             <span>
-              <span className="block text-sm font-bold text-foreground">Apri Scriptora Cover Studio</span>
+              <span className="block text-sm font-bold text-foreground">{t("cover_export_open_studio")}</span>
               <span className="mt-0.5 block text-xs leading-4 text-muted-foreground">
-                Genera o rifinisci la copertina, poi Scriptora riprende l'export.
+                {t("cover_export_open_studio_desc")}
               </span>
             </span>
           </button>
@@ -68,9 +70,9 @@ export function CoverBeforeExportDialog({
               <Download className="h-4 w-4" />
             </span>
             <span>
-              <span className="block text-sm font-bold text-foreground">Spedisci senza cover</span>
+              <span className="block text-sm font-bold text-foreground">{t("cover_export_ship_without")}</span>
               <span className="mt-0.5 block text-xs leading-4 text-muted-foreground">
-                Continua subito con l'export. Potrai creare la cover piu tardi.
+                {t("cover_export_ship_without_desc")}
               </span>
             </span>
           </button>

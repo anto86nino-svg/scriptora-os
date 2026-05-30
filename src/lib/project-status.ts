@@ -31,3 +31,22 @@ export function withNormalizedPhase(p: BookProject): BookProject {
   }
   return p;
 }
+
+/** Incomplete project the user is actively writing (last opened, not finished). */
+export function isActiveWritingProject(
+  p: BookProject,
+  activeWritingId: string | null,
+): boolean {
+  if (!activeWritingId || p.id !== activeWritingId) return false;
+  return !isProjectComplete(p);
+}
+
+/** Completed books plus paused drafts — everything except the active manuscript. */
+export function isOnFinishShelf(
+  p: BookProject,
+  activeWritingId: string | null,
+): boolean {
+  if (isProjectComplete(p)) return true;
+  if (!activeWritingId) return true;
+  return p.id !== activeWritingId;
+}

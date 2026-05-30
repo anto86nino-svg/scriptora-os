@@ -1,10 +1,9 @@
-// Single download card. Pure presentational — action handled in parent.
-
 import { useState } from "react";
 import { Download, Apple, Monitor, Smartphone, Package as PackageIcon } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { DownloadItem } from "@/config/downloads";
+import { t, tt, useUILanguage } from "@/lib/i18n";
 
 const ICONS: Record<string, React.ReactNode> = {
   android: <Smartphone className="h-4 w-4" />,
@@ -15,12 +14,22 @@ const ICONS: Record<string, React.ReactNode> = {
   web: <PackageIcon className="h-4 w-4" />,
 };
 
+const DESC_KEYS: Record<string, string> = {
+  "android-apk": "download_android_apk_desc",
+  "android-aab": "download_android_aab_desc",
+  "macos-dmg": "download_macos_dmg_desc",
+  "macos-zip": "download_macos_zip_desc",
+  "windows-exe": "download_windows_exe_desc",
+};
+
 interface DownloadCardProps {
   item: DownloadItem;
 }
 
 export function DownloadCard({ item }: DownloadCardProps) {
+  useUILanguage();
   const [open, setOpen] = useState(false);
+  const description = t(DESC_KEYS[item.id] || item.description);
 
   const handleClick = () => {
     if (item.available && item.url) {
@@ -42,7 +51,7 @@ export function DownloadCard({ item }: DownloadCardProps) {
       >
         {item.recommended && (
           <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold bg-primary text-primary-foreground">
-            Consigliato
+            {t("download_recommended")}
           </span>
         )}
 
@@ -59,7 +68,7 @@ export function DownloadCard({ item }: DownloadCardProps) {
         </div>
 
         <p className="text-xs text-muted-foreground mb-4 flex-1 leading-relaxed">
-          {item.description}
+          {description}
         </p>
 
         <div className="flex items-center justify-between mb-3">
@@ -71,7 +80,7 @@ export function DownloadCard({ item }: DownloadCardProps) {
                 : "bg-muted text-muted-foreground border-border",
             )}
           >
-            {item.available ? "Ready" : "Coming Soon"}
+            {item.available ? t("download_ready") : t("download_coming_soon")}
           </span>
         </div>
 
@@ -86,7 +95,9 @@ export function DownloadCard({ item }: DownloadCardProps) {
           )}
         >
           <Download className="h-3.5 w-3.5" />
-          {item.available ? `Scarica ${item.fileType.toUpperCase()}` : "Non ancora disponibile"}
+          {item.available
+            ? tt("download_btn_get", { format: item.fileType.toUpperCase() })
+            : t("download_btn_waitlist")}
         </button>
       </div>
 
@@ -96,23 +107,16 @@ export function DownloadCard({ item }: DownloadCardProps) {
             <div className="mx-auto h-12 w-12 rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/30 flex items-center justify-center mb-2">
               <PackageIcon className="h-6 w-6 text-primary" />
             </div>
-            <DialogTitle className="text-center text-xl">Build presto disponibile</DialogTitle>
+            <DialogTitle className="text-center text-xl">{t("download_modal_title")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 text-sm text-muted-foreground text-center">
-            <p>
-              Il file <span className="font-bold text-foreground">{item.label}</span> sarà attivato
-              quando verrà configurato il link nel file <code className="px-1 py-0.5 rounded bg-muted text-foreground text-xs">.env</code>.
-            </p>
-            <p className="text-xs">
-              L'infrastruttura di rilascio è già pronta — non sarà necessaria alcuna modifica al
-              codice per attivare questo download.
-            </p>
+            <p>{tt("download_modal_body", { label: item.label })}</p>
           </div>
           <button
             onClick={() => setOpen(false)}
             className="mt-4 w-full text-center px-4 py-2.5 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            Ho capito
+            {t("download_modal_ok")}
           </button>
         </DialogContent>
       </Dialog>

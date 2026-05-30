@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo } from "react";
 import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating } from "@/types/book";
-import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Headphones, Download, Zap, Wand2 } from "lucide-react";
+import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Headphones, Download, Zap, Wand2, ListTree } from "lucide-react";
 import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel";
 import { ChapterGenerationExperience } from "@/components/ChapterGenerationExperience";
 import { GenreProfileBadge } from "@/components/GenreProfileBadge";
@@ -8,12 +8,12 @@ import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
 import { GenreCoachPanel } from "@/components/GenreCoachPanel";
 import { downloadText } from "@/lib/download";
 import { RewriteLevel, ChunkProgress } from "@/lib/generation";
-import { sanitizePlaceholderText } from "@/lib/generation-experience";
+import { resolveOutlineSummaryForDisplay, sanitizePlaceholderText } from "@/lib/generation-experience";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
-import { authorBrainProfileHasInjectionData, buildAuthorBrainInjectionSnapshot, hasPassiveAuthorIntelligence } from "@/lib/author-brain";
+import { WriterPipelineBar } from "@/components/WriterPipelineBar";
 
 interface EditorPanelProps {
   project: BookProject;
@@ -46,6 +46,11 @@ interface EditorPanelProps {
   onApplyAuthorBrainFrontMatter?: () => void;
   onApplyAuthorBrainBackMatter?: () => void;
   onNarrateChapter?: (chapterIndex: number) => void;
+  onNavigateSection?: (section: SectionId) => void;
+  onOpenChapterIndex?: () => void;
+  onGenerateBlueprint?: () => void;
+  onGenerateFullBook?: () => void;
+  isAnythingGenerating?: boolean;
 }
 
 export function EditorPanel({
@@ -64,6 +69,11 @@ export function EditorPanel({
   onUpdateFrontMatterField, onUpdateBackMatterField,
   onApplyAuthorBrainFrontMatter, onApplyAuthorBrainBackMatter,
   onNarrateChapter,
+  onNavigateSection,
+  onOpenChapterIndex,
+  onGenerateBlueprint,
+  onGenerateFullBook,
+  isAnythingGenerating = false,
 }: EditorPanelProps) {
   const { blueprint, frontMatter, chapters, backMatter, config, phase } = project;
   const [mode, setMode] = useState<"edit" | "preview">(editorMode);
@@ -119,6 +129,25 @@ export function EditorPanel({
       )}
 
       <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
+        <WriterContextBar
+          activeSection={activeSection}
+          project={project}
+          isGeneratingSection={isGeneratingSection}
+          onOpenChapterIndex={onOpenChapterIndex}
+          onNavigateSection={onNavigateSection}
+        />
+        <WriterPipelineBar
+          project={project}
+          activeSection={activeSection}
+          isGeneratingSection={isGeneratingSection}
+          isAnythingGenerating={isAnythingGenerating}
+          onGenerateBlueprint={onGenerateBlueprint}
+          onGenerateFrontMatter={onGenerateFrontMatter || onGenerateNext}
+          onGenerateChapter={onGenerateChapter}
+          onGenerateBackMatter={onGenerateBackMatter || onGenerateNext}
+          onGenerateFullBook={onGenerateFullBook}
+          onNavigateSection={onNavigateSection}
+        />
         <div className={cn("mx-auto px-4 py-6 sm:px-8", mode === "preview" ? "max-w-2xl" : "max-w-5xl")}>
           <div className={cn("ios-editor-paper max-w-full rounded-[32px] border border-white/10 bg-slate-950/95 p-5 shadow-[0_36px_120px_-40px_rgba(15,23,42,0.75)] ring-1 ring-white/10 sm:p-7 md:bg-slate-950/65", mode === "preview" && "bg-white/[0.055]")}>
           {mode === "preview" && hasContent ? (
@@ -141,6 +170,7 @@ export function EditorPanel({
                   onUpdateField={onUpdateBlueprintField}
                   onUpdateOutlineTitle={onUpdateBlueprintOutlineTitle}
                   onUpdateOutlineSummary={onUpdateBlueprintOutlineSummary}
+                  onNavigateToChapter={onNavigateSection ? (index) => onNavigateSection(`chapter-${index}` as SectionId) : undefined}
                 />
               )}
               {view.type === "front-matter" && (
@@ -178,6 +208,8 @@ export function EditorPanel({
                   chunkProgress={chunkProgress?.[`chapter-${view.chapterIndex}`]}
                   ws={ws}
                   onNarrateChapter={onNarrateChapter}
+                  onOpenChapterIndex={onOpenChapterIndex}
+                  onNavigateSection={onNavigateSection}
                 />
               )}
               {view.type === "subchapter" && (() => {
@@ -301,17 +333,81 @@ function PreviewMode({ project, view, ws }: { project: BookProject; view: any; w
 
 /* ============ Section Views ============ */
 
-function BlueprintView({ project, blueprint, isGenerating, onUpdateField, onUpdateOutlineTitle, onUpdateOutlineSummary }: {
+function WriterContextBar({
+  activeSection,
+  project,
+  isGeneratingSection,
+  onOpenChapterIndex,
+  onNavigateSection,
+}: {
+  activeSection: SectionId | null;
+  project: BookProject;
+  isGeneratingSection: (key: string) => boolean;
+  onOpenChapterIndex?: () => void;
+  onNavigateSection?: (section: SectionId) => void;
+}) {
+  if (!onOpenChapterIndex) return null;
+
+  const chapterMatch = activeSection?.match(/^chapter-(\d+)$/);
+  const chapterIndex = chapterMatch ? Number(chapterMatch[1]) : null;
+  const outline = chapterIndex !== null ? project.blueprint?.chapterOutlines[chapterIndex] : undefined;
+  const isGeneratingChapter = chapterIndex !== null && isGeneratingSection(`chapter-${chapterIndex}`);
+
+  let locationLabel = t("blueprint");
+  if (activeSection === "front-matter") locationLabel = t("front_matter");
+  else if (activeSection === "back-matter") locationLabel = t("back_matter");
+  else if (chapterIndex !== null) {
+    locationLabel = formatChapterDisplayTitle(chapterIndex, outline?.title || "", {
+      config: project.config,
+      summary: outline?.summary,
+      totalChapters: project.config.numberOfChapters,
+    });
+  }
+
+  return (
+    <div className="scriptora-writer-context-bar sticky top-0 z-20 border-b border-white/10 bg-slate-950/95 px-4 py-3 backdrop-blur-xl sm:px-8">
+      <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <button type="button" onClick={onOpenChapterIndex} className="scriptora-writer-nav-primary">
+            <ListTree className="h-4 w-4 shrink-0" />
+            {t("back_to_chapter_index")}
+          </button>
+          {onNavigateSection && activeSection !== "blueprint" && (
+            <button
+              type="button"
+              onClick={() => onNavigateSection("blueprint")}
+              className="scriptora-writer-nav-secondary"
+            >
+              {t("blueprint")}
+            </button>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span className="truncate font-medium text-foreground/85">{locationLabel}</span>
+          {isGeneratingChapter && (
+            <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-cyan-200">
+              {t("generation_running")}
+            </span>
+          )}
+          <span className="hidden sm:inline">{t("writer_nav_hint")}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BlueprintView({ project, blueprint, isGenerating, onUpdateField, onUpdateOutlineTitle, onUpdateOutlineSummary, onNavigateToChapter }: {
   project: BookProject;
   blueprint: BookProject["blueprint"];
   isGenerating: boolean;
   onUpdateField?: (field: "overview" | "emotionalArc", value: string) => void;
   onUpdateOutlineTitle?: (index: number, title: string) => void;
   onUpdateOutlineSummary?: (index: number, summary: string) => void;
+  onNavigateToChapter?: (index: number) => void;
 }) {
   return (
     <div className="space-y-8 rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-[0_24px_70px_-30px_rgba(15,23,42,0.72)]">
-      <PageHeader title={t("blueprint")} subtitle="Book architecture and chapter plan" />
+      <PageHeader title={t("blueprint")} subtitle={t("blueprint_subtitle")} />
       {isGenerating && <LoadingBanner text={`${t("generating")}...`} />}
       {blueprint ? (
         <>
@@ -349,35 +445,69 @@ function BlueprintView({ project, blueprint, isGenerating, onUpdateField, onUpda
           <div>
             <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-4">{t("chapter_outlines")}</p>
             <div className="space-y-3">
-              {blueprint.chapterOutlines.map((o, i) => (
-                <div key={`row-${i}`} className="flex gap-4 p-4 rounded-lg bg-muted/15 border border-border/30 hover:bg-muted/25 transition-colors">
+              {blueprint.chapterOutlines.map((o, i) => {
+                const summaryDisplay = resolveOutlineSummaryForDisplay(o.summary, project.chapters?.[i]?.content);
+                return (
+                <div
+                  key={`row-${i}`}
+                  className={cn(
+                    "flex gap-4 p-4 rounded-lg bg-muted/15 border border-border/30 transition-colors",
+                    onNavigateToChapter && "hover:bg-muted/30 cursor-pointer group",
+                  )}
+                  {...(onNavigateToChapter
+                    ? {
+                        role: "button" as const,
+                        tabIndex: 0,
+                        onClick: () => onNavigateToChapter(i),
+                        onKeyDown: (event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            onNavigateToChapter(i);
+                          }
+                        },
+                      }
+                    : {})}
+                >
                   <span className="text-sm font-bold text-primary/50 shrink-0 pt-0.5 w-6 text-right">{i + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <input
-                      value={
-                        o.title?.trim()
-                          ? o.title
-                          : (project.chapters?.[i]?.title?.trim() || "")
-                      }
-                      onChange={(e) => onUpdateOutlineTitle?.(i, e.target.value)}
-                      readOnly={!onUpdateOutlineTitle}
-                      className="w-full bg-transparent border border-transparent hover:border-border/40 focus:border-primary/50 focus:outline-none rounded px-1 text-sm font-semibold text-foreground"
-                    />
+                    <div className="flex items-center justify-between gap-2">
+                      <input
+                        value={
+                          o.title?.trim()
+                            ? o.title
+                            : (project.chapters?.[i]?.title?.trim() || "")
+                        }
+                        onChange={(e) => onUpdateOutlineTitle?.(i, e.target.value)}
+                        onClick={(event) => event.stopPropagation()}
+                        readOnly={!onUpdateOutlineTitle}
+                        className="w-full bg-transparent border border-transparent hover:border-border/40 focus:border-primary/50 focus:outline-none rounded px-1 text-sm font-semibold text-foreground"
+                      />
+                      {onNavigateToChapter && (
+                        <span className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                          {t("open_chapter")}
+                        </span>
+                      )}
+                    </div>
                     <textarea
-                      value={o.summary}
+                      value={summaryDisplay}
                       onChange={(e) => onUpdateOutlineSummary?.(i, e.target.value)}
+                      onClick={(event) => event.stopPropagation()}
                       readOnly={!onUpdateOutlineSummary}
-                      rows={Math.max(2, o.summary.split("\n").length)}
-                      className="w-full mt-1 bg-transparent border border-transparent hover:border-border/40 focus:border-primary/50 focus:outline-none rounded px-1 text-xs text-muted-foreground leading-relaxed resize-none"
+                      placeholder={summaryDisplay ? undefined : t("outline_summary_pending")}
+                      rows={Math.max(2, summaryDisplay.split("\n").length || 2)}
+                      className="w-full mt-1 bg-transparent border border-transparent hover:border-border/40 focus:border-primary/50 focus:outline-none rounded px-1 text-xs text-muted-foreground leading-relaxed resize-none placeholder:text-muted-foreground/50"
                     />
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
         </>
       ) : (
-        <EmptyState text="Blueprint will be generated when you create the book." />
+        <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center space-y-4">
+          <p className="text-sm text-muted-foreground">{t("blueprint_empty_cta")}</p>
+        </div>
       )}
 </div>
   );
@@ -505,6 +635,7 @@ function ChapterView({
   onGenerate, onRegenerate, onRewrite, onEvaluate, onAutoRewrite, onGenerateSubchapter,
   onUpdateContent, onUpdateTitle, onUpdateSubContent, onUpdateSubTitle, onSetLengthOverride, isGeneratingSection, onCancel, chunkProgress, ws,
   onNarrateChapter,
+  onOpenChapterIndex,
 }: {
   project: BookProject; chapterIndex: number;
   outline: { title: string; summary: string }; chapter: Chapter | undefined;
@@ -521,6 +652,8 @@ function ChapterView({
   chunkProgress?: ChunkProgress;
   ws: WritingSettings;
   onNarrateChapter?: (chapterIndex: number) => void;
+  onOpenChapterIndex?: () => void;
+  onNavigateSection?: (section: SectionId) => void;
 }) {
   const isGenerated = chapter && chapter.content.length > 0;
   const currentLength = chapter?.lengthOverride || project.config.chapterLength;
@@ -540,6 +673,16 @@ function ChapterView({
 
   return (
     <div className="space-y-8 rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-[0_24px_70px_-30px_rgba(15,23,42,0.72)]">
+      {onOpenChapterIndex && (
+        <button
+          type="button"
+          onClick={onOpenChapterIndex}
+          className="scriptora-writer-nav-primary w-full sm:w-auto"
+        >
+          <ListTree className="h-4 w-4 shrink-0" />
+          {t("back_to_chapter_index")}
+        </button>
+      )}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="mb-2 flex-1 min-w-0">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1">
@@ -551,7 +694,7 @@ function ChapterView({
             disabled={!onUpdateTitle}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2 pt-1 sm:shrink-0 sm:justify-end">
+        <div className="flex flex-wrap items-center gap-2 pt-1 sm:shrink-0 sm:justify-end" data-guided-tour="writer-generate">
           {!isGenerated ? (
             <button onClick={onGenerate} disabled={isGenerating || !project.blueprint}
               className="flex items-center gap-2 h-10 px-5 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 transition-colors">
@@ -640,6 +783,7 @@ function ChapterView({
           chapterIndex={chapterIndex}
           outline={outline}
           onCancel={onCancel}
+          onBackToChapters={onOpenChapterIndex}
           chunkProgress={chunkProgress}
         />
       )}
@@ -662,9 +806,12 @@ function ChapterView({
           {sanitizePlaceholderText(outline.summary) && (
             <p className="text-sm text-muted-foreground leading-relaxed">{sanitizePlaceholderText(outline.summary)}</p>
           )}
-          <div className="p-10 rounded-[28px] border border-dashed border-white/15 bg-white/5 text-center">
-            <p className="text-sm text-muted-foreground/60">Premi {t("generate")} — Scriptora scriverà il capitolo davanti a te.</p>
-          </div>
+          <p className="text-xs text-muted-foreground">{t("chapter_write_or_generate")}</p>
+          <EditableBlock
+            content={chapter?.content ?? ""}
+            onChange={onUpdateContent}
+            ws={ws}
+          />
         </div>
       )}
 
@@ -991,9 +1138,10 @@ function EmptyState({ text }: { text: string }) {
 
 function ActionButton({ icon, title, onClick, disabled }: { icon: React.ReactNode; title: string; onClick: () => void; disabled: boolean }) {
   return (
-    <button onClick={onClick} disabled={disabled} title={title}
-      className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-muted-foreground transition-colors hover:bg-white/10 hover:text-white disabled:opacity-30 sm:h-9 sm:w-9">
+    <button onClick={onClick} disabled={disabled} title={title} aria-label={title}
+      className="flex h-10 min-w-10 items-center justify-center rounded-2xl border border-white/12 bg-white/[0.08] px-2.5 text-foreground/80 transition-colors hover:border-white/20 hover:bg-white/12 hover:text-white disabled:opacity-30 sm:h-9">
       {icon}
+      <span className="sr-only">{title}</span>
     </button>
   );
 }

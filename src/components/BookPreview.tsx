@@ -9,6 +9,7 @@ import { isDevMode } from "@/lib/dev-mode";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { toast } from "sonner";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import { resolveOutlineSummaryForDisplay } from "@/lib/generation-experience";
 
 interface BookPreviewProps {
   project: BookProject;
@@ -158,14 +159,18 @@ export function BookPreview({
       {phase === "chapters" && blueprint && (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-primary uppercase tracking-wider">Chapters</h2>
-          {blueprint.chapterOutlines.map((outline, i) => (
+          {blueprint.chapterOutlines.map((outline, i) => {
+            const summaryDisplay = resolveOutlineSummaryForDisplay(outline.summary, chapters[i]?.content);
+            return (
             <div key={`stable-${i}`} className="border border-border rounded-lg p-4 space-y-2">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-sm font-semibold text-foreground">
                     {formatChapterDisplayTitle(i, outline.title, { config, summary: outline.summary, totalChapters: config.numberOfChapters })}
                   </h3>
-                  <p className="text-xs text-muted-foreground">{outline.summary}</p>
+                  {summaryDisplay && (
+                    <p className="text-xs text-muted-foreground">{summaryDisplay}</p>
+                  )}
                 </div>
                 {!isChapterGenerated(i) ? (
                   <button
@@ -221,7 +226,8 @@ export function BookPreview({
                 </>
               )}
             </div>
-          ))}
+            );
+          })}
         </section>
       )}
 

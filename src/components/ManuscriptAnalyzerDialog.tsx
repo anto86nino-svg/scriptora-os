@@ -40,6 +40,7 @@ interface ManuscriptAnalyzerDialogProps {
   onClose: () => void;
   canCreateProject?: boolean;
   onLimitReached?: () => void;
+  embedded?: boolean;
 }
 
 interface EditorialSignal {
@@ -655,6 +656,7 @@ export function ManuscriptAnalyzerDialog({
   onClose,
   canCreateProject = true,
   onLimitReached,
+  embedded = false,
 }: ManuscriptAnalyzerDialogProps) {
   useUILanguage();
   const navigate = useNavigate();
@@ -781,26 +783,44 @@ export function ManuscriptAnalyzerDialog({
     setError("");
   };
 
-  return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="flex max-h-[min(92dvh,92vh)] w-[calc(100vw-1.5rem)] max-w-6xl flex-col overflow-hidden border-white/10 bg-background/95 p-0 shadow-2xl backdrop-blur-2xl">
-        <DialogHeader className="shrink-0 border-b border-white/10 px-5 py-4 text-left sm:px-6">
-          <div className="flex min-w-0 items-start gap-3 pr-8">
-            <div className="ios-icon ios-icon-teal h-11 w-11 shrink-0 rounded-[16px]">
-              <Wand2 className="h-5 w-5" />
-            </div>
-            <div className="min-w-0">
-              <DialogTitle className="text-base font-semibold text-foreground">
-                {t("manuscript_analyzer_title")}
-              </DialogTitle>
-              <DialogDescription className="mt-1 max-w-2xl text-xs leading-5">
-                {t("manuscript_analyzer_desc")}
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
+  if (embedded && !open) return null;
 
-        <div className="scriptora-modal-body grid min-h-0 gap-0 lg:grid-cols-[0.9fr_1.1fr]">
+  const headerBlock = embedded ? (
+    <div className="shrink-0 border-b border-white/10 px-5 py-4 text-left sm:px-6">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="ios-icon ios-icon-teal h-11 w-11 shrink-0 rounded-[16px]">
+          <Wand2 className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold text-foreground">
+            {t("manuscript_analyzer_title")}
+          </h2>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+            {t("manuscript_analyzer_desc")}
+          </p>
+        </div>
+      </div>
+    </div>
+  ) : (
+    <DialogHeader className="shrink-0 border-b border-white/10 px-5 py-4 text-left sm:px-6">
+      <div className="flex min-w-0 items-start gap-3 pr-8">
+        <div className="ios-icon ios-icon-teal h-11 w-11 shrink-0 rounded-[16px]">
+          <Wand2 className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <DialogTitle className="text-base font-semibold text-foreground">
+            {t("manuscript_analyzer_title")}
+          </DialogTitle>
+          <DialogDescription className="mt-1 max-w-2xl text-xs leading-5">
+            {t("manuscript_analyzer_desc")}
+          </DialogDescription>
+        </div>
+      </div>
+    </DialogHeader>
+  );
+
+  const panelBody = (
+    <div className="scriptora-modal-body grid min-h-0 gap-0 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="border-b border-white/10 p-4 sm:p-5 lg:border-b-0 lg:border-r">
             <input
               ref={fileInputRef}
@@ -1143,6 +1163,22 @@ export function ManuscriptAnalyzerDialog({
             )}
           </section>
         </div>
+  );
+
+  if (embedded) {
+    return (
+      <div className="scriptora-landing-embedded-workspace flex max-h-[min(720px,78vh)] w-full flex-col overflow-hidden rounded-2xl border border-border bg-card text-foreground shadow-2xl backdrop-blur-2xl">
+        {headerBlock}
+        <div className="min-h-0 flex-1 overflow-auto">{panelBody}</div>
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogContent className="flex max-h-[min(92dvh,92vh)] w-[calc(100vw-1.5rem)] max-w-6xl flex-col overflow-hidden border-border bg-card p-0 shadow-2xl backdrop-blur-2xl">
+        {headerBlock}
+        {panelBody}
       </DialogContent>
     </Dialog>
   );

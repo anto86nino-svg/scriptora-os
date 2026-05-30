@@ -1,7 +1,7 @@
 import { ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScriptoraBootScreen } from "@/components/ScriptoraBootScreen";
 import { useHybridBootProgress } from "@/hooks/useHybridBootProgress";
-import { ensureStorageHydrated } from "@/lib/smart-boot";
+import { ensureStorageHydrated, hasBootRitualCompletedThisSession, markBootRitualCompletedThisSession } from "@/lib/smart-boot";
 
 interface ScriptoraBootGateProps {
   children: ReactNode;
@@ -24,10 +24,11 @@ export function ScriptoraBootGate({
   authReady,
   planReady = true,
 }: ScriptoraBootGateProps) {
+  const skipRitual = hasBootRitualCompletedThisSession();
   const [storageReady, setStorageReady] = useState(false);
   const [shellReady, setShellReady] = useState(false);
   const [exiting, setExiting] = useState(false);
-  const [revealed, setRevealed] = useState(false);
+  const [revealed, setRevealed] = useState(skipRitual);
   const exitStartedRef = useRef(false);
 
   useEffect(() => {
@@ -60,6 +61,7 @@ export function ScriptoraBootGate({
   useEffect(() => {
     if (!readyToExit || exitStartedRef.current) return;
     exitStartedRef.current = true;
+    markBootRitualCompletedThisSession();
     setExiting(true);
     const id = window.setTimeout(() => setRevealed(true), 520);
     return () => clearTimeout(id);
@@ -70,13 +72,13 @@ export function ScriptoraBootGate({
   // Safety: never stall forever if a lazy route chunk fails to resolve.
   useEffect(() => {
     if (!mountShell || shellReady) return;
-    const id = window.setTimeout(() => setShellReady(true), 12_000);
+    const id = window.setTimeout(() => setShellReady(true), skipRitual ? 2_000 : 12_000);
     return () => clearTimeout(id);
-  }, [mountShell, shellReady]);
+  }, [mountShell, shellReady, skipRitual]);
 
   return (
     <>
-      {!revealed && (
+      {!skipRitual && !revealed && (
         <ScriptoraBootScreen
           progress={progress}
           step={step}
@@ -88,7 +90,9 @@ export function ScriptoraBootGate({
       <div
         className={
           revealed
-            ? "scriptora-boot-reveal min-h-screen"
+            ? skipRitual
+              ? "min-h-screen"
+              : "scriptora-boot-reveal min-h-screen"
             : "pointer-events-none fixed inset-0 overflow-hidden opacity-0"
         }
         aria-hidden={!revealed}

@@ -5,6 +5,25 @@ import type { BookProject } from "@/types/book";
 
 let hydrationPromise: Promise<void> | null = null;
 
+const BOOT_RITUAL_SESSION_KEY = "scriptora-boot-ritual-v1";
+
+/** True after the cinematic boot ritual finished once in this browser tab session. */
+export function hasBootRitualCompletedThisSession(): boolean {
+  try {
+    return sessionStorage.getItem(BOOT_RITUAL_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function markBootRitualCompletedThisSession(): void {
+  try {
+    sessionStorage.setItem(BOOT_RITUAL_SESSION_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Shared hydration promise — started once at app boot (main.tsx). */
 export function ensureStorageHydrated(): Promise<void> {
   if (!hydrationPromise) {

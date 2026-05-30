@@ -1,13 +1,13 @@
-// Scriptora Download Center — public page listing installable builds per platform.
-// Driven by src/config/downloads.ts. Defaults to "coming soon" mode.
-
 import { Link } from "react-router-dom";
 import { ArrowLeft, Info } from "lucide-react";
 import { downloadItems, changelog, appVersion, buildChannel } from "@/config/downloads";
 import { DownloadCard } from "@/components/downloads/DownloadCard";
 import { DownloadStatusBanner } from "@/components/downloads/DownloadStatusBanner";
+import { t, tt, useUILanguage } from "@/lib/i18n";
 
 export default function DownloadsPage() {
+  useUILanguage();
+
   return (
     <div className="scriptora-feature-page bg-background text-foreground">
       <header className="shrink-0 border-b border-border bg-card/40 backdrop-blur-sm">
@@ -28,14 +28,13 @@ export default function DownloadsPage() {
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-primary/30 bg-primary/10 text-[10px] font-bold uppercase tracking-wider text-primary mb-4">
             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            Release infrastructure ready
+            {t("download_center_badge")}
           </div>
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight">
-            Installa Scriptora sui tuoi dispositivi
+            {t("download_center_title")}
           </h1>
           <p className="mt-4 text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Le versioni installabili saranno presto disponibili. La struttura di rilascio è già
-            predisposta.
+            {t("download_center_subtitle")}
           </p>
         </div>
 
@@ -51,20 +50,16 @@ export default function DownloadsPage() {
           <div className="flex items-start gap-3">
             <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
             <div className="space-y-1">
-              <h3 className="text-sm font-bold text-foreground">Nota tecnica</h3>
+              <h3 className="text-sm font-bold text-foreground">{t("download_tech_note_title")}</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                I file installabili (APK, AAB, DMG, ZIP, EXE) richiedono una pipeline di build
-                Capacitor per Android, Electron o Tauri per desktop, oppure GitHub Actions per
-                generare gli artifact in modo automatico ad ogni release. Quando i link saranno
-                inseriti in <code className="px-1 py-0.5 rounded bg-muted text-foreground">.env</code>,
-                i bottoni si attiveranno automaticamente senza modifiche al codice.
+                {t("download_tech_note_body")}
               </p>
             </div>
           </div>
         </section>
 
         <section className="mt-10 max-w-3xl mx-auto">
-          <h2 className="text-lg font-bold mb-4">Changelog</h2>
+          <h2 className="text-lg font-bold mb-4">{t("download_changelog_title")}</h2>
           <div className="space-y-3">
             {changelog.map((entry) => (
               <div key={entry.version} className="rounded-xl border border-border bg-card p-4">
@@ -79,7 +74,7 @@ export default function DownloadsPage() {
                   {entry.notes.map((n, i) => (
                     <li key={`stable-${i}`} className="text-xs text-muted-foreground flex gap-2">
                       <span className="text-primary">•</span>
-                      <span>{n}</span>
+                      <span>{t(n)}</span>
                     </li>
                   ))}
                 </ul>
@@ -89,7 +84,7 @@ export default function DownloadsPage() {
         </section>
 
         <p className="text-center text-xs text-muted-foreground mt-10">
-          Scriptora v{appVersion} · canale {buildChannel}
+          {tt("download_footer_version", { version: appVersion, channel: buildChannel })}
         </p>
       </main>
     </div>

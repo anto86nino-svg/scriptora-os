@@ -1,8 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { BookProject, SectionId } from "@/types/book";
 import { Sparkles, Loader2, Heart, Lightbulb, LayoutList, X, PenLine, Check, AlertTriangle, ArrowUpCircle, RotateCcw, History, ChevronDown, ChevronUp, Zap, MessageCircle, Wand2 } from "lucide-react";
-import { t, getUILanguage } from "@/lib/i18n";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchSupabaseFunction, parseEdgeFunctionErrorBody } from "@/lib/supabase-function-auth";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
@@ -71,14 +70,9 @@ export function AICoachPanel({ project, activeSection, onClose, onApplyRewrite }
   const callCoachAI = async (text: string, title: string, passNumber: number): Promise<{ score: number; heartScore: number; issues: string[]; fixesApplied: string[]; improvedText: string; summary: string }> => {
     // Use BOOK language for coach responses, not UI language
     const bookLang = project.config.language;
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-book`;
-    const res = await fetch(url, {
+    const res = await fetchSupabaseFunction("generate-book", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      },
-      body: JSON.stringify({
+      json: {
         systemPrompt: `You are an elite editorial AI and bestseller writing coach performing pass #${passNumber}.
 You MUST: 1) Score the text (craft quality) 2) Give a Heart Score (emotional impact) 3) List specific issues 4) Rewrite the FULL text at a higher level 5) List fixes applied.
 
@@ -113,9 +107,12 @@ Return this exact JSON (ALL values in ${bookLang}):
 }
 
 Respond in ${bookLang}. Return ONLY valid JSON.`,
-      }),
+      },
     });
-    if (!res.ok) throw new Error(`AI error ${res.status}`);
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(parseEdgeFunctionErrorBody(text) || `AI error ${res.status}`);
+    }
     const reader = res.body!.getReader();
     const decoder = new TextDecoder();
     let buffer = "";

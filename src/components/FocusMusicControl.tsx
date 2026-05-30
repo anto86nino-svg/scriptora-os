@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpenCheck, CloudRain, Flame, Moon, Music2, Pause, Play, Volume2, Waves } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
+import { t, useUILanguage } from "@/lib/i18n";
 
 type PresetId = "rain" | "waves" | "deep-focus" | "fireplace" | "library";
 
@@ -98,6 +99,14 @@ const PRESETS: MusicPreset[] = [
     wave: "sine",
   },
 ];
+
+const PRESET_I18N: Record<PresetId, { label: string; desc: string }> = {
+  rain: { label: "focus_preset_rain", desc: "focus_preset_rain_desc" },
+  waves: { label: "focus_preset_waves", desc: "focus_preset_waves_desc" },
+  "deep-focus": { label: "focus_preset_deep_focus", desc: "focus_preset_deep_focus_desc" },
+  fireplace: { label: "focus_preset_fireplace", desc: "focus_preset_fireplace_desc" },
+  library: { label: "focus_preset_library", desc: "focus_preset_library_desc" },
+};
 
 function readInitialSettings(): { presetId: PresetId; volume: number } {
   try {
@@ -252,6 +261,7 @@ function PresetIcon({ icon, className = "h-3.5 w-3.5" }: { icon: MusicPreset["ic
 }
 
 export function FocusMusicControl() {
+  useUILanguage();
   const initial = useMemo(readInitialSettings, []);
   const [presetId, setPresetId] = useState<PresetId>(initial.presetId);
   const [volume, setVolume] = useState(initial.volume);
@@ -260,6 +270,7 @@ export function FocusMusicControl() {
   const audioRef = useRef<AmbientHandle | null>(null);
 
   const activePreset = PRESETS.find((preset) => preset.id === presetId) || PRESETS[0];
+  const activePresetLabel = t(PRESET_I18N[activePreset.id].label);
 
   useEffect(() => {
     try {
@@ -318,7 +329,7 @@ export function FocusMusicControl() {
           >
             <Music2 className="h-4 w-4 text-sky-300" />
             <span className="hidden md:inline text-xs font-semibold tracking-wide">
-              {activePreset.label}
+              {activePresetLabel}
             </span>
           </button>
         </PopoverTrigger>
@@ -326,7 +337,7 @@ export function FocusMusicControl() {
           type="button"
           onClick={toggle}
           className={`ios-toolbar-button h-8 w-8 justify-center px-0 ${playing ? "text-sky-200 shadow-[0_0_18px_rgba(56,189,248,0.45)]" : "text-muted-foreground hover:text-foreground"}`}
-          title={playing ? "Pausa musica" : "Avvia musica"}
+          title={playing ? t("focus_music_pause") : t("focus_music_play")}
         >
           {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
         </button>
@@ -335,7 +346,7 @@ export function FocusMusicControl() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-sky-300">Focus Music</p>
-            <p className="mt-1 text-sm font-semibold text-white">{activePreset.label}</p>
+            <p className="mt-1 text-sm font-semibold text-white">{activePresetLabel}</p>
             <p className="mt-0.5 text-[11px] leading-4 text-slate-400">Tracce ambient integrate, generate localmente da Scriptora.</p>
           </div>
           <button
@@ -365,8 +376,8 @@ export function FocusMusicControl() {
                   <PresetIcon icon={preset.icon} />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-xs font-semibold">{preset.label}</span>
-                  <span className="mt-0.5 block text-[11px] leading-4 text-slate-400">{preset.description}</span>
+                  <span className="block text-xs font-semibold">{t(PRESET_I18N[preset.id].label)}</span>
+                  <span className="mt-0.5 block text-[11px] leading-4 text-slate-400">{t(PRESET_I18N[preset.id].desc)}</span>
                 </span>
               </button>
             );

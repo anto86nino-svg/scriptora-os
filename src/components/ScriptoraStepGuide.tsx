@@ -121,7 +121,7 @@ const copy: Record<UILanguage, GuideCopy> = {
       notepad: { title: "Block Notes", subtitle: "Capture sparks before they disappear.", steps: ["Write raw notes, ideas, scenes, or hooks.", "Keep them near the current book.", "Use them when creating chapters.", "Clean old notes when the project is stable."] },
       export: { title: "Export Studio · Publish OS", subtitle: "Package the finished manuscript — EPUB, PDF, or DOCX.", steps: ["Choose the completed project.", "Pick EPUB, PDF, or DOCX.", "Check missing sections before export.", "Download the file — Install App is for the Scriptora app, not this export."] },
       settings: { title: "Settings · System OS", subtitle: "Workspace controls — app language, atmosphere, and studio preferences.", steps: ["Choose app language.", "Choose atmosphere and writing font.", "Book language is set in Manual Setup · Launch OS.", "Close settings when the workspace feels right."] },
-      library: { title: "Completed Books · Publish OS", subtitle: "Finished manuscripts ready for Export Studio.", steps: ["Open completed books from the publishing shelf.", "Export only complete projects via Export Studio.", "Delete only what you no longer need.", "Return to Writer OS to continue active drafts."] },
+      library: { title: "Completed or Finish Book · Publish OS", subtitle: "Finished manuscripts and paused drafts — export or resume.", steps: ["Open completed or paused books from the publishing shelf.", "Export finished projects via Export Studio.", "Resume paused drafts when you are ready to continue.", "Your active manuscript stays on the home screen."] },
       beta: { title: "Beta Access", subtitle: "Activate testing access only when you have the beta code.", steps: ["Enter the beta tester code.", "Activate access.", "Check the plan badge after activation.", "Return to the dashboard and test unlocked features."] },
     },
   },
@@ -194,7 +194,7 @@ const copy: Record<UILanguage, GuideCopy> = {
       notepad: { title: "Block Notes", subtitle: "Cattura idee prima che spariscano.", steps: ["Scrivi note, scene, hook o appunti grezzi.", "Tienili vicino al libro attuale.", "Usali durante la creazione dei capitoli.", "Ripulisci le note vecchie quando il progetto è stabile."] },
       export: { title: "Export Studio · Publish OS", subtitle: "Impacchetta il manoscritto finito — EPUB, PDF o DOCX.", steps: ["Scegli il progetto completato.", "Seleziona EPUB, PDF o DOCX.", "Controlla eventuali sezioni mancanti.", "Scarica il file — Installa app è per l'app Scriptora, non questo export."] },
       settings: { title: "Impostazioni · System OS", subtitle: "Controlli workspace — lingua app, atmosfera e preferenze studio.", steps: ["Scegli lingua app.", "Scegli atmosfera e font di scrittura.", "La lingua libro si imposta in Setup manuale · Launch OS.", "Chiudi quando il workspace ti somiglia."] },
-      library: { title: "Libri completati · Publish OS", subtitle: "Manoscritti finiti pronti per Export Studio.", steps: ["Apri libri completati dallo scaffale publishing.", "Esporta solo progetti completi via Export Studio.", "Elimina solo ciò che non serve più.", "Torna in Writer OS per le bozze attive."] },
+      library: { title: "Completati o da finire · Publish OS", subtitle: "Manoscritti finiti e bozze in pausa — export o ripresa.", steps: ["Apri libri completati o in pausa dallo scaffale publishing.", "Esporta i progetti finiti via Export Studio.", "Riprendi le bozze messe da parte quando vuoi.", "Il manoscritto attivo resta in home."] },
       beta: { title: "Accesso Beta", subtitle: "Attiva l'accesso tester solo se hai il codice beta.", steps: ["Inserisci il codice beta tester.", "Attiva l'accesso.", "Controlla il badge piano dopo l'attivazione.", "Torna alla dashboard e prova le funzioni sbloccate."] },
     },
   },
@@ -298,7 +298,7 @@ export function ScriptoraStepGuide() {
   const location = useLocation();
   const navigate = useNavigate();
   const [enabled, setEnabled] = useState(readInitialGuideEnabled);
-  const [isGuideOpen, setIsGuideOpen] = useState(true);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 const [isMinimized, setIsMinimized] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(GUIDE_COLLAPSED_KEY) === "yes");
   const [overrideRoute, setOverrideRoute] = useState<GuideRoute | null>(null);
@@ -332,7 +332,6 @@ const [isMinimized, setIsMinimized] = useState(false);
         setEnabled(detail.enabled);
         if (detail.enabled && detail.resetCollapsed !== false) {
           setCollapsed(false);
-          setIsGuideOpen(true);
         }
       }
     };

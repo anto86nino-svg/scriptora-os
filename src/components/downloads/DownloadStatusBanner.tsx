@@ -1,9 +1,9 @@
-// Banner shown at the top of the Download Center when no live builds exist.
-
 import { Package } from "lucide-react";
 import { downloadsEnabled, downloadMode, buildChannel, appVersion } from "@/config/downloads";
+import { t, useUILanguage } from "@/lib/i18n";
 
 export function DownloadStatusBanner() {
+  useUILanguage();
   const isLive = downloadsEnabled && downloadMode === "live";
 
   return (
@@ -14,7 +14,7 @@ export function DownloadStatusBanner() {
       <div className="flex-1">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-bold text-foreground">
-            {isLive ? "Build disponibili" : "Build in preparazione"}
+            {isLive ? t("download_status_live_title") : t("download_status_soon_title")}
           </span>
           <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/20 text-primary font-bold border border-primary/30">
             {buildChannel}
@@ -24,9 +24,7 @@ export function DownloadStatusBanner() {
           </span>
         </div>
         <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-          {isLive
-            ? "Le versioni installabili sono pronte. Scegli la piattaforma qui sotto."
-            : "L'infrastruttura di rilascio è già predisposta. I link di download verranno attivati automaticamente non appena verranno configurati nel file .env."}
+          {isLive ? t("download_status_live_desc") : t("download_status_soon_desc")}
         </p>
       </div>
     </div>

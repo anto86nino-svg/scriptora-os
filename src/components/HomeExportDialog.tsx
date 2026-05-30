@@ -9,6 +9,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { CoverGenerator } from "@/components/CoverGenerator";
 import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { isProjectComplete } from "@/lib/project-status";
+import { t, tt, useUILanguage } from "@/lib/i18n";
 
 type Format = "epub" | "docx" | "pdf";
 
@@ -19,6 +20,7 @@ interface HomeExportDialogProps {
 }
 
 export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogProps) {
+  useUILanguage();
   const { toast } = useToast();
   const [selectedId, setSelectedId] = useState<string>("");
   const [format, setFormat] = useState<Format>("epub");
@@ -53,7 +55,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
         const errors = validateEpubStructure(project);
         if (errors.length > 0) {
           toast({
-            title: "EPUB non esportabile",
+            title: t("export_toast_epub_invalid"),
             description: errors.slice(0, 2).join(" · "),
             variant: "destructive",
           });
@@ -86,14 +88,14 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
       });
 
       if (saved) {
-        toast({ title: "File salvato", description: `${filename}.${ext}` });
+        toast({ title: t("export_toast_saved"), description: `${filename}.${ext}` });
         onClose();
       }
     } catch (e) {
       console.error("Export failed:", e);
       toast({
-        title: "Esportazione fallita",
-        description: e instanceof Error ? e.message : "Errore sconosciuto",
+        title: t("export_toast_failed"),
+        description: e instanceof Error ? e.message : t("export_toast_failed"),
         variant: "destructive",
       });
     } finally {
@@ -108,13 +110,13 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
     }
     const project = selectedProject;
     if (!project) {
-      toast({ title: "Seleziona un progetto", variant: "destructive" });
+      toast({ title: t("export_toast_select_project"), variant: "destructive" });
       return;
     }
     if (!isProjectComplete(project)) {
       toast({
-        title: "Libro non completo",
-        description: "Completa tutti i capitoli prima di esportare.",
+        title: t("export_toast_incomplete"),
+        description: t("export_toast_incomplete_desc"),
         variant: "destructive",
       });
       return;
@@ -128,9 +130,9 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   };
 
   const formatOptions: { value: Format; icon: any; label: string; desc: string }[] = [
-    { value: "epub", icon: BookOpen, label: "EPUB", desc: "Indice cliccabile · Kindle/Apple/Kobo" },
-    { value: "docx", icon: FileText, label: "Word", desc: "Manoscritto editabile · Bestseller layout" },
-    { value: "pdf", icon: FileType, label: "PDF", desc: "KDP 6×9\" · Print-ready" },
+    { value: "epub", icon: BookOpen, label: "EPUB", desc: t("export_format_epub_desc") },
+    { value: "docx", icon: FileText, label: "Word", desc: t("export_format_docx_desc") },
+    { value: "pdf", icon: FileType, label: "PDF", desc: t("export_format_pdf_desc") },
   ];
 
   return (
@@ -143,8 +145,8 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
               <FileDown className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-foreground">Esporta Libro</h2>
-              <p className="text-xs text-muted-foreground">Scegli progetto e formato bestseller</p>
+              <h2 className="text-sm font-semibold text-foreground">{t("export_dialog_title")}</h2>
+              <p className="text-xs text-muted-foreground">{t("export_dialog_subtitle")}</p>
             </div>
           </div>
           <button
@@ -160,15 +162,15 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           {/* Project Selection */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
-              Progetto
+              {t("export_dialog_project")}
             </label>
             {exportableProjects.length === 0 ? (
               <div className="p-4 rounded-lg border border-dashed border-border text-center">
                 <p className="text-sm text-muted-foreground">
-                  Nessun libro completo pronto per export.
+                  {t("export_dialog_no_books")}
                 </p>
                 <p className="text-xs text-muted-foreground/70 mt-1">
-                  Completa tutti i capitoli: poi Scriptora ti fara passare da Cover Studio o potrai spedire senza cover.
+                  {t("export_dialog_no_books_hint")}
                 </p>
               </div>
             ) : (
@@ -199,7 +201,11 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
                           {p.config.title || "Untitled"}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {p.chapters.length} cap · {wordCount.toLocaleString()} parole · {p.config.language}
+                          {tt("export_chapters_words", {
+                            chapters: p.chapters.length,
+                            words: wordCount.toLocaleString(),
+                            language: p.config.language,
+                          })}
                         </p>
                       </div>
                     </label>
@@ -213,7 +219,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           {exportableProjects.length > 0 && (
             <div className="space-y-2">
               <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                Formato
+                {t("export_dialog_format")}
               </label>
               <div className="grid grid-cols-1 gap-2">
                 {formatOptions.map(opt => (
@@ -251,7 +257,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
             disabled={isExporting}
             className="px-3 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
           >
-            Annulla
+            {t("export_dialog_cancel")}
           </button>
           <button
             onClick={handleExport}
@@ -262,7 +268,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
             {isExporting ? (
               <>
                 <Loader2 className="h-3 w-3 animate-spin" />
-                Esportazione...
+                {t("export_dialog_exporting")}
               </>
             ) : !canExport ? (
               <>
@@ -272,7 +278,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
             ) : (
               <>
                 <FileDown className="h-3 w-3" />
-                Esporta
+                {t("export_dialog_export")}
               </>
             )}
           </button>

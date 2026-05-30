@@ -1,4 +1,34 @@
-project_id = "lesxmntzrwjaooacvpko"
+project_id = "pwdcqnrclhetgxiqnjtr"
+
+[functions.generate-book]
+verify_jwt = false
+
+[functions.generate-blueprint-fast]
+verify_jwt = false
+
+[functions.analyze-chapter]
+verify_jwt = false
+
+[functions.fix-section]
+verify_jwt = false
+
+[functions.patch-chapter]
+verify_jwt = false
+
+[functions.dominate-chapter]
+verify_jwt = false
+
+[functions.live-coach]
+verify_jwt = false
+
+[functions.molly-chat]
+verify_jwt = false
+
+[functions.scriptora-character-bible]
+verify_jwt = false
+
+[functions.scriptora-novel-idea]
+verify_jwt = false
 
 [functions.kdp-money-engine]
 verify_jwt = false

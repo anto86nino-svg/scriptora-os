@@ -1,9 +1,12 @@
-import { isSupabaseConfigured, readSupabaseEnv } from "@/integrations/supabase/client";
+import { isSupabaseConfigured, isSupabasePublishableKey, readSupabaseEnv } from "@/integrations/supabase/client";
+import { isValidJwtFormat } from "@/lib/supabase-function-auth";
 
 export type EnvValidationIssueCode =
   | "missing_url"
   | "missing_key"
-  | "placeholder_key";
+  | "placeholder_key"
+  | "invalid_key_format"
+  | "missing_anon_jwt";
 
 export interface EnvValidationIssue {
   code: EnvValidationIssueCode;
@@ -36,11 +39,23 @@ export function validateSupabaseEnv(): EnvValidationResult {
       hint:
         "After `vercel env pull .env`, the anon key is often blank. Paste it from Supabase Dashboard → API → anon public key, or copy a populated `.env.production`.",
     });
-  } else if (/INSERIRE|YOUR_|REPLACE|TODO/i.test(key)) {
+  } else if (/INSERIRE|YOUR_|REPLACE|TODO|\$KEY|^cd ~\//i.test(key)) {
     issues.push({
       code: "placeholder_key",
-      message: "Supabase key is still a placeholder value.",
-      hint: "Replace placeholder text with your real publishable/anon key.",
+      message: "Supabase key is still a placeholder or corrupted value.",
+      hint: "Replace with the anon JWT from Supabase Dashboard → Project Settings → API (starts with eyJ).",
+    });
+  } else if (isSupabasePublishableKey(key) && !isValidJwtFormat(readSupabaseEnv().edgeAuthKey)) {
+    issues.push({
+      code: "missing_anon_jwt",
+      message: "Publishable key found but VITE_SUPABASE_ANON_KEY JWT is missing for AI generation.",
+      hint: "Set VITE_SUPABASE_ANON_KEY to the legacy anon public JWT (eyJ...) alongside the publishable key.",
+    });
+  } else if (!isValidJwtFormat(key) && !isSupabasePublishableKey(key)) {
+    issues.push({
+      code: "invalid_key_format",
+      message: "Supabase key is not a valid JWT or publishable key.",
+      hint: "Copy the anon public key from Supabase Dashboard → API. It must start with eyJ.",
     });
   }
 

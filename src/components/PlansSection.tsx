@@ -9,6 +9,7 @@ import { paymentsConfig, resolvePlanAction, type PaymentPlan } from "@/config/pa
 import { ComingSoonPaymentModal } from "@/components/payments/ComingSoonPaymentModal";
 import { setDevPlanOverride } from "@/lib/dev-plan-override";
 import { toast } from "sonner";
+import { t, tt, useUILanguage } from "@/lib/i18n";
 
 interface PlanInfo {
   tier: PlanTier;
@@ -31,61 +32,61 @@ const PLANS: PlanInfo[] = [
     tier: "free",
     name: "Free",
     icon: <Sparkles className="h-4 w-4" />,
-    tagline: "Per provare Scriptora e scrivere il primo libro.",
+    tagline: "Try Scriptora and write your first book.",
     features: [
-      "1 libro attivo",
-      "Fino a 10.000 parole",
-      "Creazione libro base",
-      "Generazione capitoli limitata",
-      "Strumenti premium visibili in anteprima",
-      "Nessuna ricerca di mercato in tempo reale",
-      "Nessun export",
+      "1 active book",
+      "Up to 10,000 words",
+      "Core book creation",
+      "Limited chapter generation",
+      "Premium tools preview",
+      "No live market intelligence",
+      "No export",
     ],
-    cta: "Inizia gratis",
+    cta: "Start free",
     internalHref: "/dashboard",
   },
   {
     tier: "pro",
     name: "Pro",
     icon: <Zap className="h-4 w-4" />,
-    tagline: "Per autori che vogliono scrivere, rifinire e pubblicare davvero.",
+    tagline: "For authors who write, refine, and publish for real.",
     features: [
-      "10 libri al mese",
-      "Fino a 80.000 parole per libro",
-      "Book Engine completo",
-      "Capitoli, revisioni e miglioramenti avanzati",
-      "Export EPUB, PDF, DOCX",
-      "Analisi KDP base su idea, nicchia e promessa",
-      "Title Intelligence base",
-      "Trend editoriali limitati",
-      "Cover Studio a template",
-      "Supporto via app/email",
+      "10 books per month",
+      "Up to 80,000 words per book",
+      "Full Book Engine",
+      "Advanced chapters, rewrites & polish",
+      "EPUB, PDF, DOCX export",
+      "KDP market analysis (idea, niche, promise)",
+      "Title Intelligence (base)",
+      "Limited editorial trends",
+      "Cover Studio (templates)",
+      "In-app & email support",
     ],
-    cta: "Passa a Pro",
+    cta: "Upgrade to Pro",
     paymentPlanId: "pro_monthly",
-    badge: "Più scelto",
+    badge: "Most popular",
     highlight: true,
   },
   {
     tier: "premium",
     name: "Premium",
     icon: <Crown className="h-4 w-4" />,
-    tagline: "Per chi vuole dominare il mercato.",
+    tagline: "For authors who want to dominate the market.",
     features: [
-      "Libri illimitati con uso corretto",
-      "Fino a 200.000 parole per libro",
-      "Dominate Mode completo",
-      "Analisi su segnali di mercato live",
-      "Analisi KDP avanzata su mercato, titolo e packaging",
-      "Title Domination avanzato",
-      "Trend editoriali da segnali pubblici",
-      "Stima del potenziale commerciale",
-      "Packaging Amazon: descrizione, keyword e categorie",
-      "Flusso Premium per lavori lunghi",
-      "Dominate Mode con controllo qualità avanzato",
-      "Tutti i formati di export",
+      "Unlimited books (fair use)",
+      "Up to 200,000 words per book",
+      "Full Dominate Mode",
+      "Live market intelligence",
+      "Advanced KDP analysis",
+      "Title Domination (advanced)",
+      "Editorial trends from public signals",
+      "Commercial potential estimates",
+      "Amazon packaging: blurb, keywords & categories",
+      "Premium flow for long works",
+      "Dominate Mode with advanced QA",
+      "All export formats",
     ],
-    cta: "Sblocca Premium",
+    cta: "Unlock Premium",
     paymentPlanId: "premium_monthly",
     badge: "Max Power",
     premium: true,
@@ -93,6 +94,7 @@ const PLANS: PlanInfo[] = [
 ];
 
 export function PlansSection() {
+  useUILanguage();
   const { plan: currentPlan, isDev } = usePlan();
   // In dev mode `currentPlan` already reflects the simulated tier (see usePlan + dev-plan-override).
   const activeTier: PlanTier = currentPlan;
@@ -115,15 +117,15 @@ export function PlansSection() {
   // Dev-only: clicking a card simulates that tier instantly. Public users never reach this.
   const handleDevSimulate = (tier: PlanTier) => {
     setDevPlanOverride(tier);
-    toast.success(`Dev: piano simulato → ${tier.toUpperCase()}`);
+    toast.success(tt("dev_plan_toast", { plan: tier.toUpperCase() }));
   };
 
   return (
     <section className="mt-12 mb-6">
       <div className="text-center mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Scegli il piano giusto per te</h2>
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{t("plans_section_title")}</h2>
         <p className="text-xs text-muted-foreground mt-1">
-          Cancellazione in qualsiasi momento · Pagamento sicuro
+          {t("plans_section_subtitle")}
         </p>
       </div>
 
@@ -153,7 +155,7 @@ export function PlansSection() {
 
               {isActive && (
                 <span className="absolute top-3 right-3 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 font-bold border border-emerald-500/30">
-                  Attivo
+                  {t("pricing_plan_active")}
                 </span>
               )}
 
@@ -179,7 +181,7 @@ export function PlansSection() {
 
               {isActive ? (
                 <div className="text-center px-3 py-2 rounded-lg text-xs font-semibold bg-muted/50 text-muted-foreground">
-                  Il tuo piano attuale
+                  {t("pricing_plan_current")}
                 </div>
               ) : isDev ? (
                 <button
@@ -195,7 +197,7 @@ export function PlansSection() {
                   }`}
                 >
                   <Terminal className="h-3 w-3" />
-                  Simula {p.name}
+                  {tt("plans_section_simulate", { plan: p.name })}
                 </button>
               ) : p.paymentPlanId ? (
                 <button
@@ -227,7 +229,7 @@ export function PlansSection() {
       {isDev && (
         <p className="text-center text-[10px] text-muted-foreground mt-3 inline-flex items-center justify-center gap-1.5 w-full">
           <Terminal className="h-2.5 w-2.5" />
-          Dev Mode · cambia piano qui sopra o usa il badge in basso a destra (reset profilo incluso)
+          {t("plans_section_dev_hint")}
         </p>
       )}
 
@@ -236,7 +238,7 @@ export function PlansSection() {
           to="/pricing"
           className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
-          Confronto completo e FAQ
+          {t("plans_section_compare")}
           <ArrowRight className="h-3 w-3" />
         </Link>
       </div>

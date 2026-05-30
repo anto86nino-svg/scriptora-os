@@ -1,18 +1,24 @@
-import { useState, useMemo, useEffect, forwardRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, forwardRef } from "react";
 import { SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/components/CharacterStudioDialog";
+import { NewBookGuidedFlow } from "@/components/NewBookGuidedFlow";
+import { GuidedTourTriggerButton } from "@/components/GuidedTourTriggerButton";
+import { GUIDED_TOUR_IDS } from "@/lib/guided-tour-events";
 import { BookConfig, Language, Genre, ChapterLength, BookLength, CATEGORIES, BOOK_LENGTH_CONFIG, AuthorIdentity, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { BookOpen, X, Sparkles, PenTool, UserRound, Save, Fingerprint, PlusCircle, Trash2, RefreshCw } from "lucide-react";
-import { t } from "@/lib/i18n";
+import { t, tt } from "@/lib/i18n";
 import { getGenreBlueprint } from "@/lib/genre-intelligence";
 import { getStylesForGenre, type WritingStylePreset } from "@/lib/writing-styles";
 import { usePlan } from "@/lib/plan";
-import { DEFAULT_AUTHOR_IDENTITIES, deleteAuthorIdentity, getSelectedAuthorIdentity, loadAuthorIdentities, normalizeAuthorIdentity, saveAuthorIdentity, setSelectedAuthorIdentityId } from "@/lib/author-identity";
+import { DEFAULT_AUTHOR_IDENTITIES, deleteAuthorIdentity, getSelectedAuthorIdentity, isDeletableAuthorIdentity, loadAuthorIdentities, normalizeAuthorIdentity, saveAuthorIdentity, setSelectedAuthorIdentityId } from "@/lib/author-identity";
 import { ensureBookTitleMetadata, generateShadowTitleSet } from "@/lib/title-shadow";
+import { toast } from "sonner";
 
 interface NewBookDialogProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (config: BookConfig) => void;
+  initialConfig?: BookConfig | null;
+  reconfigureMode?: boolean;
 }
 
 const LANGUAGES: Language[] = ["English", "Italian", "Spanish", "French", "German"];
@@ -88,7 +94,7 @@ const GENRES: { value: Genre; label: string; group: string }[] = [
   { value: "education", label: "Education", group: "Practical" },
 ];
 
-export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
+export function NewBookDialog({ open, onClose, onSubmit, initialConfig, reconfigureMode = false }: NewBookDialogProps) {
   const { plan } = usePlan();
   const isFreePlan = plan === "free";
   const [pendingCharacterProject, setPendingCharacterProject] = useState<any | null>(null);
@@ -98,6 +104,12 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
 
   useEffect(() => {
     if (!open) return;
+
+    if (initialConfig) {
+      setConfig({ ...initialConfig });
+      setTitleLanguage(initialConfig.titleLanguage || initialConfig.language || "English");
+      return;
+    }
 
     try {
       const raw = sessionStorage.getItem(SCRIPTORA_CHARACTER_PROJECT_KEY) || localStorage.getItem(SCRIPTORA_CHARACTER_PROJECT_KEY);
@@ -144,7 +156,7 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
     } catch {
       setPendingCharacterProject(null);
     }
-  }, [open]);
+  }, [open, initialConfig]);
   const [config, setConfig] = useState<BookConfig>({
     title: "",
     subtitle: "",
@@ -219,8 +231,6 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
       customTotalWords: Math.min(prev.customTotalWords ?? 10000, 10000),
     }));
   }, [open, isFreePlan]);
-
-  if (!open) return null;
 
   const update = (key: keyof BookConfig, value: any) => {
     if (isFreePlan && key === "bookLength" && value !== "short") return;
@@ -308,14 +318,54 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
   };
 
   const deleteAuthorDraft = () => {
-    if (!authorDraft.id.startsWith("custom-")) return;
-    deleteAuthorIdentity(authorDraft.id);
-    const identities = loadAuthorIdentities();
-    setAuthorIdentities(identities);
-    applyAuthorIdentity(identities[0] || DEFAULT_AUTHOR_IDENTITIES[0], identities);
+    if (!isDeletableAuthorIdentity(authorDraft.id)) return;
+    const name = authorDraft.penName || authorDraft.name || t("author_identity");
+    const ok = window.confirm(tt("confirm_delete_author_identity", { name }));
+    if (!ok) return;
+
+    try {
+      const fallback = deleteAuthorIdentity(authorDraft.id);
+      const identities = loadAuthorIdentities();
+      setAuthorIdentities(identities);
+      applyAuthorIdentity(fallback, identities);
+      toast.success(t("author_identity_deleted"));
+    } catch {
+      toast.error(t("delete_project_failed"));
+    }
   };
   const categories = Object.keys(CATEGORIES);
   const subcategories = CATEGORIES[config.category] || [];
+  const titleSectionRef = useRef<HTMLDivElement | null>(null);
+  const structureSectionRef = useRef<HTMLDivElement | null>(null);
+  const styleSectionRef = useRef<HTMLDivElement | null>(null);
+  const createSectionRef = useRef<HTMLDivElement | null>(null);
+
+  const submitBook = useCallback(() => {
+    const identity = normalizeAuthorIdentity(config.authorIdentity);
+    const authorName = (identity?.penName || config.authorName || config.author || config.writerName || "").trim();
+    if (identity?.id) setSelectedAuthorIdentityId(identity.id);
+    onSubmit(ensureBookTitleMetadata({
+      ...config,
+      titleLanguage,
+      authorIdentity: identity || undefined,
+      authorIdentityId: identity?.id || config.authorIdentityId,
+      authorName,
+      author: authorName,
+      writerName: authorName,
+    }, {
+      idea: pendingCharacterProject?.idea,
+      genre: config.genre,
+      category: config.category,
+      subcategory: config.subcategory,
+      targetAudience: config.tone,
+      language: config.language,
+      titleLanguage,
+      characterBible: pendingCharacterProject?.characterBible,
+      manualCharacterNames: pendingCharacterProject?.manualCharacterNames,
+    }));
+  }, [config, onSubmit, pendingCharacterProject, titleLanguage]);
+
+  if (!open) return null;
 
   return (
     <div className="scriptora-modal-overlay">
@@ -323,12 +373,20 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
         <div className="flex shrink-0 items-center justify-between border-b border-border p-5">
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">{t("create_new_book")}</h2>
+            <h2 className="text-sm font-semibold text-foreground">
+              {reconfigureMode ? t("reconfigure_book") : t("create_new_book")}
+            </h2>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+          <div className="flex items-center gap-2">
+            <GuidedTourTriggerButton tourId={GUIDED_TOUR_IDS.newbook} />
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+          </div>
         </div>
 
         <div className="scriptora-modal-body space-y-4 p-5">
+          <NewBookGuidedFlow open={open} />
+
+          <div ref={titleSectionRef} data-guided-tour="newbook-title">
           <Field label={t("title")}>
             <input value={config.title} onChange={e => update("title", e.target.value)}
               className="w-full h-9 bg-muted/50 border border-border rounded-lg px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -401,7 +459,9 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
               )}
             </div>
           )}
+          </div>
 
+          <div ref={structureSectionRef} className="space-y-4" data-guided-tour="newbook-structure">
           <Field label={t("book_length")}>
             <div className="grid grid-cols-4 gap-2">
 
@@ -521,6 +581,24 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
+            <Field label={t("num_chapters")}>
+              <input type="number" min={3} max={50} value={config.numberOfChapters}
+                onChange={e => update("numberOfChapters", Math.max(3, Math.min(50, parseInt(e.target.value) || 10)))}
+                className="w-full h-9 bg-muted/50 border border-border rounded-lg px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
+            </Field>
+            <Field label={t("default_length")}>
+              <select value={config.chapterLength} onChange={e => update("chapterLength", e.target.value)}
+                className="w-full h-9 bg-muted/50 border border-border rounded-lg px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
+                <option value="short">{t("short")}</option>
+                <option value="medium">{t("medium")}</option>
+                <option value="long">{t("long")}</option>
+              </select>
+            </Field>
+          </div>
+          </div>
+
+          <div ref={styleSectionRef} className="space-y-4" data-guided-tour="newbook-style">
+          <div className="grid grid-cols-2 gap-4">
             <Field label={t("tone")}>
               <input value={config.tone} onChange={e => update("tone", e.target.value)}
                 className="w-full h-9 bg-muted/50 border border-border rounded-lg px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -536,21 +614,7 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
             </Field>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <Field label={t("num_chapters")}>
-              <input type="number" min={3} max={50} value={config.numberOfChapters}
-                onChange={e => update("numberOfChapters", Math.max(3, Math.min(50, parseInt(e.target.value) || 10)))}
-                className="w-full h-9 bg-muted/50 border border-border rounded-lg px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40" />
-            </Field>
-            <Field label={t("default_length")}>
-              <select value={config.chapterLength} onChange={e => update("chapterLength", e.target.value)}
-                className="w-full h-9 bg-muted/50 border border-border rounded-lg px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40">
-                <option value="short">{t("short")}</option>
-                <option value="medium">{t("medium")}</option>
-                <option value="long">{t("long")}</option>
-              </select>
-            </Field>
-            <Field label={t("subchapters")}>
+          <Field label={t("subchapters")}>
               <label className="flex items-center gap-2 h-9 cursor-pointer">
                 <input type="checkbox" checked={config.subchaptersEnabled}
                   onChange={e => update("subchaptersEnabled", e.target.checked)}
@@ -558,7 +622,6 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
                 <span className="text-xs text-foreground">{t("enabled")}</span>
               </label>
             </Field>
-          </div>
 
           {config.subchaptersEnabled && (
             <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
@@ -580,38 +643,16 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
               </div>
             </div>
           )}
+          </div>
         </div>
 
-        <div className="flex shrink-0 justify-end gap-2 border-t border-border p-5">
+        <div ref={createSectionRef} data-guided-tour="newbook-create" className="flex shrink-0 justify-end gap-2 border-t border-border bg-card p-5">
           <button onClick={onClose}
-            className="h-9 px-4 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            className="scriptora-modal-cta-ghost h-10 px-4 text-sm font-semibold">
             {t("cancel")}
           </button>
-          <button onClick={() => {
-            const identity = normalizeAuthorIdentity(config.authorIdentity);
-            const authorName = (identity?.penName || config.authorName || config.author || config.writerName || "").trim();
-            if (identity?.id) setSelectedAuthorIdentityId(identity.id);
-            onSubmit(ensureBookTitleMetadata({
-              ...config,
-              titleLanguage,
-              authorIdentity: identity || undefined,
-              authorIdentityId: identity?.id || config.authorIdentityId,
-              authorName,
-              author: authorName,
-              writerName: authorName,
-            }, {
-              idea: pendingCharacterProject?.idea,
-              genre: config.genre,
-              category: config.category,
-              subcategory: config.subcategory,
-              targetAudience: config.tone,
-              language: config.language,
-              titleLanguage,
-              characterBible: pendingCharacterProject?.characterBible,
-              manualCharacterNames: pendingCharacterProject?.manualCharacterNames,
-            }));
-          }}
-            className="h-9 px-6 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors">
+          <button onClick={submitBook}
+            className="scriptora-modal-cta-primary h-10 px-6 text-sm font-semibold disabled:opacity-40">
             {t("create_book")}
           </button>
         </div>
@@ -687,14 +728,14 @@ function AuthorIdentitySection({
           ))}
         </select>
         <div className="flex gap-2">
-          {draft.id.startsWith("custom-") && (
+          {isDeletableAuthorIdentity(draft.id) && (
             <button
               type="button"
               onClick={onDelete}
               className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-3 text-xs font-semibold text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Elimina
+              {t("delete_author_identity")}
             </button>
           )}
           <button

@@ -1,14 +1,14 @@
 import { memo, useMemo } from "react";
-import { Check, Loader2, PenLine, Sparkles, Square } from "lucide-react";
+import { Check, ListTree, Loader2, PenLine, Sparkles, Square } from "lucide-react";
 import type { BookProject } from "@/types/book";
 import type { ChunkProgress } from "@/lib/generation";
 import { resolveChapterTitle } from "@/lib/chapter-titles";
 import { Progress } from "@/components/ui/progress";
-import { t } from "@/lib/i18n";
+import { t, tt } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import {
-  EDITORIAL_CHECKLIST,
-  EDITORIAL_PHASE_LABELS,
+  getEditorialChecklist,
+  getEditorialPhaseLabel,
   editorialStatusMessage,
   formatWordProgress,
   sanitizePlaceholderText,
@@ -21,6 +21,7 @@ interface Props {
   chapterIndex: number;
   outline?: { title: string; summary: string };
   onCancel?: () => void;
+  onBackToChapters?: () => void;
   chunkProgress?: ChunkProgress;
 }
 
@@ -29,6 +30,7 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
   chapterIndex,
   outline,
   onCancel,
+  onBackToChapters,
   chunkProgress,
 }: Props) {
   const liveContent = chunkProgress?.content?.trim() ?? "";
@@ -36,14 +38,15 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
   const displayedText = usePerceivedStreamText(liveContent, true);
   const checklistDone = useEditorialChecklist(hasLiveContent);
 
+  const checklist = getEditorialChecklist();
   const currentWords = chunkProgress?.currentWords ?? 0;
   const targetWords = Math.max(chunkProgress?.targetWords ?? 2800, 1);
   const realPct = chunkProgress
     ? Math.min(Math.round((currentWords / targetWords) * 100), 99)
-    : Math.min(Math.round((checklistDone / EDITORIAL_CHECKLIST.length) * 18), 18);
+    : Math.min(Math.round((checklistDone / checklist.length) * 18), 18);
 
   const phase = chunkProgress?.phase ?? "OPENING";
-  const phaseLabel = EDITORIAL_PHASE_LABELS[phase] ?? EDITORIAL_PHASE_LABELS.OPENING;
+  const phaseLabel = getEditorialPhaseLabel(phase);
 
   const chapterTitle = resolveChapterTitle(outline?.title || "", chapterIndex, {
     config: project.config,
@@ -60,6 +63,16 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
 
   return (
     <div className="scriptora-generation-stage animate-fade-in min-w-0 max-w-full w-full overflow-x-hidden">
+      {onBackToChapters && (
+        <button
+          type="button"
+          onClick={onBackToChapters}
+          className="scriptora-writer-nav-primary mb-4 w-full sm:w-auto"
+        >
+          <ListTree className="h-4 w-4 shrink-0" />
+          {t("back_to_chapter_index")}
+        </button>
+      )}
       <div className="scriptora-generation-topline">
         <div className="min-w-0 flex-1">
           <div className="scriptora-generation-live-pill mb-2">
@@ -67,7 +80,7 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
             <Sparkles className="h-4 w-4" />
           </div>
           <p className="text-[11px] uppercase tracking-[0.2em] text-cyan-100/70">
-            Scriptora sta costruendo il capitolo
+            {t("building_chapter")}
           </p>
           <p className="mt-1 text-sm font-medium text-white/88">{phaseLabel}</p>
         </div>
@@ -78,16 +91,17 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
               type="button"
               onClick={onCancel}
               title={t("stop_generation")}
-              className="h-8 w-8 flex items-center justify-center rounded-lg text-white/65 hover:text-white hover:bg-red-500/15 transition-colors"
+              className="scriptora-writer-stop-btn"
             >
-              <Square className="h-3 w-3" />
+              <Square className="h-3 w-3 shrink-0" />
+              <span>{t("stop_generation")}</span>
             </button>
           )}
         </div>
       </div>
 
       <ul className="mb-4 space-y-2 rounded-2xl border border-white/10 bg-white/[0.04] p-3 sm:p-4">
-        {EDITORIAL_CHECKLIST.map((label, index) => {
+        {checklist.map((label, index) => {
           const done = index < checklistDone;
           const active = index === checklistDone && !hasLiveContent;
           return (
@@ -114,13 +128,13 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
         <div className="scriptora-generation-manuscript-header">
           <div className="flex items-center gap-2">
             <PenLine className="h-4 w-4 text-emerald-200" />
-            <span>Anteprima del capitolo</span>
+            <span>{t("chapter_preview_title")}</span>
           </div>
           {hasLiveContent && (
-            <span className="text-[10px] uppercase tracking-[0.14em] text-emerald-200/80">In scrittura</span>
+            <span className="text-[10px] uppercase tracking-[0.14em] text-emerald-200/80">{t("chapter_writing_badge")}</span>
           )}
         </div>
-        <div className="scriptora-live-writing-board" aria-label={`Anteprima: ${chapterTitle}`}>
+        <div className="scriptora-live-writing-board" aria-label={tt("chapter_preview_aria", { title: chapterTitle })}>
           <div className="scriptora-live-writing-paper">
             <h4 className="text-lg font-semibold text-white leading-snug">{chapterTitle}</h4>
             {paragraphs.length > 0 ? (
@@ -158,6 +172,7 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
   );
 }, (prev, next) =>
   prev.onCancel === next.onCancel &&
+  prev.onBackToChapters === next.onBackToChapters &&
   prev.project?.id === next.project?.id &&
   prev.chapterIndex === next.chapterIndex &&
   prev.outline?.title === next.outline?.title &&

@@ -1,6 +1,6 @@
 {
   "report": {
-    "generatedAt": "2026-05-29T16:43:58.552Z",
+    "generatedAt": "2026-05-30T06:56:17.656Z",
     "overallReliabilityScore": 100,
     "totalBenchmarks": 11,
     "passedBenchmarks": 11,
@@ -499,7 +499,7 @@
         {
           "id": "cd-calibrated-cap",
           "passed": true,
-          "message": "Calibrated delta capped (0.1)",
+          "message": "Calibrated delta capped (0)",
           "severity": "critical"
         },
         {

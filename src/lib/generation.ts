@@ -1,5 +1,6 @@
 import { BookConfig, Chapter, FrontMatter, BackMatter, BookBlueprint, Genre, AIQualityRating, BOOK_LENGTH_CONFIG, getBookTotalWords, getSubchaptersPerChapter, GenreLock } from "@/types/book";
-import { supabase } from "@/integrations/supabase/client";
+import { fetchSupabaseFunction, formatEdgeFunctionFailure, parseEdgeFunctionErrorBody } from "@/lib/supabase-function-auth";
+import { readSupabaseEnv } from "@/integrations/supabase/client";
 import { buildGenreSystemBlock, buildGenreBlueprintBlock, buildGenreEditorialBlock, getGenreBlueprint, buildPromptByGenre, resolveGenreKey } from "@/lib/genre-intelligence";
 import { buildBookIntelligencePromptBlock, resolveBookIntelligenceFromConfig } from "@/lib/book-intelligence";
 import { buildLongBookMemory, buildLongBookMemoryPromptBlock } from "@/lib/long-book-memory";
@@ -151,11 +152,7 @@ function withUsage(base: AIUsageContext | undefined, patch: AIUsageContext): AIU
 }
 
 function describeAIHttpError(status: number, message: string): string {
-  const clean = message.trim();
-  if (status === 429) return clean || "AI rate limit reached. Please retry in a moment.";
-  if (status === 401 || status === 402) return clean || "AI provider credentials or credits need attention.";
-  if (status >= 500) return clean || "AI provider temporarily unavailable. Please try again.";
-  return clean || `AI generation failed (${status})`;
+  return formatEdgeFunctionFailure(status, message);
 }
 
 async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: number = 300000, usage?: AIUsageContext): Promise<string> {
@@ -172,28 +169,20 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
 
   if (DEV_DEBUG_STREAM) console.log("[Nexora] AI request started (streaming)");
   try {
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-book`;
-    if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
+    const { url, key } = readSupabaseEnv();
+    if (!url || !key) {
       throw new Error("Missing Supabase configuration for AI generation.");
     }
     const currentUsage = usagePayload(usage);
-    const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: { session: null } } as any));
-    const bearer = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    const res = await fetch(url, {
+    const res = await fetchSupabaseFunction("generate-book", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        "Authorization": `Bearer ${bearer}`,
-      },
-      body: JSON.stringify({ systemPrompt, userPrompt, ...currentUsage }),
+      json: { systemPrompt, userPrompt, ...currentUsage },
       signal: controller.signal,
     });
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      let errMsg = text;
-      try { errMsg = JSON.parse(text).error || text; } catch {}
+      const errMsg = parseEdgeFunctionErrorBody(text);
       if (errMsg.includes("credits exhausted") || errMsg.includes("API key invalid") || res.status === 402) {
         throw new AICreditsError(errMsg);
       }
@@ -271,21 +260,14 @@ async function callAIReduced(systemPrompt: string, userPrompt: string, usage?: A
  * 90s hard timeout; faster than streaming for short structured output.
  */
 async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage?: AIUsageContext): Promise<string> {
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-blueprint-fast`;
   const callOnce = async (): Promise<string> => {
-    const res = await fetch(url, {
+    const res = await fetchSupabaseFunction("generate-blueprint-fast", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      },
-      body: JSON.stringify({ systemPrompt, userPrompt, ...usagePayload({ ...usage, taskType: usage?.taskType || "generate_blueprint" }) }),
+      json: { systemPrompt, userPrompt, ...usagePayload({ ...usage, taskType: usage?.taskType || "generate_blueprint" }) },
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      let errMsg = text;
-      try { errMsg = JSON.parse(text).error || text; } catch {}
+      const errMsg = parseEdgeFunctionErrorBody(text);
       if (res.status === 402) throw new AICreditsError(errMsg || "AI credits exhausted");
       throw new Error(errMsg || `Blueprint generation failed (${res.status})`);
     }

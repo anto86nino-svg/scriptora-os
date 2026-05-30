@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { runBestsellerRadar } from "@/services/bestsellerRadarService";
 import { analyzeRadarPublishingIntel, type RadarPublishingIntel } from "@/lib/publishing-intelligence";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
+import { t, tt, useUILanguage } from "@/lib/i18n";
 
 const KDP_PREFILL_KEY = "scriptora-kdp-prefill";
 
@@ -104,7 +105,20 @@ const sampleByGenre: Record<string, RadarResult[]> = {
 
 const fallbackResults = sampleByGenre.romance;
 
-export default function BestsellerRadarPage() {
+function localizeLevel(level: string): string {
+  const map: Record<string, string> = {
+    Alta: t("level_high"),
+    Media: t("level_medium"),
+    Bassa: t("level_low"),
+    High: t("level_high"),
+    Medium: t("level_medium"),
+    Low: t("level_low"),
+  };
+  return map[level] || level;
+}
+
+export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: boolean }) {
+  useUILanguage();
   const navigate = useNavigate();
   const [genre, setGenre] = useState("romance");
   const [keyword, setKeyword] = useState("");
@@ -142,19 +156,37 @@ export default function BestsellerRadarPage() {
     });
   }, [radarIntel, searched, genre, keyword, liveScore, results, authorIdentity]);
 
+  const pageShellClass = embedded
+    ? "scriptora-landing-embedded-workspace bg-background text-foreground"
+    : "scriptora-feature-page bg-background text-foreground";
+
+  const mainClass = embedded
+    ? "mx-auto flex w-full max-w-7xl flex-col gap-6 overflow-auto px-4 py-4 sm:px-5 max-h-[min(720px,78vh)]"
+    : "scriptora-feature-scroll mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8";
+
   return (
-    <div className="scriptora-feature-page bg-background text-foreground">
-      <main className="scriptora-feature-scroll mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
+    <div className={pageShellClass}>
+      <main className={mainClass}>
+        {!embedded && (
         <div className="flex items-center justify-between gap-4">
           <Button variant="ghost" onClick={() => navigate("/dashboard")} className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             Dashboard
           </Button>
 
-          <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-            Publishing Intelligence
-          </div>
+            <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+              {t("publishing_intelligence")}
+            </div>
         </div>
+        )}
+
+        {embedded && (
+          <div className="flex items-center justify-end">
+            <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+              {t("publishing_intelligence")}
+            </div>
+          </div>
+        )}
 
         <section className="overflow-hidden rounded-3xl border border-border/70 bg-card/70 p-6 shadow-2xl backdrop-blur md:p-8">
           <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
@@ -166,13 +198,13 @@ export default function BestsellerRadarPage() {
 
               <div>
                 <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
-                  Studia il mercato prima di scrivere.
+                  {t("radar_hero_title")}
                 </h1>
                 <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
                   {loading
-                    ? loadingPhase || "Mapping competitive positioning…"
-                    : "Market x-ray for competing titles — demand, competition, and commercial momentum signals."}
-                  {" "}Non per copiare. Per capire dove colpire.
+                    ? loadingPhase || t("radar_loading_niche")
+                    : t("radar_hero_desc")}
+                  {" "}{t("radar_hero_suffix")}
                 </p>
               </div>
 
@@ -190,7 +222,7 @@ export default function BestsellerRadarPage() {
                 <input
                   value={keyword}
                   onChange={(event) => setKeyword(event.target.value)}
-                  placeholder="Keyword, nicchia o tema..."
+                  placeholder={t("radar_keyword_placeholder")}
                   className="h-11 rounded-xl border border-border bg-background px-3 text-sm outline-none"
                 />
 
@@ -202,19 +234,19 @@ export default function BestsellerRadarPage() {
                     setError("");
                     setLiveSummary("");
                     setRadarIntel(null);
-                    setLoadingPhase("Evaluating niche signals…");
+                    setLoadingPhase(t("radar_loading_niche"));
                     try {
-                      setLoadingPhase("Comparing genre expectations…");
+                      setLoadingPhase(t("radar_loading_genre"));
                       const res = await runBestsellerRadar({
                         genre,
                         keyword,
                         marketplace: "Amazon.it",
                       });
-                      if (!res.ok) throw new Error(res.error || "Radar non disponibile");
+                      if (!res.ok) throw new Error(res.error || t("radar_unavailable"));
                       setLiveResults(res.results?.length ? res.results : null);
                       setLiveScore(typeof res.marketScore === "number" ? res.marketScore : null);
                       setLiveSummary(res.summary || "");
-                      setLoadingPhase("Estimating reader retention…");
+                      setLoadingPhase(t("radar_loading_retention"));
                       const avgPotential = res.results?.length
                         ? res.results.reduce((s, r) => s + (r.potential || 0), 0) / res.results.length
                         : null;
@@ -228,7 +260,7 @@ export default function BestsellerRadarPage() {
                         }),
                       );
                     } catch (err) {
-                      setError(err instanceof Error ? err.message : "Errore durante l'analisi");
+                      setError(err instanceof Error ? err.message : t("radar_error"));
                       setLiveResults(null);
                       setLiveScore(null);
                       setLiveSummary("");
@@ -241,19 +273,19 @@ export default function BestsellerRadarPage() {
                   className="h-11 gap-2 rounded-xl"
                 >
                   <Search className="h-4 w-4" />
-                  {loading ? "Scanning market…" : "Analizza mercato"}
+                  {loading ? t("radar_scanning") : t("radar_analyze_market")}
                 </Button>
               </div>
             </div>
 
             <div className="grid gap-4 rounded-3xl border border-border/70 bg-background/70 p-5">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Market Score</span>
+                <span className="text-sm text-muted-foreground">{t("radar_market_score")}</span>
                 <BarChart3 className="h-5 w-5 text-primary" />
               </div>
               <div className="text-5xl font-black">{searched ? marketScore : "—"}</div>
               <p className="text-sm leading-6 text-muted-foreground">
-                Punteggio stimato da Scriptora AI usando segnali pubblici, pattern editoriali e analisi competitiva.
+                {t("radar_disclaimer")}
               </p>
             </div>
           </div>
@@ -328,13 +360,13 @@ export default function BestsellerRadarPage() {
 
         {!searched && (
           <div className="rounded-2xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">Dati di esempio</span> — avvia un&apos;analisi live per risultati basati su ricerca web e AI.
+            <span className="font-semibold text-foreground">{t("radar_sample_data")}</span> — {t("radar_sample_data_desc")}
           </div>
         )}
 
         {searched && !loading && liveResults && (
           <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
-            <span className="font-semibold text-primary">Analisi live</span> — risultati sintetizzati da segnali pubblici. Non sono dati ufficiali Amazon.
+            <span className="font-semibold text-primary">{t("radar_live_banner")}</span> — {t("radar_live_banner_desc")}
           </div>
         )}
 
@@ -342,12 +374,12 @@ export default function BestsellerRadarPage() {
           <section className="grid gap-4">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-bold">Titoli concorrenti e opportunità</h2>
+              <h2 className="text-xl font-bold">{t("radar_competitors_title")}</h2>
             </div>
 
             {results.length === 0 ? (
               <div className="rounded-2xl border border-border bg-card/70 p-5 text-sm text-muted-foreground">
-                Nessun risultato live trovato. Prova una keyword più specifica, per esempio “dark mafia romance”, “thriller psicologico italiano” o “self help abitudini”.
+                {t("radar_no_results")}
               </div>
             ) : (
             <div className="grid gap-4 md:grid-cols-2">
@@ -366,25 +398,25 @@ export default function BestsellerRadarPage() {
 
                     <div className="min-w-0 flex-1">
                       <h3 className="line-clamp-2 text-lg font-bold">{book.title}</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">{book.author || "Autore non rilevato"}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">{book.author || t("radar_author_unknown")}</p>
                       {book.sourceUrl && (
                         <a href={book.sourceUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-[11px] font-semibold text-primary hover:underline">
-                          Apri fonte
+                          {t("radar_open_source")}
                         </a>
                       )}
                       <p className="mt-2 text-xs font-medium text-primary">{book.category}</p>
 
                       <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
                         <div className="rounded-xl bg-background/80 p-2">
-                          <div className="text-muted-foreground">Rating</div>
+                          <div className="text-muted-foreground">{t("radar_rating_label")}</div>
                           <div className="font-bold">{book.rating}</div>
                         </div>
                         <div className="rounded-xl bg-background/80 p-2">
-                          <div className="text-muted-foreground">Review</div>
+                          <div className="text-muted-foreground">{t("radar_reviews_label")}</div>
                           <div className="font-bold">{book.reviews}</div>
                         </div>
                         <div className="rounded-xl bg-background/80 p-2">
-                          <div className="text-muted-foreground">Prezzo</div>
+                          <div className="text-muted-foreground">{t("radar_price_label")}</div>
                           <div className="font-bold">{book.price}</div>
                         </div>
                       </div>
@@ -393,15 +425,15 @@ export default function BestsellerRadarPage() {
 
                   <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
                     <div className="rounded-2xl border border-border bg-background/70 p-3">
-                      <div className="text-muted-foreground">Domanda</div>
-                      <div className="mt-1 font-bold">{book.demand}</div>
+                      <div className="text-muted-foreground">{t("radar_demand_label")}</div>
+                      <div className="mt-1 font-bold">{localizeLevel(book.demand)}</div>
                     </div>
                     <div className="rounded-2xl border border-border bg-background/70 p-3">
-                      <div className="text-muted-foreground">Concorrenza</div>
-                      <div className="mt-1 font-bold">{book.competition}</div>
+                      <div className="text-muted-foreground">{t("radar_competition_label")}</div>
+                      <div className="mt-1 font-bold">{localizeLevel(book.competition)}</div>
                     </div>
                     <div className="rounded-2xl border border-border bg-background/70 p-3">
-                      <div className="text-muted-foreground">Potenziale</div>
+                      <div className="text-muted-foreground">{t("radar_potential_label")}</div>
                       <div className="mt-1 font-bold">{book.potential}/10</div>
                     </div>
                   </div>
@@ -414,12 +446,12 @@ export default function BestsellerRadarPage() {
           </section>
         )}
 
-        {searched && results.length > 0 && (
+        {searched && results.length > 0 && !embedded && (
           <div className="flex flex-col gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-foreground">Prossimo passo: KDP Launch</p>
+              <p className="text-sm font-semibold text-foreground">{t("radar_next_kdp")}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Porta keyword e angolo di mercato nel wizard titoli, categorie e packaging Amazon.
+                {t("radar_next_kdp_desc")}
               </p>
             </div>
             <Button
@@ -437,24 +469,27 @@ export default function BestsellerRadarPage() {
               }}
             >
               <Rocket className="h-4 w-4" />
-              Apri KDP Intelligence
+              {t("radar_open_kdp")}
             </Button>
           </div>
         )}
 
+        {!embedded && (
         <section className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5 text-sm leading-6 text-amber-100">
           <div className="mb-2 flex items-center gap-2 font-bold">
             <ShieldAlert className="h-4 w-4" />
-            Nota importante
+            {t("radar_important_note")}
           </div>
           <p>
-            I dati mostrati, inclusi domanda, concorrenza, potenziale commerciale e stime di mercato,
-            sono elaborazioni generate da Scriptora AI sulla base di segnali pubblici, pattern editoriali
-            e analisi automatica. Non rappresentano dati ufficiali né verificabili provenienti da Amazon
-            o da fonti proprietarie. Servono come orientamento strategico, non come valori assoluti.
+            {t("radar_important_body")}
           </p>
         </section>
+        )}
       </main>
     </div>
   );
+}
+
+export default function BestsellerRadarPage() {
+  return <BestsellerRadarWorkspace />;
 }

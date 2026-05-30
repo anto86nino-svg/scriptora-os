@@ -3,7 +3,7 @@
 // changes so prior consents can be invalidated.
 
 export const LEGAL_VERSION = "1.1.0";
-export const LEGAL_UPDATED = "19 Aprile 2026";
+export const LEGAL_UPDATED = "29 Maggio 2026";
 
 export const PRIVACY_POLICY = `
 SCRIPTORA — Informativa sulla Privacy

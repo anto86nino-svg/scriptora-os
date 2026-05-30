@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Users, Wand2, Save, X, Loader2, BookOpen, CheckCircle2, Sparkles } from "lucide-react";
+import { CharacterStudioGuidedFlow } from "@/components/CharacterStudioGuidedFlow";
+import { GuidedTourTriggerButton } from "@/components/GuidedTourTriggerButton";
+import { GUIDED_TOUR_IDS } from "@/lib/guided-tour-events";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getCurrentUserId } from "@/services/storageService";
+import { t, tt, useUILanguage } from "@/lib/i18n";
 
 export const SCRIPTORA_CHARACTER_BIBLE_KEY = "scriptora-character-bible-v1";
 export const SCRIPTORA_CHARACTER_PROJECT_KEY = "scriptora-character-project-v1";
@@ -33,111 +37,111 @@ const ROMAN_GENRES_PRO: ChoiceOption[] = [
   { value: "dark-romance", label: "Dark romance" },
   { value: "romantasy", label: "Romantasy" },
   { value: "thriller", label: "Thriller" },
-  { value: "psychological thriller", label: "Thriller psicologico" },
+  { value: "psychological thriller", label: "Psychological thriller" },
   { value: "crime", label: "Crime / noir" },
-  { value: "mystery", label: "Mistero" },
+  { value: "mystery", label: "Mystery" },
   { value: "fantasy", label: "Fantasy" },
   { value: "urban fantasy", label: "Urban fantasy" },
   { value: "dark fantasy", label: "Dark fantasy" },
-  { value: "epic fantasy", label: "Fantasy epico" },
+  { value: "epic fantasy", label: "Epic fantasy" },
   { value: "horror", label: "Horror" },
-  { value: "gothic horror", label: "Horror gotico" },
+  { value: "gothic horror", label: "Gothic horror" },
   { value: "folk horror", label: "Folk horror" },
-  { value: "sci-fi", label: "Fantascienza" },
-  { value: "dystopian", label: "Distopico" },
+  { value: "sci-fi", label: "Science fiction" },
+  { value: "dystopian", label: "Dystopian" },
   { value: "cyberpunk", label: "Cyberpunk" },
-  { value: "historical fiction", label: "Romanzo storico" },
-  { value: "literary fiction", label: "Narrativa letteraria" },
+  { value: "historical fiction", label: "Historical fiction" },
+  { value: "literary fiction", label: "Literary fiction" },
   { value: "young adult", label: "Young adult" },
-  { value: "paranormal", label: "Paranormale" },
-  { value: "adventure", label: "Avventura" },
+  { value: "paranormal", label: "Paranormal" },
+  { value: "adventure", label: "Adventure" },
   { value: "suspense", label: "Suspense" },
-  { value: "family saga", label: "Saga familiare" },
-  { value: "memoir narrativo", label: "Memoir narrativo" }
+  { value: "family saga", label: "Family saga" },
+  { value: "memoir narrativo", label: "Narrative memoir" }
 ];
 
 const SUBGENRES_PRO: ChoiceOption[] = [
-  { value: "enemies to lovers", label: "Nemici che si innamorano" },
-  { value: "second chance", label: "Seconda occasione" },
-  { value: "forbidden love", label: "Amore proibito" },
+  { value: "enemies to lovers", label: "Enemies to lovers" },
+  { value: "second chance", label: "Second chance" },
+  { value: "forbidden love", label: "Forbidden love" },
   { value: "slow burn", label: "Slow burn" },
-  { value: "small town", label: "Piccola città" },
+  { value: "small town", label: "Small town" },
   { value: "billionaire", label: "Billionaire romance" },
-  { value: "workplace romance", label: "Romance sul lavoro" },
-  { value: "fake dating", label: "Finta relazione" },
-  { value: "forced proximity", label: "Costretti vicini" },
-  { value: "age gap", label: "Differenza d’età" },
-  { value: "friends to lovers", label: "Da amici ad amanti" },
+  { value: "workplace romance", label: "Workplace romance" },
+  { value: "fake dating", label: "Fake dating" },
+  { value: "forced proximity", label: "Forced proximity" },
+  { value: "age gap", label: "Age gap" },
+  { value: "friends to lovers", label: "Friends to lovers" },
   { value: "mafia romance", label: "Mafia romance" },
-  { value: "psychological suspense", label: "Suspense psicologica" },
-  { value: "domestic thriller", label: "Thriller domestico" },
+  { value: "psychological suspense", label: "Psychological suspense" },
+  { value: "domestic thriller", label: "Domestic thriller" },
   { value: "serial killer", label: "Serial killer" },
-  { value: "missing person", label: "Persona scomparsa" },
-  { value: "legal thriller", label: "Thriller legale" },
-  { value: "conspiracy", label: "Cospirazione" },
-  { value: "revenge story", label: "Storia di vendetta" },
-  { value: "chosen one", label: "Prescelto" },
+  { value: "missing person", label: "Missing person" },
+  { value: "legal thriller", label: "Legal thriller" },
+  { value: "conspiracy", label: "Conspiracy" },
+  { value: "revenge story", label: "Revenge story" },
+  { value: "chosen one", label: "Chosen one" },
   { value: "portal fantasy", label: "Portal fantasy" },
   { value: "academy", label: "Academy" },
-  { value: "royal court intrigue", label: "Intrighi di corte" },
+  { value: "royal court intrigue", label: "Royal court intrigue" },
   { value: "monster romance", label: "Monster romance" },
-  { value: "haunted house", label: "Casa infestata" },
+  { value: "haunted house", label: "Haunted house" },
   { value: "survival horror", label: "Survival horror" },
-  { value: "coming of age", label: "Formazione / crescita" },
-  { value: "found family", label: "Famiglia trovata" },
-  { value: "redemption arc", label: "Arco di redenzione" },
-  { value: "morally grey characters", label: "Personaggi moralmente ambigui" }
+  { value: "coming of age", label: "Coming of age" },
+  { value: "found family", label: "Found family" },
+  { value: "redemption arc", label: "Redemption arc" },
+  { value: "morally grey characters", label: "Morally grey characters" }
 ];
 
 const TONES_PRO: ChoiceOption[] = [
-  "poetico e cinematografico",
-  "dark e sensuale",
-  "elegante e letterario",
-  "veloce e commerciale",
-  "emotivo da BookTok",
-  "crudo e realistico",
-  "ironico e brillante",
-  "gotico e atmosferico",
-  "epico e mitico",
-  "intimo e confessionale",
-  "sospeso e misterioso",
-  "brutale e ad alta tensione",
-  "romantico slow burn",
-  "spicy ma elegante",
-  "pulito e profondo",
-  "melanconico e struggente"
+  "poetic and cinematic",
+  "dark and sensual",
+  "elegant and literary",
+  "fast and commercial",
+  "emotional BookTok-ready",
+  "raw and realistic",
+  "witty and sharp",
+  "gothic and atmospheric",
+  "epic and mythic",
+  "intimate and confessional",
+  "suspenseful and mysterious",
+  "brutal high-tension",
+  "romantic slow burn",
+  "spicy but elegant",
+  "clean and deep",
+  "melancholic and aching",
 ];
 
 const INTENSITIES_PRO: ChoiceOption[] = [
-  { value: "soft", label: "Morbida" },
-  { value: "medium", label: "Media" },
-  { value: "intense", label: "Intensa" },
-  { value: "slow burn", label: "Lenta e bruciante" },
-  { value: "high drama", label: "Alto dramma" },
-  { value: "high suspense", label: "Alta suspense" },
-  { value: "emotional devastation", label: "Devastazione emotiva" },
-  { value: "dark but elegant", label: "Dark ma elegante" },
-  { value: "commercial page-turner", label: "Page-turner commerciale" },
-  { value: "literary deep focus", label: "Profondità letteraria" }
+  { value: "soft", label: "Soft" },
+  { value: "medium", label: "Medium" },
+  { value: "intense", label: "Intense" },
+  { value: "slow burn", label: "Slow burn" },
+  { value: "high drama", label: "High drama" },
+  { value: "high suspense", label: "High suspense" },
+  { value: "emotional devastation", label: "Emotional devastation" },
+  { value: "dark but elegant", label: "Dark but elegant" },
+  { value: "commercial page-turner", label: "Commercial page-turner" },
+  { value: "literary deep focus", label: "Literary deep focus" },
 ];
 
 const CHARACTER_DYNAMICS_PRO: ChoiceOption[] = [
-  "amore proibito",
-  "attrazione e colpa",
-  "vendetta",
-  "segreto familiare",
-  "tradimento",
-  "redenzione",
-  "indagine",
-  "sopravvivenza",
-  "potere e corruzione",
-  "destino contro libero arbitrio",
-  "rivalità",
-  "ossessione",
-  "perdita e rinascita",
-  "fuga dal passato",
-  "identità nascosta",
-  "nemici costretti a collaborare"
+  "forbidden love",
+  "attraction and guilt",
+  "revenge",
+  "family secret",
+  "betrayal",
+  "redemption",
+  "investigation",
+  "survival",
+  "power and corruption",
+  "fate vs free will",
+  "rivalry",
+  "obsession",
+  "loss and rebirth",
+  "escaping the past",
+  "hidden identity",
+  "enemies forced to collaborate",
 ];
 
 const CHARACTER_NAME_POOLS: Record<string, CharacterName[]> = {
@@ -583,19 +587,23 @@ function buildLocalUserStoryDevelopment(input: {
 }
 
 export function CharacterStudioDialog({ open, onClose }: Props) {
+  useUILanguage();
   const [idea, setIdea] = useState("");
   const [genre, setGenre] = useState("romance");
   const [subcategory, setSubcategory] = useState("slow burn");
-  const [tone, setTone] = useState("poetico e cinematografico");
+  const [tone, setTone] = useState("poetic and cinematic");
   const [intensity, setIntensity] = useState("slow burn");
-  const [centralDynamic, setCentralDynamic] = useState("attrazione e colpa");
-  const [protagonistType, setProtagonistType] = useState("protagonista ferita ma combattiva");
-  const [language, setLanguage] = useState("Italian");
+  const [centralDynamic, setCentralDynamic] = useState("attraction and guilt");
+  const [protagonistType, setProtagonistType] = useState("wounded but fierce protagonist");
+  const [language, setLanguage] = useState("English");
   const [manualCharacterNames, setManualCharacterNames] = useState("");
   const [characterBible, setCharacterBible] = useState("");
   const [loading, setLoading] = useState(false);
   const [ideaLoading, setIdeaLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const ideaSectionRef = useRef<HTMLDivElement | null>(null);
+  const setupSectionRef = useRef<HTMLDivElement | null>(null);
+  const ideaTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -659,7 +667,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
 
       setIdea(generated);
       saveIdeaToHistory(generated);
-      toast.success("Idea romanzo generata da Scriptora con variante nuova.");
+      toast.success(t("character_studio_toast_idea_generated"));
     } catch {
       const generated = buildLocalNovelIdea({
         genre,
@@ -673,7 +681,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
       });
       setIdea(generated);
       saveIdeaToHistory(generated);
-      toast.warning("AI non disponibile: Scriptora ha creato un’idea locale di sicurezza.");
+      toast.warning(t("character_studio_toast_idea_fallback"));
     } finally {
       setIdeaLoading(false);
     }
@@ -683,7 +691,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
     if (ideaLoading || loading) return;
     const userStory = idea.trim();
     if (userStory.length < 20) {
-      toast.error("Scrivi prima la tua storia o almeno un seme narrativo più specifico.");
+      toast.error(t("character_studio_toast_story_short"));
       return;
     }
 
@@ -717,7 +725,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
 
       setIdea(developed);
       saveIdeaToHistory(developed);
-      toast.success("La tua storia è stata elaborata mantenendo il nucleo originale.");
+      toast.success(t("character_studio_toast_story_developed"));
     } catch {
       const developed = buildLocalUserStoryDevelopment({
         idea: userStory,
@@ -731,7 +739,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
       });
       setIdea(developed);
       saveIdeaToHistory(developed);
-      toast.warning("AI non disponibile: Scriptora ha elaborato localmente la tua storia.");
+      toast.warning(t("character_studio_toast_story_fallback"));
     } finally {
       setIdeaLoading(false);
     }
@@ -795,7 +803,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
       });
 
       setCharacterBible(applyManualNamesToBible(finalText, manualCharacterNames));
-      toast.success("Personaggi generati. Ora salvali e collegali a Nuovo Libro.");
+      toast.success(t("character_studio_toast_characters_generated"));
     } catch (e) {
       const finalText = fallbackCharacterBible({
         idea,
@@ -809,7 +817,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
         manualCharacterNames,
       });
       setCharacterBible(applyManualNamesToBible(finalText, manualCharacterNames));
-      toast.warning("AI non disponibile: ho creato una Character Bible locale di sicurezza.");
+      toast.warning(t("character_studio_toast_bible_fallback"));
     } finally {
       setLoading(false);
     }
@@ -819,7 +827,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
     const bible = String(characterBible || "").trim();
 
     if (!bible) {
-      toast.error("Prima genera i personaggi: l’output Character Bible è vuoto.");
+      toast.error(t("character_studio_toast_bible_empty"));
       return;
     }
 
@@ -860,14 +868,14 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
     }
 
     if (!savedSomewhere) {
-      toast.error("Non sono riuscito a salvare il collegamento personaggi. Prova a svuotare cache/spazio browser.");
+      toast.error(t("character_studio_toast_save_failed"));
       return;
     }
 
     window.dispatchEvent(new Event("scriptora-character-bible-change"));
     window.dispatchEvent(new CustomEvent("scriptora-open-new-book-from-character-studio", { detail: payload }));
     setSaved(true);
-    toast.success("Personaggi collegati. Apro Nuovo Libro con cast, genere, filone e tono già pronti.");
+    toast.success(t("character_studio_toast_linked"));
   };
 
   const clear = () => {
@@ -878,7 +886,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
     setCharacterBible("");
     setManualCharacterNames("");
     setSaved(false);
-    toast.info("Character Bible rimossa.");
+    toast.info(t("character_studio_toast_cleared"));
   };
 
   if (!open) return null;
@@ -886,28 +894,42 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
   return (
     <div className="scriptora-modal-overlay">
       <div className="scriptora-modal-panel max-w-4xl">
-        <div className="flex shrink-0 items-center justify-between border-b border-border bg-card/95 p-4 backdrop-blur">
+        <div className="flex shrink-0 items-center justify-between border-b border-border bg-card p-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-pink-500/15 text-pink-400 flex items-center justify-center">
               <Users className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="font-semibold text-lg">Scriptora Character Studio</h2>
+              <h2 className="font-semibold text-lg">{t("character_studio_dialog_title")}</h2>
               <p className="text-xs text-muted-foreground">
-                Crea cast canonico, genere, filone, tono e dinamica narrativa. Poi collegalo a Nuovo Libro.
+                {t("character_studio_dialog_subtitle")}
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <GuidedTourTriggerButton tourId={GUIDED_TOUR_IDS.characterStudio} />
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <div className="scriptora-modal-body space-y-5 p-5">
-          <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
+          <CharacterStudioGuidedFlow
+            open={open}
+            onFocusIdea={() => {
+              ideaSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              ideaTextareaRef.current?.focus();
+            }}
+            onFocusSetup={() => {
+              setupSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          />
+
+          <div ref={ideaSectionRef} data-guided-tour="character-idea" className="scriptora-modal-section rounded-xl p-4 space-y-4">
             <div>
               <div className="flex items-center justify-between gap-2">
-                <Label>Idea del romanzo</Label>
+                <Label>{t("character_studio_idea_label")}</Label>
                 <div className="flex flex-wrap justify-end gap-2">
                   <Button
                     type="button"
@@ -915,37 +937,38 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
                     size="sm"
                     onClick={developUserStory}
                     disabled={ideaLoading || loading || idea.trim().length < 20}
-                    className="h-8 px-2 text-xs"
+                    className="scriptora-modal-cta-secondary h-9 px-3 text-xs font-semibold"
                   >
-                    {ideaLoading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Sparkles className="mr-1 h-3 w-3" />}
-                    Elabora la mia storia
+                    {ideaLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}
+                    {t("character_studio_develop_story")}
                   </Button>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="secondary"
                     size="sm"
                     onClick={generateNovelIdea}
                     disabled={ideaLoading || loading}
-                    className="h-8 px-2 text-xs"
+                    className="scriptora-modal-cta-secondary h-9 px-3 text-xs font-semibold"
                   >
-                    {ideaLoading ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Wand2 className="mr-1 h-3 w-3" />}
-                    Genera idea con Scriptora
+                    {ideaLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Wand2 className="mr-1.5 h-3.5 w-3.5" />}
+                    {t("character_studio_generate_idea")}
                   </Button>
                 </div>
               </div>
               <Textarea
+                ref={ideaTextareaRef}
                 value={idea}
                 onChange={(e) => setIdea(e.target.value)}
                 rows={3}
-                placeholder="Scrivi la tua storia da raccontare, oppure lascia vuoto e usa Genera idea con Scriptora..."
+                placeholder={t("character_studio_idea_placeholder")}
               />
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Se hai già una storia, scrivila qui e usa “Elabora la mia storia”. Se vuoi una proposta nuova, usa “Genera idea con Scriptora”.
+                {t("character_studio_idea_hint")}
               </p>
             </div>
 
             <div>
-              <Label>Nomi protagonisti / saga (opzionale)</Label>
+              <Label>{t("character_studio_names_label")}</Label>
               <Textarea
                 value={manualCharacterNames}
                 onChange={(e) => {
@@ -953,17 +976,17 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
                   setSaved(false);
                 }}
                 rows={2}
-                placeholder={"Se continui una saga, inserisci qui i nomi canonici, uno per riga.\nEsempio: Elena Ferri\nMarco Greco"}
+                placeholder={t("character_studio_names_placeholder")}
                 className="text-sm"
               />
               <p className="mt-1 text-[11px] text-muted-foreground">
-                Se compili questo campo, Scriptora deve usare questi nomi e non rinominare i protagonisti.
+                {t("character_studio_names_hint")}
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div>
-                <Label>Genere romanzo</Label>
+                <Label>{t("character_studio_genre_label")}</Label>
                 <Select value={genre} onValueChange={setGenre}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -975,16 +998,16 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
               </div>
 
               <div>
-                <Label>Filone / sottogenere</Label>
+                <Label>{t("character_studio_subgenre_label")}</Label>
                 <Input
                   value={subcategory}
                   onChange={(e) => setSubcategory(e.target.value)}
-                  placeholder="slow burn, desert romance..."
+                  placeholder={t("character_studio_subgenre_placeholder")}
                 />
               </div>
 
               <div>
-                <Label>Lingua</Label>
+                <Label>{t("character_studio_language_label")}</Label>
                 <Select value={language} onValueChange={setLanguage}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -996,28 +1019,28 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
               </div>
 
               <div>
-                <Label>Tono</Label>
+                <Label>{t("character_studio_tone_label")}</Label>
                 <Input
                   value={tone}
                   onChange={(e) => setTone(e.target.value)}
-                  placeholder="poetico, intenso..."
+                  placeholder={t("character_studio_tone_placeholder")}
                 />
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={generate} disabled={!canGenerate || loading}>
+            <div className="flex flex-wrap gap-2" data-guided-tour="character-generate">
+              <Button onClick={generate} disabled={!canGenerate || loading} className="scriptora-modal-cta-primary h-10 px-4 text-sm font-semibold">
                 {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
-                Genera personaggi con Scriptora
+                {t("character_studio_generate_characters")}
               </Button>
 
-              <Button variant="secondary" onClick={saveAndLink} disabled={loading}>
+              <Button variant="secondary" onClick={saveAndLink} disabled={loading} data-guided-tour="character-link" className="scriptora-modal-cta-secondary h-10 px-4 text-sm font-semibold">
                 <Save className="h-4 w-4 mr-2" />
-                Salva e collega a Nuovo Libro
+                {t("character_studio_save_link")}
               </Button>
 
-              <Button variant="ghost" onClick={clear}>
-                Svuota
+              <Button variant="ghost" onClick={clear} className="scriptora-modal-cta-ghost h-10 px-3 text-sm font-semibold">
+                {t("character_studio_clear")}
               </Button>
             </div>
 
@@ -1025,51 +1048,54 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
               <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-300 flex items-start gap-2">
                 <CheckCircle2 className="h-4 w-4 mt-0.5" />
                 <div>
-                  <strong>Collegamento attivo.</strong> Quando apri “Nuovo Libro”, Scriptora sa già che stai creando un romanzo di genere <strong>{genre}</strong>{subcategory ? ` / ${subcategory}` : ""} e userà questi personaggi come Character Lock.
+                  {tt("character_studio_link_active", {
+                    genre,
+                    subcategory: subcategory ? ` / ${subcategory}` : "",
+                  })}
                 </div>
               </div>
             )}
           </div>
 
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-border/60 bg-background/40 p-4 space-y-5">
+          <div ref={setupSectionRef} data-guided-tour="character-setup" className="space-y-4">
+            <div className="scriptora-modal-section rounded-2xl p-4 space-y-5">
             <div>
-              <p className="text-sm font-semibold">Regia del romanzo</p>
+              <p className="text-sm font-semibold">{t("character_studio_direction_title")}</p>
               <p className="text-xs text-muted-foreground">
-                Scegli genere, filone, tono, intensità e dinamica narrativa. Scriptora userà queste coordinate per creare personaggi coerenti e agganciarli a Nuovo Libro.
+                {t("character_studio_direction_desc")}
               </p>
             </div>
 
             <ChoiceGrid
-              label="Genere romanzo"
+              label={t("character_studio_genre_label")}
               value={genre}
               options={ROMAN_GENRES_PRO}
               onChange={setGenre}
             />
 
             <ChoiceGrid
-              label="Filone / sottogenere"
+              label={t("character_studio_subgenre_label")}
               value={subcategory}
               options={SUBGENRES_PRO}
               onChange={setSubcategory}
             />
 
             <ChoiceGrid
-              label="Tono narrativo"
+              label={t("character_studio_narrative_tone")}
               value={tone}
               options={TONES_PRO}
               onChange={setTone}
             />
 
             <ChoiceGrid
-              label="Intensità"
+              label={t("character_studio_intensity")}
               value={intensity}
               options={INTENSITIES_PRO}
               onChange={setIntensity}
             />
 
             <ChoiceGrid
-              label="Dinamica centrale"
+              label={t("character_studio_central_dynamic")}
               value={centralDynamic}
               options={CHARACTER_DYNAMICS_PRO}
               onChange={setCentralDynamic}
@@ -1077,9 +1103,9 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
             </div>
 
             <div className="mb-2 flex items-center justify-between">
-              <Label>Output personaggi / Character Bible</Label>
+              <Label>{t("character_studio_output_label")}</Label>
               <span className="text-[11px] text-muted-foreground">
-                Questo testo viene passato al motore di scrittura
+                {t("character_studio_output_hint")}
               </span>
             </div>
             <Textarea
@@ -1089,7 +1115,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
                 setSaved(false);
               }}
               rows={18}
-              placeholder="Qui apparirà la Character Bible generata da Scriptora..."
+              placeholder={t("character_studio_output_placeholder")}
               className="font-mono text-xs leading-relaxed"
             />
           </div>
@@ -1098,7 +1124,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
             <div className="flex items-start gap-2">
               <BookOpen className="h-4 w-4 text-primary mt-0.5" />
               <p>
-                Dopo il salvataggio, vai su <strong>Nuovo Libro</strong>. Se il genere è narrativo, Scriptora collega automaticamente cast, filone, tono e continuità al progetto. Il motore non deve più inventare nomi a caso.
+                {t("character_studio_footer_tip")}
               </p>
             </div>
           </div>

@@ -17,6 +17,8 @@ import { applyAuthorIdentityToConfig, enforceAuthorIdentityLock, getSelectedAuth
 import { applyBookIntelligenceToConfig } from "@/lib/book-intelligence";
 import { consumeAutoBestsellerHandoffPack } from "@/lib/auto-bestseller-architect";
 import { refreshProjectNarrativeIntelligenceV2 } from "@/lib/narrative-intelligence-v2";
+import { validateBookConfig, repairBookConfigBasics, configsDiffer, type ConfigBlockedPayload } from "@/lib/project-config-validation";
+import { isSupabaseJwtAuthError, normalizeFunctionErrorMessage } from "@/lib/supabase-function-auth";
 
 const FREE_MAX_PROJECT_WORDS = 10_000;
 
@@ -153,6 +155,7 @@ export interface SyncCallbacks {
   onSaved?: () => void;
   onPending?: () => void;
   onOffline?: () => void;
+  onConfigBlocked?: (payload: ConfigBlockedPayload) => void;
 }
 export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   const [project, setProject] = useState<BookProject | null>(null);
@@ -170,6 +173,8 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
   const syncRef = (p: BookProject | null) => { projectRef.current = p; };
   const isAnythingGenerating = generatingSet.size > 0;
+  const configBlockedRef = useRef(syncCallbacks?.onConfigBlocked);
+  configBlockedRef.current = syncCallbacks?.onConfigBlocked;
 
   const addGenerating = (key: string) => setGeneratingSet(prev => new Set(prev).add(key));
   const removeGenerating = (key: string) => setGeneratingSet(prev => {
@@ -193,6 +198,61 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       return updated;
     });
   }, [syncCallbacks]);
+
+  const blockIfConfigInvalid = useCallback((p: BookProject | null): boolean => {
+    if (!p) {
+      configBlockedRef.current?.({ issues: [{ id: "missing_title" }] });
+      return true;
+    }
+
+    const repaired = repairBookConfigBasics(p.config);
+    const issues = validateBookConfig(repaired);
+    if (issues.length === 0) {
+      if (configsDiffer(repaired, p.config)) {
+        updateAndSave((prev) => ({ ...prev, config: repaired }));
+      }
+      return false;
+    }
+
+    configBlockedRef.current?.({ issues, config: p.config });
+    return true;
+  }, [updateAndSave]);
+
+  const blockIfBookConfigInvalid = useCallback((config: BookConfig): boolean => {
+    const repaired = repairBookConfigBasics(config);
+    const issues = validateBookConfig(repaired);
+    if (issues.length === 0) return false;
+    configBlockedRef.current?.({ issues, config });
+    return true;
+  }, []);
+
+  const reportGenerationFailure = useCallback((e: unknown, p: BookProject | null) => {
+    if (blockIfConfigInvalid(p)) return;
+
+    const message = normalizeFunctionErrorMessage(e);
+    if (isSupabaseJwtAuthError(message)) {
+      toast.error("Sessione non valida. Esci e accedi di nuovo, poi riprova.");
+      return;
+    }
+    if (/credits exhausted|API key invalid|Missing Supabase|DEEPSEEK_API_KEY not configured|Servizio AI/i.test(message)) {
+      toast.error(message);
+      return;
+    }
+    toast.error(message.trim() || t("toast_gen_failed"));
+  }, [blockIfConfigInvalid]);
+
+  const ensureBlueprintOrNotify = useCallback((p: BookProject | null): p is BookProject & { blueprint: NonNullable<BookProject["blueprint"]> } => {
+    if (!p) {
+      configBlockedRef.current?.({ issues: [{ id: "missing_title" }] });
+      return false;
+    }
+    if (blockIfConfigInvalid(p)) return false;
+    if (!p.blueprint) {
+      toast.error(t("writer_pipeline_hint_blueprint"));
+      return false;
+    }
+    return true;
+  }, [blockIfConfigInvalid]);
 
   const getLatestProject = (): BookProject | null => projectRef.current;
 
@@ -238,6 +298,8 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
             ? Math.min(intelligenceSafeInput.customTotalWords ?? maxProjectWords, maxProjectWords)
             : intelligenceSafeInput.customTotalWords,
         };
+
+    if (blockIfBookConfigInvalid(safeConfig)) return;
 
     // Genre Lock — capture editorial blueprint at creation time so the
     // entire book stays consistent (no drift between chapters/front/back).
@@ -285,15 +347,34 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       addMessage("assistant", `Blueprint ready! ${blueprint.chapterOutlines.length} chapters planned.`);
     } catch (e: any) {
       addMessage("assistant", `❌ Error: ${e.message}`);
-      toast.error(t("toast_gen_failed"));
+      reportGenerationFailure(e, newProject);
     } finally {
       removeGenerating("blueprint");
     }
-  }, [addMessage, updateAndSave]);
+  }, [addMessage, updateAndSave, blockIfBookConfigInvalid, reportGenerationFailure]);
+
+  const generateBlueprintSection = useCallback(async () => {
+    const p = getLatestProject() || project;
+    if (!p || p.blueprint || generatingSet.has("blueprint")) return;
+    if (blockIfConfigInvalid(p)) return;
+
+    addGenerating("blueprint");
+    try {
+      addMessage("assistant", "Building narrative blueprint…");
+      const blueprint = await generateBlueprint(p.config, p.genreLock, { projectId: p.id });
+      updateAndSave((pr) => ({ ...pr, blueprint, phase: "front-matter" as GenerationPhase }));
+      addMessage("assistant", `Blueprint ready! ${blueprint.chapterOutlines.length} chapters planned.`);
+    } catch (e: any) {
+      addMessage("assistant", `❌ Error: ${e.message}`);
+      reportGenerationFailure(e, getLatestProject() || p);
+    } finally {
+      removeGenerating("blueprint");
+    }
+  }, [project, addMessage, updateAndSave, generatingSet, blockIfConfigInvalid, reportGenerationFailure]);
 
   const generateFrontMatterSection = useCallback(async () => {
     const p = getLatestProject() || project;
-    if (!p?.blueprint) return;
+    if (!ensureBlueprintOrNotify(p)) return;
 
     const maxProjectWords = await getMaxProjectWordsForActivePlan();
     if (countProjectWordsHard(p) >= maxProjectWords) {
@@ -320,15 +401,15 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     } catch (e: any) {
       updateAndSave(pr => ({ ...pr, frontMatterStatus: "error" as GenerationStatus }));
       addMessage("assistant", `❌ Error: ${e.message}`);
-      toast.error(t("toast_gen_failed"));
+      reportGenerationFailure(e, getLatestProject() || p);
     } finally {
       removeGenerating("front-matter");
     }
-  }, [project, addMessage, updateAndSave]);
+  }, [project, addMessage, updateAndSave, ensureBlueprintOrNotify, reportGenerationFailure]);
 
   const generateBackMatterSection = useCallback(async () => {
     const p = getLatestProject() || project;
-    if (!p?.blueprint) return;
+    if (!ensureBlueprintOrNotify(p)) return;
 
     const missing = getMissingChapterIndexes(p);
     if (missing.length > 0) {
@@ -376,15 +457,16 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     } catch (e: any) {
       updateAndSave(pr => ({ ...pr, backMatterStatus: "error" as GenerationStatus }));
       addMessage("assistant", `❌ Error: ${e.message}`);
-      toast.error(t("toast_gen_failed"));
+      reportGenerationFailure(e, getLatestProject() || p);
     } finally {
       removeGenerating("back-matter");
     }
-  }, [project, addMessage, updateAndSave]);
+  }, [project, addMessage, updateAndSave, ensureBlueprintOrNotify, reportGenerationFailure]);
 
   const generateNext = useCallback(async () => {
     const p = getLatestProject() || project;
     if (!p) return;
+    if (blockIfConfigInvalid(p)) return;
 
     if (!p.frontMatter || p.phase === "front-matter") {
       await generateFrontMatterSection();
@@ -404,11 +486,11 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     if (!p.backMatter || p.phase === "back-matter") {
       await generateBackMatterSection();
     }
-  }, [project, addMessage, updateAndSave, generateFrontMatterSection, generateBackMatterSection]);
+  }, [project, addMessage, updateAndSave, generateFrontMatterSection, generateBackMatterSection, blockIfConfigInvalid]);
 
   const generateSingleChapter = useCallback(async (index: number) => {
     const p = getLatestProject() || project;
-    if (!p?.blueprint) return;
+    if (!ensureBlueprintOrNotify(p)) return;
     const genKey = `chapter-${index}`;
     if (generatingSet.has(genKey)) return;
 
@@ -529,18 +611,18 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         return { ...proj, chapters };
       });
       addMessage("assistant", `❌ Error generating Chapter ${index + 1}: ${e.message}`);
-      toast.error(t("toast_gen_failed"));
+      reportGenerationFailure(e, getLatestProject() || p);
     } finally {
       removeGenerating(genKey);
       setChunkProgress(prev => { const next = { ...prev }; delete next[genKey]; return next; });
       lastProgressRenderAt.current.delete(`chapter-${index}`);
       lastSaveAt.current.delete(`chapter-${index}`);
     }
-  }, [project, generatingSet, addMessage, updateAndSave]);
+  }, [project, generatingSet, addMessage, updateAndSave, ensureBlueprintOrNotify, reportGenerationFailure]);
 
   const generateSingleSubchapter = useCallback(async (chapterIndex: number, subIndex: number) => {
     const p = getLatestProject() || project;
-    if (!p?.blueprint) return;
+    if (!ensureBlueprintOrNotify(p)) return;
     const chapter = p.chapters[chapterIndex];
     if (!chapter) return;
     const genKey = `chapter-${chapterIndex}-sub-${subIndex}`;
@@ -564,14 +646,15 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       addMessage("assistant", `Subchapter "${sub.title}" complete!`);
     } catch (e: any) {
       addMessage("assistant", `❌ Error: ${e.message}`);
+      reportGenerationFailure(e, getLatestProject() || p);
     } finally {
       removeGenerating(genKey);
     }
-  }, [project, generatingSet, addMessage, updateAndSave]);
+  }, [project, generatingSet, addMessage, updateAndSave, ensureBlueprintOrNotify, reportGenerationFailure]);
 
   const regenerateChapter = useCallback(async (index: number) => {
     const p = getLatestProject() || project;
-    if (!p?.blueprint) return;
+    if (!ensureBlueprintOrNotify(p)) return;
     const genKey = `chapter-${index}`;
     if (generatingSet.has(genKey)) return;
 
@@ -614,11 +697,11 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         return { ...proj, chapters };
       });
       addMessage("assistant", `❌ Error: ${e.message}`);
-      toast.error(t("toast_gen_failed"));
+      reportGenerationFailure(e, getLatestProject() || p);
     } finally {
       removeGenerating(genKey);
     }
-  }, [project, generatingSet, addMessage, updateAndSave]);
+  }, [project, generatingSet, addMessage, updateAndSave, ensureBlueprintOrNotify, reportGenerationFailure]);
 
   // AI Quality Evaluation
   const evaluateChapter = useCallback(async (index: number) => {
@@ -655,7 +738,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       showFreeAiToolsLockedMessage(addMessage);
       return;
     }
-    if (!p?.blueprint || !p.chapters[index]) return;
+    if (!ensureBlueprintOrNotify(p) || !p.chapters[index]) return;
     const genKey = `chapter-${index}`;
     if (generatingSet.has(genKey)) return;
 
@@ -700,11 +783,11 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         return { ...proj, chapters };
       });
       addMessage("assistant", `❌ Error: ${e.message}`);
-      toast.error(t("toast_gen_failed"));
+      reportGenerationFailure(e, getLatestProject() || p);
     } finally {
       removeGenerating(genKey);
     }
-  }, [project, generatingSet, addMessage, updateAndSave]);
+  }, [project, generatingSet, addMessage, updateAndSave, ensureBlueprintOrNotify, reportGenerationFailure]);
 
   // Auto-rewrite until quality threshold met
   const autoRewriteToThreshold = useCallback(async (index: number, threshold: number, maxAttempts: number = 3) => {
@@ -760,6 +843,14 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   const updateChapterContent = useCallback((chapterIndex: number, content: string) => {
     updateAndSave(p => {
       const chapters = [...p.chapters];
+      while (chapters.length <= chapterIndex) {
+        chapters.push({
+          title: resolveProjectChapterTitle(p, chapters.length),
+          content: "",
+          subchapters: [],
+          status: "idle",
+        });
+      }
       chapters[chapterIndex] = { ...chapters[chapterIndex], content };
       return { ...p, chapters };
     });
@@ -931,10 +1022,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   // onSectionFocus permette al chiamante di auto-navigare alla sezione corrente
   const generateFullBook = useCallback(async (onSectionFocus?: (section: any) => void) => {
     const start = getLatestProject() || project;
-    if (!start?.blueprint) {
-      toast.error("Genera prima il blueprint");
-      return;
-    }
+    if (!ensureBlueprintOrNotify(start)) return;
     addMessage("assistant", "🚀 Avvio generazione completa del libro...");
     toast.success("Generazione libro completo avviata");
 
@@ -1010,7 +1098,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       addMessage("assistant", `❌ Errore generazione completa: ${e.message}`);
       toast.error("Generazione interrotta — riprova dalla sezione fallita");
     }
-  }, [project, addMessage, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter, updateAndSave]);
+  }, [project, addMessage, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter, updateAndSave, ensureBlueprintOrNotify]);
 
   // === PARALLEL CHAPTER GENERATION (max 3 in flight) ===
   // Permette di generare più capitoli contemporaneamente mentre l'utente
@@ -1018,10 +1106,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   const PARALLEL_LIMIT = 3;
   const generateChaptersParallel = useCallback(async (indices: number[]) => {
     const p = getLatestProject() || project;
-    if (!p?.blueprint) {
-      toast.error("Genera prima il blueprint");
-      return;
-    }
+    if (!ensureBlueprintOrNotify(p)) return;
     const queue = indices.filter((i) => {
       const ch = p.chapters[i];
       return !(ch?.content && ch.content.length > 200) && !generatingSet.has(`chapter-${i}`);
@@ -1052,7 +1137,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
   const generateAllChaptersParallel = useCallback(async () => {
     const p = getLatestProject() || project;
-    if (!p?.blueprint) return;
+    if (!ensureBlueprintOrNotify(p)) return;
     const all = Array.from({ length: p.config.numberOfChapters }, (_, i) => i);
     await generateChaptersParallel(all);
   }, [project, generateChaptersParallel]);
@@ -1071,9 +1156,47 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     }
   }, [addMessage]);
 
+  const clearProject = useCallback(() => {
+    setProject(null);
+    syncRef(null);
+    setMessages([]);
+    setGeneratingSet(new Set());
+    setChunkProgress({});
+    setLastProjectId("");
+  }, []);
+
+  const applyProjectConfig = useCallback((config: BookConfig) => {
+    const p = getLatestProject() || project;
+    if (!p) return;
+
+    const titleSafeInput = ensureBookTitleMetadata(config, {
+      genre: config.genre,
+      category: config.category,
+      subcategory: config.subcategory,
+      targetAudience: config.tone,
+      language: config.language,
+    });
+    const authorSafeInput = enforceAuthorIdentityLock(
+      applyAuthorIdentityToConfig(
+        titleSafeInput,
+        resolveAuthorIdentity(titleSafeInput.authorIdentity, titleSafeInput.authorIdentityId) || getSelectedAuthorIdentity(),
+      ) as BookConfig,
+    );
+    const intelligenceSafeInput = applyBookIntelligenceToConfig(authorSafeInput);
+    const genreLock = buildGenreLock(intelligenceSafeInput);
+
+    updateAndSave((prev) => ({
+      ...prev,
+      config: intelligenceSafeInput,
+      genreLock,
+    }));
+    addMessage("system", `Configuration updated: "${intelligenceSafeInput.title}"`);
+    toast.success(t("project_config_updated"));
+  }, [project, addMessage, updateAndSave]);
+
   return {
     project, messages, isAnythingGenerating, generatingSet, chunkProgress,
-    startNewBook, generateNext, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter,
+    startNewBook, generateBlueprintSection, generateNext, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter,
     regenerateChapter, rewriteChapterWithDepth, evaluateChapter, autoRewriteToThreshold,
     updateConfig, updateChapterContent, updateChapterTitle, updateSubchapterContent, updateSubchapterTitle,
     updateBlueprintField, updateBlueprintOutlineTitle, updateBlueprintOutlineSummary,
@@ -1083,5 +1206,6 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     loadProject, handleUserMessage, isGeneratingSection, cancelGeneration,
     generateFullBook,
     generateChaptersParallel, generateAllChaptersParallel,
+    applyProjectConfig, clearProject,
   };
 }

@@ -3,6 +3,7 @@ import { NavigationTree } from "@/components/NavigationTree";
 import { TopBar } from "@/components/TopBar";
 import { EditorPanel } from "@/components/EditorPanel";
 import { NewBookDialog } from "@/components/NewBookDialog";
+import { ProjectConfigBlockedDialog } from "@/components/ProjectConfigBlockedDialog";
 import { CoverGenerator } from "@/components/CoverGenerator";
 import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { PublishPanel } from "@/components/PublishPanel";
@@ -10,17 +11,21 @@ import { SettingsPanel } from "@/components/SettingsPanel";
 import { AICoachPanel } from "@/components/AICoachPanel";
 import { ProgressTracker } from "@/components/ProgressTracker";
 import { GuidedProjectFlow } from "@/components/GuidedProjectFlow";
+import { GuidedTourTriggerButton } from "@/components/GuidedTourTriggerButton";
 import { VoiceStudioDialog } from "@/components/VoiceStudioDialog";
 import { useBookEngine } from "@/hooks/useBookEngine";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
-import { deleteProject as removeProject, getLastProjectId } from "@/lib/storage";
+import { deleteProject as removeProject, getLastProjectId, setLastProjectId } from "@/lib/storage";
+import type { ProjectConfigIssue } from "@/lib/project-config-validation";
+import type { BookConfig } from "@/types/book";
+import { GUIDED_TOUR_IDS } from "@/lib/guided-tour-events";
 import { loadProjects as loadRemoteProjects, deleteProjectAsync, saveProjectAsync } from "@/services/storageService";
 import { generateEpub, downloadEpub, validateEpubStructure } from "@/lib/epub";
 import { BookProject, SectionId } from "@/types/book";
 import { WritingSettings, loadSettings, saveSettings } from "@/lib/settings";
 import { t, tt, UILanguage, useUILanguage } from "@/lib/i18n";
 import { toast } from "sonner";
-import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu, X, ArrowLeft } from "lucide-react";
+import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu, X, ArrowLeft, ListTree } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuota, usePlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
@@ -35,6 +40,9 @@ const Index = () => {
   useUILanguage();
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [showNewBook, setShowNewBook] = useState(false);
+  const [reconfigureMode, setReconfigureMode] = useState(false);
+  const [configBlockedIssues, setConfigBlockedIssues] = useState<ProjectConfigIssue[] | null>(null);
+  const [configBlockedDraft, setConfigBlockedDraft] = useState<BookConfig | null>(null);
   const [showCover, setShowCover] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -43,8 +51,12 @@ const Index = () => {
   const [voiceStudioChapterIndex, setVoiceStudioChapterIndex] = useState<number>(0);
   const [focusMode, setFocusMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
+    const isDesktop =
+      typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
+    if (!isDesktop) return false;
     const saved = localStorage.getItem("scriptora-sidebar-open");
-    return saved ? JSON.parse(saved) : false;
+    if (saved !== null) return JSON.parse(saved) as boolean;
+    return true;
   });
   const [coverDataUrl, setCoverDataUrl] = useState<string | undefined>();
   const [coverGateOpen, setCoverGateOpen] = useState(false);
@@ -79,6 +91,10 @@ const Index = () => {
       markOffline();
       toast.warning(t("toast_saved_locally"));
     },
+    onConfigBlocked: ({ issues, config }) => {
+      setConfigBlockedIssues(issues);
+      if (config) setConfigBlockedDraft(config);
+    },
   });
   const { quota } = useQuota(engine.project?.id || null);
   const { plan } = usePlan();
@@ -94,8 +110,21 @@ const Index = () => {
   };
 
   useEffect(() => {
-    localStorage.setItem("scriptora-sidebar-open", JSON.stringify(sidebarOpen));
+    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+    if (isDesktop) {
+      localStorage.setItem("scriptora-sidebar-open", JSON.stringify(sidebarOpen));
+    }
   }, [sidebarOpen]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const syncSidebarForViewport = () => {
+      if (mq.matches) setSidebarOpen(false);
+    };
+    syncSidebarForViewport();
+    mq.addEventListener("change", syncSidebarForViewport);
+    return () => mq.removeEventListener("change", syncSidebarForViewport);
+  }, []);
 
   const effectiveProject = engine.project || recoveredProject;
   const nextVoiceProjectList = effectiveProject
@@ -301,7 +330,39 @@ const Index = () => {
 
   const handleDeleteProject = async (id: string) => {
     await deleteProjectAsync(id);
+    await removeProject(id);
+    if (getLastProjectId() === id) setLastProjectId("");
     refreshProjects();
+  };
+
+  const handleConfigBlockedReconfigure = () => {
+    const draft = configBlockedDraft ?? effectiveProject?.config;
+    if (!draft) {
+      setConfigBlockedIssues(null);
+      return;
+    }
+    setConfigBlockedIssues(null);
+    setReconfigureMode(true);
+    setShowNewBook(true);
+  };
+
+  const handleConfigBlockedDelete = async () => {
+    const id = effectiveProject?.id;
+    if (!id) {
+      setConfigBlockedIssues(null);
+      return;
+    }
+    const name = effectiveProject.config.title?.trim() || t("this_draft");
+    if (!window.confirm(tt("confirm_delete_draft", { name }))) return;
+
+    await handleDeleteProject(id);
+    engine.clearProject();
+    setRecoveredProject(null);
+    sessionStorage.removeItem(WRITING_ROOM_PROJECT_KEY);
+    setConfigBlockedIssues(null);
+    setConfigBlockedDraft(null);
+    setReconfigureMode(false);
+    setShowNewBook(false);
   };
 
   const handleExport = async (coverOverride?: string) => {
@@ -383,11 +444,76 @@ const Index = () => {
     // SettingsPanel calls this after saving; useUILanguage handles the rerender.
   };
 
+  const reconfigureInitialConfig = reconfigureMode
+    ? (configBlockedDraft ?? effectiveProject?.config ?? null)
+    : null;
+
+  const writingRoomOverlays = (
+    <>
+      <NewBookDialog
+        open={showNewBook}
+        onClose={() => {
+          setShowNewBook(false);
+          setReconfigureMode(false);
+          setConfigBlockedDraft(null);
+        }}
+        initialConfig={reconfigureInitialConfig}
+        reconfigureMode={reconfigureMode}
+        onSubmit={(config) => {
+          if (reconfigureMode) {
+            engine.applyProjectConfig(config);
+            setShowNewBook(false);
+            setReconfigureMode(false);
+            setConfigBlockedIssues(null);
+            setConfigBlockedDraft(null);
+            setTimeout(refreshProjects, 500);
+            return;
+          }
+          if (freeBookUsed) {
+            setShowNewBook(false);
+            setUpgradeReason("books-limit");
+            toast.error(t("toast_free_book_used"));
+            return;
+          }
+          engine.startNewBook(config);
+          const restoredSection = "blueprint" as SectionId;
+          sessionStorage.setItem(WRITING_ROOM_SECTION_KEY, restoredSection);
+          setShowNewBook(false);
+          setActiveSection(restoredSection);
+          setTimeout(refreshProjects, 500);
+        }}
+      />
+
+      <ProjectConfigBlockedDialog
+        open={!!configBlockedIssues?.length}
+        issues={configBlockedIssues || []}
+        projectTitle={effectiveProject?.config.title || configBlockedDraft?.title}
+        onReconfigure={handleConfigBlockedReconfigure}
+        onDeleteProject={handleConfigBlockedDelete}
+        onClose={() => {
+          setConfigBlockedIssues(null);
+          setConfigBlockedDraft(null);
+        }}
+      />
+
+      <UpgradeModal
+        open={!!upgradeReason}
+        reason={upgradeReason || "export"}
+        currentPlan={quota?.plan || "free"}
+        onClose={() => setUpgradeReason(null)}
+      />
+    </>
+  );
+
   if (focusMode && effectiveProject) {
     return (
+      <>
       <div className="scriptora-ios-screen flex h-safe-screen min-h-[100dvh] flex-col pb-safe">
         <div className="ios-glass-soft flex h-12 shrink-0 items-center justify-between px-4 pt-safe">
-          <span className="text-xs text-muted-foreground">{t("focus_mode")}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{t("focus_mode")}</span>
+            <GuidedTourTriggerButton tourId={GUIDED_TOUR_IDS.writer} compact />
+          </div>
           <button onClick={() => setFocusMode(false)}
             className="ios-toolbar-button px-3 text-xs text-muted-foreground hover:text-foreground">
             <Minimize2 className="h-3.5 w-3.5" /> {t("exit_focus")}
@@ -424,32 +550,36 @@ const Index = () => {
             onUpdateBackMatterField={engine.updateBackMatterField}
             onApplyAuthorBrainFrontMatter={engine.applyAuthorBrainFrontMatter}
             onApplyAuthorBrainBackMatter={engine.applyAuthorBrainBackMatter}
+            onGenerateBlueprint={engine.generateBlueprintSection}
+            onGenerateFullBook={guardedGenerateFullBook}
+            isAnythingGenerating={engine.isAnythingGenerating}
+            onNavigateSection={setActiveSection}
           />
         </div>
       </div>
+      {writingRoomOverlays}
+      </>
     );
   }
 
   return (
     <div className="scriptora-ios-screen relative flex h-safe-screen min-h-[100dvh] max-w-full overflow-x-hidden overflow-hidden pb-safe">
-      {/* Floating sidebar toggle — icon only on mobile */}
+      {/* Floating sidebar toggle — mobile only; desktop keeps chapter index visible */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="ios-toolbar-button fixed left-3 top-3 z-50 h-11 w-11 p-0 text-foreground shadow-lg backdrop-blur-xl sm:min-w-11 sm:px-2"
-        title={sidebarOpen ? "Chiudi pannello" : "Capitoli & Libro"}
+        className="ios-toolbar-button fixed left-3 top-3 z-50 h-11 min-w-[11rem] gap-2 px-3 text-foreground shadow-lg backdrop-blur-xl layout-desktop:hidden"
+        title={sidebarOpen ? t("close_chapter_navigation") : t("open_chapter_navigation")}
         aria-expanded={sidebarOpen}
-        aria-label={sidebarOpen ? "Chiudi pannello" : "Apri navigazione"}
+        aria-label={sidebarOpen ? t("close_chapter_navigation") : t("open_chapter_navigation")}
       >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-lg">
-          {sidebarOpen ? "✕" : "📚"}
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+          {sidebarOpen ? <X className="h-4 w-4" /> : <ListTree className="h-4 w-4" />}
         </span>
-        <span className="hidden text-left leading-tight sm:block">
+        <span className="text-left leading-tight">
           <span className="block text-sm font-bold text-foreground">
-            {sidebarOpen ? "Chiudi pannello" : "Capitoli & Libro"}
+            {sidebarOpen ? t("close_chapter_navigation") : t("open_chapter_navigation")}
           </span>
-          <span className="block text-[11px] text-muted-foreground">
-            {sidebarOpen ? "Torna alla scrittura" : "Apri navigazione"}
-          </span>
+          <span className="block text-[11px] text-muted-foreground">{t("writer_nav_hint")}</span>
         </span>
       </button>
 
@@ -460,10 +590,10 @@ const Index = () => {
 
       {/* Left Sidebar — drawer on mobile, collapsible on desktop */}
       <aside
-        className={`ios-sidebar fixed inset-y-0 left-0 z-40 flex h-safe-screen w-[min(100vw-2rem,288px)] max-w-[288px] shrink-0 flex-col pb-safe transition-transform duration-300 ease-out layout-desktop:relative layout-desktop:inset-auto layout-desktop:h-auto layout-desktop:max-w-none ${
+        className={`ios-sidebar fixed inset-y-0 left-0 z-40 flex h-safe-screen w-[min(100vw-2rem,288px)] max-w-[288px] shrink-0 flex-col pb-safe transition-transform duration-300 ease-out layout-desktop:relative layout-desktop:inset-auto layout-desktop:h-auto layout-desktop:max-w-none layout-desktop:w-[288px] layout-desktop:translate-x-0 layout-desktop:pointer-events-auto ${
           sidebarOpen
             ? "translate-x-0 pointer-events-auto"
-            : "-translate-x-full pointer-events-none layout-desktop:translate-x-0 layout-desktop:w-0 layout-desktop:overflow-hidden layout-desktop:pointer-events-none"
+            : "-translate-x-full pointer-events-none"
         }`}
       >
         <div className="flex items-center justify-between border-b border-white/10 p-3 pl-14 layout-desktop:pl-3">
@@ -483,7 +613,7 @@ const Index = () => {
               type="button"
               onClick={() => setSidebarOpen(false)}
               className="ios-toolbar-button h-8 w-8 text-muted-foreground hover:text-foreground layout-desktop:hidden"
-              aria-label="Chiudi pannello"
+              aria-label={t("close_chapter_navigation")}
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -596,7 +726,16 @@ const Index = () => {
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden overflow-x-hidden rounded-lg border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/20 layout-desktop:bg-slate-950/45 layout-desktop:backdrop-blur-xl">
           {effectiveProject ? (
             <>
-              <div className="min-h-0 min-w-0 flex-1">
+              {effectiveProject && (
+                <GuidedProjectFlow
+                  projectId={effectiveProject.id}
+                  sidebarOpen={sidebarOpen}
+                  onOpenSidebar={() => setSidebarOpen(true)}
+                  onSelectSection={setActiveSection}
+                />
+              )}
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+                <div className="min-h-0 flex-1 overflow-hidden">
                 <EditorPanel
                   project={effectiveProject}
                   activeSection={activeSection}
@@ -628,7 +767,18 @@ const Index = () => {
                   onApplyAuthorBrainFrontMatter={engine.applyAuthorBrainFrontMatter}
                   onApplyAuthorBrainBackMatter={engine.applyAuthorBrainBackMatter}
                   onNarrateChapter={openVoiceStudioForChapter}
+                  onNavigateSection={(section) => {
+                    setActiveSection(section);
+                    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+                      setSidebarOpen(false);
+                    }
+                  }}
+                  onOpenChapterIndex={() => setSidebarOpen(true)}
+                  onGenerateBlueprint={engine.generateBlueprintSection}
+                  onGenerateFullBook={guardedGenerateFullBook}
+                  isAnythingGenerating={engine.isAnythingGenerating}
                 />
+                </div>
               </div>
               {showCoach && (
                 <AICoachPanel project={effectiveProject} activeSection={activeSection} onClose={() => setShowCoach(false)}
@@ -703,24 +853,7 @@ const Index = () => {
         </div>
       </div>
 
-      <NewBookDialog
-        open={showNewBook}
-        onClose={() => setShowNewBook(false)}
-        onSubmit={(config) => {
-          if (freeBookUsed) {
-            setShowNewBook(false);
-            setUpgradeReason("books-limit");
-            toast.error(t("toast_free_book_used"));
-            return;
-          }
-          engine.startNewBook(config);
-          const restoredSection = "blueprint" as SectionId;
-          sessionStorage.setItem(WRITING_ROOM_SECTION_KEY, restoredSection);
-          setShowNewBook(false);
-          setActiveSection(restoredSection);
-          setTimeout(refreshProjects, 500);
-        }}
-      />
+      {writingRoomOverlays}
 
       {showCover && effectiveProject && (
         <CoverGenerator
@@ -779,7 +912,7 @@ const Index = () => {
             setActiveSection("blueprint");
             setTimeout(refreshProjects, 500);
           }}
-          onGenerateFullBook={() => engine.generateFullBook((s) => setActiveSection(s as SectionId))}
+          onGenerateFullBook={guardedGenerateFullBook}
           isBookGenerating={engine.isAnythingGenerating}
           onUpdateConfig={engine.updateConfig}
           onUpdateChapterContent={engine.updateChapterContent}
@@ -799,13 +932,6 @@ const Index = () => {
         settings={writingSettings}
         onUpdateSettings={handleUpdateSettings}
         onLanguageChange={handleLanguageChange}
-      />
-
-      <UpgradeModal
-        open={!!upgradeReason}
-        reason={upgradeReason || "export"}
-        currentPlan={quota?.plan || "free"}
-        onClose={() => setUpgradeReason(null)}
       />
     </div>
   );

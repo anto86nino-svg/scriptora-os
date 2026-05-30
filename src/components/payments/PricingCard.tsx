@@ -3,6 +3,7 @@
 
 import { Check, X, Crown, Zap, Sparkles, Gem } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { t } from "@/lib/i18n";
 import type { PaymentPlan } from "@/config/payments";
 
 interface PricingCardProps {
@@ -53,7 +54,7 @@ export function PricingCard({ plan, comingSoon, isCurrent, onAction }: PricingCa
 
       {isCurrent && (
         <span className="absolute top-3 right-3 text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 font-bold border border-emerald-500/30">
-          Attivo
+          {t("pricing_plan_active")}
         </span>
       )}
 
@@ -99,7 +100,7 @@ export function PricingCard({ plan, comingSoon, isCurrent, onAction }: PricingCa
             : "bg-foreground/90 text-background hover:scale-[1.02]",
         )}
       >
-        {isCurrent ? "Il tuo piano attuale" : isLocked ? "Presto disponibile" : plan.ctaLabel}
+        {isCurrent ? t("pricing_plan_current") : isLocked ? t("pricing_join_waitlist") : plan.ctaLabel}
       </button>
     </div>
   );

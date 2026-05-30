@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Fingerprint, HelpCircle, Loader2, PlusCircle, Save, ShieldCheck, Sparkles, Trash2, UserRound, Wand2, X } from "lucide-react";
+import { CheckCircle2, Fingerprint, Loader2, PlusCircle, Save, ShieldCheck, Sparkles, Trash2, UserRound, Wand2, X } from "lucide-react";
 import type { AuthorIdentity } from "@/types/book";
 import {
   DEFAULT_AUTHOR_IDENTITIES,
   deleteAuthorIdentity,
   getSelectedAuthorIdentity,
+  isDeletableAuthorIdentity,
   loadAuthorIdentities,
   normalizeAuthorIdentity,
   saveAuthorIdentity,
@@ -71,7 +72,6 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
   useUILanguage();
   const [identities, setIdentities] = useState<AuthorIdentity[]>(() => loadAuthorIdentities());
   const [draft, setDraft] = useState<AuthorIdentity>(() => getSelectedAuthorIdentity());
-  const [guideEnabled, setGuideEnabled] = useState(() => localStorage.getItem("scriptora-guided-flow") === "on");
   const [expandingBio, setExpandingBio] = useState(false);
 
   useEffect(() => {
@@ -82,19 +82,9 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
     setDraft(selected);
   }, [open]);
 
-  useEffect(() => {
-    const syncGuideToggle = (event: Event) => {
-      const detail = (event as CustomEvent<{ enabled?: boolean }>).detail;
-      if (typeof detail?.enabled === "boolean") setGuideEnabled(detail.enabled);
-    };
-
-    window.addEventListener("scriptora-guided-flow-change", syncGuideToggle as EventListener);
-    return () => window.removeEventListener("scriptora-guided-flow-change", syncGuideToggle as EventListener);
-  }, []);
-
   const score = useMemo(() => completeness(draft), [draft]);
   const selectedId = getSelectedAuthorIdentity().id;
-  const isCustom = draft.id?.startsWith("custom-");
+  const isCustom = isDeletableAuthorIdentity(draft.id);
   const publicAuthor = normalizeAuthorIdentity(draft);
 
   if (!open) return null;
@@ -122,13 +112,6 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
     });
   };
 
-  const toggleGuide = () => {
-    const next = !guideEnabled;
-    localStorage.setItem("scriptora-guided-flow", next ? "on" : "off");
-    setGuideEnabled(next);
-    window.dispatchEvent(new CustomEvent("scriptora-guided-flow-change", { detail: { enabled: next } }));
-  };
-
   const saveDraft = () => {
     if (!draft.penName.trim()) {
       toast.error("Inserisci almeno il pen name pubblico.");
@@ -146,15 +129,22 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
     setDraft(fresh);
   };
 
-  const deleteIdentity = () => {
-    if (!isCustom) return;
-    deleteAuthorIdentity(draft.id);
-    const loaded = loadAuthorIdentities();
-    const fallback = loaded[0] || DEFAULT_AUTHOR_IDENTITIES[0];
-    setSelectedAuthorIdentityId(fallback.id);
-    setIdentities(loaded);
-    setDraft(fallback);
-    toast.success("Identità autore eliminata.");
+  const deleteIdentity = (identity: AuthorIdentity = draft) => {
+    if (!isDeletableAuthorIdentity(identity.id)) return;
+
+    const name = identity.penName || identity.name || t("author_identity");
+    const ok = window.confirm(tt("confirm_delete_author_identity", { name }));
+    if (!ok) return;
+
+    try {
+      const fallback = deleteAuthorIdentity(identity.id);
+      const loaded = loadAuthorIdentities();
+      setIdentities(loaded);
+      setDraft(fallback);
+      toast.success(t("author_identity_deleted"));
+    } catch {
+      toast.error(t("delete_project_failed"));
+    }
   };
 
   const handleExpandBio = async () => {
@@ -241,24 +231,48 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Author Vault</p>
               <div className="mt-3 space-y-2">
-                {identities.map((identity) => (
-                  <button
-                    key={identity.id}
-                    type="button"
-                    onClick={() => selectIdentity(identity.id)}
-                    className={`w-full rounded-xl border p-3 text-left transition-colors ${
-                      draft.id === identity.id
-                        ? "border-primary/40 bg-primary/10"
-                        : "border-white/10 bg-background/40 hover:border-primary/25 hover:bg-white/[0.06]"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="truncate text-sm font-semibold text-foreground">{identity.penName}</p>
-                      {selectedId === identity.id && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" />}
+                {identities.map((identity) => {
+                  const deletable = isDeletableAuthorIdentity(identity.id);
+                  const isActive = draft.id === identity.id;
+                  return (
+                    <div
+                      key={identity.id}
+                      className={`flex items-stretch gap-1 rounded-xl border transition-colors ${
+                        isActive
+                          ? "border-primary/40 bg-primary/10"
+                          : "border-white/10 bg-background/40 hover:border-primary/25 hover:bg-white/[0.06]"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => selectIdentity(identity.id)}
+                        className="min-w-0 flex-1 rounded-xl p-3 text-left"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-sm font-semibold text-foreground">{identity.penName}</p>
+                          {selectedId === identity.id && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" />}
+                        </div>
+                        <p className="mt-1 truncate text-[11px] text-muted-foreground">
+                          {identity.name || identity.archetype}
+                        </p>
+                        <p className="mt-1 text-[10px] text-muted-foreground/70">
+                          {deletable ? t("author_identity_custom_hint") : t("author_identity_builtin_hint")}
+                        </p>
+                      </button>
+                      {deletable && (
+                        <button
+                          type="button"
+                          aria-label={t("delete_author_identity")}
+                          title={t("delete_author_identity")}
+                          onClick={() => deleteIdentity(identity)}
+                          className="mr-1 my-1 flex w-9 shrink-0 items-center justify-center rounded-lg border border-destructive/30 bg-destructive/10 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </div>
-                    <p className="mt-1 truncate text-[11px] text-muted-foreground">{identity.name || identity.archetype}</p>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
               <button
                 type="button"
@@ -395,28 +409,6 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
               </AuthorField>
             </section>
 
-            <section className="rounded-2xl border border-primary/20 bg-primary/10 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <HelpCircle className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">Guida Scriptora</p>
-                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                      Mostra istruzioni step-by-step nelle funzioni di Scriptora.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={toggleGuide}
-                  className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${guideEnabled ? "bg-primary/20 text-primary border border-primary/30" : "bg-white/[0.07] text-foreground hover:bg-white/[0.12] border border-white/10"}`}
-                  aria-pressed={guideEnabled}
-                >
-                  {guideEnabled ? "ON" : "OFF"}
-                </button>
-              </div>
-            </section>
-
             <section className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-4">
               <div className="flex items-start gap-3">
                 <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />
@@ -438,9 +430,9 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
           </div>
           <div className="flex flex-wrap justify-end gap-2">
             {isCustom && (
-              <button type="button" onClick={deleteIdentity} className="inline-flex h-10 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-xs font-semibold text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground">
+              <button type="button" onClick={() => deleteIdentity(draft)} className="inline-flex h-10 items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-4 text-xs font-semibold text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground">
                 <Trash2 className="h-4 w-4" />
-                Elimina
+                {t("delete_author_identity")}
               </button>
             )}
             <button type="button" onClick={saveDraft} className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-xs font-bold text-primary-foreground transition-colors hover:bg-primary/90">

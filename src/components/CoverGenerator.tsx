@@ -24,6 +24,7 @@ interface CoverGeneratorProps {
   projectGenre?: string;
   primaryActionLabel?: string;
   showPrimaryAction?: boolean;
+  embedded?: boolean;
   onGenerate: (dataUrl: string) => void;
   onClose: () => void;
 }
@@ -241,6 +242,7 @@ export function CoverGenerator({
   projectGenre,
   primaryActionLabel = "Usa per EPUB",
   showPrimaryAction = true,
+  embedded = false,
   onGenerate,
   onClose,
 }: CoverGeneratorProps) {
@@ -698,9 +700,8 @@ export function CoverGenerator({
     setScriptoraSeed(direction.seed + Date.now() % 997);
   }
 
-  return (
-    <div className="scriptora-modal-overlay z-50 bg-black/75 p-3 pb-safe pt-safe sm:p-5">
-      <div className="scriptora-modal-panel max-w-6xl lg:max-w-[1500px] lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)]">
+  const panel = (
+    <div className={`scriptora-modal-panel max-w-6xl lg:max-w-[1500px] lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)] ${embedded ? "max-w-none rounded-none shadow-none lg:rounded-2xl" : ""}`}>
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 px-4 py-4 sm:px-5 lg:px-7 lg:py-5">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary">
@@ -710,13 +711,15 @@ export function CoverGenerator({
             <h2 className="text-lg font-semibold text-foreground truncate">Professional cover strategy + design environment</h2>
             <p className="hidden lg:block text-xs text-muted-foreground mt-0.5">Commercial positioning, visual direction, and export-ready layouts.</p>
           </div>
-          <button
-            onClick={onClose}
-            className="h-9 w-9 shrink-0 rounded-full border border-border/70 bg-background/60 text-muted-foreground hover:text-foreground hover:bg-background transition-colors grid place-items-center"
-            aria-label="Chiudi"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          {!embedded && (
+            <button
+              onClick={onClose}
+              className="h-9 w-9 shrink-0 rounded-full border border-border/70 bg-background/60 text-muted-foreground hover:text-foreground hover:bg-background transition-colors grid place-items-center"
+              aria-label="Chiudi"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         <div className="scriptora-modal-body grid grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)_360px] xl:overflow-hidden">
@@ -1168,6 +1171,19 @@ export function CoverGenerator({
           </div>
         </div>
       </div>
+  );
+
+  if (embedded) {
+    return (
+      <div className="scriptora-landing-embedded-workspace relative max-h-[min(720px,78vh)] overflow-auto bg-background text-foreground">
+        {panel}
+      </div>
+    );
+  }
+
+  return (
+    <div className="scriptora-modal-overlay z-50 p-3 pb-safe pt-safe sm:p-5">
+      {panel}
     </div>
   );
 }

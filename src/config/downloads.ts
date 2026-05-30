@@ -111,9 +111,9 @@ export const changelog: ChangelogEntry[] = [
     date: "2026-04-20",
     channel: buildChannel,
     notes: [
-      "Download Center predisposto (coming soon mode)",
-      "Infrastruttura pagamenti dormiente attiva",
-      "Ottimizzazioni performance: storage debounce, memo editor",
+      "download_changelog_note_1",
+      "download_changelog_note_2",
+      "download_changelog_note_3",
     ],
   },
 ];

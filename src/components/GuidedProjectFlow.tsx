@@ -1,77 +1,79 @@
-import { ArrowRight, CheckCircle2, Compass, EyeOff, Menu, Sparkles } from "lucide-react";
-import type { BookProject, SectionId } from "@/types/book";
-import { cn } from "@/lib/utils";
-import { t, tt, useUILanguage } from "@/lib/i18n";
-
-type StepStatus = "done" | "active" | "locked";
+import { useMemo } from "react";
+import { FunctionGuidedTour } from "@/components/FunctionGuidedTour";
+import { useGuidedFlow } from "@/hooks/useGuidedFlow";
+import { GUIDED_TOUR_IDS } from "@/lib/guided-tour-events";
+import { guidedTourSelector } from "@/lib/guided-tour";
+import { t } from "@/lib/i18n";
+import type { SectionId } from "@/types/book";
 
 interface GuidedProjectFlowProps {
-  project: BookProject | null;
-  activeSection: SectionId | null;
+  projectId: string;
   sidebarOpen: boolean;
-  enabled: boolean;
-  onEnabledChange: (enabled: boolean) => void;
   onOpenSidebar: () => void;
   onSelectSection: (section: SectionId) => void;
 }
 
 export function GuidedProjectFlow({
-  project,
-  activeSection,
+  projectId: _projectId,
   sidebarOpen,
-  enabled,
-  onEnabledChange,
   onOpenSidebar,
   onSelectSection,
 }: GuidedProjectFlowProps) {
-  useUILanguage();
+  const { enabled } = useGuidedFlow();
 
-  if (!project) return null;
-
-  if (!enabled) {
-    return (
-      
-    );
-  }
-
-  const outlines = project.blueprint?.chapterOutlines || [];
-  const hasBlueprint = !!project.blueprint;
-  const activeIsChapter = /^chapter-\d+/.test(String(activeSection || ""));
-  const hasWrittenChapter = (project.chapters || []).some((chapter) => (chapter.content || "").trim().length > 50);
-  const allChaptersDone = outlines.length > 0 && outlines.every((_, index) => (
-    (project.chapters?.[index]?.content || "").trim().length > 50
-  ));
-  const bookReady = project.phase === "complete" || allChaptersDone;
-  const firstMissingIndex = outlines.findIndex((_, index) => !((project.chapters?.[index]?.content || "").trim().length > 50));
-  const targetChapterIndex = outlines.length ? Math.max(0, firstMissingIndex === -1 ? 0 : firstMissingIndex) : null;
-
-  const steps: Array<{ label: string; detail: string; status: StepStatus }> = [
+  const steps = useMemo(() => [
     {
-      label: t("guided_step_structure"),
-      detail: t("guided_step_structure_desc"),
-      status: hasBlueprint ? "done" : "active",
+      id: "index",
+      target: guidedTourSelector("writer-index"),
+      title: t("guided_tour_writer_index_title"),
+      description: t("guided_tour_writer_index_desc"),
+      placement: "right" as const,
+      onEnter: () => {
+        if (!sidebarOpen) onOpenSidebar();
+      },
     },
     {
-      label: t("guided_step_index"),
-      detail: t("guided_step_index_desc"),
-      status: !hasBlueprint ? "locked" : sidebarOpen || activeIsChapter || hasWrittenChapter ? "done" : "active",
+      id: "blueprint",
+      target: guidedTourSelector("writer-blueprint"),
+      title: t("guided_step_structure"),
+      description: t("guided_step_structure_desc"),
+      placement: "right" as const,
+      onEnter: () => {
+        onOpenSidebar();
+        onSelectSection("blueprint");
+      },
     },
     {
-      label: t("guided_step_chapter"),
-      detail: t("guided_step_chapter_desc"),
-      status: !hasBlueprint ? "locked" : activeIsChapter || hasWrittenChapter ? "done" : "active",
+      id: "chapter",
+      target: guidedTourSelector("writer-chapter"),
+      title: t("guided_step_chapter"),
+      description: t("guided_step_chapter_desc"),
+      placement: "right" as const,
+      onEnter: () => {
+        onOpenSidebar();
+        onSelectSection("chapter-0");
+      },
     },
     {
-      label: t("guided_step_write"),
-      detail: t("guided_step_write_desc"),
-      status: !hasBlueprint ? "locked" : hasWrittenChapter ? "done" : activeIsChapter ? "active" : "locked",
+      id: "generate",
+      target: guidedTourSelector("writer-generate"),
+      title: t("guided_step_write"),
+      description: t("guided_step_write_desc"),
+      placement: "bottom" as const,
+      onEnter: () => onSelectSection("chapter-0"),
     },
     {
-      label: t("guided_step_export"),
-      detail: t("guided_step_export_desc"),
-      status: bookReady ? "done" : hasWrittenChapter ? "active" : "locked",
+      id: "complete",
+      title: t("guided_tour_finish_title"),
+      description: t("guided_tour_finish_desc"),
     },
-  ];
+  ], [onOpenSidebar, onSelectSection, sidebarOpen]);
 
-  return null;
+  return (
+    <FunctionGuidedTour
+      tourId={GUIDED_TOUR_IDS.writer}
+      steps={steps}
+      enabled={enabled}
+    />
+  );
 }

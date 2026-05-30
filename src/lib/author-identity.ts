@@ -124,11 +124,33 @@ export function saveAuthorIdentity(identity: AuthorIdentity): AuthorIdentity {
   return saved;
 }
 
-export function deleteAuthorIdentity(id: string): void {
-  if (!id.startsWith("custom-")) return;
-  const remaining = loadAuthorIdentities()
-    .filter((item) => item.id.startsWith("custom-") && item.id !== id);
+/** User-created identities can be deleted; built-in presets cannot. */
+export function isDeletableAuthorIdentity(id?: string | null): boolean {
+  return !!id && id.startsWith("custom-");
+}
+
+export function deleteAuthorIdentity(id: string): AuthorIdentity {
+  if (!isDeletableAuthorIdentity(id)) {
+    throw new Error("Built-in author identities cannot be deleted.");
+  }
+
+  const stored = safeParseIdentities(localStorage.getItem(AUTHOR_IDENTITIES_KEY));
+  const remaining = stored.filter((item) => item.id !== id);
   localStorage.setItem(AUTHOR_IDENTITIES_KEY, JSON.stringify(remaining));
+
+  const identities = loadAuthorIdentities();
+  const fallback = identities[0] || DEFAULT_AUTHOR_IDENTITIES[0];
+  const selectedId = getSelectedAuthorIdentityId();
+
+  if (selectedId === id) {
+    setSelectedAuthorIdentityId(fallback.id);
+    return fallback;
+  }
+
+  window.dispatchEvent(
+    new CustomEvent(AUTHOR_IDENTITY_CHANGED_EVENT, { detail: { id: selectedId, deleted: id } }),
+  );
+  return getSelectedAuthorIdentity();
 }
 
 export function findAuthorIdentity(id?: string): AuthorIdentity | null {

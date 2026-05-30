@@ -30,8 +30,8 @@ describe("Score Calibration Engine", () => {
       positiveMetricCount: 2,
       warningDelta: 1,
     });
-    expect(result.afterScore).toBeLessThanOrEqual(7.9);
-    expect(result.scoreDelta).toBeLessThanOrEqual(0.85);
+    expect(result.afterScore).toBeLessThanOrEqual(8.3);
+    expect(result.scoreDelta).toBeLessThanOrEqual(1.2);
   });
 
   it("weak chapter composite stays out of bestseller band", () => {

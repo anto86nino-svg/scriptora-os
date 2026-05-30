@@ -10,6 +10,7 @@ import { AutoBestsellerInput } from "@/services/autoBestsellerService";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
 import { BOOK_LENGTH_CONFIG, DEFAULT_SUBCHAPTERS_PER_CHAPTER, type BookLength, type Language } from "@/types/book";
 import { generateShadowTitleSet } from "@/lib/title-shadow";
+import { t, useUILanguage } from "@/lib/i18n";
 
 interface Props {
   isRunning: boolean;
@@ -33,6 +34,7 @@ const TONES = [
 const LANGUAGES = ["English", "Italian", "Spanish", "French", "German", "Portuguese"];
 
 export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, onGenerateBatch }: Props) {
+  useUILanguage();
   const selectedAuthor = getSelectedAuthorIdentity();
   const [idea, setIdea] = useState(initialInput?.idea ?? "");
   const [authorName, setAuthorName] = useState(initialInput?.authorName ?? selectedAuthor.penName);
@@ -193,9 +195,9 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
       <CardContent className="space-y-4">
         <div>
           <div className="flex items-center justify-between gap-2">
-            <Label htmlFor="idea">Idea / Argomento</Label>
+            <Label htmlFor="idea">{t("ab_idea_label")}</Label>
             <Button type="button" variant="ghost" size="sm" onClick={improveIdea} disabled={isRunning} className="h-7 px-2 text-xs">
-              <span className="mr-1">✨</span> Genera con IA
+              <span className="mr-1">✨</span> {t("ab_generate_ai")}
             </Button>
           </div>
           <Textarea
@@ -210,7 +212,7 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <Label htmlFor="book-title">Titolo reale del libro</Label>
+            <Label htmlFor="book-title">{t("ab_book_title")}</Label>
             <Input
               id="book-title"
               value={prefilledTitle}
@@ -220,12 +222,12 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
             />
           </div>
           <div>
-            <Label htmlFor="book-subtitle">Sottotitolo reale</Label>
+            <Label htmlFor="book-subtitle">{t("ab_book_subtitle")}</Label>
             <Input
               id="book-subtitle"
               value={prefilledSubtitle}
               onChange={(e) => setPrefilledSubtitle(e.target.value)}
-              placeholder="Ogni segreto ha un prezzo."
+              placeholder={t("ab_subtitle_ph")}
               disabled={isRunning}
             />
           </div>
@@ -233,7 +235,7 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
           <div className="min-w-0">
-            <Label htmlFor="title-language">Lingua titolo/sottotitolo</Label>
+            <Label htmlFor="title-language">{t("ab_title_language")}</Label>
             <Select value={titleLanguage} onValueChange={setTitleLanguage} disabled={isRunning}>
               <SelectTrigger id="title-language" className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -244,7 +246,7 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
           <div className="flex items-stretch sm:items-end">
             <Button type="button" variant="secondary" onClick={generateBookTitle} disabled={isRunning || idea.trim().length < 8} className="h-10 w-full sm:w-auto">
               <RefreshCw className="mr-2 h-4 w-4" />
-              Genera titolo
+              {t("ab_generate_title")}
             </Button>
           </div>
         </div>
@@ -285,9 +287,9 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <Label htmlFor="tone">Tono</Label>
+              <Label htmlFor="tone">{t("ab_tone")}</Label>
               <Button type="button" variant="ghost" size="sm" onClick={improveTone} disabled={isRunning} className="h-7 px-2 text-xs">
-                <span className="mr-1">✨</span> Suggerisci
+                <span className="mr-1">✨</span> {t("ab_suggest")}
               </Button>
             </div>
             <Select value={tone} onValueChange={setTone} disabled={isRunning}>
@@ -329,13 +331,13 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
               disabled={isRunning}
               className="rounded border-border accent-primary"
             />
-            Genera sottocapitoli reali
+            {t("ab_subchapters")}
           </label>
           {subchaptersEnabled && (
             <div className="mt-3 grid gap-2 sm:grid-cols-[1fr,120px]">
               <div>
-                <Label htmlFor="subchapters-per-chapter">Sottocapitoli per capitolo</Label>
-                <p className="text-xs text-muted-foreground">Scriptora creerà beat narrativi separati, non semplici etichette decorative.</p>
+                <Label htmlFor="subchapters-per-chapter">{t("ab_subchapters_per_chapter")}</Label>
+                <p className="text-xs text-muted-foreground">{t("ab_subchapters_hint")}</p>
               </div>
               <Input
                 id="subchapters-per-chapter"

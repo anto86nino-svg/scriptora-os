@@ -1,21 +1,42 @@
 import type { ChunkPhase } from "@/lib/generation";
+import { t, tt } from "@/lib/i18n";
 
 export const GENERATION_EXPERIENCE_V2 = "scriptora-generation-experience-v2";
 
-export const EDITORIAL_CHECKLIST = [
-  "Voce autore applicata",
-  "Continuità narrativa verificata",
-  "Obiettivo del capitolo definito",
-  "Memoria del libro sincronizzata",
+const EDITORIAL_CHECKLIST_KEYS = [
+  "editorial_check_1",
+  "editorial_check_2",
+  "editorial_check_3",
+  "editorial_check_4",
 ] as const;
 
-export const EDITORIAL_PHASE_LABELS: Record<ChunkPhase, string> = {
-  OPENING: "Apertura del capitolo",
-  DEVELOPMENT: "Sviluppo narrativo",
-  EXPANSION: "Profondità e atmosfera",
-  TRANSITION: "Transizione narrativa",
-  CLOSURE: "Chiusura del capitolo",
+const EDITORIAL_PHASE_KEYS: Record<ChunkPhase, string> = {
+  OPENING: "editorial_phase_opening",
+  DEVELOPMENT: "editorial_phase_development",
+  EXPANSION: "editorial_phase_expansion",
+  TRANSITION: "editorial_phase_transition",
+  CLOSURE: "editorial_phase_closure",
 };
+
+/** @deprecated Use getEditorialChecklist() for localized labels */
+export const EDITORIAL_CHECKLIST = EDITORIAL_CHECKLIST_KEYS.map((key) => t(key));
+
+/** @deprecated Use getEditorialPhaseLabel() for localized labels */
+export const EDITORIAL_PHASE_LABELS: Record<ChunkPhase, string> = {
+  OPENING: t("editorial_phase_opening"),
+  DEVELOPMENT: t("editorial_phase_development"),
+  EXPANSION: t("editorial_phase_expansion"),
+  TRANSITION: t("editorial_phase_transition"),
+  CLOSURE: t("editorial_phase_closure"),
+};
+
+export function getEditorialChecklist(): string[] {
+  return EDITORIAL_CHECKLIST_KEYS.map((key) => t(key));
+}
+
+export function getEditorialPhaseLabel(phase: ChunkPhase): string {
+  return t(EDITORIAL_PHASE_KEYS[phase]);
+}
 
 const PLACEHOLDER_PATTERN = /^(to be generated|da generare|pending|tbd)$/i;
 
@@ -24,6 +45,18 @@ export function sanitizePlaceholderText(text: string | undefined | null): string
   const trimmed = String(text || "").trim();
   if (!trimmed || PLACEHOLDER_PATTERN.test(trimmed)) return "";
   return trimmed;
+}
+
+/** Blueprint summary for UI — never raw placeholders; fall back to manuscript preview when generated */
+export function resolveOutlineSummaryForDisplay(
+  outlineSummary: string | undefined | null,
+  chapterContent?: string | null,
+): string {
+  const clean = sanitizePlaceholderText(outlineSummary);
+  if (clean) return clean;
+  const content = String(chapterContent || "").trim();
+  if (content.length > 50) return compactPreviewLine(content, 180);
+  return "";
 }
 
 export function compactPreviewLine(value: string, max = 220): string {
@@ -51,8 +84,8 @@ export function formatWordProgress(current: number, target: number): string {
 }
 
 export function editorialStatusMessage(hasContent: boolean, outlineSummary: string): string {
-  if (hasContent) return "Il capitolo sta prendendo forma.";
+  if (hasContent) return t("editorial_status_forming");
   const objective = sanitizePlaceholderText(outlineSummary);
-  if (objective) return `Obiettivo del capitolo: ${compactPreviewLine(objective, 160)}`;
-  return "Scriptora sta preparando il capitolo — le prime righe appariranno a breve.";
+  if (objective) return tt("editorial_status_objective", { objective: compactPreviewLine(objective, 160) });
+  return t("editorial_status_preparing");
 }

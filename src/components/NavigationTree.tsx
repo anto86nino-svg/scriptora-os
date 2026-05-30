@@ -64,7 +64,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
   };
 
   return (
-    <nav className="scrollbar-thin flex-1 overflow-y-auto px-2 py-2">
+    <nav className="scrollbar-thin flex-1 overflow-y-auto px-2 py-2" data-guided-tour="writer-index">
       {config.category && (
         <div className="ios-glass-soft mb-2 rounded-lg px-3 py-2">
           <div className="mb-0.5 text-[10px] uppercase text-muted-foreground/60">{t("category")}</div>
@@ -78,6 +78,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
         active={isActive("blueprint")}
         status={blueprint ? "completed" : generatingSet.has("blueprint") ? "generating" : "idle"}
         onClick={() => onSelectSection("blueprint")}
+        tourId="writer-blueprint"
       />
 
       <TreeItem
@@ -166,6 +167,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
                     status={chStatus}
                     onClick={() => selectMode ? toggleSelected(i) : onSelectSection(`chapter-${i}`)}
                     className={(!selectMode && !(hasSubs || config.subchaptersEnabled)) ? "pl-6" : ""}
+                    tourId={i === 0 ? "writer-chapter" : undefined}
                   />
                 </div>
 
@@ -218,14 +220,15 @@ function StatusIcon({ status }: { status: GenerationStatus }) {
 }
 
 function TreeItem({
-  icon, label, active, status, onClick, className,
+  icon, label, active, status, onClick, className, tourId,
 }: {
   icon: React.ReactNode; label: string; active: boolean;
-  status: GenerationStatus; onClick: () => void; className?: string;
+  status: GenerationStatus; onClick: () => void; className?: string; tourId?: string;
 }) {
   return (
     <button
       onClick={onClick}
+      data-guided-tour={tourId}
       className={cn(
         "my-0.5 flex w-full items-center gap-2 truncate rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors",
         active

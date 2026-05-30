@@ -15,6 +15,8 @@ import { toast } from "sonner";
 import type { BookProject } from "@/types/book";
 import { AUTHOR_IDENTITY_CHANGED_EVENT, findAuthorIdentity, getSelectedAuthorIdentity, loadAuthorIdentities, normalizeAuthorIdentity, setSelectedAuthorIdentityId, applyAuthorIdentityToConfig, enforceAuthorIdentityLock } from "@/lib/author-identity";
 import { FocusMusicControl } from "@/components/FocusMusicControl";
+import { GuidedTourTriggerButton } from "@/components/GuidedTourTriggerButton";
+import { GUIDED_TOUR_IDS } from "@/lib/guided-tour-events";
 
 interface TopBarProps {
   config: BookConfig | null;
@@ -134,6 +136,7 @@ export function TopBar({
       <button onClick={() => nav("/dashboard")} className="ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground">
         <Home className="h-3.5 w-3.5" /> {t("home")}
       </button>
+      <GuidedTourTriggerButton tourId={GUIDED_TOUR_IDS.writer} compact />
       <button onClick={() => nav("/pricing")} className="ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" title={t("pricing")}>
         <CreditCard className="h-3.5 w-3.5" /> {t("pricing")}
       </button>
