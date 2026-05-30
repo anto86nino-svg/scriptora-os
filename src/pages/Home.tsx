@@ -67,6 +67,9 @@ export default function Home() {
   }, [legalState?.legalRequired, consentValid]);
 
   const handleLogoClick = () => {
+    const host = typeof window !== "undefined" ? window.location.hostname : "";
+    const localDevHost = host === "localhost" || host === "127.0.0.1";
+    if (import.meta.env.PROD && !localDevHost) return;
     const next = logoClicks + 1;
     if (next >= 3) {
       setLogoClicks(0);

@@ -1,11 +1,11 @@
 // Plan & quota system — frontend-first MVP.
 // Dev mode bypasses ALL limits. Token usage is sourced from ai_usage_logs per project_id.
 
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isDevMode } from "@/lib/dev-mode";
 import { getDevPlanOverride } from "@/lib/dev-plan-override";
 import { getCurrentUserId } from "@/services/storageService";
-import { useEffect, useState } from "react";
 
 export type PlanTier = "free" | "beta" | "pro" | "premium";
 
@@ -41,6 +41,7 @@ const PLAN_CACHE_KEY = "nexora_plan_cache_v1";
 
 export async function fetchPlan(): Promise<PlanTier> {
   const userId = getCurrentUserId();
+  if (userId === "public-user") return "free";
   try {
     const { data, error } = await supabase
       .from("user_plans" as any)
@@ -84,6 +85,7 @@ export async function getProjectTokenUsage(projectId: string): Promise<number> {
 // Count books created this month (rolling calendar month) for the user.
 export async function getBooksThisMonth(): Promise<number> {
   const userId = getCurrentUserId();
+  if (userId === "public-user") return 0;
   const start = new Date();
   start.setDate(1); start.setHours(0, 0, 0, 0);
   try {

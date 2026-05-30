@@ -29,7 +29,7 @@ export function PricingCard({ plan, comingSoon, isCurrent, onAction }: PricingCa
   return (
     <div
       className={cn(
-        "relative rounded-2xl border p-6 flex flex-col transition-all",
+        "relative rounded-2xl border p-6 flex h-full flex-col transition-all",
         plan.highlight
           ? "border-primary bg-gradient-to-b from-primary/10 to-transparent shadow-[0_0_40px_-12px_hsl(var(--primary)/0.4)]"
           : plan.premium

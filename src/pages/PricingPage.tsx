@@ -29,7 +29,7 @@ export default function PricingPage() {
     const action = resolvePlanAction(plan);
     switch (action.kind) {
       case "free":
-        window.location.href = "/dashboard";
+        window.location.href = "/auth";
         return;
       case "external":
         window.open(action.url, "_blank", "noopener,noreferrer");
@@ -63,7 +63,7 @@ export default function PricingPage() {
     <div className="scriptora-feature-page bg-background text-foreground">
       <header className="shrink-0 border-b border-border bg-card/40 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link to="/dashboard" className="inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground">
+          <Link to="/" className="inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground">
             <ArrowLeft className="h-3.5 w-3.5" /> {t("back")}
           </Link>
           <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("pricing_page_label")}</span>
@@ -86,7 +86,7 @@ export default function PricingPage() {
 
         <PaymentStatusBanner />
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4 items-stretch">
           {primaryPlans.map((plan) => (
             <PricingCard
               key={plan.id}

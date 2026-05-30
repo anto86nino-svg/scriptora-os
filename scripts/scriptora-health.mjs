@@ -7,6 +7,14 @@ import { loadMergedEnv, validateSupabaseEnv, resolveEdgeJwt } from "./scriptora-
 
 async function pingFunction(url, jwt, apikey, name) {
   const endpoint = `${url.replace(/\/$/, "")}/functions/v1/${name}`;
+  const body =
+    name === "generate-book"
+      ? { systemPrompt: "ok", userPrompt: "Hi", taskType: "health_ping" }
+      : {
+          systemPrompt: "You return valid JSON objects only.",
+          userPrompt: '{"title":"Health","chapters":[]}',
+          taskType: "health_ping",
+        };
   try {
     const res = await fetch(endpoint, {
       method: "POST",
@@ -15,11 +23,7 @@ async function pingFunction(url, jwt, apikey, name) {
         apikey,
         Authorization: `Bearer ${jwt}`,
       },
-      body: JSON.stringify({
-        systemPrompt: "ok",
-        userPrompt: name === "generate-book" ? "Hi" : '{"title":"H","chapters":[]}',
-        taskType: "health_ping",
-      }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(25000),
     });
     return res.status;

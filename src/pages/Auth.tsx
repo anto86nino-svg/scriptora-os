@@ -239,6 +239,9 @@ export default function AuthPage() {
   }, [logoClicks]);
 
   const handleLogoClick = () => {
+    const host = typeof window !== "undefined" ? window.location.hostname : "";
+    const localDevHost = host === "localhost" || host === "127.0.0.1";
+    if (import.meta.env.PROD && !localDevHost) return;
     const next = logoClicks + 1;
     if (next >= 3) {
       setLogoClicks(0);
@@ -337,22 +340,22 @@ export default function AuthPage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,hsl(var(--accent)/0.14),transparent_60%)]" />
       </div>
 
-      <header className="relative z-10 flex items-center justify-between px-6 py-5">
-        <Link to="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+      <header className="relative z-10 flex items-center justify-between px-6 py-5 sm:px-8">
+        <Link to="/" className="flex shrink-0 items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
           {t("back")}
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
             onClick={handleLogoClick}
-            aria-label={t("activate_dev_mode")}
+            aria-label="Scriptora"
             title="SCRIPTORA"
             className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-primary to-accent outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
           </button>
-          <span className="text-sm font-semibold tracking-[0.25em]">SCRIPTORA</span>
+          <span className="truncate text-sm font-semibold tracking-[0.2em] sm:tracking-[0.25em]">SCRIPTORA</span>
         </div>
       </header>
 

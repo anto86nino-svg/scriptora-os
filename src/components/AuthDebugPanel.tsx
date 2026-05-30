@@ -38,8 +38,8 @@ export function AuthDebugPanel() {
     if (onAuthPage && hasOAuthCallbackInUrl()) setOpen(true);
   }, [onAuthPage]);
 
-  const oauthActive = onAuthPage && (hasOAuthCallbackInUrl() || entries.some((e) => /google|oauth|exchange/i.test(e.label)));
-  const visible = devOn || oauthActive || (onAuthPage && entries.length > 0);
+  const oauthActive = onAuthPage && hasOAuthCallbackInUrl();
+  const visible = devOn || oauthActive;
 
   if (!visible) return null;
 

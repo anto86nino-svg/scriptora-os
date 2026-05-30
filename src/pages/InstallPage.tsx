@@ -49,7 +49,7 @@ export default function InstallPage() {
     <div className="scriptora-feature-page bg-background flex flex-col">
       <header className="shrink-0 border-b border-border/50 px-4 h-14 flex items-center">
         <Link
-          to="/dashboard"
+          to="/"
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" /> Indietro
@@ -130,7 +130,7 @@ export default function InstallPage() {
           )}
 
           <Link
-            to="/dashboard"
+            to="/auth"
             className="block text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             Continua senza installare →

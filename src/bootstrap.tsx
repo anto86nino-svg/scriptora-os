@@ -6,7 +6,7 @@ import App from "./App.tsx";
 import { ensureStorageHydrated } from "./lib/smart-boot";
 import { getSupabaseClient, isSupabaseConfigured } from "./integrations/supabase/client";
 import { warnSupabaseEnvInDev } from "./lib/env-validation";
-import { hasAutoBestsellerCloud } from "./lib/supabase-cloud-capabilities";
+import { probeSupabaseCapabilities } from "./lib/supabase-cloud-capabilities";
 
 // One-time migration: rename legacy "scriptora-*" storage keys to "nexora-*"
 (() => {
@@ -57,7 +57,8 @@ ensureStorageHydrated().catch(() => {});
 
 (async () => {
   if (!isSupabaseConfigured()) return;
-  if (!(await hasAutoBestsellerCloud())) return;
+  const caps = await probeSupabaseCapabilities();
+  if (!caps.autoBestseller) return;
   try {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase.rpc("auto_fail_stale_runs" as any);

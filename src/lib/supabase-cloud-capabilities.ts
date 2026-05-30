@@ -1,4 +1,5 @@
 import { getSupabaseClient, isSupabaseConfigured } from "@/integrations/supabase/client";
+import { getCurrentUserId } from "@/services/storageService";
 
 type CloudCapabilities = {
   projects: boolean;
@@ -54,6 +55,11 @@ export function probeSupabaseCapabilities(force = false): Promise<CloudCapabilit
   probing = (async (): Promise<CloudCapabilities> => {
     if (!isSupabaseConfigured()) {
       cached = UNAVAILABLE;
+      return cached;
+    }
+    if (getCurrentUserId() === "public-user") {
+      cached = UNAVAILABLE;
+      writeSessionCaps(cached);
       return cached;
     }
     try {

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { enableDevMode, exitDevMode, isDevMode, isOwnerEmail } from "@/lib/dev-mode";
 import { clearDevPlanOverride } from "@/lib/dev-plan-override";
 import { logAuthDebug, summarizeSession } from "@/lib/auth-debug";
+import { probeSupabaseCapabilities } from "@/lib/supabase-cloud-capabilities";
 
 type AuthContextValue = {
   user: User | null;
@@ -24,6 +25,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
+      if (newSession?.user) {
+        probeSupabaseCapabilities(true).catch(() => {});
+      }
       if (isDevMode()) {
         logAuthDebug("useAuth.onAuthStateChange", {
           event,
