@@ -72,7 +72,7 @@ export function KdpEditorialMapDialog({ open, onClose, onUseBook }: KdpEditorial
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/75 p-3 backdrop-blur-2xl sm:p-4"
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-background/75 p-3 pb-safe pt-safe backdrop-blur-2xl sm:p-4"
       onClick={onClose}
     >
       <div

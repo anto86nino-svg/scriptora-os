@@ -200,7 +200,7 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
   };
 
   return (
-    <div className="scriptora-modal-overlay z-[9999]">
+    <div className="scriptora-modal-overlay">
       <div className="scriptora-modal-panel max-w-5xl">
         <div className="flex shrink-0 items-center justify-between border-b border-border bg-card/95 p-4 backdrop-blur">
           <div className="flex items-center gap-3">

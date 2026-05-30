@@ -270,7 +270,7 @@ export default function FixChapterComparisonModal({
   }, [patchResult.patches]);
 
   return (
-    <div className="fixed inset-0 z-[99999] bg-black/70 backdrop-blur-lg text-white overflow-hidden pb-safe pt-safe">
+    <div className="fixed inset-0 z-[10060] bg-black/70 backdrop-blur-lg text-white overflow-hidden pb-safe pt-safe">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.18),transparent_25%)] pointer-events-none" />
       <div className="relative mx-auto scriptora-surgical-edit-shell flex h-[100dvh] min-h-0 max-w-[1600px] md:min-w-[720px] flex-col overflow-hidden p-3 md:p-6">
         <div className="flex shrink-0 flex-col gap-4 rounded-[36px] border border-white/10 bg-[#0c1223]/95 shadow-[0_0_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl p-4 sm:p-6 md:flex-row md:items-start md:justify-between">

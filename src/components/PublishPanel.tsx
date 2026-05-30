@@ -89,7 +89,7 @@ export function PublishPanel({
   // ───── BLANK START SCREEN ─────
   if (!sessionStarted || !project) {
     return (
-      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 pb-safe pt-safe">
         <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-xl max-h-[92vh] flex flex-col">
           <div className="px-5 py-4 border-b border-border shrink-0 flex items-center justify-between">
             <div>
@@ -287,7 +287,7 @@ export function PublishPanel({
   const bookComplete = project.phase === "complete";
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 pb-safe pt-safe">
       <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
         <div className="px-5 py-4 border-b border-border shrink-0 space-y-3">
           <div className="flex items-center justify-between">
@@ -581,7 +581,7 @@ function BookPreviewModal({
   const wordCount = chapters.reduce((acc, c) => acc + (c.content?.split(/\s+/).filter(Boolean).length || 0), 0);
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+    <div className="fixed inset-0 z-[110] bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 pb-safe pt-safe sm:p-4">
       <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-4xl h-[92vh] flex flex-col">
         <div className="px-4 sm:px-5 py-3 border-b border-border flex items-center justify-between shrink-0">
           <div className="min-w-0">

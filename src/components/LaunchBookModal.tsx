@@ -62,11 +62,11 @@ export function LaunchBookModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-background/70 p-0 backdrop-blur-2xl sm:items-center sm:p-4"
+      className="fixed inset-0 z-[110] flex items-end justify-center bg-background/70 p-0 backdrop-blur-2xl sm:items-center sm:p-4"
       onClick={() => !busy && onClose()}
     >
       <div
-        className="ios-panel relative flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[28px] animate-scriptora-dialog-entrance sm:max-h-[90vh] sm:rounded-[28px]"
+        className="ios-panel relative flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-[28px] pb-safe animate-scriptora-dialog-entrance sm:max-h-[90vh] sm:rounded-[28px]"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-labelledby="launch-book-title"

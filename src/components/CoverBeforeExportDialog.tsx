@@ -22,7 +22,7 @@ export function CoverBeforeExportDialog({
   if (!open) return null;
 
   return (
-    <div className="scriptora-modal-overlay z-[70]">
+    <div className="scriptora-modal-overlay">
       <div className="scriptora-modal-panel max-w-md border-white/10">
         <div className="flex shrink-0 items-start justify-between border-b border-border p-5">
           <div>

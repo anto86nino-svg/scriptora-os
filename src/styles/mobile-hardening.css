@@ -377,3 +377,14 @@ html.scriptora-layout-mobile main.relative.min-h-screen.overflow-hidden {
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+/* Modal tier above sticky page headers (z-index 100) on mobile */
+html.scriptora-layout-mobile .scriptora-modal-overlay {
+  z-index: 110;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-modal-overlay {
+    z-index: 110;
+  }
+}

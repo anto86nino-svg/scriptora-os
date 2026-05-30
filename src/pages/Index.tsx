@@ -22,6 +22,7 @@ import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu
 import { AccountIdentityBlock } from "@/components/AccountIdentityBlock";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { useQuota, usePlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { isProjectComplete } from "@/lib/project-status";
@@ -45,6 +46,7 @@ const Index = () => {
   useUILanguage();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const isMobileLayout = useIsMobile();
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [showNewBook, setShowNewBook] = useState(false);
   const [reconfigureMode, setReconfigureMode] = useState(false);
@@ -132,6 +134,29 @@ const Index = () => {
     mq.addEventListener("change", syncSidebarForViewport);
     return () => mq.removeEventListener("change", syncSidebarForViewport);
   }, []);
+
+  const indexOverlayOpen =
+    showNewBook ||
+    reconfigureMode ||
+    showCover ||
+    showPublish ||
+    showSettings ||
+    showVoiceStudio ||
+    coverGateOpen ||
+    sidebarOpen ||
+    !!upgradeReason ||
+    !!configBlockedIssues?.length;
+
+  useEffect(() => {
+    if (isMobileLayout && indexOverlayOpen) {
+      document.body.classList.add("scriptora-mobile-overlay-open");
+    } else {
+      document.body.classList.remove("scriptora-mobile-overlay-open");
+    }
+    return () => {
+      document.body.classList.remove("scriptora-mobile-overlay-open");
+    };
+  }, [indexOverlayOpen, isMobileLayout]);
 
   const effectiveProject = engine.project || recoveredProject;
   const nextVoiceProjectList = effectiveProject
@@ -578,7 +603,7 @@ const Index = () => {
       {/* Floating sidebar toggle — mobile only; desktop keeps chapter index visible */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="ios-toolbar-button fixed left-3 top-3 z-50 h-11 min-w-[11rem] gap-2 px-3 text-foreground shadow-lg backdrop-blur-xl layout-desktop:hidden"
+        className="ios-toolbar-button fixed left-3 top-3 z-40 h-11 min-w-[11rem] gap-2 px-3 text-foreground shadow-lg backdrop-blur-xl layout-desktop:hidden"
         title={sidebarOpen ? t("close_chapter_navigation") : t("open_chapter_navigation")}
         aria-expanded={sidebarOpen}
         aria-label={sidebarOpen ? t("close_chapter_navigation") : t("open_chapter_navigation")}

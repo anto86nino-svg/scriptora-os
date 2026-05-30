@@ -1182,7 +1182,7 @@ export function CoverGenerator({
   }
 
   return (
-    <div className="scriptora-modal-overlay z-50 p-3 pb-safe pt-safe sm:p-5">
+    <div className="scriptora-modal-overlay p-3 pb-safe pt-safe sm:p-5">
       {panel}
     </div>
   );

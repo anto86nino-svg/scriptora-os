@@ -21,12 +21,12 @@ export default function EditorialCompareView({
   onClose,
 }: Props) {
   return (
-    <div className="fixed inset-0 z-[99999] bg-[#050816] overflow-hidden">
+    <div className="fixed inset-0 z-[10060] bg-[#050816] overflow-hidden">
 
       {/* BACKGROUND */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(59,130,246,0.12),transparent_40%)]" />
 
-      <div className="relative z-10 h-screen flex flex-col p-5 gap-4">
+      <div className="relative z-10 h-[100dvh] flex flex-col p-5 gap-4 pb-safe">
 
         {/* HEADER */}
         <div className="rounded-[28px] border border-white/10 bg-white/[0.03] backdrop-blur-2xl px-8 py-6">

@@ -21,7 +21,7 @@ export default function CuriosityPanel({ onClose }: { onClose: () => void }) {
   }, [items]);
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-xl">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-xl p-3 pb-safe pt-safe">
       <div className="relative max-w-xl w-full p-8 rounded-2xl bg-white/5 border border-white/10 shadow-2xl text-center">
 
         <button

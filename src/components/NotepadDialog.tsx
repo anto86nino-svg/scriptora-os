@@ -178,7 +178,7 @@ export function NotepadDialog({ open, ownerId, onClose }: NotepadDialogProps) {
   const activeTextColor = NOTE_TEXT_COLORS.find((item) => item.id === activeNote?.textColor) || NOTE_TEXT_COLORS[0];
 
   return (
-    <div className="scriptora-modal-overlay z-[9999]" onClick={onClose}>
+    <div className="scriptora-modal-overlay" onClick={onClose}>
       <div
         className="scriptora-modal-panel ios-panel max-w-6xl"
         onClick={(event) => event.stopPropagation()}
