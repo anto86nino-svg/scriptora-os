@@ -13,9 +13,11 @@ import {
   type ScriptoraBackgroundId,
   type ScriptoraWritingFont,
 } from "@/lib/scriptora-appearance";
+import { AtmosphereEnginePanel } from "@/components/AtmosphereEnginePanel";
+import { useAtmosphereProfile } from "@/hooks/useAtmosphereProfile";
+import { useBackgroundSource } from "@/hooks/useBackgroundSource";
 import {
   getAtmosphereProfile,
-  loadAtmosphereProfile,
   restoreRealmBackground,
   setBackgroundSource,
   applyVisualEnvironment,
@@ -72,6 +74,8 @@ async function compressImageToDataUrl(file: File): Promise<string> {
 
 export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: Props) {
   useUILanguage();
+  const { profileId } = useAtmosphereProfile();
+  const { source: liveBackgroundSource } = useBackgroundSource();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -94,9 +98,14 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
     setBackgroundSourceState(loadBackgroundSource());
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    setBackgroundSourceState(liveBackgroundSource);
+  }, [open, liveBackgroundSource]);
+
   if (!open) return null;
 
-  const activeRealm = getAtmosphereProfile(loadAtmosphereProfile());
+  const activeRealm = getAtmosphereProfile(profileId);
 
   const useRealmBackground = () => {
     restoreRealmBackground();
@@ -244,6 +253,10 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
                 );
               })}
             </div>
+          </section>
+
+          <section className="rounded-2xl border border-border/70 bg-background/40 p-4">
+            <AtmosphereEnginePanel variant="settings" />
           </section>
 
           <section className="rounded-2xl border border-border/70 bg-background/40 p-4">

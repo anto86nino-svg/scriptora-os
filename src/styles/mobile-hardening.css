@@ -1,21 +1,49 @@
 /* Scriptora — mobile stability & readability (surgical pass) */
 
+html.scriptora-layout-mobile,
+html.scriptora-layout-mobile body,
+html.scriptora-layout-mobile #root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 @media (max-width: 767px) {
-  html,
-  body,
-  #root {
+  html:not(.scriptora-layout-desktop),
+  html:not(.scriptora-layout-desktop) body,
+  html:not(.scriptora-layout-desktop) #root {
     width: 100%;
     max-width: 100%;
     overflow-x: hidden;
   }
+}
 
-  /* Stronger scrim — background stays atmospheric, content stays readable */
-  .scriptora-ios-screen::before {
+html.scriptora-layout-mobile .scriptora-ios-screen::before {
+  opacity: 0.32 !important;
+  filter: saturate(0.55) brightness(0.5) blur(2px) !important;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-ios-screen::before {
     opacity: 0.32 !important;
     filter: saturate(0.55) brightness(0.5) blur(2px) !important;
   }
+}
 
-  .scriptora-ios-screen::after {
+html.scriptora-layout-mobile .scriptora-ios-screen::after {
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+  animation: none !important;
+  background: linear-gradient(
+    180deg,
+    rgba(4, 6, 14, 0.78) 0%,
+    rgba(4, 6, 14, 0.88) 55%,
+    rgba(4, 6, 14, 0.92) 100%
+  ) !important;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-ios-screen::after {
     opacity: 1 !important;
     mix-blend-mode: normal !important;
     animation: none !important;
@@ -26,53 +54,120 @@
       rgba(4, 6, 14, 0.92) 100%
     ) !important;
   }
+}
 
-  [data-atmosphere-profile="fantasy-realm"] .scriptora-ios-screen::before {
+html.scriptora-layout-mobile [data-atmosphere-profile="fantasy-realm"] .scriptora-ios-screen::before {
+  opacity: 0.28 !important;
+  filter: saturate(0.5) brightness(0.48) blur(2px) !important;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) [data-atmosphere-profile="fantasy-realm"] .scriptora-ios-screen::before {
     opacity: 0.28 !important;
     filter: saturate(0.5) brightness(0.48) blur(2px) !important;
   }
+}
 
-  /* Solid glass surfaces on small screens */
-  .ios-sidebar {
+html.scriptora-layout-mobile .ios-sidebar {
+  background: rgba(8, 10, 18, 0.98) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 8px 0 40px rgba(0, 0, 0, 0.55);
+  width: min(100%, 288px);
+  max-width: min(100%, 288px);
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .ios-sidebar {
     background: rgba(8, 10, 18, 0.98) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     box-shadow: 8px 0 40px rgba(0, 0, 0, 0.55);
+    width: min(100%, 288px);
+    max-width: min(100%, 288px);
   }
+}
 
-  .ios-panel,
-  .ios-glass,
-  .ios-glass-soft,
-  .ios-editor-paper {
+html.scriptora-layout-mobile .ios-panel,
+html.scriptora-layout-mobile .ios-glass,
+html.scriptora-layout-mobile .ios-glass-soft,
+html.scriptora-layout-mobile .ios-editor-paper {
+  background: rgba(9, 11, 20, 0.97) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .ios-panel,
+  html:not(.scriptora-layout-desktop) .ios-glass,
+  html:not(.scriptora-layout-desktop) .ios-glass-soft,
+  html:not(.scriptora-layout-desktop) .ios-editor-paper {
     background: rgba(9, 11, 20, 0.97) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
+}
 
-  .scriptora-feature-scroll,
-  .scriptora-feature-page,
-  main.scriptora-landing {
+html.scriptora-layout-mobile .scriptora-feature-scroll,
+html.scriptora-layout-mobile .scriptora-feature-page,
+html.scriptora-layout-mobile main.scriptora-landing {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-feature-scroll,
+  html:not(.scriptora-layout-desktop) .scriptora-feature-page,
+  html:not(.scriptora-layout-desktop) main.scriptora-landing {
     overflow-x: hidden;
     max-width: 100%;
   }
+}
 
-  /* Form controls — never transparent over city/background */
-  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
-  textarea,
-  select,
-  [role="combobox"],
-  button[role="combobox"] {
+html.scriptora-layout-mobile input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html.scriptora-layout-mobile textarea,
+html.scriptora-layout-mobile select,
+html.scriptora-layout-mobile [role="combobox"],
+html.scriptora-layout-mobile button[role="combobox"] {
+  background-color: hsl(var(--background) / 0.97) !important;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  html:not(.scriptora-layout-desktop) textarea,
+  html:not(.scriptora-layout-desktop) select,
+  html:not(.scriptora-layout-desktop) [role="combobox"],
+  html:not(.scriptora-layout-desktop) button[role="combobox"] {
     background-color: hsl(var(--background) / 0.97) !important;
   }
+}
 
-  input::placeholder,
-  textarea::placeholder {
+html.scriptora-layout-mobile input::placeholder,
+html.scriptora-layout-mobile textarea::placeholder {
+  color: hsl(var(--muted-foreground) / 0.72) !important;
+  opacity: 1 !important;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) input::placeholder,
+  html:not(.scriptora-layout-desktop) textarea::placeholder {
     color: hsl(var(--muted-foreground) / 0.72) !important;
     opacity: 1 !important;
   }
+}
 
-  /* Generation experience — full preview, no clip */
-  .scriptora-generation-stage {
+html.scriptora-layout-mobile .scriptora-generation-stage {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  background: rgba(7, 13, 25, 0.98) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-generation-stage {
     width: 100%;
     max-width: 100%;
     min-width: 0;
@@ -81,30 +176,73 @@
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
+}
 
-  .scriptora-generation-manuscript {
+html.scriptora-layout-mobile .scriptora-generation-manuscript {
+  min-height: auto;
+  padding: 12px;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-generation-manuscript {
     min-height: auto;
     padding: 12px;
   }
+}
 
-  .scriptora-live-writing-board {
+html.scriptora-layout-mobile .scriptora-live-writing-board {
+  min-height: auto;
+  background: rgba(10, 14, 26, 0.98) !important;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-live-writing-board {
     min-height: auto;
     background: rgba(10, 14, 26, 0.98) !important;
   }
+}
 
-  .scriptora-live-writing-paper {
+html.scriptora-layout-mobile .scriptora-live-writing-paper {
+  min-height: auto;
+  background: rgba(12, 16, 28, 0.98) !important;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-live-writing-paper {
     min-height: auto;
     background: rgba(12, 16, 28, 0.98) !important;
   }
+}
 
-  .scriptora-generation-live-text {
+html.scriptora-layout-mobile .scriptora-generation-live-text {
+  max-height: none;
+  overflow: visible;
+  mask-image: none;
+  -webkit-mask-image: none;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-generation-live-text {
     max-height: none;
     overflow: visible;
     mask-image: none;
     -webkit-mask-image: none;
   }
+}
 
-  .scriptora-generation-pipeline {
+html.scriptora-layout-mobile .scriptora-generation-pipeline {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-generation-pipeline {
     display: flex;
     flex-wrap: nowrap;
     gap: 8px;
@@ -114,20 +252,46 @@
     padding-bottom: 4px;
     scrollbar-width: thin;
   }
+}
 
-  .scriptora-generation-step {
+html.scriptora-layout-mobile .scriptora-generation-step {
+  flex: 0 0 auto;
+  min-width: 88px;
+  max-width: 140px;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-generation-step {
     flex: 0 0 auto;
     min-width: 88px;
     max-width: 140px;
   }
+}
 
-  .scriptora-generation-topline {
+html.scriptora-layout-mobile .scriptora-generation-topline {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-generation-topline {
     flex-wrap: wrap;
     gap: 10px;
   }
+}
 
-  /* Modals — stay inside viewport */
-  .scriptora-modal-overlay {
+html.scriptora-layout-mobile .scriptora-modal-overlay {
+  position: fixed;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  padding: max(env(safe-area-inset-top), 12px) 12px max(env(safe-area-inset-bottom), 12px);
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-modal-overlay {
     position: fixed;
     inset: 0;
     align-items: center;
@@ -136,52 +300,79 @@
     overscroll-behavior: contain;
     padding: max(env(safe-area-inset-top), 12px) 12px max(env(safe-area-inset-bottom), 12px);
   }
+}
 
-  .scriptora-modal-panel {
+html.scriptora-layout-mobile .scriptora-modal-panel {
+  width: min(100%, calc(100% - 24px));
+  max-width: min(100%, calc(100% - 24px));
+  min-width: 0;
+  max-height: min(92dvh, 92vh);
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-modal-panel {
     width: min(100%, calc(100% - 24px));
     max-width: min(100%, calc(100% - 24px));
     min-width: 0;
     max-height: min(92dvh, 92vh);
   }
+}
 
-  /* Body scroll lock while overlays/drawers are open */
-  body.scriptora-mobile-overlay-open {
+html.scriptora-layout-mobile body.scriptora-mobile-overlay-open {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) body.scriptora-mobile-overlay-open {
     overflow: hidden;
     overscroll-behavior: none;
   }
+}
 
-  /* AI Coach — full-width drawer on mobile only (see Index.tsx when enabled) */
-  .ios-sidebar {
-    width: min(100%, 288px);
-    max-width: min(100%, 288px);
-  }
+html.scriptora-layout-mobile [data-radix-dialog-content] {
+  max-height: min(92dvh, 92vh);
+  overflow-y: auto;
+}
 
-  /* Radix dialog default shell */
-  [data-radix-dialog-content] {
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) [data-radix-dialog-content] {
     max-height: min(92dvh, 92vh);
     overflow-y: auto;
   }
+}
 
-  /* Home legal consent — keep scrollable on small screens */
-  [data-radix-dialog-content].max-w-2xl {
+html.scriptora-layout-mobile [data-radix-dialog-content].max-w-2xl {
+  width: min(100%, calc(100% - 24px));
+  max-height: min(90dvh, 90vh);
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) [data-radix-dialog-content].max-w-2xl {
     width: min(100%, calc(100% - 24px));
     max-height: min(90dvh, 90vh);
   }
+}
 
-  /* Chapter Doctor full-screen comparison — avoid address-bar clip */
-  .scriptora-surgical-edit-shell {
+html.scriptora-layout-mobile .scriptora-surgical-edit-shell {
+  height: 100dvh;
+  min-height: 0;
+}
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-surgical-edit-shell {
     height: 100dvh;
     min-height: 0;
   }
+}
 
-  /* Public landing — prevent horizontal drift */
-  main.scriptora-landing {
-    overflow-x: hidden;
-    max-width: 100%;
-  }
+html.scriptora-layout-mobile main.relative.min-h-screen.overflow-hidden {
+  min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom);
+}
 
-  /* Auth shell — respect safe areas */
-  main.relative.min-h-screen.overflow-hidden {
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) main.relative.min-h-screen.overflow-hidden {
     min-height: 100dvh;
     padding-bottom: env(safe-area-inset-bottom);
   }

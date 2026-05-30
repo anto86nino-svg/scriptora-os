@@ -81,5 +81,11 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    function ({ addVariant }: { addVariant: (name: string, definition: string) => void }) {
+      addVariant("layout-mobile", "html.scriptora-layout-mobile &");
+      addVariant("layout-desktop", "html.scriptora-layout-desktop &");
+    },
+  ],
 } satisfies Config;

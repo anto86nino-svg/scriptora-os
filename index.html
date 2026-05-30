@@ -3,6 +3,49 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function () {
+        try {
+          var p = localStorage.getItem("scriptora-layout-preference-v1") || "auto";
+          var w = window.innerWidth;
+          var ua = navigator.userAgent || "";
+          var maxTouch = navigator.maxTouchPoints || 0;
+          var isIPad = /iPad/.test(ua) || (maxTouch > 1 && /Macintosh/.test(ua));
+          var phone =
+            /iPhone|iPod|Android.*Mobile|webOS|BlackBerry|IEMobile|Opera Mini|Windows Phone/i.test(ua) &&
+            !isIPad;
+          var androidTab = /Android/i.test(ua) && !/Mobile/i.test(ua);
+          var kind = phone ? "phone" : isIPad || androidTab ? "tablet" : "desktop";
+          if (kind === "desktop") {
+            var coarse = window.matchMedia("(pointer: coarse)").matches;
+            var noHover = window.matchMedia("(hover: none)").matches;
+            if ((coarse || noHover) && maxTouch > 0 && w < 768) kind = "phone";
+            else if ((coarse || noHover) && maxTouch > 0 && w < 1024) kind = "tablet";
+          }
+          var eff =
+            p === "mobile"
+              ? "mobile"
+              : p === "desktop"
+                ? "desktop"
+                : kind === "phone"
+                  ? "mobile"
+                  : kind === "tablet"
+                    ? w >= 1024
+                      ? "desktop"
+                      : "mobile"
+                    : w >= 768
+                      ? "desktop"
+                      : "mobile";
+          var root = document.documentElement;
+          root.classList.add("scriptora-layout-" + eff, "scriptora-device-" + kind);
+          root.setAttribute("data-scriptora-device", kind);
+          root.setAttribute("data-scriptora-layout-pref", p);
+          root.setAttribute("data-scriptora-effective-layout", eff);
+        } catch (e) {
+          /* ignore */
+        }
+      })();
+    </script>
     <title>NEXORA — Build Books That Sell</title>
     <meta name="description" content="NEXORA: from idea to bestselling book — powered by AI." />
     <meta name="author" content="NEXORA" />

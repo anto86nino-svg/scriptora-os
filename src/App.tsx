@@ -17,6 +17,7 @@ import { DevModeBadge } from "@/components/DevModeBadge";
 import GlobalCuriosity from "./components/GlobalCuriosity";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { ScriptoraStepGuide } from "@/components/ScriptoraStepGuide";
+import { DeviceViewSync } from "@/hooks/useDeviceView";
 
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 const Index = lazy(() => import("./pages/Index.tsx"));
@@ -68,6 +69,7 @@ const App = () => (
               </Suspense>
               </AppErrorBoundary>
               <ScriptoraStepGuide />
+              <DeviceViewSync />
               <DevModeBadge />
               <GlobalCuriosity />
             </MollyProvider>

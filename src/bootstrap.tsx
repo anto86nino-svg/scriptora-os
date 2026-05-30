@@ -1,4 +1,5 @@
 import { applyVisualEnvironment } from "@/lib/atmosphere-engine";
+import { applyDeviceView } from "@/lib/device-view";
 import { validateAuthorIdentityStorage } from "@/lib/author-identity";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
@@ -40,6 +41,7 @@ import { warnSupabaseEnvInDev } from "./lib/env-validation";
 })();
 
 try {
+  applyDeviceView();
   applyVisualEnvironment();
   validateAuthorIdentityStorage();
 } catch {

@@ -1,0 +1,45 @@
+/* Scriptora — layout mode shell (mobile vs desktop, manual override safe) */
+
+html.scriptora-layout-desktop.scriptora-device-phone #root,
+html.scriptora-layout-desktop.scriptora-device-tablet #root {
+  min-width: 1024px;
+}
+
+html.scriptora-layout-desktop.scriptora-device-phone,
+html.scriptora-layout-desktop.scriptora-device-tablet {
+  overflow-x: auto;
+}
+
+html.scriptora-layout-desktop.scriptora-device-phone body,
+html.scriptora-layout-desktop.scriptora-device-tablet body {
+  overflow-x: auto;
+}
+
+html.scriptora-layout-mobile {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html.scriptora-layout-desktop .scriptora-device-view-hint-mobile {
+  display: none;
+}
+
+html.scriptora-layout-mobile .scriptora-device-view-hint-desktop {
+  display: none;
+}
+
+.scriptora-feature-page > header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  isolation: isolate;
+}
+
+/* Radix portaled menus — always above atmosphere layers and scroll shells */
+.scriptora-toolbar-menu-content {
+  z-index: 200 !important;
+}
+
+[data-radix-popper-content-wrapper]:has(.scriptora-toolbar-menu-content) {
+  z-index: 200 !important;
+}

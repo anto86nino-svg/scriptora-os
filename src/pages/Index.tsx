@@ -455,18 +455,18 @@ const Index = () => {
 
       {/* Overlay for mobile */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+        <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm layout-desktop:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
       )}
 
       {/* Left Sidebar — drawer on mobile, collapsible on desktop */}
       <aside
-        className={`ios-sidebar fixed inset-y-0 left-0 z-40 flex h-safe-screen w-[min(100vw-2rem,288px)] max-w-[288px] shrink-0 flex-col pb-safe transition-transform duration-300 ease-out md:relative md:inset-auto md:h-auto md:max-w-none ${
+        className={`ios-sidebar fixed inset-y-0 left-0 z-40 flex h-safe-screen w-[min(100vw-2rem,288px)] max-w-[288px] shrink-0 flex-col pb-safe transition-transform duration-300 ease-out layout-desktop:relative layout-desktop:inset-auto layout-desktop:h-auto layout-desktop:max-w-none ${
           sidebarOpen
             ? "translate-x-0 pointer-events-auto"
-            : "-translate-x-full pointer-events-none md:translate-x-0 md:w-0 md:overflow-hidden md:pointer-events-none"
+            : "-translate-x-full pointer-events-none layout-desktop:translate-x-0 layout-desktop:w-0 layout-desktop:overflow-hidden layout-desktop:pointer-events-none"
         }`}
       >
-        <div className="flex items-center justify-between border-b border-white/10 p-3 pl-14 md:pl-3">
+        <div className="flex items-center justify-between border-b border-white/10 p-3 pl-14 layout-desktop:pl-3">
           <div className="flex items-center gap-2 min-w-0">
             <span className="ios-icon ios-icon-blue h-9 w-9 shrink-0">
               <BookOpen className="h-4 w-4" />
@@ -482,7 +482,7 @@ const Index = () => {
             <button
               type="button"
               onClick={() => setSidebarOpen(false)}
-              className="ios-toolbar-button h-8 w-8 text-muted-foreground hover:text-foreground md:hidden"
+              className="ios-toolbar-button h-8 w-8 text-muted-foreground hover:text-foreground layout-desktop:hidden"
               aria-label="Chiudi pannello"
             >
               <X className="h-3.5 w-3.5" />
@@ -590,10 +590,10 @@ const Index = () => {
       {/* Main Area */}
       <div
         className={`flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col transition-all duration-300 ${
-          sidebarOpen ? "p-2 md:p-3" : "p-2 pb-3 md:px-6 md:py-4"
+          sidebarOpen ? "p-2 layout-desktop:p-3" : "p-2 pb-3 layout-desktop:px-6 layout-desktop:py-4"
         }`}
       >
-        <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden overflow-x-hidden rounded-lg border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/20 md:bg-slate-950/45 md:backdrop-blur-xl">
+        <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden overflow-x-hidden rounded-lg border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/20 layout-desktop:bg-slate-950/45 layout-desktop:backdrop-blur-xl">
           {effectiveProject ? (
             <>
               <div className="min-h-0 min-w-0 flex-1">

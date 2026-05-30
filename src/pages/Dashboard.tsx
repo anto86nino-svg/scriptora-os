@@ -29,10 +29,15 @@ import { canUseFeature, type FeatureKey } from "@/lib/subscription";
 import { FlaskConical } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIntelligentPreload } from "@/hooks/useIntelligentPreload";
-import { useAtmosphereProfile } from "@/hooks/useAtmosphereProfile";
-import { useBackgroundSource } from "@/hooks/useBackgroundSource";
-import { ATMOSPHERE_PROFILES, getAtmosphereTilePreview, restoreRealmBackground } from "@/lib/atmosphere-engine";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { DeviceViewToolbarControl } from "@/components/DeviceViewToggle";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const VoiceStudioDialog = lazy(() => import("@/components/VoiceStudioDialog").then(m => ({ default: m.VoiceStudioDialog })));
 const HomeExportDialog = lazy(() => import("@/components/HomeExportDialog").then(m => ({ default: m.HomeExportDialog })));
@@ -45,6 +50,23 @@ const AuthorIdentityDialog = lazy(() => import("@/components/AuthorIdentityDialo
 
 const SCRIPTORA_CHARACTER_BIBLE_KEY = "scriptora-character-bible-v1";
 const SCRIPTORA_CHARACTER_PROJECT_KEY = "scriptora-character-project-v1";
+const DASHBOARD_METRICS_VISIBLE_KEY = "scriptora-dashboard-metrics-visible-v1";
+
+function readDashboardMetricsVisible(): boolean {
+  try {
+    return localStorage.getItem(DASHBOARD_METRICS_VISIBLE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function saveDashboardMetricsVisible(visible: boolean) {
+  try {
+    localStorage.setItem(DASHBOARD_METRICS_VISIBLE_KEY, String(visible));
+  } catch {
+    /* ignore */
+  }
+}
 
 
 import { LaunchBookModal, type LaunchMode } from "@/components/LaunchBookModal";
@@ -124,14 +146,12 @@ export default function Home() {
   const [showVoiceStudio, setShowVoiceStudio] = useState(false);
   const [showLaunchModal, setShowLaunchModal] = useState(false);
   const [launchMode, setLaunchMode] = useState<LaunchMode>("quick");
-  const [showMobileStats, setShowMobileStats] = useState(false);
+  const [showWorkspaceMetrics, setShowWorkspaceMetrics] = useState(readDashboardMetricsVisible);
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [projectsReady, setProjectsReady] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const currentLang = useUILanguage();
-  const { profileId, selectProfile } = useAtmosphereProfile();
-  const { source: backgroundSource } = useBackgroundSource();
-  const activeAtmosphere = ATMOSPHERE_PROFILES.find((profile) => profile.id === profileId) ?? ATMOSPHERE_PROFILES[0];
+  const isMobileLayout = useIsMobile();
 
   const [activeRun, setActiveRun] = useState<{ runId: string; title: string; startedAt: number } | null>(null);
 
@@ -165,7 +185,15 @@ export default function Home() {
   const [authorIdentities, setAuthorIdentities] = useState(() => loadAuthorIdentities());
   const [activeAuthor, setActiveAuthor] = useState(() => getSelectedAuthorIdentity());
 
-  const closeAllDashboardOverlays = useCallback(() => {
+  const toggleWorkspaceMetrics = useCallback(() => {
+    setShowWorkspaceMetrics((value) => {
+      const next = !value;
+      saveDashboardMetricsVisible(next);
+      return next;
+    });
+  }, []);
+
+  const closeDashboardDialogs = useCallback(() => {
     setShowNewBook(false);
     setShowProjects(false);
     setShowExport(false);
@@ -181,8 +209,12 @@ export default function Home() {
     setShowLaunchModal(false);
     setShowBetaDialog(false);
     setShowDevUnlock(false);
-    setShowLangMenu(false);
   }, []);
+
+  const closeAllDashboardOverlays = useCallback(() => {
+    closeDashboardDialogs();
+    setShowLangMenu(false);
+  }, [closeDashboardDialogs]);
 
   const openDashboardOverlay = useCallback((opener: () => void) => {
     closeAllDashboardOverlays();
@@ -207,21 +239,18 @@ export default function Home() {
     showDevUnlock;
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 767px)");
     const syncBodyLock = () => {
-      if (mq.matches && dashboardOverlayOpen) {
+      if (isMobileLayout && dashboardOverlayOpen) {
         document.body.classList.add("scriptora-mobile-overlay-open");
       } else {
         document.body.classList.remove("scriptora-mobile-overlay-open");
       }
     };
     syncBodyLock();
-    mq.addEventListener("change", syncBodyLock);
     return () => {
-      mq.removeEventListener("change", syncBodyLock);
       document.body.classList.remove("scriptora-mobile-overlay-open");
     };
-  }, [dashboardOverlayOpen]);
+  }, [dashboardOverlayOpen, isMobileLayout]);
 
   const BOOK_LANGUAGES = [
     { value: "English", label: "🇬🇧 English" },
@@ -644,111 +673,7 @@ export default function Home() {
       : null),
     [aiQualityValues],
   );
-  const focusAtmosphereCard = (
-  <div className="atmo-engine-card relative overflow-hidden rounded-3xl border p-6 shadow-2xl">
-    <div className="absolute inset-x-6 top-6 h-14 rounded-b-[32px] bg-white/[0.03] blur-2xl opacity-50" />
-
-    <div className="relative z-10 flex flex-col gap-5">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
-            <Sparkles className="h-3.5 w-3.5 shrink-0 text-white/60" />
-            {t("atmo_engine_title")}
-          </div>
-
-          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">
-            {t("atmo_engine_headline")}
-          </h2>
-
-          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
-            {t("atmo_engine_body")}
-          </p>
-        </div>
-
-        <div className="flex shrink-0 flex-col gap-1 self-start rounded-3xl border border-white/10 bg-white/[0.04] px-4 py-3 text-right shadow-[0_12px_40px_rgba(0,0,0,0.2)] sm:self-auto sm:text-left">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
-            {t("atmo_engine_active")}
-          </span>
-          <span className="flex items-center justify-end gap-2 text-xs font-medium text-white/85 sm:justify-start">
-            <Sparkles className="h-3.5 w-3.5 shrink-0 text-white/50" />
-            <span className="max-w-[11rem] truncate sm:max-w-[14rem]">{t(activeAtmosphere.moodKey)}</span>
-          </span>
-        </div>
-      </div>
-
-      <div className="atmo-profile-grid">
-        {ATMOSPHERE_PROFILES.map((profile) => {
-          const isActive = profileId === profile.id && profile.available;
-          return (
-          <button
-            key={profile.id}
-            type="button"
-            disabled={!profile.available}
-            onClick={() => profile.available && selectProfile(profile.id)}
-            aria-pressed={isActive}
-            aria-label={`${t(profile.nameKey)} — ${t(profile.moodKey)}`}
-            style={
-              { "--atmo-tile-bg": getAtmosphereTilePreview(profile.id) } as React.CSSProperties
-            }
-            className={`atmo-profile-tile group relative flex w-full min-w-0 flex-col overflow-hidden rounded-3xl border p-4 text-left transition ${
-              isActive
-                ? "is-active border-white/25 text-white shadow-lg"
-                : profile.available
-                  ? "border-white/14 text-slate-100 hover:border-white/20"
-                  : "cursor-not-allowed border-white/8 text-slate-500 opacity-80"
-            }`}
-          >
-            <span className="line-clamp-1 text-sm font-semibold leading-5 tracking-tight text-inherit">
-              {t(profile.nameKey)}
-            </span>
-            <span className="mt-1.5 line-clamp-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300/90 group-[.is-active]:text-slate-200">
-              {t(profile.moodKey)}
-            </span>
-            <span className="mt-2 line-clamp-2 flex-1 text-xs leading-5 text-slate-200/90 group-[.is-active]:text-white/90">
-              {t(profile.descriptionKey)}
-            </span>
-            {isActive && (
-              <span className="mt-3 inline-flex w-fit shrink-0 items-center rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
-                {t("atmo_engine_active")}
-              </span>
-            )}
-            {!profile.available && (
-              <span className="mt-3 inline-flex w-fit shrink-0 items-center rounded-full bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                {t("atmo_engine_coming_soon")}
-              </span>
-            )}
-          </button>
-          );
-        })}
-      </div>
-      <p className="text-xs leading-5 text-slate-500">
-        {t("atmo_engine_persist")}
-      </p>
-      <div className="flex flex-col gap-2 border-t border-white/8 pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-slate-500">
-          {backgroundSource === "realm" ? t("bg_source_realm_active") : t("bg_source_custom_active")}
-          {backgroundSource === "realm" && (
-            <span className="mt-1 block text-[11px] text-slate-600">{t("atmo_bg_realm_hint")}</span>
-          )}
-        </p>
-        {backgroundSource === "custom" && (
-          <button
-            type="button"
-            onClick={() => {
-              restoreRealmBackground();
-              toast.success(t("toast_realm_background_restored"));
-            }}
-            className="inline-flex items-center justify-center rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/75 transition hover:border-white/18 hover:bg-white/[0.08]"
-          >
-            {t("atmo_restore_realm_bg")}
-          </button>
-        )}
-      </div>
-    </div>
-  </div>
-);
-
-const dashboardWidgets = [
+  const dashboardWidgets = [
     {
       label: t("active_book_widget"),
       value: lastProject?.config.title || t("no_active_book"),
@@ -831,7 +756,7 @@ const dashboardWidgets = [
 
   return (
     <div className="scriptora-feature-page relative">
-      <header className="z-20 shrink-0 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
+      <header className="sticky top-0 z-[100] isolate shrink-0 border-b border-white/10 bg-background/[0.88] backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             <button
@@ -969,36 +894,42 @@ const dashboardWidgets = [
             >
               <Settings className="h-3.5 w-3.5" />
             </button>
-            <div className="relative">
-              <button
-                onClick={() => {
-                  if (showLangMenu) {
-                    setShowLangMenu(false);
-                  } else {
-                    closeAllDashboardOverlays();
-                    setShowLangMenu(true);
-                  }
-                }}
-                className="ios-toolbar-button h-8 w-8 px-0 text-xs font-medium min-[420px]:w-auto min-[420px]:px-3"
+            <DeviceViewToolbarControl />
+            <DropdownMenu
+              open={showLangMenu}
+              onOpenChange={(open) => {
+                if (open) closeDashboardDialogs();
+                setShowLangMenu(open);
+              }}
+            >
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="ios-toolbar-button relative z-[120] h-8 w-8 px-0 text-xs font-medium min-[420px]:w-auto min-[420px]:px-3"
+                  aria-label={t("lang")}
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  <span className="hidden min-[420px]:inline">{currentLangLabel}</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                sideOffset={8}
+                className="scriptora-toolbar-menu-content ios-glass z-[200] w-40 rounded-lg border-white/15 bg-slate-950/95 p-1 shadow-2xl backdrop-blur-xl"
               >
-                <Globe className="h-3.5 w-3.5" /> <span className="hidden min-[420px]:inline">{currentLangLabel}</span>
-              </button>
-              {showLangMenu && (
-                <>
-                  <div className="fixed inset-0" onClick={() => setShowLangMenu(false)} />
-                  <div className="ios-glass absolute right-0 z-50 mt-1 w-40 rounded-lg py-1">
-                    {UI_LANGUAGES.map(lang => (
-                      <button key={lang.value} onClick={() => changeLang(lang.value)}
-                        className={`w-full px-3 py-2 text-left text-xs transition-colors hover:bg-muted/50 ${
-                          lang.value === currentLang ? "font-medium text-primary" : "text-foreground"
-                        }`}>
-                        {lang.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+                {UI_LANGUAGES.map((lang) => (
+                  <DropdownMenuItem
+                    key={lang.value}
+                    onClick={() => changeLang(lang.value)}
+                    className={`cursor-pointer rounded-md px-3 py-2 text-xs focus:bg-white/10 ${
+                      lang.value === currentLang ? "font-medium text-primary" : "text-foreground"
+                    }`}
+                  >
+                    {lang.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -1086,12 +1017,13 @@ const dashboardWidgets = [
 
         <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
 
-        <section className="mb-4 xl:hidden">
+        <section className="mb-4 sm:mb-6">
           <button
             type="button"
-            onClick={() => setShowMobileStats((value) => !value)}
-            className="ios-panel flex w-full items-center justify-between gap-3 border-white/15 bg-slate-950/30 p-3 text-left shadow-[0_12px_36px_rgba(0,0,0,0.16)] backdrop-blur-2xl"
-            aria-expanded={showMobileStats}
+            onClick={toggleWorkspaceMetrics}
+            className="ios-panel flex w-full items-center justify-between gap-3 border-white/15 bg-slate-950/30 p-3 text-left shadow-[0_12px_36px_rgba(0,0,0,0.16)] backdrop-blur-2xl transition-colors hover:border-white/20 hover:bg-slate-950/40 sm:p-3.5"
+            aria-expanded={showWorkspaceMetrics}
+            aria-controls="dashboard-workspace-metrics"
           >
             <span className="flex min-w-0 items-center gap-3">
               <span className="ios-icon ios-icon-blue h-10 w-10 shrink-0 rounded-[16px]">
@@ -1100,7 +1032,9 @@ const dashboardWidgets = [
               <span className="min-w-0">
                 <span className="block text-sm font-semibold leading-5 text-white">{t("mobile_status_summary")}</span>
                 <span className="mt-0.5 block truncate text-[11px] font-medium text-white/62">
-                  {projects.length.toLocaleString()} {t("projects").toLowerCase()} · {draftProjects.length.toLocaleString()} {t("drafts").toLowerCase()}
+                  {showWorkspaceMetrics
+                    ? t("dashboard_metrics_visible_hint")
+                    : t("dashboard_metrics_hidden_hint")}
                 </span>
               </span>
             </span>
@@ -1112,91 +1046,62 @@ const dashboardWidgets = [
               }`}>
                 {activeRun ? t("live") : t("stable")}
               </span>
-              <span className="hidden rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[10px] font-semibold text-white/70 min-[420px]:inline">
-                {showMobileStats ? t("hide_metrics") : t("show_metrics")}
+              <span className="rounded-lg border border-white/10 bg-white/[0.07] px-2.5 py-1 text-[10px] font-semibold text-white/75">
+                {showWorkspaceMetrics ? t("hide_metrics") : t("show_metrics")}
               </span>
-              <ArrowRight className={`h-4 w-4 text-white/55 transition-transform ${showMobileStats ? "rotate-90" : ""}`} />
+              <ArrowRight className={`h-4 w-4 text-white/55 transition-transform ${showWorkspaceMetrics ? "rotate-90" : ""}`} />
             </span>
           </button>
 
-          {showMobileStats && (
-            <div className="mt-2 space-y-2 rounded-2xl border border-white/15 bg-slate-950/28 p-2 shadow-[0_16px_44px_rgba(0,0,0,0.18)] backdrop-blur-2xl">
-              <div className="grid grid-cols-2 gap-2">
-                {dashboardWidgets.slice(0, 4).map((widget) => (
+          {showWorkspaceMetrics && (
+            <div id="dashboard-workspace-metrics" className="mt-2 space-y-2 sm:space-y-3">
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(240px,320px))] xl:grid-cols-4">
+                {dashboardWidgets.map((widget) => (
                   <button
                     key={widget.label}
                     type="button"
                     onClick={widget.action}
-                    className={`rounded-xl border border-white/12 bg-gradient-to-br ${widget.tone} p-2.5 text-left`}
+                    className={`group relative min-h-[96px] overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-br ${widget.tone} p-3 text-left shadow-[0_14px_44px_rgba(0,0,0,0.18)] backdrop-blur-2xl transition-all duration-200 hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/[0.10] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:min-h-[104px]`}
                   >
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="truncate text-[9px] font-bold uppercase tracking-[0.13em] text-white/55">{widget.label}</span>
-                      <widget.icon className="h-3.5 w-3.5 shrink-0 text-white/75" />
-                    </span>
-                    <span className="mt-1 block truncate text-sm font-semibold text-white">{widget.value}</span>
-                    <span className="mt-0.5 block truncate text-[10px] text-white/58">{widget.detail}</span>
+                    <div className="absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-60" />
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/58">{widget.label}</p>
+                        <p className="mt-2 truncate text-base font-semibold leading-6 text-white sm:text-lg xl:text-xl">{widget.value}</p>
+                      </div>
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/[0.10] text-white/85 shadow-lg shadow-black/20 transition-transform group-hover:scale-105">
+                        <widget.icon className="h-4 w-4" />
+                      </span>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-[11px] font-medium leading-4 text-white/66">{widget.detail}</p>
                   </button>
                 ))}
               </div>
-              <div className="grid grid-cols-4 gap-1.5">
+
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-2 sm:gap-2.5 xl:grid xl:grid-cols-[repeat(auto-fill,minmax(220px,280px))]">
                 {workspaceStats.map((stat) => (
                   <button
                     key={stat.label}
                     type="button"
                     onClick={() => openDashboardOverlay(() => (stat.label === t("completed") ? setShowLibrary(true) : setShowProjects(true)))}
-                    className="rounded-xl border border-white/12 bg-white/[0.07] p-2 text-center"
+                    className="ios-glass-soft rounded-[20px] border-white/15 bg-white/[0.08] p-3 text-left shadow-[0_16px_40px_rgba(0,0,0,0.18)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 sm:rounded-[24px]"
                   >
-                    <span className="block truncate text-[8px] font-semibold uppercase text-white/48">{stat.label}</span>
-                    <span className="mt-0.5 block text-sm font-semibold tabular-nums text-white">{stat.value}</span>
+                    <div className="flex items-center justify-between gap-2 sm:gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-[9px] font-semibold uppercase text-foreground/58 sm:text-[10px]">{stat.label}</p>
+                        <p className="mt-0.5 text-base font-semibold tabular-nums text-foreground sm:mt-1 sm:text-xl">{stat.value}</p>
+                      </div>
+                      <span className={`ios-icon ${stat.iconBg} hidden h-10 w-10 rounded-[18px] sm:inline-flex`}>
+                        <stat.icon className="h-4 w-4" />
+                      </span>
+                    </div>
+                    <p className="mt-1 hidden truncate text-[11px] text-foreground/60 sm:block">{stat.detail}</p>
                   </button>
                 ))}
               </div>
             </div>
           )}
         </section>
-
-        <div className="mb-4 flex flex-col gap-2 sm:mb-6">
-          <div className="min-w-0">{focusAtmosphereCard}</div>
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(240px,320px))] xl:grid-cols-4">
-          {dashboardWidgets.map((widget) => (
-            <button
-              key={widget.label}
-              type="button"
-              onClick={widget.action}
-              className={`group relative min-h-[104px] overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-br ${widget.tone} p-3 text-left shadow-[0_14px_44px_rgba(0,0,0,0.18)] backdrop-blur-2xl transition-all duration-200 hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/[0.10] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50`}
-            >
-              <div className="absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-60" />
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/58">{widget.label}</p>
-                  <p className="mt-2 truncate text-lg font-semibold leading-6 text-white sm:text-xl">{widget.value}</p>
-                </div>
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/[0.10] text-white/85 shadow-lg shadow-black/20 transition-transform group-hover:scale-105">
-                  <widget.icon className="h-4 w-4" />
-                </span>
-              </div>
-              <p className="mt-2 line-clamp-2 text-[11px] font-medium leading-4 text-white/66">{widget.detail}</p>
-            </button>
-          ))}
-          </div>
-        </div>
-
-        <div className="mb-4 hidden gap-1.5 sm:mb-6 sm:grid sm:grid-cols-2 sm:gap-2.5 xl:grid xl:grid-cols-[repeat(auto-fill,minmax(220px,280px))]">
-          {workspaceStats.map((stat) => (
-              <div key={stat.label} className="ios-glass-soft rounded-[24px] border-white/15 bg-white/[0.08] p-3 shadow-[0_16px_40px_rgba(0,0,0,0.18)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5">
-                <div className="flex items-center justify-between gap-2 sm:gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-[9px] font-semibold uppercase text-foreground/58 sm:text-[10px]">{stat.label}</p>
-                    <p className="mt-0.5 text-base font-semibold tabular-nums text-foreground sm:mt-1 sm:text-xl">{stat.value}</p>
-                  </div>
-                  <span className={`ios-icon ${stat.iconBg} hidden h-10 w-10 rounded-[18px] sm:inline-flex`}>
-                    <stat.icon className="h-4 w-4" />
-                  </span>
-                </div>
-                <p className="mt-1 hidden truncate text-[11px] text-foreground/60 sm:block">{stat.detail}</p>
-              </div>
-          ))}
-        </div>
 
         {lastProject && (
           <div
