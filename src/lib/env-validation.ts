@@ -37,7 +37,7 @@ export function validateSupabaseEnv(): EnvValidationResult {
       message:
         "VITE_SUPABASE_PUBLISHABLE_KEY (or VITE_SUPABASE_ANON_KEY) is missing or empty.",
       hint:
-        "After `vercel env pull .env`, the anon key is often blank. Paste it from Supabase Dashboard → API → anon public key, or copy a populated `.env.production`.",
+        "Set VITE_SUPABASE_PUBLISHABLE_KEY in Vercel → Environment Variables (Production). Locally: copy `.env.example` to `.env.local` and paste keys from Supabase Dashboard → API.",
     });
   } else if (/INSERIRE|YOUR_|REPLACE|TODO|\$KEY|^cd ~\//i.test(key)) {
     issues.push({
@@ -84,8 +84,9 @@ export function buildMissingEnvHints(): string[] {
 
   if (hints.length === 0) {
     return [
-      "In locale puoi eseguire `vercel env pull .env` oppure copiare `.env.example`.",
-      "Se `vercel env pull` lascia la chiave anon vuota, incollala manualmente dal dashboard Supabase.",
+      "Local dev: `cp .env.example .env.local` then fill Supabase keys from the dashboard.",
+      "Production (Vercel): Project → Settings → Environment Variables — do not rely on `.env.production` in the repo.",
+      "If you use a publishable key (sb_publishable_…), also set VITE_SUPABASE_ANON_KEY to the legacy anon JWT (eyJ…) for AI generation.",
     ];
   }
 

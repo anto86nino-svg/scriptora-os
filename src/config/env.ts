@@ -29,14 +29,18 @@ export const appEnv = {
   isProduction: readEnv("MODE", "") === "production",
 } as const;
 
-/** Public Supabase configuration. Anon/publishable keys only. */
+/** Public Supabase configuration. Publishable + legacy anon JWT only. */
 export const supabaseEnv = {
   url: readEnv("VITE_SUPABASE_URL", ""),
-  anonKey:
+  publishableKey: readEnv("VITE_SUPABASE_PUBLISHABLE_KEY", ""),
+  anonJwt: readEnv("VITE_SUPABASE_ANON_KEY", ""),
+  browserKey:
     readEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "") ||
     readEnv("VITE_SUPABASE_ANON_KEY", ""),
   projectId: readEnv("VITE_SUPABASE_PROJECT_ID", ""),
-  configured: !!readEnv("VITE_SUPABASE_URL", ""),
+  configured:
+    !!readEnv("VITE_SUPABASE_URL", "") &&
+    !!(readEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "") || readEnv("VITE_SUPABASE_ANON_KEY", "")),
 } as const;
 
 /** Public AI feature flags. Real keys live server-side. */
@@ -73,7 +77,11 @@ export const publicFeatureFlags = {
 export function validateEnv(): { ok: boolean; warnings: string[] } {
   const warnings: string[] = [];
   if (!supabaseEnv.url) warnings.push("VITE_SUPABASE_URL is missing — backend features disabled.");
-  if (!supabaseEnv.anonKey) warnings.push("VITE_SUPABASE_ANON_KEY is missing — auth disabled.");
+  if (!supabaseEnv.browserKey) {
+    warnings.push("VITE_SUPABASE_PUBLISHABLE_KEY (or legacy VITE_SUPABASE_ANON_KEY) is missing — auth disabled.");
+  } else if (supabaseEnv.publishableKey && !supabaseEnv.anonJwt) {
+    warnings.push("VITE_SUPABASE_ANON_KEY JWT missing — AI Edge Functions may fail until the legacy anon key is set.");
+  }
   if (warnings.length && typeof console !== "undefined") {
     // eslint-disable-next-line no-console
     console.warn("[Scriptora env]", warnings.join(" "));

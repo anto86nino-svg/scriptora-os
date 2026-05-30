@@ -22,8 +22,8 @@ function renderMissingEnvScreen() {
       <div style="max-width:560px">
         <h1 style="font-size:24px;margin:0 0 12px">Configurazione mancante</h1>
         <p style="opacity:.8;line-height:1.5;margin:0 0 16px">
-          Scriptora non trova credenziali Supabase valide nel file <code>.env</code>.
-          ${hasUrlOnly ? "L'URL del progetto è presente, ma la chiave pubblica risulta vuota o non valida." : "Crea (o ripristina) un file <code>.env</code> nella root del progetto con:"}
+          Scriptora non trova credenziali Supabase valide (<code>.env.local</code> o variabili Vercel).
+          ${hasUrlOnly ? "L'URL del progetto è presente, ma la chiave pubblica risulta vuota o non valida." : "In locale crea <code>.env.local</code> nella root (copia da <code>.env.example</code>) con:"}
         </p>
         <pre style="background:#141432;padding:16px;border-radius:8px;overflow:auto;font-size:13px;line-height:1.6">VITE_SUPABASE_URL=https://&lt;project&gt;.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=&lt;anon-or-publishable-key&gt;

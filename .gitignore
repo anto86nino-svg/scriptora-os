@@ -23,12 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
-.env*.local
-.env.production
-.env.vercel
-.env.production
-.env.vercel
-.env.production
-.env.vercel
+
+# Environment — never commit secrets (keep .env.example tracked)
 .env
+.env.local
+.env.*.local
+.env.production
+.env.vercel
 .env.bak.*
+!.env.example
