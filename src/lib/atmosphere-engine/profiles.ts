@@ -15,28 +15,28 @@ export const ATMOSPHERE_PROFILES: AtmosphereProfileMeta[] = [
     nameKey: "atmo_space_name",
     descriptionKey: "atmo_space_desc",
     moodKey: "atmo_space_mood",
-    available: false,
+    available: true,
   },
   {
     id: "nature-calm",
     nameKey: "atmo_nature_name",
     descriptionKey: "atmo_nature_desc",
     moodKey: "atmo_nature_mood",
-    available: false,
+    available: true,
   },
   {
     id: "dark-luxury",
     nameKey: "atmo_luxury_name",
     descriptionKey: "atmo_luxury_desc",
     moodKey: "atmo_luxury_mood",
-    available: false,
+    available: true,
   },
   {
     id: "horror-gothic",
     nameKey: "atmo_gothic_name",
     descriptionKey: "atmo_gothic_desc",
     moodKey: "atmo_gothic_mood",
-    available: false,
+    available: true,
   },
 ];
 

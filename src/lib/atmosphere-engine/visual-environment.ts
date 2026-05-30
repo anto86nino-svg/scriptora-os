@@ -23,8 +23,9 @@ export function applyVisualEnvironment() {
   root.setAttribute(BACKGROUND_SOURCE_ATTR, source);
 
   const realmLayers = getRealmBackgroundLayers(profileId);
-  root.style.setProperty("--atmosphere-realm-image", realmLayers.image);
-  root.style.setProperty("--atmosphere-realm-overlay", realmLayers.overlay);
+  root.style.setProperty("--atmosphere-realm-bg", realmLayers.background);
+  root.style.removeProperty("--atmosphere-realm-image");
+  root.style.removeProperty("--atmosphere-realm-overlay");
 
   applyScriptoraWritingFont();
 

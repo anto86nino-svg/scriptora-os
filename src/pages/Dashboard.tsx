@@ -31,7 +31,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIntelligentPreload } from "@/hooks/useIntelligentPreload";
 import { useAtmosphereProfile } from "@/hooks/useAtmosphereProfile";
 import { useBackgroundSource } from "@/hooks/useBackgroundSource";
-import { ATMOSPHERE_PROFILES, restoreRealmBackground } from "@/lib/atmosphere-engine";
+import { ATMOSPHERE_PROFILES, getAtmosphereTilePreview, restoreRealmBackground } from "@/lib/atmosphere-engine";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const VoiceStudioDialog = lazy(() => import("@/components/VoiceStudioDialog").then(m => ({ default: m.VoiceStudioDialog })));
@@ -650,9 +650,9 @@ export default function Home() {
 
     <div className="relative z-10 flex flex-col gap-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
-            <Sparkles className="h-3.5 w-3.5 text-white/60" />
+            <Sparkles className="h-3.5 w-3.5 shrink-0 text-white/60" />
             {t("atmo_engine_title")}
           </div>
 
@@ -665,45 +665,61 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 rounded-3xl border border-white/10 bg-white/[0.04] px-4 py-3 text-xs font-medium text-white/75 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
-          <Sparkles className="h-4 w-4 text-white/50" />
-          {t(activeAtmosphere.nameKey)}
+        <div className="flex shrink-0 flex-col gap-1 self-start rounded-3xl border border-white/10 bg-white/[0.04] px-4 py-3 text-right shadow-[0_12px_40px_rgba(0,0,0,0.2)] sm:self-auto sm:text-left">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">
+            {t("atmo_engine_active")}
+          </span>
+          <span className="flex items-center justify-end gap-2 text-xs font-medium text-white/85 sm:justify-start">
+            <Sparkles className="h-3.5 w-3.5 shrink-0 text-white/50" />
+            <span className="max-w-[11rem] truncate sm:max-w-[14rem]">{t(activeAtmosphere.moodKey)}</span>
+          </span>
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fill,minmax(260px,360px))]">
-        {ATMOSPHERE_PROFILES.map((profile) => (
+      <div className="atmo-profile-grid">
+        {ATMOSPHERE_PROFILES.map((profile) => {
+          const isActive = profileId === profile.id && profile.available;
+          return (
           <button
             key={profile.id}
             type="button"
             disabled={!profile.available}
             onClick={() => profile.available && selectProfile(profile.id)}
-            aria-pressed={profileId === profile.id}
-            className={`atmo-profile-tile group relative min-w-0 max-w-[360px] overflow-hidden rounded-3xl border p-4 text-left text-sm font-medium transition ${
-              profileId === profile.id
-                ? "is-active border-white/14 bg-white/[0.07] text-white"
+            aria-pressed={isActive}
+            aria-label={`${t(profile.nameKey)} — ${t(profile.moodKey)}`}
+            style={
+              { "--atmo-tile-bg": getAtmosphereTilePreview(profile.id) } as React.CSSProperties
+            }
+            className={`atmo-profile-tile group relative flex w-full min-w-0 flex-col overflow-hidden rounded-3xl border p-4 text-left transition ${
+              isActive
+                ? "is-active border-white/25 text-white shadow-lg"
                 : profile.available
-                  ? "border-white/10 bg-white/[0.03] text-slate-200 hover:border-white/14 hover:bg-white/[0.05]"
-                  : "cursor-not-allowed border-white/8 bg-white/[0.02] text-slate-500 opacity-80"
+                  ? "border-white/14 text-slate-100 hover:border-white/20"
+                  : "cursor-not-allowed border-white/8 text-slate-500 opacity-80"
             }`}
           >
-            <span className="relative block text-sm font-semibold">{t(profile.nameKey)}</span>
-            <span className="mt-1 block text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
+            <span className="line-clamp-1 text-sm font-semibold leading-5 tracking-tight text-inherit">
+              {t(profile.nameKey)}
+            </span>
+            <span className="mt-1.5 line-clamp-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-300/90 group-[.is-active]:text-slate-200">
               {t(profile.moodKey)}
             </span>
-            <span className="mt-2 block text-xs leading-5 text-slate-500">{t(profile.descriptionKey)}</span>
-            {profileId === profile.id && profile.available && (
-              <span className="mt-4 inline-flex items-center rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
+            <span className="mt-2 line-clamp-2 flex-1 text-xs leading-5 text-slate-200/90 group-[.is-active]:text-white/90">
+              {t(profile.descriptionKey)}
+            </span>
+            {isActive && (
+              <span className="mt-3 inline-flex w-fit shrink-0 items-center rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
                 {t("atmo_engine_active")}
               </span>
             )}
             {!profile.available && (
-              <span className="mt-4 inline-flex items-center rounded-full bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              <span className="mt-3 inline-flex w-fit shrink-0 items-center rounded-full bg-white/[0.04] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 {t("atmo_engine_coming_soon")}
               </span>
             )}
           </button>
-        ))}
+          );
+        })}
       </div>
       <p className="text-xs leading-5 text-slate-500">
         {t("atmo_engine_persist")}
