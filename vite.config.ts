@@ -67,9 +67,6 @@ export default defineConfig(({ mode }) => ({
             ) {
               return "react-vendor";
             }
-            if (id.includes("@radix-ui") || id.includes("framer-motion") || id.includes("lucide-react")) {
-              return "ui-vendor";
-            }
             if (
               id.includes("jspdf") ||
               id.includes("html2canvas") ||
