@@ -18,6 +18,7 @@ import { AuthDebugPanel } from "@/components/AuthDebugPanel";
 import GlobalCuriosity from "./components/GlobalCuriosity";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { DeviceViewSync } from "@/hooks/useDeviceView";
+import { LivingBackgroundLayer } from "@/components/immersive/LivingBackgroundLayer";
 
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 const Index = lazy(() => import("./pages/Index.tsx"));
@@ -69,6 +70,7 @@ const App = () => (
               </Suspense>
               </AppErrorBoundary>
               <DeviceViewSync />
+              <LivingBackgroundLayer />
               <DevModeBadge />
               <AuthDebugPanel />
               <GlobalCuriosity />

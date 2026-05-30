@@ -1,0 +1,154 @@
+/* Scriptora Immersive Writing Experience V1 — see inline comments in repo docs */
+
+.scriptora-living-bg__depth,
+.scriptora-living-bg__fog,
+.scriptora-living-bg__dust,
+.scriptora-living-bg__light,
+.scriptora-living-bg__grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.scriptora-living-bg__depth {
+  background: radial-gradient(ellipse 120% 80% at 50% 100%, rgba(0, 0, 0, 0.35), transparent 62%);
+  opacity: 0.85;
+}
+
+.scriptora-living-bg__fog {
+  background: linear-gradient(180deg, transparent 40%, rgba(255, 255, 255, 0.03) 70%, transparent 100%);
+  opacity: 0.5;
+  animation: scriptora-fog-drift 28s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+.scriptora-living-bg__dust {
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.06), transparent 4%),
+    radial-gradient(circle at 70% 60%, rgba(255, 255, 255, 0.04), transparent 3%),
+    radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.05), transparent 3%);
+  opacity: 0.55;
+  animation: scriptora-dust-float 22s ease-in-out infinite;
+}
+
+.scriptora-living-bg__light {
+  background: radial-gradient(ellipse 90% 55% at 50% -15%, rgba(255, 255, 255, 0.07), transparent 58%);
+  mix-blend-mode: soft-light;
+  animation: scriptora-light-breathe 18s ease-in-out infinite;
+}
+
+.scriptora-living-bg__grain {
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+[data-atmosphere-profile="cyber-author"] .scriptora-living-bg__light {
+  background: radial-gradient(ellipse 70% 40% at 80% 10%, rgba(34, 211, 238, 0.12), transparent 55%);
+}
+
+[data-atmosphere-profile="booktok-romance"] .scriptora-living-bg__light {
+  background: radial-gradient(ellipse 80% 50% at 30% 0%, rgba(244, 114, 182, 0.1), transparent 58%);
+}
+
+@keyframes scriptora-fog-drift {
+  0%, 100% { opacity: 0.42; transform: translateY(0); }
+  50% { opacity: 0.58; transform: translateY(-8px); }
+}
+
+@keyframes scriptora-dust-float {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(-10px); opacity: 0.65; }
+}
+
+@keyframes scriptora-light-breathe {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+
+@keyframes scriptora-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-scriptora-fade-in {
+  animation: scriptora-fade-in 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.scriptora-premium-surface,
+.ios-panel,
+.ios-glass-soft {
+  transition:
+    border-color 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.scriptora-immersive-editor .ios-editor-paper {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
+    rgba(8, 10, 18, 0.92);
+  border-color: rgba(255, 255, 255, 0.09);
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.scriptora-immersive-editor.scriptora-focus-active .ios-editor-paper {
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.52), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+@media (max-width: 640px) {
+  .scriptora-living-bg__grain { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scriptora-living-bg__fog,
+  .scriptora-living-bg__dust,
+  .scriptora-living-bg__light,
+  .animate-scriptora-fade-in {
+    animation: none !important;
+  }
+}
+
+[data-atmosphere-profile="ancient-manuscript"] {
+  --primary: 32 48% 48%;
+  --scriptora-app-bg: linear-gradient(rgba(14, 10, 6, 0.92), rgba(18, 14, 10, 0.96)), linear-gradient(180deg, #100c08, #1a1410 46%, #0a0806);
+}
+
+[data-atmosphere-profile="cyber-author"] {
+  --primary: 187 85% 48%;
+  --scriptora-app-bg: linear-gradient(rgba(4, 8, 18, 0.94), rgba(6, 10, 22, 0.97)), linear-gradient(180deg, #040812, #080c18 50%, #020408);
+}
+
+[data-atmosphere-profile="booktok-romance"] {
+  --primary: 330 65% 58%;
+  --scriptora-app-bg: linear-gradient(rgba(20, 8, 16, 0.9), rgba(16, 10, 20, 0.95)), linear-gradient(180deg, #140810, #180c14 48%, #0c060c);
+}
+
+[data-atmosphere-profile="thriller-investigation"] {
+  --primary: 215 20% 52%;
+  --scriptora-app-bg: linear-gradient(rgba(6, 10, 14, 0.96), rgba(8, 12, 18, 0.98)), linear-gradient(180deg, #060a0e, #0a0e14 50%, #040608);
+}
+
+[data-atmosphere-profile="epic-story-forge"] {
+  --primary: 28 85% 52%;
+  --scriptora-app-bg: linear-gradient(rgba(10, 6, 20, 0.92), rgba(8, 6, 16, 0.96)), linear-gradient(180deg, #0c0818, #100c1c 48%, #060410);
+}
+
+[data-atmosphere-profile="ancient-manuscript"] .scriptora-ios-screen,
+[data-atmosphere-profile="cyber-author"] .scriptora-ios-screen,
+[data-atmosphere-profile="booktok-romance"] .scriptora-ios-screen,
+[data-atmosphere-profile="thriller-investigation"] .scriptora-ios-screen,
+[data-atmosphere-profile="epic-story-forge"] .scriptora-ios-screen {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.018) 0%, transparent 28%), var(--scriptora-app-bg);
+}
+
+[data-atmosphere-profile="ancient-manuscript"] .scriptora-ios-screen::before,
+[data-atmosphere-profile="cyber-author"] .scriptora-ios-screen::before,
+[data-atmosphere-profile="booktok-romance"] .scriptora-ios-screen::before,
+[data-atmosphere-profile="thriller-investigation"] .scriptora-ios-screen::before,
+[data-atmosphere-profile="epic-story-forge"] .scriptora-ios-screen::before {
+  background-image: var(--atmosphere-realm-bg);
+  background-size: cover;
+  background-position: center;
+  opacity: 1;
+  visibility: visible;
+}

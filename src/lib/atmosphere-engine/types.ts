@@ -1,17 +1,21 @@
-/** Immersive Atmosphere Profile identifiers — Layer 1 (visual tokens only). */
+/** Immersive Atmosphere Profile identifiers — visual tokens only. */
 export type AtmosphereProfileId =
   | "fantasy-realm"
+  | "dark-luxury"
   | "space-scifi"
   | "nature-calm"
-  | "dark-luxury"
-  | "horror-gothic";
+  | "horror-gothic"
+  | "ancient-manuscript"
+  | "cyber-author"
+  | "booktok-romance"
+  | "thriller-investigation"
+  | "epic-story-forge";
 
 export interface AtmosphereProfileMeta {
   id: AtmosphereProfileId;
   nameKey: string;
   descriptionKey: string;
   moodKey: string;
-  /** Layer 1 profiles ship when true; future profiles stay preview-only. */
   available: boolean;
 }
 
