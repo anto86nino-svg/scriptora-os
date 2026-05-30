@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { activateOwnerAccess, clearOwnerSession, exitDevMode, isDevMode, isOwnerEmail } from "@/lib/dev-mode";
 import { canUseDevTools } from "@/lib/app-environment";
-import { enableDevMode, exitDevMode, isDevMode, isOwnerEmail } from "@/lib/dev-mode";
-import { clearDevPlanOverride } from "@/lib/dev-plan-override";
+import { clearDevPlanOverride, setDevPlanOverride } from "@/lib/dev-plan-override";
 import { logAuthDebug, summarizeSession } from "@/lib/auth-debug";
 import { probeSupabaseCapabilities } from "@/lib/supabase-cloud-capabilities";
 
@@ -35,8 +35,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           session: summarizeSession(newSession),
         });
       }
-      if (isOwnerEmail(newSession?.user?.email) && !isDevMode()) {
-        enableDevMode();
+      if (newSession?.user) {
+        if (isOwnerEmail(newSession.user.email)) {
+          activateOwnerAccess();
+          setDevPlanOverride("premium");
+        } else {
+          clearOwnerSession();
+          if (!canUseDevTools()) {
+            if (isDevMode()) exitDevMode();
+            clearDevPlanOverride();
+          }
+        }
       }
     });
 
@@ -47,8 +56,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isDevMode()) {
         logAuthDebug("useAuth.getSession", { session: summarizeSession(existing) });
       }
-      if (canUseDevTools() && isOwnerEmail(existing?.user?.email) && !isDevMode()) {
-        enableDevMode();
+      if (existing?.user) {
+        if (isOwnerEmail(existing.user.email)) {
+          activateOwnerAccess();
+          setDevPlanOverride("premium");
+        } else {
+          clearOwnerSession();
+        }
       }
     });
 
@@ -61,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // are stored under the real user.id and survive this cleanup.
     try {
       exitDevMode();
+      clearOwnerSession();
       clearDevPlanOverride();
       sessionStorage.removeItem("nexora-active-run");
       sessionStorage.removeItem("nexora-open-project");

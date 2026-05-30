@@ -233,8 +233,9 @@ export async function enforceEdgeGuard(
   }
 
   const admin = getAdminClient();
-  const plan = await fetchUserPlan(admin, userId);
-  const normalizedPlan = normalizePlan(plan);
+  let plan = await fetchUserPlan(admin, userId);
+  if (isOwner) plan = "premium";
+  const normalizedPlan = isOwner ? "premium" : normalizePlan(plan);
 
   if (!tierAtLeast(normalizedPlan, minTier)) {
     return guardError("PLAN_REQUIRED", `Requires ${minTier} plan or higher`, 403, {

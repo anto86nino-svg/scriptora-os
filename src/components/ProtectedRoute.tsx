@@ -41,7 +41,7 @@ export function ProtectedRoute({
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (requiredFeature && !planLoading && !canUseFeature(plan, requiredFeature)) {
+  if (requiredFeature && !planLoading && !isOwnerEmail(user?.email) && !canUseFeature(plan, requiredFeature)) {
     return <Navigate to="/pricing" replace />;
   }
 
