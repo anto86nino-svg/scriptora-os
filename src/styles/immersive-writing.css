@@ -4,10 +4,28 @@
 .scriptora-living-bg__fog,
 .scriptora-living-bg__dust,
 .scriptora-living-bg__light,
-.scriptora-living-bg__grain {
+.scriptora-living-bg__grain,
+.scriptora-living-bg__gradients,
+.scriptora-living-bg__parallax,
+.scriptora-living-bg__particles,
+.scriptora-living-bg__reflection {
   position: absolute;
-  inset: 0;
   pointer-events: none;
+}
+
+.scriptora-living-bg__depth,
+.scriptora-living-bg__fog,
+.scriptora-living-bg__dust,
+.scriptora-living-bg__light,
+.scriptora-living-bg__grain,
+.scriptora-living-bg__parallax,
+.scriptora-living-bg__particles,
+.scriptora-living-bg__reflection {
+  inset: 0;
+}
+
+.scriptora-living-bg__gradients {
+  inset: -20%;
 }
 
 .scriptora-living-bg__depth {

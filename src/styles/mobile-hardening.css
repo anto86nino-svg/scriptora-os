@@ -388,3 +388,24 @@ html.scriptora-layout-mobile .scriptora-modal-overlay {
     z-index: 110;
   }
 }
+
+/* Scriptora OS — mobile ecosystem (Experience X) */
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-os-ecosystem .scriptora-feature-scroll {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-command-bridge__inner {
+    grid-template-columns: 1fr;
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-os-capability {
+    min-height: auto;
+    max-width: 100%;
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-os-editor .ios-editor-paper {
+    border-radius: 1.25rem !important;
+  }
+}

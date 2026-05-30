@@ -152,7 +152,10 @@ export function EditorPanel({
           onNavigateSection={onNavigateSection}
         />
         <div className={cn("mx-auto px-4 py-6 sm:px-8", mode === "preview" ? "max-w-2xl" : "max-w-5xl")}>
-          <div className={cn("ios-editor-paper max-w-full rounded-[32px] border border-white/10 bg-slate-950/95 p-5 shadow-[0_36px_120px_-40px_rgba(15,23,42,0.75)] ring-1 ring-white/10 sm:p-7 md:bg-slate-950/65", mode === "preview" && "bg-white/[0.055]")}>
+          <div className={cn(
+            "ios-editor-paper scriptora-manuscript-paper max-w-full rounded-[32px] p-5 sm:p-7",
+            mode === "preview" && "scriptora-manuscript-paper--preview",
+          )}>
           {mode === "preview" && hasContent ? (
             <PreviewMode project={project} view={view} ws={ws} />
           ) : (
@@ -1183,7 +1186,7 @@ const EditableBlock = memo(function EditableBlock({
         <textarea ref={textareaRef} value={editValue}
           onChange={e => { setEditValue(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
           onBlur={() => { onChange(editValue); setIsEditing(false); }}
-          className="w-full text-foreground/[0.85] bg-muted/10 border border-primary/20 rounded-lg p-5 resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="scriptora-manuscript w-full text-foreground/[0.85] bg-muted/10 border border-primary/20 rounded-lg p-5 resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
           style={fontStyle}
           autoFocus />
         <span className="absolute top-3 right-4 text-[9px] text-primary/50 uppercase font-sans">{t("editing")}</span>
@@ -1193,7 +1196,7 @@ const EditableBlock = memo(function EditableBlock({
 
   return (
     <div onClick={() => setIsEditing(true)}
-      className="text-foreground/[0.85] whitespace-pre-wrap cursor-text rounded-[28px] p-5 hover:bg-slate-950/75 transition-colors border border-white/10 bg-slate-950/30 min-h-[140px]"
+      className="scriptora-manuscript text-foreground/[0.85] whitespace-pre-wrap cursor-text rounded-[28px] p-5 hover:bg-slate-950/75 transition-colors border border-white/10 bg-slate-950/30 min-h-[140px]"
       style={fontStyle}
       title={t("click_to_edit")}>
       {content || <span className="text-muted-foreground/40 italic">{t("empty_click_to_add")}</span>}

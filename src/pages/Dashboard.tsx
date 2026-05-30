@@ -37,7 +37,7 @@ import { DeviceViewToolbarControl } from "@/components/DeviceViewToggle";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AccountIdentityBlock } from "@/components/AccountIdentityBlock";
 import { GoogleLogoMark } from "@/components/GoogleLogoMark";
-import { WriterPresenceStrip } from "@/components/immersive/WriterPresenceStrip";
+import { WriterCommandBridge } from "@/components/immersive/WriterCommandBridge";
 import { getAuthProfile } from "@/lib/auth-profile";
 import {
   DropdownMenu,
@@ -721,7 +721,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="scriptora-feature-page relative">
+    <div className="scriptora-feature-page scriptora-os-ecosystem relative">
       <header className="sticky top-0 z-[100] isolate shrink-0 border-b border-white/10 bg-background/[0.88] backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-1.5 px-3 sm:gap-3 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">
@@ -970,8 +970,15 @@ export default function Home() {
       </header>
 
       <main className="scriptora-feature-scroll relative mx-auto w-full max-w-7xl px-4 pb-8 pt-4 sm:px-6 sm:pt-8 lg:px-8">
-        <WriterPresenceStrip project={activeWritingProject} className="mb-4 sm:mb-6" />
-        <div className="mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
+        <WriterCommandBridge
+          project={activeWritingProject}
+          progressPercent={lastProjectProgress}
+          onContinue={activeWritingProject ? () => goApp({ projectId: activeWritingProject.id }) : undefined}
+          onLaunch={() => openLaunchModal("quick")}
+          className="mb-2 sm:mb-4"
+        />
+
+        <div className="scriptora-os-legacy-hero mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
           <section className="ios-panel overflow-hidden rounded-[28px] border-white/15 bg-slate-950/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-6 md:bg-slate-950/40">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div className="min-w-0">
@@ -1203,34 +1210,30 @@ export default function Home() {
           </div>
         )}
 
-        <section className="mb-10">
-          <div className="mb-5 flex flex-col gap-4 rounded-[28px] border border-white/10 bg-white/[0.035] p-5 shadow-[0_22px_72px_rgba(0,0,0,0.24)] backdrop-blur-2xl sm:flex-row sm:items-end sm:justify-between sm:p-6">
+        <section className="scriptora-os-module mb-10">
+          <div className="scriptora-os-module__header flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("home_screen")}</p>
-              <h2 className="mt-1 text-2xl font-semibold text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.38)]">{t("launchpad")}</h2>
-              <p className="mt-1 max-w-xl text-sm font-medium leading-6 text-white/72">{t("launchpad_desc")}</p>
+              <p className="scriptora-os-module__title">{t("os_capabilities")}</p>
+              <h2 className="scriptora-os-module__name">{t("launchpad")}</h2>
             </div>
-            <span className="hidden text-[11px] text-muted-foreground sm:inline">
+            <span className="text-[11px] text-white/40">
               {tt("total_suffix", { count: projects.length, plan: planLabel })}
             </span>
           </div>
 
-          <div className="space-y-7">
+          <div className="space-y-8">
             {cardGroups.map((group) => {
               const groupCards = cards.filter((card) => card.group === group.id);
               return (
                 <div key={group.id}>
-                  <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/15 pb-2">
+                  <div className="mb-3 flex items-center justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>
-                      <p className="mt-0.5 text-[11px] text-foreground/62">{group.desc}</p>
+                      <h3 className="text-sm font-medium text-white/80">{group.title}</h3>
+                      <p className="mt-0.5 text-[11px] text-white/42">{group.desc}</p>
                     </div>
-                    <span className="text-[10px] font-semibold tabular-nums text-muted-foreground">
-                      {groupCards.length}
-                    </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,280px),380px))]">
+                  <div className="scriptora-os-capabilities">
                     {groupCards.map(card => {
                       const Icon = card.icon;
                       const inner = (
@@ -1238,40 +1241,23 @@ export default function Home() {
                           key={card.title}
                           onClick={card.action}
                           data-guided-tour={(card as { tourTarget?: string }).tourTarget}
-                          className={`group relative flex min-h-[170px] w-full min-w-0 max-w-[380px] flex-col overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/35 p-4 text-left shadow-[0_24px_80px_rgba(0,0,0,0.24)] ring-1 ring-white/[0.03] backdrop-blur-xl transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-safe:hover:-translate-y-1 motion-safe:hover:shadow-[0_26px_88px_rgba(15,23,42,0.30)] ${
-                            (card as any).emphasis ? "sm:col-span-2 lg:col-span-2 lg:max-w-[760px]" : ""
+                          className={`scriptora-os-capability group focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
+                            (card as { emphasis?: boolean }).emphasis ? "scriptora-os-capability--emphasis" : ""
                           }`}
                         >
-                          <span className="pointer-events-none absolute inset-x-4 top-0 h-20 rounded-b-[28px] bg-white/5 blur-2xl opacity-70" />
-                          <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1.5 bg-gradient-to-r from-cyan-300/60 via-sky-400/40 to-violet-400/60 opacity-60 transition-opacity group-hover:opacity-100" />
-
-                          <div className="relative z-10 flex items-start justify-between gap-3">
-                            <span className={`ios-icon ${card.iconBg} flex h-12 w-12 items-center justify-center rounded-[18px] shadow-[0_16px_48px_rgba(0,0,0,0.23)] ring-1 ring-white/10`}>
-                              <Icon className="h-5 w-5" />
+                          <div className="flex items-start justify-between gap-3">
+                            <span className={`ios-icon ${card.iconBg} flex h-10 w-10 shrink-0 items-center justify-center rounded-xl`}>
+                              <Icon className="h-4 w-4" />
                             </span>
-                            {(card as any).tag && (
-                              <span className="rounded-full border border-white/10 bg-white/[0.08] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60 transition-colors group-hover:text-white">
-                                {(card as any).tag}
-                              </span>
+                            {(card as { tag?: string }).tag && (
+                              <span className="scriptora-os-capability__tag">{(card as { tag?: string }).tag}</span>
                             )}
                           </div>
-
-                          <div className="relative z-10 mt-4">
-                            <h3 className="text-[15px] font-semibold leading-6 text-white">{card.title}</h3>
-                            <p className="mt-2 text-[11px] leading-5 text-slate-300">{card.desc}</p>
-                          </div>
-
-                          <div className="relative z-10 mt-auto flex items-center justify-between gap-3">
-                            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 transition-colors group-hover:text-white/75">
-                              {t("open_studio")}
-                            </span>
-                            <span className="inline-flex h-9 min-w-[36px] items-center justify-center rounded-full bg-white/10 px-3 text-xs font-semibold text-white/85 shadow-[0_10px_30px_rgba(0,0,0,0.18)] transition-colors group-hover:bg-white/20">
-                              <ArrowRight className="h-3.5 w-3.5" />
-                            </span>
-                          </div>
+                          <h3 className="scriptora-os-capability__title">{card.title}</h3>
+                          <p className="scriptora-os-capability__desc">{card.desc}</p>
                         </button>
                       );
-                      return (card as any).feature
+                      return (card as { feature?: string }).feature
                         ? <PaywallGuard key={card.title} feature={(card as any).feature} compact>{inner}</PaywallGuard>
                         : <div key={card.title}>{inner}</div>;
                     })}

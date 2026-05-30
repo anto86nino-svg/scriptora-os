@@ -544,7 +544,7 @@ const Index = () => {
   if (focusMode && effectiveProject) {
     return (
       <>
-      <div className="scriptora-ios-screen scriptora-immersive-editor scriptora-focus-active flex h-safe-screen min-h-[100dvh] flex-col pb-safe">
+      <div className="scriptora-ios-screen scriptora-immersive-editor scriptora-os-editor scriptora-focus-active flex h-safe-screen min-h-[100dvh] flex-col pb-safe">
         <div className="ios-glass-soft flex h-12 shrink-0 items-center justify-between px-4 pt-safe">
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">{t("focus_mode")}</span>
@@ -599,7 +599,7 @@ const Index = () => {
   }
 
   return (
-    <div className={`scriptora-ios-screen scriptora-immersive-editor relative flex h-safe-screen min-h-[100dvh] max-w-full overflow-x-hidden overflow-hidden pb-safe${focusMode ? " scriptora-focus-active" : ""}`}>
+    <div className={`scriptora-ios-screen scriptora-immersive-editor scriptora-os-editor relative flex h-safe-screen min-h-[100dvh] max-w-full overflow-x-hidden overflow-hidden pb-safe${focusMode ? " scriptora-focus-active" : ""}`}>
       {/* Floating sidebar toggle — mobile only; desktop keeps chapter index visible */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
