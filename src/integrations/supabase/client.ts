@@ -28,7 +28,7 @@ export function readSupabaseEnv() {
   const anonKey = trimEnv(import.meta.env.VITE_SUPABASE_ANON_KEY);
   const key = publishableKey || anonKey;
   const edgeAuthKey = [anonKey, publishableKey, key].find(isJwtKey) || "";
-  return { url, key, edgeAuthKey };
+  return { url, key, edgeAuthKey, publishableKey, anonKey };
 }
 
 export function isSupabaseConfigured(): boolean {

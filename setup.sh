@@ -90,7 +90,8 @@ green "✓ ${MIG_COUNT} migration(s)  •  ${FUNC_COUNT} edge function(s)"
 # ─── 1. .env.local (never .env.production) ───────────────────
 hr; bold "▶ [1/14] Configurazione .env.local"
 ENV_FILE=".env.local"
-[[ -f "$ENV_FILE" ]] && cp "$ENV_FILE" "${ENV_FILE}.bak.${TS}" && green "  backup → ${ENV_FILE}.bak.${TS}"
+[[ -f .env ]] && node scripts/scriptora-backup-env.mjs 2>/dev/null || true
+[[ -f "$ENV_FILE" ]] && node scripts/scriptora-backup-env.mjs 2>/dev/null || true
 
 EXISTING_KEY=""
 EXISTING_ANON=""

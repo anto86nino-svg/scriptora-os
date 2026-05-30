@@ -31,4 +31,6 @@ dist-ssr
 .env.production
 .env.vercel
 .env.bak.*
+.env.backup.*
+.env.local.backup.*
 !.env.example

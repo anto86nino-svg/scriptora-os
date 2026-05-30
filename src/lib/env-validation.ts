@@ -6,7 +6,9 @@ export type EnvValidationIssueCode =
   | "missing_key"
   | "placeholder_key"
   | "invalid_key_format"
-  | "missing_anon_jwt";
+  | "missing_anon_jwt"
+  | "corrupted_env_value"
+  | "safe_mode_blocked";
 
 export interface EnvValidationIssue {
   code: EnvValidationIssueCode;
@@ -19,7 +21,56 @@ export interface EnvValidationResult {
   issues: EnvValidationIssue[];
 }
 
+export interface EnvValidationResult {
+  ok: boolean;
+  safeMode: boolean;
+  issues: EnvValidationIssue[];
+}
+
+const SUSPICIOUS_ENV_PATTERN = /INSERIRE|YOUR_|REPLACE|TODO|\$KEY|^cd ~\/|^undefined$|^null$/i;
+
+function isSuspiciousEnvValue(value: string): boolean {
+  const v = String(value || "").trim();
+  if (!v) return false;
+  return SUSPICIOUS_ENV_PATTERN.test(v);
+}
+
+export function detectEnvCorruption(): EnvValidationIssue[] {
+  const { url, publishableKey, anonKey, key } = readSupabaseEnv();
+  const issues: EnvValidationIssue[] = [];
+
+  for (const [label, value] of [
+    ["VITE_SUPABASE_URL", url],
+    ["VITE_SUPABASE_PUBLISHABLE_KEY", publishableKey],
+    ["VITE_SUPABASE_ANON_KEY", anonKey],
+    ["browser key", key],
+  ] as const) {
+    if (value && isSuspiciousEnvValue(value)) {
+      issues.push({
+        code: "corrupted_env_value",
+        message: `Invalid ${label} detected (corrupted or placeholder value).`,
+        hint: "Check .env.local — it may be overriding working credentials. Run: npm run scriptora:repair",
+      });
+    }
+  }
+
+  if (issues.length > 0) {
+    issues.push({
+      code: "safe_mode_blocked",
+      message: ".env.local may be overriding working credentials.",
+      hint: "Run: npm run scriptora:doctor && npm run scriptora:repair",
+    });
+  }
+
+  return issues;
+}
+
 export function validateSupabaseEnv(): EnvValidationResult {
+  const corruption = detectEnvCorruption();
+  if (corruption.length > 0) {
+    return { ok: false, safeMode: true, issues: corruption };
+  }
+
   const { url, key } = readSupabaseEnv();
   const issues: EnvValidationIssue[] = [];
 
@@ -61,6 +112,7 @@ export function validateSupabaseEnv(): EnvValidationResult {
 
   return {
     ok: issues.length === 0 && isSupabaseConfigured(),
+    safeMode: false,
     issues,
   };
 }

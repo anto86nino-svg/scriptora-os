@@ -5,7 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/check-env-files.mjs && vite build",
+    "build": "node scripts/scriptora-validate-build.mjs && vite build",
+    "scriptora:doctor": "node scripts/scriptora-doctor.mjs",
+    "scriptora:doctor:smoke": "node scripts/scriptora-doctor.mjs --smoke",
+    "scriptora:health": "node scripts/scriptora-health.mjs",
+    "scriptora:repair": "node scripts/scriptora-repair.mjs",
+    "scriptora:backup-env": "node scripts/scriptora-backup-env.mjs",
     "build:analyze": "ANALYZE=true vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
