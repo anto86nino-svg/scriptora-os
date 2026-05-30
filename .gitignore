@@ -34,3 +34,6 @@ dist-ssr
 .env.backup.*
 .env.local.backup.*
 !.env.example
+
+# Token economy audit output (may contain production user_ids)
+reports/token-economy-*
