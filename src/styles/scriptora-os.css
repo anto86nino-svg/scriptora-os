@@ -709,3 +709,12 @@ a,
     overflow-x: hidden;
   }
 }
+
+.scriptora-requirement-card {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.scriptora-requirement-card button {
+  touch-action: manipulation;
+}

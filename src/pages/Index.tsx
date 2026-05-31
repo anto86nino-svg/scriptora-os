@@ -28,6 +28,16 @@ import { MobileWriterToolsSheet } from "@/components/mobile/MobileWriterToolsShe
 import { useQuota, usePlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { isProjectComplete } from "@/lib/project-status";
+import { useRequirementGate } from "@/hooks/useRequirementGate";
+import {
+  buildRequirement,
+  firstIncompleteChapterIndex,
+  summarizeEpubValidationErrors,
+  getExportAuthorGap,
+  applyActiveAuthorIdentityToProject,
+  openAuthorIdentitySetup,
+} from "@/lib/scriptora-requirement-gate";
+import { MissingRequirementCard } from "@/components/MissingRequirementCard";
 
 const NewBookDialog = lazy(() => import("@/components/NewBookDialog").then((m) => ({ default: m.NewBookDialog })));
 const CoverGenerator = lazy(() => import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })));
@@ -93,6 +103,7 @@ const Index = () => {
   const lastPersistedRecoveredProjectId = useRef<string | null>(recoveredProject?.id ?? null);
   const lastPersistedRecoveredProjectUpdatedAt = useRef<string | null>(recoveredProject?.updatedAt ?? null);
   const recoverProjectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingExportProjectRef = useRef<BookProject | null>(null);
   const [writingSettings, setWritingSettings] = useState<WritingSettings>(loadSettings());
   const [upgradeReason, setUpgradeReason] = useState<null | "export" | "token-limit" | "dominate" | "books-limit">(null);
   const { syncStatus, markSaving, markSaved, markPending, markOffline } = useSyncStatus();
@@ -111,6 +122,7 @@ const Index = () => {
   });
   const { quota } = useQuota(engine.project?.id || null);
   const { plan } = usePlan();
+  const { showRequirement, requirementDialog } = useRequirementGate();
   const freeBookUsed = plan === "free" && projects.length > 0;
 
   const openNewBookGuarded = () => {
@@ -268,10 +280,37 @@ const Index = () => {
     if (quota?.isOverTokenLimit) { setUpgradeReason("token-limit"); return; }
     engine.generateFullBook((section) => setActiveSection(section as SectionId));
   };
-  const runExport = (format: ExportFormat, coverOverride?: string) => {
-    if (format === "epub") void handleExport(coverOverride);
-    if (format === "docx") void handleExportDocx();
-    if (format === "pdf") void handleExportPdf();
+  const runExport = (format: ExportFormat, coverOverride?: string, projectOverride?: BookProject) => {
+    const project = projectOverride ?? pendingExportProjectRef.current ?? effectiveProject ?? undefined;
+    if (format === "epub") void handleExport(coverOverride, project);
+    if (format === "docx") void handleExportDocx(project);
+    if (format === "pdf") void handleExportPdf(project);
+  };
+
+  const continueExportFlow = (format: ExportFormat, project: BookProject) => {
+    pendingExportProjectRef.current = project;
+    if (!coverDataUrl) {
+      setPendingExportFormat(format);
+      setCoverGateOpen(true);
+      return;
+    }
+    runExport(format, undefined, project);
+  };
+
+  const promptAuthorIdentityIfNeeded = (
+    project: BookProject,
+    format: ExportFormat,
+  ) => {
+    const gap = getExportAuthorGap(project);
+    if (!gap.needsIdentityPrompt) {
+      continueExportFlow(format, project);
+      return;
+    }
+    showRequirement("missing_author_identity", {
+      vars: { name: gap.activePenName },
+      onPrimary: () => openAuthorIdentitySetup(),
+      onSecondary: () => continueExportFlow(format, applyActiveAuthorIdentityToProject(project)),
+    });
   };
 
   const requestExport = (format: ExportFormat) => {
@@ -279,17 +318,18 @@ const Index = () => {
       setUpgradeReason("export");
       return;
     }
-    if (!effectiveProject) return;
+    if (!effectiveProject) {
+      showRequirement("missing_project");
+      return;
+    }
     if (!isProjectComplete(effectiveProject)) {
-      toast.error("Completa tutto il libro prima di esportare.");
+      const chapterIdx = firstIncompleteChapterIndex(effectiveProject);
+      showRequirement("incomplete_book", {
+        onPrimary: () => setActiveSection(`chapter-${chapterIdx}` as SectionId),
+      });
       return;
     }
-    if (!coverDataUrl) {
-      setPendingExportFormat(format);
-      setCoverGateOpen(true);
-      return;
-    }
-    runExport(format);
+    promptAuthorIdentityIfNeeded(effectiveProject, format);
   };
 
   const guardedExportEpub = () => requestExport("epub");
@@ -426,62 +466,74 @@ const Index = () => {
     setShowNewBook(false);
   };
 
-  const handleExport = async (coverOverride?: string) => {
-    if (!effectiveProject) return;
+  const handleExport = async (coverOverride?: string, projectOverride?: BookProject) => {
+    const project = projectOverride ?? effectiveProject;
+    if (!project) {
+      showRequirement("missing_project");
+      return;
+    }
     const { generateEpub, downloadEpub, validateEpubStructure } = await import("@/lib/epub");
-    const errors = validateEpubStructure(effectiveProject);
+    const errors = validateEpubStructure(project);
     if (errors.length > 0) {
-      alert(`${t("export_blocked_epub")}:\n\n${errors.join("\n")}`);
+      showRequirement("epub_not_ready", {
+        detail: summarizeEpubValidationErrors(errors),
+        onPrimary: () => {
+          const chapterIdx = firstIncompleteChapterIndex(project);
+          setActiveSection(`chapter-${chapterIdx}` as SectionId);
+        },
+      });
       return;
     }
     setIsExporting(true);
     setExportLabel(t("exporting_epub"));
     try {
-      const blob = await generateEpub(effectiveProject, coverOverride ?? coverDataUrl);
-      const filename = effectiveProject.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
+      const blob = await generateEpub(project, coverOverride ?? coverDataUrl);
+      const filename = project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadEpub(blob, filename);
       toast.success(t("export_success_epub"));
     } catch (e) {
       console.error("EPUB export failed:", e);
-      toast.error(e instanceof Error ? e.message : t("export_failed"));
+      showRequirement("export_failed");
     } finally {
       setIsExporting(false);
       setExportLabel("");
     }
   };
 
-  const handleExportDocx = async () => {
-    if (!effectiveProject) return;
+  const handleExportDocx = async (projectOverride?: BookProject) => {
+    const project = projectOverride ?? effectiveProject;
+    if (!project) return;
     setIsExporting(true);
     setExportLabel(t("preparing_docx"));
     try {
       const { generateDocx, downloadDocx } = await import("@/lib/docx-export");
-      const blob = await generateDocx(effectiveProject);
-      const filename = effectiveProject.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
+      const blob = await generateDocx(project);
+      const filename = project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadDocx(blob, filename);
       toast.success(t("export_success_docx"));
     } catch (e) {
       console.error("DOCX export failed:", e);
-      toast.error(e instanceof Error ? e.message : t("export_failed"));
+      showRequirement("export_failed");
     } finally {
       setIsExporting(false);
       setExportLabel("");
     }
   };
 
-  const handleExportPdf = async () => {
-    if (!effectiveProject) return;
+  const handleExportPdf = async (projectOverride?: BookProject) => {
+    const project = projectOverride ?? effectiveProject;
+    if (!project) return;
     setIsExporting(true);
     setExportLabel(t("formatting_pdf"));
     try {
       const { generatePdf, downloadPdf } = await import("@/lib/pdf-export");
-      const blob = await generatePdf(effectiveProject);
-      const filename = effectiveProject.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
+      const blob = await generatePdf(project);
+      const filename = project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadPdf(blob, filename);
       toast.success(t("export_success_pdf"));
     } catch (e) {
       console.error("PDF export failed:", e);
-      toast.error(e instanceof Error ? e.message : t("export_failed"));
+      showRequirement("export_failed");
     } finally {
       setIsExporting(false);
       setExportLabel("");
@@ -568,6 +620,7 @@ const Index = () => {
         currentPlan={quota?.plan || "free"}
         onClose={() => setUpgradeReason(null)}
       />
+      {requirementDialog}
     </>
   );
 
@@ -897,33 +950,13 @@ const Index = () => {
               )}
             </>
           ) : (
-            <div className="flex flex-1 items-center justify-center px-4">
-              <div className="ios-panel w-full max-w-md space-y-4 p-6 text-center">
-                <span className="ios-icon ios-icon-blue mx-auto h-16 w-16">
-                  <BookOpen className="h-7 w-7" />
-                </span>
-                <div className="space-y-1">
-                  <p className="text-base font-semibold text-foreground">Scriptora</p>
-                  <p className="text-sm text-muted-foreground">{t("no_project")}</p>
-                </div>
-
-                <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-                  <button
-                    onClick={openNewBookGuarded}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-100"
-                  >
-                    <Plus className="h-4 w-4" />
-                    {t("new_book")}
-                  </button>
-                  <Link
-                    to="/dashboard"
-                    className="ios-toolbar-button h-10 px-4 text-sm font-medium"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    {t("back_to_dashboard")}
-                  </Link>
-                </div>
-
+            <div className="flex flex-1 items-center justify-center px-4 py-6">
+              <div className="ios-panel w-full max-w-md space-y-4 p-4 sm:p-6">
+                <MissingRequirementCard
+                  payload={buildRequirement("missing_project")}
+                  onPrimary={openNewBookGuarded}
+                  onSecondary={() => navigate("/dashboard")}
+                />
                 {projects.length > 0 && (
                   <div className="ios-glass-soft rounded-lg p-3 text-left">
                     <p className="mb-2 text-[11px] font-semibold uppercase text-muted-foreground">

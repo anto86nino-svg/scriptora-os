@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { BookProject } from "@/types/book";
 import { RefreshCw, ChevronRight, Sparkles, Loader2, Download, Image, Plus, Lock } from "lucide-react";
 import { generateEpub, downloadEpub, validateEpubStructure } from "@/lib/epub";
@@ -10,6 +10,8 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { toast } from "sonner";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { resolveOutlineSummaryForDisplay } from "@/lib/generation-experience";
+import { useRequirementGate } from "@/hooks/useRequirementGate";
+import { summarizeEpubValidationErrors, getExportAuthorGap, applyActiveAuthorIdentityToProject, openAuthorIdentitySetup } from "@/lib/scriptora-requirement-gate";
 
 interface BookPreviewProps {
   project: BookProject;
@@ -32,36 +34,62 @@ export function BookPreview({
   const [coverDataUrl, setCoverDataUrl] = useState<string | undefined>();
   const [coverGateOpen, setCoverGateOpen] = useState(false);
   const [exportAfterCover, setExportAfterCover] = useState(false);
+  const pendingExportProjectRef = useRef<BookProject | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const { plan } = usePlan();
+  const { showRequirement, requirementDialog } = useRequirementGate();
   // Honour dev-mode plan override: Free does NOT export, Beta/Pro/Premium do.
   const canExport = PLAN_LIMITS[plan].canExport;
 
-  const performExportEpub = async (coverOverride?: string) => {
+  const performExportEpub = async (coverOverride?: string, projectOverride?: BookProject) => {
+    const exportProject = projectOverride ?? project;
     if (!canExport) {
       setShowUpgrade(true);
       return;
     }
     // Run validation first
-    const errors = validateEpubStructure(project);
+    const errors = validateEpubStructure(exportProject);
     if (errors.length > 0) {
       console.error("EPUB validation failed:", errors);
-      alert(`EPUB export blocked — validation errors:\n\n${errors.join("\n")}`);
+      showRequirement("epub_not_ready", { detail: summarizeEpubValidationErrors(errors) });
       return;
     }
 
     setIsExporting(true);
     try {
-      const blob = await generateEpub(project, coverOverride ?? coverDataUrl);
-      const filename = config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
+      const blob = await generateEpub(exportProject, coverOverride ?? coverDataUrl);
+      const filename = exportProject.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadEpub(blob, filename);
       toast.success("EPUB esportato con successo");
     } catch (e) {
       console.error("EPUB export failed:", e);
-      toast.error(e instanceof Error ? e.message : "Esportazione EPUB fallita");
+      showRequirement("export_failed");
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const continueExportFlow = (prepared: BookProject) => {
+    pendingExportProjectRef.current = prepared;
+    if (phase === "complete" && !coverDataUrl) {
+      setExportAfterCover(true);
+      setCoverGateOpen(true);
+      return;
+    }
+    void performExportEpub(undefined, prepared);
+  };
+
+  const promptAuthorIdentityIfNeeded = (next: (prepared: BookProject) => void) => {
+    const gap = getExportAuthorGap(project);
+    if (!gap.needsIdentityPrompt) {
+      next(project);
+      return;
+    }
+    showRequirement("missing_author_identity", {
+      vars: { name: gap.activePenName },
+      onPrimary: () => openAuthorIdentitySetup(),
+      onSecondary: () => next(applyActiveAuthorIdentityToProject(project)),
+    });
   };
 
   const handleExportEpub = async () => {
@@ -70,14 +98,10 @@ export function BookPreview({
       return;
     }
     if (phase !== "complete") {
-      alert("Completa tutto il libro prima di esportare.");
+      showRequirement("incomplete_book");
       return;
     }
-    if (phase === "complete" && !coverDataUrl) {
-      setCoverGateOpen(true);
-      return;
-    }
-    await performExportEpub();
+    promptAuthorIdentityIfNeeded(continueExportFlow);
   };
 
   const isChapterGenerated = (i: number) => chapters[i] && chapters[i].content.length > 0;
@@ -318,7 +342,7 @@ export function BookPreview({
             setShowCover(false);
             if (exportAfterCover) {
               setExportAfterCover(false);
-              void performExportEpub(dataUrl);
+              void performExportEpub(dataUrl, pendingExportProjectRef.current ?? undefined);
             }
           }}
           onClose={() => {
@@ -337,11 +361,12 @@ export function BookPreview({
         }}
         onShipWithoutCover={() => {
           setCoverGateOpen(false);
-          void performExportEpub();
+          void performExportEpub(undefined, pendingExportProjectRef.current ?? undefined);
         }}
         onClose={() => setCoverGateOpen(false)}
       />
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} reason="export" currentPlan={plan} />
+      {requirementDialog}
     </div>
   );
 }

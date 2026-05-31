@@ -7,6 +7,7 @@ import {
 import { toast } from "sonner";
 import { usePlan } from "@/lib/plan";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import { useRequirementGate } from "@/hooks/useRequirementGate";
 
 interface PublishPanelProps {
   project: BookProject | null;
@@ -47,6 +48,7 @@ export function PublishPanel({
   onExportEpub, onExportPdf, onExportDocx
 }: PublishPanelProps) {
   const { plan } = usePlan();
+  const { showRequirement, requirementDialog } = useRequirementGate();
   const isFreePlan = plan === "free";
   // Session-local: each Publish open starts fresh, ignoring previous projects
   const [sessionStarted, setSessionStarted] = useState(false);
@@ -78,7 +80,7 @@ export function PublishPanel({
 
   const handleStartFresh = () => {
     if (!draftConfig.title.trim()) {
-      toast.error("Inserisci almeno il titolo del libro");
+      showRequirement("missing_book_title");
       return;
     }
     onStartFresh(draftConfig);
@@ -89,6 +91,7 @@ export function PublishPanel({
   // ───── BLANK START SCREEN ─────
   if (!sessionStarted || !project) {
     return (
+      <>
       <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 pb-safe pt-safe">
         <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-xl max-h-[92vh] flex flex-col">
           <div className="px-5 py-4 border-b border-border shrink-0 flex items-center justify-between">
@@ -245,6 +248,8 @@ export function PublishPanel({
           </div>
         </div>
       </div>
+      {requirementDialog}
+      </>
     );
   }
 
@@ -287,6 +292,7 @@ export function PublishPanel({
   const bookComplete = project.phase === "complete";
 
   return (
+    <>
     <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 pb-safe pt-safe">
       <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
         <div className="px-5 py-4 border-b border-border shrink-0 space-y-3">
@@ -533,6 +539,8 @@ export function PublishPanel({
         </div>
       </div>
     </div>
+    {requirementDialog}
+    </>
   );
 }
 

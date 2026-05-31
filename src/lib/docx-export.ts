@@ -1,5 +1,7 @@
-import { normalizeExportProject, exportLabel, cleanExportText, parseExportBlocks, cleanMarkdownInline } from "@/lib/export-cleanup";
+import { prepareExportProject } from "@/lib/export-quality-engine";
+import { exportLabel, cleanExportText, parseExportBlocks, cleanMarkdownInline } from "@/lib/export-cleanup";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import { DOCX_EXPORT_PRESETS, defaultDocxPreset, type DocxExportPreset, type DocxLayoutPreset } from "@/lib/export-presets";
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel,
   AlignmentType, PageBreak, Header, Footer, PageNumber,
@@ -18,7 +20,7 @@ function cleanMarkdown(text: string): string {
   return cleanMarkdownInline(text);
 }
 
-function bodyParagraphs(text: string, opts?: { firstNoIndent?: boolean; dropCap?: boolean }): Paragraph[] {
+function bodyParagraphs(text: string, layout: DocxLayoutPreset, opts?: { firstNoIndent?: boolean; dropCap?: boolean }): Paragraph[] {
   const blocks = parseExportBlocks(safeText(text));
   if (blocks.length === 0) return [];
 
@@ -27,7 +29,7 @@ function bodyParagraphs(text: string, opts?: { firstNoIndent?: boolean; dropCap?
 
   for (const block of blocks) {
     if (block.type === "heading2") {
-      out.push(sectionH2(block.text));
+      out.push(sectionH2(block.text, layout));
       firstTextParagraph = true;
       continue;
     }
@@ -36,7 +38,7 @@ function bodyParagraphs(text: string, opts?: { firstNoIndent?: boolean; dropCap?
       out.push(new Paragraph({
         alignment: AlignmentType.LEFT,
         spacing: { before: 360, after: 160 },
-        children: [new TextRun({ text: cleanMarkdown(block.text), font: "Garamond", size: 24, bold: true, italics: true })],
+        children: [new TextRun({ text: cleanMarkdown(block.text), font: layout.font, size: 24, bold: true, italics: true })],
       }));
       firstTextParagraph = true;
       continue;
@@ -46,7 +48,7 @@ function bodyParagraphs(text: string, opts?: { firstNoIndent?: boolean; dropCap?
       out.push(new Paragraph({
         alignment: AlignmentType.CENTER,
         spacing: { before: 240, after: 240 },
-        children: [new TextRun({ text: "✦  ✦  ✦", font: "Garamond", size: 22 })],
+        children: [new TextRun({ text: "✦  ✦  ✦", font: layout.font, size: 22 })],
       }));
       firstTextParagraph = true;
       continue;
@@ -59,8 +61,8 @@ function bodyParagraphs(text: string, opts?: { firstNoIndent?: boolean; dropCap?
           spacing: { after: 90, line: 300 },
           indent: { left: 360, hanging: 220 },
           children: [
-            new TextRun({ text: block.type === "bullet" ? "• " : `${idx + 1}. `, font: "Garamond", size: 22, bold: true }),
-            new TextRun({ text: item, font: "Garamond", size: 22 }),
+            new TextRun({ text: block.type === "bullet" ? "• " : `${idx + 1}. `, font: layout.font, size: layout.bodySize, bold: true }),
+            new TextRun({ text: item, font: layout.font, size: layout.bodySize }),
           ],
         }));
       });
@@ -71,15 +73,15 @@ function bodyParagraphs(text: string, opts?: { firstNoIndent?: boolean; dropCap?
     const blockText = cleanMarkdown(block.text);
     if (!blockText) continue;
 
-    if (opts?.dropCap && firstTextParagraph && blockText.length > 3) {
+    if (layout.useDropCap && opts?.dropCap && firstTextParagraph && blockText.length > 3) {
       const firstChar = blockText.charAt(0);
       const rest = blockText.slice(1);
       out.push(new Paragraph({
         alignment: AlignmentType.JUSTIFIED,
         spacing: { after: 160, line: 320 },
         children: [
-          new TextRun({ text: firstChar, font: "Garamond", size: 56, bold: true }),
-          new TextRun({ text: rest, font: "Garamond", size: 22 }),
+          new TextRun({ text: firstChar, font: layout.font, size: layout.bodySize + 34, bold: true }),
+          new TextRun({ text: rest, font: layout.font, size: layout.bodySize }),
         ],
       }));
     } else {
@@ -88,7 +90,7 @@ function bodyParagraphs(text: string, opts?: { firstNoIndent?: boolean; dropCap?
         alignment: AlignmentType.JUSTIFIED,
         spacing: { after: 120, line: 320 },
         indent: noIndent ? undefined : { firstLine: 360 },
-        children: [new TextRun({ text: blockText, font: "Garamond", size: 22 })],
+        children: [new TextRun({ text: blockText, font: layout.font, size: layout.bodySize })],
       }));
     }
 
@@ -98,52 +100,56 @@ function bodyParagraphs(text: string, opts?: { firstNoIndent?: boolean; dropCap?
   return out;
 }
 
-function chapterOpener(num: number, title: string): Paragraph[] {
-  return [
-    // Extra space at top
+function chapterOpener(num: number, title: string, layout: DocxLayoutPreset, language?: string): Paragraph[] {
+  const paragraphs: Paragraph[] = [
     new Paragraph({ spacing: { before: 1800 }, children: [] }),
-    // "Chapter X" small label
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 240 },
-      children: [new TextRun({ text: `${exportLabel("chapter", config.language)} ${num}`, font: "Garamond", size: 22, italics: true, color: "666666" })],
+      children: [new TextRun({ text: `${exportLabel("chapter", language)} ${num}`, font: layout.font, size: layout.bodySize, italics: true, color: "666666" })],
     }),
-    // Big title
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       alignment: AlignmentType.CENTER,
       spacing: { before: 0, after: 360 },
-      children: [new TextRun({ text: cleanMarkdown(title), font: "Garamond", size: 40, bold: true })],
-    }),
-    // Ornament
-    new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 480 },
-      children: [new TextRun({ text: "✦  ✦  ✦", font: "Garamond", size: 22 })],
+      children: [new TextRun({ text: cleanMarkdown(title), font: layout.font, size: layout.bodySize + 18, bold: true })],
     }),
   ];
+  if (layout.useOrnament) {
+    paragraphs.push(new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 480 },
+      children: [new TextRun({ text: "✦  ✦  ✦", font: layout.font, size: layout.bodySize })],
+    }));
+  }
+  return paragraphs;
 }
 
-function sectionH1(text: string): Paragraph {
+function sectionH1(text: string, layout: DocxLayoutPreset): Paragraph {
   return new Paragraph({
     heading: HeadingLevel.HEADING_1,
     alignment: AlignmentType.CENTER,
     spacing: { before: 1440, after: 480 },
-    children: [new TextRun({ text: cleanMarkdown(text), font: "Garamond", size: 36, bold: true })],
+    children: [new TextRun({ text: cleanMarkdown(text), font: layout.font, size: layout.bodySize + 14, bold: true })],
   });
 }
 
-function sectionH2(text: string): Paragraph {
+function sectionH2(text: string, layout: DocxLayoutPreset): Paragraph {
   return new Paragraph({
     heading: HeadingLevel.HEADING_2,
     alignment: AlignmentType.LEFT,
     spacing: { before: 480, after: 240 },
-    children: [new TextRun({ text: cleanMarkdown(text), font: "Garamond", size: 28, bold: true })],
+    children: [new TextRun({ text: cleanMarkdown(text), font: layout.font, size: layout.bodySize + 6, bold: true })],
   });
 }
 
-export async function generateDocx(project: BookProject): Promise<Blob> {
-  const normalizedProject = normalizeExportProject(project);
+export interface DocxExportOptions {
+  preset?: DocxExportPreset;
+}
+
+export async function generateDocx(project: BookProject, options?: DocxExportOptions): Promise<Blob> {
+  const layout = DOCX_EXPORT_PRESETS[options?.preset || defaultDocxPreset()];
+  const normalizedProject = prepareExportProject(project);
   const { config, frontMatter, chapters, backMatter } = normalizedProject;
   const author = (config.authorName || config.author || config.writerName || "Antonino Campanella").trim();
   const bookTitle = config.title || "Untitled";
@@ -154,7 +160,7 @@ export async function generateDocx(project: BookProject): Promise<Blob> {
   children.push(new Paragraph({ spacing: { before: 4500 }, children: [] }));
   children.push(new Paragraph({
     alignment: AlignmentType.CENTER,
-    children: [new TextRun({ text: bookTitle, font: "Garamond", size: 36, italics: true })],
+    children: [new TextRun({ text: bookTitle, font: layout.font, size: layout.bodySize + 14, italics: true })],
   }));
   children.push(new Paragraph({ children: [new PageBreak()] }));
 
@@ -163,19 +169,19 @@ export async function generateDocx(project: BookProject): Promise<Blob> {
   children.push(new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { after: 240 },
-    children: [new TextRun({ text: bookTitle, font: "Garamond", size: 56, bold: true })],
+    children: [new TextRun({ text: bookTitle, font: layout.font, size: layout.bodySize + 34, bold: true })],
   }));
   if (config.subtitle) {
     children.push(new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 480 },
-      children: [new TextRun({ text: config.subtitle, font: "Garamond", size: 28, italics: true })],
+      children: [new TextRun({ text: config.subtitle, font: layout.font, size: layout.bodySize + 6, italics: true })],
     }));
   }
   children.push(new Paragraph({ spacing: { before: 2400 }, children: [] }));
   children.push(new Paragraph({
     alignment: AlignmentType.CENTER,
-    children: [new TextRun({ text: author, font: "Garamond", size: 26 })],
+    children: [new TextRun({ text: author, font: layout.font, size: layout.bodySize + 4 })],
   }));
   children.push(new Paragraph({ children: [new PageBreak()] }));
 
@@ -191,14 +197,14 @@ export async function generateDocx(project: BookProject): Promise<Blob> {
     for (const [title, content] of fmSections) {
       const txt = safeText(content);
       if (!txt) continue;
-      children.push(sectionH1(title));
-      children.push(...bodyParagraphs(txt, { firstNoIndent: true }));
+      children.push(sectionH1(title, layout));
+      children.push(...bodyParagraphs(txt, layout, { firstNoIndent: true }));
       children.push(new Paragraph({ children: [new PageBreak()] }));
     }
   }
 
   // ===== TABLE OF CONTENTS =====
-  children.push(sectionH1(exportLabel("contents", config.language)));
+  children.push(sectionH1(exportLabel("contents", config.language), layout));
   for (let i = 0; i < chapters.length; i++) {
     const ch = chapters[i];
     if (!ch) continue;
@@ -212,7 +218,7 @@ export async function generateDocx(project: BookProject): Promise<Blob> {
         spacing: { after: 120 },
         tabStops: [{ type: TabStopType.RIGHT, position: TabStopPosition.MAX }],
         children: [
-        new TextRun({ text: `${num}.   ${cleanMarkdown(title)}`, font: "Garamond", size: 22 }),
+        new TextRun({ text: `${num}.   ${cleanMarkdown(title)}`, font: layout.font, size: layout.bodySize }),
       ],
     }));
   }
@@ -223,14 +229,14 @@ export async function generateDocx(project: BookProject): Promise<Blob> {
     const ch = chapters[i];
     if (!ch || (!ch.content && (!ch.subchapters || ch.subchapters.length === 0))) continue;
 
-    children.push(...chapterOpener(i + 1, ch.title));
-    children.push(...bodyParagraphs(ch.content, { dropCap: true, firstNoIndent: true }));
+    children.push(...chapterOpener(i + 1, ch.title, layout, config.language));
+    children.push(...bodyParagraphs(ch.content, layout, { dropCap: layout.useDropCap, firstNoIndent: true }));
 
     if (ch.subchapters) {
       for (const sub of ch.subchapters) {
         if (!sub.content) continue;
-        children.push(sectionH2(sub.title));
-        children.push(...bodyParagraphs(sub.content, { firstNoIndent: true }));
+        children.push(sectionH2(sub.title, layout));
+        children.push(...bodyParagraphs(sub.content, layout, { firstNoIndent: true }));
       }
     }
     children.push(new Paragraph({ children: [new PageBreak()] }));
@@ -249,8 +255,8 @@ export async function generateDocx(project: BookProject): Promise<Blob> {
     for (const [title, content] of bmSections) {
       const txt = safeText(content);
       if (!txt) continue;
-      children.push(sectionH1(title));
-      children.push(...bodyParagraphs(txt, { firstNoIndent: true }));
+      children.push(sectionH1(title, layout));
+      children.push(...bodyParagraphs(txt, layout, { firstNoIndent: true }));
       children.push(new Paragraph({ children: [new PageBreak()] }));
     }
   }
@@ -260,26 +266,26 @@ export async function generateDocx(project: BookProject): Promise<Blob> {
     children: [new Paragraph({
       alignment: AlignmentType.LEFT,
       border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "999999", space: 4 } },
-      children: [new TextRun({ text: author.toUpperCase(), font: "Garamond", size: 18, italics: true, color: "666666" })],
+      children: [new TextRun({ text: author.toUpperCase(), font: layout.font, size: 18, italics: true, color: "666666" })],
     })],
   });
   const oddHeader = new Header({
     children: [new Paragraph({
       alignment: AlignmentType.RIGHT,
       border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: "999999", space: 4 } },
-      children: [new TextRun({ text: bookTitle.toUpperCase(), font: "Garamond", size: 18, italics: true, color: "666666" })],
+      children: [new TextRun({ text: bookTitle.toUpperCase(), font: layout.font, size: 18, italics: true, color: "666666" })],
     })],
   });
   const evenFooter = new Footer({
     children: [new Paragraph({
       alignment: AlignmentType.LEFT,
-      children: [new TextRun({ children: [PageNumber.CURRENT], font: "Garamond", size: 20 })],
+      children: [new TextRun({ children: [PageNumber.CURRENT], font: layout.font, size: 20 })],
     })],
   });
   const oddFooter = new Footer({
     children: [new Paragraph({
       alignment: AlignmentType.RIGHT,
-      children: [new TextRun({ children: [PageNumber.CURRENT], font: "Garamond", size: 20 })],
+      children: [new TextRun({ children: [PageNumber.CURRENT], font: layout.font, size: 20 })],
     })],
   });
 
@@ -288,22 +294,28 @@ export async function generateDocx(project: BookProject): Promise<Blob> {
     title: bookTitle,
     description: config.subtitle || "",
     styles: {
-      default: { document: { run: { font: "Garamond", size: 22 } } },
+      default: { document: { run: { font: layout.font, size: layout.bodySize } } },
       paragraphStyles: [
         { id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true,
-          run: { size: 36, bold: true, font: "Garamond" },
+          run: { size: layout.bodySize + 14, bold: true, font: layout.font },
           paragraph: { spacing: { before: 480, after: 240 }, outlineLevel: 0 } },
         { id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true,
-          run: { size: 28, bold: true, font: "Garamond" },
+          run: { size: layout.bodySize + 6, bold: true, font: layout.font },
           paragraph: { spacing: { before: 360, after: 180 }, outlineLevel: 1 } },
       ],
     },
     sections: [{
       properties: {
         page: {
-          // 6×9 in DXA: 6*1440=8640, 9*1440=12960
-          size: { width: 8640, height: 12960 },
-          margin: { top: 1080, right: 900, bottom: 1080, left: 1260, header: 540, footer: 540 },
+          size: { width: layout.pageWidth, height: layout.pageHeight },
+          margin: {
+            top: layout.marginTop,
+            right: layout.marginRight,
+            bottom: layout.marginBottom,
+            left: layout.marginLeft,
+            header: 540,
+            footer: 540,
+          },
         },
         titlePage: true, // suppress header/footer on first page
       },

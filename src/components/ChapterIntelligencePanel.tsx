@@ -28,6 +28,9 @@ import { computeBookEditorialDashboard } from "@/lib/editorial-dashboard-pro";
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { lockViewportScroll, unlockViewportScroll } from "@/lib/viewport-safe";
+import { useRequirementGate } from "@/hooks/useRequirementGate";
+import { MissingRequirementCard } from "@/components/MissingRequirementCard";
+import { buildRequirement } from "@/lib/scriptora-requirement-gate";
 
 function countWordsForChapterLock(value: unknown): number {
   if (!value) return 0;
@@ -142,6 +145,7 @@ const LEVEL_STYLE = {
 };
 
 export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApplyContent }: ChapterIntelligencePanelProps) {
+  const { showRequirement, requirementDialog } = useRequirementGate();
   const chapter = project.chapters[chapterIndex];
   const isMobile = useIsMobile();
   const { startDominate, startPatch, getJob, applyJob, dismissJob } = useDomination();
@@ -249,6 +253,10 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
 
   const runPatch = async () => {
     if (await guardFreeChapterAi()) return;
+    if (!chapter?.content?.trim()) {
+      showRequirement("missing_chapter_content", { onPrimary: onClose });
+      return;
+    }
     await startPatch(project, chapterIndex);
   };
   const applyPatch = () => {
@@ -345,7 +353,10 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
 
   const runAnalysis = async () => {
     if (await guardFreeChapterAi()) return;
-    if (!chapter?.content) return;
+    if (!chapter?.content?.trim()) {
+      showRequirement("missing_chapter_content", { onPrimary: onClose });
+      return;
+    }
     setAnalyzing(true);
     setResult(null);
     setFixed(new Set());
@@ -829,6 +840,15 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
           {/* IDLE — Patch as default */}
           {idle && (
             <div className="text-center py-8 space-y-5">
+              {!chapter?.content?.trim() ? (
+                <MissingRequirementCard
+            payload={buildRequirement("missing_chapter_content")}
+            onPrimary={onClose}
+            onSecondary={onClose}
+            className="mx-auto max-w-md text-left"
+          />
+              ) : (
+              <>
               <Scissors className="h-10 w-10 text-primary mx-auto" />
               <div>
                 <p className="text-base font-bold text-foreground">{t("chapter_doctor_panel_subtitle")}</p>
@@ -866,6 +886,8 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                   </div>
                 )}
               </div>
+              </>
+              )}
             </div>
           )}
 
@@ -1265,6 +1287,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
         </div>
       </div>
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} reason="dominate" currentPlan={plan} />
+      {requirementDialog}
     </div>
   );
 

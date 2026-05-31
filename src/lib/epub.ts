@@ -1,4 +1,5 @@
 import { normalizeExportProject, exportLabel, cleanExportText, parseExportBlocks, cleanMarkdownInline } from "@/lib/export-cleanup";
+import { prepareExportProject } from "@/lib/export-quality-engine";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import { BookProject } from "@/types/book";
 
@@ -287,7 +288,7 @@ function getBackMatterLabels(lang: string) {
 }
 
 export async function generateEpub(project: BookProject, coverDataUrl?: string): Promise<Blob> {
-  const normalizedProject = normalizeExportProject(project);
+  const normalizedProject = prepareExportProject(project);
   const { config, frontMatter, chapters, backMatter } = normalizedProject;
   const lang = config.language;
   const fmLabels = getFrontMatterLabels(lang);

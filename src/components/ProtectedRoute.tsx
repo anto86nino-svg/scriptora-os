@@ -42,7 +42,13 @@ export function ProtectedRoute({
   }
 
   if (requiredFeature && !planLoading && !isOwnerEmail(user?.email) && !canUseFeature(plan, requiredFeature)) {
-    return <Navigate to="/pricing" replace />;
+    return (
+      <Navigate
+        to="/pricing"
+        state={{ requirementFeature: requiredFeature }}
+        replace
+      />
+    );
   }
 
   return (

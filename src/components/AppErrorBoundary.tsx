@@ -1,16 +1,18 @@
 import { Component, ReactNode } from "react";
+import { t } from "@/lib/i18n";
+import { buildRequirement } from "@/lib/scriptora-requirement-gate";
+import { MissingRequirementCard } from "@/components/MissingRequirementCard";
 
 interface Props { children: ReactNode }
-interface State { hasError: boolean; message?: string; stack?: string }
+interface State { hasError: boolean; message?: string; stack?: string; showDevDetails: boolean }
 
 /**
- * Last-resort boundary so the app never renders a literal black screen.
- * If anything throws during render we surface a readable error + reload button.
+ * Last-resort boundary — human guidance instead of a black screen or raw stack traces.
  */
 export class AppErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false };
+  state: State = { hasError: false, showDevDetails: false };
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, message: error.message, stack: error.stack };
   }
 
@@ -19,40 +21,47 @@ export class AppErrorBoundary extends Component<Props, State> {
   }
 
   reset = () => {
-    this.setState({ hasError: false, message: undefined, stack: undefined });
+    this.setState({ hasError: false, message: undefined, stack: undefined, showDevDetails: false });
   };
 
   render() {
     if (this.state.hasError) {
+      const payload = buildRequirement("unexpected_error");
+      const isDev = import.meta.env.DEV;
+
       return (
-        <div className="min-h-screen w-full bg-background text-foreground flex items-center justify-center p-6">
-          <div className="max-w-lg w-full rounded-xl border border-border bg-card p-6 space-y-4 shadow-xl">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">⚠️</span>
-              <h1 className="text-base font-semibold">Qualcosa è andato storto</h1>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              L'app ha incontrato un errore inatteso. Puoi tornare alla home o ricaricare.
-            </p>
-            {this.state.message && (
-              <pre className="text-[11px] bg-muted/40 border border-border rounded-md p-2 overflow-auto max-h-40 whitespace-pre-wrap">
-                {this.state.message}
-              </pre>
+        <div className="min-h-[100dvh] w-full bg-background text-foreground flex items-center justify-center p-4 sm:p-6 pb-safe">
+          <div className="max-w-lg w-full space-y-4">
+            <MissingRequirementCard
+              payload={{
+                ...payload,
+                detail: isDev && this.state.message
+                  ? this.state.message
+                  : undefined,
+              }}
+              onPrimary={() => {
+                this.reset();
+                window.location.href = "/dashboard";
+              }}
+              onSecondary={() => window.location.reload()}
+            />
+
+            {isDev && (this.state.message || this.state.stack) && (
+              <div className="rounded-xl border border-border bg-card/80 p-3">
+                <button
+                  type="button"
+                  onClick={() => this.setState(s => ({ showDevDetails: !s.showDevDetails }))}
+                  className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                >
+                  {t("error_boundary_dev_details")}
+                </button>
+                {this.state.showDevDetails && (
+                  <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap text-[11px] text-muted-foreground">
+                    {[this.state.message, this.state.stack].filter(Boolean).join("\n\n")}
+                  </pre>
+                )}
+              </div>
             )}
-            <div className="flex gap-2">
-              <button
-                onClick={() => { this.reset(); window.location.href = "/"; }}
-                className="flex-1 h-9 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                Torna alla home
-              </button>
-              <button
-                onClick={() => window.location.reload()}
-                className="flex-1 h-9 rounded-lg text-sm font-medium border border-border hover:bg-muted/40 transition-colors"
-              >
-                Ricarica
-              </button>
-            </div>
           </div>
         </div>
       );

@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { analyzeNovel, calculateEditorialChapterScore, detectEditorialGenre } from "@/lib/EditorialIntelligence";
 import { useNavigate } from "react-router-dom";
-import JSZip from "jszip";
+import { MANUSCRIPT_FILE_ACCEPT, readManuscriptFile } from "@/lib/manuscript-import";
 import {
   AlertTriangle,
   ArrowRight,
@@ -34,6 +34,8 @@ import {
   tierTone,
   type ManuscriptPublishingIntel,
 } from "@/lib/publishing-intelligence";
+import { MissingRequirementCard } from "@/components/MissingRequirementCard";
+import { buildRequirement, type RequirementId } from "@/lib/scriptora-requirement-gate";
 
 interface ManuscriptAnalyzerDialogProps {
   open: boolean;
@@ -518,28 +520,6 @@ function analyzeManuscript(text: string, title: string, sourceName: string, genr
   };
 }
 
-async function readDocx(file: File): Promise<string> {
-  const zip = await JSZip.loadAsync(await file.arrayBuffer());
-  const xml = await zip.file("word/document.xml")?.async("text");
-  if (!xml) throw new Error(t("manuscript_file_error"));
-
-  const doc = new DOMParser().parseFromString(xml, "application/xml");
-  const paragraphs = Array.from(doc.getElementsByTagName("w:p")).map((paragraph) => {
-    return Array.from(paragraph.getElementsByTagName("w:t"))
-      .map(node => node.textContent || "")
-      .join("");
-  });
-
-  return paragraphs.map(p => p.trim()).filter(Boolean).join("\n\n");
-}
-
-async function readManuscriptFile(file: File): Promise<string> {
-  const name = file.name.toLowerCase();
-  if (name.endsWith(".docx")) return readDocx(file);
-  if (name.endsWith(".txt") || name.endsWith(".md") || name.endsWith(".markdown")) return file.text();
-  throw new Error(t("manuscript_unsupported_file"));
-}
-
 function categoryForGenre(genre: Genre): { category: string; subcategory: string } {
   if (["romance", "dark-romance", "thriller", "fantasy", "horror", "sci-fi", "historical"].includes(genre)) {
     const subcategory = genre === "sci-fi" ? "Sci-Fi" : genre.replace(/(^|-)(\w)/g, (_, sep, char) => `${sep ? " " : ""}${char.toUpperCase()}`);
@@ -673,6 +653,7 @@ export function ManuscriptAnalyzerDialog({
   const [analyzingPhase, setAnalyzingPhase] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [requirementBlock, setRequirementBlock] = useState<RequirementId | null>(null);
 
   const wordCount = useMemo(() => countWords(rawText), [rawText]);
   const canAnalyze = wordCount >= MIN_ANALYSIS_WORDS && !reading && !analyzing && !saving;
@@ -702,12 +683,18 @@ export function ManuscriptAnalyzerDialog({
     const nextGenre = genreOverride ?? genre;
     const words = countWords(nextText);
 
+    if (!nextText.trim()) {
+      setRequirementBlock("missing_manuscript");
+      setAnalysis(null);
+      return;
+    }
     if (words < MIN_ANALYSIS_WORDS) {
-      setError(tt("manuscript_min_text_error", { count: MIN_ANALYSIS_WORDS }));
+      setRequirementBlock("manuscript_too_short");
       setAnalysis(null);
       return;
     }
 
+    setRequirementBlock(null);
     setError("");
     setAnalyzing(true);
     setAnalyzingPhase("Evaluating emotional momentum…");
@@ -725,11 +712,12 @@ export function ManuscriptAnalyzerDialog({
   const handleFile = async (file: File) => {
     setReading(true);
     setError("");
+    setRequirementBlock(null);
     try {
       if (file.size > MAX_MANUSCRIPT_FILE_BYTES) {
         throw new Error(tt("manuscript_file_too_large", { mb: 12 }));
       }
-      const text = await readManuscriptFile(file);
+      const text = await readManuscriptFile(file, t("manuscript_unsupported_file"));
       const detectedTitle = cleanTitle(file.name) || t("untitled");
       const detectedLanguage = detectLanguage(text);
       const detectedGenre = detectEditorialGenre(text);
@@ -741,7 +729,8 @@ export function ManuscriptAnalyzerDialog({
       runAnalysis(text, detectedTitle, file.name, detectedGenre);
     } catch (err) {
       setAnalysis(null);
-      setError(err instanceof Error ? err.message : t("manuscript_file_error"));
+      const message = err instanceof Error ? err.message : "";
+      setError(message === t("manuscript_unsupported_file") ? message : t("manuscript_file_error"));
     } finally {
       setReading(false);
     }
@@ -825,7 +814,7 @@ export function ManuscriptAnalyzerDialog({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".txt,.md,.markdown,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept={MANUSCRIPT_FILE_ACCEPT}
               className="hidden"
               onChange={(event) => {
                 const file = event.target.files?.[0];
@@ -917,11 +906,13 @@ export function ManuscriptAnalyzerDialog({
                 <span className="font-medium normal-case tracking-normal">{wordCount.toLocaleString()} {t("words_unit")}</span>
               </span>
               <textarea
+                data-manuscript-textarea
                 value={rawText}
                 onChange={(event) => {
                   setRawText(event.target.value);
                   setAnalysis(null);
                   setError("");
+                  setRequirementBlock(null);
                   if (!title.trim()) setTitle(t("untitled"));
                 }}
                 placeholder={t("manuscript_paste_placeholder")}
@@ -930,7 +921,21 @@ export function ManuscriptAnalyzerDialog({
               />
             </label>
 
-            {error && (
+            {requirementBlock && (
+              <div className="mt-3">
+                <MissingRequirementCard
+                  payload={buildRequirement(requirementBlock, { vars: { count: MIN_ANALYSIS_WORDS } })}
+                  onPrimary={() => fileInputRef.current?.click()}
+                  onSecondary={() => {
+                    setRequirementBlock(null);
+                    document.querySelector<HTMLTextAreaElement>("[data-manuscript-textarea]")?.focus();
+                  }}
+                  compact
+                />
+              </div>
+            )}
+
+            {error && !requirementBlock && (
               <div className="mt-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{error}</span>

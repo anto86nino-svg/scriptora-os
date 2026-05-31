@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import {
   paymentsConfig,
@@ -12,6 +12,9 @@ import { PaymentStatusBanner } from "@/components/payments/PaymentStatusBanner";
 import { ComingSoonPaymentModal } from "@/components/payments/ComingSoonPaymentModal";
 import { t, useUILanguage } from "@/lib/i18n";
 import { toast } from "sonner";
+import { MissingRequirementCard } from "@/components/MissingRequirementCard";
+import { buildRequirement } from "@/lib/scriptora-requirement-gate";
+import type { FeatureKey } from "@/lib/subscription";
 
 const FAQ_ITEMS = [
   { q: "pricing_faq_1_q", a: "pricing_faq_1_a" },
@@ -22,6 +25,8 @@ const FAQ_ITEMS = [
 
 export default function PricingPage() {
   useUILanguage();
+  const location = useLocation();
+  const blockedFeature = (location.state as { requirementFeature?: FeatureKey } | null)?.requirementFeature;
   const { currentPlan } = useSubscription();
   const [comingSoonPlan, setComingSoonPlan] = useState<PaymentPlan | null>(null);
 
@@ -86,7 +91,19 @@ export default function PricingPage() {
 
         <PaymentStatusBanner />
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4 items-stretch">
+        {blockedFeature && (
+          <div className="mb-8">
+            <MissingRequirementCard
+              payload={buildRequirement("plan_required", { feature: blockedFeature })}
+              onPrimary={() => {
+                document.getElementById("pricing-plans")?.scrollIntoView({ behavior: "smooth" });
+              }}
+              compact
+            />
+          </div>
+        )}
+
+        <div id="pricing-plans" className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4 items-stretch">
           {primaryPlans.map((plan) => (
             <PricingCard
               key={plan.id}

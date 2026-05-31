@@ -19,6 +19,7 @@ import { FlaskConical } from "lucide-react";
 import { BOOK_LENGTH_CONFIG, BookConfig, BookLength, BookProject, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
 import { AUTHOR_IDENTITY_CHANGED_EVENT, applyAuthorIdentityToConfig, enforceAuthorIdentityLock, getSelectedAuthorIdentity, loadAuthorIdentities, setSelectedAuthorIdentityId } from "@/lib/author-identity";
+import { OPEN_AUTHOR_IDENTITY_SESSION_KEY } from "@/lib/scriptora-requirement-gate";
 import { refineDetectedGenre } from "@/lib/book-intelligence";
 import { GUIDED_TOUR_IDS } from "@/lib/guided-tour-events";
 import { DevModeUnlockDialog } from "@/components/DevModeUnlockDialog";
@@ -261,6 +262,13 @@ export default function Home() {
     window.addEventListener("nexora-dev-mode-change", onDevChange);
     return () => window.removeEventListener("nexora-dev-mode-change", onDevChange);
   }, []);
+
+  useEffect(() => {
+    if (sessionStorage.getItem(OPEN_AUTHOR_IDENTITY_SESSION_KEY)) {
+      sessionStorage.removeItem(OPEN_AUTHOR_IDENTITY_SESSION_KEY);
+      openDashboardOverlay(() => setShowAuthorIdentity(true));
+    }
+  }, [openDashboardOverlay]);
 
   useEffect(() => {
     const refreshAuthors = () => {
