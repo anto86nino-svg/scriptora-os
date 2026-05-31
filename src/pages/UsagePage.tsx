@@ -77,8 +77,8 @@ export default function UsagePage() {
 
       <main className="scriptora-feature-scroll mx-auto max-w-5xl space-y-8 px-6 py-8">
         <section>
-          <h1 className="text-2xl font-bold tracking-tight">AI Usage & Cost</h1>
-          <p className="text-sm text-muted-foreground mt-1">Tracking reale di tutte le chiamate AI · DeepSeek</p>
+          <h1 className="text-2xl font-bold tracking-tight">Utilizzo AI e costi</h1>
+          <p className="text-sm text-muted-foreground mt-1">Monitoraggio delle chiamate AI nel workspace · stime operative</p>
         </section>
 
         {usageIssue && (
@@ -93,7 +93,7 @@ export default function UsagePage() {
             </div>
             <div className="mt-1 leading-relaxed">
               {usingScriptoraWords
-                ? "Uso le parole effettive salvate nei tuoi libri, capitoli e parti del libro. I token sono una stima DeepSeek basata sul testo reale prodotto da Scriptora."
+                ? "Uso le parole effettive salvate nei tuoi libri, capitoli e parti del libro. Il volume mostrato è una stima operativa basata sul testo reale prodotto da Scriptora — non è il saldo crediti del wallet."
                 : usageIssue.includes("Invalid API key")
                 ? "La key Supabase attuale non puo leggere le tabelle via REST. La dashboard ora usa la Edge Function ai-usage-summary: deployala sul progetto Supabase per leggere i log reali con service role."
                 : usageIssue}
@@ -114,7 +114,7 @@ export default function UsagePage() {
 
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Stat icon={<DollarSign className="h-4 w-4" />} label="Costo totale" value={formatCost(summary?.totalCost || 0)} />
-          <Stat icon={<Hash className="h-4 w-4" />} label="Token totali" value={formatTokens(summary?.totalTokens || 0)} />
+          <Stat icon={<Hash className="h-4 w-4" />} label="Volume testo (stima)" value={formatTokens(summary?.totalTokens || 0)} />
           <Stat icon={<Activity className="h-4 w-4" />} label={usingScriptoraWords ? "Progetti stimati" : "Chiamate"} value={String(summary?.callsCount || 0)} />
           <Stat icon={<Zap className="h-4 w-4" />} label="Costo medio" value={formatCost(summary?.callsCount ? summary.totalCost / summary.callsCount : 0)} />
         </section>
@@ -148,7 +148,7 @@ export default function UsagePage() {
                   <th className="text-left px-3 py-2 font-medium">Task</th>
                   <th className="text-left px-3 py-2 font-medium">Model</th>
                   <th className="text-left px-3 py-2 font-medium">Provider</th>
-                  <th className="text-right px-3 py-2 font-medium">Tokens</th>
+                  <th className="text-right px-3 py-2 font-medium">Volume stima</th>
                   <th className="text-right px-3 py-2 font-medium">Costo</th>
                 </tr>
               </thead>

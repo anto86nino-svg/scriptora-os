@@ -354,20 +354,20 @@ export function NicheTrendingPlaylist({ language = "Italian", onImport, initialF
               <>Piano <strong className="uppercase">{gate.plan}</strong> · €{TRENDING_PRICE_EUR.toFixed(2)} per generazione</>
             )}
             {gate.reason === "beta-free" && (
-              <>Beta · <strong>{gate.betaRemaining}</strong> generazione gratuita disponibile</>
+              <>Anteprima editoriale · <strong>{gate.betaRemaining}</strong> generazione gratuita disponibile</>
             )}
             {gate.reason === "beta-exhausted" && (
-              <>Beta · click gratuito esaurito · passa a Pro/Premium per continuare</>
+              <>Anteprima editoriale · uso gratuito esaurito · passa a Pro Author o Studio per continuare</>
             )}
             {gate.reason === "free-blocked" && (
-              <>Feature a pagamento · sblocca con Pro o Premium</>
+              <>Strumento premium · sblocca con Pro Author o Studio</>
             )}
           </span>
         </div>
       )}
       {tab === "trending" && gate?.isDev && (
         <div className="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-md border bg-cyan-500/5 border-cyan-500/20 text-cyan-300">
-          <Zap className="h-3 w-3" /> Dev mode · trend illimitati senza addebito
+          <Zap className="h-3 w-3" /> Dev mode · trend estesi senza addebito crediti
         </div>
       )}
 
