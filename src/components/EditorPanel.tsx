@@ -54,6 +54,7 @@ interface EditorPanelProps {
   onGenerateBlueprint?: () => void;
   onGenerateFullBook?: () => void;
   isAnythingGenerating?: boolean;
+  isMobileWriter?: boolean;
 }
 
 export function EditorPanel({
@@ -77,6 +78,7 @@ export function EditorPanel({
   onGenerateBlueprint,
   onGenerateFullBook,
   isAnythingGenerating = false,
+  isMobileWriter = false,
 }: EditorPanelProps) {
   const { blueprint, frontMatter, chapters, backMatter, config, phase } = project;
   const [mode, setMode] = useState<"edit" | "preview">(editorMode);
@@ -133,8 +135,8 @@ export function EditorPanel({
           : !!blueprint;
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col">
-      {hasContent && (
+    <div className={cn("flex h-full min-h-0 flex-1 flex-col", isMobileWriter && "scriptora-mobile-writer-panel")}>
+      {hasContent && !isMobileWriter && (
         <div className="flex h-14 shrink-0 items-center justify-center border-b border-white/10 bg-slate-950/70 backdrop-blur-xl shadow-sm shadow-slate-950/20">
           <div className="ios-segment">
           <button onClick={() => handleModeChange("edit")}
@@ -152,6 +154,7 @@ export function EditorPanel({
       )}
 
       <div ref={scrollContainerRef} className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
+        {!isMobileWriter && (
         <WriterContextBar
           activeSection={activeSection}
           project={project}
@@ -159,6 +162,7 @@ export function EditorPanel({
           onOpenChapterIndex={onOpenChapterIndex}
           onNavigateSection={onNavigateSection}
         />
+        )}
         <WriterPipelineBar
           project={project}
           activeSection={activeSection}
@@ -170,16 +174,25 @@ export function EditorPanel({
           onGenerateBackMatter={onGenerateBackMatter || onGenerateNext}
           onGenerateFullBook={onGenerateFullBook}
           onNavigateSection={onNavigateSection}
+          mobileFloating={isMobileWriter}
         />
-        <div className={cn("mx-auto px-4 py-6 sm:px-8", mode === "preview" ? "max-w-2xl" : "max-w-5xl")}>
+        <div className={cn(
+          isMobileWriter
+            ? "px-2 py-3 max-w-none w-full"
+            : cn("mx-auto px-4 py-6 sm:px-8", mode === "preview" ? "max-w-2xl" : "max-w-5xl"),
+        )}>
           <div className={cn(
-            "ios-editor-paper scriptora-manuscript-paper max-w-full rounded-[32px] p-5 sm:p-7",
+            "ios-editor-paper scriptora-manuscript-paper max-w-full",
+            isMobileWriter
+              ? "rounded-none border-0 bg-transparent p-2 shadow-none"
+              : "rounded-[32px] p-5 sm:p-7",
             mode === "preview" && "scriptora-manuscript-paper--preview",
           )}>
           {mode === "preview" && hasContent ? (
             <PreviewMode project={project} view={view} ws={ws} />
           ) : (
             <>
+              {!isMobileWriter && (
               <div className="flex items-center gap-2 mb-6 flex-wrap rounded-[28px] border border-white/10 bg-white/5 p-4 shadow-[0_28px_80px_-48px_rgba(15,23,42,0.82)]">
                 <GenreProfileBadge
                   genre={config.genre}
@@ -188,6 +201,7 @@ export function EditorPanel({
                 />
                 <EditorialMasteryBadge genre={config.genre} subcategory={config.subcategory} size="md" />
               </div>
+              )}
               {view.type === "blueprint" && (
                 <BlueprintView
                   project={project}

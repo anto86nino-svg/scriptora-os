@@ -1,0 +1,98 @@
+/* Scriptora — Mobile Writer Experience V2
+   Content-first layout: minimal chrome, full-width manuscript, immersive generation. */
+
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer {
+    flex-direction: column;
+  }
+
+  /* Full viewport for editor — no card inset */
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .scriptora-mobile-writer-panel {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer-header {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Chapter index sheet — near-fullscreen, content starts at top */
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-chapter-sheet {
+    margin-top: 0 !important;
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-chapter-sheet > .mx-auto.mt-4.h-2 {
+    margin-top: 8px;
+    opacity: 0.5;
+  }
+
+  /* Blueprint: full-width, less chrome */
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .scriptora-manuscript-paper textarea,
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .scriptora-manuscript-paper .prose-zone textarea {
+    font-size: 16px;
+    line-height: 1.75;
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer [data-scriptora-chapter-outlines] {
+    scroll-margin-top: 3.5rem;
+  }
+
+  /* Blueprint view — tighter cards on mobile */
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .space-y-8.rounded-\[28px\] {
+    border-radius: 0.75rem;
+    padding: 0.75rem;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  /* Generation: ChatGPT-style — content dominates when streaming */
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .scriptora-generation-stage:has(.scriptora-generation-live-text) .scriptora-writer-nav-primary,
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .scriptora-generation-stage:has(.scriptora-generation-live-text) .scriptora-generation-topline,
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .scriptora-generation-stage:has(.scriptora-generation-live-text) ul.mb-4 {
+    display: none;
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .scriptora-generation-stage:has(.scriptora-generation-live-text) .scriptora-generation-manuscript {
+    margin-bottom: 0;
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .scriptora-generation-live-text p {
+    font-size: 16px;
+    line-height: 1.8;
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .scriptora-generation-meter {
+    position: sticky;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    margin-top: 1rem;
+    padding: 0.5rem 0;
+    background: linear-gradient(to top, rgb(2 6 23) 70%, transparent);
+  }
+
+  /* Chapter view — full width text */
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer textarea,
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .scriptora-chapter-editor {
+    max-width: 100%;
+  }
+
+  /* Hide inline chapter index CTA on blueprint when mobile writer (use header sheet) */
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .scriptora-writer-nav-primary {
+    display: none;
+  }
+
+  /* Floating action bar shadow */
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer-action-bar {
+    background: linear-gradient(to top, rgb(2 6 23 / 0.92) 0%, rgb(2 6 23 / 0.55) 55%, transparent 100%);
+  }
+}
+
+/* Small phones: 320–430px */
+@media (max-width: 430px) {
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .scriptora-mobile-writer-panel {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .ios-editor-paper {
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
+  }
+}

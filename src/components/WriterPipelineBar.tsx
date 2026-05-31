@@ -51,6 +51,7 @@ interface WriterPipelineBarProps {
   onGenerateBackMatter?: () => void;
   onGenerateFullBook?: () => void;
   onNavigateSection?: (section: SectionId) => void;
+  mobileFloating?: boolean;
 }
 
 export function WriterPipelineBar({
@@ -64,6 +65,7 @@ export function WriterPipelineBar({
   onGenerateBackMatter,
   onGenerateFullBook,
   onNavigateSection,
+  mobileFloating = false,
 }: WriterPipelineBarProps) {
   const pipeline = getWriterPipelineStep(project);
   const { blueprint, config } = project;
@@ -131,6 +133,29 @@ export function WriterPipelineBar({
   })();
 
   if (pipeline.step === "complete") return null;
+
+  if (mobileFloating) {
+    if (!primaryAction) return null;
+    return (
+      <div className="scriptora-mobile-writer-action-bar pointer-events-none fixed inset-x-0 bottom-0 z-30 layout-desktop:hidden">
+        <div className="pointer-events-auto mx-auto flex max-w-lg justify-center px-3 pb-[max(env(safe-area-inset-bottom),12px)] pt-2">
+          <button
+            type="button"
+            onClick={primaryAction.onClick}
+            disabled={primaryAction.disabled}
+            className="scriptora-modal-cta-primary inline-flex h-12 w-full max-w-md items-center justify-center gap-2 rounded-full px-6 text-sm font-semibold shadow-[0_12px_40px_rgba(0,0,0,0.45)] disabled:opacity-40"
+          >
+            {primaryAction.loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
+            {primaryAction.label}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="scriptora-writer-pipeline-bar border-b border-white/10 bg-gradient-to-r from-sky-500/[0.08] via-slate-950/95 to-emerald-500/[0.06] px-4 py-3 sm:px-8">

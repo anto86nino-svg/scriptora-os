@@ -22,6 +22,9 @@ import { AccountIdentityBlock } from "@/components/AccountIdentityBlock";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/useIsMobile";
+import { MobileChapterIndexSheet } from "@/components/mobile/MobileChapterIndexSheet";
+import { MobileWriterHeader } from "@/components/mobile/MobileWriterHeader";
+import { MobileWriterToolsSheet } from "@/components/mobile/MobileWriterToolsSheet";
 import { useQuota, usePlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { isProjectComplete } from "@/lib/project-status";
@@ -58,6 +61,8 @@ const Index = () => {
   const [showVoiceStudio, setShowVoiceStudio] = useState(false);
   const [voiceStudioChapterIndex, setVoiceStudioChapterIndex] = useState<number>(0);
   const [focusMode, setFocusMode] = useState(false);
+  const [chapterIndexOpen, setChapterIndexOpen] = useState(false);
+  const [toolsMenuOpen, setToolsMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(() => {
     const isDesktop =
       typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
@@ -127,7 +132,11 @@ const Index = () => {
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 1023px)");
     const syncSidebarForViewport = () => {
-      if (mq.matches) setSidebarOpen(false);
+      if (mq.matches) {
+        setSidebarOpen(false);
+        setChapterIndexOpen(false);
+        setToolsMenuOpen(false);
+      }
     };
     syncSidebarForViewport();
     mq.addEventListener("change", syncSidebarForViewport);
@@ -142,9 +151,16 @@ const Index = () => {
     showSettings ||
     showVoiceStudio ||
     coverGateOpen ||
-    sidebarOpen ||
+    chapterIndexOpen ||
+    toolsMenuOpen ||
+    (sidebarOpen && !isMobileLayout) ||
     !!upgradeReason ||
     !!configBlockedIssues?.length;
+
+  const openChapterIndex = () => {
+    if (isMobileLayout) setChapterIndexOpen(true);
+    else setSidebarOpen(true);
+  };
 
   useEffect(() => {
     if (isMobileLayout && indexOverlayOpen) {
@@ -161,6 +177,20 @@ const Index = () => {
   const nextVoiceProjectList = effectiveProject
     ? [effectiveProject, ...projects.filter((p) => p.id !== effectiveProject.id)]
     : projects;
+
+  const prevBlueprintForMobileRef = useRef(effectiveProject?.blueprint ?? null);
+  useEffect(() => {
+    prevBlueprintForMobileRef.current = effectiveProject?.blueprint ?? null;
+  }, [effectiveProject?.id]);
+
+  useEffect(() => {
+    if (!effectiveProject || !isMobileLayout) return;
+    const wasMissing = !prevBlueprintForMobileRef.current;
+    prevBlueprintForMobileRef.current = effectiveProject.blueprint;
+    if (wasMissing && effectiveProject.blueprint && activeSection === "blueprint") {
+      setChapterIndexOpen(true);
+    }
+  }, [effectiveProject?.blueprint, effectiveProject?.id, activeSection, isMobileLayout]);
 
   useEffect(() => {
     localStorage.setItem(WRITING_ROOM_MODE_KEY, editorMode);
@@ -590,6 +620,7 @@ const Index = () => {
             onGenerateFullBook={guardedGenerateFullBook}
             isAnythingGenerating={engine.isAnythingGenerating}
             onNavigateSection={setActiveSection}
+            isMobileWriter={isMobileLayout}
           />
         </div>
       </div>
@@ -599,34 +630,26 @@ const Index = () => {
   }
 
   return (
-    <div className={`scriptora-ios-screen scriptora-immersive-editor scriptora-os-editor relative flex h-safe-screen min-h-[100dvh] max-w-full overflow-x-hidden overflow-hidden pb-safe${focusMode ? " scriptora-focus-active" : ""}`}>
-      {/* Floating sidebar toggle — mobile only; desktop keeps chapter index visible */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="ios-toolbar-button fixed left-3 top-3 z-40 h-11 min-w-[11rem] gap-2 px-3 text-foreground shadow-lg backdrop-blur-xl layout-desktop:hidden"
-        title={sidebarOpen ? t("close_chapter_navigation") : t("open_chapter_navigation")}
-        aria-expanded={sidebarOpen}
-        aria-label={sidebarOpen ? t("close_chapter_navigation") : t("open_chapter_navigation")}
-      >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-          {sidebarOpen ? <X className="h-4 w-4" /> : <ListTree className="h-4 w-4" />}
-        </span>
-        <span className="text-left leading-tight">
-          <span className="block text-sm font-bold text-foreground">
-            {sidebarOpen ? t("close_chapter_navigation") : t("open_chapter_navigation")}
-          </span>
-          <span className="block text-[11px] text-muted-foreground">{t("writer_nav_hint")}</span>
-        </span>
-      </button>
-
-      {/* Overlay for mobile */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm layout-desktop:hidden" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+    <div className={`scriptora-ios-screen scriptora-immersive-editor scriptora-os-editor relative flex h-safe-screen min-h-[100dvh] max-w-full overflow-x-hidden overflow-hidden pb-safe${focusMode ? " scriptora-focus-active" : ""}${isMobileLayout && effectiveProject ? " scriptora-mobile-writer" : ""}`}>
+      {effectiveProject && isMobileLayout && (
+        <MobileWriterHeader
+          project={effectiveProject}
+          activeSection={activeSection}
+          onOpenChapterIndex={openChapterIndex}
+          onOpenMenu={() => setToolsMenuOpen(true)}
+        />
       )}
 
-      {/* Left Sidebar — drawer on mobile, collapsible on desktop */}
+      {/* Desktop: sidebar always visible via layout-desktop:translate-x-0 */}
+
+      {/* Overlay for desktop sidebar collapse (tablet) */}
+      {sidebarOpen && !isMobileLayout && (
+        <div className="fixed inset-0 z-30 hidden bg-black/60 backdrop-blur-sm layout-desktop:block" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+      )}
+
+      {/* Left Sidebar — desktop only; mobile uses fullscreen chapter sheet */}
       <aside
-        className={`ios-sidebar fixed inset-y-0 left-0 z-40 flex h-safe-screen w-[min(100vw-2rem,288px)] max-w-[288px] shrink-0 flex-col pb-safe transition-transform duration-300 ease-out layout-desktop:relative layout-desktop:inset-auto layout-desktop:h-auto layout-desktop:max-w-none layout-desktop:w-[288px] layout-desktop:translate-x-0 layout-desktop:pointer-events-auto ${
+        className={`ios-sidebar hidden layout-desktop:flex fixed inset-y-0 left-0 z-40 h-safe-screen w-[min(100vw-2rem,288px)] max-w-[288px] shrink-0 flex-col pb-safe transition-transform duration-300 ease-out layout-desktop:relative layout-desktop:inset-auto layout-desktop:h-auto layout-desktop:max-w-none layout-desktop:w-[288px] layout-desktop:translate-x-0 layout-desktop:pointer-events-auto ${
           sidebarOpen
             ? "translate-x-0 pointer-events-auto"
             : "-translate-x-full pointer-events-none"
@@ -778,17 +801,23 @@ const Index = () => {
       {/* Main Area */}
       <div
         className={`flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col transition-all duration-300 ${
-          sidebarOpen ? "p-2 layout-desktop:p-3" : "p-2 pb-3 layout-desktop:px-6 layout-desktop:py-4"
+          isMobileLayout && effectiveProject
+            ? "p-0"
+            : sidebarOpen ? "p-2 layout-desktop:p-3" : "p-2 pb-3 layout-desktop:px-6 layout-desktop:py-4"
         }`}
       >
-        <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden overflow-x-hidden rounded-lg border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/20 layout-desktop:bg-slate-950/45 layout-desktop:backdrop-blur-xl">
+        <div className={`flex min-h-0 min-w-0 flex-1 overflow-hidden overflow-x-hidden ${
+          isMobileLayout && effectiveProject
+            ? "bg-slate-950"
+            : "rounded-lg border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/20 layout-desktop:bg-slate-950/45 layout-desktop:backdrop-blur-xl"
+        }`}>
           {effectiveProject ? (
             <>
               {effectiveProject && (
                 <GuidedProjectFlow
                   projectId={effectiveProject.id}
-                  sidebarOpen={sidebarOpen}
-                  onOpenSidebar={() => setSidebarOpen(true)}
+                  sidebarOpen={sidebarOpen || chapterIndexOpen}
+                  onOpenSidebar={openChapterIndex}
                   onSelectSection={setActiveSection}
                 />
               )}
@@ -827,14 +856,17 @@ const Index = () => {
                   onNarrateChapter={openVoiceStudioForChapter}
                   onNavigateSection={(section) => {
                     setActiveSection(section);
-                    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+                    if (isMobileLayout) {
+                      setChapterIndexOpen(false);
+                    } else if (typeof window !== "undefined" && window.innerWidth < 1024) {
                       setSidebarOpen(false);
                     }
                   }}
-                  onOpenChapterIndex={() => setSidebarOpen(true)}
+                  onOpenChapterIndex={openChapterIndex}
                   onGenerateBlueprint={engine.generateBlueprintSection}
                   onGenerateFullBook={guardedGenerateFullBook}
                   isAnythingGenerating={engine.isAnythingGenerating}
+                  isMobileWriter={isMobileLayout}
                 />
                 </div>
               </div>
@@ -918,6 +950,30 @@ const Index = () => {
       </div>
 
       {writingRoomOverlays}
+
+      {effectiveProject && isMobileLayout && (
+        <>
+          <MobileChapterIndexSheet
+            open={chapterIndexOpen}
+            onOpenChange={setChapterIndexOpen}
+            project={effectiveProject}
+            activeSection={activeSection}
+            onSelectSection={setActiveSection}
+            generatingSet={engine.generatingSet}
+            onGenerateChaptersParallel={engine.generateChaptersParallel}
+          />
+          <MobileWriterToolsSheet
+            open={toolsMenuOpen}
+            onOpenChange={setToolsMenuOpen}
+            onSettings={() => setShowSettings(true)}
+            onFocusMode={() => setFocusMode(true)}
+            onCoach={() => setShowCoach(true)}
+            onGenerateFullBook={guardedGenerateFullBook}
+            canGenerateFullBook={Boolean(effectiveProject.blueprint && effectiveProject.phase !== "complete")}
+            isGenerating={engine.isAnythingGenerating}
+          />
+        </>
+      )}
 
       {showCover && effectiveProject && (
         <Suspense fallback={<LazyPanelFallback />}>
