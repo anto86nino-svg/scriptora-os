@@ -13,7 +13,7 @@ interface ScriptoraCreditsCardProps {
 /** Premium glass card showing Scriptora credit wallet on the dashboard gateway. */
 export function ScriptoraCreditsCard({ className }: ScriptoraCreditsCardProps) {
   const navigate = useNavigate();
-  const { availableCredits, scriptoraPlan, failed } = useCreditWallet();
+  const { availableCredits, scriptoraPlan, failed, isRemote, isLocalFallback } = useCreditWallet();
   const planLabel = getCommercialPlanLabel(scriptoraPlan);
 
   return (
@@ -53,7 +53,11 @@ export function ScriptoraCreditsCard({ className }: ScriptoraCreditsCardProps) {
           </p>
 
           <p className="text-[10px] leading-relaxed text-muted-foreground/75 italic sm:text-[11px]">
-            {t("credits_wallet_pending_note")}
+            {isRemote
+              ? t("credits_wallet_synced_note")
+              : isLocalFallback
+                ? t("credits_wallet_local_estimate")
+                : t("credits_wallet_sync_pending")}
           </p>
         </div>
 

@@ -47,3 +47,15 @@ verify_jwt = false
 
 [functions.activate-beta]
 verify_jwt = false
+
+[functions.get-credit-wallet]
+verify_jwt = false
+
+[functions.reserve-credits]
+verify_jwt = false
+
+[functions.commit-credit-usage]
+verify_jwt = false
+
+[functions.refund-credit-usage]
+verify_jwt = false

@@ -44,9 +44,14 @@ export function useCreditWallet() {
 
   const fallbackBalance = getMonthlyCreditsForPlan(scriptoraPlan);
 
+  const isRemote = wallet?.source === "remote";
+  const isLocalFallback = wallet?.source === "local-fallback";
+
   return {
     wallet,
     failed,
+    isRemote,
+    isLocalFallback,
     scriptoraPlan,
     planTier: plan,
     availableCredits: wallet?.availableCredits ?? fallbackBalance,

@@ -4,6 +4,7 @@ import {
   type ScriptoraPlan,
 } from "@/lib/billing/creditPolicy";
 import { mapPlanTierToScriptoraPlan } from "@/lib/billing/planAdapter";
+import { fetchRemoteCreditWallet } from "@/lib/billing/creditWalletServer";
 import type { PlanTier } from "@/lib/plan";
 import { getCurrentUserId } from "@/services/storageService";
 
@@ -62,13 +63,8 @@ function writeLocalUsage(userId: string, periodStart: string, usedCredits: numbe
   }
 }
 
-/**
- * Local fallback wallet until Supabase `credit_ledger` + Edge Function exist.
- *
- * TODO(backend): implement `GET /credit-wallet` and `POST /credit-debit` Edge Functions;
- * replace this loader with a remote fetch and keep localStorage only as offline cache.
- */
-export async function loadCreditWallet(planTier: PlanTier): Promise<CreditWalletSnapshot> {
+/** Local estimate when Supabase wallet edge function is unavailable. */
+export function buildLocalCreditWalletSnapshot(planTier: PlanTier): CreditWalletSnapshot {
   const scriptoraPlan = mapPlanTierToScriptoraPlan(planTier);
   const monthlyAllowance = getMonthlyCreditsForPlan(scriptoraPlan);
   const periodStart = currentPeriodStart();
@@ -85,6 +81,13 @@ export async function loadCreditWallet(planTier: PlanTier): Promise<CreditWallet
     source: "local-fallback",
     updatedAt: new Date().toISOString(),
   };
+}
+
+/** Prefer remote wallet; fall back to local estimate without throwing. */
+export async function loadCreditWallet(planTier: PlanTier): Promise<CreditWalletSnapshot> {
+  const remote = await fetchRemoteCreditWallet(planTier);
+  if (remote) return remote;
+  return buildLocalCreditWalletSnapshot(planTier);
 }
 
 /** Dev / preview only — production debits must go through Edge Function. */

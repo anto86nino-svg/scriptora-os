@@ -12,7 +12,7 @@ interface CreditsBalanceBadgeProps {
 /** Compact credit balance for dashboard / header toolbars. */
 export function CreditsBalanceBadge({ className, onClick }: CreditsBalanceBadgeProps) {
   const navigate = useNavigate();
-  const { availableCredits, failed } = useCreditWallet();
+  const { availableCredits, failed, isLocalFallback } = useCreditWallet();
 
   const handleClick = () => {
     if (onClick) {
@@ -46,7 +46,11 @@ export function CreditsBalanceBadge({ className, onClick }: CreditsBalanceBadgeP
         "inline-flex h-8 max-w-[120px] shrink-0 items-center gap-1 rounded-lg border border-amber-500/25 bg-amber-500/10 px-2 text-[11px] font-semibold text-amber-100/95 transition-colors hover:bg-amber-500/15 sm:max-w-none sm:px-2.5",
         className,
       )}
-      title={tt("credits_balance_available", { count: availableCredits })}
+      title={
+        isLocalFallback
+          ? t("credits_wallet_local_estimate")
+          : tt("credits_balance_available", { count: availableCredits })
+      }
     >
       <Sparkles className="hidden h-3 w-3 shrink-0 text-amber-200/90 sm:block" aria-hidden />
       <span className="hidden sm:inline">

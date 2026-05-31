@@ -303,5 +303,9 @@ export const EDGE_GUARD_PROFILES: Record<string, EdgeGuardOptions> = {
   "scriptora-novel-idea": { minTier: "free", checkProjectTokens: true },
   "activate-beta": { minTier: "free" },
   "exit-editorial-preview": { minTier: "free" },
+  "get-credit-wallet": { minTier: "free" },
+  "reserve-credits": { minTier: "free" },
+  "commit-credit-usage": { minTier: "free" },
+  "refund-credit-usage": { minTier: "free" },
   "ai-usage-summary": { ownerOnly: true },
 };

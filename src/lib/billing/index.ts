@@ -24,12 +24,22 @@ export {
 export { mapPlanTierToScriptoraPlan } from "@/lib/billing/planAdapter";
 
 export {
+  buildLocalCreditWalletSnapshot,
   clearLocalCreditWalletCache,
   isCreditEnforcementActive,
   loadCreditWallet,
   recordLocalCreditUsage,
   type CreditWalletSnapshot,
 } from "@/lib/billing/creditWallet";
+
+export { fetchRemoteCreditWallet } from "@/lib/billing/creditWalletServer";
+
+export {
+  commitCreditReservation,
+  prepareCreditReservation,
+  refundCreditReservation,
+  type CreditReservationResult,
+} from "@/lib/billing/creditReservation";
 
 export {
   COMMERCIAL_PLANS,
