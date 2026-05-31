@@ -26,6 +26,7 @@ import {
   buildReadingPosition,
   clearReadingPosition,
   flushReadingPosition,
+  hasReadingBookmark,
   loadReadingPosition,
   scheduleSaveReadingPosition,
   cancelScheduledReadingPositionSave,
@@ -33,6 +34,30 @@ import {
 } from "@/lib/reading-position";
 
 const SPEED_OPTIONS = [0.75, 1, 1.25, 1.5, 2] as const;
+
+function syncVoiceMediaSession(chapterTitle: string, bookTitle?: string) {
+  if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: chapterTitle,
+      artist: bookTitle || "Scriptora",
+      album: bookTitle || "Manuscript listening",
+    });
+    navigator.mediaSession.playbackState = "playing";
+  } catch {
+    /* Media Session unsupported on this browser */
+  }
+}
+
+function clearVoiceMediaSession() {
+  if (typeof navigator === "undefined" || !("mediaSession" in navigator)) return;
+  try {
+    navigator.mediaSession.metadata = null;
+    navigator.mediaSession.playbackState = "none";
+  } catch {
+    /* ignore */
+  }
+}
 
 
 interface VoiceStudioDialogProps {
@@ -92,6 +117,13 @@ export function VoiceStudioDialog({
   const mobileStableMode = isMobileViewport();
   const [chapterResumeOffer, setChapterResumeOffer] = useState<ReadingPosition | null>(null);
   const [bookmarkFlash, setBookmarkFlash] = useState(false);
+  const narrationMetaRef = useRef<{
+    allSentences: string[];
+    chunks: Array<{ startSentence: number; sentenceCount: number }>;
+  } | null>(null);
+  const playbackStateRef = useRef({ isPlaying: false, isPaused: false });
+  const wasPlayingBeforeHideRef = useRef(false);
+  const handlePlayPauseRef = useRef<() => void>(() => {});
 
   const recentProjects = useMemo(() => {
     return [...projects].sort((a, b) => {
@@ -217,20 +249,42 @@ export function VoiceStudioDialog({
     if (debugEnabled) console.debug("[VoiceStudio]", ...args);
   };
 
+  useEffect(() => {
+    playbackStateRef.current = { isPlaying, isPaused };
+  }, [isPlaying, isPaused]);
+
+  const resolveActiveReadingPosition = useCallback((): { sentenceIndex: number; progress: number } => {
+    const meta = narrationMetaRef.current;
+    if (!karaokeEnabled && meta?.chunks.length && (isPlaying || isPaused)) {
+      const chunkIdx = currentChunkIndexRef.current;
+      const chunk = meta.chunks[chunkIdx];
+      if (chunk) {
+        const sentenceIndex = chunk.startSentence;
+        const progressValue =
+          meta.allSentences.length > 0
+            ? Math.min(99, Math.round(((sentenceIndex + 1) / meta.allSentences.length) * 100))
+            : progress;
+        return { sentenceIndex, progress: progressValue };
+      }
+    }
+    return { sentenceIndex: currentSentence, progress };
+  }, [currentSentence, progress, isPlaying, isPaused, karaokeEnabled]);
+
   const persistReadingPositionNow = useCallback(() => {
     if (!projectId || !currentChapter) return;
+    const active = resolveActiveReadingPosition();
     flushReadingPosition(
       buildReadingPosition({
         projectId,
         chapterIndex,
-        sentenceIndex: currentSentence,
-        progress,
+        sentenceIndex: active.sentenceIndex,
+        progress: active.progress,
         chapterContent: currentChapter.content || "",
         sentences,
         mode: "audio",
       }),
     );
-  }, [projectId, chapterIndex, currentChapter, currentSentence, progress, sentences]);
+  }, [projectId, chapterIndex, currentChapter, sentences, resolveActiveReadingPosition]);
 
   const handleSaveBookmark = useCallback(() => {
     persistReadingPositionNow();
@@ -251,11 +305,15 @@ export function VoiceStudioDialog({
 
   const acceptChapterResume = useCallback(() => {
     if (!chapterResumeOffer) return;
-    setCurrentSentence(chapterResumeOffer.sentenceIndex);
+    const target = chapterResumeOffer.sentenceIndex;
+    setCurrentSentence(target);
     setProgress(chapterResumeOffer.progress);
-    resumeSentenceAtStartRef.current = chapterResumeOffer.sentenceIndex;
+    resumeSentenceAtStartRef.current = target;
     setChapterResumeOffer(null);
-    window.requestAnimationFrame(() => scrollToSentence(chapterResumeOffer.sentenceIndex));
+    window.requestAnimationFrame(() => {
+      scrollToSentence(target);
+      handlePlayPauseRef.current();
+    });
   }, [chapterResumeOffer, scrollToSentence]);
 
   const dismissChapterResume = useCallback(() => {
@@ -349,6 +407,8 @@ export function VoiceStudioDialog({
       setStatus(options?.statusMessage ?? "Stopped");
       setReaderDetached(false);
       clearTimer();
+      clearVoiceMediaSession();
+      narrationMetaRef.current = null;
 
       if (options?.resetManuscript) {
         setProgress(0);
@@ -387,7 +447,7 @@ export function VoiceStudioDialog({
   useEffect(() => {
     if (!open || !projectId || sessionActive) return;
     const saved = loadReadingPosition(projectId, chapterIndex);
-    if (saved && saved.sentenceIndex > 0) {
+    if (hasReadingBookmark(saved)) {
       setChapterResumeOffer(saved);
     } else {
       setChapterResumeOffer(null);
@@ -396,12 +456,13 @@ export function VoiceStudioDialog({
 
   useEffect(() => {
     if (!open || !projectId || !sessionActive) return;
+    const active = resolveActiveReadingPosition();
     scheduleSaveReadingPosition(
       buildReadingPosition({
         projectId,
         chapterIndex,
-        sentenceIndex: currentSentence,
-        progress,
+        sentenceIndex: active.sentenceIndex,
+        progress: active.progress,
         chapterContent: currentChapter?.content || "",
         sentences,
         mode: "audio",
@@ -416,6 +477,7 @@ export function VoiceStudioDialog({
     sessionActive,
     currentChapter,
     sentences,
+    resolveActiveReadingPosition,
   ]);
 
   useEffect(() => {
@@ -465,25 +527,59 @@ export function VoiceStudioDialog({
 
   useEffect(() => {
     if (!open) return;
-    const onVisibility = () => {
-      if (!document.hidden) return;
+
+    const persistOnHide = () => {
       reading.persistSession();
-      if (typeof window === "undefined" || !window.speechSynthesis) return;
-      if (!isPlaying || isPaused) return;
-      try {
+      const { isPlaying: playing, isPaused: paused } = playbackStateRef.current;
+      if (playing && !paused) {
+        wasPlayingBeforeHideRef.current = true;
         persistReadingPositionNow();
-        window.speechSynthesis.pause();
-        pausedRef.current = true;
-        setIsPaused(true);
-        setIsPlaying(false);
-        setStatus(t("voice_reading_paused"));
-      } catch {
-        // Mobile browsers may block pause — session state is still persisted.
       }
     };
+
+    const tryResumeAfterShow = () => {
+      if (document.hidden || !wasPlayingBeforeHideRef.current) return;
+      wasPlayingBeforeHideRef.current = false;
+      if (typeof window === "undefined" || !window.speechSynthesis) return;
+
+      const synth = window.speechSynthesis;
+      try {
+        if (synth.paused) {
+          pausedRef.current = false;
+          setIsPaused(false);
+          setIsPlaying(true);
+          synth.resume();
+          setStatus(t("voice_reading_resuming"));
+          return;
+        }
+        if (synth.speaking || synth.pending) {
+          setIsPlaying(true);
+          setIsPaused(false);
+          pausedRef.current = false;
+          return;
+        }
+      } catch {
+        /* browser may block resume */
+      }
+
+      setIsPlaying(false);
+      setIsPaused(false);
+      pausedRef.current = false;
+      setStatus(t("voice_reading_interrupted"));
+    };
+
+    const onVisibility = () => {
+      if (document.hidden) persistOnHide();
+      else tryResumeAfterShow();
+    };
+
     document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [open, isPlaying, isPaused, reading]);
+    window.addEventListener("pagehide", persistOnHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", persistOnHide);
+    };
+  }, [open, reading, persistReadingPositionNow]);
 
   useEffect(() => {
     if (open && autoPlayOnOpen) {
@@ -892,6 +988,25 @@ export function VoiceStudioDialog({
       return;
     }
 
+    narrationMetaRef.current = {
+      allSentences,
+      chunks: chunks.map((chunk) => ({
+        startSentence: chunk.startSentence,
+        sentenceCount: chunk.sentenceCount,
+      })),
+    };
+
+    syncVoiceMediaSession(currentChapter.title || `Chapter ${chapterIndex + 1}`, selectedProject?.config.title);
+
+    if (typeof navigator !== "undefined" && "mediaSession" in navigator) {
+      try {
+        navigator.mediaSession.setActionHandler("play", () => handlePlayPauseRef.current());
+        navigator.mediaSession.setActionHandler("pause", () => handlePlayPauseRef.current());
+      } catch {
+        /* action handlers may be read-only on some platforms */
+      }
+    }
+
     const voices = voicesRef.current || synth.getVoices() || [];
     const targetLanguage = getTargetLanguage();
     const preferredVoice = chooseManualOrBestVoice(voices, targetLanguage);
@@ -982,9 +1097,7 @@ export function VoiceStudioDialog({
 
       setStatus(`Reading session · part ${chunkIndex + 1}/${chunks.length} · ${tone.label} · ${activeVoiceLabel}`);
       setProgress(Math.round((chunkIndex / chunks.length) * 100));
-      if (karaokeEnabled) {
-        setCurrentSentence(chunk.startSentence);
-      }
+      setCurrentSentence(chunk.startSentence);
 
       if (karaokeEnabled) {
         utterance.onboundary = (event) => {
@@ -1053,6 +1166,14 @@ export function VoiceStudioDialog({
           return;
         }
         clearTimer();
+        if (!karaokeEnabled) {
+          const endSentence = Math.min(
+            allSentences.length - 1,
+            chunk.startSentence + Math.max(0, chunk.sentenceCount - 1),
+          );
+          setCurrentSentence(endSentence);
+          persistReadingPositionNow();
+        }
         setProgress(Math.min(99, Math.round(((chunkIndex + 1) / chunks.length) * 100)));
         window.setTimeout(() => playChunk(chunkIndex + 1), 120);
       };
@@ -1090,6 +1211,10 @@ export function VoiceStudioDialog({
 
     playChunk(startChunkIndex);
   };
+
+  useEffect(() => {
+    handlePlayPauseRef.current = handlePlayPause;
+  });
 
   useEffect(() => {
     sentenceRefs.current = sentenceRefs.current.slice(0, sentences.length);

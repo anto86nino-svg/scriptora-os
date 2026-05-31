@@ -1156,6 +1156,8 @@ export default function Home() {
           open={showVoiceStudio}
           onClose={() => setShowVoiceStudio(false)}
           projects={projects}
+          initialProjectId={focusProject?.id}
+          initialChapterIndex={gatewaySnapshot.resumeChapterIndex ?? undefined}
           onOpenProject={(id) => {
             setShowVoiceStudio(false);
             goApp({ projectId: id });

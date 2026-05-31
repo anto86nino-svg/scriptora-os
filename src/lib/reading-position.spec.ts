@@ -3,6 +3,8 @@ import {
   buildReadingPosition,
   chapterIdFromIndex,
   clearReadingPosition,
+  hasReadingBookmark,
+  loadLatestReadingPosition,
   loadReadingPosition,
   readingPositionStorageKey,
   saveReadingPosition,
@@ -51,5 +53,48 @@ describe("reading-position", () => {
 
     clearReadingPosition("proj-1", 0);
     expect(loadReadingPosition("proj-1", 0)).toBeNull();
+  });
+
+  it("detects meaningful bookmarks", () => {
+    expect(hasReadingBookmark(null)).toBe(false);
+    expect(
+      hasReadingBookmark(
+        buildReadingPosition({
+          projectId: "proj-1",
+          chapterIndex: 0,
+          sentenceIndex: 0,
+          progress: 12,
+          chapterContent: "Hello world.",
+          sentences: ["Hello world."],
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("loads the latest bookmark across chapters", () => {
+    saveReadingPosition(
+      buildReadingPosition({
+        projectId: "proj-1",
+        chapterIndex: 0,
+        sentenceIndex: 1,
+        progress: 20,
+        chapterContent: "First chapter.",
+        sentences: ["First chapter."],
+      }),
+    );
+
+    const newer = buildReadingPosition({
+      projectId: "proj-1",
+      chapterIndex: 2,
+      sentenceIndex: 5,
+      progress: 55,
+      chapterContent: "Third chapter with more text.",
+      sentences: ["Third chapter with more text."],
+    });
+    saveReadingPosition({ ...newer, updatedAt: new Date(Date.now() + 1000).toISOString() });
+
+    const latest = loadLatestReadingPosition("proj-1");
+    expect(latest?.chapterIndex).toBe(2);
+    expect(latest?.sentenceIndex).toBe(5);
   });
 });

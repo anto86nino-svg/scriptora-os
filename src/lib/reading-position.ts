@@ -39,12 +39,43 @@ export function loadReadingPosition(
   }
 }
 
+export function hasReadingBookmark(position: ReadingPosition | null | undefined): boolean {
+  if (!position) return false;
+  return position.progress > 0 || position.sentenceIndex > 0;
+}
+
+/** Most recently saved bookmark for a project (any chapter). */
+export function loadLatestReadingPosition(projectId: string): ReadingPosition | null {
+  if (typeof window === "undefined" || !projectId) return null;
+  const prefix = `scriptora-reading-position:${projectId}:`;
+  let latest: ReadingPosition | null = null;
+
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (!key?.startsWith(prefix)) continue;
+    try {
+      const parsed = JSON.parse(localStorage.getItem(key) || "") as ReadingPosition;
+      if (parsed?.projectId !== projectId) continue;
+      if (
+        !latest
+        || new Date(parsed.updatedAt).getTime() > new Date(latest.updatedAt).getTime()
+      ) {
+        latest = parsed;
+      }
+    } catch {
+      /* ignore malformed entries */
+    }
+  }
+
+  return latest;
+}
+
 export function saveReadingPosition(position: ReadingPosition): void {
   if (typeof window === "undefined" || !position.projectId) return;
   const payload: ReadingPosition = {
     ...position,
     chapterId: position.chapterId || chapterIdFromIndex(position.chapterIndex),
-    updatedAt: new Date().toISOString(),
+    updatedAt: position.updatedAt ?? new Date().toISOString(),
   };
   localStorage.setItem(
     readingPositionStorageKey(payload.projectId, payload.chapterId),

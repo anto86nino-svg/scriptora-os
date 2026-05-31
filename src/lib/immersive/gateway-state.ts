@@ -1,6 +1,6 @@
 import type { BookProject } from "@/types/book";
 import { getProjectCoverDataUrl } from "@/lib/cover-session";
-import { loadReadingPosition } from "@/lib/reading-position";
+import { loadLatestReadingPosition, loadReadingPosition, hasReadingBookmark } from "@/lib/reading-position";
 import { loadReadingSessionSnapshot, notesForProject } from "@/lib/reading-session";
 import { dailyGoalProgress, resolveDailyWordGoal } from "@/lib/immersive/gateway-daily-goal";
 import {
@@ -203,9 +203,11 @@ export function buildGatewaySnapshot(
 
   let resumeChapterIndex: number | null = null;
   if (project?.id) {
-    const reading = loadReadingPosition(project.id, workspace.activeChapterIndex);
-    if (reading && reading.sentenceIndex > 0) {
-      resumeChapterIndex = reading.chapterIndex;
+    const reading =
+      loadLatestReadingPosition(project.id)
+      ?? loadReadingPosition(project.id, workspace.activeChapterIndex);
+    if (hasReadingBookmark(reading)) {
+      resumeChapterIndex = reading!.chapterIndex;
     } else {
       const session = loadReadingSessionSnapshot();
       if (session?.projectId === project.id && session.sentenceIndex > 0) {
