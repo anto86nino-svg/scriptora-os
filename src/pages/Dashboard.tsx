@@ -422,8 +422,8 @@ export default function Home() {
   );
 
   const workspaceSnapshot = useMemo(
-    () => buildNarrativeWorkspaceSnapshot(projects.length, focusProject),
-    [projects.length, focusProject],
+    () => buildNarrativeWorkspaceSnapshot(projects.length, focusProject, activeAuthor?.penName),
+    [projects.length, focusProject, activeAuthor?.penName],
   );
 
   const deleteHomeProject = async (projectId: string, title?: string) => {
@@ -911,6 +911,12 @@ export default function Home() {
           snapshot={workspaceSnapshot}
           actions={{
             onContinueWriting: () => focusProject && goApp({ projectId: focusProject.id }),
+            onGenerateChapter: () =>
+              focusProject &&
+              goApp({
+                projectId: focusProject.id,
+                section: `chapter-${workspaceSnapshot.activeChapterIndex}`,
+              }),
             onCreateBook: () => openLaunchModal("quick"),
             onImportManuscript: () => openLaunchModal("manual"),
             onAnalyzeManuscript: () => openDashboardOverlay(() => setShowManuscriptAnalyzer(true)),

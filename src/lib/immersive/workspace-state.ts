@@ -5,6 +5,7 @@ import {
   resolveCurrentChapterLabel,
   resolveProjectWordCount,
 } from "@/lib/immersive/writer-presence";
+import { resolveGenreTheme } from "@/lib/immersive/workspace-os-intelligence";
 
 export type WorkspaceState = "empty" | "drafting" | "refining" | "publishing" | "complete";
 
@@ -12,6 +13,7 @@ export type NarrativeWorkspaceSnapshot = {
   state: WorkspaceState;
   title: string | null;
   genre: string | null;
+  authorPenName: string | null;
   wordCount: number;
   targetWords: number;
   progressPercent: number;
@@ -19,6 +21,13 @@ export type NarrativeWorkspaceSnapshot = {
   lastSessionIso: string | null;
   editorialScore: number | null;
   characterCount: number;
+  chapterTotal: number;
+  chaptersFilled: number;
+  hasBlueprint: boolean;
+  phase: string | null;
+  genreTheme: string;
+  chapterFilledFlags: boolean[];
+  activeChapterIndex: number;
 };
 
 function chapterProgressPercent(project: BookProject): number {
@@ -80,22 +89,42 @@ export function resolveWorkspaceState(
 export function buildNarrativeWorkspaceSnapshot(
   projectsCount: number,
   project: BookProject | null | undefined,
+  authorPenName?: string | null,
 ): NarrativeWorkspaceSnapshot {
+  const emptySnapshot = {
+    state: "empty" as const,
+    title: null,
+    genre: null,
+    authorPenName: null,
+    wordCount: 0,
+    targetWords: 0,
+    progressPercent: 0,
+    currentChapter: null,
+    lastSessionIso: null,
+    editorialScore: null,
+    characterCount: 0,
+    chapterTotal: 0,
+    chaptersFilled: 0,
+    hasBlueprint: false,
+    phase: null,
+    genreTheme: "default",
+    chapterFilledFlags: [] as boolean[],
+    activeChapterIndex: 0,
+  };
+
   const state = resolveWorkspaceState(projectsCount, project);
   if (state === "empty" || !project) {
-    return {
-      state: "empty",
-      title: null,
-      genre: null,
-      wordCount: 0,
-      targetWords: 0,
-      progressPercent: 0,
-      currentChapter: null,
-      lastSessionIso: null,
-      editorialScore: null,
-      characterCount: 0,
-    };
+    return emptySnapshot;
   }
+
+  const chapters = project.chapters ?? [];
+  const chapterTotal = chapters.length || project.config?.numberOfChapters || 0;
+  const chapterFilledFlags = Array.from({ length: chapterTotal }, (_, i) =>
+    (chapters[i]?.content?.trim().length ?? 0) > 120,
+  );
+  const chaptersFilled = chapterFilledFlags.filter(Boolean).length;
+  const activeChapterIndex = chapterFilledFlags.findIndex((f) => !f);
+  const idx = activeChapterIndex >= 0 ? activeChapterIndex : Math.max(0, chapterTotal - 1);
 
   const targetWords = getBookTotalWords(project.config);
   const progressPercent =
@@ -103,10 +132,17 @@ export function buildNarrativeWorkspaceSnapshot(
       ? 100
       : chapterProgressPercent(project);
 
+  const configAuthor =
+    project.config.authorIdentity?.penName ||
+    project.config.authorName ||
+    project.config.author ||
+    null;
+
   return {
     state,
     title: project.config.title?.trim() || null,
     genre: project.config.genre || project.config.subcategory || null,
+    authorPenName: authorPenName?.trim() || configAuthor?.trim() || null,
     wordCount: resolveProjectWordCount(project),
     targetWords,
     progressPercent,
@@ -114,5 +150,12 @@ export function buildNarrativeWorkspaceSnapshot(
     lastSessionIso: project.updatedAt || null,
     editorialScore: resolveEditorialScore(project),
     characterCount: project.config.characters?.length ?? 0,
+    chapterTotal,
+    chaptersFilled,
+    hasBlueprint: !!project.blueprint?.overview?.trim(),
+    phase: project.phase ?? null,
+    genreTheme: resolveGenreTheme(project.config.genre || project.config.subcategory),
+    chapterFilledFlags,
+    activeChapterIndex: idx,
   };
 }
