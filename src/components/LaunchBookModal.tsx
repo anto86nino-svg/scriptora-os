@@ -1,7 +1,11 @@
+import { useMemo } from "react";
 import { ArrowRight, Flame, Plus, Rocket, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { QuickLaunchPanel, type QuickLaunchPanelProps } from "@/components/QuickLaunchPanel";
+import { CreditMiniBadge } from "@/components/billing/CreditMiniBadge";
+import { getLaunchPathCreditEstimate, mapPlanTierToScriptoraPlan } from "@/lib/billing";
+import { usePlan } from "@/lib/plan";
 
 export type LaunchMode = "quick" | "advanced" | "manual";
 
@@ -58,6 +62,17 @@ export function LaunchBookModal({
   busy = false,
   quickLaunch,
 }: LaunchBookModalProps) {
+  const { plan } = usePlan();
+  const scriptoraPlan = mapPlanTierToScriptoraPlan(plan);
+  const pathCredits = useMemo(
+    () => ({
+      quick: getLaunchPathCreditEstimate("quick", scriptoraPlan),
+      advanced: getLaunchPathCreditEstimate("advanced", scriptoraPlan),
+      manual: getLaunchPathCreditEstimate("manual", scriptoraPlan),
+    }),
+    [scriptoraPlan],
+  );
+
   if (!open) return null;
 
   return (
@@ -126,6 +141,7 @@ export function LaunchBookModal({
                   </span>
                   <span className="block text-xs font-bold text-foreground">{t(titleKey)}</span>
                   <span className="mt-1 block text-[10px] leading-snug text-muted-foreground">{t(descKey)}</span>
+                  <CreditMiniBadge credits={pathCredits[id]} className="mt-2" />
                 </button>
               );
             })}

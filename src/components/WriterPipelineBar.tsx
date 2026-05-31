@@ -1,9 +1,12 @@
-import { Loader2, Play, Sparkles, ChevronRight } from "lucide-react";
-import { BookProject, SectionId } from "@/types/book";
+import { Loader2, Play, Sparkles, ChevronRight, Coins } from "lucide-react";
+import { BookProject, SectionId, BOOK_LENGTH_CONFIG } from "@/types/book";
 import { cn } from "@/lib/utils";
 import { t, tt } from "@/lib/i18n";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { CreditOperationHint } from "@/components/billing/CreditOperationHint";
+import { calculateCreditCost, mapPlanTierToScriptoraPlan } from "@/lib/billing";
+import { usePlan } from "@/lib/plan";
+import { useMemo } from "react";
 
 export type WriterPipelineStep =
   | "blueprint"
@@ -68,8 +71,25 @@ export function WriterPipelineBar({
   onNavigateSection,
   mobileFloating = false,
 }: WriterPipelineBarProps) {
+  const { plan } = usePlan();
+  const scriptoraPlan = mapPlanTierToScriptoraPlan(plan);
   const pipeline = getWriterPipelineStep(project);
   const { blueprint, config } = project;
+
+  const estimatedChapterWords = useMemo(() => {
+    const totalWords = BOOK_LENGTH_CONFIG[config.bookLength]?.totalWords ?? 50000;
+    return Math.ceil(totalWords / Math.max(1, config.numberOfChapters));
+  }, [config.bookLength, config.numberOfChapters]);
+
+  const chapterGenerationCredits = useMemo(
+    () =>
+      calculateCreditCost({
+        operation: "chapter_generation_standard",
+        plan: scriptoraPlan,
+        estimatedWords: estimatedChapterWords,
+      }),
+    [scriptoraPlan, estimatedChapterWords],
+  );
 
   const isBlueprintGenerating = isGeneratingSection("blueprint");
   const isFrontGenerating = isGeneratingSection("front-matter");
@@ -139,7 +159,13 @@ export function WriterPipelineBar({
     if (!primaryAction) return null;
     return (
       <div className="scriptora-mobile-writer-action-bar pointer-events-none fixed inset-x-0 bottom-0 z-30 layout-desktop:hidden">
-        <div className="pointer-events-auto mx-auto flex max-w-lg justify-center px-3 pb-[max(env(safe-area-inset-bottom),12px)] pt-2">
+        <div className="pointer-events-auto mx-auto flex max-w-lg flex-col items-center gap-1.5 px-3 pb-[max(env(safe-area-inset-bottom),12px)] pt-2">
+          {pipeline.step === "chapter" && (
+            <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <Coins className="h-3 w-3 opacity-70" aria-hidden />
+              {tt("credit_chapter_generation_hint", { count: chapterGenerationCredits })}
+            </p>
+          )}
           <button
             type="button"
             onClick={primaryAction.onClick}
@@ -232,6 +258,13 @@ export function WriterPipelineBar({
 
         {pipeline.step === "blueprint" && (
           <CreditOperationHint operation="book_blueprint" showBalance={false} />
+        )}
+        {pipeline.step === "chapter" && (
+          <CreditOperationHint
+            operation="chapter_generation_standard"
+            estimatedWords={estimatedChapterWords}
+            showBalance={false}
+          />
         )}
       </div>
     </div>

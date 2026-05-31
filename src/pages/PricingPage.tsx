@@ -1,26 +1,22 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import {
-  paymentsConfig,
-  resolvePlanAction,
-  type PaymentPlan,
-} from "@/config/payments";
+import { ArrowLeft, Coins } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
-import { PricingCard } from "@/components/payments/PricingCard";
 import { PaymentStatusBanner } from "@/components/payments/PaymentStatusBanner";
-import { ComingSoonPaymentModal } from "@/components/payments/ComingSoonPaymentModal";
+import { CommercialPricingCard } from "@/components/billing/CommercialPricingCard";
+import { PremiumActivationNoticeDialog } from "@/components/billing/PremiumActivationNoticeDialog";
+import { COMMERCIAL_PLANS, CREDIT_PACKS, mapPlanTierToScriptoraPlan } from "@/lib/billing";
+import type { CommercialPlanOffer } from "@/lib/billing/commercialPlans";
 import { t, useUILanguage } from "@/lib/i18n";
-import { toast } from "sonner";
 import { MissingRequirementCard } from "@/components/MissingRequirementCard";
 import { buildRequirement } from "@/lib/scriptora-requirement-gate";
 import type { FeatureKey } from "@/lib/subscription";
 
 const FAQ_ITEMS = [
+  { q: "pricing_faq_credits_q", a: "pricing_faq_credits_a" },
   { q: "pricing_faq_1_q", a: "pricing_faq_1_a" },
   { q: "pricing_faq_2_q", a: "pricing_faq_2_a" },
   { q: "pricing_faq_3_q", a: "pricing_faq_3_a" },
-  { q: "pricing_faq_4_q", a: "pricing_faq_4_a" },
 ] as const;
 
 export default function PricingPage() {
@@ -28,50 +24,36 @@ export default function PricingPage() {
   const location = useLocation();
   const blockedFeature = (location.state as { requirementFeature?: FeatureKey } | null)?.requirementFeature;
   const { currentPlan } = useSubscription();
-  const [comingSoonPlan, setComingSoonPlan] = useState<PaymentPlan | null>(null);
+  const scriptoraPlan = mapPlanTierToScriptoraPlan(currentPlan);
+  const [activationOpen, setActivationOpen] = useState(false);
+  const [activationVariant, setActivationVariant] = useState<"plan" | "credits">("plan");
 
-  const handleAction = (plan: PaymentPlan) => {
-    const action = resolvePlanAction(plan);
-    switch (action.kind) {
-      case "free":
-        window.location.href = "/auth";
-        return;
-      case "external":
-        window.open(action.url, "_blank", "noopener,noreferrer");
-        return;
-      case "missing_link":
-        toast.error(t("pricing_payment_not_configured"), {
-          description: t("pricing_payment_not_configured_desc"),
-        });
-        return;
-      case "coming_soon":
-      default:
-        setComingSoonPlan(plan);
-        return;
-    }
+  const isCurrentCommercialPlan = (planId: CommercialPlanOffer["id"]) => planId === scriptoraPlan;
+
+  const handlePlanSelect = (plan: CommercialPlanOffer) => {
+    if (plan.id === "free") return;
+    setActivationVariant("plan");
+    setActivationOpen(true);
   };
 
-  const isCurrentPlan = (planId: string) => {
-    if (planId === "free") return currentPlan === "free";
-    if (planId === "pro_monthly" || planId === "pro_yearly") return currentPlan === "pro";
-    if (planId === "premium_monthly" || planId === "premium_yearly" || planId === "lifetime") {
-      return currentPlan === "lifetime";
-    }
-    return false;
+  const handleCreditPack = () => {
+    setActivationVariant("credits");
+    setActivationOpen(true);
   };
-
-  const PRIMARY_IDS = ["free", "pro_monthly", "pro_yearly", "premium_monthly"] as const;
-  const primaryPlans = paymentsConfig.plans.filter((p) => (PRIMARY_IDS as readonly string[]).includes(p.id));
-  const extraPlans = paymentsConfig.plans.filter((p) => !(PRIMARY_IDS as readonly string[]).includes(p.id));
 
   return (
     <div className="scriptora-feature-page bg-background text-foreground">
       <header className="shrink-0 border-b border-border bg-card/40 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link to="/" className="inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground">
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
             <ArrowLeft className="h-3.5 w-3.5" /> {t("back")}
           </Link>
-          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{t("pricing_page_label")}</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            {t("pricing_page_label")}
+          </span>
         </div>
       </header>
 
@@ -81,11 +63,9 @@ export default function PricingPage() {
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
             {t("pricing_hero_badge")}
           </div>
-          <h1 className="text-4xl font-black tracking-tight sm:text-5xl">
-            {t("pricing_hero_title")}
-          </h1>
+          <h1 className="text-4xl font-black tracking-tight sm:text-5xl">{t("pricing_hero_title")}</h1>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground">
-            {t("pricing_hero_subtitle")}
+            {t("pricing_credits_monthly_note")}
           </p>
         </div>
 
@@ -103,35 +83,57 @@ export default function PricingPage() {
           </div>
         )}
 
-        <div id="pricing-plans" className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4 items-stretch">
-          {primaryPlans.map((plan) => (
-            <PricingCard
+        <div
+          id="pricing-plans"
+          className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
+        >
+          {COMMERCIAL_PLANS.map((plan) => (
+            <CommercialPricingCard
               key={plan.id}
               plan={plan}
-              comingSoon={paymentsConfig.mode === "coming_soon" || !paymentsConfig.enabled}
-              isCurrent={isCurrentPlan(plan.id)}
-              onAction={handleAction}
+              isCurrent={isCurrentCommercialPlan(plan.id)}
+              onSelect={handlePlanSelect}
             />
           ))}
         </div>
 
-        {extraPlans.length > 0 && (
-          <div className="mx-auto mt-8 grid max-w-3xl grid-cols-1 gap-5 md:grid-cols-2">
-            {extraPlans.map((plan) => (
-              <PricingCard
-                key={plan.id}
-                plan={plan}
-                comingSoon={paymentsConfig.mode === "coming_soon" || !paymentsConfig.enabled}
-                isCurrent={isCurrentPlan(plan.id)}
-                onAction={handleAction}
-              />
+        <section id="credit-packs" className="mx-auto mt-16 max-w-4xl">
+          <div className="mb-6 text-center">
+            <div className="mb-2 inline-flex items-center gap-1.5 text-primary">
+              <Coins className="h-4 w-4" />
+              <span className="text-xs font-bold uppercase tracking-wider">{t("pricing_credit_packs_title")}</span>
+            </div>
+            <h2 className="text-2xl font-bold">{t("pricing_credit_packs_heading")}</h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
+              {t("pricing_credit_packs_subtitle")}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {CREDIT_PACKS.map((pack) => (
+              <div
+                key={pack.credits}
+                className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3"
+              >
+                <div>
+                  <p className="text-sm font-bold text-foreground">{pack.label}</p>
+                  <p className="text-xs text-muted-foreground">
+                    €{pack.priceEur.toFixed(2).replace(".", ",")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCreditPack}
+                  className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20"
+                >
+                  {t("pricing_buy_credits")}
+                </button>
+              </div>
             ))}
           </div>
-        )}
+        </section>
 
-        <p className="mt-10 text-center text-xs text-muted-foreground">
-          {t("pricing_footer_note")}
-        </p>
+        <p className="mt-10 text-center text-xs text-muted-foreground">{t("pricing_footer_note")}</p>
 
         <section className="mx-auto mt-20 max-w-3xl space-y-6">
           <h2 className="text-center text-2xl font-bold">{t("pricing_faq_title")}</h2>
@@ -144,11 +146,10 @@ export default function PricingPage() {
         </section>
       </main>
 
-      <ComingSoonPaymentModal
-        open={!!comingSoonPlan}
-        onClose={() => setComingSoonPlan(null)}
-        planName={comingSoonPlan?.name}
-        showPricingLink={false}
+      <PremiumActivationNoticeDialog
+        open={activationOpen}
+        onClose={() => setActivationOpen(false)}
+        variant={activationVariant}
       />
     </div>
   );

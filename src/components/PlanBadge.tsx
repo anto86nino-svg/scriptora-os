@@ -5,6 +5,8 @@ import { useState } from "react";
 import { Crown, Zap, Sparkles, FlaskConical, LogOut, Loader2 } from "lucide-react";
 import { usePlan, useBooksThisMonth, PLAN_LIMITS, setPlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { showPremiumActivationNotice } from "@/lib/billing/premiumActivation";
+import { t } from "@/lib/i18n";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 
@@ -82,7 +84,7 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
         isDev
           ? "Developer mode active"
           : tier === "beta"
-          ? "Beta tester · click per opzioni"
+          ? `${t("editorial_preview_label")} · clicca per opzioni`
           : tier === "premium"
           ? "You're on Premium"
           : "Click to upgrade"
@@ -106,7 +108,7 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
             <div className="flex items-center gap-2">
               <FlaskConical className="h-4 w-4 text-fuchsia-400" />
               <div>
-                <p className="text-xs font-semibold text-foreground">Beta Tester attivo</p>
+                <p className="text-xs font-semibold text-foreground">{t("editorial_preview_label")}</p>
                 <p className="text-[10px] text-muted-foreground">{hint} · export sbloccato</p>
               </div>
             </div>

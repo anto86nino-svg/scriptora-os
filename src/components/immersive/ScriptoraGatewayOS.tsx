@@ -12,6 +12,7 @@ import {
   GatewayIntelligenceRail,
 } from "./gateway/GatewayIntelligenceRail";
 import { GatewayQuickActionGrid } from "./gateway/GatewayQuickActionGrid";
+import { ScriptoraCreditsCard } from "@/components/billing/ScriptoraCreditsCard";
 
 interface ScriptoraGatewayOSProps {
   gateway: GatewaySnapshot;
@@ -58,6 +59,8 @@ export function ScriptoraGatewayOS({
       data-gateway-state={isEmpty ? "empty" : workspace.state}
     >
       <GatewayHeroCard gateway={gateway} />
+
+      <ScriptoraCreditsCard className="mb-4" />
 
       <GatewayContinueCTA
         isEmpty={isEmpty}

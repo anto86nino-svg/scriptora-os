@@ -133,15 +133,15 @@ export const testimonialSlots: {
 }[] = [
   {
     role: { en: "Romance author", it: "Autrice romance", es: "Autora romance", fr: "Autrice romance", de: "Romance-Autorin" },
-    placeholder: { en: "Real author story coming soon.", it: "Storia autore reale in arrivo.", es: "Historia real proximamente.", fr: "Temoignage auteur bientot.", de: "Echte Autorenstory folgt." },
+    placeholder: { en: "Author story available in the next update.", it: "Storia autore disponibile nel prossimo aggiornamento.", es: "Historia de autor en la próxima actualización.", fr: "Témoignage auteur dans la prochaine mise à jour.", de: "Autorenstory im nächsten Update verfügbar." },
   },
   {
     role: { en: "Non-fiction creator", it: "Autore nonfiction", es: "Autor nonfiction", fr: "Auteur nonfiction", de: "Nonfiction-Autor" },
-    placeholder: { en: "Real author story coming soon.", it: "Storia autore reale in arrivo.", es: "Historia real proximamente.", fr: "Temoignage auteur bientot.", de: "Echte Autorenstory folgt." },
+    placeholder: { en: "Author story available in the next update.", it: "Storia autore disponibile nel prossimo aggiornamento.", es: "Historia de autor en la próxima actualización.", fr: "Témoignage auteur dans la prochaine mise à jour.", de: "Autorenstory im nächsten Update verfügbar." },
   },
   {
     role: { en: "KDP publisher", it: "Publisher KDP", es: "Publisher KDP", fr: "Editeur KDP", de: "KDP-Publisher" },
-    placeholder: { en: "Real author story coming soon.", it: "Storia autore reale in arrivo.", es: "Historia real proximamente.", fr: "Temoignage auteur bientot.", de: "Echte Autorenstory folgt." },
+    placeholder: { en: "Author story available in the next update.", it: "Storia autore disponibile nel prossimo aggiornamento.", es: "Historia de autor en la próxima actualización.", fr: "Témoignage auteur dans la prochaine mise à jour.", de: "Autorenstory im nächsten Update verfügbar." },
   },
 ];
 

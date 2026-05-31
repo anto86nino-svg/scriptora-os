@@ -41,6 +41,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AccountIdentityBlock } from "@/components/AccountIdentityBlock";
 import { GoogleLogoMark } from "@/components/GoogleLogoMark";
 import { ScriptoraGatewayOS, type GatewayGenreId } from "@/components/immersive/ScriptoraGatewayOS";
+import { CreditsBalanceBadge } from "@/components/billing/CreditsBalanceBadge";
 import { ScriptoraToolbox, type ToolboxCard } from "@/components/immersive/ScriptoraToolbox";
 import { buildNarrativeWorkspaceSnapshot, resolveFocusProject } from "@/lib/immersive/workspace-state";
 import { buildGatewaySnapshot } from "@/lib/immersive/gateway-state";
@@ -860,6 +861,7 @@ export default function Home() {
           </div>
 
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+            <CreditsBalanceBadge className="mr-0.5" />
             <button
               onClick={() => navigate("/pricing")}
               className="ios-toolbar-button hidden px-3 text-xs font-medium lg:flex"
@@ -1062,7 +1064,7 @@ export default function Home() {
               <FlaskConical className="h-5 w-5" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-fuchsia-200">Beta Tester</p>
+              <p className="text-sm font-semibold text-fuchsia-200">{t("editorial_preview_label")}</p>
               <p className="text-xs text-muted-foreground">{t("beta_access_desc")}</p>
             </div>
           </div>

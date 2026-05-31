@@ -22,6 +22,7 @@ import { DeviceViewSync } from "@/hooks/useDeviceView";
 import { DesktopPreviewChrome } from "@/components/DesktopPreviewChrome";
 import { LivingBackgroundLayer } from "@/components/immersive/LivingBackgroundLayer";
 import { LivingAtmosphereAmbience } from "@/components/immersive/LivingAtmosphereAmbience";
+import { PremiumActivationNoticeHost } from "@/components/billing/PremiumActivationNoticeDialog";
 
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 const Index = lazy(() => import("./pages/Index.tsx"));
@@ -79,6 +80,7 @@ const App = () => (
               <DevModeBadge />
               <AuthDebugPanel />
               <GlobalCuriosity />
+              <PremiumActivationNoticeHost />
             </MollyProvider>
           </DominationProvider>
         </AuthProvider>

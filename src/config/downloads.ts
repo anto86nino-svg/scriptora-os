@@ -92,7 +92,7 @@ export const downloadItems: DownloadItem[] = [
     id: "windows-exe",
     platform: "windows",
     label: "Windows Installer",
-    description: "Installer .exe per Windows 10/11 (in arrivo).",
+    description: "Installer .exe per Windows 10/11 — prossimo aggiornamento.",
     url: WINDOWS_EXE,
     fileType: "exe",
   }),

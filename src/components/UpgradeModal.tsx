@@ -2,12 +2,11 @@
 // Behaviour: if payments are live (env-configured) the CTA opens the configured checkout URL;
 // otherwise it opens an elegant in-app "Coming Soon" modal — never a blank external page.
 
-import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Lock, Check, Crown, Zap } from "lucide-react";
 import { PLAN_PRICING, PlanTier } from "@/lib/plan";
 import { paymentsConfig, resolvePlanAction, type PaymentPlan } from "@/config/payments";
-import { ComingSoonPaymentModal } from "@/components/payments/ComingSoonPaymentModal";
+import { showPremiumActivationNotice } from "@/lib/billing/premiumActivation";
 
 interface UpgradeModalProps {
   open: boolean;
@@ -26,16 +25,15 @@ const REASON_COPY: Record<NonNullable<UpgradeModalProps["reason"]>, { title: str
 export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "free" }: UpgradeModalProps) {
   const copy = REASON_COPY[reason];
   const recommendPremium = reason === "dominate";
-  const [comingSoonName, setComingSoonName] = useState<string | null>(null);
 
   const proPlan = paymentsConfig.plans.find((p) => p.id === "pro_monthly");
   const premiumPlan =
     paymentsConfig.plans.find((p) => p.id === "premium_monthly") ??
     paymentsConfig.plans.find((p) => p.id === "lifetime");
 
-  const handlePick = (plan: PaymentPlan | undefined, fallbackName: string) => {
+  const handlePick = (plan: PaymentPlan | undefined) => {
     if (!plan) {
-      setComingSoonName(fallbackName);
+      showPremiumActivationNotice("plan");
       return;
     }
     const action = resolvePlanAction(plan);
@@ -44,8 +42,7 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
       onClose();
       return;
     }
-    // coming_soon | missing_link | free → stay in-app
-    setComingSoonName(plan.name);
+    showPremiumActivationNotice("plan");
   };
 
   return (
@@ -77,7 +74,7 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
               badge={!recommendPremium ? "Più scelto" : undefined}
               highlight={!recommendPremium}
               icon={<Zap className="h-3.5 w-3.5" />}
-              onPick={() => handlePick(proPlan, "Pro")}
+              onPick={() => handlePick(proPlan)}
             />
             <PlanCard
               name="Premium"
@@ -93,7 +90,7 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
               badge={recommendPremium ? "Max Power" : undefined}
               highlight={recommendPremium}
               icon={<Crown className="h-3.5 w-3.5" />}
-              onPick={() => handlePick(premiumPlan, "Premium")}
+              onPick={() => handlePick(premiumPlan)}
             />
           </div>
 
@@ -102,11 +99,6 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
           </p>
         </div>
       </DialogContent>
-      <ComingSoonPaymentModal
-        open={!!comingSoonName}
-        onClose={() => { setComingSoonName(null); onClose(); }}
-        planName={comingSoonName ?? undefined}
-      />
     </Dialog>
   );
 }

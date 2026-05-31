@@ -30,3 +30,19 @@ export {
   recordLocalCreditUsage,
   type CreditWalletSnapshot,
 } from "@/lib/billing/creditWallet";
+
+export {
+  COMMERCIAL_PLANS,
+  COMMERCIAL_PLAN_LABELS,
+  getCommercialPlanLabel,
+  type CommercialPlanOffer,
+} from "@/lib/billing/commercialPlans";
+
+export { getLaunchPathCreditEstimate, type LaunchPathMode } from "@/lib/billing/launchPathCredits";
+
+export {
+  showPremiumActivationNotice,
+  PREMIUM_ACTIVATION_EVENT,
+  type PremiumActivationVariant,
+  type PremiumActivationDetail,
+} from "@/lib/billing/premiumActivation";
