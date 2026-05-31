@@ -1,6 +1,6 @@
 # Scriptora Measurement Sprint — Weakness Discovery Report
 
-Generated: 2026-05-31T05:24:30.139Z
+Generated: 2026-05-31T05:31:07.646Z
 
 > Mode: measure only — no new features, no new scores. Fix → re-run → repeat.
 
