@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { BookProject, Language } from "@/types/book";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Pause, Play, Sparkles, ArrowDown, BookOpen, ClipboardList, Bookmark, Square } from "lucide-react";
-import { t } from "@/lib/i18n";
+import { t, tt } from "@/lib/i18n";
 import {
   VOICE_STUDIO_STYLES,
   applyNarrativeReadDirectives,
@@ -124,6 +124,11 @@ export function VoiceStudioDialog({
   const playbackStateRef = useRef({ isPlaying: false, isPaused: false });
   const wasPlayingBeforeHideRef = useRef(false);
   const handlePlayPauseRef = useRef<() => void>(() => {});
+  const currentSentenceIndexRef = useRef(0);
+  const lastStableSentenceIndexRef = useRef(0);
+  const manualStopRef = useRef(false);
+  const isPlayingRef = useRef(false);
+  const isPausedRef = useRef(false);
 
   const recentProjects = useMemo(() => {
     return [...projects].sort((a, b) => {
@@ -212,9 +217,6 @@ export function VoiceStudioDialog({
       setChapterIndex(firstPlayableChapter);
     }
 
-    setProgress(0);
-    setCurrentSentence(0);
-    // If chapters exist but have no content yet, show a loading state instead of 'No generated chapters'
     const hasPlayable = selectedProject.chapters?.some((ch) => (ch.content || "").trim().length > 25);
     if (selectedProject.chapters && selectedProject.chapters.length === 0) {
       setStatus("Loading chapters...");
@@ -222,6 +224,17 @@ export function VoiceStudioDialog({
       setStatus(hasPlayable ? "Ready to play" : "Generate your first chapter to hear narration.");
     }
   }, [open, selectedProject, initialProjectId, initialChapterIndex, chapterIndex, firstPlayableChapter]);
+
+  useEffect(() => {
+    if (!open || !projectId || sessionActive) return;
+    const saved = loadReadingPosition(projectId, chapterIndex);
+    if (hasReadingBookmark(saved) && saved) {
+      setCurrentSentence(saved.sentenceIndex);
+      setProgress(saved.progress);
+      currentSentenceIndexRef.current = saved.sentenceIndex;
+      lastStableSentenceIndexRef.current = saved.sentenceIndex;
+    }
+  }, [open, projectId, chapterIndex, sessionActive]);
 
   useEffect(() => {
     if (!open) return;
@@ -251,47 +264,86 @@ export function VoiceStudioDialog({
 
   useEffect(() => {
     playbackStateRef.current = { isPlaying, isPaused };
-  }, [isPlaying, isPaused]);
-
-  const resolveActiveReadingPosition = useCallback((): { sentenceIndex: number; progress: number } => {
-    const meta = narrationMetaRef.current;
-    if (!karaokeEnabled && meta?.chunks.length && (isPlaying || isPaused)) {
-      const chunkIdx = currentChunkIndexRef.current;
-      const chunk = meta.chunks[chunkIdx];
-      if (chunk) {
-        const sentenceIndex = chunk.startSentence;
-        const progressValue =
-          meta.allSentences.length > 0
-            ? Math.min(99, Math.round(((sentenceIndex + 1) / meta.allSentences.length) * 100))
-            : progress;
-        return { sentenceIndex, progress: progressValue };
-      }
+    isPlayingRef.current = isPlaying;
+    isPausedRef.current = isPaused;
+    currentSentenceIndexRef.current = currentSentence;
+    if (currentSentence > 0) {
+      lastStableSentenceIndexRef.current = currentSentence;
     }
-    return { sentenceIndex: currentSentence, progress };
-  }, [currentSentence, progress, isPlaying, isPaused, karaokeEnabled]);
+  }, [isPlaying, isPaused, currentSentence]);
+
+  const findChunkIndexForSentence = useCallback(
+    (chunks: Array<{ startSentence: number; sentenceCount: number }>, sentenceIndex: number) => {
+      for (let i = 0; i < chunks.length; i += 1) {
+        const chunk = chunks[i];
+        const chunkEnd = chunk.startSentence + chunk.sentenceCount;
+        if (sentenceIndex < chunkEnd || i === chunks.length - 1) return i;
+      }
+      return 0;
+    },
+    [],
+  );
+
+  const resolvePlaybackStartSentence = useCallback((): number => {
+    if (resumeSentenceAtStartRef.current != null && resumeSentenceAtStartRef.current > 0) {
+      return resumeSentenceAtStartRef.current;
+    }
+    if (projectId) {
+      const saved = loadReadingPosition(projectId, chapterIndex);
+      if (saved && saved.sentenceIndex > 0) return saved.sentenceIndex;
+    }
+    if (lastStableSentenceIndexRef.current > 0) return lastStableSentenceIndexRef.current;
+    if (currentSentenceIndexRef.current > 0) return currentSentenceIndexRef.current;
+    return 0;
+  }, [projectId, chapterIndex]);
 
   const persistReadingPositionNow = useCallback(() => {
     if (!projectId || !currentChapter) return;
-    const active = resolveActiveReadingPosition();
+    const sentenceIndex = currentSentenceIndexRef.current;
+    const progressValue =
+      sentences.length > 0
+        ? Math.min(99, Math.round(((sentenceIndex + 1) / sentences.length) * 100))
+        : progress;
     flushReadingPosition(
       buildReadingPosition({
         projectId,
         chapterIndex,
-        sentenceIndex: active.sentenceIndex,
-        progress: active.progress,
+        sentenceIndex,
+        progress: progressValue,
         chapterContent: currentChapter.content || "",
         sentences,
         mode: "audio",
       }),
     );
-  }, [projectId, chapterIndex, currentChapter, sentences, resolveActiveReadingPosition]);
+  }, [projectId, chapterIndex, currentChapter, sentences, progress]);
 
   const handleSaveBookmark = useCallback(() => {
-    persistReadingPositionNow();
+    const sentenceIndex = currentSentenceIndexRef.current;
+    if (!projectId || !currentChapter) return;
+    flushReadingPosition(
+      buildReadingPosition({
+        projectId,
+        chapterIndex,
+        sentenceIndex,
+        progress:
+          sentences.length > 0
+            ? Math.min(99, Math.round(((sentenceIndex + 1) / sentences.length) * 100))
+            : 0,
+        chapterContent: currentChapter.content || "",
+        sentences,
+        mode: "audio",
+      }),
+    );
+    lastStableSentenceIndexRef.current = sentenceIndex;
     setBookmarkFlash(true);
-    setStatus(t("voice_bookmark_saved"));
+    setStatus(
+      tt("voice_bookmark_saved_sentence", {
+        index: sentenceIndex + 1,
+        total: Math.max(sentences.length, 1),
+      }),
+    );
     window.setTimeout(() => setBookmarkFlash(false), 1400);
-  }, [persistReadingPositionNow]);
+  }, [projectId, chapterIndex, currentChapter, sentences.length]);
 
   const scrollToSentence = useCallback((sentenceIndex: number) => {
     const node = sentenceRefs.current[sentenceIndex];
@@ -308,6 +360,8 @@ export function VoiceStudioDialog({
     const target = chapterResumeOffer.sentenceIndex;
     setCurrentSentence(target);
     setProgress(chapterResumeOffer.progress);
+    currentSentenceIndexRef.current = target;
+    lastStableSentenceIndexRef.current = target;
     resumeSentenceAtStartRef.current = target;
     setChapterResumeOffer(null);
     window.requestAnimationFrame(() => {
@@ -321,6 +375,8 @@ export function VoiceStudioDialog({
     resumeSentenceAtStartRef.current = null;
     setCurrentSentence(0);
     setProgress(0);
+    currentSentenceIndexRef.current = 0;
+    lastStableSentenceIndexRef.current = 0;
     setChapterResumeOffer(null);
   }, [projectId, chapterIndex]);
 
@@ -385,7 +441,7 @@ export function VoiceStudioDialog({
   };
 
   const haltPlayback = useCallback(
-    (options?: { resetManuscript?: boolean; statusMessage?: string }) => {
+    (options?: { resetManuscript?: boolean; statusMessage?: string; preservePosition?: boolean }) => {
       if (typeof window === "undefined") return;
       playbackSessionRef.current += 1;
       autoPlayRequestedRef.current = false;
@@ -402,30 +458,42 @@ export function VoiceStudioDialog({
       utteranceRef.current = null;
       pausedRef.current = false;
       setIsPaused(false);
-      currentChunkIndexRef.current = 0;
+      if (!options?.preservePosition) {
+        currentChunkIndexRef.current = 0;
+      }
       setIsPlaying(false);
       setStatus(options?.statusMessage ?? "Stopped");
       setReaderDetached(false);
       clearTimer();
       clearVoiceMediaSession();
-      narrationMetaRef.current = null;
+      if (!options?.preservePosition) {
+        narrationMetaRef.current = null;
+      }
 
       if (options?.resetManuscript) {
         setProgress(0);
         setCurrentSentence(0);
+        currentSentenceIndexRef.current = 0;
+        lastStableSentenceIndexRef.current = 0;
         setSentences([]);
         sentenceStarts.current = [];
       }
 
-      logDebug("playback-halted", { session: playbackSessionRef.current, reset: options?.resetManuscript });
+      logDebug("playback-halted", {
+        session: playbackSessionRef.current,
+        reset: options?.resetManuscript,
+        preservePosition: options?.preservePosition,
+      });
     },
     [],
   );
 
   const stopPlayback = useCallback(() => {
+    lastStableSentenceIndexRef.current = currentSentenceIndexRef.current;
     persistReadingPositionNow();
     reading.persistSession();
-    haltPlayback({ statusMessage: t("voice_reading_stopped") });
+    manualStopRef.current = true;
+    haltPlayback({ statusMessage: t("voice_reading_stopped"), preservePosition: true });
   }, [haltPlayback, persistReadingPositionNow, reading]);
 
   const handleStop = () => {
@@ -456,13 +524,17 @@ export function VoiceStudioDialog({
 
   useEffect(() => {
     if (!open || !projectId || !sessionActive) return;
-    const active = resolveActiveReadingPosition();
+    const sentenceIndex = currentSentenceIndexRef.current;
+    const progressValue =
+      sentences.length > 0
+        ? Math.min(99, Math.round(((sentenceIndex + 1) / sentences.length) * 100))
+        : progress;
     scheduleSaveReadingPosition(
       buildReadingPosition({
         projectId,
         chapterIndex,
-        sentenceIndex: active.sentenceIndex,
-        progress: active.progress,
+        sentenceIndex,
+        progress: progressValue,
         chapterContent: currentChapter?.content || "",
         sentences,
         mode: "audio",
@@ -477,7 +549,6 @@ export function VoiceStudioDialog({
     sessionActive,
     currentChapter,
     sentences,
-    resolveActiveReadingPosition,
   ]);
 
   useEffect(() => {
@@ -491,7 +562,7 @@ export function VoiceStudioDialog({
     if (!open || !isPlaying || isPaused) return;
     const id = window.setInterval(() => {
       const synth = window.speechSynthesis;
-      if (pausedRef.current) return;
+      if (pausedRef.current || isPausedRef.current || manualStopRef.current) return;
       if (isPlaying && !synth.speaking && !synth.pending) {
         setIsPlaying(false);
         setStatus("Playback ended unexpectedly — tap Play to retry.");
@@ -550,6 +621,16 @@ export function VoiceStudioDialog({
           setIsPlaying(true);
           synth.resume();
           setStatus(t("voice_reading_resuming"));
+          window.setTimeout(() => {
+            if (!synth.speaking && !synth.pending) {
+              manualStopRef.current = false;
+              resumeSentenceAtStartRef.current = currentSentenceIndexRef.current;
+              setIsPlaying(false);
+              setIsPaused(false);
+              pausedRef.current = false;
+              handlePlayPauseRef.current();
+            }
+          }, 450);
           return;
         }
         if (synth.speaking || synth.pending) {
@@ -562,10 +643,15 @@ export function VoiceStudioDialog({
         /* browser may block resume */
       }
 
+      // Mobile browsers may suspend speech synthesis in background; we preserve reading position and resume safely.
+      persistReadingPositionNow();
+      manualStopRef.current = false;
+      resumeSentenceAtStartRef.current = currentSentenceIndexRef.current;
       setIsPlaying(false);
       setIsPaused(false);
       pausedRef.current = false;
-      setStatus(t("voice_reading_interrupted"));
+      setStatus(t("voice_reading_resuming"));
+      window.setTimeout(() => handlePlayPauseRef.current(), 120);
     };
 
     const onVisibility = () => {
@@ -867,8 +953,20 @@ export function VoiceStudioDialog({
     return { label: "Narrative cinematic tone", rate: 0.96, pitch: 1 };
   };
 
-  const buildNarrationChunks = (text: string, maxChars = 950) => {
+  const buildNarrationChunks = (text: string, maxChars = 950, oneSentencePerChunk = false) => {
     const sourceSentences = splitIntoSentences(text);
+    if (oneSentencePerChunk) {
+      return {
+        allSentences: sourceSentences,
+        chunks: sourceSentences.map((sentence, idx) => ({
+          text: sentence,
+          startSentence: idx,
+          sentenceCount: 1,
+          tone: detectNarrativeTone(sentence),
+        })),
+      };
+    }
+
     const chunks: Array<{ text: string; startSentence: number; sentenceCount: number; tone: ReturnType<typeof detectNarrativeTone> }> = [];
 
     let buffer = "";
@@ -932,13 +1030,14 @@ export function VoiceStudioDialog({
     if (isPlaying && !isPaused) {
       try {
         reading.persistSession();
+        lastStableSentenceIndexRef.current = currentSentenceIndexRef.current;
         persistReadingPositionNow();
         synth.pause();
         pausedRef.current = true;
         setIsPaused(true);
         setIsPlaying(false);
         setStatus(t("voice_reading_paused"));
-        logDebug("playback-paused", { chunk: currentChunkIndexRef.current });
+        logDebug("playback-paused", { sentence: currentSentenceIndexRef.current, chunk: currentChunkIndexRef.current });
       } catch (err) {
         setStatus("Pause failed. Use Stop if needed.");
         logDebug("pause-exception", err);
@@ -957,15 +1056,29 @@ export function VoiceStudioDialog({
         logDebug("playback-resumed", { chunk: currentChunkIndexRef.current });
 
         window.setTimeout(() => {
-          if (!pausedRef.current && !synth.speaking && synth.pending) {
+          if (isPausedRef.current) return;
+          if (!synth.speaking && !synth.pending) {
+            manualStopRef.current = false;
+            resumeSentenceAtStartRef.current = currentSentenceIndexRef.current;
+            setIsPlaying(false);
+            setIsPaused(false);
+            pausedRef.current = false;
+            synth.cancel();
+            logDebug("playback-resume-fallback", { sentence: currentSentenceIndexRef.current });
+            handlePlayPauseRef.current();
+          } else if (!pausedRef.current && synth.pending) {
             synth.resume();
           }
-        }, 350);
+        }, 400);
       } catch (err) {
-        setStatus("Resume failed. Tap Play again.");
+        manualStopRef.current = false;
+        resumeSentenceAtStartRef.current = currentSentenceIndexRef.current;
+        setIsPlaying(false);
         setIsPaused(false);
         pausedRef.current = false;
-        logDebug("resume-exception", err);
+        setStatus(t("voice_reading_resuming"));
+        logDebug("resume-exception-fallback", err);
+        handlePlayPauseRef.current();
       }
       return;
     }
@@ -978,10 +1091,12 @@ export function VoiceStudioDialog({
     clearTimer();
 
     synth.cancel();
+    manualStopRef.current = false;
 
     const { text: rawDirectedText, telemetry } = applyNarrativeReadDirectives(currentChapter.content || "", style);
     const directedText = prepareHumanNarrationText(rawDirectedText);
-    const { allSentences, chunks } = buildNarrationChunks(directedText, 820);
+    const useSingleSentenceChunks = mobileStableMode && !karaokeEnabled;
+    const { allSentences, chunks } = buildNarrationChunks(directedText, 820, useSingleSentenceChunks);
 
     if (chunks.length === 0) {
       setStatus("No readable text found in this chapter.");
@@ -1014,32 +1129,25 @@ export function VoiceStudioDialog({
 
     pausedRef.current = false;
     setIsPaused(false);
-    currentChunkIndexRef.current = 0;
     setReaderDetached(false);
     setSentences(allSentences);
 
-    const resumeAt = resumeSentenceAtStartRef.current;
-    let startChunkIndex = 0;
-    if (resumeAt != null && resumeAt > 0) {
-      for (let i = 0; i < chunks.length; i += 1) {
-        const chunk = chunks[i];
-        const chunkEnd = chunk.startSentence + chunk.sentenceCount;
-        if (resumeAt < chunkEnd || i === chunks.length - 1) {
-          startChunkIndex = i;
-          break;
-        }
-      }
-      setCurrentSentence(resumeAt);
-      setProgress(
-        allSentences.length > 0
-          ? Math.min(99, Math.round((resumeAt / allSentences.length) * 100))
-          : 0,
-      );
-      resumeSentenceAtStartRef.current = null;
-    } else {
-      setCurrentSentence(0);
-      setProgress(0);
-    }
+    const startSentence = resolvePlaybackStartSentence();
+    const startChunkIndex = findChunkIndexForSentence(
+      chunks.map((c) => ({ startSentence: c.startSentence, sentenceCount: c.sentenceCount })),
+      startSentence,
+    );
+    currentChunkIndexRef.current = startChunkIndex;
+
+    setCurrentSentence(startSentence);
+    currentSentenceIndexRef.current = startSentence;
+    lastStableSentenceIndexRef.current = startSentence;
+    setProgress(
+      allSentences.length > 0
+        ? Math.min(99, Math.round((startSentence / allSentences.length) * 100))
+        : 0,
+    );
+    resumeSentenceAtStartRef.current = null;
 
     setIsPlaying(true);
     setStatus(`Reading session in progress · ${chunks.length} parts`);
@@ -1096,8 +1204,14 @@ export function VoiceStudioDialog({
       });
 
       setStatus(`Reading session · part ${chunkIndex + 1}/${chunks.length} · ${tone.label} · ${activeVoiceLabel}`);
-      setProgress(Math.round((chunkIndex / chunks.length) * 100));
-      setCurrentSentence(chunk.startSentence);
+      const globalStart = chunk.startSentence;
+      setProgress(
+        allSentences.length > 0
+          ? Math.min(99, Math.round((globalStart / allSentences.length) * 100))
+          : Math.round((chunkIndex / chunks.length) * 100),
+      );
+      setCurrentSentence(globalStart);
+      currentSentenceIndexRef.current = globalStart;
 
       if (karaokeEnabled) {
         utterance.onboundary = (event) => {
@@ -1117,6 +1231,8 @@ export function VoiceStudioDialog({
             );
 
             setCurrentSentence(globalSentenceIndex);
+            currentSentenceIndexRef.current = globalSentenceIndex;
+            lastStableSentenceIndexRef.current = globalSentenceIndex;
 
             const sentenceProgress = allSentences.length > 0
               ? Math.round(((globalSentenceIndex + 1) / allSentences.length) * 100)
@@ -1161,20 +1277,25 @@ export function VoiceStudioDialog({
 
       utterance.onend = () => {
         if (session !== playbackSessionRef.current) return;
-        if (pausedRef.current) {
+        if (manualStopRef.current) return;
+        if (pausedRef.current || isPausedRef.current) {
           setStatus(t("voice_reading_paused"));
           return;
         }
         clearTimer();
-        if (!karaokeEnabled) {
-          const endSentence = Math.min(
-            allSentences.length - 1,
-            chunk.startSentence + Math.max(0, chunk.sentenceCount - 1),
-          );
-          setCurrentSentence(endSentence);
-          persistReadingPositionNow();
-        }
-        setProgress(Math.min(99, Math.round(((chunkIndex + 1) / chunks.length) * 100)));
+        const endSentence = Math.min(
+          allSentences.length - 1,
+          chunk.startSentence + Math.max(0, chunk.sentenceCount - 1),
+        );
+        setCurrentSentence(endSentence);
+        currentSentenceIndexRef.current = endSentence;
+        lastStableSentenceIndexRef.current = endSentence;
+        persistReadingPositionNow();
+        setProgress(
+          allSentences.length > 0
+            ? Math.min(99, Math.round(((endSentence + 1) / allSentences.length) * 100))
+            : Math.min(99, Math.round(((chunkIndex + 1) / chunks.length) * 100)),
+        );
         window.setTimeout(() => playChunk(chunkIndex + 1), 120);
       };
 
@@ -1283,11 +1404,14 @@ export function VoiceStudioDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
-      <DialogContent className={`scriptora-mobile-work-panel flex w-[calc(100vw-0.75rem)] flex-col overflow-hidden border-white/15 bg-slate-950/94 p-3 text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-5 ${
+      <DialogContent
+        className={`scriptora-mobile-work-panel flex w-[calc(100vw-0.75rem)] flex-col overflow-hidden border-white/15 bg-slate-950/94 p-2 text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-5 ${
           immersiveMode
-            ? "h-[96dvh] max-h-[96dvh] max-w-[96vw]"
-            : "max-h-[88dvh] max-w-3xl sm:max-h-[90dvh]"
-        }`}>
+            ? "max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-16px)] h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-16px)] max-w-[96vw]"
+            : "max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-16px)] max-w-3xl"
+        }`}
+        style={{ overscrollBehavior: "contain" }}
+      >
         <DialogHeader className={isMinimalImmersion && sessionActive ? "sr-only" : ""}>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <BookOpen className="h-5 w-5 text-sky-300" />
@@ -1298,7 +1422,7 @@ export function VoiceStudioDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className={`relative min-h-0 flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1f2937] p-3 sm:p-4 ${
+        <div className={`relative min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1f2937] p-2 sm:p-4 ${
           immersiveMode ? "flex flex-col" : ""
         }`}>
           {reading.showInsights && (
@@ -1339,7 +1463,7 @@ export function VoiceStudioDialog({
           )}
 
           {mobileStableMode && (
-            <p className="mb-4 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs leading-relaxed text-white/60">
+            <p className="mb-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs leading-relaxed text-white/60">
               {t("voice_mobile_stable_hint")}
             </p>
           )}
@@ -1377,7 +1501,7 @@ export function VoiceStudioDialog({
             </div>
           )}
 
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+          <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
             <div>
               <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">Manuscript listening</p>
               <p className="line-clamp-2 text-base font-semibold text-white sm:text-lg">{currentChapter?.title || "Select a chapter"}</p>
@@ -1458,13 +1582,13 @@ export function VoiceStudioDialog({
             </div>
           )}
 
-          <div className="mb-4 h-2 overflow-hidden rounded-full bg-white/10">
+          <div className="mb-2 h-2 overflow-hidden rounded-full bg-white/10">
             <div
               className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-violet-400 to-fuchsia-400 transition-all"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <div className="mb-5 flex items-center justify-between text-xs text-white/60">
+          <div className="mb-2 flex items-center justify-between text-xs text-white/60">
             <span>{sessionActive ? "Reading session in progress" : "Manuscript review"} · {status}</span>
             <span>{progress}%</span>
           </div>
@@ -1595,7 +1719,7 @@ export function VoiceStudioDialog({
             </div>
           )}
 
-          <div className="sticky bottom-0 z-20 mt-4 flex flex-col gap-2 rounded-2xl border border-white/10 bg-slate-950/90 p-2 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="sticky bottom-0 z-20 mt-2 flex flex-col gap-1.5 rounded-2xl border border-white/10 bg-slate-950/90 p-2 backdrop-blur sm:mt-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
             {!isMinimalImmersion && (
             <button
               onClick={testMobileVoice}
@@ -1651,8 +1775,8 @@ export function VoiceStudioDialog({
             )}
           </div>
 
-          <div className={"mt-4 rounded-2xl border border-white/10 bg-slate-900/90 p-3 shadow-[inset_0_0_30px_rgba(15,23,42,0.35)] sm:p-4 " + (immersiveMode ? "flex min-h-0 flex-1 flex-col ring-1 ring-cyan-300/20" : "")}>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className={"mt-2 rounded-2xl border border-white/10 bg-slate-900/90 p-2 shadow-[inset_0_0_30px_rgba(15,23,42,0.35)] sm:mt-3 sm:p-4 " + (immersiveMode ? "flex min-h-0 flex-1 flex-col ring-1 ring-cyan-300/20" : "")}>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 sm:mb-3 sm:gap-3">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">Manuscript reader</p>
                 <p className="text-base font-semibold text-white">
@@ -1670,7 +1794,7 @@ export function VoiceStudioDialog({
               )}
             </div>
 
-            <div className="mb-4 flex items-center justify-between gap-2 text-xs text-white/60">
+            <div className="mb-2 flex items-center justify-between gap-2 text-xs text-white/60">
               <span>Speaking sentence {currentSentence + 1} of {sentences.length || 1}</span>
               <span>{currentChapter ? currentChapter.title || `Chapter ${chapterIndex + 1}` : "No chapter selected"}</span>
             </div>
@@ -1678,10 +1802,10 @@ export function VoiceStudioDialog({
             <div
               ref={karaokeScrollRef}
               onScroll={handleKaraokeScroll}
-              className={`relative overflow-y-auto overflow-x-hidden overscroll-contain scroll-smooth rounded-2xl border border-white/10 bg-slate-950/80 p-3 sm:p-4 ${
+              className={`relative overflow-y-auto overflow-x-hidden overscroll-contain scroll-smooth rounded-2xl border border-white/10 bg-slate-950/80 p-2 sm:p-4 ${
                 immersiveMode
-                  ? "min-h-[58dvh] flex-1 max-h-[68dvh] backdrop-blur-sm"
-                  : "max-h-[42dvh] sm:max-h-[24rem]"
+                  ? "min-h-[38dvh] flex-1 max-h-[52dvh] backdrop-blur-sm sm:min-h-[58dvh] sm:max-h-[68dvh]"
+                  : "max-h-[38dvh] sm:max-h-[24rem]"
               }`}
             >
               {readerDetached && sentences.length > 0 && (isPlaying || isPaused) && (

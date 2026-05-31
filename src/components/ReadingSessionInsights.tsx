@@ -5,6 +5,7 @@ import {
   type ChapterNoteGroup,
   type ListeningNote,
 } from "@/lib/reading-session";
+import { isMobileViewport } from "@/lib/mobile-viewport";
 
 interface Props {
   notes: ListeningNote[];
@@ -23,10 +24,63 @@ function iconForType(type: ListeningNote["noteType"]): string {
 
 export function ReadingSessionInsights({ notes, onClose, onOpenInEditor }: Props) {
   const groups = groupNotesByChapter(notes);
+  const mobile = isMobileViewport();
+
+  if (mobile) {
+    return (
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 flex flex-col justify-end">
+        <button
+          type="button"
+          aria-label="Close insights backdrop"
+          className="pointer-events-auto absolute inset-0 bg-slate-950/55"
+          onClick={onClose}
+        />
+        <div
+          className="pointer-events-auto relative flex max-h-[70dvh] flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-slate-950/98 shadow-[0_-12px_40px_rgba(0,0,0,0.45)]"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
+          <div className="flex shrink-0 items-start justify-between gap-3 border-b border-white/10 p-3">
+            <div className="min-w-0 pr-2">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-white/45">Session insights</p>
+              <h3 className="mt-0.5 text-base font-semibold text-white">Your listening observations</h3>
+              <p className="mt-0.5 text-[11px] text-white/55">Author notes only — no AI analysis.</p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="shrink-0 rounded-xl border border-white/15 p-2 text-white/70 hover:bg-white/10"
+              aria-label="Close insights"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
+            {groups.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-4 text-center text-sm text-white/60">
+                No notes this session. In Editor Mode, tap a quick note while listening to capture what you hear.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {groups.map((group) => (
+                  <ChapterGroup
+                    key={group.chapterIndex}
+                    group={group}
+                    onOpenInEditor={onOpenInEditor}
+                    compact
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="absolute inset-0 z-40 flex flex-col rounded-2xl border border-white/10 bg-slate-950/96 backdrop-blur-md">
-      <div className="flex items-start justify-between gap-3 border-b border-white/10 p-4">
+    <div className="absolute inset-0 z-40 flex max-h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-slate-950/96 backdrop-blur-md">
+      <div className="flex shrink-0 items-start justify-between gap-3 border-b border-white/10 p-4">
         <div>
           <p className="text-[11px] uppercase tracking-[0.18em] text-white/45">Reading Session Insights</p>
           <h3 className="mt-1 text-lg font-semibold text-white">Your listening observations</h3>
@@ -42,7 +96,7 @@ export function ReadingSessionInsights({ notes, onClose, onOpenInEditor }: Props
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
         {groups.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/60">
             No notes this session. In Editor Mode, tap a quick note while listening to capture what you hear.
@@ -66,16 +120,18 @@ export function ReadingSessionInsights({ notes, onClose, onOpenInEditor }: Props
 function ChapterGroup({
   group,
   onOpenInEditor,
+  compact = false,
 }: {
   group: ChapterNoteGroup;
   onOpenInEditor?: (chapterIndex: number, paragraphIndex: number) => void;
+  compact?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+    <div className={`rounded-2xl border border-white/10 bg-white/[0.04] ${compact ? "p-3" : "p-4"}`}>
       <p className="text-sm font-semibold text-white">
         {group.chapterTitle || `Chapter ${group.chapterIndex + 1}`}
       </p>
-      <ul className="mt-3 space-y-3">
+      <ul className="mt-2 space-y-2 sm:mt-3 sm:space-y-3">
         {group.notes.map((note) => (
           <li key={note.id} className="rounded-xl border border-white/8 bg-slate-900/60 px-3 py-2.5">
             <div className="flex flex-wrap items-start justify-between gap-2">

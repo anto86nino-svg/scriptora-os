@@ -67,7 +67,7 @@ export function getFallbackRoute(
     case "open_author_identity":
       return "/dashboard?open=author-identity";
     case "open_new_book":
-      return "/dashboard?open=new-book";
+      return "/dashboard?open=launch-book";
     case "open_projects":
       return "/dashboard?open=projects";
     case "open_editor":
@@ -140,6 +140,7 @@ export type DashboardOpenParam =
   | "manuscript-analyzer"
   | "cover-studio"
   | "new-book"
+  | "launch-book"
   | "projects";
 
 export function parseOpenQuery(search: string): {

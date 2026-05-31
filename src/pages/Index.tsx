@@ -135,6 +135,15 @@ const Index = () => {
   const { showRequirement, requirementDialog } = useRequirementGate();
   const freeBookUsed = plan === "free" && projects.length > 0;
 
+  const openLaunchChooserGuarded = () => {
+    if (freeBookUsed) {
+      setUpgradeReason("books-limit");
+      toast.error(t("toast_free_book_used"));
+      return;
+    }
+    navigate("/dashboard?open=launch-book");
+  };
+
   const openNewBookGuarded = () => {
     if (freeBookUsed) {
       setUpgradeReason("books-limit");
@@ -146,7 +155,7 @@ const Index = () => {
 
   useEffect(() => {
     const onOpenAuthorIdentity = () => setShowAuthorIdentity(true);
-    const onOpenNewBook = () => openNewBookGuarded();
+    const onOpenNewBook = () => openLaunchChooserGuarded();
     const onOpenCover = () => setShowCover(true);
     const onOpenPublish = () => setShowPublish(true);
     const onFocusChapter = (event: Event) => {
@@ -177,7 +186,7 @@ const Index = () => {
       window.removeEventListener(REQUIREMENT_ACTION_EVENTS.focus_chapter, onFocusChapter);
       window.removeEventListener(REQUIREMENT_ACTION_EVENTS.focus_book_title, onFocusBookTitle);
     };
-  }, [freeBookUsed]);
+  }, [freeBookUsed, navigate]);
 
   useEffect(() => {
     const { open, chapterIndex } = parseOpenQuery(searchParams.toString());
@@ -832,9 +841,9 @@ const Index = () => {
         ) : (
           <>
             <div className="p-2">
-              <button onClick={openNewBookGuarded}
+              <button onClick={openLaunchChooserGuarded}
                 className="flex w-full items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-950 transition-colors hover:bg-slate-100">
-                <Plus className="h-3 w-3" /> {t("new_book")}
+                <Plus className="h-3 w-3" /> {t("req_create_project")}
               </button>
             </div>
 
@@ -1041,7 +1050,7 @@ const Index = () => {
                 variant="empty-book"
                 fullPage
                 inPanel
-                onPrimary={openNewBookGuarded}
+                onPrimary={openLaunchChooserGuarded}
                 onSecondary={() => navigate("/dashboard")}
               >
                 {projects.length > 0 && (
