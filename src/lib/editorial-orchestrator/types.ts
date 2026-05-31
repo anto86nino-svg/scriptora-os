@@ -8,8 +8,11 @@ import type { PayoffAnalysis } from "@/lib/payoff-engine";
 import type { ReaderSimulationSnapshot } from "@/lib/reader-simulation";
 import type { SubtextAnalysis } from "@/lib/subtext-engine";
 import type { TensionEngineV2Snapshot } from "@/lib/tension-engine-v2";
+import type { GreatnessAnalysisSnapshot } from "@/lib/greatness-engine";
+import type { MasterpieceAnalysisSnapshot } from "@/lib/masterpiece-engine";
+import type { CanonProtectionReport, NarrativeMemoryCoreSnapshot, SupremeMemoryReport } from "@/lib/narrative-memory-core";
 
-export const EDITORIAL_ORCHESTRATOR_VERSION = "scriptora-editorial-orchestrator-v3";
+export const EDITORIAL_ORCHESTRATOR_VERSION = "scriptora-editorial-orchestrator-v6";
 
 export type ChapterArcPhase = "opening" | "middle" | "closing";
 
@@ -31,6 +34,8 @@ export type EditorialIntentSheet = {
   };
   genre?: string;
   characterIntentSheets?: CharacterIntentSheet[];
+  supremeGenreBlock?: string;
+  narrativeMemoryBlock?: string;
 };
 
 export type SupremeIssueSeverity = "critical" | "optional";
@@ -94,6 +99,29 @@ export type PreDeliveryPhaseCIntel = {
   emotionalRewriteApplied: boolean;
 };
 
+export type PreDeliveryPhaseDIntel = {
+  narrativeMemory: NarrativeMemoryCoreSnapshot;
+  canonProtection: CanonProtectionReport;
+  supremeMemoryReport: SupremeMemoryReport;
+};
+
+export type PreDeliveryPhaseEIntel = {
+  greatnessAnalysis: GreatnessAnalysisSnapshot;
+  elevationRewriteApplied: boolean;
+  elevatesApplied: number;
+  greatnessBefore: number;
+  greatnessAfter: number;
+};
+
+export type PreDeliveryPhaseFIntel = {
+  masterpieceAnalysis: MasterpieceAnalysisSnapshot;
+  masterpieceRewriteApplied: boolean;
+  selectedDraft: "A" | "B" | "C";
+  microElevationsApplied: number;
+  narrativeMagicBefore: number;
+  narrativeMagicAfter: number;
+};
+
 export type SupremeEditorialSnapshot = {
   intent: EditorialIntentSheet;
   score: SupremeEditorialScore;
@@ -101,4 +129,9 @@ export type SupremeEditorialSnapshot = {
   evaluatedAt: string;
   phaseB?: PreDeliveryPhaseBIntel;
   phaseC?: PreDeliveryPhaseCIntel;
+  phaseD?: PreDeliveryPhaseDIntel;
+  phaseE?: PreDeliveryPhaseEIntel;
+  phaseF?: PreDeliveryPhaseFIntel;
+  greatnessScore?: number;
+  narrativeMagicScore?: number;
 };

@@ -1,4 +1,5 @@
 import type { BookConfig, Chapter } from "@/types/book";
+import { adaptSupremeToGenreBrainProfile } from "@/lib/genre-brain-supreme";
 
 export const GENRE_BRAIN_STORAGE_KEY = "scriptora-genre-brain-enabled";
 
@@ -293,16 +294,17 @@ export function detectGenreBrainId(config?: Partial<BookConfig>): GenreBrainId {
 export function resolveGenreBrainProfile(context: GenreBrainContext = {}): GenreBrainProfile {
   const id = detectGenreBrainId(context.config);
   const selected = PROFILES[id] || PROFILES.default;
-  if (isGenreBrainEnabled(context)) return selected;
-
-  return {
-    ...PROFILES.default,
-    id,
-    label: `${selected.label} (off)`,
-    enabled: false,
-    maxChangePercent: 14.5,
-    notes: ["GenreBrain disabled: neutral Humanizer V2 weighting only."],
-  };
+  const base = isGenreBrainEnabled(context)
+    ? selected
+    : {
+        ...PROFILES.default,
+        id,
+        label: `${selected.label} (off)`,
+        enabled: false,
+        maxChangePercent: 14.5,
+        notes: ["GenreBrain disabled: neutral Humanizer V2 weighting only."],
+      };
+  return adaptSupremeToGenreBrainProfile(base, context.config);
 }
 
 export function stepWeight(profile: GenreBrainProfile, step: GenreBrainRefinementStep): number {

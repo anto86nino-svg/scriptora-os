@@ -2,6 +2,11 @@ import type { BookBlueprint, BookConfig, Chapter } from "@/types/book";
 import type { LongBookMemorySnapshot } from "@/lib/long-book-memory/types";
 import { detectGenreBrainId, resolveGenreBrainProfile } from "@/lib/GenreBrain";
 import { getGenreBlueprint, getGenreProfile } from "@/lib/genre-intelligence";
+import { buildSupremeGenrePromptBlock, getSupremeGenreProfile } from "@/lib/genre-brain-supreme";
+import {
+  buildNarrativeMemoryCore,
+  buildNarrativeMemoryPromptBlock,
+} from "@/lib/narrative-memory-core";
 import { getClichePreventionBlock } from "@/lib/cliche-engine";
 import {
   buildCharacterIntentPromptBlock,
@@ -112,6 +117,12 @@ export function buildEditorialIntentSheet(input: {
     presentOnly: presentProfiles.length ? presentProfiles : supremacyProfiles.slice(0, 4),
   });
 
+  const narrativeMemory = buildNarrativeMemoryCore({
+    config,
+    blueprint: input.blueprint,
+    chapters: input.previousChapters,
+  });
+
   return {
     version: EDITORIAL_ORCHESTRATOR_VERSION,
     chapterIndex,
@@ -127,6 +138,8 @@ export function buildEditorialIntentSheet(input: {
     marketFloor: { hookMin, bingeMin },
     genre: config.genre,
     characterIntentSheets,
+    narrativeMemoryBlock: buildNarrativeMemoryPromptBlock(narrativeMemory),
+    supremeGenreBlock: buildSupremeGenrePromptBlock(getSupremeGenreProfile({ config })),
   };
 }
 
@@ -162,6 +175,10 @@ export function buildEditorialIntentPromptBlock(
   }
 
   lines.push(
+    "",
+    sheet.supremeGenreBlock || buildSupremeGenrePromptBlock(getSupremeGenreProfile({ genre: sheet.genre } as import("@/types/book").BookConfig)),
+    "",
+    sheet.narrativeMemoryBlock || "",
     "",
     buildCharacterIntentBlockFromSheet(sheet),
     "",

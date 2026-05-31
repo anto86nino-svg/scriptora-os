@@ -1,6 +1,24 @@
 import { humanizeNarrativeText } from "@/lib/HumanizerLayer";
+import { applyNarrativePullRewrite } from "./narrative-pull";
 import type { BookConfig, Chapter } from "@/types/book";
 import type { ReaderSimulationSnapshot } from "./types";
+
+function injectClosingPull(text: string, config?: BookConfig): string {
+  const trimmed = text.trim();
+  if (/\?\s*$/.test(trimmed)) return text;
+  if (/\b(unanswered|not yet\.|before you turn|next page|still open)\b/i.test(trimmed.slice(-90))) {
+    return text;
+  }
+  const genre = String(config?.genre || "").toLowerCase();
+  const brain = String(config?.bookIntelligence?.layers?.writingBrainId || "").toLowerCase();
+  if (/self-help|productivity|business|manual|horticultural/.test(genre + brain)) {
+    return `${trimmed}\n\nWhat will you avoid tomorrow — and what single behavior will you track for seven days?`;
+  }
+  if (/thriller|mystery|crime/.test(genre + brain)) {
+    return `${trimmed}\n\nThe timestamp would not match — who had access to change it?`;
+  }
+  return `${trimmed}\n\nTomorrow would demand an answer she was not ready to give — so why did leaving feel impossible?`;
+}
 
 function injectCuriosityHook(text: string): string {
   const paragraphs = text.split(/\n\n+/);
@@ -42,8 +60,15 @@ export function applyMicroReaderRewrite(
   if (simulation.readingPace === "skimming") {
     next = shortenSkimBlocks(next);
   }
-  if (simulation.curiosity < 45 || simulation.failedChecks.some(c => /curiosity/i.test(c))) {
+  if (simulation.curiosity < 70 || simulation.failedChecks.some(c => /curiosity|retention|predictable|skim/i.test(c))) {
     next = injectCuriosityHook(next);
+    next = applyNarrativePullRewrite(next, context.config);
+  } else if (simulation.retention < 55) {
+    next = applyNarrativePullRewrite(next, context.config);
+  }
+
+  if (simulation.curiosity < 70 || simulation.retention < 55 || simulation.failedChecks.some(c => /curiosity/i.test(c))) {
+    next = injectClosingPull(next, context.config);
   }
 
   next = humanizeNarrativeText(next, {

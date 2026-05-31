@@ -4,9 +4,13 @@ import type {
   ScenePurpose,
   ScenePurposeEntry,
 } from "./types";
+import { isSubstantiveScene, splitScenesForRewrite } from "./scene-purpose-utils";
 
 const PURPOSE_SIGNALS: Record<ScenePurpose, RegExp[]> = {
-  tension: [/\b(but|però|however|tension|tensione|edge|unspoken|non detto)\b/i],
+  tension: [
+    /\b(but|però|however|yet|still|before|tension|tensione|edge|unspoken|non detto)\b/i,
+    /\b(shouldn't|should not|wrong|hiding|without humor|not yet|stayed on|holding|refused|unresolved)\b/i,
+  ],
   reveal: [/\b(reveal|rivel|discovered|scopr|truth|verità|realized|capì che)\b/i],
   emotional_progression: [/\b(felt|sentì|heart|cuore|tears|lacrime|trembl|shook)\b/i],
   plot_progression: [/\b(then|poi|next|decided|decise|arrived|arriv|left|partì|plan|piano)\b/i],
@@ -32,38 +36,7 @@ function isNonfictionBrain(config?: BookConfig): boolean {
 }
 
 function splitScenes(text: string): string[] {
-  const normalized = text.trim();
-  if (!normalized) return [];
-
-  const byBreak = normalized.split(/\n\s*(?:---|\*\*\*|—{3,})\s*\n/);
-  if (byBreak.length > 1) return byBreak.map(s => s.trim()).filter(Boolean);
-
-  const paragraphs = normalized.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
-  if (paragraphs.length <= 1) return [normalized];
-
-  // Default: each paragraph block is a scene unit for purpose analysis
-  if (paragraphs.every(p => p.split(/\s+/).length >= 8)) {
-    return paragraphs;
-  }
-
-  const scenes: string[] = [];
-  let buffer: string[] = [];
-
-  for (const para of paragraphs) {
-    const isShift =
-      /^(scene|scena|capitolo|chapter|\d+\.|\[)/i.test(para) ||
-      /^(later|poi|the next|il giorno dopo|hours later|ore dopo)/i.test(para);
-
-    if (isShift && buffer.length) {
-      scenes.push(buffer.join("\n\n"));
-      buffer = [para];
-    } else {
-      buffer.push(para);
-    }
-  }
-  if (buffer.length) scenes.push(buffer.join("\n\n"));
-
-  return scenes.length ? scenes : [normalized];
+  return splitScenesForRewrite(text);
 }
 
 function scorePurposes(text: string, nonfiction: boolean): Array<{ purpose: ScenePurpose; score: number }> {
@@ -168,13 +141,15 @@ function detectRepetition(scenes: ScenePurposeEntry[]): { warnings: string[]; re
     recommendations.push("Compress emotional repetition; add external conflict or reveal");
   }
 
-  const weakScenes = scenes.filter(s => s.health === "weak");
+  const weakScenes = scenes.filter(s => s.health === "weak" && isSubstantiveScene(s.wordCount));
   if (weakScenes.length >= 2) {
     warnings.push(`${weakScenes.length} scenes lack clear purpose`);
     recommendations.push("Merge weak scenes or sharpen their narrative job");
   }
 
-  const unclearRatio = scenes.filter(s => s.primaryPurpose === "unclear").length / Math.max(1, scenes.length);
+  const substantive = scenes.filter(s => isSubstantiveScene(s.wordCount));
+  const unclearRatio =
+    substantive.filter(s => s.primaryPurpose === "unclear").length / Math.max(1, substantive.length);
   if (unclearRatio >= 0.5 && scenes.length >= 2) {
     warnings.push("Majority of scenes lack detectable purpose");
     recommendations.push("Each scene needs a job: tension, reveal, progression, or escalation");
@@ -193,7 +168,8 @@ export function analyzeChapterScenePurpose(input: {
   const scenes = rawScenes.map((text, index) => assessScene(index + 1, text, nonfiction));
   const { warnings, recommendations } = detectRepetition(scenes);
 
-  const weakCount = scenes.filter(s => s.health === "weak").length;
+  const substantiveScenes = scenes.filter(s => isSubstantiveScene(s.wordCount));
+  const weakCount = substantiveScenes.filter(s => s.health === "weak").length;
   const overallHealth: ChapterScenePurposeSnapshot["overallHealth"] =
     weakCount >= 2 || warnings.length >= 2
       ? "weak"

@@ -13,6 +13,9 @@ import type { EmotionalRealismReport } from "@/lib/emotional-realism-gate";
 import type { SubtextAnalysis } from "@/lib/subtext-engine";
 import type { TensionEngineV2Snapshot } from "@/lib/tension-engine-v2";
 import type { PayoffAnalysis } from "@/lib/payoff-engine";
+import type { CanonProtectionReport, SupremeMemoryReport } from "@/lib/narrative-memory-core";
+import type { GreatnessAnalysisSnapshot } from "@/lib/greatness-engine";
+import type { MasterpieceAnalysisSnapshot } from "@/lib/masterpiece-engine";
 import type { ReaderSimulationSnapshot } from "@/lib/reader-simulation";
 import type { BookConfig } from "@/types/book";
 import type { SupremeEditorialIssue, SupremeEditorialScore } from "./types";
@@ -70,6 +73,10 @@ export function computeSupremeEditorialScore(input: {
   dialogueHumanity?: DialogueHumanityReport;
   emotionalRealism?: EmotionalRealismReport;
   characterProfiles?: CharacterSupremacyProfile[];
+  canonProtection?: CanonProtectionReport;
+  supremeMemoryReport?: SupremeMemoryReport;
+  greatnessAnalysis?: GreatnessAnalysisSnapshot;
+  masterpieceAnalysis?: MasterpieceAnalysisSnapshot;
 }): SupremeEditorialScore {
   const text = String(input.content || "").trim();
   const issues: SupremeEditorialIssue[] = [];
@@ -288,10 +295,30 @@ export function computeSupremeEditorialScore(input: {
     });
   }
 
+  for (const v of input.canonProtection?.violations.filter(v => v.severity === "critical") || []) {
+    issues.push({
+      code: `canon_${v.code}`,
+      severity: "critical",
+      message: v.message,
+      dimension: "narrativePromiseIntegrity",
+    });
+  }
+
+  if (input.supremeMemoryReport && input.supremeMemoryReport.continuityRisk >= 65) {
+    issues.push({
+      code: "continuity_risk",
+      severity: "optional",
+      message: input.supremeMemoryReport.warnings[0] || "Long-book continuity at risk",
+      dimension: "narrativePromiseIntegrity",
+    });
+  }
+
   const clicheDensityScore = clamp100(100 - (clicheScan?.density || 0) * 8 - (clicheScan?.hits.length || 0) * 3);
   const readerCuriosity = clamp100(readerSim?.curiosity ?? reader.curiosity);
   const readerRetentionSim = clamp100(readerSim?.retention ?? bestseller.scores.readerRetention);
-  const narrativePromiseIntegrity = clamp100(promises?.integrityScore ?? 100);
+  const narrativePromiseIntegrity = clamp100(
+    (promises?.integrityScore ?? 100) * 0.5 + (input.supremeMemoryReport?.narrativeHealth ?? 100) * 0.5,
+  );
   const payoffStrength = clamp100(payoff?.strengthScore ?? 75);
   const characterDepth = clamp100(
     profiles.length * 8 +
@@ -300,6 +327,23 @@ export function computeSupremeEditorialScore(input: {
   );
   const behavioralConsistency = clamp100(behavioral?.consistencyScore ?? 100);
   const relationshipTension = clamp100(tensionV2?.relationshipTension ?? 55);
+
+  const greatness = input.greatnessAnalysis?.greatnessScore;
+  const magic = input.masterpieceAnalysis?.narrativeMagic;
+  const greatnessBoost = greatness
+    ? clamp100(
+        greatness.dimensions.hookIntensity * 0.04 +
+          greatness.dimensions.memorability * 0.03 +
+          greatness.dimensions.bingeability * 0.03,
+      )
+    : 0;
+  const magicBoost = magic
+    ? clamp100(
+        magic.dimensions.readerObsession * 0.04 +
+          magic.dimensions.quotePotential * 0.03 +
+          magic.dimensions.emotionalPersistence * 0.03,
+      )
+    : 0;
 
   const dimensions = {
     emotionalRealism: clamp100(
@@ -325,13 +369,17 @@ export function computeSupremeEditorialScore(input: {
     commercialReadability: clamp100(bestseller.scores.overall),
     readerRetention: clamp100(bestseller.scores.readerRetention),
     marketPotential: clamp100(bestseller.scores.overall * 0.85 + bestseller.scores.commercialPacing * 0.15),
-    bookTokPotential: clamp100(bestseller.scores.bookTokIntensity),
+    bookTokPotential: clamp100(
+      bestseller.scores.bookTokIntensity +
+        (greatness ? greatness.dimensions.memorability * 0.1 : 0) +
+        (magic ? magic.dimensions.quotePotential * 0.08 : 0),
+    ),
     voiceAuthenticity: clamp100(
       100 -
         validator.issues.filter(i => CRITICAL_VALIDATOR_KINDS.has(i.kind)).length * 18 -
         editorial.warnings.filter(w => w.type === "dialogue_perfection").length * 8,
     ),
-    hookStrength: clamp100(bestseller.scores.hookStrength),
+    hookStrength: clamp100(bestseller.scores.hookStrength + (greatness ? greatness.dimensions.hookIntensity * 0.12 : 0)),
     readerCuriosity,
     readerRetentionSim,
     narrativePromiseIntegrity,
@@ -360,7 +408,11 @@ export function computeSupremeEditorialScore(input: {
       dimensions.clicheDensity * 0.05 +
       dimensions.characterDepth * 0.06 +
       dimensions.behavioralConsistency * 0.06 +
-      dimensions.relationshipTension * 0.06,
+      dimensions.relationshipTension * 0.06 +
+      greatnessBoost * 0.14 +
+      magicBoost * 0.12 +
+      Math.max(0, (greatness?.composite ?? 0) - 65) * 0.18 +
+      Math.max(0, (magic?.composite ?? 0) - 60) * 0.22,
   );
 
   const criticalCount = issues.filter(i => i.severity === "critical").length;

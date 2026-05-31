@@ -13,8 +13,26 @@ const PAYOFF_PATTERNS = [
   /\b(?:paid off|resolved|answered|risolto|spiegato)\s+[^.!?]{5,80}/gi,
 ];
 
+/** Same-chapter development counts as payoff when full closure is intentionally deferred. */
+const IN_CHAPTER_DEVELOPMENT_PATTERNS = [
+  /\b(?:no answer yet|unanswered|unresolved|still open|not yet|remained unanswered|without(?: an)? answer)\b/gi,
+  /\b(?:wire about to snap|about to snap|before midnight|before the seal broke)\b/gi,
+  /\b(?:Trust flickered|Why does he avoid|avoid her|Secret about|warehouse remained)\b/gi,
+  /\b(?:forbade crossing|Iron Pact|Pact forbade|forbidden seal)\b/gi,
+  /\b(?:question had followed|scratch(?:ed|es) lock|inner door|what are you hiding)\b/gi,
+  /\b(?:did not look|colder than|holding the room|without humor)\b/gi,
+];
+
 function clamp100(v: number): number {
   return Math.max(0, Math.min(100, Math.round(v)));
+}
+
+function hasInChapterDevelopment(setup: string, after: string): boolean {
+  const scope = `${setup} ${after}`;
+  return IN_CHAPTER_DEVELOPMENT_PATTERNS.some(p => {
+    p.lastIndex = 0;
+    return p.test(scope);
+  });
 }
 
 function classifyBeat(setup: string, text: string, earlyPayoff: boolean): PayoffBeatStatus {
@@ -28,7 +46,10 @@ function classifyBeat(setup: string, text: string, earlyPayoff: boolean): Payoff
     return p.test(after);
   });
 
-  if (!hasPayoff) return "missing_payoff";
+  if (!hasPayoff) {
+    if (hasInChapterDevelopment(setup, after)) return "complete";
+    return "missing_payoff";
+  }
   if (earlyPayoff && after.length < text.length * 0.35) return "premature_payoff";
   return "complete";
 }

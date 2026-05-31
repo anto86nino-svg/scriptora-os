@@ -7,6 +7,11 @@
  */
 
 import type { Genre } from "@/types/book";
+import {
+  buildSupremeGenrePromptBlock,
+  getSupremeGenreProfile,
+  supremeRulesAsFlatList,
+} from "@/lib/genre-brain-supreme";
 
 export type GenreKey =
   | Genre
@@ -1104,7 +1109,20 @@ export function resolveGenreKey(genre: string, subcategory?: string): GenreKey {
 
 export function getGenreProfile(genre: string, subcategory?: string): GenreProfile {
   const key = resolveGenreKey(genre, subcategory);
-  return PROFILES[key];
+  const base = PROFILES[key];
+  const supreme = getSupremeGenreProfile({ genre, subcategory });
+  const supremeDos = supremeRulesAsFlatList(supreme).slice(0, 8);
+  return {
+    ...base,
+    dos: [
+      ...supremeDos,
+      ...base.dos.filter(d => !supremeDos.some(s => s.toLowerCase() === d.toLowerCase())),
+    ].slice(0, 14),
+    donts: [
+      ...supreme.preventionNotes,
+      ...base.donts,
+    ].slice(0, 14),
+  };
 }
 
 /**
@@ -1112,10 +1130,11 @@ export function getGenreProfile(genre: string, subcategory?: string): GenreProfi
  * del Writing Engine. Sostituisce il vecchio `getGenrePrompt`.
  */
 export function buildGenreSystemBlock(genre: string, subcategory?: string): string {
+  const supreme = buildSupremeGenrePromptBlock(getSupremeGenreProfile({ genre, subcategory }));
   const p = getGenreProfile(genre, subcategory);
   const key = resolveGenreKey(genre, subcategory);
 
-  return `GENRE INTELLIGENCE — ${key.toUpperCase()}
+  const legacy = `GENRE INTELLIGENCE — ${key.toUpperCase()}
 Authors-DNA reference: ${p.authorsDNA}
 Tone: ${p.tone}
 Pacing: ${p.pacing}
@@ -1135,6 +1154,8 @@ NEVER DO:
 ${p.donts.map((d) => `✗ ${d}`).join("\n")}
 
 CHAPTER ENDING RULE: ${p.chapterEnding}`;
+
+  return `${supreme}\n\n${legacy}`;
 }
 
 /**

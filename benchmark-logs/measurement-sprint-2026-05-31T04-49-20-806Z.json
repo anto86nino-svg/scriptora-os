@@ -1,0 +1,2514 @@
+{
+  "version": 1,
+  "sprintId": "scriptora-measurement-sprint-v1",
+  "generatedAt": "2026-05-31T04:49:20.801Z",
+  "mode": "measure-only",
+  "realBookBenchmark": [
+    {
+      "projectId": "rw-romance-1",
+      "title": "Salt on His Skin",
+      "category": "Romance / Dark Romance",
+      "supremeComposite": 88,
+      "greatnessComposite": 84,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.92,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-romance-2",
+      "title": "The Room He Never Enters",
+      "category": "Romance / Dark Romance",
+      "supremeComposite": 87,
+      "greatnessComposite": 83,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.88,
+      "criticalIssues": 1,
+      "passesPreDelivery": false
+    },
+    {
+      "projectId": "rw-romance-3",
+      "title": "Borrowed Heat",
+      "category": "Romance / Dark Romance",
+      "supremeComposite": 88,
+      "greatnessComposite": 83,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.92,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-romance-4",
+      "title": "After the Fire Door",
+      "category": "Romance / Dark Romance",
+      "supremeComposite": 89,
+      "greatnessComposite": 85,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.88,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-romance-5",
+      "title": "No Saints in Milan",
+      "category": "Romance / Dark Romance",
+      "supremeComposite": 88,
+      "greatnessComposite": 83,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.92,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-thriller-1",
+      "title": "The Wrong Timestamp",
+      "category": "Thriller / Crime",
+      "supremeComposite": 89,
+      "greatnessComposite": 73,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.71,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-thriller-2",
+      "title": "Quiet House Protocol",
+      "category": "Thriller / Crime",
+      "supremeComposite": 89,
+      "greatnessComposite": 73,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.71,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-thriller-3",
+      "title": "Debt of Silence",
+      "category": "Thriller / Crime",
+      "supremeComposite": 88,
+      "greatnessComposite": 79,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.68,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-thriller-4",
+      "title": "Last Known Exit",
+      "category": "Thriller / Crime",
+      "supremeComposite": 88,
+      "greatnessComposite": 77,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.68,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-thriller-5",
+      "title": "The Second Witness",
+      "category": "Thriller / Crime",
+      "supremeComposite": 89,
+      "greatnessComposite": 73,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.71,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-fantasy-1",
+      "title": "The Iron Pact",
+      "category": "Fantasy",
+      "supremeComposite": 88,
+      "greatnessComposite": 82,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.68,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-fantasy-2",
+      "title": "Second Bell",
+      "category": "Fantasy",
+      "supremeComposite": 88,
+      "greatnessComposite": 82,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.68,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-fantasy-3",
+      "title": "Ash Bridge",
+      "category": "Fantasy",
+      "supremeComposite": 88,
+      "greatnessComposite": 82,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.68,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-fantasy-4",
+      "title": "Canon of Salt",
+      "category": "Fantasy",
+      "supremeComposite": 88,
+      "greatnessComposite": 82,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.68,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-fantasy-5",
+      "title": "The Oath Brand",
+      "category": "Fantasy",
+      "supremeComposite": 88,
+      "greatnessComposite": 82,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.68,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-memoir-1",
+      "title": "Leaving Before Knock",
+      "category": "Memoir / Emotional Fiction",
+      "supremeComposite": 87,
+      "greatnessComposite": 80,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.63,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-memoir-2",
+      "title": "Winter Sorting",
+      "category": "Memoir / Emotional Fiction",
+      "supremeComposite": 87,
+      "greatnessComposite": 78,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.47,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-memoir-3",
+      "title": "Mother's Door",
+      "category": "Memoir / Emotional Fiction",
+      "supremeComposite": 87,
+      "greatnessComposite": 82,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.43,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-memoir-4",
+      "title": "Boxes Not Failure",
+      "category": "Memoir / Emotional Fiction",
+      "supremeComposite": 87,
+      "greatnessComposite": 78,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.47,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-memoir-5",
+      "title": "Halfway Through",
+      "category": "Memoir / Emotional Fiction",
+      "supremeComposite": 87,
+      "greatnessComposite": 78,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.47,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-selfhelp-1",
+      "title": "Friction First Habits",
+      "category": "Self-help",
+      "supremeComposite": 85,
+      "greatnessComposite": 77,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.61,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-selfhelp-2",
+      "title": "Seven Day Stack",
+      "category": "Self-help",
+      "supremeComposite": 85,
+      "greatnessComposite": 77,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.61,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-selfhelp-3",
+      "title": "Environment Beats Will",
+      "category": "Self-help",
+      "supremeComposite": 85,
+      "greatnessComposite": 77,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.61,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-selfhelp-4",
+      "title": "One Behavior Rule",
+      "category": "Self-help",
+      "supremeComposite": 85,
+      "greatnessComposite": 77,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.61,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-selfhelp-5",
+      "title": "Cue Your Future Self",
+      "category": "Self-help",
+      "supremeComposite": 85,
+      "greatnessComposite": 77,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.61,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-business-1",
+      "title": "Price the Avoided Loss",
+      "category": "Business",
+      "supremeComposite": 88,
+      "greatnessComposite": 81,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.63,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-business-2",
+      "title": "Churn Math",
+      "category": "Business",
+      "supremeComposite": 86,
+      "greatnessComposite": 76,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.59,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-business-3",
+      "title": "Value Before Cost",
+      "category": "Business",
+      "supremeComposite": 88,
+      "greatnessComposite": 82,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.63,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-business-4",
+      "title": "Buyer Problem Frame",
+      "category": "Business",
+      "supremeComposite": 88,
+      "greatnessComposite": 81,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.63,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-business-5",
+      "title": "Week One ROI",
+      "category": "Business",
+      "supremeComposite": 88,
+      "greatnessComposite": 81,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.63,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-hort-1",
+      "title": "Manuale coltivazione pomodoro — Tomato Soil Guide",
+      "category": "Practical Guides",
+      "supremeComposite": 90,
+      "greatnessComposite": 82,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.81,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-hort-2",
+      "title": "Manuale coltivazione pomodoro — Seedling Hardening Manual",
+      "category": "Practical Guides",
+      "supremeComposite": 90,
+      "greatnessComposite": 82,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.81,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-hort-3",
+      "title": "Manuale coltivazione pomodoro — Yellow Leaf Troubleshooting",
+      "category": "Practical Guides",
+      "supremeComposite": 90,
+      "greatnessComposite": 82,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.81,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-hort-4",
+      "title": "Manuale coltivazione pomodoro — pH Before Planting",
+      "category": "Practical Guides",
+      "supremeComposite": 90,
+      "greatnessComposite": 82,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.81,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-hort-5",
+      "title": "Manuale coltivazione pomodoro — Transplant Shock Prevention",
+      "category": "Practical Guides",
+      "supremeComposite": 90,
+      "greatnessComposite": 82,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.81,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    }
+  ],
+  "blindTest": {
+    "total": 35,
+    "scriptoraWins": 35,
+    "scriptoraWinRate": 100,
+    "rank1Rate": 100,
+    "avgMarginVsGeneric": 1.97,
+    "avgMarginVsClaude": 0.36,
+    "claudeBeatsScriptoraCount": 0,
+    "lossesByCategory": []
+  },
+  "bestsellerComparison": [
+    {
+      "genreKey": "romance",
+      "scriptoraHook": 80,
+      "scriptoraBinge": 70,
+      "genericHook": 0,
+      "genericBinge": 0,
+      "claudeHook": 0,
+      "claudeBinge": 0,
+      "hookGapVsBest": 0,
+      "bingeGapVsBest": 0
+    },
+    {
+      "genreKey": "thriller",
+      "scriptoraHook": 80,
+      "scriptoraBinge": 70,
+      "genericHook": 0,
+      "genericBinge": 0,
+      "claudeHook": 0,
+      "claudeBinge": 0,
+      "hookGapVsBest": 0,
+      "bingeGapVsBest": 0
+    },
+    {
+      "genreKey": "fantasy",
+      "scriptoraHook": 0,
+      "scriptoraBinge": 0,
+      "genericHook": 0,
+      "genericBinge": 0,
+      "claudeHook": 0,
+      "claudeBinge": 0,
+      "hookGapVsBest": 0,
+      "bingeGapVsBest": 0
+    },
+    {
+      "genreKey": "memoir",
+      "scriptoraHook": 66,
+      "scriptoraBinge": 70,
+      "genericHook": 0,
+      "genericBinge": 0,
+      "claudeHook": 0,
+      "claudeBinge": 0,
+      "hookGapVsBest": 0,
+      "bingeGapVsBest": 0
+    },
+    {
+      "genreKey": "selfHelp",
+      "scriptoraHook": 0,
+      "scriptoraBinge": 0,
+      "genericHook": 0,
+      "genericBinge": 0,
+      "claudeHook": 0,
+      "claudeBinge": 0,
+      "hookGapVsBest": 0,
+      "bingeGapVsBest": 0
+    },
+    {
+      "genreKey": "business",
+      "scriptoraHook": 0,
+      "scriptoraBinge": 0,
+      "genericHook": 0,
+      "genericBinge": 0,
+      "claudeHook": 0,
+      "claudeBinge": 0,
+      "hookGapVsBest": 0,
+      "bingeGapVsBest": 0
+    },
+    {
+      "genreKey": "horticultural",
+      "scriptoraHook": 0,
+      "scriptoraBinge": 0,
+      "genericHook": 0,
+      "genericBinge": 0,
+      "claudeHook": 0,
+      "claudeBinge": 0,
+      "hookGapVsBest": 0,
+      "bingeGapVsBest": 0
+    }
+  ],
+  "readerRetention": [
+    {
+      "source": "rw-romance-1",
+      "genre": "Romance / Dark Romance",
+      "curiosity": 54,
+      "retention": 77,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-romance-2",
+      "genre": "Romance / Dark Romance",
+      "curiosity": 54,
+      "retention": 78,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-romance-3",
+      "genre": "Romance / Dark Romance",
+      "curiosity": 54,
+      "retention": 77,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-romance-4",
+      "genre": "Romance / Dark Romance",
+      "curiosity": 54,
+      "retention": 77,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-romance-5",
+      "genre": "Romance / Dark Romance",
+      "curiosity": 54,
+      "retention": 77,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-thriller-1",
+      "genre": "Thriller / Crime",
+      "curiosity": 57,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-thriller-2",
+      "genre": "Thriller / Crime",
+      "curiosity": 57,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-thriller-3",
+      "genre": "Thriller / Crime",
+      "curiosity": 55,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-thriller-4",
+      "genre": "Thriller / Crime",
+      "curiosity": 55,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-thriller-5",
+      "genre": "Thriller / Crime",
+      "curiosity": 57,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-fantasy-1",
+      "genre": "Fantasy",
+      "curiosity": 43,
+      "retention": 75,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-fantasy-2",
+      "genre": "Fantasy",
+      "curiosity": 43,
+      "retention": 75,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-fantasy-3",
+      "genre": "Fantasy",
+      "curiosity": 43,
+      "retention": 75,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-fantasy-4",
+      "genre": "Fantasy",
+      "curiosity": 43,
+      "retention": 75,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-fantasy-5",
+      "genre": "Fantasy",
+      "curiosity": 43,
+      "retention": 75,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-memoir-1",
+      "genre": "Memoir / Emotional Fiction",
+      "curiosity": 48,
+      "retention": 71,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-memoir-2",
+      "genre": "Memoir / Emotional Fiction",
+      "curiosity": 45,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-memoir-3",
+      "genre": "Memoir / Emotional Fiction",
+      "curiosity": 45,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-memoir-4",
+      "genre": "Memoir / Emotional Fiction",
+      "curiosity": 45,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-memoir-5",
+      "genre": "Memoir / Emotional Fiction",
+      "curiosity": 45,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-selfhelp-1",
+      "genre": "Self-help",
+      "curiosity": 45,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-selfhelp-2",
+      "genre": "Self-help",
+      "curiosity": 45,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-selfhelp-3",
+      "genre": "Self-help",
+      "curiosity": 45,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-selfhelp-4",
+      "genre": "Self-help",
+      "curiosity": 45,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-selfhelp-5",
+      "genre": "Self-help",
+      "curiosity": 45,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-business-1",
+      "genre": "Business",
+      "curiosity": 49,
+      "retention": 71,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-business-2",
+      "genre": "Business",
+      "curiosity": 49,
+      "retention": 66,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-business-3",
+      "genre": "Business",
+      "curiosity": 49,
+      "retention": 71,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-business-4",
+      "genre": "Business",
+      "curiosity": 49,
+      "retention": 71,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-business-5",
+      "genre": "Business",
+      "curiosity": 49,
+      "retention": 71,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-hort-1",
+      "genre": "Practical Guides",
+      "curiosity": 77,
+      "retention": 80,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-hort-2",
+      "genre": "Practical Guides",
+      "curiosity": 77,
+      "retention": 80,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-hort-3",
+      "genre": "Practical Guides",
+      "curiosity": 77,
+      "retention": 80,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-hort-4",
+      "genre": "Practical Guides",
+      "curiosity": 77,
+      "retention": 80,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-hort-5",
+      "genre": "Practical Guides",
+      "curiosity": 77,
+      "retention": 80,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-romance-ch1",
+      "genre": "romance",
+      "curiosity": 54,
+      "retention": 59,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-romance-ch2",
+      "genre": "romance",
+      "curiosity": 54,
+      "retention": 61,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-romance-ch3",
+      "genre": "romance",
+      "curiosity": 54,
+      "retention": 59,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-romance-ch4",
+      "genre": "romance",
+      "curiosity": 54,
+      "retention": 61,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-romance-ch5",
+      "genre": "romance",
+      "curiosity": 50,
+      "retention": 74,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-thriller-ch1",
+      "genre": "thriller",
+      "curiosity": 58,
+      "retention": 60,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-thriller-ch2",
+      "genre": "thriller",
+      "curiosity": 71,
+      "retention": 62,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-thriller-ch3",
+      "genre": "thriller",
+      "curiosity": 68,
+      "retention": 61,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-thriller-ch4",
+      "genre": "thriller",
+      "curiosity": 58,
+      "retention": 60,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-thriller-ch5",
+      "genre": "thriller",
+      "curiosity": 58,
+      "retention": 60,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-fantasy-ch1",
+      "genre": "fantasy",
+      "curiosity": 40,
+      "retention": 57,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": false
+    },
+    {
+      "source": "stress-fantasy-ch2",
+      "genre": "fantasy",
+      "curiosity": 46,
+      "retention": 58,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-fantasy-ch3",
+      "genre": "fantasy",
+      "curiosity": 40,
+      "retention": 57,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": false
+    },
+    {
+      "source": "stress-fantasy-ch4",
+      "genre": "fantasy",
+      "curiosity": 46,
+      "retention": 58,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-fantasy-ch5",
+      "genre": "fantasy",
+      "curiosity": 40,
+      "retention": 57,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": false
+    },
+    {
+      "source": "stress-self-help-ch1",
+      "genre": "self-help",
+      "curiosity": 40,
+      "retention": 57,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": false
+    },
+    {
+      "source": "stress-self-help-ch2",
+      "genre": "self-help",
+      "curiosity": 40,
+      "retention": 57,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": false
+    },
+    {
+      "source": "stress-self-help-ch3",
+      "genre": "self-help",
+      "curiosity": 44,
+      "retention": 59,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-self-help-ch4",
+      "genre": "self-help",
+      "curiosity": 46,
+      "retention": 58,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-self-help-ch5",
+      "genre": "self-help",
+      "curiosity": 40,
+      "retention": 57,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": false
+    }
+  ],
+  "editorialExpert": [
+    {
+      "source": "rw-romance-1",
+      "genre": "Romance / Dark Romance",
+      "rubricComposite": 8.92,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.05,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-romance-2",
+      "genre": "Romance / Dark Romance",
+      "rubricComposite": 8.88,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.05,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-romance-3",
+      "genre": "Romance / Dark Romance",
+      "rubricComposite": 8.92,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.05,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-romance-4",
+      "genre": "Romance / Dark Romance",
+      "rubricComposite": 8.88,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.05,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-romance-5",
+      "genre": "Romance / Dark Romance",
+      "rubricComposite": 8.92,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.05,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-thriller-1",
+      "genre": "Thriller / Crime",
+      "rubricComposite": 8.71,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.69,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-thriller-2",
+      "genre": "Thriller / Crime",
+      "rubricComposite": 8.71,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.69,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-thriller-3",
+      "genre": "Thriller / Crime",
+      "rubricComposite": 8.68,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.6,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-thriller-4",
+      "genre": "Thriller / Crime",
+      "rubricComposite": 8.68,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.6,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-thriller-5",
+      "genre": "Thriller / Crime",
+      "rubricComposite": 8.71,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.69,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-fantasy-1",
+      "genre": "Fantasy",
+      "rubricComposite": 8.68,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.56,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-fantasy-2",
+      "genre": "Fantasy",
+      "rubricComposite": 8.68,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.56,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-fantasy-3",
+      "genre": "Fantasy",
+      "rubricComposite": 8.68,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.56,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-fantasy-4",
+      "genre": "Fantasy",
+      "rubricComposite": 8.68,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.56,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-fantasy-5",
+      "genre": "Fantasy",
+      "rubricComposite": 8.68,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.56,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-memoir-1",
+      "genre": "Memoir / Emotional Fiction",
+      "rubricComposite": 8.63,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.29,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-memoir-2",
+      "genre": "Memoir / Emotional Fiction",
+      "rubricComposite": 8.47,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.15,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-memoir-3",
+      "genre": "Memoir / Emotional Fiction",
+      "rubricComposite": 8.43,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.15,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-memoir-4",
+      "genre": "Memoir / Emotional Fiction",
+      "rubricComposite": 8.47,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.15,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-memoir-5",
+      "genre": "Memoir / Emotional Fiction",
+      "rubricComposite": 8.47,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.15,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-selfhelp-1",
+      "genre": "Self-help",
+      "rubricComposite": 8.61,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.15,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-selfhelp-2",
+      "genre": "Self-help",
+      "rubricComposite": 8.61,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.15,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-selfhelp-3",
+      "genre": "Self-help",
+      "rubricComposite": 8.61,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.15,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-selfhelp-4",
+      "genre": "Self-help",
+      "rubricComposite": 8.61,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.15,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-selfhelp-5",
+      "genre": "Self-help",
+      "rubricComposite": 8.61,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.15,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-business-1",
+      "genre": "Business",
+      "rubricComposite": 8.63,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.33,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-business-2",
+      "genre": "Business",
+      "rubricComposite": 8.59,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.33,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-business-3",
+      "genre": "Business",
+      "rubricComposite": 8.63,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.33,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-business-4",
+      "genre": "Business",
+      "rubricComposite": 8.63,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.33,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-business-5",
+      "genre": "Business",
+      "rubricComposite": 8.63,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 6.33,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-hort-1",
+      "genre": "Practical Guides",
+      "rubricComposite": 8.81,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 6.8,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-hort-2",
+      "genre": "Practical Guides",
+      "rubricComposite": 8.81,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 6.8,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-hort-3",
+      "genre": "Practical Guides",
+      "rubricComposite": 8.81,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 6.8,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-hort-4",
+      "genre": "Practical Guides",
+      "rubricComposite": 8.81,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 6.8,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-hort-5",
+      "genre": "Practical Guides",
+      "rubricComposite": 8.81,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 6.8,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch1",
+      "genre": "romance",
+      "rubricComposite": 8.26,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 5.4,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch2",
+      "genre": "romance",
+      "rubricComposite": 8.26,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 5.4,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch3",
+      "genre": "romance",
+      "rubricComposite": 8.26,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 5.4,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch4",
+      "genre": "romance",
+      "rubricComposite": 8.26,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 5.4,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch5",
+      "genre": "romance",
+      "rubricComposite": 8.16,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 5,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch6",
+      "genre": "romance",
+      "rubricComposite": 8.26,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 5.4,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch7",
+      "genre": "romance",
+      "rubricComposite": 8.16,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 5,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch8",
+      "genre": "romance",
+      "rubricComposite": 8.26,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 5.4,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch9",
+      "genre": "romance",
+      "rubricComposite": 8.26,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 5.4,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch10",
+      "genre": "romance",
+      "rubricComposite": 8.16,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 5,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch1",
+      "genre": "thriller",
+      "rubricComposite": 8.22,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 5.3,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch2",
+      "genre": "thriller",
+      "rubricComposite": 7.81,
+      "weakestDimension": "Emotional realism",
+      "weakestScore": 4.7,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch3",
+      "genre": "thriller",
+      "rubricComposite": 8.36,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 5.3,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch4",
+      "genre": "thriller",
+      "rubricComposite": 8.2,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 5.3,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch5",
+      "genre": "thriller",
+      "rubricComposite": 8.2,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 5.3,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch6",
+      "genre": "thriller",
+      "rubricComposite": 8.36,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 5.3,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch7",
+      "genre": "thriller",
+      "rubricComposite": 8.2,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 5.3,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch8",
+      "genre": "thriller",
+      "rubricComposite": 8.1,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 5.3,
+      "tier": "developing"
+    },
+    {
+      "source": "thriller-ch9",
+      "genre": "thriller",
+      "rubricComposite": 8.24,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 5.3,
+      "tier": "developing"
+    },
+    {
+      "source": "thriller-ch10",
+      "genre": "thriller",
+      "rubricComposite": 8.1,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 5.3,
+      "tier": "developing"
+    },
+    {
+      "source": "fantasy-ch1",
+      "genre": "fantasy",
+      "rubricComposite": 7.34,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch2",
+      "genre": "fantasy",
+      "rubricComposite": 7.98,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4.6,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch3",
+      "genre": "fantasy",
+      "rubricComposite": 7.84,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch4",
+      "genre": "fantasy",
+      "rubricComposite": 7.98,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4.6,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch5",
+      "genre": "fantasy",
+      "rubricComposite": 7.91,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch6",
+      "genre": "fantasy",
+      "rubricComposite": 8.09,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 5.1,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch7",
+      "genre": "fantasy",
+      "rubricComposite": 7.9,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch8",
+      "genre": "fantasy",
+      "rubricComposite": 7.93,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4.6,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch9",
+      "genre": "fantasy",
+      "rubricComposite": 7.9,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch10",
+      "genre": "fantasy",
+      "rubricComposite": 7.99,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4.6,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch1",
+      "genre": "self-help",
+      "rubricComposite": 7.29,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch2",
+      "genre": "self-help",
+      "rubricComposite": 7.24,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch3",
+      "genre": "self-help",
+      "rubricComposite": 7.33,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4.4,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch4",
+      "genre": "self-help",
+      "rubricComposite": 7.34,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4.6,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch5",
+      "genre": "self-help",
+      "rubricComposite": 7.24,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch6",
+      "genre": "self-help",
+      "rubricComposite": 7.25,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch7",
+      "genre": "self-help",
+      "rubricComposite": 7.24,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch8",
+      "genre": "self-help",
+      "rubricComposite": 7.21,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch9",
+      "genre": "self-help",
+      "rubricComposite": 7.24,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch10",
+      "genre": "self-help",
+      "rubricComposite": 7.24,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 4,
+      "tier": "strong"
+    }
+  ],
+  "genreStress": [
+    {
+      "genre": "romance",
+      "chapterCount": 10,
+      "avgSupreme": 85,
+      "avgGreatness": 81,
+      "avgNarrativeMagic": 92,
+      "totalCriticalIssues": 0,
+      "preDeliveryPassRate": 100,
+      "topWeaknesses": [],
+      "chaptersFailingRetention": 0
+    },
+    {
+      "genre": "thriller",
+      "chapterCount": 10,
+      "avgSupreme": 84,
+      "avgGreatness": 81,
+      "avgNarrativeMagic": 100,
+      "totalCriticalIssues": 6,
+      "preDeliveryPassRate": 70,
+      "topWeaknesses": [
+        "critical_issues: 3/10 chapters",
+        "pre_delivery_fail: 3/10 chapters",
+        "cliches: 1/10 chapters"
+      ],
+      "chaptersFailingRetention": 0
+    },
+    {
+      "genre": "fantasy",
+      "chapterCount": 10,
+      "avgSupreme": 80,
+      "avgGreatness": 79,
+      "avgNarrativeMagic": 92,
+      "totalCriticalIssues": 0,
+      "preDeliveryPassRate": 100,
+      "topWeaknesses": [
+        "cliches: 1/10 chapters"
+      ],
+      "chaptersFailingRetention": 0
+    },
+    {
+      "genre": "self-help",
+      "chapterCount": 10,
+      "avgSupreme": 76,
+      "avgGreatness": 78,
+      "avgNarrativeMagic": 92,
+      "totalCriticalIssues": 0,
+      "preDeliveryPassRate": 100,
+      "topWeaknesses": [
+        "cliches: 10/10 chapters"
+      ],
+      "chaptersFailingRetention": 0
+    }
+  ],
+  "weaknesses": [
+    {
+      "pillar": "real-book-benchmark",
+      "genre": "Romance / Dark Romance",
+      "severity": "critical",
+      "metric": "criticalIssues",
+      "value": 1,
+      "threshold": 0,
+      "gap": 1,
+      "message": "The Room He Never Enters: 1 critical issue(s) remain at delivery",
+      "fixHint": "Run Chapter Doctor delta on failing dimension; check behavioral/subtext/payoff gates.",
+      "id": "w-1"
+    },
+    {
+      "pillar": "thriller-stress-test",
+      "genre": "thriller",
+      "severity": "high",
+      "metric": "preDeliveryPassRate",
+      "value": 70,
+      "threshold": 100,
+      "message": "thriller: only 70% chapters pass pre-delivery gate",
+      "fixHint": "Top stress patterns: critical_issues: 3/10 chapters; pre_delivery_fail: 3/10 chapters; cliches: 1/10 chapters",
+      "id": "w-72",
+      "gap": 30
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "fantasy",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4,
+      "threshold": 7,
+      "message": "fantasy-ch1: weakest expert dimension \"Reader engagement\" at 4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-52",
+      "gap": 3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "fantasy",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4,
+      "threshold": 7,
+      "message": "fantasy-ch3: weakest expert dimension \"Reader engagement\" at 4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-54",
+      "gap": 3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "fantasy",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4,
+      "threshold": 7,
+      "message": "fantasy-ch5: weakest expert dimension \"Reader engagement\" at 4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-56",
+      "gap": 3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "fantasy",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4,
+      "threshold": 7,
+      "message": "fantasy-ch7: weakest expert dimension \"Reader engagement\" at 4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-58",
+      "gap": 3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "fantasy",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4,
+      "threshold": 7,
+      "message": "fantasy-ch9: weakest expert dimension \"Reader engagement\" at 4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-60",
+      "gap": 3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "self-help",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4,
+      "threshold": 7,
+      "message": "self-help-ch1: weakest expert dimension \"Reader engagement\" at 4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-62",
+      "gap": 3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "self-help",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4,
+      "threshold": 7,
+      "message": "self-help-ch2: weakest expert dimension \"Reader engagement\" at 4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-63",
+      "gap": 3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "self-help",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4,
+      "threshold": 7,
+      "message": "self-help-ch5: weakest expert dimension \"Reader engagement\" at 4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-66",
+      "gap": 3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "self-help",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4,
+      "threshold": 7,
+      "message": "self-help-ch6: weakest expert dimension \"Reader engagement\" at 4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-67",
+      "gap": 3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "self-help",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4,
+      "threshold": 7,
+      "message": "self-help-ch7: weakest expert dimension \"Reader engagement\" at 4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-68",
+      "gap": 3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "self-help",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4,
+      "threshold": 7,
+      "message": "self-help-ch8: weakest expert dimension \"Reader engagement\" at 4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-69",
+      "gap": 3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "self-help",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4,
+      "threshold": 7,
+      "message": "self-help-ch9: weakest expert dimension \"Reader engagement\" at 4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-70",
+      "gap": 3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "self-help",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4,
+      "threshold": 7,
+      "message": "self-help-ch10: weakest expert dimension \"Reader engagement\" at 4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-71",
+      "gap": 3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "self-help",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4.4,
+      "threshold": 7,
+      "message": "self-help-ch3: weakest expert dimension \"Reader engagement\" at 4.4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-64",
+      "gap": 2.6
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "fantasy",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4.6,
+      "threshold": 7,
+      "message": "fantasy-ch2: weakest expert dimension \"Reader engagement\" at 4.6/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-53",
+      "gap": 2.4
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "fantasy",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4.6,
+      "threshold": 7,
+      "message": "fantasy-ch4: weakest expert dimension \"Reader engagement\" at 4.6/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-55",
+      "gap": 2.4
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "fantasy",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4.6,
+      "threshold": 7,
+      "message": "fantasy-ch8: weakest expert dimension \"Reader engagement\" at 4.6/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-59",
+      "gap": 2.4
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "fantasy",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4.6,
+      "threshold": 7,
+      "message": "fantasy-ch10: weakest expert dimension \"Reader engagement\" at 4.6/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-61",
+      "gap": 2.4
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "self-help",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 4.6,
+      "threshold": 7,
+      "message": "self-help-ch4: weakest expert dimension \"Reader engagement\" at 4.6/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-65",
+      "gap": 2.4
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "thriller",
+      "severity": "medium",
+      "metric": "Emotional realism",
+      "value": 4.7,
+      "threshold": 7,
+      "message": "thriller-ch2: weakest expert dimension \"Emotional realism\" at 4.7/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-43",
+      "gap": 2.3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "romance",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 5,
+      "threshold": 7,
+      "message": "romance-ch5: weakest expert dimension \"Reader engagement\" at 5/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-36",
+      "gap": 2
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "romance",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 5,
+      "threshold": 7,
+      "message": "romance-ch7: weakest expert dimension \"Reader engagement\" at 5/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-38",
+      "gap": 2
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "romance",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 5,
+      "threshold": 7,
+      "message": "romance-ch10: weakest expert dimension \"Reader engagement\" at 5/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-41",
+      "gap": 2
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "fantasy",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 5.1,
+      "threshold": 7,
+      "message": "fantasy-ch6: weakest expert dimension \"Reader engagement\" at 5.1/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-57",
+      "gap": 1.9
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "thriller",
+      "severity": "medium",
+      "metric": "Bingeability",
+      "value": 5.3,
+      "threshold": 7,
+      "message": "thriller-ch1: weakest expert dimension \"Bingeability\" at 5.3/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-42",
+      "gap": 1.7
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "thriller",
+      "severity": "medium",
+      "metric": "Bingeability",
+      "value": 5.3,
+      "threshold": 7,
+      "message": "thriller-ch3: weakest expert dimension \"Bingeability\" at 5.3/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-44",
+      "gap": 1.7
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "thriller",
+      "severity": "medium",
+      "metric": "Bingeability",
+      "value": 5.3,
+      "threshold": 7,
+      "message": "thriller-ch4: weakest expert dimension \"Bingeability\" at 5.3/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-45",
+      "gap": 1.7
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "thriller",
+      "severity": "medium",
+      "metric": "Bingeability",
+      "value": 5.3,
+      "threshold": 7,
+      "message": "thriller-ch5: weakest expert dimension \"Bingeability\" at 5.3/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-46",
+      "gap": 1.7
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "thriller",
+      "severity": "medium",
+      "metric": "Bingeability",
+      "value": 5.3,
+      "threshold": 7,
+      "message": "thriller-ch6: weakest expert dimension \"Bingeability\" at 5.3/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-47",
+      "gap": 1.7
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "thriller",
+      "severity": "medium",
+      "metric": "Bingeability",
+      "value": 5.3,
+      "threshold": 7,
+      "message": "thriller-ch7: weakest expert dimension \"Bingeability\" at 5.3/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-48",
+      "gap": 1.7
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "thriller",
+      "severity": "medium",
+      "metric": "Bingeability",
+      "value": 5.3,
+      "threshold": 7,
+      "message": "thriller-ch8: weakest expert dimension \"Bingeability\" at 5.3/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-49",
+      "gap": 1.7
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "thriller",
+      "severity": "medium",
+      "metric": "Bingeability",
+      "value": 5.3,
+      "threshold": 7,
+      "message": "thriller-ch9: weakest expert dimension \"Bingeability\" at 5.3/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-50",
+      "gap": 1.7
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "thriller",
+      "severity": "medium",
+      "metric": "Bingeability",
+      "value": 5.3,
+      "threshold": 7,
+      "message": "thriller-ch10: weakest expert dimension \"Bingeability\" at 5.3/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-51",
+      "gap": 1.7
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "romance",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 5.4,
+      "threshold": 7,
+      "message": "romance-ch1: weakest expert dimension \"Reader engagement\" at 5.4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-32",
+      "gap": 1.6
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "romance",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 5.4,
+      "threshold": 7,
+      "message": "romance-ch2: weakest expert dimension \"Reader engagement\" at 5.4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-33",
+      "gap": 1.6
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "romance",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 5.4,
+      "threshold": 7,
+      "message": "romance-ch3: weakest expert dimension \"Reader engagement\" at 5.4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-34",
+      "gap": 1.6
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "romance",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 5.4,
+      "threshold": 7,
+      "message": "romance-ch4: weakest expert dimension \"Reader engagement\" at 5.4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-35",
+      "gap": 1.6
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "romance",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 5.4,
+      "threshold": 7,
+      "message": "romance-ch6: weakest expert dimension \"Reader engagement\" at 5.4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-37",
+      "gap": 1.6
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "romance",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 5.4,
+      "threshold": 7,
+      "message": "romance-ch8: weakest expert dimension \"Reader engagement\" at 5.4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-39",
+      "gap": 1.6
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "romance",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 5.4,
+      "threshold": 7,
+      "message": "romance-ch9: weakest expert dimension \"Reader engagement\" at 5.4/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-40",
+      "gap": 1.6
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Memoir / Emotional Fiction",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.15,
+      "threshold": 7,
+      "message": "rw-memoir-2: weakest expert dimension \"Reader engagement\" at 6.15/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-13",
+      "gap": 0.8
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Memoir / Emotional Fiction",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.15,
+      "threshold": 7,
+      "message": "rw-memoir-3: weakest expert dimension \"Reader engagement\" at 6.15/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-14",
+      "gap": 0.8
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Memoir / Emotional Fiction",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.15,
+      "threshold": 7,
+      "message": "rw-memoir-4: weakest expert dimension \"Reader engagement\" at 6.15/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-15",
+      "gap": 0.8
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Memoir / Emotional Fiction",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.15,
+      "threshold": 7,
+      "message": "rw-memoir-5: weakest expert dimension \"Reader engagement\" at 6.15/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-16",
+      "gap": 0.8
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Self-help",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.15,
+      "threshold": 7,
+      "message": "rw-selfhelp-1: weakest expert dimension \"Reader engagement\" at 6.15/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-17",
+      "gap": 0.8
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Self-help",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.15,
+      "threshold": 7,
+      "message": "rw-selfhelp-2: weakest expert dimension \"Reader engagement\" at 6.15/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-18",
+      "gap": 0.8
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Self-help",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.15,
+      "threshold": 7,
+      "message": "rw-selfhelp-3: weakest expert dimension \"Reader engagement\" at 6.15/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-19",
+      "gap": 0.8
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Self-help",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.15,
+      "threshold": 7,
+      "message": "rw-selfhelp-4: weakest expert dimension \"Reader engagement\" at 6.15/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-20",
+      "gap": 0.8
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Self-help",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.15,
+      "threshold": 7,
+      "message": "rw-selfhelp-5: weakest expert dimension \"Reader engagement\" at 6.15/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-21",
+      "gap": 0.8
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Memoir / Emotional Fiction",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.29,
+      "threshold": 7,
+      "message": "rw-memoir-1: weakest expert dimension \"Reader engagement\" at 6.29/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-12",
+      "gap": 0.7
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Business",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.33,
+      "threshold": 7,
+      "message": "rw-business-1: weakest expert dimension \"Reader engagement\" at 6.33/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-22",
+      "gap": 0.7
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Business",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.33,
+      "threshold": 7,
+      "message": "rw-business-2: weakest expert dimension \"Reader engagement\" at 6.33/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-23",
+      "gap": 0.7
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Business",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.33,
+      "threshold": 7,
+      "message": "rw-business-3: weakest expert dimension \"Reader engagement\" at 6.33/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-24",
+      "gap": 0.7
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Business",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.33,
+      "threshold": 7,
+      "message": "rw-business-4: weakest expert dimension \"Reader engagement\" at 6.33/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-25",
+      "gap": 0.7
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Business",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.33,
+      "threshold": 7,
+      "message": "rw-business-5: weakest expert dimension \"Reader engagement\" at 6.33/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-26",
+      "gap": 0.7
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Thriller / Crime",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.6,
+      "threshold": 7,
+      "message": "rw-thriller-3: weakest expert dimension \"Reader engagement\" at 6.6/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-4",
+      "gap": 0.4
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Thriller / Crime",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.6,
+      "threshold": 7,
+      "message": "rw-thriller-4: weakest expert dimension \"Reader engagement\" at 6.6/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-5",
+      "gap": 0.4
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Fantasy",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.56,
+      "threshold": 7,
+      "message": "rw-fantasy-1: weakest expert dimension \"Reader engagement\" at 6.56/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-7",
+      "gap": 0.4
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Fantasy",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.56,
+      "threshold": 7,
+      "message": "rw-fantasy-2: weakest expert dimension \"Reader engagement\" at 6.56/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-8",
+      "gap": 0.4
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Fantasy",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.56,
+      "threshold": 7,
+      "message": "rw-fantasy-3: weakest expert dimension \"Reader engagement\" at 6.56/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-9",
+      "gap": 0.4
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Fantasy",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.56,
+      "threshold": 7,
+      "message": "rw-fantasy-4: weakest expert dimension \"Reader engagement\" at 6.56/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-10",
+      "gap": 0.4
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Fantasy",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.56,
+      "threshold": 7,
+      "message": "rw-fantasy-5: weakest expert dimension \"Reader engagement\" at 6.56/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-11",
+      "gap": 0.4
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Thriller / Crime",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.69,
+      "threshold": 7,
+      "message": "rw-thriller-1: weakest expert dimension \"Reader engagement\" at 6.69/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-2",
+      "gap": 0.3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Thriller / Crime",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.69,
+      "threshold": 7,
+      "message": "rw-thriller-2: weakest expert dimension \"Reader engagement\" at 6.69/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-3",
+      "gap": 0.3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Thriller / Crime",
+      "severity": "medium",
+      "metric": "Reader engagement",
+      "value": 6.69,
+      "threshold": 7,
+      "message": "rw-thriller-5: weakest expert dimension \"Reader engagement\" at 6.69/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-6",
+      "gap": 0.3
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Practical Guides",
+      "severity": "medium",
+      "metric": "Bingeability",
+      "value": 6.8,
+      "threshold": 7,
+      "message": "rw-hort-1: weakest expert dimension \"Bingeability\" at 6.8/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-27",
+      "gap": 0.2
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Practical Guides",
+      "severity": "medium",
+      "metric": "Bingeability",
+      "value": 6.8,
+      "threshold": 7,
+      "message": "rw-hort-2: weakest expert dimension \"Bingeability\" at 6.8/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-28",
+      "gap": 0.2
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Practical Guides",
+      "severity": "medium",
+      "metric": "Bingeability",
+      "value": 6.8,
+      "threshold": 7,
+      "message": "rw-hort-3: weakest expert dimension \"Bingeability\" at 6.8/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-29",
+      "gap": 0.2
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Practical Guides",
+      "severity": "medium",
+      "metric": "Bingeability",
+      "value": 6.8,
+      "threshold": 7,
+      "message": "rw-hort-4: weakest expert dimension \"Bingeability\" at 6.8/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-30",
+      "gap": 0.2
+    },
+    {
+      "pillar": "editorial-expert",
+      "genre": "Practical Guides",
+      "severity": "medium",
+      "metric": "Bingeability",
+      "value": 6.8,
+      "threshold": 7,
+      "message": "rw-hort-5: weakest expert dimension \"Bingeability\" at 6.8/10",
+      "fixHint": "Target micro-rewrites in the pipeline stage that maps to this rubric dimension.",
+      "id": "w-31",
+      "gap": 0.2
+    }
+  ],
+  "weaknessSummary": {
+    "critical": 1,
+    "high": 1,
+    "medium": 70,
+    "topAreas": [
+      "Reader engagement (55)",
+      "Bingeability (14)",
+      "criticalIssues (1)",
+      "preDeliveryPassRate (1)",
+      "Emotional realism (1)"
+    ]
+  },
+  "markdown": "# Scriptora Measurement Sprint — Weakness Discovery Report\n\nGenerated: 2026-05-31T04:49:20.801Z\n\n> Mode: measure only — no new features, no new scores. Fix → re-run → repeat.\n\n## Sprint pillars\n1. Real Book Benchmark Suite\n2. Human vs Scriptora Blind Test\n3. Bestseller Comparison Engine\n4. Reader Retention Validation\n5. Editorial Expert Validation\n6. Romance Stress Test\n7. Thriller Stress Test\n8. Self Help Stress Test\n9. Fantasy Stress Test\n10. Weakness Discovery Report\n\n## Weakness summary\n\n| Severity | Count |\n|---|---:|\n| Critical | 1 |\n| High | 1 |\n| Medium | 70 |\n\n**Top problem areas:** Reader engagement (55), Bingeability (14), criticalIssues (1), preDeliveryPassRate (1), Emotional realism (1)\n\n## Blind test\n\n- Win rate: **100%** (35/35)\n- Rank #1 rate: **100%**\n- Claude beats Scriptora: **0** projects\n- Avg margin vs generic: **+1.97**\n- Avg margin vs Claude: **+0.36**\n\n## Genre stress tests\n\n| Genre | Supreme avg | Greatness avg | Magic avg | Critical | Pass rate | Retention fails |\n|---|---:|---:|---:|---:|---:|---:|\n| romance | 85 | 81 | 92 | 0 | 100% | 0 |\n| thriller | 84 | 81 | 100 | 6 | 70% | 0 |\n| fantasy | 80 | 79 | 92 | 0 | 100% | 0 |\n| self-help | 76 | 78 | 92 | 0 | 100% | 0 |\n\n## Top weaknesses (fix first)\n\n### [CRITICAL] criticalIssues — real-book-benchmark\n- The Room He Never Enters: 1 critical issue(s) remain at delivery\n- **Fix:** Run Chapter Doctor delta on failing dimension; check behavioral/subtext/payoff gates.\n\n### [HIGH] preDeliveryPassRate — thriller-stress-test\n- thriller: only 70% chapters pass pre-delivery gate\n- **Fix:** Top stress patterns: critical_issues: 3/10 chapters; pre_delivery_fail: 3/10 chapters; cliches: 1/10 chapters\n\n### [MEDIUM] Reader engagement — editorial-expert\n- fantasy-ch1: weakest expert dimension \"Reader engagement\" at 4/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- fantasy-ch3: weakest expert dimension \"Reader engagement\" at 4/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- fantasy-ch5: weakest expert dimension \"Reader engagement\" at 4/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- fantasy-ch7: weakest expert dimension \"Reader engagement\" at 4/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- fantasy-ch9: weakest expert dimension \"Reader engagement\" at 4/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- self-help-ch1: weakest expert dimension \"Reader engagement\" at 4/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- self-help-ch2: weakest expert dimension \"Reader engagement\" at 4/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- self-help-ch5: weakest expert dimension \"Reader engagement\" at 4/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- self-help-ch6: weakest expert dimension \"Reader engagement\" at 4/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- self-help-ch7: weakest expert dimension \"Reader engagement\" at 4/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- self-help-ch8: weakest expert dimension \"Reader engagement\" at 4/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- self-help-ch9: weakest expert dimension \"Reader engagement\" at 4/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- self-help-ch10: weakest expert dimension \"Reader engagement\" at 4/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- self-help-ch3: weakest expert dimension \"Reader engagement\" at 4.4/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- fantasy-ch2: weakest expert dimension \"Reader engagement\" at 4.6/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- fantasy-ch4: weakest expert dimension \"Reader engagement\" at 4.6/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- fantasy-ch8: weakest expert dimension \"Reader engagement\" at 4.6/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n### [MEDIUM] Reader engagement — editorial-expert\n- fantasy-ch10: weakest expert dimension \"Reader engagement\" at 4.6/10\n- **Fix:** Target micro-rewrites in the pipeline stage that maps to this rubric dimension.\n\n## Real book benchmark (sample)\n\n| Project | Category | Supreme | Greatness | Magic | Critical |\n|---|---|---:|---:|---:|---:|\n| Salt on His Skin | Romance / Dark Romance | 88 | 84 | 100 | 0 |\n| The Room He Never Enters | Romance / Dark Romance | 87 | 83 | 100 | 1 |\n| Borrowed Heat | Romance / Dark Romance | 88 | 83 | 100 | 0 |\n| After the Fire Door | Romance / Dark Romance | 89 | 85 | 100 | 0 |\n| No Saints in Milan | Romance / Dark Romance | 88 | 83 | 100 | 0 |\n| The Wrong Timestamp | Thriller / Crime | 89 | 73 | 100 | 0 |\n| Quiet House Protocol | Thriller / Crime | 89 | 73 | 100 | 0 |\n| Debt of Silence | Thriller / Crime | 88 | 79 | 100 | 0 |\n| Last Known Exit | Thriller / Crime | 88 | 77 | 100 | 0 |\n| The Second Witness | Thriller / Crime | 89 | 73 | 100 | 0 |\n| The Iron Pact | Fantasy | 88 | 82 | 100 | 0 |\n| Second Bell | Fantasy | 88 | 82 | 100 | 0 |"
+}
