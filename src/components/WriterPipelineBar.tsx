@@ -3,6 +3,7 @@ import { BookProject, SectionId } from "@/types/book";
 import { cn } from "@/lib/utils";
 import { t, tt } from "@/lib/i18n";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import { CreditOperationHint } from "@/components/billing/CreditOperationHint";
 
 export type WriterPipelineStep =
   | "blueprint"
@@ -227,7 +228,11 @@ export function WriterPipelineBar({
                 {isAnythingGenerating ? t("generation_running") : t("generate_full_book")}
               </button>
             )}
-          </div>
+        </div>
+
+        {pipeline.step === "blueprint" && (
+          <CreditOperationHint operation="book_blueprint" showBalance={false} />
+        )}
       </div>
     </div>
   );

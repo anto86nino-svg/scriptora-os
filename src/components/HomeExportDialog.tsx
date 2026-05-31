@@ -29,6 +29,7 @@ import { useRequirementGate } from "@/hooks/useRequirementGate";
 import { buildRequirement, summarizeEpubValidationErrors, getExportAuthorGap, applyActiveAuthorIdentityToProject } from "@/lib/scriptora-requirement-gate";
 import { REQUIREMENT_ACTION_EVENTS } from "@/lib/scriptora-requirement-actions";
 import { MissingRequirementCard } from "@/components/MissingRequirementCard";
+import { CreditOperationHint } from "@/components/billing/CreditOperationHint";
 import { loadProjectCoverMap, setProjectCoverDataUrl } from "@/lib/cover-session";
 
 type Format = "epub" | "docx" | "pdf" | "txt" | "md";
@@ -390,6 +391,10 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
               )}
             </div>
           )}
+        </div>
+
+        <div className="shrink-0 border-t border-border/60 px-4 pt-3">
+          <CreditOperationHint operation="advanced_export" showBalance />
         </div>
 
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/20 p-4">

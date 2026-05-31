@@ -31,6 +31,7 @@ import { lockViewportScroll, unlockViewportScroll } from "@/lib/viewport-safe";
 import { useRequirementGate } from "@/hooks/useRequirementGate";
 import { MissingRequirementCard } from "@/components/MissingRequirementCard";
 import { buildRequirement } from "@/lib/scriptora-requirement-gate";
+import { CreditOperationHint } from "@/components/billing/CreditOperationHint";
 
 function countWordsForChapterLock(value: unknown): number {
   if (!value) return 0;
@@ -861,6 +862,12 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                 className="inline-flex items-center gap-2 h-11 px-6 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-md">
                 <Scissors className="h-4 w-4" /> Surgical Edit
               </button>
+              <CreditOperationHint
+                operation="surgical_fix"
+                intensity="standard"
+                estimatedWords={countWordsForChapterLock(project.chapters[chapterIndex]?.content)}
+                className="mx-auto max-w-md justify-center"
+              />
               {/* Advanced toggle */}
               <div className="pt-4 border-t border-border/30 max-w-md mx-auto">
                 <button onClick={() => setShowAdvanced(s => !s)}
@@ -874,6 +881,13 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                       className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-lg text-xs font-semibold bg-card border border-border hover:bg-accent transition-colors">
                       <Sparkles className="h-3.5 w-3.5" /> Diagnosi paragrafo per paragrafo
                     </button>
+                    <CreditOperationHint
+                      operation="chapter_diagnosis"
+                      intensity="standard"
+                      estimatedWords={countWordsForChapterLock(project.chapters[chapterIndex]?.content)}
+                      showBalance={false}
+                      className="px-1"
+                    />
                     <button onClick={runDominate}
                       title={canDominate ? "Ricostruzione totale — riscrittura completa" : "Sblocca modalità premium"}
                       className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-lg text-xs font-bold bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 text-white hover:opacity-90 transition-all shadow-sm">
