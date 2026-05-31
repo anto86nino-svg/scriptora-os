@@ -42,6 +42,14 @@ export {
 } from "@/lib/billing/creditReservation";
 
 export {
+  creditsToPackId,
+  isPaidScriptoraPlan,
+  redirectToStripeCheckout,
+  startStripeCheckout,
+  type StripeCheckoutResult,
+} from "@/lib/billing/stripeCheckout";
+
+export {
   COMMERCIAL_PLANS,
   COMMERCIAL_PLAN_LABELS,
   getCommercialPlanLabel,

@@ -7,6 +7,7 @@ interface CommercialPricingCardProps {
   plan: CommercialPlanOffer;
   isCurrent?: boolean;
   onSelect: (plan: CommercialPlanOffer) => void;
+  disabled?: boolean;
 }
 
 const ICONS: Record<CommercialPlanOffer["id"], React.ReactNode> = {
@@ -22,7 +23,7 @@ function formatPrice(priceEur: number | null): string {
   return `€${priceEur.toFixed(2).replace(".", ",")}`;
 }
 
-export function CommercialPricingCard({ plan, isCurrent, onSelect }: CommercialPricingCardProps) {
+export function CommercialPricingCard({ plan, isCurrent, onSelect, disabled }: CommercialPricingCardProps) {
   const isFree = plan.id === "free";
 
   return (
@@ -79,7 +80,7 @@ export function CommercialPricingCard({ plan, isCurrent, onSelect }: CommercialP
       <button
         type="button"
         onClick={() => onSelect(plan)}
-        disabled={isCurrent}
+        disabled={isCurrent || disabled}
         className={cn(
           "w-full rounded-lg px-4 py-2.5 text-center text-sm font-bold transition-all",
           isCurrent

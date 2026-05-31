@@ -1,10 +1,12 @@
 // Reusable upgrade modal triggered when free users hit a paywall (export, dominate, word limit).
 // Uses commercial plan copy — legacy PlanTier gates unchanged (pro / premium).
 
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Lock, Check, Crown, Zap } from "lucide-react";
 import { PlanTier } from "@/lib/plan";
 import { COMMERCIAL_PLANS } from "@/lib/billing/commercialPlans";
+import { redirectToStripeCheckout } from "@/lib/billing/stripeCheckout";
 import { showPremiumActivationNotice } from "@/lib/billing/premiumActivation";
 import { t } from "@/lib/i18n";
 
@@ -45,9 +47,21 @@ function formatCommercialPrice(priceEur: number | null): string {
 export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "free" }: UpgradeModalProps) {
   const copy = REASON_COPY[reason];
   const recommendStudio = reason === "dominate";
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
 
-  const handlePick = () => {
-    showPremiumActivationNotice("plan");
+  const handlePick = async (planKey: "pro" | "studio") => {
+    setCheckoutBusy(true);
+    try {
+      const outcome = await redirectToStripeCheckout({
+        type: "subscription",
+        planKey,
+      });
+      if (outcome === "not_configured") {
+        showPremiumActivationNotice("plan");
+      }
+    } finally {
+      setCheckoutBusy(false);
+    }
   };
 
   return (
@@ -75,7 +89,8 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
               badge={!recommendStudio ? t("commercial_plan_recommended") : undefined}
               highlight={!recommendStudio}
               icon={<Zap className="h-3.5 w-3.5" />}
-              onPick={handlePick}
+              onPick={() => handlePick("pro")}
+              disabled={checkoutBusy}
             />
             <PlanCard
               name={t(STUDIO_OFFER.nameKey)}
@@ -87,7 +102,8 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
               badge={recommendStudio ? t("upgrade_studio_badge") : undefined}
               highlight={recommendStudio}
               icon={<Crown className="h-3.5 w-3.5" />}
-              onPick={handlePick}
+              onPick={() => handlePick("studio")}
+              disabled={checkoutBusy}
             />
           </div>
 
@@ -116,6 +132,7 @@ interface PlanCardProps {
   highlight?: boolean;
   icon?: React.ReactNode;
   onPick: () => void;
+  disabled?: boolean;
 }
 
 function PlanCard({
@@ -129,6 +146,7 @@ function PlanCard({
   highlight,
   icon,
   onPick,
+  disabled,
 }: PlanCardProps) {
   return (
     <div
@@ -167,7 +185,8 @@ function PlanCard({
       <button
         type="button"
         onClick={onPick}
-        className={`text-center px-3 py-2.5 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] ${
+        disabled={disabled}
+        className={`text-center px-3 py-2.5 rounded-lg text-xs font-bold transition-all hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100 ${
           highlight
             ? "bg-primary text-primary-foreground shadow-lg"
             : "bg-foreground/90 text-background hover:bg-foreground"

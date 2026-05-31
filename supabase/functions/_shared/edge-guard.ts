@@ -307,5 +307,6 @@ export const EDGE_GUARD_PROFILES: Record<string, EdgeGuardOptions> = {
   "reserve-credits": { minTier: "free" },
   "commit-credit-usage": { minTier: "free" },
   "refund-credit-usage": { minTier: "free" },
+  "create-stripe-checkout-session": { minTier: "free" },
   "ai-usage-summary": { ownerOnly: true },
 };

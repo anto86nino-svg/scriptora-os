@@ -59,3 +59,9 @@ verify_jwt = false
 
 [functions.refund-credit-usage]
 verify_jwt = false
+
+[functions.create-stripe-checkout-session]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false

@@ -5,7 +5,14 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { PaymentStatusBanner } from "@/components/payments/PaymentStatusBanner";
 import { CommercialPricingCard } from "@/components/billing/CommercialPricingCard";
 import { PremiumActivationNoticeDialog } from "@/components/billing/PremiumActivationNoticeDialog";
-import { COMMERCIAL_PLANS, CREDIT_PACKS, mapPlanTierToScriptoraPlan } from "@/lib/billing";
+import { CheckoutReturnBanner } from "@/components/billing/CheckoutReturnBanner";
+import {
+  COMMERCIAL_PLANS,
+  CREDIT_PACKS,
+  creditsToPackId,
+  mapPlanTierToScriptoraPlan,
+  redirectToStripeCheckout,
+} from "@/lib/billing";
 import type { CommercialPlanOffer } from "@/lib/billing/commercialPlans";
 import { t, useUILanguage } from "@/lib/i18n";
 import { MissingRequirementCard } from "@/components/MissingRequirementCard";
@@ -27,18 +34,41 @@ export default function PricingPage() {
   const scriptoraPlan = mapPlanTierToScriptoraPlan(currentPlan);
   const [activationOpen, setActivationOpen] = useState(false);
   const [activationVariant, setActivationVariant] = useState<"plan" | "credits">("plan");
+  const [checkoutBusy, setCheckoutBusy] = useState<string | null>(null);
 
   const isCurrentCommercialPlan = (planId: CommercialPlanOffer["id"]) => planId === scriptoraPlan;
 
-  const handlePlanSelect = (plan: CommercialPlanOffer) => {
-    if (plan.id === "free") return;
-    setActivationVariant("plan");
+  const openNotConfigured = (variant: "plan" | "credits") => {
+    setActivationVariant(variant);
     setActivationOpen(true);
   };
 
-  const handleCreditPack = () => {
-    setActivationVariant("credits");
-    setActivationOpen(true);
+  const handlePlanSelect = async (plan: CommercialPlanOffer) => {
+    if (plan.id === "free") return;
+
+    setCheckoutBusy(plan.id);
+    try {
+      const outcome = await redirectToStripeCheckout({
+        type: "subscription",
+        planKey: plan.id,
+      });
+      if (outcome === "not_configured") openNotConfigured("plan");
+    } finally {
+      setCheckoutBusy(null);
+    }
+  };
+
+  const handleCreditPack = async (credits: number) => {
+    setCheckoutBusy(`pack-${credits}`);
+    try {
+      const outcome = await redirectToStripeCheckout({
+        type: "credit_pack",
+        packId: creditsToPackId(credits),
+      });
+      if (outcome === "not_configured") openNotConfigured("credits");
+    } finally {
+      setCheckoutBusy(null);
+    }
   };
 
   return (
@@ -69,6 +99,7 @@ export default function PricingPage() {
           </p>
         </div>
 
+        <CheckoutReturnBanner />
         <PaymentStatusBanner />
 
         {blockedFeature && (
@@ -83,6 +114,10 @@ export default function PricingPage() {
           </div>
         )}
 
+        {checkoutBusy && (
+          <p className="mb-6 text-center text-xs text-muted-foreground">{t("checkout_redirecting")}</p>
+        )}
+
         <div
           id="pricing-plans"
           className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
@@ -93,6 +128,7 @@ export default function PricingPage() {
               plan={plan}
               isCurrent={isCurrentCommercialPlan(plan.id)}
               onSelect={handlePlanSelect}
+              disabled={checkoutBusy !== null}
             />
           ))}
         </div>
@@ -123,8 +159,9 @@ export default function PricingPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={handleCreditPack}
-                  className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20"
+                  onClick={() => handleCreditPack(pack.credits)}
+                  disabled={checkoutBusy !== null}
+                  className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary transition-colors hover:bg-primary/20 disabled:opacity-60"
                 >
                   {t("pricing_buy_credits")}
                 </button>
