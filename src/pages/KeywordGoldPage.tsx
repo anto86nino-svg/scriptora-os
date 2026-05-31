@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { fetchPlan, type PlanTier } from "@/lib/plan";
 import { keywordGold, type KeywordGoldResult } from "@/lib/kdp/money-engine";
 import { useFeatureGate } from "@/components/PaywallGuard";
-import { t, tt, useUILanguage } from "@/lib/i18n";
+import { t, tt, useUILanguage, getScriptoraLanguage } from "@/lib/i18n";
 
 function copyText(value: string, successLabel: string) {
   navigator.clipboard?.writeText(value).then(
@@ -28,7 +28,7 @@ export default function KeywordGoldPage() {
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [genre, setGenre] = useState("Self-help");
-  const [language, setLanguage] = useState("Italian");
+  const [language, setLanguage] = useState(() => getScriptoraLanguage());
   const [marketplace, setMarketplace] = useState("amazon.it");
   const [result, setResult] = useState<KeywordGoldResult | null>(null);
 

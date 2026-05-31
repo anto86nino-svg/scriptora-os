@@ -26,7 +26,7 @@ import { Progress } from "@/components/ui/progress";
 import { createProjectId, saveProjectAsync } from "@/services/storageService";
 import { BookConfig, BookProject, Chapter, Genre, Language } from "@/types/book";
 import { cn } from "@/lib/utils";
-import { t, tt, useUILanguage } from "@/lib/i18n";
+import { t, tt, useUILanguage, getScriptoraLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 import {
   analyzeManuscriptPublishingIntel,
@@ -683,9 +683,9 @@ export function ManuscriptAnalyzerDialog({
       fullText: analysis.chapters.map((c) => c.content).join("\n\n"),
       chapters: analysis.chapters.map((c) => ({ title: c.title, content: c.content })),
       genre,
-      language: bookLanguage,
+      language: getScriptoraLanguage(),
     });
-  }, [analysis, genre, bookLanguage]);
+  }, [analysis, genre]);
 
   const premiumMetrics = publishingIntel
     ? publishingIntel.marketReadiness.factors.slice(0, 5).map((f) => ({

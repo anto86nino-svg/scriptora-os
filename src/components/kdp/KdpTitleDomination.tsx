@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { dominateTitles, type TitleDominationResult, type DominateTitlesInput } from "@/lib/kdp/money-engine";
 import { fetchPlan, type PlanTier } from "@/lib/plan";
 import { useFeatureGate } from "@/components/PaywallGuard";
+import { getScriptoraLanguage } from "@/lib/i18n";
 
 interface Props {
   /** Optional callback when user wants to push title into a project. */
@@ -69,7 +70,7 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
   const [input, setInput] = useState<DominateTitlesInput>({
     idea: defaults?.idea ?? restored?.input?.idea ?? "",
     genre: defaults?.genre ?? restored?.input?.genre ?? "Self-help",
-    language: defaults?.language ?? restored?.input?.language ?? "Italian",
+    language: defaults?.language ?? restored?.input?.language ?? getScriptoraLanguage(),
     marketplace: defaults?.marketplace ?? restored?.input?.marketplace ?? "amazon.it",
     bookType: defaults?.bookType ?? restored?.input?.bookType ?? "guide",
     targetReader: defaults?.targetReader ?? restored?.input?.targetReader ?? "",

@@ -53,11 +53,13 @@ async function callDeepSeek(apiKey: string, system: string, user: string, jsonMo
 async function patchBatch(
   apiKey: string,
   batch: { idx: number; text: string }[],
-  ctx: { genre: string; tone: string; language: string; chapterTitle: string; maxPatchesInBatch: number; blueprintIntegrityBlock?: string; intensity?: string }
+  ctx: { genre: string; tone: string; manuscriptLanguage: string; reportLanguage: string; chapterTitle: string; maxPatchesInBatch: number; blueprintIntegrityBlock?: string; intensity?: string }
 ) {
   const numbered = batch.map((p) => `[¶${p.idx}]\n${p.text}`).join("\n\n");
 
-  const system = `Sei un editor narrativo senior da casa editrice Big-5. Lavori in ${ctx.language}.
+  const system = `Sei un editor narrativo senior da casa editrice Big-5.
+Il manoscritto è in ${ctx.manuscriptLanguage}. Le patch devono restare in ${ctx.manuscriptLanguage}.
+I campi diagnostici (reason, segments) devono essere in ${ctx.reportLanguage}.
 Modalità: DIAGNOSTICA EDITORIALE CHIRURGICA.
 NON riscrivere il capitolo. NON cambiare trama, canon, voce, POV o struttura.
 Devi trovare miglioramenti editoriali percepibili: subtext, ritmo, dialoghi meno perfetti, compressione di spiegazioni emotive, tensione, finali meno sovraspiegati. 
@@ -84,7 +86,7 @@ Non restituire patches vuote se nel batch esiste almeno una frase migliorabile.
 Ogni patch deve essere chirurgica: stesso significato, stessa voce, più subtext, più tensione, meno spiegazione.
 Lunghezza ±25%, stessa voce.
 
-Restituisci JSON in ${ctx.language}:
+Restituisci JSON (reason in ${ctx.reportLanguage}, patched in ${ctx.manuscriptLanguage}):
 {
   "segments": [{ "idx": <num>, "level": "strong"|"improvable"|"weak", "reason": "<solo se non strong>" }],
   "patches": [{ "idx": <num>, "original": "<testo esatto>", "patched": "<nuovo>", "type": "tighten"|"strengthen-dialogue"|"remove-redundancy"|"intensify", "reason": "<una frase>" }]
@@ -98,16 +100,16 @@ Restituisci JSON in ${ctx.language}:
 async function evaluateChapter(
   apiKey: string,
   patchedText: string,
-  ctx: { genre: string; tone: string; language: string; chapterTitle: string }
+  ctx: { genre: string; tone: string; reportLanguage: string; chapterTitle: string }
 ) {
-  const system = `Sei un editor bestseller. Output SOLO JSON. Lingua: ${ctx.language}.`;
+  const system = `Sei un editor bestseller. Output SOLO JSON. Lingua report: ${ctx.reportLanguage}.`;
   const preview = patchedText.length > 6000 ? patchedText.substring(0, 6000) + "\n[…]" : patchedText;
   const user = `Genere: ${ctx.genre} | Tono: ${ctx.tone} | Capitolo: "${ctx.chapterTitle}"
 
 CAPITOLO:
 ${preview}
 
-Restituisci JSON in ${ctx.language}:
+Restituisci JSON in ${ctx.reportLanguage}:
 {
   "score": <1-10 realistico>,
   "strengths": ["<2-4 punti di forza>"],
@@ -126,10 +128,13 @@ serve(async (req) => {
     const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["patch-chapter"]);
     if (guard instanceof Response) return guard;
     const body = applyAuthContext(guard, rawBody);
-    const { chapterTitle, chapterText, genre, tone, language, blueprintIntegrityBlock = "", projectId = null, intensity = "balanced" } = body;
+    const { chapterTitle, chapterText, genre, tone, language, reportLanguage, blueprintIntegrityBlock = "", projectId = null, intensity = "balanced" } = body;
     __trackCtx = { projectId, userId: guard.userId };
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
+
+    const manuscriptLanguage = String(language || "English");
+    const diagnosticsLanguage = String(reportLanguage || manuscriptLanguage);
 
     const paragraphs: { idx: number; text: string }[] = chapterText
       .split(/\n\s*\n/)
@@ -160,7 +165,7 @@ serve(async (req) => {
     const globalMaxPatches = Math.max(1, Math.ceil(paragraphs.length * intensityCap));
     const perBatchCap = Math.max(1, Math.ceil(globalMaxPatches / batches.length));
 
-    const ctx = { genre, tone, language, chapterTitle, maxPatchesInBatch: perBatchCap, blueprintIntegrityBlock, intensity };
+    const ctx = { genre, tone, manuscriptLanguage, reportLanguage: diagnosticsLanguage, chapterTitle, maxPatchesInBatch: perBatchCap, blueprintIntegrityBlock, intensity };
 
     // Run all batches IN PARALLEL — total wall time ≈ slowest batch (~30s)
     const batchResults = await Promise.all(
@@ -209,14 +214,14 @@ serve(async (req) => {
           const forcedRaw =
             await callDeepSeek(
               DEEPSEEK_API_KEY,
-              `Sei un editor Big-5. Lavori in ${language}.
+              `Sei un editor Big-5. Il manoscritto è in ${manuscriptLanguage}.
 NON riscrivere.
 Fai UNA SOLA micro-patch chirurgica.
 Mantieni voce, POV, canon e ritmo.
 Riduci spiegazione emotiva.
 Aumenta subtext.
 Massimo 10% modifica.
-Output SOLO testo patchato.`,
+Output SOLO testo patchato in ${manuscriptLanguage}.`,
 
               paragraph.text,
               false,
@@ -262,7 +267,7 @@ Output SOLO testo patchato.`,
     // Evaluation runs after — small payload, fast
     let evaluation: any = null;
     try {
-      evaluation = await evaluateChapter(DEEPSEEK_API_KEY, patchedText, { genre, tone, language, chapterTitle });
+      evaluation = await evaluateChapter(DEEPSEEK_API_KEY, patchedText, { genre, tone, reportLanguage: diagnosticsLanguage, chapterTitle });
     } catch (e) {
       console.error("evaluation failed:", e);
     }

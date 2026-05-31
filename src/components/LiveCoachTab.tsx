@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { MollySprite } from "@/components/molly/MollySprite";
 import { useMolly } from "@/molly/MollyProvider";
 import { getCurrentUserId } from "@/services/storageService";
+import { getScriptoraLanguage } from "@/lib/i18n";
 
 interface LiveCoachTabProps {
   project: BookProject;
@@ -80,7 +81,7 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
       const { data, error } = await supabase.functions.invoke("live-coach", {
         body: {
           mode: "live",
-          language: project.config.language,
+          language: getScriptoraLanguage(),
           genre: project.config.genre,
           tone: project.config.tone,
           recentText,
@@ -122,7 +123,7 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
         body: {
           mode: "spontaneous",
           spontaneousKind: kind,
-          language: project.config.language,
+          language: getScriptoraLanguage(),
           genre: project.config.genre,
           tone: project.config.tone,
           chapterTitle: activeTitle,
@@ -187,7 +188,7 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
       const { data, error } = await supabase.functions.invoke("live-coach", {
         body: {
           mode: "chat",
-          language: project.config.language,
+          language: getScriptoraLanguage(),
           genre: project.config.genre,
           tone: project.config.tone,
           question: `Contesto capitolo "${activeTitle}":\n${activeContent.substring(0, 2000)}\n\nDomanda autore: ${q}`,

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { Language } from "@/types/book";
 
 export type UILanguage = "en" | "it" | "es" | "fr" | "de";
 
@@ -1206,6 +1207,23 @@ export function setUILanguage(lang: UILanguage) {
 
 export function getUILanguage(): UILanguage {
   return currentLang;
+}
+
+/** Maps UI locale → full language name used in AI diagnostic/report prompts. */
+const UI_LANG_TO_SCRIPTORA_LANGUAGE: Record<UILanguage, Language> = {
+  en: "English",
+  it: "Italian",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+};
+
+/**
+ * Scriptora interface language for diagnostics, reports, coaching, and system feedback.
+ * Never use book `config.language` for these — book language is for manuscript content only.
+ */
+export function getScriptoraLanguage(): Language {
+  return UI_LANG_TO_SCRIPTORA_LANGUAGE[getUILanguage()] ?? "English";
 }
 
 export function t(key: string): string {

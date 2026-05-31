@@ -18,7 +18,7 @@ import {
 } from "@/lib/kdp/money-engine";
 import { useFeatureGate } from "@/components/PaywallGuard";
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
-import { t, tt, useUILanguage } from "@/lib/i18n";
+import { t, tt, useUILanguage, getScriptoraLanguage } from "@/lib/i18n";
 
 type Step = "idea" | "market" | "title" | "packaging" | "predict";
 
@@ -73,7 +73,7 @@ export default function KdpLaunchPage() {
 
   const [idea, setIdea] = useState("");
   const [genre, setGenre] = useState("Self-help");
-  const [language, setLanguage] = useState("Italian");
+  const [language, setLanguage] = useState(() => getScriptoraLanguage());
 
   const [market, setMarket] = useState<MarketAnalysis | null>(null);
   const [titles, setTitles] = useState<TitleVariants | null>(null);

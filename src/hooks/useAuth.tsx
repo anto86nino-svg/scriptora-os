@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("nexora-last-project");
       localStorage.removeItem("nexora_plan_cache_v1");
     } catch { /* noop */ }
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "global" });
   };
 
   return (

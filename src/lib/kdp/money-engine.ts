@@ -10,6 +10,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { PlanTier } from "@/lib/plan";
 import { getCurrentUserId } from "@/services/storageService";
+import { getScriptoraLanguage } from "@/lib/i18n";
 
 /* ============ Types ============ */
 
@@ -783,8 +784,9 @@ export async function analyzeMarket(
   idea: string,
   opts: { genre?: string; language?: string; plan: PlanTier },
 ): Promise<MarketAnalysis> {
+  const language = opts.language ?? getScriptoraLanguage();
   return invoke<MarketAnalysis>(
-    { kind: "analyzeMarket", idea, genre: opts.genre, language: opts.language },
+    { kind: "analyzeMarket", idea, genre: opts.genre, language },
     opts.plan,
   );
 }
@@ -804,12 +806,13 @@ export async function generateTitleVariants(
     keywords?: string[];
   },
 ): Promise<TitleVariants> {
+  const language = opts.language ?? getScriptoraLanguage();
   return invoke<TitleVariants>(
     {
       kind: "generateTitleVariants",
       idea,
       genre: opts.genre,
-      language: opts.language,
+      language,
       subNiche: opts.subNiche,
       recommendedAngle: opts.recommendedAngle,
       keywords: opts.keywords,
@@ -821,8 +824,9 @@ export async function generateTitleVariants(
 export async function coverIntelligence(
   opts: { genre: string; mood?: string; language?: string; plan: PlanTier },
 ): Promise<CoverIntelligence> {
+  const language = opts.language ?? getScriptoraLanguage();
   return invoke<CoverIntelligence>(
-    { kind: "coverIntelligence", genre: opts.genre, mood: opts.mood, language: opts.language },
+    { kind: "coverIntelligence", genre: opts.genre, mood: opts.mood, language },
     opts.plan,
   );
 }
@@ -835,15 +839,16 @@ export async function dominateTitles(
   input: DominateTitlesInput,
   plan: PlanTier,
 ): Promise<TitleDominationResult> {
+  const payload = { ...input, language: input.language || getScriptoraLanguage() };
   try {
     return await withTimeout(
-      invoke<TitleDominationResult>({ kind: "dominateTitles", ...input }, plan),
+      invoke<TitleDominationResult>({ kind: "dominateTitles", ...payload }, plan),
       TITLE_DOMINATION_FALLBACK_TIMEOUT_MS,
       "Title Domination cloud timeout",
     );
   } catch (error) {
     console.warn("[title-domination] cloud analysis unavailable; using local base analysis", error);
-    return buildTitleDominationFallback(input);
+    return buildTitleDominationFallback(payload);
   }
 }
 
@@ -851,15 +856,16 @@ export async function keywordGold(
   input: KeywordGoldInput,
   plan: PlanTier,
 ): Promise<KeywordGoldResult> {
+  const payload = { ...input, language: input.language?.trim() || getScriptoraLanguage() };
   try {
     return await withTimeout(
-      invoke<KeywordGoldResult>({ kind: "keywordGold", ...input }, plan),
+      invoke<KeywordGoldResult>({ kind: "keywordGold", ...payload }, plan),
       KEYWORD_FALLBACK_TIMEOUT_MS,
       "Keyword Gold cloud timeout",
     );
   } catch (error) {
     console.warn("[keyword-gold] cloud analysis unavailable; using local base analysis", error);
-    return buildKeywordGoldFallback(input);
+    return buildKeywordGoldFallback(payload);
   }
 }
 
@@ -867,15 +873,16 @@ export async function fetchTrendingNiches(
   input: TrendingNichesInput,
   plan: PlanTier,
 ): Promise<TrendingNichesResult> {
+  const payload = { ...input, language: input.language?.trim() || getScriptoraLanguage() };
   try {
     return await withTimeout(
-      invoke<TrendingNichesResult>({ kind: "trendingNiches", ...input }, plan),
+      invoke<TrendingNichesResult>({ kind: "trendingNiches", ...payload }, plan),
       TRENDING_NICHES_FALLBACK_TIMEOUT_MS,
       "Trending niches cloud timeout",
     );
   } catch (error) {
     console.warn("[trending-niches] cloud analysis unavailable; using local base analysis", error);
-    return buildTrendingNichesFallback(input);
+    return buildTrendingNichesFallback(payload);
   }
 }
 

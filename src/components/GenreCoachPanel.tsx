@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { useDomination } from "@/contexts/DominationContext";
 import type { BookProject } from "@/types/book";
 import { getCurrentUserId } from "@/services/storageService";
-import { t } from "@/lib/i18n";
+import { t, getScriptoraLanguage } from "@/lib/i18n";
 
 interface AutoFixRule {
   triggers: string[];
@@ -43,7 +43,7 @@ export function GenreCoachPanel({
   chapterText,
   genre,
   subcategory,
-  language = "Italian",
+  language = getScriptoraLanguage(),
   project,
   chapterIndex,
 }: Props) {

@@ -19,6 +19,7 @@ import { withRetry, getBreakerCooldown } from "@/lib/api-resilience";
 import { normalizeAuthorIdentity } from "@/lib/author-identity";
 import { applyAuthorBrainToBackMatter, applyAuthorBrainToFrontMatter } from "@/lib/author-brain";
 import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import { getScriptoraLanguage } from "@/lib/i18n";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
 import {
@@ -1576,7 +1577,7 @@ Return JSON:
 }
 
 Be HONEST. Most AI-generated content is 2-3 stars. Only truly exceptional writing deserves 4-5.
-Language: Respond in ${config.language}.
+Language: Respond in ${getScriptoraLanguage()} (Scriptora UI language — diagnostic feedback for the author, not the book manuscript language).
 Return ONLY valid JSON.`;
 
   const result = await callAI(

@@ -901,7 +901,6 @@ function ChapterView({
           chapterText={chapter?.content || ""}
           genre={project.config.genre}
           subcategory={project.config.subcategory}
-          language={project.config.language}
           project={project}
           chapterIndex={chapterIndex}
         />

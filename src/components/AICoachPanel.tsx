@@ -6,6 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { LiveCoachTab } from "@/components/LiveCoachTab";
+import { getScriptoraLanguage } from "@/lib/i18n";
 
 interface AICoachPanelProps {
   project: BookProject;
@@ -31,10 +32,6 @@ interface MultiPassResult {
   improvementSummary: string;
   originalText: string;
 }
-
-const UI_LANG_MAP: Record<string, string> = {
-  en: "English", it: "Italian", es: "Spanish", fr: "French", de: "German",
-};
 
 export function AICoachPanel({ project, activeSection, onClose, onApplyRewrite }: AICoachPanelProps) {
   const [tab, setTab] = useState<"live" | "deep">("live");
@@ -68,15 +65,17 @@ export function AICoachPanel({ project, activeSection, onClose, onApplyRewrite }
   }, [activeSection, project]);
 
   const callCoachAI = async (text: string, title: string, passNumber: number): Promise<{ score: number; heartScore: number; issues: string[]; fixesApplied: string[]; improvedText: string; summary: string }> => {
-    // Use BOOK language for coach responses, not UI language
     const bookLang = project.config.language;
+    const scriptoraLang = getScriptoraLanguage();
     const res = await fetchSupabaseFunction("generate-book", {
       method: "POST",
       json: {
         systemPrompt: `You are an elite editorial AI and bestseller writing coach performing pass #${passNumber}.
 You MUST: 1) Score the text (craft quality) 2) Give a Heart Score (emotional impact) 3) List specific issues 4) Rewrite the FULL text at a higher level 5) List fixes applied.
 
-LANGUAGE RULE: Respond ENTIRELY in ${bookLang}. Every word of your response, issues, fixes, summary, and the rewritten text MUST be in ${bookLang}. No exceptions.
+LANGUAGE RULE (critical):
+- Write issues, fixesApplied, and summary ENTIRELY in ${scriptoraLang} (Scriptora UI language for the author).
+- Write improvedText ENTIRELY in ${bookLang} (the book's manuscript language — do not translate the chapter).
 
 REWRITE RULES:
 - KEEP original meaning, UPGRADE everything else
@@ -91,22 +90,23 @@ Respond ONLY with valid JSON.`,
 
 Title: "${title}"
 Genre: ${project.config.genre} | Tone: ${project.config.tone} | Style: ${project.config.authorStyle}
-Language: ${bookLang} — ALL output MUST be in ${bookLang}
+Manuscript language: ${bookLang} (improvedText only)
+Report language: ${scriptoraLang} (issues, fixesApplied, summary)
 
 Text (first 3000 chars):
 ${text.substring(0, 3000)}
 
-Return this exact JSON (ALL values in ${bookLang}):
+Return this exact JSON:
 {
   "score": <1-5, use decimals like 3.5>,
   "heartScore": <1-5, emotional impact score>,
-  "issues": ["issue1", "issue2", ...],
-  "fixesApplied": ["fix1", "fix2", ...],
-  "improvedText": "<FULL rewritten version in ${bookLang}>",
-  "summary": "<what changed and why, in ${bookLang}>"
+  "issues": ["issue1 in ${scriptoraLang}", ...],
+  "fixesApplied": ["fix1 in ${scriptoraLang}", ...],
+  "improvedText": "<FULL rewritten chapter in ${bookLang}>",
+  "summary": "<what changed and why, in ${scriptoraLang}>"
 }
 
-Respond in ${bookLang}. Return ONLY valid JSON.`,
+Return ONLY valid JSON.`,
       },
     });
     if (!res.ok) {

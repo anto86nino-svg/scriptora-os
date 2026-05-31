@@ -191,16 +191,19 @@ serve(async (req) => {
     const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["dominate-chapter"]);
     if (guard instanceof Response) return guard;
     const body = applyAuthContext(guard, rawBody);
-    const { chapterTitle, chapterText, genre, subcategory, genreKey: clientGenreKey, tone, language, threshold = 8.5, iteration = 1, genreAutoFixBlock = "", blueprintIntegrityBlock = "", masteryMode = false, projectId = null } = body;
+    const { chapterTitle, chapterText, genre, subcategory, genreKey: clientGenreKey, tone, language, reportLanguage, threshold = 8.5, iteration = 1, genreAutoFixBlock = "", blueprintIntegrityBlock = "", masteryMode = false, projectId = null } = body;
     __trackCtx = { projectId, userId: guard.userId };
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 
-    const finalElementInstruction = genreFinalElement(genre, language);
+    const manuscriptLanguage = String(language || "English");
+    const diagnosticsLanguage = String(reportLanguage || manuscriptLanguage);
+
+    const finalElementInstruction = genreFinalElement(genre, manuscriptLanguage);
     const currentText: string = chapterText;
 
     // PHASE 1 — ANALYSIS
-    const analysisSystem = `You are a senior international editor. Brutally honest. Output ONLY JSON. Speak entirely in ${language}.`;
+    const analysisSystem = `You are a senior international editor. Brutally honest. Output ONLY JSON. Speak entirely in ${diagnosticsLanguage}.`;
     const analysisUser = `Genre: ${genre} | Tone: ${tone}
 Chapter title: "${chapterTitle}"
 
@@ -213,7 +216,7 @@ Return JSON:
 {
   "scores": { "impact": 1-10, "clarity": 1-10, "rhythm": 1-10, "originality": 1-10, "redundancy": 1-10 (higher = less redundant) },
   "finalScore": 1-10 (realistic, no inflation),
-  "diagnosis": ["max 7 short surgical points in ${language}: redundancies, weak parts, what to cut, where it loses force"]
+  "diagnosis": ["max 7 short surgical points in ${diagnosticsLanguage}: redundancies, weak parts, what to cut, where it loses force"]
 }`;
     // Analysis: always fast model (cheap, structured JSON)
     const analysisRaw = await callDeepSeek(DEEPSEEK_API_KEY, analysisSystem, analysisUser, true, 0.5, 2000, "dominate_analysis", "deepseek-chat");
@@ -232,7 +235,7 @@ EDITORIAL MASTERY AMPLIFIER — DOMINATE MODE (active):
 - Sentence rhythm: alternate short punches and longer breathing sentences. No homogenized cadence.
 - The output must read as the SAME author at the top of their craft, never as a different writer.` : "";
 
-    const rewriteSystem = `You are a bestseller-level author and senior editor. Write in ${language}. Never use AI clichés. Aggressive, surgical, memorable prose.
+    const rewriteSystem = `You are a bestseller-level author and senior editor. Write in ${manuscriptLanguage}. Never use AI clichés. Aggressive, surgical, memorable prose.
 
 VOICE PRESERVATION LAW (non-negotiable):
 - The output must read as the SAME author, only more precise. NEVER as a different writer rewriting the chapter.
@@ -270,7 +273,7 @@ YOUR TASK — TARGETED REWRITE:
 ${genreAutoFixBlock ? "- Apply the GENRE AUTO-FIX DIRECTIVES above. Respect the 15% rewrite cap and never alter narrative meaning OR voice." : "- Make it shorter if needed, never longer without reason"}
 - ${finalElementInstruction}
 
-Return ONLY the rewritten chapter text in ${language}. No preamble, no markdown headers, no explanations. Just the new chapter.`;
+Return ONLY the rewritten chapter text in ${manuscriptLanguage}. No preamble, no markdown headers, no explanations. Just the new chapter.`;
     // Rewrite: reasoner only when Dominate Mode is on (premium quality, slower).
     // Default uses deepseek-chat for ~3-4× lower latency.
     const rewriteModel = masteryMode ? "deepseek-reasoner" : "deepseek-chat";
@@ -287,13 +290,13 @@ Return JSON:
 {
   "scores": { "impact": 1-10, "clarity": 1-10, "rhythm": 1-10, "originality": 1-10, "redundancy": 1-10 },
   "finalScore": 1-10,
-  "improvementSummary": "1-2 sentences in ${language}: what really changed, what's stronger now"
+  "improvementSummary": "1-2 sentences in ${diagnosticsLanguage}: what really changed, what's stronger now"
 }`;
     const evalRaw = await callDeepSeek(DEEPSEEK_API_KEY, analysisSystem, evalUser, true, 0.4, 1200, "dominate_eval", "deepseek-chat");
     const evaluation = JSON.parse(evalRaw.replace(/```json\n?|```/g, "").trim());
 
     // PHASE 5 — VOICE GUARD (compare ORIGINAL vs REWRITTEN for voice loss)
-    const voiceSystem = `You are a forensic literary identity auditor. You compare two versions of the SAME chapter and judge — without mercy — whether the rewrite preserved the author's voice or replaced it with a smoother, more generic, more "AI" version. Output strict JSON only. Speak in ${language}.`;
+    const voiceSystem = `You are a forensic literary identity auditor. You compare two versions of the SAME chapter and judge — without mercy — whether the rewrite preserved the author's voice or replaced it with a smoother, more generic, more "AI" version. Output strict JSON only. Speak in ${diagnosticsLanguage}.`;
     const voiceUser = `ORIGINAL CHAPTER (author's true voice):
 """
 ${currentText}
@@ -318,7 +321,7 @@ Return JSON:
   "metaphorPreservation": 1-10,
   "antiGeneric": 1-10,
   "identityScore": 1-10,
-  "voiceVerdict": "<one brutal sentence in ${language}: what was lost, what was gained>"
+  "voiceVerdict": "<one brutal sentence in ${diagnosticsLanguage}: what was lost, what was gained>"
 }`;
     let voice: VoiceScores | null = null;
     try {

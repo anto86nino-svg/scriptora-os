@@ -14,7 +14,7 @@ import { getCurrentUserId } from "@/services/storageService";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
 import FixChapterComparisonModal from "@/components/FixChapterComparisonModal";
 import { computeDevelopmentalEditReport } from "@/lib/chapter-doctor-pro";
-import { t } from "@/lib/i18n";
+import { t, getScriptoraLanguage } from "@/lib/i18n";
 import { evaluateChapterBestsellerIntel } from "@/lib/bestseller-intelligence";
 import {
   analyzeChapterScenePurpose,
@@ -347,7 +347,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
           chapterText: chapter.content,
           genre: project.config.genre,
           tone: project.config.tone,
-          language: project.config.language,
+          language: getScriptoraLanguage(),
           projectId: project.id,
           userId: getCurrentUserId(),
           intensity: "balanced",

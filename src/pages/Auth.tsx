@@ -308,6 +308,9 @@ export default function AuthPage() {
       provider: "google",
       options: {
         redirectTo: getAuthRedirectUrl(),
+        queryParams: {
+          prompt: "select_account",
+        },
       },
     });
     logAuthDebug("signInWithOAuth result", { error: summarizeAuthError(error) });

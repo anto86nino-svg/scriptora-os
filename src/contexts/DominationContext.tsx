@@ -7,6 +7,7 @@ import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEng
 import { buildSurgicalEditDirectiveBlock } from "@/lib/chapter-doctor-pro";
 import { validateSurgicalPatchOutput } from "@/lib/surgical-edit-engine";
 import { getCurrentUserId } from "@/services/storageService";
+import { getScriptoraLanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 
 export type JobKind = "dominate" | "patch";
@@ -100,6 +101,7 @@ export function DominationProvider({ children }: { children: ReactNode }) {
             genreKey,
             tone: project.config.tone,
             language: project.config.language,
+            reportLanguage: getScriptoraLanguage(),
             threshold,
             iteration: iter,
             genreAutoFixBlock: opts?.genreAutoFixBlock || "",
@@ -219,6 +221,7 @@ export function DominationProvider({ children }: { children: ReactNode }) {
           genre: project.config.genre,
           tone: project.config.tone,
           language: project.config.language,
+          reportLanguage: getScriptoraLanguage(),
           blueprintIntegrityBlock: [blueprintBlock, surgicalBlock].filter(Boolean).join("\n\n"),
           projectId: project.id,
           userId: getCurrentUserId(),

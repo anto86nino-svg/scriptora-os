@@ -4,7 +4,7 @@ import { useTitleIntelligence, TitleCard, Level } from "@/hooks/useTitleIntellig
 import { supabase } from "@/integrations/supabase/client";
 import { getGenreProfile, resolveGenreKey } from "@/lib/genre-intelligence";
 import { NicheTrendingPlaylist, type NicheImport } from "@/components/kdp/NicheTrendingPlaylist";
-import { getUILanguage } from "@/lib/i18n";
+import { getScriptoraLanguage } from "@/lib/i18n";
 import { X, Sparkles, RefreshCw, Check, Copy, Zap, Target, Brain, TrendingUp, Loader2, Flame, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { useFeatureGate } from "@/components/PaywallGuard";
@@ -19,11 +19,6 @@ interface Props {
   onSelect?: (title: string, subtitle: string) => void;
 }
 
-// Map UI language code → human-readable name expected by the AI prompts.
-const UI_LANG_TO_NAME: Record<string, string> = {
-  en: "English", it: "Italian", es: "Spanish", fr: "French", de: "German",
-};
-
 export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGenre, onSelect }: Props) {
   const navigate = useNavigate();
   const [bookTitle, setBookTitle] = useState(initialTitle || "");
@@ -32,9 +27,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
   const [bookPromise, setBookPromise] = useState("");
   const [authorIdentity, setAuthorIdentity] = useState(() => getSelectedAuthorIdentity());
   const [tone, setTone] = useState<"professionale" | "emotivo" | "aggressivo">("professionale");
-  // Default = system UI language, but user can override per-book (5 supported languages).
-  const uiLang = getUILanguage();
-  const [language, setLanguage] = useState<string>(UI_LANG_TO_NAME[uiLang] ?? "English");
+  const [language, setLanguage] = useState<string>(() => getScriptoraLanguage());
   const [autoFilling, setAutoFilling] = useState(false);
 
   const { data, loading, error, generate, regenerate, reset } = useTitleIntelligence();
@@ -43,6 +36,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
 
   useEffect(() => {
     if (!open) return;
+    setLanguage(getScriptoraLanguage());
     const refreshAuthor = () => setAuthorIdentity(getSelectedAuthorIdentity());
     refreshAuthor();
     window.addEventListener(AUTHOR_IDENTITY_CHANGED_EVENT, refreshAuthor);
@@ -220,7 +214,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
                   Uses the SYSTEM UI language so the user understands what to pick,
                   independent of the book's output language. */}
               <NicheTrendingPlaylist
-                language={UI_LANG_TO_NAME[uiLang] ?? "English"}
+                language={getScriptoraLanguage()}
                 initialFocus={bookGenre}
                 onImport={(n: NicheImport) => {
                   openPostConfigurationFromNiche(n);
