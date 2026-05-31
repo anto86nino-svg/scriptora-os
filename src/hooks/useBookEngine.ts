@@ -19,6 +19,7 @@ import { consumeAutoBestsellerHandoffPack } from "@/lib/auto-bestseller-architec
 import { refreshProjectNarrativeIntelligenceV2 } from "@/lib/narrative-intelligence-v2";
 import { validateBookConfig, repairBookConfigBasics, configsDiffer, type ConfigBlockedPayload } from "@/lib/project-config-validation";
 import { isSupabaseJwtAuthError, normalizeFunctionErrorMessage } from "@/lib/supabase-function-auth";
+import { recordDailyWords } from "@/lib/immersive/gateway-daily-goal";
 
 const FREE_MAX_PROJECT_WORDS = 10_000;
 
@@ -842,6 +843,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
   const updateChapterContent = useCallback((chapterIndex: number, content: string) => {
     updateAndSave(p => {
+      const previous = p.chapters[chapterIndex]?.content ?? "";
+      const delta = countWordsSafe(content) - countWordsSafe(previous);
+      if (delta > 0) recordDailyWords(delta);
+
       const chapters = [...p.chapters];
       while (chapters.length <= chapterIndex) {
         chapters.push({
@@ -891,6 +896,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
   const updateSubchapterContent = useCallback((chapterIndex: number, subIndex: number, content: string) => {
     updateAndSave(p => {
+      const previous = p.chapters[chapterIndex]?.subchapters?.[subIndex]?.content ?? "";
+      const delta = countWordsSafe(content) - countWordsSafe(previous);
+      if (delta > 0) recordDailyWords(delta);
+
       const chapters = [...p.chapters];
       const ch = { ...chapters[chapterIndex] };
       const subs = [...ch.subchapters];

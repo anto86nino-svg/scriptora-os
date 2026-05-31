@@ -19,6 +19,7 @@ export type NarrativeWorkspaceActions = {
   onAuthorIdentity?: () => void;
   onKdpPublish?: () => void;
   onGenerateChapter?: () => void;
+  onMarketIntel?: () => void;
 };
 
 type NarrativeWorkspaceProps = {

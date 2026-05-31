@@ -40,9 +40,10 @@ import { DeviceViewToolbarControl } from "@/components/DeviceViewToggle";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AccountIdentityBlock } from "@/components/AccountIdentityBlock";
 import { GoogleLogoMark } from "@/components/GoogleLogoMark";
-import { NarrativeWorkspace } from "@/components/immersive/NarrativeWorkspace";
+import { ScriptoraGatewayOS, type GatewayGenreId } from "@/components/immersive/ScriptoraGatewayOS";
 import { ScriptoraToolbox, type ToolboxCard } from "@/components/immersive/ScriptoraToolbox";
 import { buildNarrativeWorkspaceSnapshot, resolveFocusProject } from "@/lib/immersive/workspace-state";
+import { buildGatewaySnapshot } from "@/lib/immersive/gateway-state";
 import { deriveActiveWorkspaceTool } from "@/lib/immersive/workspace-tool-mode";
 import { setProjectCoverDataUrl } from "@/lib/cover-session";
 import { getAuthProfile } from "@/lib/auth-profile";
@@ -74,6 +75,21 @@ import { type DetectedIntent } from "@/components/QuickLaunchPanel";
 function isNarrativeGenreForCharacters(genre?: string): boolean {
   const g = String(genre || "").toLowerCase();
   return ["romance", "dark-romance", "thriller", "fantasy", "fiction", "memoir", "historical", "horror", "sci-fi"].some(x => g.includes(x));
+}
+
+function buildGatewayGenreIntent(genre: GatewayGenreId): DetectedIntent {
+  return {
+    genre,
+    subcategory: genre,
+    level: "beginner",
+    readerPromise: "",
+    targetAudience: "general readers",
+    tone: "engaging",
+    numberOfChapters: 10,
+    suggestedTitles: [],
+    suggestedSubtitles: [],
+    bestTitleIndex: 0,
+  };
 }
 
 
@@ -291,6 +307,19 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idea]);
 
+  useEffect(() => {
+    if (!showLaunchModal) return;
+    try {
+      const raw = sessionStorage.getItem("scriptora-gateway-genre-prefill");
+      if (!raw) return;
+      sessionStorage.removeItem("scriptora-gateway-genre-prefill");
+      setIntent(buildGatewayGenreIntent(raw as GatewayGenreId));
+      setOneClickChapters(10);
+    } catch {
+      /* ignore */
+    }
+  }, [showLaunchModal]);
+
   const freeBookUsed = currentPlan === "free" && projects.length > 0;
 
   useEffect(() => {
@@ -427,6 +456,21 @@ export default function Home() {
     () => buildNarrativeWorkspaceSnapshot(projects.length, focusProject, activeAuthor?.penName),
     [projects.length, focusProject, activeAuthor?.penName],
   );
+
+  const gatewaySnapshot = useMemo(
+    () => buildGatewaySnapshot(projects.length, focusProject, activeAuthor?.penName),
+    [projects.length, focusProject, activeAuthor?.penName],
+  );
+
+  const openNewBookWithGenre = useCallback((genre: GatewayGenreId) => {
+    try {
+      sessionStorage.setItem("scriptora-gateway-genre-prefill", genre);
+    } catch {
+      /* ignore */
+    }
+    setIdea((prev) => (prev.trim().length >= 6 ? prev : `A compelling ${genre.toLowerCase()} story about `));
+    openLaunchModal("quick");
+  }, []);
 
   const activeWorkspaceTool = useMemo(
     () =>
@@ -942,12 +986,21 @@ export default function Home() {
         </div>
       </header>
 
-      <main id="dashboard-projects" className="scriptora-feature-scroll relative mx-auto w-full max-w-3xl px-4 pb-8 pt-4 sm:px-6 sm:pt-8 lg:px-8">
-        <NarrativeWorkspace
-          snapshot={workspaceSnapshot}
+      <main id="dashboard-projects" className="scriptora-feature-scroll scriptora-gateway-scroll relative mx-auto w-full max-w-3xl px-4 pb-8 pt-4 sm:px-6 sm:pt-6 lg:px-8">
+        <ScriptoraGatewayOS
+          gateway={gatewaySnapshot}
           activeTool={activeWorkspaceTool}
+          onGenreSelect={openNewBookWithGenre}
           actions={{
-            onContinueWriting: () => focusProject && goApp({ projectId: focusProject.id }),
+            onContinueWriting: () => {
+              if (!focusProject) return;
+              const resumeIdx =
+                gatewaySnapshot.resumeChapterIndex ?? workspaceSnapshot.activeChapterIndex;
+              goApp({
+                projectId: focusProject.id,
+                section: `chapter-${resumeIdx}`,
+              });
+            },
             onGenerateChapter: () =>
               focusProject &&
               goApp({
@@ -965,6 +1018,9 @@ export default function Home() {
             onExport: guardPlanFeature("export_epub", () => setShowExport(true)),
             onLibrary: guardPlanFeature("export_epub", () => setShowLibrary(true)),
             onOpenToolbox: () => setShowToolbox(true),
+            onMarketIntel: guardPlanFeature("title_intelligence_base", () =>
+              openDashboardOverlay(() => setShowTitleIntel(true)),
+            ),
             onAuthorIdentity: guardPlanFeature("book_engine_full", () =>
               openDashboardOverlay(() => setShowAuthorIdentity(true)),
             ),

@@ -1089,9 +1089,12 @@
 
 /* Sticky hero + modal split when a lateral tool is open */
 body.scriptora-wos-tool-mode {
-  --wos-dashboard-header-height: 3.25rem;
-  --wos-tool-hero-height: clamp(9.5rem, 26dvh, 12.5rem);
-  --wos-tool-stack-height: calc(var(--wos-dashboard-header-height) + var(--wos-tool-hero-height));
+  --wos-dashboard-header-height: 3.5rem;
+  --wos-tool-hero-height: clamp(7.5rem, 18dvh, 9.5rem);
+  --wos-tool-modal-gap: 10px;
+  --wos-tool-stack-height: calc(
+    var(--wos-dashboard-header-height) + var(--wos-tool-hero-height) + var(--wos-tool-modal-gap)
+  );
 }
 
 body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] {
@@ -1101,14 +1104,25 @@ body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] {
   right: 0;
   z-index: 115;
   max-width: 48rem;
+  height: var(--wos-tool-hero-height);
+  max-height: var(--wos-tool-hero-height);
   margin-inline: auto;
-  padding-inline: 1rem;
-  border-radius: 0 0 1rem 1rem;
-  box-shadow: 0 14px 36px hsl(0 0% 0% / 0.42);
+  padding-inline: 0.75rem;
+  border-radius: 0 0 0.875rem 0.875rem;
+  box-shadow: 0 10px 28px hsl(0 0% 0% / 0.38);
+  overflow: hidden;
 }
 
 body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] .scriptora-workspace-os-inner {
-  padding-block: 0.875rem;
+  padding: 0.375rem 0.5rem;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] .scriptora-workspace-hero--tool {
+  width: 100%;
+  min-height: 0;
 }
 
 body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] .scriptora-workspace-modules {
@@ -1121,27 +1135,134 @@ body.scriptora-wos-tool-mode .scriptora-modal-overlay {
   left: 0;
   right: 0;
   height: auto;
-  align-items: flex-end;
-  justify-content: center;
-  padding-top: 0;
-  padding-bottom: max(env(safe-area-inset-bottom), 12px);
-  background-color: hsl(0 0% 0% / 0.8);
+  align-items: stretch;
+  justify-content: flex-start;
+  padding: 0 max(0.5rem, env(safe-area-inset-right))
+    max(env(safe-area-inset-bottom), 8px) max(0.5rem, env(safe-area-inset-left));
+  background-color: hsl(0 0% 0% / 0.84);
 }
 
 body.scriptora-wos-tool-mode .scriptora-modal-panel {
-  max-height: calc(100dvh - var(--wos-tool-stack-height) - env(safe-area-inset-bottom) - 12px);
-  border-radius: 1rem 1rem 0 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100dvh - var(--wos-tool-stack-height) - env(safe-area-inset-bottom) - 8px);
+  margin: 0;
+  border-radius: 0.875rem 0.875rem 0 0;
 }
 
-@media (min-width: 640px) {
+body.scriptora-wos-tool-mode .scriptora-modal-overlay > * {
+  max-height: calc(100dvh - var(--wos-tool-stack-height) - env(safe-area-inset-bottom) - 8px);
+}
+
+body.scriptora-wos-tool-mode [data-radix-dialog-overlay] {
+  top: var(--wos-tool-stack-height) !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  height: auto !important;
+}
+
+body.scriptora-wos-tool-mode [data-radix-dialog-content] {
+  top: var(--wos-tool-stack-height) !important;
+  right: max(0.5rem, env(safe-area-inset-right)) !important;
+  bottom: max(env(safe-area-inset-bottom), 8px) !important;
+  left: max(0.5rem, env(safe-area-inset-left)) !important;
+  width: auto !important;
+  max-width: none !important;
+  height: auto !important;
+  max-height: none !important;
+  transform: none !important;
+  translate: none !important;
+  margin: 0 !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+body.scriptora-wos-tool-mode .scriptora-feature-scroll {
+  overflow: hidden;
+}
+
+@media (max-width: 767px) {
+  body.scriptora-wos-tool-mode {
+    --wos-tool-hero-height: 5.625rem;
+    --wos-tool-modal-gap: 10px;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] {
+    padding-inline: 0.625rem;
+    border-radius: 0 0 0.75rem 0.75rem;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] .scriptora-workspace-os-inner {
+    padding: 0.25rem 0.375rem;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-wos-tool-hero {
+    gap: 0.4375rem;
+    grid-template-columns: minmax(3.25rem, 21%) 1fr;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-book-mockup-wrap--mini {
+    width: min(3.75rem, 18vw);
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-book-mockup-wrap--mini .scriptora-book-mockup__title {
+    font-size: 0.5rem;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-wos-tool-hero__kicker {
+    font-size: 0.4375rem;
+    letter-spacing: 0.1em;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-wos-tool-hero__label {
+    margin-bottom: 0.125rem;
+    font-size: 0.6875rem;
+    line-height: 1.15;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-wos-tool-visual__svg {
+    width: min(100%, 3.5rem);
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] .scriptora-book-mockup-wrap::before,
+  body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] .scriptora-book-mockup-wrap::after {
+    inset: -0.05rem -0.2rem;
+    opacity: 0.45;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-modal-overlay {
+    padding-top: 0;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-modal-panel {
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+}
+
+@media (min-width: 768px) {
   body.scriptora-wos-tool-mode .scriptora-modal-overlay {
     align-items: center;
+    justify-content: center;
     padding: 0.75rem;
   }
 
   body.scriptora-wos-tool-mode .scriptora-modal-panel {
     border-radius: 1rem;
     max-height: calc(100dvh - var(--wos-tool-stack-height) - 1.5rem);
+  }
+
+  body.scriptora-wos-tool-mode [data-radix-dialog-content] {
+    top: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: 50% !important;
+    width: calc(100% - 1.5rem) !important;
+    max-width: 48rem !important;
+    max-height: calc(100dvh - var(--wos-tool-stack-height) - 2rem) !important;
+    transform: translate(-50%, -50%) !important;
   }
 }
 
