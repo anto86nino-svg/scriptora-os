@@ -328,6 +328,23 @@ export default function Home() {
     }
   }, [bookLength, currentPlan]);
 
+  const openLaunchModal = (mode: LaunchMode = "quick") => {
+    if (mode === "manual" && freeBookUsed) {
+      toast.error(t("toast_free_book_used"));
+      navigate("/pricing");
+      return;
+    }
+    openDashboardOverlay(() => {
+      setLaunchMode(mode);
+      setShowLaunchModal(true);
+    });
+  };
+
+  const closeLaunchModal = () => {
+    if (launching || detecting) return;
+    setShowLaunchModal(false);
+  };
+
   const openNewBookGuarded = () => {
     if (freeBookUsed) {
       toast.error(t("toast_free_book_used"));
@@ -365,6 +382,9 @@ export default function Home() {
       case "new-book":
         openNewBookGuarded();
         break;
+      case "launch-book":
+        openLaunchModal("quick");
+        break;
       case "projects":
         document.getElementById("dashboard-projects")?.scrollIntoView({ behavior: "smooth", block: "start" });
         break;
@@ -374,7 +394,7 @@ export default function Home() {
 
     const nextSearch = stripOpenQuery(searchParams.toString());
     setSearchParams(nextSearch ? nextSearch.replace(/^\?/, "") : "", { replace: true });
-  }, [openDashboardOverlay, openNewBookGuarded, searchParams, setSearchParams]);
+  }, [openDashboardOverlay, openLaunchModal, openNewBookGuarded, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (projectsReady) consumeOpenQuery();
@@ -392,7 +412,7 @@ export default function Home() {
     const onOpenExport = () => openDashboardOverlay(() => setShowExport(true));
     const onOpenManuscript = () => openDashboardOverlay(() => setShowManuscriptAnalyzer(true));
     const onOpenCover = () => openDashboardOverlay(() => setShowCoverStudio(true));
-    const onOpenNewBook = () => openNewBookGuarded();
+    const onOpenNewBook = () => openLaunchModal("quick");
     const onFocusManuscript = () => {
       document.querySelector<HTMLTextAreaElement>("[data-manuscript-textarea]")?.focus();
     };
@@ -412,24 +432,7 @@ export default function Home() {
       window.removeEventListener(REQUIREMENT_ACTION_EVENTS.open_new_book, onOpenNewBook);
       window.removeEventListener(REQUIREMENT_ACTION_EVENTS.focus_manuscript_input, onFocusManuscript);
     };
-  }, [openDashboardOverlay, openNewBookGuarded]);
-
-  const openLaunchModal = (mode: LaunchMode = "quick") => {
-    if (mode === "manual" && freeBookUsed) {
-      toast.error(t("toast_free_book_used"));
-      navigate("/pricing");
-      return;
-    }
-    openDashboardOverlay(() => {
-      setLaunchMode(mode);
-      setShowLaunchModal(true);
-    });
-  };
-
-  const closeLaunchModal = () => {
-    if (launching || detecting) return;
-    setShowLaunchModal(false);
-  };
+  }, [openDashboardOverlay, openLaunchModal]);
 
   const guardPlanFeature = (feature: FeatureKey, action: () => void) => () => {
     if (!canUseFeature(currentPlan, feature)) {
