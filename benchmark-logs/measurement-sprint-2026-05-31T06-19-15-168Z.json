@@ -1,0 +1,1641 @@
+{
+  "version": 1,
+  "sprintId": "scriptora-measurement-sprint-v1",
+  "generatedAt": "2026-05-31T06:19:15.167Z",
+  "mode": "measure-only",
+  "realBookBenchmark": [
+    {
+      "projectId": "rw-romance-1",
+      "title": "Salt on His Skin",
+      "category": "Romance / Dark Romance",
+      "supremeComposite": 88,
+      "greatnessComposite": 88,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 9.01,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-romance-2",
+      "title": "The Room He Never Enters",
+      "category": "Romance / Dark Romance",
+      "supremeComposite": 89,
+      "greatnessComposite": 87,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 9.01,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-romance-3",
+      "title": "Borrowed Heat",
+      "category": "Romance / Dark Romance",
+      "supremeComposite": 88,
+      "greatnessComposite": 86,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 9.01,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-romance-4",
+      "title": "After the Fire Door",
+      "category": "Romance / Dark Romance",
+      "supremeComposite": 90,
+      "greatnessComposite": 89,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 9.01,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-romance-5",
+      "title": "No Saints in Milan",
+      "category": "Romance / Dark Romance",
+      "supremeComposite": 88,
+      "greatnessComposite": 87,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 9.01,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-thriller-1",
+      "title": "The Wrong Timestamp",
+      "category": "Thriller / Crime",
+      "supremeComposite": 89,
+      "greatnessComposite": 83,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.96,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-thriller-2",
+      "title": "Quiet House Protocol",
+      "category": "Thriller / Crime",
+      "supremeComposite": 89,
+      "greatnessComposite": 83,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.96,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-thriller-3",
+      "title": "Debt of Silence",
+      "category": "Thriller / Crime",
+      "supremeComposite": 88,
+      "greatnessComposite": 89,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.95,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-thriller-4",
+      "title": "Last Known Exit",
+      "category": "Thriller / Crime",
+      "supremeComposite": 88,
+      "greatnessComposite": 87,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.95,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-thriller-5",
+      "title": "The Second Witness",
+      "category": "Thriller / Crime",
+      "supremeComposite": 89,
+      "greatnessComposite": 83,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.96,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-fantasy-1",
+      "title": "The Iron Pact",
+      "category": "Fantasy",
+      "supremeComposite": 91,
+      "greatnessComposite": 88,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 9.04,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-fantasy-2",
+      "title": "Second Bell",
+      "category": "Fantasy",
+      "supremeComposite": 91,
+      "greatnessComposite": 88,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 9.04,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-fantasy-3",
+      "title": "Ash Bridge",
+      "category": "Fantasy",
+      "supremeComposite": 91,
+      "greatnessComposite": 88,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 9.04,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-fantasy-4",
+      "title": "Canon of Salt",
+      "category": "Fantasy",
+      "supremeComposite": 91,
+      "greatnessComposite": 88,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 9.04,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-fantasy-5",
+      "title": "The Oath Brand",
+      "category": "Fantasy",
+      "supremeComposite": 91,
+      "greatnessComposite": 88,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 9.04,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-memoir-1",
+      "title": "Leaving Before Knock",
+      "category": "Memoir / Emotional Fiction",
+      "supremeComposite": 88,
+      "greatnessComposite": 90,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.9,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-memoir-2",
+      "title": "Winter Sorting",
+      "category": "Memoir / Emotional Fiction",
+      "supremeComposite": 88,
+      "greatnessComposite": 89,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.74,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-memoir-3",
+      "title": "Mother's Door",
+      "category": "Memoir / Emotional Fiction",
+      "supremeComposite": 89,
+      "greatnessComposite": 91,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.74,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-memoir-4",
+      "title": "Boxes Not Failure",
+      "category": "Memoir / Emotional Fiction",
+      "supremeComposite": 88,
+      "greatnessComposite": 89,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.74,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-memoir-5",
+      "title": "Halfway Through",
+      "category": "Memoir / Emotional Fiction",
+      "supremeComposite": 88,
+      "greatnessComposite": 89,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.74,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-selfhelp-1",
+      "title": "Friction First Habits",
+      "category": "Self-help",
+      "supremeComposite": 89,
+      "greatnessComposite": 90,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.89,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-selfhelp-2",
+      "title": "Seven Day Stack",
+      "category": "Self-help",
+      "supremeComposite": 89,
+      "greatnessComposite": 90,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.89,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-selfhelp-3",
+      "title": "Environment Beats Will",
+      "category": "Self-help",
+      "supremeComposite": 89,
+      "greatnessComposite": 90,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.89,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-selfhelp-4",
+      "title": "One Behavior Rule",
+      "category": "Self-help",
+      "supremeComposite": 89,
+      "greatnessComposite": 90,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.89,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-selfhelp-5",
+      "title": "Cue Your Future Self",
+      "category": "Self-help",
+      "supremeComposite": 89,
+      "greatnessComposite": 90,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.88,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-business-1",
+      "title": "Price the Avoided Loss",
+      "category": "Business",
+      "supremeComposite": 88,
+      "greatnessComposite": 88,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.88,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-business-2",
+      "title": "Churn Math",
+      "category": "Business",
+      "supremeComposite": 89,
+      "greatnessComposite": 86,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.92,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-business-3",
+      "title": "Value Before Cost",
+      "category": "Business",
+      "supremeComposite": 89,
+      "greatnessComposite": 87,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.92,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-business-4",
+      "title": "Buyer Problem Frame",
+      "category": "Business",
+      "supremeComposite": 89,
+      "greatnessComposite": 86,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.92,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-business-5",
+      "title": "Week One ROI",
+      "category": "Business",
+      "supremeComposite": 89,
+      "greatnessComposite": 86,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.92,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-hort-1",
+      "title": "Manuale coltivazione pomodoro — Tomato Soil Guide",
+      "category": "Practical Guides",
+      "supremeComposite": 89,
+      "greatnessComposite": 90,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.88,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-hort-2",
+      "title": "Manuale coltivazione pomodoro — Seedling Hardening Manual",
+      "category": "Practical Guides",
+      "supremeComposite": 89,
+      "greatnessComposite": 90,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.88,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-hort-3",
+      "title": "Manuale coltivazione pomodoro — Yellow Leaf Troubleshooting",
+      "category": "Practical Guides",
+      "supremeComposite": 89,
+      "greatnessComposite": 90,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.88,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-hort-4",
+      "title": "Manuale coltivazione pomodoro — pH Before Planting",
+      "category": "Practical Guides",
+      "supremeComposite": 89,
+      "greatnessComposite": 90,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.88,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    },
+    {
+      "projectId": "rw-hort-5",
+      "title": "Manuale coltivazione pomodoro — Transplant Shock Prevention",
+      "category": "Practical Guides",
+      "supremeComposite": 89,
+      "greatnessComposite": 90,
+      "narrativeMagicComposite": 100,
+      "rubricComposite": 8.88,
+      "criticalIssues": 0,
+      "passesPreDelivery": true
+    }
+  ],
+  "blindTest": {
+    "total": 35,
+    "scriptoraWins": 35,
+    "scriptoraWinRate": 100,
+    "rank1Rate": 100,
+    "avgMarginVsGeneric": 1.98,
+    "avgMarginVsClaude": 0.36,
+    "claudeBeatsScriptoraCount": 0,
+    "lossesByCategory": []
+  },
+  "bestsellerComparison": [
+    {
+      "genreKey": "romance",
+      "scriptoraHook": 80,
+      "scriptoraBinge": 70,
+      "genericHook": 0,
+      "genericBinge": 0,
+      "claudeHook": 0,
+      "claudeBinge": 0,
+      "hookGapVsBest": 0,
+      "bingeGapVsBest": 0
+    },
+    {
+      "genreKey": "thriller",
+      "scriptoraHook": 80,
+      "scriptoraBinge": 70,
+      "genericHook": 0,
+      "genericBinge": 0,
+      "claudeHook": 0,
+      "claudeBinge": 0,
+      "hookGapVsBest": 0,
+      "bingeGapVsBest": 0
+    },
+    {
+      "genreKey": "fantasy",
+      "scriptoraHook": 0,
+      "scriptoraBinge": 0,
+      "genericHook": 0,
+      "genericBinge": 0,
+      "claudeHook": 0,
+      "claudeBinge": 0,
+      "hookGapVsBest": 0,
+      "bingeGapVsBest": 0
+    },
+    {
+      "genreKey": "memoir",
+      "scriptoraHook": 66,
+      "scriptoraBinge": 70,
+      "genericHook": 0,
+      "genericBinge": 0,
+      "claudeHook": 0,
+      "claudeBinge": 0,
+      "hookGapVsBest": 0,
+      "bingeGapVsBest": 0
+    },
+    {
+      "genreKey": "selfHelp",
+      "scriptoraHook": 0,
+      "scriptoraBinge": 0,
+      "genericHook": 0,
+      "genericBinge": 0,
+      "claudeHook": 0,
+      "claudeBinge": 0,
+      "hookGapVsBest": 0,
+      "bingeGapVsBest": 0
+    },
+    {
+      "genreKey": "business",
+      "scriptoraHook": 0,
+      "scriptoraBinge": 0,
+      "genericHook": 0,
+      "genericBinge": 0,
+      "claudeHook": 0,
+      "claudeBinge": 0,
+      "hookGapVsBest": 0,
+      "bingeGapVsBest": 0
+    },
+    {
+      "genreKey": "horticultural",
+      "scriptoraHook": 0,
+      "scriptoraBinge": 0,
+      "genericHook": 0,
+      "genericBinge": 0,
+      "claudeHook": 0,
+      "claudeBinge": 0,
+      "hookGapVsBest": 0,
+      "bingeGapVsBest": 0
+    }
+  ],
+  "readerRetention": [
+    {
+      "source": "rw-romance-1",
+      "genre": "Romance / Dark Romance",
+      "curiosity": 76,
+      "retention": 78,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-romance-2",
+      "genre": "Romance / Dark Romance",
+      "curiosity": 76,
+      "retention": 79,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-romance-3",
+      "genre": "Romance / Dark Romance",
+      "curiosity": 76,
+      "retention": 78,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-romance-4",
+      "genre": "Romance / Dark Romance",
+      "curiosity": 76,
+      "retention": 78,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-romance-5",
+      "genre": "Romance / Dark Romance",
+      "curiosity": 76,
+      "retention": 78,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-thriller-1",
+      "genre": "Thriller / Crime",
+      "curiosity": 85,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-thriller-2",
+      "genre": "Thriller / Crime",
+      "curiosity": 85,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-thriller-3",
+      "genre": "Thriller / Crime",
+      "curiosity": 83,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-thriller-4",
+      "genre": "Thriller / Crime",
+      "curiosity": 83,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-thriller-5",
+      "genre": "Thriller / Crime",
+      "curiosity": 85,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-fantasy-1",
+      "genre": "Fantasy",
+      "curiosity": 88,
+      "retention": 77,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-fantasy-2",
+      "genre": "Fantasy",
+      "curiosity": 88,
+      "retention": 77,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-fantasy-3",
+      "genre": "Fantasy",
+      "curiosity": 88,
+      "retention": 77,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-fantasy-4",
+      "genre": "Fantasy",
+      "curiosity": 88,
+      "retention": 77,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-fantasy-5",
+      "genre": "Fantasy",
+      "curiosity": 88,
+      "retention": 77,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-memoir-1",
+      "genre": "Memoir / Emotional Fiction",
+      "curiosity": 73,
+      "retention": 73,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-memoir-2",
+      "genre": "Memoir / Emotional Fiction",
+      "curiosity": 70,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-memoir-3",
+      "genre": "Memoir / Emotional Fiction",
+      "curiosity": 70,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-memoir-4",
+      "genre": "Memoir / Emotional Fiction",
+      "curiosity": 70,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-memoir-5",
+      "genre": "Memoir / Emotional Fiction",
+      "curiosity": 70,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-selfhelp-1",
+      "genre": "Self-help",
+      "curiosity": 72,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-selfhelp-2",
+      "genre": "Self-help",
+      "curiosity": 72,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-selfhelp-3",
+      "genre": "Self-help",
+      "curiosity": 72,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-selfhelp-4",
+      "genre": "Self-help",
+      "curiosity": 72,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-selfhelp-5",
+      "genre": "Self-help",
+      "curiosity": 76,
+      "retention": 69,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-business-1",
+      "genre": "Business",
+      "curiosity": 76,
+      "retention": 69,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-business-2",
+      "genre": "Business",
+      "curiosity": 76,
+      "retention": 74,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-business-3",
+      "genre": "Business",
+      "curiosity": 76,
+      "retention": 74,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-business-4",
+      "genre": "Business",
+      "curiosity": 76,
+      "retention": 74,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-business-5",
+      "genre": "Business",
+      "curiosity": 76,
+      "retention": 74,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-hort-1",
+      "genre": "Practical Guides",
+      "curiosity": 77,
+      "retention": 78,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-hort-2",
+      "genre": "Practical Guides",
+      "curiosity": 77,
+      "retention": 78,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-hort-3",
+      "genre": "Practical Guides",
+      "curiosity": 77,
+      "retention": 78,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-hort-4",
+      "genre": "Practical Guides",
+      "curiosity": 77,
+      "retention": 78,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "rw-hort-5",
+      "genre": "Practical Guides",
+      "curiosity": 77,
+      "retention": 78,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-romance-ch1",
+      "genre": "romance",
+      "curiosity": 71,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-romance-ch2",
+      "genre": "romance",
+      "curiosity": 79,
+      "retention": 76,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-romance-ch3",
+      "genre": "romance",
+      "curiosity": 71,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-romance-ch4",
+      "genre": "romance",
+      "curiosity": 71,
+      "retention": 74,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-romance-ch5",
+      "genre": "romance",
+      "curiosity": 71,
+      "retention": 77,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-thriller-ch1",
+      "genre": "thriller",
+      "curiosity": 86,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-thriller-ch2",
+      "genre": "thriller",
+      "curiosity": 100,
+      "retention": 72,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-thriller-ch3",
+      "genre": "thriller",
+      "curiosity": 96,
+      "retention": 71,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-thriller-ch4",
+      "genre": "thriller",
+      "curiosity": 86,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-thriller-ch5",
+      "genre": "thriller",
+      "curiosity": 86,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-fantasy-ch1",
+      "genre": "fantasy",
+      "curiosity": 85,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-fantasy-ch2",
+      "genre": "fantasy",
+      "curiosity": 75,
+      "retention": 68,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-fantasy-ch3",
+      "genre": "fantasy",
+      "curiosity": 91,
+      "retention": 70,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-fantasy-ch4",
+      "genre": "fantasy",
+      "curiosity": 77,
+      "retention": 68,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-fantasy-ch5",
+      "genre": "fantasy",
+      "curiosity": 83,
+      "retention": 69,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-self-help-ch1",
+      "genre": "self-help",
+      "curiosity": 81,
+      "retention": 74,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-self-help-ch2",
+      "genre": "self-help",
+      "curiosity": 89,
+      "retention": 76,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-self-help-ch3",
+      "genre": "self-help",
+      "curiosity": 85,
+      "retention": 75,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-self-help-ch4",
+      "genre": "self-help",
+      "curiosity": 87,
+      "retention": 76,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    },
+    {
+      "source": "stress-self-help-ch5",
+      "genre": "self-help",
+      "curiosity": 81,
+      "retention": 75,
+      "wouldContinue": true,
+      "abandonmentRisk": "low",
+      "passesGate": true
+    }
+  ],
+  "editorialExpert": [
+    {
+      "source": "rw-romance-1",
+      "genre": "Romance / Dark Romance",
+      "rubricComposite": 9.01,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.7,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-romance-2",
+      "genre": "Romance / Dark Romance",
+      "rubricComposite": 9.01,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.7,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-romance-3",
+      "genre": "Romance / Dark Romance",
+      "rubricComposite": 9.01,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.7,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-romance-4",
+      "genre": "Romance / Dark Romance",
+      "rubricComposite": 9.01,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.7,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-romance-5",
+      "genre": "Romance / Dark Romance",
+      "rubricComposite": 9.01,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.7,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-thriller-1",
+      "genre": "Thriller / Crime",
+      "rubricComposite": 8.96,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.7,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-thriller-2",
+      "genre": "Thriller / Crime",
+      "rubricComposite": 8.96,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.7,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-thriller-3",
+      "genre": "Thriller / Crime",
+      "rubricComposite": 8.95,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.64,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-thriller-4",
+      "genre": "Thriller / Crime",
+      "rubricComposite": 8.95,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.64,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-thriller-5",
+      "genre": "Thriller / Crime",
+      "rubricComposite": 8.96,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.7,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-fantasy-1",
+      "genre": "Fantasy",
+      "rubricComposite": 9.04,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.6,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-fantasy-2",
+      "genre": "Fantasy",
+      "rubricComposite": 9.04,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.6,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-fantasy-3",
+      "genre": "Fantasy",
+      "rubricComposite": 9.04,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.6,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-fantasy-4",
+      "genre": "Fantasy",
+      "rubricComposite": 9.04,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.6,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-fantasy-5",
+      "genre": "Fantasy",
+      "rubricComposite": 9.04,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.6,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-memoir-1",
+      "genre": "Memoir / Emotional Fiction",
+      "rubricComposite": 8.9,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.19,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-memoir-2",
+      "genre": "Memoir / Emotional Fiction",
+      "rubricComposite": 8.74,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.06,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-memoir-3",
+      "genre": "Memoir / Emotional Fiction",
+      "rubricComposite": 8.74,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.06,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-memoir-4",
+      "genre": "Memoir / Emotional Fiction",
+      "rubricComposite": 8.74,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.06,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-memoir-5",
+      "genre": "Memoir / Emotional Fiction",
+      "rubricComposite": 8.74,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.06,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-selfhelp-1",
+      "genre": "Self-help",
+      "rubricComposite": 8.89,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.15,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-selfhelp-2",
+      "genre": "Self-help",
+      "rubricComposite": 8.89,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.15,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-selfhelp-3",
+      "genre": "Self-help",
+      "rubricComposite": 8.89,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.15,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-selfhelp-4",
+      "genre": "Self-help",
+      "rubricComposite": 8.89,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.15,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-selfhelp-5",
+      "genre": "Self-help",
+      "rubricComposite": 8.88,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.33,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-business-1",
+      "genre": "Business",
+      "rubricComposite": 8.88,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.33,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-business-2",
+      "genre": "Business",
+      "rubricComposite": 8.92,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.33,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-business-3",
+      "genre": "Business",
+      "rubricComposite": 8.92,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.33,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-business-4",
+      "genre": "Business",
+      "rubricComposite": 8.92,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.33,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-business-5",
+      "genre": "Business",
+      "rubricComposite": 8.92,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.33,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-hort-1",
+      "genre": "Practical Guides",
+      "rubricComposite": 8.88,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.37,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-hort-2",
+      "genre": "Practical Guides",
+      "rubricComposite": 8.88,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.37,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-hort-3",
+      "genre": "Practical Guides",
+      "rubricComposite": 8.88,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.37,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-hort-4",
+      "genre": "Practical Guides",
+      "rubricComposite": 8.88,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.37,
+      "tier": "strong"
+    },
+    {
+      "source": "rw-hort-5",
+      "genre": "Practical Guides",
+      "rubricComposite": 8.88,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.37,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch1",
+      "genre": "romance",
+      "rubricComposite": 8.73,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.1,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch2",
+      "genre": "romance",
+      "rubricComposite": 8.83,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.5,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch3",
+      "genre": "romance",
+      "rubricComposite": 8.73,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.1,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch4",
+      "genre": "romance",
+      "rubricComposite": 8.77,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.32,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch5",
+      "genre": "romance",
+      "rubricComposite": 8.59,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.06,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch6",
+      "genre": "romance",
+      "rubricComposite": 8.73,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.1,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch7",
+      "genre": "romance",
+      "rubricComposite": 8.77,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.32,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch8",
+      "genre": "romance",
+      "rubricComposite": 8.73,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.1,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch9",
+      "genre": "romance",
+      "rubricComposite": 8.73,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.1,
+      "tier": "strong"
+    },
+    {
+      "source": "romance-ch10",
+      "genre": "romance",
+      "rubricComposite": 8.59,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.06,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch1",
+      "genre": "thriller",
+      "rubricComposite": 8.81,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.6,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch2",
+      "genre": "thriller",
+      "rubricComposite": 8.9,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.6,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch3",
+      "genre": "thriller",
+      "rubricComposite": 8.75,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 7,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch4",
+      "genre": "thriller",
+      "rubricComposite": 8.81,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.6,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch5",
+      "genre": "thriller",
+      "rubricComposite": 8.81,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.6,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch6",
+      "genre": "thriller",
+      "rubricComposite": 8.88,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.6,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch7",
+      "genre": "thriller",
+      "rubricComposite": 8.67,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 7,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch8",
+      "genre": "thriller",
+      "rubricComposite": 8.63,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 7,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch9",
+      "genre": "thriller",
+      "rubricComposite": 8.86,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.6,
+      "tier": "strong"
+    },
+    {
+      "source": "thriller-ch10",
+      "genre": "thriller",
+      "rubricComposite": 8.63,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 7,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch1",
+      "genre": "fantasy",
+      "rubricComposite": 8.78,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.4,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch2",
+      "genre": "fantasy",
+      "rubricComposite": 8.6,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 7,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch3",
+      "genre": "fantasy",
+      "rubricComposite": 8.82,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.4,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch4",
+      "genre": "fantasy",
+      "rubricComposite": 8.73,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.37,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch5",
+      "genre": "fantasy",
+      "rubricComposite": 8.65,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 7,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch6",
+      "genre": "fantasy",
+      "rubricComposite": 8.64,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 7,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch7",
+      "genre": "fantasy",
+      "rubricComposite": 8.65,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 7,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch8",
+      "genre": "fantasy",
+      "rubricComposite": 8.73,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.37,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch9",
+      "genre": "fantasy",
+      "rubricComposite": 8.65,
+      "weakestDimension": "Bingeability",
+      "weakestScore": 7,
+      "tier": "strong"
+    },
+    {
+      "source": "fantasy-ch10",
+      "genre": "fantasy",
+      "rubricComposite": 8.73,
+      "weakestDimension": "Reader engagement",
+      "weakestScore": 7.37,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch1",
+      "genre": "self-help",
+      "rubricComposite": 8.68,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.18,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch2",
+      "genre": "self-help",
+      "rubricComposite": 8.86,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.5,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch3",
+      "genre": "self-help",
+      "rubricComposite": 8.83,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.5,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch4",
+      "genre": "self-help",
+      "rubricComposite": 8.74,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.28,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch5",
+      "genre": "self-help",
+      "rubricComposite": 8.81,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.5,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch6",
+      "genre": "self-help",
+      "rubricComposite": 8.81,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.5,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch7",
+      "genre": "self-help",
+      "rubricComposite": 8.7,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.28,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch8",
+      "genre": "self-help",
+      "rubricComposite": 8.81,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.5,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch9",
+      "genre": "self-help",
+      "rubricComposite": 8.81,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.5,
+      "tier": "strong"
+    },
+    {
+      "source": "self-help-ch10",
+      "genre": "self-help",
+      "rubricComposite": 8.7,
+      "weakestDimension": "Commercial strength",
+      "weakestScore": 7.28,
+      "tier": "strong"
+    }
+  ],
+  "genreStress": [
+    {
+      "genre": "romance",
+      "chapterCount": 10,
+      "avgSupreme": 92,
+      "avgGreatness": 89,
+      "avgNarrativeMagic": 98,
+      "totalCriticalIssues": 0,
+      "preDeliveryPassRate": 100,
+      "topWeaknesses": [],
+      "chaptersFailingRetention": 0
+    },
+    {
+      "genre": "thriller",
+      "chapterCount": 10,
+      "avgSupreme": 89,
+      "avgGreatness": 91,
+      "avgNarrativeMagic": 100,
+      "totalCriticalIssues": 0,
+      "preDeliveryPassRate": 100,
+      "topWeaknesses": [
+        "cliches: 1/10 chapters"
+      ],
+      "chaptersFailingRetention": 0
+    },
+    {
+      "genre": "fantasy",
+      "chapterCount": 10,
+      "avgSupreme": 86,
+      "avgGreatness": 92,
+      "avgNarrativeMagic": 94,
+      "totalCriticalIssues": 0,
+      "preDeliveryPassRate": 100,
+      "topWeaknesses": [
+        "cliches: 1/10 chapters"
+      ],
+      "chaptersFailingRetention": 0
+    },
+    {
+      "genre": "self-help",
+      "chapterCount": 10,
+      "avgSupreme": 83,
+      "avgGreatness": 91,
+      "avgNarrativeMagic": 93,
+      "totalCriticalIssues": 0,
+      "preDeliveryPassRate": 100,
+      "topWeaknesses": [
+        "cliches: 10/10 chapters"
+      ],
+      "chaptersFailingRetention": 0
+    }
+  ],
+  "weaknesses": [],
+  "weaknessSummary": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "topAreas": []
+  },
+  "markdown": "# Scriptora Measurement Sprint — Weakness Discovery Report\n\nGenerated: 2026-05-31T06:19:15.167Z\n\n> Mode: measure only — no new features, no new scores. Fix → re-run → repeat.\n\n## Sprint pillars\n1. Real Book Benchmark Suite\n2. Human vs Scriptora Blind Test\n3. Bestseller Comparison Engine\n4. Reader Retention Validation\n5. Editorial Expert Validation\n6. Romance Stress Test\n7. Thriller Stress Test\n8. Self Help Stress Test\n9. Fantasy Stress Test\n10. Weakness Discovery Report\n\n## Weakness summary\n\n| Severity | Count |\n|---|---:|\n| Critical | 0 |\n| High | 0 |\n| Medium | 0 |\n\n**Top problem areas:** none\n\n## Blind test\n\n- Win rate: **100%** (35/35)\n- Rank #1 rate: **100%**\n- Claude beats Scriptora: **0** projects\n- Avg margin vs generic: **+1.98**\n- Avg margin vs Claude: **+0.36**\n\n## Genre stress tests\n\n| Genre | Supreme avg | Greatness avg | Magic avg | Critical | Pass rate | Retention fails |\n|---|---:|---:|---:|---:|---:|---:|\n| romance | 92 | 89 | 98 | 0 | 100% | 0 |\n| thriller | 89 | 91 | 100 | 0 | 100% | 0 |\n| fantasy | 86 | 92 | 94 | 0 | 100% | 0 |\n| self-help | 83 | 91 | 93 | 0 | 100% | 0 |\n\n## Top weaknesses (fix first)\n\n## Real book benchmark (sample)\n\n| Project | Category | Supreme | Greatness | Magic | Critical |\n|---|---|---:|---:|---:|---:|\n| Salt on His Skin | Romance / Dark Romance | 88 | 88 | 100 | 0 |\n| The Room He Never Enters | Romance / Dark Romance | 89 | 87 | 100 | 0 |\n| Borrowed Heat | Romance / Dark Romance | 88 | 86 | 100 | 0 |\n| After the Fire Door | Romance / Dark Romance | 90 | 89 | 100 | 0 |\n| No Saints in Milan | Romance / Dark Romance | 88 | 87 | 100 | 0 |\n| The Wrong Timestamp | Thriller / Crime | 89 | 83 | 100 | 0 |\n| Quiet House Protocol | Thriller / Crime | 89 | 83 | 100 | 0 |\n| Debt of Silence | Thriller / Crime | 88 | 89 | 100 | 0 |\n| Last Known Exit | Thriller / Crime | 88 | 87 | 100 | 0 |\n| The Second Witness | Thriller / Crime | 89 | 83 | 100 | 0 |\n| The Iron Pact | Fantasy | 91 | 88 | 100 | 0 |\n| Second Bell | Fantasy | 91 | 88 | 100 | 0 |"
+}

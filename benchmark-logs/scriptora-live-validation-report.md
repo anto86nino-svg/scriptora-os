@@ -1,6 +1,6 @@
 # Scriptora Live Author Validation Report
 
-Generated: 2026-05-30T19:38:58.552Z
+Generated: 2026-05-31T05:51:00.906Z
 Mode: **Offline real-world benchmark** (simulated ChatGPT / Claude-style competitors)
 Corpus: **35 projects** across 7 categories
 
@@ -21,7 +21,7 @@ HONEST VERDICT: Offline real-world benchmark supports the claim that Scriptora i
 ## Phase 2 — Blind Competitor Test
 - Scriptora win rate: **100%** (35/35)
 - Rank #1 rate: **100%**
-- Avg margin vs generic ChatGPT: **+1.97** composite points
+- Avg margin vs generic ChatGPT: **+1.98** composite points
 - Avg margin vs Claude-style: **+0.36**
 - Claude beats Scriptora on: **0** projects
 

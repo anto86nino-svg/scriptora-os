@@ -1,6 +1,6 @@
 # Scriptora Validation Suite — Report Comparativo
 
-Generato: 2026-05-31T05:31:16.594Z
+Generato: 2026-05-31T06:19:20.257Z
 
 ## Corpus
 - 10 capitoli Romance
