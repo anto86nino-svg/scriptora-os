@@ -408,4 +408,15 @@ html.scriptora-layout-mobile .scriptora-modal-overlay {
   html:not(.scriptora-layout-desktop) .scriptora-os-editor .ios-editor-paper {
     border-radius: 1.25rem !important;
   }
+
+  /* Blueprint complete: keep pipeline CTA visible while chapter index scrolls into view */
+  html:not(.scriptora-layout-desktop) .scriptora-immersive-editor .scriptora-writer-pipeline-bar {
+    position: sticky;
+    top: 72px;
+    z-index: 18;
+  }
+
+  html:not(.scriptora-layout-desktop) [data-scriptora-chapter-outlines] {
+    scroll-margin-top: 148px;
+  }
 }

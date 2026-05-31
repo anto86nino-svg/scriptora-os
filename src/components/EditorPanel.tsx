@@ -80,12 +80,32 @@ export function EditorPanel({
 }: EditorPanelProps) {
   const { blueprint, frontMatter, chapters, backMatter, config, phase } = project;
   const [mode, setMode] = useState<"edit" | "preview">(editorMode);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevBlueprintRef = useRef(project.blueprint);
 
   const ws = writingSettings || { fontFamily: "'Times New Roman', Times, serif", fontSize: 16, lineSpacing: 2 };
 
   useEffect(() => {
     setMode(editorMode);
   }, [editorMode]);
+
+  useEffect(() => {
+    prevBlueprintRef.current = project.blueprint;
+  }, [project.id]);
+
+  useEffect(() => {
+    const wasMissing = !prevBlueprintRef.current;
+    prevBlueprintRef.current = blueprint;
+    if (!wasMissing || !blueprint || activeSection !== "blueprint") return;
+    if (typeof window === "undefined" || !window.matchMedia("(max-width: 1023px)").matches) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      scrollContainerRef.current
+        ?.querySelector<HTMLElement>("[data-scriptora-chapter-outlines]")
+        ?.scrollIntoView({ block: "start", behavior: "auto" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [blueprint, activeSection]);
 
   const handleModeChange = useCallback((nextMode: "edit" | "preview") => {
     setMode(nextMode);
@@ -131,7 +151,7 @@ export function EditorPanel({
         </div>
       )}
 
-      <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} className="scrollbar-thin min-h-0 flex-1 overflow-y-auto">
         <WriterContextBar
           activeSection={activeSection}
           project={project}
@@ -448,7 +468,7 @@ function BlueprintView({ project, blueprint, isGenerating, onUpdateField, onUpda
               />
             </div>
           )}
-          <div>
+          <div data-scriptora-chapter-outlines>
             <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-4">{t("chapter_outlines")}</p>
             <div className="space-y-3">
               {blueprint.chapterOutlines.map((o, i) => {
