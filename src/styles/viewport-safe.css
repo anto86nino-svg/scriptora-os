@@ -1,0 +1,113 @@
+/* Scriptora — global viewport safety for phones & tablets (auto-detected compact layout).
+   Works with html.scriptora-layout-mobile + device classes from device-view.ts */
+
+html.scriptora-compact-layout,
+html.scriptora-layout-mobile {
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html.scriptora-compact-layout body,
+html.scriptora-layout-mobile body,
+html.scriptora-compact-layout #root,
+html.scriptora-layout-mobile #root {
+  overflow-x: clip;
+  max-width: 100vw;
+}
+
+/* Live viewport metrics from device-view (visualViewport-aware) */
+html.scriptora-compact-layout {
+  --scriptora-shell-max-h: min(96dvh, var(--scriptora-vh, 100dvh));
+  --scriptora-shell-max-w: min(100vw, var(--scriptora-vw, 100vw));
+}
+
+/* Full-screen overlays — never wider/taller than visible viewport */
+html.scriptora-compact-layout .fixed.inset-0,
+html.scriptora-layout-mobile .fixed.inset-0 {
+  width: 100%;
+  max-width: 100vw;
+  max-height: 100dvh;
+}
+
+html.scriptora-compact-layout .scriptora-viewport-sheet,
+html.scriptora-layout-mobile .scriptora-viewport-sheet,
+html.scriptora-compact-layout .scriptora-chapter-doctor-shell,
+html.scriptora-layout-mobile .scriptora-chapter-doctor-shell {
+  width: 100%;
+  max-width: var(--scriptora-shell-max-w, 100vw);
+  max-height: var(--scriptora-shell-max-h, 96dvh);
+}
+
+/* Radix dialogs / drawers on compact devices */
+html.scriptora-compact-layout [data-radix-dialog-content],
+html.scriptora-layout-mobile [data-radix-dialog-content] {
+  width: min(calc(100vw - 1rem), var(--scriptora-vw, 100vw));
+  max-height: min(92dvh, var(--scriptora-vh, 92dvh));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+html.scriptora-compact-layout [data-vaul-drawer],
+html.scriptora-layout-mobile [data-vaul-drawer] {
+  max-height: min(96dvh, var(--scriptora-vh, 96dvh));
+}
+
+/* Horizontal tool strips — scroll inside viewport, never push layout */
+html.scriptora-compact-layout .scriptora-chapter-tools,
+html.scriptora-compact-layout [data-scriptora-scroll-x],
+html.scriptora-layout-mobile .scriptora-chapter-tools,
+html.scriptora-layout-mobile [data-scriptora-scroll-x] {
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+html.scriptora-compact-layout .scriptora-chapter-tools::-webkit-scrollbar,
+html.scriptora-layout-mobile .scriptora-chapter-tools::-webkit-scrollbar {
+  display: none;
+}
+
+/* Touch targets on compact layouts */
+html.scriptora-touch-device button,
+html.scriptora-touch-device a[role="button"],
+html.scriptora-touch-device .ios-toolbar-button {
+  min-height: 2.5rem;
+}
+
+/* Tablet-specific: slightly roomier manuscript + tools */
+html.scriptora-layout-mobile.scriptora-device-tablet .scriptora-mobile-writer-panel {
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+}
+
+html.scriptora-layout-mobile.scriptora-device-tablet .scriptora-chapter-tools {
+  gap: 0.625rem;
+  padding-inline: 0.25rem;
+}
+
+html.scriptora-layout-mobile.scriptora-device-tablet .scriptora-mobile-writer-header {
+  min-height: 3rem;
+}
+
+/* Small phones (320–430px) */
+@media (max-width: 430px) {
+  html.scriptora-compact-layout .scriptora-chapter-doctor-shell,
+  html.scriptora-layout-mobile .scriptora-chapter-doctor-shell {
+    border-radius: 1rem 1rem 0 0;
+  }
+}
+
+/* Landscape phones — reduce vertical chrome */
+@media (max-height: 500px) and (orientation: landscape) {
+  html.scriptora-compact-layout .scriptora-chapter-doctor-shell,
+  html.scriptora-layout-mobile .scriptora-chapter-doctor-shell {
+    max-height: min(100dvh, var(--scriptora-vh, 100dvh));
+    border-radius: 0;
+  }
+
+  html.scriptora-compact-layout .scriptora-surgical-edit-shell,
+  html.scriptora-layout-mobile .scriptora-surgical-edit-shell {
+    padding-top: env(safe-area-inset-top);
+  }
+}

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { lockViewportScroll, unlockViewportScroll } from "@/lib/viewport-safe";
 import { ArrowRight, Check, ChevronLeft, ChevronRight, Shield, Sparkles, X } from "lucide-react";
 import type { DevelopmentalEditReport } from "@/lib/chapter-doctor-pro";
 
@@ -141,6 +143,11 @@ export default function FixChapterComparisonModal({
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
+    lockViewportScroll();
+    return () => unlockViewportScroll();
+  }, []);
+
+  useEffect(() => {
     const update = () => setIsMobile(window.innerWidth < 768);
     update();
     window.addEventListener("resize", update);
@@ -269,28 +276,28 @@ export default function FixChapterComparisonModal({
     return Array.from(categories.values()).slice(0, 6);
   }, [patchResult.patches]);
 
-  return (
-    <div className="fixed inset-0 z-[10060] bg-black/70 backdrop-blur-lg text-white overflow-hidden pb-safe pt-safe">
+  const modal = (
+    <div className="scriptora-surgical-edit-overlay fixed inset-0 z-[120] overflow-hidden bg-black/80 backdrop-blur-lg text-white pb-safe pt-safe">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.18),transparent_25%)] pointer-events-none" />
-      <div className="relative mx-auto scriptora-surgical-edit-shell flex h-[100dvh] min-h-0 max-w-[1600px] md:min-w-[720px] flex-col overflow-hidden p-3 md:p-6">
-        <div className="flex shrink-0 flex-col gap-4 rounded-[36px] border border-white/10 bg-[#0c1223]/95 shadow-[0_0_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl p-4 sm:p-6 md:flex-row md:items-start md:justify-between">
-          <div className="max-w-2xl space-y-3 min-w-0">
+      <div className="relative mx-auto scriptora-surgical-edit-shell scriptora-viewport-sheet flex h-[100dvh] min-h-0 w-full max-w-[1600px] flex-col overflow-hidden p-2 sm:p-3 md:p-6">
+        <div className="flex shrink-0 flex-col gap-3 rounded-[24px] border border-white/10 bg-[#0c1223]/95 p-4 shadow-[0_0_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl sm:rounded-[36px] sm:gap-4 sm:p-6 md:flex-row md:items-start md:justify-between">
+          <div className="max-w-2xl min-w-0 space-y-2 sm:space-y-3">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-white/70">Surgical Edit Engine</span>
               <span className="rounded-full bg-emerald-500/10 text-emerald-300 px-3 py-1 text-[10px] uppercase tracking-[0.3em] font-semibold">Developmental Editor</span>
             </div>
             <div>
-              <p className="text-base uppercase tracking-[0.35em] text-white/40 font-bold">Your writing, improved</p>
-              <h1 className="mt-2 text-4xl font-black tracking-tight text-white">Surgical Edit Review</h1>
+              <p className="text-xs uppercase tracking-[0.35em] text-white/40 font-bold sm:text-base">Your writing, improved</p>
+              <h1 className="mt-1 text-2xl font-black tracking-tight text-white sm:mt-2 sm:text-4xl">Surgical Edit Review</h1>
             </div>
-            <p className="max-w-2xl text-sm leading-6 text-white/70">
+            <p className="max-w-2xl text-xs leading-5 text-white/70 sm:text-sm sm:leading-6">
               Targeted editorial pass complete. Compare before and after, read why each change was made, and apply only if you agree.
             </p>
           </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
             <button
               onClick={onApply}
-              className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-bold text-black shadow-[0_20px_70px_rgba(16,185,129,0.22)] transition hover:bg-emerald-400"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-bold text-black shadow-[0_20px_70px_rgba(16,185,129,0.22)] transition hover:bg-emerald-400 sm:w-auto sm:px-6"
             >
               <Check className="h-4 w-4" /> Apply changes
             </button>
@@ -299,15 +306,34 @@ export default function FixChapterComparisonModal({
                 onRevert?.();
                 onClose();
               }}
-              className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white/80 transition hover:bg-white/10"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white/80 transition hover:bg-white/10 sm:w-auto"
             >
               <X className="h-4 w-4" /> Keep original
             </button>
           </div>
         </div>
 
-        <div className="mt-4 md:mt-6 grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain lg:grid-cols-[1.3fr_1fr] lg:overflow-hidden">
-          <div className="space-y-4 min-w-0">
+        {isMobile && (
+          <div className="mt-2 flex shrink-0 rounded-full bg-white/5 p-1 text-[11px] text-white/70">
+            <button
+              type="button"
+              onClick={() => setActivePanel("before")}
+              className={`min-h-10 flex-1 rounded-full px-3 py-2 font-semibold ${activePanel === "before" ? "bg-white/15 text-white" : "hover:bg-white/5"}`}
+            >
+              Prima
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivePanel("after")}
+              className={`min-h-10 flex-1 rounded-full px-3 py-2 font-semibold ${activePanel === "after" ? "bg-white/15 text-white" : "hover:bg-white/5"}`}
+            >
+              Dopo
+            </button>
+          </div>
+        )}
+
+        <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3 overflow-hidden md:mt-6 lg:grid lg:grid-cols-[1.3fr_1fr] lg:gap-4 lg:overflow-hidden">
+          <div className="min-h-0 space-y-3 overflow-y-auto overscroll-contain lg:space-y-4">
             {isHighScoreRefinement ? (
               <div className="grid gap-3">
                 <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6">
@@ -453,39 +479,23 @@ export default function FixChapterComparisonModal({
             </div>
           </div>
 
-          <div className="flex min-h-[280px] flex-col overflow-hidden rounded-[36px] border border-white/10 bg-[#09101f]/95 shadow-[inset_0_0_80px_rgba(255,255,255,0.02)] lg:min-h-0">
-            <div className="flex items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
-              <div>
+          <div className="flex min-h-[220px] min-w-0 flex-1 flex-col overflow-hidden rounded-[24px] border border-white/10 bg-[#09101f]/95 shadow-[inset_0_0_80px_rgba(255,255,255,0.02)] sm:rounded-[36px] lg:min-h-0">
+            <div className="hidden shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:flex sm:px-5 sm:py-4">
+              <div className="min-w-0">
                 <p className="text-xs uppercase tracking-[0.25em] text-white/50">Confronto testuale</p>
                 <p className="text-sm text-white/70">Visualizza prima e dopo in un layout editoriale</p>
               </div>
-              {isMobile ? (
-                <div className="inline-flex rounded-full bg-white/5 p-1 text-[10px] text-white/70">
-                  <button
-                    onClick={() => setActivePanel("before")}
-                    className={`px-3 py-2 rounded-full ${activePanel === "before" ? "bg-white/10 text-white" : "hover:bg-white/5"}`}
-                  >
-                    Prima
-                  </button>
-                  <button
-                    onClick={() => setActivePanel("after")}
-                    className={`px-3 py-2 rounded-full ${activePanel === "after" ? "bg-white/10 text-white" : "hover:bg-white/5"}`}
-                  >
-                    Dopo
-                  </button>
-                </div>
-              ) : null}
             </div>
 
-            <div className="flex-1 overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-hidden">
               <div className={`grid h-full ${isMobile ? "grid-cols-1" : "grid-cols-2"}`}>
-                <div className={`${isMobile && activePanel !== "before" ? "hidden" : "block"} overflow-y-auto border-r border-white/10 p-5`}>
+                <div className={`${isMobile && activePanel !== "before" ? "hidden" : "block"} h-full overflow-y-auto overscroll-contain border-r border-white/10 p-3 sm:p-5`}>
                   <div className="flex items-center gap-2 mb-4 text-xs uppercase tracking-[0.2em] text-rose-300 font-bold">
                     <Shield className="h-4 w-4" /> Versione originale
                   </div>
                   <div className="space-y-4">{panelText("before")}</div>
                 </div>
-                <div className={`${isMobile && activePanel !== "after" ? "hidden" : "block"} overflow-y-auto p-5`}>
+                <div className={`${isMobile && activePanel !== "after" ? "hidden" : "block"} h-full overflow-y-auto overscroll-contain p-3 sm:p-5`}>
                   <div className="flex items-center gap-2 mb-4 text-xs uppercase tracking-[0.2em] text-emerald-300 font-bold">
                     <Sparkles className="h-4 w-4" /> Versione migliorata
                   </div>
@@ -494,22 +504,25 @@ export default function FixChapterComparisonModal({
               </div>
             </div>
 
-            <div className="border-t border-white/10 px-5 py-4 bg-[#070a13]/95 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.25em] text-white/50">Renderizzato in sicurezza</p>
-                <p className="text-sm text-white/60 mt-1">Il testo originale resta intatto finché non confermi.</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setActivePanel(prev => (prev === "before" ? "after" : "before"))}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/80 hover:bg-white/10 transition"
-                >
-                  {activePanel === "before" ? (
-                    <><ChevronRight className="h-3.5 w-3.5" /> Mostra Dopo</>
-                  ) : (
-                    <><ChevronLeft className="h-3.5 w-3.5" /> Mostra Prima</>
-                  )}
-                </button>
+            <div className="shrink-0 border-t border-white/10 bg-[#070a13]/95 px-3 py-3 sm:px-5 sm:py-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs uppercase tracking-[0.25em] text-white/50">Renderizzato in sicurezza</p>
+                  <p className="mt-1 text-xs text-white/60 sm:text-sm">Il testo originale resta intatto finché non confermi.</p>
+                </div>
+                {isMobile && (
+                  <button
+                    type="button"
+                    onClick={() => setActivePanel(prev => (prev === "before" ? "after" : "before"))}
+                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/80 transition hover:bg-white/10 sm:w-auto"
+                  >
+                    {activePanel === "before" ? (
+                      <><ChevronRight className="h-3.5 w-3.5" /> Mostra Dopo</>
+                    ) : (
+                      <><ChevronLeft className="h-3.5 w-3.5" /> Mostra Prima</>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -517,4 +530,6 @@ export default function FixChapterComparisonModal({
       </div>
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(modal, document.body) : modal;
 }

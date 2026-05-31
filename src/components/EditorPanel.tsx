@@ -13,6 +13,7 @@ import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import { WriterPipelineBar } from "@/components/WriterPipelineBar";
+import { LazyPanelFallback } from "@/components/LazyPanelFallback";
 
 const ChapterIntelligencePanel = lazy(() =>
   import("@/components/ChapterIntelligencePanel").then((m) => ({ default: m.ChapterIntelligencePanel })),
@@ -250,6 +251,7 @@ export function EditorPanel({
                   onNarrateChapter={onNarrateChapter}
                   onOpenChapterIndex={onOpenChapterIndex}
                   onNavigateSection={onNavigateSection}
+                  isMobileWriter={isMobileWriter}
                 />
               )}
               {view.type === "subchapter" && (() => {
@@ -676,6 +678,7 @@ function ChapterView({
   onUpdateContent, onUpdateTitle, onUpdateSubContent, onUpdateSubTitle, onSetLengthOverride, isGeneratingSection, onCancel, chunkProgress, ws,
   onNarrateChapter,
   onOpenChapterIndex,
+  isMobileWriter = false,
 }: {
   project: BookProject; chapterIndex: number;
   outline: { title: string; summary: string }; chapter: Chapter | undefined;
@@ -694,6 +697,7 @@ function ChapterView({
   onNarrateChapter?: (chapterIndex: number) => void;
   onOpenChapterIndex?: () => void;
   onNavigateSection?: (section: SectionId) => void;
+  isMobileWriter?: boolean;
 }) {
   const isGenerated = chapter && chapter.content.length > 0;
   const currentLength = chapter?.lengthOverride || project.config.chapterLength;
@@ -712,7 +716,10 @@ function ChapterView({
   });
 
   return (
-    <div className="space-y-8 rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-[0_24px_70px_-30px_rgba(15,23,42,0.72)]">
+    <div className={cn(
+      "space-y-8 rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-[0_24px_70px_-30px_rgba(15,23,42,0.72)]",
+      isMobileWriter && "space-y-5 rounded-xl border-0 bg-transparent p-2 shadow-none",
+    )}>
       {onOpenChapterIndex && (
         <button
           type="button"
@@ -723,7 +730,7 @@ function ChapterView({
           {t("back_to_chapter_index")}
         </button>
       )}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <div className="flex flex-col gap-3">
         <div className="mb-2 flex-1 min-w-0">
           <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1">
             {chapterDisplayLabel}
@@ -734,15 +741,69 @@ function ChapterView({
             disabled={!onUpdateTitle}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-2 pt-1 sm:shrink-0 sm:justify-end" data-guided-tour="writer-generate">
+        <div
+          className={cn(
+            "scriptora-chapter-tools",
+            isMobileWriter
+              ? "-mx-1 flex gap-2 overflow-x-auto overscroll-x-contain pb-1 scrollbar-none snap-x snap-mandatory"
+              : "flex flex-wrap items-center gap-2 pt-1 sm:shrink-0 sm:justify-end",
+          )}
+          data-scriptora-scroll-x={isMobileWriter ? "" : undefined}
+          data-guided-tour="writer-generate"
+        >
           {!isGenerated ? (
             <button onClick={onGenerate} disabled={isGenerating || !project.blueprint}
-              className="flex items-center gap-2 h-10 px-5 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 transition-colors">
+              className={cn(
+                "flex items-center gap-2 h-10 px-5 rounded-full text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 transition-colors",
+                isMobileWriter && "shrink-0 snap-start",
+              )}>
               {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
               {t("generate")}
             </button>
           ) : (
             <>
+              {isMobileWriter ? (
+                <>
+                  <ChapterToolChip
+                    icon={<Zap className="h-3.5 w-3.5" />}
+                    label={t("chapter_doctor")}
+                    onClick={() => setShowIntelligence(true)}
+                    disabled={isGenerating || isEvaluating}
+                    primary
+                  />
+                  <ChapterToolChip
+                    icon={<Search className="h-3.5 w-3.5" />}
+                    label={t("evaluate")}
+                    onClick={onEvaluate}
+                    disabled={isGenerating || isEvaluating}
+                  />
+                  <ChapterToolChip
+                    icon={<RefreshCw className="h-3.5 w-3.5" />}
+                    label={t("regenerate")}
+                    onClick={onRegenerate}
+                    disabled={isGenerating}
+                  />
+                  <ChapterToolChip
+                    icon={<Sparkles className="h-3.5 w-3.5" />}
+                    label={t("rewrite")}
+                    onClick={() => setShowRewriteMenu(true)}
+                    disabled={isGenerating}
+                  />
+                  <ChapterToolChip
+                    icon={<Headphones className="h-3.5 w-3.5" />}
+                    label="Audio"
+                    onClick={() => onNarrateChapter?.(chapterIndex)}
+                    disabled={!isGenerated || isGenerating || isEvaluating}
+                  />
+                  <ChapterToolChip
+                    icon={<Download className="h-3.5 w-3.5" />}
+                    label="TXT"
+                    onClick={() => downloadText(`chapter-${chapterIndex + 1}-${(chapter?.title || "chapter").replace(/\s+/g, "_")}.txt`, chapter?.content || "")}
+                    disabled={!isGenerated}
+                  />
+                </>
+              ) : (
+                <>
               <ActionButton icon={<Download className="h-3.5 w-3.5" />} title="TXT" onClick={() => downloadText(`chapter-${chapterIndex + 1}-${(chapter?.title || "chapter").replace(/\s+/g, "_")}.txt`, chapter?.content || "")} disabled={!isGenerated} />
               <button
                 onClick={() => setShowIntelligence(true)}
@@ -797,6 +858,38 @@ function ChapterView({
                   </div>
                 )}
               </div>
+                </>
+              )}
+              {isMobileWriter && showRewriteMenu && (
+                <>
+                  <div className="fixed inset-0 z-[115] bg-black/50" onClick={() => setShowRewriteMenu(false)} aria-hidden="true" />
+                  <div className="scriptora-chapter-rewrite-sheet fixed inset-x-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-[116] max-h-[min(60dvh,420px)] overflow-y-auto rounded-[20px] border border-white/10 bg-slate-950/98 p-1 shadow-2xl">
+                    {([
+                      { level: "light" as RewriteLevel, label: "Light Polish", desc: "Fix phrasing, tighten prose" },
+                      { level: "deep" as RewriteLevel, label: "Deep Rewrite", desc: "Restructure + fresh insights" },
+                      { level: "bestseller" as RewriteLevel, label: "Bestseller Upgrade", desc: "Total transformation" },
+                    ]).map(opt => (
+                      <button key={opt.level} onClick={() => { onRewrite(opt.level); setShowRewriteMenu(false); }}
+                        className="w-full text-left rounded-2xl px-3 py-3 hover:bg-white/5 transition-colors">
+                        <p className="text-sm font-semibold text-white">{opt.label}</p>
+                        <p className="text-[11px] text-muted-foreground">{opt.desc}</p>
+                      </button>
+                    ))}
+                    {onAutoRewrite && (
+                      <>
+                        <div className="border-t border-white/10 my-1" />
+                        {[3, 4, 5].map(th => (
+                          <button key={th} onClick={() => { onAutoRewrite(th); setShowRewriteMenu(false); }}
+                            className="w-full text-left rounded-2xl px-3 py-2.5 hover:bg-white/5 transition-colors flex items-center gap-2">
+                            <Target className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-sm text-foreground">Auto to {th}/5</span>
+                          </button>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
@@ -907,7 +1000,7 @@ function ChapterView({
       )}
 
       {showIntelligence && isGenerated && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LazyPanelFallback />}>
           <ChapterIntelligencePanel
             project={project}
             chapterIndex={chapterIndex}
@@ -1183,6 +1276,37 @@ function ActionButton({ icon, title, onClick, disabled }: { icon: React.ReactNod
       className="flex h-10 min-w-10 items-center justify-center rounded-2xl border border-white/12 bg-white/[0.08] px-2.5 text-foreground/80 transition-colors hover:border-white/20 hover:bg-white/12 hover:text-white disabled:opacity-30 sm:h-9">
       {icon}
       <span className="sr-only">{title}</span>
+    </button>
+  );
+}
+
+function ChapterToolChip({
+  icon,
+  label,
+  onClick,
+  disabled,
+  primary = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "inline-flex h-10 shrink-0 snap-start items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-colors disabled:opacity-40",
+        primary
+          ? "border-primary/40 bg-gradient-to-r from-primary to-primary/80 text-primary-foreground"
+          : "border-white/12 bg-white/[0.08] text-foreground/90 hover:bg-white/12",
+      )}
+    >
+      {icon}
+      <span className="whitespace-nowrap">{label}</span>
     </button>
   );
 }

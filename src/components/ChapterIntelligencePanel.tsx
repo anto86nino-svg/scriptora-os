@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Sparkles, X, Loader2, AlertCircle, Check, Scissors, Flame, Wand2, Trash2, RefreshCw, TrendingUp, Swords, ArrowRight, ChevronDown, Eye, Lock, Bot, EyeOff, Quote, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { BookProject } from "@/types/book";
@@ -25,6 +26,8 @@ import {
 } from "@/lib/narrative-intelligence-v2";
 import { computeBookEditorialDashboard } from "@/lib/editorial-dashboard-pro";
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
+import { useIsMobile } from "@/hooks/useIsMobile";
+import { lockViewportScroll, unlockViewportScroll } from "@/lib/viewport-safe";
 
 function countWordsForChapterLock(value: unknown): number {
   if (!value) return 0;
@@ -140,6 +143,7 @@ const LEVEL_STYLE = {
 
 export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApplyContent }: ChapterIntelligencePanelProps) {
   const chapter = project.chapters[chapterIndex];
+  const isMobile = useIsMobile();
   const { startDominate, startPatch, getJob, applyJob, dismissJob } = useDomination();
 
   // Patch is the default action
@@ -162,6 +166,12 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showPatchPreview, setShowPatchPreview] = useState(false);
   const [patchPreviewData, setPatchPreviewData] = useState<{ originalText: string; patchedText: string } | null>(null);
+  const [showInsightPanels, setShowInsightPanels] = useState(false);
+
+  useEffect(() => {
+    lockViewportScroll();
+    return () => unlockViewportScroll();
+  }, []);
 
   const bestsellerIntel = useMemo(() => {
     const content = workingContent || chapter?.content || "";
@@ -508,12 +518,19 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   const dominateError = dominateJob?.status === "error" ? dominateJob.error : null;
 
   const idle = !analyzing && !patching && !patchResult && !dominating && !dominateResult && !result && !patchError && !dominateError;
+  const showInsights = showInsightPanels || !idle || !isMobile;
 
-  return (
-    <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 pb-safe pt-safe animate-fade-in sm:p-4">
-      <div className="w-full max-w-4xl max-h-[min(92dvh,92vh)] bg-card border border-border/60 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+  const panel = (
+    <div className="scriptora-chapter-doctor-overlay fixed inset-0 z-[120] flex flex-col justify-end bg-black/70 backdrop-blur-sm sm:items-center sm:justify-center sm:p-4 pb-safe pt-safe animate-fade-in">
+      <button
+        type="button"
+        aria-label={t("close")}
+        className="absolute inset-0 sm:hidden"
+        onClick={onClose}
+      />
+      <div className="scriptora-chapter-doctor-shell scriptora-viewport-sheet relative flex h-[min(96dvh,100%)] w-full min-h-0 max-h-[96dvh] flex-col overflow-hidden rounded-t-[20px] border border-border/60 bg-card shadow-2xl sm:h-auto sm:max-h-[min(92dvh,92vh)] sm:max-w-4xl sm:rounded-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-border/50">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/50 p-4 sm:p-5">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shrink-0">
               <Sparkles className="h-4 w-4 text-primary-foreground" />
@@ -526,14 +543,23 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
               <p className="text-xs text-muted-foreground italic">"Analizza salute narrativa, subtext, tensione e rischi di overediting."</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
+          <button onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin p-5 space-y-5">
-          {bestsellerIntel && (
+        <div className="scrollbar-thin min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-5">
+          {isMobile && idle && !showInsightPanels && (
+            <button
+              type="button"
+              onClick={() => setShowInsightPanels(true)}
+              className="w-full rounded-xl border border-border/50 bg-muted/20 px-4 py-3 text-left text-xs font-semibold text-foreground transition-colors hover:bg-muted/35"
+            >
+              Mostra analisi capitolo (Bestseller, Reader Emotion, Scene Health…)
+            </button>
+          )}
+          {showInsights && bestsellerIntel && (
             <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -576,7 +602,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
             </div>
           )}
 
-          {readerEmotionState && (
+          {showInsights && readerEmotionState && (
             <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -607,7 +633,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
             </div>
           )}
 
-          {scenePurposeIntel && scenePurposeIntel.scenes.length > 0 && (
+          {showInsights && scenePurposeIntel && scenePurposeIntel.scenes.length > 0 && (
             <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -660,7 +686,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
             </div>
           )}
 
-          {chapterMarketScores && (
+          {showInsights && chapterMarketScores && (
             <div className="rounded-xl border border-border/60 bg-gradient-to-br from-primary/5 to-transparent p-4 space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs font-bold uppercase tracking-wide text-foreground">Commercial Readability</span>
@@ -691,7 +717,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
             </div>
           )}
 
-          {bookDashboard && (
+          {showInsights && bookDashboard && (
             <div className="rounded-xl border border-border/60 bg-muted/15 p-4 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wide text-foreground">Book Editorial Dashboard</span>
@@ -952,18 +978,18 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                 </div>
               )}
 
-              {/* Actions */}
-              <div className="flex items-center gap-2 pt-2 sticky bottom-0 bg-card/95 backdrop-blur-sm pb-1">
+              {/* Actions — sticky footer on mobile */}
+              <div className="scriptora-chapter-doctor-actions flex flex-wrap items-center gap-2 border-t border-border/30 bg-card/95 pt-3 sm:static sm:border-0 sm:bg-transparent sm:pt-2 sm:backdrop-blur-none">
                 <button onClick={applyPatch} disabled={patchResult.patches.length === 0}
-                  className="flex-1 inline-flex items-center justify-center gap-2 h-10 rounded-lg text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md disabled:opacity-40">
+                  className="min-h-11 flex-1 inline-flex items-center justify-center gap-2 rounded-lg text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-md disabled:opacity-40">
                   <Check className="h-3.5 w-3.5" /> Conferma versione patchata
                 </button>
                 <button onClick={discardPatch}
-                  className="h-10 px-4 rounded-lg text-xs font-semibold bg-card border border-border hover:bg-accent transition-colors">
+                  className="min-h-11 px-4 rounded-lg text-xs font-semibold bg-card border border-border hover:bg-accent transition-colors">
                   Discard
                 </button>
                 <button onClick={runPatch}
-                  className="h-10 px-3 rounded-lg text-xs font-semibold bg-card border border-border hover:bg-accent transition-colors">
+                  className="min-h-11 min-w-11 flex items-center justify-center rounded-lg text-xs font-semibold bg-card border border-border hover:bg-accent transition-colors">
                   <RefreshCw className="h-3.5 w-3.5" />
                 </button>
               </div>
@@ -1053,7 +1079,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                 <p className="text-xs text-foreground/80 italic">"{result.verdict}"</p>
               </div>
 
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
                 {Object.entries(result.scores).map(([k, v]) => (
                   <div key={k} className="p-2 rounded-lg bg-muted/15 border border-border/30 text-center">
                     <p className="text-[9px] uppercase font-semibold text-muted-foreground tracking-wider truncate">{k}</p>
@@ -1241,4 +1267,6 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} reason="dominate" currentPlan={plan} />
     </div>
   );
+
+  return typeof document !== "undefined" ? createPortal(panel, document.body) : panel;
 }

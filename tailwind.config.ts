@@ -85,7 +85,11 @@ export default {
     require("tailwindcss-animate"),
     function ({ addVariant }: { addVariant: (name: string, definition: string) => void }) {
       addVariant("layout-mobile", "html.scriptora-layout-mobile &");
+      addVariant("layout-compact", "html.scriptora-compact-layout &");
       addVariant("layout-desktop", "html.scriptora-layout-desktop &");
+      addVariant("device-phone", "html.scriptora-device-phone &");
+      addVariant("device-tablet", "html.scriptora-device-tablet &");
+      addVariant("touch-device", "html.scriptora-touch-device &");
     },
   ],
 } satisfies Config;

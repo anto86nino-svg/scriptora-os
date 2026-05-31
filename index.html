@@ -2,12 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <script>
       (function () {
         try {
           var p = localStorage.getItem("scriptora-layout-preference-v1") || "auto";
-          var w = window.innerWidth;
+          var vv = window.visualViewport;
+          var w = Math.round(vv && vv.width ? vv.width : window.innerWidth);
+          var h = Math.round(vv && vv.height ? vv.height : window.innerHeight);
           var ua = navigator.userAgent || "";
           var maxTouch = navigator.maxTouchPoints || 0;
           var isIPad = /iPad/.test(ua) || (maxTouch > 1 && /Macintosh/.test(ua));
@@ -30,7 +32,7 @@
                 : kind === "phone"
                   ? "mobile"
                   : kind === "tablet"
-                    ? w >= 1024
+                    ? w >= 1280
                       ? "desktop"
                       : "mobile"
                     : w >= 768
@@ -38,9 +40,15 @@
                       : "mobile";
           var root = document.documentElement;
           root.classList.add("scriptora-layout-" + eff, "scriptora-device-" + kind);
+          if (eff === "mobile") root.classList.add("scriptora-compact-layout");
+          if (maxTouch > 0 || "ontouchstart" in window) root.classList.add("scriptora-touch-device");
+          root.style.setProperty("--scriptora-vw", w + "px");
+          root.style.setProperty("--scriptora-vh", h + "px");
           root.setAttribute("data-scriptora-device", kind);
           root.setAttribute("data-scriptora-layout-pref", p);
           root.setAttribute("data-scriptora-effective-layout", eff);
+          root.setAttribute("data-scriptora-viewport-w", String(w));
+          root.setAttribute("data-scriptora-viewport-h", String(h));
         } catch (e) {
           /* ignore */
         }

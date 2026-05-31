@@ -79,9 +79,43 @@
     display: none;
   }
 
-  /* Floating action bar shadow */
-  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer-action-bar {
-    background: linear-gradient(to top, rgb(2 6 23 / 0.92) 0%, rgb(2 6 23 / 0.55) 55%, transparent 100%);
+  /* Chapter tools — horizontal scroll on mobile */
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .scriptora-chapter-tools {
+    -webkit-overflow-scrolling: touch;
+    max-width: 100vw;
+    padding-right: 0.25rem;
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-writer .scriptora-chapter-tools::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Chapter Doctor — fullscreen bottom sheet */
+  html:not(.scriptora-layout-desktop) .scriptora-chapter-doctor-overlay {
+    z-index: 120;
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-chapter-doctor-shell {
+    max-height: min(96dvh, 100%);
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-chapter-doctor-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: 0 -1rem -1rem;
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+    backdrop-filter: blur(12px);
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-surgical-edit-overlay {
+    z-index: 120;
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-surgical-edit-shell {
+    height: 100dvh;
+    min-height: 0;
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 

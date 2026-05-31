@@ -2,6 +2,7 @@ import type { BookIntelligenceSnapshot } from "@/lib/book-intelligence/types";
 import type { BestsellerChapterSnapshot } from "@/lib/bestseller-intelligence/types";
 import type { LongBookMemorySnapshot } from "@/lib/long-book-memory/types";
 import type { ChapterScenePurposeSnapshot, ReaderEmotionSnapshot } from "@/lib/narrative-intelligence-v2/types";
+import type { SupremeEditorialSnapshot } from "@/lib/editorial-orchestrator/types";
 
 export type Language = "English" | "Italian" | "Spanish" | "French" | "German" | "Portuguese";
 export type ChapterLength = "short" | "medium" | "long";
@@ -80,6 +81,8 @@ export interface Chapter {
   scenePurposeIntel?: ChapterScenePurposeSnapshot;
   /** Simulated reader emotional state — Sprint V2 */
   readerEmotionState?: ReaderEmotionSnapshot;
+  /** Editorial orchestrator pre-delivery snapshot — Phase A */
+  supremeEditorialIntel?: SupremeEditorialSnapshot;
 }
 
 export interface FrontMatter {

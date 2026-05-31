@@ -7,6 +7,8 @@ export const DEVICE_VIEW_CHANGE_EVENT = "scriptora-device-view-change";
 
 export const MOBILE_LAYOUT_MAX_WIDTH = 767;
 export const TABLET_DESKTOP_MIN_WIDTH = 1024;
+/** Tablets in auto mode use compact shell below this width (covers iPad landscape). */
+export const TABLET_AUTO_DESKTOP_MIN_WIDTH = 1280;
 export const DESKTOP_LAYOUT_MIN_WIDTH = 768;
 
 export type DeviceViewState = {
@@ -14,7 +16,10 @@ export type DeviceViewState = {
   preference: LayoutPreference;
   effectiveLayout: EffectiveLayout;
   viewportWidth: number;
+  viewportHeight: number;
   isTouchDevice: boolean;
+  /** Phone/tablet compact shell, or any effective mobile layout. */
+  isCompactLayout: boolean;
 };
 
 export function readStoredPreference(): LayoutPreference {
@@ -83,23 +88,53 @@ export function resolveEffectiveLayout(
     case "phone":
       return "mobile";
     case "tablet":
-      return viewportWidth >= TABLET_DESKTOP_MIN_WIDTH ? "desktop" : "mobile";
+      return viewportWidth >= TABLET_AUTO_DESKTOP_MIN_WIDTH ? "desktop" : "mobile";
     default:
       return viewportWidth >= DESKTOP_LAYOUT_MIN_WIDTH ? "desktop" : "mobile";
   }
 }
 
+export function readViewportSize() {
+  if (typeof window === "undefined") {
+    return { width: 1280, height: 800 };
+  }
+  const vv = window.visualViewport;
+  return {
+    width: Math.round(vv?.width ?? window.innerWidth),
+    height: Math.round(vv?.height ?? window.innerHeight),
+  };
+}
+
+/** Sync live viewport metrics — keeps dvh-based shells accurate on iOS/Android. */
+export function syncViewportMetrics(viewportWidth?: number, viewportHeight?: number) {
+  if (typeof document === "undefined") return;
+  const size = viewportWidth != null && viewportHeight != null
+    ? { width: viewportWidth, height: viewportHeight }
+    : readViewportSize();
+  const root = document.documentElement;
+  root.style.setProperty("--scriptora-vw", `${size.width}px`);
+  root.style.setProperty("--scriptora-vh", `${size.height}px`);
+  root.style.setProperty("--scriptora-vmin", `${Math.min(size.width, size.height)}px`);
+  root.dataset.scriptoraViewportW = String(size.width);
+  root.dataset.scriptoraViewportH = String(size.height);
+}
+
 export function getDeviceViewState(
   preference: LayoutPreference = readStoredPreference(),
-  viewportWidth = window.innerWidth,
+  viewportWidth = readViewportSize().width,
 ): DeviceViewState {
+  const viewportHeight = readViewportSize().height;
   const deviceKind = detectDeviceKind(viewportWidth);
+  const effectiveLayout = resolveEffectiveLayout(preference, deviceKind, viewportWidth);
+  const isTouchDevice = isTouchCapableDevice();
   return {
     deviceKind,
     preference,
-    effectiveLayout: resolveEffectiveLayout(preference, deviceKind, viewportWidth),
+    effectiveLayout,
     viewportWidth,
-    isTouchDevice: isTouchCapableDevice(),
+    viewportHeight,
+    isTouchDevice,
+    isCompactLayout: effectiveLayout === "mobile",
   };
 }
 
@@ -116,10 +151,17 @@ export function applyDeviceViewState(state: DeviceViewState) {
     "scriptora-device-phone",
     "scriptora-device-tablet",
     "scriptora-device-desktop",
+    "scriptora-compact-layout",
+    "scriptora-touch-device",
   );
 
   root.classList.add(`scriptora-layout-${state.effectiveLayout}`);
   root.classList.add(`scriptora-device-${state.deviceKind}`);
+
+  root.classList.toggle("scriptora-touch-device", state.isTouchDevice);
+  root.classList.toggle("scriptora-compact-layout", state.isCompactLayout);
+
+  syncViewportMetrics(state.viewportWidth, state.viewportHeight);
 }
 
 export function applyDeviceView(preference?: LayoutPreference) {

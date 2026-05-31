@@ -23,6 +23,12 @@ import { getScriptoraLanguage } from "@/lib/i18n";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
 import {
+  buildEditorialIntentPromptBlock,
+  buildEditorialIntentSheet,
+  isEditorialOrchestratorEnabled,
+  runPreDeliveryGate,
+} from "@/lib/editorial-orchestrator";
+import {
   buildBlueprintIntegrityBlueprintRequest,
   buildBlueprintIntegrityFoundationBlock,
   buildBlueprintIntegrityRuntimeBlock,
@@ -930,6 +936,21 @@ export async function generateChapterChunked(
   const bestsellerBlock = isBestsellerIntelligenceEnabled()
     ? buildBestsellerIntelligencePromptBlock(config, chapterIndex, priorBestseller)
     : "";
+  const orchestratorEnabled = isEditorialOrchestratorEnabled();
+  const editorialIntentSheet = orchestratorEnabled
+    ? buildEditorialIntentSheet({
+        config,
+        blueprint,
+        chapterIndex,
+        chapterTitle: outline.title,
+        chapterSummary: outline.summary,
+        previousChapters,
+        longBookMemory: opts?.longBookMemory,
+      })
+    : undefined;
+  const editorialIntentBlock = editorialIntentSheet
+    ? buildEditorialIntentPromptBlock(editorialIntentSheet, config)
+    : "";
 
   let accumulatedContent = "";
   let chapterTitle = outline.title;
@@ -991,6 +1012,8 @@ ${characterLock}
 
 ${narrativeRuntimeBlock}
 
+${editorialIntentBlock}
+
 ${humanizerBlock}
 
 ${bestsellerBlock}
@@ -1024,6 +1047,8 @@ REMAINING: ~${remainingWords} words needed
 PHASE: ${phase} — ${phaseInstruction}
 
 ${narrativeRuntimeBlock}
+
+${editorialIntentBlock}
 
 ${humanizerBlock}
 
@@ -1228,6 +1253,21 @@ Write in ${config.language}.${adaptiveSuffix}`;
     content: accumulatedContent,
     subchapters: [],
   }, { config, previousChapters, chapterIndex, outlineSummary: outline.summary });
+
+  if (orchestratorEnabled && editorialIntentSheet) {
+    const { chapter } = runPreDeliveryGate({
+      chapter: finalChapter,
+      config,
+      blueprint,
+      chapterIndex,
+      totalChapters: config.numberOfChapters,
+      intent: editorialIntentSheet,
+      previousChapters,
+      outlineSummary: outline.summary,
+      longBookMemory: opts?.longBookMemory,
+    });
+    return chapter;
+  }
 
   return {
     ...finalChapter,
