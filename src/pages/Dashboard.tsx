@@ -2,22 +2,20 @@ import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
-import { DashboardGuidedFlow } from "@/components/DashboardGuidedFlow";
 import { FocusMusicControl } from "@/components/FocusMusicControl";
 import { GuidedTourTriggerButton } from "@/components/GuidedTourTriggerButton";
 import { LazyPanelFallback } from "@/components/LazyPanelFallback";
-import { InProgressSection } from "@/components/Home/InProgressSection";
 import { LibrarySection } from "@/components/Home/LibrarySection";
-import { PaywallGuard } from "@/components/PaywallGuard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  BookOpen, Plus, FolderOpen, Trash2, Rocket, Zap,
-  FileDown, ArrowRight, Clock, Globe, Flame, Loader2, Sparkles, Wand2,
-  Library, Home as HomeIcon, X, BarChart3,
+  BookOpen, Plus, FolderOpen, Rocket, Zap,
+  FileDown, ArrowRight, Globe, Flame, Loader2, Sparkles, Wand2,
+  Library, Home as HomeIcon, BarChart3,
   TrendingUp, LogOut, CreditCard, Download as DownloadIcon, Settings, Users,
-  CheckCircle2, NotebookPen, Fingerprint, ImagePlus, AudioLines,
+  NotebookPen, Fingerprint, ImagePlus, AudioLines,
 } from "lucide-react";
+import { FlaskConical } from "lucide-react";
 import { BOOK_LENGTH_CONFIG, BookConfig, BookLength, BookProject, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
 import { AUTHOR_IDENTITY_CHANGED_EVENT, applyAuthorIdentityToConfig, enforceAuthorIdentityLock, getSelectedAuthorIdentity, loadAuthorIdentities, setSelectedAuthorIdentityId } from "@/lib/author-identity";
@@ -29,7 +27,6 @@ import { enableDevMode, isDevMode, exitDevMode, useDevMode } from "@/lib/dev-mod
 import { BetaActivationDialog } from "@/components/BetaActivationDialog";
 import { usePlan } from "@/lib/plan";
 import { canUseFeature, type FeatureKey } from "@/lib/subscription";
-import { FlaskConical } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIntelligentPreload } from "@/hooks/useIntelligentPreload";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -37,7 +34,9 @@ import { DeviceViewToolbarControl } from "@/components/DeviceViewToggle";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { AccountIdentityBlock } from "@/components/AccountIdentityBlock";
 import { GoogleLogoMark } from "@/components/GoogleLogoMark";
-import { WriterCommandBridge } from "@/components/immersive/WriterCommandBridge";
+import { NarrativeWorkspace } from "@/components/immersive/NarrativeWorkspace";
+import { ScriptoraToolbox, type ToolboxCard } from "@/components/immersive/ScriptoraToolbox";
+import { buildNarrativeWorkspaceSnapshot, resolveFocusProject } from "@/lib/immersive/workspace-state";
 import { getAuthProfile } from "@/lib/auth-profile";
 import {
   DropdownMenu,
@@ -61,25 +60,6 @@ const AdvancedAppearanceDialog = lazy(() => import("@/components/AdvancedAppeara
 
 const SCRIPTORA_CHARACTER_BIBLE_KEY = "scriptora-character-bible-v1";
 const SCRIPTORA_CHARACTER_PROJECT_KEY = "scriptora-character-project-v1";
-const DASHBOARD_METRICS_VISIBLE_KEY = "scriptora-dashboard-metrics-visible-v1";
-
-function readDashboardMetricsVisible(): boolean {
-  try {
-    return localStorage.getItem(DASHBOARD_METRICS_VISIBLE_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
-function saveDashboardMetricsVisible(visible: boolean) {
-  try {
-    localStorage.setItem(DASHBOARD_METRICS_VISIBLE_KEY, String(visible));
-  } catch {
-    /* ignore */
-  }
-}
-
-
 import { LaunchBookModal, type LaunchMode } from "@/components/LaunchBookModal";
 import { type DetectedIntent } from "@/components/QuickLaunchPanel";
 
@@ -156,7 +136,7 @@ export default function Home() {
   const [showVoiceStudio, setShowVoiceStudio] = useState(false);
   const [showLaunchModal, setShowLaunchModal] = useState(false);
   const [launchMode, setLaunchMode] = useState<LaunchMode>("quick");
-  const [showWorkspaceMetrics, setShowWorkspaceMetrics] = useState(readDashboardMetricsVisible);
+  const [showToolbox, setShowToolbox] = useState(false);
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [projectsReady, setProjectsReady] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
@@ -190,14 +170,6 @@ export default function Home() {
   const [oneClickSubchaptersPerChapter, setOneClickSubchaptersPerChapter] = useState(DEFAULT_SUBCHAPTERS_PER_CHAPTER);
   const [authorIdentities, setAuthorIdentities] = useState(() => loadAuthorIdentities());
   const [activeAuthor, setActiveAuthor] = useState(() => getSelectedAuthorIdentity());
-
-  const toggleWorkspaceMetrics = useCallback(() => {
-    setShowWorkspaceMetrics((value) => {
-      const next = !value;
-      saveDashboardMetricsVisible(next);
-      return next;
-    });
-  }, []);
 
   const closeDashboardDialogs = useCallback(() => {
     setShowNewBook(false);
@@ -358,6 +330,16 @@ export default function Home() {
   const lastProject = lastId ? projects.find(p => p.id === lastId) : null;
   const activeWritingId = lastProject && !isProjectComplete(lastProject) ? lastProject.id : null;
   const activeWritingProject = activeWritingId ? lastProject : null;
+
+  const focusProject = useMemo(
+    () => resolveFocusProject(projects, activeWritingProject),
+    [projects, activeWritingProject],
+  );
+
+  const workspaceSnapshot = useMemo(
+    () => buildNarrativeWorkspaceSnapshot(projects.length, focusProject),
+    [projects.length, focusProject],
+  );
 
   const deleteHomeProject = async (projectId: string, title?: string) => {
     const name = title || t("this_project");
@@ -558,137 +540,7 @@ export default function Home() {
   };
 
   const currentLangLabel = UI_LANGUAGES.find(l => l.value === currentLang)?.label || "English";
-  const completedProjects = useMemo(() => projects.filter(isProjectComplete), [projects]);
-  const draftProjects = useMemo(() => projects.filter((p) => !isProjectComplete(p)), [projects]);
   useIntelligentPreload(projects);
-  const totalChapters = useMemo(
-    () => projects.reduce((sum, p) => sum + (p.chapters?.length || 0), 0),
-    [projects],
-  );
-  const totalWords = useMemo(
-    () => projects.reduce(
-      (sum, p) => sum + (p.chapters || []).reduce(
-        (chapterSum, ch) => chapterSum + (ch.content?.split(/\s+/).filter(Boolean).length || 0),
-        0,
-      ),
-      0,
-    ),
-    [projects],
-  );
-  const planLabel = currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1);
-  const lastProjectDoneChapters = useMemo(
-    () => activeWritingProject?.chapters?.filter((chapter) => (chapter.content || "").trim().length > 50).length || 0,
-    [activeWritingProject],
-  );
-  const lastProjectTargetChapters = activeWritingProject?.config?.numberOfChapters || activeWritingProject?.chapters?.length || 0;
-  const lastProjectProgress = activeWritingProject
-    ? activeWritingProject.phase === "complete"
-      ? 100
-      : lastProjectTargetChapters > 0
-        ? Math.min(100, Math.round((lastProjectDoneChapters / lastProjectTargetChapters) * 100))
-        : 0
-    : 0;
-
-  const wordCountForProject = (project: BookProject) =>
-    (project.chapters || []).reduce(
-      (sum, chapter) => sum + (chapter.content?.split(/\s+/).filter(Boolean).length || 0),
-      0,
-    );
-  const dayKey = (date: Date) => date.toISOString().slice(0, 10);
-  const todayKey = dayKey(new Date());
-  const wordsToday = useMemo(
-    () => projects
-      .filter((project) => {
-        const updated = new Date(project.updatedAt);
-        return !Number.isNaN(updated.getTime()) && dayKey(updated) === todayKey;
-      })
-      .reduce((sum, project) => sum + wordCountForProject(project), 0),
-    [projects, todayKey],
-  );
-  const updateDays = useMemo(
-    () => new Set(
-      projects
-        .map((project) => {
-          const updated = new Date(project.updatedAt);
-          return Number.isNaN(updated.getTime()) ? "" : dayKey(updated);
-        })
-        .filter(Boolean),
-    ),
-    [projects],
-  );
-  const writingStreak = useMemo(() => {
-    let streak = 0;
-    for (const cursor = new Date(); updateDays.has(dayKey(cursor)); cursor.setDate(cursor.getDate() - 1)) {
-      streak += 1;
-    }
-    return streak;
-  }, [updateDays]);
-  const aiQualityValues = useMemo(
-    () => projects.flatMap((project) =>
-      (project.chapters || []).map((chapter) => {
-        const c = chapter as any;
-        if (typeof c?.aiRating?.score === "number") return Math.round(c.aiRating.score * 20);
-        if (typeof c?.qualityRating === "number") return Math.round(c.qualityRating * 20);
-        return null;
-      }).filter((value): value is number => typeof value === "number"),
-    ),
-    [projects],
-  );
-  const aiQualityScore = useMemo(
-    () => (aiQualityValues.length
-      ? Math.round(aiQualityValues.reduce((sum, value) => sum + value, 0) / aiQualityValues.length)
-      : null),
-    [aiQualityValues],
-  );
-  const dashboardWidgets = [
-    {
-      label: t("active_book_widget"),
-      value: activeWritingProject?.config.title || t("no_active_book"),
-      detail: activeWritingProject ? t("open_manuscript") : t("start_or_import_book"),
-      icon: BookOpen,
-      tone: "from-sky-400/18 to-cyan-300/8",
-      action: activeWritingProject ? () => goApp({ projectId: activeWritingProject.id }) : openNewBookGuarded,
-    },
-    {
-      label: t("words_today_widget"),
-      value: wordsToday.toLocaleString(),
-      detail: t("from_updated_projects"),
-      icon: NotebookPen,
-      tone: "from-emerald-400/18 to-lime-300/8",
-      action: () => goApp(),
-    },
-    {
-      label: t("writing_streak_widget"),
-      value: writingStreak.toLocaleString(),
-      detail: t("consecutive_days"),
-      icon: Flame,
-      tone: "from-amber-400/20 to-orange-300/8",
-      action: () => goApp(),
-    },
-    {
-      label: t("project_progress_widget"),
-      value: activeWritingProject ? `${lastProjectProgress}%` : "0%",
-      detail: activeWritingProject ? t("active_draft_progress") : t("no_active_book"),
-      icon: BarChart3,
-      tone: "from-violet-400/18 to-fuchsia-300/8",
-      action: activeWritingProject ? () => goApp({ projectId: activeWritingProject.id }) : () => openDashboardOverlay(() => setShowLibrary(true)),
-    },
-    {
-      label: t("ai_quality_score_widget"),
-      value: aiQualityScore == null ? "—" : `${aiQualityScore}`,
-      detail: aiQualityScore == null ? t("run_analysis_to_score") : t("analysis_based_score"),
-      icon: Sparkles,
-      tone: "from-rose-400/18 to-pink-300/8",
-      action: guardPlanFeature("chapter_improvement", () => setShowManuscriptAnalyzer(true)),
-    },
-  ];
-  const workspaceStats = [
-    { label: t("projects"), value: projectsReady ? projects.length.toLocaleString() : "…", detail: projectsReady ? tt("draft_count", { count: draftProjects.length }) : "…", icon: FolderOpen, iconBg: "ios-icon-blue" },
-    { label: t("completed"), value: completedProjects.length.toLocaleString(), detail: t("ready_to_export"), icon: CheckCircle2, iconBg: "ios-icon-green" },
-    { label: t("chapters"), value: totalChapters.toLocaleString(), detail: t("generated_detail"), icon: BookOpen, iconBg: "ios-icon-orange" },
-    { label: t("words_unit"), value: totalWords > 0 ? totalWords.toLocaleString() : "0", detail: t("in_library"), icon: FileDown, iconBg: "ios-icon-pink" },
-  ];
-
   const cards = [
     { group: "writer", icon: BookOpen, title: t("writer_studio_title"), desc: t("writer_studio_desc"), iconBg: "ios-icon-violet", action: () => goApp(), tag: t("os_tag_write"), emphasis: true, tourTarget: "dashboard-writer" },
     { group: "writer", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("story_architect_title"), desc: freeBookUsed ? t("upgrade_more_books") : t("story_architect_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: () => openLaunchModal("manual"), feature: "book_engine_full" as const, tag: t("os_tag_plan") },
@@ -969,304 +821,24 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="scriptora-feature-scroll relative mx-auto w-full max-w-7xl px-4 pb-8 pt-4 sm:px-6 sm:pt-8 lg:px-8">
-        <WriterCommandBridge
-          project={activeWritingProject}
-          progressPercent={lastProjectProgress}
-          onContinue={activeWritingProject ? () => goApp({ projectId: activeWritingProject.id }) : undefined}
-          onLaunch={() => openLaunchModal("quick")}
-          className="mb-2 sm:mb-4"
+      <main className="scriptora-feature-scroll relative mx-auto w-full max-w-3xl px-4 pb-8 pt-4 sm:px-6 sm:pt-8 lg:px-8">
+        <NarrativeWorkspace
+          snapshot={workspaceSnapshot}
+          actions={{
+            onContinueWriting: () => focusProject && goApp({ projectId: focusProject.id }),
+            onCreateBook: () => openLaunchModal("quick"),
+            onImportManuscript: () => openLaunchModal("manual"),
+            onAnalyzeManuscript: () => openDashboardOverlay(() => setShowManuscriptAnalyzer(true)),
+            onDiagnoseChapter: guardPlanFeature("chapter_improvement", () => setShowManuscriptAnalyzer(true)),
+            onCharacters: guardPlanFeature("book_engine_full", () => setShowCharacterStudio(true)),
+            onVoice: guardPlanFeature("book_engine_full", () => setShowVoiceStudio(true)),
+            onRewrite: guardPlanFeature("chapter_rewrite", openRewriteStudio),
+            onCover: guardPlanFeature("cover_studio_template", () => setShowCoverStudio(true)),
+            onExport: guardPlanFeature("export_epub", () => setShowExport(true)),
+            onLibrary: guardPlanFeature("export_epub", () => setShowLibrary(true)),
+            onOpenToolbox: () => setShowToolbox(true),
+          }}
         />
-
-        <div className="scriptora-os-legacy-hero mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
-          <section className="ios-panel overflow-hidden rounded-[28px] border-white/15 bg-slate-950/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-6 md:bg-slate-950/40">
-            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <div className="min-w-0">
-                <div className="mb-2 flex flex-wrap items-center gap-2 sm:mb-3">
-                  <span className="inline-flex items-center gap-1.5 rounded-2xl border border-white/15 bg-white/[0.10] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80 shadow-[0_8px_20px_rgba(0,0,0,0.16)]">
-                    <Sparkles className="h-3 w-3 text-sky-300" /> {t("ai_book_studio")}
-                  </span>
-                  <span className={`inline-flex items-center rounded-full border px-2 py-1 text-[10px] font-semibold uppercase sm:hidden ${
-                    activeRun
-                      ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
-                      : "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
-                  }`}>
-                    {activeRun ? t("live") : t("stable")}
-                  </span>
-                </div>
-                <h1 className="max-w-2xl text-2xl font-semibold leading-tight text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.45)] sm:text-4xl">
-                  Scriptora OS
-                </h1>
-                <p className="mt-2 max-w-xl text-xs font-medium leading-5 text-white/75 sm:mt-3 sm:text-sm sm:leading-6">
-                  {tt("plan_active_sentence", { plan: planLabel })}
-                </p>
-              </div>
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                <button
-                  onClick={() => openLaunchModal("quick")}
-                  data-guided-tour="dashboard-launch"
-                  className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-2xl border border-amber-200/70 bg-gradient-to-r from-amber-300/20 to-amber-200/10 px-4 text-xs font-bold text-slate-950 shadow-[0_18px_48px_rgba(251,191,36,0.22)] ring-1 ring-white/20 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_22px_52px_rgba(251,191,36,0.30)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
-                >
-                  <Flame className="h-4 w-4" />
-                  {t("launch_book_title")}
-                  <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate("/")}
-                  className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/[0.08] px-4 text-xs font-bold text-white/85 shadow-[0_14px_36px_rgba(0,0,0,0.20)] transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-200/40 hover:bg-cyan-300/12 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:h-12 sm:px-4 sm:text-sm"
-                  title={t("public_site")}
-                >
-                  <HomeIcon className="h-4 w-4 text-cyan-200" />
-                  {t("public_site")}
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section className="ios-panel hidden border-white/15 bg-slate-950/30 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.20)] backdrop-blur-2xl xl:block xl:p-6">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("workspace_status")}</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {activeRun ? t("generation_running") : t("ready")}
-                </p>
-              </div>
-              <div className={`rounded-lg border px-2.5 py-1 text-[10px] font-semibold uppercase ${
-                activeRun
-                  ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
-                  : "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
-              }`}>
-                {activeRun ? t("live") : t("stable")}
-              </div>
-            </div>
-            <div className="mt-4">
-              <button
-                onClick={() => openDashboardOverlay(() => setShowLibrary(true))}
-                className="w-full rounded-xl border border-white/15 bg-white/[0.10] p-3 text-left shadow-[0_10px_28px_rgba(0,0,0,0.14)] transition-colors hover:border-emerald-300/45 hover:bg-emerald-400/14"
-              >
-                <p className="text-[10px] uppercase text-muted-foreground">{t("library_workspace_title")}</p>
-                <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">
-                  {projectsReady ? projects.length.toLocaleString() : "…"}
-                </p>
-                {activeWritingProject && projects.length > 0 && (
-                  <p className="mt-1 text-[10px] leading-4 text-muted-foreground">{t("library_workspace_active_note")}</p>
-                )}
-              </button>
-            </div>
-          </section>
-        </div>
-
-        <DashboardGuidedFlow />
-
-        <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
-
-        <section className="mb-4 sm:mb-6">
-          <button
-            type="button"
-            onClick={toggleWorkspaceMetrics}
-            className="ios-panel flex w-full items-center justify-between gap-3 border-white/15 bg-slate-950/30 p-3 text-left shadow-[0_12px_36px_rgba(0,0,0,0.16)] backdrop-blur-2xl transition-colors hover:border-white/20 hover:bg-slate-950/40 sm:p-3.5"
-            aria-expanded={showWorkspaceMetrics}
-            aria-controls="dashboard-workspace-metrics"
-          >
-            <span className="flex min-w-0 items-center gap-3">
-              <span className="ios-icon ios-icon-blue h-10 w-10 shrink-0 rounded-[16px]">
-                <BarChart3 className="h-4 w-4" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold leading-5 text-white">{t("mobile_status_summary")}</span>
-                <span className="mt-0.5 block truncate text-[11px] font-medium text-white/62">
-                  {showWorkspaceMetrics
-                    ? t("dashboard_metrics_visible_hint")
-                    : t("dashboard_metrics_hidden_hint")}
-                </span>
-              </span>
-            </span>
-            <span className="flex shrink-0 items-center gap-2">
-              <span className={`rounded-lg border px-2 py-1 text-[10px] font-semibold uppercase ${
-                activeRun
-                  ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
-                  : "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
-              }`}>
-                {activeRun ? t("live") : t("stable")}
-              </span>
-              <span className="rounded-lg border border-white/10 bg-white/[0.07] px-2.5 py-1 text-[10px] font-semibold text-white/75">
-                {showWorkspaceMetrics ? t("hide_metrics") : t("show_metrics")}
-              </span>
-              <ArrowRight className={`h-4 w-4 text-white/55 transition-transform ${showWorkspaceMetrics ? "rotate-90" : ""}`} />
-            </span>
-          </button>
-
-          {showWorkspaceMetrics && (
-            <div id="dashboard-workspace-metrics" className="mt-2 space-y-2 sm:space-y-3">
-              <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(240px,320px))] xl:grid-cols-4">
-                {dashboardWidgets.map((widget) => (
-                  <button
-                    key={widget.label}
-                    type="button"
-                    onClick={widget.action}
-                    className={`group relative min-h-[96px] overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-br ${widget.tone} p-3 text-left shadow-[0_14px_44px_rgba(0,0,0,0.18)] backdrop-blur-2xl transition-all duration-200 hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/[0.10] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 sm:min-h-[104px]`}
-                  >
-                    <div className="absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-60" />
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/58">{widget.label}</p>
-                        <p className="mt-2 truncate text-base font-semibold leading-6 text-white sm:text-lg xl:text-xl">{widget.value}</p>
-                      </div>
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/[0.10] text-white/85 shadow-lg shadow-black/20 transition-transform group-hover:scale-105">
-                        <widget.icon className="h-4 w-4" />
-                      </span>
-                    </div>
-                    <p className="mt-2 line-clamp-2 text-[11px] font-medium leading-4 text-white/66">{widget.detail}</p>
-                  </button>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-2 sm:gap-2.5 xl:grid xl:grid-cols-[repeat(auto-fill,minmax(220px,280px))]">
-                {workspaceStats.map((stat) => (
-                  <button
-                    key={stat.label}
-                    type="button"
-                    onClick={() => openDashboardOverlay(() => setShowLibrary(true))}
-                    className="ios-glass-soft rounded-[20px] border-white/15 bg-white/[0.08] p-3 text-left shadow-[0_16px_40px_rgba(0,0,0,0.18)] backdrop-blur-xl transition-all duration-200 hover:-translate-y-0.5 sm:rounded-[24px]"
-                  >
-                    <div className="flex items-center justify-between gap-2 sm:gap-3">
-                      <div className="min-w-0">
-                        <p className="truncate text-[9px] font-semibold uppercase text-foreground/58 sm:text-[10px]">{stat.label}</p>
-                        <p className="mt-0.5 text-base font-semibold tabular-nums text-foreground sm:mt-1 sm:text-xl">{stat.value}</p>
-                      </div>
-                      <span className={`ios-icon ${stat.iconBg} hidden h-10 w-10 rounded-[18px] sm:inline-flex`}>
-                        <stat.icon className="h-4 w-4" />
-                      </span>
-                    </div>
-                    <p className="mt-1 hidden truncate text-[11px] text-foreground/60 sm:block">{stat.detail}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
-
-        {activeWritingProject && (
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => goApp({ projectId: activeWritingProject.id })}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                goApp({ projectId: activeWritingProject.id });
-              }
-            }}
-            className="ios-panel group mb-5 w-full cursor-pointer overflow-hidden p-0 text-left transition-colors hover:border-primary/40"
-          >
-            <div className="bg-gradient-to-r from-sky-400/10 via-white/[0.055] to-emerald-400/10 p-3 sm:p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="mb-1.5 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[9px] font-semibold uppercase text-foreground/70">
-                    <Clock className="h-3 w-3 text-sky-300" /> {t("continue_project")}
-                  </p>
-                  <p className="truncate text-base font-semibold leading-5 text-foreground sm:text-lg">
-                    {activeWritingProject.config.title || t("untitled")}
-                  </p>
-                  <p className="mt-0.5 text-[11px] leading-4 text-foreground/65">
-                    {lastProjectDoneChapters}/{lastProjectTargetChapters || activeWritingProject.chapters?.length || 0} {t("chapters").toLowerCase()} · {activeWritingProject.phase}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  title={t("delete")}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    deleteHomeProject(activeWritingProject.id, activeWritingProject.config.title);
-                  }}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-destructive/30 bg-destructive/10 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="mt-3 flex items-center gap-3">
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-sky-300 to-emerald-300 transition-all"
-                    style={{ width: `${lastProjectProgress}%` }}
-                  />
-                </div>
-                <span className="min-w-10 text-right text-[11px] font-semibold tabular-nums text-foreground/70">
-                  {lastProjectProgress}%
-                </span>
-              </div>
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <span className="text-[11px] leading-4 text-foreground/60">
-                  {t("continue_project_hint")}
-                </span>
-                <span className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-white px-2.5 text-[11px] font-semibold text-slate-950 shadow-lg shadow-black/20 transition-colors group-hover:bg-slate-100">
-                  {t("continue_action")}
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <section className="scriptora-os-module mb-10">
-          <div className="scriptora-os-module__header flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="scriptora-os-module__title">{t("os_capabilities")}</p>
-              <h2 className="scriptora-os-module__name">{t("launchpad")}</h2>
-            </div>
-            <span className="text-[11px] text-white/40">
-              {tt("total_suffix", { count: projects.length, plan: planLabel })}
-            </span>
-          </div>
-
-          <div className="space-y-8">
-            {cardGroups.map((group) => {
-              const groupCards = cards.filter((card) => card.group === group.id);
-              return (
-                <div key={group.id}>
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-medium text-white/80">{group.title}</h3>
-                      <p className="mt-0.5 text-[11px] text-white/42">{group.desc}</p>
-                    </div>
-                  </div>
-
-                  <div className="scriptora-os-capabilities">
-                    {groupCards.map(card => {
-                      const Icon = card.icon;
-                      const inner = (
-                        <button
-                          key={card.title}
-                          onClick={card.action}
-                          data-guided-tour={(card as { tourTarget?: string }).tourTarget}
-                          className={`scriptora-os-capability group focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
-                            (card as { emphasis?: boolean }).emphasis ? "scriptora-os-capability--emphasis" : ""
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <span className={`ios-icon ${card.iconBg} flex h-10 w-10 shrink-0 items-center justify-center rounded-xl`}>
-                              <Icon className="h-4 w-4" />
-                            </span>
-                            {(card as { tag?: string }).tag && (
-                              <span className="scriptora-os-capability__tag">{(card as { tag?: string }).tag}</span>
-                            )}
-                          </div>
-                          <h3 className="scriptora-os-capability__title">{card.title}</h3>
-                          <p className="scriptora-os-capability__desc">{card.desc}</p>
-                        </button>
-                      );
-                      return (card as { feature?: string }).feature
-                        ? <PaywallGuard key={card.title} feature={(card as any).feature} compact>{inner}</PaywallGuard>
-                        : <div key={card.title}>{inner}</div>;
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
 
         {!devOn && currentPlan === "free" && (
           <div className="ios-panel mb-4 flex items-center gap-3 p-4">
@@ -1299,6 +871,13 @@ export default function Home() {
         )}
 
       </main>
+
+      <ScriptoraToolbox
+        open={showToolbox}
+        onClose={() => setShowToolbox(false)}
+        cardGroups={cardGroups}
+        cards={cards as ToolboxCard[]}
+      />
 
       {showNewBook && (
         <Suspense fallback={<LazyPanelFallback />}>
