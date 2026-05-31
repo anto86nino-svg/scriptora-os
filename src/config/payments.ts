@@ -88,8 +88,8 @@ export const paymentsConfig: PaymentsConfig = {
       description: "Try Scriptora and write your first book.",
       ctaLabel: "Start free",
       features: [
-        { label: "1 active book", included: true },
-        { label: "Up to 10,000 words", included: true },
+        { label: "40 Scriptora starting credits", included: true },
+        { label: "1 trial book project", included: true },
         { label: "Core book creation", included: true },
         { label: "Limited chapter generation", included: true },
         { label: "Premium tools preview", included: true },
@@ -108,6 +108,7 @@ export const paymentsConfig: PaymentsConfig = {
       externalUrl: MONTHLY_URL || undefined,
       highlight: true,
       features: [
+        { label: "700 Scriptora credits / month", included: true },
         { label: "10 books per month", included: true },
         { label: "Up to 80,000 words per book", included: true },
         { label: "Full Book Engine", included: true },
@@ -149,6 +150,7 @@ export const paymentsConfig: PaymentsConfig = {
       badge: "Max Power",
       premium: true,
       features: [
+        { label: "2,000 Scriptora credits / month", included: true },
         { label: "Up to 10 books per month (fair use)", included: true },
         { label: "Up to 200,000 words per book", included: true },
         { label: "Full Dominate Mode", included: true },

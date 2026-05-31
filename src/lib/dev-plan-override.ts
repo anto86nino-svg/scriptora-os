@@ -11,7 +11,7 @@ const KEY = "nexora_dev_plan_override";
 const EVT = "nexora-dev-plan-override-change";
 
 export function getDevPlanOverride(): PlanTier {
-  if (!isDevMode()) return "premium";
+  if (!isDevMode()) return "free";
   try {
     const v = sessionStorage.getItem(KEY) as PlanTier | null;
     if (v === "free" || v === "beta" || v === "pro" || v === "premium") return v;
@@ -20,7 +20,10 @@ export function getDevPlanOverride(): PlanTier {
 }
 
 export function setDevPlanOverride(plan: PlanTier): void {
-  if (!isDevMode()) return;
+  if (!isDevMode()) {
+    console.warn("[dev-plan] setDevPlanOverride ignored — dev mode not active");
+    return;
+  }
   try { sessionStorage.setItem(KEY, plan); } catch { /* noop */ }
   window.dispatchEvent(new Event(EVT));
   // Also fire generic plan-change so all hooks refresh.

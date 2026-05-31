@@ -133,15 +133,15 @@ export const testimonialSlots: {
 }[] = [
   {
     role: { en: "Romance author", it: "Autrice romance", es: "Autora romance", fr: "Autrice romance", de: "Romance-Autorin" },
-    placeholder: { en: "Author story available in the next update.", it: "Storia autore disponibile nel prossimo aggiornamento.", es: "Historia de autor en la próxima actualización.", fr: "Témoignage auteur dans la prochaine mise à jour.", de: "Autorenstory im nächsten Update verfügbar." },
+    placeholder: { en: "Available in the next workspace update.", it: "Disponibile nel prossimo aggiornamento del workspace.", es: "Disponible en la próxima actualización del workspace.", fr: "Disponible dans la prochaine mise à jour du workspace.", de: "Im nächsten Workspace-Update verfügbar." },
   },
   {
     role: { en: "Non-fiction creator", it: "Autore nonfiction", es: "Autor nonfiction", fr: "Auteur nonfiction", de: "Nonfiction-Autor" },
-    placeholder: { en: "Author story available in the next update.", it: "Storia autore disponibile nel prossimo aggiornamento.", es: "Historia de autor en la próxima actualización.", fr: "Témoignage auteur dans la prochaine mise à jour.", de: "Autorenstory im nächsten Update verfügbar." },
+    placeholder: { en: "Available in the next workspace update.", it: "Disponibile nel prossimo aggiornamento del workspace.", es: "Disponible en la próxima actualización del workspace.", fr: "Disponible dans la prochaine mise à jour du workspace.", de: "Im nächsten Workspace-Update verfügbar." },
   },
   {
     role: { en: "KDP publisher", it: "Publisher KDP", es: "Publisher KDP", fr: "Editeur KDP", de: "KDP-Publisher" },
-    placeholder: { en: "Author story available in the next update.", it: "Storia autore disponibile nel prossimo aggiornamento.", es: "Historia de autor en la próxima actualización.", fr: "Témoignage auteur dans la prochaine mise à jour.", de: "Autorenstory im nächsten Update verfügbar." },
+    placeholder: { en: "Available in the next workspace update.", it: "Disponibile nel prossimo aggiornamento del workspace.", es: "Disponible en la próxima actualización del workspace.", fr: "Disponible dans la prochaine mise à jour du workspace.", de: "Im nächsten Workspace-Update verfügbar." },
   },
 ];
 
@@ -574,25 +574,39 @@ export const landingPlans: Record<string, Record<UILanguage, {
   features: string[];
 }>> = {
   free: {
-    en: { name: "Free", period: "forever", description: "Enter the OS and start your first book.", features: ["1 active book", "Up to 10,000 words", "Core writing studio", "Limited chapter generation"] },
-    it: { name: "Gratis", period: "per sempre", description: "Entra nell'OS e avvia il primo libro.", features: ["1 libro attivo", "Fino a 10.000 parole", "Writing studio core", "Generazione capitoli limitata"] },
-    es: { name: "Gratis", period: "para siempre", description: "Entra al OS y empieza tu primer libro.", features: ["1 libro activo", "Hasta 10.000 palabras", "Writing studio core", "Generacion limitada"] },
-    fr: { name: "Gratuit", period: "a vie", description: "Entrez dans l'OS et demarrez votre premier livre.", features: ["1 livre actif", "Jusqu'a 10 000 mots", "Studio d'ecriture core", "Generation limitee"] },
-    de: { name: "Kostenlos", period: "dauerhaft", description: "Betreten Sie das OS und starten Sie Ihr erstes Buch.", features: ["1 aktives Buch", "Bis 10.000 Worter", "Kern-Schreibstudio", "Begrenzte Generierung"] },
+    en: { name: "Free", period: "forever", description: "Enter the OS with a starter allowance of Scriptora credits.", features: ["40 starting Scriptora credits", "1 trial book project", "Core writing studio", "Limited chapter generation"] },
+    it: { name: "Free", period: "per sempre", description: "Entra nell'OS con un allowance iniziale di crediti Scriptora.", features: ["40 crediti Scriptora iniziali", "1 progetto/libro di prova", "Writing studio core", "Generazione capitoli limitata"] },
+    es: { name: "Gratis", period: "para siempre", description: "Entra al OS con créditos Scriptora iniciales.", features: ["40 créditos Scriptora iniciales", "1 proyecto de prueba", "Writing studio core", "Generación limitada"] },
+    fr: { name: "Gratuit", period: "à vie", description: "Entrez dans l'OS avec des crédits Scriptora de départ.", features: ["40 crédits Scriptora de départ", "1 projet/livre d'essai", "Studio d'écriture core", "Génération limitée"] },
+    de: { name: "Kostenlos", period: "dauerhaft", description: "Betreten Sie das OS mit Start-Credits Scriptora.", features: ["40 Scriptora Start-Credits", "1 Testbuch-Projekt", "Kern-Schreibstudio", "Begrenzte Generierung"] },
   },
   pro_monthly: {
-    en: { name: "Pro", period: "/month", description: "For authors who write and publish seriously.", features: ["10 books per month", "Up to 80,000 words", "Full Book Engine", "EPUB, PDF, DOCX export"] },
-    it: { name: "Pro", period: "/mese", description: "Per autori che scrivono e pubblicano sul serio.", features: ["10 libri al mese", "Fino a 80.000 parole", "Book Engine completo", "Export EPUB, PDF, DOCX"] },
-    es: { name: "Pro", period: "/mes", description: "Para autores que escriben y publican en serio.", features: ["10 libros al mes", "Hasta 80.000 palabras", "Book Engine completo", "Export EPUB, PDF, DOCX"] },
-    fr: { name: "Pro", period: "/mois", description: "Pour auteurs qui ecrivent et publient serieusement.", features: ["10 livres par mois", "Jusqu'a 80 000 mots", "Book Engine complet", "Export EPUB, PDF, DOCX"] },
-    de: { name: "Pro", period: "/Monat", description: "Fur Autoren, die ernsthaft schreiben und veroffentlichen.", features: ["10 Bucher pro Monat", "Bis 80.000 Worter", "Voller Book Engine", "EPUB, PDF, DOCX Export"] },
+    en: { name: "Pro Author", period: "/month", description: "Recommended monthly plan for authors who publish for real.", features: ["700 Scriptora credits / month", "Chapter generation & Intelligence", "Advanced export EPUB · PDF · DOCX", "Premium editorial tools"] },
+    it: { name: "Pro Author", period: "/mese", description: "Piano mensile consigliato per autori che pubblicano sul serio.", features: ["700 crediti Scriptora / mese", "Generazione capitoli e Intelligence", "Export avanzato EPUB · PDF · DOCX", "Strumenti editoriali premium"] },
+    es: { name: "Pro Author", period: "/mes", description: "Plan mensual recomendado para autores que publican en serio.", features: ["700 créditos Scriptora / mes", "Generación de capítulos e Intelligence", "Export EPUB · PDF · DOCX", "Herramientas editoriales premium"] },
+    fr: { name: "Pro Author", period: "/mois", description: "Forfait mensuel recommandé pour auteurs qui publient.", features: ["700 crédits Scriptora / mois", "Génération de chapitres et Intelligence", "Export EPUB · PDF · DOCX", "Outils éditoriaux premium"] },
+    de: { name: "Pro Author", period: "/Monat", description: "Empfohlener Monatsplan für Autoren, die veröffentlichen.", features: ["700 Scriptora Credits / Monat", "Kapitelgenerierung & Intelligence", "Export EPUB · PDF · DOCX", "Premium-Redaktionstools"] },
   },
   premium_monthly: {
-    en: { name: "Premium", period: "/month", description: "Full creative and market layer for power authors.", features: ["Unlimited books with fair use", "Up to 200,000 words", "Advanced KDP analysis", "Priority support"] },
-    it: { name: "Premium", period: "/mese", description: "Livello creativo e mercato completo per autori power user.", features: ["Libri illimitati con fair use", "Fino a 200.000 parole", "Analisi KDP avanzata", "Supporto prioritario"] },
-    es: { name: "Premium", period: "/mes", description: "Capa creativa y mercado completa para autores avanzados.", features: ["Libros ilimitados con fair use", "Hasta 200.000 palabras", "Analisis KDP avanzado", "Soporte prioritario"] },
-    fr: { name: "Premium", period: "/mois", description: "Couche creative et marche complete pour auteurs exigeants.", features: ["Livres illimites avec fair use", "Jusqu'a 200 000 mots", "Analyse KDP avancee", "Support prioritaire"] },
-    de: { name: "Premium", period: "/Monat", description: "Volle Kreativ- und Marktebene fur Power-Autoren.", features: ["Unbegrenzte Bucher mit Fair Use", "Bis 200.000 Worter", "Erweiterte KDP-Analyse", "Priorisierter Support"] },
+    en: { name: "Studio", period: "/month", description: "Intensive editorial production and market intelligence.", features: ["2,000 Scriptora credits / month", "Market Intelligence", "Advanced KDP analysis", "Priority support"] },
+    it: { name: "Studio", period: "/mese", description: "Produzione editoriale intensiva e Market Intelligence.", features: ["2.000 crediti Scriptora / mese", "Market Intelligence", "Analisi KDP avanzata", "Supporto prioritario"] },
+    es: { name: "Studio", period: "/mes", description: "Producción editorial intensiva e inteligencia de mercado.", features: ["2.000 créditos Scriptora / mes", "Market Intelligence", "Análisis KDP avanzado", "Soporte prioritario"] },
+    fr: { name: "Studio", period: "/mois", description: "Production éditoriale intensive et Market Intelligence.", features: ["2 000 crédits Scriptora / mois", "Market Intelligence", "Analyse KDP avancée", "Support prioritaire"] },
+    de: { name: "Studio", period: "/Monat", description: "Intensive Redaktionsproduktion und Market Intelligence.", features: ["2.000 Scriptora Credits / Monat", "Market Intelligence", "Erweiterte KDP-Analyse", "Priorisierter Support"] },
+  },
+  starter_monthly: {
+    en: { name: "Starter", period: "/month", description: "Light monthly plan for occasional authors.", features: ["250 Scriptora credits / month", "Core editorial tools", "Ideas, diagnosis, short rewrites"] },
+    it: { name: "Starter", period: "/mese", description: "Piano mensile leggero per autori occasionali.", features: ["250 crediti Scriptora / mese", "Strumenti editoriali core", "Idee, diagnosi, rewrite brevi"] },
+    es: { name: "Starter", period: "/mes", description: "Plan mensual ligero para autores ocasionales.", features: ["250 créditos Scriptora / mes", "Herramientas editoriales core", "Ideas, diagnóstico, reescrituras breves"] },
+    fr: { name: "Starter", period: "/mois", description: "Forfait mensuel léger pour auteurs occasionnels.", features: ["250 crédits Scriptora / mois", "Outils éditoriaux core", "Idées, diagnostic, réécritures courtes"] },
+    de: { name: "Starter", period: "/Monat", description: "Leichter Monatsplan für Gelegenheitsautoren.", features: ["250 Scriptora Credits / Monat", "Kern-Redaktionstools", "Ideen, Diagnose, kurze Rewrites"] },
+  },
+  publisher_monthly: {
+    en: { name: "Publisher", period: "/month", description: "Power users, ghostwriters, micro-publishers.", features: ["5,000 Scriptora credits / month", "Multiple production", "Advanced workflows", "Intensive editorial use"] },
+    it: { name: "Publisher", period: "/mese", description: "Power user, ghostwriter, micro-editori.", features: ["5.000 crediti Scriptora / mese", "Produzione multipla", "Workflow avanzati", "Uso editoriale intensivo"] },
+    es: { name: "Publisher", period: "/mes", description: "Power users, ghostwriters, micro-editoriales.", features: ["5.000 créditos Scriptora / mes", "Producción múltiple", "Flujos avanzados", "Uso editorial intensivo"] },
+    fr: { name: "Publisher", period: "/mois", description: "Power users, ghostwriters, micro-éditeurs.", features: ["5 000 crédits Scriptora / mois", "Production multiple", "Workflows avancés", "Usage éditorial intensif"] },
+    de: { name: "Publisher", period: "/Monat", description: "Power-User, Ghostwriter, Micro-Publisher.", features: ["5.000 Scriptora Credits / Monat", "Mehrfach-Produktion", "Erweiterte Workflows", "Intensive redaktionelle Nutzung"] },
   },
 };
 

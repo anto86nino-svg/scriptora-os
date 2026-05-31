@@ -39,13 +39,7 @@ export function BetaActivationDialog({ open, onOpenChange, onActivated }: Props)
       if (error) throw new Error(error.message);
       if (!data?.ok) throw new Error(data?.error || "Activation failed");
 
-      toast.success("Beta access activated 🎉");
-      try {
-        localStorage.setItem(
-          "nexora_plan_cache_v1",
-          JSON.stringify({ userId, plan: "beta" })
-        );
-      } catch { /* noop */ }
+      toast.success("Anteprima editoriale attivata");
       window.dispatchEvent(new Event("nexora-plan-change"));
       setCode("");
       onOpenChange(false);
@@ -70,9 +64,9 @@ export function BetaActivationDialog({ open, onOpenChange, onActivated }: Props)
           <div className="mx-auto h-11 w-11 rounded-full bg-primary/15 flex items-center justify-center mb-2">
             <Sparkles className="h-5 w-5 text-primary" />
           </div>
-          <DialogTitle className="text-center">Beta Access</DialogTitle>
+          <DialogTitle className="text-center">Anteprima editoriale</DialogTitle>
           <DialogDescription className="text-center">
-            Enter your access code to unlock the Beta plan.
+            Inserisci il codice di accesso per sbloccare l&apos;anteprima editoriale.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-3">
@@ -97,10 +91,10 @@ export function BetaActivationDialog({ open, onOpenChange, onActivated }: Props)
             className="w-full h-10 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
           >
             {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {loading ? "Activating…" : "Activate Beta"}
+            {loading ? "Attivazione…" : "Attiva anteprima"}
           </button>
           <p className="text-[10px] text-muted-foreground text-center">
-            Beta access is limited to 3 books and tracked per device.
+            Accesso limitato e tracciato per dispositivo.
           </p>
         </form>
       </DialogContent>

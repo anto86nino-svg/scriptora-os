@@ -2,7 +2,7 @@
 // written in Italian to match the app UI. Update LEGAL_VERSION when the text
 // changes so prior consents can be invalidated.
 
-export const LEGAL_VERSION = "1.1.0";
+export const LEGAL_VERSION = "1.2.0";
 export const LEGAL_UPDATED = "29 Maggio 2026";
 
 export const PRIVACY_POLICY = `
@@ -16,13 +16,13 @@ SCRIPTORA ("noi", "nostro") è il titolare del trattamento dei dati raccolti tra
 2. Dati raccolti
 - Dati di account: email, identificativo utente.
 - Contenuti generati: titoli, capitoli, metadati dei libri creati.
-- Dati di utilizzo: token consumati, modelli AI usati, costi associati.
+- Dati di utilizzo: crediti Scriptora consumati, volume di testo generato, modelli AI usati e costi associati.
 - Dati tecnici: tipo di dispositivo, browser, indirizzo IP (anonimizzato).
-- Identificativo dispositivo (device fingerprint): hash anonimo derivato da user-agent, lingua, fuso orario e risoluzione schermo, usato esclusivamente per prevenire abusi del programma Beta Tester (multi-account dallo stesso dispositivo).
+- Identificativo dispositivo (device fingerprint): hash anonimo derivato da user-agent, lingua, fuso orario e risoluzione schermo, usato esclusivamente per prevenire abusi dell'Anteprima editoriale (multi-account dallo stesso dispositivo).
 
 3. Finalità del trattamento
 - Fornire il servizio di generazione assistita di libri tramite AI.
-- Gestire il tuo piano (Free / Pro / Premium) e la fatturazione.
+- Gestire il tuo piano mensile (Free, Starter, Pro Author, Studio, Publisher) e la fatturazione.
 - Migliorare la qualità del prodotto in forma aggregata e anonima.
 - Adempiere a obblighi legali e fiscali.
 
@@ -82,11 +82,17 @@ SCRIPTORA è una piattaforma SaaS che permette di generare, modificare ed esport
 Devi avere almeno 16 anni per usare SCRIPTORA. Sei responsabile della riservatezza delle tue credenziali e di ogni attività svolta dal tuo account.
 
 4. Piani e pagamenti
-- Free: 1 libro, 10.000 token, senza export.
-- Beta: accesso gratuito al programma Beta Tester (codice di invito), limitato a 3 libri e 15.000 token per libro, export abilitato. SCRIPTORA si riserva il diritto di sospendere o revocare l'accesso Beta in caso di abuso (es. multi-account dallo stesso dispositivo o stessa rete).
-- Pro: €14,99/mese, 10 libri/mese, export abilitato.
-- Premium: €29,99/mese, libri illimitati, modalità Dominate.
-I pagamenti sono gestiti tramite Stripe. Gli abbonamenti si rinnovano automaticamente fino a cancellazione.
+Scriptora utilizza piani mensili con crediti editoriali («crediti Scriptora»). I crediti coprono generazione, analisi, export e strumenti editoriali premium del workspace.
+
+- Free: €0 — 40 crediti Scriptora iniziali; funzioni core con limiti editoriali.
+- Starter: €9,99/mese — 250 crediti Scriptora al mese.
+- Pro Author: €19,99/mese — 700 crediti Scriptora al mese (piano consigliato).
+- Studio: €49,99/mese — 2.000 crediti Scriptora al mese; strumenti editoriali premium e Market Intelligence.
+- Publisher: €99,99/mese — 5.000 crediti Scriptora al mese; produzione editoriale intensiva.
+
+Anteprima editoriale: accesso promozionale su invito, con limiti ridotti rispetto ai piani a pagamento.
+
+L'attivazione del wallet di pagamento è in arrivo. Quando attiva, i pagamenti saranno gestiti tramite provider sicuro (es. Stripe). Gli abbonamenti si rinnoveranno automaticamente fino a cancellazione, salvo diversa indicazione al momento dell'attivazione.
 
 5. Cancellazione e rimborsi
 Puoi cancellare l'abbonamento in qualsiasi momento. Il servizio resta attivo fino al termine del periodo pagato. Non sono previsti rimborsi parziali, salvo obblighi di legge.

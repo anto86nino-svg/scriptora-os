@@ -41,3 +41,9 @@ verify_jwt = false
 
 [functions.expand-author-bio]
 verify_jwt = false
+
+[functions.exit-editorial-preview]
+verify_jwt = false
+
+[functions.activate-beta]
+verify_jwt = false

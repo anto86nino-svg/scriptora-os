@@ -39,15 +39,8 @@ export const STRIPE_LINKS = {
 
 const PLAN_CACHE_KEY = "nexora_plan_cache_v1";
 
-/** Allowed client-side writes until Stripe webhooks + service-role own user_plans. */
+/** Allowed client-side plan mutations — none write Supabase directly (Sprint A1). */
 export type PlanClientWriteReason = "beta-exit";
-
-async function upsertUserPlan(userId: string, plan: PlanTier): Promise<void> {
-  const { error } = await supabase
-    .from("user_plans" as any)
-    .upsert({ user_id: userId, plan, period_start: new Date().toISOString() }, { onConflict: "user_id" });
-  if (error) throw error;
-}
 
 export async function fetchPlan(): Promise<PlanTier> {
   const userId = getCurrentUserId();
@@ -60,26 +53,23 @@ export async function fetchPlan(): Promise<PlanTier> {
       .maybeSingle();
     if (error) throw error;
     const plan = ((data as any)?.plan as PlanTier) || "free";
-    try { localStorage.setItem(PLAN_CACHE_KEY, JSON.stringify({ userId, plan })); } catch { /* noop */ }
+    try {
+      localStorage.setItem(PLAN_CACHE_KEY, JSON.stringify({ userId, plan }));
+    } catch {
+      /* noop */
+    }
     return plan;
   } catch {
-    try {
-      const raw = localStorage.getItem(PLAN_CACHE_KEY);
-      if (raw) {
-        const c = JSON.parse(raw);
-        if (c.userId === userId) return c.plan as PlanTier;
-      }
-    } catch { /* noop */ }
+    // Never elevate privileges from stale cache — default to free on read failure.
     return "free";
   }
 }
 
 /**
- * Client plan write — restricted.
+ * Client plan mutation — editorial preview exit only, via edge function.
  *
  * Production upgrades (pro/premium/beta) MUST come from edge functions or Stripe webhooks.
- * TODO(backend): RLS — revoke INSERT/UPDATE on public.user_plans for authenticated role;
- * allow only service_role / webhook handler.
+ * RLS: authenticated cannot INSERT/UPDATE user_plans (migration 20260529180000).
  */
 export async function setPlan(plan: PlanTier, reason?: PlanClientWriteReason): Promise<void> {
   const userId = getCurrentUserId();
@@ -95,9 +85,16 @@ export async function setPlan(plan: PlanTier, reason?: PlanClientWriteReason): P
     throw new Error("PLAN_WRITE_FORBIDDEN");
   }
 
-  await upsertUserPlan(userId, plan);
+  const { data, error } = await supabase.functions.invoke("exit-editorial-preview", {
+    body: {},
+  });
+  if (error) throw error;
+  if (!(data as { ok?: boolean })?.ok) {
+    throw new Error((data as { error?: string })?.error || "PLAN_WRITE_FAILED");
+  }
+
   try {
-    localStorage.setItem(PLAN_CACHE_KEY, JSON.stringify({ userId, plan }));
+    localStorage.setItem(PLAN_CACHE_KEY, JSON.stringify({ userId, plan: "free" }));
   } catch {
     /* noop */
   }

@@ -91,6 +91,11 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
             />
           </div>
 
+          <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-center space-y-1">
+            <p className="text-xs font-semibold text-foreground">{t("upgrade_checkout_pending_title")}</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">{t("upgrade_checkout_pending_body")}</p>
+          </div>
+
           <p className="text-[11px] text-muted-foreground text-center">
             {t("upgrade_footer_note")}
           </p>

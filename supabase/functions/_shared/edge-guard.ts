@@ -302,5 +302,6 @@ export const EDGE_GUARD_PROFILES: Record<string, EdgeGuardOptions> = {
   "publish-tools": { minTier: "pro" },
   "scriptora-novel-idea": { minTier: "free", checkProjectTokens: true },
   "activate-beta": { minTier: "free" },
+  "exit-editorial-preview": { minTier: "free" },
   "ai-usage-summary": { ownerOnly: true },
 };
