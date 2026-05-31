@@ -1,0 +1,308 @@
+/* Scriptora premium empty / error / loading states */
+.scriptora-premium-state {
+  --premium-gold: rgba(245, 190, 110, 0.92);
+  --premium-gold-soft: rgba(245, 190, 110, 0.35);
+  --premium-violet: rgba(120, 90, 255, 0.22);
+  --premium-navy: rgba(10, 14, 35, 0.72);
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+}
+
+.scriptora-premium-state--full {
+  min-height: min(100dvh, 100vh);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 4vw, 2.5rem);
+  padding-bottom: calc(clamp(1rem, 4vw, 2.5rem) + env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
+}
+
+.scriptora-premium-state__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -10%, rgba(88, 56, 180, 0.38) 0%, transparent 55%),
+    radial-gradient(ellipse 90% 60% at 100% 100%, rgba(40, 80, 200, 0.22) 0%, transparent 50%),
+    radial-gradient(ellipse 70% 50% at 0% 80%, rgba(180, 120, 40, 0.12) 0%, transparent 45%),
+    linear-gradient(165deg, #070b1a 0%, #0c1230 42%, #12082a 100%);
+}
+
+.scriptora-premium-state__wave {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  height: 42%;
+  opacity: 0.18;
+  background: linear-gradient(90deg, transparent, rgba(245, 190, 110, 0.35), transparent);
+  filter: blur(28px);
+  animation: scriptora-premium-wave 14s ease-in-out infinite;
+}
+
+.scriptora-premium-state__wave--a {
+  top: 8%;
+  animation-delay: 0s;
+}
+
+.scriptora-premium-state__wave--b {
+  bottom: 12%;
+  animation-delay: -7s;
+  opacity: 0.12;
+}
+
+@keyframes scriptora-premium-wave {
+  0%, 100% { transform: translateX(-8%) skewY(-2deg); }
+  50% { transform: translateX(8%) skewY(2deg); }
+}
+
+.scriptora-premium-state__particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.scriptora-premium-state__particle {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(245, 190, 110, 0.55);
+  box-shadow: 0 0 8px rgba(245, 190, 110, 0.35);
+  animation: scriptora-premium-float 18s linear infinite;
+}
+
+.scriptora-premium-state__particle:nth-child(1) { left: 12%; top: 18%; animation-duration: 22s; }
+.scriptora-premium-state__particle:nth-child(2) { left: 78%; top: 24%; animation-duration: 19s; animation-delay: -4s; }
+.scriptora-premium-state__particle:nth-child(3) { left: 44%; top: 72%; animation-duration: 24s; animation-delay: -9s; }
+.scriptora-premium-state__particle:nth-child(4) { left: 88%; top: 58%; animation-duration: 17s; animation-delay: -2s; }
+.scriptora-premium-state__particle:nth-child(5) { left: 24%; top: 52%; animation-duration: 21s; animation-delay: -11s; }
+
+@keyframes scriptora-premium-float {
+  0% { transform: translateY(0) scale(1); opacity: 0.2; }
+  50% { transform: translateY(-24px) scale(1.2); opacity: 0.7; }
+  100% { transform: translateY(0) scale(1); opacity: 0.2; }
+}
+
+.scriptora-premium-state__card {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 34rem);
+  margin: 0 auto;
+  padding: clamp(1.25rem, 3.5vw, 1.75rem);
+  border-radius: 1.25rem;
+  border: 1px solid var(--premium-gold-soft);
+  background: var(--premium-navy);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow:
+    0 0 0 1px rgba(120, 90, 255, 0.12) inset,
+    0 24px 80px rgba(0, 0, 0, 0.45),
+    0 0 60px rgba(120, 90, 255, 0.08);
+}
+
+.scriptora-premium-state--compact .scriptora-premium-state__card {
+  width: 100%;
+  box-shadow:
+    0 0 0 1px rgba(120, 90, 255, 0.1) inset,
+    0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.scriptora-premium-state__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--premium-gold-soft);
+  background: linear-gradient(135deg, rgba(245, 190, 110, 0.18), rgba(120, 90, 255, 0.12));
+  color: var(--premium-gold);
+  margin-bottom: 1rem;
+}
+
+.scriptora-premium-state__label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(245, 190, 110, 0.82);
+  margin-bottom: 0.5rem;
+}
+
+.scriptora-premium-state__title {
+  font-size: clamp(1.05rem, 2.8vw, 1.25rem);
+  font-weight: 700;
+  line-height: 1.35;
+  color: hsl(220 20% 96%);
+  margin-bottom: 0.65rem;
+}
+
+.scriptora-premium-state__text {
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: hsl(220 12% 72%);
+  margin-bottom: 0.75rem;
+}
+
+.scriptora-premium-state__next {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: hsl(220 16% 88%);
+  margin-bottom: 1.25rem;
+}
+
+.scriptora-premium-state__next strong {
+  color: hsl(220 20% 96%);
+  font-weight: 600;
+}
+
+.scriptora-premium-state__detail {
+  margin-bottom: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.22);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: hsl(220 12% 68%);
+  word-break: break-word;
+}
+
+.scriptora-premium-state__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+@media (min-width: 480px) {
+  .scriptora-premium-state__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+.scriptora-premium-state__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 1.125rem;
+  border-radius: 0.65rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.scriptora-premium-state__btn--primary {
+  background: linear-gradient(135deg, rgba(245, 190, 110, 0.95), rgba(220, 160, 70, 0.92));
+  color: #1a1208;
+  border: 1px solid rgba(245, 190, 110, 0.5);
+}
+
+.scriptora-premium-state__btn--primary:hover {
+  filter: brightness(1.05);
+}
+
+.scriptora-premium-state__btn--secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: hsl(220 16% 82%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.scriptora-premium-state__btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: hsl(220 20% 96%);
+}
+
+.scriptora-premium-state__footer {
+  margin-top: 1rem;
+  font-size: 0.6875rem;
+  line-height: 1.55;
+  color: hsl(220 10% 58%);
+}
+
+.scriptora-premium-state__spinner {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 2px solid rgba(245, 190, 110, 0.25);
+  border-top-color: var(--premium-gold);
+  border-radius: 50%;
+  animation: scriptora-premium-spin 0.85s linear infinite;
+}
+
+@keyframes scriptora-premium-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Workspace layout shell */
+.scriptora-workspace-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+.scriptora-workspace-main {
+  flex: 1;
+  min-height: 0;
+  min-height: calc(100dvh - var(--scriptora-header-height, 3.5rem));
+}
+
+.scriptora-tool-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.scriptora-tool-panel-header {
+  flex-shrink: 0;
+}
+
+.scriptora-tool-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 768px) {
+  .scriptora-workspace-shell {
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  .scriptora-tool-panel {
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    margin: 8px auto calc(88px + env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 132px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .scriptora-tool-panel-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  /* Alias existing mobile work panel classes */
+  .scriptora-mobile-work-panel {
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    margin-left: auto;
+    margin-right: auto;
+    max-height: calc(100dvh - 132px);
+  }
+
+  .scriptora-mobile-work-panel__body {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+}

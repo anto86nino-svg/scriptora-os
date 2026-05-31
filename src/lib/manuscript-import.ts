@@ -1,4 +1,6 @@
 import JSZip from "jszip";
+import type { BookProject, BookConfig, Chapter, Language } from "@/types/book";
+import { createProjectId } from "@/services/storageService";
 
 /** File picker accept list — mirrors export formats (EPUB, PDF, DOCX) plus common drafts. */
 export const MANUSCRIPT_FILE_ACCEPT =
@@ -9,6 +11,8 @@ export const MANUSCRIPT_FILE_ACCEPT =
   "application/vnd.oasis.opendocument.text";
 
 export const MANUSCRIPT_FORMAT_LABEL = "TXT, MD, DOCX, EPUB, PDF, HTML, ODT, RTF";
+
+export const IMPORT_DRAFT_STORAGE_KEY = "scriptora-import-draft";
 
 type ManuscriptFormat =
   | "txt"
@@ -38,6 +42,11 @@ function detectFormat(file: File): ManuscriptFormat | null {
   if (ext === "md" || ext === "markdown" || mime.includes("markdown")) return "md";
   if (ext === "txt" || mime.startsWith("text/")) return "txt";
   return null;
+}
+
+export function titleFromFileName(name: string, fallback = "Libro importato"): string {
+  const base = name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").replace(/\s+/g, " ").trim();
+  return base || fallback;
 }
 
 export function htmlToPlainText(html: string): string {
@@ -109,6 +118,25 @@ async function fileToText(file: Blob): Promise<string> {
   return new TextDecoder().decode(buffer);
 }
 
+function elementsByLocalName(doc: Document | Element, localName: string): Element[] {
+  const root = "documentElement" in doc ? doc.documentElement : doc;
+  return Array.from(root.getElementsByTagName("*")).filter(
+    el => (el.localName || el.tagName.split(":").pop() || "").toLowerCase() === localName.toLowerCase(),
+  );
+}
+
+function resolveZipPath(baseDir: string, href: string): string {
+  const decoded = decodeURIComponent(href).replace(/\\/g, "/");
+  const combined = baseDir ? `${baseDir}/${decoded}` : decoded;
+  const parts = combined.split("/");
+  const stack: string[] = [];
+  for (const part of parts) {
+    if (part === "..") stack.pop();
+    else if (part && part !== ".") stack.push(part);
+  }
+  return stack.join("/");
+}
+
 async function readDocx(file: File): Promise<string> {
   const zip = await JSZip.loadAsync(await fileToArrayBuffer(file));
   const xml = await zip.file("word/document.xml")?.async("text");
@@ -145,28 +173,35 @@ function readRtf(raw: string): string {
 
 function opfPathFromContainer(containerXml: string): string | null {
   const doc = new DOMParser().parseFromString(containerXml, "application/xml");
-  const rootfile = doc.querySelector("rootfile");
+  const rootfiles = elementsByLocalName(doc, "rootfile");
+  const rootfile = rootfiles.find(el => el.getAttribute("media-type")?.includes("oebps-package"))
+    ?? rootfiles[0];
   return rootfile?.getAttribute("full-path") || null;
 }
 
 function spineHrefsFromOpf(opfXml: string, opfDir: string): string[] {
   const doc = new DOMParser().parseFromString(opfXml, "application/xml");
   const manifest = new Map<string, string>();
-  doc.querySelectorAll("manifest item, item").forEach(item => {
+
+  for (const item of elementsByLocalName(doc, "item")) {
     const id = item.getAttribute("id");
     const href = item.getAttribute("href");
-    if (id && href) manifest.set(id, href);
-  });
+    const mediaType = (item.getAttribute("media-type") || "").toLowerCase();
+    if (!id || !href) continue;
+    if (mediaType && !mediaType.includes("html") && !mediaType.includes("xml") && mediaType !== "application/x-dtbncx+xml") {
+      if (!/\.(xhtml|html|htm)$/i.test(href)) continue;
+    }
+    manifest.set(id, href);
+  }
 
   const hrefs: string[] = [];
-  doc.querySelectorAll("spine itemref, itemref").forEach(itemref => {
+  for (const itemref of elementsByLocalName(doc, "itemref")) {
     const idref = itemref.getAttribute("idref");
+    const linear = itemref.getAttribute("linear");
+    if (linear === "no") continue;
     const href = idref ? manifest.get(idref) : null;
-    if (href) {
-      const normalized = opfDir ? `${opfDir}/${href}`.replace(/\/+/g, "/") : href;
-      hrefs.push(normalized);
-    }
-  });
+    if (href) hrefs.push(resolveZipPath(opfDir, href));
+  }
   return hrefs;
 }
 
@@ -175,38 +210,74 @@ function isSkippableEpubAsset(path: string): boolean {
   return /^(nav|toc|cover|titlepage|halftitle|copyright|dedication|aboutauthor|style|nav\.xhtml|toc\.ncx)/.test(base);
 }
 
-async function readEpub(file: File): Promise<string> {
-  const zip = await JSZip.loadAsync(await fileToArrayBuffer(file));
-  const containerXml = await zip.file("META-INF/container.xml")?.async("text");
-  let orderedPaths: string[] = [];
+async function readZipEntryText(zip: JSZip, path: string): Promise<string | null> {
+  const direct = await zip.file(path)?.async("text");
+  if (direct) return direct;
 
-  if (containerXml) {
-    const opfPath = opfPathFromContainer(containerXml);
-    if (opfPath) {
-      const opfXml = await zip.file(opfPath)?.async("text");
-      if (opfXml) {
-        const opfDir = opfPath.includes("/") ? opfPath.slice(0, opfPath.lastIndexOf("/")) : "";
-        orderedPaths = spineHrefsFromOpf(opfXml, opfDir).filter(path => !isSkippableEpubAsset(path));
-      }
-    }
-  }
+  const lower = path.toLowerCase();
+  const match = Object.keys(zip.files).find(key => key.toLowerCase() === lower);
+  if (match) return zip.file(match)?.async("text") ?? null;
+  return null;
+}
 
-  if (!orderedPaths.length) {
-    orderedPaths = Object.keys(zip.files)
-      .filter(path => /\.(xhtml|html|htm)$/i.test(path) && !isSkippableEpubAsset(path))
-      .sort();
-  }
-
+async function readEpubSections(zip: JSZip, orderedPaths: string[]): Promise<string[]> {
   const sections: string[] = [];
   for (const path of orderedPaths) {
-    const html = await zip.file(path)?.async("text");
-    if (!html) continue;
-    const plain = htmlToPlainText(html);
-    if (plain) sections.push(plain);
+    try {
+      const html = await readZipEntryText(zip, path);
+      if (!html) continue;
+      const plain = htmlToPlainText(html);
+      if (plain) sections.push(plain);
+    } catch {
+      /* skip broken spine item */
+    }
   }
+  return sections;
+}
 
-  if (!sections.length) throw new Error("EPUB_EMPTY");
-  return sections.join("\n\n").trim();
+async function readEpubFallbackPaths(zip: JSZip): Promise<string[]> {
+  return Object.keys(zip.files)
+    .filter(path => /\.(xhtml|html|htm)$/i.test(path) && !isSkippableEpubAsset(path))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+async function readEpub(file: File): Promise<string> {
+  try {
+    const zip = await JSZip.loadAsync(await fileToArrayBuffer(file));
+    let orderedPaths: string[] = [];
+
+    try {
+      const containerXml = await readZipEntryText(zip, "META-INF/container.xml");
+      if (containerXml) {
+        const opfPath = opfPathFromContainer(containerXml);
+        if (opfPath) {
+          const opfXml = await readZipEntryText(zip, opfPath);
+          if (opfXml) {
+            const opfDir = opfPath.includes("/") ? opfPath.slice(0, opfPath.lastIndexOf("/")) : "";
+            orderedPaths = spineHrefsFromOpf(opfXml, opfDir).filter(path => !isSkippableEpubAsset(path));
+          }
+        }
+      }
+    } catch {
+      /* fall through to filename scan */
+    }
+
+    if (!orderedPaths.length) {
+      orderedPaths = await readEpubFallbackPaths(zip);
+    }
+
+    let sections = await readEpubSections(zip, orderedPaths);
+    if (!sections.length) {
+      orderedPaths = await readEpubFallbackPaths(zip);
+      sections = await readEpubSections(zip, orderedPaths);
+    }
+
+    if (!sections.length) throw new Error("EPUB_EMPTY");
+    return sections.join("\n\n").trim();
+  } catch (err) {
+    if (err instanceof Error && err.message === "EPUB_EMPTY") throw err;
+    throw new Error("EPUB_PARSE_FAILED");
+  }
 }
 
 async function readPdf(file: File): Promise<string> {
@@ -231,6 +302,88 @@ async function readPdf(file: File): Promise<string> {
 
   if (!pages.length) throw new Error("PDF_EMPTY");
   return pages.join("\n\n").trim();
+}
+
+export function persistImportDraft(payload: { fileName: string; text?: string; error?: string }) {
+  try {
+    sessionStorage.setItem(
+      IMPORT_DRAFT_STORAGE_KEY,
+      JSON.stringify({ ...payload, savedAt: new Date().toISOString() }),
+    );
+  } catch {
+    /* storage full or private mode */
+  }
+}
+
+export function normalizeImportedProject(
+  project: BookProject,
+  fallbacks: { title?: string; language?: Language } = {},
+): BookProject {
+  const now = new Date().toISOString();
+  const title = project.config?.title?.trim() || fallbacks.title || "Libro importato";
+  const language = project.config?.language || fallbacks.language || "Italian";
+
+  let chapters: Chapter[] = Array.isArray(project.chapters)
+    ? project.chapters.filter(Boolean)
+    : [];
+
+  if (!chapters.length) {
+    chapters = [{
+      title: "Chapter 1",
+      content: "",
+      subchapters: [],
+      status: "idle",
+    }];
+  }
+
+  chapters = chapters.map((chapter, index) => ({
+    ...chapter,
+    title: chapter.title?.trim() || `Chapter ${index + 1}`,
+    content: typeof chapter.content === "string" ? chapter.content : "",
+    subchapters: Array.isArray(chapter.subchapters) ? chapter.subchapters : [],
+    status: chapter.status || "completed",
+  }));
+
+  const baseConfig: BookConfig = {
+    title: "",
+    subtitle: "",
+    tone: "clear, polished, emotionally precise, editorial",
+    authorStyle: "editorial rewrite guided by manuscript diagnosis",
+    language: "Italian",
+    genre: "self-help",
+    category: "Self Help",
+    subcategory: "Mindset",
+    chapterLength: "medium",
+    bookLength: "medium",
+    numberOfChapters: 1,
+    subchaptersEnabled: false,
+  };
+
+  const config: BookConfig = {
+    ...baseConfig,
+    ...project.config,
+    title,
+    language,
+    numberOfChapters: Math.max(1, chapters.length),
+  };
+
+  return {
+    ...project,
+    id: project.id || createProjectId(),
+    config,
+    blueprint: project.blueprint ?? {
+      overview: "",
+      chapterOutlines: chapters.map(chapter => ({ title: chapter.title, summary: "" })),
+      themes: [],
+      emotionalArc: "",
+    },
+    frontMatter: project.frontMatter ?? null,
+    chapters,
+    backMatter: project.backMatter ?? null,
+    phase: project.phase || "complete",
+    createdAt: project.createdAt || now,
+    updatedAt: now,
+  };
 }
 
 export async function readManuscriptFile(file: File, unsupportedMessage: string): Promise<string> {

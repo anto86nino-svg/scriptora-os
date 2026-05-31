@@ -17,6 +17,7 @@ import { DevModeBadge } from "@/components/DevModeBadge";
 import { AuthDebugPanel } from "@/components/AuthDebugPanel";
 import GlobalCuriosity from "./components/GlobalCuriosity";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { ScriptoraPremiumState } from "@/components/ScriptoraPremiumState";
 import { DeviceViewSync } from "@/hooks/useDeviceView";
 import { DesktopPreviewChrome } from "@/components/DesktopPreviewChrome";
 import { LivingBackgroundLayer } from "@/components/immersive/LivingBackgroundLayer";
@@ -35,8 +36,8 @@ const queryClient = new QueryClient();
 
 function RouteLoadingFallback() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-      <p className="text-sm">Loading…</p>
+    <div className="scriptora-workspace-shell min-h-[100dvh] bg-background">
+      <ScriptoraPremiumState variant="loading-project" fullPage />
     </div>
   );
 }

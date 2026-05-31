@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { analyzeNovel, calculateEditorialChapterScore, detectEditorialGenre } from "@/lib/EditorialIntelligence";
 import { useNavigate } from "react-router-dom";
-import { MANUSCRIPT_FILE_ACCEPT, readManuscriptFile } from "@/lib/manuscript-import";
+import { MANUSCRIPT_FILE_ACCEPT, normalizeImportedProject, persistImportDraft, readManuscriptFile, titleFromFileName } from "@/lib/manuscript-import";
 import {
   AlertTriangle,
   ArrowRight,
@@ -35,6 +35,7 @@ import {
   type ManuscriptPublishingIntel,
 } from "@/lib/publishing-intelligence";
 import { MissingRequirementCard } from "@/components/MissingRequirementCard";
+import { ScriptoraPremiumState } from "@/components/ScriptoraPremiumState";
 import { buildRequirement, type RequirementId } from "@/lib/scriptora-requirement-gate";
 
 interface ManuscriptAnalyzerDialogProps {
@@ -124,7 +125,7 @@ function countWords(text: string): number {
 
 function cleanTitle(value: string): string {
   return value
-    .replace(/\.(txt|md|markdown|docx)$/i, "")
+    .replace(/\.(txt|md|markdown|docx|epub|pdf|html|htm|odt|rtf)$/i, "")
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -478,7 +479,18 @@ function summaryKeyForScore(score: number): string {
 }
 
 function analyzeManuscript(text: string, title: string, sourceName: string, genre: Genre): ManuscriptAnalysis {
-  const chapters = splitIntoChapters(text).map(chapter => analyzeChapter(chapter.title, chapter.content, genre));
+  let chapterChunks = splitIntoChapters(text);
+  if (!chapterChunks.length && countWords(text) > 0) {
+    chapterChunks = [{ title: `${t("chapter")} 1`, content: text.trim() }];
+  }
+
+  const chapters = chapterChunks.map(chapter => {
+    try {
+      return analyzeChapter(chapter.title, chapter.content, genre);
+    } catch {
+      return analyzeChapter(chapter.title || `${t("chapter")} 1`, chapter.content || text.trim(), genre);
+    }
+  });
   const totalWords = chapters.reduce((sum, chapter) => sum + chapter.words, 0);
   const score = chapters.length
     ? Math.round(chapters.reduce((sum, chapter) => sum + chapter.score, 0) / chapters.length)
@@ -549,6 +561,33 @@ function signalText(signal: EditorialSignal): string {
 }
 
 function buildProjectFromAnalysis(analysis: ManuscriptAnalysis, genre: Genre, language: Language, subtitle = ""): BookProject {
+  const safeAnalysis = analysis.chapters.length
+    ? analysis
+    : {
+        ...analysis,
+        chapters: [{
+          title: `${t("chapter")} 1`,
+          content: "",
+          words: 0,
+          paragraphs: 0,
+          avgSentenceWords: 0,
+          longSentenceRatio: 0,
+          repetitionDensity: 0,
+          score: 50,
+          strengths: [],
+          issues: [],
+          advice: [{ key: "manuscript_advice_polish_micro" }],
+        }],
+      };
+
+  const project = buildProjectFromAnalysisRaw(safeAnalysis, genre, language, subtitle);
+  return normalizeImportedProject(project, {
+    title: safeAnalysis.title || titleFromFileName(safeAnalysis.sourceName),
+    language,
+  });
+}
+
+function buildProjectFromAnalysisRaw(analysis: ManuscriptAnalysis, genre: Genre, language: Language, subtitle = ""): BookProject {
   const now = new Date().toISOString();
   const category = categoryForGenre(genre);
   const avgChapterWords = analysis.chapters.length ? Math.round(analysis.words / analysis.chapters.length) : 0;
@@ -564,7 +603,7 @@ function buildProjectFromAnalysis(analysis: ManuscriptAnalysis, genre: Genre, la
     chapterLength: chapterLengthFromAverage(avgChapterWords),
     bookLength: bookLengthFromWords(analysis.words),
     customTotalWords: analysis.words,
-    numberOfChapters: analysis.chapters.length,
+    numberOfChapters: Math.max(1, analysis.chapters.length),
     subchaptersEnabled: false,
   };
 
@@ -580,7 +619,7 @@ function buildProjectFromAnalysis(analysis: ManuscriptAnalysis, genre: Genre, la
 
     return {
       title: chapter.title || `${t("chapter")} ${index + 1}`,
-      content: chapter.content,
+      content: chapter.content || "",
       subchapters: [],
       status: "completed",
       qualityRating: Math.max(1, Math.min(5, Number((chapter.score / 20).toFixed(1)))),
@@ -653,6 +692,7 @@ export function ManuscriptAnalyzerDialog({
   const [analyzingPhase, setAnalyzingPhase] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [importFailed, setImportFailed] = useState(false);
   const [requirementBlock, setRequirementBlock] = useState<RequirementId | null>(null);
 
   const wordCount = useMemo(() => countWords(rawText), [rawText]);
@@ -696,13 +736,21 @@ export function ManuscriptAnalyzerDialog({
 
     setRequirementBlock(null);
     setError("");
+    setImportFailed(false);
     setAnalyzing(true);
     setAnalyzingPhase("Evaluating emotional momentum…");
     try {
       setAnalyzingPhase("Comparing genre expectations…");
       const result = analyzeManuscript(nextText, nextTitle, nextSource, nextGenre);
+      if (!result.chapters.length) {
+        throw new Error("MANUSCRIPT_NO_CHAPTERS");
+      }
       setAnalyzingPhase("Estimating reader retention…");
       setAnalysis(result);
+    } catch {
+      setAnalysis(null);
+      setImportFailed(true);
+      setError("");
     } finally {
       setAnalyzing(false);
       setAnalyzingPhase("");
@@ -712,13 +760,15 @@ export function ManuscriptAnalyzerDialog({
   const handleFile = async (file: File) => {
     setReading(true);
     setError("");
+    setImportFailed(false);
     setRequirementBlock(null);
     try {
       if (file.size > MAX_MANUSCRIPT_FILE_BYTES) {
         throw new Error(tt("manuscript_file_too_large", { mb: 12 }));
       }
       const text = await readManuscriptFile(file, t("manuscript_unsupported_file"));
-      const detectedTitle = cleanTitle(file.name) || t("untitled");
+      persistImportDraft({ fileName: file.name, text: text.slice(0, 120_000) });
+      const detectedTitle = cleanTitle(file.name) || titleFromFileName(file.name) || t("untitled");
       const detectedLanguage = detectLanguage(text);
       const detectedGenre = detectEditorialGenre(text);
       setRawText(text);
@@ -730,7 +780,19 @@ export function ManuscriptAnalyzerDialog({
     } catch (err) {
       setAnalysis(null);
       const message = err instanceof Error ? err.message : "";
-      setError(message === t("manuscript_unsupported_file") ? message : t("manuscript_file_error"));
+      persistImportDraft({ fileName: file.name, error: message });
+      const isEpub =
+        /\.epub$/i.test(file.name) ||
+        file.type === "application/epub+zip" ||
+        message === "EPUB_EMPTY" ||
+        message === "EPUB_PARSE_FAILED";
+      if (isEpub || message === "MANUSCRIPT_NO_CHAPTERS") {
+        setImportFailed(true);
+        setError("");
+      } else {
+        setImportFailed(false);
+        setError(message === t("manuscript_unsupported_file") ? message : t("manuscript_file_error"));
+      }
     } finally {
       setReading(false);
     }
@@ -745,6 +807,7 @@ export function ManuscriptAnalyzerDialog({
     }
 
     setSaving(true);
+    setImportFailed(false);
     try {
       const project = buildProjectFromAnalysis(analysis, genre, bookLanguage, subtitle);
       await saveProjectAsync(project);
@@ -757,7 +820,9 @@ export function ManuscriptAnalyzerDialog({
       onClose();
       navigate("/app");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("manuscript_project_create_error"));
+      console.error("[ManuscriptAnalyzer] project create failed", err);
+      setImportFailed(true);
+      toast.error(t("manuscript_project_create_error"));
     } finally {
       setSaving(false);
     }
@@ -770,6 +835,8 @@ export function ManuscriptAnalyzerDialog({
     setSubtitle("");
     setAnalysis(null);
     setError("");
+    setImportFailed(false);
+    setRequirementBlock(null);
   };
 
   if (embedded && !open) return null;
@@ -935,7 +1002,25 @@ export function ManuscriptAnalyzerDialog({
               </div>
             )}
 
-            {error && !requirementBlock && (
+            {importFailed && !requirementBlock && (
+              <div className="mt-3">
+                <ScriptoraPremiumState
+                  variant="import-error"
+                  compact
+                  onPrimary={() => {
+                    setImportFailed(false);
+                    onClose();
+                    navigate("/dashboard");
+                  }}
+                  onSecondary={() => {
+                    setImportFailed(false);
+                    window.location.reload();
+                  }}
+                />
+              </div>
+            )}
+
+            {error && !requirementBlock && !importFailed && (
               <div className="mt-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                 <span>{error}</span>

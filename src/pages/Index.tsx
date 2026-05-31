@@ -31,7 +31,6 @@ import { isProjectComplete } from "@/lib/project-status";
 import { setProjectCoverDataUrl } from "@/lib/cover-session";
 import { useRequirementGate } from "@/hooks/useRequirementGate";
 import {
-  buildRequirement,
   firstIncompleteChapterIndex,
   summarizeEpubValidationErrors,
   getExportAuthorGap,
@@ -42,7 +41,7 @@ import {
   parseOpenQuery,
   stripOpenQuery,
 } from "@/lib/scriptora-requirement-actions";
-import { MissingRequirementCard } from "@/components/MissingRequirementCard";
+import { ScriptoraPremiumState } from "@/components/ScriptoraPremiumState";
 
 const NewBookDialog = lazy(() => import("@/components/NewBookDialog").then((m) => ({ default: m.NewBookDialog })));
 const CoverGenerator = lazy(() => import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })));
@@ -768,7 +767,7 @@ const Index = () => {
   }
 
   return (
-    <div className={`scriptora-ios-screen scriptora-immersive-editor scriptora-os-editor relative flex h-safe-screen min-h-[100dvh] max-w-full overflow-x-hidden overflow-hidden pb-safe${focusMode ? " scriptora-focus-active" : ""}${isMobileLayout && effectiveProject ? " scriptora-mobile-writer" : ""}`}>
+    <div className={`scriptora-workspace-shell scriptora-ios-screen scriptora-immersive-editor scriptora-os-editor relative flex h-safe-screen min-h-[100dvh] max-w-full overflow-x-hidden overflow-hidden pb-safe${focusMode ? " scriptora-focus-active" : ""}${isMobileLayout && effectiveProject ? " scriptora-mobile-writer" : ""}`}>
       {effectiveProject && isMobileLayout && (
         <MobileWriterHeader
           project={effectiveProject}
@@ -1035,15 +1034,16 @@ const Index = () => {
               )}
             </>
           ) : (
-            <div className="flex flex-1 items-center justify-center px-4 py-6">
-              <div className="ios-panel w-full max-w-md space-y-4 p-4 sm:p-6">
-                <MissingRequirementCard
-                  payload={buildRequirement("missing_project")}
-                  onPrimary={openNewBookGuarded}
-                  onSecondary={() => navigate("/dashboard")}
-                />
-                {projects.length > 0 && (
-                  <div className="ios-glass-soft rounded-lg p-3 text-left">
+            <div className="scriptora-workspace-main flex flex-1 flex-col">
+              <ScriptoraPremiumState
+                variant="empty-book"
+                fullPage
+                onPrimary={openNewBookGuarded}
+                onSecondary={() => navigate("/dashboard")}
+              />
+              {projects.length > 0 && (
+                <div className="relative z-10 mx-auto -mt-6 w-full max-w-md px-4 pb-8">
+                  <div className="rounded-xl border border-white/10 bg-black/30 p-3 text-left backdrop-blur-md">
                     <p className="mb-2 text-[11px] font-semibold uppercase text-muted-foreground">
                       {t("recent_projects")}
                     </p>
@@ -1060,8 +1060,8 @@ const Index = () => {
                       ))}
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
         </div>
