@@ -570,7 +570,7 @@ export function CoverGenerator({
     ctx.font = `600 ${clamp(Math.round(rect.w * 0.014), 10, 18)}px Arial, sans-serif`;
     ctx.textAlign = "center";
     ctx.fillText("ISBN / BARCODE", barcodeX + barcodeW / 2, barcodeY + barcodeH / 2 - 8);
-    ctx.fillText("placeholder", barcodeX + barcodeW / 2, barcodeY + barcodeH / 2 + 12);
+    ctx.fillText("978-0000000000", barcodeX + barcodeW / 2, barcodeY + barcodeH / 2 + 12);
   }
 
   function drawSpine(ctx: CanvasRenderingContext2D, rect: Rect, coverTemplate: CoverTemplate) {

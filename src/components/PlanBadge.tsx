@@ -5,7 +5,6 @@ import { useState } from "react";
 import { Crown, Zap, Sparkles, FlaskConical, LogOut, Loader2 } from "lucide-react";
 import { usePlan, useBooksThisMonth, PLAN_LIMITS, setPlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
-import { showPremiumActivationNotice } from "@/lib/billing/premiumActivation";
 import { t } from "@/lib/i18n";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
@@ -23,6 +22,15 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
   const [exiting, setExiting] = useState(false);
 
   const tier = plan;
+
+  const tierLabel =
+    tier === "beta"
+      ? t("editorial_preview_label")
+      : tier === "premium"
+        ? "Premium"
+        : tier === "pro"
+          ? "Pro"
+          : "Free";
 
   const styles =
     tier === "premium"
@@ -93,7 +101,7 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
     >
       <Icon className="h-3 w-3" />
       <div className="flex flex-col items-start leading-tight">
-        <span>{tier}</span>
+        <span>{tierLabel}</span>
         <span className="text-[8px] font-normal opacity-80 normal-case tracking-normal">{hint}</span>
       </div>
     </button>
@@ -113,7 +121,7 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
               </div>
             </div>
             <div className="text-[11px] text-muted-foreground leading-snug">
-              Stai usando il piano <strong>Beta</strong>. Puoi tornare al piano Free in qualsiasi momento — i tuoi libri restano salvati.
+              Stai usando l&apos;{t("editorial_preview_label").toLowerCase()}. Puoi tornare al piano Free in qualsiasi momento — i tuoi libri restano salvati.
             </div>
             <button
               onClick={handleExitBeta}
@@ -121,7 +129,7 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
               className="w-full h-8 rounded-md border border-border bg-muted/40 text-foreground text-[11px] font-medium hover:bg-muted/60 transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
             >
               {exiting ? <Loader2 className="h-3 w-3 animate-spin" /> : <LogOut className="h-3 w-3" />}
-              {exiting ? "Uscita in corso…" : "Esci dalla Beta"}
+              {exiting ? "Uscita in corso…" : "Torna al piano Free"}
             </button>
             <button
               onClick={() => { setPopoverOpen(false); setShowUpgrade(true); }}
