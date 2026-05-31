@@ -1011,22 +1011,11 @@ export function ManuscriptAnalyzerDialog({
                 <ScriptoraPremiumState
                   variant="import-error"
                   compact
-                  payload={{
-                    ...buildRequirement("unexpected_error"),
-                    title: t("manuscript_import_error"),
-                    why: t("manuscript_file_error"),
-                    actionHint: t("manuscript_import_retry"),
-                    primaryAction: {
-                      ...buildRequirement("unexpected_error").primaryAction,
-                      label: t("req_back_dashboard"),
-                    },
-                    secondaryAction: {
-                      labelKey: "manuscript_import_retry",
-                      label: t("manuscript_import_retry"),
-                      type: "intent",
-                      intent: "stay_here",
-                    },
-                  }}
+                  title={t("manuscript_import_error")}
+                  description={t("manuscript_file_error")}
+                  nextStep={t("manuscript_import_retry")}
+                  primaryActionLabel={t("req_back_dashboard")}
+                  secondaryActionLabel={t("manuscript_import_retry")}
                   onPrimary={() => {
                     setImportFailed(false);
                     onClose();

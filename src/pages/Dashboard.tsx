@@ -738,7 +738,11 @@ export default function Home() {
   ];
 
   return (
-    <div className="scriptora-workspace-shell scriptora-feature-page scriptora-os-ecosystem relative">
+    <div
+      className={`scriptora-workspace-shell scriptora-feature-page scriptora-os-ecosystem relative${
+        workspaceSnapshot.state === "empty" && !activeWorkspaceTool ? " scriptora-postload-backdrop" : ""
+      }`}
+    >
       <header className="scriptora-dashboard-header sticky top-0 z-[100] isolate shrink-0 border-b border-white/10 bg-background/[0.88] backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-1.5 px-3 sm:gap-3 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-1 sm:gap-1.5">

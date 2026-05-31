@@ -30,7 +30,7 @@ export class AppErrorBoundary extends Component<Props, State> {
       const isDev = import.meta.env.DEV;
 
       return (
-        <div className="scriptora-workspace-shell w-full bg-background text-foreground">
+        <>
           <ScriptoraPremiumState
             variant="generic-error"
             fullPage
@@ -46,22 +46,22 @@ export class AppErrorBoundary extends Component<Props, State> {
           />
 
           {isDev && (this.state.message || this.state.stack) && (
-            <div className="relative z-10 mx-auto mb-6 max-w-lg rounded-xl border border-border bg-card/80 p-3 px-4">
+            <div className="fixed bottom-4 left-4 right-4 z-[200] mx-auto max-w-lg rounded-xl border border-white/10 bg-black/70 p-3 backdrop-blur-md">
               <button
                 type="button"
                 onClick={() => this.setState(s => ({ showDevDetails: !s.showDevDetails }))}
-                className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                className="text-xs font-medium text-white/60 hover:text-white"
               >
                 {t("error_boundary_dev_details")}
               </button>
               {this.state.showDevDetails && (
-                <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap text-[11px] text-muted-foreground">
+                <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap text-[11px] text-white/55">
                   {[this.state.message, this.state.stack].filter(Boolean).join("\n\n")}
                 </pre>
               )}
             </div>
           )}
-        </div>
+        </>
       );
     }
     return this.props.children;

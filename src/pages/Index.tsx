@@ -944,9 +944,11 @@ const Index = () => {
         }`}
       >
         <div className={`flex min-h-0 min-w-0 flex-1 overflow-hidden overflow-x-hidden ${
-          isMobileLayout && effectiveProject
-            ? "bg-slate-950"
-            : "rounded-lg border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/20 layout-desktop:bg-slate-950/45 layout-desktop:backdrop-blur-xl"
+          !effectiveProject
+            ? "rounded-none border-0 bg-transparent shadow-none"
+            : isMobileLayout && effectiveProject
+              ? "bg-slate-950"
+              : "rounded-lg border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/20 layout-desktop:bg-slate-950/45 layout-desktop:backdrop-blur-xl"
         }`}>
           {effectiveProject ? (
             <>
@@ -1034,34 +1036,35 @@ const Index = () => {
               )}
             </>
           ) : (
-            <div className="scriptora-workspace-main flex flex-1 flex-col">
+            <div className="scriptora-premium-main-host flex flex-1 flex-col">
               <ScriptoraPremiumState
                 variant="empty-book"
                 fullPage
+                inPanel
                 onPrimary={openNewBookGuarded}
                 onSecondary={() => navigate("/dashboard")}
-              />
-              {projects.length > 0 && (
-                <div className="relative z-10 mx-auto -mt-6 w-full max-w-md px-4 pb-8">
-                  <div className="rounded-xl border border-white/10 bg-black/30 p-3 text-left backdrop-blur-md">
-                    <p className="mb-2 text-[11px] font-semibold uppercase text-muted-foreground">
+              >
+                {projects.length > 0 && (
+                  <div className="rounded-xl border border-white/10 bg-black/25 p-3 backdrop-blur-md">
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/55">
                       {t("recent_projects")}
                     </p>
                     <div className="space-y-1.5">
                       {projects.slice(0, 3).map((p) => (
                         <button
                           key={p.id}
+                          type="button"
                           onClick={() => handleSelectProject(p.id)}
-                          className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-white/[0.07]"
+                          className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-white/90 transition-colors hover:bg-white/[0.07]"
                         >
                           <span className="truncate">{p.config.title || t("untitled")}</span>
-                          <span className="text-[11px] text-muted-foreground">{t("open_action")}</span>
+                          <span className="text-[11px] text-white/45">{t("open_action")}</span>
                         </button>
                       ))}
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </ScriptoraPremiumState>
             </div>
           )}
         </div>
