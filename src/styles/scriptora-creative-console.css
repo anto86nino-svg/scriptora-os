@@ -546,20 +546,26 @@
 
 .scriptora-workspace-os[data-genre-theme="romance"] {
   --console-glow: 330 70% 55% / 0.2;
+  --wos-emboss-light: 38 42% 82% / 0.09;
+  --wos-texture-grain: 38 35% 88% / 0.018;
 }
 
 .scriptora-workspace-os[data-genre-theme="thriller"] {
   --console-bg-2: 228 30% 7%;
   --console-glow: 220 20% 30% / 0.35;
+  --wos-emboss-light: 220 18% 72% / 0.06;
+  --wos-texture-grain: 220 12% 55% / 0.014;
 }
 
 .scriptora-workspace-os[data-genre-theme="fantasy"] {
   --console-glow: 280 80% 60% / 0.22;
+  --wos-emboss-light: 280 45% 88% / 0.08;
 }
 
 .scriptora-workspace-os[data-genre-theme="selfhelp"] {
   --console-bg-1: 210 30% 16%;
   --console-accent: 200 80% 55%;
+  --wos-emboss-light: 200 30% 96% / 0.08;
 }
 
 .scriptora-workspace-os-inner {
@@ -584,6 +590,125 @@
   .scriptora-workspace-hero {
     grid-template-columns: 1fr minmax(180px, 38%);
     gap: 1.5rem;
+  }
+}
+
+/* Writer luxury embossed texture — book stage behind active mockup (CSS-only) */
+.scriptora-workspace-os {
+  --wos-emboss-light: 0 0% 100% / 0.085;
+  --wos-emboss-shadow: 0 0% 0% / 0.26;
+  --wos-texture-line: var(--console-accent);
+  --wos-texture-grain: 0 0% 100% / 0.016;
+}
+
+.scriptora-workspace-os .scriptora-book-mockup-wrap {
+  position: relative;
+  isolation: isolate;
+}
+
+.scriptora-workspace-os .scriptora-book-mockup-wrap::before,
+.scriptora-workspace-os .scriptora-book-mockup-wrap::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border-radius: 0.875rem;
+}
+
+/* Base stage: paper grain, editorial grid, debossed relief */
+.scriptora-workspace-os .scriptora-book-mockup-wrap::before {
+  z-index: 0;
+  inset: -0.15rem -0.85rem -0.1rem;
+  background-color: hsl(var(--console-bg-2) / 0.42);
+  background-image:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0,
+      transparent 10px,
+      hsl(var(--wos-texture-line) / 0.04) 10px,
+      hsl(var(--wos-texture-line) / 0.018) 11px,
+      transparent 11px,
+      transparent 27px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 37px,
+      hsl(var(--wos-texture-grain)) 37px,
+      transparent 38px
+    ),
+    repeating-linear-gradient(
+      45deg,
+      hsl(var(--wos-texture-grain)) 0 0.5px,
+      transparent 0.5px 4px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      hsl(0 0% 100% / 0.01) 0 0.5px,
+      transparent 0.5px 5px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 2px,
+      hsl(var(--wos-texture-grain)) 2px 3px,
+      transparent 3px 6px
+    ),
+    repeating-radial-gradient(
+      circle at 50% 44%,
+      transparent 0 21px,
+      hsl(var(--wos-emboss-light)) 21px 21.5px,
+      transparent 21.5px 42px,
+      hsl(0 0% 100% / 0.016) 42px 42.5px,
+      transparent 42.5px 63px
+    ),
+    linear-gradient(
+      90deg,
+      transparent 0 17%,
+      hsl(var(--wos-emboss-shadow)) 17% 17.6%,
+      hsl(var(--wos-emboss-light)) 17.6% 18.4%,
+      transparent 18.4% 100%
+    ),
+    radial-gradient(ellipse 78% 70% at 50% 46%, hsl(var(--console-accent) / 0.1), transparent 70%),
+    radial-gradient(ellipse 95% 75% at 50% 108%, hsl(var(--wos-emboss-shadow)), transparent 58%),
+    radial-gradient(ellipse 85% 42% at 50% -8%, hsl(var(--wos-emboss-light)), transparent 62%),
+    linear-gradient(168deg, hsl(var(--console-bg-1) / 0.82) 0%, hsl(var(--console-bg-2) / 0.92) 100%);
+  box-shadow:
+    inset 0 1px 0 hsl(var(--wos-emboss-light)),
+    inset 0 -2px 10px hsl(var(--wos-emboss-shadow)),
+    inset 3px 0 14px hsl(var(--wos-emboss-shadow)),
+    inset -3px 0 14px hsl(var(--wos-emboss-shadow));
+  border: 1px solid hsl(0 0% 100% / 0.05);
+}
+
+/* Literary filigree layer: soft arcs, corner flourishes, blind-deboss rings */
+.scriptora-workspace-os .scriptora-book-mockup-wrap::after {
+  z-index: 0;
+  inset: -0.15rem -0.85rem -0.1rem;
+  opacity: 0.82;
+  background:
+    radial-gradient(ellipse 52% 38% at 10% 14%, hsl(var(--console-accent) / 0.065), transparent 68%),
+    radial-gradient(ellipse 48% 36% at 90% 84%, hsl(var(--console-accent) / 0.055), transparent 66%),
+    radial-gradient(ellipse 32% 24% at 86% 16%, hsl(var(--wos-emboss-light)), transparent 72%),
+    radial-gradient(ellipse 28% 20% at 14% 86%, hsl(var(--wos-emboss-light)), transparent 70%),
+    repeating-radial-gradient(
+      ellipse 115% 88% at 50% 50%,
+      transparent 0 23px,
+      hsl(0 0% 100% / 0.015) 23px 23.5px,
+      transparent 23.5px 46px
+    );
+  -webkit-mask-image: radial-gradient(ellipse 90% 86% at 50% 50%, #000 22%, transparent 90%);
+  mask-image: radial-gradient(ellipse 90% 86% at 50% 50%, #000 22%, transparent 90%);
+  mix-blend-mode: soft-light;
+}
+
+.scriptora-workspace-os .scriptora-book-mockup {
+  position: relative;
+  z-index: 1;
+}
+
+@media (min-width: 768px) {
+  .scriptora-workspace-os .scriptora-book-mockup-wrap::before,
+  .scriptora-workspace-os .scriptora-book-mockup-wrap::after {
+    inset: -0.25rem -0.65rem -0.15rem -0.35rem;
   }
 }
 
@@ -807,6 +932,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .scriptora-workspace-os-bg,
+  .scriptora-workspace-os .scriptora-book-mockup-wrap::before,
+  .scriptora-workspace-os .scriptora-book-mockup-wrap::after,
   .scriptora-wos-progress__fill,
   .scriptora-wos-cta-primary,
   .scriptora-wos-quick-btn {
