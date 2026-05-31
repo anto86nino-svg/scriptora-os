@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { t, tt } from "@/lib/i18n";
 import type { NarrativeWorkspaceSnapshot, WorkspaceState } from "@/lib/immersive/workspace-state";
+import type { WorkspaceToolId } from "@/lib/immersive/workspace-tool-mode";
 import {
   resolveEditorialHint,
   resolveSmartNextStep,
@@ -22,6 +23,7 @@ import {
 } from "@/lib/immersive/workspace-os-intelligence";
 import type { NarrativeWorkspaceActions } from "./NarrativeWorkspace";
 import { ActiveBookMockup } from "./ActiveBookMockup";
+import { WorkspaceToolHero } from "./WorkspaceToolHero";
 
 function stateLabelKey(state: WorkspaceState): string {
   switch (state) {
@@ -56,14 +58,21 @@ function formatRelativeSession(iso: string | null): string {
 interface ScriptoraWorkspaceOSProps {
   snapshot: NarrativeWorkspaceSnapshot;
   actions: NarrativeWorkspaceActions;
+  activeTool?: WorkspaceToolId | null;
   className?: string;
 }
 
-export function ScriptoraWorkspaceOS({ snapshot, actions, className = "" }: ScriptoraWorkspaceOSProps) {
+export function ScriptoraWorkspaceOS({
+  snapshot,
+  actions,
+  activeTool = null,
+  className = "",
+}: ScriptoraWorkspaceOSProps) {
   const subtitle = resolveWorkspaceSubtitle(snapshot);
   const nextStep = resolveSmartNextStep(snapshot);
   const intelHint = resolveEditorialHint(snapshot.editorialScore);
   const theme = workspaceStateTheme(snapshot.state);
+  const isToolMode = activeTool != null;
 
   const primaryLabel =
     snapshot.state === "complete" ? t("nw_export_book") : t("nw_continue_writing");
@@ -111,32 +120,39 @@ export function ScriptoraWorkspaceOS({ snapshot, actions, className = "" }: Scri
       className={`scriptora-workspace-os border border-white/10 ${className}`}
       data-workspace-theme={theme}
       data-genre-theme={snapshot.genreTheme}
+      data-mode={isToolMode ? "tool" : "writing"}
       aria-label={snapshot.title || t("nw_active_book")}
     >
       <div className="scriptora-workspace-os-bg" aria-hidden />
 
       <div className="scriptora-workspace-os-inner">
-        {/* TOP HERO */}
-        <div className="scriptora-workspace-hero">
-          <div className="scriptora-workspace-hero__copy min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="scriptora-workspace-state">{t(stateLabelKey(snapshot.state))}</span>
-              {snapshot.authorPenName && (
-                <span className="scriptora-workspace-pen">{snapshot.authorPenName}</span>
-              )}
-              {snapshot.lastSessionIso && (
-                <span className="text-[10px] text-white/38">
-                  {t("os_last_session")}: {formatRelativeSession(snapshot.lastSessionIso)}
-                </span>
-              )}
-            </div>
-            <h1 className="scriptora-workspace-title">{snapshot.title || t("untitled")}</h1>
-            {snapshot.genre && (
-              <p className="text-xs capitalize text-white/45">{snapshot.genre}</p>
-            )}
-            <p className="scriptora-workspace-subtitle">{tt(subtitle.key, subtitle.vars)}</p>
-          </div>
-          <ActiveBookMockup snapshot={snapshot} />
+        {/* TOP HERO — writing mode: large book; tool mode: mini book + tool visual */}
+        <div className={`scriptora-workspace-hero${isToolMode ? " scriptora-workspace-hero--tool" : ""}`}>
+          {isToolMode ? (
+            <WorkspaceToolHero snapshot={snapshot} tool={activeTool} />
+          ) : (
+            <>
+              <div className="scriptora-workspace-hero__copy min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="scriptora-workspace-state">{t(stateLabelKey(snapshot.state))}</span>
+                  {snapshot.authorPenName && (
+                    <span className="scriptora-workspace-pen">{snapshot.authorPenName}</span>
+                  )}
+                  {snapshot.lastSessionIso && (
+                    <span className="text-[10px] text-white/38">
+                      {t("os_last_session")}: {formatRelativeSession(snapshot.lastSessionIso)}
+                    </span>
+                  )}
+                </div>
+                <h1 className="scriptora-workspace-title">{snapshot.title || t("untitled")}</h1>
+                {snapshot.genre && (
+                  <p className="text-xs capitalize text-white/45">{snapshot.genre}</p>
+                )}
+                <p className="scriptora-workspace-subtitle">{tt(subtitle.key, subtitle.vars)}</p>
+              </div>
+              <ActiveBookMockup snapshot={snapshot} />
+            </>
+          )}
         </div>
 
         {/* MODULES */}

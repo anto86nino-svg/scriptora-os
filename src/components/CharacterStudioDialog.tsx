@@ -893,7 +893,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
 
   return (
     <div className="scriptora-modal-overlay">
-      <div className="scriptora-modal-panel max-w-4xl">
+      <div className="scriptora-modal-panel max-w-4xl flex max-h-[min(94dvh,920px)] flex-col">
         <div className="flex shrink-0 items-center justify-between border-b border-border bg-card p-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-pink-500/15 text-pink-400 flex items-center justify-center">
@@ -914,7 +914,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
           </div>
         </div>
 
-        <div className="scriptora-modal-body space-y-5 p-5">
+        <div className="scriptora-modal-body min-h-0 flex-1 overflow-y-auto space-y-5 p-5">
           <CharacterStudioGuidedFlow
             open={open}
             onFocusIdea={() => {
@@ -1126,6 +1126,31 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
               <p>
                 {t("character_studio_footer_tip")}
               </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="scriptora-modal-actions shrink-0 border-t border-border/70 bg-card/95 p-4 pb-safe backdrop-blur">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-muted-foreground">{t("character_studio_footer_tip")}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={generate}
+                disabled={!canGenerate || loading}
+                className="scriptora-modal-cta-primary h-11 flex-1 px-4 text-sm font-semibold sm:flex-none"
+              >
+                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+                {t("character_studio_generate_characters")}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={saveAndLink}
+                disabled={loading || !characterBible.trim()}
+                className="scriptora-modal-cta-secondary h-11 flex-1 px-4 text-sm font-semibold sm:flex-none"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {t("character_studio_save_link")}
+              </Button>
             </div>
           </div>
         </div>

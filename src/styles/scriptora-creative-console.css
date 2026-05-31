@@ -940,3 +940,216 @@
     transition: none !important;
   }
 }
+
+/* ── Workspace tool mode: mini book + tool visual ── */
+
+.scriptora-book-mockup-wrap--mini {
+  justify-content: flex-start;
+  width: min(5.25rem, 24vw);
+  padding: 0;
+}
+
+.scriptora-book-mockup-wrap--mini .scriptora-book-mockup {
+  width: 100%;
+  transform: rotateY(-14deg) rotateX(8deg);
+}
+
+.scriptora-book-mockup-wrap--mini .scriptora-book-mockup__title {
+  font-size: 0.5625rem;
+  line-height: 1.2;
+}
+
+.scriptora-book-mockup-wrap--mini .scriptora-book-mockup__brand,
+.scriptora-book-mockup-wrap--mini .scriptora-book-mockup__genre,
+.scriptora-book-mockup-wrap--mini .scriptora-book-mockup__author {
+  font-size: 0.4375rem;
+}
+
+.scriptora-workspace-os[data-mode="tool"] .scriptora-book-mockup-wrap::before,
+.scriptora-workspace-os[data-mode="tool"] .scriptora-book-mockup-wrap::after {
+  inset: -0.08rem -0.3rem;
+  opacity: 0.6;
+}
+
+.scriptora-workspace-hero--tool {
+  grid-template-columns: 1fr !important;
+}
+
+.scriptora-wos-tool-hero {
+  display: grid;
+  grid-template-columns: minmax(4.25rem, 24%) 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.scriptora-wos-tool-hero__book {
+  min-width: 0;
+}
+
+.scriptora-wos-tool-hero__stage {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  min-width: 0;
+  gap: 0.125rem;
+}
+
+.scriptora-wos-tool-hero__kicker {
+  margin: 0;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: hsl(var(--console-accent) / 0.85);
+}
+
+.scriptora-wos-tool-hero__label {
+  margin: 0 0 0.375rem;
+  font-size: clamp(0.8125rem, 2.8vw, 0.9375rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: hsl(0 0% 100% / 0.92);
+}
+
+.scriptora-wos-tool-visual {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+}
+
+.scriptora-wos-tool-visual__svg {
+  width: min(100%, 5.25rem);
+  height: auto;
+  filter: drop-shadow(0 10px 18px hsl(0 0% 0% / 0.38));
+}
+
+@media (min-width: 640px) {
+  .scriptora-wos-tool-visual__svg {
+    width: min(100%, 6.25rem);
+  }
+}
+
+.scriptora-wos-tool-visual__wave {
+  animation: wos-wave-pulse 2.4s ease-in-out infinite;
+}
+
+.scriptora-wos-tool-visual__wave--delay {
+  animation-delay: 0.6s;
+}
+
+.scriptora-wos-tool-visual__radar {
+  animation: wos-radar-spin 6s linear infinite;
+  transform-origin: 60px 56px;
+}
+
+.scriptora-wos-tool-visual__radar-arm {
+  animation: wos-radar-spin 3s linear infinite;
+  transform-origin: 60px 56px;
+}
+
+.scriptora-wos-tool-visual__scan {
+  animation: wos-scan-sweep 2.8s ease-in-out infinite;
+}
+
+@keyframes wos-wave-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes wos-radar-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes wos-scan-sweep {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(-6px);
+  }
+  50% {
+    opacity: 0.95;
+    transform: translateY(6px);
+  }
+}
+
+/* Sticky hero + modal split when a lateral tool is open */
+body.scriptora-wos-tool-mode {
+  --wos-dashboard-header-height: 3.25rem;
+  --wos-tool-hero-height: clamp(9.5rem, 26dvh, 12.5rem);
+  --wos-tool-stack-height: calc(var(--wos-dashboard-header-height) + var(--wos-tool-hero-height));
+}
+
+body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] {
+  position: fixed;
+  top: var(--wos-dashboard-header-height);
+  left: 0;
+  right: 0;
+  z-index: 115;
+  max-width: 48rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+  border-radius: 0 0 1rem 1rem;
+  box-shadow: 0 14px 36px hsl(0 0% 0% / 0.42);
+}
+
+body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] .scriptora-workspace-os-inner {
+  padding-block: 0.875rem;
+}
+
+body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] .scriptora-workspace-modules {
+  display: none;
+}
+
+body.scriptora-wos-tool-mode .scriptora-modal-overlay {
+  top: var(--wos-tool-stack-height);
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: auto;
+  align-items: flex-end;
+  justify-content: center;
+  padding-top: 0;
+  padding-bottom: max(env(safe-area-inset-bottom), 12px);
+  background-color: hsl(0 0% 0% / 0.8);
+}
+
+body.scriptora-wos-tool-mode .scriptora-modal-panel {
+  max-height: calc(100dvh - var(--wos-tool-stack-height) - env(safe-area-inset-bottom) - 12px);
+  border-radius: 1rem 1rem 0 0;
+}
+
+@media (min-width: 640px) {
+  body.scriptora-wos-tool-mode .scriptora-modal-overlay {
+    align-items: center;
+    padding: 0.75rem;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-modal-panel {
+    border-radius: 1rem;
+    max-height: calc(100dvh - var(--wos-tool-stack-height) - 1.5rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scriptora-wos-tool-visual__wave,
+  .scriptora-wos-tool-visual__radar,
+  .scriptora-wos-tool-visual__radar-arm,
+  .scriptora-wos-tool-visual__scan {
+    animation: none !important;
+  }
+}

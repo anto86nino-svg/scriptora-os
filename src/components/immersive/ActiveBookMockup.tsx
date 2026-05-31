@@ -4,28 +4,38 @@ import { resolveActiveBookBadges, workspaceStateTheme } from "@/lib/immersive/wo
 
 interface ActiveBookMockupProps {
   snapshot: NarrativeWorkspaceSnapshot;
+  size?: "hero" | "mini";
 }
 
-export function ActiveBookMockup({ snapshot }: ActiveBookMockupProps) {
+export function ActiveBookMockup({ snapshot, size = "hero" }: ActiveBookMockupProps) {
   const badges = resolveActiveBookBadges(snapshot);
   const theme = workspaceStateTheme(snapshot.state);
+  const isMini = size === "mini";
 
   return (
-    <div className="scriptora-book-mockup-wrap" aria-hidden>
+    <div
+      className={`scriptora-book-mockup-wrap${isMini ? " scriptora-book-mockup-wrap--mini" : ""}`}
+      aria-hidden
+    >
       <div
         className="scriptora-book-mockup scriptora-book-mockup--active"
         data-mock-theme={theme}
         data-genre-theme={snapshot.genreTheme}
+        data-mock-size={size}
       >
-        <span className="scriptora-book-mockup__badge scriptora-book-mockup__badge--tl">
-          {t(badges[0])}
-        </span>
-        <span className="scriptora-book-mockup__badge scriptora-book-mockup__badge--tr">
-          {t(badges[1])}
-        </span>
-        <span className="scriptora-book-mockup__badge scriptora-book-mockup__badge--br">
-          {t(badges[2])}
-        </span>
+        {!isMini && (
+          <>
+            <span className="scriptora-book-mockup__badge scriptora-book-mockup__badge--tl">
+              {t(badges[0])}
+            </span>
+            <span className="scriptora-book-mockup__badge scriptora-book-mockup__badge--tr">
+              {t(badges[1])}
+            </span>
+            <span className="scriptora-book-mockup__badge scriptora-book-mockup__badge--br">
+              {t(badges[2])}
+            </span>
+          </>
+        )}
         <div className="scriptora-book-mockup__stack">
           <div className="scriptora-book-mockup__spine" />
           <div className="scriptora-book-mockup__cover">

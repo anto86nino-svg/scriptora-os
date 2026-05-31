@@ -43,6 +43,8 @@ import { GoogleLogoMark } from "@/components/GoogleLogoMark";
 import { NarrativeWorkspace } from "@/components/immersive/NarrativeWorkspace";
 import { ScriptoraToolbox, type ToolboxCard } from "@/components/immersive/ScriptoraToolbox";
 import { buildNarrativeWorkspaceSnapshot, resolveFocusProject } from "@/lib/immersive/workspace-state";
+import { deriveActiveWorkspaceTool } from "@/lib/immersive/workspace-tool-mode";
+import { setProjectCoverDataUrl } from "@/lib/cover-session";
 import { getAuthProfile } from "@/lib/auth-profile";
 import {
   DropdownMenu,
@@ -425,6 +427,40 @@ export default function Home() {
     () => buildNarrativeWorkspaceSnapshot(projects.length, focusProject, activeAuthor?.penName),
     [projects.length, focusProject, activeAuthor?.penName],
   );
+
+  const activeWorkspaceTool = useMemo(
+    () =>
+      deriveActiveWorkspaceTool({
+        showCoverStudio,
+        showVoiceStudio,
+        showExport,
+        showManuscriptAnalyzer,
+        showCharacterStudio,
+        showAuthorIdentity,
+        showTitleIntel,
+      }),
+    [
+      showCoverStudio,
+      showVoiceStudio,
+      showExport,
+      showManuscriptAnalyzer,
+      showCharacterStudio,
+      showAuthorIdentity,
+      showTitleIntel,
+    ],
+  );
+
+  useEffect(() => {
+    const inToolMode = activeWorkspaceTool != null && workspaceSnapshot.state !== "empty";
+    if (inToolMode) {
+      document.body.classList.add("scriptora-wos-tool-mode");
+    } else {
+      document.body.classList.remove("scriptora-wos-tool-mode");
+    }
+    return () => {
+      document.body.classList.remove("scriptora-wos-tool-mode");
+    };
+  }, [activeWorkspaceTool, workspaceSnapshot.state]);
 
   const deleteHomeProject = async (projectId: string, title?: string) => {
     const name = title || t("this_project");
@@ -909,6 +945,7 @@ export default function Home() {
       <main id="dashboard-projects" className="scriptora-feature-scroll relative mx-auto w-full max-w-3xl px-4 pb-8 pt-4 sm:px-6 sm:pt-8 lg:px-8">
         <NarrativeWorkspace
           snapshot={workspaceSnapshot}
+          activeTool={activeWorkspaceTool}
           actions={{
             onContinueWriting: () => focusProject && goApp({ projectId: focusProject.id }),
             onGenerateChapter: () =>
@@ -1014,14 +1051,26 @@ export default function Home() {
       {showCoverStudio && (
         <Suspense fallback={null}>
           <CoverGenerator
-            title={t("untitled")}
-            subtitle=""
-            authorName={activeAuthor.penName}
-            description=""
-            authorBio={activeAuthor.biography}
-            projectGenre={lastProject?.config?.genre}
-            showPrimaryAction={false}
-            onGenerate={() => undefined}
+            title={focusProject?.config.title || t("untitled")}
+            subtitle={focusProject?.config.subtitle || ""}
+            authorName={
+              activeAuthor.penName ||
+              focusProject?.config.authorIdentity?.penName ||
+              focusProject?.config.authorName ||
+              focusProject?.config.author ||
+              ""
+            }
+            description={focusProject?.blueprint?.overview || focusProject?.config.subtitle || ""}
+            authorBio={activeAuthor.biography || focusProject?.config.authorIdentity?.biography || ""}
+            projectGenre={focusProject?.config?.genre}
+            primaryActionLabel={t("cover_confirm_save")}
+            onGenerate={(dataUrl) => {
+              if (focusProject?.id) {
+                setProjectCoverDataUrl(focusProject.id, dataUrl);
+              }
+              setShowCoverStudio(false);
+              toast.success(t("cover_saved_toast"));
+            }}
             onClose={() => setShowCoverStudio(false)}
           />
         </Suspense>

@@ -28,6 +28,7 @@ import { MobileWriterToolsSheet } from "@/components/mobile/MobileWriterToolsShe
 import { useQuota, usePlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { isProjectComplete } from "@/lib/project-status";
+import { setProjectCoverDataUrl } from "@/lib/cover-session";
 import { useRequirementGate } from "@/hooks/useRequirementGate";
 import {
   buildRequirement,
@@ -1102,7 +1103,11 @@ const Index = () => {
             authorBio={effectiveProject.frontMatter?.aboutAuthor || effectiveProject.config.authorIdentity?.biography}
             projectGenre={effectiveProject.config.genre}
             onGenerate={(dataUrl) => {
+              if (effectiveProject?.id) {
+                setProjectCoverDataUrl(effectiveProject.id, dataUrl);
+              }
               setCoverDataUrl(dataUrl);
+              toast.success(t("cover_saved_toast"));
               setShowCover(false);
               if (pendingExportFormat) {
                 const format = pendingExportFormat;

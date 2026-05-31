@@ -488,7 +488,15 @@ function BlueprintView({ project, blueprint, isGenerating, onUpdateField, onUpda
             <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-4">{t("chapter_outlines")}</p>
             <div className="space-y-3">
               {blueprint.chapterOutlines.map((o, i) => {
-                const summaryDisplay = resolveOutlineSummaryForDisplay(o.summary, project.chapters?.[i]?.content);
+                const summaryDisplay = resolveOutlineSummaryForDisplay(
+                  o.summary,
+                  project.chapters?.[i]?.content,
+                  {
+                    title: o.title || project.chapters?.[i]?.title,
+                    chapterIndex: i,
+                    totalChapters: project.config.numberOfChapters,
+                  },
+                );
                 return (
                 <div
                   key={`row-${i}`}

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { BookProject } from "@/types/book";
 import { X, FileDown, Loader2, BookOpen, FileText, FileType, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { generateEpub, validateEpubStructure } from "@/lib/epub";
@@ -29,6 +29,7 @@ import { useRequirementGate } from "@/hooks/useRequirementGate";
 import { buildRequirement, summarizeEpubValidationErrors, getExportAuthorGap, applyActiveAuthorIdentityToProject } from "@/lib/scriptora-requirement-gate";
 import { REQUIREMENT_ACTION_EVENTS } from "@/lib/scriptora-requirement-actions";
 import { MissingRequirementCard } from "@/components/MissingRequirementCard";
+import { loadProjectCoverMap, setProjectCoverDataUrl } from "@/lib/cover-session";
 
 type Format = "epub" | "docx" | "pdf" | "txt" | "md";
 
@@ -54,6 +55,11 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   const canExport = PLAN_LIMITS[plan].canExport;
   const { showRequirement, requirementDialog } = useRequirementGate();
   const pendingExportProjectRef = useRef<BookProject | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setCoverDataUrls(loadProjectCoverMap(projects.map((p) => p.id)));
+  }, [open, projects]);
 
   const exportableProjects = projects.filter(isProjectComplete);
   const selectedProject = projects.find(p => p.id === selectedId) || null;
@@ -443,7 +449,8 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           authorBio={selectedProject.frontMatter?.aboutAuthor || selectedProject.config.authorIdentity?.biography}
           projectGenre={selectedProject.config.genre}
           onGenerate={(dataUrl) => {
-            setCoverDataUrls(current => ({ ...current, [selectedProject.id]: dataUrl }));
+            setCoverDataUrls((current) => ({ ...current, [selectedProject.id]: dataUrl }));
+            setProjectCoverDataUrl(selectedProject.id, dataUrl);
             setShowCover(false);
             const target = pendingExportProjectRef.current ?? selectedProject;
             void performExport(target, dataUrl);

@@ -183,7 +183,11 @@ export function BookPreview({
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-primary uppercase tracking-wider">Chapters</h2>
           {blueprint.chapterOutlines.map((outline, i) => {
-            const summaryDisplay = resolveOutlineSummaryForDisplay(outline.summary, chapters[i]?.content);
+            const summaryDisplay = resolveOutlineSummaryForDisplay(outline.summary, chapters[i]?.content, {
+              title: outline.title || chapters[i]?.title,
+              chapterIndex: i,
+              totalChapters: config.numberOfChapters,
+            });
             return (
             <div key={`stable-${i}`} className="border border-border rounded-lg p-4 space-y-2">
               <div className="flex items-center justify-between">

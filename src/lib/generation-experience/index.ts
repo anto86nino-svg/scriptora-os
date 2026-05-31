@@ -1,5 +1,9 @@
 import type { ChunkPhase } from "@/lib/generation";
 import { t, tt } from "@/lib/i18n";
+import {
+  generateChapterEditorialPreview,
+  type ChapterEditorialPreviewInput,
+} from "@/lib/immersive/chapter-editorial-preview";
 
 export const GENERATION_EXPERIENCE_V2 = "scriptora-generation-experience-v2";
 
@@ -47,16 +51,19 @@ export function sanitizePlaceholderText(text: string | undefined | null): string
   return trimmed;
 }
 
-/** Blueprint summary for UI — never raw placeholders; fall back to manuscript preview when generated */
+/** Blueprint summary for UI — never raw placeholders; editorial note when generated */
 export function resolveOutlineSummaryForDisplay(
   outlineSummary: string | undefined | null,
   chapterContent?: string | null,
+  meta?: Omit<ChapterEditorialPreviewInput, "summary" | "content">,
 ): string {
-  const clean = sanitizePlaceholderText(outlineSummary);
-  if (clean) return clean;
-  const content = String(chapterContent || "").trim();
-  if (content.length > 50) return compactPreviewLine(content, 180);
-  return "";
+  return generateChapterEditorialPreview({
+    summary: outlineSummary,
+    content: chapterContent,
+    title: meta?.title,
+    chapterIndex: meta?.chapterIndex,
+    totalChapters: meta?.totalChapters,
+  });
 }
 
 export function compactPreviewLine(value: string, max = 220): string {

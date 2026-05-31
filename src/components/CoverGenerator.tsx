@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Download, ImagePlus, Settings2, Upload, Wand2, X, Layers } from "lucide-react";
+import { t } from "@/lib/i18n";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
 import {
   buildCoverDirectionSuggestions,
@@ -240,7 +241,7 @@ export function CoverGenerator({
   description,
   authorBio,
   projectGenre,
-  primaryActionLabel = "Usa per EPUB",
+  primaryActionLabel = t("cover_confirm_save"),
   showPrimaryAction = true,
   embedded = false,
   onGenerate,
@@ -701,7 +702,7 @@ export function CoverGenerator({
   }
 
   const panel = (
-    <div className={`scriptora-modal-panel max-w-6xl lg:max-w-[1500px] lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)] ${embedded ? "max-w-none rounded-none shadow-none lg:rounded-2xl" : ""}`}>
+    <div className={`scriptora-modal-panel flex max-h-[min(94dvh,960px)] flex-col max-w-6xl lg:max-w-[1500px] lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)] ${embedded ? "max-w-none rounded-none shadow-none lg:rounded-2xl" : ""}`}>
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 px-4 py-4 sm:px-5 lg:px-7 lg:py-5">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary">
@@ -722,7 +723,7 @@ export function CoverGenerator({
           )}
         </div>
 
-        <div className="scriptora-modal-body grid grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)_360px] xl:overflow-hidden">
+        <div className="scriptora-modal-body min-h-0 flex-1 overflow-y-auto grid grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)_360px] xl:overflow-hidden">
           <div className="relative order-1 xl:order-none xl:col-start-2 xl:row-start-1 p-4 sm:p-6 lg:p-6 xl:p-8 bg-black/20 xl:bg-gradient-to-br xl:from-black/45 xl:via-background/80 xl:to-primary/10 flex flex-col items-center justify-center gap-4 xl:min-h-[calc(94vh-96px)] xl:overflow-hidden">
             <div className="w-full flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:absolute lg:left-8 lg:right-8 lg:top-6 lg:w-auto lg:rounded-2xl lg:border lg:border-white/10 lg:bg-background/35 lg:px-4 lg:py-3 lg:backdrop-blur-xl">
               <span>{spec.label}</span>
@@ -1136,22 +1137,24 @@ export function CoverGenerator({
 
             </section>
 
-            <div className={`-mx-4 sm:-mx-5 lg:mx-0 -mb-4 sm:-mb-5 lg:mb-0 grid gap-2 lg:gap-3 border-t lg:border border-border/70 bg-background/90 lg:bg-card/75 p-4 backdrop-blur-xl sm:p-5 lg:rounded-2xl lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)] ${showPrimaryAction ? "grid-cols-2" : "grid-cols-1"}`}>
-              <div className="hidden lg:block col-span-full">
+            <div className={`hidden lg:grid -mx-4 sm:-mx-5 lg:mx-0 -mb-4 sm:-mb-5 lg:mb-0 gap-2 lg:gap-3 border-t lg:border border-border/70 bg-background/90 lg:bg-card/75 p-4 backdrop-blur-xl sm:p-5 lg:rounded-2xl lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)] ${showPrimaryAction ? "grid-cols-2" : "grid-cols-1"}`}>
+              <div className="col-span-full">
                 <p className="text-sm font-semibold text-foreground">EXPORT</p>
-                <p className="mt-1 text-xs text-muted-foreground">Scarica, salva o applica la cover al progetto corrente.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{t("cover_studio_actions_hint")}</p>
               </div>
               <button
+                type="button"
                 onClick={handleDownload}
-                className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-3 lg:py-3.5 text-sm font-semibold text-foreground hover:bg-surface/80 transition-colors"
+                className="scriptora-modal-cta-secondary min-h-11 px-3 py-3 text-sm"
               >
                 <Download className="h-4 w-4" />
-                Scarica PNG
+                {t("cover_download_png")}
               </button>
               {showPrimaryAction && (
                 <button
+                  type="button"
                   onClick={handleUseForEpub}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-3 lg:py-3.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+                  className="scriptora-modal-cta-primary min-h-11 px-3 py-3 text-sm"
                 >
                   <ImagePlus className="h-4 w-4" />
                   {primaryActionLabel}
@@ -1170,6 +1173,34 @@ export function CoverGenerator({
             />
           </div>
         </div>
+
+        {!embedded && (
+          <div className="scriptora-cover-studio-actions shrink-0 border-t border-border/70 bg-background/95 px-3 py-3 pb-safe backdrop-blur-xl sm:px-4 lg:hidden">
+            <p className="mb-2 text-[11px] leading-relaxed text-muted-foreground">
+              {t("cover_studio_actions_hint")}
+            </p>
+            <div className={`grid gap-2 ${showPrimaryAction ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"}`}>
+              {showPrimaryAction && (
+                <button
+                  type="button"
+                  onClick={handleUseForEpub}
+                  className="scriptora-modal-cta-primary min-h-11 w-full px-4 py-3 text-sm"
+                >
+                  <ImagePlus className="h-4 w-4 shrink-0" />
+                  {primaryActionLabel}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleDownload}
+                className="scriptora-modal-cta-secondary min-h-11 w-full px-4 py-3 text-sm"
+              >
+                <Download className="h-4 w-4 shrink-0" />
+                {t("cover_download_png")}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
   );
 
