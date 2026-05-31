@@ -1,4 +1,6 @@
 import { Component, ReactNode } from "react";
+import { t } from "@/lib/i18n";
+import { captureException } from "@/lib/monitoring";
 
 interface Props { children: ReactNode }
 interface State { hasError: boolean; message?: string }
@@ -12,7 +14,7 @@ export class MollyErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: unknown) {
-    console.error("[Molly] crashed:", error, info);
+    captureException(error, { area: "react", extra: { boundary: "MollyErrorBoundary", info } });
   }
 
   render() {
@@ -20,9 +22,9 @@ export class MollyErrorBoundary extends Component<Props, State> {
       return (
         <div className="flex flex-col items-center justify-center h-full p-6 text-center bg-background">
           <div className="text-4xl mb-3">🐾</div>
-          <h2 className="text-base font-semibold text-foreground mb-1">Molly failed to load</h2>
+          <h2 className="text-base font-semibold text-foreground mb-1">{t("molly_load_fallback_title")}</h2>
           <p className="text-xs text-muted-foreground max-w-xs">
-            Something tripped her up. Try refreshing the page.
+            {t("molly_load_fallback_body")}
           </p>
           {this.state.message && (
             <pre className="mt-3 text-[10px] text-muted-foreground/60 max-w-xs overflow-hidden">

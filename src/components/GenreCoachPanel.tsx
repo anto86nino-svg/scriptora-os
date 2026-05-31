@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getGenreProfile, resolveGenreKey } from "@/lib/genre-intelligence";
 import { Loader2, Stethoscope, CheckCircle2, AlertTriangle, Wrench, X, Sparkles, Zap } from "lucide-react";
 import { toast } from "sonner";
+import { toastPremiumError } from "@/lib/premium-notices";
 import { cn } from "@/lib/utils";
 import { useDomination } from "@/contexts/DominationContext";
 import type { BookProject } from "@/types/book";
@@ -54,7 +55,7 @@ export function GenreCoachPanel({
 
   const runCoach = async () => {
     if (!chapterText || chapterText.length < 100) {
-      toast.error("Capitolo troppo corto per l'analisi");
+      toast.error(t("genre_coach_chapter_short"));
       return;
     }
     setLoading(true);
@@ -83,7 +84,7 @@ export function GenreCoachPanel({
       setReport(data as CoachReport);
       setOpen(true);
     } catch (e: any) {
-      toast.error(e?.message || "Analisi fallita");
+      toastPremiumError(e?.message, "genre_coach_unavailable");
     } finally {
       setLoading(false);
     }

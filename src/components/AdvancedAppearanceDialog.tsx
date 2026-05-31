@@ -26,6 +26,7 @@ import {
 } from "@/lib/atmosphere-engine";
 import { loadBackgroundSource } from "@/lib/atmosphere-engine/background-source";
 import { getUILanguage, setUILanguage, t, tt, UI_LANGUAGES, useUILanguage, type UILanguage } from "@/lib/i18n";
+import { useScriptoraModalScrollLock } from "@/lib/viewport-safe";
 
 interface Props {
   open: boolean;
@@ -75,6 +76,7 @@ async function compressImageToDataUrl(file: File): Promise<string> {
 
 export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: Props) {
   useUILanguage();
+  useScriptoraModalScrollLock(open);
   const { profileId } = useAtmosphereProfile();
   const { source: liveBackgroundSource } = useBackgroundSource();
 

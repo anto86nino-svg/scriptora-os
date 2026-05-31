@@ -171,7 +171,7 @@ function evaluateHumanSignals(text: string) {
   };
 }
 
-describe("Live Narrative Intelligence benchmark", () => {
+describe.skipIf(process.env.LIVE_NARRATIVE_BENCHMARK !== "1")("Live Narrative Intelligence benchmark", () => {
   it(
     "generates real multi-genre benchmark samples with telemetry",
     async () => {

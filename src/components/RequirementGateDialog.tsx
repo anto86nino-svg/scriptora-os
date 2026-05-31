@@ -2,6 +2,7 @@ import { X } from "lucide-react";
 import type { RequirementGatePayload } from "@/lib/scriptora-requirement-gate";
 import { MissingRequirementCard } from "@/components/MissingRequirementCard";
 import { t } from "@/lib/i18n";
+import { useScriptoraModalScrollLock } from "@/lib/viewport-safe";
 
 interface RequirementGateDialogProps {
   open: boolean;
@@ -18,6 +19,7 @@ export function RequirementGateDialog({
   onPrimary,
   onSecondary,
 }: RequirementGateDialogProps) {
+  useScriptoraModalScrollLock(open && Boolean(payload));
   if (!open || !payload) return null;
 
   return (

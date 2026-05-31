@@ -13,6 +13,8 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { t } from "@/lib/i18n";
+import { useScriptoraModalScrollLock } from "@/lib/viewport-safe";
 import {
   countNoteWords,
   createScriptoraNote,
@@ -65,6 +67,7 @@ function downloadTextFile(filename: string, content: string): void {
 }
 
 export function NotepadDialog({ open, ownerId, onClose }: NotepadDialogProps) {
+  useScriptoraModalScrollLock(open);
   const [notes, setNotes] = useState<ScriptoraNote[]>([]);
   const [activeId, setActiveId] = useState<string>("");
   const [query, setQuery] = useState("");
@@ -154,7 +157,7 @@ export function NotepadDialog({ open, ownerId, onClose }: NotepadDialogProps) {
       await navigator.clipboard.writeText(text);
       toast.success("Appunto copiato.");
     } catch {
-      toast.error("Copia non riuscita.");
+      toast.error(t("copy_failed"));
     }
   };
 

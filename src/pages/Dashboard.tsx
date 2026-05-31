@@ -46,6 +46,7 @@ import { ScriptoraToolbox, type ToolboxCard } from "@/components/immersive/Scrip
 import { buildNarrativeWorkspaceSnapshot, resolveFocusProject } from "@/lib/immersive/workspace-state";
 import { buildGatewaySnapshot } from "@/lib/immersive/gateway-state";
 import { deriveActiveWorkspaceTool } from "@/lib/immersive/workspace-tool-mode";
+import { ensureFirstVisitGuidedFlow, shouldShowBetaOnboarding } from "@/lib/first-visit-onboarding";
 import { setProjectCoverDataUrl } from "@/lib/cover-session";
 import { getAuthProfile } from "@/lib/auth-profile";
 import {
@@ -166,6 +167,7 @@ export default function Home() {
   const [showToolbox, setShowToolbox] = useState(false);
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [projectsReady, setProjectsReady] = useState(false);
+  const [betaOnboardingVisible, setBetaOnboardingVisible] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const currentLang = useUILanguage();
   const isMobileLayout = useIsMobile();
@@ -288,6 +290,12 @@ export default function Home() {
     window.addEventListener("nexora-dev-mode-change", onDevChange);
     return () => window.removeEventListener("nexora-dev-mode-change", onDevChange);
   }, []);
+
+  useEffect(() => {
+    if (!projectsReady) return;
+    ensureFirstVisitGuidedFlow();
+    setBetaOnboardingVisible(shouldShowBetaOnboarding(projects.length));
+  }, [projectsReady, projects.length]);
 
   useEffect(() => {
     const refreshAuthors = () => {
@@ -1003,6 +1011,8 @@ export default function Home() {
           gateway={gatewaySnapshot}
           activeTool={activeWorkspaceTool}
           onGenreSelect={openNewBookWithGenre}
+          showBetaOnboarding={betaOnboardingVisible}
+          onDismissBetaOnboarding={() => setBetaOnboardingVisible(false)}
           actions={{
             onContinueWriting: () => {
               if (!focusProject) return;
@@ -1097,27 +1107,27 @@ export default function Home() {
         </Suspense>
       )}
       {showExport && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LazyPanelFallback />}>
           <HomeExportDialog open={showExport} projects={projects} onClose={() => setShowExport(false)} />
         </Suspense>
       )}
       {showTitleIntel && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LazyPanelFallback />}>
           <TitleIntelligenceDialog open={showTitleIntel} onClose={() => setShowTitleIntel(false)} />
         </Suspense>
       )}
       {showAdvancedSettings && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LazyPanelFallback />}>
           <AdvancedAppearanceDialog open={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} />
         </Suspense>
       )}
       {showCharacterStudio && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LazyPanelFallback />}>
           <CharacterStudioDialog open={showCharacterStudio} onClose={() => setShowCharacterStudio(false)} />
         </Suspense>
       )}
       {showCoverStudio && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LazyPanelFallback />}>
           <CoverGenerator
             title={focusProject?.config.title || t("untitled")}
             subtitle={focusProject?.config.subtitle || ""}
@@ -1144,7 +1154,7 @@ export default function Home() {
         </Suspense>
       )}
       {showManuscriptAnalyzer && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LazyPanelFallback />}>
           <ManuscriptAnalyzerDialog
             open={showManuscriptAnalyzer}
             onClose={() => setShowManuscriptAnalyzer(false)}
@@ -1154,16 +1164,16 @@ export default function Home() {
         </Suspense>
       )}
       {showNotepad && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LazyPanelFallback />}>
           <NotepadDialog open={showNotepad} onClose={() => setShowNotepad(false)} />
         </Suspense>
       )}
       {showAuthorIdentity && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LazyPanelFallback />}>
           <AuthorIdentityDialog open={showAuthorIdentity} onClose={() => setShowAuthorIdentity(false)} />
         </Suspense>
       )}
-      <Suspense fallback={null}>
+      <Suspense fallback={<LazyPanelFallback />}>
         <VoiceStudioDialog
           open={showVoiceStudio}
           onClose={() => setShowVoiceStudio(false)}

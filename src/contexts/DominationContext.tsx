@@ -7,8 +7,9 @@ import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEng
 import { buildSurgicalEditDirectiveBlock } from "@/lib/chapter-doctor-pro";
 import { validateSurgicalPatchOutput } from "@/lib/surgical-edit-engine";
 import { getCurrentUserId } from "@/services/storageService";
-import { getScriptoraLanguage } from "@/lib/i18n";
+import { getScriptoraLanguage, t } from "@/lib/i18n";
 import { toast } from "sonner";
+import { toastPremiumError } from "@/lib/premium-notices";
 
 export type JobKind = "dominate" | "patch";
 
@@ -48,7 +49,7 @@ export function DominationProvider({ children }: { children: ReactNode }) {
   const startDominate = useCallback(async (project: BookProject, chapterIndex: number, opts?: { genreAutoFixBlock?: string }) => {
     const chapter = project.chapters[chapterIndex];
     if (!chapter?.content) {
-      toast.error("Chapter is empty");
+      toast.error(t("domination_chapter_empty"));
       return;
     }
     const id = `dominate::${project.id}::${chapterIndex}`;
@@ -176,14 +177,14 @@ export function DominationProvider({ children }: { children: ReactNode }) {
         finishedAt: Date.now(),
         error: e.message || "Domination failed",
       });
-      toast.error(`❌ "${chapter.title}": ${e.message || "failed"}`);
+      toastPremiumError(e?.message, "domination_unavailable");
     }
   }, [jobs]);
 
   const startPatch = useCallback(async (project: BookProject, chapterIndex: number) => {
     const chapter = project.chapters[chapterIndex];
     if (!chapter?.content) {
-      toast.error("Chapter is empty");
+      toast.error(t("domination_chapter_empty"));
       return;
     }
     const id = `patch::${project.id}::${chapterIndex}`;
@@ -259,7 +260,7 @@ export function DominationProvider({ children }: { children: ReactNode }) {
         finishedAt: Date.now(),
         error: e.message || "Patch failed",
       });
-      toast.error(`❌ "${chapter.title}": ${e.message || "failed"}`);
+      toastPremiumError(e?.message, "domination_unavailable");
     }
   }, [jobs]);
 

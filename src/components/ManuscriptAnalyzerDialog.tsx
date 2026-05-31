@@ -37,6 +37,7 @@ import {
 import { MissingRequirementCard } from "@/components/MissingRequirementCard";
 import { ScriptoraPremiumState } from "@/components/ScriptoraPremiumState";
 import { buildRequirement, type RequirementId } from "@/lib/scriptora-requirement-gate";
+import { useScriptoraModalScrollLock } from "@/lib/viewport-safe";
 
 interface ManuscriptAnalyzerDialogProps {
   open: boolean;
@@ -678,6 +679,7 @@ export function ManuscriptAnalyzerDialog({
   embedded = false,
 }: ManuscriptAnalyzerDialogProps) {
   useUILanguage();
+  useScriptoraModalScrollLock(open && !embedded);
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [rawText, setRawText] = useState("");
@@ -1275,7 +1277,7 @@ export function ManuscriptAnalyzerDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="scriptora-mobile-work-panel flex max-h-[min(92dvh,92vh)] w-[calc(100vw-1.5rem)] max-w-6xl flex-col overflow-hidden border-border bg-card p-0 shadow-2xl backdrop-blur-2xl">
+      <DialogContent className="scriptora-radix-dialog-content scriptora-manuscript-dialog scriptora-mobile-work-panel flex w-[calc(100vw-1.5rem)] max-w-6xl flex-col overflow-hidden border-border bg-card p-0 shadow-2xl backdrop-blur-2xl">
         {headerBlock}
         {panelBody}
       </DialogContent>

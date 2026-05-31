@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { getDeviceId } from "@/lib/device-fingerprint";
 import { getCurrentUserId } from "@/services/storageService";
 import { toast } from "sonner";
+import { useScriptoraModalScrollLock } from "@/lib/viewport-safe";
+import { t } from "@/lib/i18n";
 
 interface Props {
   open: boolean;
@@ -16,6 +18,7 @@ interface Props {
 }
 
 export function BetaActivationDialog({ open, onOpenChange, onActivated }: Props) {
+  useScriptoraModalScrollLock(open);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -37,7 +40,7 @@ export function BetaActivationDialog({ open, onOpenChange, onActivated }: Props)
         },
       });
       if (error) throw new Error(error.message);
-      if (!data?.ok) throw new Error(data?.error || "Activation failed");
+      if (!data?.ok) throw new Error(data?.error || t("beta_activation_failed"));
 
       toast.success("Anteprima editoriale attivata");
       window.dispatchEvent(new Event("nexora-plan-change"));
@@ -45,7 +48,7 @@ export function BetaActivationDialog({ open, onOpenChange, onActivated }: Props)
       onOpenChange(false);
       onActivated?.();
     } catch (e: any) {
-      setErr(e?.message || "Invalid code");
+      setErr(t("beta_activation_invalid"));
     } finally {
       setLoading(false);
     }

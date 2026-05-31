@@ -62,8 +62,8 @@ const copy: Record<UILanguage, GuideCopy> = {
     routes: {
       dashboard: {
         title: "Scriptora OS Launchpad",
-        subtitle: "Six operating systems — Launch, Writer, Editorial, Market, Publish, System — one intelligent workspace.",
-        steps: ["Set author identity and app language in System OS.", "Launch a book: Quick Launch, Advanced Launch, or Manual Setup.", "Write in Writer OS; improve with Editorial OS; position with Market OS.", "Publish with Cover & Export Studio — Install App is separate from manuscript export."],
+        subtitle: "One workspace for writing, editing, and publishing — start with your first book.",
+        steps: ["Tap Create my first book — pick a genre or describe your idea.", "Open Writer OS and generate your first chapter.", "Explore Diagnostics and Voice Studio when you're ready — upgrade only when you want more."],
       },
       writer: {
         title: "Writer OS · Studio",
@@ -135,8 +135,8 @@ const copy: Record<UILanguage, GuideCopy> = {
     routes: {
       dashboard: {
         title: "Launchpad Scriptora OS",
-        subtitle: "Sei sistemi operativi — Launch, Writer, Editorial, Market, Publish, System — un workspace intelligente.",
-        steps: ["Imposta identità autore e lingua app in System OS.", "Lancia un libro: Launch rapido, Launch avanzato o Setup manuale.", "Scrivi in Writer OS; migliora con Editorial OS; posiziona con Market OS.", "Pubblica con Cover & Export Studio — Installa app è separato dall'export manoscritto."],
+        subtitle: "Un workspace per scrivere, editare e pubblicare — inizia dal primo libro.",
+        steps: ["Tocca Crea il mio primo libro — scegli un genere o descrivi l'idea.", "Apri Writer OS e genera il primo capitolo.", "Esplora Diagnostics e Voice Studio quando vuoi — upgrade solo se ti serve di più."],
       },
       writer: {
         title: "Writer OS · Studio",

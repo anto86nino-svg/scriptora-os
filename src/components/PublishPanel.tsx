@@ -5,6 +5,7 @@ import {
   BookOpen, Save, Edit3, Clock, Download, Rocket, Check, FilePlus
 } from "lucide-react";
 import { toast } from "sonner";
+import { toastPremiumError } from "@/lib/premium-notices";
 import { usePlan } from "@/lib/plan";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { useRequirementGate } from "@/hooks/useRequirementGate";
@@ -275,7 +276,7 @@ export function PublishPanel({
       if (onSaveProject) await onSaveProject();
       toast.success("💾 Progetto salvato! Pronto per esportazione.");
     } catch (e: any) {
-      toast.error(`Errore salvataggio: ${e.message}`);
+      toastPremiumError(e?.message, "scriptora_error_generic");
     } finally {
       setIsSaving(false);
     }
@@ -289,7 +290,7 @@ export function PublishPanel({
       toast.success("✅ Libro completo! Apri l'anteprima per modificare.");
       setShowPreview(true);
     } catch (e: any) {
-      toast.error(`Generazione interrotta: ${e.message}`);
+      toastPremiumError(e?.message, "toast_gen_failed");
     }
   };
 

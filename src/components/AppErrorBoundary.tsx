@@ -2,6 +2,7 @@ import { Component, ReactNode } from "react";
 import { t } from "@/lib/i18n";
 import { buildRequirement } from "@/lib/scriptora-requirement-gate";
 import { ScriptoraPremiumState } from "@/components/ScriptoraPremiumState";
+import { captureException } from "@/lib/monitoring";
 
 interface Props { children: ReactNode }
 interface State { hasError: boolean; message?: string; stack?: string; showDevDetails: boolean }
@@ -17,7 +18,7 @@ export class AppErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: unknown) {
-    console.error("[AppErrorBoundary]", error, info);
+    captureException(error, { area: "react", extra: { boundary: "AppErrorBoundary", info } });
   }
 
   reset = () => {

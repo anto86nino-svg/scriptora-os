@@ -1,0 +1,61 @@
+/**
+ * Sprint A6 — production QA hardening (keyboard, modals, diagnostics).
+ */
+
+/* Keep focused inputs visible when mobile keyboard opens */
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-modal-body,
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-work-panel__body,
+  html:not(.scriptora-layout-desktop) [data-radix-dialog-content] {
+    scroll-padding-bottom: max(6rem, env(safe-area-inset-bottom));
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-modal-body:focus-within,
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-work-panel__body:focus-within {
+    scroll-padding-bottom: max(8rem, calc(env(safe-area-inset-bottom) + 4rem));
+  }
+}
+
+/* Radix paywall / diagnostics — consistent mobile height */
+.scriptora-radix-dialog-content.scriptora-upgrade-dialog,
+.scriptora-radix-dialog-content.scriptora-manuscript-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: min(
+    calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px),
+    92dvh
+  );
+}
+
+.scriptora-upgrade-dialog-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Fix chapter comparison — mobile sheet stability */
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-surgical-edit-shell {
+    max-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-surgical-edit-shell .scriptora-modal-body,
+  html:not(.scriptora-layout-desktop) .scriptora-surgical-edit-shell [data-scriptora-scroll-body] {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Prevent layout flash on lazy-loaded studio chunks */
+.scriptora-studio-suspense-fallback {
+  display: flex;
+  min-height: 120px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  border: 1px dashed hsl(var(--border) / 0.5);
+  background: hsl(var(--muted) / 0.12);
+  color: hsl(var(--muted-foreground));
+  font-size: 0.8125rem;
+}

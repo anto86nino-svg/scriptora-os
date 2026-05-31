@@ -1,7 +1,7 @@
 // Reusable upgrade modal triggered when free users hit a paywall (export, dominate, word limit).
 // Uses commercial plan copy — legacy PlanTier gates unchanged (pro / premium).
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Lock, Check, Crown, Zap } from "lucide-react";
 import { PlanTier } from "@/lib/plan";
@@ -9,6 +9,8 @@ import { COMMERCIAL_PLANS } from "@/lib/billing/commercialPlans";
 import { redirectToStripeCheckout } from "@/lib/billing/stripeCheckout";
 import { showPremiumActivationNotice } from "@/lib/billing/premiumActivation";
 import { t } from "@/lib/i18n";
+import { useScriptoraModalScrollLock } from "@/lib/viewport-safe";
+import { trackPaywallOpened } from "@/lib/analytics";
 
 interface UpgradeModalProps {
   open: boolean;
@@ -45,9 +47,14 @@ function formatCommercialPrice(priceEur: number | null): string {
 }
 
 export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "free" }: UpgradeModalProps) {
+  useScriptoraModalScrollLock(open);
   const copy = REASON_COPY[reason];
   const recommendStudio = reason === "dominate";
   const [checkoutBusy, setCheckoutBusy] = useState(false);
+
+  useEffect(() => {
+    if (open) trackPaywallOpened(reason);
+  }, [open, reason]);
 
   const handlePick = async (planKey: "pro" | "studio") => {
     setCheckoutBusy(true);
@@ -66,8 +73,8 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden bg-background border-border">
-        <div className="bg-gradient-to-br from-primary/15 via-background to-background p-6 border-b border-border">
+      <DialogContent className="scriptora-radix-dialog-content scriptora-upgrade-dialog max-w-2xl overflow-hidden border-border bg-background p-0">
+        <div className="bg-gradient-to-br from-primary/15 via-background to-background p-6 border-b border-border shrink-0">
           <DialogHeader>
             <div className="mx-auto h-12 w-12 rounded-full bg-primary/15 flex items-center justify-center mb-3">
               <Lock className="h-6 w-6 text-primary" />
@@ -77,7 +84,7 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
           </DialogHeader>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="scriptora-upgrade-dialog-body p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <PlanCard
               name={t(PRO_OFFER.nameKey)}
@@ -107,9 +114,8 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
             />
           </div>
 
-          <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-center space-y-1">
-            <p className="text-xs font-semibold text-foreground">{t("upgrade_checkout_pending_title")}</p>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">{t("upgrade_checkout_pending_body")}</p>
+          <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-center">
+            <p className="text-[11px] text-muted-foreground leading-relaxed">{t("upgrade_value_trust")}</p>
           </div>
 
           <p className="text-[11px] text-muted-foreground text-center">

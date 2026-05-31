@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { MollySprite } from "@/components/molly/MollySprite";
 import { useMolly } from "@/molly/MollyProvider";
 import { getCurrentUserId } from "@/services/storageService";
-import { getScriptoraLanguage } from "@/lib/i18n";
+import { getScriptoraLanguage, t } from "@/lib/i18n";
 
 interface LiveCoachTabProps {
   project: BookProject;
@@ -93,11 +93,11 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
       });
       if (error) throw error;
       if (data?.error === "rate_limited") {
-        toast.error("Coach: troppi messaggi, aspetta un attimo");
+        toast.error(t("coach_rate_limit"));
         return;
       }
       if (data?.error === "credits_exhausted") {
-        toast.error("Coach: crediti AI esauriti");
+        toast.error(t("coach_credits_exhausted"));
         return;
       }
       if (data?.message) {
@@ -199,11 +199,11 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
       });
       if (error) throw error;
       if (data?.error === "rate_limited") {
-        toast.error("Coach: troppi messaggi");
+        toast.error(t("coach_rate_limit"));
         return;
       }
       if (data?.error === "credits_exhausted") {
-        toast.error("Coach: crediti esauriti");
+        toast.error(t("coach_credits_exhausted"));
         return;
       }
       setBubbles((prev) => [
@@ -212,7 +212,7 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
       ]);
     } catch (e) {
       console.error("chat error", e);
-      toast.error("Coach offline al momento");
+      toast.error(t("coach_offline"));
     } finally {
       setChatLoading(false);
     }

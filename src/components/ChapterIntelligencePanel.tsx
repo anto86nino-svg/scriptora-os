@@ -382,7 +382,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
       setResult(data as AnalysisResult);
     } catch (e: any) {
       console.error("Analysis failed:", e);
-      toast.error(e.message || "Analisi fallita");
+      toastPremiumError(e.message);
     } finally {
       setAnalyzing(false);
     }

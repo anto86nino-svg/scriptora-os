@@ -10,6 +10,7 @@ import { CoverGenerator } from "@/components/CoverGenerator";
 import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { isProjectComplete } from "@/lib/project-status";
 import { t, tt, useUILanguage } from "@/lib/i18n";
+import { captureException } from "@/lib/monitoring";
 import {
   analyzeExportPreflight,
   generateMarkdownExport,
@@ -145,7 +146,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
         onClose();
       }
     } catch (e) {
-      console.error("Export failed:", e);
+      captureException(e, { area: "export", extra: { format } });
       showRequirement("export_failed");
     } finally {
       setIsExporting(false);

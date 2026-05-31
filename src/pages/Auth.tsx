@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { t, tt, useUILanguage } from "@/lib/i18n";
+import { trackEvent } from "@/lib/analytics";
 import {
   AUTH_DEBUG_PREFIX,
   getStorageDebugState,
@@ -278,6 +279,7 @@ export default function AuthPage() {
       toast.error(t("password_min_error"));
       return;
     }
+    trackEvent("signup_started", { method: "email" });
     setBusy(true);
     const redirectUrl = getAuthRedirectUrl();
     const { error } = await supabase.auth.signUp({
@@ -298,11 +300,13 @@ export default function AuthPage() {
       }
       return;
     }
+    trackEvent("signup_completed", { method: "email" });
     toast.success(t("account_created_check_email"));
   };
 
   const handleGoogle = async () => {
     setBusy(true);
+    trackEvent("signup_started", { method: "google" });
     logAuthDebug("signInWithOAuth start", { redirectTo: getAuthRedirectUrl() });
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, ChevronDown, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { toastPremiumError } from "@/lib/premium-notices";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { InputPanel } from "@/components/AutoBestseller/InputPanel";
 import { ArchitectFlow } from "@/components/AutoBestseller/ArchitectFlow";
@@ -218,7 +219,7 @@ export default function AutoBestsellerPage() {
       sessionStorage.setItem("nexora-open-project", project.id);
       setTimeout(() => navigate("/app"), 300);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to save project");
+      toastPremiumError(e instanceof Error ? e.message : undefined, "scriptora_error_generic");
     } finally {
       setSavingProject(false);
     }
@@ -281,7 +282,7 @@ export default function AutoBestsellerPage() {
       setShowLeaveDialog(false);
       navigate("/dashboard");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Salvataggio fallito");
+      toastPremiumError(e instanceof Error ? e.message : undefined, "scriptora_error_generic");
     } finally {
       setSavingDraft(false);
     }

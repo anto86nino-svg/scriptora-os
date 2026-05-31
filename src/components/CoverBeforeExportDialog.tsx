@@ -1,5 +1,6 @@
 import { Download, ImagePlus, X } from "lucide-react";
 import { t, tt, useUILanguage } from "@/lib/i18n";
+import { useScriptoraModalScrollLock } from "@/lib/viewport-safe";
 
 type ExportFormat = "EPUB" | "PDF" | "DOCX";
 
@@ -19,6 +20,7 @@ export function CoverBeforeExportDialog({
   onClose,
 }: CoverBeforeExportDialogProps) {
   useUILanguage();
+  useScriptoraModalScrollLock(open);
   if (!open) return null;
 
   return (

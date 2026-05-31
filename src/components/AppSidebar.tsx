@@ -1,5 +1,6 @@
 import { BookOpen, Plus, FolderOpen, Trash2 } from "lucide-react";
 import { BookProject } from "@/types/book";
+import { t } from "@/lib/i18n";
 
 interface AppSidebarProps {
   projects: BookProject[];
@@ -35,7 +36,7 @@ export function AppSidebar({ projects, activeProjectId, onNewBook, onSelectProje
           Projects
         </div>
         {projects.length === 0 && (
-          <p className="px-3 py-2 text-xs text-muted-foreground">No projects yet</p>
+          <p className="px-3 py-2 text-xs text-muted-foreground">{t("no_projects_yet")}</p>
         )}
         {projects.map(p => (
           <div

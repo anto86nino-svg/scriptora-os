@@ -13,12 +13,16 @@ import {
 } from "./gateway/GatewayIntelligenceRail";
 import { GatewayQuickActionGrid } from "./gateway/GatewayQuickActionGrid";
 import { ScriptoraCreditsCard } from "@/components/billing/ScriptoraCreditsCard";
+import { BetaOnboardingStrip } from "@/components/BetaOnboardingStrip";
+import { shouldShowBetaOnboarding } from "@/lib/first-visit-onboarding";
 
 interface ScriptoraGatewayOSProps {
   gateway: GatewaySnapshot;
   actions: NarrativeWorkspaceActions;
   activeTool?: WorkspaceToolId | null;
   onGenreSelect: (genre: GatewayGenreId) => void;
+  showBetaOnboarding?: boolean;
+  onDismissBetaOnboarding?: () => void;
   className?: string;
 }
 
@@ -27,6 +31,8 @@ export function ScriptoraGatewayOS({
   actions,
   activeTool = null,
   onGenreSelect,
+  showBetaOnboarding = false,
+  onDismissBetaOnboarding,
   className = "",
 }: ScriptoraGatewayOSProps) {
   const { workspace } = gateway;
@@ -59,6 +65,13 @@ export function ScriptoraGatewayOS({
       data-gateway-state={isEmpty ? "empty" : workspace.state}
     >
       <GatewayHeroCard gateway={gateway} />
+
+      {isEmpty && showBetaOnboarding && (
+        <BetaOnboardingStrip
+          onStartBook={actions.onCreateBook}
+          onDismiss={onDismissBetaOnboarding}
+        />
+      )}
 
       <ScriptoraCreditsCard className="mb-4" />
 

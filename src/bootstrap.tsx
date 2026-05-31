@@ -7,6 +7,7 @@ import { ensureStorageHydrated } from "./lib/smart-boot";
 import { getSupabaseClient, isSupabaseConfigured } from "./integrations/supabase/client";
 import { warnSupabaseEnvInDev } from "./lib/env-validation";
 import { probeSupabaseCapabilities } from "./lib/supabase-cloud-capabilities";
+import { initMonitoring } from "./lib/monitoring";
 
 // One-time migration: rename legacy "scriptora-*" storage keys to "nexora-*"
 (() => {
@@ -50,6 +51,7 @@ try {
 }
 
 warnSupabaseEnvInDev();
+initMonitoring();
 
 createRoot(document.getElementById("root")!).render(<App />);
 

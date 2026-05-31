@@ -17,6 +17,7 @@ import {
   type MarketAnalysis, type TitleVariants, type KDPPackaging, type SuccessPrediction,
 } from "@/lib/kdp/money-engine";
 import { useFeatureGate } from "@/components/PaywallGuard";
+import { trackMarketToolOpened } from "@/lib/analytics";
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
 import { MarketDataStatusBadge } from "@/components/market-intelligence/MarketDataStatusBadge";
 import { MarketConfidenceBadge } from "@/components/market-intelligence/MarketConfidenceBadge";
@@ -101,6 +102,10 @@ export default function KdpLaunchPage() {
   const [prediction, setPrediction] = useState<SuccessPrediction | null>(null);
   const [chosenTitle, setChosenTitle] = useState<string>("");
   const [chosenSubtitle, setChosenSubtitle] = useState<string>("");
+
+  useEffect(() => {
+    trackMarketToolOpened("kdp_launch");
+  }, []);
 
   const marketPremium = useMemo(() => {
     const content = [idea, market?.recommendedAngle, market?.subNiche].filter(Boolean).join("\n\n");

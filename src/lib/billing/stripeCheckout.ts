@@ -1,5 +1,7 @@
 import { invokeSupabaseFunction } from "@/lib/supabase-function-auth";
 import type { ScriptoraPlan } from "@/lib/billing/creditPolicy";
+import { captureException } from "@/lib/monitoring";
+import { trackEvent } from "@/lib/analytics";
 
 export type StripeCheckoutType = "subscription" | "credit_pack";
 
@@ -60,6 +62,7 @@ export async function startStripeCheckout(
   );
 
   if (error) {
+    captureException(error, { area: "checkout", extra: { type: input.type, planKey: input.planKey, packId: input.packId } });
     if (/checkout_not_configured/i.test(error.message)) {
       return { status: "not_configured" };
     }
@@ -80,11 +83,20 @@ export async function startStripeCheckout(
 export async function redirectToStripeCheckout(
   input: StartStripeCheckoutInput,
 ): Promise<"redirected" | "not_configured" | "error"> {
+  trackEvent("checkout_started", {
+    type: input.type,
+    plan: input.planKey ?? "",
+    pack: input.packId ?? "",
+  });
+
   const result = await startStripeCheckout(input);
   if (result.status === "redirect") {
     window.location.href = result.url;
     return "redirected";
   }
   if (result.status === "not_configured") return "not_configured";
+  if (result.status === "error") {
+    captureException(new Error(result.message), { area: "checkout", extra: { stage: "redirect" } });
+  }
   return "error";
 }

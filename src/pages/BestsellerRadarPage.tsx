@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, BarChart3, BookOpen, Rocket, Search, ShieldAlert, Sparkles, TrendingUp, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { confidenceForLocalIntel, confidenceFromRadar } from "@/lib/market-intel
 import { buildRadarExplanations } from "@/lib/market-intelligence/marketExplainability";
 import { normalizeMarketCopy } from "@/lib/market-intelligence/marketCopyNormalizer";
 import { t, tt, useUILanguage } from "@/lib/i18n";
+import { trackMarketToolOpened } from "@/lib/analytics";
 
 const KDP_PREFILL_KEY = "scriptora-kdp-prefill";
 
@@ -127,6 +128,11 @@ function localizeLevel(level: string): string {
 export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: boolean }) {
   useUILanguage();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!embedded) trackMarketToolOpened("bestseller_radar");
+  }, [embedded]);
+
   const [genre, setGenre] = useState("romance");
   const [keyword, setKeyword] = useState("");
   const [searched, setSearched] = useState(false);

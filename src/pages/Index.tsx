@@ -16,6 +16,7 @@ import { loadProjects as loadRemoteProjects, deleteProjectAsync, saveProjectAsyn
 import { BookProject, SectionId } from "@/types/book";
 import { WritingSettings, loadSettings, saveSettings } from "@/lib/settings";
 import { t, tt, UILanguage, useUILanguage } from "@/lib/i18n";
+import { trackEvent } from "@/lib/analytics";
 import { toast } from "sonner";
 import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu, X, ArrowLeft, ListTree, LogOut } from "lucide-react";
 import { AccountIdentityBlock } from "@/components/AccountIdentityBlock";
@@ -635,6 +636,7 @@ const Index = () => {
   const openVoiceStudioForChapter = (chapterIndex: number) => {
     setVoiceStudioChapterIndex(chapterIndex);
     setShowVoiceStudio(true);
+    trackEvent("voice_studio_opened", { chapter: chapterIndex });
   };
 
   const closeVoiceStudio = () => {

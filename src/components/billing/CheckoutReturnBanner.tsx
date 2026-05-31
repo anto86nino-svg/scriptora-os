@@ -1,11 +1,21 @@
 import { useSearchParams } from "react-router-dom";
 import { CheckCircle2, XCircle } from "lucide-react";
 import { t } from "@/lib/i18n";
+import { useEffect, useRef } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 /** Shows soft success/cancel banners after Stripe redirect (?checkout=success|cancelled). */
 export function CheckoutReturnBanner() {
   const [params, setParams] = useSearchParams();
   const checkout = params.get("checkout");
+  const trackedRef = useRef(false);
+
+  useEffect(() => {
+    if (checkout === "success" && !trackedRef.current) {
+      trackedRef.current = true;
+      trackEvent("checkout_completed");
+    }
+  }, [checkout]);
 
   if (checkout !== "success" && checkout !== "cancelled") return null;
 

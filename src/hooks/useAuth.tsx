@@ -6,6 +6,7 @@ import { canUseDevTools } from "@/lib/app-environment";
 import { clearDevPlanOverride, setDevPlanOverride } from "@/lib/dev-plan-override";
 import { logAuthDebug, summarizeSession } from "@/lib/auth-debug";
 import { probeSupabaseCapabilities } from "@/lib/supabase-cloud-capabilities";
+import { trackEvent } from "@/lib/analytics";
 
 type AuthContextValue = {
   user: User | null;
@@ -28,6 +29,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(newSession?.user ?? null);
       if (newSession?.user) {
         probeSupabaseCapabilities(true).catch(() => {});
+        if (event === "SIGNED_IN") {
+          const createdAt = newSession.user.created_at
+            ? new Date(newSession.user.created_at).getTime()
+            : 0;
+          if (createdAt && Date.now() - createdAt < 120_000) {
+            const method = newSession.user.app_metadata?.provider === "google" ? "google" : "email";
+            trackEvent("signup_completed", { method });
+          }
+        }
       }
       if (isDevMode()) {
         logAuthDebug("useAuth.onAuthStateChange", {

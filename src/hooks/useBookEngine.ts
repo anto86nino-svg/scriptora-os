@@ -7,6 +7,8 @@ import { applyAuthorBrainToBackMatter, applyAuthorBrainToFrontMatter } from "@/l
 import type { BackMatter, FrontMatter } from "@/types/book";
 import { toast } from "sonner";
 import { t } from "@/lib/i18n";
+import { captureException } from "@/lib/monitoring";
+import { trackEvent, trackFirstProjectCreated } from "@/lib/analytics";
 import { fetchPlan } from "@/lib/plan";
 import { isDevMode } from "@/lib/dev-mode";
 import { getDevPlanOverride } from "@/lib/dev-plan-override";
@@ -228,6 +230,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   }, []);
 
   const reportGenerationFailure = useCallback((e: unknown, p: BookProject | null) => {
+    captureException(e, { area: "generation", extra: { projectId: p?.id } });
     if (blockIfConfigInvalid(p)) return;
 
     const message = normalizeFunctionErrorMessage(e);
@@ -321,6 +324,9 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     saveProjectAsync(newProject, syncCallbacks).catch(() => {
       toast.warning(t("toast_saved_locally"));
     });
+
+    trackFirstProjectCreated({ genre: safeConfig.genre });
+    trackEvent("book_generation_started", { phase: "blueprint" });
 
     addMessage("system", `Starting book: "${safeConfig.title}" — ${safeConfig.numberOfChapters} chapters, ${safeConfig.language}, ${safeConfig.genre}, ${safeConfig.bookLength} book`);
 
@@ -455,6 +461,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       const bm = await generateBackMatter(latestP.config, latestP.blueprint!, latestP.chapters, latestP.genreLock, { projectId: latestP.id });
       updateAndSave(pr => ({ ...pr, backMatter: bm, phase: "complete", backMatterStatus: "completed" as GenerationStatus }));
       addMessage("assistant", "🎉 Book generation complete!");
+      trackEvent("book_generation_completed", { projectId: latestP.id });
     } catch (e: any) {
       updateAndSave(pr => ({ ...pr, backMatterStatus: "error" as GenerationStatus }));
       addMessage("assistant", `❌ Error: ${e.message}`);
@@ -505,6 +512,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     }
 
     addGenerating(genKey);
+    trackEvent("book_generation_started", { phase: "chapter", chapter: index });
     updateAndSave(proj => {
       const chapters = [...proj.chapters];
       while (chapters.length <= index) {

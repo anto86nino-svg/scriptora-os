@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Copy, KeyRound, Loader2, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ import { confidenceFromGrounding } from "@/lib/market-intelligence/marketConfide
 import { buildKeywordGoldExplanations } from "@/lib/market-intelligence/marketExplainability";
 import { normalizeMarketCopy } from "@/lib/market-intelligence/marketCopyNormalizer";
 import { t, tt, useUILanguage, getScriptoraLanguage } from "@/lib/i18n";
+import { trackMarketToolOpened } from "@/lib/analytics";
 
 function copyText(value: string, successLabel: string) {
   navigator.clipboard?.writeText(value).then(
@@ -38,6 +39,10 @@ export default function KeywordGoldPage() {
   const [language, setLanguage] = useState(() => getScriptoraLanguage());
   const [marketplace, setMarketplace] = useState("amazon.it");
   const [result, setResult] = useState<KeywordGoldResult | null>(null);
+
+  useEffect(() => {
+    trackMarketToolOpened("keyword_gold");
+  }, []);
 
   async function getPlan(): Promise<PlanTier> {
     return await fetchPlan().catch(() => "free");
