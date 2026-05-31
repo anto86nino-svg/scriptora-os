@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/services/storageService";
+import { t } from "@/lib/i18n";
 
 export type Level = "low" | "medium" | "high";
 
@@ -105,9 +106,7 @@ function buildTitleIntelligenceFallback(input: TitleIntelligenceInput): TitleInt
       ];
 
   return {
-    fallbackReason: italian
-      ? "Analisi base locale: la funzione cloud Title Domination non e' disponibile in questo ambiente."
-      : "Local base analysis: the Title Domination cloud function is unavailable in this environment.",
+    fallbackReason: t("title_intel_estimated_banner"),
     marketSnapshot: {
       platformsAnalyzed: ["Amazon KDP", "Apple Books"],
       topSubNiches: [

@@ -52,7 +52,7 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
   if (tier === "free") {
     const max = PLAN_LIMITS.free.maxTokensPerBook!;
     if (typeof tokensUsed === "number") {
-      hint = `${formatTokens(tokensUsed)} / ${formatTokens(max)} tokens`;
+      hint = `${formatTokens(tokensUsed)} / ${formatTokens(max)} parole`;
     } else {
       const remaining = Math.max(0, 1 - booksThisMonth);
       hint = `${remaining} book remaining`;
@@ -62,14 +62,14 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
   } else if (tier === "pro") {
     hint = `${booksThisMonth} / 10 books`;
   } else {
-    hint = "Unlimited";
+    hint = `${booksThisMonth} books · fair use`;
   }
 
   const handleExitBeta = async () => {
     if (exiting) return;
     setExiting(true);
     try {
-      await setPlan("free");
+      await setPlan("free", "beta-exit");
       toast.success("Sei tornato al piano Free");
       setPopoverOpen(false);
       refresh();
@@ -135,7 +135,7 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
               onClick={() => { setPopoverOpen(false); setShowUpgrade(true); }}
               className="w-full h-8 rounded-md bg-primary text-primary-foreground text-[11px] font-semibold hover:bg-primary/90 transition-colors"
             >
-              Passa a Pro o Premium
+              Passa a Pro Author o Studio
             </button>
           </PopoverContent>
         </Popover>

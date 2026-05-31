@@ -352,6 +352,13 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
             </div>
           )}
 
+          {selectedProject && !hasCover && (
+            <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground">{t("export_no_cover_saved_title")}</p>
+              <p className="mt-1 text-xs leading-5">{t("export_no_cover_saved_hint")}</p>
+            </div>
+          )}
+
           {selectedProject && preflight && (
             <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
               <div className="flex items-center justify-between gap-3">

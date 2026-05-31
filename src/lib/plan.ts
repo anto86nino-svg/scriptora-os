@@ -23,12 +23,12 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
   premium: { maxTokensPerBook: null,   maxBooksPerMonth: null, canExport: true,  canDominate: true  },
 };
 
-// Pricing (EUR / month). Update here only.
+// Pricing display aligned with commercialPlans (legacy PlanTier gates unchanged).
 export const PLAN_PRICING: Record<PlanTier, { price: string; period: string }> = {
   free:    { price: "€0",     period: "/forever" },
-  beta:    { price: "Free",   period: "/beta access" },
-  pro:     { price: "€29,99", period: "/mese" },
-  premium: { price: "€59,99", period: "/mese" },
+  beta:    { price: "Free",   period: "/anteprima editoriale" },
+  pro:     { price: "€19,99", period: "/mese" },
+  premium: { price: "€49,99", period: "/mese" },
 };
 
 // External Stripe Payment Links (placeholders — replace with real ones).
@@ -38,6 +38,16 @@ export const STRIPE_LINKS = {
 };
 
 const PLAN_CACHE_KEY = "nexora_plan_cache_v1";
+
+/** Allowed client-side writes until Stripe webhooks + service-role own user_plans. */
+export type PlanClientWriteReason = "beta-exit";
+
+async function upsertUserPlan(userId: string, plan: PlanTier): Promise<void> {
+  const { error } = await supabase
+    .from("user_plans" as any)
+    .upsert({ user_id: userId, plan, period_start: new Date().toISOString() }, { onConflict: "user_id" });
+  if (error) throw error;
+}
 
 export async function fetchPlan(): Promise<PlanTier> {
   const userId = getCurrentUserId();
@@ -64,12 +74,33 @@ export async function fetchPlan(): Promise<PlanTier> {
   }
 }
 
-export async function setPlan(plan: PlanTier): Promise<void> {
+/**
+ * Client plan write — restricted.
+ *
+ * Production upgrades (pro/premium/beta) MUST come from edge functions or Stripe webhooks.
+ * TODO(backend): RLS — revoke INSERT/UPDATE on public.user_plans for authenticated role;
+ * allow only service_role / webhook handler.
+ */
+export async function setPlan(plan: PlanTier, reason?: PlanClientWriteReason): Promise<void> {
   const userId = getCurrentUserId();
-  await supabase
-    .from("user_plans" as any)
-    .upsert({ user_id: userId, plan, period_start: new Date().toISOString() }, { onConflict: "user_id" });
-  try { localStorage.setItem(PLAN_CACHE_KEY, JSON.stringify({ userId, plan })); } catch { /* noop */ }
+  if (userId === "public-user") return;
+
+  if (isDevMode()) {
+    console.warn("[plan] setPlan blocked in dev mode — use setDevPlanOverride()");
+    return;
+  }
+
+  if (reason !== "beta-exit" || plan !== "free") {
+    console.warn("[plan] Blocked client plan write:", plan, reason);
+    throw new Error("PLAN_WRITE_FORBIDDEN");
+  }
+
+  await upsertUserPlan(userId, plan);
+  try {
+    localStorage.setItem(PLAN_CACHE_KEY, JSON.stringify({ userId, plan }));
+  } catch {
+    /* noop */
+  }
   window.dispatchEvent(new Event("nexora-plan-change"));
 }
 

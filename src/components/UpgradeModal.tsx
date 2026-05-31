@@ -1,12 +1,12 @@
-// Reusable upgrade modal triggered when free users hit a paywall (export, dominate, token limit).
-// Behaviour: if payments are live (env-configured) the CTA opens the configured checkout URL;
-// otherwise it opens an elegant in-app "Coming Soon" modal — never a blank external page.
+// Reusable upgrade modal triggered when free users hit a paywall (export, dominate, word limit).
+// Uses commercial plan copy — legacy PlanTier gates unchanged (pro / premium).
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Lock, Check, Crown, Zap } from "lucide-react";
-import { PLAN_PRICING, PlanTier } from "@/lib/plan";
-import { paymentsConfig, resolvePlanAction, type PaymentPlan } from "@/config/payments";
+import { PlanTier } from "@/lib/plan";
+import { COMMERCIAL_PLANS } from "@/lib/billing/commercialPlans";
 import { showPremiumActivationNotice } from "@/lib/billing/premiumActivation";
+import { t } from "@/lib/i18n";
 
 interface UpgradeModalProps {
   open: boolean;
@@ -16,32 +16,37 @@ interface UpgradeModalProps {
 }
 
 const REASON_COPY: Record<NonNullable<UpgradeModalProps["reason"]>, { title: string; subtitle: string }> = {
-  export:        { title: "Il tuo libro è pronto. Ora sbloccalo.",     subtitle: "Esporta in EPUB, PDF e DOCX e porta il tuo manoscritto ovunque." },
-  dominate:      { title: "Surgical chapter editing at depth.",  subtitle: "Targeted developmental revision — voice, canon, and continuity preserved." },
-  "token-limit": { title: "Sei vicino al limite del tuo libro.",       subtitle: "Continua a scrivere senza limiti e completa il tuo manoscritto." },
-  "books-limit": { title: "Sei pronto per il tuo prossimo libro.",     subtitle: "Il piano Free copre 1 libro — passa a Pro per continuare." },
+  export: {
+    title: "Il tuo libro è pronto. Ora sbloccalo.",
+    subtitle: "Esporta in EPUB, PDF e DOCX e porta il tuo manoscritto ovunque.",
+  },
+  dominate: {
+    title: "Editing chirurgico in profondità.",
+    subtitle: "Revisione mirata — voce, canon e continuità preservati.",
+  },
+  "token-limit": {
+    title: "Sei vicino al limite del tuo libro.",
+    subtitle: "Passa a un piano superiore per più crediti editoriali e spazio di scrittura.",
+  },
+  "books-limit": {
+    title: "Sei pronto per il tuo prossimo libro.",
+    subtitle: "Il piano Free copre 1 libro — passa a Pro Author per continuare.",
+  },
 };
+
+const PRO_OFFER = COMMERCIAL_PLANS.find((p) => p.id === "pro")!;
+const STUDIO_OFFER = COMMERCIAL_PLANS.find((p) => p.id === "studio")!;
+
+function formatCommercialPrice(priceEur: number | null): string {
+  if (priceEur == null || priceEur === 0) return "€0";
+  return `€${priceEur.toFixed(2).replace(".", ",")}`;
+}
 
 export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "free" }: UpgradeModalProps) {
   const copy = REASON_COPY[reason];
-  const recommendPremium = reason === "dominate";
+  const recommendStudio = reason === "dominate";
 
-  const proPlan = paymentsConfig.plans.find((p) => p.id === "pro_monthly");
-  const premiumPlan =
-    paymentsConfig.plans.find((p) => p.id === "premium_monthly") ??
-    paymentsConfig.plans.find((p) => p.id === "lifetime");
-
-  const handlePick = (plan: PaymentPlan | undefined) => {
-    if (!plan) {
-      showPremiumActivationNotice("plan");
-      return;
-    }
-    const action = resolvePlanAction(plan);
-    if (action.kind === "external") {
-      window.open(action.url, "_blank", "noopener,noreferrer");
-      onClose();
-      return;
-    }
+  const handlePick = () => {
     showPremiumActivationNotice("plan");
   };
 
@@ -61,41 +66,33 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
         <div className="p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <PlanCard
-              name="Pro"
-              price={PLAN_PRICING.pro.price}
-              period={PLAN_PRICING.pro.period}
-              features={[
-                "10 libri al mese",
-                "Fino a 80.000 parole per libro",
-                "Export EPUB, PDF, DOCX",
-                "Cover Studio a template",
-              ]}
-              cta="Passa a Pro"
-              badge={!recommendPremium ? "Più scelto" : undefined}
-              highlight={!recommendPremium}
+              name={t(PRO_OFFER.nameKey)}
+              price={formatCommercialPrice(PRO_OFFER.priceEur)}
+              period={t(PRO_OFFER.periodKey)}
+              creditsLine={t("commercial_plan_credits_included", { count: PRO_OFFER.monthlyCredits })}
+              features={PRO_OFFER.featureKeys.slice(0, 4).map((key) => t(key))}
+              cta={t("commercial_plan_cta_upgrade")}
+              badge={!recommendStudio ? t("commercial_plan_recommended") : undefined}
+              highlight={!recommendStudio}
               icon={<Zap className="h-3.5 w-3.5" />}
-              onPick={() => handlePick(proPlan)}
+              onPick={handlePick}
             />
             <PlanCard
-              name="Premium"
-              price={PLAN_PRICING.premium.price}
-              period={PLAN_PRICING.premium.period}
-              features={[
-                "Libri illimitati con uso corretto",
-                "Dominate Mode completo",
-                "Analisi su segnali di mercato live",
-                "Dominate Mode con controllo qualità avanzato",
-              ]}
-              cta="Sblocca Premium"
-              badge={recommendPremium ? "Max Power" : undefined}
-              highlight={recommendPremium}
+              name={t(STUDIO_OFFER.nameKey)}
+              price={formatCommercialPrice(STUDIO_OFFER.priceEur)}
+              period={t(STUDIO_OFFER.periodKey)}
+              creditsLine={t("commercial_plan_credits_included", { count: STUDIO_OFFER.monthlyCredits })}
+              features={STUDIO_OFFER.featureKeys.slice(0, 4).map((key) => t(key))}
+              cta={t("commercial_plan_cta_upgrade")}
+              badge={recommendStudio ? t("upgrade_studio_badge") : undefined}
+              highlight={recommendStudio}
               icon={<Crown className="h-3.5 w-3.5" />}
-              onPick={() => handlePick(premiumPlan)}
+              onPick={handlePick}
             />
           </div>
 
           <p className="text-[11px] text-muted-foreground text-center">
-            Pagamento sicuro · Cancellazione in qualsiasi momento.
+            {t("upgrade_footer_note")}
           </p>
         </div>
       </DialogContent>
@@ -107,6 +104,7 @@ interface PlanCardProps {
   name: string;
   price: string;
   period: string;
+  creditsLine: string;
   features: string[];
   cta: string;
   badge?: string;
@@ -115,7 +113,18 @@ interface PlanCardProps {
   onPick: () => void;
 }
 
-function PlanCard({ name, price, period, features, cta, badge, highlight, icon, onPick }: PlanCardProps) {
+function PlanCard({
+  name,
+  price,
+  period,
+  creditsLine,
+  features,
+  cta,
+  badge,
+  highlight,
+  icon,
+  onPick,
+}: PlanCardProps) {
   return (
     <div
       className={`relative rounded-xl border p-5 flex flex-col transition-all ${
@@ -137,10 +146,11 @@ function PlanCard({ name, price, period, features, cta, badge, highlight, icon, 
         {icon}
         <h4 className="text-sm font-bold text-foreground">{name}</h4>
       </div>
-      <div className="mb-4">
+      <div className="mb-1">
         <span className="text-3xl font-black text-foreground">{price}</span>
         <span className="text-xs text-muted-foreground">{period}</span>
       </div>
+      <p className="mb-3 text-[11px] font-semibold text-primary">{creditsLine}</p>
       <ul className="space-y-2 mb-5 flex-1">
         {features.map((f, i) => (
           <li key={`stable-${i}`} className="flex items-start gap-1.5 text-xs text-foreground/85">
@@ -164,7 +174,6 @@ function PlanCard({ name, price, period, features, cta, badge, highlight, icon, 
   );
 }
 
-// Tiny inline "Locked" pill for buttons
 export function LockedBadge({ label = "PRO" }: { label?: string }) {
   return (
     <span className="inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500">

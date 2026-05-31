@@ -26,15 +26,15 @@ export function getWriterPipelineStep(project: BookProject): {
     return { step: "blueprint", section: "blueprint" };
   }
 
+  if (!frontMatter) {
+    return { step: "front-matter", section: "front-matter" };
+  }
+
   for (let i = 0; i < config.numberOfChapters; i += 1) {
     const content = chapters[i]?.content?.trim() ?? "";
     if (content.length <= 50) {
       return { step: "chapter", section: `chapter-${i}` as SectionId, chapterIndex: i };
     }
-  }
-
-  if (!frontMatter) {
-    return { step: "front-matter", section: "front-matter" };
   }
 
   if (!backMatter) {

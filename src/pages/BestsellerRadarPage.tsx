@@ -132,15 +132,22 @@ export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: bool
   const [radarIntel, setRadarIntel] = useState<RadarPublishingIntel | null>(null);
 
   const results = useMemo(() => {
-    return searched ? (liveResults ?? []) : (sampleByGenre[genre] ?? fallbackResults);
-  }, [genre, searched, liveResults]);
+    if (!searched) return [];
+    return liveResults ?? [];
+  }, [searched, liveResults]);
+
+  const editorialExamples = useMemo(
+    () => sampleByGenre[genre] ?? fallbackResults,
+    [genre],
+  );
 
   const marketScore = useMemo(() => {
+    if (!searched || liveScore === null) return "—";
     if (liveScore !== null) return liveScore.toFixed(1);
     if (!results.length) return "—";
     const avg = results.reduce((sum, item) => sum + item.potential, 0) / results.length;
     return Number.isFinite(avg) ? avg.toFixed(1) : "—";
-  }, [results, liveScore]);
+  }, [results, liveScore, searched]);
 
   const authorIdentity = useMemo(() => getSelectedAuthorIdentity(), []);
 
@@ -360,14 +367,44 @@ export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: bool
 
         {!searched && (
           <div className="rounded-2xl border border-border/60 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">{t("radar_sample_data")}</span> — {t("radar_sample_data_desc")}
+            <span className="font-semibold text-foreground">{t("radar_empty_state_title")}</span>
+            {" — "}
+            {t("radar_empty_state_desc")}
           </div>
         )}
 
-        {searched && !loading && liveResults && (
+        {searched && !loading && !liveResults?.length && !error && (
+          <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-muted-foreground">
+            {t("title_intel_live_unavailable")}
+          </div>
+        )}
+
+        {searched && !!liveResults?.length && (
           <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
             <span className="font-semibold text-primary">{t("radar_live_banner")}</span> — {t("radar_live_banner_desc")}
           </div>
+        )}
+
+        {!searched && editorialExamples.length > 0 && (
+          <section className="grid gap-4">
+            <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">{t("radar_sample_data")}</span>
+              {" — "}
+              {t("radar_sample_data_desc")}
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {editorialExamples.slice(0, 2).map((book) => (
+                <article key={`example-${book.title}`} className="rounded-3xl border border-dashed border-border/60 bg-card/40 p-5 opacity-90">
+                  <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    {t("radar_sample_data")}
+                  </div>
+                  <h3 className="line-clamp-2 text-lg font-bold">{book.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{book.category}</p>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{book.insight}</p>
+                </article>
+              ))}
+            </div>
+          </section>
         )}
 
         {searched && (
