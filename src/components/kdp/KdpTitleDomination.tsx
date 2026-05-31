@@ -20,6 +20,8 @@ import { dominateTitles, type TitleDominationResult, type DominateTitlesInput } 
 import { fetchPlan, type PlanTier } from "@/lib/plan";
 import { useFeatureGate } from "@/components/PaywallGuard";
 import { getScriptoraLanguage } from "@/lib/i18n";
+import { MarketDataStatusBadge } from "@/components/market-intelligence/MarketDataStatusBadge";
+import { statusFromGrounding } from "@/lib/market-intelligence/marketDataStatus";
 
 interface Props {
   /** Optional callback when user wants to push title into a project. */
@@ -30,15 +32,16 @@ interface Props {
 
 const STATE_KEY = "kdp-title-domination-state";
 
-function GroundingPill({ used, count }: { used?: boolean; count?: number }) {
+function GroundingPill({ used }: { used?: boolean; count?: number }) {
   if (used) {
     return (
-      <Badge variant="outline" className="border-primary/40 text-primary text-[10px] font-medium">
-        ● Dati di mercato in tempo reale{count ? ` (${count})` : ""}
-      </Badge>
+      <MarketDataStatusBadge
+        status="live"
+        className="text-[10px]"
+      />
     );
   }
-  return <Badge variant="secondary" className="text-[10px]">Solo analisi AI · senza dati live</Badge>;
+  return <MarketDataStatusBadge status="estimated" className="text-[10px]" />;
 }
 
 function ScoreBar({ value, label }: { value: number; label: string }) {

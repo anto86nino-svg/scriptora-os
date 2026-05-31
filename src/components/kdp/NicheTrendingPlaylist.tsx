@@ -37,6 +37,9 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { MarketDataStatusBadge, MarketDataStatusNotice } from "@/components/market-intelligence/MarketDataStatusBadge";
+import { statusFromGrounding } from "@/lib/market-intelligence/marketDataStatus";
+import { t } from "@/lib/i18n";
 
 const WATCHLIST_KEY = "kdp.niche.watchlist.v1";
 
@@ -101,7 +104,7 @@ function buildDevFallbackTrending(input: {
       "principianti",
       "piano pratico",
     ].slice(0, 5),
-    whyItMatters: "Fallback dev per testare UI, import e playlist quando la Edge Function non risponde.",
+    whyItMatters: t("market_data_status_estimated_desc"),
     saturationRisk: i % 4 === 0 ? "low" : "medium",
   }));
 
@@ -112,26 +115,17 @@ function buildDevFallbackTrending(input: {
     groundingQueries: [],
     marketplaces: input.marketplaces,
     analyzedAt: new Date().toISOString(),
-    marketOverview:
-      input.language === "Italian"
-        ? "Analisi base locale: Scriptora ha generato nicchie strategiche senza consumare click o addebiti."
-        : "Local base analysis: Scriptora generated strategic niches without consuming clicks or charges.",
-    fallbackReason:
-      input.language === "Italian"
-        ? "Analisi base locale: il radar live non e' disponibile in questo ambiente."
-        : "Local base analysis: the live radar is unavailable in this environment.",
+    marketOverview: t("market_data_status_estimated_desc"),
+    fallbackReason: t("title_intel_estimated_microcopy"),
     niches,
   };
 }
 
-function friendlyTrendingError(e: any): string {
-  const raw = String(e?.message || e || "");
-  if (raw.includes("non-2xx") || raw.includes("FunctionsHttpError")) {
-    return "Radar temporaneamente non disponibile: la Edge Function ha risposto con errore.";
-  }
+function friendlyTrendingError(e: unknown): string {
+  const raw = String((e as Error)?.message || e || "");
   if (raw.toLowerCase().includes("deepseek")) return raw;
-  if (raw.toLowerCase().includes("api key")) return "Backend AI non configurato: manca una chiave API.";
-  return raw || "Errore nel caricamento delle nicchie.";
+  if (raw.toLowerCase().includes("api key")) return t("niche_trending_unavailable");
+  return t("niche_trending_unavailable");
 }
 
 export function NicheTrendingPlaylist({ language = "Italian", onImport, initialFocus = "" }: Props) {
@@ -230,7 +224,7 @@ export function NicheTrendingPlaylist({ language = "Italian", onImport, initialF
       );
       setData(res);
       if (res.fallbackReason) {
-        toast.success("Analisi base generata · nessun addebito");
+        toast.success(t("niche_trending_estimated_toast"));
         return;
       }
       // Log click ONLY on success (so failed Brave/DeepSeek don't burn beta credit
@@ -252,7 +246,7 @@ export function NicheTrendingPlaylist({ language = "Italian", onImport, initialF
         });
         setData(fallback);
         setError(null);
-        toast.success("Fallback dev attivo · nessun addebito");
+        toast.success(t("niche_trending_estimated_toast"));
         return;
       }
       setError(message);
@@ -289,22 +283,14 @@ export function NicheTrendingPlaylist({ language = "Italian", onImport, initialF
             <TrendingUp className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+            <h3 className="text-sm font-bold text-foreground flex flex-wrap items-center gap-1.5">
               Radar Nicchie Vincenti
-              {data?.groundingUsed && (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Live · Brave
-                </span>
-              )}
-              {data && !data.groundingUsed && (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-muted text-muted-foreground border border-border">
-                  Analisi base
-                </span>
+              {data && (
+                <MarketDataStatusBadge status={statusFromGrounding(data.groundingUsed)} />
               )}
             </h3>
             <p className="text-[10px] text-muted-foreground">
-              Cosa sta dominando Amazon.com · Amazon.it · Apple Books in tempo reale
+              {t("niche_trending_subtitle")}
             </p>
           </div>
         </div>
@@ -409,9 +395,7 @@ export function NicheTrendingPlaylist({ language = "Italian", onImport, initialF
 
       {/* OVERVIEW */}
       {tab === "trending" && data?.fallbackReason && (
-        <p className="text-[11px] text-amber-950 dark:text-amber-100 leading-relaxed px-2 py-1.5 rounded bg-amber-500/10 border border-amber-500/30">
-          {data.fallbackReason}
-        </p>
+        <MarketDataStatusNotice status="estimated" extra={data.fallbackReason} />
       )}
       {tab === "trending" && data?.marketOverview && (
         <p className="text-[11px] text-foreground/80 leading-relaxed px-2 py-1.5 rounded bg-card/50 border border-border/50">
@@ -425,12 +409,12 @@ export function NicheTrendingPlaylist({ language = "Italian", onImport, initialF
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap">
           {data.groundingUsed ? (
             <>
-              <span>📡 {data.groundingResultsCount} risultati live</span>
+              <span>{data.groundingResultsCount} {t("market_data_status_live_label").toLowerCase()}</span>
               <span>·</span>
             </>
           ) : (
             <>
-              <span>Analisi base locale</span>
+              <span>{t("market_data_status_estimated_label")}</span>
               <span>·</span>
             </>
           )}
@@ -445,7 +429,7 @@ export function NicheTrendingPlaylist({ language = "Italian", onImport, initialF
       )}
 
       {error && (
-        <p className="text-xs text-destructive px-2">{error}</p>
+        <MarketDataStatusNotice status="unavailable" />
       )}
 
       {/* EMPTY STATES */}

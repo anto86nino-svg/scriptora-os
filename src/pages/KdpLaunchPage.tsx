@@ -18,6 +18,8 @@ import {
 } from "@/lib/kdp/money-engine";
 import { useFeatureGate } from "@/components/PaywallGuard";
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
+import { MarketDataStatusBadge } from "@/components/market-intelligence/MarketDataStatusBadge";
+import { statusFromGrounding } from "@/lib/market-intelligence/marketDataStatus";
 import { t, tt, useUILanguage, getScriptoraLanguage } from "@/lib/i18n";
 
 type Step = "idea" | "market" | "title" | "packaging" | "predict";
@@ -50,17 +52,9 @@ function copyText(label: string, value: string) {
   );
 }
 
-/** Tiny inline badge: shows whether the result was grounded with live market data. */
+/** Inline badge for KDP steps grounded with external market search. */
 function GroundingBadge({ meta }: { meta: { groundingUsed?: boolean; groundingResultsCount?: number } }) {
-  if (meta?.groundingUsed) {
-    const count = meta.groundingResultsCount ? ` (${meta.groundingResultsCount})` : "";
-    return (
-      <Badge variant="outline" className="border-primary/40 text-primary text-[10px] font-medium">
-        {tt("kdp_grounding_live", { count })}
-      </Badge>
-    );
-  }
-  return <Badge variant="secondary" className="text-[10px]">{t("kdp_analysis_basic")}</Badge>;
+  return <MarketDataStatusBadge status={statusFromGrounding(meta?.groundingUsed)} />;
 }
 
 export default function KdpLaunchPage() {
@@ -249,14 +243,17 @@ export default function KdpLaunchPage() {
               {market.subNiche && <p><span className="text-muted-foreground">{t("kdp_sub_niche")}</span> <strong>{market.subNiche}</strong></p>}
               <p className="leading-relaxed"><span className="text-muted-foreground">{t("kdp_recommended_angle")}</span><br />{market.recommendedAngle}</p>
               {market.reasoning && <p className="text-xs text-muted-foreground italic">{market.reasoning}</p>}
-              {market.groundingUsed && (
-                <p className="text-xs text-primary">{t("kdp_live_data")}</p>
-              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <GroundingBadge meta={market} />
+              </div>
 
               {marketPremium && (
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold uppercase tracking-wide">Market Intelligence Premium</p>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-xs font-bold uppercase tracking-wide">Market Intelligence Premium</p>
+                      <MarketDataStatusBadge status="estimated" />
+                    </div>
                     <span className="text-sm font-black text-primary">{marketPremium.composite}/100</span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">

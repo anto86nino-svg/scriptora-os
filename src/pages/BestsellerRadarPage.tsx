@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { runBestsellerRadar } from "@/services/bestsellerRadarService";
 import { analyzeRadarPublishingIntel, type RadarPublishingIntel } from "@/lib/publishing-intelligence";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
+import { MarketDataStatusBadge, MarketDataStatusNotice } from "@/components/market-intelligence/MarketDataStatusBadge";
+import { statusForLocalMarketIntel, statusFromRadarSearch } from "@/lib/market-intelligence/marketDataStatus";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 
 const KDP_PREFILL_KEY = "scriptora-kdp-prefill";
@@ -163,6 +165,12 @@ export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: bool
     });
   }, [radarIntel, searched, genre, keyword, liveScore, results, authorIdentity]);
 
+  const radarDataStatus = statusFromRadarSearch({
+    searched,
+    hasLiveResults: Boolean(liveResults?.length),
+    hasError: Boolean(error),
+  });
+
   const pageShellClass = embedded
     ? "scriptora-landing-embedded-workspace bg-background text-foreground"
     : "scriptora-feature-page bg-background text-foreground";
@@ -266,8 +274,8 @@ export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: bool
                           authorIdentity: getSelectedAuthorIdentity(),
                         }),
                       );
-                    } catch (err) {
-                      setError(err instanceof Error ? err.message : t("radar_error"));
+                    } catch {
+                      setError(t("title_intel_live_unavailable"));
                       setLiveResults(null);
                       setLiveScore(null);
                       setLiveSummary("");
@@ -294,15 +302,22 @@ export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: bool
               <p className="text-sm leading-6 text-muted-foreground">
                 {t("radar_disclaimer")}
               </p>
+              {searched && (
+                <MarketDataStatusBadge
+                  status={liveResults?.length ? "live" : radarDataStatus === "unavailable" ? "unavailable" : "estimated"}
+                  className="mt-2"
+                />
+              )}
             </div>
           </div>
         </section>
 
         {previewIntel && searched && (
           <section className="rounded-3xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-6 space-y-5">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-bold">Market Intelligence Premium</h2>
+              <MarketDataStatusBadge status={statusForLocalMarketIntel()} />
             </div>
 
             <div className="grid gap-4 lg:grid-cols-3">
@@ -354,9 +369,7 @@ export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: bool
         )}
 
         {error && (
-          <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-            {error}
-          </div>
+          <MarketDataStatusNotice status="unavailable" />
         )}
 
         {liveSummary && (
@@ -374,29 +387,21 @@ export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: bool
         )}
 
         {searched && !loading && !liveResults?.length && !error && (
-          <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-muted-foreground">
-            {t("title_intel_live_unavailable")}
-          </div>
+          <MarketDataStatusNotice status="unavailable" />
         )}
 
         {searched && !!liveResults?.length && (
-          <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
-            <span className="font-semibold text-primary">{t("radar_live_banner")}</span> — {t("radar_live_banner_desc")}
-          </div>
+          <MarketDataStatusNotice status="live" />
         )}
 
         {!searched && editorialExamples.length > 0 && (
           <section className="grid gap-4">
-            <div className="rounded-2xl border border-dashed border-border/70 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">{t("radar_sample_data")}</span>
-              {" — "}
-              {t("radar_sample_data_desc")}
-            </div>
+            <MarketDataStatusNotice status="example" />
             <div className="grid gap-4 md:grid-cols-2">
               {editorialExamples.slice(0, 2).map((book) => (
                 <article key={`example-${book.title}`} className="rounded-3xl border border-dashed border-border/60 bg-card/40 p-5 opacity-90">
-                  <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {t("radar_sample_data")}
+                  <div className="mb-2">
+                    <MarketDataStatusBadge status="example" />
                   </div>
                   <h3 className="line-clamp-2 text-lg font-bold">{book.title}</h3>
                   <p className="mt-1 text-sm text-muted-foreground">{book.category}</p>
@@ -409,9 +414,10 @@ export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: bool
 
         {searched && (
           <section className="grid gap-4">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <TrendingUp className="h-5 w-5 text-primary" />
               <h2 className="text-xl font-bold">{t("radar_competitors_title")}</h2>
+              {results.length > 0 && <MarketDataStatusBadge status="live" />}
             </div>
 
             {results.length === 0 ? (

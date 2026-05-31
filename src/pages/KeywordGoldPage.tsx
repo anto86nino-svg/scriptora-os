@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { fetchPlan, type PlanTier } from "@/lib/plan";
 import { keywordGold, type KeywordGoldResult } from "@/lib/kdp/money-engine";
 import { useFeatureGate } from "@/components/PaywallGuard";
+import { MarketDataStatusBadge, MarketDataStatusNotice } from "@/components/market-intelligence/MarketDataStatusBadge";
+import { statusFromGrounding } from "@/lib/market-intelligence/marketDataStatus";
 import { t, tt, useUILanguage, getScriptoraLanguage } from "@/lib/i18n";
 
 function copyText(value: string, successLabel: string) {
@@ -80,13 +82,9 @@ export default function KeywordGoldPage() {
               {t("keyword_gold_subtitle")}
             </p>
           </div>
-          {result?.groundingUsed ? (
-            <Badge variant="outline" className="border-primary/40 text-primary">
-              {tt("keyword_gold_brave_live", { count: result.groundingResultsCount || 0 })}
-            </Badge>
-          ) : (
-            <Badge variant="secondary">{t("kdp_analysis_basic")}</Badge>
-          )}
+          {result ? (
+            <MarketDataStatusBadge status={statusFromGrounding(result.groundingUsed)} />
+          ) : null}
         </header>
 
         <Card>
@@ -134,11 +132,7 @@ export default function KeywordGoldPage() {
         {result && (
           <div className="space-y-6">
             {result.fallbackReason && (
-              <Card className="border-amber-500/30 bg-amber-500/10">
-                <CardContent className="py-3 text-sm text-amber-950 dark:text-amber-100">
-                  {result.fallbackReason}
-                </CardContent>
-              </Card>
+              <MarketDataStatusNotice status="estimated" extra={result.fallbackReason} />
             )}
 
             <Card>

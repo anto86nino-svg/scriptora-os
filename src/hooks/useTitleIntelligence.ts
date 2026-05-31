@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/services/storageService";
 import { t } from "@/lib/i18n";
+import type { MarketDataStatus } from "@/lib/market-intelligence/marketDataStatus";
 
 export type Level = "low" | "medium" | "high";
 
@@ -41,7 +42,9 @@ export interface TitleIntelligenceResult {
   topTitles: TitleCard[];
   shadowTitles: TitleCard[];
   coreKeywords: KeywordIntel[];
+  /** Present when editorial fallback was used instead of live edge analysis. */
   fallbackReason?: string;
+  dataStatus?: MarketDataStatus;
 }
 
 export interface TitleIntelligenceInput {
@@ -106,7 +109,8 @@ function buildTitleIntelligenceFallback(input: TitleIntelligenceInput): TitleInt
       ];
 
   return {
-    fallbackReason: t("title_intel_estimated_banner"),
+    fallbackReason: t("title_intel_estimated_microcopy"),
+    dataStatus: "estimated",
     marketSnapshot: {
       platformsAnalyzed: ["Amazon KDP", "Apple Books"],
       topSubNiches: [
@@ -171,9 +175,10 @@ export function useTitleIntelligence() {
       });
       if (err) throw new Error(err.message);
       if ((res as any)?.error) throw new Error((res as any).error);
-      setData(res as TitleIntelligenceResult);
+      const live = { ...(res as TitleIntelligenceResult), dataStatus: "live" as const };
+      setData(live);
       setLastInput(input);
-      return res as TitleIntelligenceResult;
+      return live;
     } catch (e: any) {
       console.warn("[title-intelligence] cloud analysis unavailable; using local base analysis", e);
       const fallback = buildTitleIntelligenceFallback(input);
