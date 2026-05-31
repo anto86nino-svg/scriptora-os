@@ -699,13 +699,18 @@ export function ManuscriptAnalyzerDialog({
   const canAnalyze = wordCount >= MIN_ANALYSIS_WORDS && !reading && !analyzing && !saving;
 
   const publishingIntel = useMemo((): ManuscriptPublishingIntel | null => {
-    if (!analysis) return null;
-    return analyzeManuscriptPublishingIntel({
-      fullText: analysis.chapters.map((c) => c.content).join("\n\n"),
-      chapters: analysis.chapters.map((c) => ({ title: c.title, content: c.content })),
-      genre,
-      language: getScriptoraLanguage(),
-    });
+    if (!analysis?.chapters?.length) return null;
+    try {
+      return analyzeManuscriptPublishingIntel({
+        fullText: analysis.chapters.map((c) => c.content || "").join("\n\n"),
+        chapters: analysis.chapters.map((c) => ({ title: c.title || "", content: c.content || "" })),
+        genre,
+        language: getScriptoraLanguage(),
+      });
+    } catch (err) {
+      console.warn("[ManuscriptAnalyzer] publishing intel skipped", err);
+      return null;
+    }
   }, [analysis, genre]);
 
   const premiumMetrics = publishingIntel
@@ -742,15 +747,13 @@ export function ManuscriptAnalyzerDialog({
     try {
       setAnalyzingPhase("Comparing genre expectations…");
       const result = analyzeManuscript(nextText, nextTitle, nextSource, nextGenre);
-      if (!result.chapters.length) {
-        throw new Error("MANUSCRIPT_NO_CHAPTERS");
-      }
       setAnalyzingPhase("Estimating reader retention…");
       setAnalysis(result);
-    } catch {
+    } catch (err) {
+      console.error("[ManuscriptAnalyzer] analysis failed", err);
       setAnalysis(null);
-      setImportFailed(true);
-      setError("");
+      setImportFailed(false);
+      setError(t("manuscript_analysis_error"));
     } finally {
       setAnalyzing(false);
       setAnalyzingPhase("");
@@ -786,7 +789,7 @@ export function ManuscriptAnalyzerDialog({
         file.type === "application/epub+zip" ||
         message === "EPUB_EMPTY" ||
         message === "EPUB_PARSE_FAILED";
-      if (isEpub || message === "MANUSCRIPT_NO_CHAPTERS") {
+      if (isEpub || message === "EPUB_EMPTY" || message === "EPUB_PARSE_FAILED") {
         setImportFailed(true);
         setError("");
       } else {
@@ -821,7 +824,8 @@ export function ManuscriptAnalyzerDialog({
       navigate("/app");
     } catch (err) {
       console.error("[ManuscriptAnalyzer] project create failed", err);
-      setImportFailed(true);
+      setImportFailed(false);
+      setError(t("manuscript_project_create_error"));
       toast.error(t("manuscript_project_create_error"));
     } finally {
       setSaving(false);
@@ -1007,6 +1011,22 @@ export function ManuscriptAnalyzerDialog({
                 <ScriptoraPremiumState
                   variant="import-error"
                   compact
+                  payload={{
+                    ...buildRequirement("unexpected_error"),
+                    title: t("manuscript_import_error"),
+                    why: t("manuscript_file_error"),
+                    actionHint: t("manuscript_import_retry"),
+                    primaryAction: {
+                      ...buildRequirement("unexpected_error").primaryAction,
+                      label: t("req_back_dashboard"),
+                    },
+                    secondaryAction: {
+                      labelKey: "manuscript_import_retry",
+                      label: t("manuscript_import_retry"),
+                      type: "intent",
+                      intent: "stay_here",
+                    },
+                  }}
                   onPrimary={() => {
                     setImportFailed(false);
                     onClose();
@@ -1014,7 +1034,7 @@ export function ManuscriptAnalyzerDialog({
                   }}
                   onSecondary={() => {
                     setImportFailed(false);
-                    window.location.reload();
+                    fileInputRef.current?.click();
                   }}
                 />
               </div>
