@@ -1185,8 +1185,111 @@ body.scriptora-wos-tool-mode .scriptora-feature-scroll {
 
 @media (max-width: 767px) {
   body.scriptora-wos-tool-mode {
-    --wos-tool-hero-height: 5.625rem;
-    --wos-tool-modal-gap: 10px;
+    --wos-tool-hero-height: 4.25rem;
+    --wos-tool-modal-gap: 8px;
+    --wos-mobile-debug-clearance: 4.75rem;
+    --wos-dashboard-header-height: calc(3.5rem + env(safe-area-inset-top, 0px));
+  }
+
+  .scriptora-dashboard-header {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-feature-page {
+    overflow: hidden;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-feature-scroll,
+  body.scriptora-wos-tool-mode .scriptora-gateway-scroll,
+  body.scriptora-wos-tool-mode #dashboard-projects {
+    overflow: hidden !important;
+    padding-top: 0 !important;
+    min-height: 0 !important;
+  }
+
+  body.scriptora-wos-tool-mode #dashboard-projects > .ios-panel {
+    display: none !important;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] .scriptora-workspace-os-bg {
+    opacity: 0.28;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-gateway-tool-bridge {
+    border-color: hsl(0 0% 100% / 0.08);
+    box-shadow: 0 8px 24px hsl(0 0% 0% / 0.32);
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-modal-overlay {
+    top: var(--wos-tool-stack-height);
+    bottom: 0;
+    height: auto;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 0 max(0.75rem, env(safe-area-inset-right))
+      max(env(safe-area-inset-bottom), 0px) max(0.75rem, env(safe-area-inset-left));
+    padding-top: 0;
+    background-color: hsl(0 0% 0% / 0.9);
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-modal-panel,
+  body.scriptora-wos-tool-mode .scriptora-mobile-work-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    min-height: 0 !important;
+    max-height: calc(
+      100dvh - var(--wos-tool-stack-height) - env(safe-area-inset-bottom, 0px) - 8px
+    ) !important;
+    height: calc(
+      100dvh - var(--wos-tool-stack-height) - env(safe-area-inset-bottom, 0px) - 8px
+    ) !important;
+    border-radius: 1.25rem 1.25rem 0 0 !important;
+    flex: 1 1 auto;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-modal-body,
+  body.scriptora-wos-tool-mode .scriptora-mobile-work-panel__body {
+    padding-bottom: calc(var(--wos-mobile-debug-clearance) + env(safe-area-inset-bottom, 0px));
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-modal-actions,
+  body.scriptora-wos-tool-mode .scriptora-mobile-work-panel__footer {
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  body.scriptora-wos-tool-mode [data-radix-dialog-content] {
+    top: var(--wos-tool-stack-height) !important;
+    right: max(0.75rem, env(safe-area-inset-right)) !important;
+    bottom: max(env(safe-area-inset-bottom), 0px) !important;
+    left: max(0.75rem, env(safe-area-inset-left)) !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: calc(
+      100dvh - var(--wos-tool-stack-height) - env(safe-area-inset-bottom, 0px) - 8px
+    ) !important;
+    transform: none !important;
+    translate: none !important;
+    margin: 0 !important;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 1.25rem 1.25rem 0 0 !important;
+  }
+
+  body.scriptora-wos-tool-mode [data-radix-dialog-overlay] {
+    top: var(--wos-tool-stack-height) !important;
+    background-color: hsl(0 0% 0% / 0.9) !important;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-dev-mode-badge {
+    bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+    z-index: 109;
+  }
+
+  body.scriptora-wos-tool-mode .scriptora-dev-mode-badge--collapsed {
+    bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
   }
 
   body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] {
@@ -1200,11 +1303,11 @@ body.scriptora-wos-tool-mode .scriptora-feature-scroll {
 
   body.scriptora-wos-tool-mode .scriptora-wos-tool-hero {
     gap: 0.4375rem;
-    grid-template-columns: minmax(3.25rem, 21%) 1fr;
+    grid-template-columns: minmax(3rem, 20%) 1fr;
   }
 
   body.scriptora-wos-tool-mode .scriptora-book-mockup-wrap--mini {
-    width: min(3.75rem, 18vw);
+    width: min(3.5rem, 17vw);
   }
 
   body.scriptora-wos-tool-mode .scriptora-book-mockup-wrap--mini .scriptora-book-mockup__title {
@@ -1223,22 +1326,13 @@ body.scriptora-wos-tool-mode .scriptora-feature-scroll {
   }
 
   body.scriptora-wos-tool-mode .scriptora-wos-tool-visual__svg {
-    width: min(100%, 3.5rem);
+    width: min(100%, 3.25rem);
   }
 
   body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] .scriptora-book-mockup-wrap::before,
   body.scriptora-wos-tool-mode .scriptora-workspace-os[data-mode="tool"] .scriptora-book-mockup-wrap::after {
     inset: -0.05rem -0.2rem;
-    opacity: 0.45;
-  }
-
-  body.scriptora-wos-tool-mode .scriptora-modal-overlay {
-    padding-top: 0;
-  }
-
-  body.scriptora-wos-tool-mode .scriptora-modal-panel {
-    min-height: 0;
-    flex: 1 1 auto;
+    opacity: 0.35;
   }
 }
 

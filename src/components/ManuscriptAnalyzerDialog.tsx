@@ -1181,7 +1181,7 @@ export function ManuscriptAnalyzerDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="flex max-h-[min(92dvh,92vh)] w-[calc(100vw-1.5rem)] max-w-6xl flex-col overflow-hidden border-border bg-card p-0 shadow-2xl backdrop-blur-2xl">
+      <DialogContent className="scriptora-mobile-work-panel flex max-h-[min(92dvh,92vh)] w-[calc(100vw-1.5rem)] max-w-6xl flex-col overflow-hidden border-border bg-card p-0 shadow-2xl backdrop-blur-2xl">
         {headerBlock}
         {panelBody}
       </DialogContent>

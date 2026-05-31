@@ -180,7 +180,7 @@ export function NotepadDialog({ open, ownerId, onClose }: NotepadDialogProps) {
   return (
     <div className="scriptora-modal-overlay" onClick={onClose}>
       <div
-        className="scriptora-modal-panel ios-panel max-w-6xl"
+        className="scriptora-modal-panel scriptora-mobile-work-panel ios-panel max-w-6xl"
         onClick={(event) => event.stopPropagation()}
       >
         <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-3">

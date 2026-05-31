@@ -189,7 +189,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
 
   return (
     <div className="scriptora-modal-overlay">
-      <div className="scriptora-modal-panel max-w-4xl">
+      <div className="scriptora-modal-panel scriptora-mobile-work-panel max-w-4xl">
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between border-b border-border p-5">
           <div className="flex items-center gap-3">

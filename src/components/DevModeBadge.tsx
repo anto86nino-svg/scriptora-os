@@ -116,14 +116,14 @@ export function DevModeBadge() {
           type="button"
           onClick={() => setCollapsed(false)}
           title="Dev Mode"
-          className="fixed bottom-3 right-3 z-50 inline-flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-background/75 px-3 text-[10px] font-semibold uppercase tracking-wider text-foreground shadow-lg backdrop-blur-xl sm:hidden"
+          className="scriptora-dev-mode-badge scriptora-dev-mode-badge--collapsed fixed bottom-3 right-3 z-50 inline-flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-background/75 px-3 text-[10px] font-semibold uppercase tracking-wider text-foreground shadow-lg backdrop-blur-xl sm:hidden"
         >
           <Terminal className="h-3 w-3 text-sky-300" />
           DEV
         </button>
       )}
 
-      <div className={`fixed bottom-3 right-3 z-50 max-w-[calc(100vw-1rem)] items-center gap-1 rounded-2xl bg-foreground/95 text-background shadow-lg backdrop-blur-xl pl-2 pr-1 py-1 text-[11px] font-mono sm:bottom-4 sm:right-4 sm:flex sm:max-w-[calc(100vw-2rem)] sm:rounded-full sm:bg-foreground ${
+      <div className={`scriptora-dev-mode-badge fixed bottom-3 right-3 z-50 max-w-[calc(100vw-1rem)] items-center gap-1 rounded-2xl bg-foreground/95 text-background shadow-lg backdrop-blur-xl pl-2 pr-1 py-1 text-[11px] font-mono sm:bottom-4 sm:right-4 sm:flex sm:max-w-[calc(100vw-2rem)] sm:rounded-full sm:bg-foreground ${
         collapsed ? "hidden" : "flex"
       }`}>
         <button

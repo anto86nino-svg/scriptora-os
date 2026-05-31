@@ -702,8 +702,8 @@ export function CoverGenerator({
   }
 
   const panel = (
-    <div className={`scriptora-modal-panel flex max-h-[min(94dvh,960px)] flex-col max-w-6xl lg:max-w-[1500px] lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)] ${embedded ? "max-w-none rounded-none shadow-none lg:rounded-2xl" : ""}`}>
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 px-4 py-4 sm:px-5 lg:px-7 lg:py-5">
+    <div className={`scriptora-modal-panel scriptora-mobile-work-panel flex max-h-[min(94dvh,960px)] flex-col max-w-6xl lg:max-w-[1500px] lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)] ${embedded ? "max-w-none rounded-none shadow-none lg:rounded-2xl" : ""}`}>
+        <div className="scriptora-mobile-work-panel__header flex shrink-0 items-center justify-between gap-3 border-b border-border/70 px-4 py-4 sm:px-5 lg:px-7 lg:py-5">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary">
               <BookOpen className="h-4 w-4" />
@@ -723,17 +723,17 @@ export function CoverGenerator({
           )}
         </div>
 
-        <div className="scriptora-modal-body min-h-0 flex-1 overflow-y-auto grid grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)_360px] xl:overflow-hidden">
-          <div className="relative order-1 xl:order-none xl:col-start-2 xl:row-start-1 p-4 sm:p-6 lg:p-6 xl:p-8 bg-black/20 xl:bg-gradient-to-br xl:from-black/45 xl:via-background/80 xl:to-primary/10 flex flex-col items-center justify-center gap-4 xl:min-h-[calc(94vh-96px)] xl:overflow-hidden">
+        <div className="scriptora-modal-body scriptora-mobile-work-panel__body min-h-0 flex-1 overflow-y-auto grid grid-cols-1 xl:grid-cols-[380px_minmax(0,1fr)_360px] xl:overflow-hidden">
+          <div className="scriptora-cover-preview-stage relative order-1 xl:order-none xl:col-start-2 xl:row-start-1 p-4 sm:p-6 lg:p-6 xl:p-8 bg-black/20 xl:bg-gradient-to-br xl:from-black/45 xl:via-background/80 xl:to-primary/10 flex flex-col items-center justify-center gap-4 xl:min-h-[calc(94vh-96px)] xl:overflow-hidden">
             <div className="w-full flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:absolute lg:left-8 lg:right-8 lg:top-6 lg:w-auto lg:rounded-2xl lg:border lg:border-white/10 lg:bg-background/35 lg:px-4 lg:py-3 lg:backdrop-blur-xl">
               <span>{spec.label}</span>
               <span>{spec.width} x {spec.height}px - {spec.exportNote}</span>
             </div>
-            <div className="w-full min-h-[360px] lg:min-h-0 lg:h-full flex items-center justify-center lg:pt-8">
+            <div className="scriptora-cover-preview-frame w-full min-h-[220px] max-h-[38dvh] sm:min-h-[280px] sm:max-h-[42dvh] lg:min-h-0 lg:max-h-none lg:h-full flex items-center justify-center lg:pt-8">
               <div className="w-full flex items-center justify-center lg:rounded-[2rem] lg:border lg:border-white/10 lg:bg-white/[0.035] lg:p-6 xl:p-8 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_28px_80px_rgba(0,0,0,0.45)]">
                 <canvas
                   ref={canvasRef}
-                  className="max-h-[66vh] lg:max-h-[72vh] xl:max-h-[76vh] w-auto max-w-full rounded-xl lg:rounded-2xl shadow-2xl lg:shadow-[0_26px_80px_rgba(0,0,0,0.62)] ring-1 ring-white/10"
+                  className="max-h-[34dvh] sm:max-h-[38dvh] lg:max-h-[72vh] xl:max-h-[76vh] w-auto max-w-full rounded-xl lg:rounded-2xl shadow-2xl lg:shadow-[0_26px_80px_rgba(0,0,0,0.62)] ring-1 ring-white/10"
                 />
               </div>
             </div>

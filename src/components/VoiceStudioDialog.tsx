@@ -1283,7 +1283,7 @@ export function VoiceStudioDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
-      <DialogContent className={`flex w-[calc(100vw-0.75rem)] flex-col overflow-hidden border-white/15 bg-slate-950/94 p-3 text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-5 ${
+      <DialogContent className={`scriptora-mobile-work-panel flex w-[calc(100vw-0.75rem)] flex-col overflow-hidden border-white/15 bg-slate-950/94 p-3 text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-5 ${
           immersiveMode
             ? "h-[96dvh] max-h-[96dvh] max-w-[96vw]"
             : "max-h-[88dvh] max-w-3xl sm:max-h-[90dvh]"

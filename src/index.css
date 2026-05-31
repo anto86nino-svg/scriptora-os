@@ -100,6 +100,23 @@
     background-color: hsl(var(--card));
   }
 
+  /* Reusable mobile-safe workspace tool shell (desktop: no layout change) */
+  .scriptora-mobile-work-panel {
+    @apply flex min-h-0 w-full flex-col overflow-hidden;
+  }
+
+  .scriptora-mobile-work-panel__header {
+    @apply shrink-0;
+  }
+
+  .scriptora-mobile-work-panel__body {
+    @apply min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin;
+  }
+
+  .scriptora-mobile-work-panel__footer {
+    @apply shrink-0;
+  }
+
   /* Solid, readable form surfaces inside every modal shell */
   .scriptora-modal-panel input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
   .scriptora-modal-panel select,

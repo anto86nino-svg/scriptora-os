@@ -201,7 +201,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
 
   return (
     <div className="scriptora-modal-overlay">
-      <div className="scriptora-modal-panel max-w-lg">
+      <div className="scriptora-modal-panel scriptora-mobile-work-panel max-w-lg">
         <div className="flex shrink-0 items-center justify-between border-b border-border p-5">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-lg bg-primary/10 text-primary">

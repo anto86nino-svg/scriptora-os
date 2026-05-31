@@ -893,8 +893,8 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
 
   return (
     <div className="scriptora-modal-overlay">
-      <div className="scriptora-modal-panel max-w-4xl flex max-h-[min(94dvh,920px)] flex-col">
-        <div className="flex shrink-0 items-center justify-between border-b border-border bg-card p-4">
+      <div className="scriptora-modal-panel scriptora-mobile-work-panel max-w-4xl flex max-h-[min(94dvh,920px)] flex-col">
+        <div className="scriptora-mobile-work-panel__header flex shrink-0 items-center justify-between border-b border-border bg-card p-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-pink-500/15 text-pink-400 flex items-center justify-center">
               <Users className="h-5 w-5" />
@@ -914,7 +914,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
           </div>
         </div>
 
-        <div className="scriptora-modal-body min-h-0 flex-1 overflow-y-auto space-y-5 p-5">
+        <div className="scriptora-modal-body scriptora-mobile-work-panel__body min-h-0 flex-1 overflow-y-auto space-y-5 p-5">
           <CharacterStudioGuidedFlow
             open={open}
             onFocusIdea={() => {
@@ -1130,7 +1130,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
           </div>
         </div>
 
-        <div className="scriptora-modal-actions shrink-0 border-t border-border/70 bg-card/95 p-4 pb-safe backdrop-blur">
+        <div className="scriptora-modal-actions scriptora-mobile-work-panel__footer shrink-0 border-t border-border/70 bg-card/95 p-4 pb-safe backdrop-blur">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">{t("character_studio_footer_tip")}</p>
             <div className="flex flex-wrap gap-2">
