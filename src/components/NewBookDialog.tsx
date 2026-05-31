@@ -12,6 +12,7 @@ import { usePlan } from "@/lib/plan";
 import { DEFAULT_AUTHOR_IDENTITIES, deleteAuthorIdentity, getSelectedAuthorIdentity, isDeletableAuthorIdentity, loadAuthorIdentities, normalizeAuthorIdentity, saveAuthorIdentity, setSelectedAuthorIdentityId } from "@/lib/author-identity";
 import { ensureBookTitleMetadata, generateShadowTitleSet } from "@/lib/title-shadow";
 import { toast } from "sonner";
+import { useScriptoraModalScrollLock } from "@/lib/viewport-safe";
 
 interface NewBookDialogProps {
   open: boolean;
@@ -95,6 +96,7 @@ const GENRES: { value: Genre; label: string; group: string }[] = [
 ];
 
 export function NewBookDialog({ open, onClose, onSubmit, initialConfig, reconfigureMode = false }: NewBookDialogProps) {
+  useScriptoraModalScrollLock(open);
   const { plan } = usePlan();
   const isFreePlan = plan === "free";
   const [pendingCharacterProject, setPendingCharacterProject] = useState<any | null>(null);
@@ -369,8 +371,8 @@ export function NewBookDialog({ open, onClose, onSubmit, initialConfig, reconfig
 
   return (
     <div className="scriptora-modal-overlay">
-      <div className="scriptora-modal-panel max-w-3xl">
-        <div className="flex shrink-0 items-center justify-between border-b border-border p-5">
+      <div className="scriptora-modal-panel scriptora-mobile-work-panel max-w-3xl">
+        <div className="scriptora-mobile-work-panel__header flex shrink-0 items-center justify-between border-b border-border p-4 sm:p-5">
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">
@@ -383,7 +385,7 @@ export function NewBookDialog({ open, onClose, onSubmit, initialConfig, reconfig
           </div>
         </div>
 
-        <div className="scriptora-modal-body space-y-4 p-5">
+        <div className="scriptora-modal-body scriptora-mobile-work-panel__body space-y-4 p-4 sm:p-5">
           <NewBookGuidedFlow open={open} />
 
           <div ref={titleSectionRef} data-guided-tour="newbook-title">

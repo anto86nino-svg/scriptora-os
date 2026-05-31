@@ -1030,8 +1030,8 @@ export function ManuscriptAnalyzerDialog({
             )}
 
             {error && !requirementBlock && !importFailed && (
-              <div className="mt-3 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="scriptora-premium-notice scriptora-premium-notice--error mt-3 flex items-start gap-2 text-xs">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <span>{error}</span>
               </div>
             )}

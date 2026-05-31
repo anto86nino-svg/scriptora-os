@@ -4,6 +4,8 @@ import { CharacterStudioGuidedFlow } from "@/components/CharacterStudioGuidedFlo
 import { GuidedTourTriggerButton } from "@/components/GuidedTourTriggerButton";
 import { GUIDED_TOUR_IDS } from "@/lib/guided-tour-events";
 import { toast } from "sonner";
+import { toastPremiumError } from "@/lib/premium-notices";
+import { useScriptoraModalScrollLock } from "@/lib/viewport-safe";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -587,6 +589,7 @@ function buildLocalUserStoryDevelopment(input: {
 }
 
 export function CharacterStudioDialog({ open, onClose }: Props) {
+  useScriptoraModalScrollLock(open);
   useUILanguage();
   const [idea, setIdea] = useState("");
   const [genre, setGenre] = useState("romance");
@@ -868,7 +871,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
     }
 
     if (!savedSomewhere) {
-      toast.error(t("character_studio_toast_save_failed"));
+      toastPremiumError(undefined, "character_studio_toast_save_failed");
       return;
     }
 
@@ -893,7 +896,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
 
   return (
     <div className="scriptora-modal-overlay">
-      <div className="scriptora-modal-panel scriptora-mobile-work-panel max-w-4xl flex max-h-[min(94dvh,920px)] flex-col">
+      <div className="scriptora-modal-panel scriptora-mobile-work-panel scriptora-character-studio-shell max-w-4xl flex flex-col">
         <div className="scriptora-mobile-work-panel__header flex shrink-0 items-center justify-between border-b border-border bg-card p-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-pink-500/15 text-pink-400 flex items-center justify-center">
@@ -914,7 +917,8 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
           </div>
         </div>
 
-        <div className="scriptora-modal-body scriptora-mobile-work-panel__body min-h-0 flex-1 overflow-y-auto space-y-5 p-5">
+        <div className="scriptora-modal-body scriptora-mobile-work-panel__body scriptora-character-studio-body relative min-h-0 flex-1 overflow-y-auto space-y-5 p-4 sm:p-5">
+          {loading && <div className="scriptora-studio-loading-veil" aria-hidden="true" />}
           <CharacterStudioGuidedFlow
             open={open}
             onFocusIdea={() => {
@@ -1114,9 +1118,9 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
                 setCharacterBible(e.target.value);
                 setSaved(false);
               }}
-              rows={18}
+              rows={14}
               placeholder={t("character_studio_output_placeholder")}
-              className="font-mono text-xs leading-relaxed"
+              className="font-mono text-xs leading-relaxed min-h-[12rem] max-h-[40dvh] sm:max-h-none sm:min-h-[18rem]"
             />
           </div>
 
@@ -1130,10 +1134,9 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
           </div>
         </div>
 
-        <div className="scriptora-modal-actions scriptora-mobile-work-panel__footer shrink-0 border-t border-border/70 bg-card/95 p-4 pb-safe backdrop-blur">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-muted-foreground">{t("character_studio_footer_tip")}</p>
-            <div className="flex flex-wrap gap-2">
+        <div className="scriptora-modal-actions scriptora-mobile-work-panel__footer scriptora-character-studio-footer shrink-0 border-t border-border/70 bg-card/95 p-4 pb-safe backdrop-blur">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+            <div className="flex flex-wrap gap-2 sm:justify-end">
               <Button
                 onClick={generate}
                 disabled={!canGenerate || loading}

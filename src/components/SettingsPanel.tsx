@@ -1,4 +1,5 @@
 import { UILanguage, UI_LANGUAGES, t, tt, setUILanguage, getUILanguage } from "@/lib/i18n";
+import { useScriptoraModalScrollLock } from "@/lib/viewport-safe";
 import { WritingSettings, FONT_OPTIONS } from "@/lib/settings";
 import { useGuidedFlow } from "@/hooks/useGuidedFlow";
 import { X, Globe, Type, HelpCircle } from "lucide-react";
@@ -17,15 +18,17 @@ export function SettingsPanel({ open, onClose, settings, onUpdateSettings, onLan
   const uiLang = getUILanguage();
   const { enabled: guideEnabled, setEnabled: setGuideEnabled } = useGuidedFlow();
 
+  useScriptoraModalScrollLock(open);
+
   return (
     <div className="scriptora-modal-overlay" onClick={onClose}>
-      <div className="scriptora-modal-panel max-w-md" onClick={e => e.stopPropagation()}>
-        <div className="flex shrink-0 items-center justify-between border-b border-border p-5">
+      <div className="scriptora-modal-panel scriptora-mobile-work-panel max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="scriptora-mobile-work-panel__header flex shrink-0 items-center justify-between border-b border-border p-4 sm:p-5">
           <h2 className="text-sm font-semibold text-foreground">{t("settings")}</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
         </div>
 
-        <div className="scriptora-modal-body space-y-6 p-5">
+        <div className="scriptora-modal-body scriptora-mobile-work-panel__body space-y-6 p-4 sm:p-5">
           {/* Interface Language */}
           <div>
             <div className="flex items-center gap-2 mb-2">

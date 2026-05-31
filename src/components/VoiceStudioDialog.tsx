@@ -32,6 +32,7 @@ import {
   cancelScheduledReadingPositionSave,
   type ReadingPosition,
 } from "@/lib/reading-position";
+import { useScriptoraModalScrollLock } from "@/lib/viewport-safe";
 
 const SPEED_OPTIONS = [0.75, 1, 1.25, 1.5, 2] as const;
 
@@ -81,6 +82,7 @@ export function VoiceStudioDialog({
   initialChapterIndex,
   autoPlayOnOpen = false,
 }: VoiceStudioDialogProps) {
+  useScriptoraModalScrollLock(open);
   const [query, setQuery] = useState("");
   const [projectId, setProjectId] = useState<string>("");
   const [chapterIndex, setChapterIndex] = useState<number>(0);
@@ -565,7 +567,7 @@ export function VoiceStudioDialog({
       if (pausedRef.current || isPausedRef.current || manualStopRef.current) return;
       if (isPlaying && !synth.speaking && !synth.pending) {
         setIsPlaying(false);
-        setStatus("Playback ended unexpectedly — tap Play to retry.");
+        setStatus(t("voice_status_playback_retry"));
       }
     }, 700);
     return () => window.clearInterval(id);
@@ -682,7 +684,7 @@ export function VoiceStudioDialog({
 
   const testMobileVoice = () => {
     if (typeof window === "undefined" || !window.speechSynthesis) {
-      setStatus("Speech synthesis is not available in this browser.");
+      setStatus(t("voice_status_no_synthesis"));
       return;
     }
 
@@ -732,7 +734,7 @@ export function VoiceStudioDialog({
       }, 900);
     } catch (err) {
       setIsPlaying(false);
-      setStatus("Test voice failed.");
+      setStatus(t("voice_status_test_issue"));
       logDebug("test-voice-exception", err);
     }
   };
@@ -1018,7 +1020,7 @@ export function VoiceStudioDialog({
 
   const handlePlayPause = () => {
     if (typeof window === "undefined" || !window.speechSynthesis) {
-      setStatus("Speech synthesis is not available in this browser.");
+      setStatus(t("voice_status_no_synthesis"));
       return;
     }
 
@@ -1039,7 +1041,7 @@ export function VoiceStudioDialog({
         setStatus(t("voice_reading_paused"));
         logDebug("playback-paused", { sentence: currentSentenceIndexRef.current, chunk: currentChunkIndexRef.current });
       } catch (err) {
-        setStatus("Pause failed. Use Stop if needed.");
+        setStatus(t("voice_status_pause_issue"));
         logDebug("pause-exception", err);
       }
       return;
@@ -1304,7 +1306,7 @@ export function VoiceStudioDialog({
         setIsPlaying(false);
         setIsPaused(false);
         pausedRef.current = false;
-        setStatus(`Audio stopped on part ${chunkIndex + 1}. Tap Play to retry.`);
+        setStatus(t("voice_status_audio_retry"));
         clearTimer();
         logDebug("chunk-error", err);
       };
@@ -1324,7 +1326,7 @@ export function VoiceStudioDialog({
         }, 900);
       } catch (err) {
         setIsPlaying(false);
-        setStatus("Playback failed to start.");
+        setStatus(t("voice_status_playback_issue"));
         clearTimer();
         logDebug("chunk-speak-exception", err);
       }
@@ -1405,14 +1407,12 @@ export function VoiceStudioDialog({
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
       <DialogContent
-        className={`scriptora-mobile-work-panel flex w-[calc(100vw-0.75rem)] flex-col overflow-hidden border-white/15 bg-slate-950/94 p-2 text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-5 ${
-          immersiveMode
-            ? "max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-16px)] h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-16px)] max-w-[96vw]"
-            : "max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-16px)] max-w-3xl"
+        className={`scriptora-radix-dialog-content scriptora-voice-studio-shell scriptora-mobile-work-panel w-[calc(100vw-0.75rem)] overflow-hidden border-white/15 bg-slate-950/94 p-2 text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-3 ${
+          immersiveMode ? "max-w-[96vw]" : "max-w-3xl"
         }`}
         style={{ overscrollBehavior: "contain" }}
       >
-        <DialogHeader className={isMinimalImmersion && sessionActive ? "sr-only" : ""}>
+        <DialogHeader className={`shrink-0 ${isMinimalImmersion && sessionActive ? "sr-only" : ""}`}>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <BookOpen className="h-5 w-5 text-sky-300" />
             Reading Session Pro
@@ -1422,7 +1422,7 @@ export function VoiceStudioDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className={`relative min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1f2937] p-2 sm:p-4 ${
+        <div className={`scriptora-voice-studio-scroll relative min-h-0 overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1f2937] p-2 sm:p-4 ${
           immersiveMode ? "flex flex-col" : ""
         }`}>
           {reading.showInsights && (
@@ -1719,62 +1719,6 @@ export function VoiceStudioDialog({
             </div>
           )}
 
-          <div className="sticky bottom-0 z-20 mt-2 flex flex-col gap-1.5 rounded-2xl border border-white/10 bg-slate-950/90 p-2 backdrop-blur sm:mt-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-            {!isMinimalImmersion && (
-            <button
-              onClick={testMobileVoice}
-              className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-emerald-300/40 bg-emerald-300/15 px-4 text-sm font-semibold text-emerald-100 hover:bg-emerald-300/20 sm:w-auto"
-            >
-              Test Voice
-            </button>
-            )}
-            <button
-              onClick={handlePlayPause}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-100 sm:w-auto"
-              disabled={!currentChapter}
-            >
-              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-              {isPaused ? "Resume listening" : isPlaying ? "Pause listening" : "Start listening"}
-            </button>
-            <button
-              onClick={handleStop}
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-medium text-white/80 hover:bg-white/[0.08] sm:w-auto"
-            >
-              <Square className="h-3.5 w-3.5" />
-              Stop session
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveBookmark}
-              className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium sm:w-auto ${
-                bookmarkFlash
-                  ? "border-amber-300/50 bg-amber-300/15 text-amber-100"
-                  : "border-white/20 text-white/80 hover:bg-white/[0.08]"
-              }`}
-            >
-              <Bookmark className="h-4 w-4" />
-              {t("voice_save_bookmark")}
-            </button>
-            {(reading.sessionNotes.length > 0 || sessionActive) && (
-              <button
-                type="button"
-                onClick={reading.endSessionAndReview}
-                className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-amber-300/35 bg-amber-300/10 px-4 text-sm font-medium text-amber-100 hover:bg-amber-300/15 sm:w-auto"
-              >
-                <ClipboardList className="h-4 w-4" />
-                Session insights
-              </button>
-            )}
-            {selectedProject && onOpenProject && !isMinimalImmersion && (
-              <button
-                onClick={() => onOpenProject(selectedProject.id)}
-                className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-300/10 px-4 text-sm font-medium text-cyan-100 hover:bg-cyan-300/15 sm:w-auto"
-              >
-                Open In Writing Room
-              </button>
-            )}
-          </div>
-
           <div className={"mt-2 rounded-2xl border border-white/10 bg-slate-900/90 p-2 shadow-[inset_0_0_30px_rgba(15,23,42,0.35)] sm:mt-3 sm:p-4 " + (immersiveMode ? "flex min-h-0 flex-1 flex-col ring-1 ring-cyan-300/20" : "")}>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2 sm:mb-3 sm:gap-3">
               <div>
@@ -1802,7 +1746,7 @@ export function VoiceStudioDialog({
             <div
               ref={karaokeScrollRef}
               onScroll={handleKaraokeScroll}
-              className={`relative overflow-y-auto overflow-x-hidden overscroll-contain scroll-smooth rounded-2xl border border-white/10 bg-slate-950/80 p-2 sm:p-4 ${
+              className={`relative overflow-y-auto overflow-x-hidden overscroll-contain scroll-smooth rounded-2xl border border-white/10 bg-slate-950/80 p-2 sm:p-4 scriptora-voice-studio-karaoke ${
                 immersiveMode
                   ? "min-h-[38dvh] flex-1 max-h-[52dvh] backdrop-blur-sm sm:min-h-[58dvh] sm:max-h-[68dvh]"
                   : "max-h-[38dvh] sm:max-h-[24rem]"
@@ -1830,7 +1774,7 @@ export function VoiceStudioDialog({
                     <p
                       key={`${idx}-${sentence.slice(0, 20)}`}
                       ref={(node) => { sentenceRefs.current[idx] = node; }}
-                      className={`rounded-xl px-3 py-2 text-[15px] leading-7 transition-all duration-300 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-base ${highlightActive ? "bg-cyan-400/10 text-white shadow-[0_0_20px_rgba(56,189,248,0.18)] ring-1 ring-cyan-300/30" : immersiveMode ? "text-slate-400/80 opacity-80" : "text-slate-300"}`}
+                      className={`rounded-xl px-3 py-2 text-[15px] leading-7 transition-all duration-300 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-base ${highlightActive ? "scriptora-voice-karaoke-active" : immersiveMode ? "text-slate-400/80 opacity-80" : "text-slate-300"}`}
                     >
                       {sentence}
                     </p>
@@ -1844,6 +1788,62 @@ export function VoiceStudioDialog({
               )}
             </div>
           </div>
+        </div>
+
+        <div className="scriptora-voice-studio-footer flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+          {!isMinimalImmersion && (
+          <button
+            onClick={testMobileVoice}
+            className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-emerald-300/40 bg-emerald-300/15 px-4 text-sm font-semibold text-emerald-100 hover:bg-emerald-300/20 sm:w-auto"
+          >
+            Test Voice
+          </button>
+          )}
+          <button
+            onClick={handlePlayPause}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-100 sm:w-auto"
+            disabled={!currentChapter}
+          >
+            {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            {isPaused ? "Resume listening" : isPlaying ? "Pause listening" : "Start listening"}
+          </button>
+          <button
+            onClick={handleStop}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/20 px-4 text-sm font-medium text-white/80 hover:bg-white/[0.08] sm:w-auto"
+          >
+            <Square className="h-3.5 w-3.5" />
+            Stop session
+          </button>
+          <button
+            type="button"
+            onClick={handleSaveBookmark}
+            className={`inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium sm:w-auto ${
+              bookmarkFlash
+                ? "border-amber-300/50 bg-amber-300/15 text-amber-100"
+                : "border-white/20 text-white/80 hover:bg-white/[0.08]"
+            }`}
+          >
+            <Bookmark className="h-4 w-4" />
+            {t("voice_save_bookmark")}
+          </button>
+          {(reading.sessionNotes.length > 0 || sessionActive) && (
+            <button
+              type="button"
+              onClick={reading.endSessionAndReview}
+              className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-xl border border-amber-300/35 bg-amber-300/10 px-4 text-sm font-medium text-amber-100 hover:bg-amber-300/15 sm:w-auto"
+            >
+              <ClipboardList className="h-4 w-4" />
+              Session insights
+            </button>
+          )}
+          {selectedProject && onOpenProject && !isMinimalImmersion && (
+            <button
+              onClick={() => onOpenProject(selectedProject.id)}
+              className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-cyan-300/35 bg-cyan-300/10 px-4 text-sm font-medium text-cyan-100 hover:bg-cyan-300/15 sm:w-auto"
+            >
+              Open In Writing Room
+            </button>
+          )}
         </div>
 
       </DialogContent>

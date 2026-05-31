@@ -1232,11 +1232,10 @@ export default function Home() {
           onClick={() => setShowLibrary(false)}
         >
           <div
-            className="scriptora-modal-panel ios-panel max-w-2xl animate-scriptora-dialog-entrance"
+            className="scriptora-modal-panel scriptora-mobile-work-panel ios-panel max-w-2xl animate-scriptora-dialog-entrance"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="scriptora-modal-body p-6">
-            <div className="mb-4 flex items-center justify-between">
+            <div className="scriptora-mobile-work-panel__header flex shrink-0 items-center justify-between border-b border-border/60 px-4 py-4 sm:px-6">
               <div>
                 <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
                   <Library className="h-4 w-4 text-emerald-500" />
@@ -1252,6 +1251,7 @@ export default function Home() {
                 <X className="h-4 w-4" />
               </button>
             </div>
+            <div className="scriptora-modal-body scriptora-mobile-work-panel__body p-4 sm:p-6">
             <LibrarySection
               projects={projects}
               activeWritingId={activeWritingId}

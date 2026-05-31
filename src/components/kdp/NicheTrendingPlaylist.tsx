@@ -38,7 +38,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { MarketDataStatusBadge, MarketDataStatusNotice } from "@/components/market-intelligence/MarketDataStatusBadge";
+import { MarketConfidenceBadge } from "@/components/market-intelligence/MarketConfidenceBadge";
+import { MarketExplainabilityCard } from "@/components/market-intelligence/MarketExplainabilityCard";
 import { statusFromGrounding } from "@/lib/market-intelligence/marketDataStatus";
+import { confidenceFromGrounding } from "@/lib/market-intelligence/marketConfidence";
+import { buildNicheTrendingExplanations } from "@/lib/market-intelligence/marketExplainability";
+import { normalizeMarketCopy } from "@/lib/market-intelligence/marketCopyNormalizer";
 import { t } from "@/lib/i18n";
 
 const WATCHLIST_KEY = "kdp.niche.watchlist.v1";
@@ -286,7 +291,19 @@ export function NicheTrendingPlaylist({ language = "Italian", onImport, initialF
             <h3 className="text-sm font-bold text-foreground flex flex-wrap items-center gap-1.5">
               Radar Nicchie Vincenti
               {data && (
-                <MarketDataStatusBadge status={statusFromGrounding(data.groundingUsed)} />
+                <>
+                  <MarketDataStatusBadge status={statusFromGrounding(data.groundingUsed)} />
+                  {(() => {
+                    const status = statusFromGrounding(data.groundingUsed);
+                    const level = confidenceFromGrounding({
+                      dataStatus: status,
+                      groundingUsed: data.groundingUsed,
+                      fallbackReason: data.fallbackReason,
+                      itemCount: data.niches?.length ?? 0,
+                    });
+                    return level ? <MarketConfidenceBadge level={level} /> : null;
+                  })()}
+                </>
               )}
             </h3>
             <p className="text-[10px] text-muted-foreground">
@@ -397,10 +414,18 @@ export function NicheTrendingPlaylist({ language = "Italian", onImport, initialF
       {tab === "trending" && data?.fallbackReason && (
         <MarketDataStatusNotice status="estimated" extra={data.fallbackReason} />
       )}
+      {tab === "trending" && data && (
+        <MarketExplainabilityCard
+          sections={buildNicheTrendingExplanations({
+            nicheCount: data.niches?.length ?? 0,
+            groundingUsed: data.groundingUsed,
+          })}
+        />
+      )}
       {tab === "trending" && data?.marketOverview && (
         <p className="text-[11px] text-foreground/80 leading-relaxed px-2 py-1.5 rounded bg-card/50 border border-border/50">
           <Globe2 className="inline h-3 w-3 mr-1 text-cyan-400" />
-          {data.marketOverview}
+          {normalizeMarketCopy(data.marketOverview)}
         </p>
       )}
 

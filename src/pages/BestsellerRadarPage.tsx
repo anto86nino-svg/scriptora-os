@@ -6,7 +6,12 @@ import { runBestsellerRadar } from "@/services/bestsellerRadarService";
 import { analyzeRadarPublishingIntel, type RadarPublishingIntel } from "@/lib/publishing-intelligence";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
 import { MarketDataStatusBadge, MarketDataStatusNotice } from "@/components/market-intelligence/MarketDataStatusBadge";
+import { MarketConfidenceBadge } from "@/components/market-intelligence/MarketConfidenceBadge";
+import { MarketExplainabilityCard } from "@/components/market-intelligence/MarketExplainabilityCard";
 import { statusForLocalMarketIntel, statusFromRadarSearch } from "@/lib/market-intelligence/marketDataStatus";
+import { confidenceForLocalIntel, confidenceFromRadar } from "@/lib/market-intelligence/marketConfidence";
+import { buildRadarExplanations } from "@/lib/market-intelligence/marketExplainability";
+import { normalizeMarketCopy } from "@/lib/market-intelligence/marketCopyNormalizer";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 
 const KDP_PREFILL_KEY = "scriptora-kdp-prefill";
@@ -171,6 +176,23 @@ export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: bool
     hasError: Boolean(error),
   });
 
+  const radarConfidence = confidenceFromRadar({
+    dataStatus: liveResults?.length ? "live" : radarDataStatus,
+    resultCount: liveResults?.length ?? 0,
+    marketScore: liveScore ?? marketScore,
+  });
+
+  const radarExplanations = buildRadarExplanations({
+    resultCount: liveResults?.length ?? 0,
+    marketScore: liveScore ?? marketScore,
+  });
+
+  const premiumExplanations = buildRadarExplanations({
+    resultCount: results.length,
+    marketScore: liveScore ?? marketScore,
+    isLocalIntel: true,
+  });
+
   const pageShellClass = embedded
     ? "scriptora-landing-embedded-workspace bg-background text-foreground"
     : "scriptora-feature-page bg-background text-foreground";
@@ -303,10 +325,15 @@ export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: bool
                 {t("radar_disclaimer")}
               </p>
               {searched && (
-                <MarketDataStatusBadge
-                  status={liveResults?.length ? "live" : radarDataStatus === "unavailable" ? "unavailable" : "estimated"}
-                  className="mt-2"
-                />
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <MarketDataStatusBadge
+                    status={liveResults?.length ? "live" : radarDataStatus === "unavailable" ? "unavailable" : "estimated"}
+                  />
+                  {radarConfidence && <MarketConfidenceBadge level={radarConfidence} />}
+                </div>
+              )}
+              {searched && radarConfidence && (
+                <MarketExplainabilityCard sections={radarExplanations} className="mt-3" />
               )}
             </div>
           </div>
@@ -318,7 +345,9 @@ export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: bool
               <Sparkles className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-bold">Market Intelligence Premium</h2>
               <MarketDataStatusBadge status={statusForLocalMarketIntel()} />
+              <MarketConfidenceBadge level={confidenceForLocalIntel()} />
             </div>
+            <MarketExplainabilityCard sections={premiumExplanations} />
 
             <div className="grid gap-4 lg:grid-cols-3">
               {previewIntel.bookTokIntensity != null && (
@@ -374,7 +403,7 @@ export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: bool
 
         {liveSummary && (
           <div className="rounded-2xl border border-primary/20 bg-primary/10 p-4 text-sm leading-6 text-muted-foreground">
-            {liveSummary}
+            {normalizeMarketCopy(liveSummary)}
           </div>
         )}
 
@@ -405,7 +434,7 @@ export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: bool
                   </div>
                   <h3 className="line-clamp-2 text-lg font-bold">{book.title}</h3>
                   <p className="mt-1 text-sm text-muted-foreground">{book.category}</p>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{book.insight}</p>
+                  <p className="mt-3 text-sm leading-6 text-muted-foreground">{normalizeMarketCopy(book.insight)}</p>
                 </article>
               ))}
             </div>
@@ -481,7 +510,7 @@ export function BestsellerRadarWorkspace({ embedded = false }: { embedded?: bool
                     </div>
                   </div>
 
-                  <p className="mt-4 text-sm leading-6 text-muted-foreground">{book.insight}</p>
+                  <p className="mt-4 text-sm leading-6 text-muted-foreground">{normalizeMarketCopy(book.insight)}</p>
                 </article>
               ))}
             </div>

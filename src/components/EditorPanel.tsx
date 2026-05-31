@@ -932,11 +932,10 @@ function ChapterView({
 
       {/* Error retry state */}
       {!isGenerating && chapter?.status === "error" && (
-        <div className="flex items-center gap-3 px-5 py-3 rounded-lg bg-destructive/5 border border-destructive/20 animate-fade-in">
-          <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-          <span className="text-sm text-destructive font-medium flex-1">{t("generation_failed")}</span>
-          <button onClick={onGenerate}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors">
+        <div className="scriptora-premium-notice scriptora-premium-notice--error flex flex-wrap items-center gap-3 px-4 py-3 animate-fade-in">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="min-w-0 flex-1 text-sm leading-relaxed">{t("generation_failed")}</span>
+          <button onClick={onGenerate} type="button" className="scriptora-premium-notice__retry">
             <RefreshCw className="h-3 w-3" /> {t("retry")}
           </button>
         </div>

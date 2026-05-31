@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 /** Body scroll lock while full-screen overlays are open. */
 export function lockViewportScroll() {
   if (typeof document === "undefined") return;
@@ -7,6 +9,15 @@ export function lockViewportScroll() {
 export function unlockViewportScroll() {
   if (typeof document === "undefined") return;
   document.body.classList.remove("scriptora-mobile-overlay-open");
+}
+
+/** Call from modal/dialog components when `open` is true. */
+export function useScriptoraModalScrollLock(open: boolean): void {
+  useEffect(() => {
+    if (!open) return;
+    lockViewportScroll();
+    return () => unlockViewportScroll();
+  }, [open]);
 }
 
 /** Attach visualViewport listeners — returns cleanup. */

@@ -150,7 +150,7 @@ function StatusDot({ status }: { status: string }) {
   const map: Record<string, { color: string; label: string }> = {
     ready_for_kdp: { color: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400", label: "Ready" },
     needs_revision: { color: "bg-amber-500/15 text-amber-700 dark:text-amber-400", label: "Revision" },
-    failed: { color: "bg-destructive/15 text-destructive", label: "Failed" },
+    failed: { color: "bg-muted text-muted-foreground", label: "Paused" },
     running: { color: "bg-blue-500/15 text-blue-700 dark:text-blue-400", label: "Running" },
   };
   const cfg = map[status] || { color: "bg-muted text-muted-foreground", label: status };

@@ -19,7 +19,12 @@ import {
 import { useFeatureGate } from "@/components/PaywallGuard";
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
 import { MarketDataStatusBadge } from "@/components/market-intelligence/MarketDataStatusBadge";
+import { MarketConfidenceBadge } from "@/components/market-intelligence/MarketConfidenceBadge";
+import { MarketExplainabilityCard } from "@/components/market-intelligence/MarketExplainabilityCard";
 import { statusFromGrounding } from "@/lib/market-intelligence/marketDataStatus";
+import { confidenceForLocalIntel, confidenceFromGrounding } from "@/lib/market-intelligence/marketConfidence";
+import { buildKdpMarketExplanations } from "@/lib/market-intelligence/marketExplainability";
+import { normalizeMarketCopy } from "@/lib/market-intelligence/marketCopyNormalizer";
 import { t, tt, useUILanguage, getScriptoraLanguage } from "@/lib/i18n";
 
 type Step = "idea" | "market" | "title" | "packaging" | "predict";
@@ -53,8 +58,29 @@ function copyText(label: string, value: string) {
 }
 
 /** Inline badge for KDP steps grounded with external market search. */
-function GroundingBadge({ meta }: { meta: { groundingUsed?: boolean; groundingResultsCount?: number } }) {
-  return <MarketDataStatusBadge status={statusFromGrounding(meta?.groundingUsed)} />;
+function GroundingBadge({
+  meta,
+  itemCount = 0,
+  avgScore = 0,
+}: {
+  meta: { groundingUsed?: boolean; groundingResultsCount?: number; fallbackReason?: string | null };
+  itemCount?: number;
+  avgScore?: number;
+}) {
+  const status = statusFromGrounding(meta?.groundingUsed);
+  const confidence = confidenceFromGrounding({
+    dataStatus: status,
+    groundingUsed: meta?.groundingUsed,
+    fallbackReason: meta?.fallbackReason,
+    itemCount: itemCount || meta?.groundingResultsCount || 0,
+    avgScore,
+  });
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <MarketDataStatusBadge status={status} />
+      {confidence && <MarketConfidenceBadge level={confidence} />}
+    </div>
+  );
 }
 
 export default function KdpLaunchPage() {
@@ -241,11 +267,18 @@ export default function KdpLaunchPage() {
                 <div><span className="text-muted-foreground">{t("kdp_competition")}</span> <Badge variant="secondary">{market.competitionLevel}</Badge></div>
               </div>
               {market.subNiche && <p><span className="text-muted-foreground">{t("kdp_sub_niche")}</span> <strong>{market.subNiche}</strong></p>}
-              <p className="leading-relaxed"><span className="text-muted-foreground">{t("kdp_recommended_angle")}</span><br />{market.recommendedAngle}</p>
-              {market.reasoning && <p className="text-xs text-muted-foreground italic">{market.reasoning}</p>}
+              <p className="leading-relaxed"><span className="text-muted-foreground">{t("kdp_recommended_angle")}</span><br />{normalizeMarketCopy(market.recommendedAngle)}</p>
+              {market.reasoning && <p className="text-xs text-muted-foreground italic">{normalizeMarketCopy(market.reasoning)}</p>}
               <div className="flex flex-wrap items-center gap-2">
-                <GroundingBadge meta={market} />
+                <GroundingBadge meta={market} avgScore={market.nicheScore} itemCount={1} />
               </div>
+
+              <MarketExplainabilityCard
+                sections={buildKdpMarketExplanations({
+                  groundingUsed: market.groundingUsed,
+                  hasPremium: Boolean(marketPremium),
+                })}
+              />
 
               {marketPremium && (
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
@@ -253,6 +286,7 @@ export default function KdpLaunchPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-xs font-bold uppercase tracking-wide">Market Intelligence Premium</p>
                       <MarketDataStatusBadge status="estimated" />
+                      <MarketConfidenceBadge level={confidenceForLocalIntel()} />
                     </div>
                     <span className="text-sm font-black text-primary">{marketPremium.composite}/100</span>
                   </div>

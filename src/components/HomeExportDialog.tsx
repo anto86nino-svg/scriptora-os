@@ -28,6 +28,7 @@ import type { DocxExportOptions } from "@/lib/docx-export";
 import { useRequirementGate } from "@/hooks/useRequirementGate";
 import { buildRequirement, summarizeEpubValidationErrors, getExportAuthorGap, applyActiveAuthorIdentityToProject } from "@/lib/scriptora-requirement-gate";
 import { REQUIREMENT_ACTION_EVENTS } from "@/lib/scriptora-requirement-actions";
+import { useScriptoraModalScrollLock } from "@/lib/viewport-safe";
 import { MissingRequirementCard } from "@/components/MissingRequirementCard";
 import { CreditOperationHint } from "@/components/billing/CreditOperationHint";
 import { loadProjectCoverMap, setProjectCoverDataUrl } from "@/lib/cover-session";
@@ -42,6 +43,7 @@ interface HomeExportDialogProps {
 
 export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogProps) {
   useUILanguage();
+  useScriptoraModalScrollLock(open);
   const { toast } = useToast();
   const [selectedId, setSelectedId] = useState<string>("");
   const [format, setFormat] = useState<Format>("epub");
@@ -203,7 +205,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   return (
     <div className="scriptora-modal-overlay">
       <div className="scriptora-modal-panel scriptora-mobile-work-panel max-w-lg">
-        <div className="flex shrink-0 items-center justify-between border-b border-border p-5">
+        <div className="scriptora-mobile-work-panel__header flex shrink-0 items-center justify-between border-b border-border p-4 sm:p-5">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
               <FileDown className="h-4 w-4" />
@@ -222,7 +224,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           </button>
         </div>
 
-        <div className="scriptora-modal-body space-y-5 p-5">
+        <div className="scriptora-modal-body scriptora-mobile-work-panel__body space-y-5 p-4 sm:p-5">
           <div className="space-y-2">
             <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
               {t("export_dialog_project")}

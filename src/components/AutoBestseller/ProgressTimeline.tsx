@@ -95,7 +95,7 @@ export function ProgressTimeline({ stages, retries, chapters, isRunning }: Props
 function StageIcon({ status }: { status: StageState["status"] }) {
   if (status === "running") return <Loader2 className="mt-0.5 h-5 w-5 animate-spin text-primary" />;
   if (status === "done") return <Check className="mt-0.5 h-5 w-5 text-emerald-500" />;
-  if (status === "error") return <AlertCircle className="mt-0.5 h-5 w-5 text-destructive" />;
+  if (status === "error") return <AlertCircle className="mt-0.5 h-5 w-5 text-muted-foreground" />;
   return <Circle className="mt-0.5 h-5 w-5 text-muted-foreground/50" />;
 }
 
@@ -104,7 +104,7 @@ function StatusBadge({ status }: { status: StageState["status"] }) {
     pending: { label: "pending", cls: "bg-muted text-muted-foreground" },
     running: { label: "running", cls: "bg-primary/10 text-primary" },
     done: { label: "done", cls: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
-    error: { label: "error", cls: "bg-destructive/10 text-destructive" },
+    error: { label: "needs attention", cls: "bg-muted text-muted-foreground" },
   };
   const v = variantMap[status];
   return <Badge variant="outline" className={cn("text-[10px] uppercase tracking-wide", v.cls, "border-0")}>{v.label}</Badge>;

@@ -17,6 +17,8 @@ import { AuthorEcosystemPanel } from "@/components/AuthorEcosystemPanel";
 import { AuthorVoiceMemoryPanel } from "@/components/AuthorVoiceMemoryPanel";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 import { toast } from "sonner";
+import { toastPremiumError } from "@/lib/premium-notices";
+import { useScriptoraModalScrollLock } from "@/lib/viewport-safe";
 import { getCurrentUserId } from "@/services/storageService";
 
 interface AuthorIdentityDialogProps {
@@ -70,6 +72,7 @@ function completeness(identity: AuthorIdentity): number {
 
 export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProps) {
   useUILanguage();
+  useScriptoraModalScrollLock(open);
   const [identities, setIdentities] = useState<AuthorIdentity[]>(() => loadAuthorIdentities());
   const [draft, setDraft] = useState<AuthorIdentity>(() => getSelectedAuthorIdentity());
   const [expandingBio, setExpandingBio] = useState(false);
@@ -167,7 +170,7 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
         hasPassiveAuthorIntelligence(draft) ? t("author_brain_expand_success_passive") : t("author_brain_expand_success"),
       );
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("toast_gen_failed"));
+      toastPremiumError(err instanceof Error ? err.message : undefined);
     } finally {
       setExpandingBio(false);
     }

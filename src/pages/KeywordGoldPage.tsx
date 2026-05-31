@@ -12,7 +12,12 @@ import { fetchPlan, type PlanTier } from "@/lib/plan";
 import { keywordGold, type KeywordGoldResult } from "@/lib/kdp/money-engine";
 import { useFeatureGate } from "@/components/PaywallGuard";
 import { MarketDataStatusBadge, MarketDataStatusNotice } from "@/components/market-intelligence/MarketDataStatusBadge";
+import { MarketConfidenceBadge } from "@/components/market-intelligence/MarketConfidenceBadge";
+import { MarketExplainabilityCard } from "@/components/market-intelligence/MarketExplainabilityCard";
 import { statusFromGrounding } from "@/lib/market-intelligence/marketDataStatus";
+import { confidenceFromGrounding } from "@/lib/market-intelligence/marketConfidence";
+import { buildKeywordGoldExplanations } from "@/lib/market-intelligence/marketExplainability";
+import { normalizeMarketCopy } from "@/lib/market-intelligence/marketCopyNormalizer";
 import { t, tt, useUILanguage, getScriptoraLanguage } from "@/lib/i18n";
 
 function copyText(value: string, successLabel: string) {
@@ -83,7 +88,21 @@ export default function KeywordGoldPage() {
             </p>
           </div>
           {result ? (
-            <MarketDataStatusBadge status={statusFromGrounding(result.groundingUsed)} />
+            <div className="flex flex-wrap items-center gap-2">
+              <MarketDataStatusBadge status={statusFromGrounding(result.groundingUsed)} />
+              {(() => {
+                const level = confidenceFromGrounding({
+                  dataStatus: statusFromGrounding(result.groundingUsed),
+                  groundingUsed: result.groundingUsed,
+                  fallbackReason: result.fallbackReason,
+                  itemCount: result.goldKeywords?.length ?? 0,
+                  avgScore: result.goldKeywords?.length
+                    ? result.goldKeywords.reduce((s, k) => s + k.strength, 0) / result.goldKeywords.length
+                    : 0,
+                });
+                return level ? <MarketConfidenceBadge level={level} /> : null;
+              })()}
+            </div>
           ) : null}
         </header>
 
@@ -134,6 +153,13 @@ export default function KeywordGoldPage() {
             {result.fallbackReason && (
               <MarketDataStatusNotice status="estimated" extra={result.fallbackReason} />
             )}
+
+            <MarketExplainabilityCard
+              sections={buildKeywordGoldExplanations({
+                goldKeywordCount: result.goldKeywords?.length ?? 0,
+                groundingUsed: result.groundingUsed,
+              })}
+            />
 
             <Card>
               <CardHeader>
@@ -192,7 +218,7 @@ export default function KeywordGoldPage() {
                     <div className="text-xs text-muted-foreground mt-1">
                       {tt("keyword_gold_intent_risk", { intent: k.intent, risk: k.competitionRisk })}
                     </div>
-                    <p className="text-xs mt-2 leading-relaxed">{k.why}</p>
+                    <p className="text-xs mt-2 leading-relaxed">{normalizeMarketCopy(k.why)}</p>
                   </div>
                 ))}
               </CardContent>
@@ -202,9 +228,9 @@ export default function KeywordGoldPage() {
               <CardHeader><CardTitle className="text-base">{t("keyword_gold_positioning")}</CardTitle></CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <p><span className="text-muted-foreground">{t("keyword_gold_audience")}</span><br />{result.positioning?.mainAudience}</p>
-                <p><span className="text-muted-foreground">{t("keyword_gold_promise")}</span><br />{result.positioning?.commercialPromise}</p>
-                <p><span className="text-muted-foreground">{t("keyword_gold_angle")}</span><br />{result.positioning?.strongestAngle}</p>
-                <p><span className="text-muted-foreground">{t("keyword_gold_saturation")}</span><br />{result.positioning?.saturationWarning}</p>
+                <p><span className="text-muted-foreground">{t("keyword_gold_promise")}</span><br />{normalizeMarketCopy(result.positioning?.commercialPromise ?? "")}</p>
+                <p><span className="text-muted-foreground">{t("keyword_gold_angle")}</span><br />{normalizeMarketCopy(result.positioning?.strongestAngle ?? "")}</p>
+                <p><span className="text-muted-foreground">{t("keyword_gold_saturation")}</span><br />{normalizeMarketCopy(result.positioning?.saturationWarning ?? "")}</p>
               </CardContent>
             </Card>
 

@@ -1,12 +1,19 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTitleIntelligence, TitleCard, Level } from "@/hooks/useTitleIntelligence";
 import { supabase } from "@/integrations/supabase/client";
 import { getGenreProfile, resolveGenreKey } from "@/lib/genre-intelligence";
 import { NicheTrendingPlaylist, type NicheImport } from "@/components/kdp/NicheTrendingPlaylist";
 import { MarketDataStatusBadge, MarketDataStatusNotice } from "@/components/market-intelligence/MarketDataStatusBadge";
+import { MarketConfidenceBadge } from "@/components/market-intelligence/MarketConfidenceBadge";
+import { MarketExplainabilityCard } from "@/components/market-intelligence/MarketExplainabilityCard";
 import { statusFromTitleFallback } from "@/lib/market-intelligence/marketDataStatus";
+import { confidenceFromTitleIntelligence } from "@/lib/market-intelligence/marketConfidence";
+import { buildTitleIntelligenceExplanations } from "@/lib/market-intelligence/marketExplainability";
+import { normalizeMarketCopy } from "@/lib/market-intelligence/marketCopyNormalizer";
 import { getScriptoraLanguage, t } from "@/lib/i18n";
+import { toastPremiumError } from "@/lib/premium-notices";
+import { useScriptoraModalScrollLock } from "@/lib/viewport-safe";
 import { X, Sparkles, RefreshCw, Check, Copy, Zap, Target, Brain, TrendingUp, Loader2, Flame, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { useFeatureGate } from "@/components/PaywallGuard";
@@ -36,6 +43,8 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
   // Gate: needs at least Pro (title_intelligence_base). Free users see paywall instead.
   const gate = useFeatureGate("title_intelligence_base");
 
+  useScriptoraModalScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
     setLanguage(getScriptoraLanguage());
@@ -50,6 +59,38 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
   }, [open]);
 
   const canSubmit = bookGenre.trim() && targetAudience.trim() && bookPromise.trim() && !loading;
+
+  const titleTrust = useMemo(() => {
+    if (!data) return null;
+    const dataStatus = statusFromTitleFallback(data.fallbackReason);
+    const titles = data.topTitles ?? [];
+    const avgOpportunity = titles.length
+      ? titles.reduce((s, t) => s + t.opportunityScore, 0) / titles.length
+      : undefined;
+    const avgConversion = titles.length
+      ? titles.reduce((s, t) => s + t.conversionScore, 0) / titles.length
+      : undefined;
+    return {
+      dataStatus,
+      confidence: confidenceFromTitleIntelligence({
+        dataStatus,
+        fallbackReason: data.fallbackReason,
+        topTitles: titles,
+        coreKeywords: data.coreKeywords,
+        marketSnapshot: data.marketSnapshot,
+      }),
+      explanations: buildTitleIntelligenceExplanations({
+        hasFallback: Boolean(data.fallbackReason),
+        avgOpportunity,
+        avgConversion,
+        keywordCount: data.coreKeywords?.length ?? 0,
+        nicheCount: data.marketSnapshot?.topSubNiches?.length ?? 0,
+      }),
+      marketInsight: data.marketSnapshot?.marketInsight
+        ? normalizeMarketCopy(data.marketSnapshot.marketInsight)
+        : null,
+    };
+  }, [data]);
 
   const handleAutoFill = gate.guard(async () => {
     setAutoFilling(true);
@@ -75,7 +116,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
       setTargetAudience(r.targetAudience);
       toast.success(bookTitle ? "Nuova variante generata" : "Concept generato");
     } catch (e: any) {
-      toast.error(e?.message || "Generazione fallita");
+      toastPremiumError(e?.message);
     } finally {
       setAutoFilling(false);
     }
@@ -101,7 +142,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
     try {
       await generate({ bookTitle, bookGenre, targetAudience, bookPromise, tone, language, genreProfile: buildGenrePayload() } as any);
     } catch (e: any) {
-      toast.error(e?.message || "Generazione fallita");
+      toastPremiumError(e?.message);
     }
   });
 
@@ -142,7 +183,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
       await regenerate();
       toast.success("Nuove varianti generate");
     } catch (e: any) {
-      toast.error(e?.message || "Rigenerazione fallita");
+      toastPremiumError(e?.message);
     }
   };
 
@@ -193,7 +234,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
     <div className="scriptora-modal-overlay">
       <div className="scriptora-modal-panel scriptora-mobile-work-panel max-w-4xl">
         {/* Header */}
-        <div className="flex shrink-0 items-center justify-between border-b border-border p-5">
+        <div className="scriptora-mobile-work-panel__header flex shrink-0 items-center justify-between border-b border-border p-4 sm:p-5">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500/20 to-purple-500/20 text-cyan-400">
               <Sparkles className="h-5 w-5" />
@@ -202,7 +243,12 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-lg font-bold text-foreground">Title Domination Studio™</h2>
                 {data && (
-                  <MarketDataStatusBadge status={statusFromTitleFallback(data.fallbackReason)} />
+                  <>
+                    <MarketDataStatusBadge status={statusFromTitleFallback(data.fallbackReason)} />
+                    {titleTrust?.confidence && (
+                      <MarketConfidenceBadge level={titleTrust.confidence} />
+                    )}
+                  </>
                 )}
               </div>
               <p className="text-[11px] text-muted-foreground">{t("title_intelligence_desc")}</p>
@@ -213,7 +259,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
           </button>
         </div>
 
-        <div className="scriptora-modal-body space-y-5 p-5">
+        <div className="scriptora-modal-body scriptora-mobile-work-panel__body min-h-0 flex-1 space-y-5 p-4 sm:p-5">
           {/* INPUT FORM */}
           {!data && (
             <div className="space-y-4">
@@ -318,6 +364,10 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
                 <MarketDataStatusNotice status="live" />
               )}
 
+              {titleTrust && (
+                <MarketExplainabilityCard sections={titleTrust.explanations} />
+              )}
+
               {/* Market snapshot */}
               {data.marketSnapshot && (
                 <div className="space-y-3">
@@ -333,7 +383,9 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
                         ))}
                       </div>
                     </div>
-                    <p className="text-xs text-foreground/90 leading-relaxed">{data.marketSnapshot.marketInsight}</p>
+                    <p className="text-xs text-foreground/90 leading-relaxed">
+                      {titleTrust?.marketInsight ?? normalizeMarketCopy(data.marketSnapshot.marketInsight)}
+                    </p>
                   </div>
 
                   {/* Sub-niches */}
@@ -351,7 +403,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
                               <LevelChip label="Domanda" level={n.demandLevel} positive="high" />
                               <LevelChip label="Concorrenza" level={n.competitionLevel} positive="low" />
                             </div>
-                            <p className="text-[10px] text-muted-foreground leading-snug">{n.rationale}</p>
+                            <p className="text-[10px] text-muted-foreground leading-snug">{normalizeMarketCopy(n.rationale)}</p>
                           </div>
                         ))}
                       </div>
@@ -497,7 +549,7 @@ function TitleCardView({
         <LevelChip label="Domanda" level={card.demandLevel} positive="high" />
         <LevelChip label="Concorrenza" level={card.competitionLevel} positive="low" />
       </div>
-      <p className="text-[11px] text-foreground/70 leading-relaxed mb-2.5">{card.rationale}</p>
+      <p className="text-[11px] text-foreground/70 leading-relaxed mb-2.5">{normalizeMarketCopy(card.rationale)}</p>
       <div className="flex gap-1.5">
         <button onClick={onSelect}
           className="flex-1 h-7 rounded-md bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-semibold flex items-center justify-center gap-1 transition-colors">

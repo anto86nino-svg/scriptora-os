@@ -9,6 +9,8 @@
 @import "./styles/scriptora-gateway-os.css";
 @import "./styles/scriptora-premium-state.css";
 @import "./styles/mobile-writer-v2.css";
+@import "./styles/experience-hardening-a5.css";
+@import "./styles/studio-hardening-a5.css";
 
 @tailwind base;
 @tailwind components;

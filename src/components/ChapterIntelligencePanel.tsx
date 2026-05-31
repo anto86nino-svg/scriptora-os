@@ -11,6 +11,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
 import { getEditorialTier } from "@/lib/editorial-mastery";
 import { toast } from "sonner";
+import { toastPremiumError } from "@/lib/premium-notices";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
 import FixChapterComparisonModal from "@/components/FixChapterComparisonModal";
@@ -428,7 +429,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
       toast.success(`¶${weak.idx + 1} ${fixMode === "power" ? "upgraded ⚡" : "fixed"}`);
     } catch (e: any) {
       console.error("Fix failed:", e);
-      toast.error(e.message || "Fix failed");
+      toastPremiumError(e.message);
     } finally {
       setFixing(null);
     }
@@ -806,9 +807,9 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
 
           {/* JOB ERRORS */}
           {(patchError || dominateError) && (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+            <div className="scriptora-premium-notice scriptora-premium-notice--error rounded-xl p-4 space-y-3">
               <div className="flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-foreground">Revisione non completata</p>
                   <p className="text-xs text-muted-foreground mt-1">{patchError || dominateError}</p>

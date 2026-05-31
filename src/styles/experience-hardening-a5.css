@@ -1,0 +1,241 @@
+/**
+ * Sprint A5 — experience hardening (CSS-only, no architecture changes).
+ * Modal positioning, mobile dead-space removal, premium notices, loading feel.
+ */
+
+:root {
+  --scriptora-panel-radius: 1rem;
+  --scriptora-section-gap: 1.25rem;
+  --scriptora-modal-mobile-pad: max(env(safe-area-inset-top), 8px);
+  --scriptora-modal-mobile-max-h: min(
+    calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 16px),
+    96dvh
+  );
+}
+
+/* Desktop — centered modals */
+@media (min-width: 768px) {
+  .scriptora-modal-overlay {
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Mobile — top-anchored, near full height, no void */
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-modal-overlay {
+    align-items: flex-start;
+    justify-content: center;
+    padding: var(--scriptora-modal-mobile-pad) 10px max(env(safe-area-inset-bottom), 10px);
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-modal-panel,
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-work-panel.scriptora-modal-panel {
+    width: min(100%, calc(100vw - 20px));
+    max-width: min(100%, calc(100vw - 20px));
+    max-height: var(--scriptora-modal-mobile-max-h);
+    margin: 0 auto;
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-modal-body,
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-work-panel__body {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-mobile-work-panel__footer {
+    padding-bottom: max(env(safe-area-inset-bottom), 12px);
+  }
+}
+
+/* Radix Dialog — mobile top anchor (avoids half-screen float) */
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) [data-radix-dialog-content].scriptora-radix-dialog-content,
+  html:not(.scriptora-layout-desktop) [data-radix-dialog-content]:not([data-scriptora-dialog-centered="true"]) {
+    top: max(calc(env(safe-area-inset-top) + 8px), 12px) !important;
+    transform: translateX(-50%) translateY(0) !important;
+    max-height: min(
+      calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px),
+      92dvh
+    ) !important;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* Premium calm notices (errors, empty hints) */
+.scriptora-premium-notice {
+  border-radius: var(--scriptora-panel-radius);
+  border: 1px solid hsl(var(--border) / 0.55);
+  background: hsl(var(--muted) / 0.28);
+  padding: 0.75rem 1rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: hsl(var(--foreground) / 0.88);
+}
+
+.scriptora-premium-notice--error {
+  border-color: hsl(var(--border) / 0.65);
+  background: hsl(224 22% 12% / 0.92);
+  color: hsl(var(--muted-foreground));
+}
+
+.scriptora-premium-notice--error strong,
+.scriptora-premium-notice--error .scriptora-premium-notice__title {
+  color: hsl(var(--foreground) / 0.92);
+  font-weight: 600;
+}
+
+.scriptora-premium-notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.625rem;
+}
+
+/* Softer retry CTA inside error notices */
+.scriptora-premium-notice__retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-height: 2.25rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.scriptora-premium-notice__retry:hover {
+  background: hsl(var(--secondary) / 0.85);
+  border-color: hsl(var(--primary) / 0.35);
+}
+
+/* Loading — premium shimmer block */
+.scriptora-premium-skeleton {
+  border-radius: 0.625rem;
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted) / 0.35) 0%,
+    hsl(var(--muted) / 0.55) 45%,
+    hsl(var(--muted) / 0.35) 90%
+  );
+  background-size: 200% 100%;
+  animation: scriptora-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes scriptora-skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.scriptora-premium-loading-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Empty states — compact, intentional */
+.scriptora-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: clamp(1.25rem, 4vw, 2rem);
+  text-align: center;
+  border-radius: var(--scriptora-panel-radius);
+  border: 1px dashed hsl(var(--border) / 0.55);
+  background: hsl(var(--muted) / 0.15);
+}
+
+.scriptora-empty-state__title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: hsl(var(--foreground) / 0.92);
+}
+
+.scriptora-empty-state__desc {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+  max-width: 28rem;
+}
+
+/* Feature pages — tighter mobile rhythm, less dead vertical space */
+@media (max-width: 767px) {
+  html:not(.scriptora-layout-desktop) .scriptora-feature-scroll {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-feature-scroll > .mx-auto,
+  html:not(.scriptora-layout-desktop) .scriptora-feature-scroll > main {
+    padding-inline: clamp(12px, 3.5vw, 20px);
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-feature-scroll .rounded-3xl {
+    border-radius: 1.25rem;
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-feature-scroll .space-y-8 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1.5rem;
+  }
+
+  html:not(.scriptora-layout-desktop) .scriptora-feature-scroll .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 1.125rem;
+  }
+}
+
+/* Badge / button wrap safety on narrow screens */
+@media (max-width: 430px) {
+  html:not(.scriptora-layout-desktop) .scriptora-modal-panel .flex-wrap,
+  html:not(.scriptora-layout-desktop) .scriptora-feature-scroll .flex-wrap {
+    row-gap: 0.375rem;
+  }
+}
+
+/* Prevent black flicker on overlay open */
+.scriptora-modal-overlay {
+  animation: scriptora-overlay-in 0.18s ease-out;
+}
+
+@keyframes scriptora-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.scriptora-modal-panel {
+  animation: scriptora-panel-in 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes scriptora-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (min-width: 768px) {
+  .scriptora-modal-panel {
+    animation: scriptora-panel-in-desktop 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes scriptora-panel-in-desktop {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}

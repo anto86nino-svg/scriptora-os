@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Download, ImagePlus, Settings2, Upload, Wand2, X, Layers } from "lucide-react";
 import { t } from "@/lib/i18n";
+import { lockViewportScroll, unlockViewportScroll } from "@/lib/viewport-safe";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
 import {
   buildCoverDirectionSuggestions,
@@ -319,6 +320,12 @@ export function CoverGenerator({
     () => [projectGenre, coverGenreBrief, coverTitle, coverSubtitle, bookDescription].filter(Boolean).join(" "),
     [projectGenre, coverGenreBrief, coverTitle, coverSubtitle, bookDescription],
   );
+
+  useEffect(() => {
+    if (embedded) return;
+    lockViewportScroll();
+    return () => unlockViewportScroll();
+  }, [embedded]);
 
   const matchedFamily = useMemo(() => matchTemplateFamily(intelligenceSource), [intelligenceSource]);
 
@@ -702,7 +709,7 @@ export function CoverGenerator({
   }
 
   const panel = (
-    <div className={`scriptora-modal-panel scriptora-mobile-work-panel flex max-h-[min(94dvh,960px)] flex-col max-w-6xl lg:max-w-[1500px] lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)] ${embedded ? "max-w-none rounded-none shadow-none lg:rounded-2xl" : ""}`}>
+    <div className={`scriptora-modal-panel scriptora-mobile-work-panel scriptora-cover-studio-shell flex flex-col max-w-6xl lg:max-w-[1500px] lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)] ${embedded ? "max-w-none rounded-none shadow-none lg:rounded-2xl" : ""}`}>
         <div className="scriptora-mobile-work-panel__header flex shrink-0 items-center justify-between gap-3 border-b border-border/70 px-4 py-4 sm:px-5 lg:px-7 lg:py-5">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary">
@@ -1090,7 +1097,7 @@ export function CoverGenerator({
                           setAuthorPhoto(null);
                           setShowAuthorPhoto(false);
                         }}
-                        className="rounded-lg lg:rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 lg:py-2.5 text-xs font-semibold text-destructive hover:bg-destructive/15 transition-colors"
+                        className="rounded-lg lg:rounded-xl border border-border/70 bg-muted/30 px-3 py-2 lg:py-2.5 text-xs font-semibold text-muted-foreground hover:bg-muted/50 transition-colors"
                       >
                         Rimuovi
                       </button>

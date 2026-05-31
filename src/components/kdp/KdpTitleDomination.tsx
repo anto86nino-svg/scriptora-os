@@ -21,7 +21,12 @@ import { fetchPlan, type PlanTier } from "@/lib/plan";
 import { useFeatureGate } from "@/components/PaywallGuard";
 import { getScriptoraLanguage } from "@/lib/i18n";
 import { MarketDataStatusBadge } from "@/components/market-intelligence/MarketDataStatusBadge";
+import { MarketConfidenceBadge } from "@/components/market-intelligence/MarketConfidenceBadge";
+import { MarketExplainabilityCard } from "@/components/market-intelligence/MarketExplainabilityCard";
 import { statusFromGrounding } from "@/lib/market-intelligence/marketDataStatus";
+import { confidenceFromGrounding } from "@/lib/market-intelligence/marketConfidence";
+import { buildTitleDominationExplanations } from "@/lib/market-intelligence/marketExplainability";
+import { normalizeMarketCopy } from "@/lib/market-intelligence/marketCopyNormalizer";
 
 interface Props {
   /** Optional callback when user wants to push title into a project. */
@@ -32,16 +37,20 @@ interface Props {
 
 const STATE_KEY = "kdp-title-domination-state";
 
-function GroundingPill({ used }: { used?: boolean; count?: number }) {
-  if (used) {
-    return (
-      <MarketDataStatusBadge
-        status="live"
-        className="text-[10px]"
-      />
-    );
-  }
-  return <MarketDataStatusBadge status="estimated" className="text-[10px]" />;
+function GroundingPill({ used, count, fallbackReason }: { used?: boolean; count?: number; fallbackReason?: string | null }) {
+  const status = statusFromGrounding(used);
+  const confidence = confidenceFromGrounding({
+    dataStatus: status,
+    groundingUsed: used,
+    fallbackReason,
+    itemCount: count ?? 0,
+  });
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <MarketDataStatusBadge status={used ? "live" : "estimated"} className="text-[10px]" />
+      {confidence && <MarketConfidenceBadge level={confidence} className="text-[10px]" />}
+    </div>
+  );
 }
 
 function ScoreBar({ value, label }: { value: number; label: string }) {
@@ -158,7 +167,7 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
             <Crown className="h-4 w-4 text-primary" />
             Title Domination Studio
           </span>
-          {result && <GroundingPill used={result.groundingUsed} count={result.groundingResultsCount} />}
+          {result && <GroundingPill used={result.groundingUsed} count={result.groundingResultsCount} fallbackReason={result.fallbackReason} />}
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           Ricerca di mercato in tempo reale → titoli originali → progetto pronto da sviluppare in Scriptora.
@@ -254,7 +263,9 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
           <div className="text-xs text-muted-foreground">
             {loading && stage === "brave"    && <span className="flex items-center gap-1"><Search className="h-3 w-3 animate-pulse" /> Scansione mercato in corso…</span>}
             {loading && stage === "deepseek" && <span className="flex items-center gap-1"><Sparkles className="h-3 w-3 animate-pulse" /> Analisi strategica avanzata…</span>}
-            {!loading && error && <span className="text-destructive">⚠ {error}</span>}
+            {!loading && error && (
+              <div className="scriptora-premium-notice scriptora-premium-notice--error text-xs">{error}</div>
+            )}
           </div>
           <Button onClick={() => run()} disabled={loading || !input.idea.trim()} size="lg">
             {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Target className="h-4 w-4 mr-2" />}
@@ -269,9 +280,17 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
 
             {result.fallbackReason && (
               <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-950 dark:text-amber-100">
-                {result.fallbackReason}
+                {normalizeMarketCopy(result.fallbackReason)}
               </div>
             )}
+
+            <MarketExplainabilityCard
+              sections={buildTitleDominationExplanations({
+                candidateCount: sortedCandidates.length,
+                groundingUsed: result.groundingUsed,
+                topScore: winner?.finalScore ?? sortedCandidates[0]?.kdpScore,
+              })}
+            />
 
             {/* Queries used */}
             {result.groundingQueries && result.groundingQueries.length > 0 && (
@@ -297,7 +316,7 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
                 <CardContent className="space-y-2">
                   <div className="text-lg font-bold leading-tight">{winner.title}</div>
                   <div className="text-sm text-muted-foreground">{winner.subtitle}</div>
-                  <p className="text-xs italic">{winner.reason}</p>
+                  <p className="text-xs italic">{normalizeMarketCopy(winner.reason)}</p>
                   <p className="text-[11px] text-muted-foreground">Best marketplace: <strong>{winner.bestMarketplace}</strong></p>
                   <div className="flex flex-wrap gap-2 pt-2">
                     <Button size="sm" onClick={() => { onUseTitle?.(winner.title, winner.subtitle); toast.success("Titolo pronto per il progetto"); }}>
@@ -378,7 +397,7 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
                         <p><span className="text-muted-foreground">Hook:</span> {c.emotionalHook}</p>
                         <p><span className="text-muted-foreground">Promise:</span> {c.commercialPromise}</p>
                         <p><span className="text-muted-foreground">Differenziazione:</span> {c.differentiationAngle}</p>
-                        <p className="text-primary">✓ {c.whyItCanSell}</p>
+                        <p className="text-primary">✓ {normalizeMarketCopy(c.whyItCanSell)}</p>
                         {c.weakness && <p className="text-destructive">✗ {c.weakness}</p>}
                         {c.improvementSuggestion && <p>→ {c.improvementSuggestion}</p>}
                       </div>

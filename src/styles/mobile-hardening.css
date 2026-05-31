@@ -283,22 +283,22 @@ html.scriptora-layout-mobile .scriptora-generation-topline {
 html.scriptora-layout-mobile .scriptora-modal-overlay {
   position: fixed;
   inset: 0;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   overflow: hidden;
   overscroll-behavior: contain;
-  padding: max(env(safe-area-inset-top), 12px) 12px max(env(safe-area-inset-bottom), 12px);
+  padding: max(env(safe-area-inset-top), 8px) 12px max(env(safe-area-inset-bottom), 12px);
 }
 
 @media (max-width: 767px) {
   html:not(.scriptora-layout-desktop) .scriptora-modal-overlay {
     position: fixed;
     inset: 0;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     overflow: hidden;
     overscroll-behavior: contain;
-    padding: max(env(safe-area-inset-top), 12px) 12px max(env(safe-area-inset-bottom), 12px);
+    padding: max(env(safe-area-inset-top), 8px) 12px max(env(safe-area-inset-bottom), 12px);
   }
 }
 
