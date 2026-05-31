@@ -26,7 +26,8 @@ import {
 import type { PdfExportOptions } from "@/lib/pdf-export";
 import type { DocxExportOptions } from "@/lib/docx-export";
 import { useRequirementGate } from "@/hooks/useRequirementGate";
-import { buildRequirement, summarizeEpubValidationErrors, getExportAuthorGap, applyActiveAuthorIdentityToProject, openAuthorIdentitySetup } from "@/lib/scriptora-requirement-gate";
+import { buildRequirement, summarizeEpubValidationErrors, getExportAuthorGap, applyActiveAuthorIdentityToProject } from "@/lib/scriptora-requirement-gate";
+import { REQUIREMENT_ACTION_EVENTS } from "@/lib/scriptora-requirement-actions";
 import { MissingRequirementCard } from "@/components/MissingRequirementCard";
 
 type Format = "epub" | "docx" | "pdf" | "txt" | "md";
@@ -161,7 +162,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
       vars: { name: gap.activePenName },
       onPrimary: () => {
         onClose();
-        openAuthorIdentitySetup();
+        window.dispatchEvent(new CustomEvent(REQUIREMENT_ACTION_EVENTS.open_author_identity));
       },
       onSecondary: () => next(applyActiveAuthorIdentityToProject(project)),
     });

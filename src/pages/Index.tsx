@@ -19,7 +19,7 @@ import { t, tt, UILanguage, useUILanguage } from "@/lib/i18n";
 import { toast } from "sonner";
 import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu, X, ArrowLeft, ListTree, LogOut } from "lucide-react";
 import { AccountIdentityBlock } from "@/components/AccountIdentityBlock";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { MobileChapterIndexSheet } from "@/components/mobile/MobileChapterIndexSheet";
@@ -35,8 +35,12 @@ import {
   summarizeEpubValidationErrors,
   getExportAuthorGap,
   applyActiveAuthorIdentityToProject,
-  openAuthorIdentitySetup,
 } from "@/lib/scriptora-requirement-gate";
+import {
+  REQUIREMENT_ACTION_EVENTS,
+  parseOpenQuery,
+  stripOpenQuery,
+} from "@/lib/scriptora-requirement-actions";
 import { MissingRequirementCard } from "@/components/MissingRequirementCard";
 
 const NewBookDialog = lazy(() => import("@/components/NewBookDialog").then((m) => ({ default: m.NewBookDialog })));
@@ -46,6 +50,9 @@ const CoverBeforeExportDialog = lazy(() =>
 );
 const VoiceStudioDialog = lazy(() => import("@/components/VoiceStudioDialog").then((m) => ({ default: m.VoiceStudioDialog })));
 const PublishPanel = lazy(() => import("@/components/PublishPanel").then((m) => ({ default: m.PublishPanel })));
+const AuthorIdentityDialog = lazy(() =>
+  import("@/components/AuthorIdentityDialog").then((m) => ({ default: m.AuthorIdentityDialog })),
+);
 const SettingsPanel = lazy(() => import("@/components/SettingsPanel").then((m) => ({ default: m.SettingsPanel })));
 const AICoachPanel = lazy(() => import("@/components/AICoachPanel").then((m) => ({ default: m.AICoachPanel })));
 
@@ -57,6 +64,8 @@ const WRITING_ROOM_MODE_KEY = "scriptora-writing-room-editor-mode";
 const Index = () => {
   useUILanguage();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openQueryConsumedRef = useRef<string | null>(null);
   const { user, signOut } = useAuth();
   const isMobileLayout = useIsMobile();
   const [projects, setProjects] = useState<BookProject[]>([]);
@@ -69,6 +78,7 @@ const Index = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showCoach, setShowCoach] = useState(false);
   const [showVoiceStudio, setShowVoiceStudio] = useState(false);
+  const [showAuthorIdentity, setShowAuthorIdentity] = useState(false);
   const [voiceStudioChapterIndex, setVoiceStudioChapterIndex] = useState<number>(0);
   const [focusMode, setFocusMode] = useState(false);
   const [chapterIndexOpen, setChapterIndexOpen] = useState(false);
@@ -135,6 +145,74 @@ const Index = () => {
   };
 
   useEffect(() => {
+    const onOpenAuthorIdentity = () => setShowAuthorIdentity(true);
+    const onOpenNewBook = () => openNewBookGuarded();
+    const onOpenCover = () => setShowCover(true);
+    const onOpenPublish = () => setShowPublish(true);
+    const onFocusChapter = (event: Event) => {
+      const idx = (event as CustomEvent<{ chapterIndex?: number }>).detail?.chapterIndex;
+      if (typeof idx === "number" && idx >= 0) {
+        setActiveSection(`chapter-${idx}` as SectionId);
+      }
+    };
+    const onFocusBookTitle = () => {
+      setActiveSection("blueprint");
+      window.setTimeout(() => {
+        document.querySelector<HTMLInputElement>("[data-book-title-input]")?.focus();
+      }, 120);
+    };
+
+    window.addEventListener(REQUIREMENT_ACTION_EVENTS.open_author_identity, onOpenAuthorIdentity);
+    window.addEventListener(REQUIREMENT_ACTION_EVENTS.open_new_book, onOpenNewBook);
+    window.addEventListener(REQUIREMENT_ACTION_EVENTS.open_cover_studio, onOpenCover);
+    window.addEventListener(REQUIREMENT_ACTION_EVENTS.open_kdp_publish, onOpenPublish);
+    window.addEventListener(REQUIREMENT_ACTION_EVENTS.focus_chapter, onFocusChapter);
+    window.addEventListener(REQUIREMENT_ACTION_EVENTS.focus_book_title, onFocusBookTitle);
+
+    return () => {
+      window.removeEventListener(REQUIREMENT_ACTION_EVENTS.open_author_identity, onOpenAuthorIdentity);
+      window.removeEventListener(REQUIREMENT_ACTION_EVENTS.open_new_book, onOpenNewBook);
+      window.removeEventListener(REQUIREMENT_ACTION_EVENTS.open_cover_studio, onOpenCover);
+      window.removeEventListener(REQUIREMENT_ACTION_EVENTS.open_kdp_publish, onOpenPublish);
+      window.removeEventListener(REQUIREMENT_ACTION_EVENTS.focus_chapter, onFocusChapter);
+      window.removeEventListener(REQUIREMENT_ACTION_EVENTS.focus_book_title, onFocusBookTitle);
+    };
+  }, [freeBookUsed]);
+
+  useEffect(() => {
+    const { open, chapterIndex } = parseOpenQuery(searchParams.toString());
+    if (!open) return;
+    const token = `${open}:${chapterIndex ?? ""}`;
+    if (openQueryConsumedRef.current === token) return;
+    openQueryConsumedRef.current = token;
+
+    switch (open) {
+      case "author-identity":
+        setShowAuthorIdentity(true);
+        break;
+      case "book-title":
+        setActiveSection("blueprint");
+        window.setTimeout(() => {
+          document.querySelector<HTMLInputElement>("[data-book-title-input]")?.focus();
+        }, 120);
+        break;
+      case "chapter":
+        if (chapterIndex != null && chapterIndex >= 0) {
+          setActiveSection(`chapter-${chapterIndex}` as SectionId);
+        }
+        break;
+      case "publish":
+        setShowPublish(true);
+        break;
+      default:
+        break;
+    }
+
+    const nextSearch = stripOpenQuery(searchParams.toString());
+    setSearchParams(nextSearch ? nextSearch.replace(/^\?/, "") : "", { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
     const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
     if (isDesktop) {
       localStorage.setItem("scriptora-sidebar-open", JSON.stringify(sidebarOpen));
@@ -162,6 +240,7 @@ const Index = () => {
     showPublish ||
     showSettings ||
     showVoiceStudio ||
+    showAuthorIdentity ||
     coverGateOpen ||
     chapterIndexOpen ||
     toolsMenuOpen ||
@@ -308,7 +387,6 @@ const Index = () => {
     }
     showRequirement("missing_author_identity", {
       vars: { name: gap.activePenName },
-      onPrimary: () => openAuthorIdentitySetup(),
       onSecondary: () => continueExportFlow(format, applyActiveAuthorIdentityToProject(project)),
     });
   };
@@ -599,6 +677,12 @@ const Index = () => {
               setTimeout(refreshProjects, 500);
             }}
           />
+        </Suspense>
+      )}
+
+      {showAuthorIdentity && (
+        <Suspense fallback={<LazyPanelFallback />}>
+          <AuthorIdentityDialog open={showAuthorIdentity} onClose={() => setShowAuthorIdentity(false)} />
         </Suspense>
       )}
 

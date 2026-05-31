@@ -8,7 +8,15 @@ import {
   getSelectedAuthorIdentity,
   normalizeAuthorIdentity,
 } from "@/lib/author-identity";
+import type { RequirementActionDetail, RequirementActionIntent } from "@/lib/scriptora-requirement-actions";
+import {
+  dispatchRequirementIntent,
+  executeRequirementIntent,
+  canHandleIntentInPlace,
+  getFallbackRoute,
+} from "@/lib/scriptora-requirement-actions";
 
+/** @deprecated Use query param ?open=author-identity via executeRequirementIntent */
 export const OPEN_AUTHOR_IDENTITY_SESSION_KEY = "scriptora-open-author-identity";
 
 export type RequirementId =
@@ -32,12 +40,14 @@ export type RequirementId =
   | "voice_autoplay_blocked"
   | "unexpected_error";
 
-export type RequirementActionType = "route" | "callback";
+export type RequirementActionType = "route" | "callback" | "intent";
 
 export interface RequirementAction {
   labelKey: string;
   type: RequirementActionType;
   route?: string;
+  intent?: RequirementActionIntent;
+  detail?: RequirementActionDetail;
 }
 
 export interface RequirementGatePayload {
@@ -60,7 +70,16 @@ export interface BuildRequirementOptions {
   feature?: FeatureKey;
   primaryRoute?: string;
   secondaryRoute?: string;
+  primaryIntent?: RequirementActionIntent;
+  secondaryIntent?: RequirementActionIntent;
+  actionDetail?: RequirementActionDetail;
 }
+
+type PresetAction = {
+  labelKey: string;
+  intent?: RequirementActionIntent;
+  route?: string;
+};
 
 const PRESETS: Record<
   RequirementId,
@@ -68,156 +87,172 @@ const PRESETS: Record<
     titleKey: string;
     whyKey: string;
     actionKey: string;
-    primary: { labelKey: string; route?: string };
-    secondary?: { labelKey: string; route?: string };
+    primary: PresetAction;
+    secondary?: PresetAction;
   }
 > = {
   auth_required: {
     titleKey: "req_auth_title",
     whyKey: "req_auth_why",
     actionKey: "req_auth_action",
-    primary: { labelKey: "req_sign_in", route: "/auth" },
-    secondary: { labelKey: "req_not_now", route: "/dashboard" },
+    primary: { labelKey: "req_sign_in", intent: "navigate_auth" },
+    secondary: { labelKey: "req_not_now", intent: "stay_here" },
   },
   plan_required: {
     titleKey: "req_plan_title",
     whyKey: "req_plan_why",
     actionKey: "req_plan_action",
-    primary: { labelKey: "req_view_plans", route: "/pricing" },
-    secondary: { labelKey: "req_not_now", route: "/dashboard" },
+    primary: { labelKey: "req_view_plans", intent: "open_pricing" },
+    secondary: { labelKey: "req_not_now", intent: "stay_here" },
   },
   missing_author_identity: {
     titleKey: "req_author_identity_title",
     whyKey: "req_author_identity_why",
     actionKey: "req_author_identity_action",
-    primary: { labelKey: "req_set_author_identity", route: "/dashboard" },
+    primary: { labelKey: "req_set_author_identity", intent: "open_author_identity" },
     secondary: { labelKey: "req_export_with_pen_name" },
   },
   missing_project: {
     titleKey: "req_missing_project_title",
     whyKey: "req_missing_project_why",
     actionKey: "req_missing_project_action",
-    primary: { labelKey: "req_create_project", route: "/dashboard" },
-    secondary: { labelKey: "req_open_recent_project", route: "/app" },
+    primary: { labelKey: "req_create_project", intent: "open_new_book" },
+    secondary: { labelKey: "req_open_recent_project", intent: "open_editor" },
   },
   missing_book_title: {
     titleKey: "req_missing_title_title",
     whyKey: "req_missing_title_why",
     actionKey: "req_missing_title_action",
-    primary: { labelKey: "req_complete_book_data", route: "/app" },
-    secondary: { labelKey: "req_stay_in_editor", route: "/app" },
+    primary: { labelKey: "req_complete_book_data", intent: "focus_book_title" },
+    secondary: { labelKey: "req_stay_in_editor", intent: "stay_here" },
   },
   missing_blueprint: {
     titleKey: "req_missing_blueprint_title",
     whyKey: "req_missing_blueprint_why",
     actionKey: "req_missing_blueprint_action",
-    primary: { labelKey: "req_go_blueprint", route: "/app" },
-    secondary: { labelKey: "req_stay_in_editor", route: "/app" },
+    primary: { labelKey: "req_go_blueprint", intent: "open_editor" },
+    secondary: { labelKey: "req_stay_in_editor", intent: "stay_here" },
   },
   missing_chapters: {
     titleKey: "req_missing_chapters_title",
     whyKey: "req_missing_chapters_why",
     actionKey: "req_missing_chapters_action",
-    primary: { labelKey: "req_go_editor", route: "/app" },
-    secondary: { labelKey: "req_not_now", route: "/dashboard" },
+    primary: { labelKey: "req_go_editor", intent: "open_editor" },
+    secondary: { labelKey: "req_not_now", intent: "stay_here" },
   },
   missing_chapter_content: {
     titleKey: "req_missing_chapter_content_title",
     whyKey: "req_missing_chapter_content_why",
     actionKey: "req_missing_chapter_content_action",
-    primary: { labelKey: "req_write_chapter", route: "/app" },
-    secondary: { labelKey: "req_not_now", route: "/app" },
+    primary: { labelKey: "req_write_chapter", intent: "focus_chapter" },
+    secondary: { labelKey: "req_not_now", intent: "stay_here" },
   },
   incomplete_book: {
     titleKey: "req_incomplete_book_title",
     whyKey: "req_incomplete_book_why",
     actionKey: "req_incomplete_book_action",
-    primary: { labelKey: "req_go_editor", route: "/app" },
-    secondary: { labelKey: "req_open_export_studio", route: "/dashboard" },
+    primary: { labelKey: "req_go_editor", intent: "open_editor" },
+    secondary: { labelKey: "req_open_export_studio", intent: "open_export_studio" },
   },
   missing_manuscript: {
     titleKey: "req_missing_manuscript_title",
     whyKey: "req_missing_manuscript_why",
     actionKey: "req_missing_manuscript_action",
-    primary: { labelKey: "req_upload_manuscript", route: "/dashboard" },
-    secondary: { labelKey: "req_not_now", route: "/dashboard" },
+    primary: { labelKey: "req_upload_manuscript", intent: "focus_manuscript_input" },
+    secondary: { labelKey: "req_not_now", intent: "stay_here" },
   },
   manuscript_too_short: {
     titleKey: "req_manuscript_short_title",
     whyKey: "req_manuscript_short_why",
     actionKey: "req_manuscript_short_action",
-    primary: { labelKey: "req_paste_more_text", route: "/dashboard" },
-    secondary: { labelKey: "req_import_chapter_file", route: "/dashboard" },
+    primary: { labelKey: "req_paste_more_text", intent: "focus_manuscript_input" },
+    secondary: { labelKey: "req_import_chapter_file", intent: "focus_manuscript_input" },
   },
   missing_cover: {
     titleKey: "req_missing_cover_title",
     whyKey: "req_missing_cover_why",
     actionKey: "req_missing_cover_action",
-    primary: { labelKey: "req_open_cover_studio", route: "/app" },
-    secondary: { labelKey: "req_export_without_cover", route: "/dashboard" },
+    primary: { labelKey: "req_open_cover_studio", intent: "open_cover_studio" },
+    secondary: { labelKey: "req_export_without_cover", intent: "open_export_studio" },
   },
   missing_export_metadata: {
     titleKey: "req_export_metadata_title",
     whyKey: "req_export_metadata_why",
     actionKey: "req_export_metadata_action",
-    primary: { labelKey: "req_complete_book_data", route: "/app" },
-    secondary: { labelKey: "req_open_export_studio", route: "/dashboard" },
+    primary: { labelKey: "req_complete_book_data", intent: "focus_book_title" },
+    secondary: { labelKey: "req_open_export_studio", intent: "open_export_studio" },
   },
   epub_not_ready: {
     titleKey: "req_epub_not_ready_title",
     whyKey: "req_epub_not_ready_why",
     actionKey: "req_epub_not_ready_action",
-    primary: { labelKey: "req_complete_book_data", route: "/app" },
-    secondary: { labelKey: "req_open_export_studio", route: "/dashboard" },
+    primary: { labelKey: "req_complete_book_data", intent: "open_editor" },
+    secondary: { labelKey: "req_open_export_studio", intent: "open_export_studio" },
   },
   export_failed: {
     titleKey: "req_export_failed_title",
     whyKey: "req_export_failed_why",
     actionKey: "req_export_failed_action",
-    primary: { labelKey: "req_open_export_studio", route: "/dashboard" },
-    secondary: { labelKey: "req_stay_in_editor", route: "/app" },
+    primary: { labelKey: "req_open_export_studio", intent: "open_export_studio" },
+    secondary: { labelKey: "req_stay_in_editor", intent: "stay_here" },
   },
   missing_voice_text: {
     titleKey: "req_voice_text_title",
     whyKey: "req_voice_text_why",
     actionKey: "req_voice_text_action",
-    primary: { labelKey: "req_go_editor", route: "/app" },
-    secondary: { labelKey: "req_not_now", route: "/app" },
+    primary: { labelKey: "req_go_editor", intent: "open_editor" },
+    secondary: { labelKey: "req_not_now", intent: "stay_here" },
   },
   voice_not_supported: {
     titleKey: "req_voice_unsupported_title",
     whyKey: "req_voice_unsupported_why",
     actionKey: "req_voice_unsupported_action",
     primary: { labelKey: "req_back_dashboard", route: "/dashboard" },
-    secondary: { labelKey: "req_stay_in_editor", route: "/app" },
+    secondary: { labelKey: "req_stay_in_editor", intent: "stay_here" },
   },
   voice_autoplay_blocked: {
     titleKey: "req_voice_autoplay_title",
     whyKey: "req_voice_autoplay_why",
     actionKey: "req_voice_autoplay_action",
-    primary: { labelKey: "req_try_voice_again", route: "/app" },
-    secondary: { labelKey: "req_not_now", route: "/app" },
+    primary: { labelKey: "req_try_voice_again", intent: "open_editor" },
+    secondary: { labelKey: "req_not_now", intent: "stay_here" },
   },
   unexpected_error: {
     titleKey: "req_unexpected_title",
     whyKey: "req_unexpected_why",
     actionKey: "req_unexpected_action",
     primary: { labelKey: "req_back_dashboard", route: "/dashboard" },
-    secondary: { labelKey: "req_retry", route: "" },
+    secondary: { labelKey: "req_retry", intent: "retry_current_action" },
   },
 };
 
 function actionFromPreset(
-  preset: { labelKey: string; route?: string },
-  overrideRoute?: string,
-  vars?: Record<string, string | number>,
+  preset: PresetAction,
+  options: {
+    overrideRoute?: string;
+    overrideIntent?: RequirementActionIntent;
+    vars?: Record<string, string | number>;
+    actionDetail?: RequirementActionDetail;
+  } = {},
 ): RequirementAction & { label: string } {
+  const intent = options.overrideIntent ?? preset.intent;
+  const route =
+    options.overrideRoute ??
+    preset.route ??
+    (intent ? getFallbackRoute(intent, options.actionDetail) ?? undefined : undefined);
+
   return {
     labelKey: preset.labelKey,
-    label: tt(preset.labelKey, vars),
-    type: "route",
-    route: overrideRoute ?? preset.route,
+    label: tt(preset.labelKey, options.vars),
+    type: intent ? "intent" : "route",
+    intent,
+    route,
+    detail: options.actionDetail,
   };
+}
+
+export function getPrimaryIntentForRequirement(id: RequirementId): RequirementActionIntent | undefined {
+  return PRESETS[id].primary.intent;
 }
 
 export function buildRequirement(
@@ -236,15 +271,30 @@ export function buildRequirement(
     actionHint = t("req_plan_action");
   }
 
+  const actionDetail: RequirementActionDetail = {
+    ...options.actionDetail,
+    ...(options.feature ? { feature: options.feature } : {}),
+  };
+
   return {
     id,
     title,
     why,
     actionHint,
     detail: options.detail,
-    primaryAction: actionFromPreset(preset.primary, options.primaryRoute, options.vars),
+    primaryAction: actionFromPreset(preset.primary, {
+      overrideRoute: options.primaryRoute,
+      overrideIntent: options.primaryIntent,
+      vars: options.vars,
+      actionDetail,
+    }),
     secondaryAction: preset.secondary
-      ? actionFromPreset(preset.secondary, options.secondaryRoute, options.vars)
+      ? actionFromPreset(preset.secondary, {
+          overrideRoute: options.secondaryRoute,
+          overrideIntent: options.secondaryIntent,
+          vars: options.vars,
+          actionDetail,
+        })
       : undefined,
   };
 }
@@ -285,10 +335,17 @@ export function applyActiveAuthorIdentityToProject(project: BookProject): BookPr
   };
 }
 
-export function openAuthorIdentitySetup(): void {
+/** Opens author identity in-place via event, or SPA navigate with ?open= fallback. */
+export function openAuthorIdentitySetup(navigate?: (to: string) => void): void {
   if (typeof window === "undefined") return;
-  sessionStorage.setItem(OPEN_AUTHOR_IDENTITY_SESSION_KEY, "1");
-  window.location.assign("/dashboard");
+  if (navigate) {
+    executeRequirementIntent("open_author_identity", navigate);
+    return;
+  }
+  dispatchRequirementIntent("open_author_identity");
+  if (!canHandleIntentInPlace("open_author_identity")) {
+    sessionStorage.setItem(OPEN_AUTHOR_IDENTITY_SESSION_KEY, "1");
+  }
 }
 
 export function summarizeEpubValidationErrors(errors: string[]): string {

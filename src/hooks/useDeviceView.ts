@@ -52,7 +52,8 @@ export function useDeviceView() {
   }, []);
 
   const toggleLayout = useCallback(() => {
-    const next: LayoutPreference = state.effectiveLayout === "mobile" ? "desktop" : "mobile";
+    const next: LayoutPreference =
+      state.effectiveLayout === "mobile" ? "desktop" : "mobile";
     setPreference(next);
   }, [setPreference, state.effectiveLayout]);
 
@@ -60,6 +61,7 @@ export function useDeviceView() {
     ...state,
     isMobileLayout: state.effectiveLayout === "mobile",
     isDesktopLayout: state.effectiveLayout === "desktop",
+    isDesktopPreview: state.isDesktopPreview,
     isCompactLayout: state.isCompactLayout,
     isPhone: state.deviceKind === "phone",
     isTablet: state.deviceKind === "tablet",

@@ -5,7 +5,7 @@ import { t, useUILanguage } from "@/lib/i18n";
 /** Compact control for dashboard / app toolbars — next to language selector. */
 export function DeviceViewToolbarControl() {
   useUILanguage();
-  const { effectiveLayout, preference, toggleLayout, resetToAuto } = useDeviceView();
+  const { effectiveLayout, preference, toggleLayout, resetToAuto, isDesktopPreview } = useDeviceView();
 
   const isMobileLayout = effectiveLayout === "mobile";
   const label = isMobileLayout ? t("device_view_desktop") : t("device_view_mobile");
@@ -31,7 +31,9 @@ export function DeviceViewToolbarControl() {
         title={
           isMobileLayout
             ? t("device_view_desktop_hint")
-            : t("device_view_mobile_hint")
+            : isDesktopPreview
+              ? t("device_view_mobile_hint")
+              : t("device_view_mobile_hint")
         }
         aria-label={label}
       >

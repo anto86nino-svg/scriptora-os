@@ -4,9 +4,11 @@ import { RequirementGateDialog } from "@/components/RequirementGateDialog";
 import {
   buildRequirement,
   type BuildRequirementOptions,
+  type RequirementAction,
   type RequirementGatePayload,
   type RequirementId,
 } from "@/lib/scriptora-requirement-gate";
+import { executeRequirementIntent } from "@/lib/scriptora-requirement-actions";
 
 export interface ShowRequirementOptions extends BuildRequirementOptions {
   onPrimary?: () => void;
@@ -43,13 +45,17 @@ export function useRequirementGate() {
     [],
   );
 
-  const runRouteAction = useCallback(
-    (route: string | undefined, fallback?: () => void) => {
+  const runAction = useCallback(
+    (action: RequirementAction & { label: string }, fallback?: () => void) => {
       if (fallback) {
         fallback();
         return;
       }
-      if (route) navigate(route);
+      if (action.intent) {
+        executeRequirementIntent(action.intent, navigate, action.detail);
+        return;
+      }
+      if (action.route) navigate(action.route);
     },
     [navigate],
   );
@@ -60,8 +66,8 @@ export function useRequirementGate() {
       handlers.onPrimary();
       return;
     }
-    runRouteAction(payload?.primaryAction.route);
-  }, [close, handlers, payload, runRouteAction]);
+    if (payload?.primaryAction) runAction(payload.primaryAction);
+  }, [close, handlers, payload, runAction]);
 
   const handleSecondary = useCallback(() => {
     close();
@@ -69,8 +75,8 @@ export function useRequirementGate() {
       handlers.onSecondary();
       return;
     }
-    runRouteAction(payload?.secondaryAction?.route);
-  }, [close, handlers, payload, runRouteAction]);
+    if (payload?.secondaryAction) runAction(payload.secondaryAction);
+  }, [close, handlers, payload, runAction]);
 
   const dialog = (
     <RequirementGateDialog

@@ -1,17 +1,57 @@
 /* Scriptora — layout mode shell (mobile vs desktop, manual override safe) */
 
-html.scriptora-layout-desktop.scriptora-device-phone #root,
-html.scriptora-layout-desktop.scriptora-device-tablet #root {
+/* ── Desktop preview on phone / narrow tablet (scaled, no global horizontal scroll) ── */
+html.scriptora-mobile-desktop-preview {
+  overflow: hidden;
+  width: 100vw;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+}
+
+html.scriptora-mobile-desktop-preview body {
+  overflow: hidden;
+  width: 100vw;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+html.scriptora-mobile-desktop-preview #root {
+  width: var(--scriptora-desktop-preview-width, 1180px);
+  min-width: 0;
+  max-width: none;
+  min-height: var(--scriptora-desktop-preview-canvas-height, 100dvh);
+  margin-left: var(--scriptora-desktop-preview-offset-x, 0px);
+  transform: scale(var(--scriptora-desktop-preview-scale, 1));
+  transform-origin: top left;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Modals portaled to body stay full-size and centered (not scaled) */
+html.scriptora-mobile-desktop-preview .scriptora-modal-overlay,
+html.scriptora-mobile-desktop-preview [data-radix-dialog-content] {
+  transform: none !important;
+}
+
+html.scriptora-mobile-desktop-preview .scriptora-desktop-preview-chrome {
+  transform: none !important;
+  z-index: 9999;
+}
+
+/* ── Full desktop on tablet only (wide enough) — legacy horizontal scroll fallback ── */
+html.scriptora-layout-desktop.scriptora-device-tablet:not(.scriptora-mobile-desktop-preview) #root {
   min-width: 1024px;
 }
 
-html.scriptora-layout-desktop.scriptora-device-phone,
-html.scriptora-layout-desktop.scriptora-device-tablet {
-  overflow-x: auto;
-}
-
-html.scriptora-layout-desktop.scriptora-device-phone body,
-html.scriptora-layout-desktop.scriptora-device-tablet body {
+html.scriptora-layout-desktop.scriptora-device-tablet:not(.scriptora-mobile-desktop-preview),
+html.scriptora-layout-desktop.scriptora-device-tablet:not(.scriptora-mobile-desktop-preview) body {
   overflow-x: auto;
 }
 
@@ -20,7 +60,8 @@ html.scriptora-layout-mobile {
   text-size-adjust: 100%;
 }
 
-html.scriptora-layout-desktop .scriptora-device-view-hint-mobile {
+html.scriptora-layout-desktop .scriptora-device-view-hint-mobile,
+html.scriptora-layout-desktop-preview .scriptora-device-view-hint-mobile {
   display: none;
 }
 
@@ -42,4 +83,50 @@ html.scriptora-layout-mobile .scriptora-device-view-hint-desktop {
 
 [data-radix-popper-content-wrapper]:has(.scriptora-toolbar-menu-content) {
   z-index: 200 !important;
+}
+
+/* Sticky exit control + rotate hint for desktop preview on mobile */
+.scriptora-desktop-preview-chrome {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+.scriptora-desktop-preview-exit {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  border-radius: 9999px;
+  border: 1px solid hsl(var(--border) / 0.6);
+  background: hsl(var(--background) / 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: hsl(var(--foreground));
+  font-size: 0.8125rem;
+  font-weight: 600;
+  box-shadow: 0 8px 32px hsl(0 0% 0% / 0.22);
+}
+
+.scriptora-desktop-preview-rotate-hint {
+  pointer-events: auto;
+  max-width: min(22rem, calc(100vw - 1.5rem));
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid hsl(var(--primary) / 0.25);
+  background: hsl(var(--primary) / 0.1);
+  color: hsl(var(--foreground));
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-align: center;
 }

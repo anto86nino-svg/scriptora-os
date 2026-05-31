@@ -1,0 +1,493 @@
+/* Scriptora Creative Console — dashboard hero (empty workspace) */
+
+.scriptora-creative-console {
+  --console-bg-1: 234 62% 14%;
+  --console-bg-2: 258 48% 10%;
+  --console-accent: 210 100% 62%;
+  --console-glow: 210 100% 62% / 0.18;
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 1.25rem;
+}
+
+.scriptora-console-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, hsl(var(--console-accent) / 0.14), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 80%, hsl(var(--console-glow)), transparent 50%),
+    linear-gradient(155deg, hsl(var(--console-bg-1)) 0%, hsl(var(--console-bg-2)) 100%);
+  transition: background 0.45s ease, opacity 0.45s ease;
+}
+
+.scriptora-console-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background-image:
+    radial-gradient(circle at 15% 25%, hsl(0 0% 100% / 0.06) 0 1px, transparent 1px),
+    radial-gradient(circle at 75% 60%, hsl(0 0% 100% / 0.04) 0 1px, transparent 1px);
+  background-size: 48px 48px, 64px 64px;
+}
+
+.scriptora-creative-console[data-console-theme="create"] {
+  --console-bg-1: 234 62% 16%;
+  --console-bg-2: 270 52% 11%;
+  --console-accent: 258 90% 68%;
+  --console-glow: 258 90% 68% / 0.2;
+}
+
+.scriptora-creative-console[data-console-theme="import"] {
+  --console-bg-1: 28 42% 14%;
+  --console-bg-2: 18 30% 10%;
+  --console-accent: 32 95% 58%;
+  --console-glow: 32 95% 58% / 0.16;
+}
+
+.scriptora-creative-console[data-console-theme="analyze"] {
+  --console-bg-1: 192 48% 12%;
+  --console-bg-2: 210 40% 9%;
+  --console-accent: 168 78% 44%;
+  --console-glow: 168 78% 44% / 0.18;
+}
+
+.scriptora-creative-console[data-console-theme="cover"] {
+  --console-bg-1: 280 42% 14%;
+  --console-bg-2: 320 38% 10%;
+  --console-accent: 330 85% 62%;
+  --console-glow: 330 85% 62% / 0.18;
+}
+
+.scriptora-creative-console[data-console-theme="export"] {
+  --console-bg-1: 24 38% 13%;
+  --console-bg-2: 12 28% 9%;
+  --console-accent: 28 92% 55%;
+  --console-glow: 28 92% 55% / 0.16;
+}
+
+.scriptora-creative-console[data-console-theme="author"] {
+  --console-bg-1: 215 44% 14%;
+  --console-bg-2: 225 36% 10%;
+  --console-accent: 210 100% 62%;
+  --console-glow: 210 100% 62% / 0.16;
+}
+
+.scriptora-creative-console[data-console-theme="publish"] {
+  --console-bg-1: 42 38% 12%;
+  --console-bg-2: 30 28% 8%;
+  --console-accent: 45 96% 52%;
+  --console-glow: 45 96% 52% / 0.2;
+}
+
+.scriptora-creative-console[data-console-theme="editor"] {
+  --console-bg-1: 228 50% 12%;
+  --console-bg-2: 240 42% 8%;
+  --console-accent: 220 90% 66%;
+  --console-glow: 220 90% 66% / 0.18;
+}
+
+.scriptora-console-inner {
+  position: relative;
+  z-index: 1;
+  padding: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .scriptora-console-inner {
+    padding: 1.75rem;
+  }
+}
+
+.scriptora-console-hero {
+  display: grid;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .scriptora-console-hero {
+    grid-template-columns: 1fr minmax(200px, 42%);
+    gap: 1.25rem 1.5rem;
+  }
+}
+
+.scriptora-console-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  border: 1px solid hsl(0 0% 100% / 0.12);
+  background: hsl(0 0% 100% / 0.06);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: hsl(0 0% 100% / 0.72);
+}
+
+.scriptora-console-title {
+  margin-top: 0.75rem;
+  font-size: clamp(1.375rem, 4.5vw, 1.875rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: hsl(0 0% 100% / 0.96);
+}
+
+.scriptora-console-subtitle {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: hsl(0 0% 100% / 0.58);
+}
+
+.scriptora-console-micro {
+  margin-top: 0.625rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: hsl(var(--console-accent) / 0.85);
+}
+
+.scriptora-console-ctas {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+@media (min-width: 480px) {
+  .scriptora-console-ctas {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+.scriptora-console-cta-primary {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0 1rem;
+  border-radius: 0.75rem;
+  background: hsl(0 0% 100%);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: hsl(224 30% 8%);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.scriptora-console-cta-secondary {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid hsl(0 0% 100% / 0.14);
+  background: hsl(0 0% 100% / 0.05);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: hsl(0 0% 100% / 0.88);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+@media (hover: hover) {
+  .scriptora-console-cta-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px hsl(0 0% 0% / 0.25);
+  }
+
+  .scriptora-console-cta-secondary:hover {
+    transform: translateY(-1px);
+    border-color: hsl(0 0% 100% / 0.22);
+    background: hsl(0 0% 100% / 0.08);
+  }
+}
+
+.scriptora-console-cta-primary:active,
+.scriptora-console-cta-secondary:active {
+  transform: scale(0.98);
+}
+
+.scriptora-console-preview-line {
+  margin-top: 0.875rem;
+  min-height: 1.25rem;
+  font-size: 0.75rem;
+  color: hsl(0 0% 100% / 0.5);
+  transition: opacity 0.3s ease;
+}
+
+/* Book mockup */
+.scriptora-book-mockup-wrap {
+  display: flex;
+  justify-content: center;
+  perspective: 900px;
+  padding: 0.5rem 0 0.25rem;
+}
+
+@media (min-width: 768px) {
+  .scriptora-book-mockup-wrap {
+    justify-content: flex-end;
+    padding: 0;
+  }
+}
+
+.scriptora-book-mockup {
+  position: relative;
+  width: min(100%, 11.5rem);
+  transform-style: preserve-3d;
+  transition: transform 0.45s ease;
+}
+
+@media (hover: hover) and (min-width: 768px) {
+  .scriptora-book-mockup-wrap:hover .scriptora-book-mockup {
+    transform: rotateY(-8deg) rotateX(4deg);
+  }
+}
+
+.scriptora-book-mockup__stack {
+  position: relative;
+  aspect-ratio: 3 / 4.2;
+  border-radius: 0.35rem 0.65rem 0.65rem 0.35rem;
+  box-shadow:
+    0 24px 48px hsl(0 0% 0% / 0.45),
+    0 0 0 1px hsl(0 0% 100% / 0.08),
+    inset -6px 0 12px hsl(0 0% 0% / 0.2);
+  background: linear-gradient(135deg, hsl(var(--console-bg-1)), hsl(var(--console-bg-2)));
+  overflow: hidden;
+}
+
+.scriptora-book-mockup__spine {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0.65rem;
+  background: linear-gradient(90deg, hsl(0 0% 0% / 0.35), hsl(0 0% 100% / 0.06));
+  border-radius: 0.35rem 0 0 0.35rem;
+}
+
+.scriptora-book-mockup__cover {
+  position: absolute;
+  inset: 0 0 0 0.65rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.875rem 0.75rem;
+  background:
+    linear-gradient(160deg, hsl(var(--console-accent) / 0.22) 0%, transparent 45%),
+    linear-gradient(200deg, hsl(224 30% 8% / 0.92), hsl(224 26% 12% / 0.98));
+}
+
+.scriptora-book-mockup__brand {
+  font-size: 0.5625rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: hsl(var(--console-accent));
+}
+
+.scriptora-book-mockup__title {
+  margin-top: auto;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: hsl(0 0% 100% / 0.94);
+  transition: opacity 0.35s ease;
+}
+
+.scriptora-book-mockup__pages {
+  position: absolute;
+  right: -0.35rem;
+  top: 0.35rem;
+  bottom: 0.35rem;
+  width: 0.5rem;
+  border-radius: 0 0.2rem 0.2rem 0;
+  background: repeating-linear-gradient(
+    180deg,
+    hsl(40 20% 88%) 0 2px,
+    hsl(40 15% 82%) 2px 4px
+  );
+  box-shadow: 2px 0 6px hsl(0 0% 0% / 0.2);
+}
+
+.scriptora-book-mockup__overlay {
+  position: absolute;
+  inset: 0 0 0 0.65rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  border-radius: 0 0.65rem 0.65rem 0;
+}
+
+.scriptora-book-mockup[data-mock-theme="analyze"] .scriptora-book-mockup__overlay--scan {
+  opacity: 1;
+  background: repeating-linear-gradient(
+    180deg,
+    transparent 0 6px,
+    hsl(var(--console-accent) / 0.12) 6px 7px
+  );
+}
+
+.scriptora-book-mockup[data-mock-theme="cover"] .scriptora-book-mockup__overlay--frame {
+  opacity: 1;
+  border: 2px dashed hsl(var(--console-accent) / 0.55);
+  margin: 0.5rem;
+  border-radius: 0.25rem;
+}
+
+.scriptora-book-mockup__badge {
+  position: absolute;
+  z-index: 2;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid hsl(0 0% 100% / 0.14);
+  background: hsl(224 30% 10% / 0.88);
+  backdrop-filter: blur(8px);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: hsl(0 0% 100% / 0.82);
+  white-space: nowrap;
+  animation: scriptora-badge-float 4s ease-in-out infinite;
+}
+
+.scriptora-book-mockup__badge--tl {
+  top: -0.35rem;
+  left: -0.25rem;
+  animation-delay: 0s;
+}
+
+.scriptora-book-mockup__badge--br {
+  right: -0.5rem;
+  bottom: 0.75rem;
+  animation-delay: 1.2s;
+}
+
+.scriptora-book-mockup__badge--tr {
+  top: 1.5rem;
+  right: -1rem;
+  animation-delay: 2.4s;
+}
+
+@keyframes scriptora-badge-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Feature cards */
+.scriptora-console-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.625rem;
+  margin-top: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .scriptora-console-cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+}
+
+.scriptora-console-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.375rem;
+  min-height: 6.5rem;
+  padding: 0.75rem;
+  border-radius: 0.875rem;
+  border: 1px solid hsl(0 0% 100% / 0.08);
+  background: hsl(0 0% 100% / 0.03);
+  text-align: left;
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    background 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+@media (hover: hover) {
+  .scriptora-console-card:hover {
+    transform: translateY(-2px);
+    border-color: hsl(var(--console-accent) / 0.35);
+    background: hsl(0 0% 100% / 0.06);
+    box-shadow: 0 8px 28px hsl(0 0% 0% / 0.22);
+  }
+}
+
+.scriptora-console-card:active {
+  transform: scale(0.98);
+}
+
+.scriptora-console-card[data-active="true"] {
+  border-color: hsl(var(--console-accent) / 0.5);
+  background: hsl(var(--console-accent) / 0.1);
+  box-shadow: 0 0 0 1px hsl(var(--console-accent) / 0.2);
+}
+
+.scriptora-console-card__icon {
+  display: flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  background: hsl(var(--console-accent) / 0.15);
+  color: hsl(var(--console-accent));
+}
+
+.scriptora-console-card__title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: hsl(0 0% 100% / 0.92);
+}
+
+.scriptora-console-card__desc {
+  font-size: 0.625rem;
+  line-height: 1.4;
+  color: hsl(0 0% 100% / 0.48);
+}
+
+.scriptora-console-card__benefit {
+  margin-top: auto;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: hsl(var(--console-accent) / 0.85);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scriptora-console-bg,
+  .scriptora-book-mockup,
+  .scriptora-book-mockup__title,
+  .scriptora-console-card,
+  .scriptora-console-cta-primary,
+  .scriptora-console-cta-secondary,
+  .scriptora-book-mockup__badge {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .scriptora-book-mockup-wrap:hover .scriptora-book-mockup {
+    transform: none;
+  }
+}

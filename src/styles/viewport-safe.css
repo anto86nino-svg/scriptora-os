@@ -111,3 +111,13 @@ html.scriptora-layout-mobile.scriptora-device-tablet .scriptora-mobile-writer-he
     padding-top: env(safe-area-inset-top);
   }
 }
+
+html.scriptora-mobile-desktop-preview .scriptora-modal-overlay,
+html.scriptora-mobile-desktop-preview .scriptora-modal-panel {
+  max-width: min(calc(100vw - 1rem), var(--scriptora-vw, 100vw));
+  max-height: min(92dvh, var(--scriptora-vh, 92dvh));
+}
+
+html.scriptora-mobile-desktop-preview .scriptora-requirement-card button {
+  min-height: 2.75rem;
+}

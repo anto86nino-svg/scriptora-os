@@ -1,5 +1,5 @@
-import { useNavigate } from "react-router-dom";
-import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense, useRef } from "react";
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { FocusMusicControl } from "@/components/FocusMusicControl";
@@ -20,6 +20,11 @@ import { BOOK_LENGTH_CONFIG, BookConfig, BookLength, BookProject, DEFAULT_SUBCHA
 import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
 import { AUTHOR_IDENTITY_CHANGED_EVENT, applyAuthorIdentityToConfig, enforceAuthorIdentityLock, getSelectedAuthorIdentity, loadAuthorIdentities, setSelectedAuthorIdentityId } from "@/lib/author-identity";
 import { OPEN_AUTHOR_IDENTITY_SESSION_KEY } from "@/lib/scriptora-requirement-gate";
+import {
+  REQUIREMENT_ACTION_EVENTS,
+  parseOpenQuery,
+  stripOpenQuery,
+} from "@/lib/scriptora-requirement-actions";
 import { refineDetectedGenre } from "@/lib/book-intelligence";
 import { GUIDED_TOUR_IDS } from "@/lib/guided-tour-events";
 import { DevModeUnlockDialog } from "@/components/DevModeUnlockDialog";
@@ -123,6 +128,8 @@ function charactersFromBibleText(text?: string): any[] {
 
 export default function Home() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openQueryConsumedRef = useRef<string | null>(null);
   const devOn = useDevMode();
   const [showNewBook, setShowNewBook] = useState(false);
   const [showExport, setShowExport] = useState(false);
@@ -264,13 +271,6 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (sessionStorage.getItem(OPEN_AUTHOR_IDENTITY_SESSION_KEY)) {
-      sessionStorage.removeItem(OPEN_AUTHOR_IDENTITY_SESSION_KEY);
-      openDashboardOverlay(() => setShowAuthorIdentity(true));
-    }
-  }, [openDashboardOverlay]);
-
-  useEffect(() => {
     const refreshAuthors = () => {
       setAuthorIdentities(loadAuthorIdentities());
       setActiveAuthor(getSelectedAuthorIdentity());
@@ -305,6 +305,83 @@ export default function Home() {
     }
     openDashboardOverlay(() => setShowNewBook(true));
   };
+
+  const consumeOpenQuery = useCallback(() => {
+    const { open, focus } = parseOpenQuery(searchParams.toString());
+    if (!open) return;
+    const token = `${open}:${focus ?? ""}`;
+    if (openQueryConsumedRef.current === token) return;
+    openQueryConsumedRef.current = token;
+
+    switch (open) {
+      case "author-identity":
+        openDashboardOverlay(() => setShowAuthorIdentity(true));
+        break;
+      case "export-studio":
+        openDashboardOverlay(() => setShowExport(true));
+        break;
+      case "manuscript-analyzer":
+        openDashboardOverlay(() => setShowManuscriptAnalyzer(true));
+        if (focus === "input") {
+          window.setTimeout(() => {
+            window.dispatchEvent(new CustomEvent(REQUIREMENT_ACTION_EVENTS.focus_manuscript_input));
+          }, 120);
+        }
+        break;
+      case "cover-studio":
+        openDashboardOverlay(() => setShowCoverStudio(true));
+        break;
+      case "new-book":
+        openNewBookGuarded();
+        break;
+      case "projects":
+        document.getElementById("dashboard-projects")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        break;
+      default:
+        break;
+    }
+
+    const nextSearch = stripOpenQuery(searchParams.toString());
+    setSearchParams(nextSearch ? nextSearch.replace(/^\?/, "") : "", { replace: true });
+  }, [openDashboardOverlay, openNewBookGuarded, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (projectsReady) consumeOpenQuery();
+  }, [projectsReady, consumeOpenQuery]);
+
+  useEffect(() => {
+    if (sessionStorage.getItem(OPEN_AUTHOR_IDENTITY_SESSION_KEY)) {
+      sessionStorage.removeItem(OPEN_AUTHOR_IDENTITY_SESSION_KEY);
+      openDashboardOverlay(() => setShowAuthorIdentity(true));
+    }
+  }, [openDashboardOverlay]);
+
+  useEffect(() => {
+    const onOpenAuthorIdentity = () => openDashboardOverlay(() => setShowAuthorIdentity(true));
+    const onOpenExport = () => openDashboardOverlay(() => setShowExport(true));
+    const onOpenManuscript = () => openDashboardOverlay(() => setShowManuscriptAnalyzer(true));
+    const onOpenCover = () => openDashboardOverlay(() => setShowCoverStudio(true));
+    const onOpenNewBook = () => openNewBookGuarded();
+    const onFocusManuscript = () => {
+      document.querySelector<HTMLTextAreaElement>("[data-manuscript-textarea]")?.focus();
+    };
+
+    window.addEventListener(REQUIREMENT_ACTION_EVENTS.open_author_identity, onOpenAuthorIdentity);
+    window.addEventListener(REQUIREMENT_ACTION_EVENTS.open_export_studio, onOpenExport);
+    window.addEventListener(REQUIREMENT_ACTION_EVENTS.open_manuscript_lab, onOpenManuscript);
+    window.addEventListener(REQUIREMENT_ACTION_EVENTS.open_cover_studio, onOpenCover);
+    window.addEventListener(REQUIREMENT_ACTION_EVENTS.open_new_book, onOpenNewBook);
+    window.addEventListener(REQUIREMENT_ACTION_EVENTS.focus_manuscript_input, onFocusManuscript);
+
+    return () => {
+      window.removeEventListener(REQUIREMENT_ACTION_EVENTS.open_author_identity, onOpenAuthorIdentity);
+      window.removeEventListener(REQUIREMENT_ACTION_EVENTS.open_export_studio, onOpenExport);
+      window.removeEventListener(REQUIREMENT_ACTION_EVENTS.open_manuscript_lab, onOpenManuscript);
+      window.removeEventListener(REQUIREMENT_ACTION_EVENTS.open_cover_studio, onOpenCover);
+      window.removeEventListener(REQUIREMENT_ACTION_EVENTS.open_new_book, onOpenNewBook);
+      window.removeEventListener(REQUIREMENT_ACTION_EVENTS.focus_manuscript_input, onFocusManuscript);
+    };
+  }, [openDashboardOverlay, openNewBookGuarded]);
 
   const openLaunchModal = (mode: LaunchMode = "quick") => {
     if (mode === "manual" && freeBookUsed) {
@@ -829,7 +906,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="scriptora-feature-scroll relative mx-auto w-full max-w-3xl px-4 pb-8 pt-4 sm:px-6 sm:pt-8 lg:px-8">
+      <main id="dashboard-projects" className="scriptora-feature-scroll relative mx-auto w-full max-w-3xl px-4 pb-8 pt-4 sm:px-6 sm:pt-8 lg:px-8">
         <NarrativeWorkspace
           snapshot={workspaceSnapshot}
           actions={{
@@ -845,6 +922,10 @@ export default function Home() {
             onExport: guardPlanFeature("export_epub", () => setShowExport(true)),
             onLibrary: guardPlanFeature("export_epub", () => setShowLibrary(true)),
             onOpenToolbox: () => setShowToolbox(true),
+            onAuthorIdentity: guardPlanFeature("book_engine_full", () =>
+              openDashboardOverlay(() => setShowAuthorIdentity(true)),
+            ),
+            onKdpPublish: guardPlanFeature("kdp_market_base", () => navigate("/kdp-launch")),
           }}
         />
 

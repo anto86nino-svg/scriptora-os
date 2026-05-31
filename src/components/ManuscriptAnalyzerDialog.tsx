@@ -925,11 +925,11 @@ export function ManuscriptAnalyzerDialog({
               <div className="mt-3">
                 <MissingRequirementCard
                   payload={buildRequirement(requirementBlock, { vars: { count: MIN_ANALYSIS_WORDS } })}
-                  onPrimary={() => fileInputRef.current?.click()}
-                  onSecondary={() => {
+                  onPrimary={() => {
                     setRequirementBlock(null);
                     document.querySelector<HTMLTextAreaElement>("[data-manuscript-textarea]")?.focus();
                   }}
+                  onSecondary={() => fileInputRef.current?.click()}
                   compact
                 />
               </div>

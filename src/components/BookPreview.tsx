@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { resolveOutlineSummaryForDisplay } from "@/lib/generation-experience";
 import { useRequirementGate } from "@/hooks/useRequirementGate";
-import { summarizeEpubValidationErrors, getExportAuthorGap, applyActiveAuthorIdentityToProject, openAuthorIdentitySetup } from "@/lib/scriptora-requirement-gate";
+import { summarizeEpubValidationErrors, getExportAuthorGap, applyActiveAuthorIdentityToProject } from "@/lib/scriptora-requirement-gate";
 
 interface BookPreviewProps {
   project: BookProject;
@@ -87,7 +87,6 @@ export function BookPreview({
     }
     showRequirement("missing_author_identity", {
       vars: { name: gap.activePenName },
-      onPrimary: () => openAuthorIdentitySetup(),
       onSecondary: () => next(applyActiveAuthorIdentityToProject(project)),
     });
   };

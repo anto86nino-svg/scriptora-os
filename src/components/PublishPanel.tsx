@@ -80,7 +80,11 @@ export function PublishPanel({
 
   const handleStartFresh = () => {
     if (!draftConfig.title.trim()) {
-      showRequirement("missing_book_title");
+      showRequirement("missing_book_title", {
+        onPrimary: () => {
+          document.querySelector<HTMLInputElement>("[data-publish-book-title]")?.focus();
+        },
+      });
       return;
     }
     onStartFresh(draftConfig);
@@ -113,7 +117,7 @@ export function PublishPanel({
             <div>
               <label className="text-[10px] text-muted-foreground uppercase tracking-wider block mb-1">Titolo del libro *</label>
               <input
-                type="text" autoFocus value={draftConfig.title}
+                type="text" autoFocus value={draftConfig.title} data-publish-book-title
                 onChange={(e) => setDraftConfig({ ...draftConfig, title: e.target.value })}
                 placeholder="Es. Il potere del silenzio"
                 className="w-full h-10 bg-background border border-border rounded px-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"

@@ -1,6 +1,6 @@
 export type DeviceKind = "phone" | "tablet" | "desktop";
 export type LayoutPreference = "auto" | "mobile" | "desktop";
-export type EffectiveLayout = "mobile" | "desktop";
+export type EffectiveLayout = "mobile" | "desktop" | "desktop_preview";
 
 export const LAYOUT_PREFERENCE_KEY = "scriptora-layout-preference-v1";
 export const DEVICE_VIEW_CHANGE_EVENT = "scriptora-device-view-change";
@@ -10,6 +10,9 @@ export const TABLET_DESKTOP_MIN_WIDTH = 1024;
 /** Tablets in auto mode use compact shell below this width (covers iPad landscape). */
 export const TABLET_AUTO_DESKTOP_MIN_WIDTH = 1280;
 export const DESKTOP_LAYOUT_MIN_WIDTH = 768;
+/** Virtual canvas width for scaled desktop preview on phones / narrow tablets. */
+export const DESKTOP_PREVIEW_CANVAS_WIDTH = 1180;
+export const DESKTOP_PREVIEW_MIN_SCALE = 0.28;
 
 export type DeviceViewState = {
   deviceKind: DeviceKind;
@@ -20,6 +23,9 @@ export type DeviceViewState = {
   isTouchDevice: boolean;
   /** Phone/tablet compact shell, or any effective mobile layout. */
   isCompactLayout: boolean;
+  /** Scaled desktop preview active on a touch phone / narrow tablet. */
+  isDesktopPreview: boolean;
+  desktopPreviewScale: number;
 };
 
 export function readStoredPreference(): LayoutPreference {
@@ -76,13 +82,29 @@ export function isTouchCapableDevice(): boolean {
   );
 }
 
+export function shouldUseDesktopPreview(
+  preference: LayoutPreference,
+  deviceKind: DeviceKind,
+  viewportWidth: number,
+): boolean {
+  if (preference !== "desktop") return false;
+  if (deviceKind === "phone") return true;
+  if (deviceKind === "tablet" && viewportWidth < TABLET_DESKTOP_MIN_WIDTH) return true;
+  return false;
+}
+
 export function resolveEffectiveLayout(
   preference: LayoutPreference,
   deviceKind: DeviceKind,
   viewportWidth: number,
 ): EffectiveLayout {
   if (preference === "mobile") return "mobile";
-  if (preference === "desktop") return "desktop";
+  if (preference === "desktop") {
+    if (shouldUseDesktopPreview(preference, deviceKind, viewportWidth)) {
+      return "desktop_preview";
+    }
+    return "desktop";
+  }
 
   switch (deviceKind) {
     case "phone":
@@ -92,6 +114,46 @@ export function resolveEffectiveLayout(
     default:
       return viewportWidth >= DESKTOP_LAYOUT_MIN_WIDTH ? "desktop" : "mobile";
   }
+}
+
+export function computeDesktopPreviewScale(
+  viewportWidth: number,
+  viewportHeight: number,
+  canvasWidth = DESKTOP_PREVIEW_CANVAS_WIDTH,
+): number {
+  const widthScale = viewportWidth / canvasWidth;
+  const heightScale = viewportHeight / 820;
+  const scale = Math.min(widthScale, heightScale, 1);
+  return Math.max(DESKTOP_PREVIEW_MIN_SCALE, Math.round(scale * 1000) / 1000);
+}
+
+export function applyDesktopPreviewMetrics(
+  viewportWidth: number,
+  viewportHeight: number,
+  canvasWidth = DESKTOP_PREVIEW_CANVAS_WIDTH,
+) {
+  if (typeof document === "undefined") return computeDesktopPreviewScale(viewportWidth, viewportHeight, canvasWidth);
+  const scale = computeDesktopPreviewScale(viewportWidth, viewportHeight, canvasWidth);
+  const root = document.documentElement;
+  const scaledWidth = canvasWidth * scale;
+  const offsetX = Math.max(0, (viewportWidth - scaledWidth) / 2);
+  root.style.setProperty("--scriptora-desktop-preview-scale", String(scale));
+  root.style.setProperty("--scriptora-desktop-preview-width", `${canvasWidth}px`);
+  root.style.setProperty("--scriptora-desktop-preview-offset-x", `${offsetX}px`);
+  root.style.setProperty(
+    "--scriptora-desktop-preview-canvas-height",
+    `${Math.ceil(viewportHeight / scale)}px`,
+  );
+  return scale;
+}
+
+export function clearDesktopPreviewMetrics() {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  root.style.removeProperty("--scriptora-desktop-preview-scale");
+  root.style.removeProperty("--scriptora-desktop-preview-width");
+  root.style.removeProperty("--scriptora-desktop-preview-offset-x");
+  root.style.removeProperty("--scriptora-desktop-preview-canvas-height");
 }
 
 export function readViewportSize() {
@@ -127,6 +189,10 @@ export function getDeviceViewState(
   const deviceKind = detectDeviceKind(viewportWidth);
   const effectiveLayout = resolveEffectiveLayout(preference, deviceKind, viewportWidth);
   const isTouchDevice = isTouchCapableDevice();
+  const isDesktopPreview = effectiveLayout === "desktop_preview";
+  const desktopPreviewScale = isDesktopPreview
+    ? computeDesktopPreviewScale(viewportWidth, viewportHeight)
+    : 1;
   return {
     deviceKind,
     preference,
@@ -135,6 +201,8 @@ export function getDeviceViewState(
     viewportHeight,
     isTouchDevice,
     isCompactLayout: effectiveLayout === "mobile",
+    isDesktopPreview,
+    desktopPreviewScale,
   };
 }
 
@@ -148,18 +216,31 @@ export function applyDeviceViewState(state: DeviceViewState) {
   root.classList.remove(
     "scriptora-layout-mobile",
     "scriptora-layout-desktop",
+    "scriptora-layout-desktop-preview",
     "scriptora-device-phone",
     "scriptora-device-tablet",
     "scriptora-device-desktop",
     "scriptora-compact-layout",
     "scriptora-touch-device",
+    "scriptora-mobile-desktop-preview",
   );
 
-  root.classList.add(`scriptora-layout-${state.effectiveLayout}`);
+  if (state.effectiveLayout === "desktop_preview") {
+    root.classList.add("scriptora-layout-desktop-preview", "scriptora-layout-desktop", "scriptora-mobile-desktop-preview");
+  } else {
+    root.classList.add(`scriptora-layout-${state.effectiveLayout}`);
+  }
+
   root.classList.add(`scriptora-device-${state.deviceKind}`);
 
   root.classList.toggle("scriptora-touch-device", state.isTouchDevice);
   root.classList.toggle("scriptora-compact-layout", state.isCompactLayout);
+
+  if (state.isDesktopPreview) {
+    applyDesktopPreviewMetrics(state.viewportWidth, state.viewportHeight);
+  } else {
+    clearDesktopPreviewMetrics();
+  }
 
   syncViewportMetrics(state.viewportWidth, state.viewportHeight);
 }

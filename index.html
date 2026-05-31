@@ -28,7 +28,9 @@
             p === "mobile"
               ? "mobile"
               : p === "desktop"
-                ? "desktop"
+                ? kind === "phone" || (kind === "tablet" && w < 1024)
+                  ? "desktop_preview"
+                  : "desktop"
                 : kind === "phone"
                   ? "mobile"
                   : kind === "tablet"
@@ -39,7 +41,18 @@
                       ? "desktop"
                       : "mobile";
           var root = document.documentElement;
-          root.classList.add("scriptora-layout-" + eff, "scriptora-device-" + kind);
+          if (eff === "desktop_preview") {
+            root.classList.add("scriptora-layout-desktop-preview", "scriptora-layout-desktop", "scriptora-mobile-desktop-preview", "scriptora-device-" + kind);
+            var canvasW = 1180;
+            var scale = Math.max(0.28, Math.min(w / canvasW, h / 820, 1));
+            var scaledW = canvasW * scale;
+            root.style.setProperty("--scriptora-desktop-preview-scale", String(Math.round(scale * 1000) / 1000));
+            root.style.setProperty("--scriptora-desktop-preview-width", canvasW + "px");
+            root.style.setProperty("--scriptora-desktop-preview-offset-x", Math.max(0, (w - scaledW) / 2) + "px");
+            root.style.setProperty("--scriptora-desktop-preview-canvas-height", Math.ceil(h / scale) + "px");
+          } else {
+            root.classList.add("scriptora-layout-" + eff, "scriptora-device-" + kind);
+          }
           if (eff === "mobile") root.classList.add("scriptora-compact-layout");
           if (maxTouch > 0 || "ontouchstart" in window) root.classList.add("scriptora-touch-device");
           root.style.setProperty("--scriptora-vw", w + "px");

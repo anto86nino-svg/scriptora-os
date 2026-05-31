@@ -5,6 +5,7 @@
 @import "./styles/device-view.css";
 @import "./styles/mobile-hardening.css";
 @import "./styles/viewport-safe.css";
+@import "./styles/scriptora-creative-console.css";
 @import "./styles/mobile-writer-v2.css";
 
 @tailwind base;

@@ -18,6 +18,7 @@ import { AuthDebugPanel } from "@/components/AuthDebugPanel";
 import GlobalCuriosity from "./components/GlobalCuriosity";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { DeviceViewSync } from "@/hooks/useDeviceView";
+import { DesktopPreviewChrome } from "@/components/DesktopPreviewChrome";
 import { LivingBackgroundLayer } from "@/components/immersive/LivingBackgroundLayer";
 import { LivingAtmosphereAmbience } from "@/components/immersive/LivingAtmosphereAmbience";
 
@@ -71,6 +72,7 @@ const App = () => (
               </Suspense>
               </AppErrorBoundary>
               <DeviceViewSync />
+              <DesktopPreviewChrome />
               <LivingBackgroundLayer />
               <LivingAtmosphereAmbience />
               <DevModeBadge />

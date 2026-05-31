@@ -4,6 +4,7 @@ import {
   detectExportBlock,
   summarizeEpubValidationErrors,
   getExportAuthorGap,
+  getPrimaryIntentForRequirement,
 } from "./scriptora-requirement-gate";
 import type { BookProject } from "@/types/book";
 
@@ -45,5 +46,12 @@ describe("scriptora-requirement-gate", () => {
       chapters: [{ title: "One", content: "Body", subchapters: [] }],
     } as BookProject;
     expect(getExportAuthorGap(project).needsIdentityPrompt).toBe(true);
+  });
+
+  it("builds intent-based primary actions instead of bare dashboard routes", () => {
+    const payload = buildRequirement("missing_author_identity");
+    expect(payload.primaryAction.intent).toBe("open_author_identity");
+    expect(payload.primaryAction.route).toBe("/dashboard?open=author-identity");
+    expect(getPrimaryIntentForRequirement("missing_manuscript")).toBe("focus_manuscript_input");
   });
 });
