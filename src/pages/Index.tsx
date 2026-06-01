@@ -966,7 +966,11 @@ const Index = () => {
               {effectiveProject && (
                 <GuidedProjectFlow
                   projectId={effectiveProject.id}
-                  sidebarOpen={sidebarOpen || chapterIndexOpen}
+                  sidebarOpen={
+                    isMobileLayout
+                      ? chapterIndexOpen
+                      : sidebarOpen
+                  }
                   onOpenSidebar={openChapterIndex}
                   onSelectSection={setActiveSection}
                 />
