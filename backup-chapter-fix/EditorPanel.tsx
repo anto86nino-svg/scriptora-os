@@ -179,7 +179,7 @@ export function EditorPanel({
         />
         <div className={cn(
           isMobileWriter
-            ? "px-2 pt-2 pb-4 max-w-none w-full"
+            ? "px-2 py-3 max-w-none w-full"
             : cn("mx-auto px-4 py-6 sm:px-8", mode === "preview" ? "max-w-2xl" : "max-w-5xl"),
         )}>
           <div className={cn(
@@ -292,7 +292,7 @@ function PreviewMode({ project, view, ws }: { project: BookProject; view: any; w
   const proseStyle = { fontFamily: ws.fontFamily, fontSize: `${ws.fontSize}px`, lineHeight: `${ws.lineSpacing}` };
 
   return (
-    <div className="overflow-visible rounded-[32px] border border-white/10 bg-slate-950/60 shadow-[0_40px_90px_-35px_rgba(15,23,42,0.75)]">
+    <div className="overflow-hidden rounded-[32px] border border-white/10 bg-slate-950/60 shadow-[0_40px_90px_-35px_rgba(15,23,42,0.75)]">
       <div className="p-10 space-y-6" style={proseStyle}>
         {view.type === "blueprint" && blueprint && (
           <>
@@ -407,7 +407,7 @@ function WriterContextBar({
   }
 
   return (
-    <div className="scriptora-writer-context-bar sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 px-4 py-3 backdrop-blur-xl sm:px-8">
+    <div className="scriptora-writer-context-bar sticky top-0 z-20 border-b border-white/10 bg-slate-950/95 px-4 py-3 backdrop-blur-xl sm:px-8">
       <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <button type="button" onClick={onOpenChapterIndex} className="scriptora-writer-nav-primary">

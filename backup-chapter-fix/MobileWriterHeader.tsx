@@ -37,8 +37,8 @@ export function MobileWriterHeader({
   const locationLabel = resolveLocationLabel(project, activeSection);
 
   return (
-    <header className="scriptora-mobile-writer-header layout-desktop:hidden sticky top-0 z-[60] shrink-0 border-b border-white/10 bg-slate-950/98 pt-safe backdrop-blur-xl">
-<div className="flex h-11 items-center gap-1 px-2">
+    <header className="scriptora-mobile-writer-header layout-desktop:hidden shrink-0 border-b border-white/10 bg-slate-950/98 pt-safe">
+      <div className="flex h-11 items-center gap-1 px-2">
         <Link
           to="/dashboard"
           className="ios-toolbar-button h-9 w-9 shrink-0 text-muted-foreground hover:text-foreground"

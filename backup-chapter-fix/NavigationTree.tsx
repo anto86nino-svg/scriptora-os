@@ -64,7 +64,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
   };
 
   return (
-    <nav className="scrollbar-thin relative z-[80] flex-1 overflow-y-auto px-2 py-2 pb-24" data-guided-tour="writer-index">
+    <nav className="scrollbar-thin flex-1 overflow-y-auto px-2 py-2" data-guided-tour="writer-index">
       {config.category && (
         <div className="ios-glass-soft mb-2 rounded-lg px-3 py-2">
           <div className="mb-0.5 text-[10px] uppercase text-muted-foreground/60">{t("category")}</div>

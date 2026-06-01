@@ -32,7 +32,7 @@ export function MobileChapterIndexSheet({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="scriptora-mobile-chapter-sheet z-[90] flex h-[100dvh] max-h-[100dvh] flex-col rounded-t-[20px] border-white/10 bg-slate-950 pb-safe">
+      <DrawerContent className="scriptora-mobile-chapter-sheet flex h-[96dvh] max-h-[96dvh] flex-col rounded-t-[20px] border-white/10 bg-slate-950 pb-safe">
         <DrawerHeader className="shrink-0 border-b border-white/10 px-4 pb-3 pt-2 text-left">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -53,7 +53,7 @@ export function MobileChapterIndexSheet({
             </button>
           </div>
         </DrawerHeader>
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-hidden">
           <NavigationTree
             project={project}
             activeSection={activeSection}
