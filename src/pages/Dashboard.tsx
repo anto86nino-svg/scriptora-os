@@ -31,7 +31,7 @@ import { DevModeUnlockDialog } from "@/components/DevModeUnlockDialog";
 import { canUseDevTools } from "@/lib/app-environment";
 import { enableDevMode, isDevMode, exitDevMode, useDevMode } from "@/lib/dev-mode";
 import { BetaActivationDialog } from "@/components/BetaActivationDialog";
-import { usePlan } from "@/lib/plan";
+import { usePlan, isFreeBookLimitReached } from "@/lib/plan";
 import { canUseFeature, type FeatureKey } from "@/lib/subscription";
 import { useAuth } from "@/hooks/useAuth";
 import { useIntelligentPreload } from "@/hooks/useIntelligentPreload";
@@ -329,7 +329,7 @@ export default function Home() {
     }
   }, [showLaunchModal]);
 
-  const freeBookUsed = currentPlan === "free" && projects.length > 0;
+  const freeBookUsed = isFreeBookLimitReached(currentPlan, projects.length);
 
   useEffect(() => {
     if (currentPlan === "free" && bookLength !== "short") {

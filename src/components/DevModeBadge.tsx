@@ -18,6 +18,7 @@ import {
   FlaskConical,
   Zap,
   Crown,
+  UserCog,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -28,6 +29,7 @@ import {
   useDevPlanOverride,
 } from "@/lib/dev-plan-override";
 import type { PlanTier } from "@/lib/plan";
+import { t, tt, useUILanguage } from "@/lib/i18n";
 import { RESETTABLE_DEV_USER_IDS } from "@/services/storageService";
 import { loadProjects, deleteProject } from "@/lib/storage";
 import {
@@ -38,7 +40,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { t, tt, useUILanguage } from "@/lib/i18n";
+import { DevUserSimulationPanel } from "@/components/dev/DevUserSimulationPanel";
+import { isDevUserSimulationActive } from "@/lib/dev/devUserSimulation";
 
 const PLAN_META: Record<PlanTier, { icon: React.ReactNode; hintKey: string }> = {
   free:    { icon: <Sparkles className="h-3 w-3" />,    hintKey: "dev_free_hint" },
@@ -54,6 +57,7 @@ export function DevModeBadge() {
   const navigate = useNavigate();
   const [planMenuOpen, setPlanMenuOpen] = useState(false);
   const [wipeOpen, setWipeOpen] = useState(false);
+  const [simPanelOpen, setSimPanelOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(max-width: 639px)").matches;
@@ -136,6 +140,9 @@ export function DevModeBadge() {
         </button>
         <Terminal className="h-3 w-3" />
         <span className="font-semibold tracking-wider">DEV</span>
+        {isDevUserSimulationActive() && (
+          <span className="rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-200">SIM</span>
+        )}
 
         {/* Plan switcher */}
         <div className="relative ml-2">
@@ -177,6 +184,13 @@ export function DevModeBadge() {
           )}
         </div>
 
+        <button
+          onClick={() => setSimPanelOpen(true)}
+          title="Dev user simulation"
+          className="h-6 w-6 rounded-full hover:bg-background/15 flex items-center justify-center"
+        >
+          <UserCog className="h-3 w-3" />
+        </button>
         <button
           onClick={() => navigate("/usage")}
           title={t("usage_dashboard")}
@@ -227,6 +241,8 @@ export function DevModeBadge() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DevUserSimulationPanel open={simPanelOpen} onClose={() => setSimPanelOpen(false)} />
     </>
   );
 }

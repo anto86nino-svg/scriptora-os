@@ -29,6 +29,7 @@ export {
   isCreditEnforcementActive,
   loadCreditWallet,
   recordLocalCreditUsage,
+  consumeCredits,
   type CreditWalletSnapshot,
 } from "@/lib/billing/creditWallet";
 

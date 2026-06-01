@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { BookProject, BookConfig, ChatMessage, GenerationPhase, GenerationStatus, AIQualityRating, getSubchaptersPerChapter } from "@/types/book";
+import { BookProject, BookConfig, ChatMessage, GenerationPhase, GenerationStatus, AIQualityRating, getSubchaptersPerChapter, BOOK_LENGTH_CONFIG } from "@/types/book";
 import { saveProjectAsync, createProjectId, setLastProjectId, loadProjects as loadScopedProjects } from "@/services/storageService";
 import { saveProject } from "@/lib/storage";
 import { generateBlueprint, generateFrontMatter, generateChapter, generateChapterChunked, generateSubchapter, generateBackMatter, rewriteChapter, evaluateChapterQuality, RewriteLevel, ChunkProgress, buildGenreLock } from "@/lib/generation";
@@ -9,9 +9,10 @@ import { toast } from "sonner";
 import { t } from "@/lib/i18n";
 import { captureException } from "@/lib/monitoring";
 import { trackEvent, trackFirstProjectCreated } from "@/lib/analytics";
-import { fetchPlan } from "@/lib/plan";
+import { fetchPlan, isFreeBookLimitReached } from "@/lib/plan";
 import { isDevMode } from "@/lib/dev-mode";
-import { getDevPlanOverride } from "@/lib/dev-plan-override";
+import { getEffectiveDevPlanTier, recordDevSimulationBookCreated } from "@/lib/dev/devUserSimulation";
+import { consumeCredits, isCreditEnforcementActive, mapPlanTierToScriptoraPlan } from "@/lib/billing";
 import { getPlanLimits } from "@/lib/subscription";
 import { normalizeProjectChapterTitles, resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { ensureBookTitleMetadata } from "@/lib/title-shadow";
@@ -78,7 +79,7 @@ function trimTextToWordLimit(text: string, maxWords: number): string {
 }
 
 async function getActivePlanForEngine() {
-  return isDevMode() ? getDevPlanOverride() : await fetchPlan();
+  return isDevMode() ? getEffectiveDevPlanTier() : await fetchPlan();
 }
 
 async function getMaxProjectWordsForActivePlan(): Promise<number> {
@@ -265,8 +266,8 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
     if (activePlan === "free") {
       const existingProjects = await loadScopedProjects().catch(() => []);
-      if (existingProjects.length > 0) {
-        const msg = "Hai già usato il libro gratuito. Passa a Pro/Premium per creare altri libri.";
+      if (isFreeBookLimitReached(activePlan, existingProjects.length)) {
+        const msg = t("toast_free_book_used");
         addMessage("assistant", `🔒 ${msg}`);
         toast.error(msg);
         return;
@@ -325,6 +326,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       toast.warning(t("toast_saved_locally"));
     });
 
+    recordDevSimulationBookCreated();
     trackFirstProjectCreated({ genre: safeConfig.genre });
     trackEvent("book_generation_started", { phase: "blueprint" });
 
@@ -346,6 +348,16 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     }
 
     addGenerating("blueprint");
+
+    const blueprintCredit = consumeCredits(
+      { operation: "book_blueprint", plan: mapPlanTierToScriptoraPlan(activePlan) },
+      activePlan,
+    );
+    if (!blueprintCredit.allowed && isCreditEnforcementActive()) {
+      toast.error(t("scriptora_error_generic"));
+      removeGenerating("blueprint");
+      return;
+    }
 
     try {
       addMessage("assistant", "Building narrative blueprint…");
@@ -508,6 +520,22 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       addMessage("assistant", `🔒 ${msg}`);
       toast.error(msg);
       updateAndSave(pr => ({ ...pr, phase: "complete" as GenerationPhase }));
+      return;
+    }
+
+    const activePlan = await getActivePlanForEngine();
+    const totalWords = BOOK_LENGTH_CONFIG[p.config.bookLength]?.totalWords ?? 50000;
+    const estWords = Math.ceil(totalWords / Math.max(1, p.config.numberOfChapters));
+    const chapterCredit = consumeCredits(
+      {
+        operation: "chapter_generation_standard",
+        plan: mapPlanTierToScriptoraPlan(activePlan),
+        estimatedWords: estWords,
+      },
+      activePlan,
+    );
+    if (!chapterCredit.allowed && isCreditEnforcementActive()) {
+      toast.error(t("scriptora_error_generic"));
       return;
     }
 

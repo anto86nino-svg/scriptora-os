@@ -5,6 +5,12 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isDevMode } from "@/lib/dev-mode";
 import { getDevPlanOverride } from "@/lib/dev-plan-override";
+import {
+  getEffectiveDevPlanTier,
+  getSimulatedBooksThisMonth,
+  isDevUserSimulationActive,
+  isSimulatedFreeBookLimitReached,
+} from "@/lib/dev/devUserSimulation";
 import { getCurrentUserId } from "@/services/storageService";
 
 export type PlanTier = "free" | "beta" | "pro" | "premium";
@@ -122,10 +128,12 @@ export async function getBooksThisMonth(): Promise<number> {
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId)
       .gte("created_at", start.toISOString());
-    if (error) return 0;
-    return count || 0;
+    if (error) return getSimulatedBooksThisMonth(0);
+    const real = count || 0;
+    if (isDevUserSimulationActive()) return getSimulatedBooksThisMonth(real);
+    return real;
   } catch {
-    return 0;
+    return isDevUserSimulationActive() ? getSimulatedBooksThisMonth(0) : 0;
   }
 }
 
@@ -142,15 +150,13 @@ export interface QuotaState {
 
 export async function getQuotaForProject(projectId: string | null): Promise<QuotaState> {
   const dev = isDevMode();
-  const plan: PlanTier = dev ? getDevPlanOverride() : await fetchPlan();
+  const simActive = isDevUserSimulationActive();
+  const plan: PlanTier = dev ? getEffectiveDevPlanTier() : await fetchPlan();
   const limits = PLAN_LIMITS[plan];
   const tokensUsed = projectId ? await getProjectTokenUsage(projectId) : 0;
   const max = limits.maxTokensPerBook;
   const tokensRemaining = max == null ? null : Math.max(0, max - tokensUsed);
-  // In dev mode we still REPORT the limit honestly so the UI can be tested,
-  // but enforcement (canExport / canDominate) follows the simulated plan as well —
-  // except for "premium" which keeps full bypass behaviour the owner expects.
-  const devPremium = dev && plan === "premium";
+  const devPremium = dev && !simActive && plan === "premium";
   const isOverTokenLimit = !devPremium && max != null && tokensUsed >= max;
   return {
     plan,
@@ -164,6 +170,11 @@ export async function getQuotaForProject(projectId: string | null): Promise<Quot
   };
 }
 
+export function isFreeBookLimitReached(plan: PlanTier, projectCount: number): boolean {
+  if (isSimulatedFreeBookLimitReached(projectCount)) return true;
+  return plan === "free" && projectCount > 0;
+}
+
 export function usePlan(): { plan: PlanTier; isDev: boolean; loading: boolean; refresh: () => void } {
   const [plan, setPlanState] = useState<PlanTier>("free");
   const [loading, setLoading] = useState(true);
@@ -173,14 +184,16 @@ export function usePlan(): { plan: PlanTier; isDev: boolean; loading: boolean; r
     let cancelled = false;
     const dev = isDevMode();
     if (dev) {
-      setPlanState(getDevPlanOverride());
+      setPlanState(getEffectiveDevPlanTier());
       setLoading(false);
       const sync = () => setTick((t) => t + 1);
       window.addEventListener("nexora-plan-change", sync);
       window.addEventListener("nexora-dev-mode-change", sync);
+      window.addEventListener("scriptora-dev-simulation-change", sync);
       return () => {
         window.removeEventListener("nexora-plan-change", sync);
         window.removeEventListener("nexora-dev-mode-change", sync);
+        window.removeEventListener("scriptora-dev-simulation-change", sync);
       };
     }
     fetchPlan().then((p) => {
@@ -209,11 +222,13 @@ export function useQuota(projectId: string | null): { quota: QuotaState | null; 
     window.addEventListener("nexora-plan-change", sync);
     window.addEventListener("nexora-dev-mode-change", sync);
     window.addEventListener("nexora-usage-change", sync);
+    window.addEventListener("scriptora-dev-simulation-change", sync);
     return () => {
       cancelled = true;
       window.removeEventListener("nexora-plan-change", sync);
       window.removeEventListener("nexora-dev-mode-change", sync);
       window.removeEventListener("nexora-usage-change", sync);
+      window.removeEventListener("scriptora-dev-simulation-change", sync);
     };
   }, [projectId, tick]);
   return { quota, refresh: () => setTick((t) => t + 1) };
@@ -229,10 +244,12 @@ export function useBooksThisMonth(): number {
     const sync = () => setTick((t) => t + 1);
     window.addEventListener("nexora-plan-change", sync);
     window.addEventListener("nexora-usage-change", sync);
+    window.addEventListener("scriptora-dev-simulation-change", sync);
     return () => {
       cancelled = true;
       window.removeEventListener("nexora-plan-change", sync);
       window.removeEventListener("nexora-usage-change", sync);
+      window.removeEventListener("scriptora-dev-simulation-change", sync);
     };
   }, [tick]);
   return count;

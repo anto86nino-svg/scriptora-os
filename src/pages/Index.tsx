@@ -26,7 +26,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { MobileChapterIndexSheet } from "@/components/mobile/MobileChapterIndexSheet";
 import { MobileWriterHeader } from "@/components/mobile/MobileWriterHeader";
 import { MobileWriterToolsSheet } from "@/components/mobile/MobileWriterToolsSheet";
-import { useQuota, usePlan } from "@/lib/plan";
+import { useQuota, usePlan, isFreeBookLimitReached } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { isProjectComplete } from "@/lib/project-status";
 import { setProjectCoverDataUrl } from "@/lib/cover-session";
@@ -134,7 +134,7 @@ const Index = () => {
   const { quota } = useQuota(engine.project?.id || null);
   const { plan } = usePlan();
   const { showRequirement, requirementDialog } = useRequirementGate();
-  const freeBookUsed = plan === "free" && projects.length > 0;
+  const freeBookUsed = isFreeBookLimitReached(plan, projects.length);
 
   const openLaunchChooserGuarded = () => {
     if (freeBookUsed) {

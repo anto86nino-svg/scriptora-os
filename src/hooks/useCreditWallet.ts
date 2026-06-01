@@ -35,10 +35,12 @@ export function useCreditWallet() {
     refresh();
     window.addEventListener("scriptora-credit-wallet-change", refresh);
     window.addEventListener("nexora-plan-change", refresh);
+    window.addEventListener("scriptora-dev-simulation-change", refresh);
     return () => {
       cancelled = true;
       window.removeEventListener("scriptora-credit-wallet-change", refresh);
       window.removeEventListener("nexora-plan-change", refresh);
+      window.removeEventListener("scriptora-dev-simulation-change", refresh);
     };
   }, [plan]);
 
