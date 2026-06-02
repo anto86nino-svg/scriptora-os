@@ -67,13 +67,6 @@ export function buildTensionPromptBlock(context: NarrativeTensionContext = {}): 
     : "Create a hidden emotional wound for the scene and let it leak through behavior, not explanation.";
 
   return `
-CHAPTER RHYTHM INTELLIGENCE:
-If the last three chapters share the same emotional tone, vary the next one:
-- After tense chapters: introduce warmth, humor, or tenderness.
-- After brutal chapters: add vulnerability or relief.
-- After silent chapters: bring conflict or action.
-- After horror: provide brief comfort or intimacy.
-
 HUMAN EMOTION ENGINE V2 - ADDITIVE NARRATIVE RULES:
 - Keep the existing plot, genre and continuity. Do not change events just to create drama.
 - Delay emotional resolution. Attraction can rise while the characters resist it.

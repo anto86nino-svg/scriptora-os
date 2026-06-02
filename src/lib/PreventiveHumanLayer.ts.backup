@@ -1,0 +1,496 @@
+import type { HumanizerContext } from "@/lib/HumanizerLayer";
+
+export function buildPreventiveHumanizerPromptBlock(context: HumanizerContext = {}): string {
+  const language = context.config?.language ?? "English";
+  const isItalian = String(language).toLowerCase().includes("ital");
+
+  if (isItalian) {
+    return buildPreventiveBlockItalian(context);
+  }
+  return buildPreventiveBlockEnglish(context);
+}
+
+function buildPreventiveBlockEnglish(context: HumanizerContext): string {
+  const blocks = [
+    `# PREVENTIVE BESTSELLER HUMAN & EMOTIONAL MAGNETISM PROTOCOL`,
+
+    `## PHASE 1 — HUMAN IMPERFECTION ENGINE
+
+**Core Rule:** People rarely say exactly what they feel. Authenticity lives in contradiction.
+
+**Prevent:**
+- Emotionally over-self-aware characters
+- Therapy-speak or clinical vulnerability
+- Instant vulnerability confessions
+- Perfect, articulate communication
+- Characters who always understand their own emotions
+
+**Enforce:**
+- Misunderstanding and projection
+- Emotional contradiction and complexity
+- Avoidance and defensive behavior
+- Self-sabotage born from fear
+- Awkwardness and verbal stumbling
+- Contradictions between what is said and felt
+- Uncomfortable silences
+- Imperfect attempts at connection
+
+**Application:** When characters speak about emotion, introduce distortion—they misinterpret, minimize, deflect, or mask with humor/irritation. Vulnerability emerges through accident, not confession.`,
+
+    `## PHASE 2 — DIALOGUE HUMANIZER PRO MAX
+
+**Core Rule:** Dialogue must feel human, imperfect, and lived.
+
+**Prevent:**
+- Symmetrical dialogue (even back-and-forth exchanges)
+- Perfect emotional explanations within dialogue
+- Characters speaking like psychologists or therapists
+- Exposition disguised as conversation
+- Complete sentences in emotional moments
+
+**Enforce:**
+- Interruptions and unfinished thoughts
+- Asymmetrical responses (one character deflects while the other reaches)
+- Subtext over direct statement
+- Emotional friction even in intimate moments
+- Incomplete answers and topic shifts
+- Natural conversational rhythm with pauses
+- Verbal tics and habitual expressions
+- Words that mean something different than spoken
+
+**Application:** Write dialogue where people talk *around* what they mean. Include "uh," pauses, false starts. Let characters avoid direct answers. Create tension through what isn't said.`,
+
+    `## PHASE 3 — SLOW BURN RELATIONSHIP ENGINE
+
+**Core Rule for Romance:** Desire grows through restraint. Earned emotional payoff only.
+
+**Prevent:**
+- Emotional availability too early
+- Fast intimacy or instant trust
+- Characters who immediately understand each other
+- Smooth romantic progression
+
+**Enforce:**
+- Push-pull dynamics (advance then retreat)
+- Proximity tension without resolution
+- Care disguised as irritation or practical gestures
+- Accidental moments of intimacy followed by withdrawal
+- Guarded emotional distance maintained even during closeness
+- Emotional retreat after moments of vulnerability
+- Misread intentions and missed connections
+
+**Application:** Romantic scenes should include tension *within* the intimacy. A character might reach out, then pull back. Tenderness mixed with defensiveness. Connection interrupted by fear. The pleasure comes from the struggle, not the resolution.`,
+
+    `## PHASE 4 — POETRY BALANCE & CONTROLLED CINEMATICITY
+
+**Core Rule:** 95% realism, 5% cinematic lift.
+
+**Prevent:**
+- Metaphor overload and purple prose
+- Fake profundity masquerading as insight
+- Gritty realism obsession with textures
+- Decorative detail that doesn't serve
+- Paragraphs obsessed with: dust, screws, sleeves, coffee cups, random textures
+- Inconsistent tone between realism and poetry
+
+**Enforce:**
+- Physical detail that increases:
+  - Emotional tension
+  - Character understanding
+  - Scene immersion
+  - Reader investment
+- Selective use of emotionally-loaded details
+- Metaphor only when it illuminates character psychology
+- Restraint in sensory description
+- Beauty that costs something emotionally
+
+**Application:** Before including a physical detail, ask: does this increase tension, emotion, or understanding? If it's decorative, cut it. Use cinematic moments sparingly—a glance that carries weight, a gesture that means everything—but keep the baseline realistic and unadorned.`,
+
+    `## PHASE 5 — EMOTIONAL MAGNETISM ENGINE
+
+**Core Rule:** Attraction is rarely declared. It is noticed.
+
+**Enforce:**
+- Invisible emotional gravity between characters
+- Emotional residue—how a character lingers in the reader's mind
+- Subconscious attraction through attention
+- Notice small details about someone
+- Emotional anticipation (wanting to see someone)
+- Attention drawn without explanation
+
+**Prevent:**
+- Explicit exposition of attraction
+- Characters analyzing their own attraction
+- Perfect descriptions of beauty
+- Direct statements of desire
+
+**Application:** Show attraction through: where a character's attention goes, what details they notice, how they remember someone when alone, the physical response to proximity, the urge to be near without explanation.`,
+
+    `## PHASE 6 — MICRO DESIRE ENGINE
+
+**Core Rule:** Desire lives in tiny, accidental moments.
+
+**Enforce:**
+- Tiny sensory moments (a touch that lingers, a voice noticed)
+- Accidental awareness of another's body/presence
+- Remembered details about someone (how they move, a habit)
+- Emotional discomfort around attraction
+- Physical awareness that isn't welcome
+- Desire triggered by mundane moments
+
+**Prevent:**
+- Explicit attraction exposition
+- Intentional seduction
+- Attraction that reads as performative
+
+**Application:** A character notices their hand is still touching someone's shoulder. Someone remembers the other person's laugh days later. A familiar scent causes an involuntary response. These moments build desire through authenticity, not declaration.`,
+
+    `## PHASE 7 — EMOTIONAL ACHE ENGINE
+
+**Core Rule:** Care hides behind practical gestures and irritation.
+
+**Enforce:**
+- Near confessions that stop short
+- Interrupted vulnerability
+- Unresolved longing
+- Displaced concern (worry about practical things when emotional things are at stake)
+- Care hidden behind practical gestures or criticism
+
+**Examples of displaced care:**
+- "Text me when you arrive." (not: "I worry about you")
+- "Take the jacket." (not: "I don't want you to be cold")
+- "Did you eat?" (not: "I care if you're suffering")
+- Criticism that masks protectiveness
+- Nagging that signals investment
+
+**Prevent:**
+- Direct statements of care
+- Emotional speeches
+- Characters explicitly saying what they feel
+
+**Application:** When a character wants to express care, let them act instead. Let them fuss, criticize, give practical advice. Let the reader see the care underneath, even if the character denies it.`,
+
+    `## PHASE 8 — BOOKTOK COMPULSION ENGINE
+
+**Core Rule:** "Just one more chapter."
+
+**Enforce:**
+- Emotional hooks at scene/chapter endings
+- Unresolved tension that pulls forward
+- Emotional residue (leaving the reader feeling something)
+- Micro cliffhangers (emotional, not plot-based)
+- Reader anticipation for the next moment
+
+**Prevent:**
+- Neat resolution
+- Answered questions
+- Satisfied emotional states
+
+**Application:** End scenes with: a revelation that reframes what came before, an unanswered question, an emotional turn that wasn't expected, a gesture or confession cut short, or emotional stakes raised rather than resolved. Leave readers needing to know what happens next.`,
+
+    `## PHASE 9 — ELITE DIALOGUE BALANCE
+
+**Core Rule:** Allow emotional variation. Prevent emotionally guarded sameness.
+
+**Enforce variety in emotional tone:**
+- Funny exchanges (humor as connection and deflection)
+- Awkward moments (miscommunication and vulnerability)
+- Warm exchanges (genuine if imperfect connection)
+- Brutal honesty (cutting through pretense)
+- Intimate moments (even if interrupted or incomplete)
+- Playful banter (tension masked as lightness)
+- Defensive reactions (self-protection through words)
+- Surprising vulnerability mixed with humor
+
+**Prevent:**
+- Every emotional scene feeling the same
+- Characters perpetually guarded
+- Monotone emotional tenor
+- Dialogue that never risks warmth
+
+**Application:** Vary emotional register across dialogue. Let characters be funny sometimes, warm sometimes, brutal sometimes. This variation makes vulnerability hit harder when it comes.`,
+
+    `## INTEGRATION DIRECTIVE
+
+Writing should achieve this distribution:
+
+- 50% Elite Commercial Bestseller (page-turning momentum, emotional hooks)
+- 25% Developmental Editor Intelligence (character psychology, earned growth)
+- 15% Psychological Realism (how humans actually think and feel)
+- 10% Cinematic Emotional Magic (moments that transcend realism)
+
+**Reader Reaction Target:** "I forgot this was AI."
+
+This protocol transforms writing from technically correct to emotionally true.`,
+  ];
+
+  blocks.push(
+
+    \`## PHASE 10 — CHAPTER RHYTHM INTELLIGENCE
+
+Rule: Contrast prevents boredom.
+
+Previous three chapters same tone? Break the pattern.
+
+- Tense chapter → next is warm/humor
+- Brutal chapter → next has vulnerability
+- Silent chapter → next has conflict
+- Horror chapter → next has relief/intimacy
+
+These alternations make readers crave the next chapter.
+
+No chapter should feel like the last three combined.\`);
+
+  return blocks.filter(Boolean).join("\n\n").trim();
+}
+
+function buildPreventiveBlockItalian(context: HumanizerContext): string {
+  const blocks = [
+    `# PROTOCOLLO PREVENTIVO BESTSELLER UMANO & MAGNETISMO EMOTIVO`,
+
+    `## FASE 1 — MOTORE DELL'IMPERFEZIONE UMANA
+
+**Regola Fondamentale:** Le persone raramente dicono esattamente quello che sentono. L'autenticità vive nella contraddizione.
+
+**Evita:**
+- Personaggi emotivamente iper-consapevoli
+- Linguaggio terapeutico o vulnerabilità clinica
+- Confessioni istantanee di vulnerabilità
+- Comunicazione perfetta e articolata
+- Personaggi che comprendono sempre le proprie emozioni
+
+**Imponi:**
+- Fraintendimenti e proiezioni
+- Contraddizione emotiva e complessità
+- Evitamento e comportamento difensivo
+- Auto-sabotaggio nato dalla paura
+- Imbarazzo e titubanza verbale
+- Contraddizioni tra ciò che è detto e sentito
+- Silenzi imbarazzanti
+- Tentativi imperfetti di connessione
+
+**Applicazione:** Quando i personaggi parlano di emozione, introduci distorsione—fraintendono, minimizzano, si sottraggono o mascherano con umorismo/irritazione. La vulnerabilità emerge per caso, non per confessione.`,
+
+    `## FASE 2 — DIALOGO UMANIZZATORE PRO MAX
+
+**Regola Fondamentale:** Il dialogo deve sentirsi umano, imperfetto e vissuto.
+
+**Evita:**
+- Dialogo simmetrico (scambi equilibrati)
+- Spiegazioni emotive perfette nel dialogo
+- Personaggi che parlano come psicologi
+- Esposizione mascherata da conversazione
+- Frasi complete in momenti emotivi
+
+**Imponi:**
+- Interruzioni e pensieri incompiuti
+- Risposte asimmetriche (uno si sottrae mentre l'altro raggiunge)
+- Sottotesto su dichiarazione diretta
+- Attrito emotivo anche in momenti intimi
+- Risposte incomplete e cambi di argomento
+- Ritmo conversazionale naturale con pause
+- Tic verbali ed espressioni abituali
+- Parole che significano qualcosa di diverso da ciò che è detto
+
+**Applicazione:** Scrivi dialogo dove le persone parlano *intorno* a quello che intendono. Includi "eh," pause, falsi inizi. Lascia che i personaggi evitino risposte dirette. Crea tensione attraverso ciò che non è detto.`,
+
+    `## FASE 3 — MOTORE DELLA RELAZIONE SLOW BURN
+
+**Regola Fondamentale per il Romantico:** Il desiderio cresce attraverso il contenimento. Pagamento emotivo solo guadagnato.
+
+**Evita:**
+- Disponibilità emotiva troppo presto
+- Intimità veloce o fiducia istantanea
+- Personaggi che si capiscono subito
+- Progressione romantica liscia
+
+**Imponi:**
+- Dinamiche di avanzamento e ritirata
+- Tensione di prossimità senza risoluzione
+- Attenzione mascherata da irritazione o gesti pratici
+- Momenti accidentali di intimità seguiti da ritiro
+- Distanza emotiva mantenuta anche durante la vicinanza
+- Ritiro emotivo dopo momenti di vulnerabilità
+- Intenzioni fraintese e connessioni mancate
+
+**Applicazione:** Le scene romantiche dovrebbero includere tensione *dentro* l'intimità. Un personaggio potrebbe allungarsi, poi tirarsi indietro. Tenerezza mescolata a difensività. Connessione interrotta dalla paura. Il piacere viene dalla lotta, non dalla risoluzione.`,
+
+    `## FASE 4 — EQUILIBRIO POETICO & CINEMATICITÀ CONTROLLATA
+
+**Regola Fondamentale:** 95% realismo, 5% tocco cinematico.
+
+**Evita:**
+- Sovraccarico di metafore e prosa fiorita
+- Falsa profondità travestita da intuizione
+- Ossessione del realismo grintoso con trame
+- Dettagli decorativi che non servono
+- Paragrafi ossessionati da: polvere, viti, maniche, tazze di caffè, trame casuali
+- Tono incoerente tra realismo e poesia
+
+**Imponi:**
+- Dettaglio fisico che aumenta:
+  - Tensione emotiva
+  - Comprensione del personaggio
+  - Immersione nella scena
+  - Investimento del lettore
+- Uso selettivo di dettagli emotivamente carichi
+- Metafora solo quando illumina la psicologia del personaggio
+- Moderazione nella descrizione sensoriale
+- Bellezza che costa qualcosa emotivamente
+
+**Applicazione:** Prima di includere un dettaglio fisico, chiedi: aumenta tensione, emozione o comprensione? Se è decorativo, taglialo. Usa momenti cinematici con parsimonia—uno sguardo che porta peso, un gesto che significa tutto—ma mantieni la linea di base realistica e non ornata.`,
+
+    `## FASE 5 — MOTORE DEL MAGNETISMO EMOTIVO
+
+**Regola Fondamentale:** L'attrazione è raramente dichiarata. È notata.
+
+**Imponi:**
+- Gravità emotiva invisibile tra i personaggi
+- Residuo emotivo—come un personaggio rimane nella mente del lettore
+- Attrazione subconscia attraverso l'attenzione
+- Notare piccoli dettagli di qualcuno
+- Anticipazione emotiva (voler vedere qualcuno)
+- Attenzione attratta senza spiegazione
+
+**Evita:**
+- Esposizione esplicita dell'attrazione
+- Personaggi che analizzano la propria attrazione
+- Descrizioni perfette della bellezza
+- Dichiarazioni dirette di desiderio
+
+**Applicazione:** Mostra l'attrazione attraverso: dove va l'attenzione di un personaggio, quali dettagli notano, come ricordano qualcuno quando sono soli, la risposta fisica alla prossimità, l'impulso di essere vicino senza spiegazione.`,
+
+    `## FASE 6 — MOTORE DEL MICRO DESIDERIO
+
+**Regola Fondamentale:** Il desiderio vive in piccoli momenti accidentali.
+
+**Imponi:**
+- Piccoli momenti sensoriali (un tocco che si sofferma, una voce notata)
+- Consapevolezza accidentale del corpo/presenza di un altro
+- Dettagli ricordati su qualcuno (come si muove, un'abitudine)
+- Disagio emotivo intorno all'attrazione
+- Consapevolezza fisica che non è gradita
+- Desiderio innescato da momenti banali
+
+**Evita:**
+- Esposizione esplicita dell'attrazione
+- Seduzione intenzionale
+- Attrazione che legge come performativa
+
+**Applicazione:** Un personaggio si accorge che la sua mano è ancora sulla spalla di qualcuno. Qualcuno ricorda la risata dell'altro dopo giorni. Un profumo familiare causa una risposta involontaria. Questi momenti costruiscono desiderio attraverso l'autenticità, non la dichiarazione.`,
+
+    `## FASE 7 — MOTORE DEL DOLORE EMOTIVO
+
+**Regola Fondamentale:** L'attenzione si nasconde dietro gesti pratici e irritazione.
+
+**Imponi:**
+- Quasi confessioni che si fermano di corsa
+- Vulnerabilità interrotta
+- Desiderio irrisolto
+- Preoccupazione dislocata (preoccupazione per cose pratiche quando i problemi emotivi sono in gioco)
+- Attenzione nascosta dietro gesti pratici o critica
+
+**Esempi di attenzione dislocata:**
+- "Mandami un messaggio quando arrivi." (non: "Mi preoccupo per te")
+- "Prendi la giacca." (non: "Non voglio che tu abbia freddo")
+- "Hai mangiato?" (non: "Mi interessa se stai soffrendo")
+- Critica che maschera protezione
+- Lamentele che segnalano investimento
+
+**Evita:**
+- Dichiarazioni dirette di attenzione
+- Discorsi emotivi
+- Personaggi che dicono esplicitamente quello che sentono
+
+**Applicazione:** Quando un personaggio vuole esprimere attenzione, lascialo agire. Lascialo fare le cose, criticare, dare consigli pratici. Lascia che il lettore veda l'attenzione sotto, anche se il personaggio la nega.`,
+
+    `## FASE 8 — MOTORE DELLA COMPULSIONE BOOKTOK
+
+**Regola Fondamentale:** "Solo un altro capitolo."
+
+**Imponi:**
+- Ganci emotivi alla fine di scene/capitoli
+- Tensione irrisolta che tira avanti
+- Residuo emotivo (lasciando il lettore che sente qualcosa)
+- Mini cliffhanger (emotivi, non basati su trama)
+- Anticipazione del lettore per il momento successivo
+
+**Evita:**
+- Risoluzione netta
+- Domande risposte
+- Stati emotivi soddisfatti
+
+**Applicazione:** Termina le scene con: una rivelazione che riquadra ciò che è venuto prima, una domanda senza risposta, una piega emotiva inaspettata, un gesto o una confessione tagliata di corsa, o i rischi emotivi aumentati piuttosto che risolti. Lascia i lettori che hanno bisogno di sapere cosa succede dopo.`,
+
+    `## FASE 9 — EQUILIBRIO DEL DIALOGO ELITE
+
+**Regola Fondamentale:** Permetti variazione emotiva. Evita la sameness emotivamente guardata.
+
+**Imponi varietà nel tono emotivo:**
+- Scambi divertenti (umorismo come connessione e deflazione)
+- Momenti imbarazzanti (miscomunicazione e vulnerabilità)
+- Scambi caldi (connessione genuina se imperfetta)
+- Onestà brutale (tagliare l'artificio)
+- Momenti intimi (anche se interrotti o incompleti)
+- Battute giocose (tensione mascherata da leggerezza)
+- Reazioni difensive (auto-protezione attraverso le parole)
+- Vulnerabilità sorprendente mescolata con umorismo
+
+**Evita:**
+- Ogni scena emotiva che senta la stessa cosa
+- Personaggi perpetuamente guardinghi
+- Tenore emotivo monotono
+- Dialogo che non rischia mai calore
+
+**Applicazione:** Varia il registro emotivo nel dialogo. Lascia che i personaggi siano divertenti a volte, caldi a volte, brutali a volte. Questa variazione fa colpire la vulnerabilità più duramente quando arriva.`,
+
+    `## DIRETTIVA DI INTEGRAZIONE
+
+La scrittura dovrebbe raggiungere questa distribuzione:
+
+- 50% Bestseller Commerciale Elite (momentum che girano le pagine, ganci emotivi)
+- 25% Intelligenza Redattore Sviluppatore (psicologia dei personaggi, crescita guadagnata)
+- 15% Realismo Psicologico (come gli umani pensano e sentono davvero)
+- 10% Magia Emotiva Cinematica (momenti che trascendono il realismo)
+
+**Reazione Target del Lettore:** "Ho dimenticato che era IA."
+
+Questo protocollo trasforma la scrittura da tecnicamente corretta a emotivamente vera.`,
+  ];
+
+  blocks.push(
+
+    \`## PHASE 10 — CHAPTER RHYTHM INTELLIGENCE
+
+Rule: Contrast prevents boredom.
+
+Previous three chapters same tone? Break the pattern.
+
+- Tense chapter → next is warm/humor
+- Brutal chapter → next has vulnerability
+- Silent chapter → next has conflict
+- Horror chapter → next has relief/intimacy
+
+These alternations make readers crave the next chapter.
+
+No chapter should feel like the last three combined.\`);
+
+  blocks.push(
+
+    \`## FASE 10 — INTELLIGENZA DEL RITMO CAPITOLARE
+
+Regola: Il contrasto previene la noia.
+
+Ultimi tre capitoli stesso tono? Rompi il modello.
+
+- Capitolo teso → prossimo caldo/umorismo
+- Capitolo brutale → prossimo ha vulnerabilità
+- Capitolo silenzioso → prossimo ha conflitto
+- Capitolo horror → prossimo ha sollievo/intimità
+
+Queste alternazioni fanno bramare ai lettori il prossimo capitolo.
+
+Nessun capitolo dovrebbe sentirsi come gli ultimi tre combinati.\`);
+
+  return blocks.filter(Boolean).join("\n\n").trim();
+}

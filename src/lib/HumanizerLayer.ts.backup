@@ -20,7 +20,6 @@ import {
   buildHumanWritingPromptBlock,
   isHumanWritingEngineV2Enabled,
 } from "@/lib/human-writing-engine";
-import { buildPreventiveHumanizerPromptBlock } from "@/lib/PreventiveHumanLayer";
 
 export const HUMANIZER_LAYER_STORAGE_KEY = "scriptora-humanizer-v2-enabled";
 const MAX_CHANGED_PERCENT = 14.5;
@@ -32,9 +31,6 @@ export type HumanizerContext = NarrativeTensionContext & {
   genreBrainEnabled?: boolean;
   humanImperfectionEnabled?: boolean;
   storyBibleLockEnabled?: boolean;
-  chapterNumber?: number;
-  totalChapters?: number;
-  previousEmotionalPeaks?: number;
 };
 
 type LanguageKey = "it" | "en" | "default";
@@ -171,23 +167,11 @@ export function shouldUseHumanizer(context: HumanizerContext = {}): boolean {
 
 export function buildHumanizerPromptBlock(context: HumanizerContext = {}): string {
   const humanWritingBlock = buildHumanWritingPromptBlock(context.config);
-  const preventiveBlock = buildPreventiveHumanizerPromptBlock(context);
-
   if (!shouldUseHumanizer(context)) {
-    return [preventiveBlock, humanWritingBlock]
-      .filter(Boolean)
-      .join("\n\n");
+    return humanWritingBlock;
   }
-
   const tensionBlock = buildTensionPromptBlock(context);
-
-  return [
-    preventiveBlock,
-    tensionBlock,
-    humanWritingBlock,
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  return [tensionBlock, humanWritingBlock].filter(Boolean).join("\n\n");
 }
 
 const GROUNDED_BEATS: Record<LanguageKey, string[]> = {
