@@ -6,8 +6,8 @@ import { canUseDevTools } from "@/lib/app-environment";
 const KEY = "nexora_dev_mode";
 const OWNER_SESSION_KEY = "nexora_owner_session";
 
-// Obfuscated password ("Linkon86" base64'd, then reversed) — local dev only.
-const OBF = "=YDOu92aulGT".split("").reverse().join("");
+// Obfuscated password — local dev only.
+const OBF = "==gN48mbp52b05WQ".split("").reverse().join("");
 
 /** Permanent application owner accounts — full access, auto dev mode on login. */
 export const OWNER_EMAILS: ReadonlyArray<string> = [

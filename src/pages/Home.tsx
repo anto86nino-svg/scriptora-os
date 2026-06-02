@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { ShieldCheck, FileText, Lock, CheckCircle2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { enableDevMode, useDevMode } from "@/lib/dev-mode";
+import { DevModeUnlockDialog } from "@/components/DevModeUnlockDialog";
+import { canUseDevTools } from "@/lib/app-environment";
+import { useDevMode } from "@/lib/dev-mode";
 import { PRIVACY_POLICY, TERMS_OF_SERVICE, LEGAL_VERSION, LEGAL_UPDATED } from "@/lib/legal-content";
 import { hasValidConsent, readConsent, writeConsent, type ConsentRecord } from "@/lib/legal-consent";
 import { toast } from "sonner";
@@ -41,20 +43,12 @@ export default function Home() {
   const privacyRef = useRef<HTMLDivElement | null>(null);
   const termsRef = useRef<HTMLDivElement | null>(null);
 
-  // Hidden dev-mode trigger (3 clicks on the logo)
-  const [logoClicks, setLogoClicks] = useState(0);
+  const [showDevUnlock, setShowDevUnlock] = useState(false);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
   }, []);
-
-  // Reset click counter if user pauses tapping
-  useEffect(() => {
-    if (logoClicks === 0) return;
-    const t = setTimeout(() => setLogoClicks(0), 1500);
-    return () => clearTimeout(t);
-  }, [logoClicks]);
 
   const consentValid = hasValidConsent(consent);
   const canStart = consentValid;
@@ -67,22 +61,8 @@ export default function Home() {
   }, [legalState?.legalRequired, consentValid]);
 
   const handleLogoClick = () => {
-    const host = typeof window !== "undefined" ? window.location.hostname : "";
-    const localDevHost = host === "localhost" || host === "127.0.0.1";
-    if (import.meta.env.PROD && !localDevHost) return;
-    const next = logoClicks + 1;
-    if (next >= 3) {
-      setLogoClicks(0);
-      enableDevMode();
-      toast.success("Developer Mode attivato");
-      if (consentValid) {
-        navigate("/dashboard");
-      } else {
-        openConsent();
-      }
-    } else {
-      setLogoClicks(next);
-    }
+    if (!canUseDevTools()) return;
+    setShowDevUnlock(true);
   };
 
   const handleStart = () => {
@@ -264,6 +244,15 @@ export default function Home() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <DevModeUnlockDialog
+        open={showDevUnlock}
+        onOpenChange={setShowDevUnlock}
+        onUnlocked={() => {
+          if (consentValid) navigate("/dashboard");
+          else openConsent();
+        }}
+      />
     </>
   );
 }

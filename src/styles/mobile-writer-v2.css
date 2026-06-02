@@ -19,6 +19,8 @@
   /* Chapter index sheet — near-fullscreen, content starts at top */
   html:not(.scriptora-layout-desktop) .scriptora-mobile-chapter-sheet {
     margin-top: 0 !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
   }
 
   html:not(.scriptora-layout-desktop) .scriptora-mobile-chapter-sheet > .mx-auto.mt-4.h-2 {

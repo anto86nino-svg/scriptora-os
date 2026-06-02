@@ -37,10 +37,13 @@ export function MobileChapterIndexSheet({
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <DrawerTitle className="text-base font-bold text-foreground">
-                {t("chapter_outlines")}
+                {t("chapter_index")}
               </DrawerTitle>
               <p className="mt-0.5 truncate text-xs text-muted-foreground">
                 {project.config.title || t("untitled")}
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground/80">
+                {t("chapter_index_desc")}
               </p>
             </div>
             <button

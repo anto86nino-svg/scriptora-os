@@ -260,7 +260,12 @@ const Index = () => {
 
   const openChapterIndex = () => {
     if (isMobileLayout) setChapterIndexOpen(true);
-    else setSidebarOpen(true);
+    else {
+      setSidebarOpen(true);
+      window.requestAnimationFrame(() => {
+        document.querySelector<HTMLElement>(".scriptora-os-editor [data-chapter-index-panel]")?.focus();
+      });
+    }
   };
 
   useEffect(() => {
@@ -897,7 +902,10 @@ const Index = () => {
         <NavigationTree
           project={effectiveProject}
           activeSection={activeSection}
-          onSelectSection={(s) => { setActiveSection(s); setSidebarOpen(false); }}
+          onSelectSection={(s) => {
+            setActiveSection(s);
+            if (typeof window !== "undefined" && window.innerWidth < 1024) setSidebarOpen(false);
+          }}
           generatingSet={engine.generatingSet}
           onGenerateChaptersParallel={engine.generateChaptersParallel}
         />

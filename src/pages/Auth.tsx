@@ -3,7 +3,8 @@ import { useNavigate, Link, type NavigateFunction } from "react-router-dom";
 import { Sparkles, Mail, Lock, Loader2, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { enableDevMode } from "@/lib/dev-mode";
+import { canUseDevTools } from "@/lib/app-environment";
+import { DevModeUnlockDialog } from "@/components/DevModeUnlockDialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -96,7 +97,7 @@ export default function AuthPage() {
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
   const [authenticating, setAuthenticating] = useState(() => getAuthCallbackState().hasCallback);
-  const [logoClicks, setLogoClicks] = useState(0);
+  const [showDevUnlock, setShowDevUnlock] = useState(false);
 
   const goToApp = useCallback(() => {
     if (redirectingRef.current) return;
@@ -233,25 +234,9 @@ export default function AuthPage() {
     if (!loading && user) goToApp();
   }, [user, loading, goToApp]);
 
-  useEffect(() => {
-    if (logoClicks === 0) return;
-    const t = setTimeout(() => setLogoClicks(0), 1500);
-    return () => clearTimeout(t);
-  }, [logoClicks]);
-
   const handleLogoClick = () => {
-    const host = typeof window !== "undefined" ? window.location.hostname : "";
-    const localDevHost = host === "localhost" || host === "127.0.0.1";
-    if (import.meta.env.PROD && !localDevHost) return;
-    const next = logoClicks + 1;
-    if (next >= 3) {
-      setLogoClicks(0);
-      enableDevMode();
-      toast.success(t("toast_dev_enabled"));
-      navigate("/dashboard", { replace: true });
-      return;
-    }
-    setLogoClicks(next);
+    if (!canUseDevTools()) return;
+    setShowDevUnlock(true);
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -452,6 +437,12 @@ export default function AuthPage() {
           {t("terms_notice")}
         </p>
       </section>
+
+      <DevModeUnlockDialog
+        open={showDevUnlock}
+        onOpenChange={setShowDevUnlock}
+        onUnlocked={() => navigate("/dashboard", { replace: true })}
+      />
     </main>
   );
 }

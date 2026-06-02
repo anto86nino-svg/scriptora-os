@@ -14,6 +14,7 @@ import { WritingSettings } from "@/lib/settings";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import { WriterPipelineBar } from "@/components/WriterPipelineBar";
 import { LazyPanelFallback } from "@/components/LazyPanelFallback";
+import { authorBrainProfileHasInjectionData, buildAuthorBrainInjectionSnapshot, hasPassiveAuthorIntelligence } from "@/lib/author-brain";
 
 const ChapterIntelligencePanel = lazy(() =>
   import("@/components/ChapterIntelligencePanel").then((m) => ({ default: m.ChapterIntelligencePanel })),
@@ -211,7 +212,7 @@ export function EditorPanel({
                   onUpdateField={onUpdateBlueprintField}
                   onUpdateOutlineTitle={onUpdateBlueprintOutlineTitle}
                   onUpdateOutlineSummary={onUpdateBlueprintOutlineSummary}
-                  onNavigateToChapter={onNavigateSection ? (index) => onNavigateSection(`chapter-${index}` as SectionId) : undefined}
+                  onOpenChapterIndex={onOpenChapterIndex}
                 />
               )}
               {view.type === "front-matter" && (
@@ -438,14 +439,14 @@ function WriterContextBar({
   );
 }
 
-function BlueprintView({ project, blueprint, isGenerating, onUpdateField, onUpdateOutlineTitle, onUpdateOutlineSummary, onNavigateToChapter }: {
+function BlueprintView({ project, blueprint, isGenerating, onUpdateField, onUpdateOutlineTitle, onUpdateOutlineSummary, onOpenChapterIndex }: {
   project: BookProject;
   blueprint: BookProject["blueprint"];
   isGenerating: boolean;
   onUpdateField?: (field: "overview" | "emotionalArc", value: string) => void;
   onUpdateOutlineTitle?: (index: number, title: string) => void;
   onUpdateOutlineSummary?: (index: number, summary: string) => void;
-  onNavigateToChapter?: (index: number) => void;
+  onOpenChapterIndex?: () => void;
 }) {
   return (
     <div className="space-y-8 rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-[0_24px_70px_-30px_rgba(15,23,42,0.72)]">
@@ -485,7 +486,18 @@ function BlueprintView({ project, blueprint, isGenerating, onUpdateField, onUpda
             </div>
           )}
           <div data-scriptora-chapter-outlines>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-4">{t("chapter_outlines")}</p>
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase text-muted-foreground">{t("chapter_outlines")}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground/75">{t("structure_outline_hint")}</p>
+              </div>
+              {onOpenChapterIndex && (
+                <button type="button" onClick={onOpenChapterIndex} className="ios-toolbar-button shrink-0 px-3 text-xs font-semibold text-primary">
+                  <ListTree className="h-4 w-4 shrink-0" />
+                  {t("open_chapter_navigation")}
+                </button>
+              )}
+            </div>
             <div className="space-y-3">
               {blueprint.chapterOutlines.map((o, i) => {
                 const summaryDisplay = resolveOutlineSummaryForDisplay(
@@ -500,23 +512,7 @@ function BlueprintView({ project, blueprint, isGenerating, onUpdateField, onUpda
                 return (
                 <div
                   key={`row-${i}`}
-                  className={cn(
-                    "flex gap-4 p-4 rounded-lg bg-muted/15 border border-border/30 transition-colors",
-                    onNavigateToChapter && "hover:bg-muted/30 cursor-pointer group",
-                  )}
-                  {...(onNavigateToChapter
-                    ? {
-                        role: "button" as const,
-                        tabIndex: 0,
-                        onClick: () => onNavigateToChapter(i),
-                        onKeyDown: (event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            onNavigateToChapter(i);
-                          }
-                        },
-                      }
-                    : {})}
+                  className="flex gap-4 rounded-lg border border-border/30 bg-muted/15 p-4"
                 >
                   <span className="text-sm font-bold text-primary/50 shrink-0 pt-0.5 w-6 text-right">{i + 1}</span>
                   <div className="flex-1 min-w-0">
@@ -532,11 +528,6 @@ function BlueprintView({ project, blueprint, isGenerating, onUpdateField, onUpda
                         readOnly={!onUpdateOutlineTitle}
                         className="w-full bg-transparent border border-transparent hover:border-border/40 focus:border-primary/50 focus:outline-none rounded px-1 text-sm font-semibold text-foreground"
                       />
-                      {onNavigateToChapter && (
-                        <span className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                          {t("open_chapter")}
-                        </span>
-                      )}
                     </div>
                     <textarea
                       value={summaryDisplay}

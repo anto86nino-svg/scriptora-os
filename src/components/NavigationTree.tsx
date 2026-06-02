@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BookProject, SectionId, GenerationStatus } from "@/types/book";
 import { ChevronRight, ChevronDown, FileText, Layers, Archive, ScrollText, Loader2, CheckCircle2, AlertCircle, Circle, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ interface NavigationTreeProps {
 
 export function NavigationTree({ project, activeSection, onSelectSection, generatingSet, onGenerateChaptersParallel }: NavigationTreeProps) {
   useUILanguage();
+  const navRef = useRef<HTMLElement>(null);
   const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -36,6 +37,16 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
       return next;
     });
   };
+
+  useEffect(() => {
+    if (!activeSection) return;
+    const frame = window.requestAnimationFrame(() => {
+      navRef.current
+        ?.querySelector<HTMLElement>(`[data-section-id="${activeSection}"]`)
+        ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeSection]);
 
   if (!project) {
     return (
@@ -64,7 +75,18 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
   };
 
   return (
-    <nav className="scrollbar-thin relative z-[80] flex-1 overflow-y-auto px-2 py-2 pb-24" data-guided-tour="writer-index">
+    <nav
+      ref={navRef}
+      tabIndex={-1}
+      aria-label={t("chapter_index")}
+      className="scrollbar-thin relative z-[80] flex-1 overflow-y-auto px-2 py-2 pb-24 outline-none"
+      data-guided-tour="writer-index"
+      data-chapter-index-panel
+    >
+      <div className="mb-2 rounded-lg border border-primary/20 bg-primary/[0.08] px-3 py-2">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-primary">{t("chapter_index")}</p>
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{t("chapter_index_desc")}</p>
+      </div>
       {config.category && (
         <div className="ios-glass-soft mb-2 rounded-lg px-3 py-2">
           <div className="mb-0.5 text-[10px] uppercase text-muted-foreground/60">{t("category")}</div>
@@ -78,6 +100,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
         active={isActive("blueprint")}
         status={blueprint ? "completed" : generatingSet.has("blueprint") ? "generating" : "idle"}
         onClick={() => onSelectSection("blueprint")}
+        sectionId="blueprint"
         tourId="writer-blueprint"
       />
 
@@ -87,6 +110,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
         active={isActive("front-matter")}
         status={frontMatter ? "completed" : generatingSet.has("front-matter") ? "generating" : "idle"}
         onClick={() => onSelectSection("front-matter")}
+        sectionId="front-matter"
       />
 
       {blueprint && (
@@ -166,6 +190,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
                     active={isActive(`chapter-${i}`)}
                     status={chStatus}
                     onClick={() => selectMode ? toggleSelected(i) : onSelectSection(`chapter-${i}`)}
+                    sectionId={`chapter-${i}`}
                     className={(!selectMode && !(hasSubs || config.subchaptersEnabled)) ? "pl-6" : ""}
                     tourId={i === 0 ? "writer-chapter" : undefined}
                   />
@@ -184,6 +209,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
                           sub.content.length > 0 ? "completed" : "idle"
                         }
                         onClick={() => onSelectSection(`chapter-${i}-sub-${j}`)}
+                        sectionId={`chapter-${i}-sub-${j}`}
                         className="pl-3"
                       />
                     ))}
@@ -201,6 +227,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
         active={isActive("back-matter")}
         status={backMatter ? "completed" : generatingSet.has("back-matter") ? "generating" : "idle"}
         onClick={() => onSelectSection("back-matter")}
+        sectionId="back-matter"
       />
     </nav>
   );
@@ -220,15 +247,17 @@ function StatusIcon({ status }: { status: GenerationStatus }) {
 }
 
 function TreeItem({
-  icon, label, active, status, onClick, className, tourId,
+  icon, label, active, status, onClick, className, tourId, sectionId,
 }: {
   icon: React.ReactNode; label: string; active: boolean;
-  status: GenerationStatus; onClick: () => void; className?: string; tourId?: string;
+  status: GenerationStatus; onClick: () => void; className?: string; tourId?: string; sectionId?: string;
 }) {
   return (
     <button
       onClick={onClick}
       data-guided-tour={tourId}
+      data-section-id={sectionId}
+      aria-current={active ? "page" : undefined}
       className={cn(
         "my-0.5 flex w-full items-center gap-2 truncate rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors",
         active

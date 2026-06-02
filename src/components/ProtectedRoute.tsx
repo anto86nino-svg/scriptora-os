@@ -1,7 +1,8 @@
 import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { isOwnerEmail } from "@/lib/dev-mode";
+import { isOwnerEmail, useDevMode } from "@/lib/dev-mode";
+import { canUseDevTools } from "@/lib/app-environment";
 import { hasValidConsent } from "@/lib/legal-consent";
 import { usePlan } from "@/lib/plan";
 import { canUseFeature, type FeatureKey } from "@/lib/subscription";
@@ -18,10 +19,12 @@ export function ProtectedRoute({
   ownerOnly?: boolean;
 }) {
   const { user, loading: authLoading } = useAuth();
+  const devOn = useDevMode();
   const { plan, loading: planLoading } = usePlan();
   const location = useLocation();
   const returnTo = `${location.pathname}${location.search}${location.hash}`;
   const consentValid = hasValidConsent();
+  const localDevBypass = canUseDevTools() && devOn;
 
   if (!consentValid) {
     return (
@@ -33,15 +36,15 @@ export function ProtectedRoute({
     );
   }
 
-  if (!authLoading && !user) {
+  if (!authLoading && !user && !localDevBypass) {
     return <Navigate to="/auth" state={{ from: location.pathname }} replace />;
   }
 
-  if (!authLoading && ownerOnly && !isOwnerEmail(user?.email)) {
+  if (!authLoading && ownerOnly && !localDevBypass && !isOwnerEmail(user?.email)) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (requiredFeature && !planLoading && !isOwnerEmail(user?.email) && !canUseFeature(plan, requiredFeature)) {
+  if (requiredFeature && !planLoading && !localDevBypass && !isOwnerEmail(user?.email) && !canUseFeature(plan, requiredFeature)) {
     return (
       <Navigate
         to="/pricing"
@@ -52,7 +55,7 @@ export function ProtectedRoute({
   }
 
   return (
-    <ScriptoraBootGate authReady={!authLoading} planReady={!requiredFeature || !planLoading}>
+    <ScriptoraBootGate authReady={!authLoading || localDevBypass} planReady={!requiredFeature || !planLoading || localDevBypass}>
       {children}
     </ScriptoraBootGate>
   );

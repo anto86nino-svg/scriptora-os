@@ -52,10 +52,11 @@ export function MobileWriterHeader({
         <button
           type="button"
           onClick={onOpenChapterIndex}
-          className="ios-toolbar-button h-9 w-9 shrink-0 text-primary"
+          className="ios-toolbar-button h-9 shrink-0 gap-1 px-2 text-primary"
           aria-label={t("open_chapter_navigation")}
         >
           <ListTree className="h-4 w-4" />
+          <span className="text-[11px] font-semibold">{t("chapter_index_short")}</span>
         </button>
         <button
           type="button"
