@@ -458,6 +458,13 @@ function groundingMeta(query: string | null, raw: string | null) {
   };
 }
 
+function outputLanguageDirective(language?: string, marketplace?: string): string {
+  const resolvedLanguage = String(
+    language || (String(marketplace || "").toLowerCase().includes(".it") ? "Italian" : "English"),
+  ).trim();
+  return `Write every human-readable field in ${resolvedLanguage}. Do not mix languages unless a proper noun or marketplace keyword requires it.`;
+}
+
 async function handleAnalyzeMarket(p: any) {
   const { idea, genre, language } = p;
   const primary = [idea, genre, "amazon kdp bestsellers"].filter(Boolean).join(" ");
@@ -471,7 +478,7 @@ async function handleAnalyzeMarket(p: any) {
     }
   }
   console.log(`[brave] action="analyzeMarket" used=${Boolean(grounding)}`);
-  const sys = `You are a senior Amazon KDP market analyst. Score honestly. Penalize overcrowded niches.`;
+  const sys = `You are a senior Amazon KDP market analyst. Score honestly. Penalize overcrowded niches. ${outputLanguageDirective(language)}`;
   const usr =
     `Idea: ${idea}\nGenre: ${genre || "any"}\nLanguage: ${language || "English"}\n` +
     (grounding ? `\nLive web search results (Brave):\n${grounding}\n` : "") +
@@ -482,7 +489,7 @@ async function handleAnalyzeMarket(p: any) {
 
 async function handlePredictSuccess(p: any) {
   const { book } = p;
-  const sys = `You are a KDP bestseller prediction engine. Be brutally honest. successScore = realistic launch potential 0-100.`;
+  const sys = `You are a KDP bestseller prediction engine. Be brutally honest. successScore = realistic launch potential 0-100. ${outputLanguageDirective(book?.language)}`;
   const usr = `Book data:\n${JSON.stringify(book, null, 2)}\n\nReturn successScore + concrete strengths/weaknesses/improvements (3-5 each).`;
   return await callAIJson(sys, usr, "success_prediction", SUCCESS_SCHEMA);
 }
@@ -510,7 +517,7 @@ async function handleTitleVariants(p: any) {
   }
   console.log(`[brave] action="generateTitleVariants" used=${Boolean(grounding)}`);
 
-  const sys = `You generate sellable Amazon KDP titles. Concrete, benefit-driven, scannable. Avoid poetic. Use real-market signals when provided to differentiate from saturated patterns.`;
+  const sys = `You generate sellable Amazon KDP titles. Concrete, benefit-driven, scannable. Avoid poetic. Use real-market signals when provided to differentiate from saturated patterns. ${outputLanguageDirective(language)}`;
   const usr =
     `Idea: ${idea}\nGenre: ${genre || "any"}\nLanguage: ${language || "English"}\n` +
     (subNiche ? `Sub-niche: ${subNiche}\n` : "") +
@@ -524,7 +531,7 @@ async function handleTitleVariants(p: any) {
 
 async function handleCoverIntelligence(p: any) {
   const { genre, mood, language } = p;
-  const sys = `You are a KDP cover art director. Recommend palette/fonts/mood proven to sell in the genre.`;
+  const sys = `You are a KDP cover art director. Recommend palette/fonts/mood proven to sell in the genre. ${outputLanguageDirective(language)}`;
   const usr = `Genre: ${genre}\nMood hint: ${mood || "default for genre"}\nLanguage: ${language || "English"}\n\nReturn palette as 4-5 hex codes, font pair (heading + body), mood + composition.`;
   return await callAIJson(sys, usr, "cover_intelligence", COVER_SCHEMA);
 }
@@ -547,7 +554,7 @@ async function handlePackaging(p: any) {
   }
   console.log(`[brave] action="generatePackaging" used=${Boolean(grounding)}`);
 
-  const sys = `You write Amazon KDP packaging that converts. Description = HTML-light (use \\n and <br>). Keywords follow KDP rules: 7 max, no comma overlap with title. When real competitor signals are provided, exploit gaps and avoid saturated phrasing.`;
+  const sys = `You write Amazon KDP packaging that converts. Description = HTML-light (use \\n and <br>). Keywords follow KDP rules: 7 max, no comma overlap with title. When real competitor signals are provided, exploit gaps and avoid saturated phrasing. ${outputLanguageDirective(book?.language)}`;
   const usr =
     `Book:\n${JSON.stringify(book, null, 2)}\n` +
     (grounding ? `\nReal competitor / reader pain-point signals (Brave):\n${grounding}\n` : "") +
@@ -658,7 +665,7 @@ async function handleDominateTitles(p: any) {
     `You are a senior Amazon KDP title strategist. Turn real market signals into ORIGINAL, sellable titles. ` +
     `Never copy competitor titles — use them to find UNCROWDED angles. ` +
     `Score each title honestly 0-100 across kdp/clarity/emotion/keyword/originality. Penalize generic, poetic or saturated phrasing. ` +
-    `Return at least 10 candidates and pick a single winner.`;
+    `Return at least 10 candidates and pick a single winner. ${outputLanguageDirective(language, marketplace)}`;
 
   const usr =
     `User input:\n` +
@@ -829,7 +836,7 @@ serve(async (req) => {
     const guard = await enforceEdgeGuard(req, rawBody, EDGE_GUARD_PROFILES["kdp-money-engine"]);
     if (guard instanceof Response) return guard;
     const body = applyAuthContext(guard, rawBody);
-    const { action, payload } = body as ToolCallPayload;
+    const { action, payload } = body as unknown as ToolCallPayload;
     __trackCtx = {
       projectId: String((body as any).projectId || (payload as any)?.projectId || "") || null,
       userId: guard.userId,

@@ -1187,7 +1187,7 @@ body.scriptora-wos-tool-mode .scriptora-feature-scroll {
   body.scriptora-wos-tool-mode {
     --wos-tool-hero-height: 4.25rem;
     --wos-tool-modal-gap: 8px;
-    --wos-mobile-debug-clearance: 4.75rem;
+    --wos-mobile-debug-clearance: 3.25rem;
     --wos-dashboard-header-height: calc(3.5rem + env(safe-area-inset-top, 0px));
   }
 

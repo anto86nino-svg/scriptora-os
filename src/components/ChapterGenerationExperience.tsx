@@ -1,5 +1,5 @@
 import { memo, useMemo } from "react";
-import { Check, ListTree, Loader2, PenLine, Sparkles, Square } from "lucide-react";
+import { Check, ClipboardList, ListTree, Loader2, PenLine, Sparkles, Square } from "lucide-react";
 import type { BookProject } from "@/types/book";
 import type { ChunkProgress } from "@/lib/generation";
 import { resolveChapterTitle } from "@/lib/chapter-titles";
@@ -11,10 +11,12 @@ import {
   getEditorialPhaseLabel,
   editorialStatusMessage,
   formatWordProgress,
+  resolveOutlineSummaryForDisplay,
   sanitizePlaceholderText,
   splitManuscriptParagraphs,
 } from "@/lib/generation-experience";
 import { useEditorialChecklist, usePerceivedStreamText } from "@/lib/generation-experience/usePerceivedStream";
+import { CreditOperationHint } from "@/components/billing/CreditOperationHint";
 
 interface Props {
   project: BookProject;
@@ -60,6 +62,11 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
     hasLiveContent,
     sanitizePlaceholderText(outline?.summary) || "",
   );
+  const editorialPreview = resolveOutlineSummaryForDisplay(outline?.summary, liveContent, {
+    title: chapterTitle,
+    chapterIndex,
+    totalChapters: project.config.numberOfChapters,
+  });
 
   return (
     <div className="scriptora-generation-stage animate-fade-in min-w-0 max-w-full w-full overflow-x-hidden">
@@ -124,11 +131,19 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
         })}
       </ul>
 
+      <div className="mb-4 rounded-xl border border-cyan-300/15 bg-cyan-300/[0.045] p-3 sm:p-4">
+        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-100/70">
+          <ClipboardList className="h-3.5 w-3.5" />
+          {t("chapter_editorial_preview_title")}
+        </div>
+        <p className="mt-2 text-sm leading-relaxed text-white/72">{editorialPreview}</p>
+      </div>
+
       <div className="scriptora-generation-manuscript mb-4">
         <div className="scriptora-generation-manuscript-header">
           <div className="flex items-center gap-2">
             <PenLine className="h-4 w-4 text-emerald-200" />
-            <span>{t("chapter_preview_title")}</span>
+            <span>{t("chapter_live_manuscript_title")}</span>
           </div>
           {hasLiveContent && (
             <span className="text-[10px] uppercase tracking-[0.14em] text-emerald-200/80">{t("chapter_writing_badge")}</span>
@@ -167,6 +182,11 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
           <span>{phaseLabel}</span>
         </div>
         <Progress value={realPct} className="mt-2 h-2 bg-white/10" />
+        <CreditOperationHint
+          operation="chapter_generation_standard"
+          estimatedWords={targetWords}
+          className="mt-2 text-white/55"
+        />
       </div>
     </div>
   );

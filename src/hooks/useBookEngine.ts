@@ -87,6 +87,26 @@ async function getMaxProjectWordsForActivePlan(): Promise<number> {
   return getPlanLimits(activePlan).maxWordsPerBook;
 }
 
+async function consumeEngineCredits(
+  operation: Parameters<typeof consumeCredits>[0]["operation"],
+  estimatedWords?: number,
+): Promise<boolean> {
+  const activePlan = await getActivePlanForEngine();
+  const credit = consumeCredits(
+    {
+      operation,
+      plan: mapPlanTierToScriptoraPlan(activePlan),
+      estimatedWords,
+    },
+    activePlan,
+  );
+  if (!credit.allowed && isCreditEnforcementActive()) {
+    toast.error(t("credits_insufficient"));
+    return false;
+  }
+  return true;
+}
+
 function planLimitLabel(maxWords: number): string {
   return `${maxWords.toLocaleString("it-IT")} parole`;
 }
@@ -376,6 +396,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     const p = getLatestProject() || project;
     if (!p || p.blueprint || generatingSet.has("blueprint")) return;
     if (blockIfConfigInvalid(p)) return;
+    if (!(await consumeEngineCredits("book_blueprint"))) return;
 
     addGenerating("blueprint");
     try {
@@ -664,6 +685,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     if (!chapter) return;
     const genKey = `chapter-${chapterIndex}-sub-${subIndex}`;
     if (generatingSet.has(genKey)) return;
+    if (!(await consumeEngineCredits("chapter_continue"))) return;
 
     addGenerating(genKey);
     try {
@@ -694,6 +716,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     if (!ensureBlueprintOrNotify(p)) return;
     const genKey = `chapter-${index}`;
     if (generatingSet.has(genKey)) return;
+    if (!(await consumeEngineCredits("chapter_regeneration"))) return;
 
     addGenerating(genKey);
     updateAndSave(proj => {
@@ -750,6 +773,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     if (!p?.chapters[index]?.content) return;
     const genKey = `eval-${index}`;
     if (generatingSet.has(genKey)) return;
+    if (!(await consumeEngineCredits("chapter_diagnosis", countWordsSafe(p.chapters[index].content)))) return;
 
     addGenerating(genKey);
     try {
@@ -778,6 +802,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     if (!ensureBlueprintOrNotify(p) || !p.chapters[index]) return;
     const genKey = `chapter-${index}`;
     if (generatingSet.has(genKey)) return;
+    if (!(await consumeEngineCredits("paragraph_rewrite", countWordsSafe(p.chapters[index].content)))) return;
 
     addGenerating(genKey);
     updateAndSave(proj => {

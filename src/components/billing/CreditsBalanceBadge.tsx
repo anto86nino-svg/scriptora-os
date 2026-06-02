@@ -3,6 +3,7 @@ import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t, tt } from "@/lib/i18n";
 import { useCreditWallet } from "@/hooks/useCreditWallet";
+import { isDevMode } from "@/lib/dev-mode";
 
 interface CreditsBalanceBadgeProps {
   className?: string;
@@ -13,6 +14,7 @@ interface CreditsBalanceBadgeProps {
 export function CreditsBalanceBadge({ className, onClick }: CreditsBalanceBadgeProps) {
   const navigate = useNavigate();
   const { availableCredits, failed, isLocalFallback } = useCreditWallet();
+  const isDevSimulated = isDevMode() && isLocalFallback;
 
   const handleClick = () => {
     if (onClick) {
@@ -48,15 +50,15 @@ export function CreditsBalanceBadge({ className, onClick }: CreditsBalanceBadgeP
       )}
       title={
         isLocalFallback
-          ? t("credits_wallet_local_estimate")
+          ? isDevSimulated ? t("credits_wallet_dev_simulated") : t("credits_wallet_local_estimate")
           : tt("credits_balance_available", { count: availableCredits })
       }
     >
       <Sparkles className="hidden h-3 w-3 shrink-0 text-amber-200/90 sm:block" aria-hidden />
       <span className="hidden sm:inline">
-        {tt("credits_header_desktop", { count: availableCredits })}
+        {isDevSimulated ? tt("credits_header_dev", { count: availableCredits }) : tt("credits_header_desktop", { count: availableCredits })}
       </span>
-      <span className="sm:hidden">{availableCredits}</span>
+      <span className="sm:hidden">{isDevSimulated ? "DEV " : ""}{availableCredits}</span>
     </button>
   );
 }

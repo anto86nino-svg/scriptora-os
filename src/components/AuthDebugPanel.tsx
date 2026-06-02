@@ -44,7 +44,7 @@ export function AuthDebugPanel() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-3 left-3 z-[120] max-w-[min(100vw-1.5rem,22rem)] sm:bottom-4 sm:left-4">
+    <div className={`scriptora-auth-debug-panel${oauthActive ? "" : " scriptora-auth-debug-panel--compact"} fixed bottom-3 left-3 z-[120] max-w-[min(100vw-1.5rem,22rem)] sm:bottom-4 sm:left-4`}>
       <div className="overflow-hidden rounded-xl border border-amber-400/25 bg-slate-950/95 text-[10px] font-mono text-amber-100 shadow-2xl backdrop-blur-xl">
         <button
           type="button"
@@ -52,7 +52,7 @@ export function AuthDebugPanel() {
           className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-white/[0.04]"
         >
           {oauthActive ? <GoogleLogoMark className="h-3.5 w-3.5 shrink-0" /> : <Shield className="h-3.5 w-3.5 shrink-0 text-amber-300" />}
-          <span className="flex-1 font-semibold uppercase tracking-wider">
+          <span className="scriptora-auth-debug-panel__label flex-1 font-semibold uppercase tracking-wider">
             {oauthActive ? "Google Auth Log" : "Auth Debug"}
           </span>
           <span className="rounded bg-amber-400/15 px-1.5 py-0.5 text-[9px] text-amber-200">

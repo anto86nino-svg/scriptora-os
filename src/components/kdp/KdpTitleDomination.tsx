@@ -19,7 +19,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { dominateTitles, type TitleDominationResult, type DominateTitlesInput } from "@/lib/kdp/money-engine";
 import { fetchPlan, type PlanTier } from "@/lib/plan";
 import { useFeatureGate } from "@/components/PaywallGuard";
-import { getScriptoraLanguage } from "@/lib/i18n";
+import { getScriptoraLanguage, t, tt } from "@/lib/i18n";
+import { consumeCredits, isCreditEnforcementActive } from "@/lib/billing";
 import { MarketDataStatusBadge } from "@/components/market-intelligence/MarketDataStatusBadge";
 import { MarketConfidenceBadge } from "@/components/market-intelligence/MarketConfidenceBadge";
 import { MarketExplainabilityCard } from "@/components/market-intelligence/MarketExplainabilityCard";
@@ -132,6 +133,11 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
     setStage("brave");
     try {
       const plan: PlanTier = await fetchPlan().catch(() => "free");
+      const credit = consumeCredits({ operation: "market_intelligence" }, plan);
+      if (!credit.allowed && isCreditEnforcementActive()) {
+        toast.error(tt("credit_missing", { count: credit.missingCredits }));
+        return;
+      }
       // Tiny stage hint — Brave fires first inside the function, then DeepSeek.
       setTimeout(() => setStage((s) => (s === "brave" ? "deepseek" : s)), 1500);
 
@@ -170,7 +176,7 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
           {result && <GroundingPill used={result.groundingUsed} count={result.groundingResultsCount} fallbackReason={result.fallbackReason} />}
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Ricerca di mercato in tempo reale → titoli originali → progetto pronto da sviluppare in Scriptora.
+          {t("kdp_title_domination_separate_desc")}
         </p>
       </CardHeader>
       <CardContent className="space-y-4">

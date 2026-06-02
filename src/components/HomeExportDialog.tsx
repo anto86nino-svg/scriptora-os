@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import { BookProject } from "@/types/book";
-import { X, FileDown, Loader2, BookOpen, FileText, FileType, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { X, FileDown, Loader2, BookOpen, FileText, FileType, ImagePlus, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { generateEpub, validateEpubStructure } from "@/lib/epub";
 import { saveBlobAs } from "@/lib/save-file";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +33,7 @@ import { useScriptoraModalScrollLock } from "@/lib/viewport-safe";
 import { MissingRequirementCard } from "@/components/MissingRequirementCard";
 import { CreditOperationHint } from "@/components/billing/CreditOperationHint";
 import { loadProjectCoverMap, setProjectCoverDataUrl } from "@/lib/cover-session";
+import { consumeCredits, isCreditEnforcementActive } from "@/lib/billing";
 
 type Format = "epub" | "docx" | "pdf" | "txt" | "md";
 
@@ -84,7 +85,33 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   const filenameOf = (p: BookProject) =>
     (p.config.title || "book").replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
 
+  const debitAdvancedExport = () => {
+    if (format === "epub" || format === "docx" || format === "pdf") {
+      const credit = consumeCredits({ operation: "advanced_export" }, plan);
+      if (!credit.allowed && isCreditEnforcementActive()) {
+        toast({
+          title: t("credits_scriptora_title"),
+          description: tt("credit_missing", { count: credit.missingCredits }),
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+    return true;
+  };
+
   const performExport = async (project: BookProject, coverOverride?: string) => {
+    if (format === "epub") {
+      const errors = validateEpubStructure(project);
+      if (errors.length > 0) {
+        showRequirement("epub_not_ready", {
+          detail: summarizeEpubValidationErrors(errors),
+        });
+        return;
+      }
+    }
+    if (!debitAdvancedExport()) return;
+
     setIsExporting(true);
     try {
       const filename = filenameOf(project);
@@ -94,14 +121,6 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
       let description: string;
 
       if (format === "epub") {
-        const errors = validateEpubStructure(project);
-        if (errors.length > 0) {
-          showRequirement("epub_not_ready", {
-            detail: summarizeEpubValidationErrors(errors),
-          });
-          setIsExporting(false);
-          return;
-        }
         blob = await generateEpub(project, coverOverride ?? coverDataUrls[project.id]);
         ext = "epub";
         mime = "application/epub+zip";
@@ -359,6 +378,17 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
             <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-muted-foreground">
               <p className="font-medium text-foreground">{t("export_no_cover_saved_title")}</p>
               <p className="mt-1 text-xs leading-5">{t("export_no_cover_saved_hint")}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  pendingExportProjectRef.current = selectedProject;
+                  setShowCover(true);
+                }}
+                className="mt-3 inline-flex min-h-9 items-center gap-2 rounded-lg border border-amber-300/25 bg-amber-300/10 px-3 text-xs font-semibold text-amber-100 transition-colors hover:bg-amber-300/15"
+              >
+                <ImagePlus className="h-3.5 w-3.5" />
+                {t("export_open_cover_studio")}
+              </button>
             </div>
           )}
 
@@ -376,7 +406,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
                   <p className="text-[11px] text-muted-foreground">{t("export_preflight_score")}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {preflight.checks.slice(0, 8).map(check => (
                   <div key={check.id} className="flex items-start gap-2 text-xs">
                     {check.ok ? (
@@ -407,7 +437,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           <CreditOperationHint operation="advanced_export" showBalance />
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/20 p-4">
+        <div className="scriptora-mobile-work-panel__footer flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border bg-muted/20 p-4">
           <button
             onClick={onClose}
             disabled={isExporting}

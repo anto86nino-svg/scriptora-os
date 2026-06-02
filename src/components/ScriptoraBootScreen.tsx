@@ -57,7 +57,6 @@ export function ScriptoraBootScreen({
             height={52}
             className="relative h-[3.25rem] w-[3.25rem] object-contain drop-shadow-[0_4px_24px_rgba(186,230,253,0.35)]"
             decoding="async"
-            fetchPriority="high"
           />
         </div>
 

@@ -41,6 +41,8 @@ import {
   buildNarrativeIntelligenceRuntimeBlock,
   getNarrativeTelemetrySnapshot,
 } from "@/lib/narrative-intelligence";
+import { sanitizeLiveManuscriptChunk } from "@/lib/FinalManuscriptGuard";
+import { buildSceneContinuityPromptBlock } from "@/lib/SceneContinuityGuard";
 
 /**
  * Verbose streaming logs are off by default — they intasavano la console
@@ -926,6 +928,7 @@ export async function generateChapterChunked(
     chapterIndex,
     outlineSummary: outline.summary,
   });
+  const sceneContinuityBlock = buildSceneContinuityPromptBlock(previousChapters);
   const narrativeRuntimeBlock = buildNarrativeIntelligenceRuntimeBlock({
     config,
     blueprint,
@@ -1016,6 +1019,8 @@ ${editorialIntentBlock}
 
 ${humanizerBlock}
 
+${sceneContinuityBlock}
+
 ${bestsellerBlock}
 
 BESTSELLER QUALITY REQUIREMENTS:
@@ -1051,6 +1056,8 @@ ${narrativeRuntimeBlock}
 ${editorialIntentBlock}
 
 ${humanizerBlock}
+
+${sceneContinuityBlock}
 
 ${bestsellerBlock}
 
@@ -1133,7 +1140,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
     }
 
     // Clean up
-    chunkText = chunkText.replace(/^```[a-z]*\n?/g, "").replace(/\n?```$/g, "").trim();
+    chunkText = sanitizeLiveManuscriptChunk(chunkText, { language: config.language });
     if (isFirstChunk) {
       const lines = chunkText.split("\n");
     if (lines[0] && lines[0].startsWith("#")) {
@@ -1160,7 +1167,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
               metadata: { chapterIndex: chapterIndex + 1, chunkIndex },
             }),
           );
-          chunkText = chunkText.replace(/^```[a-z]*\n?/g, "").replace(/\n?```$/g, "").trim();
+          chunkText = sanitizeLiveManuscriptChunk(chunkText, { language: config.language });
         } catch {
           // Use original if regen fails
         }

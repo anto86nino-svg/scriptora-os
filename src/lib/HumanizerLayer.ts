@@ -21,6 +21,7 @@ import {
   isHumanWritingEngineV2Enabled,
 } from "@/lib/human-writing-engine";
 import { buildPreventiveHumanizerPromptBlock } from "@/lib/PreventiveHumanLayer";
+import { sanitizeFinalManuscript } from "@/lib/FinalManuscriptGuard";
 
 export const HUMANIZER_LAYER_STORAGE_KEY = "scriptora-humanizer-v2-enabled";
 const MAX_CHANGED_PERCENT = 14.5;
@@ -771,7 +772,7 @@ export function humanizeNarrativeText(text: string, context: HumanizerContext = 
   next = acceptWithinBudget(original, next, applyHumanImperfectionLayer(next, context), genreBrain, "bodyBeat");
   next = applyStoryBibleLock(next, context);
 
-  return next.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  return sanitizeFinalManuscript(next, { language: context.config?.language });
 }
 
 export function humanizeChapter(chapter: Chapter, context: HumanizerContext = {}): Chapter {

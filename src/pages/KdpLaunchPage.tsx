@@ -18,7 +18,6 @@ import {
 } from "@/lib/kdp/money-engine";
 import { useFeatureGate } from "@/components/PaywallGuard";
 import { trackMarketToolOpened } from "@/lib/analytics";
-import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
 import { MarketDataStatusBadge } from "@/components/market-intelligence/MarketDataStatusBadge";
 import { MarketConfidenceBadge } from "@/components/market-intelligence/MarketConfidenceBadge";
 import { MarketExplainabilityCard } from "@/components/market-intelligence/MarketExplainabilityCard";
@@ -27,6 +26,7 @@ import { confidenceForLocalIntel, confidenceFromGrounding } from "@/lib/market-i
 import { buildKdpMarketExplanations } from "@/lib/market-intelligence/marketExplainability";
 import { normalizeMarketCopy } from "@/lib/market-intelligence/marketCopyNormalizer";
 import { t, tt, useUILanguage, getScriptoraLanguage } from "@/lib/i18n";
+import { consumeCredits, isCreditEnforcementActive } from "@/lib/billing";
 
 type Step = "idea" | "market" | "title" | "packaging" | "predict";
 
@@ -56,6 +56,30 @@ function copyText(label: string, value: string) {
     () => toast.success(tt("kdp_toast_copied", { label })),
     () => toast.error(tt("kdp_toast_copy_failed", { label })),
   );
+}
+
+function commercialLevelScore(level: MarketAnalysis["demandLevel"]): number {
+  return level === "high" ? 88 : level === "medium" ? 68 : 44;
+}
+
+function competitionOpportunity(level: MarketAnalysis["competitionLevel"]): number {
+  return level === "low" ? 88 : level === "medium" ? 70 : 46;
+}
+
+function buildKdpCommercialScores(market: MarketAnalysis | null) {
+  if (!market) return null;
+  const demand = commercialLevelScore(market.demandLevel);
+  const competition = competitionOpportunity(market.competitionLevel);
+  const profit = Math.round(market.profitabilityScore * 10);
+  const niche = Math.round(market.nicheScore * 10);
+  return {
+    promiseClarity: Math.round((profit + niche) / 2),
+    marketDifferentiation: Math.round((niche + competition) / 2),
+    amazonConversionPotential: Math.round((profit * 0.5) + (demand * 0.3) + (niche * 0.2)),
+    keywordCategoryFit: Math.round((niche * 0.6) + (competition * 0.4)),
+    commercialMomentum: Math.round((demand * 0.65) + (competition * 0.35)),
+    composite: Math.round((profit + niche + demand + competition) / 4),
+  };
 }
 
 /** Inline badge for KDP steps grounded with external market search. */
@@ -107,11 +131,14 @@ export default function KdpLaunchPage() {
     trackMarketToolOpened("kdp_launch");
   }, []);
 
-  const marketPremium = useMemo(() => {
-    const content = [idea, market?.recommendedAngle, market?.subNiche].filter(Boolean).join("\n\n");
-    if (content.split(/\s+/).filter(Boolean).length < 40) return null;
-    return computeMarketPremiumScores({ content, genre, language });
-  }, [idea, market?.recommendedAngle, market?.subNiche, genre, language]);
+  const marketPremium = useMemo(() => buildKdpCommercialScores(market), [market]);
+
+  function debitFor(operation: "market_intelligence" | "title_generation", plan: PlanTier): boolean {
+    const check = consumeCredits({ operation }, plan);
+    if (check.allowed || !isCreditEnforcementActive()) return true;
+    toast.error(tt("credit_missing", { count: check.missingCredits }));
+    return false;
+  }
 
   useEffect(() => {
     try {
@@ -137,6 +164,7 @@ export default function KdpLaunchPage() {
     setLoading(true);
     try {
       const plan = await getPlan();
+      if (!debitFor("market_intelligence", plan)) return;
       const m = await analyzeMarket(idea, { genre, language, plan });
       setMarket(m);
       setStep("market");
@@ -149,6 +177,7 @@ export default function KdpLaunchPage() {
     setLoading(true);
     try {
       const plan = await getPlan();
+      if (!debitFor("title_generation", plan)) return;
       const titleResult = await generateTitleVariants(market?.recommendedAngle || idea, {
         genre,
         language,
@@ -170,6 +199,7 @@ export default function KdpLaunchPage() {
     setLoading(true);
     try {
       const plan = await getPlan();
+      if (!debitFor("market_intelligence", plan)) return;
       const p = await kdpPackaging(
         { title: chosenTitle, subtitle: chosenSubtitle, promise: market?.recommendedAngle, genre, language },
         plan,
@@ -185,6 +215,7 @@ export default function KdpLaunchPage() {
     setLoading(true);
     try {
       const plan = await getPlan();
+      if (!debitFor("market_intelligence", plan)) return;
       const pr = await predictSuccess(
         { title: chosenTitle, subtitle: chosenSubtitle, promise: market?.recommendedAngle, genre, language },
         plan,
@@ -198,8 +229,8 @@ export default function KdpLaunchPage() {
 
   return (
     <div className="scriptora-feature-page bg-background">
-      <main className="scriptora-feature-scroll mx-auto max-w-3xl space-y-6 p-6">
-        <header className="flex items-center justify-between">
+      <main className="scriptora-feature-scroll mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
+        <header className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
               <Rocket className="h-6 w-6 text-primary" /> KDP Launch
@@ -211,13 +242,13 @@ export default function KdpLaunchPage() {
           <Button variant="ghost" onClick={() => navigate(-1)}>← {t("back")}</Button>
         </header>
 
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs text-muted-foreground">
           {STEPS.map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded-full border ${step === s ? "bg-primary text-primary-foreground border-primary" : "border-border"}`}>
+            <div key={s} className="flex shrink-0 items-center gap-2">
+              <span className={`whitespace-nowrap px-2 py-0.5 rounded-full border ${step === s ? "bg-primary text-primary-foreground border-primary" : "border-border"}`}>
                 {i + 1}. {t(STEP_KEYS[s])}
               </span>
-              {i < 4 && <ArrowRight className="h-3 w-3" />}
+              {i < 4 && <ArrowRight className="h-3 w-3 shrink-0" />}
             </div>
           ))}
         </div>
@@ -227,7 +258,7 @@ export default function KdpLaunchPage() {
             <CardTitle className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> {t("kdp_your_idea")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label>{t("kdp_genre")}</Label>
                 <Input value={genre} onChange={(e) => setGenre(e.target.value)} placeholder="Self-help, Romance…" />
@@ -295,13 +326,13 @@ export default function KdpLaunchPage() {
                     </div>
                     <span className="text-sm font-black text-primary">{marketPremium.composite}/100</span>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                  <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
                     {[
-                      ["Hook strength", marketPremium.hookStrength],
-                      ["Bingeability", marketPremium.bingeability],
-                      ["Emotional momentum", marketPremium.emotionalMomentum],
-                      ["Genre alignment", marketPremium.genreAlignment],
-                      ...(marketPremium.bookTokPotential != null ? [["BookTok potential", marketPremium.bookTokPotential]] : []),
+                      [t("kdp_promise_clarity"), marketPremium.promiseClarity],
+                      [t("kdp_market_differentiation"), marketPremium.marketDifferentiation],
+                      [t("kdp_amazon_conversion"), marketPremium.amazonConversionPotential],
+                      [t("kdp_keyword_category_fit"), marketPremium.keywordCategoryFit],
+                      [t("kdp_commercial_momentum"), marketPremium.commercialMomentum],
                     ].map(([label, score]) => (
                       <div key={label} className="rounded-lg bg-background/80 border border-border/50 px-2.5 py-2">
                         <p className="text-muted-foreground">{label}</p>
@@ -309,14 +340,7 @@ export default function KdpLaunchPage() {
                       </div>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {t("kdp_retention_risk")}{" "}
-                    <span className={`font-semibold ${marketPremium.readerRetentionRisk === "high" ? "text-rose-500" : marketPremium.readerRetentionRisk === "medium" ? "text-amber-600" : "text-emerald-600"}`}>
-                      {marketPremium.readerRetentionRisk}
-                    </span>
-                    {" · "}
-                    {marketPremium.genreAlignmentNote}
-                  </p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">{t("kdp_commercial_score_note")}</p>
                 </div>
               )}
 
@@ -358,7 +382,7 @@ export default function KdpLaunchPage() {
                 <summary className="cursor-pointer text-muted-foreground">
                   {tt("kdp_all_titles", { titles: titles.titles.length, subtitles: titles.subtitles.length })}
                 </summary>
-                <div className="grid grid-cols-2 gap-3 mt-2">
+                <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <ul className="space-y-1">{titles.titles.map((titleItem, i) => <li key={`stable-${i}`}>• {titleItem}</li>)}</ul>
                   <ul className="space-y-1">{titles.subtitles.map((s, i) => <li key={`stable-${i}`}>• {s}</li>)}</ul>
                 </div>
@@ -391,7 +415,7 @@ export default function KdpLaunchPage() {
                 </div>
                 <Textarea rows={8} readOnly value={packaging.amazonDescription} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <Label>{t("kdp_backend_keywords")}</Label>
@@ -439,16 +463,16 @@ export default function KdpLaunchPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <div className="grid grid-cols-3 gap-3">
-                <div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
                   <div className="text-xs font-semibold text-primary mb-1">{t("kdp_strengths")}</div>
                   <ul className="space-y-1">{prediction.strengths.map((x, i) => <li key={`stable-${i}`}>✓ {x}</li>)}</ul>
                 </div>
-                <div>
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
                   <div className="text-xs font-semibold text-destructive mb-1">{t("kdp_weaknesses")}</div>
                   <ul className="space-y-1">{prediction.weaknesses.map((x, i) => <li key={`stable-${i}`}>✗ {x}</li>)}</ul>
                 </div>
-                <div>
+                <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
                   <div className="text-xs font-semibold mb-1">{t("kdp_improvements")}</div>
                   <ul className="space-y-1">{prediction.improvements.map((x, i) => <li key={`stable-${i}`}>→ {x}</li>)}</ul>
                 </div>

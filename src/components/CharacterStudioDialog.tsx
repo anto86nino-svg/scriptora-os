@@ -637,13 +637,14 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
     if (ideaLoading || loading) return;
     setIdeaLoading(true);
 
+    const currentIdea = idea.trim();
+    const currentLooksLikeGeneratedIdea = currentIdea.length > 180;
+    const previousIdeas = [
+      ...(currentLooksLikeGeneratedIdea ? [currentIdea] : []),
+      ...readIdeaHistory(),
+    ].filter(Boolean).slice(0, 12);
+
     try {
-      const currentIdea = idea.trim();
-      const currentLooksLikeGeneratedIdea = currentIdea.length > 180;
-      const previousIdeas = [
-        ...(currentLooksLikeGeneratedIdea ? [currentIdea] : []),
-        ...readIdeaHistory(),
-      ].filter(Boolean).slice(0, 12);
       const diversitySeed = typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
