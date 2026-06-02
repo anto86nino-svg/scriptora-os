@@ -42,12 +42,13 @@ import { AccountIdentityBlock } from "@/components/AccountIdentityBlock";
 import { GoogleLogoMark } from "@/components/GoogleLogoMark";
 import { ScriptoraGatewayOS, type GatewayGenreId } from "@/components/immersive/ScriptoraGatewayOS";
 import { CreditsBalanceBadge } from "@/components/billing/CreditsBalanceBadge";
+import { EditorialOSCommandCenter } from "@/components/EditorialOSCommandCenter";
 import { ScriptoraToolbox, type ToolboxCard } from "@/components/immersive/ScriptoraToolbox";
 import { buildNarrativeWorkspaceSnapshot, resolveFocusProject } from "@/lib/immersive/workspace-state";
 import { buildGatewaySnapshot } from "@/lib/immersive/gateway-state";
 import { deriveActiveWorkspaceTool } from "@/lib/immersive/workspace-tool-mode";
 import { ensureFirstVisitGuidedFlow, shouldShowBetaOnboarding } from "@/lib/first-visit-onboarding";
-import { setProjectCoverDataUrl } from "@/lib/cover-session";
+import { hasProjectCover, setProjectCoverDataUrl } from "@/lib/cover-session";
 import { getAuthProfile } from "@/lib/auth-profile";
 import {
   DropdownMenu,
@@ -167,6 +168,7 @@ export default function Home() {
   const [showToolbox, setShowToolbox] = useState(false);
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [projectsReady, setProjectsReady] = useState(false);
+  const [coverRevision, setCoverRevision] = useState(0);
   const [betaOnboardingVisible, setBetaOnboardingVisible] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const currentLang = useUILanguage();
@@ -472,6 +474,11 @@ export default function Home() {
   const gatewaySnapshot = useMemo(
     () => buildGatewaySnapshot(projects.length, focusProject, activeAuthor?.penName),
     [projects.length, focusProject, activeAuthor?.penName],
+  );
+
+  const focusProjectHasCover = useMemo(
+    () => (focusProject ? hasProjectCover(focusProject.id) : false),
+    [focusProject, coverRevision],
   );
 
   const openNewBookWithGenre = useCallback((genre: GatewayGenreId) => {
@@ -1050,6 +1057,15 @@ export default function Home() {
           }}
         />
 
+        {focusProject && (
+          <EditorialOSCommandCenter
+            project={focusProject}
+            hasCover={focusProjectHasCover}
+            plan={currentPlan}
+            className="mb-4"
+          />
+        )}
+
         {!devOn && currentPlan === "free" && (
           <div className="ios-panel mb-4 flex items-center gap-3 p-4">
             <div className="ios-icon ios-icon-pink h-10 w-10 shrink-0 rounded-[16px]">
@@ -1145,6 +1161,7 @@ export default function Home() {
             onGenerate={(dataUrl) => {
               if (focusProject?.id) {
                 setProjectCoverDataUrl(focusProject.id, dataUrl);
+                setCoverRevision((value) => value + 1);
               }
               setShowCoverStudio(false);
               toast.success(t("cover_saved_toast"));

@@ -33,6 +33,8 @@ import { useRequirementGate } from "@/hooks/useRequirementGate";
 import { MissingRequirementCard } from "@/components/MissingRequirementCard";
 import { buildRequirement } from "@/lib/scriptora-requirement-gate";
 import { CreditOperationHint } from "@/components/billing/CreditOperationHint";
+import { EditorialOSCommandCenter } from "@/components/EditorialOSCommandCenter";
+import { hasProjectCover } from "@/lib/cover-session";
 
 function countWordsForChapterLock(value: unknown): number {
   if (!value) return 0;
@@ -728,6 +730,15 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                 {chapterMarketScores.genreAlignmentNote}
               </p>
             </div>
+          )}
+
+          {showInsights && (
+            <EditorialOSCommandCenter
+              project={project}
+              hasCover={hasProjectCover(project.id)}
+              plan={plan}
+              compact
+            />
           )}
 
           {showInsights && bookDashboard && (

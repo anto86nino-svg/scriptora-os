@@ -1,5 +1,6 @@
 import { analyzeNovel } from "@/lib/EditorialIntelligence";
 import { evaluateBestsellerChapter } from "@/lib/bestseller-intelligence";
+import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
 import { simulateReaderEmotion } from "@/lib/narrative-intelligence-v2/reader-emotion";
 import { detectBookIntelligence } from "@/lib/book-intelligence";
 import type { AuthorIdentity } from "@/types/book";
