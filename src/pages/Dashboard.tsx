@@ -9,11 +9,32 @@ import { LibrarySection } from "@/components/Home/LibrarySection";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  BookOpen, Plus, FolderOpen, Rocket, Zap,
-  FileDown, ArrowRight, Globe, Flame, Loader2, Sparkles, Wand2,
-  Library, Home as HomeIcon, BarChart3,
-  TrendingUp, LogOut, CreditCard, Download as DownloadIcon, Settings, Users,
-  NotebookPen, Fingerprint, ImagePlus, AudioLines,
+  BookOpen,
+  Plus,
+  FolderOpen,
+  Rocket,
+  Zap,
+  FileDown,
+  ArrowRight,
+  Globe,
+  Flame,
+  Loader2,
+  Sparkles,
+  Wand2,
+  Library,
+  Home as HomeIcon,
+  BarChart3,
+  TrendingUp,
+  LogOut,
+  CreditCard,
+  Download as DownloadIcon,
+  Settings,
+  Users,
+  NotebookPen,
+  Fingerprint,
+  ImagePlus,
+  AudioLines,
+  X,
 } from "lucide-react";
 import { FlaskConical } from "lucide-react";
 import { BOOK_LENGTH_CONFIG, BookConfig, BookLength, BookProject, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
