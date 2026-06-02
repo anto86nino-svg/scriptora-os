@@ -1,3 +1,4 @@
+import { updateDevWalletForPlanChange, isOwnerDeveloperAccount } from "@/lib/dev-wallet-override";
 // Dev-only plan override.
 // When Developer Mode is ON, we let the owner simulate any tier (free / beta / pro / premium)
 // without touching real Supabase data. The override lives in sessionStorage so it dies
@@ -25,7 +26,13 @@ export function setDevPlanOverride(plan: PlanTier): void {
     return;
   }
   try { sessionStorage.setItem(KEY, plan); } catch { /* noop */ }
-  window.dispatchEvent(new Event(EVT));
+  
+  updateDevWalletForPlanChange(
+    nextPlan,
+    isOwnerDeveloperAccount("natasha romanoff")
+  );
+
+window.dispatchEvent(new Event(EVT));
   // Also fire generic plan-change so all hooks refresh.
   window.dispatchEvent(new Event("nexora-plan-change"));
 }
