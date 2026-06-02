@@ -28,8 +28,8 @@ export function setDevPlanOverride(plan: PlanTier): void {
   try { sessionStorage.setItem(KEY, plan); } catch { /* noop */ }
   
   updateDevWalletForPlanChange(
-    nextPlan,
-    isOwnerDeveloperAccount("natasha romanoff")
+    plan,
+    isOwnerDeveloperAccount(localStorage.getItem("dev-user-email"))
   );
 
 window.dispatchEvent(new Event(EVT));

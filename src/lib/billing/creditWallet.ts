@@ -98,6 +98,13 @@ export function buildLocalCreditWalletSnapshot(planTier: PlanTier): CreditWallet
 
 /** Prefer remote wallet; fall back to local estimate without throwing. Dev simulation never hits remote. */
 export async function loadCreditWallet(planTier: PlanTier): Promise<CreditWalletSnapshot> {
+
+  // DEV MODE WALLET OVERRIDE
+  const devWalletOverride = getDevWalletOverride();
+  if (devWalletOverride) {
+    return buildCreditWalletFromDevOverride(devWalletOverride);
+  }
+
   if (isDevUserSimulationActive()) {
     return buildSimulatedCreditWalletSnapshot();
   }
