@@ -910,6 +910,39 @@ const dashboardWidgets = [
               KDP · {operationCreditLabel("kdp_market", devOn)}
             </button>
           </div>
+
+          <div className="scriptora-horror-room-ledger grid gap-2 sm:grid-cols-3 xl:grid-cols-6">
+            <button type="button" onClick={() => setShowProjects(true)} className="scriptora-horror-ledger-plaque">
+              <span>Stato workspace</span>
+              <strong>{activeRun ? t("live") : t("ready")}</strong>
+              <small>{activeRun ? t("generation_running") : t("stable")}</small>
+            </button>
+            <button type="button" onClick={() => setShowProjects(true)} className="scriptora-horror-ledger-plaque">
+              <span>Bozze</span>
+              <strong>{draftProjects.length.toLocaleString()}</strong>
+              <small>In corso</small>
+            </button>
+            <button type="button" onClick={() => setShowLibrary(true)} className="scriptora-horror-ledger-plaque">
+              <span>Biblioteca</span>
+              <strong>{completedProjects.length.toLocaleString()}</strong>
+              <small>Manoscritti</small>
+            </button>
+            <button type="button" onClick={() => navigate("/usage")} className="scriptora-horror-ledger-plaque">
+              <span>Crediti disponibili</span>
+              <strong>{creditBalanceLabel}</strong>
+              <small>Uso progetto: {creditUsedLabel}</small>
+            </button>
+            <button type="button" onClick={() => navigate("/usage")} className="scriptora-horror-ledger-plaque">
+              <span>Consumo oggi</span>
+              <strong>{formatCredits(todayCreditEstimate)}</strong>
+              <small>Stimato da attivita libro</small>
+            </button>
+            <button type="button" onClick={() => navigate("/pricing")} className="scriptora-horror-ledger-plaque">
+              <span>Piano attivo</span>
+              <strong>{planDisplayLabel}</strong>
+              <small>{devOn ? "Non wallet reale" : "Policy corrente"}</small>
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -1115,7 +1148,7 @@ const dashboardWidgets = [
       </header>
 
       <main className="scriptora-feature-scroll scriptora-world-main relative mx-auto w-full max-w-7xl px-4 pb-8 pt-4 sm:px-6 sm:pt-8 lg:px-8">
-        <div className="mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
+        <div className="scriptora-dashboard-hero-shell mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
           <section className="ios-panel overflow-hidden rounded-[28px] border-white/15 bg-slate-950/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-6 md:bg-slate-950/40">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div className="min-w-0">
@@ -1195,11 +1228,13 @@ const dashboardWidgets = [
           </section>
         </div>
 
-        <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
+        <div className="scriptora-in-progress-shell">
+          <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
+        </div>
 
         {manuscriptCore}
 
-        <section className="mb-4 xl:hidden">
+        <section className="scriptora-mobile-status-shell mb-4 xl:hidden">
           <button
             type="button"
             onClick={() => setShowMobileStats((value) => !value)}
@@ -1270,7 +1305,7 @@ const dashboardWidgets = [
 
         {focusAtmosphereCard}
 
-        <div className="mb-5 sm:mb-7">
+        <div className="scriptora-dashboard-widget-grid mb-5 sm:mb-7">
 
           {dashboardWidgets.map((widget) => (
             <button
