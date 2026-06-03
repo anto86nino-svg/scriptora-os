@@ -3,6 +3,8 @@ import { BookProject } from "@/types/book";
 import { X, FileDown, Loader2, BookOpen, FileText, FileType, Lock } from "lucide-react";
 import { generateEpub, validateEpubStructure } from "@/lib/epub";
 import { saveBlobAs } from "@/lib/save-file";
+import { saveProject } from "@/lib/storage";
+import { saveProjectAsync } from "@/services/storageService";
 import { useToast } from "@/hooks/use-toast";
 import { usePlan, PLAN_LIMITS } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
@@ -36,6 +38,9 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
 
   const exportableProjects = projects.filter(isProjectComplete);
   const selectedProject = projects.find(p => p.id === selectedId) || null;
+  const selectedCoverDataUrl = selectedProject
+    ? coverDataUrls[selectedProject.id] || selectedProject.coverDataUrl
+    : undefined;
 
   const filenameOf = (p: BookProject) =>
     (p.config.title || "book").replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
@@ -60,7 +65,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           setIsExporting(false);
           return;
         }
-        blob = await generateEpub(project, coverOverride ?? coverDataUrls[project.id]);
+        blob = await generateEpub(project, coverOverride ?? coverDataUrls[project.id] ?? project.coverDataUrl);
         ext = "epub";
         mime = "application/epub+zip";
         description = "EPUB Book";
@@ -119,7 +124,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
       });
       return;
     }
-    if (!coverDataUrls[project.id]) {
+    if (!(coverDataUrls[project.id] || project.coverDataUrl)) {
       setCoverGateOpen(true);
       return;
     }
@@ -128,9 +133,9 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   };
 
   const formatOptions: { value: Format; icon: any; label: string; desc: string }[] = [
-    { value: "epub", icon: BookOpen, label: "EPUB", desc: "Indice cliccabile · Kindle/Apple/Kobo" },
-    { value: "docx", icon: FileText, label: "Word", desc: "Manoscritto editabile · Bestseller layout" },
-    { value: "pdf", icon: FileType, label: "PDF", desc: "KDP 6×9\" · Print-ready" },
+    { value: "epub", icon: BookOpen, label: "EPUB", desc: "Kindle/Apple/Kobo · include la cover salvata" },
+    { value: "docx", icon: FileText, label: "Word", desc: "Manoscritto editabile · cover salvata nel progetto" },
+    { value: "pdf", icon: FileType, label: "PDF", desc: "Interni print-ready · cover da usare in KDP/Cover Studio" },
   ];
 
   return (
@@ -242,6 +247,27 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
               </div>
             </div>
           )}
+
+          {selectedProject && (
+            <div className="rounded-xl border border-border bg-muted/20 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-foreground">Checklist export</p>
+              <div className="mt-2 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
+                <div className="rounded-lg bg-background/70 px-3 py-2">
+                  <span className="font-medium text-foreground">Manoscritto</span>
+                  <span className="ml-2 text-emerald-400">pronto</span>
+                </div>
+                <div className="rounded-lg bg-background/70 px-3 py-2">
+                  <span className="font-medium text-foreground">Cover</span>
+                  <span className={`ml-2 ${selectedCoverDataUrl ? "text-emerald-400" : "text-amber-300"}`}>
+                    {selectedCoverDataUrl ? "salvata" : "da creare"}
+                  </span>
+                </div>
+              </div>
+              <p className="mt-2 text-[11px] leading-4 text-muted-foreground/80">
+                EPUB incorpora la cover. PDF e DOCX esportano il manoscritto; la cover resta disponibile nel progetto per KDP e uso separato.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -302,8 +328,16 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           projectGenre={selectedProject.config.genre}
           onGenerate={(dataUrl) => {
             setCoverDataUrls((current) => ({ ...current, [selectedProject.id]: dataUrl }));
+            const updatedProject: BookProject = {
+              ...selectedProject,
+              coverDataUrl: dataUrl,
+              coverUpdatedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            };
+            saveProject(updatedProject);
+            saveProjectAsync(updatedProject).catch(() => undefined);
             setShowCover(false);
-            void performExport(selectedProject, dataUrl);
+            void performExport(updatedProject, dataUrl);
           }}
           onClose={() => setShowCover(false)}
         />

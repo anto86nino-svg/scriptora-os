@@ -15,6 +15,7 @@ import {
   SESSION_PRESET_LABELS,
   useReadingSessionOrchestration,
   type ReadingFlowMode,
+  type ReadingSessionSnapshot,
   type ReadingSessionMode,
   type SessionPresetId,
 } from "@/lib/reading-session";
@@ -57,6 +58,7 @@ export function VoiceStudioDialog({
   const [currentSentence, setCurrentSentence] = useState(0);
   const [sentences, setSentences] = useState<string[]>([]);
   const [immersiveMode, setImmersiveMode] = useState(true);
+  const resumeStartSentenceRef = useRef<number | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const timerRef = useRef<number | null>(null);
   const karaokeScrollRef = useRef<HTMLDivElement | null>(null);
@@ -674,6 +676,15 @@ export function VoiceStudioDialog({
     };
   };
 
+  const applyResumePosition = (snapshot: ReadingSessionSnapshot) => {
+    const sentenceIndex = Math.max(0, snapshot.sentenceIndex || 0);
+    resumeStartSentenceRef.current = sentenceIndex;
+    setCurrentSentence(sentenceIndex);
+    setProgress(Math.max(0, Math.min(99, Math.round(snapshot.progress || 0))));
+    setReaderDetached(false);
+    setStatus(`Ready to resume from Chapter ${snapshot.chapterIndex + 1}`);
+  };
+
   const handlePlayPause = () => {
     if (typeof window === "undefined" || !window.speechSynthesis) {
       setStatus("Speech synthesis is not available in this browser.");
@@ -746,16 +757,32 @@ export function VoiceStudioDialog({
     const targetLanguage = getTargetLanguage();
     const preferredVoice = chooseManualOrBestVoice(voices, targetLanguage);
     const session = ++playbackSessionRef.current;
+    const requestedStartSentence = allSentences.length > 0
+      ? Math.max(0, Math.min(allSentences.length - 1, resumeStartSentenceRef.current ?? 0))
+      : 0;
+    const matchedStartChunkIndex = requestedStartSentence > 0
+      ? chunks.findIndex((chunk) => (
+          requestedStartSentence >= chunk.startSentence
+          && requestedStartSentence < chunk.startSentence + Math.max(1, chunk.sentenceCount)
+        ))
+      : 0;
+    const startChunkIndex = matchedStartChunkIndex >= 0 ? matchedStartChunkIndex : 0;
+    const initialProgress = allSentences.length > 0 && requestedStartSentence > 0
+      ? Math.round(((requestedStartSentence + 1) / allSentences.length) * 100)
+      : 0;
 
     pausedRef.current = false;
     setIsPaused(false);
-    currentChunkIndexRef.current = 0;
+    currentChunkIndexRef.current = startChunkIndex;
     setReaderDetached(false);
     setSentences(allSentences);
-    setCurrentSentence(0);
-    setProgress(0);
+    setCurrentSentence(requestedStartSentence);
+    setProgress(Math.min(99, initialProgress));
     setIsPlaying(true);
-    setStatus(`Reading session in progress · ${chunks.length} parts`);
+    setStatus(requestedStartSentence > 0
+      ? `Resuming reading session · part ${startChunkIndex + 1}/${chunks.length}`
+      : `Reading session in progress · ${chunks.length} parts`);
+    resumeStartSentenceRef.current = null;
 
     emitVoiceStudioTelemetry({ ...telemetry, chapterTitle: currentChapter.title || "Untitled chapter" });
 
@@ -781,9 +808,15 @@ export function VoiceStudioDialog({
       currentChunkIndexRef.current = chunkIndex;
       const chunk = chunks[chunkIndex];
       const chunkSentences = splitIntoSentences(chunk.text);
-      const tone = chunk.tone;
+      const localResumeOffset = chunkIndex === startChunkIndex && requestedStartSentence > chunk.startSentence
+        ? Math.min(Math.max(0, requestedStartSentence - chunk.startSentence), Math.max(0, chunkSentences.length - 1))
+        : 0;
+      const playbackSentences = localResumeOffset > 0 ? chunkSentences.slice(localResumeOffset) : chunkSentences;
+      const playbackText = localResumeOffset > 0 ? playbackSentences.join(" ") : chunk.text;
+      const playbackStartSentence = chunk.startSentence + localResumeOffset;
+      const tone = localResumeOffset > 0 ? detectNarrativeTone(playbackText) : chunk.tone;
 
-      const utterance = new SpeechSynthesisUtterance(chunk.text);
+      const utterance = new SpeechSynthesisUtterance(playbackText);
 
       if (preferredVoice) {
         utterance.voice = preferredVoice;
@@ -799,15 +832,17 @@ export function VoiceStudioDialog({
       utteranceRef.current = utterance;
 
       const localStarts: number[] = [];
-      chunkSentences.forEach((sentence, idx) => {
-        const searchFrom = idx === 0 ? 0 : localStarts[idx - 1] + chunkSentences[idx - 1].length;
-        const position = chunk.text.indexOf(sentence, searchFrom);
+      playbackSentences.forEach((sentence, idx) => {
+        const searchFrom = idx === 0 ? 0 : localStarts[idx - 1] + playbackSentences[idx - 1].length;
+        const position = playbackText.indexOf(sentence, searchFrom);
         localStarts[idx] = position >= 0 ? position : searchFrom;
       });
 
       setStatus(`Reading session · part ${chunkIndex + 1}/${chunks.length} · ${tone.label} · ${activeVoiceLabel}`);
-      setCurrentSentence(chunk.startSentence);
-      setProgress(Math.round((chunkIndex / chunks.length) * 100));
+      setCurrentSentence(playbackStartSentence);
+      setProgress(allSentences.length > 0
+        ? Math.min(99, Math.round(((playbackStartSentence + 1) / allSentences.length) * 100))
+        : Math.round((chunkIndex / chunks.length) * 100));
 
       utterance.onboundary = (event) => {
         if (session !== playbackSessionRef.current) return;
@@ -822,7 +857,7 @@ export function VoiceStudioDialog({
           const localSentenceIndex = active >= 0 ? active : 0;
           const globalSentenceIndex = Math.min(
             allSentences.length - 1,
-            chunk.startSentence + localSentenceIndex,
+            playbackStartSentence + localSentenceIndex,
           );
 
           setCurrentSentence(globalSentenceIndex);
@@ -856,7 +891,7 @@ export function VoiceStudioDialog({
         if (shouldUseManualKaraokeFallback) {
           // Mobile fallback: many mobile browsers do not fire onboundary reliably.
           // Desktop keeps the native boundary events only, otherwise the karaoke follows two different rhythms.
-          const chunkWords = chunk.text.split(/\s+/).filter(Boolean).length;
+          const chunkWords = playbackText.split(/\s+/).filter(Boolean).length;
           const chunkEstimatedSec = Math.max(4, (chunkWords / (150 * utterance.rate)) * 60);
           const chunkStartedAt = Date.now();
 
@@ -866,13 +901,13 @@ export function VoiceStudioDialog({
             const elapsed = (Date.now() - chunkStartedAt) / 1000;
             const localRatio = Math.min(0.98, elapsed / chunkEstimatedSec);
             const localSentence = Math.min(
-              Math.max(0, chunkSentences.length - 1),
-              Math.floor(localRatio * Math.max(1, chunkSentences.length)),
+              Math.max(0, playbackSentences.length - 1),
+              Math.floor(localRatio * Math.max(1, playbackSentences.length)),
             );
 
             const globalSentence = Math.min(
               allSentences.length - 1,
-              chunk.startSentence + localSentence,
+              playbackStartSentence + localSentence,
             );
 
             setCurrentSentence(globalSentence);
@@ -937,7 +972,7 @@ export function VoiceStudioDialog({
       }
     };
 
-    playChunk(0);
+    playChunk(startChunkIndex);
   };
 
   useEffect(() => {
@@ -1007,7 +1042,7 @@ export function VoiceStudioDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
-      <DialogContent className={`flex w-[calc(100vw-0.75rem)] flex-col overflow-hidden border-white/15 bg-slate-950/94 p-3 text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-5 ${
+      <DialogContent className={`scriptora-voice-dialog flex w-[calc(100vw-0.75rem)] flex-col overflow-hidden border-white/15 bg-slate-950/94 p-3 text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-5 ${
           immersiveMode
             ? "h-[96dvh] max-h-[96dvh] max-w-[96vw]"
             : "max-h-[88dvh] max-w-3xl sm:max-h-[90dvh]"
@@ -1063,6 +1098,7 @@ export function VoiceStudioDialog({
                         reading.setSessionMode(snap.mode);
                         reading.setFlowMode(snap.flowMode);
                       },
+                      applyResumePosition,
                     );
                   }}
                   className="rounded-xl bg-white px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-slate-100"
@@ -1291,7 +1327,7 @@ export function VoiceStudioDialog({
             </div>
           )}
 
-          <div className="sticky bottom-0 z-20 mt-4 flex flex-col gap-2 rounded-2xl border border-white/10 bg-slate-950/90 p-2 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="scriptora-voice-controls sticky bottom-0 z-20 mt-4 flex flex-col gap-2 rounded-2xl border border-white/10 bg-slate-950/90 p-2 backdrop-blur sm:flex-row sm:flex-wrap sm:items-center">
             {!isMinimalImmersion && (
             <button
               onClick={testMobileVoice}
@@ -1405,4 +1441,3 @@ export function VoiceStudioDialog({
     </Dialog>
   );
 }
-

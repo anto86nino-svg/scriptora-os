@@ -4286,3 +4286,135 @@ textarea,
     opacity: 0.84;
   }
 }
+
+/* Prompt 4 final stabilization: mobile-safe overrides loaded after all core CSS. */
+@media (max-width: 767px) {
+  .scriptora-feature-page {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .scriptora-feature-scroll {
+    min-height: 0 !important;
+    padding-bottom: max(env(safe-area-inset-bottom), 16px) !important;
+    scroll-padding-bottom: max(env(safe-area-inset-bottom), 18px) !important;
+  }
+
+  .scriptora-modal-overlay {
+    align-items: center !important;
+    justify-content: center !important;
+    padding: max(env(safe-area-inset-top), 10px) 10px max(env(safe-area-inset-bottom), 10px) !important;
+  }
+
+  .scriptora-modal-panel {
+    width: min(100%, calc(100vw - 20px)) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - max(env(safe-area-inset-top), 10px) - max(env(safe-area-inset-bottom), 10px)) !important;
+    border-radius: 18px !important;
+  }
+
+  .scriptora-modal-body {
+    min-height: 0 !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  [data-radix-dialog-content] {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100dvh - max(env(safe-area-inset-top), 10px) - max(env(safe-area-inset-bottom), 10px)) !important;
+    overflow-y: auto !important;
+  }
+
+  .ios-editor-paper {
+    padding: 14px !important;
+    border-radius: 18px !important;
+  }
+
+  .scriptora-chapter-shell {
+    gap: 18px !important;
+    border-radius: 18px !important;
+    padding: 14px !important;
+  }
+
+  .scriptora-generation-stage {
+    padding: 12px !important;
+    border-radius: 16px !important;
+    overflow: hidden !important;
+  }
+
+  .scriptora-generation-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .scriptora-generation-manuscript,
+  .scriptora-generation-engine,
+  .scriptora-live-writing-board,
+  .scriptora-live-writing-paper {
+    min-height: 0 !important;
+  }
+
+  .scriptora-generation-manuscript {
+    padding: 10px !important;
+  }
+
+  .scriptora-live-writing-board {
+    gap: 10px !important;
+    padding: 10px !important;
+  }
+
+  .scriptora-live-writing-paper {
+    padding: 12px !important;
+  }
+
+  .scriptora-generation-live-text {
+    max-height: none !important;
+    overflow: visible !important;
+    mask-image: none !important;
+    -webkit-mask-image: none !important;
+  }
+
+  .scriptora-dashboard-book-core {
+    border-radius: 18px !important;
+    padding: 14px !important;
+  }
+
+  .scriptora-dashboard-book-cover {
+    width: min(42vw, 132px) !important;
+    min-height: 178px !important;
+  }
+
+  .scriptora-launchpad-grid {
+    gap: 10px !important;
+  }
+
+  .scriptora-launchpad-grid button {
+    min-height: 132px !important;
+    border-radius: 18px !important;
+    padding: 12px !important;
+  }
+
+  .scriptora-kdp-stepper {
+    display: flex !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    padding-bottom: 4px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .scriptora-kdp-mobile-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .scriptora-voice-dialog {
+    padding-bottom: max(env(safe-area-inset-bottom), 12px) !important;
+  }
+
+  .scriptora-voice-controls {
+    bottom: max(env(safe-area-inset-bottom), 0px) !important;
+    margin-left: -2px !important;
+    margin-right: -2px !important;
+  }
+}

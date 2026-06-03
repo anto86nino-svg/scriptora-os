@@ -57,6 +57,16 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
     hasLiveContent,
     sanitizePlaceholderText(outline?.summary) || "",
   );
+  const editorialBrief = useMemo(() => {
+    const cleanSummary = sanitizePlaceholderText(outline?.summary) || "Il capitolo deve avanzare il libro con una scena leggibile, concreta e coerente.";
+    return [
+      { label: "Obiettivo", value: cleanSummary },
+      { label: "Promessa emotiva", value: project.config.tone || "Tensione, scelta e conseguenza reale." },
+      { label: "Direzione", value: phaseLabel },
+      { label: "Target", value: formatWordProgress(currentWords, targetWords) },
+    ];
+  }, [currentWords, outline?.summary, phaseLabel, project.config.tone, targetWords]);
+  const activeChecklist = EDITORIAL_CHECKLIST.slice(0, 4);
 
   return (
     <div className="scriptora-generation-stage animate-fade-in min-w-0 max-w-full w-full overflow-x-hidden">
@@ -86,63 +96,84 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
         </div>
       </div>
 
-      <ul className="mb-4 space-y-2 rounded-2xl border border-white/10 bg-white/[0.04] p-3 sm:p-4">
-        {EDITORIAL_CHECKLIST.map((label, index) => {
-          const done = index < checklistDone;
-          const active = index === checklistDone && !hasLiveContent;
-          return (
-            <li key={label} className="flex items-center gap-2.5 text-sm">
-              <span
-                className={cn(
-                  "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
-                  done && "border-emerald-400/40 bg-emerald-400/15 text-emerald-200",
-                  active && "border-cyan-300/40 bg-cyan-300/10 text-cyan-100",
-                  !done && !active && "border-white/15 text-white/30",
-                )}
-              >
-                {done ? <Check className="h-3 w-3" /> : active ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-              </span>
-              <span className={cn(done ? "text-white/90" : active ? "text-white/75" : "text-white/45")}>
-                {label}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-
-      <div className="scriptora-generation-manuscript mb-4">
-        <div className="scriptora-generation-manuscript-header">
-          <div className="flex items-center gap-2">
-            <PenLine className="h-4 w-4 text-emerald-200" />
-            <span>Anteprima del capitolo</span>
+      <div className="scriptora-generation-grid mb-4">
+        <aside className="rounded-2xl border border-white/10 bg-white/[0.045] p-3 sm:p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <PenLine className="h-4 w-4 text-cyan-200" />
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-100/70">Anteprima editoriale</p>
+              <p className="mt-0.5 text-sm font-semibold text-white">{chapterTitle}</p>
+            </div>
           </div>
-          {hasLiveContent && (
-            <span className="text-[10px] uppercase tracking-[0.14em] text-emerald-200/80">In scrittura</span>
-          )}
-        </div>
-        <div className="scriptora-live-writing-board" aria-label={`Anteprima: ${chapterTitle}`}>
-          <div className="scriptora-live-writing-paper">
-            <h4 className="text-lg font-semibold text-white leading-snug">{chapterTitle}</h4>
-            {paragraphs.length > 0 ? (
-              <div className="scriptora-generation-live-text mt-4 space-y-4">
-                {paragraphs.map((paragraph, index) => (
-                  <p
-                    key={`${index}-${paragraph.slice(0, 24)}`}
+
+          <div className="space-y-2">
+            {editorialBrief.map((item) => (
+              <div key={item.label} className="rounded-xl border border-white/8 bg-slate-950/38 px-3 py-2">
+                <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/38">{item.label}</p>
+                <p className="mt-1 line-clamp-2 text-xs leading-5 text-white/76">{item.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+            {activeChecklist.map((label, index) => {
+              const done = index < checklistDone;
+              const active = index === checklistDone && !hasLiveContent;
+              return (
+                <li key={label} className="flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.035] px-2.5 py-2 text-xs">
+                  <span
                     className={cn(
-                      "text-[15px] leading-7 text-white/88 sm:text-base sm:leading-8",
-                      index === paragraphs.length - 1 && isStreamingDisplay && "opacity-95",
+                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border",
+                      done && "border-emerald-400/40 bg-emerald-400/15 text-emerald-200",
+                      active && "border-cyan-300/40 bg-cyan-300/10 text-cyan-100",
+                      !done && !active && "border-white/15 text-white/30",
                     )}
                   >
-                    {paragraph}
-                    {index === paragraphs.length - 1 && (isStreamingDisplay || !chunkProgress) && (
-                      <span className="scriptora-generation-caret ml-0.5 inline-block" aria-hidden="true" />
-                    )}
-                  </p>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-4 text-sm leading-relaxed text-white/60">{statusMessage}</p>
+                    {done ? <Check className="h-3 w-3" /> : active ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                  </span>
+                  <span className={cn("line-clamp-1", done ? "text-white/86" : active ? "text-white/72" : "text-white/45")}>
+                    {label}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </aside>
+
+        <div className="scriptora-generation-manuscript">
+          <div className="scriptora-generation-manuscript-header">
+            <div className="flex items-center gap-2">
+              <PenLine className="h-4 w-4 text-emerald-200" />
+              <span>Manoscritto live</span>
+            </div>
+            {hasLiveContent && (
+              <span className="text-[10px] uppercase tracking-[0.14em] text-emerald-200/80">In scrittura</span>
             )}
+          </div>
+          <div className="scriptora-live-writing-board" aria-label={`Manoscritto live: ${chapterTitle}`}>
+            <div className="scriptora-live-writing-paper">
+              <h4 className="text-lg font-semibold text-white leading-snug">{chapterTitle}</h4>
+              {paragraphs.length > 0 ? (
+                <div className="scriptora-generation-live-text mt-4 space-y-4">
+                  {paragraphs.map((paragraph, index) => (
+                    <p
+                      key={`${index}-${paragraph.slice(0, 24)}`}
+                      className={cn(
+                        "text-[15px] leading-7 text-white/88 sm:text-base sm:leading-8",
+                        index === paragraphs.length - 1 && isStreamingDisplay && "opacity-95",
+                      )}
+                    >
+                      {paragraph}
+                      {index === paragraphs.length - 1 && (isStreamingDisplay || !chunkProgress) && (
+                        <span className="scriptora-generation-caret ml-0.5 inline-block" aria-hidden="true" />
+                      )}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm leading-relaxed text-white/60">{statusMessage}</p>
+              )}
+            </div>
           </div>
         </div>
       </div>

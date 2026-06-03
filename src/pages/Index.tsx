@@ -1,16 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+import { lazy, Suspense, useState, useEffect, useRef } from "react";
 import { NavigationTree } from "@/components/NavigationTree";
 import { TopBar } from "@/components/TopBar";
 import { EditorPanel } from "@/components/EditorPanel";
 import { NewBookDialog } from "@/components/NewBookDialog";
-import { CoverGenerator } from "@/components/CoverGenerator";
 import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { PublishPanel } from "@/components/PublishPanel";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { AICoachPanel } from "@/components/AICoachPanel";
 import { ProgressTracker } from "@/components/ProgressTracker";
 import { GuidedProjectFlow } from "@/components/GuidedProjectFlow";
-import { VoiceStudioDialog } from "@/components/VoiceStudioDialog";
 import { useBookEngine } from "@/hooks/useBookEngine";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { deleteProject as removeProject, getLastProjectId } from "@/lib/storage";
@@ -30,6 +28,14 @@ type ExportFormat = "epub" | "docx" | "pdf";
 const WRITING_ROOM_PROJECT_KEY = "scriptora-writing-room-last-project";
 const WRITING_ROOM_SECTION_KEY = "scriptora-writing-room-active-section";
 const WRITING_ROOM_MODE_KEY = "scriptora-writing-room-editor-mode";
+
+const CoverGenerator = lazy(() =>
+  import("@/components/CoverGenerator").then((module) => ({ default: module.CoverGenerator })),
+);
+
+const VoiceStudioDialog = lazy(() =>
+  import("@/components/VoiceStudioDialog").then((module) => ({ default: module.VoiceStudioDialog })),
+);
 
 const Index = () => {
   useUILanguage();
@@ -101,6 +107,10 @@ const Index = () => {
   const nextVoiceProjectList = effectiveProject
     ? [effectiveProject, ...projects.filter((p) => p.id !== effectiveProject.id)]
     : projects;
+
+  useEffect(() => {
+    setCoverDataUrl(effectiveProject?.coverDataUrl);
+  }, [effectiveProject?.id, effectiveProject?.coverDataUrl]);
 
   useEffect(() => {
     localStorage.setItem(WRITING_ROOM_MODE_KEY, editorMode);
@@ -194,7 +204,8 @@ const Index = () => {
       toast.error("Completa tutto il libro prima di esportare.");
       return;
     }
-    if (!coverDataUrl) {
+    const savedCoverDataUrl = coverDataUrl || effectiveProject.coverDataUrl;
+    if (!savedCoverDataUrl) {
       setPendingExportFormat(format);
       setCoverGateOpen(true);
       return;
@@ -314,7 +325,7 @@ const Index = () => {
     setIsExporting(true);
     setExportLabel(t("exporting_epub"));
     try {
-      const blob = await generateEpub(effectiveProject, coverOverride ?? coverDataUrl);
+      const blob = await generateEpub(effectiveProject, coverOverride ?? coverDataUrl ?? effectiveProject.coverDataUrl);
       const filename = effectiveProject.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadEpub(blob, filename);
       toast.success(t("export_success_epub"));
@@ -637,18 +648,22 @@ const Index = () => {
                     else engine.updateChapterContent(chapterIdx, text);
                   }} />
               )}
-              <VoiceStudioDialog
-                open={showVoiceStudio}
-                onClose={closeVoiceStudio}
-                projects={nextVoiceProjectList}
-                initialProjectId={effectiveProject?.id}
-                initialChapterIndex={voiceStudioChapterIndex}
-                autoPlayOnOpen
-                onOpenChapterInEditor={(_projectId, chapterIdx) => {
-                  closeVoiceStudio();
-                  setActiveSection(`chapter-${chapterIdx}` as SectionId);
-                }}
-              />
+              {showVoiceStudio && (
+                <Suspense fallback={null}>
+                  <VoiceStudioDialog
+                    open={showVoiceStudio}
+                    onClose={closeVoiceStudio}
+                    projects={nextVoiceProjectList}
+                    initialProjectId={effectiveProject?.id}
+                    initialChapterIndex={voiceStudioChapterIndex}
+                    autoPlayOnOpen
+                    onOpenChapterInEditor={(_projectId, chapterIdx) => {
+                      closeVoiceStudio();
+                      setActiveSection(`chapter-${chapterIdx}` as SectionId);
+                    }}
+                  />
+                </Suspense>
+              )}
             </>
           ) : (
             <div className="flex flex-1 items-center justify-center px-4">
@@ -723,27 +738,33 @@ const Index = () => {
       />
 
       {showCover && effectiveProject && (
-        <CoverGenerator
-          title={effectiveProject.config.title}
-          subtitle={effectiveProject.config.subtitle}
-          authorName={effectiveProject.config.authorName || effectiveProject.config.author || effectiveProject.config.writerName}
-          description={effectiveProject.blueprint?.overview || effectiveProject.config.subtitle}
-          authorBio={effectiveProject.frontMatter?.aboutAuthor || effectiveProject.config.authorIdentity?.biography}
-          projectGenre={effectiveProject.config.genre}
-          onGenerate={(dataUrl) => {
-            setCoverDataUrl(dataUrl);
-            setShowCover(false);
-            if (pendingExportFormat) {
-              const format = pendingExportFormat;
-              setPendingExportFormat(null);
-              runExport(format, dataUrl);
-            }
-          }}
-          onClose={() => {
-            setShowCover(false);
-            if (pendingExportFormat) setPendingExportFormat(null);
-          }}
-        />
+        <Suspense fallback={null}>
+          <CoverGenerator
+            title={effectiveProject.config.title}
+            subtitle={effectiveProject.config.subtitle}
+            authorName={effectiveProject.config.authorName || effectiveProject.config.author || effectiveProject.config.writerName}
+            description={effectiveProject.blueprint?.overview || effectiveProject.config.subtitle}
+            authorBio={effectiveProject.frontMatter?.aboutAuthor || effectiveProject.config.authorIdentity?.biography}
+            projectGenre={effectiveProject.config.genre}
+            onGenerate={(dataUrl) => {
+              setCoverDataUrl(dataUrl);
+              engine.setProjectCoverDataUrl(dataUrl);
+              setRecoveredProject((current) => current?.id === effectiveProject.id
+                ? { ...current, coverDataUrl: dataUrl, coverUpdatedAt: new Date().toISOString() }
+                : current);
+              setShowCover(false);
+              if (pendingExportFormat) {
+                const format = pendingExportFormat;
+                setPendingExportFormat(null);
+                runExport(format, dataUrl);
+              }
+            }}
+            onClose={() => {
+              setShowCover(false);
+              if (pendingExportFormat) setPendingExportFormat(null);
+            }}
+          />
+        </Suspense>
       )}
 
       <CoverBeforeExportDialog

@@ -204,10 +204,12 @@ export function useReadingSessionOrchestration(input: UseReadingSessionInput) {
     (
       applyChapter: (index: number) => void,
       applySettings: (snapshot: ReadingSessionSnapshot) => void,
+      applyPosition?: (snapshot: ReadingSessionSnapshot) => void,
     ) => {
       if (!resumeOffer) return;
       applySettings(resumeOffer.snapshot);
       applyChapter(resumeOffer.snapshot.chapterIndex);
+      applyPosition?.(resumeOffer.snapshot);
       setResumeOffer(null);
     },
     [resumeOffer],

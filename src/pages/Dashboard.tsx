@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
-import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId } from "@/services/storageService";
+import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId, saveProjectAsync } from "@/services/storageService";
+import { saveProject } from "@/lib/storage";
 import { isProjectComplete } from "@/lib/project-status";
 import { NewBookDialog } from "@/components/NewBookDialog";
 import { AdvancedAppearanceDialog } from "@/components/AdvancedAppearanceDialog";
@@ -12,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   BookOpen, Plus, FolderOpen, Trash2, Rocket, Zap,
-  FileDown, ArrowRight, Clock, Globe, Flame, Loader2, Sparkles, Wand2,
+  FileDown, ArrowRight, Globe, Flame, Loader2, Sparkles, Wand2,
   Library, Home as HomeIcon, X, BarChart3,
   TrendingUp, LogOut, CreditCard, Download as DownloadIcon, Settings, Users,
   CheckCircle2, NotebookPen, Fingerprint, ImagePlus, AudioLines
@@ -537,6 +538,35 @@ export default function Home() {
       (sum, chapter) => sum + (chapter.content?.split(/\s+/).filter(Boolean).length || 0),
       0,
     );
+  const lastProjectWordCount = lastProject ? wordCountForProject(lastProject) : 0;
+  const firstMissingChapterIndex = lastProject
+    ? Array.from({ length: Math.max(1, lastProjectTargetChapters || lastProject.chapters?.length || 1) }, (_, index) => index)
+        .find((index) => !((lastProject.chapters?.[index]?.content || "").trim().length > 50))
+    : undefined;
+  const activeChapterIndex = lastProject
+    ? firstMissingChapterIndex ?? Math.max(0, lastProjectDoneChapters - 1)
+    : 0;
+  const activeChapterTitle = lastProject
+    ? (
+        lastProject.chapters?.[activeChapterIndex]?.title ||
+        lastProject.blueprint?.chapterOutlines?.[activeChapterIndex]?.title ||
+        `${t("chapter")} ${activeChapterIndex + 1}`
+      )
+    : "";
+  const manuscriptStatusLabel = !lastProject
+    ? "Nessun libro attivo"
+    : lastProject.phase === "complete"
+      ? "Manoscritto completo"
+      : firstMissingChapterIndex != null
+        ? `Prossimo: ${t("chapter")} ${activeChapterIndex + 1}`
+        : "Pronto per la rifinitura";
+  const openActiveManuscript = () => {
+    if (!lastProject) {
+      openLaunchModal("quick");
+      return;
+    }
+    goApp({ projectId: lastProject.id, section: `chapter-${activeChapterIndex}` });
+  };
   const dayKey = (date: Date) => date.toISOString().slice(0, 10);
   const todayKey = dayKey(new Date());
   const wordsToday = useMemo(
@@ -719,6 +749,131 @@ const dashboardWidgets = [
     { label: t("chapters"), value: totalChapters.toLocaleString(), detail: t("generated_detail"), icon: BookOpen, iconBg: "ios-icon-orange" },
     { label: t("words_unit"), value: totalWords > 0 ? totalWords.toLocaleString() : "0", detail: t("in_library"), icon: FileDown, iconBg: "ios-icon-pink" },
   ];
+
+  const manuscriptCore = (
+    <section data-atmosphere-zone="manuscript-core" className="scriptora-dashboard-book-core relative mb-4 overflow-hidden rounded-[28px] border border-white/15 bg-slate-950/70 p-4 shadow-[0_30px_100px_rgba(0,0,0,0.34)] ring-1 ring-white/[0.04] backdrop-blur-2xl sm:mb-6 sm:p-6">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(125,211,252,0.10),transparent_36%),linear-gradient(225deg,rgba(251,191,36,0.08),transparent_42%)]" />
+      <div className="relative z-10 grid gap-4 lg:grid-cols-[minmax(210px,0.7fr)_minmax(0,1.6fr)] lg:items-stretch">
+        <div className="flex gap-4 lg:flex-col lg:items-center lg:justify-center">
+          <div data-atmosphere-zone="book-object" className="scriptora-dashboard-book-cover relative flex min-h-[214px] w-[150px] shrink-0 flex-col justify-between overflow-hidden rounded-[22px] border border-white/15 bg-gradient-to-br from-slate-900 via-sky-950 to-slate-950 p-4 shadow-[0_24px_70px_rgba(8,47,73,0.38)]">
+            <div className="absolute inset-x-0 top-0 h-20 bg-white/[0.06] blur-2xl" />
+            <div className="relative z-10">
+              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-sky-100/70">Manuscript Core</p>
+              <h2 className="mt-4 line-clamp-5 text-lg font-black uppercase leading-5 text-white">
+                {lastProject?.config.title || "Nuovo libro"}
+              </h2>
+            </div>
+            <div className="relative z-10">
+              <div className="mb-2 h-px w-12 bg-sky-200/60" />
+              <p className="line-clamp-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70">
+                {lastProject?.config.authorName || lastProject?.config.author || activeAuthor.penName}
+              </p>
+            </div>
+          </div>
+
+          <div className="min-w-0 flex-1 lg:w-full">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-200/70">Libro attivo</p>
+            <p className="mt-1 line-clamp-2 text-base font-semibold text-white sm:text-lg">
+              {lastProject?.config.title || "Avvia il prossimo manoscritto"}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-white/60">
+              {lastProject ? `${lastProject.config.genre} · ${lastProject.config.language}` : "Scriptora OS mette il libro al centro: idea, scrittura, cover, export e lancio KDP."}
+            </p>
+          </div>
+        </div>
+
+        <div className="min-w-0 space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">Percorso autore</p>
+              <h2 className="mt-1 text-2xl font-semibold leading-tight text-white sm:text-3xl">
+                {lastProject ? manuscriptStatusLabel : "Crea, scrivi e pubblica da un unico centro."}
+              </h2>
+              {lastProject && (
+                <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/68">
+                  {activeChapterTitle} · {lastProjectWordCount.toLocaleString("it-IT")} parole nel manoscritto.
+                </p>
+              )}
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-right">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-white/45">Progress</p>
+              <p className="text-2xl font-semibold tabular-nums text-white">{lastProjectProgress}%</p>
+            </div>
+          </div>
+
+          <div className="h-2 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-sky-300 via-emerald-300 to-amber-200"
+              style={{ width: `${lastProjectProgress}%` }}
+            />
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <button
+              type="button"
+              onClick={openActiveManuscript}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-slate-100"
+            >
+              <BookOpen className="h-4 w-4" />
+              {lastProject ? "Continua a scrivere" : "Avvia libro"}
+            </button>
+            <button
+              type="button"
+              onClick={openActiveManuscript}
+              disabled={!lastProject}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-emerald-300/35 bg-emerald-300/10 px-4 py-2.5 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-300/15 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              <Sparkles className="h-4 w-4" />
+              Genera prossimo capitolo
+            </button>
+            <button
+              type="button"
+              onClick={guardPlanFeature("chapter_improvement", () => setShowManuscriptAnalyzer(true))}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-sky-300/35 bg-sky-300/10 px-4 py-2.5 text-sm font-semibold text-sky-100 transition hover:bg-sky-300/15"
+            >
+              <Wand2 className="h-4 w-4" />
+              Diagnostica editoriale
+            </button>
+            <button
+              type="button"
+              onClick={lastProject ? openRewriteStudio : openActiveManuscript}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-fuchsia-300/35 bg-fuchsia-300/10 px-4 py-2.5 text-sm font-semibold text-fuchsia-100 transition hover:bg-fuchsia-300/15"
+            >
+              <Zap className="h-4 w-4" />
+              Riscrivi / migliora
+            </button>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-3">
+            <button
+              type="button"
+              onClick={guardPlanFeature("cover_studio_template", () => setShowCoverStudio(true))}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/[0.07] px-3 py-2.5 text-xs font-semibold text-white/80 transition hover:bg-white/[0.10]"
+            >
+              <ImagePlus className="h-4 w-4" />
+              Crea copertina
+            </button>
+            <button
+              type="button"
+              onClick={guardPlanFeature("export_epub", () => setShowExport(true))}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/[0.07] px-3 py-2.5 text-xs font-semibold text-white/80 transition hover:bg-white/[0.10]"
+            >
+              <FileDown className="h-4 w-4" />
+              Esporta
+            </button>
+            <button
+              type="button"
+              onClick={guardPlanFeature("kdp_market_base", () => navigate("/kdp-launch"))}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/[0.07] px-3 py-2.5 text-xs font-semibold text-white/80 transition hover:bg-white/[0.10]"
+            >
+              <Rocket className="h-4 w-4" />
+              KDP Launch
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 
   const cards = [
     { group: "writer", icon: BookOpen, title: t("writer_studio_title"), desc: t("writer_studio_desc"), iconBg: "ios-icon-violet", action: () => goApp(), tag: t("os_tag_write"), emphasis: true },
@@ -940,7 +1095,7 @@ const dashboardWidgets = [
                   Scriptora OS
                 </h1>
                 <p className="mt-2 max-w-xl text-xs font-medium leading-5 text-white/75 sm:mt-3 sm:text-sm sm:leading-6">
-                  {tt("plan_active_sentence", { plan: devOn ? "DEV" : planLabel })}
+                  {tt("plan_active_sentence", { plan: devOn ? `DEV · ${planLabel} simulato` : planLabel })}
                 </p>
               </div>
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
@@ -1001,6 +1156,8 @@ const dashboardWidgets = [
         </div>
 
         <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
+
+        {manuscriptCore}
 
         <section className="mb-4 xl:hidden">
           <button
@@ -1113,69 +1270,6 @@ const dashboardWidgets = [
           ))}
         </div>
 
-        {lastProject && (
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => goApp({ projectId: lastProject.id })}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                goApp({ projectId: lastProject.id });
-              }
-            }}
-            className="ios-panel group mb-5 w-full cursor-pointer overflow-hidden p-0 text-left transition-colors hover:border-primary/40"
-          >
-            <div className="bg-gradient-to-r from-sky-400/10 via-white/[0.055] to-emerald-400/10 p-3 sm:p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="mb-1.5 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[9px] font-semibold uppercase text-foreground/70">
-                    <Clock className="h-3 w-3 text-sky-300" /> {t("continue_project")}
-                  </p>
-                  <p className="truncate text-base font-semibold leading-5 text-foreground sm:text-lg">
-                    {lastProject.config.title || t("untitled")}
-                  </p>
-                  <p className="mt-0.5 text-[11px] leading-4 text-foreground/65">
-                    {lastProjectDoneChapters}/{lastProjectTargetChapters || lastProject.chapters?.length || 0} {t("chapters").toLowerCase()} · {lastProject.phase}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  title={t("delete")}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    deleteHomeProject(lastProject.id, lastProject.config.title);
-                  }}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-destructive/30 bg-destructive/10 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="mt-3 flex items-center gap-3">
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-sky-300 to-emerald-300 transition-all"
-                    style={{ width: `${lastProjectProgress}%` }}
-                  />
-                </div>
-                <span className="min-w-10 text-right text-[11px] font-semibold tabular-nums text-foreground/70">
-                  {lastProjectProgress}%
-                </span>
-              </div>
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <span className="text-[11px] leading-4 text-foreground/60">
-                  {t("continue_project_hint")}
-                </span>
-                <span className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-white px-2.5 text-[11px] font-semibold text-slate-950 shadow-lg shadow-black/20 transition-colors group-hover:bg-slate-100">
-                  {t("continue_action")}
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
         <section className="mb-10">
           <div className="mb-5 flex flex-col gap-4 rounded-[28px] border border-white/10 bg-white/[0.035] p-5 shadow-[0_22px_72px_rgba(0,0,0,0.24)] backdrop-blur-2xl sm:flex-row sm:items-end sm:justify-between sm:p-6">
             <div>
@@ -1203,7 +1297,7 @@ const dashboardWidgets = [
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+                  <div className="scriptora-launchpad-grid grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
                     {groupCards.map(card => {
                       const Icon = card.icon;
                       const inner = (
@@ -1324,8 +1418,22 @@ const dashboardWidgets = [
             description=""
             authorBio={activeAuthor.biography}
             projectGenre={lastProject?.config?.genre}
-            showPrimaryAction={false}
-            onGenerate={() => undefined}
+            showPrimaryAction={Boolean(lastProject)}
+            primaryActionLabel="Salva nel progetto"
+            onGenerate={(dataUrl) => {
+              if (!lastProject) return;
+              const updatedProject: BookProject = {
+                ...lastProject,
+                coverDataUrl: dataUrl,
+                coverUpdatedAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              };
+              setProjects((items) => items.map((project) => project.id === updatedProject.id ? updatedProject : project));
+              saveProject(updatedProject);
+              saveProjectAsync(updatedProject).catch(() => toast.warning(t("toast_saved_locally")));
+              toast.success("Cover salvata nel progetto.");
+              setShowCoverStudio(false);
+            }}
             onClose={() => setShowCoverStudio(false)}
           />
         </Suspense>

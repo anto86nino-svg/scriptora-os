@@ -872,6 +872,14 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     });
   }, [updateAndSave]);
 
+  const setProjectCoverDataUrl = useCallback((coverDataUrl: string) => {
+    updateAndSave((p) => ({
+      ...p,
+      coverDataUrl,
+      coverUpdatedAt: new Date().toISOString(),
+    }));
+  }, [updateAndSave]);
+
   const applyAuthorBrainFrontMatter = useCallback(() => {
     updateAndSave((p) => {
       const merged = applyAuthorBrainToFrontMatter(p.frontMatter || {}, p.config, "regenerate");
@@ -1078,6 +1086,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     updateConfig, updateChapterContent, updateChapterTitle, updateSubchapterContent, updateSubchapterTitle,
     updateBlueprintField, updateBlueprintOutlineTitle, updateBlueprintOutlineSummary,
     updateFrontMatterField, updateBackMatterField,
+    setProjectCoverDataUrl,
     applyAuthorBrainFrontMatter, applyAuthorBrainBackMatter,
     setChapterLengthOverride,
     loadProject, handleUserMessage, isGeneratingSection, cancelGeneration,

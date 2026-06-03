@@ -14,6 +14,7 @@ import { getChapterTitleIntegration } from "@/lib/ChapterTitleIntegration";
 import { buildWritingStyleBlock, findStylePresetById, findStylePresetByLabel } from "@/lib/writing-styles";
 import { buildEditorialMasteryBlock } from "@/lib/editorial-mastery";
 import { validateEditorial } from "@/lib/editorial-validator";
+import { guardFinalChapter, guardFinalManuscriptText } from "@/lib/final-manuscript-guard";
 import { withRetry, getBreakerCooldown } from "@/lib/api-resilience";
 import { normalizeAuthorIdentity } from "@/lib/author-identity";
 import { applyAuthorBrainToBackMatter, applyAuthorBrainToFrontMatter } from "@/lib/author-brain";
@@ -552,24 +553,30 @@ DIALOGUE AND SUBTEXT:
 - Characters should avoid saying exactly what they feel too early.
 - Use interruption, hesitation, avoidance, gesture, and silence.
 - Every exchange must either increase intimacy, reveal danger, expose history, or create a new question.
+- Do not let two characters become perfectly emotionally articulate in the same scene.
+- When a wound appears, show defense first; confession must be earned by action, pressure, or loss.
 
 CONTINUITY AND CONSEQUENCE:
 - Respect what has actually happened. Do not imply physical or emotional events that have not occurred.
 - Track emotional escalation carefully: attraction → hesitation → vulnerability → choice → consequence.
 - Each chapter should build from the previous one, not restart the same emotional beat.
 - If a kiss happened, explore its aftermath through altered behavior, not repeated declarations.
+- Every emotional breakthrough must create a new problem, choice, cost, secret, or altered behavior.
+- Never resolve trauma cleanly in one conversation; preserve residue, contradiction, and imperfect recovery.
 
 LANGUAGE QUALITY:
 - Prefer concrete images over generic emotional statements.
 - Cut AI-clichés, over-explaining, and repeated metaphors.
 - Use one fresh dominant image per scene; do not pile metaphors.
 - Make the ending create forward pull: a secret, a decision, a fear, a promise, or a complication.
+- Final manuscript output must be clean prose only: no labels, no coaching notes, no markdown, no prompt language, no assistant commentary.
 
 ${narrativeMode ? `FICTION / ROMANCE / MEMOIR EXTRA RULES:
 - Build romantic tension through restraint, distance, almost-touch, timing, and emotional risk.
 - Do not let characters confess everything too soon.
 - Every intimate moment must have a cost, a fear, or a consequence.
 - Avoid making every paragraph lyrical; vary rhythm with action, sharp dialogue, and grounded detail.
+- Replace "beautiful but generic" lines with scene-specific action, sensory contradiction, or a decision that changes the room.
 - The reader must feel: "I need the next scene."` : `NONFICTION / SELF-HELP / GUIDE EXTRA RULES:
 - Every chapter must deliver a usable transformation, not just inspiration.
 - Alternate story, principle, example, and practical application.
@@ -920,7 +927,7 @@ export async function generateChapterChunked(
     }),
   };
   const targetWords = getChapterTargetWords(config, chapterIndex, config.numberOfChapters, chapterLengthOverride);
-  const contextMemory = buildContextMemory(config, blueprint, previousChapters, chapterIndex, opts?.longBookMemory);
+  const contextMemory = buildContextMemory(config, blueprint, previousChapters, chapterIndex);
   const systemBase = getSystemPrompt(config, genreLock);
   const scriptoraWritingBrain = buildScriptoraWritingBrain(config);
   const characterLock = buildCharacterLock(config);
@@ -1236,15 +1243,18 @@ Write in ${config.language}.${adaptiveSuffix}`;
     }
   }
 
-  const finalChapter = humanizeChapter({
-    title: resolveChapterTitle(chapterTitle, chapterIndex, {
-      config,
-      summary: outline.summary,
-      totalChapters: config.numberOfChapters,
-    }),
-    content: accumulatedContent,
-    subchapters: [],
-  }, { config, previousChapters, chapterIndex, outlineSummary: outline.summary });
+  const finalChapter = guardFinalChapter(
+    humanizeChapter({
+      title: resolveChapterTitle(chapterTitle, chapterIndex, {
+        config,
+        summary: outline.summary,
+        totalChapters: config.numberOfChapters,
+      }),
+      content: accumulatedContent,
+      subchapters: [],
+    }, { config, previousChapters, chapterIndex, outlineSummary: outline.summary }),
+    { config },
+  );
 
   return {
     ...finalChapter,
@@ -1482,22 +1492,28 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
     const parsed = JSON.parse(cleanJsonFence(result));
     return {
       title: stringifyField(parsed?.title).trim() || subOutline?.title || `Subchapter ${subchapterIndex + 1}`,
-      content: humanizeNarrativeText(stringifyField(parsed?.content).trim() || result, {
-        config,
-        previousChapters,
-        chapterIndex,
-        outlineSummary: subOutline?.summary || outline.summary,
-      }),
+      content: guardFinalManuscriptText(
+        humanizeNarrativeText(stringifyField(parsed?.content).trim() || result, {
+          config,
+          previousChapters,
+          chapterIndex,
+          outlineSummary: subOutline?.summary || outline.summary,
+        }),
+        { config },
+      ),
     };
   } catch {
     return {
       title: subOutline?.title || `Subchapter ${subchapterIndex + 1}`,
-      content: humanizeNarrativeText(result, {
-        config,
-        previousChapters,
-        chapterIndex,
-        outlineSummary: subOutline?.summary || outline.summary,
-      }),
+      content: guardFinalManuscriptText(
+        humanizeNarrativeText(result, {
+          config,
+          previousChapters,
+          chapterIndex,
+          outlineSummary: subOutline?.summary || outline.summary,
+        }),
+        { config },
+      ),
     };
   }
 }
@@ -1715,24 +1731,30 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
   );
   try {
     const parsed = JSON.parse(result.replace(/```json\n?|```/g, "").trim());
-    return humanizeChapter(
-      {
-        ...chapter,
-        ...parsed,
-        content: stringifyField(parsed?.content).trim() || chapter.content,
-        subchapters: Array.isArray(parsed?.subchapters) ? parsed.subchapters : chapter.subchapters,
-      },
-      { config, previousChapters, chapterIndex, outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary },
+    return guardFinalChapter(
+      humanizeChapter(
+        {
+          ...chapter,
+          ...parsed,
+          content: stringifyField(parsed?.content).trim() || chapter.content,
+          subchapters: Array.isArray(parsed?.subchapters) ? parsed.subchapters : chapter.subchapters,
+        },
+        { config, previousChapters, chapterIndex, outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary },
+      ),
+      { config },
     );
   } catch {
-    return {
-      ...chapter,
-      content: humanizeNarrativeText(result, {
-        config,
-        previousChapters,
-        chapterIndex,
-        outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary,
-      }),
-    };
+    return guardFinalChapter(
+      {
+        ...chapter,
+        content: humanizeNarrativeText(result, {
+          config,
+          previousChapters,
+          chapterIndex,
+          outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary,
+        }),
+      },
+      { config },
+    );
   }
 }

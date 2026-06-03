@@ -18,6 +18,9 @@ export function CoverBeforeExportDialog({
   onClose,
 }: CoverBeforeExportDialogProps) {
   if (!open) return null;
+  const coverBehavior = format === "EPUB"
+    ? "La cover verra incorporata nel file EPUB."
+    : "La cover verra salvata nel progetto; PDF e DOCX esportano il manoscritto.";
 
   return (
     <div className="scriptora-modal-overlay z-[70]">
@@ -29,7 +32,7 @@ export function CoverBeforeExportDialog({
             </p>
             <h2 className="mt-1 text-lg font-bold text-foreground">Cover prima dell'export</h2>
             <p className="mt-1 text-sm leading-5 text-muted-foreground">
-              Il libro e completo. Prima di esportare in {format}, puoi creare la copertina oppure spedire il file senza cover.
+              Il libro e completo. Prima di esportare in {format}, puoi creare la copertina oppure spedire il file senza cover. {coverBehavior}
             </p>
           </div>
           <button

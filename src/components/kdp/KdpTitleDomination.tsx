@@ -145,6 +145,10 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
   const sortedCandidates = result?.titleCandidates
     ? [...result.titleCandidates].sort((a, b) => (b.kdpScore ?? 0) - (a.kdpScore ?? 0))
     : [];
+  const italianUi = input.language === "Italian" || input.marketplace === "amazon.it";
+  const scoreLabels = italianUi
+    ? { clarity: "Chiarezza", emotion: "Emozione", keyword: "Keyword", originality: "Originalita" }
+    : { clarity: "Clarity", emotion: "Emotion", keyword: "Keyword", originality: "Originality" };
 
   return (
     <Card className="border-primary/30">
@@ -152,12 +156,14 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
         <CardTitle className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">
             <Crown className="h-4 w-4 text-primary" />
-            Title Domination Studio
+            {italianUi ? "Studio Dominazione Titolo" : "Title Domination Studio"}
           </span>
           {result && <GroundingPill used={result.groundingUsed} count={result.groundingResultsCount} />}
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Ricerca di mercato in tempo reale → titoli originali → progetto pronto da sviluppare in Scriptora.
+          {italianUi
+            ? "Modulo avanzato separato dal wizard: ricerca mercato, titoli originali e progetto pronto da sviluppare."
+            : "Advanced module separate from the wizard: market research, original titles, and a project ready to develop."}
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -361,11 +367,11 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
                         </Badge>
                       </div>
                     </div>
-                    <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
-                      <ScoreBar label="Clarity"     value={c.clarityScore} />
-                      <ScoreBar label="Emotion"     value={c.emotionScore} />
-                      <ScoreBar label="Keyword"     value={c.keywordScore} />
-                      <ScoreBar label="Originality" value={c.originalityScore} />
+                    <div className="mt-2 grid grid-cols-1 gap-x-3 gap-y-1 sm:grid-cols-2">
+                      <ScoreBar label={scoreLabels.clarity}     value={c.clarityScore} />
+                      <ScoreBar label={scoreLabels.emotion}     value={c.emotionScore} />
+                      <ScoreBar label={scoreLabels.keyword}     value={c.keywordScore} />
+                      <ScoreBar label={scoreLabels.originality} value={c.originalityScore} />
                     </div>
                     <details className="text-[11px] mt-2">
                       <summary className="cursor-pointer text-muted-foreground">Strategia</summary>

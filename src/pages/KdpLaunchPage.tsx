@@ -73,6 +73,30 @@ export default function KdpLaunchPage() {
   const [prediction, setPrediction] = useState<SuccessPrediction | null>(null);
   const [chosenTitle, setChosenTitle] = useState<string>("");
   const [chosenSubtitle, setChosenSubtitle] = useState<string>("");
+  const italianUi = language.toLowerCase().includes("ital");
+  const stepLabels: Record<Step, string> = italianUi
+    ? { idea: "idea", market: "mercato", title: "titoli", packaging: "packaging", predict: "previsione" }
+    : { idea: "idea", market: "market", title: "title", packaging: "packaging", predict: "predict" };
+  const marketMetricLabels = italianUi
+    ? {
+        hookStrength: "Forza hook",
+        bingeability: "Continuita lettura",
+        emotionalMomentum: "Slancio emotivo",
+        genreAlignment: "Allineamento genere",
+        bookTokPotential: "Potenziale social",
+        retentionRisk: "Rischio retention",
+      }
+    : {
+        hookStrength: "Hook strength",
+        bingeability: "Bingeability",
+        emotionalMomentum: "Emotional momentum",
+        genreAlignment: "Genre alignment",
+        bookTokPotential: "BookTok potential",
+        retentionRisk: "Retention risk",
+      };
+  const predictionCopy = italianUi
+    ? { title: "Previsione bestseller", strengths: "Forze", weaknesses: "Debolezze", improvements: "Migliorie" }
+    : { title: "Bestseller prediction", strengths: "Strengths", weaknesses: "Weaknesses", improvements: "Improvements" };
 
   const marketPremium = useMemo(() => {
     const content = [idea, market?.recommendedAngle, market?.subNiche].filter(Boolean).join("\n\n");
@@ -165,7 +189,7 @@ export default function KdpLaunchPage() {
 
   return (
     <div className="scriptora-feature-page bg-background">
-      <main className="scriptora-feature-scroll mx-auto max-w-3xl space-y-6 p-6">
+      <main className="scriptora-feature-scroll mx-auto max-w-3xl space-y-5 p-4 sm:space-y-6 sm:p-6">
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -179,11 +203,11 @@ export default function KdpLaunchPage() {
         </header>
 
         {/* Step indicator */}
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="scriptora-kdp-stepper flex items-center gap-2 text-xs text-muted-foreground">
           {(["idea", "market", "title", "packaging", "predict"] as Step[]).map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
+            <div key={s} className="flex shrink-0 items-center gap-2">
               <span className={`px-2 py-0.5 rounded-full border ${step === s ? "bg-primary text-primary-foreground border-primary" : "border-border"}`}>
-                {i + 1}. {s}
+                {i + 1}. {stepLabels[s]}
               </span>
               {i < 4 && <ArrowRight className="h-3 w-3" />}
             </div>
@@ -196,7 +220,7 @@ export default function KdpLaunchPage() {
             <CardTitle className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> La tua idea</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="scriptora-kdp-mobile-grid grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label>Genere</Label>
                 <Input value={genre} onChange={(e) => setGenre(e.target.value)} placeholder="Self-help, Romance…" />
@@ -237,7 +261,7 @@ export default function KdpLaunchPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="scriptora-kdp-mobile-grid grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div><span className="text-muted-foreground">Domanda:</span> <Badge variant="secondary">{market.demandLevel}</Badge></div>
                 <div><span className="text-muted-foreground">Competizione:</span> <Badge variant="secondary">{market.competitionLevel}</Badge></div>
               </div>
@@ -254,13 +278,13 @@ export default function KdpLaunchPage() {
                     <p className="text-xs font-bold uppercase tracking-wide">Market Intelligence Premium</p>
                     <span className="text-sm font-black text-primary">{marketPremium.composite}/100</span>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                  <div className="scriptora-kdp-mobile-grid grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
                     {[
-                      ["Hook strength", marketPremium.hookStrength],
-                      ["Bingeability", marketPremium.bingeability],
-                      ["Emotional momentum", marketPremium.emotionalMomentum],
-                      ["Genre alignment", marketPremium.genreAlignment],
-                      ...(marketPremium.bookTokPotential != null ? [["BookTok potential", marketPremium.bookTokPotential]] : []),
+                      [marketMetricLabels.hookStrength, marketPremium.hookStrength],
+                      [marketMetricLabels.bingeability, marketPremium.bingeability],
+                      [marketMetricLabels.emotionalMomentum, marketPremium.emotionalMomentum],
+                      [marketMetricLabels.genreAlignment, marketPremium.genreAlignment],
+                      ...(marketPremium.bookTokPotential != null ? [[marketMetricLabels.bookTokPotential, marketPremium.bookTokPotential]] : []),
                     ].map(([label, score]) => (
                       <div key={label} className="rounded-lg bg-background/80 border border-border/50 px-2.5 py-2">
                         <p className="text-muted-foreground">{label}</p>
@@ -269,7 +293,7 @@ export default function KdpLaunchPage() {
                     ))}
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Retention risk:{" "}
+                    {marketMetricLabels.retentionRisk}:{" "}
                     <span className={`font-semibold ${marketPremium.readerRetentionRisk === "high" ? "text-rose-500" : marketPremium.readerRetentionRisk === "medium" ? "text-amber-600" : "text-emerald-600"}`}>
                       {marketPremium.readerRetentionRisk}
                     </span>
@@ -316,7 +340,7 @@ export default function KdpLaunchPage() {
               <Separator />
               <details className="text-xs">
                 <summary className="cursor-pointer text-muted-foreground">Tutti i {titles.titles.length} titoli + {titles.subtitles.length} sottotitoli</summary>
-                <div className="grid grid-cols-2 gap-3 mt-2">
+                <div className="scriptora-kdp-mobile-grid grid grid-cols-1 gap-3 mt-2 sm:grid-cols-2">
                   <ul className="space-y-1">{titles.titles.map((t, i) => <li key={`stable-${i}`}>• {t}</li>)}</ul>
                   <ul className="space-y-1">{titles.subtitles.map((s, i) => <li key={`stable-${i}`}>• {s}</li>)}</ul>
                 </div>
@@ -350,7 +374,7 @@ export default function KdpLaunchPage() {
                 </div>
                 <Textarea rows={8} readOnly value={packaging.amazonDescription} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="scriptora-kdp-mobile-grid grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <Label>Keyword backend</Label>
@@ -394,22 +418,22 @@ export default function KdpLaunchPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span>Bestseller Prediction</span>
+                <span>{predictionCopy.title}</span>
                 <KdpScoreBadge kind="bestseller" score={prediction.successScore} />
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="scriptora-kdp-mobile-grid grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div>
-                  <div className="text-xs font-semibold text-primary mb-1">Forze</div>
+                  <div className="text-xs font-semibold text-primary mb-1">{predictionCopy.strengths}</div>
                   <ul className="space-y-1">{prediction.strengths.map((x, i) => <li key={`stable-${i}`}>✓ {x}</li>)}</ul>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-destructive mb-1">Debolezze</div>
+                  <div className="text-xs font-semibold text-destructive mb-1">{predictionCopy.weaknesses}</div>
                   <ul className="space-y-1">{prediction.weaknesses.map((x, i) => <li key={`stable-${i}`}>✗ {x}</li>)}</ul>
                 </div>
                 <div>
-                  <div className="text-xs font-semibold mb-1">Migliorie</div>
+                  <div className="text-xs font-semibold mb-1">{predictionCopy.improvements}</div>
                   <ul className="space-y-1">{prediction.improvements.map((x, i) => <li key={`stable-${i}`}>→ {x}</li>)}</ul>
                 </div>
               </div>

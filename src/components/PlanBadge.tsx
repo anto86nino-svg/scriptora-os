@@ -20,7 +20,7 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [exiting, setExiting] = useState(false);
 
-  const tier = isDev ? "premium" : plan;
+  const tier = plan;
 
   const styles =
     tier === "premium"
@@ -39,7 +39,12 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
 
   // Sub-text hint
   let hint = "";
-  if (tier === "free") {
+  if (isDev) {
+    if (tier === "free") hint = "Sim DEV · no export";
+    else if (tier === "beta") hint = "Sim DEV · 3 books";
+    else if (tier === "pro") hint = "Sim DEV · 10 books";
+    else hint = "Sim DEV · no billing";
+  } else if (tier === "free") {
     const max = PLAN_LIMITS.free.maxTokensPerBook!;
     if (typeof tokensUsed === "number") {
       hint = `${formatTokens(tokensUsed)} / ${formatTokens(max)} tokens`;
@@ -80,7 +85,7 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
       disabled={isDev}
       title={
         isDev
-          ? "Developer mode active"
+          ? `Developer mode: ${tier.toUpperCase()} simulato, non billing reale`
           : tier === "beta"
           ? "Beta tester · click per opzioni"
           : tier === "premium"
@@ -91,7 +96,7 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
     >
       <Icon className="h-3 w-3" />
       <div className="flex flex-col items-start leading-tight">
-        <span>{isDev ? "DEV" : tier}</span>
+        <span>{isDev ? `DEV ${tier}` : tier}</span>
         <span className="text-[8px] font-normal opacity-80 normal-case tracking-normal">{hint}</span>
       </div>
     </button>

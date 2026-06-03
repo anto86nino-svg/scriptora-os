@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DEEPSEEK_PRICING_NOTE, getUsageDiagnostics, getUserUsage, getRecentUsage, getUsageRowCost, formatCost, formatTokens, type UsageSummary, type UsageRow } from "@/lib/ai-usage";
+import { isDevMode } from "@/lib/dev-mode";
 import { ArrowLeft, Loader2, Activity, DollarSign, Hash, Zap, RefreshCw, AlertTriangle } from "lucide-react";
 
 export default function UsagePage() {
   const navigate = useNavigate();
+  const devMode = isDevMode();
   const [summary, setSummary] = useState<UsageSummary | null>(null);
   const [recent, setRecent] = useState<UsageRow[]>([]);
   const [usageIssue, setUsageIssue] = useState<string | null>(null);
@@ -78,8 +80,17 @@ export default function UsagePage() {
       <main className="scriptora-feature-scroll mx-auto max-w-5xl space-y-8 px-6 py-8">
         <section>
           <h1 className="text-2xl font-bold tracking-tight">AI Usage & Cost</h1>
-          <p className="text-sm text-muted-foreground mt-1">Tracking reale di tutte le chiamate AI · DeepSeek</p>
+          <p className="text-sm text-muted-foreground mt-1">Tracking log AI e stime diagnostiche · DeepSeek</p>
         </section>
+
+        {devMode && (
+          <section className="rounded-lg border border-sky-400/25 bg-sky-400/10 p-4 text-xs leading-relaxed text-sky-50/85">
+            <div className="font-semibold text-sky-50">Dev Mode attivo · simulazione locale</div>
+            <div className="mt-1">
+              Il piano visualizzato in DEV e i relativi limiti sono simulati per testare la UX. Questa pagina mostra log/stime AI quando disponibili: non rappresenta un saldo Stripe, un wallet reale o un addebito billing.
+            </div>
+          </section>
+        )}
 
         {usageIssue && (
           <section className={`rounded-lg border p-4 text-xs ${

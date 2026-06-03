@@ -382,6 +382,9 @@ export interface BookProject {
   genreLock?: GenreLock;
   /** Rolling narrative memory — updated after each written chapter */
   longBookMemory?: LongBookMemorySnapshot;
+  /** Project cover generated in Cover Studio. EPUB embeds it; PDF/DOCX keep manuscript layout. */
+  coverDataUrl?: string;
+  coverUpdatedAt?: string;
   createdAt: string;
   updatedAt: string;
 }

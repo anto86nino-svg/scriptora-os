@@ -174,6 +174,59 @@
   );
 }
 
+/* ── Writer OS zones — make the book feel anchored in the environment ── */
+[data-atmosphere-profile="fantasy-realm"] [data-atmosphere-zone="manuscript-core"] {
+  isolation: isolate;
+  border-color: rgba(255, 255, 255, 0.11);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.012)),
+    linear-gradient(116deg, rgba(9, 12, 23, 0.92) 0%, rgba(12, 16, 33, 0.84) 54%, rgba(7, 9, 18, 0.96) 100%);
+  box-shadow:
+    0 32px 96px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(212, 175, 98, 0.06);
+}
+
+[data-atmosphere-profile="fantasy-realm"] [data-atmosphere-zone="manuscript-core"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.035) 28%, transparent 42%),
+    linear-gradient(180deg, rgba(212, 175, 98, 0.06) 0%, transparent 18%, transparent 82%, rgba(139, 127, 199, 0.045) 100%);
+  opacity: 0.78;
+}
+
+[data-atmosphere-profile="fantasy-realm"] [data-atmosphere-zone="book-object"] {
+  box-shadow:
+    0 26px 72px rgba(0, 0, 0, 0.46),
+    18px 0 38px rgba(8, 47, 73, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+[data-atmosphere-profile="fantasy-realm"] [data-atmosphere-zone="book-object"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.12), transparent 12%, transparent 84%, rgba(0, 0, 0, 0.18)),
+    linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.055) 44%, transparent 58%);
+  opacity: 0.72;
+}
+
+[data-atmosphere-profile="fantasy-realm"] .scriptora-launchpad-grid > * {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.047), rgba(255, 255, 255, 0.014)),
+    rgba(8, 10, 20, 0.76);
+}
+
+[data-atmosphere-profile="fantasy-realm"] .scriptora-launchpad-grid > *:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
 /* ── Boot screen — aligned but restrained ── */
 [data-atmosphere-profile="fantasy-realm"] .scriptora-boot-overlay {
   background:
@@ -222,6 +275,16 @@
 
   [data-atmosphere-profile="fantasy-realm"] .scriptora-ios-screen:has(.ios-editor-paper)::before {
     opacity: 0.42;
+  }
+
+  [data-atmosphere-profile="fantasy-realm"] [data-atmosphere-zone="manuscript-core"] {
+    box-shadow:
+      0 18px 52px rgba(0, 0, 0, 0.34),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  [data-atmosphere-profile="fantasy-realm"] [data-atmosphere-zone="manuscript-core"]::before {
+    opacity: 0.46;
   }
 }
 

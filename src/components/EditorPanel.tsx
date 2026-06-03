@@ -310,7 +310,7 @@ function BlueprintView({ project, blueprint, isGenerating, onUpdateField, onUpda
   onUpdateOutlineSummary?: (index: number, summary: string) => void;
 }) {
   return (
-    <div className="space-y-8 rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-[0_24px_70px_-30px_rgba(15,23,42,0.72)]">
+    <div className="scriptora-chapter-shell space-y-8 rounded-[28px] border border-white/10 bg-slate-950/60 p-6 shadow-[0_24px_70px_-30px_rgba(15,23,42,0.72)]">
       <PageHeader title={t("blueprint")} subtitle="Book architecture and chapter plan" />
       {isGenerating && <LoadingBanner text={`${t("generating")}...`} />}
       {blueprint ? (
