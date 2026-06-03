@@ -34,6 +34,7 @@ import { useIntelligentPreload } from "@/hooks/useIntelligentPreload";
 import { useAtmosphereProfile } from "@/hooks/useAtmosphereProfile";
 import { useBackgroundSource } from "@/hooks/useBackgroundSource";
 import { ATMOSPHERE_PROFILES, restoreRealmBackground } from "@/lib/atmosphere-engine";
+import { getAtmosphereThemeCopy } from "@/lib/atmosphere-engine/theme-copy";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const VoiceStudioDialog = lazy(() => import("@/components/VoiceStudioDialog").then(m => ({ default: m.VoiceStudioDialog })));
@@ -133,12 +134,9 @@ export default function Home() {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const currentLang = useUILanguage();
   const { profileId, selectProfile } = useAtmosphereProfile();
-
-useEffect(() => {
-  selectProfile("horror-gothic");
-}, []);
   const { source: backgroundSource } = useBackgroundSource();
   const activeAtmosphere = ATMOSPHERE_PROFILES.find((profile) => profile.id === profileId) ?? ATMOSPHERE_PROFILES[0];
+  const themeCopy = useMemo(() => getAtmosphereThemeCopy(profileId), [profileId]);
 
   const [activeRun, setActiveRun] = useState<{ runId: string; title: string; startedAt: number } | null>(null);
 
@@ -768,15 +766,11 @@ const dashboardWidgets = [
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(125,211,252,0.10),transparent_36%),linear-gradient(225deg,rgba(251,191,36,0.08),transparent_42%)]" />
       <div className="relative z-10 grid gap-5 lg:grid-cols-[minmax(250px,0.78fr)_minmax(0,1.55fr)] lg:items-stretch">
         <div className="flex gap-4 lg:flex-col lg:items-center lg:justify-center">
-          <div data-atmosphere-zone="book-object" className={`scriptora-dashboard-book-cover relative flex min-h-[236px] w-[164px] shrink-0 flex-col justify-between overflow-hidden rounded-[24px] border p-4 sm:min-h-[292px] sm:w-[202px] sm:p-5 ${
-  profileId === "horror-gothic"
-    ? "border-red-900/50 bg-gradient-to-br from-black via-red-950 to-black shadow-[0_0_80px_rgba(120,0,0,0.35)]"
-    : "border-white/15 bg-gradient-to-br from-slate-900 via-sky-950 to-slate-950 shadow-[0_24px_70px_rgba(8,47,73,0.38)]"
-}` }>
+          <div data-atmosphere-zone="book-object" className="scriptora-dashboard-book-cover relative flex min-h-[236px] w-[164px] shrink-0 flex-col justify-between overflow-hidden rounded-[24px] border border-white/15 bg-gradient-to-br from-slate-900 via-sky-950 to-slate-950 p-4 shadow-[0_24px_70px_rgba(8,47,73,0.38)] sm:min-h-[292px] sm:w-[202px] sm:p-5">
             <div className="absolute inset-x-0 top-0 h-20 bg-white/[0.06] blur-2xl" />
             <div className="relative z-10">
-              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-sky-100/70">Manuscript Core</p>
-              <h2 className="mt-4 line-clamp-5 text-xl font-black uppercase leading-6 text-white sm:text-2xl sm:leading-7 drop-shadow-[0_0_18px_rgba(120,0,0,0.45)]">
+              <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-sky-100/70">{themeCopy.bookObjectLabel}</p>
+              <h2 className="mt-4 line-clamp-5 text-xl font-black uppercase leading-6 text-white sm:text-2xl sm:leading-7">
                 {lastProject?.config.title || "Nuovo libro"}
               </h2>
             </div>
@@ -789,12 +783,12 @@ const dashboardWidgets = [
           </div>
 
           <div className="min-w-0 flex-1 lg:w-full">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-200/70">Libro attivo</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-200/70">{themeCopy.activeBookLabel}</p>
             <p className="mt-1 line-clamp-2 text-base font-semibold text-white sm:text-lg">
               {lastProject?.config.title || "Avvia il prossimo manoscritto"}
             </p>
             <p className="mt-1 text-xs leading-5 text-white/60">
-              {lastProject ? `${lastProject.config.genre} · ${lastProject.config.language}` : "Scriptora OS mette il libro al centro: idea, scrittura, cover, export e lancio KDP."}
+              {lastProject ? `${lastProject.config.genre} · ${lastProject.config.language}` : themeCopy.emptyBookHint}
             </p>
           </div>
         </div>
@@ -802,7 +796,7 @@ const dashboardWidgets = [
         <div className="min-w-0 space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">Percorso autore</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">{themeCopy.journeyLabel}</p>
               <h2 className="mt-1 text-3xl font-semibold leading-tight text-white sm:text-5xl">
                 {lastProject ? manuscriptStatusLabel : "Crea, scrivi e pubblica da un unico centro."}
               </h2>
@@ -911,28 +905,28 @@ const dashboardWidgets = [
   );
 
   const cards = [
-    { group: "writer", icon: BookOpen, title: t("writer_studio_title"), desc: t("writer_studio_desc"), iconBg: "ios-icon-violet", action: () => goApp(), tag: t("os_tag_write"), emphasis: true },
-    { group: "writer", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("story_architect_title"), desc: freeBookUsed ? t("upgrade_more_books") : t("story_architect_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: () => openLaunchModal("manual"), feature: "book_engine_full" as const, tag: t("os_tag_plan") },
-    { group: "writer", icon: Wand2, title: t("manuscript_lab_title"), desc: t("manuscript_lab_desc"), iconBg: "ios-icon-teal", action: () => setShowManuscriptAnalyzer(true), feature: "chapter_improvement" as const, tag: t("os_tag_score") },
-    { group: "writer", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_studio_desc"), iconBg: "ios-icon-pink", action: openRewriteStudio, feature: "chapter_rewrite" as const, tag: t("os_tag_rewrite") },
-    { group: "writer", icon: Users, title: t("character_studio_title"), desc: t("character_studio_desc"), iconBg: "ios-icon-pink", action: () => setShowCharacterStudio(true), feature: "book_engine_full" as const, tag: t("os_tag_cast") },
-    { group: "writer", icon: AudioLines, title: "Voice Studio", desc: "Hear your story breathe with cinematic narration.", iconBg: "ios-icon-cyan", action: () => setShowVoiceStudio(true), feature: "book_engine_full" as const, tag: "IMMERSIVE", emphasis: true },
-    { group: "writer", icon: NotebookPen, title: t("block_notes"), desc: t("notepad_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowNotepad(true), tag: t("os_tag_notes") },
+    { id: "writer_studio", group: "writer", icon: BookOpen, title: t("writer_studio_title"), desc: t("writer_studio_desc"), iconBg: "ios-icon-violet", action: () => goApp(), tag: t("os_tag_write"), emphasis: true },
+    { id: "story_architect", group: "writer", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("story_architect_title"), desc: freeBookUsed ? t("upgrade_more_books") : t("story_architect_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: () => openLaunchModal("manual"), feature: "book_engine_full" as const, tag: t("os_tag_plan") },
+    { id: "manuscript_lab", group: "writer", icon: Wand2, title: t("manuscript_lab_title"), desc: t("manuscript_lab_desc"), iconBg: "ios-icon-teal", action: () => setShowManuscriptAnalyzer(true), feature: "chapter_improvement" as const, tag: t("os_tag_score") },
+    { id: "rewrite_studio", group: "writer", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_studio_desc"), iconBg: "ios-icon-pink", action: openRewriteStudio, feature: "chapter_rewrite" as const, tag: t("os_tag_rewrite") },
+    { id: "character_studio", group: "writer", icon: Users, title: t("character_studio_title"), desc: t("character_studio_desc"), iconBg: "ios-icon-pink", action: () => setShowCharacterStudio(true), feature: "book_engine_full" as const, tag: t("os_tag_cast") },
+    { id: "voice_studio", group: "writer", icon: AudioLines, title: "Voice Studio", desc: "Hear your story breathe with cinematic narration.", iconBg: "ios-icon-cyan", action: () => setShowVoiceStudio(true), feature: "book_engine_full" as const, tag: "IMMERSIVE", emphasis: true },
+    { id: "notes", group: "writer", icon: NotebookPen, title: t("block_notes"), desc: t("notepad_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowNotepad(true), tag: t("os_tag_notes") },
 
-    { group: "bestseller", icon: Flame, title: t("bestseller_engine_title"), desc: t("bestseller_engine_desc"), iconBg: "ios-icon-blue", action: () => openLaunchModal("advanced"), emphasis: true, tag: t("os_tag_launch") },
-    { group: "bestseller", icon: Rocket, title: t("kdp_intelligence_title"), desc: t("kdp_intelligence_desc"), iconBg: "ios-icon-violet", action: () => navigate("/kdp-launch"), feature: "kdp_market_base" as const, tag: t("os_tag_market") },
-    { group: "bestseller", icon: Zap, title: t("title_intelligence"), desc: t("title_premium_desc"), iconBg: "ios-icon-teal", action: () => setShowTitleIntel(true), feature: "title_intelligence_base" as const, tag: t("os_tag_titles") },
-    { group: "bestseller", icon: TrendingUp, title: "Bestseller Radar", desc: t("radar_premium_desc"), iconBg: "ios-icon-green", action: () => navigate("/bestseller-radar"), feature: "trending_niches_limited" as const, tag: t("os_tag_signal") },
-    { group: "bestseller", icon: BarChart3, title: "Keyword Gold", desc: t("keyword_premium_desc"), iconBg: "ios-icon-yellow", action: () => navigate("/keyword-gold"), feature: "kdp_market_base" as const, tag: t("os_tag_metadata") },
+    { id: "bestseller_engine", group: "bestseller", icon: Flame, title: t("bestseller_engine_title"), desc: t("bestseller_engine_desc"), iconBg: "ios-icon-blue", action: () => openLaunchModal("advanced"), emphasis: true, tag: t("os_tag_launch") },
+    { id: "kdp_launch", group: "bestseller", icon: Rocket, title: t("kdp_intelligence_title"), desc: t("kdp_intelligence_desc"), iconBg: "ios-icon-violet", action: () => navigate("/kdp-launch"), feature: "kdp_market_base" as const, tag: t("os_tag_market") },
+    { id: "title_intelligence", group: "bestseller", icon: Zap, title: t("title_intelligence"), desc: t("title_premium_desc"), iconBg: "ios-icon-teal", action: () => setShowTitleIntel(true), feature: "title_intelligence_base" as const, tag: t("os_tag_titles") },
+    { id: "bestseller_radar", group: "bestseller", icon: TrendingUp, title: "Bestseller Radar", desc: t("radar_premium_desc"), iconBg: "ios-icon-green", action: () => navigate("/bestseller-radar"), feature: "trending_niches_limited" as const, tag: t("os_tag_signal") },
+    { id: "keyword_gold", group: "bestseller", icon: BarChart3, title: "Keyword Gold", desc: t("keyword_premium_desc"), iconBg: "ios-icon-yellow", action: () => navigate("/keyword-gold"), feature: "kdp_market_base" as const, tag: t("os_tag_metadata") },
 
-    { group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: () => setShowCoverStudio(true), feature: "cover_studio_template" as const, tag: t("os_tag_cover") },
-    { group: "publishing", icon: FileDown, title: t("export_studio_title"), desc: t("export_studio_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const, tag: t("os_tag_export") },
-    { group: "publishing", icon: Library, title: t("completed_shelf_title"), desc: t("library_premium_desc"), iconBg: "ios-icon-green", action: () => setShowLibrary(true), feature: "export_epub" as const, tag: t("os_tag_archive") },
+    { id: "cover_studio", group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: () => setShowCoverStudio(true), feature: "cover_studio_template" as const, tag: t("os_tag_cover") },
+    { id: "export_studio", group: "publishing", icon: FileDown, title: t("export_studio_title"), desc: t("export_studio_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const, tag: t("os_tag_export") },
+    { id: "completed_shelf", group: "publishing", icon: Library, title: t("completed_shelf_title"), desc: t("library_premium_desc"), iconBg: "ios-icon-green", action: () => setShowLibrary(true), feature: "export_epub" as const, tag: t("os_tag_archive") },
 
-    { group: "system", icon: Users, title: t("author_identity"), desc: t("author_identity_premium_desc"), iconBg: "ios-icon-blue", action: () => setShowAuthorIdentity(true), feature: "book_engine_full" as const, tag: t("os_tag_identity") },
-    { group: "system", icon: Settings, title: t("background_atmosphere"), desc: t("atmosphere_premium_desc"), iconBg: "ios-icon-slate", action: () => setShowAdvancedSettings(true), feature: "book_engine_full" as const, tag: t("os_tag_space") },
-    { group: "system", icon: FolderOpen, title: t("drafts_shelf_title"), desc: t("projects_premium_desc"), iconBg: "ios-icon-cyan", action: () => setShowProjects(!showProjects), feature: "book_engine_full" as const, tag: t("os_tag_library") },
-    { group: "system", icon: Settings, title: t("settings"), desc: t("settings_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowAdvancedSettings(true), feature: "book_engine_full" as const, tag: t("os_tag_control") },
+    { id: "author_identity", group: "system", icon: Users, title: t("author_identity"), desc: t("author_identity_premium_desc"), iconBg: "ios-icon-blue", action: () => setShowAuthorIdentity(true), feature: "book_engine_full" as const, tag: t("os_tag_identity") },
+    { id: "atmosphere", group: "system", icon: Settings, title: t("background_atmosphere"), desc: t("atmosphere_premium_desc"), iconBg: "ios-icon-slate", action: () => setShowAdvancedSettings(true), feature: "book_engine_full" as const, tag: t("os_tag_space") },
+    { id: "drafts", group: "system", icon: FolderOpen, title: t("drafts_shelf_title"), desc: t("projects_premium_desc"), iconBg: "ios-icon-cyan", action: () => setShowProjects(!showProjects), feature: "book_engine_full" as const, tag: t("os_tag_library") },
+    { id: "settings", group: "system", icon: Settings, title: t("settings"), desc: t("settings_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowAdvancedSettings(true), feature: "book_engine_full" as const, tag: t("os_tag_control") },
   ];
 
   const cardGroups = [
@@ -1309,8 +1303,8 @@ const dashboardWidgets = [
           <div className="mb-4 flex flex-col gap-3 rounded-[24px] border border-white/10 bg-white/[0.026] p-4 shadow-[0_16px_52px_rgba(0,0,0,0.18)] backdrop-blur-2xl sm:flex-row sm:items-end sm:justify-between sm:p-5">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scriptora OS</p>
-              <h2 className="mt-1 text-xl font-semibold text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.38)]">Strumenti dietro il libro</h2>
-              <p className="mt-1 max-w-xl text-sm font-medium leading-6 text-white/64">Apri solo la cartella che ti serve. Il manoscritto resta il centro.</p>
+              <h2 className="mt-1 text-xl font-semibold text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.38)]">{themeCopy.osTitle}</h2>
+              <p className="mt-1 max-w-xl text-sm font-medium leading-6 text-white/64">{themeCopy.osDescription}</p>
             </div>
             <span className="hidden text-[11px] text-muted-foreground sm:inline">
               {tt("total_suffix", { count: projects.length, plan: planLabel })}
@@ -1322,8 +1316,9 @@ const dashboardWidgets = [
               const groupCards = cards.filter((card) => card.group === group.id);
               const GroupIcon = group.icon;
               const isOpen = expandedOsFolder === group.id;
+              const groupCopy = themeCopy.groups[group.id] || { title: group.title, desc: group.desc };
               return (
-                <div key={group.id} className={`scriptora-os-folder relative overflow-hidden rounded-[24px] border border-white/10 bg-gradient-to-br ${group.tone} shadow-[0_18px_58px_rgba(0,0,0,0.20)] backdrop-blur-xl ${isOpen ? "sm:col-span-2 xl:col-span-4" : ""}`}>
+                <div key={group.id} data-atmosphere-group={group.id} className={`scriptora-os-folder relative overflow-hidden rounded-[24px] border border-white/10 bg-gradient-to-br ${group.tone} shadow-[0_18px_58px_rgba(0,0,0,0.20)] backdrop-blur-xl ${isOpen ? "sm:col-span-2 xl:col-span-4" : ""}`}>
                   <button
                     type="button"
                     onClick={() => setExpandedOsFolder(isOpen ? null : group.id)}
@@ -1340,8 +1335,8 @@ const dashboardWidgets = [
                       </span>
                     </span>
                     <span className="mt-5 block">
-                      <span className="block text-lg font-semibold text-white">{group.title}</span>
-                      <span className="mt-1 block text-xs leading-5 text-white/62">{group.desc}</span>
+                      <span className="block text-lg font-semibold text-white">{groupCopy.title}</span>
+                      <span className="mt-1 block text-xs leading-5 text-white/62">{groupCopy.desc}</span>
                     </span>
                   </button>
 
@@ -1349,26 +1344,31 @@ const dashboardWidgets = [
                     <div className="scriptora-launchpad-grid grid grid-cols-1 gap-2 border-t border-white/10 bg-slate-950/20 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                       {groupCards.map(card => {
                         const Icon = card.icon;
+                        const moduleCopy = themeCopy.modules[card.id] || {};
+                        const cardTitle = moduleCopy.title || card.title;
+                        const cardDesc = moduleCopy.desc || card.desc;
+                        const cardTag = moduleCopy.tag || (card as any).tag;
                         const inner = (
                           <button
                             key={card.title}
                             onClick={card.action}
+                            data-atmosphere-module={card.id}
                             className="group relative flex min-h-[118px] w-full flex-col overflow-hidden rounded-[18px] border border-white/10 bg-slate-950/32 p-3 text-left ring-1 ring-white/[0.03] transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-safe:hover:-translate-y-0.5"
                           >
                             <div className="relative z-10 flex items-start justify-between gap-3">
                               <span className={`ios-icon ${card.iconBg} flex h-10 w-10 items-center justify-center rounded-[15px] shadow-[0_12px_32px_rgba(0,0,0,0.18)] ring-1 ring-white/10`}>
                                 <Icon className="h-4 w-4" />
                               </span>
-                              {(card as any).tag && (
+                              {cardTag && (
                                 <span className="rounded-full border border-white/10 bg-white/[0.08] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/55 transition-colors group-hover:text-white">
-                                  {(card as any).tag}
+                                  {cardTag}
                                 </span>
                               )}
                             </div>
 
                             <div className="relative z-10 mt-3">
-                              <h3 className="text-sm font-semibold leading-5 text-white">{card.title}</h3>
-                              <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-300">{card.desc}</p>
+                              <h3 className="text-sm font-semibold leading-5 text-white">{cardTitle}</h3>
+                              <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-300">{cardDesc}</p>
                             </div>
 
                             <div className="relative z-10 mt-auto flex items-center justify-between gap-3 pt-3">

@@ -76,7 +76,7 @@
   }
 
   .scriptora-modal-overlay {
-    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 pb-safe pt-safe backdrop-blur-sm sm:p-4;
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 pb-safe pt-safe backdrop-blur-xl sm:p-4;
   }
 
   .scriptora-modal-panel {

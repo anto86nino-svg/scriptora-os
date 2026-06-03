@@ -14,21 +14,23 @@ const REALM_BACKGROUNDS: Partial<Record<AtmosphereProfileId, RealmBackgroundLaye
   },
   "horror-gothic": {
     image: `
-      radial-gradient(circle at 18% 10%, rgba(126,12,20,0.22), transparent 22%),
-      radial-gradient(circle at 82% 8%, rgba(94,0,0,0.18), transparent 18%),
-      linear-gradient(180deg, rgba(10,6,7,0.96), rgba(3,3,5,0.99)),
+      radial-gradient(ellipse 48% 34% at 16% 0%, rgba(126,12,20,0.28), transparent 62%),
+      radial-gradient(ellipse 34% 24% at 86% 8%, rgba(94,0,0,0.2), transparent 58%),
+      radial-gradient(ellipse 72% 42% at 50% 112%, rgba(0,0,0,0.92), transparent 62%),
+      linear-gradient(180deg, rgba(10,6,7,0.96), rgba(3,3,5,0.995)),
       repeating-linear-gradient(
         90deg,
-        rgba(255,255,255,0.018) 0px,
-        rgba(255,255,255,0.018) 1px,
+        rgba(255,255,255,0.015) 0px,
+        rgba(255,255,255,0.015) 1px,
         transparent 1px,
-        transparent 42px
+        transparent 46px
       )
     `,
     overlay: `
-      radial-gradient(circle at top left, rgba(120,0,0,0.16), transparent 24%),
-      radial-gradient(circle at bottom right, rgba(90,0,0,0.12), transparent 30%),
-      linear-gradient(rgba(4,4,5,0.74), rgba(3,3,4,0.92))
+      radial-gradient(ellipse 42% 28% at 14% 9%, rgba(160,18,28,0.18), transparent 60%),
+      radial-gradient(ellipse 60% 34% at 50% 52%, rgba(255,255,255,0.025), transparent 64%),
+      linear-gradient(rgba(4,4,5,0.72), rgba(3,3,4,0.94)),
+      radial-gradient(ellipse 92% 78% at 50% 50%, transparent 42%, rgba(0,0,0,0.58) 100%)
     `,
   },
   "dark-luxury": {
