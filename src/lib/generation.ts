@@ -543,10 +543,12 @@ CORE SCENE LOGIC:
 - Every chapter must change something. If nothing changes, the chapter fails.
 - Every major scene needs: desire, obstacle, tension, choice, consequence.
 - The protagonist must want something concrete in the moment, not only feel something abstract.
+- Every scene must force at least one new decision, refusal, reveal, compromise, or irreversible small cost.
 - Avoid emotional loops: do not restate the same realization in different words.
 - Never repeat the same inner conclusion across paragraphs, especially phrases like "I am not running anymore", "I want to stay", "this changed everything", unless there is a new consequence.
 - Show emotion through behavior, silence, physical detail, contradiction, and specific sensory images.
 - Do not explain the theme after every scene. Let the scene carry the theme.
+- Replace generic beautiful sentences with specific pressure: an object handled wrong, a sentence left unfinished, a practical problem caused by the emotion.
 
 DIALOGUE AND SUBTEXT:
 - Dialogue must hide as much as it reveals.
@@ -555,6 +557,8 @@ DIALOGUE AND SUBTEXT:
 - Every exchange must either increase intimacy, reveal danger, expose history, or create a new question.
 - Do not let two characters become perfectly emotionally articulate in the same scene.
 - When a wound appears, show defense first; confession must be earned by action, pressure, or loss.
+- Ban therapeutic symmetry: no perfectly calm mutual validation, no instant apology cascade, no clean emotional summary unless the scene has earned it through conflict.
+- A line of dialogue should often answer the previous line sideways, not directly. Let characters protect themselves.
 
 CONTINUITY AND CONSEQUENCE:
 - Respect what has actually happened. Do not imply physical or emotional events that have not occurred.
@@ -563,6 +567,7 @@ CONTINUITY AND CONSEQUENCE:
 - If a kiss happened, explore its aftermath through altered behavior, not repeated declarations.
 - Every emotional breakthrough must create a new problem, choice, cost, secret, or altered behavior.
 - Never resolve trauma cleanly in one conversation; preserve residue, contradiction, and imperfect recovery.
+- Make consequences visible on the page: changed route, avoided call, broken promise, delayed answer, altered routine, new risk, or a person noticing the change.
 
 LANGUAGE QUALITY:
 - Prefer concrete images over generic emotional statements.

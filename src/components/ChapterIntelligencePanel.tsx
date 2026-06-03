@@ -25,6 +25,7 @@ import {
 } from "@/lib/narrative-intelligence-v2";
 import { computeBookEditorialDashboard } from "@/lib/editorial-dashboard-pro";
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
+import { operationCreditLabel } from "@/lib/credit-economy";
 
 function countWordsForChapterLock(value: unknown): number {
   if (!value) return 0;
@@ -162,6 +163,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showPatchPreview, setShowPatchPreview] = useState(false);
   const [patchPreviewData, setPatchPreviewData] = useState<{ originalText: string; patchedText: string } | null>(null);
+  const devCreditMode = isDevMode();
 
   const bestsellerIntel = useMemo(() => {
     const content = workingContent || chapter?.content || "";
@@ -813,7 +815,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
               </div>
               <button onClick={runPatch}
                 className="inline-flex items-center gap-2 h-11 px-6 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-md">
-                <Scissors className="h-4 w-4" /> Surgical Edit
+                <Scissors className="h-4 w-4" /> Surgical Edit · {operationCreditLabel("chapter_rewrite", devCreditMode)}
               </button>
               {/* Advanced toggle */}
               <div className="pt-4 border-t border-border/30 max-w-md mx-auto">
@@ -826,7 +828,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                   <div className="mt-3 space-y-2">
                     <button onClick={() => { setShowRunAnalyze(true); runAnalysis(); }}
                       className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-lg text-xs font-semibold bg-card border border-border hover:bg-accent transition-colors">
-                      <Sparkles className="h-3.5 w-3.5" /> Diagnosi paragrafo per paragrafo
+                      <Sparkles className="h-3.5 w-3.5" /> Diagnosi · {operationCreditLabel("chapter_diagnostic", devCreditMode)}
                     </button>
                     <button onClick={runDominate}
                       title={canDominate ? "Ricostruzione totale — riscrittura completa" : "Sblocca modalità premium"}

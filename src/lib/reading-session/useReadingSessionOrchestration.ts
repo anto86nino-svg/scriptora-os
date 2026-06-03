@@ -80,8 +80,10 @@ export function useReadingSessionOrchestration(input: UseReadingSessionInput) {
     if (saved && saved.projectId === input.projectId) {
       setSessionId(saved.sessionId || createSessionId());
       if (saved.chapterIndex !== input.chapterIndex || saved.sentenceIndex > 0) {
+        const progressLabel = saved.progress > 0 ? ` · ${Math.round(saved.progress)}%` : "";
+        const sentenceLabel = saved.sentenceIndex > 0 ? ` · sentence ${saved.sentenceIndex + 1}` : "";
         setResumeOffer({
-          label: `Continue listening from Chapter ${saved.chapterIndex + 1}?`,
+          label: `Continue listening from Chapter ${saved.chapterIndex + 1}${sentenceLabel}${progressLabel}?`,
           snapshot: saved,
         });
       }

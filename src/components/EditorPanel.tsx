@@ -14,6 +14,8 @@ import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import { authorBrainProfileHasInjectionData, buildAuthorBrainInjectionSnapshot, hasPassiveAuthorIntelligence } from "@/lib/author-brain";
+import { operationCreditLabel } from "@/lib/credit-economy";
+import { isDevMode } from "@/lib/dev-mode";
 
 interface EditorPanelProps {
   project: BookProject;
@@ -526,6 +528,7 @@ function ChapterView({
   const currentLength = chapter?.lengthOverride || project.config.chapterLength;
   const [showRewriteMenu, setShowRewriteMenu] = useState(false);
   const [showIntelligence, setShowIntelligence] = useState(false);
+  const devCreditMode = isDevMode();
 
   const displayedTitle = resolveChapterTitle(isGenerated ? (chapter!.title || outline.title) : outline.title, chapterIndex, {
     config: project.config,
@@ -596,7 +599,7 @@ function ChapterView({
                       <button key={opt.level} onClick={() => { onRewrite(opt.level); setShowRewriteMenu(false); }}
                         className="w-full text-left rounded-2xl px-3 py-2 hover:bg-white/5 transition-colors">
                         <p className="text-xs font-semibold text-white">{opt.label}</p>
-                        <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
+                        <p className="text-[10px] text-muted-foreground">{opt.desc} · {operationCreditLabel("chapter_rewrite", devCreditMode)}</p>
                       </button>
                     ))}
                     {onAutoRewrite && (
@@ -617,6 +620,12 @@ function ChapterView({
             </>
           )}
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+        <span>Genera: {operationCreditLabel("chapter_generation", devCreditMode)}</span>
+        <span>Diagnostica: {operationCreditLabel("chapter_diagnostic", devCreditMode)}</span>
+        <span>Riscrivi: {operationCreditLabel("chapter_rewrite", devCreditMode)}</span>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">

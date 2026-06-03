@@ -4390,8 +4390,17 @@ textarea,
     gap: 10px !important;
   }
 
+  .scriptora-os-folder {
+    border-radius: 18px !important;
+  }
+
+  .scriptora-os-folder > button {
+    min-height: 116px !important;
+    padding: 12px !important;
+  }
+
   .scriptora-launchpad-grid button {
-    min-height: 132px !important;
+    min-height: 112px !important;
     border-radius: 18px !important;
     padding: 12px !important;
   }

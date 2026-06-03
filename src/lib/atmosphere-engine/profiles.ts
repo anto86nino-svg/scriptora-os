@@ -15,7 +15,7 @@ export const ATMOSPHERE_PROFILES: AtmosphereProfileMeta[] = [
     nameKey: "atmo_space_name",
     descriptionKey: "atmo_space_desc",
     moodKey: "atmo_space_mood",
-    available: false,
+    available: true,
   },
   {
     id: "nature-calm",
@@ -29,14 +29,14 @@ export const ATMOSPHERE_PROFILES: AtmosphereProfileMeta[] = [
     nameKey: "atmo_luxury_name",
     descriptionKey: "atmo_luxury_desc",
     moodKey: "atmo_luxury_mood",
-    available: false,
+    available: true,
   },
   {
     id: "horror-gothic",
     nameKey: "atmo_gothic_name",
     descriptionKey: "atmo_gothic_desc",
     moodKey: "atmo_gothic_mood",
-    available: false,
+    available: true,
   },
 ];
 

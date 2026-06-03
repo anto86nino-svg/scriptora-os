@@ -28,6 +28,8 @@ import { BookConfig, BookProject, Chapter, Genre, Language } from "@/types/book"
 import { cn } from "@/lib/utils";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 import { toast } from "sonner";
+import { operationCreditLabel } from "@/lib/credit-economy";
+import { isDevMode } from "@/lib/dev-mode";
 import {
   analyzeManuscriptPublishingIntel,
   severityTone,
@@ -674,6 +676,7 @@ export function ManuscriptAnalyzerDialog({
 
   const wordCount = useMemo(() => countWords(rawText), [rawText]);
   const canAnalyze = wordCount >= MIN_ANALYSIS_WORDS && !reading && !analyzing && !saving;
+  const devCreditMode = isDevMode();
 
   const publishingIntel = useMemo((): ManuscriptPublishingIntel | null => {
     if (!analysis) return null;
@@ -936,6 +939,9 @@ export function ManuscriptAnalyzerDialog({
                 {t("reset")}
               </button>
             </div>
+            <p className="mt-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              Diagnostica editoriale: {operationCreditLabel("manuscript_diagnostic", devCreditMode)}
+            </p>
           </section>
 
           <section className="p-4 sm:p-5">

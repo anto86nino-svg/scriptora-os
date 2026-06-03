@@ -26,6 +26,121 @@
     linear-gradient(180deg, #060810 0%, #0a0c16 46%, #040508 100%);
 }
 
+[data-atmosphere-profile="horror-gothic"] {
+  --primary: 354 58% 48%;
+  --ring: 354 58% 48%;
+  --accent: 8 66% 46%;
+  --scriptora-glass: rgba(11, 8, 10, 0.66);
+  --scriptora-glass-strong: rgba(8, 7, 9, 0.88);
+  --scriptora-glass-border: rgba(255, 255, 255, 0.08);
+  --scriptora-ios-shadow:
+    0 18px 58px rgba(0, 0, 0, 0.44),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  --scriptora-app-bg:
+    linear-gradient(rgba(6, 5, 7, 0.94), rgba(8, 5, 7, 0.98)),
+    radial-gradient(ellipse 56% 34% at 12% 0%, rgba(122, 18, 28, 0.16), transparent 62%),
+    linear-gradient(180deg, #060507 0%, #10070a 46%, #030304 100%);
+}
+
+[data-atmosphere-profile="dark-luxury"] {
+  --primary: 42 62% 55%;
+  --ring: 42 62% 55%;
+  --accent: 42 72% 50%;
+  --scriptora-glass: rgba(13, 8, 14, 0.66);
+  --scriptora-glass-strong: rgba(10, 7, 12, 0.88);
+  --scriptora-glass-border: rgba(194, 154, 79, 0.16);
+  --scriptora-ios-shadow:
+    0 18px 58px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --scriptora-app-bg:
+    linear-gradient(rgba(8, 5, 10, 0.94), rgba(7, 5, 8, 0.98)),
+    radial-gradient(ellipse 54% 34% at 82% -4%, rgba(194, 154, 79, 0.14), transparent 62%),
+    linear-gradient(180deg, #070507 0%, #150b14 48%, #050305 100%);
+}
+
+[data-atmosphere-profile="space-scifi"] {
+  --primary: 190 74% 52%;
+  --ring: 190 74% 52%;
+  --accent: 166 68% 48%;
+  --scriptora-glass: rgba(4, 12, 20, 0.68);
+  --scriptora-glass-strong: rgba(3, 10, 18, 0.88);
+  --scriptora-glass-border: rgba(125, 211, 252, 0.14);
+  --scriptora-ios-shadow:
+    0 18px 58px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --scriptora-app-bg:
+    linear-gradient(rgba(3, 8, 15, 0.94), rgba(2, 6, 14, 0.98)),
+    radial-gradient(ellipse 50% 32% at 80% 0%, rgba(56, 189, 248, 0.16), transparent 60%),
+    linear-gradient(180deg, #020712 0%, #06121f 50%, #010409 100%);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-ios-screen,
+[data-atmosphere-profile="dark-luxury"] .scriptora-ios-screen,
+[data-atmosphere-profile="space-scifi"] .scriptora-ios-screen {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.014) 0%, transparent 30%),
+    var(--scriptora-app-bg);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-ios-screen::before,
+[data-atmosphere-profile="dark-luxury"] .scriptora-ios-screen::before,
+[data-atmosphere-profile="space-scifi"] .scriptora-ios-screen::before {
+  background-image: var(--atmosphere-realm-overlay), var(--atmosphere-realm-image);
+  background-size: cover;
+  background-position: center center;
+  opacity: 0.58;
+  visibility: visible;
+}
+
+[data-atmosphere-profile="horror-gothic"] .ios-panel,
+[data-atmosphere-profile="horror-gothic"] .ios-glass-soft,
+[data-atmosphere-profile="horror-gothic"] .scriptora-os-folder,
+[data-atmosphere-profile="horror-gothic"] .scriptora-modal-panel,
+[data-atmosphere-profile="dark-luxury"] .ios-panel,
+[data-atmosphere-profile="dark-luxury"] .ios-glass-soft,
+[data-atmosphere-profile="dark-luxury"] .scriptora-os-folder,
+[data-atmosphere-profile="dark-luxury"] .scriptora-modal-panel,
+[data-atmosphere-profile="space-scifi"] .ios-panel,
+[data-atmosphere-profile="space-scifi"] .ios-glass-soft,
+[data-atmosphere-profile="space-scifi"] .scriptora-os-folder,
+[data-atmosphere-profile="space-scifi"] .scriptora-modal-panel {
+  border-color: var(--scriptora-glass-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012)),
+    var(--scriptora-glass-strong);
+  box-shadow: var(--scriptora-ios-shadow);
+}
+
+[data-atmosphere-profile="horror-gothic"] [data-atmosphere-zone="manuscript-core"] {
+  background:
+    linear-gradient(120deg, rgba(18, 7, 10, 0.96), rgba(31, 8, 13, 0.84)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 54px);
+}
+
+[data-atmosphere-profile="dark-luxury"] [data-atmosphere-zone="manuscript-core"] {
+  background:
+    linear-gradient(120deg, rgba(11, 7, 12, 0.96), rgba(28, 14, 25, 0.88)),
+    linear-gradient(90deg, rgba(194, 154, 79, 0.1), transparent 42%);
+}
+
+[data-atmosphere-profile="space-scifi"] [data-atmosphere-zone="manuscript-core"] {
+  background:
+    linear-gradient(120deg, rgba(2, 9, 18, 0.96), rgba(5, 22, 34, 0.86)),
+    repeating-linear-gradient(0deg, rgba(125, 211, 252, 0.055) 0 1px, transparent 1px 42px);
+}
+
+[data-atmosphere-profile="horror-gothic"] [data-atmosphere-zone="book-object"] {
+  background: linear-gradient(145deg, #14070a, #2a0b10 58%, #070506);
+}
+
+[data-atmosphere-profile="dark-luxury"] [data-atmosphere-zone="book-object"] {
+  background: linear-gradient(145deg, #0b070d, #291526 58%, #090506);
+}
+
+[data-atmosphere-profile="space-scifi"] [data-atmosphere-zone="book-object"] {
+  background: linear-gradient(145deg, #020b13, #07304a 58%, #010509);
+}
+
 /* ── Ambient shell — felt more than seen ── */
 [data-atmosphere-profile="fantasy-realm"] .scriptora-ios-screen {
   background:

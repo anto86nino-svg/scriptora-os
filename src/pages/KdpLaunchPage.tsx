@@ -12,6 +12,8 @@ import { Separator } from "@/components/ui/separator";
 import { KdpScoreBadge } from "@/components/kdp/KdpScoreBadge";
 import { KdpTitleDomination } from "@/components/kdp/KdpTitleDomination";
 import { fetchPlan, type PlanTier } from "@/lib/plan";
+import { operationCreditLabel } from "@/lib/credit-economy";
+import { isDevMode } from "@/lib/dev-mode";
 import {
   analyzeMarket, generateTitleVariants, kdpPackaging, predictSuccess,
   type MarketAnalysis, type TitleVariants, type KDPPackaging, type SuccessPrediction,
@@ -74,6 +76,7 @@ export default function KdpLaunchPage() {
   const [chosenTitle, setChosenTitle] = useState<string>("");
   const [chosenSubtitle, setChosenSubtitle] = useState<string>("");
   const italianUi = language.toLowerCase().includes("ital");
+  const devCreditMode = isDevMode();
   const stepLabels: Record<Step, string> = italianUi
     ? { idea: "idea", market: "mercato", title: "titoli", packaging: "packaging", predict: "previsione" }
     : { idea: "idea", market: "market", title: "title", packaging: "packaging", predict: "predict" };
@@ -214,6 +217,15 @@ export default function KdpLaunchPage() {
           ))}
         </div>
 
+        <section className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-xs text-emerald-50/82">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-semibold">{devCreditMode ? "SIMULAZIONE DEV" : "Credit economy"}</span>
+            <span>
+              Market {operationCreditLabel("kdp_market", devCreditMode)} · Titoli {operationCreditLabel("kdp_titles", devCreditMode)} · Predict {operationCreditLabel("kdp_prediction", devCreditMode)}
+            </span>
+          </div>
+        </section>
+
         {/* STEP 1 — Idea */}
         <Card>
           <CardHeader>
@@ -242,7 +254,7 @@ export default function KdpLaunchPage() {
             <div className="flex justify-end">
               <Button onClick={runMarket} disabled={loading || !idea.trim()}>
                 {loading && step === "idea" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <TrendingUp className="h-4 w-4 mr-2" />}
-                Analizza mercato
+                Analizza mercato · {operationCreditLabel("kdp_market", devCreditMode)}
               </Button>
             </div>
           </CardContent>
@@ -306,7 +318,7 @@ export default function KdpLaunchPage() {
               <div className="flex justify-end">
                 <Button onClick={runTitles} disabled={loading}>
                   {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
-                  Genera titoli vincenti
+                  Genera titoli · {operationCreditLabel("kdp_titles", devCreditMode)}
                 </Button>
               </div>
             </CardContent>
@@ -348,7 +360,7 @@ export default function KdpLaunchPage() {
               <div className="flex justify-end">
                 <Button onClick={runPackaging} disabled={loading || !chosenTitle}>
                   {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Rocket className="h-4 w-4 mr-2" />}
-                  Crea packaging KDP
+                  Crea packaging · {operationCreditLabel("kdp_packaging", devCreditMode)}
                 </Button>
               </div>
             </CardContent>
@@ -406,7 +418,7 @@ export default function KdpLaunchPage() {
               <div className="flex justify-end">
                 <Button onClick={runPredict} disabled={loading}>
                   {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trophy className="h-4 w-4 mr-2" />}
-                  Calcola probabilità bestseller
+                  Predict · {operationCreditLabel("kdp_prediction", devCreditMode)}
                 </Button>
               </div>
             </CardContent>

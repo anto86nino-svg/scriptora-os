@@ -6,6 +6,8 @@ import { resolveChapterTitle } from "@/lib/chapter-titles";
 import { Progress } from "@/components/ui/progress";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { operationCreditLabel } from "@/lib/credit-economy";
+import { isDevMode } from "@/lib/dev-mode";
 import {
   EDITORIAL_CHECKLIST,
   EDITORIAL_PHASE_LABELS,
@@ -53,6 +55,7 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
 
   const paragraphs = useMemo(() => splitManuscriptParagraphs(displayedText), [displayedText]);
   const isStreamingDisplay = hasLiveContent && displayedText.length < liveContent.length;
+  const devCreditMode = isDevMode();
   const statusMessage = editorialStatusMessage(
     hasLiveContent,
     sanitizePlaceholderText(outline?.summary) || "",
@@ -80,6 +83,9 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
             Scriptora sta costruendo il capitolo
           </p>
           <p className="mt-1 text-sm font-medium text-white/88">{phaseLabel}</p>
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-100/70">
+            {operationCreditLabel("chapter_generation", devCreditMode)}
+          </p>
         </div>
         <div className="scriptora-generation-actions shrink-0">
           <span className="scriptora-generation-percent">{realPct}%</span>
@@ -181,7 +187,7 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
       <div className="scriptora-generation-meter">
         <div className="flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.16em] text-white/45">
           <span>{chunkProgress ? formatWordProgress(currentWords, targetWords) : "Preparazione in corso"}</span>
-          <span>{phaseLabel}</span>
+          <span>{operationCreditLabel("chapter_generation", devCreditMode)}</span>
         </div>
         <Progress value={realPct} className="mt-2 h-2 bg-white/10" />
       </div>
