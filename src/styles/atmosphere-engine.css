@@ -983,6 +983,279 @@
     rgba(0, 0, 0, 0.28) !important;
 }
 
+/* ── Horror Gothic Room V2: AAA spatial composition, UI embedded in furniture ── */
+[data-atmosphere-profile="horror-gothic"] .scriptora-dashboard-book-core {
+  overflow: visible;
+  padding-block: clamp(1.25rem, 3vw, 2.75rem) !important;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-dashboard-book-core::before,
+[data-atmosphere-profile="horror-gothic"] .scriptora-dashboard-book-core::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-dashboard-book-core::before {
+  inset: -26px -18px auto;
+  height: 46%;
+  border-radius: 42px 42px 18px 18px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035), transparent 12% 88%, rgba(255, 255, 255, 0.025)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.028) 0 1px, transparent 1px 92px),
+    linear-gradient(180deg, rgba(18, 12, 12, 0.62), rgba(4, 4, 5, 0.08));
+  mask-image: linear-gradient(180deg, #000 0 72%, transparent 100%);
+  opacity: 0.86;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-dashboard-book-core::after {
+  left: 4%;
+  right: 4%;
+  bottom: -34px;
+  height: 110px;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 36% 60% at 24% 22%, rgba(128, 22, 26, 0.22), transparent 70%),
+    radial-gradient(ellipse 78% 62% at 44% 30%, rgba(0, 0, 0, 0.82), transparent 74%);
+  filter: blur(12px);
+  opacity: 0.8;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-manuscript-command-surface {
+  position: relative;
+  border-radius: 28px;
+  padding: clamp(0.75rem, 1.8vw, 1.15rem);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.032), transparent 28%),
+    linear-gradient(180deg, rgba(7, 6, 7, 0.5), rgba(4, 4, 5, 0.26));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.28);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-manuscript-command-surface::before {
+  content: "";
+  position: absolute;
+  inset: auto 4% -14px 4%;
+  height: 38px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(ellipse 70% 64% at 50% 30%, rgba(0, 0, 0, 0.56), transparent 72%);
+  filter: blur(7px);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-book-instrument-strip {
+  position: relative;
+  border-radius: 22px;
+  padding: 0.35rem;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03), transparent 34%, rgba(160, 18, 28, 0.04), transparent 72%),
+    rgba(0, 0, 0, 0.18);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-book-instrument {
+  border-radius: 14px !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01)),
+    rgba(0, 0, 0, 0.28) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 10px 24px rgba(0, 0, 0, 0.2);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-book-instrument:nth-child(1) {
+  transform: rotate(-0.35deg);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-book-instrument:nth-child(2) {
+  transform: translateY(2px);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-book-instrument:nth-child(3) {
+  transform: rotate(0.35deg);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-book-progress {
+  height: 3px !important;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.035),
+    0 10px 22px rgba(0, 0, 0, 0.24);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-book-progress > div {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.62), rgba(160, 18, 28, 0.66), rgba(255, 210, 148, 0.5)) !important;
+  box-shadow: 0 0 18px rgba(160, 18, 28, 0.22);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-book-primary-actions,
+[data-atmosphere-profile="horror-gothic"] .scriptora-book-secondary-actions {
+  position: relative;
+  border-radius: 22px;
+  padding: 0.35rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent),
+    rgba(0, 0, 0, 0.14);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-book-primary-actions button,
+[data-atmosphere-profile="horror-gothic"] .scriptora-book-secondary-actions button {
+  border-radius: 14px !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.018)),
+    rgba(5, 5, 6, 0.62) !important;
+  color: rgba(255, 255, 255, 0.86) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 12px 30px rgba(0, 0, 0, 0.24) !important;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-book-primary-actions button:first-child {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(215, 208, 196, 0.72)),
+    rgba(255, 255, 255, 0.78) !important;
+  color: rgba(10, 8, 8, 0.96) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 20px 46px rgba(0, 0, 0, 0.32),
+    0 0 42px rgba(255, 230, 190, 0.12) !important;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-orbit {
+  position: relative;
+  margin-top: clamp(0.75rem, 3vw, 2.4rem);
+  padding: clamp(0.4rem, 1.6vw, 1rem);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-orbit::before {
+  content: "";
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  top: -28px;
+  height: 72px;
+  pointer-events: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 52% 54% at 50% 20%, rgba(0, 0, 0, 0.52), transparent 76%),
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.035), transparent);
+  filter: blur(6px);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-orbit > .grid {
+  gap: clamp(0.7rem, 1.6vw, 1.15rem);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-os-folder {
+  overflow: visible;
+  border-color: transparent;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), transparent 22%),
+    rgba(5, 5, 6, 0.28) !important;
+  backdrop-filter: blur(10px);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-os-folder > .scriptora-room-trigger {
+  border-radius: 18px;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.046), transparent 30%),
+    linear-gradient(180deg, rgba(9, 7, 8, 0.84), rgba(3, 3, 4, 0.68));
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-os-folder > .scriptora-room-trigger::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 10px;
+  height: 42px;
+  pointer-events: none;
+  border-radius: 18px 18px 8px 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), transparent 48%),
+    rgba(0, 0, 0, 0.22);
+  opacity: 0.8;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-os-folder > .scriptora-room-trigger::after {
+  content: "";
+  position: absolute;
+  left: 16%;
+  right: 16%;
+  bottom: -18px;
+  height: 30px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(ellipse 70% 64% at 50% 20%, rgba(0, 0, 0, 0.5), transparent 70%);
+  filter: blur(7px);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-os-folder.is-open > .scriptora-room-trigger::after {
+  opacity: 0.32;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-room-grid {
+  margin-top: 0.35rem;
+  border: 0 !important;
+  border-radius: 0 0 22px 22px;
+  padding: clamp(0.75rem, 1.5vw, 1rem) !important;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module {
+  overflow: visible;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none;
+  padding: 0.85rem 0.85rem 3.15rem !important;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module::before {
+  inset: auto 4px 0 4px;
+  height: 56px;
+  border-radius: 15px 15px 7px 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 38%),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035), transparent 20%, rgba(160, 18, 28, 0.06), transparent 78%),
+    rgba(0, 0, 0, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 16px 30px rgba(0, 0, 0, 0.28);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module::after {
+  inset: auto 10px 12px 10px;
+  height: 28px;
+  border-radius: 10px;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module:hover {
+  transform: translateY(-3px);
+  box-shadow: none;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module > div,
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module > span:not(.scriptora-module-object-marker) {
+  position: relative;
+  z-index: 2;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module .ios-icon {
+  transform: translateY(-2px);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-module-object-marker {
+  bottom: 18px;
+  right: 18px;
+  z-index: 2;
+}
+
 @keyframes atmo-horror-room-breathe {
   0%, 100% {
     opacity: 0.62;
@@ -1336,6 +1609,58 @@
       0 18px 56px rgba(0, 0, 0, 0.54),
       0 0 38px rgba(126, 12, 20, 0.2),
       inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-dashboard-book-core {
+    overflow: hidden;
+    border-radius: 26px;
+    padding-block: 1rem !important;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-dashboard-book-core::before {
+    opacity: 0.42;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-dashboard-book-core::after {
+    bottom: -42px;
+    opacity: 0.54;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-manuscript-command-surface {
+    border-radius: 20px;
+    padding: 0.65rem;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-book-instrument-strip,
+  [data-atmosphere-profile="horror-gothic"] .scriptora-book-primary-actions,
+  [data-atmosphere-profile="horror-gothic"] .scriptora-book-secondary-actions {
+    padding: 0;
+    background: transparent;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-book-instrument {
+    transform: none !important;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-world-orbit {
+    margin-top: 0.75rem;
+    padding: 0;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-os-folder:not(.is-open) {
+    transform: none !important;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-os-folder {
+    overflow: hidden;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-os-folder > .scriptora-room-trigger::after {
+    display: none;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-world-module {
+    padding-bottom: 2.5rem !important;
   }
 }
 

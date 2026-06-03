@@ -803,7 +803,7 @@ const dashboardWidgets = [
           </div>
         </div>
 
-        <div className="min-w-0 space-y-4">
+        <div className="scriptora-manuscript-command-surface min-w-0 space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="scriptora-world-place-label text-[10px] font-semibold uppercase tracking-[0.18em] text-white/42">{worldScene.label}</p>
@@ -823,32 +823,32 @@ const dashboardWidgets = [
             </div>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-3">
-            <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-3 py-3">
+          <div className="scriptora-book-instrument-strip grid gap-2 sm:grid-cols-3">
+            <div className="scriptora-book-instrument rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-3 py-3">
               <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-emerald-100/55">Crediti disponibili</p>
               <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-50">{creditBalanceLabel}</p>
               <p className="mt-0.5 text-[10px] text-emerald-100/58">Uso progetto: {creditUsedLabel}</p>
             </div>
-            <div className="rounded-2xl border border-sky-300/20 bg-sky-300/10 px-3 py-3">
+            <div className="scriptora-book-instrument rounded-2xl border border-sky-300/20 bg-sky-300/10 px-3 py-3">
               <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-sky-100/55">Consumo oggi</p>
               <p className="mt-1 text-lg font-semibold tabular-nums text-sky-50">{formatCredits(todayCreditEstimate)}</p>
               <p className="mt-0.5 text-[10px] text-sky-100/58">Stimato da attivita libro</p>
             </div>
-            <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 px-3 py-3">
+            <div className="scriptora-book-instrument rounded-2xl border border-amber-300/20 bg-amber-300/10 px-3 py-3">
               <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-amber-100/55">Piano attivo</p>
               <p className="mt-1 text-lg font-semibold text-amber-50">{planDisplayLabel}</p>
               <p className="mt-0.5 text-[10px] text-amber-100/58">{devOn ? "Non wallet reale" : "Policy corrente"}</p>
             </div>
           </div>
 
-          <div className="h-2 overflow-hidden rounded-full bg-white/10">
+          <div className="scriptora-book-progress h-2 overflow-hidden rounded-full bg-white/10">
             <div
               className="h-full rounded-full bg-gradient-to-r from-sky-300 via-emerald-300 to-amber-200"
               style={{ width: `${lastProjectProgress}%` }}
             />
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="scriptora-book-primary-actions grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <button
               type="button"
               onClick={openActiveManuscript}
@@ -884,7 +884,7 @@ const dashboardWidgets = [
             </button>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="scriptora-book-secondary-actions grid gap-2 sm:grid-cols-3">
             <button
               type="button"
               onClick={guardPlanFeature("cover_studio_template", () => setShowCoverStudio(true))}
