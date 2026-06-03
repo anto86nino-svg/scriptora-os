@@ -998,7 +998,11 @@ const dashboardWidgets = [
   };
 
   return (
-    <div className="scriptora-feature-page scriptora-world-shell relative" data-atmosphere-world={profileId}>
+    <div
+      className="scriptora-feature-page scriptora-world-shell relative"
+      data-atmosphere-world={profileId}
+      data-atmosphere-profile={profileId}
+    >
       <header className="scriptora-world-topbar z-20 shrink-0 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
