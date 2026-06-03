@@ -43,6 +43,7 @@ import {
   stripOpenQuery,
 } from "@/lib/scriptora-requirement-actions";
 import { ScriptoraPremiumState } from "@/components/ScriptoraPremiumState";
+import { clearScriptoraLocalSessionPointers } from "@/lib/boot-recovery";
 
 const NewBookDialog = lazy(() => import("@/components/NewBookDialog").then((m) => ({ default: m.NewBookDialog })));
 const CoverGenerator = lazy(() => import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })));
@@ -70,6 +71,7 @@ const Index = () => {
   const { user, signOut } = useAuth();
   const isMobileLayout = useIsMobile();
   const [projects, setProjects] = useState<BookProject[]>([]);
+  const [workspaceLoadError, setWorkspaceLoadError] = useState<string | null>(null);
   const [showNewBook, setShowNewBook] = useState(false);
   const [reconfigureMode, setReconfigureMode] = useState(false);
   const [configBlockedIssues, setConfigBlockedIssues] = useState<ProjectConfigIssue[] | null>(null);
@@ -88,8 +90,17 @@ const Index = () => {
     const isDesktop =
       typeof window !== "undefined" && window.matchMedia("(min-width: 1024px)").matches;
     if (!isDesktop) return false;
-    const saved = localStorage.getItem("scriptora-sidebar-open");
-    if (saved !== null) return JSON.parse(saved) as boolean;
+    try {
+      const saved = localStorage.getItem("scriptora-sidebar-open");
+      if (saved !== null) return JSON.parse(saved) as boolean;
+    } catch (error) {
+      console.error("[storage parse failed] sidebar preference failed", error);
+      try {
+        localStorage.removeItem("scriptora-sidebar-open");
+      } catch {
+        /* noop */
+      }
+    }
     return true;
   });
   const [coverDataUrl, setCoverDataUrl] = useState<string | undefined>();
@@ -106,7 +117,13 @@ const Index = () => {
     try {
       const raw = sessionStorage.getItem(WRITING_ROOM_PROJECT_KEY);
       return raw ? JSON.parse(raw) as BookProject : null;
-    } catch {
+    } catch (error) {
+      console.error("[storage parse failed] recovered writing-room project failed", error);
+      try {
+        sessionStorage.removeItem(WRITING_ROOM_PROJECT_KEY);
+      } catch {
+        /* noop */
+      }
       return null;
     }
   });
@@ -431,14 +448,32 @@ const Index = () => {
 
   useEffect(() => {
     const init = async () => {
-      const loaded = await loadRemoteProjects((fresh) => setProjects(fresh));
-      setProjects(loaded);
+      setWorkspaceLoadError(null);
+      let loaded: BookProject[] = [];
+      try {
+        loaded = await loadRemoteProjects((fresh) => setProjects(fresh));
+        setProjects(loaded);
+      } catch (error) {
+        console.error("[workspace init failed] Project bootstrap failed", error);
+        setProjects([]);
+        setWorkspaceLoadError("Non siamo riusciti a caricare i progetti. Puoi creare un nuovo libro o tornare alla dashboard.");
+      }
 
-      const openSection = sessionStorage.getItem("nexora-open-section");
-      if (openSection) sessionStorage.removeItem("nexora-open-section");
+      let openSection: string | null = null;
+      try {
+        openSection = sessionStorage.getItem("nexora-open-section");
+        if (openSection) sessionStorage.removeItem("nexora-open-section");
+      } catch (error) {
+        console.error("[storage parse failed] open section restore failed", error);
+      }
 
       const applySection = () => {
-        const persistedSection = sessionStorage.getItem(WRITING_ROOM_SECTION_KEY);
+        let persistedSection: string | null = null;
+        try {
+          persistedSection = sessionStorage.getItem(WRITING_ROOM_SECTION_KEY);
+        } catch (error) {
+          console.error("[storage parse failed] persisted writing-room section failed", error);
+        }
         const sectionToApply = openSection || persistedSection;
         if (sectionToApply && sectionToApply !== openSection) {
           console.info("[writing-room] restoring persisted activeSection", { activeSection: sectionToApply });
@@ -454,7 +489,12 @@ const Index = () => {
         }
       };
 
-      const openId = sessionStorage.getItem("nexora-open-project");
+      let openId: string | null = null;
+      try {
+        openId = sessionStorage.getItem("nexora-open-project");
+      } catch (error) {
+        console.error("[storage parse failed] open project restore failed", error);
+      }
       if (openId) {
         sessionStorage.removeItem("nexora-open-project");
         const target = loaded.find(p => p.id === openId);
@@ -468,9 +508,15 @@ const Index = () => {
           applySection();
           return;
         }
+        setWorkspaceLoadError("Il progetto salvato in sessione non esiste più. Scriptora ha aperto una stanza vuota sicura.");
       }
 
-      const newBookJson = sessionStorage.getItem("nexora-new-book");
+      let newBookJson: string | null = null;
+      try {
+        newBookJson = sessionStorage.getItem("nexora-new-book");
+      } catch (error) {
+        console.error("[storage parse failed] new book session read failed", error);
+      }
       if (newBookJson) {
         sessionStorage.removeItem("nexora-new-book");
         try {
@@ -483,7 +529,8 @@ const Index = () => {
           }
           setTimeout(refreshProjects, 500);
           return;
-        } catch {
+        } catch (error) {
+          console.error("[storage parse failed] new book session payload failed", error);
           toast.error(t("toast_gen_failed"));
         }
       }
@@ -499,13 +546,23 @@ const Index = () => {
           setRecoveredProject(last);
           sessionStorage.setItem(WRITING_ROOM_PROJECT_KEY, JSON.stringify(last));
           applySection();
+        } else {
+          setLastProjectId("");
         }
       }
     };
     init();
   }, []);
 
-  const refreshProjects = async () => setProjects(await loadRemoteProjects());
+  const refreshProjects = async () => {
+    try {
+      setProjects(await loadRemoteProjects());
+      setWorkspaceLoadError(null);
+    } catch (error) {
+      console.error("[workspace init failed] Project refresh failed", error);
+      setWorkspaceLoadError("Aggiornamento progetti non riuscito. La stanza resta utilizzabile in modalità sicura.");
+    }
+  };
 
   const handleSelectProject = (id: string) => {
     const p = projects.find(p => p.id === id);
@@ -1067,6 +1124,31 @@ const Index = () => {
                 onPrimary={openLaunchChooserGuarded}
                 onSecondary={() => navigate("/dashboard")}
               >
+                {workspaceLoadError && (
+                  <div className="rounded-xl border border-amber-300/25 bg-amber-300/10 p-3 text-left text-amber-50">
+                    <p className="text-xs font-semibold">Workspace sicuro attivo</p>
+                    <p className="mt-1 text-[11px] leading-relaxed text-amber-100/85">{workspaceLoadError}</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={refreshProjects}
+                        className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-white/15"
+                      >
+                        Riprova
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clearScriptoraLocalSessionPointers();
+                          refreshProjects();
+                        }}
+                        className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-white/15"
+                      >
+                        Pulisci sessione locale
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {projects.length > 0 && (
                   <div className="rounded-xl border border-white/10 bg-black/25 p-3 backdrop-blur-md">
                     <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/55">

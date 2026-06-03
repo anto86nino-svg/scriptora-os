@@ -196,14 +196,34 @@ export function usePlan(): { plan: PlanTier; isDev: boolean; loading: boolean; r
         window.removeEventListener("scriptora-dev-simulation-change", sync);
       };
     }
-    fetchPlan().then((p) => {
-      if (!cancelled) { setPlanState(p); setLoading(false); }
-    });
+    setLoading(true);
+    const timeoutId = window.setTimeout(() => {
+      if (cancelled) return;
+      console.error("[wallet bootstrap failed] Plan loading timed out; falling back to free");
+      setPlanState("free");
+      setLoading(false);
+    }, 8_000);
+
+    fetchPlan()
+      .then((p) => {
+        if (!cancelled) setPlanState(p);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.error("[wallet bootstrap failed] Plan loading failed; falling back to free", error);
+          setPlanState("free");
+        }
+      })
+      .finally(() => {
+        window.clearTimeout(timeoutId);
+        if (!cancelled) setLoading(false);
+      });
     const sync = () => setTick((t) => t + 1);
     window.addEventListener("nexora-plan-change", sync);
     window.addEventListener("nexora-dev-mode-change", sync);
     return () => {
       cancelled = true;
+      window.clearTimeout(timeoutId);
       window.removeEventListener("nexora-plan-change", sync);
       window.removeEventListener("nexora-dev-mode-change", sync);
     };

@@ -70,6 +70,7 @@ import { deriveActiveWorkspaceTool } from "@/lib/immersive/workspace-tool-mode";
 import { ensureFirstVisitGuidedFlow, shouldShowBetaOnboarding } from "@/lib/first-visit-onboarding";
 import { setProjectCoverDataUrl } from "@/lib/cover-session";
 import { getAuthProfile } from "@/lib/auth-profile";
+import { clearScriptoraLocalSessionPointers } from "@/lib/boot-recovery";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -188,6 +189,7 @@ export default function Home() {
   const [showToolbox, setShowToolbox] = useState(false);
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [projectsReady, setProjectsReady] = useState(false);
+  const [projectLoadError, setProjectLoadError] = useState<string | null>(null);
   const [betaOnboardingVisible, setBetaOnboardingVisible] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const currentLang = useUILanguage();
@@ -286,31 +288,50 @@ export default function Home() {
     { value: "German", label: "🇩🇪 Deutsch" },
   ];
 
+  const loadDashboardProjects = useCallback(async () => {
+    setProjectLoadError(null);
+    try {
+      const fresh = await loadProjects((items) => setProjects(items));
+      setProjects(fresh);
+      const lastId = getLastProjectId();
+      if (lastId && !fresh.some((project) => project.id === lastId)) {
+        setLastProjectId("");
+      }
+    } catch (error) {
+      console.error("[project bootstrap failed] Dashboard projects failed to load", error);
+      setProjects([]);
+      setProjectLoadError("Non siamo riusciti a caricare i progetti. Scriptora resta aperta in modalità dashboard vuota.");
+    } finally {
+      setProjectsReady(true);
+    }
+  }, []);
+
   useEffect(() => {
     // Optimistic load: shows local projects immediately, refreshes from server
     // in the background. Eliminates the visible "frozen" gap on first paint.
-    loadProjects((fresh) => setProjects(fresh)).then((fresh) => {
-      setProjects(fresh);
-      setProjectsReady(true);
-    });
+    loadDashboardProjects();
     try {
       const raw = sessionStorage.getItem("nexora-active-run");
       if (raw) setActiveRun(JSON.parse(raw));
-    } catch { /* noop */ }
+    } catch (error) {
+      console.error("[storage parse failed] active run restore failed", error);
+      try {
+        sessionStorage.removeItem("nexora-active-run");
+      } catch {
+        /* noop */
+      }
+    }
 
     // Re-load when DEV MODE is toggled — projects are scoped per environment.
     const onDevChange = () => {
       setProjects([]);
       setProjectsReady(false);
       setActiveRun(null);
-      loadProjects((fresh) => setProjects(fresh)).then((fresh) => {
-        setProjects(fresh);
-        setProjectsReady(true);
-      });
+      loadDashboardProjects();
     };
     window.addEventListener("nexora-dev-mode-change", onDevChange);
     return () => window.removeEventListener("nexora-dev-mode-change", onDevChange);
-  }, []);
+  }, [loadDashboardProjects]);
 
   useEffect(() => {
     if (!projectsReady) return;
@@ -639,10 +660,7 @@ export default function Home() {
     setProjects((prev) => prev.filter((p) => p.id !== id));
     deleteProjectAsync(id).catch(() => {
       // On failure, refetch to recover state.
-      loadProjects((fresh) => setProjects(fresh)).then((fresh) => {
-      setProjects(fresh);
-      setProjectsReady(true);
-    });
+      loadDashboardProjects();
     });
   };
 
@@ -1028,6 +1046,36 @@ export default function Home() {
         id="dashboard-projects"
         className={`scriptora-feature-scroll scriptora-gateway-scroll relative mx-auto w-full max-w-3xl px-4 pb-8 pt-4 sm:px-6 sm:pt-6 lg:px-8${activeWorkspaceTool ? " scriptora-dashboard-tool-active" : ""}`}
       >
+        {projectLoadError && (
+          <div className="mb-4 rounded-2xl border border-amber-300/25 bg-amber-300/10 p-4 text-sm text-amber-50 shadow-lg shadow-black/10 backdrop-blur-xl">
+            <p className="font-semibold">Dashboard sicura attiva</p>
+            <p className="mt-1 text-xs leading-relaxed text-amber-100/85">{projectLoadError}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setProjectsReady(false);
+                  loadDashboardProjects();
+                }}
+                className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-white/15"
+              >
+                Riprova
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  clearScriptoraLocalSessionPointers();
+                  setProjectsReady(false);
+                  loadDashboardProjects();
+                }}
+                className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-white/15"
+              >
+                Pulisci sessione locale
+              </button>
+            </div>
+          </div>
+        )}
+
         <ScriptoraGatewayOS
           gateway={gatewaySnapshot}
           activeTool={activeWorkspaceTool}

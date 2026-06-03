@@ -23,10 +23,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+    const sessionTimeout = window.setTimeout(() => {
+      if (!active) return;
+      console.error("[auth bootstrap failed] Supabase session recovery timed out");
+      setLoading(false);
+    }, 8_000);
+
     // Listener FIRST (per evitare race condition), poi getSession
     const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
+      if (!active) return;
       setSession(newSession);
       setUser(newSession?.user ?? null);
+      setLoading(false);
       if (newSession?.user) {
         probeSupabaseCapabilities(true).catch(() => {});
         if (event === "SIGNED_IN") {
@@ -59,24 +68,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session: existing } }) => {
-      setSession(existing);
-      setUser(existing?.user ?? null);
-      setLoading(false);
-      if (isDevMode()) {
-        logAuthDebug("useAuth.getSession", { session: summarizeSession(existing) });
-      }
-      if (existing?.user) {
-        if (isOwnerEmail(existing.user.email)) {
-          activateOwnerAccess();
-          setDevPlanOverride("premium");
-        } else {
-          clearOwnerSession();
+    supabase.auth.getSession()
+      .then(({ data: { session: existing } }) => {
+        if (!active) return;
+        setSession(existing);
+        setUser(existing?.user ?? null);
+        if (isDevMode()) {
+          logAuthDebug("useAuth.getSession", { session: summarizeSession(existing) });
         }
-      }
-    });
+        if (existing?.user) {
+          if (isOwnerEmail(existing.user.email)) {
+            activateOwnerAccess();
+            setDevPlanOverride("premium");
+          } else {
+            clearOwnerSession();
+          }
+        }
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error("[auth bootstrap failed] Supabase getSession failed", error);
+        setSession(null);
+        setUser(null);
+      })
+      .finally(() => {
+        window.clearTimeout(sessionTimeout);
+        if (active) setLoading(false);
+      });
 
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      active = false;
+      window.clearTimeout(sessionTimeout);
+      sub.subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {

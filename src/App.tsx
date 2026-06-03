@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -23,6 +23,7 @@ import { DesktopPreviewChrome } from "@/components/DesktopPreviewChrome";
 import { LivingBackgroundLayer } from "@/components/immersive/LivingBackgroundLayer";
 import { LivingAtmosphereAmbience } from "@/components/immersive/LivingAtmosphereAmbience";
 import { PremiumActivationNoticeHost } from "@/components/billing/PremiumActivationNoticeDialog";
+import { InternalLoadingGuardPanel } from "@/components/InternalLoadingGuardPanel";
 
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
 const Index = lazy(() => import("./pages/Index.tsx"));
@@ -36,9 +37,22 @@ const KeywordGoldPage = lazy(() => import("./pages/KeywordGoldPage.tsx"));
 const queryClient = new QueryClient();
 
 function RouteLoadingFallback() {
+  const [stalled, setStalled] = useState(false);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      console.error("[dashboard bootstrap failed] Route chunk loading exceeded the safe boot window");
+      setStalled(true);
+    }, 10_000);
+    return () => window.clearTimeout(id);
+  }, []);
+
   return (
-    <div className="scriptora-workspace-shell min-h-[100dvh] bg-background">
+    <div className="scriptora-workspace-shell relative min-h-[100dvh] bg-background">
       <ScriptoraPremiumState variant="loading-project" fullPage />
+      {stalled && (
+        <InternalLoadingGuardPanel details="La route dell'app o un modulo del workspace non ha completato il caricamento nei tempi previsti." />
+      )}
     </div>
   );
 }
