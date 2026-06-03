@@ -1257,7 +1257,7 @@ const dashboardWidgets = [
           )}
         </section>
 
-        <div className="hidden">
+        <div className="mb-5 sm:mb-7">
           {focusAtmosphereCard}
 
           {dashboardWidgets.map((widget) => (
