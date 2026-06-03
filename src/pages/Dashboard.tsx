@@ -133,6 +133,10 @@ export default function Home() {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const currentLang = useUILanguage();
   const { profileId, selectProfile } = useAtmosphereProfile();
+
+useEffect(() => {
+  selectProfile("horror-gothic");
+}, []);
   const { source: backgroundSource } = useBackgroundSource();
   const activeAtmosphere = ATMOSPHERE_PROFILES.find((profile) => profile.id === profileId) ?? ATMOSPHERE_PROFILES[0];
 
@@ -764,11 +768,15 @@ const dashboardWidgets = [
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(125,211,252,0.10),transparent_36%),linear-gradient(225deg,rgba(251,191,36,0.08),transparent_42%)]" />
       <div className="relative z-10 grid gap-5 lg:grid-cols-[minmax(250px,0.78fr)_minmax(0,1.55fr)] lg:items-stretch">
         <div className="flex gap-4 lg:flex-col lg:items-center lg:justify-center">
-          <div data-atmosphere-zone="book-object" className="scriptora-dashboard-book-cover relative flex min-h-[236px] w-[164px] shrink-0 flex-col justify-between overflow-hidden rounded-[24px] border border-white/15 bg-gradient-to-br from-slate-900 via-sky-950 to-slate-950 p-4 shadow-[0_24px_70px_rgba(8,47,73,0.38)] sm:min-h-[292px] sm:w-[202px] sm:p-5">
+          <div data-atmosphere-zone="book-object" className={`scriptora-dashboard-book-cover relative flex min-h-[236px] w-[164px] shrink-0 flex-col justify-between overflow-hidden rounded-[24px] border p-4 sm:min-h-[292px] sm:w-[202px] sm:p-5 ${
+  profileId === "horror-gothic"
+    ? "border-red-900/50 bg-gradient-to-br from-black via-red-950 to-black shadow-[0_0_80px_rgba(120,0,0,0.35)]"
+    : "border-white/15 bg-gradient-to-br from-slate-900 via-sky-950 to-slate-950 shadow-[0_24px_70px_rgba(8,47,73,0.38)]"
+}` }>
             <div className="absolute inset-x-0 top-0 h-20 bg-white/[0.06] blur-2xl" />
             <div className="relative z-10">
               <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-sky-100/70">Manuscript Core</p>
-              <h2 className="mt-4 line-clamp-5 text-xl font-black uppercase leading-6 text-white sm:text-2xl sm:leading-7">
+              <h2 className="mt-4 line-clamp-5 text-xl font-black uppercase leading-6 text-white sm:text-2xl sm:leading-7 drop-shadow-[0_0_18px_rgba(120,0,0,0.45)]">
                 {lastProject?.config.title || "Nuovo libro"}
               </h2>
             </div>
