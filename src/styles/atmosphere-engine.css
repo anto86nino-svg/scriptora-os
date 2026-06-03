@@ -1663,6 +1663,350 @@
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
 }
 
+/* ── Phase 4: concrete premium horror props and clean room composition ── */
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-stage {
+  overflow: hidden;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-stage::before {
+  left: 10%;
+  top: 21%;
+  width: 80px;
+  height: 160px;
+  opacity: 0.65;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-stage::after {
+  left: 13%;
+  right: 13%;
+  bottom: 13%;
+  height: 34%;
+  border-radius: 42% 42% 18px 18px;
+  background:
+    radial-gradient(ellipse 24% 26% at 16% 34%, rgba(255, 190, 105, 0.11), transparent 72%),
+    radial-gradient(ellipse 28% 24% at 84% 34%, rgba(255, 190, 105, 0.09), transparent 72%),
+    radial-gradient(ellipse 38% 32% at 50% 30%, rgba(110, 18, 24, 0.18), transparent 72%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.024) 0 1px, transparent 1px 78px),
+    linear-gradient(180deg, rgba(56, 28, 18, 0.52), rgba(7, 5, 5, 0.8));
+  box-shadow:
+    0 -20px 70px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 234, 190, 0.08),
+    inset 0 -18px 46px rgba(0, 0, 0, 0.44);
+  opacity: 0.94;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-gothic-window {
+  position: absolute;
+  left: 50%;
+  top: 2.4%;
+  width: clamp(150px, 15vw, 230px);
+  height: clamp(170px, 17vw, 270px);
+  transform: translateX(-50%);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-bottom-color: rgba(255, 255, 255, 0.05);
+  border-radius: 48% 48% 8px 8px;
+  background:
+    linear-gradient(90deg, transparent 47%, rgba(178, 197, 210, 0.12) 48% 50%, transparent 51%),
+    linear-gradient(180deg, transparent 38%, rgba(178, 197, 210, 0.09) 39% 40%, transparent 41%),
+    radial-gradient(ellipse 42% 32% at 50% 18%, rgba(112, 170, 200, 0.11), transparent 70%),
+    radial-gradient(ellipse 48% 34% at 50% 96%, rgba(120, 12, 22, 0.1), transparent 70%),
+    rgba(0, 0, 0, 0.22);
+  box-shadow:
+    0 0 90px rgba(30, 64, 80, 0.14),
+    inset 0 0 38px rgba(0, 0, 0, 0.6);
+  opacity: 0.9;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-gothic-window::before,
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-gothic-window::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-gothic-window::before {
+  background:
+    linear-gradient(68deg, transparent 0 48%, rgba(178, 197, 210, 0.08) 49% 50%, transparent 51%),
+    linear-gradient(112deg, transparent 0 48%, rgba(178, 197, 210, 0.08) 49% 50%, transparent 51%);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-gothic-window::after {
+  inset: 0;
+  background: radial-gradient(ellipse 70% 44% at 50% 100%, rgba(0, 0, 0, 0.62), transparent 72%);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-cobweb,
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-wall-crack,
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-blood-wisp,
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-candle,
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-ritual-sigil {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-cobweb {
+  width: clamp(86px, 9vw, 140px);
+  height: clamp(86px, 9vw, 140px);
+  opacity: 0.28;
+  background:
+    linear-gradient(30deg, transparent 49%, rgba(226, 214, 190, 0.32) 50%, transparent 51%),
+    linear-gradient(74deg, transparent 49%, rgba(226, 214, 190, 0.22) 50%, transparent 51%),
+    linear-gradient(118deg, transparent 49%, rgba(226, 214, 190, 0.18) 50%, transparent 51%),
+    repeating-radial-gradient(circle at 0 0, transparent 0 18px, rgba(226, 214, 190, 0.2) 19px 20px, transparent 21px 34px);
+  filter: blur(0.2px);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-cobweb-left {
+  left: 1.8%;
+  top: 5%;
+  transform: rotate(4deg);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-cobweb-right {
+  right: 1.8%;
+  top: 5%;
+  transform: scaleX(-1) rotate(4deg);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-wall-crack {
+  width: 92px;
+  height: 180px;
+  opacity: 0.2;
+  background:
+    linear-gradient(104deg, transparent 0 49%, rgba(226, 214, 190, 0.28) 50%, transparent 51%),
+    linear-gradient(36deg, transparent 0 57%, rgba(226, 214, 190, 0.18) 58%, transparent 59%),
+    linear-gradient(145deg, transparent 0 48%, rgba(226, 214, 190, 0.12) 49%, transparent 50%);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-wall-crack-left {
+  left: 18%;
+  top: 10%;
+  transform: rotate(-6deg);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-wall-crack-right {
+  right: 19%;
+  top: 13%;
+  transform: scaleX(-1) rotate(-3deg);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-blood-wisp {
+  width: 160px;
+  height: 90px;
+  opacity: 0.22;
+  background:
+    radial-gradient(ellipse 34% 16% at 34% 40%, rgba(155, 18, 30, 0.45), transparent 72%),
+    radial-gradient(ellipse 18% 10% at 70% 48%, rgba(155, 18, 30, 0.32), transparent 72%);
+  filter: blur(2px);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-blood-wisp-left {
+  left: 20%;
+  bottom: 22%;
+  transform: rotate(-7deg);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-blood-wisp-right {
+  right: 19%;
+  bottom: 22%;
+  transform: rotate(8deg);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-ritual-sigil {
+  left: 50%;
+  bottom: 31%;
+  width: clamp(260px, 24vw, 390px);
+  height: clamp(150px, 14vw, 220px);
+  transform: translateX(-50%) perspective(900px) rotateX(62deg);
+  border: 1px solid rgba(160, 18, 28, 0.3);
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse 52% 36% at 50% 50%, transparent 48%, rgba(160, 18, 28, 0.22) 49% 50%, transparent 52%),
+    conic-gradient(from 14deg, transparent 0 11%, rgba(160, 18, 28, 0.24) 12%, transparent 13% 30%, rgba(226, 214, 190, 0.12) 31%, transparent 32% 100%);
+  box-shadow:
+    0 0 42px rgba(160, 18, 28, 0.14),
+    inset 0 0 28px rgba(160, 18, 28, 0.08);
+  opacity: 0.72;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-ritual-sigil::before,
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-ritual-sigil::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-ritual-sigil::before {
+  inset: 18%;
+  border: 1px solid rgba(226, 214, 190, 0.12);
+  border-radius: 50%;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-ritual-sigil::after {
+  left: 18%;
+  right: 18%;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(160, 18, 28, 0.44), transparent);
+  transform: rotate(-18deg);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-candle {
+  bottom: 28%;
+  width: 20px;
+  height: 58px;
+  border-radius: 6px 6px 2px 2px;
+  background:
+    radial-gradient(ellipse 80% 36% at 50% 2%, rgba(255, 236, 198, 0.8), transparent 70%),
+    linear-gradient(180deg, rgba(238, 224, 198, 0.7), rgba(130, 106, 78, 0.36));
+  box-shadow:
+    0 0 34px rgba(255, 180, 88, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.38);
+  opacity: 0.8;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-candle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -24px;
+  width: 18px;
+  height: 30px;
+  transform: translateX(-50%);
+  border-radius: 50% 50% 48% 48%;
+  background:
+    radial-gradient(ellipse 35% 45% at 50% 48%, rgba(255, 255, 255, 0.92), transparent 66%),
+    radial-gradient(ellipse 65% 82% at 50% 62%, rgba(255, 174, 72, 0.72), transparent 70%);
+  filter: blur(0.4px);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-candle::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -42px;
+  width: 88px;
+  height: 88px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 164, 72, 0.16), transparent 68%);
+  filter: blur(5px);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-candle-left {
+  left: 31%;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-horror-candle-right {
+  right: 31%;
+  height: 46px;
+  opacity: 0.7;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-scene-object {
+  background:
+    radial-gradient(ellipse 44% 28% at 50% 18%, rgba(170, 28, 36, 0.2), transparent 64%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.026) 0 1px, transparent 1px 22px),
+    linear-gradient(145deg, #070506, #24100d 58%, #030303) !important;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-scene-object .absolute:first-child {
+  background:
+    radial-gradient(ellipse 46% 24% at 50% 40%, rgba(255, 206, 150, 0.16), transparent 70%),
+    radial-gradient(ellipse 50% 44% at 50% 80%, rgba(150, 18, 28, 0.18), transparent 76%) !important;
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-scene-object::before {
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.62), rgba(255, 255, 255, 0.045) 12%, transparent 24%, transparent 72%, rgba(0, 0, 0, 0.56)),
+    radial-gradient(ellipse 22% 18% at 54% 50%, rgba(160, 18, 28, 0.22), transparent 70%),
+    linear-gradient(32deg, transparent 48%, rgba(226, 214, 190, 0.12) 49%, transparent 50%),
+    linear-gradient(128deg, transparent 48%, rgba(160, 18, 28, 0.16) 49%, transparent 50%),
+    repeating-linear-gradient(0deg, transparent 0 42px, rgba(255, 255, 255, 0.026) 42px 43px);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-scene-object h2::after {
+  content: "";
+  display: block;
+  width: 72px;
+  height: 72px;
+  margin: 18px auto 0;
+  border: 1px solid rgba(160, 18, 28, 0.35);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(160, 18, 28, 0.15), transparent 64%),
+    conic-gradient(from 45deg, transparent 0 18%, rgba(226, 214, 190, 0.18) 19%, transparent 20% 48%, rgba(160, 18, 28, 0.22) 49%, transparent 50% 100%);
+  box-shadow: 0 0 30px rgba(160, 18, 28, 0.14);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-os-folder[data-atmosphere-group="writer"] > .scriptora-room-trigger::before {
+  background:
+    radial-gradient(ellipse 10% 48% at 16% 30%, rgba(255, 184, 96, 0.24), transparent 70%),
+    linear-gradient(90deg, transparent 25%, rgba(226, 214, 190, 0.11) 26%, transparent 28%),
+    repeating-linear-gradient(0deg, rgba(226, 214, 190, 0.035) 0 1px, transparent 1px 10px),
+    linear-gradient(180deg, rgba(52, 28, 18, 0.46), rgba(4, 4, 5, 0.28));
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-os-folder[data-atmosphere-group="bestseller"] > .scriptora-room-trigger::before {
+  border-radius: 999px 999px 16px 16px;
+  background:
+    radial-gradient(ellipse 34% 46% at 72% 34%, rgba(160, 18, 28, 0.18), transparent 70%),
+    radial-gradient(ellipse 24% 32% at 72% 34%, rgba(226, 214, 190, 0.12), transparent 72%),
+    linear-gradient(25deg, transparent 48%, rgba(160, 18, 28, 0.16) 49%, transparent 51%),
+    linear-gradient(150deg, transparent 42%, rgba(226, 214, 190, 0.12) 43%, transparent 45%),
+    rgba(0, 0, 0, 0.24);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-os-folder[data-atmosphere-group="system"] > .scriptora-room-trigger::before {
+  background:
+    repeating-linear-gradient(90deg, rgba(226, 214, 190, 0.08) 0 2px, transparent 2px 18px),
+    repeating-linear-gradient(0deg, transparent 0 14px, rgba(226, 214, 190, 0.035) 14px 15px),
+    linear-gradient(180deg, rgba(38, 24, 18, 0.44), rgba(4, 4, 5, 0.28));
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-os-folder[data-atmosphere-group="publishing"] > .scriptora-room-trigger::before {
+  background:
+    radial-gradient(circle at 72% 42%, rgba(150, 18, 28, 0.38), transparent 24%),
+    radial-gradient(circle at 72% 42%, rgba(226, 214, 190, 0.18), transparent 8%),
+    linear-gradient(180deg, rgba(52, 28, 18, 0.44), rgba(4, 4, 5, 0.3));
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module[data-atmosphere-form="dossier"]::before,
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module[data-atmosphere-form="archive"]::before,
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module[data-atmosphere-form="notebook"]::before {
+  background:
+    linear-gradient(8deg, rgba(226, 214, 190, 0.08), transparent 38%),
+    repeating-linear-gradient(0deg, rgba(226, 214, 190, 0.055) 0 1px, transparent 1px 12px),
+    rgba(0, 0, 0, 0.28);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module[data-atmosphere-form="seal"]::before,
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module[data-atmosphere-form="ritual"]::before {
+  background:
+    radial-gradient(circle at 72% 46%, rgba(150, 18, 28, 0.38), transparent 24%),
+    conic-gradient(from 12deg at 72% 46%, transparent 0 18%, rgba(226, 214, 190, 0.12) 19%, transparent 20% 100%),
+    rgba(0, 0, 0, 0.28);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module[data-atmosphere-form="oracle"]::before,
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module[data-atmosphere-form="signal"]::before {
+  background:
+    radial-gradient(ellipse 32% 46% at 72% 42%, rgba(226, 214, 190, 0.12), transparent 68%),
+    radial-gradient(ellipse 18% 26% at 72% 42%, rgba(150, 18, 28, 0.26), transparent 70%),
+    rgba(0, 0, 0, 0.28);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module[data-atmosphere-form="autopsy"]::before,
+[data-atmosphere-profile="horror-gothic"] .scriptora-world-module[data-atmosphere-form="scanner"]::before {
+  background:
+    linear-gradient(90deg, rgba(226, 214, 190, 0.08) 0 18%, transparent 18% 32%, rgba(160, 18, 28, 0.1) 33%, transparent 36%),
+    repeating-linear-gradient(0deg, rgba(226, 214, 190, 0.042) 0 1px, transparent 1px 10px),
+    rgba(0, 0, 0, 0.28);
+}
+
 @media (max-width: 1100px) {
   [data-atmosphere-profile="horror-gothic"] .scriptora-dashboard-book-core {
     min-height: auto;
@@ -1723,6 +2067,39 @@
       linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.008)),
       rgba(5, 5, 6, 0.68) !important;
     backdrop-filter: blur(12px);
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-gothic-window {
+    top: 2%;
+    width: 120px;
+    height: 150px;
+    opacity: 0.42;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-cobweb,
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-wall-crack,
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-blood-wisp {
+    opacity: 0.14;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-ritual-sigil {
+    bottom: 48%;
+    width: 220px;
+    height: 130px;
+    opacity: 0.34;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-candle {
+    bottom: 43%;
+    opacity: 0.42;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-candle-left {
+    left: 14%;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-candle-right {
+    right: 14%;
   }
 }
 
@@ -2079,6 +2456,42 @@
       0 18px 56px rgba(0, 0, 0, 0.54),
       0 0 38px rgba(126, 12, 20, 0.2),
       inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-gothic-window {
+    width: 94px;
+    height: 116px;
+    opacity: 0.28;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-cobweb {
+    width: 70px;
+    height: 70px;
+    opacity: 0.16;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-wall-crack,
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-blood-wisp {
+    display: none;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-ritual-sigil {
+    bottom: 56%;
+    width: 180px;
+    height: 100px;
+    opacity: 0.22;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-candle {
+    bottom: 52%;
+    width: 14px;
+    height: 38px;
+    opacity: 0.34;
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-candle::after {
+    width: 54px;
+    height: 54px;
   }
 
   [data-atmosphere-profile="horror-gothic"] .scriptora-dashboard-book-core {

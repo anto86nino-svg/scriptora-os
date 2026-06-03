@@ -16,7 +16,8 @@ import {
   FileDown, ArrowRight, Globe, Flame, Loader2, Sparkles, Wand2,
   Library, Home as HomeIcon, X, BarChart3,
   TrendingUp, LogOut, CreditCard, Download as DownloadIcon, Settings, Users,
-  CheckCircle2, NotebookPen, Fingerprint, ImagePlus, AudioLines
+  CheckCircle2, NotebookPen, Fingerprint, ImagePlus, AudioLines,
+  Eye, Feather, LockKeyhole, Skull
 } from "lucide-react";
 import { BOOK_LENGTH_CONFIG, BookConfig, BookLength, BookProject, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
@@ -769,9 +770,19 @@ const dashboardWidgets = [
     <section data-atmosphere-zone="manuscript-core" data-atmosphere-place={worldScene.label} className="scriptora-dashboard-book-core relative mb-4 overflow-hidden rounded-[32px] border border-white/15 bg-slate-950/70 p-4 shadow-[0_30px_100px_rgba(0,0,0,0.34)] ring-1 ring-white/[0.04] backdrop-blur-2xl sm:mb-6 sm:p-6 lg:p-8">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(125,211,252,0.10),transparent_36%),linear-gradient(225deg,rgba(251,191,36,0.08),transparent_42%)]" />
       <div className="scriptora-world-stage pointer-events-none absolute inset-0" aria-hidden="true">
+        <span className="scriptora-horror-gothic-window" />
+        <span className="scriptora-horror-cobweb scriptora-horror-cobweb-left" />
+        <span className="scriptora-horror-cobweb scriptora-horror-cobweb-right" />
+        <span className="scriptora-horror-wall-crack scriptora-horror-wall-crack-left" />
+        <span className="scriptora-horror-wall-crack scriptora-horror-wall-crack-right" />
+        <span className="scriptora-horror-blood-wisp scriptora-horror-blood-wisp-left" />
+        <span className="scriptora-horror-blood-wisp scriptora-horror-blood-wisp-right" />
         <span className="scriptora-world-stage-orbit scriptora-world-stage-orbit-primary" />
         <span className="scriptora-world-stage-orbit scriptora-world-stage-orbit-secondary" />
+        <span className="scriptora-horror-ritual-sigil" />
         <span className="scriptora-world-stage-floor" />
+        <span className="scriptora-horror-candle scriptora-horror-candle-left" />
+        <span className="scriptora-horror-candle scriptora-horror-candle-right" />
       </div>
       <div className="relative z-10 grid gap-5 lg:grid-cols-[minmax(250px,0.78fr)_minmax(0,1.55fr)] lg:items-stretch">
         <div className="flex gap-4 lg:flex-col lg:items-center lg:justify-center">
@@ -979,6 +990,12 @@ const dashboardWidgets = [
     { id: "publishing", title: "Publish OS", desc: "Cover, export e scaffale finale quando il manoscritto e pronto.", icon: FileDown, tone: "from-amber-300/18 to-orange-300/8" },
     { id: "system", title: t("system_os"), desc: "Identita autore, ambiente, libreria e controlli di Scriptora.", icon: Settings, tone: "from-violet-300/18 to-fuchsia-300/8" },
   ];
+  const horrorStationIcons: Record<string, typeof BookOpen> = {
+    writer: Feather,
+    bestseller: Eye,
+    publishing: LockKeyhole,
+    system: Skull,
+  };
 
   return (
     <div className="scriptora-feature-page scriptora-world-shell relative" data-atmosphere-world={profileId}>
@@ -1363,6 +1380,7 @@ const dashboardWidgets = [
             {cardGroups.map((group) => {
               const groupCards = cards.filter((card) => card.group === group.id);
               const GroupIcon = group.icon;
+              const StationIcon = profileId === "horror-gothic" ? (horrorStationIcons[group.id] || GroupIcon) : GroupIcon;
               const isOpen = expandedOsFolder === group.id;
               const groupCopy = themeCopy.groups[group.id] || { title: group.title, desc: group.desc };
               return (
@@ -1381,7 +1399,7 @@ const dashboardWidgets = [
                   >
                     <span className="flex items-start justify-between gap-3">
                       <span className="scriptora-room-sigil ios-icon ios-icon-blue h-12 w-12 rounded-[18px]">
-                        <GroupIcon className="h-5 w-5" />
+                        <StationIcon className="h-5 w-5" />
                       </span>
                       <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/62">
                         {groupCards.length} tool
