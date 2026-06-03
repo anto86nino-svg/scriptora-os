@@ -1003,14 +1003,6 @@ const dashboardWidgets = [
       data-atmosphere-world={profileId}
       data-atmosphere-profile={profileId}
     >
-      <div className="fixed left-3 top-3 z-[2147483647] rounded-md bg-red-600 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white shadow-[0_0_0_3px_rgba(255,255,255,0.8),0_18px_50px_rgba(0,0,0,0.55)]">
-        TEST DASHBOARD BUILD ATTIVA
-      </div>
-      {profileId === "horror-gothic" && (
-        <div className="fixed left-3 top-14 z-[2147483647] rounded-md bg-red-950 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white shadow-[0_0_0_2px_rgba(248,113,113,0.85),0_18px_50px_rgba(0,0,0,0.55)]">
-          HORROR ROOM ACTIVE
-        </div>
-      )}
       <header className="scriptora-world-topbar z-20 shrink-0 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
