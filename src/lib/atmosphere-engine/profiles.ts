@@ -1,6 +1,6 @@
 import type { AtmosphereProfileId, AtmosphereProfileMeta } from "./types";
 
-export const DEFAULT_ATMOSPHERE_PROFILE: AtmosphereProfileId = "fantasy-realm";
+export const DEFAULT_ATMOSPHERE_PROFILE: AtmosphereProfileId = "horror-gothic";
 
 export const ATMOSPHERE_PROFILES: AtmosphereProfileMeta[] = [
   {

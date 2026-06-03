@@ -134,8 +134,7 @@ export default function Home() {
   const [projectsReady, setProjectsReady] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const currentLang = useUILanguage();
-  const { profileId: storedProfileId, selectProfile } = useAtmosphereProfile();
-  const profileId = "horror-gothic"; // TEMP PREVIEW FORCE: make Horror Room visibly testable on this branch
+  const { profileId, selectProfile } = useAtmosphereProfile();
   const { source: backgroundSource } = useBackgroundSource();
   const activeAtmosphere = ATMOSPHERE_PROFILES.find((profile) => profile.id === profileId) ?? ATMOSPHERE_PROFILES[0];
   const themeCopy = useMemo(() => getAtmosphereThemeCopy(profileId), [profileId]);
@@ -1004,9 +1003,14 @@ const dashboardWidgets = [
       data-atmosphere-world={profileId}
       data-atmosphere-profile={profileId}
     >
-      <div className="fixed left-3 top-24 z-[99999] rounded-full border border-red-500/70 bg-red-950 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-red-100 shadow-[0_0_30px_rgba(220,38,38,0.65)]">
-        HORROR ROOM ACTIVE
+      <div className="fixed left-3 top-3 z-[2147483647] rounded-md bg-red-600 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white shadow-[0_0_0_3px_rgba(255,255,255,0.8),0_18px_50px_rgba(0,0,0,0.55)]">
+        TEST DASHBOARD BUILD ATTIVA
       </div>
+      {profileId === "horror-gothic" && (
+        <div className="fixed left-3 top-14 z-[2147483647] rounded-md bg-red-950 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-white shadow-[0_0_0_2px_rgba(248,113,113,0.85),0_18px_50px_rgba(0,0,0,0.55)]">
+          HORROR ROOM ACTIVE
+        </div>
+      )}
       <header className="scriptora-world-topbar z-20 shrink-0 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">

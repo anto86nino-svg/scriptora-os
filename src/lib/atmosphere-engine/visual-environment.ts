@@ -6,6 +6,7 @@ import { applyAtmosphereProfile } from "./apply";
 import { loadBackgroundSource, type BackgroundSource } from "./background-source";
 import { getRealmBackgroundLayers } from "./realm-backgrounds";
 import { loadAtmosphereProfile } from "./storage";
+import type { AtmosphereProfileId } from "./types";
 
 export const VISUAL_ENVIRONMENT_CHANGE_EVENT = "scriptora-visual-environment-change";
 
@@ -14,8 +15,7 @@ const BACKGROUND_SOURCE_ATTR = "data-background-source";
 /**
  * Applies realm atmosphere (always) + background source (realm image vs custom picker).
  */
-export function applyVisualEnvironment() {
-  const profileId = loadAtmosphereProfile();
+export function applyVisualEnvironment(profileId: AtmosphereProfileId = loadAtmosphereProfile()) {
   applyAtmosphereProfile(profileId);
 
   const source = loadBackgroundSource();

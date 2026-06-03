@@ -1,7 +1,7 @@
 import { DEFAULT_ATMOSPHERE_PROFILE, isAtmosphereProfileId } from "./profiles";
 import type { AtmosphereEngineState, AtmosphereProfileId } from "./types";
 
-export const ATMOSPHERE_STORAGE_KEY = "scriptora-atmosphere-profile-v1";
+export const ATMOSPHERE_STORAGE_KEY = "scriptora-atmosphere-profile-v2";
 
 export function loadAtmosphereProfile(): AtmosphereProfileId {
   try {

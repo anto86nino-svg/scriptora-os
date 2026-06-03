@@ -11,7 +11,7 @@ export function useAtmosphereProfile() {
   const [profileId, setProfileIdState] = useState<AtmosphereProfileId>(() => loadAtmosphereProfile());
 
   useEffect(() => {
-    applyVisualEnvironment();
+    applyVisualEnvironment(profileId);
   }, [profileId]);
 
   useEffect(() => {
