@@ -134,7 +134,8 @@ export default function Home() {
   const [projectsReady, setProjectsReady] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const currentLang = useUILanguage();
-  const { profileId, selectProfile } = useAtmosphereProfile();
+  const { profileId: storedProfileId, selectProfile } = useAtmosphereProfile();
+  const profileId = "horror-gothic"; // TEMP PREVIEW FORCE: make Horror Room visibly testable on this branch
   const { source: backgroundSource } = useBackgroundSource();
   const activeAtmosphere = ATMOSPHERE_PROFILES.find((profile) => profile.id === profileId) ?? ATMOSPHERE_PROFILES[0];
   const themeCopy = useMemo(() => getAtmosphereThemeCopy(profileId), [profileId]);
@@ -1003,6 +1004,9 @@ const dashboardWidgets = [
       data-atmosphere-world={profileId}
       data-atmosphere-profile={profileId}
     >
+      <div className="fixed left-3 top-24 z-[99999] rounded-full border border-red-500/70 bg-red-950 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-red-100 shadow-[0_0_30px_rgba(220,38,38,0.65)]">
+        HORROR ROOM ACTIVE
+      </div>
       <header className="scriptora-world-topbar z-20 shrink-0 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
