@@ -30,6 +30,9 @@ export function ScriptoraBootGate({
   const [revealed, setRevealed] = useState(false);
   const exitStartedRef = useRef(false);
 
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+  const isDashboardRoute = pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+
   useEffect(() => {
     let cancelled = false;
     ensureStorageHydrated().then(() => {
@@ -55,7 +58,29 @@ export function ScriptoraBootGate({
   );
 
   const bootComplete = authReady && storageReady && planReady && shellReady;
-  const { progress, step, messageKey, readyToExit } = useHybridBootProgress(flags, bootComplete);
+
+  const dashboardFailOpen =
+    isDashboardRoute &&
+    authReady &&
+    storageReady &&
+    planReady;
+
+  const effectiveBootComplete = bootComplete || dashboardFailOpen;
+
+  useEffect(() => {
+    if (dashboardFailOpen) {
+      console.info("[SCRIPTORA_BOOT] BootGate dashboard fail-open reveal", {
+        pathname,
+        authReady,
+        storageReady,
+        planReady,
+        shellReady,
+        bootComplete,
+      });
+    }
+  }, [authReady, bootComplete, dashboardFailOpen, pathname, planReady, shellReady, storageReady]);
+
+  const { progress, step, messageKey, readyToExit } = useHybridBootProgress(flags, effectiveBootComplete);
 
   useEffect(() => {
     if (!readyToExit || exitStartedRef.current) return;
@@ -66,6 +91,33 @@ export function ScriptoraBootGate({
   }, [readyToExit]);
 
   const mountShell = authReady && storageReady && planReady;
+  const effectiveRevealed = revealed || dashboardFailOpen;
+
+  useEffect(() => {
+    console.info("[SCRIPTORA_BOOT] BootGate render state", {
+      pathname,
+      authReady,
+      storageReady,
+      planReady,
+      shellReady,
+      bootComplete,
+      revealed,
+      dashboardFailOpen,
+      effectiveRevealed,
+      mountShell,
+    });
+  }, [
+    authReady,
+    bootComplete,
+    dashboardFailOpen,
+    effectiveRevealed,
+    mountShell,
+    pathname,
+    planReady,
+    revealed,
+    shellReady,
+    storageReady,
+  ]);
 
   // Safety: never stall forever if a lazy route chunk fails to resolve.
   useEffect(() => {
@@ -76,7 +128,7 @@ export function ScriptoraBootGate({
 
   return (
     <>
-      {!revealed && (
+      {!effectiveRevealed && (
         <ScriptoraBootScreen
           progress={progress}
           step={step}
@@ -87,11 +139,11 @@ export function ScriptoraBootGate({
 
       <div
         className={
-          revealed
+          effectiveRevealed
             ? "scriptora-boot-reveal min-h-screen"
             : "pointer-events-none fixed inset-0 overflow-hidden opacity-0"
         }
-        aria-hidden={!revealed}
+        aria-hidden={!effectiveRevealed}
       >
         {mountShell && (
           <>
