@@ -137,6 +137,7 @@ export default function Home() {
   const { source: backgroundSource } = useBackgroundSource();
   const activeAtmosphere = ATMOSPHERE_PROFILES.find((profile) => profile.id === profileId) ?? ATMOSPHERE_PROFILES[0];
   const themeCopy = useMemo(() => getAtmosphereThemeCopy(profileId), [profileId]);
+  const worldScene = themeCopy.world;
 
   const [activeRun, setActiveRun] = useState<{ runId: string; title: string; startedAt: number } | null>(null);
 
@@ -625,7 +626,7 @@ export default function Home() {
     [aiQualityValues],
   );
   const focusAtmosphereCard = (
-  <div className="atmo-engine-card relative overflow-hidden rounded-3xl border p-6 shadow-2xl">
+  <div data-atmosphere-zone="atmosphere-engine" className="atmo-engine-card relative overflow-hidden rounded-3xl border p-6 shadow-2xl">
     <div className="absolute inset-x-6 top-6 h-14 rounded-b-[32px] bg-white/[0.03] blur-2xl opacity-50" />
 
     <div className="relative z-10 flex flex-col gap-5">
@@ -642,6 +643,9 @@ export default function Home() {
 
           <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
             {t("atmo_engine_body")}
+          </p>
+          <p className="mt-3 max-w-xl text-xs font-semibold uppercase tracking-[0.16em] text-white/54">
+            {worldScene.title}
           </p>
         </div>
 
@@ -762,12 +766,18 @@ const dashboardWidgets = [
   ];
 
   const manuscriptCore = (
-    <section data-atmosphere-zone="manuscript-core" className="scriptora-dashboard-book-core relative mb-4 overflow-hidden rounded-[32px] border border-white/15 bg-slate-950/70 p-4 shadow-[0_30px_100px_rgba(0,0,0,0.34)] ring-1 ring-white/[0.04] backdrop-blur-2xl sm:mb-6 sm:p-6 lg:p-8">
+    <section data-atmosphere-zone="manuscript-core" data-atmosphere-place={worldScene.label} className="scriptora-dashboard-book-core relative mb-4 overflow-hidden rounded-[32px] border border-white/15 bg-slate-950/70 p-4 shadow-[0_30px_100px_rgba(0,0,0,0.34)] ring-1 ring-white/[0.04] backdrop-blur-2xl sm:mb-6 sm:p-6 lg:p-8">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(125,211,252,0.10),transparent_36%),linear-gradient(225deg,rgba(251,191,36,0.08),transparent_42%)]" />
+      <div className="scriptora-world-stage pointer-events-none absolute inset-0" aria-hidden="true">
+        <span className="scriptora-world-stage-orbit scriptora-world-stage-orbit-primary" />
+        <span className="scriptora-world-stage-orbit scriptora-world-stage-orbit-secondary" />
+        <span className="scriptora-world-stage-floor" />
+      </div>
       <div className="relative z-10 grid gap-5 lg:grid-cols-[minmax(250px,0.78fr)_minmax(0,1.55fr)] lg:items-stretch">
         <div className="flex gap-4 lg:flex-col lg:items-center lg:justify-center">
-          <div data-atmosphere-zone="book-object" className="scriptora-dashboard-book-cover relative flex min-h-[236px] w-[164px] shrink-0 flex-col justify-between overflow-hidden rounded-[24px] border border-white/15 bg-gradient-to-br from-slate-900 via-sky-950 to-slate-950 p-4 shadow-[0_24px_70px_rgba(8,47,73,0.38)] sm:min-h-[292px] sm:w-[202px] sm:p-5">
+          <div data-atmosphere-zone="book-object" data-atmosphere-object={worldScene.bookObject} className="scriptora-dashboard-book-cover scriptora-scene-object relative flex min-h-[236px] w-[164px] shrink-0 flex-col justify-between overflow-hidden rounded-[24px] border border-white/15 bg-gradient-to-br from-slate-900 via-sky-950 to-slate-950 p-4 shadow-[0_24px_70px_rgba(8,47,73,0.38)] sm:min-h-[292px] sm:w-[202px] sm:p-5">
             <div className="absolute inset-x-0 top-0 h-20 bg-white/[0.06] blur-2xl" />
+            <span className="scriptora-book-spine" aria-hidden="true" />
             <div className="relative z-10">
               <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-sky-100/70">{themeCopy.bookObjectLabel}</p>
               <h2 className="mt-4 line-clamp-5 text-xl font-black uppercase leading-6 text-white sm:text-2xl sm:leading-7">
@@ -796,6 +806,7 @@ const dashboardWidgets = [
         <div className="min-w-0 space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
+              <p className="scriptora-world-place-label text-[10px] font-semibold uppercase tracking-[0.18em] text-white/42">{worldScene.label}</p>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/45">{themeCopy.journeyLabel}</p>
               <h2 className="mt-1 text-3xl font-semibold leading-tight text-white sm:text-5xl">
                 {lastProject ? manuscriptStatusLabel : "Crea, scrivi e pubblica da un unico centro."}
@@ -937,8 +948,8 @@ const dashboardWidgets = [
   ];
 
   return (
-    <div className="scriptora-feature-page relative">
-      <header className="z-20 shrink-0 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
+    <div className="scriptora-feature-page scriptora-world-shell relative" data-atmosphere-world={profileId}>
+      <header className="scriptora-world-topbar z-20 shrink-0 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             <button
@@ -1103,7 +1114,7 @@ const dashboardWidgets = [
         </div>
       </header>
 
-      <main className="scriptora-feature-scroll relative mx-auto w-full max-w-7xl px-4 pb-8 pt-4 sm:px-6 sm:pt-8 lg:px-8">
+      <main className="scriptora-feature-scroll scriptora-world-main relative mx-auto w-full max-w-7xl px-4 pb-8 pt-4 sm:px-6 sm:pt-8 lg:px-8">
         <div className="mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
           <section className="ios-panel overflow-hidden rounded-[28px] border-white/15 bg-slate-950/95 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:p-6 md:bg-slate-950/40">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -1257,8 +1268,9 @@ const dashboardWidgets = [
           )}
         </section>
 
+        {focusAtmosphereCard}
+
         <div className="mb-5 sm:mb-7">
-          {focusAtmosphereCard}
 
           {dashboardWidgets.map((widget) => (
             <button
@@ -1299,12 +1311,13 @@ const dashboardWidgets = [
           ))}
         </div>
 
-        <section className="mb-10">
-          <div className="mb-4 flex flex-col gap-3 rounded-[24px] border border-white/10 bg-white/[0.026] p-4 shadow-[0_16px_52px_rgba(0,0,0,0.18)] backdrop-blur-2xl sm:flex-row sm:items-end sm:justify-between sm:p-5">
+        <section data-atmosphere-zone="world-orbit" className="scriptora-world-orbit mb-10">
+          <div className="scriptora-world-heading mb-4 flex flex-col gap-3 rounded-[24px] border border-white/10 bg-white/[0.026] p-4 shadow-[0_16px_52px_rgba(0,0,0,0.18)] backdrop-blur-2xl sm:flex-row sm:items-end sm:justify-between sm:p-5">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Scriptora OS</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{worldScene.orbitLabel}</p>
               <h2 className="mt-1 text-xl font-semibold text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.38)]">{themeCopy.osTitle}</h2>
               <p className="mt-1 max-w-xl text-sm font-medium leading-6 text-white/64">{themeCopy.osDescription}</p>
+              <p className="mt-2 max-w-2xl text-xs leading-5 text-white/42">{worldScene.description}</p>
             </div>
             <span className="hidden text-[11px] text-muted-foreground sm:inline">
               {tt("total_suffix", { count: projects.length, plan: planLabel })}
@@ -1318,15 +1331,21 @@ const dashboardWidgets = [
               const isOpen = expandedOsFolder === group.id;
               const groupCopy = themeCopy.groups[group.id] || { title: group.title, desc: group.desc };
               return (
-                <div key={group.id} data-atmosphere-group={group.id} className={`scriptora-os-folder relative overflow-hidden rounded-[24px] border border-white/10 bg-gradient-to-br ${group.tone} shadow-[0_18px_58px_rgba(0,0,0,0.20)] backdrop-blur-xl ${isOpen ? "sm:col-span-2 xl:col-span-4" : ""}`}>
+                <div
+                  key={group.id}
+                  data-atmosphere-group={group.id}
+                  data-atmosphere-room={groupCopy.room || group.id}
+                  data-atmosphere-object={groupCopy.object || groupCopy.title}
+                  className={`scriptora-os-folder relative overflow-hidden rounded-[24px] border border-white/10 bg-gradient-to-br ${group.tone} shadow-[0_18px_58px_rgba(0,0,0,0.20)] backdrop-blur-xl ${isOpen ? "is-open sm:col-span-2 xl:col-span-4" : ""}`}
+                >
                   <button
                     type="button"
                     onClick={() => setExpandedOsFolder(isOpen ? null : group.id)}
-                    className="flex min-h-[142px] w-full flex-col justify-between p-4 text-left sm:p-5"
+                    className="scriptora-room-trigger flex min-h-[142px] w-full flex-col justify-between p-4 text-left sm:p-5"
                     aria-expanded={isOpen}
                   >
                     <span className="flex items-start justify-between gap-3">
-                      <span className="ios-icon ios-icon-blue h-12 w-12 rounded-[18px]">
+                      <span className="scriptora-room-sigil ios-icon ios-icon-blue h-12 w-12 rounded-[18px]">
                         <GroupIcon className="h-5 w-5" />
                       </span>
                       <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/62">
@@ -1336,12 +1355,15 @@ const dashboardWidgets = [
                     </span>
                     <span className="mt-5 block">
                       <span className="block text-lg font-semibold text-white">{groupCopy.title}</span>
+                      {groupCopy.object && (
+                        <span className="scriptora-room-object-label mt-1 block text-[10px] font-semibold uppercase tracking-[0.14em] text-white/44">{groupCopy.object}</span>
+                      )}
                       <span className="mt-1 block text-xs leading-5 text-white/62">{groupCopy.desc}</span>
                     </span>
                   </button>
 
                   {isOpen && (
-                    <div className="scriptora-launchpad-grid grid grid-cols-1 gap-2 border-t border-white/10 bg-slate-950/20 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                    <div className="scriptora-launchpad-grid scriptora-world-room-grid grid grid-cols-1 gap-2 border-t border-white/10 bg-slate-950/20 p-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
                       {groupCards.map(card => {
                         const Icon = card.icon;
                         const moduleCopy = themeCopy.modules[card.id] || {};
@@ -1350,11 +1372,15 @@ const dashboardWidgets = [
                         const cardTag = moduleCopy.tag || (card as any).tag;
                         const inner = (
                           <button
-                            key={card.title}
+                            key={card.id}
                             onClick={card.action}
                             data-atmosphere-module={card.id}
-                            className="group relative flex min-h-[118px] w-full flex-col overflow-hidden rounded-[18px] border border-white/10 bg-slate-950/32 p-3 text-left ring-1 ring-white/[0.03] transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-safe:hover:-translate-y-0.5"
+                            data-atmosphere-form={moduleCopy.form || "station"}
+                            data-atmosphere-room={moduleCopy.room || group.id}
+                            data-atmosphere-object={moduleCopy.object || cardTitle}
+                            className="scriptora-world-module group relative flex min-h-[118px] w-full flex-col overflow-hidden rounded-[18px] border border-white/10 bg-slate-950/32 p-3 text-left ring-1 ring-white/[0.03] transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-safe:hover:-translate-y-0.5"
                           >
+                            <span className="scriptora-module-object-marker" aria-hidden="true" />
                             <div className="relative z-10 flex items-start justify-between gap-3">
                               <span className={`ios-icon ${card.iconBg} flex h-10 w-10 items-center justify-center rounded-[15px] shadow-[0_12px_32px_rgba(0,0,0,0.18)] ring-1 ring-white/10`}>
                                 <Icon className="h-4 w-4" />
@@ -1369,6 +1395,9 @@ const dashboardWidgets = [
                             <div className="relative z-10 mt-3">
                               <h3 className="text-sm font-semibold leading-5 text-white">{cardTitle}</h3>
                               <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-300">{cardDesc}</p>
+                              {moduleCopy.object && (
+                                <p className="scriptora-module-object-copy mt-2 line-clamp-1 text-[10px] font-semibold uppercase tracking-[0.13em] text-white/42">{moduleCopy.object}</p>
+                              )}
                             </div>
 
                             <div className="relative z-10 mt-auto flex items-center justify-between gap-3 pt-3">
@@ -1380,8 +1409,8 @@ const dashboardWidgets = [
                           </button>
                         );
                         return (card as any).feature
-                          ? <PaywallGuard key={card.title} feature={(card as any).feature} compact>{inner}</PaywallGuard>
-                          : <div key={card.title}>{inner}</div>;
+                          ? <PaywallGuard key={card.id} feature={(card as any).feature} compact>{inner}</PaywallGuard>
+                          : <div key={card.id}>{inner}</div>;
                       })}
                     </div>
                   )}
@@ -1524,10 +1553,12 @@ const dashboardWidgets = [
         return (
           <div
             className="scriptora-modal-overlay"
+            data-atmosphere-zone="world-modal"
             onClick={() => setShowProjects(false)}
           >
             <div
               className="scriptora-modal-panel ios-panel max-w-2xl animate-scriptora-dialog-entrance"
+              data-atmosphere-zone="world-modal-panel"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="scriptora-modal-body p-6">
@@ -1626,10 +1657,12 @@ const dashboardWidgets = [
       {showLibrary && (
         <div
           className="scriptora-modal-overlay"
+          data-atmosphere-zone="world-modal"
           onClick={() => setShowLibrary(false)}
         >
           <div
             className="scriptora-modal-panel ios-panel max-w-2xl animate-scriptora-dialog-entrance"
+            data-atmosphere-zone="world-modal-panel"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="scriptora-modal-body p-6">

@@ -259,6 +259,363 @@
   backdrop-filter: blur(18px) saturate(0.76) !important;
 }
 
+/* ── Immersive World Layer v2: rooms and objects, not theme cards ── */
+[data-atmosphere-profile] {
+  --world-accent: rgba(125, 211, 252, 0.34);
+  --world-accent-soft: rgba(125, 211, 252, 0.1);
+  --world-room-surface: rgba(8, 10, 20, 0.72);
+  --world-room-surface-strong: rgba(6, 8, 15, 0.92);
+  --world-room-line: rgba(255, 255, 255, 0.1);
+  --world-object-glow: rgba(125, 211, 252, 0.18);
+  --world-stage-shadow: rgba(0, 0, 0, 0.48);
+  --world-room-texture:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.024) 0 1px, transparent 1px 42px);
+}
+
+[data-atmosphere-profile="horror-gothic"] {
+  --world-accent: rgba(150, 25, 35, 0.48);
+  --world-accent-soft: rgba(150, 25, 35, 0.13);
+  --world-room-surface: rgba(10, 7, 9, 0.8);
+  --world-room-surface-strong: rgba(6, 5, 7, 0.94);
+  --world-room-line: rgba(160, 18, 28, 0.22);
+  --world-object-glow: rgba(185, 28, 28, 0.28);
+  --world-stage-shadow: rgba(0, 0, 0, 0.68);
+  --world-room-texture:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.026) 0 1px, transparent 1px 38px),
+    repeating-linear-gradient(0deg, rgba(160, 18, 28, 0.03) 0 1px, transparent 1px 30px);
+}
+
+[data-atmosphere-profile="fantasy-realm"] {
+  --world-accent: rgba(212, 175, 98, 0.35);
+  --world-accent-soft: rgba(139, 127, 199, 0.12);
+  --world-room-surface: rgba(9, 12, 23, 0.74);
+  --world-room-surface-strong: rgba(7, 9, 18, 0.92);
+  --world-room-line: rgba(212, 175, 98, 0.2);
+  --world-object-glow: rgba(212, 175, 98, 0.2);
+  --world-room-texture:
+    repeating-linear-gradient(90deg, rgba(212, 175, 98, 0.035) 0 1px, transparent 1px 46px);
+}
+
+[data-atmosphere-profile="dark-luxury"] {
+  --world-accent: rgba(194, 154, 79, 0.36);
+  --world-accent-soft: rgba(194, 154, 79, 0.11);
+  --world-room-surface: rgba(13, 8, 14, 0.76);
+  --world-room-surface-strong: rgba(8, 6, 10, 0.92);
+  --world-room-line: rgba(194, 154, 79, 0.22);
+  --world-object-glow: rgba(194, 154, 79, 0.18);
+  --world-room-texture:
+    linear-gradient(90deg, transparent, rgba(194, 154, 79, 0.045), transparent);
+}
+
+[data-atmosphere-profile="space-scifi"] {
+  --world-accent: rgba(56, 189, 248, 0.36);
+  --world-accent-soft: rgba(34, 211, 238, 0.1);
+  --world-room-surface: rgba(4, 12, 20, 0.76);
+  --world-room-surface-strong: rgba(2, 8, 16, 0.92);
+  --world-room-line: rgba(125, 211, 252, 0.2);
+  --world-object-glow: rgba(56, 189, 248, 0.2);
+  --world-room-texture:
+    repeating-linear-gradient(90deg, rgba(125, 211, 252, 0.04) 0 1px, transparent 1px 42px),
+    repeating-linear-gradient(0deg, rgba(125, 211, 252, 0.032) 0 1px, transparent 1px 36px);
+}
+
+[data-atmosphere-profile="nature-calm"] {
+  --world-accent: rgba(74, 222, 128, 0.28);
+  --world-accent-soft: rgba(74, 222, 128, 0.09);
+  --world-room-surface: rgba(8, 18, 15, 0.72);
+  --world-room-surface-strong: rgba(5, 13, 11, 0.9);
+  --world-room-line: rgba(134, 239, 172, 0.16);
+  --world-object-glow: rgba(134, 239, 172, 0.14);
+}
+
+.scriptora-world-shell {
+  isolation: isolate;
+}
+
+.scriptora-world-topbar {
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.22);
+}
+
+.scriptora-world-heading {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.042), transparent 36%),
+    linear-gradient(180deg, var(--world-room-surface), rgba(255, 255, 255, 0.018)) !important;
+  box-shadow:
+    0 18px 58px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045) !important;
+}
+
+.scriptora-world-heading::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 42% 70% at 12% 0%, var(--world-accent-soft), transparent 62%),
+    var(--world-room-texture);
+  opacity: 0.56;
+}
+
+.scriptora-dashboard-book-core {
+  isolation: isolate;
+}
+
+.scriptora-world-stage {
+  z-index: 0;
+}
+
+.scriptora-world-stage-orbit,
+.scriptora-world-stage-floor {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+.scriptora-world-stage-orbit-primary {
+  inset: 9% 8% auto;
+  height: 52%;
+  border: 1px solid var(--world-room-line);
+  border-bottom-color: transparent;
+  border-radius: 999px 999px 40px 40px;
+  opacity: 0.52;
+}
+
+.scriptora-world-stage-orbit-secondary {
+  inset: auto 10% 9%;
+  height: 34%;
+  border-top: 1px solid var(--world-room-line);
+  border-radius: 50%;
+  opacity: 0.44;
+}
+
+.scriptora-world-stage-floor {
+  left: 9%;
+  right: 9%;
+  bottom: 7%;
+  height: 34%;
+  background:
+    radial-gradient(ellipse 48% 36% at 21% 48%, var(--world-object-glow), transparent 70%),
+    radial-gradient(ellipse 80% 60% at 50% 100%, var(--world-stage-shadow), transparent 70%);
+  filter: blur(1px);
+  opacity: 0.8;
+}
+
+.scriptora-scene-object {
+  transform: perspective(900px) rotateY(-4deg);
+  transition:
+    transform 260ms ease,
+    box-shadow 260ms ease,
+    border-color 260ms ease;
+}
+
+.scriptora-scene-object:hover {
+  transform: perspective(900px) rotateY(-2deg) translateY(-1px);
+}
+
+.scriptora-book-spine {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 18%;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.36), rgba(255, 255, 255, 0.05), transparent),
+    linear-gradient(180deg, transparent 12%, var(--world-room-line) 48%, transparent 82%);
+  opacity: 0.74;
+}
+
+.scriptora-world-place-label {
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.scriptora-os-folder {
+  isolation: isolate;
+  min-height: 142px;
+}
+
+.scriptora-os-folder::before,
+.scriptora-os-folder::after,
+.scriptora-world-module::before,
+.scriptora-world-module::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.scriptora-os-folder::before {
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 48% 50% at 85% 0%, var(--world-accent-soft), transparent 66%),
+    var(--world-room-texture);
+  opacity: 0.68;
+}
+
+.scriptora-os-folder::after {
+  z-index: 0;
+  inset: auto 14px 14px 14px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--world-room-line), transparent);
+  opacity: 0.78;
+}
+
+.scriptora-os-folder.is-open {
+  border-color: color-mix(in srgb, var(--world-room-line), white 16%);
+  box-shadow:
+    0 26px 82px rgba(0, 0, 0, 0.34),
+    0 0 0 1px var(--world-room-line);
+}
+
+.scriptora-room-trigger,
+.scriptora-world-room-grid {
+  position: relative;
+  z-index: 1;
+}
+
+.scriptora-room-sigil {
+  box-shadow:
+    0 18px 42px rgba(0, 0, 0, 0.22),
+    0 0 0 1px var(--world-room-line) !important;
+}
+
+.scriptora-room-object-label,
+.scriptora-module-object-copy {
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.38);
+}
+
+.scriptora-world-room-grid {
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.16), transparent),
+    radial-gradient(ellipse 60% 80% at 50% 0%, var(--world-accent-soft), transparent 70%) !important;
+}
+
+.scriptora-world-module {
+  isolation: isolate;
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.044), transparent 32%),
+    linear-gradient(180deg, var(--world-room-surface), rgba(0, 0, 0, 0.18)) !important;
+  border-color: var(--world-room-line) !important;
+}
+
+.scriptora-world-module::before {
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 42% 34% at 88% 8%, var(--world-accent-soft), transparent 64%),
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.03), transparent);
+  opacity: 0.72;
+}
+
+.scriptora-world-module::after {
+  z-index: 0;
+  inset: auto 12px 10px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--world-room-line), transparent);
+  opacity: 0.64;
+}
+
+.scriptora-module-object-marker {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 0;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--world-room-line);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, var(--world-object-glow), transparent 68%);
+  opacity: 0.46;
+}
+
+[data-atmosphere-form="dossier"] .scriptora-module-object-marker,
+[data-atmosphere-form="archive"] .scriptora-module-object-marker,
+[data-atmosphere-form="notebook"] .scriptora-module-object-marker {
+  width: 44px;
+  height: 30px;
+  border-radius: 8px 8px 4px 4px;
+}
+
+[data-atmosphere-form="autopsy"] .scriptora-module-object-marker,
+[data-atmosphere-form="scanner"] .scriptora-module-object-marker {
+  width: 48px;
+  height: 18px;
+  border-radius: 999px;
+}
+
+[data-atmosphere-form="seal"] .scriptora-module-object-marker,
+[data-atmosphere-form="ritual"] .scriptora-module-object-marker,
+[data-atmosphere-form="oracle"] .scriptora-module-object-marker {
+  box-shadow: 0 0 28px var(--world-object-glow);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-os-folder[data-atmosphere-group="writer"]::after {
+  height: 42px;
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 225, 180, 0.08), transparent),
+    radial-gradient(ellipse 10% 70% at 18% 50%, rgba(255, 170, 90, 0.12), transparent 70%),
+    radial-gradient(ellipse 10% 70% at 82% 50%, rgba(160, 18, 28, 0.12), transparent 70%);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-os-folder[data-atmosphere-group="bestseller"]::before {
+  background:
+    linear-gradient(20deg, transparent 30%, rgba(160, 18, 28, 0.09) 31%, transparent 32%),
+    linear-gradient(150deg, transparent 42%, rgba(255, 255, 255, 0.05) 43%, transparent 44%),
+    var(--world-room-texture);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-os-folder[data-atmosphere-group="publishing"]::after {
+  left: auto;
+  right: 20px;
+  bottom: 18px;
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(160, 18, 28, 0.28);
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(160, 18, 28, 0.12), transparent 70%);
+}
+
+[data-atmosphere-profile="horror-gothic"] .scriptora-os-folder[data-atmosphere-group="system"]::before {
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 28px),
+    linear-gradient(90deg, rgba(160, 18, 28, 0.08), transparent 55%);
+}
+
+[data-atmosphere-profile="fantasy-realm"] .scriptora-os-folder[data-atmosphere-group="writer"]::after {
+  height: 44px;
+  background:
+    radial-gradient(ellipse 40% 70% at 50% 50%, rgba(212, 175, 98, 0.1), transparent 70%),
+    linear-gradient(90deg, transparent, rgba(212, 175, 98, 0.18), transparent);
+}
+
+[data-atmosphere-profile="fantasy-realm"] .scriptora-os-folder[data-atmosphere-group="bestseller"]::before {
+  background:
+    radial-gradient(circle at 84% 18%, rgba(212, 175, 98, 0.12), transparent 30%),
+    var(--world-room-texture);
+}
+
+[data-atmosphere-profile="dark-luxury"] .scriptora-world-module {
+  border-radius: 14px !important;
+}
+
+[data-atmosphere-profile="dark-luxury"] .scriptora-room-sigil {
+  border-radius: 14px !important;
+}
+
+[data-atmosphere-profile="space-scifi"] .scriptora-world-module::before {
+  background:
+    repeating-linear-gradient(90deg, rgba(125, 211, 252, 0.05) 0 1px, transparent 1px 26px),
+    radial-gradient(ellipse 42% 34% at 88% 8%, var(--world-accent-soft), transparent 64%);
+}
+
+[data-atmosphere-profile] .scriptora-modal-panel,
+[data-atmosphere-profile] [role="dialog"] {
+  border-color: var(--world-room-line);
+  box-shadow:
+    0 34px 110px rgba(0, 0, 0, 0.58),
+    0 0 0 1px var(--world-room-line);
+}
+
 @keyframes atmo-horror-room-breathe {
   0%, 100% {
     opacity: 0.62;
@@ -516,6 +873,64 @@
 }
 
 @media (max-width: 640px) {
+  .scriptora-world-heading {
+    border-radius: 20px !important;
+    padding: 0.875rem !important;
+  }
+
+  .scriptora-world-stage-orbit-primary {
+    inset: 7% 5% auto;
+    height: 44%;
+    opacity: 0.34;
+  }
+
+  .scriptora-world-stage-orbit-secondary {
+    left: 6%;
+    right: 6%;
+    bottom: 4%;
+    opacity: 0.28;
+  }
+
+  .scriptora-world-stage-floor {
+    left: 5%;
+    right: 5%;
+    bottom: 4%;
+    opacity: 0.58;
+  }
+
+  .scriptora-scene-object {
+    transform: none;
+  }
+
+  .scriptora-scene-object:hover {
+    transform: none;
+  }
+
+  .scriptora-os-folder {
+    min-height: 124px;
+  }
+
+  .scriptora-room-trigger {
+    min-height: 124px !important;
+  }
+
+  .scriptora-world-module {
+    min-height: 104px !important;
+  }
+
+  .scriptora-module-object-marker {
+    right: 10px;
+    bottom: 10px;
+    width: 24px;
+    height: 24px;
+    opacity: 0.34;
+  }
+
+  .scriptora-room-object-label,
+  .scriptora-module-object-copy {
+    letter-spacing: 0.08em;
+  }
+
   [data-atmosphere-profile="fantasy-realm"] .scriptora-ios-screen::before {
     background-position: center 38%;
     opacity: 0.52;
