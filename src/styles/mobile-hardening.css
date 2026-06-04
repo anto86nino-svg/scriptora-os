@@ -207,3 +207,42 @@ body,
     transform: none !important;
   }
 }
+
+/* Scriptora mobile immersive book shell — full-width manuscript scene */
+@media (max-width: 767px) {
+  html,
+  body,
+  #root {
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .scriptora-ios-screen,
+  .scriptora-os-editor {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  .scriptora-os-editor main,
+  .scriptora-os-editor [role="main"],
+  .scriptora-os-editor section,
+  .scriptora-os-editor article {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .scriptora-os-editor .ios-sidebar {
+    max-width: min(86vw, 288px);
+  }
+
+  .scriptora-os-editor .ios-sidebar.translate-x-0 {
+    box-shadow: 24px 0 80px rgba(0, 0, 0, 0.55);
+  }
+
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-room-ledger,
+  [data-atmosphere-profile="horror-gothic"] .scriptora-horror-gothic-window {
+    width: 100%;
+    max-width: 100vw;
+  }
+}

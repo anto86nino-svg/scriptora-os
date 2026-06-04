@@ -381,6 +381,12 @@ const Index = () => {
     saveSettings(s);
   };
 
+  useEffect(() => {
+    if (isMobileLayout) {
+      setSidebarOpen(false);
+    }
+  }, [isMobileLayout]);
+
   const openVoiceStudioForChapter = (chapterIndex: number) => {
     setVoiceStudioChapterIndex(chapterIndex);
     setShowVoiceStudio(true);
@@ -446,7 +452,7 @@ const Index = () => {
       {/* Floating sidebar toggle — icon only on mobile */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="ios-toolbar-button fixed left-3 top-3 z-50 h-11 w-11 p-0 text-foreground shadow-lg backdrop-blur-xl sm:min-w-11 sm:px-2"
+        className="ios-toolbar-button fixed left-3 top-[calc(env(safe-area-inset-top)+0.75rem)] z-50 h-11 w-11 p-0 text-foreground shadow-lg backdrop-blur-xl md:top-3 md:min-w-11 md:px-2"
         title={sidebarOpen ? "Chiudi pannello" : "Capitoli & Libro"}
         aria-expanded={sidebarOpen}
         aria-label={sidebarOpen ? "Chiudi pannello" : "Apri navigazione"}
@@ -471,7 +477,7 @@ const Index = () => {
 
       {/* Left Sidebar — drawer on mobile, collapsible on desktop */}
       <aside
-        className={`ios-sidebar fixed inset-y-0 left-0 z-40 flex h-safe-screen w-[min(100vw-2rem,288px)] max-w-[288px] shrink-0 flex-col pb-safe transition-transform duration-300 ease-out md:relative md:inset-auto md:h-auto md:max-w-none ${
+        className={`ios-sidebar fixed inset-y-0 left-0 z-40 flex h-safe-screen w-[min(86vw,288px)] max-w-[288px] shrink-0 flex-col pb-safe transition-transform duration-300 ease-out md:relative md:inset-auto md:h-auto md:w-72 md:max-w-none ${
           sidebarOpen
             ? "translate-x-0 pointer-events-auto"
             : "-translate-x-full pointer-events-none md:translate-x-0 md:w-0 md:overflow-hidden md:pointer-events-none"
@@ -601,7 +607,7 @@ const Index = () => {
       {/* Main Area */}
       <div
         className={`flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col transition-all duration-300 ${
-          sidebarOpen ? "p-2 md:p-3" : "p-2 pb-3 md:px-6 md:py-4"
+          isMobileLayout ? "w-full max-w-[100vw] overflow-x-hidden p-0 pb-safe" : sidebarOpen ? "p-2 md:p-3" : "p-2 pb-3 md:px-6 md:py-4"
         }`}
       >
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden overflow-x-hidden rounded-lg border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/20 md:bg-black/10 md:backdrop-blur-sm">
