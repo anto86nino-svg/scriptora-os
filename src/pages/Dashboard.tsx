@@ -130,6 +130,9 @@ export default function Home() {
   const [launchMode, setLaunchMode] = useState<LaunchMode>("quick");
   const [showMobileStats, setShowMobileStats] = useState(false);
   const [expandedOsFolder, setExpandedOsFolder] = useState<string | null>(null);
+
+const isMobileViewport =
+  typeof window !== "undefined" && window.innerWidth < 768;
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [projectsReady, setProjectsReady] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
@@ -1401,7 +1404,9 @@ const dashboardWidgets = [
               const groupCards = cards.filter((card) => card.group === group.id);
               const GroupIcon = group.icon;
               const StationIcon = profileId === "horror-gothic" ? (horrorStationIcons[group.id] || GroupIcon) : GroupIcon;
-              const isOpen = true;
+              const isOpen = isMobileViewport
+  ? expandedOsFolder === group.id
+  : true;
               const groupCopy = themeCopy.groups[group.id] || { title: group.title, desc: group.desc };
               return (
                 <div
@@ -1409,11 +1414,20 @@ const dashboardWidgets = [
                   data-atmosphere-group={group.id}
                   data-atmosphere-room={groupCopy.room || group.id}
                   data-atmosphere-object={groupCopy.object || groupCopy.title}
-                  className="relative overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.045] backdrop-blur-2xl"
+                  className={`relative overflow-hidden rounded-[30px]
+border border-white/10 bg-white/[0.045]
+backdrop-blur-2xl
+${isMobileViewport && isOpen
+? "fixed inset-0 z-[120] rounded-none bg-black overflow-y-auto"
+: ""}` }
                 >
                   <button
                     type="button"
-                    onClick={() => setExpandedOsFolder(isOpen ? null : group.id)}
+                    onClick={() => {
+  if (isMobileViewport) {
+    setExpandedOsFolder(isOpen ? null : group.id);
+  }
+}}
                     className="scriptora-room-trigger flex min-h-[142px] w-full flex-col justify-between p-4 text-left sm:p-5"
                     aria-expanded={isOpen}
                   >
