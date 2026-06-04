@@ -14,7 +14,7 @@ import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import { authorBrainProfileHasInjectionData, buildAuthorBrainInjectionSnapshot, hasPassiveAuthorIntelligence } from "@/lib/author-brain";
-import { operationCreditLabel } from "@/lib/credit-economy";
+import { creditModeDisclosure, operationCreditLabel } from "@/lib/credit-economy";
 import { isDevMode } from "@/lib/dev-mode";
 
 interface EditorPanelProps {
@@ -626,6 +626,7 @@ function ChapterView({
         <span>Genera: {operationCreditLabel("chapter_generation", devCreditMode)}</span>
         <span>Diagnostica: {operationCreditLabel("chapter_diagnostic", devCreditMode)}</span>
         <span>Riscrivi: {operationCreditLabel("chapter_rewrite", devCreditMode)}</span>
+        {devCreditMode && <span className="basis-full normal-case tracking-normal text-muted-foreground/70">{creditModeDisclosure(true)}</span>}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">

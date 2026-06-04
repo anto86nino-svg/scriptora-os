@@ -2742,8 +2742,28 @@ textarea,
 
 .scriptora-generation-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(280px, 1.1fr);
+  grid-template-columns: minmax(240px, 0.78fr) minmax(360px, 1.22fr);
   gap: 14px;
+}
+
+.scriptora-generation-brief {
+  min-width: 0;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background:
+    linear-gradient(145deg, rgba(15, 23, 42, 0.82), rgba(3, 7, 18, 0.62)),
+    rgba(7, 13, 25, 0.72);
+  padding: 16px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.scriptora-editorial-brief-card {
+  border-radius: 8px;
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025)),
+    rgba(2, 8, 23, 0.48);
+  padding: 14px;
 }
 
 .scriptora-generation-engine,
@@ -2852,14 +2872,15 @@ textarea,
 .scriptora-scene-status i:nth-child(3) { animation-delay: 240ms; }
 
 .scriptora-generation-live-text {
-  max-height: 156px;
-  overflow: hidden;
+  max-height: clamp(280px, 42vh, 560px);
+  overflow-y: auto;
+  padding-right: 4px;
   white-space: pre-wrap;
   font-family: var(--scriptora-writing-font);
   font-size: 14px;
   line-height: 1.72;
   color: rgba(255, 255, 255, 0.78);
-  mask-image: linear-gradient(to bottom, black 84%, transparent 100%);
+  scrollbar-width: thin;
 }
 
 .scriptora-generation-live-text p {
@@ -2867,7 +2888,7 @@ textarea,
 }
 
 .scriptora-live-writing-board {
-  min-height: 304px;
+  min-height: clamp(340px, 52vh, 680px);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -2882,7 +2903,7 @@ textarea,
 }
 
 .scriptora-live-writing-paper {
-  min-height: 218px;
+  min-height: clamp(290px, 44vh, 590px);
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.10);
   background: rgba(255, 255, 255, 0.055);
@@ -3846,6 +3867,10 @@ textarea,
     grid-template-columns: 1fr;
   }
 
+  .scriptora-generation-brief {
+    padding: 12px;
+  }
+
   .scriptora-generation-engine,
   .scriptora-generation-manuscript {
     min-height: 190px;
@@ -4363,10 +4388,12 @@ textarea,
   .scriptora-live-writing-board {
     gap: 10px !important;
     padding: 10px !important;
+    min-height: 0 !important;
   }
 
   .scriptora-live-writing-paper {
     padding: 12px !important;
+    min-height: 0 !important;
   }
 
   .scriptora-generation-live-text {

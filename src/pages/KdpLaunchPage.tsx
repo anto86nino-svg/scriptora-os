@@ -12,11 +12,11 @@ import { Separator } from "@/components/ui/separator";
 import { KdpScoreBadge } from "@/components/kdp/KdpScoreBadge";
 import { KdpTitleDomination } from "@/components/kdp/KdpTitleDomination";
 import { fetchPlan, type PlanTier } from "@/lib/plan";
-import { operationCreditLabel } from "@/lib/credit-economy";
+import { creditModeDisclosure, creditModeLabel, operationCreditLabel } from "@/lib/credit-economy";
 import { isDevMode } from "@/lib/dev-mode";
 import {
   analyzeMarket, generateTitleVariants, kdpPackaging, predictSuccess,
-  type MarketAnalysis, type TitleVariants, type KDPPackaging, type SuccessPrediction,
+  type Level, type MarketAnalysis, type TitleVariants, type KDPPackaging, type SuccessPrediction,
 } from "@/lib/kdp/money-engine";
 import { useFeatureGate } from "@/components/PaywallGuard";
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
@@ -40,6 +40,18 @@ function copyText(label: string, value: string) {
     () => toast.success(`${label} copiato`),
     () => toast.error(`Impossibile copiare ${label}`),
   );
+}
+
+function clampKdpScore(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function levelLabel(level: Level | string | undefined, italian: boolean): string {
+  if (!italian) return level || "medium";
+  if (level === "high") return "alto";
+  if (level === "medium") return "medio";
+  if (level === "low") return "basso";
+  return "medio";
 }
 
 /** Tiny inline badge: shows whether the result was grounded with live market data. */
@@ -98,14 +110,64 @@ export default function KdpLaunchPage() {
         retentionRisk: "Retention risk",
       };
   const predictionCopy = italianUi
-    ? { title: "Previsione bestseller", strengths: "Forze", weaknesses: "Debolezze", improvements: "Migliorie" }
-    : { title: "Bestseller prediction", strengths: "Strengths", weaknesses: "Weaknesses", improvements: "Improvements" };
+    ? {
+        title: "Previsione bestseller",
+        strengths: "Punti forti",
+        weaknesses: "Rischi commerciali",
+        improvements: "Prossime azioni",
+        action: "Prevedi potenziale",
+      }
+    : {
+        title: "Bestseller prediction",
+        strengths: "Strengths",
+        weaknesses: "Commercial risks",
+        improvements: "Next actions",
+        action: "Predict potential",
+      };
 
   const marketPremium = useMemo(() => {
     const content = [idea, market?.recommendedAngle, market?.subNiche].filter(Boolean).join("\n\n");
     if (content.split(/\s+/).filter(Boolean).length < 40) return null;
     return computeMarketPremiumScores({ content, genre, language });
   }, [idea, market?.recommendedAngle, market?.subNiche, genre, language]);
+  const predictionMetrics = useMemo(() => {
+    if (!prediction) return [];
+    const base = prediction.successScore || 0;
+    const titleWords = chosenTitle.split(/\s+/).filter(Boolean).length;
+    const subtitleWords = chosenSubtitle.split(/\s+/).filter(Boolean).length;
+    const keywordCount = packaging?.backendKeywords?.length || 0;
+    const categoryCount = packaging?.categories?.length || 0;
+    const hasMarketAngle = Boolean(market?.recommendedAngle);
+    const hasPackaging = Boolean(packaging?.amazonDescription);
+    const labels = italianUi
+      ? {
+          hook: "Forza hook",
+          promise: "Chiarezza promessa",
+          differentiation: "Differenziazione mercato",
+          trust: "Fit autorità/fiducia",
+          conversion: "Potenziale conversione Amazon",
+          keyword: "Fit keyword/categoria",
+          momentum: "Momentum commerciale",
+        }
+      : {
+          hook: "Hook strength",
+          promise: "Promise clarity",
+          differentiation: "Market differentiation",
+          trust: "Authority/trust fit",
+          conversion: "Amazon conversion potential",
+          keyword: "Keyword/category fit",
+          momentum: "Commercial momentum",
+        };
+    return [
+      { label: labels.hook, score: clampKdpScore(base + (titleWords >= 2 && titleWords <= 7 ? 6 : -5)), detail: italianUi ? "Titolo memorabile e leggibile a scaffale." : "Title memorability and shelf readability." },
+      { label: labels.promise, score: clampKdpScore(base + (subtitleWords >= 4 ? 7 : -4) + (hasMarketAngle ? 3 : 0)), detail: italianUi ? "Promessa comprensibile senza spiegazioni extra." : "Promise is understandable without extra explanation." },
+      { label: labels.differentiation, score: clampKdpScore(base + (market?.subNiche ? 8 : -3) - Math.max(0, prediction.weaknesses.length - 2) * 3), detail: italianUi ? "Quanto il libro evita l'effetto titolo generico." : "How much the book avoids generic title territory." },
+      { label: labels.trust, score: clampKdpScore(base + (hasPackaging ? 5 : -2)), detail: italianUi ? "Coerenza tra autore, promessa e descrizione." : "Fit between author promise, description, and trust." },
+      { label: labels.conversion, score: clampKdpScore(base), detail: italianUi ? "Sintesi del potenziale di acquisto Amazon." : "Summary of Amazon purchase potential." },
+      { label: labels.keyword, score: clampKdpScore(58 + keywordCount * 5 + categoryCount * 4), detail: italianUi ? "Keyword e categorie pronte per metadata KDP." : "Backend keywords and categories readiness." },
+      { label: labels.momentum, score: clampKdpScore(base + prediction.strengths.length * 2 - prediction.weaknesses.length * 3), detail: italianUi ? "Forza complessiva dopo rischi e opportunità." : "Overall force after risks and opportunities." },
+    ];
+  }, [chosenSubtitle, chosenTitle, italianUi, market?.recommendedAngle, market?.subNiche, packaging, prediction]);
 
   useEffect(() => {
     try {
@@ -192,7 +254,7 @@ export default function KdpLaunchPage() {
 
   return (
     <div className="scriptora-feature-page bg-background">
-      <main className="scriptora-feature-scroll mx-auto max-w-3xl space-y-5 p-4 sm:space-y-6 sm:p-6">
+      <main className="scriptora-feature-scroll mx-auto max-w-5xl space-y-5 p-4 sm:space-y-6 sm:p-6">
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -219,11 +281,12 @@ export default function KdpLaunchPage() {
 
         <section className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-xs text-emerald-50/82">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="font-semibold">{devCreditMode ? "SIMULAZIONE DEV" : "Credit economy"}</span>
+            <span className="font-semibold">{creditModeLabel(devCreditMode)}</span>
             <span>
               Market {operationCreditLabel("kdp_market", devCreditMode)} · Titoli {operationCreditLabel("kdp_titles", devCreditMode)} · Predict {operationCreditLabel("kdp_prediction", devCreditMode)}
             </span>
           </div>
+          <p className="mt-2 text-[11px] leading-4 text-emerald-50/64">{creditModeDisclosure(devCreditMode)}</p>
         </section>
 
         {/* STEP 1 — Idea */}
@@ -274,8 +337,8 @@ export default function KdpLaunchPage() {
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <div className="scriptora-kdp-mobile-grid grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div><span className="text-muted-foreground">Domanda:</span> <Badge variant="secondary">{market.demandLevel}</Badge></div>
-                <div><span className="text-muted-foreground">Competizione:</span> <Badge variant="secondary">{market.competitionLevel}</Badge></div>
+                <div><span className="text-muted-foreground">Domanda:</span> <Badge variant="secondary">{levelLabel(market.demandLevel, italianUi)}</Badge></div>
+                <div><span className="text-muted-foreground">Competizione:</span> <Badge variant="secondary">{levelLabel(market.competitionLevel, italianUi)}</Badge></div>
               </div>
               {market.subNiche && <p><span className="text-muted-foreground">Sotto-nicchia:</span> <strong>{market.subNiche}</strong></p>}
               <p className="leading-relaxed"><span className="text-muted-foreground">Angolo consigliato:</span><br />{market.recommendedAngle}</p>
@@ -287,10 +350,10 @@ export default function KdpLaunchPage() {
               {marketPremium && (
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-bold uppercase tracking-wide">Market Intelligence Premium</p>
+                    <p className="text-xs font-bold uppercase tracking-wide">{italianUi ? "Intelligenza mercato premium" : "Market Intelligence Premium"}</p>
                     <span className="text-sm font-black text-primary">{marketPremium.composite}/100</span>
                   </div>
-                  <div className="scriptora-kdp-mobile-grid grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
+                  <div className="scriptora-kdp-mobile-grid grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 xl:grid-cols-3">
                     {[
                       [marketMetricLabels.hookStrength, marketPremium.hookStrength],
                       [marketMetricLabels.bingeability, marketPremium.bingeability],
@@ -307,7 +370,7 @@ export default function KdpLaunchPage() {
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     {marketMetricLabels.retentionRisk}:{" "}
                     <span className={`font-semibold ${marketPremium.readerRetentionRisk === "high" ? "text-rose-500" : marketPremium.readerRetentionRisk === "medium" ? "text-amber-600" : "text-emerald-600"}`}>
-                      {marketPremium.readerRetentionRisk}
+                      {levelLabel(marketPremium.readerRetentionRisk, italianUi)}
                     </span>
                     {" · "}
                     {marketPremium.genreAlignmentNote}
@@ -418,7 +481,7 @@ export default function KdpLaunchPage() {
               <div className="flex justify-end">
                 <Button onClick={runPredict} disabled={loading}>
                   {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trophy className="h-4 w-4 mr-2" />}
-                  Predict · {operationCreditLabel("kdp_prediction", devCreditMode)}
+                  {predictionCopy.action} · {operationCreditLabel("kdp_prediction", devCreditMode)}
                 </Button>
               </div>
             </CardContent>
@@ -435,18 +498,32 @@ export default function KdpLaunchPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <div className="scriptora-kdp-mobile-grid grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div>
+              <div className="scriptora-kdp-mobile-grid grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                {predictionMetrics.map((metric) => (
+                  <div key={metric.label} className="rounded-xl border border-border/70 bg-muted/25 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{metric.label}</p>
+                      <p className="text-lg font-bold tabular-nums text-foreground">{metric.score}</p>
+                    </div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${metric.score}%` }} />
+                    </div>
+                    <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{metric.detail}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="scriptora-kdp-mobile-grid grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3">
                   <div className="text-xs font-semibold text-primary mb-1">{predictionCopy.strengths}</div>
-                  <ul className="space-y-1">{prediction.strengths.map((x, i) => <li key={`stable-${i}`}>✓ {x}</li>)}</ul>
+                  <ul className="space-y-1 leading-5">{prediction.strengths.map((x, i) => <li key={`stable-${i}`}>✓ {x}</li>)}</ul>
                 </div>
-                <div>
+                <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-3">
                   <div className="text-xs font-semibold text-destructive mb-1">{predictionCopy.weaknesses}</div>
-                  <ul className="space-y-1">{prediction.weaknesses.map((x, i) => <li key={`stable-${i}`}>✗ {x}</li>)}</ul>
+                  <ul className="space-y-1 leading-5">{prediction.weaknesses.map((x, i) => <li key={`stable-${i}`}>✗ {x}</li>)}</ul>
                 </div>
-                <div>
+                <div className="rounded-xl border border-primary/20 bg-primary/10 p-3">
                   <div className="text-xs font-semibold mb-1">{predictionCopy.improvements}</div>
-                  <ul className="space-y-1">{prediction.improvements.map((x, i) => <li key={`stable-${i}`}>→ {x}</li>)}</ul>
+                  <ul className="space-y-1 leading-5">{prediction.improvements.map((x, i) => <li key={`stable-${i}`}>→ {x}</li>)}</ul>
                 </div>
               </div>
               <Separator />

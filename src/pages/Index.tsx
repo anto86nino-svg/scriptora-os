@@ -413,7 +413,7 @@ const Index = () => {
             onGenerateNext={engine.generateNext}
             onGenerateFrontMatter={engine.generateFrontMatterSection}
             onGenerateBackMatter={engine.generateBackMatterSection}
-            onGenerateChapter={(...args) => engine.generateSingleChapter(...args, { onChunkProgress: (progress) => { console.log("🔥 PROGRESS:", progress); } })}
+            onGenerateChapter={(...args) => engine.generateSingleChapter(...args)}
             onRegenerateChapter={engine.regenerateChapter}
             onRewriteChapter={engine.rewriteChapterWithDepth}
             onEvaluateChapter={engine.evaluateChapter}
@@ -616,7 +616,7 @@ const Index = () => {
                   onGenerateNext={engine.generateNext}
                   onGenerateFrontMatter={engine.generateFrontMatterSection}
                   onGenerateBackMatter={engine.generateBackMatterSection}
-                  onGenerateChapter={(...args) => engine.generateSingleChapter(...args, { onChunkProgress: (progress) => { console.log("🔥 PROGRESS:", progress); } })}
+                  onGenerateChapter={(...args) => engine.generateSingleChapter(...args)}
                   onRegenerateChapter={engine.regenerateChapter}
                   onRewriteChapter={engine.rewriteChapterWithDepth}
                   onEvaluateChapter={engine.evaluateChapter}

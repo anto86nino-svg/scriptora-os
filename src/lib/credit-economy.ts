@@ -35,5 +35,15 @@ export function formatCredits(value: number | null | undefined): string {
 
 export function operationCreditLabel(operation: CreditOperation, devMode = false): string {
   const cost = formatCredits(CREDIT_OPERATION_COSTS[operation]);
-  return `${devMode ? "SIM DEV · " : ""}${cost} crediti`;
+  return `${devMode ? "SIM DEV · " : ""}${cost} crediti${devMode ? " stimati" : ""}`;
+}
+
+export function creditModeLabel(devMode = false): string {
+  return devMode ? "SIMULAZIONE DEV" : "Credit wallet";
+}
+
+export function creditModeDisclosure(devMode = false): string {
+  return devMode
+    ? "Saldo e consumi sono simulati per test: non rappresentano wallet reale, Stripe o addebito billing."
+    : "Costi stimati: le azioni AI vengono tracciate dalla usage policy quando passano dai provider collegati.";
 }

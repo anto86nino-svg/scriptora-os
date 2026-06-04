@@ -28,7 +28,7 @@ import { enableDevMode, isDevMode, exitDevMode, useDevMode } from "@/lib/dev-mod
 import { BetaActivationDialog } from "@/components/BetaActivationDialog";
 import { usePlan, useQuota } from "@/lib/plan";
 import { canUseFeature, type FeatureKey } from "@/lib/subscription";
-import { estimateCreditsFromWords, formatCredits, operationCreditLabel } from "@/lib/credit-economy";
+import { creditModeDisclosure, estimateCreditsFromWords, formatCredits, operationCreditLabel } from "@/lib/credit-economy";
 import { FlaskConical } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIntelligentPreload } from "@/hooks/useIntelligentPreload";
@@ -349,11 +349,16 @@ export default function Home() {
 
   const openRewriteStudio = () => {
     const target = lastProject;
+    if (!target) {
+      toast.info("Crea prima un libro per usare la riscrittura sul manoscritto.");
+      openLaunchModal("quick");
+      return;
+    }
     const chapterIdx = target?.chapters?.findIndex((ch) => (ch.content || "").trim().length > 0) ?? -1;
     const idx = chapterIdx >= 0 ? chapterIdx : 0;
     goApp({
-      projectId: target?.id,
-      section: target ? `chapter-${idx}` : undefined,
+      projectId: target.id,
+      section: `chapter-${idx}`,
       mode: "rewrite",
     });
   };
@@ -574,6 +579,14 @@ export default function Home() {
     }
     goApp({ projectId: lastProject.id, section: `chapter-${activeChapterIndex}` });
   };
+  const openCoverStudio = () => {
+    if (!lastProject) {
+      toast.info("Crea prima un libro per salvare la cover nel progetto.");
+      openLaunchModal("manual");
+      return;
+    }
+    setShowCoverStudio(true);
+  };
   const dayKey = (date: Date) => date.toISOString().slice(0, 10);
   const todayKey = dayKey(new Date());
   const wordsToday = useMemo(
@@ -732,7 +745,7 @@ const dashboardWidgets = [
       detail: t("from_updated_projects"),
       icon: NotebookPen,
       tone: "from-emerald-400/18 to-lime-300/8",
-      action: () => goApp(),
+      action: lastProject ? openActiveManuscript : openNewBookGuarded,
     },
     {
       label: t("writing_streak_widget"),
@@ -740,7 +753,7 @@ const dashboardWidgets = [
       detail: t("consecutive_days"),
       icon: Flame,
       tone: "from-amber-400/20 to-orange-300/8",
-      action: () => goApp(),
+      action: lastProject ? openActiveManuscript : openNewBookGuarded,
     },
     {
       label: t("project_progress_widget"),
@@ -836,9 +849,9 @@ const dashboardWidgets = [
 
           <div className="scriptora-book-instrument-strip grid gap-2 sm:grid-cols-3">
             <div className="scriptora-book-instrument rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-3 py-3">
-              <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-emerald-100/55">Crediti disponibili</p>
+              <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-emerald-100/55">{devOn ? "Crediti simulati" : "Crediti disponibili"}</p>
               <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-50">{creditBalanceLabel}</p>
-              <p className="mt-0.5 text-[10px] text-emerald-100/58">Uso progetto: {creditUsedLabel}</p>
+              <p className="mt-0.5 text-[10px] text-emerald-100/58">{devOn ? "Non wallet reale" : `Uso progetto: ${creditUsedLabel}`}</p>
             </div>
             <div className="scriptora-book-instrument rounded-2xl border border-sky-300/20 bg-sky-300/10 px-3 py-3">
               <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-sky-100/55">Consumo oggi</p>
@@ -848,9 +861,12 @@ const dashboardWidgets = [
             <div className="scriptora-book-instrument rounded-2xl border border-amber-300/20 bg-amber-300/10 px-3 py-3">
               <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-amber-100/55">Piano attivo</p>
               <p className="mt-1 text-lg font-semibold text-amber-50">{planDisplayLabel}</p>
-              <p className="mt-0.5 text-[10px] text-amber-100/58">{devOn ? "Non wallet reale" : "Policy corrente"}</p>
+              <p className="mt-0.5 text-[10px] text-amber-100/58">{devOn ? "Simulazione locale, non Stripe" : "Policy corrente"}</p>
             </div>
           </div>
+          <p className="rounded-2xl border border-white/10 bg-white/[0.045] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/50">
+            {creditModeDisclosure(devOn)}
+          </p>
 
           <div className="scriptora-book-progress h-2 overflow-hidden rounded-full bg-white/10">
             <div
@@ -898,7 +914,7 @@ const dashboardWidgets = [
           <div className="scriptora-book-secondary-actions grid gap-2 sm:grid-cols-3">
             <button
               type="button"
-              onClick={guardPlanFeature("cover_studio_template", () => setShowCoverStudio(true))}
+              onClick={guardPlanFeature("cover_studio_template", openCoverStudio)}
               className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/[0.07] px-3 py-2.5 text-xs font-semibold text-white/80 transition hover:bg-white/[0.10]"
             >
               <ImagePlus className="h-4 w-4" />
@@ -960,7 +976,7 @@ const dashboardWidgets = [
   );
 
   const cards = [
-    { id: "writer_studio", group: "writer", icon: BookOpen, title: t("writer_studio_title"), desc: t("writer_studio_desc"), iconBg: "ios-icon-violet", action: () => goApp(), tag: t("os_tag_write"), emphasis: true },
+    { id: "writer_studio", group: "writer", icon: BookOpen, title: t("writer_studio_title"), desc: t("writer_studio_desc"), iconBg: "ios-icon-violet", action: lastProject ? openActiveManuscript : openNewBookGuarded, tag: t("os_tag_write"), emphasis: true },
     { id: "story_architect", group: "writer", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("story_architect_title"), desc: freeBookUsed ? t("upgrade_more_books") : t("story_architect_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: () => openLaunchModal("manual"), feature: "book_engine_full" as const, tag: t("os_tag_plan") },
     { id: "manuscript_lab", group: "writer", icon: Wand2, title: t("manuscript_lab_title"), desc: t("manuscript_lab_desc"), iconBg: "ios-icon-teal", action: () => setShowManuscriptAnalyzer(true), feature: "chapter_improvement" as const, tag: t("os_tag_score") },
     { id: "rewrite_studio", group: "writer", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_studio_desc"), iconBg: "ios-icon-pink", action: openRewriteStudio, feature: "chapter_rewrite" as const, tag: t("os_tag_rewrite") },
@@ -974,7 +990,7 @@ const dashboardWidgets = [
     { id: "bestseller_radar", group: "bestseller", icon: TrendingUp, title: "Bestseller Radar", desc: t("radar_premium_desc"), iconBg: "ios-icon-green", action: () => navigate("/bestseller-radar"), feature: "trending_niches_limited" as const, tag: t("os_tag_signal") },
     { id: "keyword_gold", group: "bestseller", icon: BarChart3, title: "Keyword Gold", desc: t("keyword_premium_desc"), iconBg: "ios-icon-yellow", action: () => navigate("/keyword-gold"), feature: "kdp_market_base" as const, tag: t("os_tag_metadata") },
 
-    { id: "cover_studio", group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: () => setShowCoverStudio(true), feature: "cover_studio_template" as const, tag: t("os_tag_cover") },
+    { id: "cover_studio", group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: openCoverStudio, feature: "cover_studio_template" as const, tag: t("os_tag_cover") },
     { id: "export_studio", group: "publishing", icon: FileDown, title: t("export_studio_title"), desc: t("export_studio_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const, tag: t("os_tag_export") },
     { id: "completed_shelf", group: "publishing", icon: Library, title: t("completed_shelf_title"), desc: t("library_premium_desc"), iconBg: "ios-icon-green", action: () => setShowLibrary(true), feature: "export_epub" as const, tag: t("os_tag_archive") },
 
@@ -1406,7 +1422,7 @@ const dashboardWidgets = [
                         <StationIcon className="h-5 w-5" />
                       </span>
                       <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/62">
-                        {groupCards.length} tool
+                        {groupCards.length} strumenti
                         <ArrowRight className={`h-3.5 w-3.5 transition-transform ${isOpen ? "rotate-90" : ""}`} />
                       </span>
                     </span>
@@ -1541,14 +1557,14 @@ const dashboardWidgets = [
       {showCoverStudio && (
         <Suspense fallback={null}>
           <CoverGenerator
-            title={t("untitled")}
-            subtitle=""
-            authorName={activeAuthor.penName}
-            description=""
-            authorBio={activeAuthor.biography}
+            title={lastProject?.config?.title || t("untitled")}
+            subtitle={lastProject?.config?.subtitle || ""}
+            authorName={lastProject?.config?.authorName || lastProject?.config?.author || lastProject?.config?.writerName || activeAuthor.penName}
+            description={lastProject?.blueprint?.overview || lastProject?.config?.subtitle || ""}
+            authorBio={lastProject?.frontMatter?.aboutAuthor || lastProject?.config?.authorIdentity?.biography || activeAuthor.biography}
             projectGenre={lastProject?.config?.genre}
             showPrimaryAction={Boolean(lastProject)}
-            primaryActionLabel="Salva nel progetto"
+            primaryActionLabel="Salva cover nel progetto"
             onGenerate={(dataUrl) => {
               if (!lastProject) return;
               const updatedProject: BookProject = {
@@ -1654,6 +1670,7 @@ const dashboardWidgets = [
                       type="button"
                       onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
                       className="rounded-lg border border-destructive/30 bg-destructive/10 p-2 text-destructive transition hover:bg-destructive hover:text-destructive-foreground"
+                      aria-label={`Elimina ${p.config.title || t("untitled")}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

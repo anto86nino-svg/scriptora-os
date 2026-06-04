@@ -150,7 +150,7 @@ export function calibrateChapterDoctorDelta(input: DoctorDeltaInput): {
   }
 
   const maxDelta =
-    beforeCalibrated > 8.2 ? 0.6 : beforeCalibrated >= 6 ? 1.2 : 1.5;
+    beforeCalibrated > 8.2 ? 0.6 : beforeCalibrated >= 6 ? 0.8 : 1.5;
 
   const hasRealImprovement =
     rawAfterCalibrated > beforeCalibrated + 0.04 ||

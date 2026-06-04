@@ -608,6 +608,49 @@
     radial-gradient(ellipse 42% 34% at 88% 8%, var(--world-accent-soft), transparent 64%);
 }
 
+[data-atmosphere-profile="fantasy-realm"] .scriptora-world-module::after,
+[data-atmosphere-profile="dark-luxury"] .scriptora-world-module::after,
+[data-atmosphere-profile="space-scifi"] .scriptora-world-module::after,
+[data-atmosphere-profile="nature-calm"] .scriptora-world-module::after {
+  content: attr(data-atmosphere-object);
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  max-width: 46%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.30);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+[data-atmosphere-profile="fantasy-realm"] .scriptora-world-module {
+  background:
+    radial-gradient(circle at 12% 16%, rgba(212, 175, 98, 0.10), transparent 34%),
+    linear-gradient(145deg, rgba(28, 20, 48, 0.56), rgba(6, 8, 18, 0.66));
+}
+
+[data-atmosphere-profile="dark-luxury"] .scriptora-world-module {
+  background:
+    radial-gradient(circle at 12% 16%, rgba(218, 165, 87, 0.11), transparent 34%),
+    linear-gradient(145deg, rgba(22, 10, 18, 0.62), rgba(4, 5, 9, 0.70));
+}
+
+[data-atmosphere-profile="space-scifi"] .scriptora-world-module {
+  background:
+    linear-gradient(90deg, rgba(125, 211, 252, 0.06), transparent 42%),
+    linear-gradient(145deg, rgba(4, 18, 30, 0.66), rgba(3, 7, 18, 0.78));
+}
+
+[data-atmosphere-profile="nature-calm"] .scriptora-world-module {
+  background:
+    radial-gradient(circle at 14% 14%, rgba(125, 211, 177, 0.10), transparent 34%),
+    linear-gradient(145deg, rgba(8, 28, 24, 0.56), rgba(5, 11, 15, 0.72));
+}
+
 [data-atmosphere-profile] .scriptora-modal-panel,
 [data-atmosphere-profile] [role="dialog"] {
   border-color: var(--world-room-line);

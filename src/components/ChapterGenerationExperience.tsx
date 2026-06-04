@@ -6,11 +6,12 @@ import { resolveChapterTitle } from "@/lib/chapter-titles";
 import { Progress } from "@/components/ui/progress";
 import { t } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
-import { operationCreditLabel } from "@/lib/credit-economy";
+import { creditModeDisclosure, operationCreditLabel } from "@/lib/credit-economy";
 import { isDevMode } from "@/lib/dev-mode";
 import {
   EDITORIAL_CHECKLIST,
   EDITORIAL_PHASE_LABELS,
+  compactPreviewLine,
   editorialStatusMessage,
   formatWordProgress,
   sanitizePlaceholderText,
@@ -62,12 +63,22 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
   );
   const editorialBrief = useMemo(() => {
     const cleanSummary = sanitizePlaceholderText(outline?.summary) || "Il capitolo deve avanzare il libro con una scena leggibile, concreta e coerente.";
-    return [
-      { label: "Obiettivo", value: cleanSummary },
-      { label: "Promessa emotiva", value: project.config.tone || "Tensione, scelta e conseguenza reale." },
-      { label: "Direzione", value: phaseLabel },
-      { label: "Target", value: formatWordProgress(currentWords, targetWords) },
-    ];
+    const fragments = cleanSummary
+      .split(/[.!?;•]+/)
+      .map((item) => compactPreviewLine(item, 118))
+      .filter((item) => item.split(/\s+/).length >= 4)
+      .slice(0, 3);
+    return {
+      objective: compactPreviewLine(cleanSummary, 190),
+      promise: compactPreviewLine(project.config.tone || "Tensione, scelta e conseguenza reale.", 118),
+      direction: phaseLabel,
+      target: formatWordProgress(currentWords, targetWords),
+      bullets: fragments.length ? fragments : [
+        "Una scelta deve modificare la traiettoria della scena",
+        "La tensione resta aperta oltre la chiusura",
+        "La prosa rimane pulita, leggibile e senza metatesto",
+      ],
+    };
   }, [currentWords, outline?.summary, phaseLabel, project.config.tone, targetWords]);
   const activeChecklist = EDITORIAL_CHECKLIST.slice(0, 4);
 
@@ -103,7 +114,7 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
       </div>
 
       <div className="scriptora-generation-grid mb-4">
-        <aside className="rounded-2xl border border-white/10 bg-white/[0.045] p-3 sm:p-4">
+        <aside className="scriptora-generation-brief">
           <div className="mb-3 flex items-center gap-2">
             <PenLine className="h-4 w-4 text-cyan-200" />
             <div>
@@ -112,13 +123,27 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
             </div>
           </div>
 
-          <div className="space-y-2">
-            {editorialBrief.map((item) => (
-              <div key={item.label} className="rounded-xl border border-white/8 bg-slate-950/38 px-3 py-2">
-                <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/38">{item.label}</p>
-                <p className="mt-1 line-clamp-2 text-xs leading-5 text-white/76">{item.value}</p>
+          <div className="scriptora-editorial-brief-card">
+            <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/42">Obiettivo capitolo</p>
+            <p className="mt-1 text-xs leading-5 text-white/82">{editorialBrief.objective}</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/36">Promessa emotiva</p>
+                <p className="mt-1 text-[11px] leading-4 text-white/70">{editorialBrief.promise}</p>
               </div>
-            ))}
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-white/36">Direzione</p>
+                <p className="mt-1 text-[11px] leading-4 text-white/70">{editorialBrief.direction}</p>
+              </div>
+            </div>
+            <ul className="mt-3 space-y-1.5">
+              {editorialBrief.bullets.map((item) => (
+                <li key={item} className="flex gap-2 text-[11px] leading-4 text-white/72">
+                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-cyan-200/70" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
           </div>
 
           <ul className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
@@ -144,6 +169,9 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
               );
             })}
           </ul>
+          <div className="mt-3 rounded-xl border border-emerald-300/15 bg-emerald-300/8 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-100/72">
+            {editorialBrief.target}
+          </div>
         </aside>
 
         <div className="scriptora-generation-manuscript">
@@ -156,7 +184,7 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
               <span className="text-[10px] uppercase tracking-[0.14em] text-emerald-200/80">In scrittura</span>
             )}
           </div>
-          <div className="scriptora-live-writing-board" aria-label={`Manoscritto live: ${chapterTitle}`}>
+          <div className="scriptora-live-writing-board" aria-label={`Manoscritto live: ${chapterTitle}`} aria-live="polite">
             <div className="scriptora-live-writing-paper">
               <h4 className="text-lg font-semibold text-white leading-snug">{chapterTitle}</h4>
               {paragraphs.length > 0 ? (
@@ -189,6 +217,9 @@ export const ChapterGenerationExperience = memo(function ChapterGenerationExperi
           <span>{chunkProgress ? formatWordProgress(currentWords, targetWords) : "Preparazione in corso"}</span>
           <span>{operationCreditLabel("chapter_generation", devCreditMode)}</span>
         </div>
+        {devCreditMode && (
+          <p className="text-[10px] leading-4 text-white/42">{creditModeDisclosure(true)}</p>
+        )}
         <Progress value={realPct} className="mt-2 h-2 bg-white/10" />
       </div>
     </div>

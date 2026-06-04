@@ -44,6 +44,23 @@ export interface EditorialReport {
   warnings: EditorialWarning[];
 }
 
+export interface EditorialQualityDimensions {
+  emotionalRealism: number;
+  dialogueHumanity: number;
+  subtextStrength: number;
+  pacingBalance: number;
+  characterDepth: number;
+  scenePurpose: number;
+  repetitionControl: number;
+  readerRetention: number;
+  narrativeMomentum: number;
+  hookStrength: number;
+  conflictPressure: number;
+  payoffControl: number;
+  voiceConsistency: number;
+  marketFit: number;
+}
+
 const EDITORIAL_GENRE_PROFILES: Partial<Record<Genre, EditorialGenreProfile>> = {
   "self-help": {
     genre: "self-help",
@@ -405,6 +422,7 @@ export function calculateEditorialChapterScore(
     openingWords: number;
     quoteMarks: number;
     warningTypes: string[];
+    warnings?: Pick<EditorialWarning, "type" | "severity">[];
     genre: Genre;
   }
 ): number {
@@ -417,6 +435,7 @@ export function calculateEditorialChapterScore(
     openingWords,
     quoteMarks,
     warningTypes,
+    warnings,
     genre,
   } = params;
 
@@ -449,9 +468,14 @@ export function calculateEditorialChapterScore(
     dialogueScore * profile.emotionalImpact;
 
   const warningPenalty = Math.min(
-    warningTypes.reduce((sum, type) => {
-      return sum + editorialWarningPenalty(type as EditorialWarning["type"]);
-    }, 0),
+    warnings?.length
+      ? warnings.reduce((sum, warning) => {
+          const severityWeight = warning.severity === "high" ? 1.45 : warning.severity === "medium" ? 1 : 0.55;
+          return sum + editorialWarningPenalty(warning.type) * severityWeight;
+        }, 0)
+      : warningTypes.reduce((sum, type) => {
+          return sum + editorialWarningPenalty(type as EditorialWarning["type"]);
+        }, 0),
     6
   );
 
@@ -1407,6 +1431,149 @@ export function calculateEditorialScores(
     characterDepthScore: clampScore(
       100 - characterPenalty
     ),
+  };
+}
+
+interface EditorialDimensionInput {
+  text: string;
+  genre: Genre;
+  report?: EditorialReport;
+  wordCount?: number;
+  paragraphs?: number;
+  avgSentenceWords?: number;
+  longSentenceRatio?: number;
+  repeatDensity?: number;
+  openingWords?: number;
+  quoteMarks?: number;
+}
+
+function editorialWords(text: string): string[] {
+  return text.toLowerCase().match(/[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu) || [];
+}
+
+function localRepetitionDensity(words: string[]): number {
+  const meaningful = words.filter((word) => word.length > 4);
+  if (!meaningful.length) return 0;
+  const counts = new Map<string, number>();
+  for (const word of meaningful) counts.set(word, (counts.get(word) || 0) + 1);
+  const repeated = Array.from(counts.values()).reduce((sum, value) => sum + Math.max(0, value - 3), 0);
+  return repeated / Math.max(1, meaningful.length);
+}
+
+function countPatternSignals(text: string, patterns: RegExp[]): number {
+  return patterns.reduce((sum, pattern) => sum + (text.match(pattern)?.length || 0), 0);
+}
+
+function warningPenaltyFor(
+  warnings: EditorialWarning[],
+  types: EditorialWarning["type"][]
+): number {
+  return warnings.reduce((sum, warning) => {
+    if (!types.includes(warning.type)) return sum;
+    return sum + (warning.severity === "high" ? 14 : warning.severity === "medium" ? 8 : 4);
+  }, 0);
+}
+
+function genreExpectationSignals(genre: Genre, lower: string): number {
+  if (["thriller", "crime", "mystery"].includes(genre)) {
+    return countPatternSignals(lower, [/\b(indizio|sospetto|prova|minaccia|pericolo|deadline|traccia|movente|alibi|rischio)\b/gi]);
+  }
+  if (genre === "horror") {
+    return countPatternSignals(lower, [/\b(odore|scricchiol|ombra|freddo|macchia|porta|respiro|rumore|crepa|buio|corpo)\b/gi]);
+  }
+  if (["romance", "dark-romance"].includes(genre)) {
+    return countPatternSignals(lower, [/\b(attrazione|distanza|desiderio|rifiut|gelosia|confine|segreto|tensione|sfior)\b/gi]);
+  }
+  if (genre === "fantasy") {
+    return countPatternSignals(lower, [/\b(regno|magia|rito|legge|sangue|mappa|reliquia|costo|giuramento|porta)\b/gi]);
+  }
+  if (genre === "sci-fi") {
+    return countPatternSignals(lower, [/\b(protocollo|segnale|orbita|laboratorio|sistema|memoria|algoritmo|stazione|modulo)\b/gi]);
+  }
+  if (["self-help", "business", "productivity", "psychology", "education", "manual"].includes(genre)) {
+    return countPatternSignals(lower, [/\b(esercizio|esempio|domanda|azione|checklist|metodo|passaggio|caso|strumento|decisione)\b/gi]);
+  }
+  return countPatternSignals(lower, [/\b(scelta|conseguenza|rivelazione|domanda|perdita|rischio|desiderio)\b/gi]);
+}
+
+export function calculateEditorialQualityDimensions(
+  input: EditorialDimensionInput
+): EditorialQualityDimensions {
+  const report = input.report || analyzeNovel(input.text);
+  const words = editorialWords(input.text);
+  const wordCount = input.wordCount ?? words.length;
+  const paragraphs = input.paragraphs ?? input.text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean).length;
+  const sentences = input.text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map((s) => s.trim()).filter(Boolean) || [];
+  const sentenceCounts = sentences.map((sentence) => editorialWords(sentence).length).filter(Boolean);
+  const avgSentenceWords = input.avgSentenceWords ?? (
+    sentenceCounts.length ? sentenceCounts.reduce((sum, value) => sum + value, 0) / sentenceCounts.length : 0
+  );
+  const longSentenceRatio = input.longSentenceRatio ?? (
+    sentenceCounts.length ? sentenceCounts.filter((value) => value > 32).length / sentenceCounts.length : 0
+  );
+  const repeatDensity = input.repeatDensity ?? localRepetitionDensity(words);
+  const openingWords = input.openingWords ?? editorialWords(input.text.split(/\n{2,}/)[0] || "").length;
+  const quoteMarks = input.quoteMarks ?? ((input.text.match(/[“”"]/g) || []).length);
+  const lower = input.text.toLowerCase();
+  const warnings = report.warnings || [];
+
+  const changeSignals = countPatternSignals(lower, [
+    /\b(decise|scelse|rifiutò|rifiuta|rivelò|rivela|scoprì|scopre|mentì|mente|perse|perde|tradì|tradisce)\b/gi,
+    /\b(conseguenza|indizio|prova|ricatto|debito|ferita|segreto|costo|promessa|fallimento)\b/gi,
+  ]);
+  const conflictSignals = countPatternSignals(lower, [
+    /\b(no|non posso|non voglio|basta|bugia|minaccia|rischio|pericolo|gelosia|sospetto|tradimento|colpa|confine)\b/gi,
+  ]);
+  const behaviorSignals = countPatternSignals(lower, [
+    /\b(accese|chiuse|aprì|strinse|lasciò|arretrò|toccò|prese|posò|camminò|si voltò|si irrigidì|tremò)\b/gi,
+  ]);
+  const hookSignals = countPatternSignals(lower.slice(0, 900), [
+    /\b(segreto|morto|sparito|minaccia|sangue|porta|lettera|telefonata|errore|ultima|nessuno|prima volta|non avrebbe)\b/gi,
+  ]);
+  const expectationSignals = genreExpectationSignals(input.genre, lower);
+
+  const dialogueDensity = quoteMarks / Math.max(1, wordCount / 1000);
+  const paragraphBreathing = paragraphs >= Math.max(3, Math.floor(wordCount / 650)) ? 6 : -6;
+  const scenePurpose = clampScore(58 + changeSignals * 4 + conflictSignals * 2 + behaviorSignals * 1.2 - warningPenaltyFor(warnings, ["emotional_redundancy", "climax_oversaturation"]) - repeatDensity * 160);
+  const conflictPressure = clampScore(52 + conflictSignals * 5 + changeSignals * 1.5 - warningPenaltyFor(warnings, ["character_flattening", "dialogue_perfection"]) * 0.8);
+  const hookStrength = clampScore(74 + hookSignals * 5 - Math.max(0, openingWords - 120) * 0.16 - longSentenceRatio * 18);
+  const repetitionControl = clampScore(100 - repeatDensity * 420 - warningPenaltyFor(warnings, ["emotional_redundancy", "repetitive_symbolism"]) * 0.75);
+  const payoffControl = clampScore(88 - warningPenaltyFor(warnings, ["climax_oversaturation", "overwritten_scene"]) - countPatternSignals(lower, [/\b(finalmente|per sempre|adesso sapeva|capì che|da quel momento)\b/gi]) * 1.5);
+  const voiceConsistency = clampScore(92 - warningPenaltyFor(warnings, ["dialogue_perfection", "repetitive_symbolism"]) * 0.7 - repeatDensity * 90);
+  const readerRetention = clampScore(
+    (hookStrength * 0.25) +
+    (scenePurpose * 0.25) +
+    (conflictPressure * 0.2) +
+    (repetitionControl * 0.15) +
+    (payoffControl * 0.15) -
+    Math.max(0, avgSentenceWords - 26) * 0.8 +
+    paragraphBreathing
+  );
+  const narrativeMomentum = clampScore(scenePurpose * 0.38 + conflictPressure * 0.28 + hookStrength * 0.18 + payoffControl * 0.16);
+  const marketFit = clampScore(
+    58 +
+    expectationSignals * 3 +
+    getEditorialGenreProfile(input.genre).scoreWeights.hook * hookStrength * 0.16 +
+    getEditorialGenreProfile(input.genre).scoreWeights.emotionalImpact * report.emotionalRedundancyScore * 0.14 +
+    Math.min(10, dialogueDensity) -
+    Math.max(0, avgSentenceWords - 30) * 0.5
+  );
+
+  return {
+    emotionalRealism: report.emotionalRedundancyScore,
+    dialogueHumanity: report.dialogueHumanityScore,
+    subtextStrength: report.subtextScore,
+    pacingBalance: report.pacingConsistencyScore,
+    characterDepth: report.characterConsistencyScore,
+    scenePurpose,
+    repetitionControl,
+    readerRetention,
+    narrativeMomentum,
+    hookStrength,
+    conflictPressure,
+    payoffControl,
+    voiceConsistency,
+    marketFit,
   };
 }
 

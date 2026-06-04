@@ -19,9 +19,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { dominateTitles, type TitleDominationResult, type DominateTitlesInput } from "@/lib/kdp/money-engine";
 import { fetchPlan, type PlanTier } from "@/lib/plan";
 import { useFeatureGate } from "@/components/PaywallGuard";
+import { creditModeDisclosure, operationCreditLabel } from "@/lib/credit-economy";
+import { isDevMode } from "@/lib/dev-mode";
 
 interface Props {
-  /** Optional callback when user wants to push title into a project. */
+  /** Optional callback when user wants to push title into the parent KDP wizard. */
   onUseTitle?: (title: string, subtitle: string) => void;
   /** Pre-fill from parent state if available. */
   defaults?: Partial<DominateTitlesInput>;
@@ -146,9 +148,20 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
     ? [...result.titleCandidates].sort((a, b) => (b.kdpScore ?? 0) - (a.kdpScore ?? 0))
     : [];
   const italianUi = input.language === "Italian" || input.marketplace === "amazon.it";
+  const devCreditMode = isDevMode();
   const scoreLabels = italianUi
-    ? { clarity: "Chiarezza", emotion: "Emozione", keyword: "Keyword", originality: "Originalita" }
-    : { clarity: "Clarity", emotion: "Emotion", keyword: "Keyword", originality: "Originality" };
+    ? {
+        clarity: "Chiarezza promessa",
+        emotion: "Forza hook",
+        keyword: "Fit keyword",
+        originality: "Differenziazione",
+      }
+    : {
+        clarity: "Promise clarity",
+        emotion: "Hook strength",
+        keyword: "Keyword fit",
+        originality: "Market differentiation",
+      };
 
   return (
     <Card className="border-primary/30">
@@ -162,9 +175,15 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           {italianUi
-            ? "Modulo avanzato separato dal wizard: ricerca mercato, titoli originali e progetto pronto da sviluppare."
-            : "Advanced module separate from the wizard: market research, original titles, and a project ready to develop."}
+            ? "Modulo avanzato separato dal wizard: ricerca mercato, titoli originali e packaging pronto da sviluppare."
+            : "Advanced module separate from the wizard: market research, original titles, and packaging ready to develop."}
         </p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+          {italianUi ? "Costo studio titoli" : "Title studio cost"}: {operationCreditLabel("kdp_titles", devCreditMode)}
+        </p>
+        {devCreditMode && (
+          <p className="text-[10px] leading-4 text-muted-foreground/70">{creditModeDisclosure(true)}</p>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Inputs */}
@@ -260,7 +279,7 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
           </div>
           <Button onClick={() => run()} disabled={loading || !input.idea.trim()} size="lg">
             {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Target className="h-4 w-4 mr-2" />}
-            Trova titoli e prepara progetto
+            {italianUi ? "Trova titoli e prepara packaging" : "Find titles and prepare packaging"}
           </Button>
         </div>
 
@@ -300,16 +319,16 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
                   <div className="text-lg font-bold leading-tight">{winner.title}</div>
                   <div className="text-sm text-muted-foreground">{winner.subtitle}</div>
                   <p className="text-xs italic">{winner.reason}</p>
-                  <p className="text-[11px] text-muted-foreground">Best marketplace: <strong>{winner.bestMarketplace}</strong></p>
+                  <p className="text-[11px] text-muted-foreground">{italianUi ? "Marketplace migliore" : "Best marketplace"}: <strong>{winner.bestMarketplace}</strong></p>
                   <div className="flex flex-wrap gap-2 pt-2">
-                    <Button size="sm" onClick={() => { onUseTitle?.(winner.title, winner.subtitle); toast.success("Titolo pronto per il progetto"); }}>
-                      <Save className="h-3.5 w-3.5 mr-1.5" /> Crea progetto da questo titolo
+                    <Button size="sm" onClick={() => { onUseTitle?.(winner.title, winner.subtitle); toast.success(italianUi ? "Titolo inserito nel wizard KDP" : "Title inserted in the KDP wizard"); }}>
+                      <Save className="h-3.5 w-3.5 mr-1.5" /> {italianUi ? "Usa titolo nel wizard" : "Use title in wizard"}
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => run({ differentAngle: true })} disabled={loading}>
-                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Rigenera con angolo diverso
+                      <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> {italianUi ? "Rigenera con angolo diverso" : "Regenerate with different angle"}
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => run()} disabled={loading}>
-                      <Search className="h-3.5 w-3.5 mr-1.5" /> Cerca competitor più profondamente
+                      <Search className="h-3.5 w-3.5 mr-1.5" /> {italianUi ? "Cerca competitor piu profondamente" : "Search competitors deeper"}
                     </Button>
                   </div>
                 </CardContent>
@@ -363,7 +382,7 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         <Badge variant="default" className="text-[10px]">KDP {Math.round(c.kdpScore)}</Badge>
                         <Badge variant={riskTone(c.saturationRisk) as any} className="text-[10px]">
-                          sat: {c.saturationRisk}
+                          {italianUi ? "saturazione" : "sat"}: {c.saturationRisk}
                         </Badge>
                       </div>
                     </div>
@@ -386,8 +405,8 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
                       </div>
                     </details>
                     <div className="mt-2 flex justify-end">
-                      <Button size="sm" variant="ghost" onClick={() => { onUseTitle?.(c.title, c.subtitle); toast.success("Titolo pronto per il progetto"); }}>
-                        <Save className="h-3.5 w-3.5 mr-1.5" /> Crea progetto
+                      <Button size="sm" variant="ghost" onClick={() => { onUseTitle?.(c.title, c.subtitle); toast.success(italianUi ? "Titolo inserito nel wizard KDP" : "Title inserted in the KDP wizard"); }}>
+                        <Save className="h-3.5 w-3.5 mr-1.5" /> {italianUi ? "Usa nel wizard" : "Use in wizard"}
                       </Button>
                     </div>
                   </div>

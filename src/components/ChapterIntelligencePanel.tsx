@@ -25,7 +25,7 @@ import {
 } from "@/lib/narrative-intelligence-v2";
 import { computeBookEditorialDashboard } from "@/lib/editorial-dashboard-pro";
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
-import { operationCreditLabel } from "@/lib/credit-economy";
+import { creditModeDisclosure, operationCreditLabel } from "@/lib/credit-economy";
 
 function countWordsForChapterLock(value: unknown): number {
   if (!value) return 0;
@@ -817,6 +817,11 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                 className="inline-flex items-center gap-2 h-11 px-6 rounded-lg text-sm font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-md">
                 <Scissors className="h-4 w-4" /> Surgical Edit · {operationCreditLabel("chapter_rewrite", devCreditMode)}
               </button>
+              {devCreditMode && (
+                <p className="mx-auto max-w-md rounded-lg border border-border/60 bg-card/55 px-3 py-2 text-[10px] leading-4 text-muted-foreground">
+                  {creditModeDisclosure(true)}
+                </p>
+              )}
               {/* Advanced toggle */}
               <div className="pt-4 border-t border-border/30 max-w-md mx-auto">
                 <button onClick={() => setShowAdvanced(s => !s)}

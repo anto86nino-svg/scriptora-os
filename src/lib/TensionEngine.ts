@@ -88,6 +88,20 @@ For every important exchange, silently decide:
 OUTWARD QUESTION: what the character says.
 REAL INTENT: what the character cannot ask for.
 Only write the outward line and the body behavior. Never label the hidden intent.
+
+SCENE CONTINUITY CONTRACT:
+- Before writing the scene, silently answer: what new thing happens here that did not happen in prior chapters?
+- The scene must add at least one of: new choice, new consequence, new information, new risk, new refusal, new irreversible cost.
+- Do not repeat the same fear, confession, trauma explanation, romantic hesitation, clue discovery, or closing image from recent chapters.
+- If the emotional wound returns, it must return under a different pressure and produce different behavior.
+- Every scene ending must leave forward motion: an unsolved question, altered relationship, practical complication, or changed plan.
+- If a scene only restates atmosphere or emotion, replace it with action that changes the trajectory.
+
+GENRE-SPECIFIC PRESSURE:
+- Romance/dark romance: delay clean confession; keep desire mixed with resistance, pride, boundary, or consequence.
+- Thriller/crime/horror: each scene must introduce pressure, suspicion, sensory wrongness, or a clue with a cost.
+- Fantasy/sci-fi: world detail must appear through action, rule, cost, or choice, never as idle exposition.
+- Memoir/biography: reflection must be anchored to a concrete event, not abstract self-explanation.
 `.trim();
 }
 

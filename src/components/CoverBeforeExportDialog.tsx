@@ -32,7 +32,7 @@ export function CoverBeforeExportDialog({
             </p>
             <h2 className="mt-1 text-lg font-bold text-foreground">Cover prima dell'export</h2>
             <p className="mt-1 text-sm leading-5 text-muted-foreground">
-              Il libro e completo. Prima di esportare in {format}, puoi creare la copertina oppure spedire il file senza cover. {coverBehavior}
+              Il libro e completo. Prima di esportare in {format}, puoi creare la copertina e poi riprendere l'export, oppure spedire subito senza cover. {coverBehavior}
             </p>
           </div>
           <button
@@ -55,9 +55,9 @@ export function CoverBeforeExportDialog({
               <ImagePlus className="h-4 w-4" />
             </span>
             <span>
-              <span className="block text-sm font-bold text-foreground">Apri Scriptora Cover Studio</span>
+              <span className="block text-sm font-bold text-foreground">Crea cover e riprendi export</span>
               <span className="mt-0.5 block text-xs leading-4 text-muted-foreground">
-                Genera o rifinisci la copertina, poi Scriptora riprende l'export.
+                Apri Cover Studio, salva la copertina nel progetto e torna automaticamente al download.
               </span>
             </span>
           </button>

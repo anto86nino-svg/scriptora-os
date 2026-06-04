@@ -384,7 +384,10 @@ CONTINUITY RULES (MANDATORY):
 - Each chapter must feel like the NEXT step in a journey, not a standalone piece
 - The reader must sense ONE author mind behind the entire book
 - Include 2-4 sentences per chapter that are highlight-worthy — emotionally powerful, quotable, shareable
-- These "highlight sentences" must feel natural, not forced — embed them within the flow`;
+- These "highlight sentences" must feel natural, not forced — embed them within the flow
+- Every new chapter must introduce a fresh narrative move: new choice, new consequence, new information, new risk, new refusal, or new irreversible cost
+- Do not reopen the same emotional wound with the same conversation shape; if the wound returns, pressure it differently and change behavior
+- Do not end with the same type of beat as the previous chapter; vary image, question, danger, decision, or unresolved consequence`;
 }
 
 /* ============ Style Lock ============ */
@@ -542,13 +545,16 @@ Before writing, silently plan the chapter as a real publishing editor would.
 CORE SCENE LOGIC:
 - Every chapter must change something. If nothing changes, the chapter fails.
 - Every major scene needs: desire, obstacle, tension, choice, consequence.
+- Before writing each scene, silently define the scene's NEW VALUE: what changes from the beginning to the end?
 - The protagonist must want something concrete in the moment, not only feel something abstract.
 - Every scene must force at least one new decision, refusal, reveal, compromise, or irreversible small cost.
+- If the scene could be removed without changing the plot, relationship, argument, or reader question, replace it with a scene that changes one of those.
 - Avoid emotional loops: do not restate the same realization in different words.
 - Never repeat the same inner conclusion across paragraphs, especially phrases like "I am not running anymore", "I want to stay", "this changed everything", unless there is a new consequence.
 - Show emotion through behavior, silence, physical detail, contradiction, and specific sensory images.
 - Do not explain the theme after every scene. Let the scene carry the theme.
 - Replace generic beautiful sentences with specific pressure: an object handled wrong, a sentence left unfinished, a practical problem caused by the emotion.
+- Track openings and endings: avoid repeating the same weather, room, mirror, phone, door, dream, confession, or symbolic object as prior chapters unless it returns with a new function.
 
 DIALOGUE AND SUBTEXT:
 - Dialogue must hide as much as it reveals.
@@ -568,6 +574,7 @@ CONTINUITY AND CONSEQUENCE:
 - Every emotional breakthrough must create a new problem, choice, cost, secret, or altered behavior.
 - Never resolve trauma cleanly in one conversation; preserve residue, contradiction, and imperfect recovery.
 - Make consequences visible on the page: changed route, avoided call, broken promise, delayed answer, altered routine, new risk, or a person noticing the change.
+- Do not recycle final paragraphs: the ending must push into a different question than the prior chapter.
 
 LANGUAGE QUALITY:
 - Prefer concrete images over generic emotional statements.
@@ -1680,7 +1687,7 @@ export async function rewriteChapter(
 - Required Improvements: ${aiRating.improvements}`
     : "";
 
-  const contextMemory = buildContextMemory(config, blueprint, previousChapters, chapterIndex, opts?.longBookMemory);
+  const contextMemory = buildContextMemory(config, blueprint, previousChapters, chapterIndex);
   const lengthInstruction = getChapterLengthInstruction(config, chapterIndex, config.numberOfChapters);
   const levelInstruction = getRewriteLevelInstruction(level);
   const humanizerBlock = buildHumanizerPromptBlock({

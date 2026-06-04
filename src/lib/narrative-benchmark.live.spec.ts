@@ -112,6 +112,11 @@ const genreCases: GenreCase[] = [
   },
 ];
 
+const hasSupabaseGenerationConfig = Boolean(
+  import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY,
+);
+const describeLiveBenchmark = hasSupabaseGenerationConfig ? describe : describe.skip;
+
 function makeConfig(entry: GenreCase): BookConfig {
   return {
     title: `Benchmark ${entry.label}`,
@@ -171,7 +176,7 @@ function evaluateHumanSignals(text: string) {
   };
 }
 
-describe("Live Narrative Intelligence benchmark", () => {
+describeLiveBenchmark("Live Narrative Intelligence benchmark", () => {
   it(
     "generates real multi-genre benchmark samples with telemetry",
     async () => {
@@ -268,4 +273,3 @@ describe("Live Narrative Intelligence benchmark", () => {
     1_800_000,
   );
 });
-

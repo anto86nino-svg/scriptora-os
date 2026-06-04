@@ -39,11 +39,15 @@ const BRAIN_PROFILES: Partial<Record<WritingBrainId, HumanWritingProfile>> = {
       "Characters lie to themselves before they lie to each other.",
       "Confession must cost something. Delay it with fear, pride, or consequence.",
       "Use physical distance, object handling, and aborted movement instead of naming feelings.",
+      "Let attraction create a new problem on the page: a broken boundary, a changed routine, a witnessed weakness, or a dangerous choice.",
+      "Keep moral tension alive; tenderness should not erase danger, secrecy, or power imbalance too early.",
     ],
     avoidPatterns: [
       "Instant mutual understanding",
       "Clean emotional vocabulary during obsession",
       "Romantic speeches that resolve tension",
+      "Trauma confessed in a tidy monologue",
+      "Love interest becoming perfectly safe or available too soon",
     ],
   },
   "slow-burn-brain": {
@@ -87,8 +91,15 @@ const BRAIN_PROFILES: Partial<Record<WritingBrainId, HumanWritingProfile>> = {
       "Keep introspection short. Behavior and detail carry dread.",
       "Dialogue is transactional, evasive, or dangerously polite.",
       "No poetic detours during threat.",
+      "Every scene must add a clue, pressure, reversal, deadline, or suspicion.",
+      "A reveal must create a new question or risk, not merely explain the plot.",
     ],
-    avoidPatterns: ["Long emotional monologues during danger", "Lyric interludes mid-chase"],
+    avoidPatterns: [
+      "Long emotional monologues during danger",
+      "Lyric interludes mid-chase",
+      "Convenient clues without cost",
+      "Villains or suspects explaining themselves too early",
+    ],
   },
   "psychological-thriller-brain": {
     ...FICTION_DEFAULT,
@@ -138,8 +149,18 @@ const BRAIN_PROFILES: Partial<Record<WritingBrainId, HumanWritingProfile>> = {
     dialogueFriction: 0.55,
     metaphorCap: 2,
     emotionalExplainTolerance: 0.25,
-    promptRules: ["Dread through wrong detail and refusal to name the fear.", "Silence is louder than explanation."],
-    avoidPatterns: ["Explaining the monster", "Emotional thesis statements"],
+    promptRules: [
+      "Dread through wrong detail and refusal to name the fear.",
+      "Silence is louder than explanation.",
+      "The supernatural or threat should escalate through physical evidence, altered routine, and sensory contradiction.",
+      "Let characters misread the danger plausibly; fear changes behavior before anyone understands why.",
+    ],
+    avoidPatterns: [
+      "Explaining the monster",
+      "Emotional thesis statements",
+      "Cheap shock without narrative consequence",
+      "Repeated dread beat with no new evidence",
+    ],
   },
   "fantasy-brain": {
     ...FICTION_DEFAULT,
@@ -151,6 +172,16 @@ const BRAIN_PROFILES: Partial<Record<WritingBrainId, HumanWritingProfile>> = {
     dialogueFriction: 0.55,
     metaphorCap: 4,
     emotionalExplainTolerance: 0.32,
+    promptRules: [
+      "Reveal worldbuilding through pressure: law, cost, ritual, scarcity, politics, or magic consequence.",
+      "Magic must have a limit or price visible in the scene.",
+      "Let wonder coexist with practical stakes; beauty alone is not plot movement.",
+    ],
+    avoidPatterns: [
+      "Opening lore dump",
+      "New invented terms without immediate context",
+      "Magic solving conflict without cost",
+    ],
   },
   "horticultural-guide-brain": {
     id: "instructional-clarity",
@@ -202,8 +233,15 @@ const BRAIN_PROFILES: Partial<Record<WritingBrainId, HumanWritingProfile>> = {
     promptRules: [
       "Use relatable scenes, then extract the principle — never reverse the order with vague inspiration.",
       "Sound like a credible human coach, not a generic AI motivator.",
+      "Every section needs a usable next step: diagnostic, exercise, question, checklist, or concrete example.",
+      "Authority comes from specificity and lived observation, not inflated confidence.",
     ],
-    avoidPatterns: ["Empty platitudes", "Unearned breakthrough moments"],
+    avoidPatterns: [
+      "Empty platitudes",
+      "Unearned breakthrough moments",
+      "Generic transformation language without method",
+      "Repeating the same promise in softer words",
+    ],
   },
   "productivity-brain": {
     id: "productivity-human",

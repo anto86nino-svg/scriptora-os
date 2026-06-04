@@ -57,6 +57,31 @@ body,
     max-width: 100%;
   }
 
+  .scriptora-feature-page button,
+  .scriptora-feature-page [role="button"] {
+    touch-action: manipulation;
+  }
+
+  .scriptora-book-primary-actions button,
+  .scriptora-book-secondary-actions button,
+  .scriptora-room-trigger,
+  .scriptora-world-module,
+  .scriptora-horror-ledger-plaque {
+    min-height: 48px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.25;
+  }
+
+  .scriptora-world-module h3,
+  .scriptora-world-module p,
+  .scriptora-room-trigger span,
+  .scriptora-horror-ledger-plaque span,
+  .scriptora-horror-ledger-plaque strong,
+  .scriptora-horror-ledger-plaque small {
+    overflow-wrap: anywhere;
+  }
+
   /* Form controls — never transparent over city/background */
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
   textarea,
@@ -81,6 +106,11 @@ body,
     background: rgba(7, 13, 25, 0.98) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+  }
+
+  .scriptora-generation-brief,
+  .scriptora-editorial-brief-card {
+    background: rgba(10, 14, 26, 0.98) !important;
   }
 
   .scriptora-generation-manuscript {
@@ -138,11 +168,42 @@ body,
     width: min(100%, calc(100vw - 24px));
     max-width: calc(100vw - 24px);
     max-height: min(92dvh, 92vh);
+    overflow: hidden;
+  }
+
+  .scriptora-modal-body {
+    max-height: inherit;
+    overflow-y: auto;
+    padding-bottom: max(env(safe-area-inset-bottom), 16px);
   }
 
   /* Radix dialog default shell */
   [data-radix-dialog-content] {
     max-height: min(92dvh, 92vh);
     overflow-y: auto;
+  }
+}
+
+.scriptora-feature-page button:focus-visible,
+.scriptora-feature-page [role="button"]:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scriptora-feature-page *,
+  .scriptora-modal-panel,
+  .scriptora-generation-stage {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .scriptora-world-module:hover,
+  .scriptora-os-folder:hover,
+  .scriptora-book-primary-actions button:hover,
+  .scriptora-book-secondary-actions button:hover {
+    transform: none !important;
   }
 }

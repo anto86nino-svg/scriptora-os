@@ -14,6 +14,8 @@ import {
   type CoverMotif,
 } from "@/lib/cover-studio";
 import { CoverStudioIntelligencePanel } from "@/components/CoverStudioIntelligencePanel";
+import { creditModeDisclosure, operationCreditLabel } from "@/lib/credit-economy";
+import { isDevMode } from "@/lib/dev-mode";
 
 interface CoverGeneratorProps {
   title: string;
@@ -294,6 +296,7 @@ export function CoverGenerator({
   const [titleScale, setTitleScale] = useState(100);
   const [subtitleScale, setSubtitleScale] = useState(100);
   const [authorScale, setAuthorScale] = useState(100);
+  const devCreditMode = isDevMode();
 
   const template = TEMPLATES[selectedTemplate];
 
@@ -709,6 +712,14 @@ export function CoverGenerator({
             </div>
             <h2 className="text-lg font-semibold text-foreground truncate">Professional cover strategy + design environment</h2>
             <p className="hidden lg:block text-xs text-muted-foreground mt-0.5">Commercial positioning, visual direction, and export-ready layouts.</p>
+            <p className="mt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+              Cover AI: {operationCreditLabel("cover_generation", devCreditMode)}
+            </p>
+            {devCreditMode && (
+              <p className="mt-1 hidden max-w-xl text-[10px] leading-4 text-muted-foreground/70 sm:block">
+                {creditModeDisclosure(true)}
+              </p>
+            )}
           </div>
           <button
             onClick={onClose}

@@ -11,6 +11,8 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { CoverGenerator } from "@/components/CoverGenerator";
 import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { isProjectComplete } from "@/lib/project-status";
+import { creditModeDisclosure, operationCreditLabel } from "@/lib/credit-economy";
+import { isDevMode } from "@/lib/dev-mode";
 
 type Format = "epub" | "docx" | "pdf";
 
@@ -28,11 +30,13 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [coverGateOpen, setCoverGateOpen] = useState(false);
   const [showCover, setShowCover] = useState(false);
+  const [exportAfterCover, setExportAfterCover] = useState(false);
   const [coverDataUrls, setCoverDataUrls] = useState<Record<string, string>>({});
   const { plan } = usePlan();
   // Honour the dev-mode plan override: only the simulated tier's permissions
   // apply (Premium/Pro/Beta unlock export, Free does not).
   const canExport = PLAN_LIMITS[plan].canExport;
+  const devCreditMode = isDevMode();
 
   if (!open) return null;
 
@@ -125,6 +129,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
       return;
     }
     if (!(coverDataUrls[project.id] || project.coverDataUrl)) {
+      setExportAfterCover(true);
       setCoverGateOpen(true);
       return;
     }
@@ -261,11 +266,32 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
                   <span className={`ml-2 ${selectedCoverDataUrl ? "text-emerald-400" : "text-amber-300"}`}>
                     {selectedCoverDataUrl ? "salvata" : "da creare"}
                   </span>
+                  {!selectedCoverDataUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExportAfterCover(false);
+                        setShowCover(true);
+                      }}
+                      className="mt-2 block rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary hover:bg-primary/15"
+                    >
+                      Crea cover
+                    </button>
+                  )}
+                </div>
+                <div className="rounded-lg bg-background/70 px-3 py-2 sm:col-span-2">
+                  <span className="font-medium text-foreground">Costo export</span>
+                  <span className="ml-2">{operationCreditLabel("export_package", devCreditMode)}</span>
                 </div>
               </div>
               <p className="mt-2 text-[11px] leading-4 text-muted-foreground/80">
                 EPUB incorpora la cover. PDF e DOCX esportano il manoscritto; la cover resta disponibile nel progetto per KDP e uso separato.
               </p>
+              {devCreditMode && (
+                <p className="mt-2 rounded-lg border border-border/70 bg-background/55 px-3 py-2 text-[10px] leading-4 text-muted-foreground">
+                  {creditModeDisclosure(true)}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -309,14 +335,19 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
         open={coverGateOpen && !!selectedProject}
         format={format.toUpperCase() as "EPUB" | "PDF" | "DOCX"}
         onCreateCover={() => {
+          setExportAfterCover(true);
           setCoverGateOpen(false);
           setShowCover(true);
         }}
         onShipWithoutCover={() => {
+          setExportAfterCover(false);
           setCoverGateOpen(false);
           if (selectedProject) void performExport(selectedProject);
         }}
-        onClose={() => setCoverGateOpen(false)}
+        onClose={() => {
+          setCoverGateOpen(false);
+          setExportAfterCover(false);
+        }}
       />
       {showCover && selectedProject && (
         <CoverGenerator
@@ -326,6 +357,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           description={selectedProject.blueprint?.overview || selectedProject.config.subtitle}
           authorBio={selectedProject.frontMatter?.aboutAuthor || selectedProject.config.authorIdentity?.biography}
           projectGenre={selectedProject.config.genre}
+          primaryActionLabel={exportAfterCover ? "Usa cover ed esporta" : "Salva cover nel progetto"}
           onGenerate={(dataUrl) => {
             setCoverDataUrls((current) => ({ ...current, [selectedProject.id]: dataUrl }));
             const updatedProject: BookProject = {
@@ -337,9 +369,17 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
             saveProject(updatedProject);
             saveProjectAsync(updatedProject).catch(() => undefined);
             setShowCover(false);
-            void performExport(updatedProject, dataUrl);
+            if (exportAfterCover) {
+              void performExport(updatedProject, dataUrl);
+            } else {
+              toast({ title: "Cover salvata", description: "La checklist export e stata aggiornata." });
+            }
+            setExportAfterCover(false);
           }}
-          onClose={() => setShowCover(false)}
+          onClose={() => {
+            setShowCover(false);
+            setExportAfterCover(false);
+          }}
         />
       )}
     </div>

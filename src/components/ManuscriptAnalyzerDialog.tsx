@@ -1,5 +1,11 @@
 import { useMemo, useRef, useState } from "react";
-import { analyzeNovel, calculateEditorialChapterScore, detectEditorialGenre } from "@/lib/EditorialIntelligence";
+import {
+  analyzeNovel,
+  calculateEditorialChapterScore,
+  calculateEditorialQualityDimensions,
+  detectEditorialGenre,
+  type EditorialQualityDimensions,
+} from "@/lib/EditorialIntelligence";
 import { useNavigate } from "react-router-dom";
 import JSZip from "jszip";
 import {
@@ -28,7 +34,7 @@ import { BookConfig, BookProject, Chapter, Genre, Language } from "@/types/book"
 import { cn } from "@/lib/utils";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 import { toast } from "sonner";
-import { operationCreditLabel } from "@/lib/credit-economy";
+import { creditModeDisclosure, operationCreditLabel } from "@/lib/credit-economy";
 import { isDevMode } from "@/lib/dev-mode";
 import {
   analyzeManuscriptPublishingIntel,
@@ -49,6 +55,9 @@ interface EditorialSignal {
   values?: Record<string, string | number>;
   text?: string;
   priority?: boolean;
+  severity?: "critical" | "important" | "polish";
+  fix?: string;
+  readerEffect?: string;
 }
 
 interface ManuscriptChapterAnalysis {
@@ -60,6 +69,7 @@ interface ManuscriptChapterAnalysis {
   longSentenceRatio: number;
   repetitionDensity: number;
   score: number;
+  dimensions: EditorialQualityDimensions;
   strengths: EditorialSignal[];
   issues: EditorialSignal[];
   advice: EditorialSignal[];
@@ -70,6 +80,7 @@ interface ManuscriptAnalysis {
   sourceName: string;
   words: number;
   score: number;
+  dimensions: EditorialQualityDimensions;
   chapters: ManuscriptChapterAnalysis[];
   recommendations: EditorialSignal[];
   summaryKey: string;
@@ -241,6 +252,60 @@ function repetitionDensity(words: string[]): number {
   return words.length ? repeated / words.length : 0;
 }
 
+const EDITORIAL_DIMENSION_KEYS: (keyof EditorialQualityDimensions)[] = [
+  "emotionalRealism",
+  "dialogueHumanity",
+  "subtextStrength",
+  "pacingBalance",
+  "characterDepth",
+  "scenePurpose",
+  "repetitionControl",
+  "readerRetention",
+  "narrativeMomentum",
+  "hookStrength",
+  "conflictPressure",
+  "payoffControl",
+  "voiceConsistency",
+  "marketFit",
+];
+
+function averageDimensions(chapters: ManuscriptChapterAnalysis[]): EditorialQualityDimensions {
+  const empty = Object.fromEntries(EDITORIAL_DIMENSION_KEYS.map((key) => [key, 0])) as unknown as EditorialQualityDimensions;
+  if (!chapters.length) return empty;
+  const totals = { ...empty };
+  for (const chapter of chapters) {
+    for (const key of EDITORIAL_DIMENSION_KEYS) totals[key] += chapter.dimensions[key];
+  }
+  for (const key of EDITORIAL_DIMENSION_KEYS) totals[key] = Math.round(totals[key] / chapters.length);
+  return totals;
+}
+
+function addStoryDoctorFinding(
+  issues: EditorialSignal[],
+  advice: EditorialSignal[],
+  severity: EditorialSignal["severity"],
+  issue: string,
+  fix: string,
+  readerEffect: string
+) {
+  const priority = severity === "critical" || severity === "important";
+  issues.push({
+    key: "story_doctor_issue",
+    text: issue,
+    severity,
+    priority,
+    readerEffect,
+  });
+  advice.push({
+    key: "story_doctor_advice",
+    text: fix,
+    severity,
+    priority,
+    fix,
+    readerEffect,
+  });
+}
+
 function analyzeChapter(title: string, content: string, genre: Genre): ManuscriptChapterAnalysis {
   const words = wordList(content);
   const wordCount = words.length;
@@ -261,6 +326,18 @@ function analyzeChapter(title: string, content: string, genre: Genre): Manuscrip
 
   const warningTypes =
     editorial.warnings?.map(w => w.type) || [];
+  const dimensions = calculateEditorialQualityDimensions({
+    text: content,
+    genre,
+    report: editorial,
+    wordCount,
+    paragraphs: paragraphs.length,
+    avgSentenceWords,
+    longSentenceRatio,
+    repeatDensity,
+    openingWords,
+    quoteMarks,
+  });
 
   const strengths: EditorialSignal[] = [];
   const issues: EditorialSignal[] = [];
@@ -274,6 +351,7 @@ function analyzeChapter(title: string, content: string, genre: Genre): Manuscrip
     openingWords,
     quoteMarks,
     warningTypes,
+    warnings: editorial.warnings,
     genre,
   });
 
@@ -410,6 +488,83 @@ function analyzeChapter(title: string, content: string, genre: Genre): Manuscrip
     });
   }
 
+  if (dimensions.scenePurpose < 60) {
+    score -= 4;
+    addStoryDoctorFinding(
+      issues,
+      advice,
+      "critical",
+      "La scena non mostra abbastanza cosa cambia davvero nella traiettoria del libro.",
+      "Inserisci una scelta, una perdita, un'informazione nuova o una conseguenza concreta che renda il capitolo non rimovibile.",
+      "Il lettore sentirà avanzamento narrativo, non solo atmosfera o spiegazione."
+    );
+  } else if (dimensions.scenePurpose >= 76) {
+    strengths.push({
+      key: "story_doctor_strength",
+      text: "La scena ha una funzione narrativa riconoscibile e porta avanti il manoscritto."
+    });
+  }
+
+  if (dimensions.conflictPressure < 58) {
+    score -= 3;
+    addStoryDoctorFinding(
+      issues,
+      advice,
+      "important",
+      "La pressione del conflitto è troppo morbida: i personaggi sembrano poter uscire dalla scena senza pagare un costo.",
+      "Rendi una risposta più scomoda, ritarda una rassicurazione o fai emergere un desiderio incompatibile.",
+      "Aumenta attrito, bingeability e bisogno di voltare pagina."
+    );
+  }
+
+  if (dimensions.subtextStrength < 62) {
+    score -= 2;
+    addStoryDoctorFinding(
+      issues,
+      advice,
+      "important",
+      "Il sottotesto è fragile: troppe emozioni vengono nominate invece di essere lasciate intuire.",
+      "Sostituisci una spiegazione interiore con gesto, silenzio, oggetto manipolato o risposta incompleta.",
+      "Il lettore partecipa all'interpretazione invece di ricevere una diagnosi emotiva."
+    );
+  }
+
+  if (dimensions.readerRetention < 62) {
+    score -= 3;
+    addStoryDoctorFinding(
+      issues,
+      advice,
+      "critical",
+      "Il rischio di abbandono cresce: hook, ritmo e conseguenza non lavorano abbastanza insieme.",
+      "Porta il conflitto più vicino all'apertura e chiudi con una domanda nuova, non con una spiegazione conclusiva.",
+      "Il capitolo diventa più magnetico e meno contemplativo."
+    );
+  }
+
+  if (dimensions.payoffControl < 62) {
+    score -= 2;
+    addStoryDoctorFinding(
+      issues,
+      advice,
+      "important",
+      "Il payoff emotivo sembra arrivare troppo ordinato o troppo presto.",
+      "Taglia una dichiarazione risolutiva e lascia una promessa, un dubbio o un prezzo ancora aperto.",
+      "La tensione resta viva oltre la fine del capitolo."
+    );
+  }
+
+  if (dimensions.voiceConsistency < 64) {
+    score -= 2;
+    addStoryDoctorFinding(
+      issues,
+      advice,
+      "polish",
+      "La voce rischia di appiattirsi su immagini o cadenze simili.",
+      "Dai a un personaggio una parola, un gesto o una strategia emotiva che l'altro non userebbe mai.",
+      "I personaggi diventano più distinguibili e meno intercambiabili."
+    );
+  }
+
   
   // SELF-HELP EDITORIAL INTELLIGENCE
   const lowerContent = content.toLowerCase();
@@ -462,6 +617,7 @@ if (issues.length === 0 && advice.length === 0) {
     longSentenceRatio,
     repetitionDensity: repeatDensity,
     score: Math.max(35, Math.min(98, Math.round(score))),
+    dimensions,
     strengths,
     issues,
     advice,
@@ -482,6 +638,7 @@ function analyzeManuscript(text: string, title: string, sourceName: string, genr
   const score = chapters.length
     ? Math.round(chapters.reduce((sum, chapter) => sum + chapter.score, 0) / chapters.length)
     : 0;
+  const dimensions = averageDimensions(chapters);
   const recommendations: EditorialSignal[] = [];
   const weakChapters = chapters.filter(chapter => chapter.score < 70);
   const avgSentenceWords = chapters.length
@@ -504,6 +661,30 @@ function analyzeManuscript(text: string, title: string, sourceName: string, genr
   if (chapters.some(chapter => chapter.repetitionDensity > 0.075)) {
     recommendations.push({ key: "manuscript_rec_repetition" });
   }
+  if (dimensions.scenePurpose > 0 && dimensions.scenePurpose < 66) {
+    recommendations.unshift({
+      key: "story_doctor_book_scene_purpose",
+      text: "Priorità Story Doctor: alcune scene devono cambiare più chiaramente lo stato della storia. Cerca scelta, conseguenza o rivelazione per ogni capitolo.",
+      severity: "critical",
+      priority: true,
+    });
+  }
+  if (dimensions.conflictPressure > 0 && dimensions.conflictPressure < 64) {
+    recommendations.unshift({
+      key: "story_doctor_book_conflict_pressure",
+      text: "Aumenta pressione e attrito: i punti più deboli sembrano risolversi per rassicurazione invece che per scelta difficile.",
+      severity: "important",
+      priority: true,
+    });
+  }
+  if (dimensions.readerRetention > 0 && dimensions.readerRetention < 65) {
+    recommendations.unshift({
+      key: "story_doctor_book_reader_retention",
+      text: "Rischio drop: rafforza hook, ritmo interno e chiusure con domanda aperta nei capitoli più lenti.",
+      severity: "critical",
+      priority: true,
+    });
+  }
   if (recommendations.length === 0) {
     recommendations.push({ key: "manuscript_rec_ready_polish" });
   }
@@ -513,6 +694,7 @@ function analyzeManuscript(text: string, title: string, sourceName: string, genr
     sourceName,
     words: totalWords,
     score,
+    dimensions,
     chapters,
     recommendations,
     summaryKey: summaryKeyForScore(score),
@@ -567,6 +749,18 @@ function bookLengthFromWords(words: number): "short" | "medium" | "long" | "cust
 function signalText(signal: EditorialSignal): string {
   if (signal.text) return signal.text;
   return signal.values ? tt(signal.key, signal.values) : t(signal.key);
+}
+
+function editorialPriorityTone(severity?: EditorialSignal["severity"]): string {
+  if (severity === "critical") return "border-red-300/30 bg-red-400/12 text-red-100";
+  if (severity === "important") return "border-amber-300/30 bg-amber-400/12 text-amber-100";
+  return "border-sky-300/25 bg-sky-400/10 text-sky-100";
+}
+
+function editorialPriorityLabel(severity?: EditorialSignal["severity"]): string {
+  if (severity === "critical") return "Critical";
+  if (severity === "important") return "Important";
+  return "Polish";
 }
 
 function buildProjectFromAnalysis(analysis: ManuscriptAnalysis, genre: Genre, language: Language, subtitle = ""): BookProject {
@@ -694,6 +888,30 @@ export function ManuscriptAnalyzerDialog({
         value: f.score,
         detail: `${f.label} — weighted signal for market readiness.`,
       }))
+    : [];
+  const storyDoctorMetrics = analysis
+    ? [
+        {
+          label: "Scopo scena",
+          value: analysis.dimensions.scenePurpose,
+          detail: "Quanto ogni capitolo cambia traiettoria, scelta o conseguenza.",
+        },
+        {
+          label: "Pressione conflitto",
+          value: analysis.dimensions.conflictPressure,
+          detail: "Misura attrito, costo emotivo e rischio narrativo.",
+        },
+        {
+          label: "Retention lettore",
+          value: analysis.dimensions.readerRetention,
+          detail: "Stima hook, ritmo, progressione e rischio drop.",
+        },
+        {
+          label: "Controllo payoff",
+          value: analysis.dimensions.payoffControl,
+          detail: "Verifica che rivelazioni e risoluzioni non arrivino troppo pulite.",
+        },
+      ]
     : [];
 
   const runAnalysis = (textOverride?: string, titleOverride?: string, sourceOverride?: string, genreOverride?: Genre) => {
@@ -942,6 +1160,11 @@ export function ManuscriptAnalyzerDialog({
             <p className="mt-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Diagnostica editoriale: {operationCreditLabel("manuscript_diagnostic", devCreditMode)}
             </p>
+            {devCreditMode && (
+              <p className="mt-2 rounded-lg border border-white/10 bg-white/[0.035] px-3 py-2 text-[10px] leading-4 text-muted-foreground">
+                {creditModeDisclosure(true)}
+              </p>
+            )}
           </section>
 
           <section className="p-4 sm:p-5">
@@ -1012,6 +1235,30 @@ export function ManuscriptAnalyzerDialog({
                   </div>
                 </div>
 
+                <div className="rounded-xl border border-white/10 bg-white/[0.045] p-4">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-primary">Story Doctor</p>
+                      <h3 className="mt-1 text-sm font-semibold text-foreground">Diagnostica narrativa prioritaria</h3>
+                    </div>
+                    <span className="rounded-full border border-white/10 bg-background/60 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Developmental edit
+                    </span>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {storyDoctorMetrics.map((metric) => (
+                      <div key={metric.label} className="rounded-lg border border-white/10 bg-background/45 p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{metric.label}</p>
+                          <p className={cn("text-xl font-semibold tabular-nums", scoreTone(metric.value))}>{metric.value}</p>
+                        </div>
+                        <Progress value={metric.value} className="mt-2 h-1.5" />
+                        <p className="mt-2 text-[11px] leading-4 text-muted-foreground">{metric.detail}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                   {premiumMetrics.map((metric) => (
                     <div key={metric.label} className="rounded-xl border border-white/10 bg-gradient-to-br from-white/[0.075] to-white/[0.035] p-3 shadow-[0_12px_34px_rgba(0,0,0,0.16)]">
@@ -1078,7 +1325,14 @@ export function ManuscriptAnalyzerDialog({
                     {analysis.recommendations.map((rec, index) => (
                       <div key={`${rec.key}-${index}`} className="flex items-start gap-2 text-xs leading-5 text-muted-foreground">
                         <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-300" />
-                        <span>{signalText(rec)}</span>
+                        <span className="min-w-0 flex-1">
+                          {rec.severity && (
+                            <span className={cn("mb-1 mr-2 inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]", editorialPriorityTone(rec.severity))}>
+                              {editorialPriorityLabel(rec.severity)}
+                            </span>
+                          )}
+                          {signalText(rec)}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -1108,6 +1362,34 @@ export function ManuscriptAnalyzerDialog({
                             </div>
                           </div>
                           <Progress value={chapter.score} className="mt-3 h-1.5" />
+                          {chapter.issues.some((issue) => issue.severity) && (
+                            <div className="mt-3 space-y-1.5">
+                              {chapter.issues.filter((issue) => issue.severity).slice(0, 2).map((issue, issueIndex) => (
+                                <div key={`${issue.key}-${issueIndex}`} className="rounded-md border border-white/10 bg-background/45 p-2 text-[11px] leading-4 text-muted-foreground">
+                                  <span className={cn("mb-1 inline-flex rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]", editorialPriorityTone(issue.severity))}>
+                                    {editorialPriorityLabel(issue.severity)}
+                                  </span>
+                                  <p>{signalText(issue)}</p>
+                                  {issue.readerEffect && (
+                                    <p className="mt-1 text-[10px] text-muted-foreground/80">{issue.readerEffect}</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {[
+                              ["Scena", chapter.dimensions.scenePurpose],
+                              ["Conflitto", chapter.dimensions.conflictPressure],
+                              ["Hook", chapter.dimensions.hookStrength],
+                              ["Payoff", chapter.dimensions.payoffControl],
+                            ].map(([label, value]) => (
+                              <div key={label as string} className="rounded-md bg-background/45 px-2 py-1.5">
+                                <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">{label}</p>
+                                <p className={cn("text-sm font-semibold tabular-nums", scoreTone(value as number))}>{value}</p>
+                              </div>
+                            ))}
+                          </div>
                           <div className="mt-3 grid gap-2 md:grid-cols-2">
                             <div className="rounded-md bg-emerald-400/10 p-2">
                               <p className="mb-1 text-[10px] font-semibold uppercase text-emerald-200">{t("manuscript_strengths")}</p>
