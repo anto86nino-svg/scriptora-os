@@ -44,7 +44,7 @@ const BASE_COPY: ThemeCopy = {
 const THEME_COPY: Partial<Record<AtmosphereProfileId, Partial<ThemeCopy>>> = {
   "horror-gothic": {
     world: {
-      label: "Abandoned gothic writing chamber",
+      label: "Premium Writer Studio",
       title: "Camera gotica del manoscritto",
       description: "Il libro domina la stanza. Ogni sezione e un luogo oscuro ma controllato: scrittura, autopsia, oracolo, sigillo.",
       bookObject: "Cursed manuscript",
@@ -57,13 +57,13 @@ const THEME_COPY: Partial<Record<AtmosphereProfileId, Partial<ThemeCopy>>> = {
     osTitle: "Stanze dell'indagine narrativa",
     osDescription: "Ogni strumento e una camera del manoscritto. Apri solo il fascicolo che serve.",
     groups: {
-      writer: { title: "Camera della Scrittura", desc: "Scrittura, riscrittura, anime e voci nascoste nel manoscritto.", room: "Candle-lit writing chamber", object: "Scrittoio del manoscritto" },
-      bestseller: { title: "Oracolo del Mercato", desc: "Segnali commerciali, titoli e rituali di dominazione KDP.", room: "Occult dossier chamber", object: "Tavolo degli indizi" },
-      publishing: { title: "Sigillo Finale", desc: "Cover, export e archivio dei manoscritti pronti a uscire.", room: "Sealing ceremony", object: "Sigillo editoriale" },
+      writer: { title: "Writer OS", desc: "Scrivi, riscrivi, migliora scene, personaggi e voce narrativa.", room: "Premium Writer Studio", object: "Scrittura · Rewrite · Voice" },
+      bestseller: { title: "Market OS", desc: "KDP, titoli, keyword e analisi del mercato bestseller.", room: "Market Intelligence Room", object: "KDP · Trend · Titoli" },
+      publishing: { title: "Publish OS", desc: "Cover, export e preparazione del libro alla pubblicazione.", room: "Publishing Studio", object: "Cover · Export · Libreria" },
       system: { title: "Archivio Maledetto", desc: "Identita, ambiente, libreria e controlli del laboratorio oscuro.", room: "Cursed archive", object: "Chiavi dell'archivio" },
     },
     modules: {
-      writer_studio: { title: "Camera della Scrittura", tag: "SCRITTURA", form: "desk", object: "Scrittoio acceso" },
+      writer_studio: { title: "Writer Studio", tag: "SCRITTURA", form: "desk", object: "Scrivi e migliora il manoscritto" },
       story_architect: { title: "Fascicolo d'Origine", tag: "ORIGINE", form: "dossier", object: "Cartella del caso" },
       manuscript_lab: { title: "Autopsia del Manoscritto", tag: "AUTOPSIA", form: "autopsy", object: "Tavolo anatomico" },
       rewrite_studio: { title: "Riscrittura d'Ombra", tag: "RISCRITTURA", form: "mirror", object: "Specchio delle varianti" },
@@ -71,12 +71,12 @@ const THEME_COPY: Partial<Record<AtmosphereProfileId, Partial<ThemeCopy>>> = {
       voice_studio: { title: "Voce dalle Ombre", tag: "ASCOLTO", form: "voice", object: "Fonografo oscuro" },
       notes: { title: "Taccuino del Caso", tag: "INDIZI", form: "notebook", object: "Taccuino aperto" },
       bestseller_engine: { title: "Rituale di Dominazione", tag: "RITUALE", form: "ritual", object: "Cerchio di lancio" },
-      kdp_launch: { title: "Oracolo del Mercato", tag: "KDP", form: "oracle", object: "Oracolo commerciale" },
+      kdp_launch: { title: "Market Intelligence", tag: "KDP", form: "oracle", object: "Analisi commerciale del libro" },
       title_intelligence: { title: "Nomi Proibiti", tag: "TITOLI", form: "dossier", object: "Registro dei titoli" },
       bestseller_radar: { title: "Segnali nel Buio", tag: "RADAR", form: "signal", object: "Mappa dei segnali" },
       keyword_gold: { title: "Parole Sepolte", tag: "KEYWORD", form: "archive", object: "Indice sepolto" },
       cover_studio: { title: "Volto del Manoscritto", tag: "COVER", form: "portrait", object: "Ritratto del libro" },
-      export_studio: { title: "Sigillo Finale", tag: "EXPORT", form: "seal", object: "Sigillo finale" },
+      export_studio: { title: "Export Studio", tag: "EXPORT", form: "seal", object: "Pubblica ed esporta il libro" },
       completed_shelf: { title: "Archivio Sigillato", tag: "ARCHIVIO", form: "archive", object: "Scaffale chiuso" },
       author_identity: { title: "Identita Occulta", tag: "AUTORE", form: "identity", object: "Maschera autoriale" },
       atmosphere: { title: "Camera Atmosferica", tag: "AMBIENTE", form: "chamber", object: "Manopole ambientali" },
@@ -177,7 +177,7 @@ const THEME_COPY: Partial<Record<AtmosphereProfileId, Partial<ThemeCopy>>> = {
       writer: { title: "Narrative Lab", desc: "Scrittura, rewrite, cast e lettura come moduli di laboratorio.", room: "Narrative lab", object: "Console di scrittura" },
       bestseller: { title: "Market Intelligence HUD", desc: "Segnali, titoli e KDP dentro un cruscotto predittivo.", room: "Market command center", object: "Radar commerciale" },
       publishing: { title: "Launch Bay", desc: "Cover, export e pacchetti pronti al rilascio.", room: "Launch bay", object: "Capsula editoriale" },
-      system: { title: "Control Deck", desc: "Identita, ambiente, libreria e sistemi del Writer OS.", room: "Control deck", object: "Pannello centrale" },
+      system: { title: "Author OS", desc: "Identità autore, libreria, ambiente e strumenti del progetto.", room: "Author Workspace", object: "Controllo del progetto" },
     },
     modules: {
       writer_studio: { title: "Narrative Lab", form: "console", object: "Console live" },
