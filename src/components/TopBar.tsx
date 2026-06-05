@@ -311,7 +311,7 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
 
       {/* ── MOBILE ACTION ROW — visible only below md, wraps instead of scrolling ── */}
       {hasProject && (
-        <div className="flex md:hidden flex-wrap items-center gap-1.5 px-3 pb-2">
+        <div className="flex md:hidden flex-wrap items-center gap-1.5 px-3 pt-1 pb-2">
           {isGenerating && (
             <div className="flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-2 py-1">
               <Loader2 className="h-3 w-3 animate-spin text-primary" />
