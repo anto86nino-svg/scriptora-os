@@ -109,243 +109,213 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
     toast.success(tt("author_identity_selected", { name: normalized.penName }));
   };
 
+  // Shared action buttons — rendered once in top row (desktop) or mobile row (mobile).
+  // All state, handlers, guards, disabled logic are identical in both contexts.
+  const actionButtons = (
+    <>
+      {isGenerating && (
+        <div className="flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-2 py-1 shrink-0">
+          <Loader2 className="h-3 w-3 animate-spin text-primary" />
+          <span className="text-[10px] text-primary font-medium">{t("generating")}</span>
+        </div>
+      )}
+      <button onClick={onCover}
+        className="ios-toolbar-button shrink-0 px-2.5 text-[11px] font-medium">
+        <Image className="h-3 w-3" /> {t("cover")}
+      </button>
+      <button onClick={guard(onExportDocx)} disabled={isExporting || phase !== "complete"}
+        title={canExport ? tt("export_format_title", { format: "DOCX" }) : t("export_locked_title")}
+        className="ios-toolbar-button shrink-0 px-2.5 text-[11px] font-medium disabled:opacity-40">
+        {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+        {!canExport ? tt("unlock_format", { format: "DOCX" }) : "DOCX"}
+      </button>
+      <button onClick={guard(onExportPdf)} disabled={isExporting || phase !== "complete"}
+        title={canExport ? tt("export_format_title", { format: "PDF" }) : t("export_locked_title")}
+        className="ios-toolbar-button shrink-0 px-2.5 text-[11px] font-medium disabled:opacity-40">
+        {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <FileType className="h-3 w-3" />}
+        {!canExport ? tt("unlock_format", { format: "PDF" }) : "PDF"}
+      </button>
+      <button onClick={guard(onExport)} disabled={isExporting || phase !== "complete"}
+        title={canExport ? tt("export_format_title", { format: "EPUB" }) : t("export_locked_title")}
+        className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-white px-2.5 text-[11px] font-semibold text-slate-950 transition-colors hover:bg-slate-100 disabled:opacity-40">
+        {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <Download className="h-3 w-3" />}
+        {!canExport ? tt("unlock_format", { format: "EPUB" }) : "EPUB"}
+      </button>
+      <button onClick={onPublish} disabled={phase !== "complete"}
+        className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-accent px-2.5 text-[11px] font-semibold text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-40">
+        <Rocket className="h-3 w-3" /> {t("publish")}
+      </button>
+    </>
+  );
+
   return (
-    <div className="ios-glass-soft mb-2 ml-12 shrink-0 rounded-lg md:ml-0">
-      {/* ── TOP ROW — always visible, config selects hidden on mobile ── */}
-      <div className="flex h-14 items-center gap-2 overflow-x-auto px-3">
-      <button onClick={() => nav("/dashboard")} className="ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground">
-        <Home className="h-3.5 w-3.5" /> {t("home")}
-      </button>
-      {/* Project title — mobile only, so user always knows which book is open */}
-      {hasProject && config?.title && (
-        <span className="ml-1 flex min-w-0 shrink items-center md:hidden">
-          <span className="max-w-[120px] truncate rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[11px] font-semibold text-foreground">
-            {config.title}
-          </span>
-        </span>
-      )}
-      <button onClick={() => nav("/pricing")} className="hidden md:inline-flex ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" title={t("pricing")}>
-        <CreditCard className="h-3.5 w-3.5" /> {t("pricing")}
-      </button>
-      <button onClick={() => nav("/downloads")} className="hidden md:inline-flex ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" title={t("downloads")}>
-        <Download className="h-3.5 w-3.5" /> {t("downloads")}
-      </button>
-      <span className="hidden md:contents">
-        <Divider />
-        <MiniSelect label={t("lang")} value={config.language} options={LANGUAGES.map(l => ({ value: l, label: l }))} onChange={(v) => onUpdateConfig("language", v)} />
-        <Divider />
-        <MiniSelect
-          label={t("author_identity")}
-          value={selectedAuthor.id}
-          icon={<Fingerprint className="h-3 w-3 text-sky-300" />}
-          options={authorIdentities.map((identity) => ({ value: identity.id, label: identity.penName }))}
-          onChange={changeProjectAuthor}
-        />
-        <FocusMusicControl />
-        <Divider />
-        <MiniSelect label={t("genre")} value={config.genre} options={GENRES} onChange={(v) => onUpdateConfig("genre", v)} />
-        <Divider />
-      </span>
-      <span className="hidden md:contents">
-      <MiniSelect label={t("book")} value={isFreePlan ? "short" : (config.bookLength || "medium")}
-        options={isFreePlan ? [
-          { value: "short", label: `${t("short")} (~10k) · ${t("free")}` },
-        ] : [
-          { value: "short", label: `${t("short")} (~10k)` },
-          { value: "medium", label: `${t("medium")} (~50k)` },
-          { value: "long", label: `${t("long")} (~100k+)` },
-          { value: "custom", label: `Custom (${(config.customTotalWords || 30000).toLocaleString()})` },
-        ]}
-        onChange={(v) => {
-          if (isFreePlan && v !== "short") return;
-          onUpdateConfig("bookLength", isFreePlan ? "short" : v);
-          if (v === "custom" && !config.customTotalWords) onUpdateConfig("customTotalWords", 30000);
-        }} />
-      <Divider />
-      <MiniSelect label={t("cat")} value={config.category || "Self Help"} options={categories.map(c => ({ value: c, label: c }))}
-        onChange={(v) => { onUpdateConfig("category", v); onUpdateConfig("subcategory", CATEGORIES[v]?.[0] || ""); }} />
-      <MiniSelect label="" value={config.subcategory || ""} options={subcategories.map(s => ({ value: s, label: s }))}
-        onChange={(v) => onUpdateConfig("subcategory", v)} />
-      <Divider />
-      <MiniSelect label={t("ch_len")} value={config.chapterLength} options={LENGTHS.map(l => ({ ...l, label: t(l.value) }))} onChange={(v) => onUpdateConfig("chapterLength", v)} />
-      <MiniSelect
-        label="cap."
-        value={String(config.numberOfChapters || 10)}
-        options={Array.from({ length: 48 }, (_, i) => {
-          const value = String(i + 3);
-          return { value, label: value };
-        })}
-        onChange={(v) => onUpdateConfig("numberOfChapters", Math.max(3, Math.min(50, Number(v) || 10)))}
-      />
-      <MiniSelect
-        label="sub"
-        value={config.subchaptersEnabled ? String(config.subchaptersPerChapter || DEFAULT_SUBCHAPTERS_PER_CHAPTER) : "off"}
-        options={[
-          { value: "off", label: "Off" },
-          ...Array.from({ length: 8 }, (_, i) => {
-            const value = String(i + 1);
-            return { value, label: value };
-          }),
-        ]}
-        onChange={(v) => {
-          if (v === "off") {
-            onUpdateConfig("subchaptersEnabled", false);
-            return;
-          }
-          onUpdateConfig("subchaptersEnabled", true);
-          onUpdateConfig("subchaptersPerChapter", Math.max(1, Math.min(8, Number(v) || DEFAULT_SUBCHAPTERS_PER_CHAPTER)));
-        }}
-      />
-      </span>
-      <div className="hidden lg:flex items-center gap-1">
-        <span className="text-[10px] uppercase text-muted-foreground">{t("tone")}</span>
-        <input value={config.tone} onChange={e => onUpdateConfig("tone", e.target.value)}
-          className="h-8 w-28 rounded-lg border border-white/10 bg-white/[0.07] px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          placeholder={t("tone_placeholder")} />
-      </div>
+    // Outer wrapper: flex-col so mobile action row can sit below top row without overflow.
+    // min-w-0 prevents it from pushing out of the flex parent in Index.tsx.
+    // shrink-0 keeps it from being compressed by flex-1 siblings.
+    <div className="ios-glass-soft mb-2 ml-10 min-w-0 shrink-0 rounded-lg md:ml-0">
 
-      <div className="flex-1" />
+      {/* ── TOP ROW ────────────────────────────────────────────────────────────
+          Desktop: full toolbar — nav, selects, actions, badges, signout.
+          Mobile: nav + title only. Actions and selects are hidden here.
+          overflow-x-auto is kept for desktop where many selects are visible.
+      ──────────────────────────────────────────────────────────────────────── */}
+      <div className="flex h-14 min-w-0 items-center gap-2 overflow-x-auto px-3">
 
-      {/* Sync Status */}
-      {syncStatus && (
-        <div
-          className={`mr-1 flex h-7 shrink-0 items-center gap-1 rounded-lg border px-2 ${syncTone}`}
-          title={
-            syncStatus === "offline"
-              ? t("sync_offline")
-              : syncStatus === "pending"
-                ? t("sync_pending")
-                : syncStatus === "saving"
-                  ? t("sync_saving")
-                  : t("sync_saved")
-          }
-        >
-          {syncStatus === "saving" && (
-            <>
-              <Loader2 className="h-3 w-3 animate-spin text-amber-500" />
-              <span className="text-[10px] font-semibold text-amber-500">{t("sync_saving")}</span>
-            </>
-          )}
-          {syncStatus === "pending" && (
-            <>
-              <Cloud className="h-3 w-3 text-sky-500" />
-              <span className="text-[10px] font-semibold text-sky-500">{t("sync_pending")}</span>
-            </>
-          )}
-          {(syncStatus === "saved" || syncStatus === "idle") && (
-            <>
-              <Cloud className="h-3 w-3 text-emerald-500" />
-              <span className="text-[10px] font-semibold text-emerald-500">{t("sync_saved")}</span>
-            </>
-          )}
-          {syncStatus === "offline" && (
-            <>
-              <CloudOff className="h-3 w-3 text-red-500" />
-              <span className="text-[10px] font-semibold text-red-500">{t("sync_offline")}</span>
-            </>
-          )}
-        </div>
-      )}
-
-      {hasProject && (
-        <div className="hidden md:flex items-center gap-1.5 shrink-0">
-          {isGenerating && (
-        <div className="mr-1 flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-2 py-1">
-              <Loader2 className="h-3 w-3 animate-spin text-primary" />
-              <span className="text-[10px] text-primary font-medium">{t("generating")}</span>
-            </div>
-          )}
-          <button onClick={onCover}
-            className="ios-toolbar-button px-2.5 text-[11px] font-medium">
-            <Image className="h-3 w-3" /> {t("cover")}
-          </button>
-          <button onClick={guard(onExportDocx)} disabled={isExporting || phase !== "complete"}
-            title={canExport ? tt("export_format_title", { format: "DOCX" }) : t("export_locked_title")}
-            className="ios-toolbar-button px-2.5 text-[11px] font-medium disabled:opacity-40">
-            {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-            {!canExport ? tt("unlock_format", { format: "DOCX" }) : "DOCX"}
-          </button>
-          <button onClick={guard(onExportPdf)} disabled={isExporting || phase !== "complete"}
-            title={canExport ? tt("export_format_title", { format: "PDF" }) : t("export_locked_title")}
-            className="ios-toolbar-button px-2.5 text-[11px] font-medium disabled:opacity-40">
-            {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <FileType className="h-3 w-3" />}
-            {!canExport ? tt("unlock_format", { format: "PDF" }) : "PDF"}
-          </button>
-          <button onClick={guard(onExport)} disabled={isExporting || phase !== "complete"}
-            title={canExport ? tt("export_format_title", { format: "EPUB" }) : t("export_locked_title")}
-            className="flex h-[34px] items-center gap-1 rounded-lg bg-white px-2.5 text-[11px] font-semibold text-slate-950 transition-colors hover:bg-slate-100 disabled:opacity-40">
-            {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <Download className="h-3 w-3" />}
-            {!canExport ? tt("unlock_format", { format: "EPUB" }) : "EPUB"}
-          </button>
-          <button onClick={onPublish} disabled={phase !== "complete"}
-            className="flex h-[34px] items-center gap-1 rounded-lg bg-accent px-2.5 text-[11px] font-semibold text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-40">
-            <Rocket className="h-3 w-3" /> {t("publish")}
-          </button>
-        </div>
-      )}
-      <div className="ml-2 shrink-0">
-        <PlanBadge tokensUsed={quota?.tokensUsed} />
-      </div>
-      {budget && (
-        <div
-          title={budget.exceeded ? t("word_limit_reached") : `${budget.used.toLocaleString()} / ${budget.max.toLocaleString()} ${t("words_unit")}`}
-          className={`hidden md:flex items-center gap-1 ml-1 px-2 h-7 rounded-md border text-[10px] font-semibold tabular-nums shrink-0 ${budgetTone}`}
-        >
-          <span>{formatCount(budget.used)}</span>
-          <span className="opacity-60">/</span>
-          <span>{formatCount(budget.max)}</span>
-          <span className="opacity-70 normal-case font-normal">{t("words_unit")}</span>
-        </div>
-      )}
-      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} reason="export" currentPlan={plan} />
-      {user && (
-        <button
-          onClick={async () => { await signOut(); toast.success(t("toast_signed_out")); nav("/auth"); }}
-          title={user.email || t("sign_out")}
-          className="ios-toolbar-button ml-1 shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-destructive"
-        >
-          <LogOut className="h-3 w-3" />
+        <button onClick={() => nav("/dashboard")} className="ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground">
+          <Home className="h-3.5 w-3.5" /> {t("home")}
         </button>
-      )}
+
+        {/* Project title pill — mobile only */}
+        {hasProject && config?.title && (
+          <span className="ml-1 flex min-w-0 shrink items-center md:hidden">
+            <span className="max-w-[120px] truncate rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[11px] font-semibold text-foreground">
+              {config.title}
+            </span>
+          </span>
+        )}
+
+        {/* Desktop-only nav buttons */}
+        <button onClick={() => nav("/pricing")} className="hidden md:inline-flex ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" title={t("pricing")}>
+          <CreditCard className="h-3.5 w-3.5" /> {t("pricing")}
+        </button>
+        <button onClick={() => nav("/downloads")} className="hidden md:inline-flex ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" title={t("downloads")}>
+          <Download className="h-3.5 w-3.5" /> {t("downloads")}
+        </button>
+
+        {/* Desktop-only config selects */}
+        <span className="hidden md:contents">
+          <Divider />
+          <MiniSelect label={t("lang")} value={config.language} options={LANGUAGES.map(l => ({ value: l, label: l }))} onChange={(v) => onUpdateConfig("language", v)} />
+          <Divider />
+          <MiniSelect
+            label={t("author_identity")}
+            value={selectedAuthor.id}
+            icon={<Fingerprint className="h-3 w-3 text-sky-300" />}
+            options={authorIdentities.map((identity) => ({ value: identity.id, label: identity.penName }))}
+            onChange={changeProjectAuthor}
+          />
+          <FocusMusicControl />
+          <Divider />
+          <MiniSelect label={t("genre")} value={config.genre} options={GENRES} onChange={(v) => onUpdateConfig("genre", v)} />
+          <Divider />
+        </span>
+        <span className="hidden md:contents">
+          <MiniSelect label={t("book")} value={isFreePlan ? "short" : (config.bookLength || "medium")}
+            options={isFreePlan ? [
+              { value: "short", label: `${t("short")} (~10k) · ${t("free")}` },
+            ] : [
+              { value: "short", label: `${t("short")} (~10k)` },
+              { value: "medium", label: `${t("medium")} (~50k)` },
+              { value: "long", label: `${t("long")} (~100k+)` },
+              { value: "custom", label: `Custom (${(config.customTotalWords || 30000).toLocaleString()})` },
+            ]}
+            onChange={(v) => {
+              if (isFreePlan && v !== "short") return;
+              onUpdateConfig("bookLength", isFreePlan ? "short" : v);
+              if (v === "custom" && !config.customTotalWords) onUpdateConfig("customTotalWords", 30000);
+            }} />
+          <Divider />
+          <MiniSelect label={t("cat")} value={config.category || "Self Help"} options={categories.map(c => ({ value: c, label: c }))}
+            onChange={(v) => { onUpdateConfig("category", v); onUpdateConfig("subcategory", CATEGORIES[v]?.[0] || ""); }} />
+          <MiniSelect label="" value={config.subcategory || ""} options={subcategories.map(s => ({ value: s, label: s }))}
+            onChange={(v) => onUpdateConfig("subcategory", v)} />
+          <Divider />
+          <MiniSelect label={t("ch_len")} value={config.chapterLength} options={LENGTHS.map(l => ({ ...l, label: t(l.value) }))} onChange={(v) => onUpdateConfig("chapterLength", v)} />
+          <MiniSelect
+            label="cap."
+            value={String(config.numberOfChapters || 10)}
+            options={Array.from({ length: 48 }, (_, i) => ({ value: String(i + 3), label: String(i + 3) }))}
+            onChange={(v) => onUpdateConfig("numberOfChapters", Math.max(3, Math.min(50, Number(v) || 10)))}
+          />
+          <MiniSelect
+            label="sub"
+            value={config.subchaptersEnabled ? String(config.subchaptersPerChapter || DEFAULT_SUBCHAPTERS_PER_CHAPTER) : "off"}
+            options={[
+              { value: "off", label: "Off" },
+              ...Array.from({ length: 8 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
+            ]}
+            onChange={(v) => {
+              if (v === "off") { onUpdateConfig("subchaptersEnabled", false); return; }
+              onUpdateConfig("subchaptersEnabled", true);
+              onUpdateConfig("subchaptersPerChapter", Math.max(1, Math.min(8, Number(v) || DEFAULT_SUBCHAPTERS_PER_CHAPTER)));
+            }}
+          />
+        </span>
+
+        {/* Tone input — large screens only */}
+        <div className="hidden lg:flex items-center gap-1">
+          <span className="text-[10px] uppercase text-muted-foreground">{t("tone")}</span>
+          <input value={config.tone} onChange={e => onUpdateConfig("tone", e.target.value)}
+            className="h-8 w-28 rounded-lg border border-white/10 bg-white/[0.07] px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            placeholder={t("tone_placeholder")} />
+        </div>
+
+        {/* Spacer — pushes right-side items to the end */}
+        <div className="flex-1" />
+
+        {/* Sync status badge */}
+        {syncStatus && (
+          <div
+            className={`mr-1 flex h-7 shrink-0 items-center gap-1 rounded-lg border px-2 ${syncTone}`}
+            title={syncStatus === "offline" ? t("sync_offline") : syncStatus === "pending" ? t("sync_pending") : syncStatus === "saving" ? t("sync_saving") : t("sync_saved")}
+          >
+            {syncStatus === "saving" && (<><Loader2 className="h-3 w-3 animate-spin text-amber-500" /><span className="text-[10px] font-semibold text-amber-500">{t("sync_saving")}</span></>)}
+            {syncStatus === "pending" && (<><Cloud className="h-3 w-3 text-sky-500" /><span className="text-[10px] font-semibold text-sky-500">{t("sync_pending")}</span></>)}
+            {(syncStatus === "saved" || syncStatus === "idle") && (<><Cloud className="h-3 w-3 text-emerald-500" /><span className="text-[10px] font-semibold text-emerald-500">{t("sync_saved")}</span></>)}
+            {syncStatus === "offline" && (<><CloudOff className="h-3 w-3 text-red-500" /><span className="text-[10px] font-semibold text-red-500">{t("sync_offline")}</span></>)}
+          </div>
+        )}
+
+        {/* ── DESKTOP ACTION BUTTONS — hidden on mobile, shown here on md+ ── */}
+        {hasProject && (
+          <div className="hidden md:flex items-center gap-1.5 shrink-0">
+            {actionButtons}
+          </div>
+        )}
+
+        {/* Plan badge — always visible */}
+        <div className="ml-2 shrink-0">
+          <PlanBadge tokensUsed={quota?.tokensUsed} />
+        </div>
+
+        {/* Word budget counter — desktop only */}
+        {budget && (
+          <div
+            title={budget.exceeded ? t("word_limit_reached") : `${budget.used.toLocaleString()} / ${budget.max.toLocaleString()} ${t("words_unit")}`}
+            className={`hidden md:flex items-center gap-1 ml-1 px-2 h-7 rounded-md border text-[10px] font-semibold tabular-nums shrink-0 ${budgetTone}`}
+          >
+            <span>{formatCount(budget.used)}</span>
+            <span className="opacity-60">/</span>
+            <span>{formatCount(budget.max)}</span>
+            <span className="opacity-70 normal-case font-normal">{t("words_unit")}</span>
+          </div>
+        )}
+
+        {/* Sign out button */}
+        {user && (
+          <button
+            onClick={async () => { await signOut(); toast.success(t("toast_signed_out")); nav("/auth"); }}
+            title={user.email || t("sign_out")}
+            className="ios-toolbar-button ml-1 shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-destructive"
+          >
+            <LogOut className="h-3 w-3" />
+          </button>
+        )}
+
       </div>{/* end top row */}
 
-      {/* ── MOBILE ACTION ROW — visible only below md, wraps instead of scrolling ── */}
+      {/* ── MOBILE ACTION ROW ──────────────────────────────────────────────────
+          Visible only below md. flex-wrap so buttons never cause horizontal
+          overflow — they reflow to a second line on very narrow screens.
+          Hidden on md+ because actions live in the top row there.
+      ──────────────────────────────────────────────────────────────────────── */}
       {hasProject && (
-        <div className="flex md:hidden flex-wrap items-center gap-1.5 px-3 pt-1 pb-2">
-          {isGenerating && (
-            <div className="flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-2 py-1">
-              <Loader2 className="h-3 w-3 animate-spin text-primary" />
-              <span className="text-[10px] text-primary font-medium">{t("generating")}</span>
-            </div>
-          )}
-          <button onClick={onCover}
-            className="ios-toolbar-button px-2.5 text-[11px] font-medium">
-            <Image className="h-3 w-3" /> {t("cover")}
-          </button>
-          <button onClick={guard(onExportDocx)} disabled={isExporting || phase !== "complete"}
-            title={canExport ? tt("export_format_title", { format: "DOCX" }) : t("export_locked_title")}
-            className="ios-toolbar-button px-2.5 text-[11px] font-medium disabled:opacity-40">
-            {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-            {!canExport ? tt("unlock_format", { format: "DOCX" }) : "DOCX"}
-          </button>
-          <button onClick={guard(onExportPdf)} disabled={isExporting || phase !== "complete"}
-            title={canExport ? tt("export_format_title", { format: "PDF" }) : t("export_locked_title")}
-            className="ios-toolbar-button px-2.5 text-[11px] font-medium disabled:opacity-40">
-            {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <FileType className="h-3 w-3" />}
-            {!canExport ? tt("unlock_format", { format: "PDF" }) : "PDF"}
-          </button>
-          <button onClick={guard(onExport)} disabled={isExporting || phase !== "complete"}
-            title={canExport ? tt("export_format_title", { format: "EPUB" }) : t("export_locked_title")}
-            className="flex h-[34px] items-center gap-1 rounded-lg bg-white px-2.5 text-[11px] font-semibold text-slate-950 transition-colors hover:bg-slate-100 disabled:opacity-40">
-            {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <Download className="h-3 w-3" />}
-            {!canExport ? tt("unlock_format", { format: "EPUB" }) : "EPUB"}
-          </button>
-          <button onClick={onPublish} disabled={phase !== "complete"}
-            className="flex h-[34px] items-center gap-1 rounded-lg bg-accent px-2.5 text-[11px] font-semibold text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-40">
-            <Rocket className="h-3 w-3" /> {t("publish")}
-          </button>
+        <div className="flex md:hidden flex-wrap items-center gap-x-1.5 gap-y-1.5 px-3 pb-2.5 pt-1">
+          {actionButtons}
         </div>
       )}
+
+      <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} reason="export" currentPlan={plan} />
     </div>
   );
 }
