@@ -128,20 +128,23 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
       <button onClick={() => nav("/downloads")} className="hidden md:inline-flex ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" title={t("downloads")}>
         <Download className="h-3.5 w-3.5" /> {t("downloads")}
       </button>
-      <Divider />
-      <MiniSelect label={t("lang")} value={config.language} options={LANGUAGES.map(l => ({ value: l, label: l }))} onChange={(v) => onUpdateConfig("language", v)} />
-      <Divider />
-      <MiniSelect
-        label={t("author_identity")}
-        value={selectedAuthor.id}
-        icon={<Fingerprint className="h-3 w-3 text-sky-300" />}
-        options={authorIdentities.map((identity) => ({ value: identity.id, label: identity.penName }))}
-        onChange={changeProjectAuthor}
-      />
-      <FocusMusicControl />
-      <Divider />
-      <MiniSelect label={t("genre")} value={config.genre} options={GENRES} onChange={(v) => onUpdateConfig("genre", v)} />
-      <Divider />
+      <span className="hidden md:contents">
+        <Divider />
+        <MiniSelect label={t("lang")} value={config.language} options={LANGUAGES.map(l => ({ value: l, label: l }))} onChange={(v) => onUpdateConfig("language", v)} />
+        <Divider />
+        <MiniSelect
+          label={t("author_identity")}
+          value={selectedAuthor.id}
+          icon={<Fingerprint className="h-3 w-3 text-sky-300" />}
+          options={authorIdentities.map((identity) => ({ value: identity.id, label: identity.penName }))}
+          onChange={changeProjectAuthor}
+        />
+        <FocusMusicControl />
+        <Divider />
+        <MiniSelect label={t("genre")} value={config.genre} options={GENRES} onChange={(v) => onUpdateConfig("genre", v)} />
+        <Divider />
+      </span>
+      <span className="hidden md:contents">
       <MiniSelect label={t("book")} value={isFreePlan ? "short" : (config.bookLength || "medium")}
         options={isFreePlan ? [
           { value: "short", label: `${t("short")} (~10k) · ${t("free")}` },
@@ -191,7 +194,7 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
           onUpdateConfig("subchaptersPerChapter", Math.max(1, Math.min(8, Number(v) || DEFAULT_SUBCHAPTERS_PER_CHAPTER)));
         }}
       />
-      <Divider />
+      </span>
       <div className="hidden lg:flex items-center gap-1">
         <span className="text-[10px] uppercase text-muted-foreground">{t("tone")}</span>
         <input value={config.tone} onChange={e => onUpdateConfig("tone", e.target.value)}
