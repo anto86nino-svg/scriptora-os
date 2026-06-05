@@ -114,10 +114,18 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
       <button onClick={() => nav("/dashboard")} className="ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground">
         <Home className="h-3.5 w-3.5" /> {t("home")}
       </button>
-      <button onClick={() => nav("/pricing")} className="ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" title={t("pricing")}>
+      {/* Project title — mobile only, so user always knows which book is open */}
+      {hasProject && config?.title && (
+        <span className="ml-1 flex min-w-0 shrink items-center md:hidden">
+          <span className="max-w-[120px] truncate rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[11px] font-semibold text-foreground">
+            {config.title}
+          </span>
+        </span>
+      )}
+      <button onClick={() => nav("/pricing")} className="hidden md:inline-flex ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" title={t("pricing")}>
         <CreditCard className="h-3.5 w-3.5" /> {t("pricing")}
       </button>
-      <button onClick={() => nav("/downloads")} className="ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" title={t("downloads")}>
+      <button onClick={() => nav("/downloads")} className="hidden md:inline-flex ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground" title={t("downloads")}>
         <Download className="h-3.5 w-3.5" /> {t("downloads")}
       </button>
       <Divider />
@@ -184,7 +192,7 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
         }}
       />
       <Divider />
-      <div className="flex items-center gap-1">
+      <div className="hidden lg:flex items-center gap-1">
         <span className="text-[10px] uppercase text-muted-foreground">{t("tone")}</span>
         <input value={config.tone} onChange={e => onUpdateConfig("tone", e.target.value)}
           className="h-8 w-28 rounded-lg border border-white/10 bg-white/[0.07] px-2 text-[11px] text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
