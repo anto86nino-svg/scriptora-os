@@ -392,6 +392,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       const latestP = getLatestProject() || p;
       const prevChapters = latestP.chapters.filter((_, i) => i < index && latestP.chapters[i]?.content?.length > 0);
       const chapterOverride = latestP.chapters[index]?.lengthOverride;
+      const activePlanForChapter = await getActivePlanForEngine();
 
       const chapter = await generateChapterChunked(
         latestP.config, latestP.blueprint!, index, prevChapters, chapterOverride,
@@ -424,7 +425,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
           });
         },
         latestP.genreLock,
-        { usage: { projectId: latestP.id } },
+        { adaptive: { plan: activePlanForChapter }, usage: { projectId: latestP.id } },
       );
 
       const activePlanAfterGeneration = await getActivePlanForEngine();

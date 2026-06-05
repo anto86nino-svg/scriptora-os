@@ -317,6 +317,21 @@ function buildContextMemory(config: BookConfig, blueprint: BookBlueprint, previo
   Ending: ...${c.content.substring(Math.max(0, c.content.length - 150))}${subTitles ? `\n  Subchapters: ${subTitles}` : ""}`;
   }).join("\n\n");
 
+  // Compact scene-state snapshot from the most recent chapter's closing passage.
+  // Deterministic, no AI call — extracts the last 600 chars and surfaces it as structured continuity signal.
+  const lastChapter = previousChapters[previousChapters.length - 1];
+  const closingPassage = lastChapter.content.length > 600
+    ? lastChapter.content.substring(lastChapter.content.length - 600)
+    : lastChapter.content;
+  const lastSceneState = `LAST SCENE STATE (closing passage of Ch ${previousChapters.length} — maintain direct continuity):
+${closingPassage.trim()}
+
+Continuity signal — you MUST carry forward:
+- The emotional charge present at that moment
+- Any unresolved tension, open question, or dangling thread
+- The last visible action or physical detail
+- Who was present or implied in that final moment`;
+
   const arcPosition = chapterIndex / config.numberOfChapters;
   const arcPhase = arcPosition < 0.25 ? "OPENING — establishing foundations"
     : arcPosition < 0.5 ? "RISING — deepening and developing"
@@ -332,6 +347,8 @@ function buildContextMemory(config: BookConfig, blueprint: BookBlueprint, previo
 
 PREVIOUS CHAPTERS:
 ${summaries}
+
+${lastSceneState}
 
 ${emotionalTrack}
 
@@ -1067,7 +1084,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
     // Anti-repetition check
     if (!isFirstChunk && accumulatedContent.length > 0) {
       const overlap = checkOverlap(accumulatedContent, chunkText);
-      if (overlap > 0.2) {
+      if (overlap > 0.12) {
         console.warn(`[Nexora] Chunk ${chunkIndex + 1} has ${(overlap * 100).toFixed(0)}% overlap — regenerating`);
         try {
           chunkText = await callAI(

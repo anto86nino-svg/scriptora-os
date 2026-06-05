@@ -113,7 +113,7 @@ export function cleanExportText(value: unknown): string {
       .replace(/"\s*,?\s*$/g, "");
   }
 
-  return text
+  text = text
     .replace(/\r\n/g, "\n")
     .replace(/\\n/g, "\n")
     .replace(/\t/g, " ")
@@ -130,6 +130,109 @@ export function cleanExportText(value: unknown): string {
     .replace(/Czes.?aw Mi.?osz/g, "Czesław Miłosz")
     .replace(/Czes[\u0000-\u001F]?Baw Mi[\u0000-\u001F]?Bosz/g, "Czesław Miłosz")
     .trim();
+
+  // ── Instruction-bleed / output-contamination guard ──────────────────────────
+  // Removes generation-internal fragments that occasionally leak into final prose.
+  // Conservative: targets only exact known patterns, never free-form prose.
+  text = removeInstructionBleed(text);
+
+  // ── Adjacent near-duplicate paragraph guard ──────────────────────────────────
+  // Removes a paragraph that is nearly identical to the one immediately before it.
+  // Only fires on adjacent pairs; leaves intentional literary repetition intact.
+  text = deduplicateAdjacentParagraphs(text);
+
+  return text;
+}
+
+/** Strips known instruction-bleed / prompt-contamination fragments from manuscript text. */
+function removeInstructionBleed(text: string): string {
+  // Line-level patterns: remove the entire line when it matches.
+  const linePrefixPatterns: RegExp[] = [
+    /^Write in \w[\w\s]{0,30}[.:]?\s*$/i,
+    /^Language:\s*.{0,40}$/i,
+    /^TOTAL CHAPTER TARGET[:\s]/i,
+    /^TARGET WORD COUNT[:\s]/i,
+    /^WARNING:\s*Previous attempt overlapped/i,
+    /^CONTINUITY RULES/i,
+    /^NARRATIVE MEMORY/i,
+    /^LAST SCENE STATE/i,
+    /^STYLE LOCK/i,
+    /^GENRE LOCK/i,
+    /^BOOK ARCHITECTURE/i,
+    /^Arc position:/i,
+    /^\[Nexora\]/i,
+    /^\[Scriptora\]/i,
+    /^Chunk \d+ of \d+/i,
+    /^CHUNK_START\b/i,
+    /^CHUNK_END\b/i,
+    /^<chapter_chunk>/i,
+    /^<\/chapter_chunk>/i,
+    /^<system>/i,
+    /^<\/system>/i,
+    /^<user>/i,
+    /^<\/user>/i,
+    /^<assistant>/i,
+    /^<\/assistant>/i,
+  ];
+
+  const lines = text.split("\n");
+  const filtered = lines.filter(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return true; // keep blank lines (paragraph separators)
+    return !linePrefixPatterns.some(rx => rx.test(trimmed));
+  });
+
+  return filtered.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/**
+ * Removes a paragraph when it is a near-duplicate of the immediately preceding paragraph.
+ * "Near-duplicate" = normalised overlap > 80% of the shorter paragraph's tokens.
+ * Only compares adjacent non-empty paragraphs; never removes isolated paragraphs.
+ * Short paragraphs under 40 chars are excluded (headers, names, etc. may repeat legitimately).
+ */
+function deduplicateAdjacentParagraphs(text: string): string {
+  const blocks = text.split(/\n\n+/);
+  const result: string[] = [];
+
+  for (let i = 0; i < blocks.length; i++) {
+    const current = blocks[i].trim();
+    if (!current) continue;
+
+    if (result.length === 0 || current.length < 40) {
+      result.push(current);
+      continue;
+    }
+
+    const prev = result[result.length - 1];
+    if (prev.length < 40) {
+      result.push(current);
+      continue;
+    }
+
+    const overlapRatio = paragraphSimilarity(prev, current);
+    if (overlapRatio > 0.80) {
+      // Near-duplicate — drop the current block silently.
+      continue;
+    }
+
+    result.push(current);
+  }
+
+  return result.join("\n\n");
+}
+
+function paragraphSimilarity(a: string, b: string): number {
+  const tokenize = (s: string) =>
+    s.toLowerCase().replace(/[^\w\s]/g, "").split(/\s+/).filter(Boolean);
+  const tokA = tokenize(a);
+  const tokB = tokenize(b);
+  if (tokA.length === 0 || tokB.length === 0) return 0;
+  const setA = new Set(tokA);
+  const setB = new Set(tokB);
+  let shared = 0;
+  for (const t of setA) { if (setB.has(t)) shared++; }
+  return shared / Math.min(setA.size, setB.size);
 }
 
 function mergeMatterFromEmbeddedJson(matter: any): any {
