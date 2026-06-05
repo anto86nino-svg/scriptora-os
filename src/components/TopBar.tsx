@@ -110,7 +110,9 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
   };
 
   return (
-    <div className="ios-glass-soft mb-2 ml-12 flex h-14 shrink-0 items-center gap-2 overflow-x-auto rounded-lg px-3 md:ml-0">
+    <div className="ios-glass-soft mb-2 ml-12 shrink-0 rounded-lg md:ml-0">
+      {/* ── TOP ROW — always visible, config selects hidden on mobile ── */}
+      <div className="flex h-14 items-center gap-2 overflow-x-auto px-3">
       <button onClick={() => nav("/dashboard")} className="ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground">
         <Home className="h-3.5 w-3.5" /> {t("home")}
       </button>
@@ -246,7 +248,7 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
       )}
 
       {hasProject && (
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="hidden md:flex items-center gap-1.5 shrink-0">
           {isGenerating && (
         <div className="mr-1 flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-2 py-1">
               <Loader2 className="h-3 w-3 animate-spin text-primary" />
@@ -304,6 +306,45 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
         >
           <LogOut className="h-3 w-3" />
         </button>
+      )}
+      </div>{/* end top row */}
+
+      {/* ── MOBILE ACTION ROW — visible only below md, wraps instead of scrolling ── */}
+      {hasProject && (
+        <div className="flex md:hidden flex-wrap items-center gap-1.5 px-3 pb-2">
+          {isGenerating && (
+            <div className="flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-2 py-1">
+              <Loader2 className="h-3 w-3 animate-spin text-primary" />
+              <span className="text-[10px] text-primary font-medium">{t("generating")}</span>
+            </div>
+          )}
+          <button onClick={onCover}
+            className="ios-toolbar-button px-2.5 text-[11px] font-medium">
+            <Image className="h-3 w-3" /> {t("cover")}
+          </button>
+          <button onClick={guard(onExportDocx)} disabled={isExporting || phase !== "complete"}
+            title={canExport ? tt("export_format_title", { format: "DOCX" }) : t("export_locked_title")}
+            className="ios-toolbar-button px-2.5 text-[11px] font-medium disabled:opacity-40">
+            {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+            {!canExport ? tt("unlock_format", { format: "DOCX" }) : "DOCX"}
+          </button>
+          <button onClick={guard(onExportPdf)} disabled={isExporting || phase !== "complete"}
+            title={canExport ? tt("export_format_title", { format: "PDF" }) : t("export_locked_title")}
+            className="ios-toolbar-button px-2.5 text-[11px] font-medium disabled:opacity-40">
+            {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <FileType className="h-3 w-3" />}
+            {!canExport ? tt("unlock_format", { format: "PDF" }) : "PDF"}
+          </button>
+          <button onClick={guard(onExport)} disabled={isExporting || phase !== "complete"}
+            title={canExport ? tt("export_format_title", { format: "EPUB" }) : t("export_locked_title")}
+            className="flex h-[34px] items-center gap-1 rounded-lg bg-white px-2.5 text-[11px] font-semibold text-slate-950 transition-colors hover:bg-slate-100 disabled:opacity-40">
+            {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <Download className="h-3 w-3" />}
+            {!canExport ? tt("unlock_format", { format: "EPUB" }) : "EPUB"}
+          </button>
+          <button onClick={onPublish} disabled={phase !== "complete"}
+            className="flex h-[34px] items-center gap-1 rounded-lg bg-accent px-2.5 text-[11px] font-semibold text-accent-foreground transition-colors hover:bg-accent/90 disabled:opacity-40">
+            <Rocket className="h-3 w-3" /> {t("publish")}
+          </button>
+        </div>
       )}
     </div>
   );
