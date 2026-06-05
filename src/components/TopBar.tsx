@@ -278,12 +278,21 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
           <PlanBadge tokensUsed={quota?.tokensUsed} />
         </div>
 
-        {/* Word budget counter — desktop only */}
+        {/* Word budget counter — desktop only.
+            In dev mode we show "SIM" so the owner knows the counter is a simulation
+            of the selected plan tier, not real production usage data. */}
         {budget && (
           <div
-            title={budget.exceeded ? t("word_limit_reached") : `${budget.used.toLocaleString()} / ${budget.max.toLocaleString()} ${t("words_unit")}`}
+            title={
+              dev
+                ? `[DEV SIM] ${budget.used.toLocaleString()} / ${budget.max.toLocaleString()} ${t("words_unit")} — simulated tier, not real usage`
+                : budget.exceeded
+                ? t("word_limit_reached")
+                : `${budget.used.toLocaleString()} / ${budget.max.toLocaleString()} ${t("words_unit")}`
+            }
             className={`hidden md:flex items-center gap-1 ml-1 px-2 h-7 rounded-md border text-[10px] font-semibold tabular-nums shrink-0 ${budgetTone}`}
           >
+            {dev && <span className="text-[8px] font-bold uppercase tracking-wider opacity-55 mr-0.5">SIM</span>}
             <span>{formatCount(budget.used)}</span>
             <span className="opacity-60">/</span>
             <span>{formatCount(budget.max)}</span>

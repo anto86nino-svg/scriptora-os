@@ -135,9 +135,10 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg bg-card border border-border rounded-2xl shadow-2xl overflow-hidden">
+      {/* max-h: prevents modal from overflowing viewport on landscape/small screens */}
+      <div className="flex w-full max-w-lg flex-col bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[calc(100dvh-2rem)]">
         {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-border">
+        <div className="flex shrink-0 items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
               <FileDown className="h-4 w-4" />
@@ -156,7 +157,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           </button>
         </div>
 
-        <div className="p-5 space-y-5 max-h-[70vh] overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-5">
           {/* Project Selection */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
@@ -201,6 +202,11 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
                         <p className="text-xs text-muted-foreground">
                           {p.chapters.length} cap · {wordCount.toLocaleString()} parole · {p.config.language}
                         </p>
+                        {!coverDataUrls[p.id] && (
+                          <span className="mt-0.5 flex items-center gap-1 text-[10px] text-amber-500/80">
+                            <ImagePlus className="h-3 w-3 shrink-0" /> Nessuna cover — verrà chiesta all'export
+                          </span>
+                        )}
                       </div>
                     </label>
                   );
@@ -244,8 +250,8 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 p-4 border-t border-border bg-muted/20">
+        {/* Footer — shrink-0 so it's always visible even on very short screens */}
+        <div className="flex shrink-0 items-center justify-end gap-2 p-4 border-t border-border bg-muted/20">
           <button
             onClick={onClose}
             disabled={isExporting}
