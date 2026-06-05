@@ -1953,15 +1953,11 @@
   --scriptora-ios-shadow: 0 18px 52px rgba(0, 0, 0, 0.28);
 }
 
-body {
+/* Atmosphere background is scoped to the writing app screens only.
+   Landing page, auth, pricing, etc. use their own backgrounds. */
+.scriptora-app-surface {
   background: var(--scriptora-app-bg) !important;
   background-attachment: fixed !important;
-}
-
-.min-h-screen.bg-background,
-.bg-background {
-  background-image: var(--scriptora-app-bg);
-  background-attachment: fixed;
 }
 
 .scriptora-ios-screen {
@@ -1976,8 +1972,9 @@ body {
 
 .scriptora-ios-screen::before {
   content: "";
-  position: fixed;
+  position: absolute;
   inset: 0;
+  z-index: 0;
   pointer-events: none;
   opacity: 0.16;
   background-image:
