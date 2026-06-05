@@ -17,7 +17,7 @@ const inflight = new Map<string, Promise<any>>();
 export function withMutex<T>(key: string, fn: () => Promise<T>): Promise<T> {
   const existing = inflight.get(key);
   if (existing) {
-    console.log(`[mutex] Deduped concurrent call for key="${key}"`);
+    if (typeof process !== "undefined" && process.env?.NODE_ENV === "development") console.log(`[mutex] Deduped concurrent call for key="${key}"`);
     return existing as Promise<T>;
   }
   const p = (async () => {

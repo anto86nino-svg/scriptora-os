@@ -528,7 +528,7 @@ export default function KdpLaunchPage() {
               </div>
               <Separator />
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setStep("idea")}>Nuova idea</Button>
+                <Button variant="outline" onClick={() => { setStep("idea"); setMarket(null); setTitles(null); setPackaging(null); setPrediction(null); setChosenTitle(""); setChosenSubtitle(""); setIdea(""); }}>Nuova idea</Button>
                 <Button onClick={() => navigate("/dashboard")}>Vai a scrivere il libro</Button>
               </div>
             </CardContent>

@@ -1130,8 +1130,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
     }
   }
 
-  // Completion log is essential — kept always on (1 line per chapter).
-  console.log(`[Nexora] Chapter ${chapterIndex + 1} complete: ${countWords(accumulatedContent)} words in ${chunkIndex} chunks`);
+  if (DEV_DEBUG_STREAM) console.log(`[Nexora] Chapter ${chapterIndex + 1} complete: ${countWords(accumulatedContent)} words in ${chunkIndex} chunks`);
 
   // Editorial QA gate (non-blocking — surfaces in console + Mastery diagnostic)
   let qaScore: number | undefined;
