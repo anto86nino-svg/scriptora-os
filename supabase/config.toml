@@ -1,10 +1,10 @@
 project_id = "lesxmntzrwjaooacvpko"
 
 [functions.kdp-money-engine]
-verify_jwt = false
+verify_jwt = true
 
 [functions.title-intelligence]
-verify_jwt = false
+verify_jwt = true
 
 [functions.title-autofill]
-verify_jwt = false
+verify_jwt = true
