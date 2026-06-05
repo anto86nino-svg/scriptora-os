@@ -173,6 +173,24 @@ function removeInstructionBleed(text: string): string {
     /^<\/user>/i,
     /^<assistant>/i,
     /^<\/assistant>/i,
+    // Role/coach labels that can leak from prompt context
+    /^Genre Coach[:\s]/i,
+    /^Assistente[:\s]/i,
+    /^Writing Coach[:\s]/i,
+    /^AI Coach[:\s]/i,
+    /^\[Genre Coach\]/i,
+    /^\[Writing Coach\]/i,
+    /^\[Assistente\]/i,
+    // Debug / internal bracket labels
+    /^\[DEBUG[:\]]/i,
+    /^\[INTERNAL[:\]]/i,
+    /^\[PROMPT[:\]]/i,
+    /^\[CONTEXT[:\]]/i,
+    // Wrong-language instruction fragments
+    /^Scrivi in \w[\w\s]{0,30}[.:]?\s*$/i,
+    /^Lingua:\s*.{0,40}$/i,
+    /^Obiettivo[:\s]/i,
+    /^Istruzioni[:\s]/i,
   ];
 
   const lines = text.split("\n");
@@ -182,7 +200,20 @@ function removeInstructionBleed(text: string): string {
     return !linePrefixPatterns.some(rx => rx.test(trimmed));
   });
 
-  return filtered.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  let result = filtered.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+
+  // Inline punctuation artifacts from prompt contamination
+  result = result.replace(/,\s*\./g, ".");           // ", ." → "."
+  result = result.replace(/\.\s*\./g, ".");           // ". ." → "."
+  result = result.replace(/\s{2,}/g, " ");            // multiple spaces → single
+  result = result.replace(/\[\s*\]/g, "");            // empty brackets []
+  result = result.replace(/\(\s*\)/g, "");            // empty parens ()
+  // Strip orphaned bracket labels mid-line: [Nexora], [Scriptora], [DEBUG], etc.
+  result = result.replace(/\[(Nexora|Scriptora|Genre Coach|Assistente|Writing Coach|DEBUG|INTERNAL|PROMPT|CONTEXT)[^\]]*\]/gi, "");
+  // Clean up any double-spaces left by above removals
+  result = result.replace(/\s{2,}/g, " ").replace(/^ /gm, "");
+
+  return result;
 }
 
 /**
