@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   SCRIPTORA_BACKGROUNDS,
+  SCRIPTORA_THEME_GROUPS,
   WRITING_FONTS,
   loadScriptoraAppearance,
   saveScriptoraAppearance,
@@ -12,6 +13,7 @@ import {
   removeCustomScriptoraBackground,
   type ScriptoraBackgroundId,
   type ScriptoraWritingFont,
+  type ScriptoraThemeCategory,
 } from "@/lib/scriptora-appearance";
 import { getUILanguage, setUILanguage, t, UI_LANGUAGES, useUILanguage, type UILanguage } from "@/lib/i18n";
 
@@ -285,30 +287,59 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {SCRIPTORA_BACKGROUNDS.map((bg) => {
-                const active = backgroundId === bg.id;
+            <div className="space-y-8">
+              {SCRIPTORA_THEME_GROUPS.map((group) => {
+                const groupBgs = SCRIPTORA_BACKGROUNDS.filter((b) => b.category === group.category);
+                if (groupBgs.length === 0) return null;
+                const isPremiumPack = ["horror-crime", "dark-romance", "fantasy", "scifi", "classic-premium"].includes(group.category);
 
                 return (
-                  <button
-                    key={bg.id}
-                    type="button"
-                    onPointerDown={(e) => { e.preventDefault(); applyBackground(bg.id); }}
-                    onTouchStart={(e) => { e.preventDefault(); applyBackground(bg.id); }}
-                    onClick={() => applyBackground(bg.id)}
-                    className={`group overflow-hidden rounded-3xl border text-left transition-all duration-300 hover:scale-[1.02] ${
-                      active ? "border-primary ring-2 ring-primary/30" : "border-border/70 hover:border-primary/50"
-                    }`}
-                  >
-                    <div className="h-32 transition-transform duration-500 group-hover:scale-105" style={{ background: bg.css }} />
-                    <div className="space-y-1 bg-card/90 p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold">{bg.name}</p>
-                        {active && <Check className="h-4 w-4 text-primary" />}
+                  <div key={group.category}>
+                    {/* Group header */}
+                    <div className={`mb-3 flex items-start gap-3 rounded-xl px-3 py-2 ${isPremiumPack ? "border border-white/8 bg-white/[0.03]" : ""}`}>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          {isPremiumPack && (
+                            <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                              Theme
+                            </span>
+                          )}
+                          <h4 className={`font-semibold ${isPremiumPack ? "text-foreground" : "text-muted-foreground"}`}>
+                            {group.label}
+                          </h4>
+                        </div>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{group.subtitle}</p>
                       </div>
-                      <p className="text-xs text-muted-foreground">{bg.description}</p>
                     </div>
-                  </button>
+
+                    {/* Backgrounds in this group */}
+                    <div className={`grid gap-3 ${isPremiumPack ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"}`}>
+                      {groupBgs.map((bg) => {
+                        const active = backgroundId === bg.id;
+                        return (
+                          <button
+                            key={bg.id}
+                            type="button"
+                            onPointerDown={(e) => { e.preventDefault(); applyBackground(bg.id); }}
+                            onTouchStart={(e) => { e.preventDefault(); applyBackground(bg.id); }}
+                            onClick={() => applyBackground(bg.id)}
+                            className={`group overflow-hidden rounded-3xl border text-left transition-all duration-300 hover:scale-[1.02] ${
+                              active ? "border-primary ring-2 ring-primary/30" : "border-border/70 hover:border-primary/50"
+                            }`}
+                          >
+                            <div className={`transition-transform duration-500 group-hover:scale-105 ${isPremiumPack ? "h-40" : "h-32"}`} style={{ background: bg.css }} />
+                            <div className="space-y-1 bg-card/90 p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-sm font-semibold">{bg.name}</p>
+                                {active && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                              </div>
+                              <p className="text-xs text-muted-foreground">{bg.description}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </div>
