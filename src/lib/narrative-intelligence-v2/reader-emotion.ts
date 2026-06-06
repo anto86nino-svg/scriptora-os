@@ -46,13 +46,33 @@ export function simulateReaderEmotion(input: {
 }): ReaderEmotionSnapshot {
   const text = String(input.content || "").trim();
   const fiction = isFictionConfig(input.config);
-  const bestseller = evaluateBestsellerChapter({
+  const bestsellerRaw = evaluateBestsellerChapter({
     content: text,
     chapterIndex: input.chapterIndex,
     totalChapters: input.totalChapters,
     genre: input.config?.genre,
     bookIntelligence: input.config?.bookIntelligence,
   });
+  const bestseller = bestsellerRaw ?? {
+    scores: {
+      hookStrength: 0,
+      bingeability: 0,
+      readerRetention: 0,
+      emotionalMomentum: 0,
+      bookTokIntensity: 0,
+      compulsiveReadability: 0,
+      commercialPacing: 0,
+      overall: 0,
+    },
+    grade: "weak" as const,
+    confidence: "low" as const,
+    risks: [],
+    strengths: [],
+    optimizations: [],
+    version: 2,
+    chapterIndex: input.chapterIndex,
+    evaluatedAt: new Date().toISOString(),
+  };
   const editorial = analyzeNovel(text);
   const telemetry = getNarrativeTelemetrySnapshot({
     config: {

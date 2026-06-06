@@ -1,5 +1,11 @@
-export type BestsellerGrade = "weak" | "developing" | "strong" | "bestseller";
-export type BestsellerConfidence = "low" | "medium" | "high";
+/**
+ * bestseller-intelligence/types.ts
+ * Shared type definitions for the bestseller scoring pipeline.
+ */
+
+export type BestsellerGrade = "bestseller" | "strong" | "developing" | "weak";
+
+export type BestsellerConfidence = "high" | "medium" | "low";
 
 export interface BestsellerScoreBreakdown {
   hookStrength: number;
@@ -12,8 +18,23 @@ export interface BestsellerScoreBreakdown {
   overall: number;
 }
 
+export interface BestsellerEvaluationInput {
+  content: string;
+  chapterIndex: number;
+  totalChapters?: number;
+  genre?: string;
+  bookIntelligence?: {
+    layers?: {
+      writingBrainId?: string;
+      domain?: string;
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  };
+}
+
 export interface BestsellerChapterSnapshot {
-  version: 2;
+  version: number;
   chapterIndex: number;
   evaluatedAt: string;
   scores: BestsellerScoreBreakdown;
@@ -22,19 +43,4 @@ export interface BestsellerChapterSnapshot {
   risks: string[];
   strengths: string[];
   optimizations: string[];
-}
-
-export interface BestsellerEvaluationInput {
-  content: string;
-  chapterIndex: number;
-  totalChapters?: number;
-  chapterTitle?: string;
-  genre?: string;
-  bookIntelligence?: {
-    layers?: {
-      writingBrainId?: string;
-      domain?: string;
-      bestsellerMode?: string;
-    };
-  };
 }
