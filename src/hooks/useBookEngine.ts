@@ -8,6 +8,8 @@ import { t } from "@/lib/i18n";
 import { fetchPlan } from "@/lib/plan";
 import { isDevMode } from "@/lib/dev-mode";
 import { getDevPlanOverride } from "@/lib/dev-plan-override";
+import { classifyError, formatUserMessage, formatToastMessage } from "@/lib/scriptora-error";
+import { scriptoraLog } from "@/lib/scriptora-logger";
 import { getPlanLimits } from "@/lib/subscription";
 import { normalizeProjectChapterTitles, resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { ensureBookTitleMetadata } from "@/lib/title-shadow";
@@ -240,8 +242,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       updateAndSave(p => ({ ...p, blueprint, phase: "front-matter" as GenerationPhase }));
       addMessage("assistant", `Blueprint ready! ${blueprint.chapterOutlines.length} chapters planned.`);
     } catch (e: any) {
-      addMessage("assistant", `❌ Error: ${e.message}`);
-      toast.error(t("toast_gen_failed"));
+      const err = classifyError(e);
+      scriptoraLog.error("blueprint", formatUserMessage(err), { projectId: newProject?.id, raw: e?.message });
+      addMessage("assistant", `❌ ${formatUserMessage(err)}`);
+      toast.error(formatToastMessage(err));
     } finally {
       removeGenerating("blueprint");
     }
@@ -275,8 +279,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       addMessage("assistant", "Front matter complete!");
     } catch (e: any) {
       updateAndSave(pr => ({ ...pr, frontMatterStatus: "error" as GenerationStatus }));
-      addMessage("assistant", `❌ Error: ${e.message}`);
-      toast.error(t("toast_gen_failed"));
+      const err = classifyError(e);
+      scriptoraLog.error("front-matter", formatUserMessage(err), { raw: e?.message });
+      addMessage("assistant", `❌ ${formatUserMessage(err)}`);
+      toast.error(formatToastMessage(err));
     } finally {
       removeGenerating("front-matter");
     }
@@ -331,8 +337,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       addMessage("assistant", "🎉 Book generation complete!");
     } catch (e: any) {
       updateAndSave(pr => ({ ...pr, backMatterStatus: "error" as GenerationStatus }));
-      addMessage("assistant", `❌ Error: ${e.message}`);
-      toast.error(t("toast_gen_failed"));
+      const err = classifyError(e);
+      scriptoraLog.error("back-matter", formatUserMessage(err), { raw: e?.message });
+      addMessage("assistant", `❌ ${formatUserMessage(err)}`);
+      toast.error(formatToastMessage(err));
     } finally {
       removeGenerating("back-matter");
     }
@@ -481,8 +489,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         if (chapters[index]) chapters[index] = { ...chapters[index], status: "error" as GenerationStatus };
         return { ...proj, chapters };
       });
-      addMessage("assistant", `❌ Error generating Chapter ${index + 1}: ${e.message}`);
-      toast.error(t("toast_gen_failed"));
+      const err = classifyError(e);
+      scriptoraLog.error("chapter", formatUserMessage(err), { chapterIndex: index + 1, raw: e?.message });
+      addMessage("assistant", `❌ Capitolo ${index + 1}: ${formatUserMessage(err)}`);
+      toast.error(formatToastMessage(err));
     } finally {
       removeGenerating(genKey);
       setChunkProgress(prev => { const next = { ...prev }; delete next[genKey]; return next; });
@@ -516,7 +526,9 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       });
       addMessage("assistant", `Subchapter "${sub.title}" complete!`);
     } catch (e: any) {
-      addMessage("assistant", `❌ Error: ${e.message}`);
+      const err = classifyError(e);
+      scriptoraLog.error("subchapter", formatUserMessage(err), { raw: e?.message });
+      addMessage("assistant", `❌ ${formatUserMessage(err)}`);
     } finally {
       removeGenerating(genKey);
     }
@@ -557,8 +569,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         if (chapters[index]) chapters[index] = { ...chapters[index], status: "error" as GenerationStatus };
         return { ...proj, chapters };
       });
-      addMessage("assistant", `❌ Error: ${e.message}`);
-      toast.error(t("toast_gen_failed"));
+      const err = classifyError(e);
+      scriptoraLog.error("regenerate-chapter", formatUserMessage(err), { chapterIndex: index + 1, raw: e?.message });
+      addMessage("assistant", `❌ Capitolo ${index + 1}: ${formatUserMessage(err)}`);
+      toast.error(formatToastMessage(err));
     } finally {
       removeGenerating(genKey);
     }
@@ -643,8 +657,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         if (chapters[index]) chapters[index] = { ...chapters[index], status: "error" as GenerationStatus };
         return { ...proj, chapters };
       });
-      addMessage("assistant", `❌ Error: ${e.message}`);
-      toast.error(t("toast_gen_failed"));
+      const err = classifyError(e);
+      scriptoraLog.error("rewrite-chapter", formatUserMessage(err), { chapterIndex: index + 1, level, raw: e?.message });
+      addMessage("assistant", `❌ Capitolo ${index + 1}: ${formatUserMessage(err)}`);
+      toast.error(formatToastMessage(err));
     } finally {
       removeGenerating(genKey);
     }
@@ -675,7 +691,8 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
           chapters[index] = { ...chapters[index], aiRating: rating, qualityRating: rating.score };
           return { ...proj, chapters };
         });
-      } catch {
+      } catch (evalErr: any) {
+        scriptoraLog.warn("auto-rewrite", "Eval step failed — breaking auto-rewrite loop", { chapterIndex: index, raw: evalErr?.message });
         break;
       } finally {
         removeGenerating(`eval-${index}`);
@@ -932,8 +949,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       addMessage("assistant", "🎉 Libro completo! Pronto per l'esportazione.");
       toast.success("Libro completato! Esporta in EPUB, PDF, DOCX o TXT");
     } catch (e: any) {
-      addMessage("assistant", `❌ Errore generazione completa: ${e.message}`);
-      toast.error("Generazione interrotta — riprova dalla sezione fallita");
+      const err = classifyError(e);
+      scriptoraLog.error("generate-complete", formatUserMessage(err), { raw: e?.message });
+      addMessage("assistant", `❌ Errore generazione: ${formatUserMessage(err)}`);
+      toast.error(formatToastMessage(err) || "Generazione interrotta — riprova dalla sezione fallita");
     }
   }, [project, addMessage, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter, updateAndSave]);
 
@@ -964,8 +983,9 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         const idx = queue[cursor++];
         try {
           await generateSingleChapter(idx);
-        } catch (e) {
-          console.error(`Parallel chapter ${idx} failed:`, e);
+        } catch (e: any) {
+          const err = classifyError(e);
+          scriptoraLog.error("parallel-chapter", formatUserMessage(err), { chapterIndex: idx, raw: e?.message });
         }
       }
     };

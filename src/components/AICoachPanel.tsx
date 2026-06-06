@@ -72,11 +72,14 @@ export function AICoachPanel({ project, activeSection, onClose, onApplyRewrite }
     // Use BOOK language for coach responses, not UI language
     const bookLang = project.config.language;
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-book`;
+    const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: { session: null } } as any));
+    const bearer = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        "Authorization": `Bearer ${bearer}`,
       },
       body: JSON.stringify({
         systemPrompt: `You are an elite editorial AI and bestseller writing coach performing pass #${passNumber}.

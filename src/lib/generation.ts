@@ -1,5 +1,6 @@
 import { BookConfig, Chapter, FrontMatter, BackMatter, BookBlueprint, Genre, AIQualityRating, BOOK_LENGTH_CONFIG, getBookTotalWords, getSubchaptersPerChapter, GenreLock } from "@/types/book";
 import { supabase } from "@/integrations/supabase/client";
+import { scriptoraLog, logGenerationStart, logGenerationEnd, logEdgeError } from "@/lib/scriptora-logger";
 import { buildGenreSystemBlock, buildGenreBlueprintBlock, buildGenreEditorialBlock, getGenreBlueprint, buildPromptByGenre, resolveGenreKey } from "@/lib/genre-intelligence";
 import { buildWritingStyleBlock, findStylePresetById, findStylePresetByLabel } from "@/lib/writing-styles";
 import { buildEditorialMasteryBlock } from "@/lib/editorial-mastery";
@@ -124,12 +125,12 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
   let lastByteAt = Date.now();
   const watchdog = setInterval(() => {
     if (Date.now() - lastByteAt > timeoutMs) {
-      console.warn(`[Nexora] No bytes received for ${timeoutMs}ms — aborting`);
+      scriptoraLog.warn("generation", `No bytes received for ${timeoutMs}ms — aborting stream`, { taskType: usage?.taskType });
       controller.abort();
     }
   }, 5000);
 
-  if (DEV_DEBUG_STREAM) console.log("[Nexora] AI request started (streaming)");
+  logGenerationStart("callAIOnce", { taskType: usage?.taskType, projectId: usage?.projectId });
   try {
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-book`;
     if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
@@ -153,6 +154,7 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
       const text = await res.text().catch(() => "");
       let errMsg = text;
       try { errMsg = JSON.parse(text).error || text; } catch {}
+      logEdgeError("generate-book", res.status, errMsg, { taskType: usage?.taskType, projectId: usage?.projectId });
       if (errMsg.includes("credits exhausted") || errMsg.includes("API key invalid") || res.status === 402) {
         throw new AICreditsError(errMsg);
       }
@@ -173,7 +175,7 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
 
     const marker = buffer.lastIndexOf("__RESULT__");
     if (marker === -1) {
-      console.warn("[Nexora] No result marker found");
+      scriptoraLog.error("generation", "No result marker found in AI response — stream may be incomplete", { taskType: usage?.taskType, bufferLength: buffer.length });
       throw new Error("Empty response from AI");
     }
     const jsonStr = buffer.slice(marker + "__RESULT__".length).trim();
@@ -181,7 +183,7 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
     try {
       parsed = JSON.parse(jsonStr);
     } catch (parseError) {
-      console.error("[Nexora] Failed to parse AI result payload:", parseError);
+      scriptoraLog.error("generation", "Failed to parse AI result payload", { parseError, taskType: usage?.taskType });
       throw new Error("AI response was incomplete. Please retry generation.");
     }
     if (parsed.error) {
@@ -189,7 +191,7 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
       throw new Error(parsed.error);
     }
     if (!parsed.content) throw new Error("Empty response from AI");
-    if (DEV_DEBUG_STREAM) console.log("[Nexora] AI response received:", parsed.content.length, "chars");
+    logGenerationEnd("callAIOnce", parsed.content.length, { taskType: usage?.taskType });
     notifyUsageChanged();
     return parsed.content;
   } catch (e: any) {
@@ -238,7 +240,7 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
     // Falls back to anon key only when there is genuinely no session.
     const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: { session: null } } as any));
     const bearer = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    console.log("[BLUEPRINT] start — jwt:", sessionData?.session?.access_token ? "present" : "absent (anon fallback)");
+    logGenerationStart("callBlueprintFast", { jwt: sessionData?.session?.access_token ? "user" : "anon", taskType: usage?.taskType });
     let res: Response;
     try {
       res = await fetch(url, {
@@ -254,19 +256,19 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
     } catch (err: any) {
       clearTimeout(timeout);
       if (err?.name === "AbortError") {
-        console.error("[BLUEPRINT] failed", err);
+        scriptoraLog.error("generation", "Blueprint timed out (AbortError)", { taskType: usage?.taskType });
         throw new Error("Blueprint generation timed out. Please retry.");
       }
-      console.error("[BLUEPRINT] failed", err);
+      scriptoraLog.error("generation", "Blueprint fetch failed", { error: err?.message, taskType: usage?.taskType });
       throw err;
     }
     clearTimeout(timeout);
-    console.log("[BLUEPRINT] status", res.status, "— jwt was:", bearer === import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ? "anon" : "user");
+    scriptoraLog.verbose("generation", `Blueprint response: ${res.status}`, { jwt: bearer === import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ? "anon" : "user" });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       let errMsg = text;
       try { errMsg = JSON.parse(text).error || text; } catch {}
-      console.error("[BLUEPRINT] edge fn rejected:", res.status, errMsg);
+      logEdgeError("generate-blueprint-fast", res.status, errMsg, { taskType: usage?.taskType });
       if (res.status === 402) throw new AICreditsError(errMsg || "AI credits exhausted");
       throw new Error(errMsg || `Blueprint generation failed (${res.status})`);
     }
@@ -277,7 +279,7 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
     }
     if (!content) throw new Error("Empty blueprint response");
     notifyUsageChanged();
-    console.log("[BLUEPRINT] success");
+    logGenerationEnd("callBlueprintFast", content.length, { taskType: usage?.taskType });
     return content as string;
   };
   return withRetry(callOnce, {
