@@ -993,7 +993,7 @@ export default function Dashboard() {
                 goApp({ projectId: lastProject.id });
               }
             }}
-            className="ios-panel group mb-5 w-full cursor-pointer overflow-hidden p-0 text-left transition-colors hover:border-primary/40"
+            className="ios-panel env-hero-book env-breathing group mb-5 w-full cursor-pointer overflow-hidden p-0 text-left transition-colors hover:border-primary/40"
           >
             <div className="bg-gradient-to-r from-sky-400/10 via-white/[0.055] to-emerald-400/10 p-3 sm:p-4">
               <div className="flex items-start justify-between gap-3">

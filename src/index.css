@@ -2078,6 +2078,134 @@
 .ios-icon-yellow { background: linear-gradient(145deg, #ffd60a 0%, #ff9f0a 100%); }
 .ios-icon-cyan { background: linear-gradient(145deg, #64d2ff 0%, #0a84ff 100%); }
 
+/* ─── Scriptora Immersive Environment V2 ─────────────────────────────────────
+   Utility classes that consume --env-* tokens injected by applyScriptoraEnvironment().
+   These layer on top of .ios-glass / .ios-panel without touching them.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --env-accent:        rgba(99,130,255,0.85);
+  --env-glow:          rgba(79,70,229,0.22);
+  --env-card-bg:       rgba(14,22,38,0.62);
+  --env-card-border:   rgba(255,255,255,0.12);
+  --env-card-texture:  linear-gradient(180deg,rgba(255,255,255,0.055),transparent);
+  --env-hover-glow:    0 0 24px rgba(79,70,229,0.24), 0 18px 44px rgba(0,0,0,0.40);
+  --env-motion-speed:  200ms;
+}
+
+/* Environment-aware card — applied to feature tiles */
+.env-card {
+  background: var(--env-card-texture), var(--env-card-bg) !important;
+  border-color: var(--env-card-border) !important;
+  transition-duration: var(--env-motion-speed) !important;
+}
+.env-card:hover {
+  box-shadow: var(--env-hover-glow) !important;
+  border-color: var(--env-accent) !important;
+}
+
+/* Hero book card — the "continue project" panel */
+.env-hero-book {
+  position: relative;
+  border-color: var(--env-card-border) !important;
+  background: var(--env-card-texture), var(--env-card-bg) !important;
+  box-shadow: var(--env-hover-glow) !important;
+  transition: box-shadow var(--env-motion-speed) ease, border-color var(--env-motion-speed) ease !important;
+}
+.env-hero-book::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at 50% 0%, var(--env-glow), transparent 64%);
+  pointer-events: none;
+  z-index: 0;
+}
+.env-hero-book > * { position: relative; z-index: 1; }
+.env-hero-book:hover {
+  border-color: var(--env-accent) !important;
+}
+
+/* Glow border utility */
+.env-glow-border {
+  box-shadow: 0 0 0 1px var(--env-card-border), var(--env-hover-glow) !important;
+}
+
+/* Breathing animation — subtle scale + opacity pulse on hero book */
+@keyframes env-breathe {
+  0%, 100% { opacity: 1;    transform: scale(1); }
+  50%       { opacity: 0.94; transform: scale(1.0045); }
+}
+.env-breathing {
+  animation: env-breathe 4.5s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* ─── Per-theme body-scoped overrides ────────────────────────────────────────
+   Subtly tint .ios-glass and .ios-panel borders/glows when a premium theme is active.
+   Uses data-theme attribute set by applyScriptoraEnvironment().
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Horror / Crime */
+[data-theme="horror-crime"] .ios-glass,
+[data-theme="horror-crime"] .ios-panel {
+  border-color: rgba(200,14,14,0.18) !important;
+}
+[data-theme="horror-crime"] .ios-glass:hover,
+[data-theme="horror-crime"] .ios-panel:hover {
+  border-color: rgba(200,14,14,0.32) !important;
+  box-shadow: 0 0 20px rgba(180,14,14,0.18), var(--scriptora-ios-shadow) !important;
+}
+
+/* Dark Romance */
+[data-theme="dark-romance"] .ios-glass,
+[data-theme="dark-romance"] .ios-panel {
+  border-color: rgba(180,100,30,0.20) !important;
+}
+[data-theme="dark-romance"] .ios-glass:hover,
+[data-theme="dark-romance"] .ios-panel:hover {
+  border-color: rgba(200,30,70,0.30) !important;
+  box-shadow: 0 0 18px rgba(180,100,20,0.18), var(--scriptora-ios-shadow) !important;
+}
+
+/* Fantasy */
+[data-theme="fantasy"] .ios-glass,
+[data-theme="fantasy"] .ios-panel {
+  border-color: rgba(120,80,200,0.20) !important;
+}
+[data-theme="fantasy"] .ios-glass:hover,
+[data-theme="fantasy"] .ios-panel:hover {
+  border-color: rgba(120,80,200,0.34) !important;
+  box-shadow: 0 0 20px rgba(80,120,200,0.18), var(--scriptora-ios-shadow) !important;
+}
+
+/* Sci-Fi */
+[data-theme="scifi"] .ios-glass,
+[data-theme="scifi"] .ios-panel {
+  border-color: rgba(0,180,220,0.22) !important;
+}
+[data-theme="scifi"] .ios-glass:hover,
+[data-theme="scifi"] .ios-panel:hover {
+  border-color: rgba(0,200,240,0.38) !important;
+  box-shadow: 0 0 22px rgba(0,180,220,0.22), var(--scriptora-ios-shadow) !important;
+}
+
+/* Classic Premium */
+[data-theme="classic-premium"] .ios-glass,
+[data-theme="classic-premium"] .ios-panel {
+  border-color: rgba(180,140,50,0.20) !important;
+}
+[data-theme="classic-premium"] .ios-glass:hover,
+[data-theme="classic-premium"] .ios-panel:hover {
+  border-color: rgba(200,155,60,0.32) !important;
+  box-shadow: 0 0 18px rgba(180,130,40,0.18), var(--scriptora-ios-shadow) !important;
+}
+
+/* Mobile: disable breathing on low-power preference */
+@media (prefers-reduced-motion: reduce) {
+  .env-breathing { animation: none; }
+}
+
 .ios-segment {
   display: inline-flex;
   align-items: center;

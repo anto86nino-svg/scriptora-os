@@ -234,17 +234,11 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
   const callOnce = async (): Promise<string> => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 90_000);
-    console.log("[BLUEPRINT] start");
-
-    const { data: sessionData } =
-      await supabase.auth
-        .getSession()
-        .catch(() => ({ data: { session: null } } as any));
-
-    const bearer =
-      sessionData?.session?.access_token ||
-      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
+    // Resolve bearer: prefer the authenticated user JWT (same strategy as callAIOnce).
+    // Falls back to anon key only when there is genuinely no session.
+    const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: { session: null } } as any));
+    const bearer = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    console.log("[BLUEPRINT] start — jwt:", sessionData?.session?.access_token ? "present" : "absent (anon fallback)");
     let res: Response;
     try {
       res = await fetch(url, {
@@ -267,11 +261,12 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
       throw err;
     }
     clearTimeout(timeout);
-    console.log("[BLUEPRINT] status", res.status);
+    console.log("[BLUEPRINT] status", res.status, "— jwt was:", bearer === import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ? "anon" : "user");
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       let errMsg = text;
       try { errMsg = JSON.parse(text).error || text; } catch {}
+      console.error("[BLUEPRINT] edge fn rejected:", res.status, errMsg);
       if (res.status === 402) throw new AICreditsError(errMsg || "AI credits exhausted");
       throw new Error(errMsg || `Blueprint generation failed (${res.status})`);
     }

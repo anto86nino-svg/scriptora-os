@@ -14,11 +14,32 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   );
 }
 
+// Guard: strip ALL implicit-flow hash tokens BEFORE createClient runs.
+// flowType:"pkce" never uses hash-fragment access_token/refresh_token.
+// Any such tokens in the hash are either a stale implicit-flow redirect or
+// a misconfigured provider response. Supabase's internal URL parser can
+// still pick them up even with detectSessionInUrl:false and throw
+// UNAUTHORIZED_INVALID_JWT_FORMAT. Strip them unconditionally.
+try {
+  if (typeof window !== "undefined" && window.location.hash) {
+    const h = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    if (h.has("access_token") || h.has("refresh_token")) {
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search
+      );
+    }
+  }
+} catch {
+  // Never block client creation on a URL-parsing failure.
+}
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: false,
-    flowType: "pkce"
+    flowType: "pkce",
   },
 });

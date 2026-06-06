@@ -136,12 +136,14 @@ function getAuthCallbackState() {
     hash.get("error_description") ||
     hash.get("error") ||
     "";
+  // PKCE flow: only a ?code= query param or an explicit error signal a
+  // real OAuth callback. Hash-fragment access_token/refresh_token belong to
+  // the implicit flow which we do NOT use — they are stripped by client.ts
+  // before Supabase initialises, so we must not treat them as a callback here.
   const hasCallback =
     !!code ||
     search.has("error") ||
     search.has("error_description") ||
-    hash.has("access_token") ||
-    hash.has("refresh_token") ||
     hash.has("error") ||
     hash.has("error_description");
   return { hasCallback, error, code };

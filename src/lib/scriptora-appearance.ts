@@ -234,6 +234,95 @@ export function loadScriptoraAppearance(): ScriptoraAppearanceSettings {
   }
 }
 
+// ─── Immersive Environment Token Map ─────────────────────────────────────────
+// Per-category CSS token sets injected alongside --scriptora-app-bg.
+// Consumed by .env-card, .env-hero-book, .env-glow-border utility classes.
+const ENV_TOKENS: Record<ScriptoraThemeCategory, Record<string, string>> = {
+  "horror-crime": {
+    "--env-accent":        "rgba(200,14,14,0.85)",
+    "--env-glow":          "rgba(180,14,14,0.28)",
+    "--env-card-bg":       "rgba(20,5,5,0.62)",
+    "--env-card-border":   "rgba(200,14,14,0.22)",
+    "--env-card-texture":  "linear-gradient(180deg,rgba(200,14,14,0.08),transparent)",
+    "--env-hover-glow":    "0 0 32px rgba(200,14,14,0.32), 0 20px 48px rgba(0,0,0,0.50)",
+    "--env-motion-speed":  "220ms",
+  },
+  "dark-romance": {
+    "--env-accent":        "rgba(200,30,70,0.85)",
+    "--env-glow":          "rgba(180,100,20,0.26)",
+    "--env-card-bg":       "rgba(18,4,10,0.64)",
+    "--env-card-border":   "rgba(180,120,30,0.24)",
+    "--env-card-texture":  "linear-gradient(180deg,rgba(180,30,60,0.09),rgba(180,120,20,0.06),transparent)",
+    "--env-hover-glow":    "0 0 28px rgba(200,30,70,0.30), 0 18px 44px rgba(0,0,0,0.48)",
+    "--env-motion-speed":  "260ms",
+  },
+  "fantasy": {
+    "--env-accent":        "rgba(130,90,220,0.85)",
+    "--env-glow":          "rgba(80,160,100,0.24)",
+    "--env-card-bg":       "rgba(8,5,22,0.62)",
+    "--env-card-border":   "rgba(120,80,200,0.26)",
+    "--env-card-texture":  "linear-gradient(180deg,rgba(120,80,200,0.10),rgba(40,120,80,0.06),transparent)",
+    "--env-hover-glow":    "0 0 30px rgba(120,80,200,0.34), 0 20px 46px rgba(0,0,0,0.46)",
+    "--env-motion-speed":  "280ms",
+  },
+  "scifi": {
+    "--env-accent":        "rgba(0,200,240,0.85)",
+    "--env-glow":          "rgba(0,160,210,0.28)",
+    "--env-card-bg":       "rgba(2,10,20,0.66)",
+    "--env-card-border":   "rgba(0,180,220,0.26)",
+    "--env-card-texture":  "linear-gradient(180deg,rgba(0,180,220,0.10),rgba(60,80,200,0.06),transparent)",
+    "--env-hover-glow":    "0 0 32px rgba(0,200,240,0.36), 0 20px 48px rgba(0,0,0,0.48)",
+    "--env-motion-speed":  "180ms",
+  },
+  "classic-premium": {
+    "--env-accent":        "rgba(200,155,60,0.85)",
+    "--env-glow":          "rgba(180,130,40,0.22)",
+    "--env-card-bg":       "rgba(16,10,4,0.64)",
+    "--env-card-border":   "rgba(180,140,50,0.24)",
+    "--env-card-texture":  "linear-gradient(180deg,rgba(180,130,40,0.09),transparent)",
+    "--env-hover-glow":    "0 0 26px rgba(200,155,60,0.28), 0 18px 44px rgba(0,0,0,0.44)",
+    "--env-motion-speed":  "240ms",
+  },
+  // Fallback for non-premium categories — neutral values
+  "atmosphere": {
+    "--env-accent":        "rgba(99,130,255,0.85)",
+    "--env-glow":          "rgba(79,70,229,0.22)",
+    "--env-card-bg":       "rgba(14,22,38,0.62)",
+    "--env-card-border":   "rgba(255,255,255,0.12)",
+    "--env-card-texture":  "linear-gradient(180deg,rgba(255,255,255,0.055),transparent)",
+    "--env-hover-glow":    "0 0 24px rgba(79,70,229,0.24), 0 18px 44px rgba(0,0,0,0.40)",
+    "--env-motion-speed":  "200ms",
+  },
+  "minimal": {
+    "--env-accent":        "rgba(180,180,200,0.80)",
+    "--env-glow":          "rgba(160,160,180,0.16)",
+    "--env-card-bg":       "rgba(12,18,30,0.60)",
+    "--env-card-border":   "rgba(255,255,255,0.10)",
+    "--env-card-texture":  "linear-gradient(180deg,rgba(255,255,255,0.04),transparent)",
+    "--env-hover-glow":    "0 0 20px rgba(160,160,180,0.18), 0 16px 40px rgba(0,0,0,0.36)",
+    "--env-motion-speed":  "200ms",
+  },
+  "personal": {
+    "--env-accent":        "rgba(99,130,255,0.85)",
+    "--env-glow":          "rgba(79,70,229,0.22)",
+    "--env-card-bg":       "rgba(14,22,38,0.62)",
+    "--env-card-border":   "rgba(255,255,255,0.12)",
+    "--env-card-texture":  "linear-gradient(180deg,rgba(255,255,255,0.055),transparent)",
+    "--env-hover-glow":    "0 0 24px rgba(79,70,229,0.24), 0 18px 44px rgba(0,0,0,0.40)",
+    "--env-motion-speed":  "200ms",
+  },
+};
+
+export function applyScriptoraEnvironment(category: ScriptoraThemeCategory) {
+  const tokens = ENV_TOKENS[category] ?? ENV_TOKENS["atmosphere"];
+  const root = document.documentElement;
+  for (const [key, value] of Object.entries(tokens)) {
+    root.style.setProperty(key, value);
+  }
+  // Body data attribute for CSS theme-scoped overrides
+  document.body.dataset.theme = category;
+}
+
 export function applyScriptoraAppearance(settings: ScriptoraAppearanceSettings = loadScriptoraAppearance()) {
   const bg = SCRIPTORA_BACKGROUNDS.find((b) => b.id === settings.backgroundId) || SCRIPTORA_BACKGROUNDS[0];
   const font = WRITING_FONTS.find((f) => f.id === settings.writingFont) || WRITING_FONTS[0];
@@ -247,6 +336,9 @@ export function applyScriptoraAppearance(settings: ScriptoraAppearanceSettings =
 
   document.documentElement.style.setProperty("--scriptora-app-bg", finalBackground);
   document.documentElement.style.setProperty("--scriptora-writing-font", font.css);
+
+  // Inject immersive environment tokens for this theme category
+  applyScriptoraEnvironment(bg.category);
 }
 
 export function saveScriptoraAppearance(settings: ScriptoraAppearanceSettings) {
