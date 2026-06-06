@@ -274,14 +274,30 @@ async function callAIReduced(systemPrompt: string, userPrompt: string, usage?: A
 async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage?: AIUsageContext): Promise<string> {
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-blueprint-fast`;
   const callOnce = async (): Promise<string> => {
+    const { data: sessionData } =
+      await supabase.auth
+        .getSession()
+        .catch(() => ({ data: { session: null } } as any));
+
+    const bearer =
+      sessionData?.session?.access_token ||
+      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
     const res = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${bearer}`,
       },
-      body: JSON.stringify({ systemPrompt, userPrompt, ...usagePayload({ ...usage, taskType: usage?.taskType || "generate_blueprint" }) }),
+      body: JSON.stringify({
+        systemPrompt,
+        userPrompt,
+        ...usagePayload({
+          ...usage,
+          taskType: usage?.taskType || "generate_blueprint",
+        }),
+      }),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
