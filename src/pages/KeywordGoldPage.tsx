@@ -63,8 +63,8 @@ export default function KeywordGoldPage() {
   const backendLine = result?.backendKeywords?.join("; ") || "";
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-4xl p-6 space-y-6">
+    <div className="scriptora-feature-page bg-background">
+      <main className="scriptora-feature-scroll mx-auto max-w-4xl space-y-6 p-6">
         <header className="flex items-center justify-between">
           <div>
             <Button variant="ghost" onClick={() => navigate("/dashboard")} className="mb-3 gap-2">
@@ -222,7 +222,7 @@ export default function KeywordGoldPage() {
             </Card>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

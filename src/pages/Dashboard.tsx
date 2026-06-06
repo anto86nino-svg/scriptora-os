@@ -107,7 +107,7 @@ function charactersFromBibleText(text?: string): any[] {
     .filter(c => String(c.name || "").trim());
 }
 
-export default function Home() {
+export default function Dashboard() {
   const navigate = useNavigate();
   const devOn = useDevMode();
   const [showNewBook, setShowNewBook] = useState(false);
@@ -563,11 +563,9 @@ export default function Home() {
     { group: "publishing", icon: FileDown, title: t("export_studio_title"), desc: t("export_studio_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const, tag: t("os_tag_export") },
     { group: "publishing", icon: Library, title: t("library"), desc: t("library_premium_desc"), iconBg: "ios-icon-green", action: () => setShowLibrary(true), feature: "export_epub" as const, tag: t("os_tag_archive") },
 
-    { group: "system", icon: HomeIcon, title: t("command_center_title"), desc: t("command_center_desc"), iconBg: "ios-icon-cyan", action: () => navigate("/dashboard"), tag: t("os_tag_overview") },
     { group: "system", icon: Users, title: t("author_identity"), desc: t("author_identity_premium_desc"), iconBg: "ios-icon-blue", action: () => setShowAuthorIdentity(true), feature: "book_engine_full" as const, tag: t("os_tag_identity") },
     { group: "system", icon: Settings, title: t("background_atmosphere"), desc: t("atmosphere_premium_desc"), iconBg: "ios-icon-slate", action: () => setShowAdvancedSettings(true), feature: "book_engine_full" as const, tag: t("os_tag_space") },
     { group: "system", icon: FolderOpen, title: t("projects"), desc: t("projects_premium_desc"), iconBg: "ios-icon-cyan", action: () => setShowProjects(!showProjects), feature: "book_engine_full" as const, tag: t("os_tag_library") },
-    { group: "system", icon: Settings, title: t("settings"), desc: t("settings_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowAdvancedSettings(true), feature: "book_engine_full" as const, tag: t("os_tag_control") },
   ];
 
   const cardGroups = [
@@ -578,7 +576,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="scriptora-ios-screen min-h-screen relative overflow-hidden">
+    <div className="scriptora-ios-screen scriptora-app-surface min-h-screen relative overflow-hidden">
       <header className="sticky top-0 z-20 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
@@ -691,7 +689,7 @@ export default function Home() {
               </>
             )}
             <div
-              className="flex h-8 max-w-[150px] shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 text-xs text-foreground"
+              className="hidden sm:flex h-8 max-w-[150px] shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 text-xs text-foreground"
               title={`${t("author_identity")}: ${activeAuthor.penName}`}
             >
               <Fingerprint className="h-3.5 w-3.5 shrink-0 text-sky-300" />
@@ -712,7 +710,7 @@ export default function Home() {
             <button
               type="button"
               onClick={() => setShowAuthorIdentity(true)}
-              className="ios-toolbar-button h-8 w-8 text-sky-200"
+              className="hidden sm:inline-flex ios-toolbar-button h-8 w-8 text-sky-200"
               title={t("author_identity")}
             >
               <Settings className="h-3.5 w-3.5" />
@@ -769,18 +767,37 @@ export default function Home() {
                 </p>
               </div>
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                {lastProject ? (
+                  <button
+                    onClick={() => goApp({ projectId: lastProject.id })}
+                    className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-sky-200/60 bg-white px-3 text-xs font-bold text-slate-950 shadow-[0_16px_42px_rgba(14,165,233,0.22)] ring-1 ring-white/50 transition-all hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_18px_48px_rgba(14,165,233,0.30)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
+                  >
+                    <BookOpen className="h-4 w-4 text-sky-600" />
+                    {t("continue_action")}
+                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={openNewBookGuarded}
+                    className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-sky-200/60 bg-white px-3 text-xs font-bold text-slate-950 shadow-[0_16px_42px_rgba(14,165,233,0.22)] ring-1 ring-white/50 transition-all hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_18px_48px_rgba(14,165,233,0.30)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
+                  >
+                    <Plus className="h-4 w-4 text-sky-600" />
+                    {t("new_book")}
+                  </button>
+                )}
                 <button
                   onClick={() => setShowIdeaModal(true)}
                   className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-200/70 bg-amber-50 px-3 text-xs font-bold text-slate-950 shadow-[0_16px_42px_rgba(251,191,36,0.28)] ring-1 ring-white/50 transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_18px_48px_rgba(251,191,36,0.36)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
                 >
                   <Flame className="h-4 w-4" />
-                  {t("generate_bestseller_title")}
+                  <span className="hidden sm:inline">{t("generate_bestseller_title")}</span>
+                  <span className="sm:hidden">Bestseller</span>
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate("/")}
-                  className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-3 text-xs font-bold text-white/82 shadow-[0_12px_32px_rgba(0,0,0,0.18)] transition-all hover:-translate-y-0.5 hover:border-cyan-200/40 hover:bg-cyan-300/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:h-12 sm:px-4 sm:text-sm"
+                  className="hidden sm:inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-3 text-xs font-bold text-white/82 shadow-[0_12px_32px_rgba(0,0,0,0.18)] transition-all hover:-translate-y-0.5 hover:border-cyan-200/40 hover:bg-cyan-300/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:h-12 sm:px-4 sm:text-sm"
                   title={t("public_site")}
                 >
                   <HomeIcon className="h-4 w-4 text-cyan-200" />
@@ -826,6 +843,35 @@ export default function Home() {
         </div>
 
         <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
+
+        {/* Mobile primary action strip — visible before stats accordion */}
+        <div className="mb-4 flex gap-2 xl:hidden">
+          {lastProject ? (
+            <button
+              onClick={() => goApp({ projectId: lastProject.id })}
+              className="group inline-flex flex-1 h-11 items-center justify-center gap-2 rounded-xl border border-sky-300/40 bg-sky-400/12 px-4 text-sm font-bold text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition-all hover:bg-sky-400/20"
+            >
+              <BookOpen className="h-4 w-4 text-sky-300" />
+              {t("continue_action")}
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          ) : (
+            <button
+              onClick={openNewBookGuarded}
+              className="group inline-flex flex-1 h-11 items-center justify-center gap-2 rounded-xl border border-sky-300/40 bg-sky-400/12 px-4 text-sm font-bold text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition-all hover:bg-sky-400/20"
+            >
+              <Plus className="h-4 w-4 text-sky-300" />
+              {t("new_book")}
+            </button>
+          )}
+          <button
+            onClick={() => setShowProjects(true)}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.07] px-4 text-sm font-medium text-white/80 transition-all hover:bg-white/[0.12]"
+          >
+            <FolderOpen className="h-4 w-4" />
+            {t("projects")}
+          </button>
+        </div>
 
         <section className="mb-4 xl:hidden">
           <button
@@ -1033,8 +1079,10 @@ export default function Home() {
                         <button
                           key={card.title}
                           onClick={card.action}
-                          className={`group relative flex min-h-[154px] w-full overflow-hidden flex-col items-start justify-between rounded-2xl border border-white/15 bg-slate-950/30 p-3.5 text-left shadow-[0_18px_46px_rgba(0,0,0,0.20)] ring-1 ring-white/[0.03] backdrop-blur-xl transition-all duration-200 hover:-translate-y-1 hover:border-white/30 hover:bg-white/[0.11] hover:shadow-[0_24px_58px_rgba(0,0,0,0.26)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-safe:hover:scale-[1.012] ${
-                            (card as any).emphasis ? "sm:col-span-2 lg:col-span-2" : ""
+                          className={`group relative flex min-h-[154px] w-full overflow-hidden flex-col items-start justify-between rounded-2xl border p-3.5 text-left backdrop-blur-xl transition-all duration-200 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-safe:hover:scale-[1.012] ${
+                            (card as any).emphasis
+                              ? "sm:col-span-2 lg:col-span-2 border-sky-400/35 bg-gradient-to-br from-sky-400/14 via-slate-950/30 to-slate-950/30 shadow-[0_18px_46px_rgba(14,165,233,0.14)] ring-1 ring-sky-400/10 hover:border-sky-300/55 hover:bg-sky-400/18 hover:shadow-[0_24px_58px_rgba(14,165,233,0.22)]"
+                              : "border-white/15 bg-slate-950/30 shadow-[0_18px_46px_rgba(0,0,0,0.20)] ring-1 ring-white/[0.03] hover:border-white/30 hover:bg-white/[0.11] hover:shadow-[0_24px_58px_rgba(0,0,0,0.26)]"
                           }`}
                         >
                           <span className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-70" />

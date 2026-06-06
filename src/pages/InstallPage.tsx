@@ -46,8 +46,8 @@ export default function InstallPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b border-border/50 px-4 h-14 flex items-center">
+    <div className="scriptora-feature-page bg-background flex flex-col">
+      <header className="shrink-0 border-b border-border/50 px-4 h-14 flex items-center">
         <Link
           to="/dashboard"
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -56,7 +56,7 @@ export default function InstallPage() {
         </Link>
       </header>
 
-      <main className="flex-1 px-4 py-10 flex items-center justify-center">
+      <main className="scriptora-feature-scroll flex flex-1 items-center justify-center px-4 py-10">
         <div className="w-full max-w-md space-y-6">
           <div className="text-center space-y-2">
             <div className="mx-auto h-14 w-14 rounded-2xl bg-primary/15 text-primary flex items-center justify-center">

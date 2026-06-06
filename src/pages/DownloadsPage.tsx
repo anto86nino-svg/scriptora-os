@@ -9,8 +9,8 @@ import { DownloadStatusBanner } from "@/components/downloads/DownloadStatusBanne
 
 export default function DownloadsPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border bg-card/40 backdrop-blur-sm">
+    <div className="scriptora-feature-page bg-background text-foreground">
+      <header className="shrink-0 border-b border-border bg-card/40 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link
             to="/dashboard"
@@ -24,7 +24,7 @@ export default function DownloadsPage() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 py-14">
+      <main className="scriptora-feature-scroll mx-auto max-w-6xl px-6 py-14">
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-primary/30 bg-primary/10 text-[10px] font-bold uppercase tracking-wider text-primary mb-4">
             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />

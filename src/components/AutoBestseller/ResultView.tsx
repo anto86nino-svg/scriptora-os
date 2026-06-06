@@ -16,7 +16,7 @@ export function ResultView({ result, onSaveAsProject }: Props) {
   const avgVoice = result.pipeline?.avgVoiceConfidence ?? 0;
 
   return (
-    <Card className="border-border/60">
+    <Card className="max-w-full overflow-hidden border-border/60 bg-card/95">
       <CardHeader>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
@@ -27,7 +27,7 @@ export function ResultView({ result, onSaveAsProject }: Props) {
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <ScoreCard label="Final Score" value={result.finalScore} icon={<Star className="h-4 w-4" />} />
           <ScoreCard label="Market Score" value={result.marketScore} icon={<Sparkles className="h-4 w-4" />} />
           <ScoreCard label="Voice Confidence" value={avgVoice * 10} suffix="/10" icon={<BookOpen className="h-4 w-4" />} />
@@ -49,7 +49,7 @@ export function ResultView({ result, onSaveAsProject }: Props) {
               </Button>
             )}
           </div>
-          <ScrollArea className="h-[420px] rounded-md border border-border/60">
+          <ScrollArea className="h-[min(420px,60dvh)] rounded-md border border-border/60 sm:h-[420px]">
             <ul className="divide-y divide-border/60">
               {result.chapters.map((ch, i) => (
                 <li key={`stable-${i}`} className="p-3">

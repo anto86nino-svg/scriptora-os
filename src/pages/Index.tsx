@@ -272,7 +272,7 @@ const Index = () => {
 
   if (focusMode && engine.project) {
     return (
-      <div className="scriptora-ios-screen flex h-screen flex-col">
+      <div className="scriptora-ios-screen scriptora-app-surface flex h-screen flex-col">
         <div className="ios-glass-soft flex h-12 shrink-0 items-center justify-between px-4">
           <span className="text-xs text-muted-foreground">{t("focus_mode")}</span>
           <button onClick={() => setFocusMode(false)}
@@ -287,7 +287,7 @@ const Index = () => {
             onGenerateNext={engine.generateNext}
             onGenerateFrontMatter={engine.generateFrontMatterSection}
             onGenerateBackMatter={engine.generateBackMatterSection}
-            onGenerateChapter={(...args) => engine.generateSingleChapter(...args, { onChunkProgress: (progress) => { console.log("🔥 PROGRESS:", progress); } })}
+            onGenerateChapter={(...args) => engine.generateSingleChapter(...args, { onChunkProgress: () => {} })}
             onRegenerateChapter={engine.regenerateChapter}
             onRewriteChapter={engine.rewriteChapterWithDepth}
             onEvaluateChapter={engine.evaluateChapter}
@@ -314,7 +314,7 @@ const Index = () => {
   }
 
   return (
-    <div className="scriptora-ios-screen relative flex h-screen overflow-hidden">
+    <div className="scriptora-ios-screen scriptora-app-surface relative flex h-screen overflow-hidden">
       {/* Floating sidebar toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -456,6 +456,21 @@ const Index = () => {
           sidebarOpen ? "p-2 md:p-3" : "p-2 md:px-6 md:py-4"
         }`}
       >
+        {/* Mobile back-to-dashboard strip — always visible when project loaded, sidebar closed, on mobile */}
+        {engine.project && !sidebarOpen && (
+          <div className="mb-1 flex items-center gap-2 pl-12 md:hidden">
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/60 transition-colors hover:bg-white/[0.07] hover:text-white"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              {t("back_to_dashboard")}
+            </Link>
+            <span className="truncate text-[11px] font-medium text-white/40">
+              {engine.project.config.title || t("untitled")}
+            </span>
+          </div>
+        )}
         <TopBar
           config={engine.project?.config || null}
           onUpdateConfig={engine.updateConfig}
@@ -497,7 +512,7 @@ const Index = () => {
                   onGenerateNext={engine.generateNext}
                   onGenerateFrontMatter={engine.generateFrontMatterSection}
                   onGenerateBackMatter={engine.generateBackMatterSection}
-                  onGenerateChapter={(...args) => engine.generateSingleChapter(...args, { onChunkProgress: (progress) => { console.log("🔥 PROGRESS:", progress); } })}
+                  onGenerateChapter={(...args) => engine.generateSingleChapter(...args, { onChunkProgress: () => {} })}
                   onRegenerateChapter={engine.regenerateChapter}
                   onRewriteChapter={engine.rewriteChapterWithDepth}
                   onEvaluateChapter={engine.evaluateChapter}

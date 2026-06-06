@@ -3,7 +3,8 @@ import { BookProject, BookConfig, Chapter, BookBlueprint, Genre, Language, BookL
 import { createProjectId } from "@/lib/storage";
 import type { LiveBook } from "@/hooks/useAutoBestseller";
 import { normalizeProjectChapterTitles } from "@/lib/chapter-titles";
-import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
+import { applyAuthorIdentityToConfig, enforceAuthorIdentityLock, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
+import { applyBookIntelligenceToConfig, detectBookIntelligence } from "@/lib/book-intelligence";
 import { humanizeChapter } from "@/lib/HumanizerLayer";
 
 const ALLOWED_GENRES: Genre[] = [
@@ -32,10 +33,14 @@ function charactersFromText(text?: string): any[] {
 }
 
 
-function normalizeGenre(g?: string): Genre {
+function normalizeGenre(g?: string, idea?: string, subcategory?: string): Genre {
+  if (idea?.trim()) {
+    const intel = detectBookIntelligence({ idea, genre: g, subcategory });
+    if (intel.confidence >= 0.55) return intel.resolvedGenre;
+  }
   if (!g) return "self-help";
   const slug = g.toLowerCase().replace(/\s+/g, "-");
-  return (ALLOWED_GENRES.find((x) => x === slug) ?? "self-help") as Genre;
+  return (ALLOWED_GENRES.find((x) => x === slug) ?? slug) as Genre;
 }
 function normalizeLanguage(l?: string): Language {
   if (!l) return "English";
@@ -58,7 +63,7 @@ export function autoBestsellerToProject(
   input?: Partial<AutoBestsellerInput>,
 ): BookProject {
   const now = new Date().toISOString();
-  const genre = normalizeGenre(input?.genre);
+  const genre = normalizeGenre(input?.genre, input?.idea || result.title, input?.subcategory);
   const language = normalizeLanguage(input?.language);
   const authorIdentity = resolveAuthorIdentity(input?.authorIdentity, input?.authorIdentityId) || getSelectedAuthorIdentity();
   const authorName = (authorIdentity?.penName || input?.authorName || "").trim();
@@ -66,7 +71,9 @@ export function autoBestsellerToProject(
   const bookLength = normalizeBookLength(input?.bookLength, input?.totalWordTarget);
   const customTotalWords = normalizeCustomWords(input);
 
-const config: BookConfig = applyAuthorIdentityToConfig({
+const config: BookConfig = applyBookIntelligenceToConfig(
+  enforceAuthorIdentityLock(
+    applyAuthorIdentityToConfig({
     title: result.title || "Untitled Bestseller",
     subtitle: result.subtitle || "",
     authorName,
@@ -86,7 +93,9 @@ const config: BookConfig = applyAuthorIdentityToConfig({
     subchaptersEnabled: Boolean(input?.subchaptersEnabled),
     subchaptersPerChapter: Math.max(1, Math.min(8, Number(input?.subchaptersPerChapter) || 3)),
     characters,
-  }, authorIdentity) as BookConfig;
+  }, authorIdentity) as BookConfig,
+  ),
+);
 
   const blueprint: BookBlueprint | null = result.blueprint
     ? {
@@ -143,7 +152,7 @@ export function liveBookToPartialProject(
   existingId?: string,
 ): BookProject {
   const now = new Date().toISOString();
-  const genre = normalizeGenre(input?.genre);
+  const genre = normalizeGenre(input?.genre, input?.idea || liveBook.title, input?.subcategory);
   const language = normalizeLanguage(input?.language);
   const authorIdentity = resolveAuthorIdentity(input?.authorIdentity, input?.authorIdentityId) || getSelectedAuthorIdentity();
   const authorName = (authorIdentity?.penName || input?.authorName || "").trim();
@@ -151,7 +160,9 @@ export function liveBookToPartialProject(
   const bookLength = normalizeBookLength(input?.bookLength, input?.totalWordTarget);
   const customTotalWords = normalizeCustomWords(input);
 
-const config: BookConfig = applyAuthorIdentityToConfig({
+const config: BookConfig = applyBookIntelligenceToConfig(
+  enforceAuthorIdentityLock(
+    applyAuthorIdentityToConfig({
     title: liveBook.title || input?.prefilledTitle || "Generating…",
     subtitle: liveBook.subtitle || input?.prefilledSubtitle || "",
     authorName,
@@ -171,7 +182,9 @@ const config: BookConfig = applyAuthorIdentityToConfig({
     subchaptersEnabled: Boolean(input?.subchaptersEnabled),
     subchaptersPerChapter: Math.max(1, Math.min(8, Number(input?.subchaptersPerChapter) || 3)),
     characters,
-  }, authorIdentity) as BookConfig;
+  }, authorIdentity) as BookConfig,
+  ),
+);
 
   const blueprint: BookBlueprint | null = liveBook.outlines
     ? {

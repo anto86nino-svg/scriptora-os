@@ -166,3 +166,13 @@ export function applyAuthorIdentityToConfig<T extends { [key: string]: any }>(
     writerName: normalized.penName,
   };
 }
+
+export function enforceAuthorIdentityLock<T extends { [key: string]: any }>(
+  config: T,
+): T {
+  const identity = getSelectedAuthorIdentity();
+
+  if (!identity) return config;
+
+  return applyAuthorIdentityToConfig(config, identity);
+}

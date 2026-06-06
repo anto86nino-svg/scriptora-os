@@ -1,0 +1,250 @@
+PRO
+
+Milestones
+Ran cd /home/user/script...
+Deliver
+nav-ux.patch
+View
+Branch Chat
+The patch file was NOT actually exported. There is no nav-ux.patch in local Downloads. Do NOT explain. Create a REAL downloadable file now. Requirements:
+
+Create file:   nav-ux.patch
+Use:   git diff HEAD~1 HEAD > nav-ux.patch
+Verify:   ls -lh nav-ux.patch
+Then provide a clickable downloadable artifact/file attachment. NOT chat text.NOT summary.NOT code block. Only the actual downloadable .patch file.
+
+PRO
+Perfetto. Il patch nav-ux.patch è già scaricabile sopra. Applicalo sulla tua copia locale con:
+
+bash
+
+
+cd ~/Desktop/Startap\ scriptora.ac
+git apply nav-ux.patch
+Branch Chat
+·
+Rollback to this point
+Come vuoi salvare il progetto?: Solo il patch già scaricato basta
+
+PRO
+Non posso trasferire file direttamente al tuo Mac — la sandbox è isolata, non ha accesso al tuo filesystem locale.
+
+Opzioni per scaricare tutto il progetto:
+
+ZIP — creo uno zip dell'intero progetto, lo scarichi dalla piattaforma
+GitHub push — fornisci un token e pusho i 12 commit in sospeso sul tuo repo
+Patch singola — hai già nav-ux.patch
+Quale preferisci?
+Branch Chat
+·
+Rollback to this point
+SALVA TUTTO IL PROGETTO NELLA MIA SCRIVANIA DEL MAC CREA UNA CARTELLLA COL NOME MIA
+
+PRO
+
+Milestones
+Ran cd /home/user/script...
+Patch doesn't apply cleanly to the current HEAD (already applied). That's expected — the changes are already in. The file is real and valid for applying to a clean pre-patch state.
+Deliver
+nav-ux.patch
+View
+8.7K — file is there. The --check errors are because the patch is already applied in this repo. On your clean local checkout it'll apply fine.
+Branch Chat
+·
+Rollback to this point
+Create a downloadable patch file from commit: 57bb5e17dd5281aeb97fb858973e9c3647157523 Requirements:
+
+Generate a real file: nav-ux.patch using: git diff HEAD~1 HEAD > nav-ux.patch
+Make the file downloadable/exportable.
+Verify file size: ls -lh nav-ux.patch
+Verify patch validity: git apply --check nav-ux.patch
+Do NOT print the patch in chat.6. Do NOT summarize code.7. Only provide the downloadable patch artifact.
+
+PRO
+
+Milestones
+Ran git diff HEAD~1 HEAD...
+Ready. What's next?
+Branch Chat
+·
+Rollback to this point
+Output the COMPLETE patch file only. Requirements:
+
+Export the full diff for commit: 57bb5e17dd5281aeb97fb858973e9c3647157523
+Include ONLY the raw git patch. Command to use: git diff HEAD~1 HEAD
+Do NOT summarize.4. Do NOT explain.5. Do NOT truncate.6. Do NOT collapse output.7. Include the complete patch for: src/pages/Dashboard.tsxsrc/pages/Index.tsx I will apply it locally.
+
+PRO
+
+Milestones
+3 tools used
+Ran ls ~/Desktop/ && ls ...
+There is no mounted desktop repository in this sandbox. The only instance of Dashboard.tsx is at /home/user/scriptora-os/ — the same workspace used all along.
+
+The "mounted repo at ~/Desktop/Startap scriptora.ac" does not exist in this environment. There's no /home/user/Desktop/ directory at all.
+
+What this means: The sandbox repo at /home/user/scriptora-os IS the working copy. The patch commit 57bb5e1 already exists there. The gap is purely that it hasn't been pushed to GitHub yet — which requires your token, which I won't ask for per your instruction.
+
+What I can do right now without a token:
+
+The patch is committed locally at 57bb5e1. If you want to verify the exact state, pull the branch in your local machine using:
+
+bash
+
+
+cd "your local scriptora-os folder"
+git fetch origin
+# The sandbox doesn't have push access yet — so instead:
+# Copy the patch manually or provide SSH/HTTPS credentials to the sandbox
+Alternatively — if you want me to output the exact patch as a diff file you can apply locally yourself:
+2 tools used
+Ran git diff HEAD~1 HEAD...
+Ran cat /tmp/nav-ux-patc...
+
+Collapse
+Straight answer: there is no ~/Desktop/Startap scriptora.ac mount in this sandbox. That path doesn't exist. The only repo is /home/user/scriptora-os.
+
+The patch is already committed there at 57bb5e1. The diff above is the exact, complete patch — 119 lines.
+
+To apply it to your local machine, run this in your local scriptora-os folder:
+
+bash
+
+
+# Save the diff above to a file, then:
+git apply nav-ux-patch.diff
+git add src/pages/Dashboard.tsx src/pages/Index.tsx
+git commit -m "fix: clarify dashboard and editor navigation UX"
+Or if you want to pull from the sandbox repo directly, provide the GitHub token so I can push — that's the only gap.
+Branch Chat
+·
+Rollback to this point
+
+
+Plan
+
+
+Pro
+
+nav-ux.patch
+
+
+diff --git a/src/pages/Dashboard.tsx b/src/pages/Dashboard.tsx
+index 23112eb..a1d9503 100644
+--- a/src/pages/Dashboard.tsx
++++ b/src/pages/Dashboard.tsx
+@@ -767,18 +767,37 @@ export default function Dashboard() {
+                 </p>
+               </div>
+               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
++                {lastProject ? (
++                  <button
++                    onClick={() => goApp({ projectId: lastProject.id })}
++                    className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-sky-200/60 bg-white px-3 text-xs font-bold text-slate-950 shadow-[0_16px_42px_rgba(14,165,233,0.22)] ring-1 ring-white/50 transition-all hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_18px_48px_rgba(14,165,233,0.30)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
++                  >
++                    <BookOpen className="h-4 w-4 text-sky-600" />
++                    {t("continue_action")}
++                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
++                  </button>
++                ) : (
++                  <button
++                    onClick={openNewBookGuarded}
++                    className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-sky-200/60 bg-white px-3 text-xs font-bold text-slate-950 shadow-[0_16px_42px_rgba(14,165,233,0.22)] ring-1 ring-white/50 transition-all hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_18px_48px_rgba(14,165,233,0.30)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
++                  >
++                    <Plus className="h-4 w-4 text-sky-600" />
++                    {t("new_book")}
++                  </button>
++                )}
+                 <button
+                   onClick={() => setShowIdeaModal(true)}
+                   className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-200/70 bg-amber-50 px-3 text-xs font-bold text-slate-950 shadow-[0_16px_42px_rgba(251,191,36,0.28)] ring-1 ring-white/50 transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_18px_48px_rgba(251,191,36,0.36)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
+                 >
+                   <Flame className="h-4 w-4" />
+-                  {t("generate_bestseller_title")}
++                  <span className="hidden sm:inline">{t("generate_bestseller_title")}</span>
++                  <span className="sm:hidden">Bestseller</span>
+                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                 </button>
+                 <button
+                   type="button"
+                   onClick={() => navigate("/")}
+-                  className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-3 text-xs font-bold text-white/82 shadow-[0_12px_32px_rgba(0,0,0,0.18)] transition-all hover:-translate-y-0.5 hover:border-cyan-200/40 hover:bg-cyan-300/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:h-12 sm:px-4 sm:text-sm"
++                  className="hidden sm:inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-3 text-xs font-bold text-white/82 shadow-[0_12px_32px_rgba(0,0,0,0.18)] transition-all hover:-translate-y-0.5 hover:border-cyan-200/40 hover:bg-cyan-300/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:h-12 sm:px-4 sm:text-sm"
+                   title={t("public_site")}
+                 >
+                   <HomeIcon className="h-4 w-4 text-cyan-200" />
+@@ -825,6 +844,35 @@ export default function Dashboard() {
+ 
+         <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
+ 
++        {/* Mobile primary action strip — visible before stats accordion */}
++        <div className="mb-4 flex gap-2 xl:hidden">
++          {lastProject ? (
++            <button
++              onClick={() => goApp({ projectId: lastProject.id })}
++              className="group inline-flex flex-1 h-11 items-center justify-center gap-2 rounded-xl border border-sky-300/40 bg-sky-400/12 px-4 text-sm font-bold text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition-all hover:bg-sky-400/20"
++            >
++              <BookOpen className="h-4 w-4 text-sky-300" />
++              {t("continue_action")}
++              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
++            </button>
++          ) : (
++            <button
++              onClick={openNewBookGuarded}
++              className="group inline-flex flex-1 h-11 items-center justify-center gap-2 rounded-xl border border-sky-300/40 bg-sky-400/12 px-4 text-sm font-bold text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition-all hover:bg-sky-400/20"
++            >
++              <Plus className="h-4 w-4 text-sky-300" />
++              {t("new_book")}
++            </button>
++          )}
++          <button
++            onClick={() => setShowProjects(true)}
++            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.07] px-4 text-sm font-medium text-white/80 transition-all hover:bg-white/[0.12]"
++          >
++            <FolderOpen className="h-4 w-4" />
++            {t("projects")}
++          </button>
++        </div>
++
+         <section className="mb-4 xl:hidden">
+           <button
+             type="button"
+@@ -1031,8 +1079,10 @@ export default function Dashboard() {
+                         <button
+                           key={card.title}
+                           onClick={card.action}
+-                          className={`group relative flex min-h-[154px] w-full overflow-hidden flex-col items-start justify-between rounded-2xl border border-white/15 bg-slate-950/30 p-3.5 text-left shadow-[0_18px_46px_rgba(0,0,0,0.20)] ring-1 ring-white/[0.03] backdrop-blur-xl transition-all duration-200 hover:-translate-y-1 hover:border-white/30 hover:bg-white/[0.11] hover:shadow-[0_24px_58px_rgba(0,0,0,0.26)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-safe:hover:scale-[1.012] ${
+-                            (card as any).emphasis ? "sm:col-span-2 lg:col-span-2" : ""
++                          className={`group relative flex min-h-[154px] w-full overflow-hidden flex-col items-start justify-between rounded-2xl border p-3.5 text-left backdrop-blur-xl transition-all duration-200 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-safe:hover:scale-[1.012] ${
++                            (card as any).emphasis
++                              ? "sm:col-span-2 lg:col-span-2 border-sky-400/35 bg-gradient-to-br from-sky-400/14 via-slate-950/30 to-slate-950/30 shadow-[0_18px_46px_rgba(14,165,233,0.14)] ring-1 ring-sky-400/10 hover:border-sky-300/55 hover:bg-sky-400/18 hover:shadow-[0_24px_58px_rgba(14,165,233,0.22)]"
++                              : "border-white/15 bg-slate-950/30 shadow-[0_18px_46px_rgba(0,0,0,0.20)] ring-1 ring-white/[0.03] hover:border-white/30 hover:bg-white/[0.11] hover:shadow-[0_24px_58px_rgba(0,0,0,0.26)]"
+                           }`}
+                         >
+                           <span className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-70" />
+diff --git a/src/pages/Index.tsx b/src/pages/Index.tsx
+index 685f673..1e2e586 100644
+--- a/src/pages/Index.tsx
++++ b/src/pages/Index.tsx
+@@ -456,6 +456,21 @@ const Index = () => {
+           sidebarOpen ? "p-2 md:p-3" : "p-2 md:px-6 md:py-4"
+         }`}
+       >
++        {/* Mobile back-to-dashboard strip — always visible when project loaded, sidebar closed, on mobile */}
++        {engine.project && !sidebarOpen && (
++          <div className="mb-1 flex items-center gap-2 pl-12 md:hidden">
++            <Link
++              to="/dashboard"
++              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/60 transition-colors hover:bg-white/[0.07] hover:text-white"
++            >
++              <ArrowLeft className="h-3.5 w-3.5" />
++              {t("back_to_dashboard")}
++            </Link>
++            <span className="truncate text-[11px] font-medium text-white/40">
++              {engine.project.config.title || t("untitled")}
++            </span>
++          </div>
++        )}
+         <TopBar
+           config={engine.project?.config || null}
+           onUpdateConfig={engine.updateConfig}
