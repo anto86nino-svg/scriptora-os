@@ -231,15 +231,32 @@ async function callAIReduced(systemPrompt: string, userPrompt: string, usage?: A
 async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage?: AIUsageContext): Promise<string> {
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-blueprint-fast`;
   const callOnce = async (): Promise<string> => {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      },
-      body: JSON.stringify({ systemPrompt, userPrompt, ...usagePayload({ ...usage, taskType: usage?.taskType || "generate_blueprint" }) }),
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90_000);
+    console.log("[BLUEPRINT] start");
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: JSON.stringify({ systemPrompt, userPrompt, ...usagePayload({ ...usage, taskType: usage?.taskType || "generate_blueprint" }) }),
+        signal: controller.signal,
+      });
+    } catch (err: any) {
+      clearTimeout(timeout);
+      if (err?.name === "AbortError") {
+        console.error("[BLUEPRINT] failed", err);
+        throw new Error("Blueprint generation timed out. Please retry.");
+      }
+      console.error("[BLUEPRINT] failed", err);
+      throw err;
+    }
+    clearTimeout(timeout);
+    console.log("[BLUEPRINT] status", res.status);
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       let errMsg = text;
@@ -254,6 +271,7 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
     }
     if (!content) throw new Error("Empty blueprint response");
     notifyUsageChanged();
+    console.log("[BLUEPRINT] success");
     return content as string;
   };
   return withRetry(callOnce, {
