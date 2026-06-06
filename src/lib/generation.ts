@@ -234,13 +234,23 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 90_000);
     console.log("[BLUEPRINT] start");
+
+    const { data: sessionData } =
+      await supabase.auth
+        .getSession()
+        .catch(() => ({ data: { session: null } } as any));
+
+    const bearer =
+      sessionData?.session?.access_token ||
+      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
     let res: Response;
     try {
       res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${bearer}`,
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({ systemPrompt, userPrompt, ...usagePayload({ ...usage, taskType: usage?.taskType || "generate_blueprint" }) }),
