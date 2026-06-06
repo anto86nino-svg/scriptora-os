@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo } from "react";
+import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating } from "@/types/book";
 import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, AlertTriangle, Download, Zap } from "lucide-react";
 import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel";
@@ -595,12 +596,14 @@ function ChapterView({
       )}
 
       {showIntelligence && isGenerated && (
-        <ChapterIntelligencePanel
-          project={project}
-          chapterIndex={chapterIndex}
-          onClose={() => setShowIntelligence(false)}
-          onApplyContent={(newContent) => onUpdateContent(newContent)}
-        />
+        <FeatureErrorBoundary featureName="Diagnostica capitolo">
+          <ChapterIntelligencePanel
+            project={project}
+            chapterIndex={chapterIndex}
+            onClose={() => setShowIntelligence(false)}
+            onApplyContent={(newContent) => onUpdateContent(newContent)}
+          />
+        </FeatureErrorBoundary>
       )}
     </div>
   );

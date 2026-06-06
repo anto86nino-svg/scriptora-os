@@ -23,6 +23,8 @@ import InstallPage from "./pages/InstallPage.tsx";
 import { DevModeBadge } from "@/components/DevModeBadge";
 import GlobalCuriosity from "./components/GlobalCuriosity";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
+import { MollyErrorBoundary } from "@/components/molly/MollyErrorBoundary";
 import { ScriptoraStepGuide } from "@/components/ScriptoraStepGuide";
 
 
@@ -35,6 +37,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <DominationProvider>
+            <MollyErrorBoundary>
             <MollyProvider>
               <Toaster />
               <Sonner />
@@ -45,9 +48,9 @@ const App = () => (
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/app" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-                <Route path="/auto-bestseller" element={<ProtectedRoute><AutoBestsellerPage /></ProtectedRoute>} />
+                <Route path="/auto-bestseller" element={<ProtectedRoute><FeatureErrorBoundary featureName="Auto Bestseller"><AutoBestsellerPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/usage" element={<ProtectedRoute><UsagePage /></ProtectedRoute>} />
-                <Route path="/kdp-launch" element={<ProtectedRoute requiredFeature="kdp_market_base"><KdpLaunchPage /></ProtectedRoute>} />
+                <Route path="/kdp-launch" element={<ProtectedRoute requiredFeature="kdp_market_base"><FeatureErrorBoundary featureName="KDP Launch"><KdpLaunchPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/downloads" element={<ProtectedRoute><DownloadsPage /></ProtectedRoute>} />
                 <Route path="/bestseller-radar" element={<ProtectedRoute requiredFeature="trending_niches_limited"><BestsellerRadarPage /></ProtectedRoute>} />
                 <Route path="/keyword-gold" element={<ProtectedRoute requiredFeature="kdp_market_base"><KeywordGoldPage /></ProtectedRoute>} />
@@ -61,6 +64,7 @@ const App = () => (
               <DevModeBadge />
               <GlobalCuriosity />
             </MollyProvider>
+            </MollyErrorBoundary>
           </DominationProvider>
         </AuthProvider>
       </BrowserRouter>

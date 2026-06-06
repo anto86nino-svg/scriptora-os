@@ -9,6 +9,7 @@ import { normalizeAuthorIdentity } from "@/lib/author-identity";
 import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
+import { sanitizeManuscript } from "@/lib/editorial-wow/FinalManuscriptSanitizer";
 import {
   buildBlueprintIntegrityBlueprintRequest,
   buildBlueprintIntegrityFoundationBlock,
@@ -1132,6 +1133,10 @@ Write in ${config.language}.${adaptiveSuffix}`;
 
   if (DEV_DEBUG_STREAM) console.log(`[Nexora] Chapter ${chapterIndex + 1} complete: ${countWords(accumulatedContent)} words in ${chunkIndex} chunks`);
 
+  if (!accumulatedContent.trim()) {
+    throw new Error(`[Nexora] Chapter ${chapterIndex + 1} produced empty output after ${chunkIndex} chunks. Generation failed.`);
+  }
+
   // Editorial QA gate (non-blocking — surfaces in console + Mastery diagnostic)
   let qaScore: number | undefined;
   try {
@@ -1175,6 +1180,10 @@ Write in ${config.language}.${adaptiveSuffix}`;
       console.warn("[Nexora] Adaptive rewrite skipped:", e);
     }
   }
+
+  // Final sanitization pass — strip AI labels, language bleed, duplicate paragraphs,
+  // broken punctuation, and debug artefacts before the chapter is stored or shown.
+  accumulatedContent = sanitizeManuscript(accumulatedContent, { language: config.language ?? "Italian" });
 
   const finalChapter = humanizeChapter({
     title: resolveChapterTitle(chapterTitle, chapterIndex, {

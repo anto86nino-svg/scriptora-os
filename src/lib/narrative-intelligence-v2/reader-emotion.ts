@@ -1,5 +1,6 @@
 import { analyzeNovel } from "@/lib/EditorialIntelligence";
 import { evaluateBestsellerChapter } from "@/lib/bestseller-intelligence";
+import { getNarrativeTelemetrySnapshot } from "@/lib/narrative-intelligence";
 import type { BookConfig } from "@/types/book";
 import type { ChapterScenePurposeSnapshot, ReaderEmotionDisplayRow, ReaderEmotionLevel, ReaderEmotionSnapshot } from "./types";
 
@@ -53,15 +54,13 @@ export function simulateReaderEmotion(input: {
     bookIntelligence: input.config?.bookIntelligence,
   });
   const editorial = analyzeNovel(text);
-
-  const telemetry = {
-    flags: {
-      weakHookRisk: false,
-      earlyPayoffRisk: false,
+  const telemetry = getNarrativeTelemetrySnapshot({
+    config: {
+      genre: (input.config?.genre || "literary-fiction") as any,
+      bookIntelligence: input.config?.bookIntelligence as any,
     },
-  };
-
-    
+    currentText: text,
+  });
 
   const openQuestions = (text.match(/\?/g) || []).length;
   const mysterySignals = (text.match(/\b(secret|segreto|unknown|mystery|mistero|who|chi|why|perché)\b/gi) || []).length;
@@ -71,13 +70,13 @@ export function simulateReaderEmotion(input: {
       bestseller.scores.bingeability * 0.25 +
       openQuestions * 8 +
       mysterySignals * 6 +
-      (telemetry.flags.weakHookRisk ? -12 : 0),
+      (telemetry?.flags?.weakHookRisk ? -12 : 0),
   );
 
   let emotionalTension = clamp(
     bestseller.scores.emotionalMomentum * 0.45 +
       editorial.subtextScore * 0.25 +
-      (telemetry.flags.earlyPayoffRisk ? -10 : 8) +
+      (telemetry?.flags?.earlyPayoffRisk ? -10 : 8) +
       (fiction ? 10 : 0),
   );
 
@@ -88,14 +87,14 @@ export function simulateReaderEmotion(input: {
 
   let emotionalPayoff = clamp(
     bestseller.scores.emotionalMomentum * 0.4 +
-      (telemetry.flags.earlyPayoffRisk ? 55 : 25) +
+      (telemetry?.flags?.earlyPayoffRisk ? 55 : 25) +
       (editorial.warnings.some(w => w.type === "climax_oversaturation") ? 40 : 0),
   );
-  if (telemetry.flags.earlyPayoffRisk) emotionalPayoff = clamp(emotionalPayoff * 0.7);
+  if (telemetry?.flags?.earlyPayoffRisk) emotionalPayoff = clamp(emotionalPayoff * 0.7);
 
   let boredomRisk = clamp(
-    telemetry.scores.readerDropRiskEstimate * 0.55 +
-      (telemetry.flags.pacingCollapseRisk ? 18 : 0) +
+    (telemetry?.scores?.readerDropRiskEstimate ?? 50) * 0.55 +
+      (telemetry?.flags?.pacingCollapseRisk ? 18 : 0) +
       (input.scenePurpose?.warnings.some(w => /introspection|repetition/i.test(w)) ? 15 : 0),
   );
 
@@ -119,7 +118,7 @@ export function simulateReaderEmotion(input: {
 
   if (isRomanceBrain(input.config)) {
     emotionalTension = clamp(emotionalTension * 0.55 + bestseller.scores.emotionalMomentum * 0.45);
-    if (telemetry.flags.earlyPayoffRisk) {
+    if (telemetry?.flags?.earlyPayoffRisk) {
       obsessionPotential = clamp(obsessionPotential + 12);
     }
   }
@@ -142,7 +141,7 @@ export function simulateReaderEmotion(input: {
   const whySummary: string[] = [];
   if (openQuestions >= 1 || mysterySignals >= 2) whySummary.push("Unresolved questions keep curiosity active");
   if (emotionalTension >= 60) whySummary.push("Strong emotional friction on the page");
-  if (telemetry.flags.earlyPayoffRisk) whySummary.push("Emotional payoff deliberately delayed");
+  if (telemetry?.flags?.earlyPayoffRisk) whySummary.push("Emotional payoff deliberately delayed");
   if (bestseller.scores.bingeability >= 65) whySummary.push("Forward pull into the next chapter");
   if (boredomRisk >= 55) whySummary.push("Pacing or repetition may stall some readers");
   if (obsessionPotential >= 65) whySummary.push("High compulsive readability signals");

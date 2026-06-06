@@ -441,20 +441,20 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                     <div className="flex items-center justify-center gap-6 py-2">
                       <div className="text-center">
                         <p className="text-[10px] uppercase text-muted-foreground tracking-wider">Score</p>
-                        <p className={`text-3xl font-black ${patchResult.evaluation.score >= 8 ? "text-primary" : "text-foreground"}`}>
-                          {patchResult.evaluation.score?.toFixed(1)}<span className="text-sm text-muted-foreground/50">/10</span>
+                        <p className={`text-3xl font-black ${(patchResult.evaluation?.score ?? 0) >= 8 ? "text-primary" : "text-foreground"}`}>
+                          {(patchResult.evaluation?.score ?? 0).toFixed(1)}<span className="text-sm text-muted-foreground/50">/10</span>
                         </p>
                       </div>
                       <div className="text-left max-w-xs">
                         <p className="text-[10px] uppercase text-muted-foreground tracking-wider mb-1">Livello commerciale</p>
-                        <p className="text-xs text-foreground/80 italic">"{patchResult.evaluation.commercialLevel}"</p>
+                        <p className="text-xs text-foreground/80 italic">"{patchResult.evaluation?.commercialLevel ?? ""}"</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-border/30">
                       <div>
                         <p className="text-[10px] uppercase font-bold text-emerald-500 tracking-wider mb-1">Punti di forza</p>
                         <ul className="space-y-0.5">
-                          {patchResult.evaluation.strengths.map((s, i) => (
+                          {(patchResult.evaluation?.strengths ?? []).map((s, i) => (
                             <li key={`stable-${i}`} className="text-[11px] text-foreground/70">• {s}</li>
                           ))}
                         </ul>
@@ -462,7 +462,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                       <div>
                         <p className="text-[10px] uppercase font-bold text-primary tracking-wider mb-1">Migliorato</p>
                         <ul className="space-y-0.5">
-                          {patchResult.evaluation.improvements.map((s, i) => (
+                          {(patchResult.evaluation?.improvements ?? []).map((s, i) => (
                             <li key={`stable-${i}`} className="text-[11px] text-foreground/70">• {s}</li>
                           ))}
                         </ul>
@@ -585,18 +585,18 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
               <div className="p-5 rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Final Score</span>
-                  <span className={`text-3xl font-black ${result.finalScore >= 8 ? "text-primary" : result.finalScore >= 6 ? "text-foreground" : "text-[hsl(var(--warning))]"}`}>
-                    {result.finalScore.toFixed(1)}<span className="text-base text-muted-foreground/50">/10</span>
+                  <span className={`text-3xl font-black ${(result.finalScore ?? 0) >= 8 ? "text-primary" : (result.finalScore ?? 0) >= 6 ? "text-foreground" : "text-[hsl(var(--warning))]"}`}>
+                    {(result.finalScore ?? 0).toFixed(1)}<span className="text-base text-muted-foreground/50">/10</span>
                   </span>
                 </div>
                 <p className="text-xs text-foreground/80 italic">"{result.verdict}"</p>
               </div>
 
               <div className="grid grid-cols-5 gap-2">
-                {Object.entries(result.scores).map(([k, v]) => (
+                {Object.entries(result.scores ?? {}).map(([k, v]) => (
                   <div key={k} className="p-2 rounded-lg bg-muted/15 border border-border/30 text-center">
                     <p className="text-[9px] uppercase font-semibold text-muted-foreground tracking-wider truncate">{k}</p>
-                    <p className={`text-base font-bold mt-0.5 ${v >= 8 ? "text-primary" : v >= 6 ? "text-foreground" : "text-[hsl(var(--warning))]"}`}>{v}</p>
+                    <p className={`text-base font-bold mt-0.5 ${(v ?? 0) >= 8 ? "text-primary" : (v ?? 0) >= 6 ? "text-foreground" : "text-[hsl(var(--warning))]"}`}>{v ?? 0}</p>
                   </div>
                 ))}
               </div>
@@ -614,8 +614,8 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                         <AlertCircle className="h-3 w-3 text-[hsl(var(--warning))]" />
                         <span className="text-[10px] font-bold uppercase tracking-wider text-foreground">Hook debole</span>
                       </div>
-                      <p className="text-[11px] text-muted-foreground italic line-clamp-2">"{result.editorialMastery.missingHook.currentOpening}"</p>
-                      <p className="text-[11px] text-foreground/80 mt-1"><span className="font-semibold text-rose-500">→ </span>{result.editorialMastery.missingHook.suggestion}</p>
+                      <p className="text-[11px] text-muted-foreground italic line-clamp-2">"{result.editorialMastery?.missingHook?.currentOpening ?? ""}"</p>
+                      <p className="text-[11px] text-foreground/80 mt-1"><span className="font-semibold text-rose-500">→ </span>{result.editorialMastery?.missingHook?.suggestion ?? ""}</p>
                     </div>
                   )}
 
@@ -625,12 +625,12 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-foreground">Memorabilità</span>
-                          <span className={`text-xs font-bold ${result.editorialMastery.memorability.score >= 7 ? "text-primary" : "text-[hsl(var(--warning))]"}`}>
-                            {result.editorialMastery.memorability.score}/10
+                          <span className={`text-xs font-bold ${(result.editorialMastery?.memorability?.score ?? 0) >= 7 ? "text-primary" : "text-[hsl(var(--warning))]"}`}>
+                            {result.editorialMastery?.memorability?.score ?? 0}/10
                           </span>
-                          <span className="text-[10px] text-muted-foreground">· {result.editorialMastery.memorability.quotableCount} righe quotabili</span>
+                          <span className="text-[10px] text-muted-foreground">· {result.editorialMastery?.memorability?.quotableCount ?? 0} righe quotabili</span>
                         </div>
-                        <p className="text-[11px] text-muted-foreground/90 mt-0.5">{result.editorialMastery.memorability.advice}</p>
+                        <p className="text-[11px] text-muted-foreground/90 mt-0.5">{result.editorialMastery?.memorability?.advice ?? ""}</p>
                       </div>
                     </div>
                   )}

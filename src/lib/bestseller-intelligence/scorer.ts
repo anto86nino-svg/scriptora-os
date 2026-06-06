@@ -1,3 +1,4 @@
+import { getNarrativeTelemetrySnapshot } from "@/lib/narrative-intelligence";
 import type {
   BestsellerChapterSnapshot,
   BestsellerConfidence,
@@ -100,24 +101,24 @@ function scoreReaderRetention(
 ): { score: number; risks: string[]; strengths: string[] } {
   const risks: string[] = [];
   const strengths: string[] = [];
-  let score = 100 - telemetry.scores.readerDropRiskEstimate;
+  let score = 100 - (telemetry?.scores?.readerDropRiskEstimate ?? 50);
 
-  if (telemetry.flags.pacingCollapseRisk) {
+  if (telemetry?.flags?.pacingCollapseRisk) {
     score -= 14;
     risks.push("Pacing collapse — too much introspection vs action");
   }
-  if (telemetry.flags.weakHookRisk) {
+  if (telemetry?.flags?.weakHookRisk) {
     score -= 10;
     risks.push("Hook weakness detected");
   }
-  if (telemetry.flags.earlyPayoffRisk) {
+  if (telemetry?.flags?.earlyPayoffRisk) {
     score -= 8;
     risks.push("Early emotional payoff reduces long-form pull");
   }
-  if (telemetry.scores.commercialMomentumScore >= 72) {
+  if ((telemetry?.scores?.commercialMomentumScore ?? 0) >= 72) {
     strengths.push("Strong commercial momentum");
   }
-  if (telemetry.scores.aiRiskScore <= 35) {
+  if ((telemetry?.scores?.aiRiskScore ?? 100) <= 35) {
     strengths.push("Low AI-pattern detectability");
   }
 
@@ -209,16 +210,16 @@ function scoreCompulsiveReadability(text: string, telemetry: ReturnType<typeof g
     score += 10;
     strengths.push("Healthy dialogue density");
   }
-  if (telemetry.scores.subtextDensity >= 8) {
+  if ((telemetry?.scores?.subtextDensity ?? 0) >= 8) {
     score += 8;
   }
-  if (telemetry.scores.aiRiskScore >= 55) {
+  if ((telemetry?.scores?.aiRiskScore ?? 0) >= 55) {
     score -= 16;
     risks.push("AI-safe phrasing or rhythm detected");
   } else {
     score += 6;
   }
-  if (telemetry.scores.emotionalRealismScore >= 70) {
+  if ((telemetry?.scores?.emotionalRealismScore ?? 0) >= 70) {
     score += 10;
     strengths.push("Emotional realism reads human");
   }
@@ -232,11 +233,11 @@ function scoreCommercialPacing(
 ): { score: number; risks: string[]; strengths: string[] } {
   const risks: string[] = [];
   const strengths: string[] = [];
-  let score = telemetry.scores.pacingPressure;
+  let score = telemetry?.scores?.pacingPressure ?? 50;
   const total = input.totalChapters || 12;
   const position = (input.chapterIndex + 1) / total;
 
-  if (position <= 0.2 && telemetry.flags.weakHookRisk) {
+  if (position <= 0.2 && telemetry?.flags?.weakHookRisk) {
     score -= 15;
     risks.push("Opening chapters need stronger commercial hook");
   }
@@ -246,7 +247,7 @@ function scoreCommercialPacing(
   if (position > 0.4 && position < 0.8 && score >= 65) {
     strengths.push("Mid-book pacing holds reader investment");
   }
-  if (telemetry.scores.tensionScore >= 65) {
+  if ((telemetry?.scores?.tensionScore ?? 0) >= 65) {
     score += 6;
   }
 
@@ -334,22 +335,13 @@ export function evaluateBestsellerChapter(input: BestsellerEvaluationInput): Bes
     };
   }
 
-  const telemetry = {
-    flags: {
-      pacingCollapseRisk: false,
-      weakHookRisk: false,
-      earlyPayoffRisk: false,
+  const telemetry = getNarrativeTelemetrySnapshot({
+    config: {
+      genre: (input.genre || "literary-fiction") as any,
+      bookIntelligence: input.bookIntelligence as any,
     },
-    scores: {
-      readerDropRiskEstimate: 25,
-      commercialMomentumScore: 70,
-      aiRiskScore: 30,
-      subtextDensity: 7,
-      emotionalRealismScore: 72,
-      pacingPressure: 65,
-      tensionScore: 70,
-    },
-  };
+    currentText: text,
+  });
 
   const ending = endingText(text);
   const hook = scoreHookStrength(text, fiction);
