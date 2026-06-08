@@ -1,5 +1,13 @@
 import { useState, useCallback, useRef } from "react";
-import { BookProject, BookConfig, ChatMessage, GenerationPhase, GenerationStatus, AIQualityRating, getSubchaptersPerChapter } from "@/types/book";
+import { BookProject, BookConfig, ChatMessage, GenerationPhase, GenerationStatus, AIQualityRating } from "@/types/book";
+import {
+  chapterNeedsStructureSync,
+  ensureBlueprintStructure,
+  getPlannedSubchapterCountForChapter,
+  resolveEffectiveStructureMode,
+  syncBlueprintSubchapterStructure,
+  type SubchapterGenerationProgress,
+} from "@/lib/master-structure-engine";
 import { saveProjectAsync, createProjectId, setLastProjectId, loadProjects as loadScopedProjects } from "@/services/storageService";
 import { saveProject } from "@/lib/storage";
 import { generateBlueprint, generateFrontMatter, generateChapter, generateChapterChunked, generateSubchapter, generateBackMatter, rewriteChapter, evaluateChapterQuality, RewriteLevel, ChunkProgress, buildGenreLock } from "@/lib/generation";
@@ -79,13 +87,14 @@ function allTargetChaptersGenerated(project: BookProject): boolean {
 }
 
 function getMissingSubchapterRefs(project: BookProject): Array<{ chapterIndex: number; subIndex: number }> {
-  const target = getSubchaptersPerChapter(project.config);
-  if (target <= 0) return [];
   const missing: Array<{ chapterIndex: number; subIndex: number }> = [];
-  for (let chapterIndex = 0; chapterIndex < Math.max(0, project.config?.numberOfChapters || 0); chapterIndex += 1) {
+  const total = Math.max(0, project.config?.numberOfChapters || 0);
+  for (let chapterIndex = 0; chapterIndex < total; chapterIndex += 1) {
+    const planned = getPlannedSubchapterCountForChapter(project.config, project.blueprint, chapterIndex);
+    if (planned <= 0) continue;
     const chapter = project.chapters?.[chapterIndex];
     if (!chapter?.content || chapter.content.trim().length <= 50) continue;
-    for (let subIndex = 0; subIndex < target; subIndex += 1) {
+    for (let subIndex = 0; subIndex < planned; subIndex += 1) {
       const sub = chapter.subchapters?.[subIndex];
       if (!sub?.content || sub.content.trim().length <= 50) missing.push({ chapterIndex, subIndex });
     }
@@ -140,6 +149,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [generatingSet, setGeneratingSet] = useState<Set<string>>(new Set());
   const [chunkProgress, setChunkProgress] = useState<Record<string, ChunkProgress>>({});
+  const [subchapterProgress, setSubchapterProgress] = useState<Record<string, SubchapterGenerationProgress[]>>({});
   const projectRef = useRef<BookProject | null>(null);
   const abortControllers = useRef<Map<string, AbortController>>(new Map());
   // Throttle UI updates during streaming to keep the app fluid even when
@@ -370,9 +380,26 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     }
   }, [project, addMessage, updateAndSave, generateFrontMatterSection, generateBackMatterSection]);
 
+  const autoEnsureChapterStructure = useCallback((proj: BookProject, chapterIndex: number): BookProject => {
+    if (!proj.blueprint || !chapterNeedsStructureSync(proj.config, proj.blueprint, chapterIndex)) {
+      return proj;
+    }
+    const blueprint = ensureBlueprintStructure(proj.blueprint, proj.config, chapterIndex);
+    updateAndSave((p) => ({ ...p, blueprint }));
+    const sceneMode = resolveEffectiveStructureMode(proj.config) === "scene_based";
+    addMessage(
+      "assistant",
+      sceneMode
+        ? `🎬 Scene structure auto-planned for Chapter ${chapterIndex + 1}.`
+        : `📐 Subchapter structure auto-synced for Chapter ${chapterIndex + 1}.`,
+    );
+    return { ...proj, blueprint };
+  }, [addMessage, updateAndSave]);
+
   const generateSingleChapter = useCallback(async (index: number) => {
-    const p = getLatestProject() || project;
+    let p = getLatestProject() || project;
     if (!p?.blueprint) return;
+    p = autoEnsureChapterStructure(p, index);
     const genKey = `chapter-${index}`;
     if (generatingSet.has(genKey)) return;
 
@@ -499,19 +526,47 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       lastProgressRenderAt.current.delete(`chapter-${index}`);
       lastSaveAt.current.delete(`chapter-${index}`);
     }
-  }, [project, generatingSet, addMessage, updateAndSave]);
+  }, [project, generatingSet, addMessage, updateAndSave, autoEnsureChapterStructure]);
 
-  const generateSingleSubchapter = useCallback(async (chapterIndex: number, subIndex: number) => {
+  const syncBlueprintSubchapterStructureSection = useCallback(() => {
     const p = getLatestProject() || project;
     if (!p?.blueprint) return;
+    const synced = syncBlueprintSubchapterStructure(p.blueprint, p.config);
+    updateAndSave((proj) => ({ ...proj, blueprint: synced }));
+    addMessage("assistant", "✅ Struttura sottocapitoli sincronizzata nel blueprint.");
+    toast.success("Struttura sottocapitoli aggiornata");
+  }, [project, addMessage, updateAndSave]);
+
+  const generateSingleSubchapter = useCallback(async (chapterIndex: number, subIndex: number) => {
+    let p = getLatestProject() || project;
+    if (!p?.blueprint) return;
+    p = autoEnsureChapterStructure(p, chapterIndex);
     const chapter = p.chapters[chapterIndex];
     if (!chapter) return;
     const genKey = `chapter-${chapterIndex}-sub-${subIndex}`;
     if (generatingSet.has(genKey)) return;
 
+    const progressKey = `chapter-${chapterIndex}`;
+    const outlineTitle = p.blueprint.chapterOutlines?.[chapterIndex]?.subchapters?.[subIndex]?.title
+      || `${chapterIndex + 1}.${subIndex + 1}`;
+
     addGenerating(genKey);
+    setSubchapterProgress((prev) => ({
+      ...prev,
+      [progressKey]: (p.blueprint?.chapterOutlines?.[chapterIndex]?.subchapters || []).map((sub, idx) => ({
+        chapterIndex,
+        subIndex: idx,
+        totalSubs: p.blueprint?.chapterOutlines?.[chapterIndex]?.subchapters?.length || 0,
+        title: sub.title,
+        status: idx < subIndex ? "done" : idx === subIndex ? "generating" : "pending",
+      })),
+    }));
+
     try {
-      addMessage("assistant", `Writing Subchapter ${subIndex + 1} of Chapter ${chapterIndex + 1}... ✍️`);
+      const sceneMode = resolveEffectiveStructureMode(p.config) === "scene_based";
+      addMessage("assistant", sceneMode
+        ? `🎬 Scene ${chapterIndex + 1}.${subIndex + 1} → ${outlineTitle}`
+        : `Generating Chapter ${chapterIndex + 1} → ${outlineTitle} ✍️`);
       const prevChapters = p.chapters.filter((_, i) => i < chapterIndex);
       const sub = await generateSubchapter(p.config, p.blueprint, chapterIndex, subIndex, chapter, prevChapters, p.genreLock, { projectId: p.id });
       updateAndSave(proj => {
@@ -524,15 +579,29 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         chapters[chapterIndex] = ch;
         return { ...proj, chapters };
       });
-      addMessage("assistant", `Subchapter "${sub.title}" complete!`);
+      setSubchapterProgress((prev) => {
+        const list = prev[progressKey] || [];
+        return {
+          ...prev,
+          [progressKey]: list.map((item) =>
+            item.subIndex === subIndex ? { ...item, status: "done" as const } : item,
+          ),
+        };
+      });
+      addMessage("assistant", `→ ${outlineTitle} ✓`);
     } catch (e: any) {
       const err = classifyError(e);
       scriptoraLog.error("subchapter", formatUserMessage(err), { raw: e?.message });
       addMessage("assistant", `❌ ${formatUserMessage(err)}`);
     } finally {
       removeGenerating(genKey);
+      setSubchapterProgress((prev) => {
+        const next = { ...prev };
+        delete next[progressKey];
+        return next;
+      });
     }
-  }, [project, generatingSet, addMessage, updateAndSave]);
+  }, [project, generatingSet, addMessage, updateAndSave, autoEnsureChapterStructure]);
 
   const regenerateChapter = useCallback(async (index: number) => {
     const p = getLatestProject() || project;
@@ -913,7 +982,11 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         await new Promise(r => setTimeout(r, 400));
 
         const afterChapter = getLatestProject() || latest;
-        const targetSubchapters = getSubchaptersPerChapter(afterChapter.config);
+        const targetSubchapters = getPlannedSubchapterCountForChapter(
+          afterChapter.config,
+          afterChapter.blueprint,
+          i,
+        );
         if (targetSubchapters > 0) {
           for (let subIndex = 0; subIndex < targetSubchapters; subIndex += 1) {
             const current = getLatestProject() || afterChapter;
@@ -1017,8 +1090,9 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   }, [addMessage]);
 
   return {
-    project, messages, isAnythingGenerating, generatingSet, chunkProgress,
+    project, messages, isAnythingGenerating, generatingSet, chunkProgress, subchapterProgress,
     startNewBook, generateNext, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter,
+    syncBlueprintSubchapterStructure: syncBlueprintSubchapterStructureSection,
     regenerateChapter, rewriteChapterWithDepth, evaluateChapter, autoRewriteToThreshold,
     updateConfig, updateChapterContent, updateChapterTitle, updateSubchapterContent, updateSubchapterTitle,
     updateBlueprintField, updateBlueprintOutlineTitle, updateBlueprintOutlineSummary,

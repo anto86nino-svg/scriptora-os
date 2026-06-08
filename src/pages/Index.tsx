@@ -128,6 +128,10 @@ const Index = () => {
         setActiveSection("blueprint");
         setSidebarOpen(true);
         break;
+      case "sync_blueprint_structure":
+        setActiveSection("blueprint");
+        engine.syncBlueprintSubchapterStructure();
+        break;
       case "generate_chapter":
         setActiveSection(`chapter-${fix.chapterIndex}` as SectionId);
         engine.generateSingleChapter(fix.chapterIndex);
@@ -395,6 +399,7 @@ const Index = () => {
             isGeneratingSection={engine.isGeneratingSection}
             onCancelGeneration={engine.cancelGeneration}
             chunkProgress={engine.chunkProgress}
+            subchapterProgress={engine.subchapterProgress}
             writingSettings={writingSettings}
             onUpdateBlueprintField={engine.updateBlueprintField}
             onUpdateBlueprintOutlineTitle={engine.updateBlueprintOutlineTitle}
@@ -615,6 +620,7 @@ const Index = () => {
                   isGeneratingSection={engine.isGeneratingSection}
                   onCancelGeneration={engine.cancelGeneration}
                   chunkProgress={engine.chunkProgress}
+            subchapterProgress={engine.subchapterProgress}
                   writingSettings={writingSettings}
                   onUpdateBlueprintField={engine.updateBlueprintField}
                   onUpdateBlueprintOutlineTitle={engine.updateBlueprintOutlineTitle}

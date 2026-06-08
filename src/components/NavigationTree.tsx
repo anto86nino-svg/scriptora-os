@@ -128,6 +128,8 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
             const isExpanded = expandedChapters.has(i);
             const chGenerated = chapters[i] && chapters[i].content.length > 0;
             const hasSubs = chGenerated && chapters[i].subchapters.length > 0;
+            const plannedSubs = outline.subchapters?.length ?? 0;
+            const showSubs = config.subchaptersEnabled && (hasSubs || plannedSubs > 0);
             const chStatus = getChapterStatus(i);
             const isSelected = selected.has(i);
             const chapterTitle = formatChapterDisplayTitle(
@@ -152,7 +154,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
                         {isSelected ? "✓" : ""}
                       </span>
                     </button>
-                  ) : (hasSubs || config.subchaptersEnabled) && (
+                  ) : showSubs && (
                     <button
                       onClick={(e) => { e.stopPropagation(); toggleChapter(i); }}
                       className="py-1.5 pl-1 pr-0.5 text-muted-foreground hover:text-foreground"
@@ -166,13 +168,16 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
                     active={isActive(`chapter-${i}`)}
                     status={chStatus}
                     onClick={() => selectMode ? toggleSelected(i) : onSelectSection(`chapter-${i}`)}
-                    className={(!selectMode && !(hasSubs || config.subchaptersEnabled)) ? "pl-6" : ""}
+                    className={(!selectMode && !showSubs) ? "pl-6" : ""}
                   />
                 </div>
 
-                {isExpanded && !selectMode && chGenerated && (
+                {isExpanded && !selectMode && showSubs && (
                   <div className="ml-6 border-l border-white/10">
-                    {chapters[i].subchapters.map((sub, j) => (
+                    {(chapters[i]?.subchapters?.length
+                      ? chapters[i].subchapters
+                      : (outline.subchapters || []).map((s) => ({ title: s.title, content: "" }))
+                    ).map((sub, j) => (
                       <TreeItem
                         key={j}
                         icon={<span className="text-[10px] font-mono text-muted-foreground">{i+1}.{j+1}</span>}

@@ -8,6 +8,7 @@ import { GenreProfileBadge } from "@/components/GenreProfileBadge";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
 import { downloadText } from "@/lib/download";
 import { RewriteLevel, ChunkProgress } from "@/lib/generation";
+import { resolveEffectiveStructureMode, type SubchapterGenerationProgress } from "@/lib/master-structure-engine";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
@@ -34,6 +35,7 @@ interface EditorPanelProps {
   isGeneratingSection: (key: string) => boolean;
   onCancelGeneration?: (key?: string) => void;
   chunkProgress?: Record<string, ChunkProgress>;
+  subchapterProgress?: Record<string, SubchapterGenerationProgress[]>;
   writingSettings?: WritingSettings;
   onUpdateBlueprintField?: (field: "overview" | "emotionalArc", value: string) => void;
   onUpdateBlueprintOutlineTitle?: (index: number, title: string) => void;
@@ -60,6 +62,7 @@ export function EditorPanel({
   onSetChapterLengthOverride, isGeneratingSection,
   onCancelGeneration,
   chunkProgress,
+  subchapterProgress,
   writingSettings,
   onUpdateBlueprintField, onUpdateBlueprintOutlineTitle, onUpdateBlueprintOutlineSummary,
   onUpdateFrontMatterField, onUpdateBackMatterField,
@@ -164,6 +167,7 @@ export function EditorPanel({
                   isGeneratingSection={isGeneratingSection}
                   onCancel={onCancelGeneration ? () => onCancelGeneration(`chapter-${view.chapterIndex}`) : undefined}
                   chunkProgress={chunkProgress?.[`chapter-${view.chapterIndex}`]}
+                  subchapterProgress={subchapterProgress?.[`chapter-${view.chapterIndex}`]}
                   ws={ws}
                   mobileFocus={chapterFocus}
                   onMobileExport={onMobileExport}
@@ -407,7 +411,9 @@ function FrontMatterView({ project, frontMatter, isGenerating, onGenerate, ws, o
 function ChapterView({
   project, chapterIndex, outline, chapter, isGenerating, isEvaluating,
   onGenerate, onRegenerate, onRewrite, onEvaluate, onAutoRewrite, onGenerateSubchapter,
-  onUpdateContent, onUpdateTitle, onUpdateSubContent, onUpdateSubTitle, onSetLengthOverride, isGeneratingSection, onCancel, chunkProgress, ws,
+  onUpdateContent, onUpdateTitle, onUpdateSubContent, onUpdateSubTitle, onSetLengthOverride, isGeneratingSection, onCancel, chunkProgress,
+  subchapterProgress,
+  ws,
   mobileFocus = false,
   onMobileExport,
 }: {
@@ -424,6 +430,7 @@ function ChapterView({
   onSetLengthOverride: (length: string) => void; isGeneratingSection: (key: string) => boolean;
   onCancel?: () => void;
   chunkProgress?: ChunkProgress;
+  subchapterProgress?: SubchapterGenerationProgress[];
   ws: WritingSettings;
   mobileFocus?: boolean;
   onMobileExport?: () => void;
@@ -533,6 +540,14 @@ function ChapterView({
           </button>
         ))}
       </div>
+      )}
+
+      {subchapterProgress && subchapterProgress.length > 0 && (
+        <SubchapterProgressList
+          chapterIndex={chapterIndex}
+          items={subchapterProgress}
+          sceneMode={resolveEffectiveStructureMode(project.config) === "scene_based"}
+        />
       )}
 
       {isGenerating && (
@@ -1149,6 +1164,42 @@ function analyzeLiveScene({
     people,
     paragraphPulse: Math.abs(recent.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0)) % 7,
   };
+}
+
+function SubchapterProgressList({
+  chapterIndex,
+  items,
+  sceneMode = false,
+}: {
+  chapterIndex: number;
+  items: SubchapterGenerationProgress[];
+  sceneMode?: boolean;
+}) {
+  return (
+    <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 space-y-2 animate-fade-in">
+      <div className="text-[11px] uppercase tracking-[0.18em] text-cyan-100/70">
+        {sceneMode ? `Scenes · Chapter ${chapterIndex + 1}` : `Generating Chapter ${chapterIndex + 1}`}
+      </div>
+      <div className="space-y-1">
+        {items.map((item) => (
+          <div key={item.subIndex} className="flex items-center gap-2 text-sm text-white/85">
+            <span className="text-cyan-200/80 font-mono text-xs">
+              {chapterIndex + 1}.{item.subIndex + 1}
+            </span>
+            <span className={cn(
+              item.status === "done" && "text-emerald-300",
+              item.status === "generating" && "text-white",
+              item.status === "pending" && "text-white/45",
+            )}>
+              {item.title}
+            </span>
+            {item.status === "done" && <span className="text-emerald-400 text-xs">✓</span>}
+            {item.status === "generating" && <Loader2 className="h-3 w-3 animate-spin text-cyan-300" />}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 const GenerationProgress = memo(function GenerationProgress({

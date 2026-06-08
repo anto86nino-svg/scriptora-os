@@ -10,6 +10,7 @@ export function sectionForExportFix(fix: ExportFixAction): SectionId {
     case "open_section":
       return fix.section;
     case "generate_blueprint":
+    case "sync_blueprint_structure":
       return "blueprint";
     case "generate_front_matter":
       return "front-matter";
@@ -31,7 +32,8 @@ export function shouldAutoRunExportFix(fix: ExportFixAction): boolean {
     fix.type === "generate_chapter" ||
     fix.type === "generate_subchapter" ||
     fix.type === "generate_front_matter" ||
-    fix.type === "generate_back_matter"
+    fix.type === "generate_back_matter" ||
+    fix.type === "sync_blueprint_structure"
   );
 }
 

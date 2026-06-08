@@ -186,6 +186,14 @@ export const BOOK_LENGTH_CONFIG: Record<BookLength, { label: string; totalWords:
 
 export const DEFAULT_SUBCHAPTERS_PER_CHAPTER = 3;
 
+export type StructureMode =
+  | "chapter_only"
+  | "chapter_subchapter"
+  | "scene_based"
+  | "auto_intelligent";
+
+export type SubchaptersPerChapterSetting = number | "auto";
+
 export function getBookTotalWords(config: { bookLength: BookLength; customTotalWords?: number }): number {
   if (config.bookLength === "custom" && config.customTotalWords && config.customTotalWords > 0) {
     return config.customTotalWords;
@@ -193,8 +201,33 @@ export function getBookTotalWords(config: { bookLength: BookLength; customTotalW
   return BOOK_LENGTH_CONFIG[config.bookLength].totalWords;
 }
 
-export function getSubchaptersPerChapter(config: { subchaptersEnabled?: boolean; subchaptersPerChapter?: number }): number {
-  if (!config.subchaptersEnabled) return 0;
+const GENRE_AUTO_SUBCOUNTS: Partial<Record<Genre, number>> = {
+  horror: 5,
+  thriller: 5,
+  "dark-romance": 4,
+  romance: 4,
+  fantasy: 4,
+  "sci-fi": 4,
+  "self-help": 4,
+  business: 4,
+  productivity: 4,
+  memoir: 3,
+  historical: 4,
+};
+
+export function getSubchaptersPerChapter(
+  config: {
+    subchaptersEnabled?: boolean;
+    subchaptersPerChapter?: SubchaptersPerChapterSetting;
+    structureMode?: StructureMode;
+    genre?: Genre;
+  },
+): number {
+  const mode = config.structureMode ?? (config.subchaptersEnabled ? "chapter_subchapter" : "chapter_only");
+  if (mode === "chapter_only" || !config.subchaptersEnabled) return 0;
+  if (config.subchaptersPerChapter === "auto") {
+    return GENRE_AUTO_SUBCOUNTS[config.genre || "self-help"] ?? DEFAULT_SUBCHAPTERS_PER_CHAPTER;
+  }
   const raw = Number(config.subchaptersPerChapter || DEFAULT_SUBCHAPTERS_PER_CHAPTER);
   return Math.max(1, Math.min(8, Number.isFinite(raw) ? Math.round(raw) : DEFAULT_SUBCHAPTERS_PER_CHAPTER));
 }
@@ -263,8 +296,9 @@ export interface BookConfig {
   bookLength: BookLength;
   customTotalWords?: number;
   numberOfChapters: number;
+  structureMode?: StructureMode;
   subchaptersEnabled: boolean;
-  subchaptersPerChapter?: number;
+  subchaptersPerChapter?: SubchaptersPerChapterSetting;
   characters?: BookCharacter[];
   shadowTitleOptions?: {
     title: string;

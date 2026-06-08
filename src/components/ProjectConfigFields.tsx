@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { BookConfig, Language, Genre, ChapterLength, CATEGORIES, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
+import { BookConfig, Language, Genre, ChapterLength, CATEGORIES, DEFAULT_SUBCHAPTERS_PER_CHAPTER, type StructureMode } from "@/types/book";
+import { structureModeFromSubchapterToggle } from "@/lib/master-structure-engine";
 import { Fingerprint } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { usePlan } from "@/lib/plan";
@@ -147,19 +148,49 @@ export function ProjectConfigFields({ config, onUpdateConfig, layout = "toolbar"
           fullWidth={stacked}
         />
       </FieldRow>
+      <FieldRow stacked={stacked} label="Structure">
+        <MiniSelect
+          value={config.structureMode || (config.subchaptersEnabled ? "chapter_subchapter" : "chapter_only")}
+          options={[
+            { value: "chapter_only", label: "Chapter only" },
+            { value: "chapter_subchapter", label: "Chapters + subchapters" },
+            { value: "scene_based", label: "Scene-based" },
+            { value: "auto_intelligent", label: "Auto intelligent" },
+          ]}
+          onChange={(v) => {
+            const mode = v as StructureMode;
+            onUpdateConfig("structureMode", mode);
+            onUpdateConfig("subchaptersEnabled", mode !== "chapter_only");
+          }}
+          fullWidth={stacked}
+        />
+      </FieldRow>
       <FieldRow stacked={stacked} label={t("subchapters")}>
         <MiniSelect
-          value={config.subchaptersEnabled ? String(config.subchaptersPerChapter || DEFAULT_SUBCHAPTERS_PER_CHAPTER) : "off"}
+          value={
+            !config.subchaptersEnabled && (config.structureMode || "chapter_only") === "chapter_only"
+              ? "off"
+              : config.subchaptersPerChapter === "auto"
+                ? "auto"
+                : String(config.subchaptersPerChapter || DEFAULT_SUBCHAPTERS_PER_CHAPTER)
+          }
           options={[
             { value: "off", label: "Off" },
+            { value: "auto", label: "Auto (genre)" },
             ...Array.from({ length: 8 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
           ]}
           onChange={(v) => {
             if (v === "off") {
               onUpdateConfig("subchaptersEnabled", false);
+              onUpdateConfig("structureMode", "chapter_only");
               return;
             }
             onUpdateConfig("subchaptersEnabled", true);
+            onUpdateConfig("structureMode", structureModeFromSubchapterToggle(true, config.structureMode));
+            if (v === "auto") {
+              onUpdateConfig("subchaptersPerChapter", "auto");
+              return;
+            }
             onUpdateConfig("subchaptersPerChapter", Math.max(1, Math.min(8, Number(v) || DEFAULT_SUBCHAPTERS_PER_CHAPTER)));
           }}
           fullWidth={stacked}

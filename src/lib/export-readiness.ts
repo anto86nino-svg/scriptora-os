@@ -1,11 +1,16 @@
 import type { BookProject, SectionId } from "@/types/book";
-import { getSubchaptersPerChapter } from "@/types/book";
+import {
+  getPlannedSubchapterCountForChapter,
+  needsBlueprintSubchapterSync,
+  shouldEnforceSubchapterContent,
+} from "@/lib/master-structure-engine";
 import { isProjectComplete } from "@/lib/project-status";
 
 export type ExportFixAction =
   | { type: "open_section"; section: SectionId }
   | { type: "open_cover" }
   | { type: "generate_blueprint" }
+  | { type: "sync_blueprint_structure" }
   | { type: "generate_chapter"; chapterIndex: number }
   | { type: "generate_subchapter"; chapterIndex: number; subIndex: number }
   | { type: "generate_front_matter" }
@@ -52,7 +57,7 @@ export function analyzeExportReadiness(
 
   const { config, blueprint, chapters, frontMatter, backMatter } = project;
   const total = Math.max(0, config?.numberOfChapters || 0);
-  const subTarget = getSubchaptersPerChapter(config);
+  const enforceSubs = shouldEnforceSubchapterContent(config, blueprint);
 
   if (!blueprint) {
     issues.push({
@@ -83,8 +88,9 @@ export function analyzeExportReadiness(
       });
     }
 
-    if (subTarget > 0 && chapterHasContent(chapter?.content)) {
-      for (let subIndex = 0; subIndex < subTarget; subIndex += 1) {
+    if (enforceSubs && chapterHasContent(chapter?.content)) {
+      const plannedSubs = getPlannedSubchapterCountForChapter(config, blueprint, i);
+      for (let subIndex = 0; subIndex < plannedSubs; subIndex += 1) {
         const sub = chapter?.subchapters?.[subIndex];
         if (!chapterHasContent(sub?.content)) {
           const subTitle = outline?.subchapters?.[subIndex]?.title || `Sottocapitolo ${subIndex + 1}`;
@@ -92,14 +98,26 @@ export function analyzeExportReadiness(
             id: `missing-sub-${i}-${subIndex}`,
             severity: "blocker",
             title: `Sottocapitolo ${i + 1}.${subIndex + 1} mancante`,
-            description: `"${subTitle}" è attivo nel progetto ma non ha contenuto.`,
-            cause: "Hai attivato i sottocapitoli nel progetto.",
+            description: `"${subTitle}" è nel blueprint ma non ha ancora contenuto.`,
+            cause: "Il blueprint ha pianificato questo sottocapitolo.",
             fix: { type: "generate_subchapter", chapterIndex: i, subIndex },
             fixLabel: "Genera sottocapitolo",
           });
         }
       }
     }
+  }
+
+  if (blueprint && needsBlueprintSubchapterSync(config, blueprint)) {
+    issues.push({
+      id: "blueprint-missing-sub-structure",
+      severity: "warning",
+      title: "Struttura sottocapitoli non nel blueprint",
+      description: "I sottocapitoli sono attivi ma il blueprint non ha ancora titoli e beat pianificati.",
+      cause: "Scriptora non blocca la generazione — sincronizza la struttura con un click.",
+      fix: { type: "sync_blueprint_structure" },
+      fixLabel: "Genera struttura capitoli",
+    });
   }
 
   if (!frontMatter) {

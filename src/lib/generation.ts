@@ -1,4 +1,4 @@
-import { BookConfig, Chapter, FrontMatter, BackMatter, BookBlueprint, Genre, AIQualityRating, BOOK_LENGTH_CONFIG, getBookTotalWords, getSubchaptersPerChapter, GenreLock } from "@/types/book";
+import { BookConfig, Chapter, FrontMatter, BackMatter, BookBlueprint, Genre, AIQualityRating, BOOK_LENGTH_CONFIG, getBookTotalWords, GenreLock } from "@/types/book";
 import { supabase } from "@/integrations/supabase/client";
 import { scriptoraLog, logGenerationStart, logGenerationEnd, logEdgeError } from "@/lib/scriptora-logger";
 import { buildGenreSystemBlock, buildGenreBlueprintBlock, buildGenreEditorialBlock, getGenreBlueprint, buildPromptByGenre, resolveGenreKey } from "@/lib/genre-intelligence";
@@ -9,6 +9,18 @@ import { withRetry, getBreakerCooldown } from "@/lib/api-resilience";
 import { normalizeAuthorIdentity } from "@/lib/author-identity";
 import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { deriveSubchapterTitle } from "@/lib/subchapter-titles";
+import {
+  resolveSubchapterCount,
+  resolveEffectiveStructureMode,
+  enrichSubchapterOutline,
+  getSubchapterWordBudget,
+  buildGenreMasterBlock,
+  buildSubchapterMetadata,
+  metadataToPromptBlock,
+  sanitizeSubchapterTitle,
+  buildScenePlannerPromptBlock,
+  planChapterScenes,
+} from "@/lib/master-structure-engine";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
 import { sanitizeManuscript } from "@/lib/editorial-wow/FinalManuscriptSanitizer";
@@ -799,18 +811,26 @@ function normalizeBlueprint(raw: unknown, config: BookConfig): BookBlueprint {
     });
     resolvedTitles.push(title);
     const rawSubs = Array.isArray((item as any).subchapters) ? (item as any).subchapters : [];
-    const subchapterCount = getSubchaptersPerChapter(config);
+    const subchapterCount = resolveSubchapterCount(config);
+    const scenePlan =
+      resolveEffectiveStructureMode(config) === "scene_based" && subchapterCount > 0
+        ? planChapterScenes(title, summary, i, subchapterCount, config)
+        : null;
     const subchapters = subchapterCount > 0
       ? Array.from({ length: subchapterCount }, (_, j) => {
           const sub = rawSubs[j] || {};
           const subSummary = stringifyField(sub?.summary).trim();
-          const fallbackTitle = deriveSubchapterTitle(title, summary, j, subSummary, subchapterCount, config.language);
-          const resolvedSubTitle = stringifyField(sub?.title).trim() || fallbackTitle;
-          return {
+          const sceneFallback = scenePlan?.[j];
+          const fallbackTitle = sceneFallback?.title
+            || deriveSubchapterTitle(title, summary, j, subSummary, subchapterCount, config.language);
+          const resolvedSubTitle = sanitizeSubchapterTitle(stringifyField(sub?.title).trim(), fallbackTitle);
+          const base = {
             title: resolvedSubTitle,
-            summary: subSummary || `${summary} Develop this beat: ${resolvedSubTitle}.`,
+            summary: subSummary || sceneFallback?.summary || `${summary} Develop this beat: ${resolvedSubTitle}.`,
+            purpose: stringifyField(sub?.purpose).trim() || sceneFallback?.purpose,
             ...normalizeSubchapterOutlineExtras(sub),
           };
+          return enrichSubchapterOutline(base, j, subchapterCount, config.genre);
         })
       : undefined;
 
@@ -1239,7 +1259,9 @@ Write in ${config.language}.${adaptiveSuffix}`;
 export async function generateBlueprint(config: BookConfig, genreLock?: GenreLock, usage?: AIUsageContext): Promise<BookBlueprint> {
   const bookInfo = BOOK_LENGTH_CONFIG[config.bookLength];
   const totalWords = getBookTotalWords(config);
-  const subchapterCount = getSubchaptersPerChapter(config);
+  const subchapterCount = resolveSubchapterCount(config);
+  const structureMode = resolveEffectiveStructureMode(config);
+  const unitLabel = structureMode === "scene_based" ? "scenes" : "subchapters";
   const editorialBP = resolveLockedBlueprint(config, genreLock);
   const structureScaffold = editorialBP.structure.length
     ? `\nGENRE STRUCTURE SCAFFOLD${genreLock ? " (LOCKED)" : ""} (use as backbone, expand into ${config.numberOfChapters} chapters):\n${editorialBP.structure.map((s, i) => `${i + 1}. ${s}`).join("\n")}\nMap and expand this scaffold across the ${config.numberOfChapters} chapters — fold/split sections so EVERY chapter advances the editorial structure above.`
@@ -1256,7 +1278,9 @@ Language: ${config.language} — ALL content MUST be in ${config.language}
 Book length: ${bookInfo.label} (~${totalWords.toLocaleString()} total words)
 Number of chapters: ${config.numberOfChapters}
 ${subchapterCount > 0
-  ? `Include EXACTLY ${subchapterCount} real subchapters per chapter. Each subchapter title must be derived from that chapter's content — never generic placeholders. Example for "Rome Before Rome": "Life Along the Tiber", "The First Settlements", "Why the Palatine Won".`
+  ? structureMode === "scene_based"
+    ? `${buildScenePlannerPromptBlock(config)}\nInclude EXACTLY ${subchapterCount} cinematic scenes per chapter in subchapters[]. Each scene needs title, summary, purpose (scene job), emotionalFunction, narrativeProgression, conflictProgression, tensionProgression.`
+    : `Include EXACTLY ${subchapterCount} real subchapters per chapter. Each subchapter title must be genre-native, commercially compelling, and derived from that chapter's narrative job — NEVER placeholders like "Subchapter 1", "Section A", "1.1 Section 1", or "Untitled". Good example: Chapter "The Voice in the Milk" → 1.1 "The Taste of Iron", 1.2 "The Voice in the Bathroom", 1.3 "The Fall on the Stairs". Each subchapter needs title, summary, purpose, emotionalFunction, narrativeProgression, conflictProgression, tensionProgression.`
   : "Subchapter mode is OFF — do NOT include subchapters in chapterOutlines."}
 ${structureScaffold}
 
@@ -1409,11 +1433,24 @@ export async function generateSubchapter(
     `Subchapter ${i + 1} "${s.title}": ${s.content.substring(0, 200)}...`
   ).join("\n");
 
-  const bookTotal = getBookTotalWords(config);
-  const subchapterCount = getSubchaptersPerChapter(config) || 3;
-  const subWordTarget = Math.round((bookTotal / config.numberOfChapters) / subchapterCount);
-  const subMin = Math.max(400, Math.round(subWordTarget * 0.8));
-  const subMax = Math.round(subWordTarget * 1.2);
+  const subchapterOutlines = (outline as any).subchapters || [];
+  const subchapterCount = subchapterOutlines.length || resolveSubchapterCount(config) || 3;
+  const chapterWordTarget = getChapterTargetWords(config, chapterIndex, config.numberOfChapters);
+  const wordBudget = getSubchapterWordBudget(
+    chapterWordTarget,
+    subchapterOutlines.length ? subchapterOutlines : [{ title: subOutline?.title || "", summary: subOutline?.summary || "" }],
+    config.genre,
+    subchapterIndex,
+  );
+  const subMin = wordBudget.minWords;
+  const subMax = wordBudget.maxWords;
+  const narrativeMeta = buildSubchapterMetadata(
+    subOutline || {},
+    subchapterIndex,
+    subchapterCount,
+    config.genre,
+    wordBudget,
+  );
 
   const genreDirective = buildPromptByGenre({
     genre: genreLock?.genre || config.genre,
@@ -1429,11 +1466,26 @@ export async function generateSubchapter(
     outlineSummary: subOutline?.summary || outline.summary,
   });
 
-  const prompt = `Write Subchapter ${subchapterIndex + 1} of ${subchapterCount} for Chapter ${chapterIndex + 1} "${chapter.title}" in "${config.title}".
-${subOutline ? `Subchapter plan: "${subOutline.title}" — ${subOutline.summary}` : `Write the ${subchapterIndex + 1}th subchapter.`}
+  const structureMode = resolveEffectiveStructureMode(config);
+  const unitName = structureMode === "scene_based" ? "Scene" : "Subchapter";
+  const sceneBlock = structureMode === "scene_based" ? `\n${buildScenePlannerPromptBlock(config)}\n` : "";
+
+  const genreMaster = buildGenreMasterBlock(
+    genreLock?.genre || config.genre,
+    genreLock?.subcategory || (config as any).subcategory,
+    "subchapter",
+  );
+
+  const prompt = `Write ${unitName} ${subchapterIndex + 1} of ${subchapterCount} for Chapter ${chapterIndex + 1} "${chapter.title}" in "${config.title}".
+${subOutline ? `${unitName} plan: "${subOutline.title}" — ${subOutline.summary}` : `Write the ${subchapterIndex + 1}th ${unitName.toLowerCase()}.`}
+${sceneBlock}
 Genre: ${config.genre}
 Language: ${config.language} — WRITE ENTIRELY IN ${config.language}
-Write approximately ${subMin}–${subMax} words.
+Word budget (${wordBudget.purpose}): approximately ${subMin}–${subMax} words (target ${wordBudget.targetWords}).
+
+${genreMaster}
+
+${metadataToPromptBlock(narrativeMeta)}
 
 ${genreDirective}
 

@@ -50,12 +50,42 @@ describe("export-readiness", () => {
     expect(result.blockers.some((i) => i.id.startsWith("missing-sub"))).toBe(false);
   });
 
-  it("blocks export when subchapters are enabled but missing", () => {
+  it("does not block export when subchapters enabled but blueprint has no sub plan", () => {
     const project = baseProject({
       config: {
         ...baseProject().config,
         subchaptersEnabled: true,
         subchaptersPerChapter: 2,
+      },
+    });
+    const result = analyzeExportReadiness(project, { hasCover: true });
+    expect(result.canExport).toBe(true);
+    expect(result.blockers.some((i) => i.id.startsWith("missing-sub"))).toBe(false);
+    expect(result.warnings.some((i) => i.id === "blueprint-missing-sub-structure")).toBe(true);
+  });
+
+  it("blocks export when blueprint plans subchapters but content is missing", () => {
+    const project = baseProject({
+      config: {
+        ...baseProject().config,
+        subchaptersEnabled: true,
+        subchaptersPerChapter: 2,
+      },
+      blueprint: {
+        overview: "Overview",
+        themes: ["Tema"],
+        emotionalArc: "Arc",
+        chapterOutlines: [
+          {
+            title: "Cap 1",
+            summary: "Summary 1",
+            subchapters: [
+              { title: "The Taste of Iron", summary: "Beat 1" },
+              { title: "The Voice", summary: "Beat 2" },
+            ],
+          },
+          { title: "Cap 2", summary: "Summary 2" },
+        ],
       },
     });
     const result = analyzeExportReadiness(project, { hasCover: true });
