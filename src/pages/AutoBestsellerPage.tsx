@@ -166,7 +166,10 @@ export default function AutoBestsellerPage() {
       setArchitectResult(result);
       toast.success(getArchitectPageCopy(normalizeArchitectLang(input.language)).blueprintReady);
     } catch (e) {
-      const message = e instanceof Error ? e.message : getArchitectPageCopy(normalizeArchitectLang(input.language)).blueprintFailed;
+      const fallback = getArchitectPageCopy(normalizeArchitectLang(input.language)).blueprintFailed;
+      const message = e instanceof Error && e.message.trim()
+        ? e.message
+        : fallback;
       setArchitectError(message);
       toast.error(message);
     } finally {

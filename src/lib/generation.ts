@@ -130,7 +130,6 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
     }
   }, 5000);
 
-  logGenerationStart("callAIOnce", { taskType: usage?.taskType, projectId: usage?.projectId });
   try {
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-book`;
     if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
@@ -139,6 +138,13 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
     const currentUsage = usagePayload(usage);
     const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: { session: null } } as any));
     const bearer = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const jwtKind = bearer === import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ? "anon" : "user";
+    logGenerationStart("GENERATION", "callAIOnce", {
+      jwtPresent: jwtKind === "user",
+      userId: sessionData?.session?.user?.id ?? null,
+      taskType: usage?.taskType,
+      projectId: usage?.projectId,
+    });
     const res = await fetch(url, {
       method: "POST",
       headers: {
@@ -154,7 +160,16 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
       const text = await res.text().catch(() => "");
       let errMsg = text;
       try { errMsg = JSON.parse(text).error || text; } catch {}
-      logEdgeError("generate-book", res.status, errMsg, { taskType: usage?.taskType, projectId: usage?.projectId });
+      logEdgeError("GENERATION", "generate-book", {
+        status: res.status,
+        body: errMsg,
+        jwtKind,
+        taskType: usage?.taskType,
+        projectId: usage?.projectId,
+      });
+      if (res.status === 401) {
+        throw new Error("Sessione utente non valida. Effettua nuovamente il login.");
+      }
       if (errMsg.includes("credits exhausted") || errMsg.includes("API key invalid") || res.status === 402) {
         throw new AICreditsError(errMsg);
       }
@@ -191,7 +206,7 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
       throw new Error(parsed.error);
     }
     if (!parsed.content) throw new Error("Empty response from AI");
-    logGenerationEnd("callAIOnce", parsed.content.length, { taskType: usage?.taskType });
+    logGenerationEnd("GENERATION", "callAIOnce", { chars: parsed.content.length, taskType: usage?.taskType });
     notifyUsageChanged();
     return parsed.content;
   } catch (e: any) {
@@ -240,7 +255,13 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
     // Falls back to anon key only when there is genuinely no session.
     const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: { session: null } } as any));
     const bearer = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    logGenerationStart("callBlueprintFast", { jwt: sessionData?.session?.access_token ? "user" : "anon", taskType: usage?.taskType });
+    const jwtKind = bearer === import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ? "anon" : "user";
+    logGenerationStart("BLUEPRINT", "callBlueprintFast", {
+      jwtPresent: jwtKind === "user",
+      userId: sessionData?.session?.user?.id ?? null,
+      taskType: usage?.taskType,
+      projectId: usage?.projectId,
+    });
     let res: Response;
     try {
       res = await fetch(url, {
@@ -263,12 +284,21 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
       throw err;
     }
     clearTimeout(timeout);
-    scriptoraLog.verbose("generation", `Blueprint response: ${res.status}`, { jwt: bearer === import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ? "anon" : "user" });
+    scriptoraLog.info("BLUEPRINT", `Blueprint response: ${res.status}`, { jwtKind, taskType: usage?.taskType });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       let errMsg = text;
       try { errMsg = JSON.parse(text).error || text; } catch {}
-      logEdgeError("generate-blueprint-fast", res.status, errMsg, { taskType: usage?.taskType });
+      logEdgeError("BLUEPRINT", "generate-blueprint-fast", {
+        status: res.status,
+        body: errMsg,
+        jwtKind,
+        taskType: usage?.taskType,
+        projectId: usage?.projectId,
+      });
+      if (res.status === 401) {
+        throw new Error("Sessione utente non valida. Effettua nuovamente il login.");
+      }
       if (res.status === 402) throw new AICreditsError(errMsg || "AI credits exhausted");
       throw new Error(errMsg || `Blueprint generation failed (${res.status})`);
     }
@@ -279,7 +309,7 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
     }
     if (!content) throw new Error("Empty blueprint response");
     notifyUsageChanged();
-    logGenerationEnd("callBlueprintFast", content.length, { taskType: usage?.taskType });
+    logGenerationEnd("BLUEPRINT", "callBlueprintFast", { chars: content.length, taskType: usage?.taskType });
     return content as string;
   };
   return withRetry(callOnce, {

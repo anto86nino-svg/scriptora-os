@@ -61,34 +61,85 @@ export const scriptoraLog = {
 
 // ─── Generation lifecycle helpers ──────────────────────────────────────────
 
+export type GenerationStartMeta = {
+  jwtPresent?: boolean;
+  userId?: string | null;
+  taskType?: string;
+  projectId?: string;
+};
+
+export type GenerationEndMeta = {
+  status?: number;
+  chars?: number;
+  durationMs?: number;
+  taskType?: string;
+};
+
+export type EdgeErrorMeta = {
+  status?: number;
+  body?: string;
+  jwtKind?: "user" | "anon";
+  taskType?: string;
+  projectId?: string;
+};
+
+function normalizeStartMeta(meta?: GenerationStartMeta): Required<Pick<GenerationStartMeta, "jwtPresent">> & GenerationStartMeta {
+  return {
+    jwtPresent: meta?.jwtPresent ?? false,
+    userId: meta?.userId ?? null,
+    taskType: meta?.taskType,
+    projectId: meta?.projectId,
+  };
+}
+
+function normalizeEndMeta(meta?: GenerationEndMeta): GenerationEndMeta {
+  return meta ?? {};
+}
+
+function normalizeEdgeMeta(meta?: EdgeErrorMeta): Required<Pick<EdgeErrorMeta, "status" | "body" | "jwtKind">> & EdgeErrorMeta {
+  return {
+    status: meta?.status ?? 0,
+    body: meta?.body ?? "",
+    jwtKind: meta?.jwtKind ?? "anon",
+    taskType: meta?.taskType,
+    projectId: meta?.projectId,
+  };
+}
+
 export function logGenerationStart(
   category: LogCategory,
   op: string,
-  meta: { jwtPresent: boolean; userId?: string | null },
+  meta?: GenerationStartMeta,
 ): void {
+  const normalized = normalizeStartMeta(meta);
   scriptoraLog.always(category, `${op} start`, {
-    jwt: meta.jwtPresent ? "present" : "ABSENT (anon fallback)",
-    userId: meta.userId ?? "unknown",
+    jwt: normalized.jwtPresent ? "present" : "ABSENT (anon fallback)",
+    userId: normalized.userId ?? "unknown",
+    taskType: normalized.taskType,
+    projectId: normalized.projectId,
   });
 }
 
 export function logGenerationEnd(
   category: LogCategory,
   op: string,
-  meta: { status?: number; chars?: number; durationMs?: number },
+  meta?: GenerationEndMeta,
 ): void {
-  scriptoraLog.always(category, `${op} complete`, meta);
+  scriptoraLog.always(category, `${op} complete`, normalizeEndMeta(meta));
 }
 
 export function logEdgeError(
   category: LogCategory,
   op: string,
-  meta: { status: number; body: string; jwtKind: "user" | "anon" },
+  meta?: EdgeErrorMeta,
 ): void {
+  const normalized = normalizeEdgeMeta(meta);
   scriptoraLog.error(category, `${op} edge function rejected`, {
-    status: meta.status,
-    jwtKind: meta.jwtKind,
-    body: meta.body.slice(0, 300),
+    status: normalized.status,
+    jwtKind: normalized.jwtKind,
+    body: normalized.body.slice(0, 300),
+    taskType: normalized.taskType,
+    projectId: normalized.projectId,
   });
 }
 
