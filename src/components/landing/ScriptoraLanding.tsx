@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -139,20 +140,20 @@ const landingCopy: Record<UILanguage, {
     manifestoLabel: "Manifesto",
     manifestoTitle: "Le idee sono fragili. I sistemi resistono.",
     manifestoLines: [
-      "Scriptora non e un altro posto dove chiedere testo.",
-      "E il luogo in cui un libro conserva memoria: voce autore, canone, capitoli, revisioni e direzione di mercato.",
+      "Scriptora non è un altro posto dove chiedere testo.",
+      "È il luogo in cui un libro conserva memoria: voce autore, canone, capitoli, revisioni e direzione di mercato.",
       "Non insegui la storia tra strumenti sparsi. Entri nell'OS e il libro resta con te.",
     ],
     howLabel: "Come usare Scriptora",
     howTitle: "Costruisci il mondo. Mantieni la direzione. Finisci il libro.",
-    howText: "Un flusso autore calmo, costruito sul workspace reale di Scriptora: identita, canone, scrittura, analisi, cover, segnali KDP ed export.",
+    howText: "Un flusso autore calmo, costruito sul workspace reale di Scriptora: identità, canone, scrittura, analisi, cover, segnali KDP ed export.",
     workflowLabel: "Flusso autore",
     ecosystemLabel: "Strumenti dentro Scriptora",
     writerLabel: "Writer Studio",
     writerTitle: "La pagina avanza. La storia ricorda.",
-    writerText: "Dentro il workspace protetto, i capitoli vengono scritti con continuita, pressione narrativa, identita autore e memoria editoriale sempre visibili.",
+    writerText: "Dentro il workspace protetto, i capitoli vengono scritti con continuità, pressione narrativa, identità autore e memoria editoriale sempre visibili.",
     livePreview: "Manoscritto vivo",
-    chapterMemory: "Continuita fissata",
+    chapterMemory: "Continuità fissata",
     liveTitle: "La Cattedrale delle Anime Dimenticate",
     liveText: "Ogni segreto ha un prezzo. Ogni anima reclama il suo debito. Scriptora mantiene la scena in tensione senza perdere la direzione del libro.",
     pricingLabel: "Piani",
@@ -161,7 +162,7 @@ const landingCopy: Record<UILanguage, {
     testimonialsLabel: "Storie autore",
     testimonialsTitle: "Creato per autori che non vogliono perdere il filo.",
     testimonialsText: "Appunti brevi da chi usa Scriptora come cabina creativa: voce, struttura e preparazione editoriale nello stesso luogo.",
-    finalTitle: "Il tuo libro sta gia chiamando. Dagli un sistema.",
+    finalTitle: "Il tuo libro sta già chiamando. Dagli un sistema.",
     finalText: "Entra nel workspace dove le idee smettono di disperdersi e diventano manoscritti, copertine, metadata e libri finiti.",
   },
   es: {
@@ -302,12 +303,12 @@ const workflow = [
   {
     step: "01",
     title: { en: "Catch the signal", it: "Cattura il segnale", es: "Captura la senal", fr: "Captez le signal", de: "Signal fangen" },
-    text: { en: "The first spark becomes a brief with genre, promise and reader gravity.", it: "La prima scintilla diventa un brief con genere, promessa e gravita del lettore.", es: "La primera chispa se vuelve brief con genero, promesa y gravedad lectora.", fr: "La premiere etincelle devient un brief avec genre, promesse et gravite lecteur.", de: "Der erste Funke wird zum Briefing mit Genre, Versprechen und Leserzug." },
+    text: { en: "The first spark becomes a brief with genre, promise and reader gravity.", it: "La prima scintilla diventa un brief con genere, promessa e gravità del lettore.", es: "La primera chispa se vuelve brief con genero, promesa y gravedad lectora.", fr: "La premiere etincelle devient un brief avec genre, promesse et gravite lecteur.", de: "Der erste Funke wird zum Briefing mit Genre, Versprechen und Leserzug." },
   },
   {
     step: "02",
     title: { en: "Lock the canon", it: "Blocca il canone", es: "Bloquea el canon", fr: "Verrouillez le canon", de: "Kanon sperren" },
-    text: { en: "Characters, names, wounds and continuity are fixed before the page starts moving.", it: "Personaggi, nomi, ferite e continuita vengono fissati prima che la pagina si muova.", es: "Personajes, nombres, heridas y continuidad se fijan antes de mover la pagina.", fr: "Personnages, noms, blessures et continuite se fixent avant que la page bouge.", de: "Figuren, Namen, Wunden und Kontinuitat stehen, bevor die Seite sich bewegt." },
+    text: { en: "Characters, names, wounds and continuity are fixed before the page starts moving.", it: "Personaggi, nomi, ferite e continuità vengono fissati prima che la pagina si muova.", es: "Personajes, nombres, heridas y continuidad se fijan antes de mover la pagina.", fr: "Personnages, noms, blessures et continuite se fixent avant que la page bouge.", de: "Figuren, Namen, Wunden und Kontinuitat stehen, bevor die Seite sich bewegt." },
   },
   {
     step: "03",
@@ -326,7 +327,7 @@ const useGuide = [
     step: "01",
     icon: Layers3,
     title: { en: "Enter the control room", it: "Entra nella cabina", es: "Entra a la cabina", fr: "Entrez dans le cockpit", de: "Kontrollraum offnen" },
-    text: { en: "Choose author identity and let every project inherit the right creative voice.", it: "Scegli l'identita autore e lascia che ogni progetto erediti la voce giusta.", es: "Elige identidad de autor y deja que cada proyecto herede la voz correcta.", fr: "Choisissez l'identite auteur et chaque projet herite de la bonne voix.", de: "Wahle die Autorenidentitat, damit jedes Projekt die richtige Stimme erbt." },
+    text: { en: "Choose author identity and let every project inherit the right creative voice.", it: "Scegli l'identità autore e lascia che ogni progetto erediti la voce giusta.", es: "Elige identidad de autor y deja que cada proyecto herede la voz correcta.", fr: "Choisissez l'identite auteur et chaque projet herite de la bonne voix.", de: "Wahle die Autorenidentitat, damit jedes Projekt die richtige Stimme erbt." },
     screen: "dashboard" as AppPreviewVariant,
     badge: "Dashboard",
   },
@@ -382,7 +383,7 @@ const systems = [
   {
     eyebrow: "Publishing OS",
     title: { en: "Make the manuscript feel like a real book.", it: "Fai sentire il manoscritto come un vero libro.", es: "Haz que el manuscrito se sienta como un libro real.", fr: "Faites sentir le manuscrit comme un vrai livre.", de: "Lass das Manuskript wie ein echtes Buch wirken." },
-    text: { en: "Cover, export, library and identity stay coherent from first page to final package.", it: "Cover, export, biblioteca e identita restano coerenti dalla prima pagina al pacchetto finale.", es: "Portada, export, biblioteca e identidad quedan coherentes de la primera pagina al paquete final.", fr: "Couverture, export, bibliotheque et identite restent coherents de la premiere page au package final.", de: "Cover, Export, Bibliothek und Identitat bleiben von der ersten Seite bis zum finalen Paket konsistent." },
+    text: { en: "Cover, export, library and identity stay coherent from first page to final package.", it: "Cover, export, biblioteca e identità restano coerenti dalla prima pagina al pacchetto finale.", es: "Portada, export, biblioteca e identidad quedan coherentes de la primera pagina al paquete final.", fr: "Couverture, export, bibliotheque et identite restent coherents de la premiere page au package final.", de: "Cover, Export, Bibliothek und Identitat bleiben von der ersten Seite bis zum finalen Paket konsistent." },
     tools: [
       { icon: ImagePlus, label: "Cover Studio" },
       { icon: FileDown, label: "Export Studio" },
@@ -489,7 +490,7 @@ const testimonials = [
     photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80",
     quote: {
       en: "It felt less like opening a tool and more like entering the room where the book already knew what it wanted to become.",
-      it: "Non sembrava di aprire un tool. Sembrava di entrare nella stanza dove il libro sapeva gia cosa voleva diventare.",
+      it: "Non sembrava di aprire un tool. Sembrava di entrare nella stanza dove il libro sapeva già cosa voleva diventare.",
       es: "No se sintio como abrir una herramienta. Fue entrar en la sala donde el libro ya sabia en que queria convertirse.",
       fr: "Ce n'etait pas ouvrir un outil. C'etait entrer dans la piece ou le livre savait deja ce qu'il voulait devenir.",
       de: "Es fuhlte sich nicht wie ein Tool an, sondern wie der Raum, in dem das Buch schon wusste, was es werden will.",
@@ -502,7 +503,7 @@ const testimonials = [
     photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=240&q=80",
     quote: {
       en: "The voice stopped drifting. Every chapter felt like the same author returning to the desk with a sharper intention.",
-      it: "La voce ha smesso di disperdersi. Ogni capitolo sembrava lo stesso autore che tornava alla scrivania con piu intenzione.",
+      it: "La voce ha smesso di disperdersi. Ogni capitolo sembrava lo stesso autore che tornava alla scrivania con più intenzione.",
       es: "La voz dejo de dispersarse. Cada capitulo parecia el mismo autor volviendo al escritorio con mas intencion.",
       fr: "La voix a cesse de se disperser. Chaque chapitre semblait le meme auteur revenant au bureau avec plus d'intention.",
       de: "Die Stimme driftete nicht mehr. Jedes Kapitel wirkte wie derselbe Autor, der mit klarerer Absicht zuruckkehrt.",
@@ -539,7 +540,7 @@ const landingPlans: Record<string, Record<UILanguage, {
   },
   pro_monthly: {
     en: { name: "Pro", period: "/month", description: "For authors who want continuity, revision and export in one serious room.", features: ["10 books per month", "Up to 80,000 words", "Full Book Engine", "EPUB, PDF, DOCX export"] },
-    it: { name: "Pro", period: "/mese", description: "Per autori che vogliono continuita, revisione ed export in una stanza seria.", features: ["10 libri al mese", "Fino a 80.000 parole", "Book Engine completo", "Export EPUB, PDF, DOCX"] },
+    it: { name: "Pro", period: "/mese", description: "Per autori che vogliono continuità, revisione ed export in una stanza seria.", features: ["10 libri al mese", "Fino a 80.000 parole", "Book Engine completo", "Export EPUB, PDF, DOCX"] },
     es: { name: "Pro", period: "/mes", description: "Para autores que quieren continuidad, revision y export en una sala seria.", features: ["10 libros al mes", "Hasta 80.000 palabras", "Book Engine completo", "Export EPUB, PDF, DOCX"] },
     fr: { name: "Pro", period: "/mois", description: "Pour auteurs qui veulent continuite, revision et export dans une piece serieuse.", features: ["10 livres par mois", "Jusqu'a 80 000 mots", "Book Engine complet", "Export EPUB, PDF, DOCX"] },
     de: { name: "Pro", period: "/Monat", description: "Fur Autoren, die Kontinuitat, Revision und Export in einem ernsten Raum wollen.", features: ["10 Bucher pro Monat", "Bis 80.000 Worter", "Voller Book Engine", "EPUB, PDF, DOCX Export"] },
@@ -564,6 +565,10 @@ export function ScriptoraLanding({
   const lang = useUILanguage();
   const copy = landingCopy[lang] ?? landingCopy.en;
   const showLiveProduct = canStart && (isSignedIn || devOn);
+
+  useEffect(() => {
+    document.title = "Scriptora OS — Build Books That Sell";
+  }, []);
   const primaryPlans = paymentsConfig.plans.filter((plan) =>
     ["free", "pro_monthly", "premium_monthly"].includes(plan.id),
   );
@@ -963,7 +968,7 @@ function MiniAppScreen({
       tools: [
         { en: "New Book", it: "Nuovo Libro", es: "Nuevo Libro", fr: "Nouveau Livre", de: "Neues Buch" },
         { en: "Cover Studio", it: "Cover Studio", es: "Cover Studio", fr: "Cover Studio", de: "Cover Studio" },
-        { en: "Author Identity", it: "Identita autore", es: "Identidad autor", fr: "Identite auteur", de: "Autorenidentitat" },
+        { en: "Author Identity", it: "Identità autore", es: "Identidad autor", fr: "Identite auteur", de: "Autorenidentitat" },
       ],
       lines: [
         { en: "Continue where you left off", it: "Continua da dove avevi lasciato", es: "Continua donde lo dejaste", fr: "Reprendre la ou vous etiez", de: "Dort weitermachen" },
@@ -1017,7 +1022,7 @@ function MiniAppScreen({
       ],
       lines: [
         { en: "Text appears while the chapter is written", it: "Il testo appare durante la scrittura", es: "El texto aparece durante la escritura", fr: "Le texte apparait pendant l'ecriture", de: "Text erscheint wahrend des Schreibens" },
-        { en: "Scene pressure and continuity stay visible", it: "Pressione di scena e continuita restano visibili", es: "Tension y continuidad visibles", fr: "Tension et continuite visibles", de: "Szenendruck und Kontinuitat sichtbar" },
+        { en: "Scene pressure and continuity stay visible", it: "Pressione di scena e continuità restano visibili", es: "Tension y continuidad visibles", fr: "Tension et continuite visibles", de: "Szenendruck und Kontinuitat sichtbar" },
       ],
     },
     publishing: {
@@ -1192,7 +1197,7 @@ function DashboardPreview({ lang, live }: { lang: UILanguage; live: boolean }) {
     analysisReady: { en: "Analysis ready", it: "Analisi pronta", es: "Analisis listo", fr: "Analyse prete", de: "Analyse bereit" },
     kdp: { en: "KDP", it: "KDP", es: "KDP", fr: "KDP", de: "KDP" },
     marketLayer: { en: "Market layer", it: "Livello mercato", es: "Capa mercado", fr: "Couche marche", de: "Marktebene" },
-    bottom: { en: "Author Identity, Background Atmosphere and Publishing Shelf stay connected.", it: "Identita autore, atmosfera e scaffale pubblicazione restano collegati.", es: "Identidad autor, atmosfera y publicacion quedan conectadas.", fr: "Identite auteur, atmosphere et publication restent reliees.", de: "Autorenidentitat, Atmosphare und Publishing bleiben verbunden." },
+    bottom: { en: "Author Identity, Background Atmosphere and Publishing Shelf stay connected.", it: "Identità autore, atmosfera e scaffale pubblicazione restano collegati.", es: "Identidad autor, atmosfera y publicacion quedan conectadas.", fr: "Identite auteur, atmosphere et publication restent reliees.", de: "Autorenidentitat, Atmosphare und Publishing bleiben verbunden." },
   };
   const nav = [
     { en: "Dashboard", it: "Dashboard", es: "Dashboard", fr: "Dashboard", de: "Dashboard" },

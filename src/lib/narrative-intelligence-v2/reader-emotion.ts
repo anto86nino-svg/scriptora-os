@@ -53,6 +53,7 @@ export function simulateReaderEmotion(input: {
     genre: input.config?.genre,
     bookIntelligence: input.config?.bookIntelligence,
   });
+
   const bestseller = bestsellerRaw ?? {
     scores: {
       hookStrength: 0,
@@ -73,7 +74,9 @@ export function simulateReaderEmotion(input: {
     chapterIndex: input.chapterIndex,
     evaluatedAt: new Date().toISOString(),
   };
+
   const editorial = analyzeNovel(text);
+
   const telemetry = getNarrativeTelemetrySnapshot({
     config: {
       genre: (input.config?.genre || "literary-fiction") as any,
@@ -82,7 +85,7 @@ export function simulateReaderEmotion(input: {
     currentText: text,
   });
 
-  const openQuestions = (text.match(/\?/g) || []).length;
+const openQuestions = (text.match(/\?/g) || []).length;
   const mysterySignals = (text.match(/\b(secret|segreto|unknown|mystery|mistero|who|chi|why|perché)\b/gi) || []).length;
 
   let curiosity = clamp(

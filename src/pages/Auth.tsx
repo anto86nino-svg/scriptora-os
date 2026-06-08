@@ -162,6 +162,9 @@ function clearAuthCallbackUrl() {
  */
 export default function AuthPage() {
   useUILanguage();
+  useEffect(() => {
+    document.title = "Scriptora OS — Accedi";
+  }, []);
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const redirectingRef = useRef(false);

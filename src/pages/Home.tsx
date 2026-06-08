@@ -63,7 +63,6 @@ export default function Home() {
     if (legalState?.legalRequired && !consentValid) {
       openConsent();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [legalState?.legalRequired, consentValid]);
 
   const handleLogoClick = () => {
@@ -83,11 +82,15 @@ export default function Home() {
   };
 
   const handleStart = () => {
-    if (canStart) {
-      navigate("/dashboard");
-    } else {
+    if (!canStart) {
       openConsent();
+      return;
     }
+    if (!user && !devOn) {
+      navigate("/auth");
+      return;
+    }
+    navigate("/dashboard");
   };
 
   const openConsent = () => {
