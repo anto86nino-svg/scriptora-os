@@ -779,6 +779,13 @@ function stringifyField(value: unknown): string {
 function normalizeBlueprint(raw: unknown, config: BookConfig): BookBlueprint {
   const source = raw && typeof raw === "object" ? raw as Partial<BookBlueprint> : {};
   const outlines = Array.isArray(source.chapterOutlines) ? source.chapterOutlines : [];
+  const themes = Array.isArray(source.themes)
+    ? source.themes.map(stringifyField).map((x) => x.trim()).filter(Boolean)
+    : [];
+  const overview = stringifyField(source.overview).trim() || stringifyField(raw).trim() || `Blueprint for "${config.title}".`;
+  const emotionalArc = stringifyField(source.emotionalArc).trim();
+  const blueprintContext = { overview, themes, emotionalArc };
+  const resolvedTitles: string[] = [];
   const chapterOutlines = Array.from({ length: config.numberOfChapters }, (_, i) => {
     const item = outlines[i] || {};
     const summary = stringifyField((item as any).summary).trim() || `Develop chapter ${i + 1} of "${config.title}".`;
@@ -786,7 +793,10 @@ function normalizeBlueprint(raw: unknown, config: BookConfig): BookBlueprint {
       config,
       summary,
       totalChapters: config.numberOfChapters,
+      blueprint: blueprintContext,
+      previousTitles: resolvedTitles,
     });
+    resolvedTitles.push(title);
     const rawSubs = Array.isArray((item as any).subchapters) ? (item as any).subchapters : [];
     const subchapterCount = getSubchaptersPerChapter(config);
     const subchapters = subchapterCount > 0
@@ -805,15 +815,11 @@ function normalizeBlueprint(raw: unknown, config: BookConfig): BookBlueprint {
     return subchapters?.length ? { title, summary, ...extras, subchapters } : { title, summary, ...extras };
   });
 
-  const themes = Array.isArray(source.themes)
-    ? source.themes.map(stringifyField).map((x) => x.trim()).filter(Boolean)
-    : [];
-
   return {
-    overview: stringifyField(source.overview).trim() || stringifyField(raw).trim() || `Blueprint for "${config.title}".`,
+    overview,
     chapterOutlines,
     themes,
-    emotionalArc: stringifyField(source.emotionalArc).trim(),
+    emotionalArc,
     integrity: normalizeBlueprintIntegrity((source as any).integrity || (source as any).blueprintIntegrity, config, chapterOutlines),
   };
 }
@@ -1253,12 +1259,21 @@ ${buildGenreBlueprintBlock(config.genre, (config as any).subcategory)}
 
 ${buildBlueprintIntegrityBlueprintRequest(config)}
 
-CRITICAL — BESTSELLER QUALITY TITLES:
-- Chapter titles must be EMOTIONALLY COMPELLING — the kind that make readers flip to that page
-- Titles should be evocative, intriguing, or provocative — NOT generic or descriptive
-- NEVER use bare titles like "Chapter 1", "Chapter 2", "Capitolo 1", "Capitolo 2"
-- Every chapter must have a real specific title; the app will display it as "${formatChapterDisplayTitle(0, "Real specific title", { config })}"
-- Think bestseller table of contents that sells the book on its own
+CRITICAL — INTELLIGENT CHAPTER TITLE ENGINE (CONTENT-FIRST):
+Before naming any chapter, analyze: book title, subtitle, genre, category, target reader, promise, blueprint arc, chapter goal, key concepts, and reader transformation.
+Build a Content Map from core themes, events, concepts, conflicts, questions, transformations, and milestones — then derive each title FROM THAT MAP.
+NEVER use reusable narrative placeholders such as "The Threshold", "The First Crack", "The Hidden Desire", "The Breaking Point", "La soglia", "L'innesco", or similar template formulas.
+Each title must be uniquely derived from THIS book's content — a reader should never feel a chapter title could belong to any random book.
+Reject any title that could belong to any book, does not reveal chapter content, sounds like a placeholder, repeats structure already used in this manuscript, or feels AI-generated/generic.
+Within this manuscript: no repeated title structure, no recycled wording, no renamed versions of another chapter.
+Quality test: if you remove the book title and show only the chapter title, can you still guess what the chapter is about? If NO, regenerate.
+Examples of GOOD content-first titles:
+- History: "Rome Before Rome", "Caesar Crosses the Rubicon"
+- Business: "Why Most Startups Die", "The Scaling Trap"
+- Self-help: "Rewriting Internal Beliefs", "Building Emotional Resilience"
+- Fantasy: "The Last Dragon Pact", "The Gate Beneath the Mountain"
+NEVER use bare titles like "Chapter 1", "Capitolo 1"; display format is "${formatChapterDisplayTitle(0, "Specific content-driven title", { config })}"
+The table of contents must look custom-built for this exact book — as if written by a professional author or developmental editor.
 
 Return a JSON object with:
 - overview: A 2-3 paragraph overview of the book's thesis and emotional journey (in ${config.language})
