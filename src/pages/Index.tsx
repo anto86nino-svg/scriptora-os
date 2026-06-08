@@ -7,10 +7,7 @@ import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { MobileProgressPill } from "@/components/mobile/MobileProgressPill";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { SettingsPanel } from "@/components/SettingsPanel";
-import { AICoachPanel } from "@/components/AICoachPanel";
 import { ProgressTracker } from "@/components/ProgressTracker";
-import { DominationTray } from "@/components/DominationTray";
 import { GuidedProjectFlow } from "@/components/GuidedProjectFlow";
 import { useBookEngine } from "@/hooks/useBookEngine";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
@@ -27,10 +24,15 @@ import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu
 import { Link } from "react-router-dom";
 import { useQuota, usePlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
-import { isProjectComplete } from "@/lib/project-status";
+import { analyzeExportReadiness, type ExportFixAction, type ExportIssue } from "@/lib/export-readiness";
+import { consumeQueuedExportFix } from "@/lib/export-fix-navigation";
+import { ExportIssuesDialog } from "@/components/ExportIssuesDialog";
 
 const CoverGenerator = lazy(() => import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })));
 const PublishPanel = lazy(() => import("@/components/PublishPanel").then((m) => ({ default: m.PublishPanel })));
+const SettingsPanel = lazy(() => import("@/components/SettingsPanel").then((m) => ({ default: m.SettingsPanel })));
+const AICoachPanel = lazy(() => import("@/components/AICoachPanel").then((m) => ({ default: m.AICoachPanel })));
+const DominationTray = lazy(() => import("@/components/DominationTray").then((m) => ({ default: m.DominationTray })));
 
 type ExportFormat = "epub" | "docx" | "pdf";
 
@@ -60,6 +62,8 @@ const Index = () => {
   const [activeSection, setActiveSection] = useState<SectionId | null>("blueprint");
   const [writingSettings, setWritingSettings] = useState<WritingSettings>(loadSettings());
   const [upgradeReason, setUpgradeReason] = useState<null | "export" | "token-limit" | "dominate" | "books-limit">(null);
+  const [exportIssuesOpen, setExportIssuesOpen] = useState(false);
+  const [exportIssues, setExportIssues] = useState<ExportIssue[]>([]);
   const { syncStatus, markSaving, markSaved, markPending, markOffline } = useSyncStatus();
   const engine = useBookEngine({
     onSaving: markSaving,
@@ -110,21 +114,69 @@ const Index = () => {
     if (format === "pdf") void handleExportPdf();
   };
 
+  const handleExportFix = (fix: ExportFixAction) => {
+    setExportIssuesOpen(false);
+    switch (fix.type) {
+      case "open_section":
+        setActiveSection(fix.section);
+        setSidebarOpen(false);
+        break;
+      case "open_cover":
+        setShowCover(true);
+        break;
+      case "generate_blueprint":
+        setActiveSection("blueprint");
+        setSidebarOpen(true);
+        break;
+      case "generate_chapter":
+        setActiveSection(`chapter-${fix.chapterIndex}` as SectionId);
+        engine.generateSingleChapter(fix.chapterIndex);
+        break;
+      case "generate_subchapter":
+        setActiveSection(`chapter-${fix.chapterIndex}-sub-${fix.subIndex}` as SectionId);
+        engine.generateSingleSubchapter(fix.chapterIndex, fix.subIndex);
+        break;
+      case "generate_front_matter":
+        setActiveSection("front-matter");
+        engine.generateFrontMatterSection();
+        break;
+      case "generate_back_matter":
+        setActiveSection("back-matter");
+        engine.generateBackMatterSection();
+        break;
+      default:
+        break;
+    }
+  };
+
+  useEffect(() => {
+    if (!engine.project) return;
+    const queuedFix = consumeQueuedExportFix();
+    if (!queuedFix) return;
+    const timer = window.setTimeout(() => handleExportFix(queuedFix), 400);
+    return () => window.clearTimeout(timer);
+  }, [engine.project?.id]);
+
   const requestExport = (format: ExportFormat) => {
     if (!quota?.canExport) {
       setUpgradeReason("export");
       return;
     }
     if (!engine.project) return;
-    if (!isProjectComplete(engine.project)) {
-      toast.error("Completa tutto il libro prima di esportare.");
+
+    const readiness = analyzeExportReadiness(engine.project, { hasCover: !!coverDataUrl });
+    if (!readiness.canExport) {
+      setExportIssues(readiness.blockers);
+      setExportIssuesOpen(true);
       return;
     }
-    if (!coverDataUrl) {
+
+    if (readiness.warnings.length > 0 && !coverDataUrl && format === "epub") {
       setPendingExportFormat(format);
       setCoverGateOpen(true);
       return;
     }
+
     runExport(format);
   };
 
@@ -215,9 +267,17 @@ const Index = () => {
 
   const handleExport = async (coverOverride?: string) => {
     if (!engine.project) return;
+    const readiness = analyzeExportReadiness(engine.project, { hasCover: !!(coverOverride ?? coverDataUrl) });
+    if (!readiness.canExport) {
+      setExportIssues(readiness.blockers);
+      setExportIssuesOpen(true);
+      return;
+    }
     const errors = validateEpubStructure(engine.project);
     if (errors.length > 0) {
-      alert(`${t("export_blocked_epub")}:\n\n${errors.join("\n")}`);
+      toast.error(errors[0], {
+        description: errors.slice(1, 3).join(" · "),
+      });
       return;
     }
     setIsExporting(true);
@@ -565,11 +625,13 @@ const Index = () => {
                 />
               </div>
               {showCoach && !isMobile && (
-                <AICoachPanel project={engine.project} activeSection={activeSection} onClose={() => setShowCoach(false)}
-                  onApplyRewrite={(chapterIdx, subIdx, text) => {
-                    if (subIdx !== null) engine.updateSubchapterContent(chapterIdx, subIdx, text);
-                    else engine.updateChapterContent(chapterIdx, text);
-                  }} />
+                <Suspense fallback={null}>
+                  <AICoachPanel project={engine.project} activeSection={activeSection} onClose={() => setShowCoach(false)}
+                    onApplyRewrite={(chapterIdx, subIdx, text) => {
+                      if (subIdx !== null) engine.updateSubchapterContent(chapterIdx, subIdx, text);
+                      else engine.updateChapterContent(chapterIdx, text);
+                    }} />
+                </Suspense>
               )}
             </>
           ) : (
@@ -642,9 +704,10 @@ const Index = () => {
         }}
       />
 
-      {isMobile && engine.project && (
+      {isMobile && engine.project && showCoach && (
         <Sheet open={showCoach} onOpenChange={setShowCoach}>
           <SheetContent side="bottom" className="h-[88vh] overflow-hidden rounded-t-2xl border-white/10 p-0">
+            <Suspense fallback={null}>
             <AICoachPanel
               project={engine.project}
               activeSection={activeSection}
@@ -654,6 +717,7 @@ const Index = () => {
                 else engine.updateChapterContent(chapterIdx, text);
               }}
             />
+            </Suspense>
           </SheetContent>
         </Sheet>
       )}
@@ -728,18 +792,25 @@ const Index = () => {
           onExportEpub={guardedExportEpub}
           onExportPdf={guardedExportPdf}
           onExportDocx={guardedExportDocx}
+          onExportFix={handleExportFix}
+          hasCover={!!coverDataUrl}
         />
         </Suspense>
       )}
 
-      <SettingsPanel
-        open={showSettings}
-        onClose={() => setShowSettings(false)}
-        settings={writingSettings}
-        onUpdateSettings={handleUpdateSettings}
-        onLanguageChange={handleLanguageChange}
-      />
+      {showSettings && (
+        <Suspense fallback={null}>
+          <SettingsPanel
+            open={showSettings}
+            onClose={() => setShowSettings(false)}
+            settings={writingSettings}
+            onUpdateSettings={handleUpdateSettings}
+            onLanguageChange={handleLanguageChange}
+          />
+        </Suspense>
+      )}
 
+      <Suspense fallback={null}>
       <DominationTray
         currentProjectId={engine.project?.id}
         onApplyToChapter={async (projectId, chapterIndex, newContent) => {
@@ -770,11 +841,19 @@ const Index = () => {
           setSidebarOpen(false);
         }}
       />
+      </Suspense>
       <UpgradeModal
         open={!!upgradeReason}
         reason={upgradeReason || "export"}
         currentPlan={quota?.plan || "free"}
         onClose={() => setUpgradeReason(null)}
+      />
+
+      <ExportIssuesDialog
+        open={exportIssuesOpen}
+        issues={exportIssues}
+        onClose={() => setExportIssuesOpen(false)}
+        onFix={(issue) => handleExportFix(issue.fix)}
       />
     </div>
   );

@@ -149,6 +149,25 @@ function genreKey(config?: Partial<BookConfig>): string {
   return "general";
 }
 
+export function isBookTitleFragment(title: string, config?: Partial<BookConfig>): boolean {
+  const titleLoose = normalizeLoose(title);
+  const bookTitle = normalizeLoose(config?.title || "");
+  const bookSub = normalizeLoose(config?.subtitle || "");
+  if (!titleLoose || !bookTitle) return false;
+
+  if (titleLoose === bookTitle || (bookSub && titleLoose === bookSub)) return true;
+  if (bookTitle.includes(titleLoose) && titleLoose.length >= Math.min(10, bookTitle.length * 0.55)) return true;
+  if (titleLoose.includes(bookTitle) && bookTitle.length >= titleLoose.length * 0.7) return true;
+
+  const titleTokens = titleLoose.split(/\s+/).filter((t) => t.length > 2);
+  const bookTokens = new Set(
+    `${bookTitle} ${bookSub}`.split(/\s+/).filter((t) => t.length > 2),
+  );
+  if (titleTokens.length === 0) return false;
+  const overlap = titleTokens.filter((t) => bookTokens.has(t)).length / titleTokens.length;
+  return overlap >= 0.75;
+}
+
 function bookKeywords(config?: Partial<BookConfig>): string[] {
   const blob = [
     config?.title,
@@ -223,63 +242,104 @@ function phraseFromSummary(summary: string, english: boolean): string {
   return "";
 }
 
+function deriveFromOverview(map: ReturnType<typeof buildChapterContentMap>, index: number): string {
+  const sentences = map.overview
+    .split(/[.!?]+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 20);
+  if (!sentences.length) return "";
+  const sentence = sentences[index % sentences.length];
+  return phraseFromSummary(sentence, languageIsEnglish(map.language));
+}
+
 function composeGenreTitle(map: ReturnType<typeof buildChapterContentMap>, index: number): string {
   const english = languageIsEnglish(map.language);
-  const kw = map.keywords[0] || map.properNouns[0] || map.bookTitle.split(/\s+/)[0] || "";
-  const second = map.keywords[1] || map.properNouns[1] || "";
+  const fromOverview = deriveFromOverview(map, index);
+  if (fromOverview && !isBookTitleFragment(fromOverview, { title: map.bookTitle, subtitle: map.bookSubtitle, language: map.language })) {
+    return fromOverview;
+  }
+
+  const proper = map.properNouns.filter((n) => !isBookTitleFragment(n, { title: map.bookTitle, subtitle: map.bookSubtitle }));
+  const summaryProper = extractProperNounPhrases(map.chapterGoal).filter(
+    (n) => !isBookTitleFragment(n, { title: map.bookTitle, subtitle: map.bookSubtitle }),
+  );
+  const anchor = summaryProper[0] || proper[0] || map.themes[index % Math.max(1, map.themes.length)] || "";
 
   switch (map.genreKey) {
     case "history":
-      return english
-        ? capitalizeTitle(`${kw}${second ? ` and ${second}` : ""}`.trim())
-        : capitalizeTitle(`${kw}${second ? ` e ${second}` : ""}`.trim());
+      return anchor
+        ? capitalizeTitle(`${anchor}${index > 0 ? ` · ${index + 1}` : ""}`.trim())
+        : english
+          ? `Historical Turn ${index + 1}`
+          : `Svolta storica ${index + 1}`;
     case "business":
       return english
-        ? `Why ${kw || "Growth"} Breaks Here`
-        : `Perche ${kw || "la crescita"} si inceppa qui`;
+        ? `Why Growth Stalls at Step ${index + 1}`
+        : `Perche la crescita si ferma al passo ${index + 1}`;
     case "selfhelp":
       return english
-        ? `Rewriting the ${kw || "Inner"} Pattern`
-        : `Riscrivere il pattern ${kw || "interiore"}`;
+        ? `Rewriting Pattern ${index + 1}`
+        : `Riscrivere il pattern ${index + 1}`;
     case "fantasy":
-      return english
-        ? `The ${kw || "Gate"} Below ${second || "the Mountain"}`
-        : `Il ${kw || "portale"} sotto ${second || "la montagna"}`;
+      return anchor
+        ? capitalizeTitle(`${anchor} Beneath the Mountain`)
+        : english
+          ? `The Gate Below the Ridge`
+          : `Il portale sotto la cresta`;
     case "romance":
       return english
-        ? `The Night ${kw || "He"} Crossed the Line`
-        : `La notte in cui ${kw || "lui"} varco il limite`;
+        ? `The Night the Rules Broke`
+        : `La notte in cui crollarono le regole`;
     case "thriller":
-      return english
-        ? `${kw || "Evidence"} That Changes Everything`
-        : `${kw || "L'indizio"} che cambia tutto`;
+      return anchor
+        ? capitalizeTitle(`${anchor} Changes Everything`)
+        : english
+          ? `Evidence That Shifts the Case`
+          : `L'indizio che cambia il caso`;
     default:
-      return english
-        ? `${map.bookTitle}: Movement ${index + 1}`
-        : `${map.bookTitle}: movimento ${index + 1}`;
+      return anchor
+        ? capitalizeTitle(`${anchor}: Chapter Arc ${index + 1}`)
+        : english
+          ? `Chapter Movement ${index + 1}`
+          : `Movimento del capitolo ${index + 1}`;
   }
+}
+
+const TITLE_QUALITY_THRESHOLD = 55;
+
+export function scoreChapterTitleQuality(
+  title: string,
+  summary: string,
+  config?: Partial<BookConfig>,
+  previousTitles: string[] = [],
+): number {
+  const cleaned = cleanTitle(title);
+  if (!cleaned) return 0;
+  if (isTemplateChapterTitle(cleaned, config?.language)) return 0;
+  if (isBookTitleFragment(cleaned, config)) return 0;
+  let score = 0;
+  if (cleaned.split(/\s+/).length >= 2) score += 15;
+  if (cleaned.split(/\s+/).length >= 3) score += 10;
+  if (!isTemplateChapterTitle(cleaned, config?.language)) score += 25;
+  if (!isBookTitleFragment(cleaned, config)) score += 25;
+
+  const titleLoose = normalizeLoose(cleaned);
+  const summaryLoose = normalizeLoose(summary);
+  const titleTokens = titleLoose.split(/\s+/).filter((t) => t.length > 3);
+  const summaryAnchored = titleTokens.some((token) => summaryLoose.includes(token));
+  if (summaryAnchored) score += 20;
+  if (!isRepeatedTitleStructure(cleaned, previousTitles)) score += 10;
+  if (cleaned.length >= 12) score += 5;
+  return Math.min(100, score);
 }
 
 export function passesChapterTitleQualityTest(
   title: string,
   summary: string,
   config?: Partial<BookConfig>,
+  previousTitles: string[] = [],
 ): boolean {
-  const cleaned = cleanTitle(title);
-  if (!cleaned || cleaned.split(/\s+/).length < 2) return false;
-  if (isTemplateChapterTitle(cleaned, config?.language)) return false;
-
-  const titleLoose = normalizeLoose(cleaned);
-  const summaryLoose = normalizeLoose(summary);
-  const bookLoose = normalizeLoose(`${config?.title || ""} ${config?.subtitle || ""}`);
-
-  const titleTokens = titleLoose.split(/\s+/).filter((t) => t.length > 3);
-  const hasSpecificToken = titleTokens.some(
-    (token) => summaryLoose.includes(token) || bookLoose.includes(token),
-  );
-
-  if (!hasSpecificToken && titleTokens.length < 3) return false;
-  return true;
+  return scoreChapterTitleQuality(title, summary, config, previousTitles) >= TITLE_QUALITY_THRESHOLD;
 }
 
 export function deriveContentFirstChapterTitle(
@@ -310,30 +370,51 @@ export function resolveIntelligentChapterTitle(
   const stripped = cleanTitle(String(rawTitle || "").replace(/^(?:chapter|capitolo)\s*\d+\s*[:.\-–—·]\s*/i, ""));
   const previousTitles = context.previousTitles || [];
 
+  const summary = String(context.summary || "");
   const candidates: string[] = [];
-  if (stripped && !isTemplateChapterTitle(stripped, language)) {
+
+  const fromSummary = phraseFromSummary(summary, languageIsEnglish(language));
+  if (fromSummary) candidates.push(fromSummary);
+
+  if (stripped && !isTemplateChapterTitle(stripped, language) && !isBookTitleFragment(stripped, context.config)) {
     candidates.push(stripped);
   }
 
-  const fromSummary = phraseFromSummary(String(context.summary || ""), languageIsEnglish(language));
-  if (fromSummary) candidates.push(fromSummary);
-
   candidates.push(deriveContentFirstChapterTitle(index, context));
 
+  const theme = context.blueprint?.themes?.[index % Math.max(1, context.blueprint?.themes?.length || 1)];
+  if (theme && theme.split(/\s+/).length >= 2) candidates.push(capitalizeTitle(theme));
+
+  let best = "";
+  let bestScore = -1;
   for (const candidate of candidates) {
     const title = cleanTitle(candidate);
     if (!title) continue;
-    if (isTemplateChapterTitle(title, language)) continue;
-    if (isRepeatedTitleStructure(title, previousTitles)) continue;
-    if (!passesChapterTitleQualityTest(title, String(context.summary || ""), context.config)) continue;
-    return title;
+    const score = scoreChapterTitleQuality(title, summary, context.config, previousTitles);
+    if (score > bestScore) {
+      best = title;
+      bestScore = score;
+    }
+    if (score >= TITLE_QUALITY_THRESHOLD && !isRepeatedTitleStructure(title, previousTitles)) {
+      return title;
+    }
+  }
+
+  if (best && bestScore >= TITLE_QUALITY_THRESHOLD && !isRepeatedTitleStructure(best, previousTitles)) {
+    return best;
   }
 
   const fallback = deriveContentFirstChapterTitle(index, context);
   let attempt = fallback;
   let n = 1;
-  while (isRepeatedTitleStructure(attempt, previousTitles) && n < 6) {
-    attempt = `${fallback} · ${n + 1}`;
+  while (
+    (isRepeatedTitleStructure(attempt, previousTitles) ||
+      isBookTitleFragment(attempt, context.config) ||
+      !passesChapterTitleQualityTest(attempt, summary, context.config, previousTitles)) &&
+    n < 8
+  ) {
+    const english = languageIsEnglish(language);
+    attempt = english ? `${fallback} · Arc ${n + 1}` : `${fallback} · arco ${n + 1}`;
     n += 1;
   }
   return cleanTitle(attempt) || `Chapter ${index + 1}`;

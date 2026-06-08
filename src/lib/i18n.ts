@@ -80,6 +80,11 @@ const translations: Record<string, Record<UILanguage, string>> = {
   export: { en: "Export", it: "Esporta", es: "Exportar", fr: "Exporter", de: "Exportieren" },
   mobile_progress_chapter: { en: "Chapter {current}/{total}", it: "Capitolo {current}/{total}", es: "Capítulo {current}/{total}", fr: "Chapitre {current}/{total}", de: "Kapitel {current}/{total}" },
   mobile_progress_chapters_done: { en: "{done}/{total} chapters", it: "{done}/{total} capitoli", es: "{done}/{total} capítulos", fr: "{done}/{total} chapitres", de: "{done}/{total} Kapitel" },
+  export_issues_title: { en: "Export needs attention", it: "Export da completare", es: "Exportación pendiente", fr: "Export à corriger", de: "Export benötigt Aufmerksamkeit" },
+  export_blockers: { en: "Blocking issues", it: "Problemi bloccanti", es: "Problemas bloqueantes", fr: "Blocages", de: "Blockierende Probleme" },
+  export_warnings: { en: "Optional improvements", it: "Miglioramenti consigliati", es: "Mejoras opcionales", fr: "Améliorations optionnelles", de: "Optionale Verbesserungen" },
+  cause: { en: "Cause", it: "Causa", es: "Causa", fr: "Cause", de: "Ursache" },
+  show_more_chapters: { en: "Show {count} more chapters", it: "Mostra altri {count} capitoli", es: "Mostrar {count} capítulos más", fr: "Afficher {count} chapitres de plus", de: "{count} weitere Kapitel anzeigen" },
 
   // Molly (your AI writing companion — friendly assistant)
   ai_coach: { en: "Molly", it: "Molly", es: "Molly", fr: "Molly", de: "Molly" },

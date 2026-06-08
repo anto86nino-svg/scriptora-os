@@ -18,6 +18,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
   const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [showAllChapters, setShowAllChapters] = useState(false);
 
   const toggleChapter = (i: number) => {
     setExpandedChapters(prev => {
@@ -123,7 +124,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
             </div>
           )}
 
-          {blueprint.chapterOutlines.map((outline, i) => {
+          {(showAllChapters ? blueprint.chapterOutlines : blueprint.chapterOutlines.slice(0, 24)).map((outline, i) => {
             const isExpanded = expandedChapters.has(i);
             const chGenerated = chapters[i] && chapters[i].content.length > 0;
             const hasSubs = chGenerated && chapters[i].subchapters.length > 0;
@@ -190,6 +191,15 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
               </div>
             );
           })}
+
+          {blueprint.chapterOutlines.length > 24 && !showAllChapters && (
+            <button
+              onClick={() => setShowAllChapters(true)}
+              className="mt-1 w-full rounded-lg px-3 py-2 text-left text-[11px] font-medium text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
+            >
+              {tt("show_more_chapters", { count: blueprint.chapterOutlines.length - 24 })}
+            </button>
+          )}
         </div>
       )}
 

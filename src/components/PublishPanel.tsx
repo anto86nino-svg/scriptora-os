@@ -7,6 +7,8 @@ import {
 import { toast } from "sonner";
 import { usePlan } from "@/lib/plan";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import { analyzeExportReadiness, type ExportFixAction, type ExportIssue } from "@/lib/export-readiness";
+import { ExportIssuesDialog } from "@/components/ExportIssuesDialog";
 
 interface PublishPanelProps {
   project: BookProject | null;
@@ -20,6 +22,8 @@ interface PublishPanelProps {
   onExportEpub?: () => void;
   onExportPdf?: () => void;
   onExportDocx?: () => void;
+  onExportFix?: (fix: ExportFixAction) => void;
+  hasCover?: boolean;
 }
 
 const BLANK_CONFIG: BookConfig = {
@@ -44,10 +48,12 @@ export function PublishPanel({
   project, onClose, onStartFresh,
   onGenerateFullBook, isBookGenerating,
   onUpdateConfig, onUpdateChapterContent, onSaveProject,
-  onExportEpub, onExportPdf, onExportDocx
+  onExportEpub, onExportPdf, onExportDocx, onExportFix, hasCover = false,
 }: PublishPanelProps) {
   const { plan } = usePlan();
   const isFreePlan = plan === "free";
+  const [exportIssuesOpen, setExportIssuesOpen] = useState(false);
+  const [exportIssues, setExportIssues] = useState<ExportIssue[]>([]);
   // Session-local: each Publish open starts fresh, ignoring previous projects
   const [sessionStarted, setSessionStarted] = useState(false);
   const [draftConfig, setDraftConfig] = useState<BookConfig>({ ...BLANK_CONFIG });
@@ -75,6 +81,27 @@ export function PublishPanel({
       setElapsedSec(0);
     }
   }, [isWorking]);
+
+  const tryExport = (runner?: () => void) => {
+    if (!project || !runner) return;
+    const readiness = analyzeExportReadiness(project, { hasCover });
+    if (!readiness.canExport) {
+      setExportIssues(readiness.blockers);
+      setExportIssuesOpen(true);
+      return;
+    }
+    runner();
+  };
+
+  const handleExportIssueFix = (issue: ExportIssue) => {
+    setExportIssuesOpen(false);
+    if (issue.fix.type === "open_cover") {
+      onClose();
+      onExportFix?.(issue.fix);
+      return;
+    }
+    onExportFix?.(issue.fix);
+  };
 
   const handleStartFresh = () => {
     if (!draftConfig.title.trim()) {
@@ -471,13 +498,13 @@ export function PublishPanel({
               💾 Salva progetto
             </button>
             <div className="grid grid-cols-3 gap-1">
-              <button onClick={onExportEpub} disabled={!onExportEpub || completedChaptersLive === 0}
+              <button onClick={() => tryExport(onExportEpub)} disabled={!onExportEpub}
                 className="flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-[10px] font-semibold bg-muted/50 hover:bg-muted text-foreground border border-border transition-colors disabled:opacity-40"
                 title="Esporta EPUB"><Download className="h-3 w-3" />EPUB</button>
-              <button onClick={onExportPdf} disabled={!onExportPdf || completedChaptersLive === 0}
+              <button onClick={() => tryExport(onExportPdf)} disabled={!onExportPdf}
                 className="flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-[10px] font-semibold bg-muted/50 hover:bg-muted text-foreground border border-border transition-colors disabled:opacity-40"
                 title="Esporta PDF"><Download className="h-3 w-3" />PDF</button>
-              <button onClick={onExportDocx} disabled={!onExportDocx || completedChaptersLive === 0}
+              <button onClick={() => tryExport(onExportDocx)} disabled={!onExportDocx}
                 className="flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-[10px] font-semibold bg-muted/50 hover:bg-muted text-foreground border border-border transition-colors disabled:opacity-40"
                 title="Esporta DOCX"><Download className="h-3 w-3" />DOCX</button>
             </div>
@@ -532,6 +559,13 @@ export function PublishPanel({
           </div>
         </div>
       </div>
+
+      <ExportIssuesDialog
+        open={exportIssuesOpen}
+        issues={exportIssues}
+        onClose={() => setExportIssuesOpen(false)}
+        onFix={handleExportIssueFix}
+      />
     </div>
   );
 }

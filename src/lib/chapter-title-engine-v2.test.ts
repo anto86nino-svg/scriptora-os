@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   deriveContentFirstChapterTitle,
+  isBookTitleFragment,
   isRepeatedTitleStructure,
   isTemplateChapterTitle,
   passesChapterTitleQualityTest,
@@ -57,6 +58,31 @@ describe("chapter-title-engine-v2", () => {
         historyConfig,
       ),
     ).toBe(false);
+  });
+
+  it("rejects repeated book title fragments across chapters", () => {
+    const romeConfig = {
+      title: "Roma e Antica",
+      subtitle: "Storia breve",
+      genre: "historical",
+      category: "History",
+      language: "Italian" as const,
+    };
+    expect(isBookTitleFragment("Roma e Antica", romeConfig)).toBe(true);
+
+    const first = resolveIntelligentChapterTitle("Roma e Antica", 0, {
+      config: romeConfig,
+      summary: "Le prime comunità lungo il Tevere prima della fondazione mitica di Roma.",
+      previousTitles: [],
+    });
+    const second = resolveIntelligentChapterTitle("Roma e Antica", 1, {
+      config: romeConfig,
+      summary: "Il conflitto degli ordini e la nascita delle istituzioni repubblicane.",
+      previousTitles: [first],
+    });
+    expect(first).not.toBe("Roma e Antica");
+    expect(second).not.toBe(first);
+    expect(second).not.toBe("Roma e Antica");
   });
 
   it("generates distinct titles for different books on same subject", () => {

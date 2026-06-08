@@ -1,4 +1,5 @@
 import { resolveChapterTitle } from "@/lib/chapter-titles";
+import { getSubchaptersPerChapter } from "@/types/book";
 
 type AnyBookProject = any;
 
@@ -419,6 +420,7 @@ export function normalizeExportProject(project: AnyBookProject): AnyBookProject 
     author
   );
 
+  const subchaptersEnabled = getSubchaptersPerChapter(config) > 0;
   const chapters = Array.isArray(project?.chapters)
     ? project.chapters.map((chapter: any, index: number) => {
         const title = cleanExportText(resolveChapterTitle(chapter?.title, index, {
@@ -430,7 +432,7 @@ export function normalizeExportProject(project: AnyBookProject): AnyBookProject 
           ...chapter,
           title,
           content: stripChapterEcho(chapter?.content || "", title, config.language, index + 1),
-          subchapters: Array.isArray(chapter?.subchapters)
+          subchapters: subchaptersEnabled && Array.isArray(chapter?.subchapters)
             ? chapter.subchapters.map((sub: any) => ({
                 ...sub,
                 title: cleanExportText(sub?.title || ""),

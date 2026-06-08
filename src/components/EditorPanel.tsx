@@ -6,7 +6,6 @@ import { MobileWritingFAB } from "@/components/mobile/MobileWritingFAB";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { GenreProfileBadge } from "@/components/GenreProfileBadge";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
-import { GenreCoachPanel } from "@/components/GenreCoachPanel";
 import { downloadText } from "@/lib/download";
 import { RewriteLevel, ChunkProgress } from "@/lib/generation";
 import { cn } from "@/lib/utils";
@@ -47,6 +46,9 @@ interface EditorPanelProps {
 
 const ChapterIntelligencePanel = lazy(() =>
   import("@/components/ChapterIntelligencePanel").then((module) => ({ default: module.ChapterIntelligencePanel })),
+);
+const GenreCoachPanel = lazy(() =>
+  import("@/components/GenreCoachPanel").then((module) => ({ default: module.GenreCoachPanel })),
 );
 
 export function EditorPanel({
@@ -606,15 +608,17 @@ function ChapterView({
       )}
 
       {isGenerated && !mobileFocus && (
-        <GenreCoachPanel
-          chapterTitle={displayedTitle}
-          chapterText={chapter?.content || ""}
-          genre={project.config.genre}
-          subcategory={project.config.subcategory}
-          language={project.config.language}
-          project={project}
-          chapterIndex={chapterIndex}
-        />
+        <Suspense fallback={null}>
+          <GenreCoachPanel
+            chapterTitle={displayedTitle}
+            chapterText={chapter?.content || ""}
+            genre={project.config.genre}
+            subcategory={project.config.subcategory}
+            language={project.config.language}
+            project={project}
+            chapterIndex={chapterIndex}
+          />
+        </Suspense>
       )}
 
       {mobileFocus && (

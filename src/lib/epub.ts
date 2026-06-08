@@ -597,8 +597,7 @@ export function validateEpubStructure(project: BookProject): string[] {
     if (!ch.content || ch.content.length === 0) errors.push(`Chapter ${i + 1} has no content.`);
     if (!ch.title) errors.push(`Chapter ${i + 1} has no title.`);
   });
-  if (!frontMatter) errors.push("Front matter not generated.");
-  if (!backMatter) errors.push("Back matter not generated.");
+  // Front/back matter are recommended but not required for export.
 
   // 2. Build file→anchor map matching the generator
   const fileAnchors = new Map<string, Set<string>>();

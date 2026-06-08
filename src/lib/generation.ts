@@ -8,6 +8,7 @@ import { validateEditorial } from "@/lib/editorial-validator";
 import { withRetry, getBreakerCooldown } from "@/lib/api-resilience";
 import { normalizeAuthorIdentity } from "@/lib/author-identity";
 import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import { deriveSubchapterTitle } from "@/lib/subchapter-titles";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
 import { sanitizeManuscript } from "@/lib/editorial-wow/FinalManuscriptSanitizer";
@@ -802,10 +803,12 @@ function normalizeBlueprint(raw: unknown, config: BookConfig): BookBlueprint {
     const subchapters = subchapterCount > 0
       ? Array.from({ length: subchapterCount }, (_, j) => {
           const sub = rawSubs[j] || {};
-          const fallbackTitle = buildFallbackSubchapterTitle(title, j, config.language);
+          const subSummary = stringifyField(sub?.summary).trim();
+          const fallbackTitle = deriveSubchapterTitle(title, summary, j, subSummary, subchapterCount, config.language);
+          const resolvedSubTitle = stringifyField(sub?.title).trim() || fallbackTitle;
           return {
-            title: stringifyField(sub?.title).trim() || fallbackTitle,
-            summary: stringifyField(sub?.summary).trim() || `${summary} Focus this section on ${fallbackTitle.toLowerCase()}.`,
+            title: resolvedSubTitle,
+            summary: subSummary || `${summary} Develop this beat: ${resolvedSubTitle}.`,
             ...normalizeSubchapterOutlineExtras(sub),
           };
         })
@@ -1252,7 +1255,9 @@ Tone: ${config.tone}
 Language: ${config.language} — ALL content MUST be in ${config.language}
 Book length: ${bookInfo.label} (~${totalWords.toLocaleString()} total words)
 Number of chapters: ${config.numberOfChapters}
-${subchapterCount > 0 ? `Include EXACTLY ${subchapterCount} real subchapters per chapter. Each subchapter must have a specific title, a clear narrative/editorial purpose, and a distinct beat. They must not be decorative labels.` : "No subchapters."}
+${subchapterCount > 0
+  ? `Include EXACTLY ${subchapterCount} real subchapters per chapter. Each subchapter title must be derived from that chapter's content — never generic placeholders. Example for "Rome Before Rome": "Life Along the Tiber", "The First Settlements", "Why the Palatine Won".`
+  : "Subchapter mode is OFF — do NOT include subchapters in chapterOutlines."}
 ${structureScaffold}
 
 ${buildGenreBlueprintBlock(config.genre, (config as any).subcategory)}

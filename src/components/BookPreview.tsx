@@ -2,6 +2,8 @@ import { useState } from "react";
 import { BookProject } from "@/types/book";
 import { RefreshCw, ChevronRight, Sparkles, Loader2, Download, Image, Plus, Lock } from "lucide-react";
 import { generateEpub, downloadEpub, validateEpubStructure } from "@/lib/epub";
+import { analyzeExportReadiness } from "@/lib/export-readiness";
+import { toast } from "sonner";
 import { CoverGenerator } from "./CoverGenerator";
 import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { usePlan, PLAN_LIMITS } from "@/lib/plan";
@@ -41,10 +43,17 @@ export function BookPreview({
       return;
     }
     // Run validation first
+    const readiness = analyzeExportReadiness(project, { hasCover: !!(coverOverride ?? coverDataUrl) });
+    if (!readiness.canExport) {
+      toast.error(readiness.blockers[0]?.title || "Export bloccato", {
+        description: readiness.blockers[0]?.description,
+      });
+      return;
+    }
     const errors = validateEpubStructure(project);
     if (errors.length > 0) {
       console.error("EPUB validation failed:", errors);
-      alert(`EPUB export blocked — validation errors:\n\n${errors.join("\n")}`);
+      toast.error("EPUB non esportabile", { description: errors.slice(0, 2).join(" · ") });
       return;
     }
 
@@ -65,11 +74,14 @@ export function BookPreview({
       setShowUpgrade(true);
       return;
     }
-    if (phase !== "complete") {
-      alert("Completa tutto il libro prima di esportare.");
+    const readiness = analyzeExportReadiness(project, { hasCover: !!coverDataUrl });
+    if (!readiness.canExport) {
+      toast.error(readiness.blockers[0]?.title || "Export bloccato", {
+        description: readiness.blockers[0]?.description,
+      });
       return;
     }
-    if (phase === "complete" && !coverDataUrl) {
+    if (!coverDataUrl) {
       setCoverGateOpen(true);
       return;
     }
@@ -105,8 +117,8 @@ export function BookPreview({
             </button>
             <button
               onClick={handleExportEpub}
-              disabled={isExporting || phase !== "complete"}
-              title={phase !== "complete" ? "Completa tutto il libro prima di esportare" : canExport ? "Export EPUB" : "Finish your book — unlock export"}
+              disabled={isExporting}
+              title={canExport ? "Export EPUB" : "Finish your book — unlock export"}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40"
             >
               {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <Download className="h-3 w-3" />}
