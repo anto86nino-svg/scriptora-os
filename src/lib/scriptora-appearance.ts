@@ -178,7 +178,7 @@ export const WRITING_FONTS: Array<{ id: ScriptoraWritingFont; name: string; css:
 ];
 
 export const DEFAULT_SCRIPTORA_APPEARANCE: ScriptoraAppearanceSettings = {
-  backgroundId: "midnight-ink",
+  backgroundId: "clean-pro",
   writingFont: "system",
 };
 

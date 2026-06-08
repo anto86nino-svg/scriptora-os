@@ -68,7 +68,7 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [backgroundId, setBackgroundId] = useState<ScriptoraBackgroundId>("midnight-ink");
+  const [backgroundId, setBackgroundId] = useState<ScriptoraBackgroundId>("clean-pro");
   const [writingFont, setWritingFont] = useState<ScriptoraWritingFont>("system");
   const [uiLanguage, setUiLanguage] = useState<UILanguage>(getUILanguage());
   const [hasCustomBackground, setHasCustomBackground] = useState(false);

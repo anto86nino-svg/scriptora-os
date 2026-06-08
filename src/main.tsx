@@ -1,4 +1,5 @@
 import { applyScriptoraAppearance } from "@/lib/scriptora-appearance";
+import { purgeImmersiveThemeExperiment } from "@/lib/theme-reset";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
@@ -69,8 +70,9 @@ VITE_SUPABASE_PROJECT_ID=&lt;project-ref&gt;</pre>
   }
 })();
 
-// Apply saved visual settings before first paint.
+// Strip Horror / immersive experiment state, then apply clean default appearance.
 try {
+  purgeImmersiveThemeExperiment();
   applyScriptoraAppearance();
 } catch {
   /* ignore appearance boot errors */
