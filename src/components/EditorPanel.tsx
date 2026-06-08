@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect, useMemo, useCallback, memo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, memo, lazy, Suspense } from "react";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating } from "@/types/book";
 import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, AlertTriangle, Download, Zap } from "lucide-react";
-import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel";
+import { MobileWritingFAB } from "@/components/mobile/MobileWritingFAB";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { GenreProfileBadge } from "@/components/GenreProfileBadge";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
 import { GenreCoachPanel } from "@/components/GenreCoachPanel";
@@ -40,7 +41,13 @@ interface EditorPanelProps {
   onUpdateBlueprintOutlineSummary?: (index: number, summary: string) => void;
   onUpdateFrontMatterField?: (field: string, value: string) => void;
   onUpdateBackMatterField?: (field: string, value: string) => void;
+  onMobileExport?: () => void;
+  mobileWritingFocus?: boolean;
 }
+
+const ChapterIntelligencePanel = lazy(() =>
+  import("@/components/ChapterIntelligencePanel").then((module) => ({ default: module.ChapterIntelligencePanel })),
+);
 
 export function EditorPanel({
   project, activeSection,
@@ -54,8 +61,11 @@ export function EditorPanel({
   writingSettings,
   onUpdateBlueprintField, onUpdateBlueprintOutlineTitle, onUpdateBlueprintOutlineSummary,
   onUpdateFrontMatterField, onUpdateBackMatterField,
+  onMobileExport,
+  mobileWritingFocus = false,
 }: EditorPanelProps) {
   const { blueprint, frontMatter, chapters, backMatter, config, phase } = project;
+  const isMobile = useIsMobile();
   const [mode, setMode] = useState<"edit" | "preview">("edit");
 
   const ws = writingSettings || { fontFamily: "'Times New Roman', Times, serif", fontSize: 16, lineSpacing: 2 };
@@ -72,6 +82,8 @@ export function EditorPanel({
     return { type: "blueprint" as const };
   }, [activeSection]);
 
+  const chapterFocus = isMobile && mobileWritingFocus && view.type === "chapter";
+
   const hasContent = view.type === "chapter"
     ? !!(chapters[view.chapterIndex]?.content)
     : view.type === "subchapter"
@@ -81,8 +93,8 @@ export function EditorPanel({
           : !!blueprint;
 
   return (
-    <div className="flex h-full flex-1 flex-col">
-      {hasContent && (
+    <div className={cn("flex h-full flex-1 flex-col", chapterFocus && "scriptora-mobile-editor")}>
+      {hasContent && !chapterFocus && (
         <div className="flex h-12 shrink-0 items-center justify-center border-b border-white/10 bg-white/[0.035]">
           <div className="ios-segment">
           <button onClick={() => setMode("edit")}
@@ -100,20 +112,22 @@ export function EditorPanel({
       )}
 
       <div className="scrollbar-thin flex-1 overflow-y-auto">
-        <div className={cn("mx-auto px-4 py-6 sm:px-8", mode === "preview" ? "max-w-2xl" : "max-w-4xl")}>
-          <div className={cn("ios-editor-paper p-5 sm:p-7", mode === "preview" && "bg-white/[0.055]")}>
+        <div className={cn("mx-auto", chapterFocus ? "max-w-none px-3 py-3" : "px-4 py-6 sm:px-8", mode === "preview" ? "max-w-2xl" : !chapterFocus && "max-w-4xl")}>
+          <div className={cn(chapterFocus ? "p-3 sm:p-4" : "ios-editor-paper p-5 sm:p-7", mode === "preview" && "bg-white/[0.055]")}>
           {mode === "preview" && hasContent ? (
             <PreviewMode project={project} view={view} ws={ws} />
           ) : (
             <>
-              <div className="flex items-center gap-2 mb-6 flex-wrap">
-                <GenreProfileBadge
-                  genre={config.genre}
-                  subcategory={config.subcategory}
-                  className="flex-1 min-w-[200px]"
-                />
-                <EditorialMasteryBadge genre={config.genre} subcategory={config.subcategory} size="md" />
-              </div>
+              {!chapterFocus && (
+                <div className="mb-6 flex flex-wrap items-center gap-2">
+                  <GenreProfileBadge
+                    genre={config.genre}
+                    subcategory={config.subcategory}
+                    className="min-w-[200px] flex-1"
+                  />
+                  <EditorialMasteryBadge genre={config.genre} subcategory={config.subcategory} size="md" />
+                </div>
+              )}
               {view.type === "blueprint" && (
                 <BlueprintView
                   blueprint={blueprint}
@@ -149,6 +163,8 @@ export function EditorPanel({
                   onCancel={onCancelGeneration ? () => onCancelGeneration(`chapter-${view.chapterIndex}`) : undefined}
                   chunkProgress={chunkProgress?.[`chapter-${view.chapterIndex}`]}
                   ws={ws}
+                  mobileFocus={chapterFocus}
+                  onMobileExport={onMobileExport}
                 />
               )}
               {view.type === "subchapter" && (() => {
@@ -390,6 +406,8 @@ function ChapterView({
   project, chapterIndex, outline, chapter, isGenerating, isEvaluating,
   onGenerate, onRegenerate, onRewrite, onEvaluate, onAutoRewrite, onGenerateSubchapter,
   onUpdateContent, onUpdateTitle, onUpdateSubContent, onUpdateSubTitle, onSetLengthOverride, isGeneratingSection, onCancel, chunkProgress, ws,
+  mobileFocus = false,
+  onMobileExport,
 }: {
   project: BookProject; chapterIndex: number;
   outline: { title: string; summary: string }; chapter: Chapter | undefined;
@@ -405,6 +423,8 @@ function ChapterView({
   onCancel?: () => void;
   chunkProgress?: ChunkProgress;
   ws: WritingSettings;
+  mobileFocus?: boolean;
+  onMobileExport?: () => void;
 }) {
   const isGenerated = chapter && chapter.content.length > 0;
   const currentLength = chapter?.lengthOverride || project.config.chapterLength;
@@ -435,67 +455,68 @@ function ChapterView({
             disabled={!onUpdateTitle}
           />
         </div>
-        <div className="flex items-center gap-2 shrink-0 pt-1">
-          {!isGenerated ? (
-            <button onClick={onGenerate} disabled={isGenerating || !project.blueprint}
-              className="flex items-center gap-2 h-10 px-5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 transition-colors">
-              {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-              {t("generate")}
-            </button>
-          ) : (
-            <>
-              <ActionButton icon={<Download className="h-3.5 w-3.5" />} title="TXT" onClick={() => downloadText(`chapter-${chapterIndex + 1}-${(chapter?.title || "chapter").replace(/\s+/g, "_")}.txt`, chapter?.content || "")} disabled={!isGenerated} />
-              <button
-                onClick={() => setShowIntelligence(true)}
-                disabled={isGenerating || isEvaluating}
-                title="AI Analysis Pro — score reali e fix mirati"
-                className="h-9 flex items-center gap-1.5 px-3 rounded-lg text-[11px] font-semibold bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:opacity-90 disabled:opacity-30 transition-opacity"
-              >
-                <Zap className="h-3.5 w-3.5" /> Analysis Pro
+        {!mobileFocus && (
+          <div className="flex shrink-0 items-center gap-2 pt-1">
+            {!isGenerated ? (
+              <button onClick={onGenerate} disabled={isGenerating || !project.blueprint}
+                className="flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-30">
+                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                {t("generate")}
               </button>
-              <ActionButton icon={<Search className="h-3.5 w-3.5" />} title={t("evaluate")} onClick={onEvaluate} disabled={isGenerating || isEvaluating} />
-              <ActionButton icon={<RefreshCw className="h-3.5 w-3.5" />} title={t("regenerate")} onClick={onRegenerate} disabled={isGenerating} />
-              
-              {/* Rewrite with levels */}
-              <div className="relative">
-                <button onClick={() => setShowRewriteMenu(!showRewriteMenu)} disabled={isGenerating}
-                  className="h-9 flex items-center gap-1 px-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-30 transition-colors">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <ChevronDown className="h-3 w-3" />
+            ) : (
+              <>
+                <ActionButton icon={<Download className="h-3.5 w-3.5" />} title="TXT" onClick={() => downloadText(`chapter-${chapterIndex + 1}-${(chapter?.title || "chapter").replace(/\s+/g, "_")}.txt`, chapter?.content || "")} disabled={!isGenerated} />
+                <button
+                  onClick={() => setShowIntelligence(true)}
+                  disabled={isGenerating || isEvaluating}
+                  title="AI Analysis Pro — score reali e fix mirati"
+                  className="flex h-9 items-center gap-1.5 rounded-lg bg-gradient-to-r from-primary to-primary/80 px-3 text-[11px] font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-30"
+                >
+                  <Zap className="h-3.5 w-3.5" /> Analysis Pro
                 </button>
-                {showRewriteMenu && (
-                  <div className="absolute right-0 top-10 z-20 bg-card border border-border rounded-lg shadow-xl py-1 w-48">
-                    {([
-                      { level: "light" as RewriteLevel, label: "Light Polish", desc: "Fix phrasing, tighten prose" },
-                      { level: "deep" as RewriteLevel, label: "Deep Rewrite", desc: "Restructure + fresh insights" },
-                      { level: "bestseller" as RewriteLevel, label: "Bestseller Upgrade", desc: "Total transformation" },
-                    ]).map(opt => (
-                      <button key={opt.level} onClick={() => { onRewrite(opt.level); setShowRewriteMenu(false); }}
-                        className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors">
-                        <p className="text-xs font-medium text-foreground">{opt.label}</p>
-                        <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
-                      </button>
-                    ))}
-                    {onAutoRewrite && (
-                      <>
-                        <div className="border-t border-border/50 my-1" />
-                        {[3, 4, 5].map(th => (
-                          <button key={th} onClick={() => { onAutoRewrite(th); setShowRewriteMenu(false); }}
-                            className="w-full text-left px-3 py-1.5 hover:bg-muted/50 transition-colors flex items-center gap-2">
-                            <Target className="h-3 w-3 text-primary" />
-                            <span className="text-[11px] text-foreground">Auto to {th}/5</span>
-                          </button>
-                        ))}
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+                <ActionButton icon={<Search className="h-3.5 w-3.5" />} title={t("evaluate")} onClick={onEvaluate} disabled={isGenerating || isEvaluating} />
+                <ActionButton icon={<RefreshCw className="h-3.5 w-3.5" />} title={t("regenerate")} onClick={onRegenerate} disabled={isGenerating} />
+                <div className="relative">
+                  <button onClick={() => setShowRewriteMenu(!showRewriteMenu)} disabled={isGenerating}
+                    className="flex h-9 items-center gap-1 rounded-lg px-2.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-30">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                  {showRewriteMenu && (
+                    <div className="absolute right-0 top-10 z-20 w-48 rounded-lg border border-border bg-card py-1 shadow-xl">
+                      {([
+                        { level: "light" as RewriteLevel, label: "Light Polish", desc: "Fix phrasing, tighten prose" },
+                        { level: "deep" as RewriteLevel, label: "Deep Rewrite", desc: "Restructure + fresh insights" },
+                        { level: "bestseller" as RewriteLevel, label: "Bestseller Upgrade", desc: "Total transformation" },
+                      ]).map(opt => (
+                        <button key={opt.level} onClick={() => { onRewrite(opt.level); setShowRewriteMenu(false); }}
+                          className="w-full px-3 py-2 text-left transition-colors hover:bg-muted/50">
+                          <p className="text-xs font-medium text-foreground">{opt.label}</p>
+                          <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
+                        </button>
+                      ))}
+                      {onAutoRewrite && (
+                        <>
+                          <div className="my-1 border-t border-border/50" />
+                          {[3, 4, 5].map(th => (
+                            <button key={th} onClick={() => { onAutoRewrite(th); setShowRewriteMenu(false); }}
+                              className="flex w-full items-center gap-2 px-3 py-1.5 text-left transition-colors hover:bg-muted/50">
+                              <Target className="h-3 w-3 text-primary" />
+                              <span className="text-[11px] text-foreground">Auto to {th}/5</span>
+                            </button>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
+      {!mobileFocus && (
       <div className="flex items-center gap-3">
         <span className="text-[11px] text-muted-foreground uppercase">{t("chapter_length")}</span>
         {(["short", "medium", "long"] as const).map(len => (
@@ -510,6 +531,7 @@ function ChapterView({
           </button>
         ))}
       </div>
+      )}
 
       {isGenerating && (
         <GenerationProgress
@@ -583,7 +605,7 @@ function ChapterView({
         </>
       )}
 
-      {isGenerated && (
+      {isGenerated && !mobileFocus && (
         <GenreCoachPanel
           chapterTitle={displayedTitle}
           chapterText={chapter?.content || ""}
@@ -595,14 +617,27 @@ function ChapterView({
         />
       )}
 
+      {mobileFocus && (
+        <MobileWritingFAB
+          isGenerating={isGenerating}
+          isGenerated={!!isGenerated}
+          onGenerate={isGenerated ? onRegenerate : onGenerate}
+          onRewrite={(level) => onRewrite(level)}
+          onAnalysis={() => setShowIntelligence(true)}
+          onExport={onMobileExport}
+        />
+      )}
+
       {showIntelligence && isGenerated && (
         <FeatureErrorBoundary featureName="Diagnostica capitolo">
-          <ChapterIntelligencePanel
-            project={project}
-            chapterIndex={chapterIndex}
-            onClose={() => setShowIntelligence(false)}
-            onApplyContent={(newContent) => onUpdateContent(newContent)}
-          />
+          <Suspense fallback={<LoadingBanner text={`${t("generating")}...`} />}>
+            <ChapterIntelligencePanel
+              project={project}
+              chapterIndex={chapterIndex}
+              onClose={() => setShowIntelligence(false)}
+              onApplyContent={(newContent) => onUpdateContent(newContent)}
+            />
+          </Suspense>
         </FeatureErrorBoundary>
       )}
     </div>

@@ -1,17 +1,21 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import { Sparkles } from "lucide-react";
-import CuriosityPanel from "./curiosity/CuriosityPanel";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const CuriosityPanel = lazy(() => import("./curiosity/CuriosityPanel"));
 
 export default function GlobalCuriosity() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const isMobile = useIsMobile();
 
   const isWriting =
     location.pathname.includes("/app") ||
     location.pathname.includes("/auto-bestseller");
 
   if (!isWriting) return null;
+  if (isMobile && location.pathname.includes("/app")) return null;
 
   return (
     <>
@@ -24,7 +28,11 @@ export default function GlobalCuriosity() {
         <span>Studio</span>
       </button>
 
-      {open && <CuriosityPanel onClose={() => setOpen(false)} />}
+      {open && (
+        <Suspense fallback={null}>
+          <CuriosityPanel onClose={() => setOpen(false)} />
+        </Suspense>
+      )}
     </>
   );
 }

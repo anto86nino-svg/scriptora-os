@@ -3495,7 +3495,34 @@ textarea,
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 767px) {
+  .scriptora-mobile-editor {
+    min-height: 80vh;
+  }
+
+  .scriptora-mobile-editor .scrollbar-thin {
+    min-height: 80vh;
+  }
+
+  .scriptora-guide-pulse {
+    animation: none !important;
+    box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.18) !important;
+  }
+
+  .scriptora-studio-button {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
+    transition: none;
+  }
+
+  .scriptora-step-guide,
+  .scriptora-step-guide-button {
+    backdrop-filter: blur(12px);
+  }
+
+  .scriptora-mobile-fab {
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
   .scriptora-generation-stage {
     padding: 14px;
   }

@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { NavigationTree } from "@/components/NavigationTree";
 import { TopBar } from "@/components/TopBar";
 import { EditorPanel } from "@/components/EditorPanel";
 import { NewBookDialog } from "@/components/NewBookDialog";
-import { CoverGenerator } from "@/components/CoverGenerator";
 import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
-import { PublishPanel } from "@/components/PublishPanel";
+import { MobileProgressPill } from "@/components/mobile/MobileProgressPill";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { AICoachPanel } from "@/components/AICoachPanel";
 import { ProgressTracker } from "@/components/ProgressTracker";
@@ -28,10 +29,14 @@ import { useQuota, usePlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { isProjectComplete } from "@/lib/project-status";
 
+const CoverGenerator = lazy(() => import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })));
+const PublishPanel = lazy(() => import("@/components/PublishPanel").then((m) => ({ default: m.PublishPanel })));
+
 type ExportFormat = "epub" | "docx" | "pdf";
 
 const Index = () => {
   useUILanguage();
+  const isMobile = useIsMobile();
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [showNewBook, setShowNewBook] = useState(false);
   const [showCover, setShowCover] = useState(false);
@@ -270,6 +275,35 @@ const Index = () => {
     // SettingsPanel calls this after saving; useUILanguage handles the rerender.
   };
 
+  const activeChapterIndex = useMemo(() => {
+    const match = String(activeSection || "").match(/^chapter-(\d+)/);
+    return match ? Number(match[1]) : null;
+  }, [activeSection]);
+
+  const mobileWritingFocus = isMobile && activeChapterIndex !== null && !!engine.project;
+
+  const handleMobileGenerate = () => {
+    if (!engine.project) return;
+    if (activeChapterIndex !== null) {
+      engine.generateSingleChapter(activeChapterIndex);
+      return;
+    }
+    if (activeSection === "front-matter") {
+      engine.generateFrontMatterSection();
+      return;
+    }
+    if (activeSection === "back-matter") {
+      engine.generateBackMatterSection();
+      return;
+    }
+    engine.generateNext();
+  };
+
+  const editorPanelProps = {
+    onMobileExport: () => requestExport("epub"),
+    mobileWritingFocus,
+  };
+
   if (focusMode && engine.project) {
     return (
       <div className="scriptora-ios-screen scriptora-app-surface flex h-screen flex-col">
@@ -307,6 +341,7 @@ const Index = () => {
             onUpdateBlueprintOutlineSummary={engine.updateBlueprintOutlineSummary}
             onUpdateFrontMatterField={engine.updateFrontMatterField}
             onUpdateBackMatterField={engine.updateBackMatterField}
+            {...editorPanelProps}
           />
         </div>
       </div>
@@ -431,7 +466,9 @@ const Index = () => {
         {engine.project && (
           <>
             <div className="mx-3 my-1 border-t border-white/10" />
-            <ProgressTracker project={engine.project} />
+            <div className="hidden md:block">
+              <ProgressTracker project={engine.project} />
+            </div>
           </>
         )}
 
@@ -456,21 +493,6 @@ const Index = () => {
           sidebarOpen ? "p-2 md:p-3" : "p-2 md:px-6 md:py-4"
         }`}
       >
-        {/* Mobile back-to-dashboard strip — always visible when project loaded, sidebar closed, on mobile */}
-        {engine.project && !sidebarOpen && (
-          <div className="mb-1 flex items-center gap-2 pl-12 md:hidden">
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/60 transition-colors hover:bg-white/[0.07] hover:text-white"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              {t("back_to_dashboard")}
-            </Link>
-            <span className="truncate text-[11px] font-medium text-white/40">
-              {engine.project.config.title || t("untitled")}
-            </span>
-          </div>
-        )}
         <TopBar
           config={engine.project?.config || null}
           onUpdateConfig={engine.updateConfig}
@@ -487,8 +509,14 @@ const Index = () => {
           syncStatus={syncStatus}
           projectId={engine.project?.id || null}
           project={engine.project}
+          onMobileGenerate={handleMobileGenerate}
         />
 
+        {isMobile && engine.project && (
+          <MobileProgressPill project={engine.project} activeChapterIndex={activeChapterIndex} />
+        )}
+
+        <div className="hidden md:block">
         <GuidedProjectFlow
           project={engine.project}
           activeSection={activeSection}
@@ -501,8 +529,9 @@ const Index = () => {
             setSidebarOpen(false);
           }}
         />
+        </div>
 
-        <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm">
+        <div className={`flex min-h-0 flex-1 overflow-hidden ${isMobile ? "rounded-lg border-0 bg-transparent shadow-none" : "rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm"}`}>
           {engine.project ? (
             <>
               <div className="min-w-0 flex-1">
@@ -532,9 +561,10 @@ const Index = () => {
                   onUpdateBlueprintOutlineSummary={engine.updateBlueprintOutlineSummary}
                   onUpdateFrontMatterField={engine.updateFrontMatterField}
                   onUpdateBackMatterField={engine.updateBackMatterField}
+                  {...editorPanelProps}
                 />
               </div>
-              {showCoach && (
+              {showCoach && !isMobile && (
                 <AICoachPanel project={engine.project} activeSection={activeSection} onClose={() => setShowCoach(false)}
                   onApplyRewrite={(chapterIdx, subIdx, text) => {
                     if (subIdx !== null) engine.updateSubchapterContent(chapterIdx, subIdx, text);
@@ -612,7 +642,24 @@ const Index = () => {
         }}
       />
 
+      {isMobile && engine.project && (
+        <Sheet open={showCoach} onOpenChange={setShowCoach}>
+          <SheetContent side="bottom" className="h-[88vh] overflow-hidden rounded-t-2xl border-white/10 p-0">
+            <AICoachPanel
+              project={engine.project}
+              activeSection={activeSection}
+              onClose={() => setShowCoach(false)}
+              onApplyRewrite={(chapterIdx, subIdx, text) => {
+                if (subIdx !== null) engine.updateSubchapterContent(chapterIdx, subIdx, text);
+                else engine.updateChapterContent(chapterIdx, text);
+              }}
+            />
+          </SheetContent>
+        </Sheet>
+      )}
+
       {showCover && engine.project && (
+        <Suspense fallback={null}>
         <CoverGenerator
           title={engine.project.config.title}
           subtitle={engine.project.config.subtitle}
@@ -633,6 +680,7 @@ const Index = () => {
             if (pendingExportFormat) setPendingExportFormat(null);
           }}
         />
+        </Suspense>
       )}
 
       <CoverBeforeExportDialog
@@ -655,6 +703,7 @@ const Index = () => {
       />
 
       {showPublish && (
+        <Suspense fallback={null}>
         <PublishPanel
           project={engine.project}
           onClose={() => setShowPublish(false)}
@@ -680,6 +729,7 @@ const Index = () => {
           onExportPdf={guardedExportPdf}
           onExportDocx={guardedExportDocx}
         />
+        </Suspense>
       )}
 
       <SettingsPanel

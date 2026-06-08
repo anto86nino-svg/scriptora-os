@@ -75,6 +75,11 @@ const translations: Record<string, Record<UILanguage, string>> = {
   // Focus mode
   focus_mode: { en: "Focus Mode", it: "Modalità Focus", es: "Modo Enfoque", fr: "Mode Focus", de: "Fokusmodus" },
   exit_focus: { en: "Exit Focus", it: "Esci dal Focus", es: "Salir del Enfoque", fr: "Quitter le Focus", de: "Fokus verlassen" },
+  project_settings: { en: "Project Settings", it: "Impostazioni progetto", es: "Ajustes del proyecto", fr: "Paramètres du projet", de: "Projekteinstellungen" },
+  writing_actions: { en: "Writing actions", it: "Azioni di scrittura", es: "Acciones de escritura", fr: "Actions d'écriture", de: "Schreibaktionen" },
+  export: { en: "Export", it: "Esporta", es: "Exportar", fr: "Exporter", de: "Exportieren" },
+  mobile_progress_chapter: { en: "Chapter {current}/{total}", it: "Capitolo {current}/{total}", es: "Capítulo {current}/{total}", fr: "Chapitre {current}/{total}", de: "Kapitel {current}/{total}" },
+  mobile_progress_chapters_done: { en: "{done}/{total} chapters", it: "{done}/{total} capitoli", es: "{done}/{total} capítulos", fr: "{done}/{total} chapitres", de: "{done}/{total} Kapitel" },
 
   // Molly (your AI writing companion — friendly assistant)
   ai_coach: { en: "Molly", it: "Molly", es: "Molly", fr: "Molly", de: "Molly" },

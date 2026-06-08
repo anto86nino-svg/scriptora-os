@@ -57,7 +57,7 @@ export function DevModeBadge() {
   const [wipeOpen, setWipeOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
-    return window.matchMedia("(max-width: 639px)").matches;
+    return window.matchMedia("(max-width: 767px)").matches;
   });
 
   if (!on) return null;
@@ -117,21 +117,20 @@ export function DevModeBadge() {
           type="button"
           onClick={() => setCollapsed(false)}
           title="Dev Mode"
-          className="fixed bottom-3 right-3 z-50 inline-flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-background/75 px-3 text-[10px] font-semibold uppercase tracking-wider text-foreground shadow-lg backdrop-blur-xl sm:hidden"
+          className="fixed bottom-20 left-3 z-30 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/10 bg-background/80 text-foreground shadow-md backdrop-blur-xl md:hidden"
         >
-          <Terminal className="h-3 w-3 text-sky-300" />
-          DEV
+          <Terminal className="h-3.5 w-3.5 text-sky-300" />
         </button>
       )}
 
-      <div className={`fixed bottom-3 right-3 z-50 max-w-[calc(100vw-1rem)] items-center gap-1 rounded-2xl bg-foreground/95 text-background shadow-lg backdrop-blur-xl pl-2 pr-1 py-1 text-[11px] font-mono sm:bottom-4 sm:right-4 sm:flex sm:max-w-[calc(100vw-2rem)] sm:rounded-full sm:bg-foreground ${
-        collapsed ? "hidden" : "flex"
+      <div className={`fixed z-30 max-w-[calc(100vw-1rem)] items-center gap-1 rounded-2xl bg-foreground/95 text-background shadow-lg backdrop-blur-xl pl-2 pr-1 py-1 text-[11px] font-mono md:bottom-4 md:right-4 md:z-50 md:flex md:max-w-[calc(100vw-2rem)] md:rounded-full md:bg-foreground ${
+        collapsed ? "hidden" : "bottom-20 left-3 flex max-w-[calc(100vw-2.5rem)] md:bottom-4 md:left-auto md:right-4"
       }`}>
         <button
           type="button"
           onClick={() => setCollapsed(true)}
           title={t("close")}
-          className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-background/15 sm:hidden"
+          className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-background/15 md:hidden"
         >
           <ChevronDown className="h-3 w-3" />
         </button>
