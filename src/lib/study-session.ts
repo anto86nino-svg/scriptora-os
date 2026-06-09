@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { explainProfessionalWord, extractProfessionalTerms } from "@/lib/professional-dictionary";
 
 export type StudyDifficulty = "soft" | "medium" | "pro";
 
@@ -106,12 +107,12 @@ function detectSubject(text: string, sourceName: string): string {
 }
 
 function explainWord(word: string): DifficultWord {
-  const nice = word[0]?.toUpperCase() + word.slice(1);
+  const entry = explainProfessionalWord(word);
   return {
-    word: nice,
-    simple: `${nice} è un termine importante del testo: indica un concetto da riconoscere e collegare agli altri.`,
-    technical: `Nel contesto del materiale caricato, "${word}" funziona come parola chiave: aiuta a capire argomento, struttura e possibili domande d'esame.`,
-    example: `Esempio: se trovi "${word}" in una domanda, prova prima a definirlo e poi a collegarlo al tema principale.`,
+    word: entry.word,
+    simple: entry.simple,
+    technical: entry.technical,
+    example: entry.example,
   };
 }
 
@@ -125,9 +126,9 @@ export function analyzeStudyMaterial(text: string, sourceName = "materiale-studi
   const medium = pickSentences(clean, 8);
   const pro = pickSentences(clean, 14);
 
-  const difficultWords = keywords(clean, 8)
-    .filter((word) => word.length >= 7)
-    .slice(0, 8)
+  const professionalTerms = extractProfessionalTerms(clean, 10);
+  const difficultWords = (professionalTerms.length ? professionalTerms : keywords(clean, 8).filter((word) => word.length >= 7))
+    .slice(0, 10)
     .map(explainWord);
 
   const flashcards = keyConcepts.slice(0, 8).map((concept) => ({
