@@ -4,6 +4,7 @@ import { ArrowLeft, BookOpen, Brain, CheckCircle2, FileText, GraduationCap, Load
 import { toast } from "sonner";
 import { analyzeStudyMaterial, readStudyFile, type StudySessionResult } from "@/lib/study-session";
 import { generateStudySessionWithAI } from "@/lib/study-ai";
+import { evaluateStudyAnswerWithAI, type StudyAnswerEvaluation } from "@/lib/study-answer-evaluator";
 
 const STORAGE_KEY = "scriptora-study-session-v1";
 
@@ -36,6 +37,9 @@ export default function StudySessionPage() {
   const [reading, setReading] = useState(false);
   const [aiMode, setAiMode] = useState<"idle" | "deepseek" | "local">("idle");
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
+  const [openAnswers, setOpenAnswers] = useState<Record<number, string>>({});
+  const [openEvaluations, setOpenEvaluations] = useState<Record<number, StudyAnswerEvaluation>>({});
+  const [evaluatingOpenAnswer, setEvaluatingOpenAnswer] = useState<number | null>(null);
 
   const wordCount = useMemo(() => rawText.trim().split(/\s+/).filter(Boolean).length, [rawText]);
   const canAnalyze = wordCount >= 40 && !reading;
@@ -57,6 +61,8 @@ export default function StudySessionPage() {
       });
       setResult(next);
       setQuizAnswers({});
+      setOpenAnswers({});
+      setOpenEvaluations({});
       saveResult(next, rawText);
       toast.success("Sessione Studio AI generata", { description: "DeepSeek ha creato riassunti, parole difficili, flashcard e quiz." });
     } catch (error) {
@@ -64,6 +70,8 @@ export default function StudySessionPage() {
       const local = analyzeStudyMaterial(rawText, sourceName);
       setResult(local);
       setQuizAnswers({});
+      setOpenAnswers({});
+      setOpenEvaluations({});
       saveResult(local, rawText);
       setAiMode("local");
       toast.warning("AI non disponibile: uso analisi locale", {
@@ -73,6 +81,36 @@ export default function StudySessionPage() {
       setReading(false);
     }
   };
+
+  async function evaluateOpenAnswer(index: number, question: string, answerGuide: string) {
+    const answer = (openAnswers[index] || "").trim();
+
+    if (answer.split(/\s+/).filter(Boolean).length < 12) {
+      toast.error("Risposta troppo breve", { description: "Scrivi almeno 2-3 frasi prima di chiedere la valutazione." });
+      return;
+    }
+
+    setEvaluatingOpenAnswer(index);
+
+    try {
+      const evaluation = await evaluateStudyAnswerWithAI({
+        materialTitle: result?.title || sourceName,
+        question,
+        answerGuide,
+        answer,
+        language: "Italian",
+      });
+
+      setOpenEvaluations((prev) => ({ ...prev, [index]: evaluation }));
+      toast.success(`Risposta valutata: ${evaluation.score}/100`);
+    } catch (error) {
+      toast.error("Valutazione non riuscita", {
+        description: error instanceof Error ? error.message.slice(0, 120) : "Riprova tra poco.",
+      });
+    } finally {
+      setEvaluatingOpenAnswer(null);
+    }
+  }
 
   const handleFile = async (file?: File) => {
     if (!file) return;
@@ -91,6 +129,8 @@ export default function StudySessionPage() {
         });
         setResult(next);
         setQuizAnswers({});
+        setOpenAnswers({});
+        setOpenEvaluations({});
         saveResult(next, text);
         toast.success("Materiale analizzato con AI", { description: file.name });
       } catch (error) {
@@ -98,6 +138,8 @@ export default function StudySessionPage() {
         const local = analyzeStudyMaterial(text, file.name);
         setResult(local);
         setQuizAnswers({});
+        setOpenAnswers({});
+        setOpenEvaluations({});
         saveResult(local, text);
         setAiMode("local");
         toast.warning("AI non disponibile: analisi locale attivata", {
@@ -223,14 +265,74 @@ export default function StudySessionPage() {
                     Usa queste domande per allenare esposizione orale, esame o verifica scritta.
                   </p>
                   <div className="mt-3 space-y-3">
-                    {result.openQuestions.map((item, index) => (
-                      <details key={index} className="rounded-2xl border border-white/10 bg-background/45 p-3">
-                        <summary className="cursor-pointer text-sm font-semibold leading-6">
-                          {index + 1}. {item.question}
-                        </summary>
-                        <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.answerGuide}</p>
-                      </details>
-                    ))}
+                    {result.openQuestions.map((item, index) => {
+                      const evaluation = openEvaluations[index];
+                      const isEvaluating = evaluatingOpenAnswer === index;
+
+                      return (
+                        <div key={index} className="rounded-2xl border border-white/10 bg-background/45 p-3">
+                          <p className="text-sm font-semibold leading-6">
+                            {index + 1}. {item.question}
+                          </p>
+
+                          <details className="mt-2">
+                            <summary className="cursor-pointer text-xs font-semibold text-emerald-200/80">
+                              Vedi guida risposta
+                            </summary>
+                            <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.answerGuide}</p>
+                          </details>
+
+                          <textarea
+                            value={openAnswers[index] || ""}
+                            onChange={(event) => setOpenAnswers((prev) => ({ ...prev, [index]: event.target.value }))}
+                            placeholder="Scrivi qui la tua risposta come se fossi all'interrogazione..."
+                            className="mt-3 min-h-[120px] w-full resize-y rounded-2xl border border-white/10 bg-background/70 p-3 text-sm leading-6 text-foreground outline-none focus:border-emerald-300/40"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => void evaluateOpenAnswer(index, item.question, item.answerGuide)}
+                            disabled={isEvaluating}
+                            className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-2xl bg-emerald-300 px-4 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {isEvaluating ? "Scriptora corregge la risposta..." : "Correggi risposta aperta"}
+                          </button>
+
+                          {evaluation && (
+                            <div className="mt-3 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-3">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="text-sm font-bold text-emerald-100">Valutazione risposta</p>
+                                <span className="rounded-full bg-background/60 px-3 py-1 text-xs font-bold text-emerald-100">
+                                  {evaluation.score}/100 · {evaluation.level}
+                                </span>
+                              </div>
+
+                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                <div>
+                                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/80">Punti forti</p>
+                                  <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                                    {evaluation.strengths.map((line, i) => <li key={i}>• {line}</li>)}
+                                  </ul>
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-200/80">Da migliorare</p>
+                                  <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                                    {evaluation.missing.map((line, i) => <li key={i}>• {line}</li>)}
+                                  </ul>
+                                </div>
+                              </div>
+
+                              <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
+                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/80">Risposta modello</p>
+                                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{evaluation.improvedAnswer}</p>
+                              </div>
+
+                              <p className="mt-3 text-sm leading-6 text-emerald-100/85">{evaluation.advice}</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
