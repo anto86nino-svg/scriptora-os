@@ -37,6 +37,7 @@ export default function StudySessionPage() {
   const [reading, setReading] = useState(false);
   const [aiMode, setAiMode] = useState<"idle" | "deepseek" | "local">("idle");
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
+  const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
   const [openAnswers, setOpenAnswers] = useState<Record<number, string>>({});
   const [openEvaluations, setOpenEvaluations] = useState<Record<number, StudyAnswerEvaluation>>({});
   const [evaluatingOpenAnswer, setEvaluatingOpenAnswer] = useState<number | null>(null);
@@ -61,6 +62,7 @@ export default function StudySessionPage() {
       });
       setResult(next);
       setQuizAnswers({});
+      setCurrentQuizIndex(0);
       setOpenAnswers({});
       setOpenEvaluations({});
       saveResult(next, rawText);
@@ -70,6 +72,7 @@ export default function StudySessionPage() {
       const local = analyzeStudyMaterial(rawText, sourceName);
       setResult(local);
       setQuizAnswers({});
+      setCurrentQuizIndex(0);
       setOpenAnswers({});
       setOpenEvaluations({});
       saveResult(local, rawText);
@@ -129,6 +132,7 @@ export default function StudySessionPage() {
         });
         setResult(next);
         setQuizAnswers({});
+        setCurrentQuizIndex(0);
         setOpenAnswers({});
         setOpenEvaluations({});
         saveResult(next, text);
@@ -138,6 +142,7 @@ export default function StudySessionPage() {
         const local = analyzeStudyMaterial(text, file.name);
         setResult(local);
         setQuizAnswers({});
+        setCurrentQuizIndex(0);
         setOpenAnswers({});
         setOpenEvaluations({});
         saveResult(local, text);
@@ -380,70 +385,100 @@ export default function StudySessionPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 space-y-4">
-                    {result.quiz.map((q, index) => {
-                      const selected = quizAnswers[index];
-                      const answered = selected !== undefined;
-                      const correct = answered && selected === q.answer;
+                  {result.quiz.length > 0 && (() => {
+                    const safeQuizIndex = Math.min(currentQuizIndex, result.quiz.length - 1);
+                    const q = result.quiz[safeQuizIndex];
+                    const selected = quizAnswers[safeQuizIndex];
+                    const answered = selected !== undefined;
+                    const correct = answered && selected === q.answer;
 
-                      return (
-                        <div key={index} className="rounded-2xl border border-white/10 bg-background/45 p-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <p className="text-sm font-semibold leading-6">
-                              {index + 1}. {q.question}
-                            </p>
-                            {answered && (
-                              <span className={correct ? "rounded-full bg-emerald-400/10 px-2 py-1 text-[11px] font-semibold text-emerald-200" : "rounded-full bg-rose-400/10 px-2 py-1 text-[11px] font-semibold text-rose-200"}>
-                                {correct ? "Corretta" : "Da ripassare"}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="mt-3 grid gap-2">
-                            {q.options.map((option, optionIndex) => {
-                              const isSelected = selected === optionIndex;
-                              const isCorrect = q.answer === optionIndex;
-                              const showCorrect = answered && isCorrect;
-                              const showWrong = answered && isSelected && !isCorrect;
-
-                              return (
-                                <button
-                                  key={optionIndex}
-                                  type="button"
-                                  onClick={() => setQuizAnswers((prev) => ({ ...prev, [index]: optionIndex }))}
-                                  className={[
-                                    "rounded-2xl border px-3 py-2 text-left text-sm leading-5 transition",
-                                    showCorrect
-                                      ? "border-emerald-300/40 bg-emerald-400/10 text-emerald-100"
-                                      : showWrong
-                                        ? "border-rose-300/40 bg-rose-400/10 text-rose-100"
-                                        : isSelected
-                                          ? "border-white/25 bg-white/10 text-foreground"
-                                          : "border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground",
-                                  ].join(" ")}
-                                >
-                                  <span className="mr-2 font-semibold">{String.fromCharCode(65 + optionIndex)}.</span>
-                                  {option}
-                                </button>
-                              );
-                            })}
-                          </div>
-
+                    return (
+                      <div className="mt-4 rounded-3xl border border-white/10 bg-background/45 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-semibold text-muted-foreground">
+                            Domanda {safeQuizIndex + 1}/{result.quiz.length}
+                          </span>
                           {answered && (
-                            <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
-                              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/80">Spiegazione</p>
-                              <p className="mt-1 text-sm leading-6 text-muted-foreground">{q.explanation}</p>
-                            </div>
+                            <span className={correct ? "rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200" : "rounded-full bg-rose-400/10 px-3 py-1 text-xs font-semibold text-rose-200"}>
+                              {correct ? "Corretta" : "Da ripassare"}
+                            </span>
                           )}
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        <p className="mt-4 text-base font-semibold leading-7">
+                          {q.question}
+                        </p>
+
+                        <div className="mt-4 grid gap-2">
+                          {q.options.map((option, optionIndex) => {
+                            const isSelected = selected === optionIndex;
+                            const isCorrect = q.answer === optionIndex;
+                            const showCorrect = answered && isCorrect;
+                            const showWrong = answered && isSelected && !isCorrect;
+
+                            return (
+                              <button
+                                key={optionIndex}
+                                type="button"
+                                onClick={() => setQuizAnswers((prev) => ({ ...prev, [safeQuizIndex]: optionIndex }))}
+                                className={[
+                                  "rounded-2xl border px-3 py-3 text-left text-sm leading-5 transition",
+                                  showCorrect
+                                    ? "border-emerald-300/40 bg-emerald-400/10 text-emerald-100"
+                                    : showWrong
+                                      ? "border-rose-300/40 bg-rose-400/10 text-rose-100"
+                                      : isSelected
+                                        ? "border-white/25 bg-white/10 text-foreground"
+                                        : "border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground",
+                                ].join(" ")}
+                              >
+                                <span className="mr-2 font-semibold">{String.fromCharCode(65 + optionIndex)}.</span>
+                                {option}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {answered && (
+                          <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/80">Spiegazione</p>
+                            <p className="mt-1 text-sm leading-6 text-muted-foreground">{q.explanation}</p>
+                          </div>
+                        )}
+
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setCurrentQuizIndex((value) => Math.max(0, value - 1))}
+                            disabled={safeQuizIndex === 0}
+                            className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] text-sm font-semibold text-muted-foreground disabled:cursor-not-allowed disabled:opacity-40 hover:text-foreground"
+                          >
+                            Indietro
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCurrentQuizIndex((value) => Math.min(result.quiz.length - 1, value + 1))}
+                            disabled={safeQuizIndex === result.quiz.length - 1}
+                            className="h-11 rounded-2xl bg-emerald-300 text-sm font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-emerald-200"
+                          >
+                            Avanti
+                          </button>
+                        </div>
+
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.06]">
+                          <div
+                            className="h-full rounded-full bg-emerald-300 transition-all"
+                            style={{ width: `${((safeQuizIndex + 1) / Math.max(1, result.quiz.length)) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {result.quiz.length > 0 && (
                     <button
                       type="button"
-                      onClick={() => setQuizAnswers({})}
+                      onClick={() => { setQuizAnswers({}); setCurrentQuizIndex(0); }}
                       className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-sm font-semibold text-muted-foreground hover:text-foreground"
                     >
                       Rifai il quiz
