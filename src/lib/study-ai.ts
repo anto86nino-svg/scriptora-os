@@ -86,8 +86,31 @@ function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudyS
 
 function trimStudyInput(text: string): string {
   const clean = String(text || "").trim();
-  if (clean.length <= 26000) return clean;
-  return `${clean.slice(0, 18000)}\n\n[...contenuto centrale omesso per limiti AI...]\n\n${clean.slice(-7000)}`;
+  if (clean.length <= 36000) return clean;
+
+  const paragraphs = clean
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 80);
+
+  if (paragraphs.length < 12) {
+    return `${clean.slice(0, 22000)}\n\n[...sezione centrale compressa automaticamente da Scriptora Study OS...]\n\n${clean.slice(-12000)}`;
+  }
+
+  const picked: string[] = [];
+  const slots = 18;
+  for (let i = 0; i < slots; i++) {
+    const index = Math.min(paragraphs.length - 1, Math.floor((i / Math.max(1, slots - 1)) * (paragraphs.length - 1)));
+    const paragraph = paragraphs[index];
+    if (paragraph && !picked.includes(paragraph)) picked.push(paragraph);
+  }
+
+  return [
+    "[SCRIPTORA STUDY OS — CAMPIONAMENTO INTELLIGENTE DOCUMENTO LUNGO]",
+    "Il documento originale è lungo. Questo estratto conserva apertura, sviluppo centrale e chiusura per evitare riassunti basati solo sull'inizio e sulla fine.",
+    "",
+    ...picked.map((part, index) => `--- BLOCCO ${index + 1} ---\n${part.slice(0, 1800)}`),
+  ].join("\n\n").slice(0, 38000);
 }
 
 async function callScriptoraStudyAI(systemPrompt: string, userPrompt: string): Promise<string> {
@@ -166,14 +189,16 @@ OUTPUT RULE:
 Return ONLY valid JSON. No markdown. No commentary outside JSON.
 
 QUALITY RULES:
-- Light summary: simple, clear, for first understanding.
-- Medium summary: more complete, ordered, with key logic.
-- Pro summary: exam/interrogation-ready, deeper and structured.
-- Difficult words: explain simple meaning, technical meaning, and give example.
-- Flashcards: useful for active recall.
-- Quiz: not childish; include answer index 0-3 and explanation.
+- Do NOT make summaries too short. This is for real studying, not a marketing blurb.
+- Light summary: simple language, but still cover all major sections and the central message. Minimum 180-260 words when material is long.
+- Medium summary: structured, ordered, complete. Include main ideas, chapter/section progression, cause-effect links, and practical meaning. Minimum 350-550 words when material is long.
+- Pro summary: exam/interrogation-ready. Deep, detailed, organized by concepts, with connections, key arguments, mechanisms, examples, and what the student must remember. Minimum 700-1000 words when material is long.
+- Difficult words: explain simple meaning, technical meaning, and give concrete example.
+- Flashcards: useful for active recall, not generic.
+- Quiz: create challenging multiple-choice questions. Include answer index 0-3 and explanation.
 - Do not invent facts not present in the material.
-- If material is incomplete, say it politely inside summaries.`;
+- If the material is sampled because too long, still cover all detected major areas and do not say "chapters omitted" unless truly necessary.
+- Prefer clarity over elegance. The student must be able to study from this output.`;
 
   const userPrompt = `Create a professional study session from this material.
 
@@ -212,6 +237,16 @@ Return this JSON shape exactly:
   ],
   "keyConcepts": ["string"]
 }
+
+QUIZ REQUIREMENTS:
+Create at least 10 multiple-choice questions when the material is long.
+Questions must test understanding, not just memory.
+Mix:
+- definition questions
+- cause/effect questions
+- concept comparison
+- application to real examples
+- "what does the author mean by..." questions
 
 MATERIAL:
 ${material}`;

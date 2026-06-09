@@ -55,12 +55,14 @@ export default function StudySessionPage() {
         language: "Italian",
       });
       setResult(next);
+      setQuizAnswers({});
       saveResult(next, rawText);
       toast.success("Sessione Studio AI generata", { description: "DeepSeek ha creato riassunti, parole difficili, flashcard e quiz." });
     } catch (error) {
       console.warn("[StudySession] DeepSeek fallback locale", error);
       const local = analyzeStudyMaterial(rawText, sourceName);
       setResult(local);
+      setQuizAnswers({});
       saveResult(local, rawText);
       setAiMode("local");
       toast.warning("AI non disponibile: uso analisi locale", {
@@ -87,12 +89,14 @@ export default function StudySessionPage() {
           language: "Italian",
         });
         setResult(next);
+        setQuizAnswers({});
         saveResult(next, text);
         toast.success("Materiale analizzato con AI", { description: file.name });
       } catch (error) {
         console.warn("[StudySession] DeepSeek file fallback locale", error);
         const local = analyzeStudyMaterial(text, file.name);
         setResult(local);
+        setQuizAnswers({});
         saveResult(local, text);
         setAiMode("local");
         toast.warning("AI non disponibile: analisi locale attivata", {
@@ -238,22 +242,92 @@ export default function StudySessionPage() {
                 </div>
 
                 <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
-                  <h3 className="font-semibold">Quiz finale</h3>
-                  <div className="mt-3 space-y-3">
-                    {result.quiz.map((q, index) => (
-                      <details key={index} className="rounded-2xl border border-white/10 bg-background/45 p-3">
-                        <summary className="cursor-pointer text-sm font-semibold">{index + 1}. {q.question}</summary>
-                        <div className="mt-3 space-y-2">
-                          {q.options.map((option, optionIndex) => (
-                            <p key={optionIndex} className={optionIndex === q.answer ? "text-sm font-semibold text-emerald-200" : "text-sm text-muted-foreground"}>
-                              {String.fromCharCode(65 + optionIndex)}. {option}
-                            </p>
-                          ))}
-                          <p className="pt-2 text-xs leading-5 text-muted-foreground">{q.explanation}</p>
-                        </div>
-                      </details>
-                    ))}
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h3 className="font-semibold">Quiz finale interattivo</h3>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Rispondi alle domande, controlla gli errori e usa la spiegazione per ripassare.
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-background/50 px-4 py-2 text-sm">
+                      <span className="text-muted-foreground">Voto: </span>
+                      <span className="font-bold text-emerald-200">
+                        {Object.keys(quizAnswers).length === result.quiz.length
+                          ? `${Math.round((result.quiz.filter((q, i) => quizAnswers[i] === q.answer).length / Math.max(1, result.quiz.length)) * 100)}/100`
+                          : `${Object.keys(quizAnswers).length}/${result.quiz.length}`}
+                      </span>
+                    </div>
                   </div>
+
+                  <div className="mt-4 space-y-4">
+                    {result.quiz.map((q, index) => {
+                      const selected = quizAnswers[index];
+                      const answered = selected !== undefined;
+                      const correct = answered && selected === q.answer;
+
+                      return (
+                        <div key={index} className="rounded-2xl border border-white/10 bg-background/45 p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <p className="text-sm font-semibold leading-6">
+                              {index + 1}. {q.question}
+                            </p>
+                            {answered && (
+                              <span className={correct ? "rounded-full bg-emerald-400/10 px-2 py-1 text-[11px] font-semibold text-emerald-200" : "rounded-full bg-rose-400/10 px-2 py-1 text-[11px] font-semibold text-rose-200"}>
+                                {correct ? "Corretta" : "Da ripassare"}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="mt-3 grid gap-2">
+                            {q.options.map((option, optionIndex) => {
+                              const isSelected = selected === optionIndex;
+                              const isCorrect = q.answer === optionIndex;
+                              const showCorrect = answered && isCorrect;
+                              const showWrong = answered && isSelected && !isCorrect;
+
+                              return (
+                                <button
+                                  key={optionIndex}
+                                  type="button"
+                                  onClick={() => setQuizAnswers((prev) => ({ ...prev, [index]: optionIndex }))}
+                                  className={[
+                                    "rounded-2xl border px-3 py-2 text-left text-sm leading-5 transition",
+                                    showCorrect
+                                      ? "border-emerald-300/40 bg-emerald-400/10 text-emerald-100"
+                                      : showWrong
+                                        ? "border-rose-300/40 bg-rose-400/10 text-rose-100"
+                                        : isSelected
+                                          ? "border-white/25 bg-white/10 text-foreground"
+                                          : "border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground",
+                                  ].join(" ")}
+                                >
+                                  <span className="mr-2 font-semibold">{String.fromCharCode(65 + optionIndex)}.</span>
+                                  {option}
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {answered && (
+                            <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
+                              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/80">Spiegazione</p>
+                              <p className="mt-1 text-sm leading-6 text-muted-foreground">{q.explanation}</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {result.quiz.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setQuizAnswers({})}
+                      className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-sm font-semibold text-muted-foreground hover:text-foreground"
+                    >
+                      Rifai il quiz
+                    </button>
+                  )}
                 </div>
               </>
             )}

@@ -122,9 +122,9 @@ export function analyzeStudyMaterial(text: string, sourceName = "materiale-studi
   const title = detectSubject(clean, sourceName);
   const keyConcepts = keywords(clean, 10).map((k) => k[0].toUpperCase() + k.slice(1));
 
-  const light = pickSentences(clean, 4);
-  const medium = pickSentences(clean, 8);
-  const pro = pickSentences(clean, 14);
+  const light = pickSentences(clean, 8);
+  const medium = pickSentences(clean, 16);
+  const pro = pickSentences(clean, 28);
 
   const professionalTerms = extractProfessionalTerms(clean, 10);
   const difficultWords = (professionalTerms.length ? professionalTerms : keywords(clean, 8).filter((word) => word.length >= 7))
@@ -136,16 +136,16 @@ export function analyzeStudyMaterial(text: string, sourceName = "materiale-studi
     back: `È uno dei concetti chiave del materiale. Spiegalo con parole semplici e collegalo all'argomento principale: ${title}.`,
   }));
 
-  const quiz = keyConcepts.slice(0, 6).map((concept, index) => ({
-    question: `Qual è il modo migliore per studiare il concetto "${concept}"?`,
+  const quiz = keyConcepts.slice(0, 10).map((concept, index) => ({
+    question: `Quale affermazione descrive meglio il ruolo di "${concept}" nel materiale studiato?`,
     options: [
-      "Memorizzarlo senza capirlo",
-      "Definirlo, spiegarlo con parole proprie e collegarlo al tema centrale",
-      "Saltarlo perché è solo una parola difficile",
-      "Leggerlo una volta e passare oltre",
+      "È un dettaglio secondario da memorizzare senza collegamenti",
+      "È un concetto chiave da definire, spiegare e collegare al tema centrale",
+      "È una parola da saltare se non compare nel titolo",
+      "È utile solo se viene chiesto in modo identico nel test",
     ],
     answer: 1,
-    explanation: `La risposta corretta è collegare "${concept}" al tema centrale. Studiare non è accumulare parole: è creare legami.`,
+    explanation: `La risposta corretta è collegare "${concept}" al tema centrale. In un'interrogazione non basta ricordare: bisogna spiegare, collegare e applicare.`,
   }));
 
   return {
