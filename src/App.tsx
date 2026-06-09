@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound.tsx";
 import DownloadsPage from "./pages/DownloadsPage.tsx";
 import InstallPage from "./pages/InstallPage.tsx";
 import { DevModeBadge } from "@/components/DevModeBadge";
+import { PerformanceModeHint } from "@/components/PerformanceModeHint";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { MollyErrorBoundary } from "@/components/molly/MollyErrorBoundary";
@@ -77,6 +78,7 @@ const App = () => (
                 <GlobalCuriosity />
               </Suspense>
               <DevModeBadge />
+              <PerformanceModeHint />
             </MollyProvider>
             </MollyErrorBoundary>
           </DominationProvider>

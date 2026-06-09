@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Settings, X, Check, Languages, Type, Image as ImageIcon, Save, Upload, Trash2 } from "lucide-react";
+import { Settings, X, Check, Languages, Type, Image as ImageIcon, Save, Upload, Trash2, Zap } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { loadPerformanceMode, savePerformanceMode } from "@/lib/performance-mode";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -73,6 +75,7 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
   const [uiLanguage, setUiLanguage] = useState<UILanguage>(getUILanguage());
   const [hasCustomBackground, setHasCustomBackground] = useState(false);
   const [isUploadingCustomBackground, setIsUploadingCustomBackground] = useState(false);
+  const [performanceMode, setPerformanceMode] = useState(loadPerformanceMode);
 
   useEffect(() => {
     if (!open) return;
@@ -83,7 +86,14 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
     setWritingFont(saved.writingFont);
     setUiLanguage(getUILanguage());
     setHasCustomBackground(Boolean(getCustomScriptoraBackground()));
+    setPerformanceMode(loadPerformanceMode());
   }, [open]);
+
+  const togglePerformanceMode = (enabled: boolean) => {
+    setPerformanceMode(enabled);
+    savePerformanceMode(enabled);
+    toast.success(enabled ? t("performance_mode_enabled_toast") : t("performance_mode_disabled_toast"));
+  };
 
   if (!open) return null;
 
@@ -188,6 +198,25 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
         </div>
 
         <div className="space-y-6 p-5">
+          <section className="rounded-2xl border border-border/70 bg-background/40 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <div className="mb-1 flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold">{t("performance_mode_title")}</h3>
+                </div>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {t("performance_mode_desc")}
+                </p>
+              </div>
+              <Switch
+                checked={performanceMode}
+                onCheckedChange={togglePerformanceMode}
+                aria-label={t("performance_mode_title")}
+              />
+            </div>
+          </section>
+
           <section className="rounded-2xl border border-border/70 bg-background/40 p-4">
             <div className="mb-3 flex items-center gap-2">
               <Languages className="h-4 w-4 text-primary" />

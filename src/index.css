@@ -3579,3 +3579,117 @@ textarea,
     animation: none !important;
   }
 }
+
+/* ─── Performance Mode ───────────────────────────────────────────────────────
+   Global GPU/CPU savings when html.scriptora-performance-mode is set.
+   Premium visuals remain when the class is absent. Colors & layout unchanged.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+html.scriptora-performance-mode {
+  --env-glow: transparent;
+  --env-hover-glow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  --env-motion-speed: 0ms;
+}
+
+/* Backdrop blur — Tailwind utilities + glass panels */
+html.scriptora-performance-mode [class*="backdrop-blur"],
+html.scriptora-performance-mode .ios-glass,
+html.scriptora-performance-mode .ios-glass-soft,
+html.scriptora-performance-mode .ios-panel,
+html.scriptora-performance-mode .scriptora-landing-nav,
+html.scriptora-performance-mode .scriptora-generation-stage,
+html.scriptora-performance-mode .scriptora-step-guide,
+html.scriptora-performance-mode .scriptora-step-guide-button {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Heavy glow & environment effects */
+html.scriptora-performance-mode .env-hero-book::before {
+  display: none !important;
+}
+html.scriptora-performance-mode .env-card:hover,
+html.scriptora-performance-mode .env-hero-book,
+html.scriptora-performance-mode .env-glow-border {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18) !important;
+}
+html.scriptora-performance-mode .env-breathing {
+  animation: none !important;
+  will-change: auto !important;
+}
+
+/* Theme-specific hover glows */
+html.scriptora-performance-mode [data-theme] .ios-glass:hover,
+html.scriptora-performance-mode [data-theme] .ios-panel:hover {
+  box-shadow: var(--scriptora-ios-shadow, 0 4px 14px rgba(0, 0, 0, 0.18)) !important;
+}
+
+/* Expensive inline / utility shadows */
+html.scriptora-performance-mode [class*="shadow-\["],
+html.scriptora-performance-mode .shadow-2xl,
+html.scriptora-performance-mode .shadow-xl {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.16) !important;
+}
+
+/* Decorative landing blur layer */
+html.scriptora-performance-mode .scriptora-landing-bg::after {
+  filter: none !important;
+  opacity: 0.35 !important;
+}
+
+/* Nexora / landing decorative motion */
+html.scriptora-performance-mode .nexora-aurora,
+html.scriptora-performance-mode .nexora-title,
+html.scriptora-performance-mode .nexora-grid {
+  animation: none !important;
+  will-change: auto !important;
+}
+html.scriptora-performance-mode .nexora-title {
+  text-shadow: none !important;
+}
+
+/* Generation stage decorative animations (keep layout & text) */
+html.scriptora-performance-mode .scriptora-generation-wave,
+html.scriptora-performance-mode .scriptora-generation-scan {
+  display: none !important;
+}
+html.scriptora-performance-mode .scriptora-generation-live-dot,
+html.scriptora-performance-mode .scriptora-generation-caret,
+html.scriptora-performance-mode .scriptora-scene-particle,
+html.scriptora-performance-mode .scriptora-scene-real-image,
+html.scriptora-performance-mode .scriptora-scene-ai-loader::before,
+html.scriptora-performance-mode .scriptora-loading-dots i,
+html.scriptora-performance-mode .scriptora-scene-status i,
+html.scriptora-performance-mode .scriptora-guide-pulse {
+  animation: none !important;
+  box-shadow: none !important;
+}
+
+/* Non-essential hover motion on cards & CTAs */
+html.scriptora-performance-mode .group:hover,
+html.scriptora-performance-mode .env-card:hover,
+html.scriptora-performance-mode button[class*="hover:-translate"],
+html.scriptora-performance-mode a[class*="hover:-translate"],
+html.scriptora-performance-mode [class*="hover:scale"],
+html.scriptora-performance-mode [class*="motion-safe:hover:scale"] {
+  transform: none !important;
+}
+
+/* Decorative transitions — keep instant color/state changes */
+html.scriptora-performance-mode .transition-all,
+html.scriptora-performance-mode [class*="duration-200"],
+html.scriptora-performance-mode [class*="duration-300"],
+html.scriptora-performance-mode .ios-toolbar-button,
+html.scriptora-performance-mode .scriptora-studio-button {
+  transition-property: color, background-color, border-color, opacity !important;
+  transition-duration: 0ms !important;
+}
+
+html.scriptora-performance-mode .scriptora-studio-button:hover {
+  transform: none !important;
+}
+
+/* iOS icon inset glow — flatten slightly */
+html.scriptora-performance-mode .ios-icon {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}

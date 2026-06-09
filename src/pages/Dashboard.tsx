@@ -3,6 +3,7 @@ import { useState, useEffect, lazy, Suspense, useMemo, useCallback } from "react
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
+import { SCRIPTORA_OPEN_APPEARANCE_KEY } from "@/lib/performance-mode";
 
 const NewBookDialog = lazy(() => import("@/components/NewBookDialog").then((m) => ({ default: m.NewBookDialog })));
 const HomeExportDialog = lazy(() => import("@/components/HomeExportDialog").then((m) => ({ default: m.HomeExportDialog })));
@@ -317,9 +318,20 @@ export default function Dashboard() {
       setShowCharacterStudio(false);
       openNewBookGuarded();
     };
+    const openAppearance = () => setShowAdvancedSettings(true);
 
     window.addEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
-    return () => window.removeEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
+    window.addEventListener("scriptora-open-appearance-settings", openAppearance);
+
+    if (sessionStorage.getItem(SCRIPTORA_OPEN_APPEARANCE_KEY)) {
+      sessionStorage.removeItem(SCRIPTORA_OPEN_APPEARANCE_KEY);
+      setShowAdvancedSettings(true);
+    }
+
+    return () => {
+      window.removeEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
+      window.removeEventListener("scriptora-open-appearance-settings", openAppearance);
+    };
   }, [openNewBookGuarded]);
 
   const handleNewBook = (config: BookConfig) => {
