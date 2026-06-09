@@ -15,6 +15,7 @@ import { WritingSettings } from "@/lib/settings";
 import { Progress } from "@/components/ui/progress";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import { buildEditorialChapterPreview, sanitizeChapterTitle, isForbiddenChapterSummary } from "@/lib/chapter-generation-guard";
+import { ChapterReadingSession } from "@/components/ChapterReadingSession";
 
 interface EditorPanelProps {
   project: BookProject;
@@ -587,6 +588,12 @@ function ChapterView({
         <>
           <AIRatingCard rating={chapter.aiRating} />
           <EditableBlock content={chapter.content} onChange={onUpdateContent} ws={ws} />
+          <ChapterReadingSession
+            projectId={project.id}
+            chapterIndex={chapterIndex}
+            chapterTitle={displayedTitle}
+            chapterText={chapter.content}
+          />
 
           {chapter.subchapters.length > 0 && (
             <div className="space-y-6 mt-10">
