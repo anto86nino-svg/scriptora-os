@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, BookOpen, Brain, CheckCircle2, FileText, GraduationCap, Loader2, Upload, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { analyzeStudyMaterial, readStudyFile, type StudySessionResult } from "@/lib/study-session";
+import { generateStudySessionWithAI } from "@/lib/study-ai";
 
 const STORAGE_KEY = "scriptora-study-session-v1";
 
@@ -33,19 +34,41 @@ export default function StudySessionPage() {
   const [sourceName, setSourceName] = useState(saved?.result?.sourceName || "testo-incollato.txt");
   const [result, setResult] = useState<StudySessionResult | null>(saved?.result || null);
   const [reading, setReading] = useState(false);
+  const [aiMode, setAiMode] = useState<"idle" | "deepseek" | "local">("idle");
 
   const wordCount = useMemo(() => rawText.trim().split(/\s+/).filter(Boolean).length, [rawText]);
   const canAnalyze = wordCount >= 40 && !reading;
 
-  const analyze = () => {
+  const analyze = async () => {
     if (!canAnalyze) {
       toast.error("Materiale troppo breve", { description: "Carica o incolla almeno 40 parole." });
       return;
     }
-    const next = analyzeStudyMaterial(rawText, sourceName);
-    setResult(next);
-    saveResult(next, rawText);
-    toast.success("Sessione Studio generata");
+
+    setReading(true);
+    setAiMode("deepseek");
+
+    try {
+      const next = await generateStudySessionWithAI({
+        text: rawText,
+        sourceName,
+        language: "Italian",
+      });
+      setResult(next);
+      saveResult(next, rawText);
+      toast.success("Sessione Studio AI generata", { description: "DeepSeek ha creato riassunti, parole difficili, flashcard e quiz." });
+    } catch (error) {
+      console.warn("[StudySession] DeepSeek fallback locale", error);
+      const local = analyzeStudyMaterial(rawText, sourceName);
+      setResult(local);
+      saveResult(local, rawText);
+      setAiMode("local");
+      toast.warning("AI non disponibile: uso analisi locale", {
+        description: error instanceof Error ? error.message.slice(0, 120) : "Fallback locale attivato.",
+      });
+    } finally {
+      setReading(false);
+    }
   };
 
   const handleFile = async (file?: File) => {
@@ -55,10 +78,27 @@ export default function StudySessionPage() {
       const text = await readStudyFile(file);
       setRawText(text);
       setSourceName(file.name);
-      const next = analyzeStudyMaterial(text, file.name);
-      setResult(next);
-      saveResult(next, text);
-      toast.success("Materiale analizzato", { description: file.name });
+      setAiMode("deepseek");
+
+      try {
+        const next = await generateStudySessionWithAI({
+          text,
+          sourceName: file.name,
+          language: "Italian",
+        });
+        setResult(next);
+        saveResult(next, text);
+        toast.success("Materiale analizzato con AI", { description: file.name });
+      } catch (error) {
+        console.warn("[StudySession] DeepSeek file fallback locale", error);
+        const local = analyzeStudyMaterial(text, file.name);
+        setResult(local);
+        saveResult(local, text);
+        setAiMode("local");
+        toast.warning("AI non disponibile: analisi locale attivata", {
+          description: error instanceof Error ? error.message.slice(0, 120) : file.name,
+        });
+      }
     } catch (error) {
       toast.error("File non leggibile", { description: error instanceof Error ? error.message : "Formato non supportato." });
     } finally {
@@ -136,8 +176,8 @@ export default function StudySessionPage() {
               disabled={!canAnalyze}
               className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-300 px-4 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Wand2 className="h-4 w-4" />
-              Genera Sessione Studio
+              {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+              {reading ? "DeepSeek sta preparando la sessione..." : "Genera Sessione Studio"}
             </button>
           </section>
 
@@ -153,7 +193,12 @@ export default function StudySessionPage() {
             ) : (
               <>
                 <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/80">Analisi</p>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/80">Analisi</p>
+                    <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-100">
+                      Motore: {aiMode === "local" ? "Locale fallback" : "DeepSeek AI"}
+                    </span>
+                  </div>
                   <h2 className="mt-1 text-xl font-semibold text-foreground">{result.title}</h2>
                   <div className="mt-3 grid gap-2 sm:grid-cols-3">
                     <MiniStat icon={<FileText className="h-4 w-4" />} label="Parole" value={result.words.toLocaleString()} />
