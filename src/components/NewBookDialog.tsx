@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, forwardRef } from "react";
-import { SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/components/CharacterStudioDialog";
+import { SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
 import { BookConfig, Language, Genre, ChapterLength, BookLength, CATEGORIES, BOOK_LENGTH_CONFIG, AuthorIdentity, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { BookOpen, X, Sparkles, PenTool, UserRound, Save, Fingerprint, PlusCircle, Trash2, RefreshCw } from "lucide-react";
 import { t } from "@/lib/i18n";

@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getCurrentUserId } from "@/services/storageService";
 
-export const SCRIPTORA_CHARACTER_BIBLE_KEY = "scriptora-character-bible-v1";
-export const SCRIPTORA_CHARACTER_PROJECT_KEY = "scriptora-character-project-v1";
+import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
+export { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY };
 const SCRIPTORA_IDEA_HISTORY_KEY = "scriptora-character-idea-history-v1";
 
 type ChoiceOption = string | { value: string; label: string };

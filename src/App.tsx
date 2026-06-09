@@ -8,21 +8,23 @@ import { DominationProvider } from "@/contexts/DominationContext";
 import { MollyProvider } from "@/molly/MollyProvider";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import Home from "./pages/Home.tsx";
-import Index from "./pages/Index.tsx";
-import AuthPage from "./pages/Auth.tsx";
 import NotFound from "./pages/NotFound.tsx";
-import PricingPage from "./pages/PricingPage.tsx";
 import DownloadsPage from "./pages/DownloadsPage.tsx";
 import InstallPage from "./pages/InstallPage.tsx";
 import { DevModeBadge } from "@/components/DevModeBadge";
-import GlobalCuriosity from "./components/GlobalCuriosity";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { MollyErrorBoundary } from "@/components/molly/MollyErrorBoundary";
-import { ScriptoraStepGuide } from "@/components/ScriptoraStepGuide";
 
+const Home = lazy(() => import("./pages/Home.tsx"));
+const Index = lazy(() => import("./pages/Index.tsx"));
+const AuthPage = lazy(() => import("./pages/Auth.tsx"));
+const PricingPage = lazy(() => import("./pages/PricingPage.tsx"));
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
+const GlobalCuriosity = lazy(() => import("./components/GlobalCuriosity"));
+const ScriptoraStepGuide = lazy(() =>
+  import("./components/ScriptoraStepGuide").then((m) => ({ default: m.ScriptoraStepGuide })),
+);
 const AutoBestsellerPage = lazy(() => import("./pages/AutoBestsellerPage.tsx"));
 const UsagePage = lazy(() => import("./pages/UsagePage.tsx"));
 const KdpLaunchPage = lazy(() => import("./pages/KdpLaunchPage.tsx"));
@@ -70,9 +72,11 @@ const App = () => (
               </Routes>
               </Suspense>
               </AppErrorBoundary>
-              <ScriptoraStepGuide />
+              <Suspense fallback={null}>
+                <ScriptoraStepGuide />
+                <GlobalCuriosity />
+              </Suspense>
               <DevModeBadge />
-              <GlobalCuriosity />
             </MollyProvider>
             </MollyErrorBoundary>
           </DominationProvider>

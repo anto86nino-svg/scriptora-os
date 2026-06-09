@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { NavigationTree } from "@/components/NavigationTree";
 import { TopBar } from "@/components/TopBar";
 import { EditorPanel } from "@/components/EditorPanel";
-import { NewBookDialog } from "@/components/NewBookDialog";
 import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { MobileProgressPill } from "@/components/mobile/MobileProgressPill";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -13,9 +12,15 @@ import { useBookEngine } from "@/hooks/useBookEngine";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { deleteProject as removeProject, getLastProjectId } from "@/lib/storage";
 import { loadProjects as loadRemoteProjects, deleteProjectAsync, saveProjectAsync } from "@/services/storageService";
-import { generateEpub, downloadEpub, validateEpubStructure } from "@/lib/epub";
-import { generateDocx, downloadDocx } from "@/lib/docx-export";
-import { generatePdf, downloadPdf } from "@/lib/pdf-export";
+import {
+  downloadDocxFile,
+  downloadEpubFile,
+  downloadPdfFile,
+  runDocxExport,
+  runEpubExport,
+  runPdfExport,
+  validateEpubExport,
+} from "@/lib/export-runtime";
 import { BookProject, SectionId } from "@/types/book";
 import { WritingSettings, loadSettings, saveSettings } from "@/lib/settings";
 import { t, tt, UILanguage, useUILanguage } from "@/lib/i18n";
@@ -28,6 +33,7 @@ import { analyzeExportReadiness, type ExportFixAction, type ExportIssue } from "
 import { consumeQueuedExportFix } from "@/lib/export-fix-navigation";
 import { ExportIssuesDialog } from "@/components/ExportIssuesDialog";
 
+const NewBookDialog = lazy(() => import("@/components/NewBookDialog").then((m) => ({ default: m.NewBookDialog })));
 const CoverGenerator = lazy(() => import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })));
 const PublishPanel = lazy(() => import("@/components/PublishPanel").then((m) => ({ default: m.PublishPanel })));
 const SettingsPanel = lazy(() => import("@/components/SettingsPanel").then((m) => ({ default: m.SettingsPanel })));
@@ -277,7 +283,7 @@ const Index = () => {
       setExportIssuesOpen(true);
       return;
     }
-    const errors = validateEpubStructure(engine.project);
+    const errors = await validateEpubExport(engine.project);
     if (errors.length > 0) {
       toast.error(errors[0], {
         description: errors.slice(1, 3).join(" · "),
@@ -287,9 +293,9 @@ const Index = () => {
     setIsExporting(true);
     setExportLabel(t("exporting_epub"));
     try {
-      const blob = await generateEpub(engine.project, coverOverride ?? coverDataUrl);
+      const blob = await runEpubExport(engine.project, coverOverride ?? coverDataUrl);
       const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
-      downloadEpub(blob, filename);
+      await downloadEpubFile(blob, filename);
     } catch (e) {
       console.error("EPUB export failed:", e);
     } finally {
@@ -303,9 +309,9 @@ const Index = () => {
     setIsExporting(true);
     setExportLabel(t("preparing_docx"));
     try {
-      const blob = await generateDocx(engine.project);
+      const blob = await runDocxExport(engine.project);
       const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
-      downloadDocx(blob, filename);
+      await downloadDocxFile(blob, filename);
     } catch (e) {
       console.error("DOCX export failed:", e);
     } finally {
@@ -319,9 +325,9 @@ const Index = () => {
     setIsExporting(true);
     setExportLabel(t("formatting_pdf"));
     try {
-      const blob = await generatePdf(engine.project);
+      const blob = await runPdfExport(engine.project);
       const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
-      downloadPdf(blob, filename);
+      await downloadPdfFile(blob, filename);
     } catch (e) {
       console.error("PDF export failed:", e);
     } finally {
@@ -693,22 +699,26 @@ const Index = () => {
         </div>
       </div>
 
-      <NewBookDialog
-        open={showNewBook}
-        onClose={() => setShowNewBook(false)}
-        onSubmit={(config) => {
-          if (freeBookUsed) {
-            setShowNewBook(false);
-            setUpgradeReason("books-limit");
-            toast.error(t("toast_free_book_used"));
-            return;
-          }
-          engine.startNewBook(config);
-          setShowNewBook(false);
-          setActiveSection("blueprint");
-          setTimeout(refreshProjects, 500);
-        }}
-      />
+      {showNewBook && (
+        <Suspense fallback={null}>
+          <NewBookDialog
+            open={showNewBook}
+            onClose={() => setShowNewBook(false)}
+            onSubmit={(config) => {
+              if (freeBookUsed) {
+                setShowNewBook(false);
+                setUpgradeReason("books-limit");
+                toast.error(t("toast_free_book_used"));
+                return;
+              }
+              engine.startNewBook(config);
+              setShowNewBook(false);
+              setActiveSection("blueprint");
+              setTimeout(refreshProjects, 500);
+            }}
+          />
+        </Suspense>
+      )}
 
       {isMobile && engine.project && showCoach && (
         <Sheet open={showCoach} onOpenChange={setShowCoach}>

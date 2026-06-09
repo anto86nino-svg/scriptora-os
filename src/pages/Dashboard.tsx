@@ -1,16 +1,18 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense, useMemo, useCallback } from "react";
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
-import { NewBookDialog } from "@/components/NewBookDialog";
-import { HomeExportDialog } from "@/components/HomeExportDialog";
-import { TitleIntelligenceDialog } from "@/components/TitleIntelligenceDialog";
-import { AdvancedAppearanceDialog } from "@/components/AdvancedAppearanceDialog";
-import { CoverGenerator } from "@/components/CoverGenerator";
-import { CharacterStudioDialog, SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/components/CharacterStudioDialog";
-import { ManuscriptAnalyzerDialog } from "@/components/ManuscriptAnalyzerDialog";
-import { NotepadDialog } from "@/components/NotepadDialog";
-import { AuthorIdentityDialog } from "@/components/AuthorIdentityDialog";
+import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
+
+const NewBookDialog = lazy(() => import("@/components/NewBookDialog").then((m) => ({ default: m.NewBookDialog })));
+const HomeExportDialog = lazy(() => import("@/components/HomeExportDialog").then((m) => ({ default: m.HomeExportDialog })));
+const TitleIntelligenceDialog = lazy(() => import("@/components/TitleIntelligenceDialog").then((m) => ({ default: m.TitleIntelligenceDialog })));
+const AdvancedAppearanceDialog = lazy(() => import("@/components/AdvancedAppearanceDialog").then((m) => ({ default: m.AdvancedAppearanceDialog })));
+const CoverGenerator = lazy(() => import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })));
+const CharacterStudioDialog = lazy(() => import("@/components/CharacterStudioDialog").then((m) => ({ default: m.CharacterStudioDialog })));
+const ManuscriptAnalyzerDialog = lazy(() => import("@/components/ManuscriptAnalyzerDialog").then((m) => ({ default: m.ManuscriptAnalyzerDialog })));
+const NotepadDialog = lazy(() => import("@/components/NotepadDialog").then((m) => ({ default: m.NotepadDialog })));
+const AuthorIdentityDialog = lazy(() => import("@/components/AuthorIdentityDialog").then((m) => ({ default: m.AuthorIdentityDialog })));
 import { FocusMusicControl } from "@/components/FocusMusicControl";
 import { InProgressSection } from "@/components/Home/InProgressSection";
 import { LibrarySection } from "@/components/Home/LibrarySection";
@@ -242,7 +244,10 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idea]);
 
-  const freeBookUsed = currentPlan === "free" && projects.length > 0;
+  const freeBookUsed = useMemo(
+    () => currentPlan === "free" && projects.length > 0,
+    [currentPlan, projects.length],
+  );
 
   useEffect(() => {
     if (currentPlan === "free" && bookLength !== "short") {
@@ -250,28 +255,29 @@ export default function Dashboard() {
     }
   }, [bookLength, currentPlan]);
 
-  const openNewBookGuarded = () => {
+  const openNewBookGuarded = useCallback(() => {
     if (freeBookUsed) {
       toast.error(t("toast_free_book_used"));
       navigate("/pricing");
       return;
     }
     setShowNewBook(true);
-  };
+  }, [freeBookUsed, navigate]);
 
-  const guardPlanFeature = (feature: FeatureKey, action: () => void) => () => {
+  const guardPlanFeature = useCallback((feature: FeatureKey, action: () => void) => () => {
     if (!canUseFeature(currentPlan, feature)) {
       toast.error(t("unlock_pro"));
       navigate("/pricing");
       return;
     }
     action();
-  };
+  }, [currentPlan, navigate]);
 
   const lastId = getLastProjectId();
-  // Only surface "continue last" when the project still belongs to the active
-  // environment (DEV vs USER). Cross-scope ids are silently ignored.
-  const lastProject = lastId ? projects.find(p => p.id === lastId) : null;
+  const lastProject = useMemo(
+    () => (lastId ? projects.find((p) => p.id === lastId) : null),
+    [lastId, projects],
+  );
 
   const deleteHomeProject = async (projectId: string, title?: string) => {
     const name = title || t("this_project");
@@ -314,7 +320,7 @@ export default function Dashboard() {
 
     window.addEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
     return () => window.removeEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
-  }, []);
+  }, [openNewBookGuarded]);
 
   const handleNewBook = (config: BookConfig) => {
     let finalConfig: BookConfig = config;
@@ -1187,43 +1193,49 @@ export default function Dashboard() {
 
       </div>
 
-      <NewBookDialog
-        open={showNewBook}
-        onClose={() => setShowNewBook(false)}
-        onSubmit={(config) => {
-          if (freeBookUsed) {
-            setShowNewBook(false);
-            toast.error(t("toast_free_book_used"));
-            navigate("/pricing");
-            return;
-          }
-          handleNewBook(config);
-        }}
-      />
-      <HomeExportDialog open={showExport} projects={projects} onClose={() => setShowExport(false)} />
-      <TitleIntelligenceDialog open={showTitleIntel} onClose={() => setShowTitleIntel(false)} />
-      <AdvancedAppearanceDialog open={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} />
-      <CharacterStudioDialog open={showCharacterStudio} onClose={() => setShowCharacterStudio(false)} />
-      {showCoverStudio && (
-        <CoverGenerator
-          title={t("untitled")}
-          subtitle=""
-          authorName={activeAuthor.penName}
-          description=""
-          authorBio={activeAuthor.biography}
-          showPrimaryAction={false}
-          onGenerate={() => undefined}
-          onClose={() => setShowCoverStudio(false)}
-        />
-      )}
-      <ManuscriptAnalyzerDialog
-        open={showManuscriptAnalyzer}
-        onClose={() => setShowManuscriptAnalyzer(false)}
-        canCreateProject={!freeBookUsed}
-        onLimitReached={() => navigate("/pricing")}
-      />
-      <NotepadDialog open={showNotepad} onClose={() => setShowNotepad(false)} />
-      <AuthorIdentityDialog open={showAuthorIdentity} onClose={() => setShowAuthorIdentity(false)} />
+      <Suspense fallback={null}>
+        {showNewBook && (
+          <NewBookDialog
+            open={showNewBook}
+            onClose={() => setShowNewBook(false)}
+            onSubmit={(config) => {
+              if (freeBookUsed) {
+                setShowNewBook(false);
+                toast.error(t("toast_free_book_used"));
+                navigate("/pricing");
+                return;
+              }
+              handleNewBook(config);
+            }}
+          />
+        )}
+        {showExport && <HomeExportDialog open={showExport} projects={projects} onClose={() => setShowExport(false)} />}
+        {showTitleIntel && <TitleIntelligenceDialog open={showTitleIntel} onClose={() => setShowTitleIntel(false)} />}
+        {showAdvancedSettings && <AdvancedAppearanceDialog open={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} />}
+        {showCharacterStudio && <CharacterStudioDialog open={showCharacterStudio} onClose={() => setShowCharacterStudio(false)} />}
+        {showCoverStudio && (
+          <CoverGenerator
+            title={t("untitled")}
+            subtitle=""
+            authorName={activeAuthor.penName}
+            description=""
+            authorBio={activeAuthor.biography}
+            showPrimaryAction={false}
+            onGenerate={() => undefined}
+            onClose={() => setShowCoverStudio(false)}
+          />
+        )}
+        {showManuscriptAnalyzer && (
+          <ManuscriptAnalyzerDialog
+            open={showManuscriptAnalyzer}
+            onClose={() => setShowManuscriptAnalyzer(false)}
+            canCreateProject={!freeBookUsed}
+            onLimitReached={() => navigate("/pricing")}
+          />
+        )}
+        {showNotepad && <NotepadDialog open={showNotepad} onClose={() => setShowNotepad(false)} />}
+        {showAuthorIdentity && <AuthorIdentityDialog open={showAuthorIdentity} onClose={() => setShowAuthorIdentity(false)} />}
+      </Suspense>
 
       {/* Idea modal — primary generation flow */}
       {showIdeaModal && (
