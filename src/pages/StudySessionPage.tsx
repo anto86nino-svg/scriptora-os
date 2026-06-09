@@ -24,13 +24,13 @@ function normalizeStudyResultForUI(value: any): any {
     difficultWords: Array.isArray(result.difficultWords) ? result.difficultWords : [],
     flashcards: Array.isArray(result.flashcards) ? result.flashcards : [],
     openQuestions: Array.isArray(result.openQuestions)
-      ? safeOpenQuestions.map((item: any) => ({
+      ? result.openQuestions.map((item: any) => ({
           question: String(item?.question || "Domanda aperta non disponibile"),
           answerGuide: String(item?.answerGuide || "Guida risposta non disponibile."),
         }))
       : [],
     quiz: Array.isArray(result.quiz)
-      ? safeQuiz.map((item: any) => ({
+      ? result.quiz.map((item: any) => ({
           question: String(item?.question || "Domanda non disponibile"),
           options: Array.isArray(item?.options) ? item.options.map((o: any) => String(o || "")) : [],
           answer: Number.isFinite(Number(item?.answer)) ? Number(item.answer) : 0,
