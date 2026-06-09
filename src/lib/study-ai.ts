@@ -53,6 +53,11 @@ function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudyS
     back: normalizeString(item?.back, "Risposta"),
   }));
 
+  const openQuestions = normalizeArray<any>(parsed?.openQuestions).slice(0, 10).map((item) => ({
+    question: normalizeString(item?.question, "Domanda aperta"),
+    answerGuide: normalizeString(item?.answerGuide, "Rispondi definendo il concetto, spiegandolo e collegandolo al tema centrale."),
+  }));
+
   const quiz = normalizeArray<any>(parsed?.quiz).slice(0, 12).map((item) => {
     const options = normalizeArray<string>(item?.options).map((option) => String(option || "").trim()).filter(Boolean).slice(0, 4);
     const answer = Number.isFinite(Number(item?.answer)) ? Number(item.answer) : 0;
@@ -77,6 +82,8 @@ function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudyS
     lightSummary: normalizeString(parsed?.lightSummary, fallback.lightSummary),
     mediumSummary: normalizeString(parsed?.mediumSummary, fallback.mediumSummary),
     proSummary: normalizeString(parsed?.proSummary, fallback.proSummary),
+    studyNotesPro: normalizeString(parsed?.studyNotesPro, fallback.studyNotesPro),
+    openQuestions: openQuestions.length ? openQuestions : fallback.openQuestions,
     difficultWords: difficultWords.length ? difficultWords : fallback.difficultWords,
     flashcards: flashcards.length ? flashcards : fallback.flashcards,
     quiz: quiz.length ? quiz : fallback.quiz,
@@ -193,6 +200,8 @@ QUALITY RULES:
 - Light summary: simple language, but still cover all major sections and the central message. Minimum 180-260 words when material is long.
 - Medium summary: structured, ordered, complete. Include main ideas, chapter/section progression, cause-effect links, and practical meaning. Minimum 350-550 words when material is long.
 - Pro summary: exam/interrogation-ready. Deep, detailed, organized by concepts, with connections, key arguments, mechanisms, examples, and what the student must remember. Minimum 700-1000 words when material is long.
+- Study Notes Pro: create a complete study handout, not a short summary. Include conceptual map, key ideas, section progression, cause/effect links, what to memorize, what to explain orally, common traps, and exam-style preparation. Minimum 900-1400 words when material is long.
+- Open questions: create deep written/oral exam questions with answer guides.
 - Difficult words: explain simple meaning, technical meaning, and give concrete example.
 - Flashcards: useful for active recall, not generic.
 - Quiz: create challenging multiple-choice questions. Include answer index 0-3 and explanation.
@@ -213,6 +222,13 @@ Return this JSON shape exactly:
   "lightSummary": "string",
   "mediumSummary": "string",
   "proSummary": "string",
+  "studyNotesPro": "string",
+  "openQuestions": [
+    {
+      "question": "string",
+      "answerGuide": "string"
+    }
+  ],
   "difficultWords": [
     {
       "word": "string",

@@ -22,6 +22,11 @@ export interface QuizQuestion {
   explanation: string;
 }
 
+export interface OpenStudyQuestion {
+  question: string;
+  answerGuide: string;
+}
+
 export interface StudySessionResult {
   title: string;
   sourceName: string;
@@ -31,6 +36,8 @@ export interface StudySessionResult {
   lightSummary: string;
   mediumSummary: string;
   proSummary: string;
+  studyNotesPro: string;
+  openQuestions: OpenStudyQuestion[];
   difficultWords: DifficultWord[];
   flashcards: Flashcard[];
   quiz: QuizQuestion[];
@@ -97,6 +104,46 @@ function pickSentences(text: string, wanted: number): string[] {
 
 function paragraph(title: string, lines: string[]): string {
   return [`${title}`, ...lines.map((line) => `• ${line}`)].join("\n");
+}
+
+function buildStudyNotesPro(title: string, concepts: string[], proLines: string[]): string {
+  const conceptLines = concepts.length
+    ? concepts.map((concept) => `• ${concept}: definiscilo, spiegalo con parole tue e collegalo al tema centrale.`)
+    : ["• Individua tema centrale, causa, conseguenza e messaggio principale."];
+
+  const memoryLines = proLines.slice(0, 10).map((line) => `• ${line}`);
+
+  return [
+    "Scheda Studio Pro",
+    "",
+    `Tema centrale: ${title}`,
+    "",
+    "1. Concetti da sapere",
+    ...conceptLines,
+    "",
+    "2. Spiegazione approfondita",
+    ...memoryLines,
+    "",
+    "3. Collegamenti logici",
+    "• Cerca sempre il rapporto tra origine del problema, conseguenze e possibile soluzione.",
+    "• Collega ogni concetto a un esempio concreto tratto dal materiale.",
+    "• Distingui definizione, meccanismo e applicazione pratica.",
+    "",
+    "4. Cosa ricordare per una verifica/interrogazione",
+    "• Non limitarti a ripetere: spiega perché il concetto è importante.",
+    "• Usa parole chiave, esempi e collegamenti tra sezioni.",
+    "• Prepara una risposta lunga di 1-2 minuti sul tema centrale.",
+  ].join("\n");
+}
+
+function buildOpenQuestions(title: string, concepts: string[]): OpenStudyQuestion[] {
+  const base = concepts.slice(0, 8);
+  const questions = base.length ? base : [title];
+
+  return questions.map((concept) => ({
+    question: `Spiega il ruolo di "${concept}" nel materiale e collegalo al tema principale.`,
+    answerGuide: `Definisci "${concept}", spiega perché è importante, collega il concetto al tema "${title}" e aggiungi un esempio concreto.`,
+  }));
 }
 
 function detectSubject(text: string, sourceName: string): string {

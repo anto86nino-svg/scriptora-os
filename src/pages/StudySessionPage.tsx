@@ -215,6 +215,24 @@ export default function StudySessionPage() {
                 <StudyBlock title="Riassunto leggero" text={result.lightSummary} />
                 <StudyBlock title="Riassunto medio" text={result.mediumSummary} />
                 <StudyBlock title="Riassunto Pro" text={result.proSummary} />
+                <StudyBlock title="Scheda Studio Pro" text={result.studyNotesPro} />
+
+                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
+                  <h3 className="font-semibold">Domande aperte da interrogazione</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Usa queste domande per allenare esposizione orale, esame o verifica scritta.
+                  </p>
+                  <div className="mt-3 space-y-3">
+                    {result.openQuestions.map((item, index) => (
+                      <details key={index} className="rounded-2xl border border-white/10 bg-background/45 p-3">
+                        <summary className="cursor-pointer text-sm font-semibold leading-6">
+                          {index + 1}. {item.question}
+                        </summary>
+                        <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.answerGuide}</p>
+                      </details>
+                    ))}
+                  </div>
+                </div>
 
                 <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
                   <h3 className="font-semibold">Parole difficili spiegate</h3>
