@@ -31,6 +31,7 @@ const UsagePage = lazy(() => import("./pages/UsagePage.tsx"));
 const KdpLaunchPage = lazy(() => import("./pages/KdpLaunchPage.tsx"));
 const BestsellerRadarPage = lazy(() => import("./pages/BestsellerRadarPage.tsx"));
 const KeywordGoldPage = lazy(() => import("./pages/KeywordGoldPage.tsx"));
+const StudySessionPage = lazy(() => import("./pages/StudySessionPage.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ const App = () => (
                 <Route path="/downloads" element={<ProtectedRoute><DownloadsPage /></ProtectedRoute>} />
                 <Route path="/bestseller-radar" element={<ProtectedRoute requiredFeature="trending_niches_limited"><BestsellerRadarPage /></ProtectedRoute>} />
                 <Route path="/keyword-gold" element={<ProtectedRoute requiredFeature="kdp_market_base"><KeywordGoldPage /></ProtectedRoute>} />
+                <Route path="/study-session" element={<ProtectedRoute><StudySessionPage /></ProtectedRoute>} />
                 <Route path="/install" element={<InstallPage />} />
 
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
