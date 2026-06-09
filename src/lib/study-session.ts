@@ -1,5 +1,11 @@
 import JSZip from "jszip";
+import * as pdfjsLib from "pdfjs-dist";
 import { explainProfessionalWord, extractProfessionalTerms } from "@/lib/professional-dictionary";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.mjs",
+  import.meta.url
+).toString();
 
 export type StudyDifficulty = "soft" | "medium" | "pro";
 
@@ -226,15 +232,59 @@ async function readDocx(file: File): Promise<string> {
   return paragraphs.map((p) => p.trim()).filter(Boolean).join("\n\n");
 }
 
+
+async function readPdf(file: File): Promise<string> {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+
+    const pdf = await pdfjsLib.getDocument({
+      data: arrayBuffer,
+      useWorkerFetch: false,
+      isEvalSupported: false,
+    }).promise;
+
+    const pages: string[] = [];
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+
+      const text = content.items
+        .map((item: any) => ("str" in item ? item.str : ""))
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (text) pages.push(text);
+    }
+
+    const fullText = pages.join("\n\n").trim();
+
+    if (!fullText) {
+      throw new Error(
+        "Questo PDF sembra una scansione o non contiene testo selezionabile."
+      );
+    }
+
+    return fullText;
+  } catch (error) {
+    console.error("[StudySession PDF]", error);
+
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Impossibile leggere il PDF."
+    );
+  }
+}
+
 export async function readStudyFile(file: File): Promise<string> {
   const name = file.name.toLowerCase();
 
   if (name.endsWith(".docx")) return readDocx(file);
   if (name.endsWith(".txt") || name.endsWith(".md") || name.endsWith(".markdown")) return file.text();
 
-  if (name.endsWith(".pdf")) {
-    throw new Error("PDF in arrivo: al momento carica TXT, Markdown o DOCX.");
-  }
+  if (name.endsWith(".pdf")) return readPdf(file);
 
   throw new Error("Formato non supportato. Usa TXT, MD, Markdown o DOCX.");
 }
