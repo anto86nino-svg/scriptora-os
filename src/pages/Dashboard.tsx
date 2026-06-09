@@ -11,6 +11,7 @@ const NewBookDialog = lazy(() => import("@/components/NewBookDialog").then((m) =
 const HomeExportDialog = lazy(() => import("@/components/HomeExportDialog").then((m) => ({ default: m.HomeExportDialog })));
 const TitleIntelligenceDialog = lazy(() => import("@/components/TitleIntelligenceDialog").then((m) => ({ default: m.TitleIntelligenceDialog })));
 const AdvancedAppearanceDialog = lazy(() => import("@/components/AdvancedAppearanceDialog").then((m) => ({ default: m.AdvancedAppearanceDialog })));
+import { VisualPerformanceBadge } from "@/components/PerformanceModeHint";
 const CoverGenerator = lazy(() => import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })));
 const CharacterStudioDialog = lazy(() => import("@/components/CharacterStudioDialog").then((m) => ({ default: m.CharacterStudioDialog })));
 const ManuscriptAnalyzerDialog = lazy(() => import("@/components/ManuscriptAnalyzerDialog").then((m) => ({ default: m.ManuscriptAnalyzerDialog })));
@@ -731,6 +732,7 @@ export default function Dashboard() {
                 ))}
               </select>
             </div>
+            <VisualPerformanceBadge onOpenSettings={() => setShowAdvancedSettings(true)} />
             <FocusMusicControl />
             <button
               type="button"
