@@ -8,6 +8,40 @@ import { evaluateStudyAnswerWithAI, type StudyAnswerEvaluation } from "@/lib/stu
 
 const STORAGE_KEY = "scriptora-study-session-v1";
 
+function normalizeStudyResultForUI(value: any): any {
+  const result = value || {};
+
+  return {
+    title: String(result.title || "Sessione Studio"),
+    totalWords: Number(result.totalWords || 0),
+    detectedSubject: String(result.detectedSubject || "Materiale di studio"),
+    difficulty: result.difficulty || "medium",
+    lightSummary: String(result.lightSummary || ""),
+    mediumSummary: String(result.mediumSummary || ""),
+    proSummary: String(result.proSummary || ""),
+    studyNotesPro: String(result.studyNotesPro || ""),
+    keyConcepts: Array.isArray(result.keyConcepts) ? result.keyConcepts : [],
+    difficultWords: Array.isArray(result.difficultWords) ? result.difficultWords : [],
+    flashcards: Array.isArray(result.flashcards) ? result.flashcards : [],
+    openQuestions: Array.isArray(result.openQuestions)
+      ? safeOpenQuestions.map((item: any) => ({
+          question: String(item?.question || "Domanda aperta non disponibile"),
+          answerGuide: String(item?.answerGuide || "Guida risposta non disponibile."),
+        }))
+      : [],
+    quiz: Array.isArray(result.quiz)
+      ? safeQuiz.map((item: any) => ({
+          question: String(item?.question || "Domanda non disponibile"),
+          options: Array.isArray(item?.options) ? item.options.map((o: any) => String(o || "")) : [],
+          answer: Number.isFinite(Number(item?.answer)) ? Number(item.answer) : 0,
+          explanation: String(item?.explanation || "Spiegazione non disponibile."),
+        }))
+      : [],
+  };
+}
+
+
+
 function saveResult(result: StudySessionResult, rawText: string) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ result, rawText, updatedAt: Date.now() }));
@@ -60,7 +94,7 @@ export default function StudySessionPage() {
         sourceName,
         language: "Italian",
       });
-      setResult(next);
+      setResult(normalizeStudyResultForUI(next));
       setQuizAnswers({});
       setCurrentQuizIndex(0);
       setOpenAnswers({});
@@ -70,7 +104,7 @@ export default function StudySessionPage() {
     } catch (error) {
       console.warn("[StudySession] DeepSeek fallback locale", error);
       const local = analyzeStudyMaterial(rawText, sourceName);
-      setResult(local);
+      setResult(normalizeStudyResultForUI(local));
       setQuizAnswers({});
       setCurrentQuizIndex(0);
       setOpenAnswers({});
@@ -130,7 +164,7 @@ export default function StudySessionPage() {
           sourceName: file.name,
           language: "Italian",
         });
-        setResult(next);
+        setResult(normalizeStudyResultForUI(next));
         setQuizAnswers({});
         setCurrentQuizIndex(0);
         setOpenAnswers({});
@@ -140,7 +174,7 @@ export default function StudySessionPage() {
       } catch (error) {
         console.warn("[StudySession] DeepSeek file fallback locale", error);
         const local = analyzeStudyMaterial(text, file.name);
-        setResult(local);
+        setResult(normalizeStudyResultForUI(local));
         setQuizAnswers({});
         setCurrentQuizIndex(0);
         setOpenAnswers({});
@@ -158,6 +192,13 @@ export default function StudySessionPage() {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
+
+  const safeResult = result ? normalizeStudyResultForUI(result) : null;
+  const safeDifficultWords = Array.isArray(safeResult?.difficultWords) ? safeResult.difficultWords : [];
+  const safeFlashcards = Array.isArray(safeResult?.flashcards) ? safeResult.flashcards : [];
+  const safeQuiz = Array.isArray(safeResult?.quiz) ? safeResult.quiz : [];
+  const safeOpenQuestions = Array.isArray(safeResult?.openQuestions) ? safeResult.openQuestions : [];
+  const safeKeyConcepts = Array.isArray(safeResult?.keyConcepts) ? safeResult.keyConcepts : [];
 
   return (
     <div className="scriptora-ios-screen scriptora-app-surface min-h-screen px-4 py-5 sm:px-8">
@@ -270,7 +311,12 @@ export default function StudySessionPage() {
                     Usa queste domande per allenare esposizione orale, esame o verifica scritta.
                   </p>
                   <div className="mt-3 space-y-3">
-                    {result.openQuestions.map((item, index) => {
+                    {safeOpenQuestions.length === 0 && (
+                      <p className="rounded-2xl border border-white/10 bg-background/45 p-3 text-sm text-muted-foreground">
+                        Nessuna domanda aperta disponibile in questa sessione. Rigenera l’analisi per creare le domande da interrogazione.
+                      </p>
+                    )}
+                    {safeOpenQuestions.map((item, index) => {
                       const evaluation = openEvaluations[index];
                       const isEvaluating = evaluatingOpenAnswer === index;
 
@@ -316,13 +362,13 @@ export default function StudySessionPage() {
                                 <div>
                                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/80">Punti forti</p>
                                   <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                                    {evaluation.strengths.map((line, i) => <li key={i}>• {line}</li>)}
+                                    {(Array.isArray(evaluation.strengths) ? evaluation.strengths : []).map((line, i) => <li key={i}>• {line}</li>)}
                                   </ul>
                                 </div>
                                 <div>
                                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-200/80">Da migliorare</p>
                                   <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                                    {evaluation.missing.map((line, i) => <li key={i}>• {line}</li>)}
+                                    {(Array.isArray(evaluation.missing) ? evaluation.missing : []).map((line, i) => <li key={i}>• {line}</li>)}
                                   </ul>
                                 </div>
                               </div>
@@ -344,7 +390,7 @@ export default function StudySessionPage() {
                 <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
                   <h3 className="font-semibold">Parole difficili spiegate</h3>
                   <div className="mt-3 space-y-3">
-                    {result.difficultWords.map((item) => (
+                    {safeDifficultWords.map((item) => (
                       <div key={item.word} className="rounded-2xl border border-white/10 bg-background/45 p-3">
                         <p className="font-semibold text-emerald-100">{item.word}</p>
                         <p className="mt-1 text-sm text-foreground/85">{item.simple}</p>
@@ -358,7 +404,7 @@ export default function StudySessionPage() {
                 <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
                   <h3 className="font-semibold">Flashcard</h3>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    {result.flashcards.map((card, index) => (
+                    {safeFlashcards.map((card, index) => (
                       <div key={index} className="rounded-2xl border border-white/10 bg-background/45 p-3">
                         <p className="text-sm font-semibold">{card.front}</p>
                         <p className="mt-2 text-xs leading-5 text-muted-foreground">{card.back}</p>
@@ -378,16 +424,27 @@ export default function StudySessionPage() {
                     <div className="rounded-2xl border border-white/10 bg-background/50 px-4 py-2 text-sm">
                       <span className="text-muted-foreground">Voto: </span>
                       <span className="font-bold text-emerald-200">
-                        {Object.keys(quizAnswers).length === result.quiz.length
-                          ? `${Math.round((result.quiz.filter((q, i) => quizAnswers[i] === q.answer).length / Math.max(1, result.quiz.length)) * 100)}/100`
-                          : `${Object.keys(quizAnswers).length}/${result.quiz.length}`}
+                        {Object.keys(quizAnswers).length === safeQuiz.length
+                          ? `${Math.round((safeQuiz.filter((q, i) => quizAnswers[i] === q.answer).length / Math.max(1, safeQuiz.length)) * 100)}/100`
+                          : `${Object.keys(quizAnswers).length}/${safeQuiz.length}`}
                       </span>
                     </div>
                   </div>
 
-                  {result.quiz.length > 0 && (() => {
-                    const safeQuizIndex = Math.min(currentQuizIndex, result.quiz.length - 1);
-                    const q = result.quiz[safeQuizIndex];
+                  {safeQuiz.length === 0 && (
+                    <p className="mt-4 rounded-2xl border border-white/10 bg-background/45 p-3 text-sm text-muted-foreground">
+                      Nessun quiz disponibile in questa sessione. Rigenera l’analisi per creare domande a risposta multipla.
+                    </p>
+                  )}
+
+                  {safeQuiz.length > 0 && (() => {
+                    const safeQuizIndex = Math.min(currentQuizIndex, safeQuiz.length - 1);
+                    const q = safeQuiz[safeQuizIndex] || {
+                      question: "Domanda non disponibile",
+                      options: [],
+                      answer: 0,
+                      explanation: "Rigenera la sessione per ottenere un quiz completo.",
+                    };
                     const selected = quizAnswers[safeQuizIndex];
                     const answered = selected !== undefined;
                     const correct = answered && selected === q.answer;
@@ -396,7 +453,7 @@ export default function StudySessionPage() {
                       <div className="mt-4 rounded-3xl border border-white/10 bg-background/45 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-semibold text-muted-foreground">
-                            Domanda {safeQuizIndex + 1}/{result.quiz.length}
+                            Domanda {safeQuizIndex + 1}/{safeQuiz.length}
                           </span>
                           {answered && (
                             <span className={correct ? "rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200" : "rounded-full bg-rose-400/10 px-3 py-1 text-xs font-semibold text-rose-200"}>
@@ -410,7 +467,7 @@ export default function StudySessionPage() {
                         </p>
 
                         <div className="mt-4 grid gap-2">
-                          {q.options.map((option, optionIndex) => {
+                          {(Array.isArray(q.options) ? q.options : []).map((option, optionIndex) => {
                             const isSelected = selected === optionIndex;
                             const isCorrect = q.answer === optionIndex;
                             const showCorrect = answered && isCorrect;
@@ -457,8 +514,8 @@ export default function StudySessionPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setCurrentQuizIndex((value) => Math.min(result.quiz.length - 1, value + 1))}
-                            disabled={safeQuizIndex === result.quiz.length - 1}
+                            onClick={() => setCurrentQuizIndex((value) => Math.min(safeQuiz.length - 1, value + 1))}
+                            disabled={safeQuizIndex === safeQuiz.length - 1}
                             className="h-11 rounded-2xl bg-emerald-300 text-sm font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-emerald-200"
                           >
                             Avanti
@@ -468,14 +525,14 @@ export default function StudySessionPage() {
                         <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.06]">
                           <div
                             className="h-full rounded-full bg-emerald-300 transition-all"
-                            style={{ width: `${((safeQuizIndex + 1) / Math.max(1, result.quiz.length)) * 100}%` }}
+                            style={{ width: `${((safeQuizIndex + 1) / Math.max(1, safeQuiz.length)) * 100}%` }}
                           />
                         </div>
                       </div>
                     );
                   })()}
 
-                  {result.quiz.length > 0 && (
+                  {safeQuiz.length > 0 && (
                     <button
                       type="button"
                       onClick={() => { setQuizAnswers({}); setCurrentQuizIndex(0); }}
