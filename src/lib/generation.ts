@@ -8,6 +8,16 @@ import { validateEditorial } from "@/lib/editorial-validator";
 import { withRetry, getBreakerCooldown } from "@/lib/api-resilience";
 import { normalizeAuthorIdentity } from "@/lib/author-identity";
 import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import {
+  sanitizeChapterTitle,
+  sanitizeChapterSummary,
+  sanitizeChapterOutput,
+  isChapterOutputTooShort,
+  isForbiddenChapterTitle,
+  isForbiddenChapterSummary,
+  classifyChapterGenerationError,
+  logChapterGenerationDev,
+} from "@/lib/chapter-generation-guard";
 import { deriveSubchapterTitle } from "@/lib/subchapter-titles";
 import {
   resolveSubchapterCount,
@@ -801,14 +811,19 @@ function normalizeBlueprint(raw: unknown, config: BookConfig): BookBlueprint {
   const resolvedTitles: string[] = [];
   const chapterOutlines = Array.from({ length: config.numberOfChapters }, (_, i) => {
     const item = outlines[i] || {};
-    const summary = stringifyField((item as any).summary).trim() || `Develop chapter ${i + 1} of "${config.title}".`;
-    const title = resolveChapterTitle(stringifyField((item as any).title).trim(), i, {
+    const rawSummary = stringifyField((item as any).summary).trim();
+    const summary = sanitizeChapterSummary(
+      rawSummary || `Develop chapter ${i + 1} of "${config.title}".`,
+      i,
       config,
-      summary,
-      totalChapters: config.numberOfChapters,
-      blueprint: blueprintContext,
-      previousTitles: resolvedTitles,
-    });
+      { overview, themes, emotionalArc, chapterOutlines: outlines } as BookBlueprint,
+    );
+    const title = sanitizeChapterTitle(stringifyField((item as any).title).trim(), i, config, {
+      overview,
+      themes,
+      emotionalArc,
+      chapterOutlines: outlines,
+    } as BookBlueprint, resolvedTitles);
     resolvedTitles.push(title);
     const rawSubs = Array.isArray((item as any).subchapters) ? (item as any).subchapters : [];
     const subchapterCount = resolveSubchapterCount(config);
@@ -929,14 +944,28 @@ export async function generateChapterChunked(
     title: "",
     summary: `Develop chapter ${chapterIndex + 1} of "${config.title}".`,
   };
+  const previousTitles = blueprint.chapterOutlines
+    .slice(0, chapterIndex)
+    .map((o, i) => sanitizeChapterTitle(o?.title, i, config, blueprint));
+  const safeSummary = sanitizeChapterSummary(rawOutline.summary, chapterIndex, config, blueprint);
+  const safeTitle = sanitizeChapterTitle(rawOutline.title, chapterIndex, config, blueprint, previousTitles);
   const outline = {
     ...rawOutline,
-    title: resolveChapterTitle(rawOutline.title, chapterIndex, {
-      config,
-      summary: rawOutline.summary,
-      totalChapters: config.numberOfChapters,
-    }),
+    title: safeTitle,
+    summary: safeSummary,
   };
+
+  if (isForbiddenChapterTitle(outline.title) || isForbiddenChapterSummary(outline.summary)) {
+    throw new Error("Struttura capitolo incompleta: prompt contiene placeholder tecnici.");
+  }
+
+  logChapterGenerationDev({
+    chapterIndex: chapterIndex + 1,
+    sanitizedTitle: outline.title,
+    selectedLanguage: config.language,
+    targetWords: getChapterTargetWords(config, chapterIndex, config.numberOfChapters, chapterLengthOverride),
+  });
+
   const targetWords = getChapterTargetWords(config, chapterIndex, config.numberOfChapters, chapterLengthOverride);
   const contextMemory = buildContextMemory(config, blueprint, previousChapters, chapterIndex);
   const systemBase = getSystemPrompt(config, genreLock);
@@ -1104,8 +1133,15 @@ Write in ${config.language}.${adaptiveSuffix}`;
               }),
             );
             consecutiveFailures = 0;
-          } catch {
-            throw new Error(`Generation failed after multiple attempts. Try again or reduce chapter length.`);
+          } catch (fallbackErr: any) {
+            const mapped = classifyChapterGenerationError(fallbackErr);
+            logChapterGenerationDev({
+              chapterIndex: chapterIndex + 1,
+              retryCount: consecutiveFailures,
+              error: fallbackErr?.message,
+              devCode: mapped.devCode,
+            });
+            throw new Error(mapped.userMessage);
           }
         } else {
           console.warn(`[Nexora] Stopping with ${countWords(accumulatedContent)} words after ${consecutiveFailures} failures`);
@@ -1128,15 +1164,13 @@ Write in ${config.language}.${adaptiveSuffix}`;
     chunkText = chunkText.replace(/^```[a-z]*\n?/g, "").replace(/\n?```$/g, "").trim();
     if (isFirstChunk) {
       const lines = chunkText.split("\n");
-    if (lines[0] && lines[0].startsWith("#")) {
-        chapterTitle = resolveChapterTitle(lines[0].replace(/^#+\s*/, "").trim(), chapterIndex, {
-          config,
-          summary: outline.summary,
-          totalChapters: config.numberOfChapters,
-        });
+      if (lines[0] && lines[0].startsWith("#")) {
+        const parsed = lines[0].replace(/^#+\s*/, "").trim();
+        chapterTitle = sanitizeChapterTitle(parsed, chapterIndex, config, blueprint, previousTitles);
         chunkText = lines.slice(1).join("\n").trim();
       }
     }
+    chunkText = sanitizeChapterOutput(chunkText, config, outline.title);
 
     // Anti-repetition check
     if (!isFirstChunk && accumulatedContent.length > 0) {
@@ -1190,7 +1224,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
   if (DEV_DEBUG_STREAM) console.log(`[Nexora] Chapter ${chapterIndex + 1} complete: ${countWords(accumulatedContent)} words in ${chunkIndex} chunks`);
 
   if (!accumulatedContent.trim()) {
-    throw new Error(`[Nexora] Chapter ${chapterIndex + 1} produced empty output after ${chunkIndex} chunks. Generation failed.`);
+    throw new Error("Il motore ha restituito una risposta vuota. Nessun testo è stato salvato.");
   }
 
   // Editorial QA gate (non-blocking — surfaces in console + Mastery diagnostic)
@@ -1240,13 +1274,14 @@ Write in ${config.language}.${adaptiveSuffix}`;
   // Final sanitization pass — strip AI labels, language bleed, duplicate paragraphs,
   // broken punctuation, and debug artefacts before the chapter is stored or shown.
   accumulatedContent = sanitizeManuscript(accumulatedContent, { language: config.language ?? "Italian" });
+  accumulatedContent = sanitizeChapterOutput(accumulatedContent, config, outline.title);
+
+  if (isChapterOutputTooShort(accumulatedContent)) {
+    throw new Error("Il motore ha restituito una risposta vuota. Nessun testo è stato salvato.");
+  }
 
   const finalChapter = humanizeChapter({
-    title: resolveChapterTitle(chapterTitle, chapterIndex, {
-      config,
-      summary: outline.summary,
-      totalChapters: config.numberOfChapters,
-    }),
+    title: sanitizeChapterTitle(chapterTitle, chapterIndex, config, blueprint, previousTitles),
     content: accumulatedContent,
     subchapters: [],
   }, { config, previousChapters, chapterIndex, outlineSummary: outline.summary });
@@ -1323,8 +1358,8 @@ Return a JSON object with:
     return normalizeBlueprint({
       overview: result,
       chapterOutlines: Array.from({ length: config.numberOfChapters }, (_, i) => ({
-        title: resolveChapterTitle("", i, { config, summary: "", totalChapters: config.numberOfChapters }),
-        summary: "To be generated",
+        title: sanitizeChapterTitle("", i, config, null, []),
+        summary: sanitizeChapterSummary("", i, config, null),
       })),
       themes: [], emotionalArc: "",
     }, config);

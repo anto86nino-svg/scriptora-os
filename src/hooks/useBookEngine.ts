@@ -20,6 +20,12 @@ import { classifyError, formatUserMessage, formatToastMessage } from "@/lib/scri
 import { scriptoraLog } from "@/lib/scriptora-logger";
 import { getPlanLimits } from "@/lib/subscription";
 import { normalizeProjectChapterTitles, resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import {
+  preflightChapterGeneration,
+  sanitizeChapterTitle,
+  classifyChapterGenerationError,
+  logChapterGenerationDev,
+} from "@/lib/chapter-generation-guard";
 import { ensureBookTitleMetadata } from "@/lib/title-shadow";
 import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
 
@@ -116,11 +122,10 @@ function showFreeAiToolsLockedMessage(addMessage: (role: ChatMessage["role"], co
 
 function resolveProjectChapterTitle(project: BookProject, index: number, rawTitle?: string): string {
   const outline = project.blueprint?.chapterOutlines?.[index];
-  return resolveChapterTitle(rawTitle || outline?.title, index, {
-    config: project.config,
-    summary: outline?.summary,
-    totalChapters: project.config?.numberOfChapters,
-  });
+  const previousTitles = (project.chapters || [])
+    .slice(0, index)
+    .map((ch, i) => sanitizeChapterTitle(ch.title, i, project.config, project.blueprint));
+  return sanitizeChapterTitle(rawTitle || outline?.title, index, project.config, project.blueprint, previousTitles);
 }
 
 // Debounce remote saves: local save is instant, but Supabase upserts are
@@ -403,6 +408,16 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     const genKey = `chapter-${index}`;
     if (generatingSet.has(genKey)) return;
 
+    const preflight = preflightChapterGeneration(p, index);
+    if (!preflight.ok) {
+      toast.error(preflight.userMessage);
+      addMessage("assistant", `❌ Capitolo ${index + 1}: ${preflight.userMessage}`);
+      return;
+    }
+
+    const priorContent = p.chapters?.[index]?.content || "";
+    const hadPriorContent = priorContent.trim().length > 50;
+
     const maxProjectWords = await getMaxProjectWordsForActivePlan();
     if (countProjectWordsHard(p) >= maxProjectWords) {
       const msg = `Limite piano raggiunto: hai completato ${planLimitLabel(maxProjectWords)}.`;
@@ -418,7 +433,13 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       while (chapters.length <= index) {
         chapters.push({ title: resolveProjectChapterTitle(proj, chapters.length), content: "", subchapters: [], status: "idle" });
       }
-      chapters[index] = { ...chapters[index], title: resolveProjectChapterTitle(proj, index, chapters[index]?.title), status: "generating" };
+      chapters[index] = {
+        ...chapters[index],
+        title: preflight.title,
+        content: hadPriorContent ? priorContent : "",
+        subchapters: hadPriorContent ? chapters[index]?.subchapters || [] : [],
+        status: "generating",
+      };
       return { ...proj, chapters };
     });
 
@@ -511,15 +532,31 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         toast.error(msg);
       }
     } catch (e: any) {
+      const mapped = classifyChapterGenerationError(e);
+      logChapterGenerationDev({
+        chapterIndex: index + 1,
+        sanitizedTitle: preflight.ok ? preflight.title : undefined,
+        selectedLanguage: p.config.language,
+        error: e?.message,
+        devCode: mapped.devCode,
+      });
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
-        if (chapters[index]) chapters[index] = { ...chapters[index], status: "error" as GenerationStatus };
+        if (chapters[index]) {
+          chapters[index] = {
+            ...chapters[index],
+            title: preflight.ok ? preflight.title : chapters[index].title,
+            content: hadPriorContent ? priorContent : "",
+            subchapters: hadPriorContent ? chapters[index].subchapters || [] : [],
+            status: "idle" as GenerationStatus,
+          };
+        }
         return { ...proj, chapters };
       });
-      const err = classifyError(e);
-      scriptoraLog.error("chapter", formatUserMessage(err), { chapterIndex: index + 1, raw: e?.message });
-      addMessage("assistant", `❌ Capitolo ${index + 1}: ${formatUserMessage(err)}`);
-      toast.error(formatToastMessage(err));
+      const err = classifyError(e, { operation: "chapter", chapterIndex: index });
+      scriptoraLog.error("chapter", mapped.userMessage, { chapterIndex: index + 1, raw: e?.message, devCode: mapped.devCode });
+      addMessage("assistant", `❌ Capitolo ${index + 1}: ${mapped.userMessage}`);
+      toast.error(mapped.userMessage);
     } finally {
       removeGenerating(genKey);
       setChunkProgress(prev => { const next = { ...prev }; delete next[genKey]; return next; });

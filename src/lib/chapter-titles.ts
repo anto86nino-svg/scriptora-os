@@ -12,7 +12,7 @@ export { isTemplateChapterTitle };
 const GENERIC_TITLE_RE =
   /^(?:chapter|capitolo|chapitre|kapitel|capitulo|capitulo|cap\.?|ch\.?)\s*\d+$/i;
 const PLACEHOLDER_TITLE_RE =
-  /^(?:untitled|senza titolo|to be generated|da generare|chapter title|titolo capitolo|titolo del capitolo)$/i;
+  /^(?:to|the|untitled|senza titolo|to be generated|da generare|chapter title|titolo capitolo|titolo del capitolo|chapter setup|setup)$/i;
 const CHAPTER_PREFIX_RE =
   /^(?:chapter|capitolo|chapitre|kapitel|capitulo|capitulo|cap\.?|ch\.?)\s*\d+\s*(?:[:.\-–—·]\s*)?/i;
 
@@ -41,11 +41,13 @@ export function stripChapterTitlePrefix(value: unknown): string {
 export function isGenericChapterTitle(value: unknown, language?: string): boolean {
   const cleaned = cleanTitle(value);
   if (!cleaned) return true;
+  if (cleaned.length <= 3) return true;
   const loose = normalizeLoose(cleaned);
   return (
     /^\d+$/.test(loose) ||
     GENERIC_TITLE_RE.test(loose) ||
     PLACEHOLDER_TITLE_RE.test(loose) ||
+    /^to\s+be\s+generated$/i.test(loose) ||
     isTemplateChapterTitle(cleaned, language)
   );
 }

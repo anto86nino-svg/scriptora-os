@@ -376,7 +376,14 @@ export function resolveIntelligentChapterTitle(
   const fromSummary = phraseFromSummary(summary, languageIsEnglish(language));
   if (fromSummary) candidates.push(fromSummary);
 
-  if (stripped && !isTemplateChapterTitle(stripped, language) && !isBookTitleFragment(stripped, context.config)) {
+  const strippedValid =
+    stripped.length > 3 &&
+    !/^to$/i.test(stripped) &&
+    !/^to\s+be\s+generated$/i.test(stripped) &&
+    !isTemplateChapterTitle(stripped, language) &&
+    !isBookTitleFragment(stripped, context.config);
+
+  if (strippedValid) {
     candidates.push(stripped);
   }
 

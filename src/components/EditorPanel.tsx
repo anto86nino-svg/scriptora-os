@@ -14,6 +14,7 @@ import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { Progress } from "@/components/ui/progress";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
+import { buildEditorialChapterPreview, sanitizeChapterTitle, isForbiddenChapterSummary } from "@/lib/chapter-generation-guard";
 
 interface EditorPanelProps {
   project: BookProject;
@@ -1029,18 +1030,33 @@ function compactPreviewLine(value: string, max = 170): string {
   return `${clean.slice(0, max).replace(/\s+\S*$/, "").trim()}...`;
 }
 
+function sanitizePreviewFallback(fallback: string): string {
+  const clean = fallback
+    .replace(/\bTo be generated\b/gi, "")
+    .replace(/\bChapter setup in progress\b/gi, "")
+    .replace(/\b(To|To\.)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .replace(/^[.\s]+|[.\s]+$/g, "")
+    .trim();
+  if (!clean || isForbiddenChapterSummary(clean)) return "";
+  return clean;
+}
+
 function getLiveWritingPreviewLines(content: string, fallback: string, chapterIndex: number): string[] {
   const normalized = content
     .replace(/\r/g, "")
     .replace(/^#+\s*.+$/gm, "")
+    .replace(/\bTo be generated\b/gi, "")
     .trim();
 
   if (!normalized) {
-    const direction = compactPreviewLine(fallback || "Scriptora sta preparando struttura, tono e continuità del capitolo.", 190);
+    const direction = compactPreviewLine(
+      sanitizePreviewFallback(fallback) || "Scriptora sta preparando struttura, tono e continuità del capitolo.",
+      190,
+    );
     return [
       `Capitolo ${chapterIndex + 1}: impostazione narrativa in corso.`,
-      `Direzione: ${direction}`,
-      "Le prime righe reali appariranno qui appena Scriptora completa il primo blocco.",
+      direction,
     ];
   }
 
@@ -1240,18 +1256,14 @@ const GenerationProgress = memo(function GenerationProgress({
   const phaseMeta = generationPhaseMeta[phase] ?? generationPhaseMeta.OPENING;
   const liveContent = chunkProgress?.content?.trim() ?? "";
   const scene = analyzeLiveScene({ project, outline, chapterIndex, phase, content: liveContent, pct: realPct });
-  const previewFallback = `${outline?.title || ""}. ${outline?.summary || ""}`.trim() || `${project.config.title} ${project.config.genre}`;
+  const previewFallback = buildEditorialChapterPreview(chapterIndex, project.config, project.blueprint);
   const livePreviewLines = getLiveWritingPreviewLines(liveContent, previewFallback, chapterIndex);
   const livePreviewLabel = liveContent ? "Ultime righe generate" : "Direzione del capitolo";
   const livePreviewSnippet = getLiveParagraph(
     liveContent,
     previewFallback,
   );
-  const overlayTitle = resolveChapterTitle(outline?.title || "", chapterIndex, {
-    config: project.config,
-    summary: outline?.summary,
-    totalChapters: project.config.numberOfChapters,
-  });
+  const overlayTitle = sanitizeChapterTitle(outline?.title || "", chapterIndex, project.config, project.blueprint);
 
   const wordInfo = chunkProgress
     ? `${currentWords.toLocaleString()} / ${targetWords.toLocaleString()} parole`
