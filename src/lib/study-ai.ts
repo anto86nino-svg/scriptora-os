@@ -174,7 +174,7 @@ async function callScriptoraStudyAI(systemPrompt: string, userPrompt: string): P
   const parsed = JSON.parse(jsonStr);
 
   if (parsed.error) throw new Error(parsed.error);
-  if (!parsed.content) throw new Error("DeepSeek non ha restituito contenuto.");
+  if (!parsed.content) throw new Error("Scriptora non ha restituito contenuto.");
 
   return parsed.content;
 }

@@ -66,7 +66,7 @@ export default function StudySessionPage() {
       setOpenAnswers({});
       setOpenEvaluations({});
       saveResult(next, rawText);
-      toast.success("Sessione Studio AI generata", { description: "DeepSeek ha creato riassunti, parole difficili, flashcard e quiz." });
+      toast.success("Sessione Studio generata", { description: "Scriptora ha creato riassunti, parole difficili, flashcard e quiz." });
     } catch (error) {
       console.warn("[StudySession] DeepSeek fallback locale", error);
       const local = analyzeStudyMaterial(rawText, sourceName);
@@ -136,7 +136,7 @@ export default function StudySessionPage() {
         setOpenAnswers({});
         setOpenEvaluations({});
         saveResult(next, text);
-        toast.success("Materiale analizzato con AI", { description: file.name });
+        toast.success("Materiale analizzato da Scriptora", { description: file.name });
       } catch (error) {
         console.warn("[StudySession] DeepSeek file fallback locale", error);
         const local = analyzeStudyMaterial(text, file.name);
@@ -229,7 +229,7 @@ export default function StudySessionPage() {
               className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-300 px-4 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-              {reading ? "DeepSeek sta preparando la sessione..." : "Genera Sessione Studio"}
+              {reading ? "Scriptora sta preparando la sessione..." : "Genera Sessione Studio"}
             </button>
           </section>
 
@@ -248,7 +248,7 @@ export default function StudySessionPage() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/80">Analisi</p>
                     <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-100">
-                      Motore: {aiMode === "local" ? "Locale fallback" : "DeepSeek AI"}
+                      Motore: {aiMode === "local" ? "Analisi locale di sicurezza" : "Scriptora AI"}
                     </span>
                   </div>
                   <h2 className="mt-1 text-xl font-semibold text-foreground">{result.title}</h2>
