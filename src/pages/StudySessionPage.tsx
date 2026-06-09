@@ -35,6 +35,7 @@ export default function StudySessionPage() {
   const [result, setResult] = useState<StudySessionResult | null>(saved?.result || null);
   const [reading, setReading] = useState(false);
   const [aiMode, setAiMode] = useState<"idle" | "deepseek" | "local">("idle");
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
 
   const wordCount = useMemo(() => rawText.trim().split(/\s+/).filter(Boolean).length, [rawText]);
   const canAnalyze = wordCount >= 40 && !reading;
