@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Settings, X, Check, Languages, Type, Image as ImageIcon, Save, Upload, Trash2, Zap } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { loadPerformanceMode, savePerformanceMode } from "@/lib/performance-mode";
+import {
+  loadVisualPreset,
+  saveVisualPreset,
+  VISUAL_PRESETS,
+  type VisualPerformancePreset,
+} from "@/lib/performance-mode";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -75,7 +79,7 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
   const [uiLanguage, setUiLanguage] = useState<UILanguage>(getUILanguage());
   const [hasCustomBackground, setHasCustomBackground] = useState(false);
   const [isUploadingCustomBackground, setIsUploadingCustomBackground] = useState(false);
-  const [performanceMode, setPerformanceMode] = useState(loadPerformanceMode);
+  const [visualPreset, setVisualPreset] = useState<VisualPerformancePreset>(loadVisualPreset);
 
   useEffect(() => {
     if (!open) return;
@@ -86,13 +90,19 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
     setWritingFont(saved.writingFont);
     setUiLanguage(getUILanguage());
     setHasCustomBackground(Boolean(getCustomScriptoraBackground()));
-    setPerformanceMode(loadPerformanceMode());
+    setVisualPreset(loadVisualPreset());
   }, [open]);
 
-  const togglePerformanceMode = (enabled: boolean) => {
-    setPerformanceMode(enabled);
-    savePerformanceMode(enabled);
-    toast.success(enabled ? t("performance_mode_enabled_toast") : t("performance_mode_disabled_toast"));
+  const selectVisualPreset = (preset: VisualPerformancePreset) => {
+    setVisualPreset(preset);
+    saveVisualPreset(preset);
+    toast.success(t("visual_preset_saved_toast"));
+  };
+
+  const presetMeta: Record<VisualPerformancePreset, { title: string; desc: string }> = {
+    premium: { title: t("visual_preset_premium"), desc: t("visual_preset_premium_desc") },
+    balanced: { title: t("visual_preset_balanced"), desc: t("visual_preset_balanced_desc") },
+    performance: { title: t("visual_preset_performance"), desc: t("visual_preset_performance_desc") },
   };
 
   if (!open) return null;
@@ -199,21 +209,41 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
 
         <div className="space-y-6 p-5">
           <section className="rounded-2xl border border-border/70 bg-background/40 p-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="mb-1 flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold">{t("performance_mode_title")}</h3>
-                </div>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  {t("performance_mode_desc")}
-                </p>
-              </div>
-              <Switch
-                checked={performanceMode}
-                onCheckedChange={togglePerformanceMode}
-                aria-label={t("performance_mode_title")}
-              />
+            <div className="mb-3 flex items-center gap-2">
+              <Zap className="h-4 w-4 text-primary" />
+              <h3 className="font-semibold">{t("performance_mode_title")}</h3>
+            </div>
+            <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+              {t("performance_mode_desc")}
+            </p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {VISUAL_PRESETS.map((preset) => {
+                const meta = presetMeta[preset];
+                const active = visualPreset === preset;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => selectVisualPreset(preset)}
+                    className={`rounded-xl border p-3 text-left transition-colors ${
+                      active
+                        ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                        : "border-border/70 bg-background/50 hover:border-primary/40"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold">{meta.title}</span>
+                      {active && <Check className="h-3.5 w-3.5 text-primary" />}
+                    </div>
+                    <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{meta.desc}</p>
+                    {preset === "balanced" && (
+                      <span className="mt-2 inline-block rounded-md bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                        {t("recommended")}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </section>
 

@@ -9,6 +9,7 @@ import { hasValidConsent, readConsent, writeConsent, type ConsentRecord } from "
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { ScriptoraLanding } from "@/components/landing/ScriptoraLanding";
+import { useVisualPreset } from "@/lib/performance-mode";
 
 type HomeLocationState = {
   legalRequired?: boolean;
@@ -24,6 +25,7 @@ export default function Home() {
   const navigate = useNavigate();
   const location = useLocation();
   const devOn = useDevMode();
+  const visualPreset = useVisualPreset();
   const [mounted, setMounted] = useState(false);
   const { user } = useAuth();
   const legalState = location.state as HomeLocationState;
@@ -45,9 +47,13 @@ export default function Home() {
   const [logoClicks, setLogoClicks] = useState(0);
 
   useEffect(() => {
+    if (visualPreset !== "premium") {
+      setMounted(true);
+      return;
+    }
     const id = requestAnimationFrame(() => setMounted(true));
     return () => cancelAnimationFrame(id);
-  }, []);
+  }, [visualPreset]);
 
   // Reset click counter if user pauses tapping
   useEffect(() => {
@@ -132,6 +138,7 @@ export default function Home() {
     <>
       <ScriptoraLanding
         mounted={mounted}
+        liteVisual={visualPreset !== "premium"}
         devOn={devOn}
         canStart={canStart}
         isSignedIn={!!user}

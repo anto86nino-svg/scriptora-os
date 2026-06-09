@@ -3580,11 +3580,41 @@ textarea,
   }
 }
 
-/* ─── Performance Mode ───────────────────────────────────────────────────────
-   Global GPU/CPU savings when html.scriptora-performance-mode is set.
-   Premium visuals remain when the class is absent. Colors & layout unchanged.
+/* ─── Visual Performance Presets (Premium / Balanced / Performance) ───────────
+   Applied via html.scriptora-visual-* before React mounts (index.html inline).
+   Premium = full visuals. Balanced = reduced. Performance = turbo / max speed.
    ─────────────────────────────────────────────────────────────────────────── */
 
+/* ── Balanced: soften the heaviest layers only ── */
+html.scriptora-visual-balanced {
+  --env-glow: transparent;
+  --env-hover-glow: 0 6px 18px rgba(0, 0, 0, 0.22);
+  --env-motion-speed: 80ms;
+}
+
+html.scriptora-visual-balanced [class*="backdrop-blur-2xl"],
+html.scriptora-visual-balanced [class*="backdrop-blur-xl"] {
+  backdrop-filter: blur(10px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(120%) !important;
+}
+
+html.scriptora-visual-balanced .ios-glass,
+html.scriptora-visual-balanced .ios-panel {
+  backdrop-filter: blur(12px) saturate(125%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(125%) !important;
+}
+
+html.scriptora-visual-balanced .nexora-aurora,
+html.scriptora-visual-balanced .env-breathing {
+  animation: none !important;
+  will-change: auto !important;
+}
+
+html.scriptora-visual-balanced [class*="shadow-\["] {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* ── Balanced + Performance shared savings ── */
 html.scriptora-performance-mode {
   --env-glow: transparent;
   --env-hover-glow: 0 4px 14px rgba(0, 0, 0, 0.18);
@@ -3692,4 +3722,93 @@ html.scriptora-performance-mode .scriptora-studio-button:hover {
 /* iOS icon inset glow — flatten slightly */
 html.scriptora-performance-mode .ios-icon {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* ── Performance / Turbo: maximum speed — disable all heavy GPU layers ── */
+html.scriptora-turbo-mode,
+html.scriptora-turbo-mode * {
+  scroll-behavior: auto !important;
+}
+
+html.scriptora-turbo-mode [class*="backdrop-blur"],
+html.scriptora-turbo-mode [class*="blur-"],
+html.scriptora-turbo-mode .ios-glass,
+html.scriptora-turbo-mode .ios-glass-soft,
+html.scriptora-turbo-mode .ios-panel,
+html.scriptora-turbo-mode .scriptora-landing-nav,
+html.scriptora-turbo-mode .scriptora-generation-stage,
+html.scriptora-turbo-mode .scriptora-step-guide,
+html.scriptora-turbo-mode .scriptora-step-guide-button,
+html.scriptora-turbo-mode .scriptora-live-video,
+html.scriptora-turbo-mode .scriptora-live-product-frame {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.scriptora-turbo-mode [style*="filter"],
+html.scriptora-turbo-mode .scriptora-landing-bg::after,
+html.scriptora-turbo-mode .scriptora-landing-hero::before,
+html.scriptora-turbo-mode .scriptora-live-video::before,
+html.scriptora-turbo-mode .scriptora-live-product-frame::after,
+html.scriptora-turbo-mode .env-hero-book::before,
+html.scriptora-turbo-mode .ios-icon::after,
+html.scriptora-turbo-mode .scriptora-generation-stage::before {
+  filter: none !important;
+  display: none !important;
+}
+
+html.scriptora-turbo-mode .scriptora-landing-bg {
+  background: linear-gradient(180deg, #02030a 0%, #0a0f1e 100%) !important;
+}
+
+html.scriptora-turbo-mode .scriptora-landing-bg::before {
+  opacity: 0.15 !important;
+}
+
+html.scriptora-turbo-mode .scriptora-live-cursor,
+html.scriptora-turbo-mode .scriptora-live-pulse i,
+html.scriptora-turbo-mode .scriptora-live-manuscript-line,
+html.scriptora-turbo-mode .scriptora-live-progress-track span,
+html.scriptora-turbo-mode .scriptora-live-video::before {
+  animation: none !important;
+}
+
+html.scriptora-turbo-mode .drop-shadow-\[0_2px_18px_rgba\(0\,0\,0\,0\.45\)\],
+html.scriptora-turbo-mode .drop-shadow-\[0_1px_10px_rgba\(0\,0\,0\,0\.45\)\],
+html.scriptora-turbo-mode [class*="drop-shadow"] {
+  filter: none !important;
+}
+
+html.scriptora-turbo-mode .shadow-2xl,
+html.scriptora-turbo-mode .shadow-xl,
+html.scriptora-turbo-mode [class*="shadow-\["] {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+}
+
+html.scriptora-turbo-mode .transition-all,
+html.scriptora-turbo-mode [class*="duration-"],
+html.scriptora-turbo-mode [class*="delay-"] {
+  transition: none !important;
+  animation: none !important;
+}
+
+html.scriptora-turbo-mode .animate-fade-in,
+html.scriptora-turbo-mode .animate-pulse,
+html.scriptora-turbo-mode .animate-bounce {
+  animation: none !important;
+}
+
+/* Landing lite: skip hero entrance motion */
+html.scriptora-performance-mode .scriptora-landing-hero-copy,
+html.scriptora-performance-mode .scriptora-landing-hero-visual {
+  transform: none !important;
+  opacity: 1 !important;
+}
+
+.scriptora-live-video.is-lite::before,
+.scriptora-live-video.is-lite .scriptora-live-cursor,
+.scriptora-live-video.is-lite .scriptora-live-pulse i,
+.scriptora-live-video.is-lite .scriptora-live-manuscript-line,
+.scriptora-live-video.is-lite .scriptora-live-progress-track span {
+  animation: none !important;
 }

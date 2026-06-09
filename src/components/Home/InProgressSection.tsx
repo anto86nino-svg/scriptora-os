@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, ArrowRight, Save, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,8 @@ interface RunRow {
 }
 
 interface Props {
+  /** When provided, drafts are derived locally — avoids a second loadProjects() call. */
+  projects?: BookProject[];
   /** Bumped from outside to force refresh (e.g. after returning from /auto-bestseller). */
   refreshKey?: number;
 }
@@ -26,7 +28,7 @@ interface Props {
  *  - Active SSE runs (auto_bestseller_runs.status = 'running')
  *  - Local partial projects whose phase is not yet 'complete'
  */
-export function InProgressSection({ refreshKey = 0 }: Props) {
+export const InProgressSection = memo(function InProgressSection({ projects: parentProjects, refreshKey = 0 }: Props) {
   useUILanguage();
   const navigate = useNavigate();
   const [runs, setRuns] = useState<RunRow[]>([]);
@@ -68,22 +70,29 @@ export function InProgressSection({ refreshKey = 0 }: Props) {
       } catch {
         if (!cancelled) setRuns([]);
       }
-      try {
-        const all = await loadProjects();
+      if (parentProjects) {
         if (!cancelled) {
-          // Only true drafts: not complete AND have at least one chapter started.
           setDrafts(
-            all.filter((p) => !isProjectComplete(p) && (p.chapters?.length || 0) > 0),
+            parentProjects.filter((p) => !isProjectComplete(p) && (p.chapters?.length || 0) > 0),
           );
         }
-      } catch {
-        if (!cancelled) setDrafts([]);
+      } else {
+        try {
+          const all = await loadProjects();
+          if (!cancelled) {
+            setDrafts(
+              all.filter((p) => !isProjectComplete(p) && (p.chapters?.length || 0) > 0),
+            );
+          }
+        } catch {
+          if (!cancelled) setDrafts([]);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [refreshKey, scopeTick]);
+  }, [refreshKey, scopeTick, parentProjects]);
 
   if (runs.length === 0 && drafts.length === 0) return null;
 
@@ -179,7 +188,7 @@ export function InProgressSection({ refreshKey = 0 }: Props) {
       </div>
     </div>
   );
-}
+});
 
 function countChaptersDone(progress: any): number {
   if (!Array.isArray(progress)) return 0;

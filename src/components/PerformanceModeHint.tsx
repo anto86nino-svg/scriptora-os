@@ -5,9 +5,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import {
   dismissPerformanceHint,
   isPerformanceHintDismissed,
-  loadPerformanceMode,
+  loadVisualPreset,
   SCRIPTORA_OPEN_APPEARANCE_KEY,
-  usePerformanceMode,
+  useVisualPreset,
 } from "@/lib/performance-mode";
 import { t } from "@/lib/i18n";
 
@@ -15,10 +15,11 @@ export function PerformanceModeHint() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
-  const performanceOn = usePerformanceMode();
+  const preset = useVisualPreset();
   const [dismissed, setDismissed] = useState(isPerformanceHintDismissed);
 
-  if (!isMobile || performanceOn || dismissed) return null;
+  if (!isMobile || preset !== "premium" || dismissed) return null;
+  if (loadVisualPreset() !== "premium") return null;
 
   const openAppearance = () => {
     sessionStorage.setItem(SCRIPTORA_OPEN_APPEARANCE_KEY, "1");
@@ -33,9 +34,6 @@ export function PerformanceModeHint() {
     dismissPerformanceHint();
     setDismissed(true);
   };
-
-  // Re-check on mount in case user enabled mode elsewhere
-  if (loadPerformanceMode()) return null;
 
   return (
     <div className="fixed inset-x-3 bottom-3 z-[9990] rounded-2xl border border-primary/25 bg-card/95 p-3 shadow-lg sm:hidden">

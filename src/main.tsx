@@ -1,5 +1,5 @@
 import { applyScriptoraAppearance } from "@/lib/scriptora-appearance";
-import { applyPerformanceMode } from "@/lib/performance-mode";
+import { applyVisualPreset } from "@/lib/performance-mode";
 import { purgeImmersiveThemeExperiment } from "@/lib/theme-reset";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
@@ -75,7 +75,7 @@ VITE_SUPABASE_PROJECT_ID=&lt;project-ref&gt;</pre>
 try {
   purgeImmersiveThemeExperiment();
   applyScriptoraAppearance();
-  applyPerformanceMode();
+  applyVisualPreset();
 } catch {
   /* ignore appearance boot errors */
 }

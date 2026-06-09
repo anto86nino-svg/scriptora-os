@@ -4,6 +4,7 @@ import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId } 
 import { isProjectComplete } from "@/lib/project-status";
 import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
 import { SCRIPTORA_OPEN_APPEARANCE_KEY } from "@/lib/performance-mode";
+import { computeDashboardMetrics } from "@/lib/dashboard-metrics";
 
 const NewBookDialog = lazy(() => import("@/components/NewBookDialog").then((m) => ({ default: m.NewBookDialog })));
 const HomeExportDialog = lazy(() => import("@/components/HomeExportDialog").then((m) => ({ default: m.HomeExportDialog })));
@@ -457,64 +458,17 @@ export default function Dashboard() {
   const heroValid = idea.trim().length >= 6;
 
   const currentLangLabel = UI_LANGUAGES.find(l => l.value === currentLang)?.label || "English";
-  const completedProjects = projects.filter(isProjectComplete);
-  const draftProjects = projects.filter((p) => !isProjectComplete(p));
-  const totalChapters = projects.reduce((sum, p) => sum + (p.chapters?.length || 0), 0);
-  const totalWords = projects.reduce(
-    (sum, p) => sum + (p.chapters || []).reduce(
-      (chapterSum, ch) => chapterSum + (ch.content?.split(/\s+/).filter(Boolean).length || 0),
-      0,
-    ),
-    0,
+  const metrics = useMemo(
+    () => computeDashboardMetrics(projects, lastProject),
+    [projects, lastProject],
+  );
+  const draftProjects = useMemo(
+    () => projects.filter((p) => !isProjectComplete(p)),
+    [projects],
   );
   const planLabel = currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1);
-  const lastProjectDoneChapters = lastProject?.chapters?.filter((chapter) => (chapter.content || "").trim().length > 50).length || 0;
-  const lastProjectTargetChapters = lastProject?.config?.numberOfChapters || lastProject?.chapters?.length || 0;
-  const lastProjectProgress = lastProject
-    ? lastProject.phase === "complete"
-      ? 100
-      : lastProjectTargetChapters > 0
-        ? Math.min(100, Math.round((lastProjectDoneChapters / lastProjectTargetChapters) * 100))
-        : 0
-    : 0;
 
-  const wordCountForProject = (project: BookProject) =>
-    (project.chapters || []).reduce(
-      (sum, chapter) => sum + (chapter.content?.split(/\s+/).filter(Boolean).length || 0),
-      0,
-    );
-  const dayKey = (date: Date) => date.toISOString().slice(0, 10);
-  const todayKey = dayKey(new Date());
-  const wordsToday = projects
-    .filter((project) => {
-      const updated = new Date(project.updatedAt);
-      return !Number.isNaN(updated.getTime()) && dayKey(updated) === todayKey;
-    })
-    .reduce((sum, project) => sum + wordCountForProject(project), 0);
-  const updateDays = new Set(
-    projects
-      .map((project) => {
-        const updated = new Date(project.updatedAt);
-        return Number.isNaN(updated.getTime()) ? "" : dayKey(updated);
-      })
-      .filter(Boolean),
-  );
-  let writingStreak = 0;
-  for (const cursor = new Date(); updateDays.has(dayKey(cursor)); cursor.setDate(cursor.getDate() - 1)) {
-    writingStreak += 1;
-  }
-  const aiQualityValues = projects.flatMap((project) =>
-    (project.chapters || []).map((chapter) => {
-      const c = chapter as any;
-      if (typeof c?.aiRating?.score === "number") return Math.round(c.aiRating.score * 20);
-      if (typeof c?.qualityRating === "number") return Math.round(c.qualityRating * 20);
-      return null;
-    }).filter((value): value is number => typeof value === "number"),
-  );
-  const aiQualityScore = aiQualityValues.length
-    ? Math.round(aiQualityValues.reduce((sum, value) => sum + value, 0) / aiQualityValues.length)
-    : null;
-  const dashboardWidgets = [
+  const dashboardWidgets = useMemo(() => [
     {
       label: t("active_book_widget"),
       value: lastProject?.config.title || t("no_active_book"),
@@ -525,7 +479,7 @@ export default function Dashboard() {
     },
     {
       label: t("words_today_widget"),
-      value: wordsToday.toLocaleString(),
+      value: metrics.wordsToday.toLocaleString(),
       detail: t("from_updated_projects"),
       icon: NotebookPen,
       tone: "from-emerald-400/18 to-lime-300/8",
@@ -533,7 +487,7 @@ export default function Dashboard() {
     },
     {
       label: t("writing_streak_widget"),
-      value: writingStreak.toLocaleString(),
+      value: metrics.writingStreak.toLocaleString(),
       detail: t("consecutive_days"),
       icon: Flame,
       tone: "from-amber-400/20 to-orange-300/8",
@@ -541,7 +495,7 @@ export default function Dashboard() {
     },
     {
       label: t("project_progress_widget"),
-      value: lastProject ? `${lastProjectProgress}%` : "0%",
+      value: lastProject ? `${metrics.lastProjectProgress}%` : "0%",
       detail: lastProject ? t("active_draft_progress") : t("no_active_book"),
       icon: BarChart3,
       tone: "from-violet-400/18 to-fuchsia-300/8",
@@ -549,21 +503,30 @@ export default function Dashboard() {
     },
     {
       label: t("ai_quality_score_widget"),
-      value: aiQualityScore == null ? "—" : `${aiQualityScore}`,
-      detail: aiQualityScore == null ? t("run_analysis_to_score") : t("analysis_based_score"),
+      value: metrics.aiQualityScore == null ? "—" : `${metrics.aiQualityScore}`,
+      detail: metrics.aiQualityScore == null ? t("run_analysis_to_score") : t("analysis_based_score"),
       icon: Sparkles,
       tone: "from-rose-400/18 to-pink-300/8",
       action: guardPlanFeature("chapter_improvement", () => setShowManuscriptAnalyzer(true)),
     },
-  ];
-  const workspaceStats = [
-    { label: t("projects"), value: projects.length.toLocaleString(), detail: tt("draft_count", { count: draftProjects.length }), icon: FolderOpen, iconBg: "ios-icon-blue" },
-    { label: t("completed"), value: completedProjects.length.toLocaleString(), detail: t("ready_to_export"), icon: CheckCircle2, iconBg: "ios-icon-green" },
-    { label: t("chapters"), value: totalChapters.toLocaleString(), detail: t("generated_detail"), icon: BookOpen, iconBg: "ios-icon-orange" },
-    { label: t("words_unit"), value: totalWords > 0 ? totalWords.toLocaleString() : "0", detail: t("in_library"), icon: FileDown, iconBg: "ios-icon-pink" },
-  ];
+  ], [
+    lastProject,
+    metrics.aiQualityScore,
+    metrics.lastProjectProgress,
+    metrics.wordsToday,
+    metrics.writingStreak,
+    openNewBookGuarded,
+    guardPlanFeature,
+  ]);
 
-  const cards = [
+  const workspaceStats = useMemo(() => [
+    { label: t("projects"), value: projects.length.toLocaleString(), detail: tt("draft_count", { count: metrics.draftCount }), icon: FolderOpen, iconBg: "ios-icon-blue" },
+    { label: t("completed"), value: metrics.completedCount.toLocaleString(), detail: t("ready_to_export"), icon: CheckCircle2, iconBg: "ios-icon-green" },
+    { label: t("chapters"), value: metrics.totalChapters.toLocaleString(), detail: t("generated_detail"), icon: BookOpen, iconBg: "ios-icon-orange" },
+    { label: t("words_unit"), value: metrics.totalWords > 0 ? metrics.totalWords.toLocaleString() : "0", detail: t("in_library"), icon: FileDown, iconBg: "ios-icon-pink" },
+  ], [metrics.completedCount, metrics.draftCount, metrics.totalChapters, metrics.totalWords, projects.length]);
+
+  const cards = useMemo(() => [
     { group: "writer", icon: BookOpen, title: t("writer_studio_title"), desc: t("writer_studio_desc"), iconBg: "ios-icon-violet", action: () => goApp(), tag: t("os_tag_write"), emphasis: true },
     { group: "writer", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("story_architect_title"), desc: freeBookUsed ? t("upgrade_more_books") : t("story_architect_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: openNewBookGuarded, feature: "book_engine_full" as const, tag: t("os_tag_plan") },
     { group: "writer", icon: Wand2, title: t("manuscript_lab_title"), desc: t("manuscript_lab_desc"), iconBg: "ios-icon-teal", action: () => setShowManuscriptAnalyzer(true), feature: "chapter_improvement" as const, tag: t("os_tag_score") },
@@ -584,14 +547,24 @@ export default function Dashboard() {
     { group: "system", icon: Users, title: t("author_identity"), desc: t("author_identity_premium_desc"), iconBg: "ios-icon-blue", action: () => setShowAuthorIdentity(true), feature: "book_engine_full" as const, tag: t("os_tag_identity") },
     { group: "system", icon: Settings, title: t("background_atmosphere"), desc: t("atmosphere_premium_desc"), iconBg: "ios-icon-slate", action: () => setShowAdvancedSettings(true), feature: "book_engine_full" as const, tag: t("os_tag_space") },
     { group: "system", icon: FolderOpen, title: t("projects"), desc: t("projects_premium_desc"), iconBg: "ios-icon-cyan", action: () => setShowProjects(!showProjects), feature: "book_engine_full" as const, tag: t("os_tag_library") },
-  ];
+  ], [freeBookUsed, openNewBookGuarded, navigate]);
 
-  const cardGroups = [
+  const cardGroups = useMemo(() => [
     { id: "writer", title: t("writer_os"), desc: t("writer_os_desc") },
     { id: "bestseller", title: t("bestseller_os"), desc: t("bestseller_os_desc") },
     { id: "publishing", title: t("publishing_os"), desc: t("publishing_os_desc") },
     { id: "system", title: t("system_os"), desc: t("system_os_desc") },
-  ];
+  ], []);
+
+  const cardsByGroup = useMemo(() => {
+    const map = new Map<string, typeof cards>();
+    for (const card of cards) {
+      const list = map.get(card.group) ?? [];
+      list.push(card);
+      map.set(card.group, list);
+    }
+    return map;
+  }, [cards]);
 
   return (
     <div className="scriptora-ios-screen scriptora-app-surface min-h-screen relative overflow-hidden">
@@ -854,13 +827,13 @@ export default function Dashboard() {
                 className="rounded-xl border border-white/15 bg-white/[0.10] p-3 text-left shadow-[0_10px_28px_rgba(0,0,0,0.14)] transition-colors hover:border-emerald-300/45 hover:bg-emerald-400/14"
               >
                 <p className="text-[10px] uppercase text-muted-foreground">{t("library")}</p>
-                <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{completedProjects.length}</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{metrics.completedCount}</p>
               </button>
             </div>
           </section>
         </div>
 
-        <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
+        <InProgressSection projects={projects} refreshKey={projects.length + (activeRun ? 1 : 0)} />
 
         {/* Mobile primary action strip — visible before stats accordion */}
         <div className="mb-4 flex gap-2 xl:hidden">
@@ -1077,7 +1050,7 @@ export default function Dashboard() {
 
           <div className="space-y-7">
             {cardGroups.map((group) => {
-              const groupCards = cards.filter((card) => card.group === group.id);
+              const groupCards = cardsByGroup.get(group.id) ?? [];
               return (
                 <div key={group.id}>
                   <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/15 pb-2">

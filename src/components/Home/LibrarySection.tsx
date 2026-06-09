@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { Library, ArrowRight, FileDown, Trash2, CheckCircle2 } from "lucide-react";
 import { BookProject } from "@/types/book";
 import { isProjectComplete } from "@/lib/project-status";
@@ -18,10 +18,10 @@ interface Props {
  * if the engine never fired the final "complete" phase (avoids desync with
  * InProgressSection).
  */
-export function LibrarySection({ projects, onOpen, onDelete, onExport }: Props) {
+export const LibrarySection = memo(function LibrarySection({ projects, onOpen, onDelete, onExport }: Props) {
   useUILanguage();
   const [expanded, setExpanded] = useState(true);
-  const completed = projects.filter(isProjectComplete);
+  const completed = useMemo(() => projects.filter(isProjectComplete), [projects]);
 
   if (completed.length === 0) return null;
 
@@ -99,4 +99,4 @@ export function LibrarySection({ projects, onOpen, onDelete, onExport }: Props) 
       )}
     </div>
   );
-}
+});

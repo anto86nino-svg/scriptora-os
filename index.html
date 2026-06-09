@@ -23,6 +23,21 @@
       <link rel="icon" type="image/png" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <script>
+      (function () {
+        try {
+          var key = "scriptora-performance-mode";
+          var v = localStorage.getItem(key);
+          if (v === "true") v = "performance";
+          else if (v === "false") v = "premium";
+          else if (v !== "balanced" && v !== "performance" && v !== "premium") v = "premium";
+          var root = document.documentElement;
+          root.classList.add("scriptora-visual-" + v);
+          if (v === "balanced" || v === "performance") root.classList.add("scriptora-performance-mode");
+          if (v === "performance") root.classList.add("scriptora-turbo-mode");
+        } catch (e) {}
+      })();
+    </script>
 </head>
 
   <body>

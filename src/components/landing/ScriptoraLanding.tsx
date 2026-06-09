@@ -25,6 +25,8 @@ import { setUILanguage, UI_LANGUAGES, useUILanguage, type UILanguage } from "@/l
 
 interface ScriptoraLandingProps {
   mounted: boolean;
+  /** Skip heavy entrance animations and decorative live demo motion. */
+  liteVisual?: boolean;
   devOn: boolean;
   canStart: boolean;
   isSignedIn: boolean;
@@ -556,6 +558,7 @@ const landingPlans: Record<string, Record<UILanguage, {
 
 export function ScriptoraLanding({
   mounted,
+  liteVisual = false,
   devOn,
   canStart,
   isSignedIn,
@@ -622,9 +625,13 @@ export function ScriptoraLanding({
 
       <section className="scriptora-landing-hero">
         <div
-          className={`scriptora-landing-hero-copy transition-all duration-1000 ${
-            mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-          }`}
+          className={
+            liteVisual
+              ? "scriptora-landing-hero-copy"
+              : `scriptora-landing-hero-copy transition-all duration-1000 ${
+                  mounted ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+                }`
+          }
         >
           <div className="scriptora-landing-kicker">
             <span />
@@ -649,9 +656,13 @@ export function ScriptoraLanding({
         </div>
 
         <div
-          className={`scriptora-landing-hero-visual transition-all delay-150 duration-1000 ${
-            mounted ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
-          }`}
+          className={
+            liteVisual
+              ? "scriptora-landing-hero-visual"
+              : `scriptora-landing-hero-visual transition-all delay-150 duration-1000 ${
+                  mounted ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
+                }`
+          }
           id="preview"
         >
           <div className="scriptora-product-stage">
@@ -668,7 +679,7 @@ export function ScriptoraLanding({
           </div>
           <p>{L(liveGenerationCopy.text, lang)}</p>
         </div>
-        <LiveGenerationVideo lang={lang} />
+        <LiveGenerationVideo lang={lang} lite={liteVisual} />
       </section>
 
       <section id="manifesto" className="scriptora-landing-section">
@@ -841,11 +852,11 @@ export function ScriptoraLanding({
   );
 }
 
-function LiveGenerationVideo({ lang }: { lang: UILanguage }) {
+function LiveGenerationVideo({ lang, lite = false }: { lang: UILanguage; lite?: boolean }) {
   const copy = liveGenerationCopy;
 
   return (
-    <div className="scriptora-live-video" aria-label={L(copy.playerLabel, lang)}>
+    <div className={`scriptora-live-video${lite ? " is-lite" : ""}`} aria-label={L(copy.playerLabel, lang)}>
       <div className="scriptora-live-video-chrome">
         <div className="scriptora-window-dots" aria-hidden="true">
           <span />
