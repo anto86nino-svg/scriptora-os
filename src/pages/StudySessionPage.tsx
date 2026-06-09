@@ -13,7 +13,8 @@ function normalizeStudyResultForUI(value: any): any {
 
   return {
     title: String(result.title || "Sessione Studio"),
-    totalWords: Number(result.totalWords || 0),
+    totalWords: Number(result.totalWords || result.words || 0),
+    words: Number(result.words || result.totalWords || 0),
     detectedSubject: String(result.detectedSubject || "Materiale di studio"),
     difficulty: result.difficulty || "medium",
     lightSummary: String(result.lightSummary || ""),
@@ -294,7 +295,7 @@ export default function StudySessionPage() {
                   </div>
                   <h2 className="mt-1 text-xl font-semibold text-foreground">{result.title}</h2>
                   <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                    <MiniStat icon={<FileText className="h-4 w-4" />} label="Parole" value={result.words.toLocaleString()} />
+                    <MiniStat icon={<FileText className="h-4 w-4" />} label="Parole" value={Number(result?.words || 0).toLocaleString()} />
                     <MiniStat icon={<BookOpen className="h-4 w-4" />} label="Tema" value={result.detectedSubject || "Studio"} />
                     <MiniStat icon={<CheckCircle2 className="h-4 w-4" />} label="Livello" value={result.difficulty.toUpperCase()} />
                   </div>
