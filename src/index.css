@@ -3805,6 +3805,33 @@ html.scriptora-performance-mode .scriptora-landing-hero-visual {
   opacity: 1 !important;
 }
 
+/* Mobile: push Balanced/Performance savings harder on small GPUs */
+@media (max-width: 768px) {
+  html.scriptora-visual-balanced [class*="backdrop-blur"],
+  html.scriptora-visual-balanced .ios-panel,
+  html.scriptora-visual-balanced .ios-glass,
+  html.scriptora-visual-balanced .ios-glass-soft {
+    backdrop-filter: blur(6px) saturate(110%) !important;
+    -webkit-backdrop-filter: blur(6px) saturate(110%) !important;
+  }
+
+  html.scriptora-performance-mode [class*="backdrop-blur"],
+  html.scriptora-performance-mode .ios-panel,
+  html.scriptora-performance-mode .ios-glass,
+  html.scriptora-performance-mode .ios-glass-soft {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  html.scriptora-turbo-mode .scriptora-ios-screen {
+    background-image: none !important;
+  }
+
+  html.scriptora-turbo-mode .env-breathing {
+    animation: none !important;
+  }
+}
+
 .scriptora-live-video.is-lite::before,
 .scriptora-live-video.is-lite .scriptora-live-cursor,
 .scriptora-live-video.is-lite .scriptora-live-pulse i,

@@ -1,10 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, lazy, Suspense, useMemo, useCallback } from "react";
-import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId } from "@/services/storageService";
+import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, getProjectsSnapshot } from "@/services/storageService";
+import { preloadRoute } from "@/lib/route-preload";
 import { isProjectComplete } from "@/lib/project-status";
 import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
 import { SCRIPTORA_OPEN_APPEARANCE_KEY } from "@/lib/performance-mode";
-import { computeDashboardMetrics } from "@/lib/dashboard-metrics";
+import { computeDashboardMetrics, computeLastProjectProgress } from "@/lib/dashboard-metrics";
 
 const NewBookDialog = lazy(() => import("@/components/NewBookDialog").then((m) => ({ default: m.NewBookDialog })));
 const HomeExportDialog = lazy(() => import("@/components/HomeExportDialog").then((m) => ({ default: m.HomeExportDialog })));
@@ -127,7 +128,8 @@ export default function Dashboard() {
   const [showLibrary, setShowLibrary] = useState(false);
   const [showIdeaModal, setShowIdeaModal] = useState(false);
   const [showMobileStats, setShowMobileStats] = useState(false);
-  const [projects, setProjects] = useState<BookProject[]>([]);
+  const [projects, setProjects] = useState<BookProject[]>(getProjectsSnapshot);
+  const [deferredReady, setDeferredReady] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const currentLang = useUILanguage();
   const [activeRun, setActiveRun] = useState<{ runId: string; title: string; startedAt: number } | null>(null);
@@ -171,9 +173,34 @@ export default function Dashboard() {
   ];
 
   useEffect(() => {
-    // Optimistic load: shows local projects immediately, refreshes from server
-    // in the background. Eliminates the visible "frozen" gap on first paint.
-    loadProjects((fresh) => setProjects(fresh)).then(setProjects);
+    preloadRoute("app");
+  }, []);
+
+  useEffect(() => {
+    const win = window as Window & {
+      requestIdleCallback?: (fn: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    let idleId: number | undefined;
+    const frame = requestAnimationFrame(() => {
+      if (win.requestIdleCallback) {
+        idleId = win.requestIdleCallback(() => setDeferredReady(true), { timeout: 220 });
+      } else {
+        idleId = window.setTimeout(() => setDeferredReady(true), 16);
+      }
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      if (idleId != null) {
+        if (win.cancelIdleCallback) win.cancelIdleCallback(idleId);
+        else clearTimeout(idleId);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    // Warm memCache first; remote refresh is TTL-gated and non-blocking.
+    loadProjects((fresh) => setProjects(fresh));
     try {
       const raw = sessionStorage.getItem("nexora-active-run");
       if (raw) setActiveRun(JSON.parse(raw));
@@ -183,7 +210,7 @@ export default function Dashboard() {
     const onDevChange = () => {
       setProjects([]);
       setActiveRun(null);
-      loadProjects((fresh) => setProjects(fresh)).then(setProjects);
+      loadProjects((fresh) => setProjects(fresh));
     };
     window.addEventListener("nexora-dev-mode-change", onDevChange);
     return () => window.removeEventListener("nexora-dev-mode-change", onDevChange);
@@ -377,7 +404,7 @@ export default function Dashboard() {
     setProjects((prev) => prev.filter((p) => p.id !== id));
     deleteProjectAsync(id).catch(() => {
       // On failure, refetch to recover state.
-      loadProjects((fresh) => setProjects(fresh)).then(setProjects);
+      loadProjects((fresh) => setProjects(fresh));
     });
   };
 
@@ -458,9 +485,13 @@ export default function Dashboard() {
   const heroValid = idea.trim().length >= 6;
 
   const currentLangLabel = UI_LANGUAGES.find(l => l.value === currentLang)?.label || "English";
+  const lastProjectSnapshot = useMemo(
+    () => computeLastProjectProgress(lastProject),
+    [lastProject],
+  );
   const metrics = useMemo(
-    () => computeDashboardMetrics(projects, lastProject),
-    [projects, lastProject],
+    () => (deferredReady ? computeDashboardMetrics(projects, lastProject) : null),
+    [deferredReady, projects, lastProject],
   );
   const draftProjects = useMemo(
     () => projects.filter((p) => !isProjectComplete(p)),
@@ -468,7 +499,9 @@ export default function Dashboard() {
   );
   const planLabel = currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1);
 
-  const dashboardWidgets = useMemo(() => [
+  const dashboardWidgets = useMemo(() => {
+    if (!metrics) return [];
+    return [
     {
       label: t("active_book_widget"),
       value: lastProject?.config.title || t("no_active_book"),
@@ -509,22 +542,23 @@ export default function Dashboard() {
       tone: "from-rose-400/18 to-pink-300/8",
       action: guardPlanFeature("chapter_improvement", () => setShowManuscriptAnalyzer(true)),
     },
-  ], [
+    ];
+  }, [
     lastProject,
-    metrics.aiQualityScore,
-    metrics.lastProjectProgress,
-    metrics.wordsToday,
-    metrics.writingStreak,
+    metrics,
     openNewBookGuarded,
     guardPlanFeature,
   ]);
 
-  const workspaceStats = useMemo(() => [
+  const workspaceStats = useMemo(() => {
+    if (!metrics) return [];
+    return [
     { label: t("projects"), value: projects.length.toLocaleString(), detail: tt("draft_count", { count: metrics.draftCount }), icon: FolderOpen, iconBg: "ios-icon-blue" },
     { label: t("completed"), value: metrics.completedCount.toLocaleString(), detail: t("ready_to_export"), icon: CheckCircle2, iconBg: "ios-icon-green" },
     { label: t("chapters"), value: metrics.totalChapters.toLocaleString(), detail: t("generated_detail"), icon: BookOpen, iconBg: "ios-icon-orange" },
     { label: t("words_unit"), value: metrics.totalWords > 0 ? metrics.totalWords.toLocaleString() : "0", detail: t("in_library"), icon: FileDown, iconBg: "ios-icon-pink" },
-  ], [metrics.completedCount, metrics.draftCount, metrics.totalChapters, metrics.totalWords, projects.length]);
+    ];
+  }, [metrics, projects.length]);
 
   const cards = useMemo(() => [
     { group: "writer", icon: BookOpen, title: t("writer_studio_title"), desc: t("writer_studio_desc"), iconBg: "ios-icon-violet", action: () => goApp(), tag: t("os_tag_write"), emphasis: true },
@@ -827,13 +861,11 @@ export default function Dashboard() {
                 className="rounded-xl border border-white/15 bg-white/[0.10] p-3 text-left shadow-[0_10px_28px_rgba(0,0,0,0.14)] transition-colors hover:border-emerald-300/45 hover:bg-emerald-400/14"
               >
                 <p className="text-[10px] uppercase text-muted-foreground">{t("library")}</p>
-                <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{metrics.completedCount}</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{metrics?.completedCount ?? "—"}</p>
               </button>
             </div>
           </section>
         </div>
-
-        <InProgressSection projects={projects} refreshKey={projects.length + (activeRun ? 1 : 0)} />
 
         {/* Mobile primary action strip — visible before stats accordion */}
         <div className="mb-4 flex gap-2 xl:hidden">
@@ -864,6 +896,11 @@ export default function Dashboard() {
           </button>
         </div>
 
+        {deferredReady && (
+          <InProgressSection projects={projects} refreshKey={projects.length + (activeRun ? 1 : 0)} />
+        )}
+
+        {deferredReady && (
         <section className="mb-4 xl:hidden">
           <button
             type="button"
@@ -932,7 +969,10 @@ export default function Dashboard() {
             </div>
           )}
         </section>
+        )}
 
+        {deferredReady && (
+        <>
         <div className="mb-4 hidden gap-2 sm:mb-6 xl:grid xl:grid-cols-5">
           {dashboardWidgets.map((widget) => (
             <button
@@ -972,6 +1012,8 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
+        </>
+        )}
 
         {lastProject && (
           <div
@@ -984,7 +1026,7 @@ export default function Dashboard() {
                 goApp({ projectId: lastProject.id });
               }
             }}
-            className="ios-panel env-hero-book env-breathing group mb-5 w-full cursor-pointer overflow-hidden p-0 text-left transition-colors hover:border-primary/40"
+            className={`ios-panel env-hero-book group mb-5 w-full cursor-pointer overflow-hidden p-0 text-left transition-colors hover:border-primary/40${deferredReady ? " env-breathing" : ""}`}
           >
             <div className="bg-gradient-to-r from-sky-400/10 via-white/[0.055] to-emerald-400/10 p-3 sm:p-4">
               <div className="flex items-start justify-between gap-3">
@@ -996,7 +1038,7 @@ export default function Dashboard() {
                     {lastProject.config.title || t("untitled")}
                   </p>
                   <p className="mt-0.5 text-[11px] leading-4 text-foreground/65">
-                    {lastProjectDoneChapters}/{lastProjectTargetChapters || lastProject.chapters?.length || 0} {t("chapters").toLowerCase()} · {lastProject.phase}
+                    {lastProjectSnapshot.doneChapters}/{lastProjectSnapshot.targetChapters || lastProject.chapters?.length || 0} {t("chapters").toLowerCase()} · {lastProject.phase}
                   </p>
                 </div>
                 <button
@@ -1016,11 +1058,11 @@ export default function Dashboard() {
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-sky-300 to-emerald-300 transition-all"
-                    style={{ width: `${lastProjectProgress}%` }}
+                    style={{ width: `${lastProjectSnapshot.progress}%` }}
                   />
                 </div>
                 <span className="min-w-10 text-right text-[11px] font-semibold tabular-nums text-foreground/70">
-                  {lastProjectProgress}%
+                  {lastProjectSnapshot.progress}%
                 </span>
               </div>
               <div className="mt-3 flex items-center justify-between gap-3">
@@ -1036,6 +1078,7 @@ export default function Dashboard() {
           </div>
         )}
 
+        {deferredReady ? (
         <section className="mb-10">
           <div className="mb-5 flex items-end justify-between gap-3">
             <div>
@@ -1105,6 +1148,9 @@ export default function Dashboard() {
             })}
           </div>
         </section>
+        ) : (
+          <div className="mb-10 h-24 rounded-2xl border border-white/10 bg-white/[0.04]" aria-hidden="true" />
+        )}
 
         {showProjects && (() => {
           const drafts = draftProjects;

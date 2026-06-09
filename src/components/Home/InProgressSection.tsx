@@ -57,7 +57,14 @@ export const InProgressSection = memo(function InProgressSection({ projects: par
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    let idleId: number | undefined;
+    const win = window as Window & {
+      requestIdleCallback?: (fn: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+
+    const load = async () => {
+      if (cancelled) return;
       try {
         const { data } = await supabase
           .from("auto_bestseller_runs")
@@ -88,9 +95,20 @@ export const InProgressSection = memo(function InProgressSection({ projects: par
           if (!cancelled) setDrafts([]);
         }
       }
-    })();
+    };
+
+    if (win.requestIdleCallback) {
+      idleId = win.requestIdleCallback(() => { void load(); }, { timeout: 400 });
+    } else {
+      idleId = window.setTimeout(() => { void load(); }, 32);
+    }
+
     return () => {
       cancelled = true;
+      if (idleId != null) {
+        if (win.cancelIdleCallback) win.cancelIdleCallback(idleId);
+        else clearTimeout(idleId);
+      }
     };
   }, [refreshKey, scopeTick, parentProjects]);
 

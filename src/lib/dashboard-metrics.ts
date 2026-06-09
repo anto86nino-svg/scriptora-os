@@ -37,6 +37,27 @@ export interface DashboardMetrics {
   lastProjectTargetChapters: number;
 }
 
+export function computeLastProjectProgress(project: BookProject | null | undefined): {
+  doneChapters: number;
+  targetChapters: number;
+  progress: number;
+} {
+  if (!project) return { doneChapters: 0, targetChapters: 0, progress: 0 };
+  const chapters = project.chapters || [];
+  let doneChapters = 0;
+  for (let i = 0; i < chapters.length; i++) {
+    if ((chapters[i].content || "").trim().length > 50) doneChapters++;
+  }
+  const targetChapters = project.config?.numberOfChapters || chapters.length || 0;
+  const progress =
+    project.phase === "complete"
+      ? 100
+      : targetChapters > 0
+        ? Math.min(100, Math.round((doneChapters / targetChapters) * 100))
+        : 0;
+  return { doneChapters, targetChapters, progress };
+}
+
 export function computeDashboardMetrics(
   projects: BookProject[],
   lastProject: BookProject | null | undefined,

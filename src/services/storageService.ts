@@ -11,6 +11,11 @@ import {
 import { withNormalizedPhase, isProjectComplete } from "@/lib/project-status";
 import { isDevMode } from "@/lib/dev-mode";
 import { getDevPlanOverride } from "@/lib/dev-plan-override";
+import {
+  markRemoteProjectsFetched,
+  setWarmProjects,
+  shouldSkipRemoteProjectsRefresh,
+} from "@/lib/projects-warm-cache";
 
 // Three environments:
 //  - DEV MODE        → Premium tier uses the REAL Supabase user.id (so the owner's
@@ -145,10 +150,18 @@ function loadLocalScoped(): BookProject[] {
   return loadLocal().filter((p) => scopeOf(p) === uid);
 }
 
+/** Synchronous snapshot from in-memory cache — instant Dashboard paint. */
+export function getProjectsSnapshot(): BookProject[] {
+  const uid = getCurrentUserId();
+  return loadLocalScoped().map(withNormalizedPhase);
+}
+
 export async function loadProjects(
   onRemoteUpdate?: (projects: BookProject[]) => void
 ): Promise<BookProject[]> {
+  const uid = getCurrentUserId();
   const local = loadLocalScoped().map(withNormalizedPhase);
+  setWarmProjects(uid, local);
 
   const refresh = async (): Promise<BookProject[]> => {
     try {
@@ -188,6 +201,7 @@ export async function loadProjects(
         for (const p of projects) saveLocal(tagWithCurrentUser(p));
       });
 
+      markRemoteProjectsFetched(uid, projects);
       return projects;
     } catch {
       return local;
@@ -195,6 +209,9 @@ export async function loadProjects(
   };
 
   if (onRemoteUpdate) {
+    if (shouldSkipRemoteProjectsRefresh(uid)) {
+      return local;
+    }
     // Optimistic: return local now, push remote later only if it differs.
     refresh().then((remote) => {
       const changed =
@@ -202,7 +219,12 @@ export async function loadProjects(
         remote.some(
           (p, i) => p.id !== local[i]?.id || (p as any).updatedAt !== (local[i] as any)?.updatedAt
         );
-      if (changed) onRemoteUpdate(remote);
+      if (changed) {
+        setWarmProjects(uid, remote, { remote: true });
+        onRemoteUpdate(remote);
+      } else {
+        markRemoteProjectsFetched(uid, remote);
+      }
     });
     return local;
   }

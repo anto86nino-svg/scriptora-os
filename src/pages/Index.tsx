@@ -10,8 +10,9 @@ import { ProgressTracker } from "@/components/ProgressTracker";
 import { GuidedProjectFlow } from "@/components/GuidedProjectFlow";
 import { useBookEngine } from "@/hooks/useBookEngine";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
-import { deleteProject as removeProject, getLastProjectId } from "@/lib/storage";
-import { loadProjects as loadRemoteProjects, deleteProjectAsync, saveProjectAsync } from "@/services/storageService";
+import { deleteProject as removeProject, flushPendingWrites, getLastProjectId } from "@/lib/storage";
+import { loadProjects as loadRemoteProjects, deleteProjectAsync, saveProjectAsync, getProjectsSnapshot } from "@/services/storageService";
+import { preloadRoute } from "@/lib/route-preload";
 import {
   downloadDocxFile,
   downloadEpubFile,
@@ -45,7 +46,7 @@ type ExportFormat = "epub" | "docx" | "pdf";
 const Index = () => {
   useUILanguage();
   const isMobile = useIsMobile();
-  const [projects, setProjects] = useState<BookProject[]>([]);
+  const [projects, setProjects] = useState<BookProject[]>(getProjectsSnapshot);
   const [showNewBook, setShowNewBook] = useState(false);
   const [showCover, setShowCover] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
@@ -92,6 +93,10 @@ const Index = () => {
     }
     setShowNewBook(true);
   };
+
+  useEffect(() => {
+    preloadRoute("dashboard");
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("scriptora-sidebar-open", JSON.stringify(sidebarOpen));
@@ -196,8 +201,7 @@ const Index = () => {
 
   useEffect(() => {
     const init = async () => {
-      const loaded = await loadRemoteProjects((fresh) => setProjects(fresh));
-      setProjects(loaded);
+      await loadRemoteProjects((fresh) => setProjects(fresh));
 
       const openSection = sessionStorage.getItem("nexora-open-section");
       if (openSection) sessionStorage.removeItem("nexora-open-section");
@@ -467,6 +471,7 @@ const Index = () => {
           <div className="p-2">
             <Link
               to="/dashboard"
+              onClick={() => flushPendingWrites()}
               className="ios-toolbar-button flex w-full justify-start px-3 py-2 text-xs font-medium"
             >
               <ArrowLeft className="h-3 w-3" /> {t("back_to_my_books")}
@@ -667,6 +672,7 @@ const Index = () => {
                   </button>
                   <Link
                     to="/dashboard"
+                    onClick={() => flushPendingWrites()}
                     className="ios-toolbar-button h-10 px-4 text-sm font-medium"
                   >
                     <ArrowLeft className="h-4 w-4" />
