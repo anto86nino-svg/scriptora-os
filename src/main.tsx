@@ -47,10 +47,17 @@ VITE_SUPABASE_PROJECT_ID=&lt;project-ref&gt;</pre>
       const keys: string[] = [];
       for (let i = 0; i < storage.length; i++) {
         const k = storage.key(i);
+        const lowerKey = k?.toLowerCase() || "";
+        const keepScriptoraUiPreference =
+          lowerKey.includes("appearance") ||
+          lowerKey.includes("performance-mode") ||
+          lowerKey.includes("performance-hint") ||
+          lowerKey.includes("open-appearance");
+
         if (
           k &&
-          k.toLowerCase().startsWith("scriptora") &&
-          !k.toLowerCase().includes("appearance")
+          lowerKey.startsWith("scriptora") &&
+          !keepScriptoraUiPreference
         ) keys.push(k);
       }
       for (const oldKey of keys) {

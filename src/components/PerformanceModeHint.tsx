@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Zap, X } from "lucide-react";
+import { Crown, Gauge, Sparkles, X, Zap } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   dismissPerformanceHint,
@@ -10,6 +10,65 @@ import {
   useVisualPreset,
 } from "@/lib/performance-mode";
 import { t } from "@/lib/i18n";
+
+type VisualPerformanceBadgeProps = {
+  onOpenSettings?: () => void;
+};
+
+export function VisualPerformanceBadge({ onOpenSettings }: VisualPerformanceBadgeProps) {
+  const preset = useVisualPreset();
+
+  const meta = {
+    premium: {
+      label: "Premium FX",
+      mobileLabel: "FX",
+      title: "Modalità visiva Premium attiva",
+      icon: Sparkles,
+      className: "border-fuchsia-300/25 bg-fuchsia-500/10 text-fuchsia-100 shadow-[0_0_18px_rgba(217,70,239,0.18)]",
+    },
+    balanced: {
+      label: "Balanced",
+      mobileLabel: "BAL",
+      title: "Modalità visiva Bilanciata attiva",
+      icon: Gauge,
+      className: "border-sky-300/25 bg-sky-500/10 text-sky-100",
+    },
+    performance: {
+      label: "Performance",
+      mobileLabel: "FAST",
+      title: "Modalità Performance attiva",
+      icon: Zap,
+      className: "border-emerald-300/25 bg-emerald-500/10 text-emerald-100",
+    },
+  } as const;
+
+  const current = meta[preset];
+  const Icon = preset === "premium" ? Crown : current.icon;
+
+  const open = () => {
+    if (onOpenSettings) {
+      onOpenSettings();
+      return;
+    }
+    sessionStorage.setItem(SCRIPTORA_OPEN_APPEARANCE_KEY, "1");
+    window.dispatchEvent(new Event("scriptora-open-appearance-settings"));
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={open}
+      title={current.title}
+      aria-label={current.title}
+      className={`ios-toolbar-button inline-flex h-8 max-w-[112px] items-center gap-1.5 rounded-full border px-2 text-[10px] font-semibold uppercase tracking-[0.14em] ${current.className}`}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0" />
+      <span className="hidden min-[430px]:inline">{current.label}</span>
+      <span className="inline min-[430px]:hidden">{current.mobileLabel}</span>
+    </button>
+  );
+}
+
 
 export function PerformanceModeHint() {
   const isMobile = useIsMobile();
