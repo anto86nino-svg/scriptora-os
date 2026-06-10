@@ -5,6 +5,8 @@ import { formatCredits } from "@/lib/credit-economy";
 import { getPurchaseCtaLabel } from "@/lib/billing/creditUx";
 import { creditSimulationBadge } from "@/lib/billing/devMode";
 import { cn } from "@/lib/utils";
+import { DevCreditQuickBuy } from "@/components/billing/DevCreditQuickBuy";
+import { canDevSimulateCreditPurchase } from "@/lib/billing";
 
 interface GlobalCreditBarProps {
   variant?: "bar" | "inline" | "compact" | "mobilePill";
@@ -37,7 +39,9 @@ export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarP
             <span className="hidden min-[380px]:inline text-amber-300/90">· Ricarica</span>
           )}
         </button>
-        {needsTopUp && (
+        {canDevSimulateCreditPurchase() ? (
+          <DevCreditQuickBuy compact onPurchased={() => window.dispatchEvent(new Event("scriptora-credits-change"))} />
+        ) : needsTopUp ? (
           <button
             type="button"
             onClick={() => goUsage("purchase")}
@@ -45,7 +49,7 @@ export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarP
           >
             Ricarica
           </button>
-        )}
+        ) : null}
       </div>
     );
   }

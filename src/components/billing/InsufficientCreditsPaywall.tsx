@@ -4,6 +4,7 @@ import { Coins, X } from "lucide-react";
 import type { InsufficientCreditsDetail } from "@/lib/billing/creditUx";
 import { getPurchaseCtaLabel } from "@/lib/billing/creditUx";
 import { formatCredits } from "@/lib/credit-economy";
+import { DevCreditQuickBuy } from "@/components/billing/DevCreditQuickBuy";
 
 export function InsufficientCreditsPaywall() {
   const navigate = useNavigate();
@@ -49,6 +50,13 @@ export function InsufficientCreditsPaywall() {
         <p className="mt-2 text-sm text-muted-foreground">
           Saldo disponibile: <span className="font-semibold tabular-nums text-foreground">{formatCredits(detail.balance)}</span>
         </p>
+
+        <div className="mt-4">
+          <DevCreditQuickBuy
+            compact={false}
+            onPurchased={() => setOpen(false)}
+          />
+        </div>
 
         <div className="mt-6 flex flex-col gap-2 sm:flex-row">
           <button

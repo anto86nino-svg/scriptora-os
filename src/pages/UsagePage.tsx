@@ -25,6 +25,7 @@ import {
 import { formatCredits } from "@/lib/credit-economy";
 import { isDevMode } from "@/lib/dev-mode";
 import { CreditPurchasePanel } from "@/components/billing/CreditPurchasePanel";
+import { DevCreditQuickBuy } from "@/components/billing/DevCreditQuickBuy";
 import { GlobalCreditBar } from "@/components/billing/GlobalCreditBar";
 
 export default function UsagePage() {
@@ -112,6 +113,11 @@ export default function UsagePage() {
           <h2 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <ShoppingBag className="h-4 w-4" /> Acquista Crediti
           </h2>
+          {devMode && !import.meta.env.PROD && (
+            <div className="mb-4">
+              <DevCreditQuickBuy onPurchased={refresh} />
+            </div>
+          )}
           <CreditPurchasePanel onPurchased={refresh} />
           {devMode && !import.meta.env.PROD && (
             <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">

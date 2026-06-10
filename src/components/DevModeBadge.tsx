@@ -20,6 +20,7 @@ import {
   Zap,
   Crown,
   Trash2,
+  Coins,
 } from "lucide-react";
 import { toast } from "sonner";
 import { exitDevMode, isDevMode, useDevMode } from "@/lib/dev-mode";
@@ -41,6 +42,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { t, tt, useUILanguage } from "@/lib/i18n";
+import { DevCreditQuickBuy } from "@/components/billing/DevCreditQuickBuy";
 
 const PLAN_META: Record<PlanTier, { icon: React.ReactNode; hintKey: string }> = {
   free:    { icon: <Sparkles className="h-3 w-3" />,    hintKey: "dev_free_hint" },
@@ -57,6 +59,7 @@ export function DevModeBadge() {
   const [planMenuOpen, setPlanMenuOpen] = useState(false);
   const [wipeOpen, setWipeOpen] = useState(false);
   const [simulationOn, setSimulationOn] = useState(() => isDevUnlimitedCredits());
+  const [creditsOpen, setCreditsOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(max-width: 639px)").matches;
@@ -145,7 +148,7 @@ export function DevModeBadge() {
             const next = !simulationOn;
             setDevUnlimitedCredits(next);
             setSimulationOn(next);
-            toast.message(next ? "DEV SIMULATION attiva — crediti simulati" : "DEV SIMULATION off — checkout e wallet reali");
+            toast.message(next ? "Crediti illimitati ON — nessun addebito" : "Crediti illimitati OFF — consumo reale sul wallet dev");
           }}
           title="DEV SIMULATION ON/OFF"
           className={`h-6 px-2 rounded-full hover:bg-background/15 inline-flex items-center gap-1 ${
@@ -192,6 +195,28 @@ export function DevModeBadge() {
                 );
               })}
             </div>
+          )}
+        </div>
+
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setCreditsOpen((open) => !open)}
+            title="Acquista crediti dev (simulato)"
+            className={`h-6 px-2 rounded-full hover:bg-background/15 inline-flex items-center gap-1 ${
+              creditsOpen ? "bg-amber-400/25 text-amber-100" : ""
+            }`}
+          >
+            <Coins className="h-3 w-3" />
+            <span className="hidden sm:inline text-[10px] font-semibold">+CR</span>
+          </button>
+          {creditsOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setCreditsOpen(false)} aria-hidden />
+              <div className="absolute bottom-full right-0 z-50 mb-2 w-[min(300px,calc(100vw-2rem))]">
+                <DevCreditQuickBuy onPurchased={() => setCreditsOpen(false)} />
+              </div>
+            </>
           )}
         </div>
 
