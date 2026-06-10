@@ -1,8 +1,7 @@
 import { resolveChapterTitle } from "@/lib/chapter-titles";
+import { resolveExportAuthorName } from "@/lib/export-author";
 
 type AnyBookProject = any;
-
-const DEFAULT_AUTHOR = "Antonino Campanella";
 
 function stripCodeFence(value: string): string {
   return value
@@ -124,9 +123,7 @@ export function cleanExportText(value: unknown): string {
     .replace(/\[Nome dell.?Autore o Editore\]/gi, "")
     .replace(/\[Nome dell.?Autore\]/gi, "")
     .replace(/\[da assegnare\]/gi, "")
-    .replace(/Autore:\s*$/gim, `Autore: ${DEFAULT_AUTHOR}`)
-    .replace(/©\s*2025\s*\.\s*/g, `© ${new Date().getFullYear()} ${DEFAULT_AUTHOR}. `)
-    .replace(/©\s*2026\s*\.\s*/g, `© ${new Date().getFullYear()} ${DEFAULT_AUTHOR}. `)
+    .replace(/Autore:\s*$/gim, "Autore: [da configurare]")
     .replace(/Czes.?aw Mi.?osz/g, "Czesław Miłosz")
     .replace(/Czes[\u0000-\u001F]?Baw Mi[\u0000-\u001F]?Bosz/g, "Czesław Miłosz")
     .trim();
@@ -399,18 +396,19 @@ export function normalizeExportProject(project: AnyBookProject): AnyBookProject 
   const frontMatter = mergeMatterFromEmbeddedJson(project?.frontMatter || {});
   const backMatter = mergeMatterFromEmbeddedJson(project?.backMatter || {});
 
-  const author =
-    cleanAuthorSlug(config.author) ||
-    cleanAuthorSlug(config.authorName) ||
-    cleanAuthorSlug(config.writerName) ||
-    DEFAULT_AUTHOR;
+  const author = resolveExportAuthorName(config) || "";
 
-  config.author = author;
-  config.authorName = author;
-  config.writerName = author;
+  if (author) {
+    config.author = author;
+    config.authorName = author;
+    config.writerName = author;
+  }
+
   config.title = cleanExportText(config.title || project?.title || "Senza titolo");
 
-  frontMatter.titlePage = cleanExportText(frontMatter.titlePage || `${config.title}\n\nAutore: ${author}`);
+  frontMatter.titlePage = cleanExportText(
+    frontMatter.titlePage || (author ? `${config.title}\n\nAutore: ${author}` : `${config.title}`),
+  );
 
   Object.assign(frontMatter, repairDirtyFrontMatter(frontMatter, author));
 

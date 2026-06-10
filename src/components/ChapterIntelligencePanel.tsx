@@ -17,6 +17,12 @@ import { buildCreditIdempotencyKey } from "@/lib/billing/idempotency";
 import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/billing/billingHeaders";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { computePremiumEditorialScores } from "@/lib/editorial-intelligence-premium";
+import {
+  listChapterRevisions,
+  peekChapterRevision,
+  popChapterRevision,
+  pushChapterRevision,
+} from "@/lib/chapter-revisions";
 
 
 function countWordsForChapterLock(value: unknown): number {
@@ -153,6 +159,40 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   const [workingContent, setWorkingContent] = useState<string>(chapter?.content || "");
   const [showRunAnalyze, setShowRunAnalyze] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [lastRevision, setLastRevision] = useState(() => peekChapterRevision(project.id, chapterIndex));
+  const revisionHistory = useMemo(
+    () => listChapterRevisions(project.id, chapterIndex),
+    [project.id, chapterIndex, lastRevision],
+  );
+
+  const applyContentWithUndo = (newContent: string, reason: string, impact?: string) => {
+    const before = workingContent || chapter?.content || "";
+    if (before !== newContent) {
+      const rev = pushChapterRevision({
+        projectId: project.id,
+        chapterIndex,
+        before,
+        after: newContent,
+        reason,
+        impact,
+      });
+      setLastRevision(rev);
+    }
+    setWorkingContent(newContent);
+    onApplyContent(newContent);
+  };
+
+  const undoLastRevision = () => {
+    const rev = popChapterRevision(project.id, chapterIndex);
+    if (!rev) {
+      toast.error("Nessuna modifica da annullare");
+      return;
+    }
+    setWorkingContent(rev.before);
+    onApplyContent(rev.before);
+    setLastRevision(peekChapterRevision(project.id, chapterIndex));
+    toast.success("Ultima modifica annullata — testo ripristinato");
+  };
 
   const guardFreeChapterAi = async () => {
     if (await isFreeChapterAiLocked(project)) {
@@ -185,8 +225,11 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   const applyPatch = () => {
     if (!patchJob) return;
     applyJob(patchJob.id, (text) => {
-      setWorkingContent(text);
-      onApplyContent(text);
+      applyContentWithUndo(
+        text,
+        "Patch chirurgica applicata",
+        patchJob.result?.modificationPercent ? `Modifica ${patchJob.result.modificationPercent}%` : undefined,
+      );
     });
   };
   const discardPatch = () => {
@@ -204,8 +247,11 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   const applyDominate = () => {
     if (!dominateJob) return;
     applyJob(dominateJob.id, (text) => {
-      setWorkingContent(text);
-      onApplyContent(text);
+      applyContentWithUndo(
+        text,
+        "Dominate Chapter applicato",
+        dominateJob.result?.finalScore ? `Score ${Number(dominateJob.result.finalScore).toFixed(1)}/10` : undefined,
+      );
     });
   };
   const discardDominate = () => {
@@ -286,8 +332,11 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
         paras[weak.idx] = cleanedNew;
       }
       const newContent = paras.join("\n\n");
-      setWorkingContent(newContent);
-      onApplyContent(newContent);
+      applyContentWithUndo(
+        newContent,
+        `Fix paragrafo ¶${weak.idx + 1}`,
+        weak.problem || weak.action,
+      );
       setFixed(prev => new Set(prev).add(weak.idx));
       toast.success(`¶${weak.idx + 1} ${fixMode === "power" ? "upgraded ⚡" : "fixed"}`);
     } catch (e: any) {
@@ -371,7 +420,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-      <div className="w-full max-w-4xl max-h-[92vh] bg-card border border-border/60 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+      <div className="w-full max-w-4xl max-h-[min(94dvh,900px)] bg-card border border-border/60 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border/50">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -386,13 +435,38 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
               <p className="text-xs text-muted-foreground italic">"L'AI non riscrive. L'AI interviene."</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {revisionHistory.length > 0 && (
+              <button
+                type="button"
+                onClick={undoLastRevision}
+                className="ios-toolbar-button px-3 text-[11px] font-semibold text-foreground"
+                title="Annulla ultima modifica editoriale"
+              >
+                <RefreshCw className="h-3.5 w-3.5" /> Annulla
+              </button>
+            )}
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
+        {lastRevision && (
+          <div className="border-b border-border/40 bg-muted/20 px-5 py-3 text-xs text-muted-foreground">
+            <p className="font-semibold text-foreground">Ultima revisione · {lastRevision.reason}</p>
+            {lastRevision.impact && <p className="mt-1">Impatto: {lastRevision.impact}</p>}
+            <p className="mt-2 line-clamp-2">
+              <span className="text-rose-400/90">Prima:</span> {lastRevision.before.slice(0, 180)}…
+            </p>
+            <p className="mt-1 line-clamp-2">
+              <span className="text-emerald-400/90">Dopo:</span> {lastRevision.after.slice(0, 180)}…
+            </p>
+          </div>
+        )}
+
         {/* Body */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin p-5 space-y-5">
+        <div className="flex-1 overflow-y-auto scrollbar-thin p-5 space-y-5 max-h-[min(72dvh,720px)]">
           {/* IDLE — Patch as default */}
           {idle && (
             <div className="text-center py-8 space-y-5">

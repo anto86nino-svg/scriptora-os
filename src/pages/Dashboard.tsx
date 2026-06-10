@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { lazy, Suspense, useState, useEffect } from "react";
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
@@ -6,7 +6,9 @@ import { NewBookDialog } from "@/components/NewBookDialog";
 import { HomeExportDialog } from "@/components/HomeExportDialog";
 import { TitleIntelligenceDialog } from "@/components/TitleIntelligenceDialog";
 import { AdvancedAppearanceDialog } from "@/components/AdvancedAppearanceDialog";
-import { CoverGenerator } from "@/components/CoverGenerator";
+const CoverGenerator = lazy(() =>
+  import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })),
+);
 import { CharacterStudioDialog, SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/components/CharacterStudioDialog";
 import { ManuscriptAnalyzerDialog } from "@/components/ManuscriptAnalyzerDialog";
 import { NotepadDialog } from "@/components/NotepadDialog";
@@ -48,6 +50,7 @@ import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { PremiumOsGateway } from "@/components/premium/PremiumOsGateway";
 import { AuthorMomentumPanel } from "@/components/premium/AuthorMomentumPanel";
 import { OneFlowHome } from "@/components/one-flow/OneFlowHome";
+import { OsHomeHero } from "@/components/os/OsHomeHero";
 import { ScriptoraSettingsButton } from "@/components/settings/ScriptoraSettingsButton";
 
 const ScriptoraSettingsHub = lazy(() =>
@@ -133,6 +136,7 @@ function charactersFromBibleText(text?: string): any[] {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const devOn = useDevMode();
   const [showNewBook, setShowNewBook] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
@@ -302,6 +306,22 @@ export default function Dashboard() {
     }
     action();
   };
+
+  useEffect(() => {
+    const state = location.state as {
+      openWizard?: boolean;
+      openProjects?: boolean;
+      openCover?: boolean;
+      openExport?: boolean;
+    } | null;
+    if (!state) return;
+    if (state.openWizard) openNewBookGuarded();
+    if (state.openProjects) setShowProjects(true);
+    if (state.openCover) guardPlanFeature("book_engine_full", () => setShowCoverStudio(true))();
+    if (state.openExport) guardPlanFeature("export_epub", () => setShowExport(true))();
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const lastId = getLastProjectId();
   // Only surface "continue last" when the project still belongs to the active
@@ -665,8 +685,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="scriptora-ios-screen scriptora-app-surface min-h-screen relative overflow-hidden">
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
+    <div className="scriptora-ios-screen scriptora-app-surface min-h-dvh relative overflow-hidden safe-area-pt">
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl safe-area-pt">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             <button
@@ -745,6 +765,22 @@ export default function Dashboard() {
           </div>
 
           <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+            <button
+              type="button"
+              onClick={() => guardPlanFeature("book_engine_full", () => setShowCoverStudio(true))()}
+              className="ios-toolbar-button px-2 text-xs font-medium sm:hidden"
+              title="Cover Studio"
+            >
+              🎨
+            </button>
+            <button
+              type="button"
+              onClick={() => guardPlanFeature("export_epub", () => setShowExport(true))()}
+              className="ios-toolbar-button px-2 text-xs font-medium sm:hidden"
+              title="Export Studio"
+            >
+              📦
+            </button>
             <ScriptoraSettingsButton onClick={() => setShowSettingsHub(true)} />
             <button
               onClick={() => navigate("/usage")}
@@ -845,13 +881,28 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 sm:pt-8 lg:px-8">
+      <div className="relative mx-auto max-w-7xl px-3 pb-12 pt-3 sm:px-6 sm:pb-16 sm:pt-6 lg:px-8">
+        <OsHomeHero
+          lastProject={lastProject}
+          progressPercent={lastProjectProgress}
+          onContinue={() => lastProject && goApp({ projectId: lastProject.id })}
+          onGenerateNextChapter={() => lastProject && goApp({ projectId: lastProject.id, section: "chapters" })}
+          onExport={() => guardPlanFeature("export_epub", () => setShowExport(true))()}
+          onNewBook={openNewBookGuarded}
+          onMyBooks={() => setShowProjects(true)}
+        />
+
         <OneFlowHome
+          compact
           authorIdentity={activeAuthor}
           lastProjectTitle={lastProject?.config.title}
           lastProjectProgress={lastProjectProgress}
           onWriteBook={openNewBookGuarded}
-          onStudyWithAI={() => navigate("/study-session")}
+          onAutoBestsellerShortcut={() => navigate("/auto-bestseller")}
+          onOpenWriter={() => navigate("/writer")}
+          onOpenPublishing={() => navigate("/publishing")}
+          onOpenIdentity={() => navigate("/identity")}
+          onStudyWithAI={() => navigate("/study")}
           onListenBook={
             lastProject
               ? () => goApp({ projectId: lastProject.id, voice: true })
@@ -871,9 +922,11 @@ export default function Dashboard() {
           showAdvancedLaunchpad={showAdvancedLaunchpad}
         />
 
-        <div className="mb-4 sm:mb-6">
-          <WalletScriptoraCard />
-        </div>
+        {showAdvancedLaunchpad && (
+          <div className="mb-4 sm:mb-6">
+            <WalletScriptoraCard />
+          </div>
+        )}
 
         {showAdvancedLaunchpad && (
           <>
@@ -1376,16 +1429,18 @@ export default function Dashboard() {
         onAuthorIdentity={() => openAuthorIdentity()}
       />
       {showCoverStudio && (
-        <CoverGenerator
-          title={t("untitled")}
-          subtitle=""
-          authorName={activeAuthor.penName}
-          description=""
-          authorBio={activeAuthor.biography}
-          showPrimaryAction={false}
-          onGenerate={() => undefined}
-          onClose={() => setShowCoverStudio(false)}
-        />
+        <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-black/50"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}>
+          <CoverGenerator
+            title={t("untitled")}
+            subtitle=""
+            authorName={activeAuthor.penName}
+            description=""
+            authorBio={activeAuthor.biography}
+            showPrimaryAction={false}
+            onGenerate={() => undefined}
+            onClose={() => setShowCoverStudio(false)}
+          />
+        </Suspense>
       )}
       <ManuscriptAnalyzerDialog
         open={showManuscriptAnalyzer}

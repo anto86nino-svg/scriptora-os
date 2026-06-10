@@ -1,4 +1,5 @@
 import { normalizeExportProject, exportLabel, cleanExportText, parseExportBlocks, cleanMarkdownInline } from "@/lib/export-cleanup";
+import { assertExportReady } from "@/lib/export-readiness";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import jsPDF from "jspdf";
 import { BookProject } from "@/types/book";
@@ -246,10 +247,11 @@ function writeParagraphsWithDropCap(state: PdfState, text: string, useDropCap: b
 }
 
 export async function generatePdf(project: BookProject): Promise<Blob> {
+  assertExportReady(project);
   const normalizedProject = normalizeExportProject(project);
   const { config, frontMatter, chapters, backMatter } = normalizedProject;
   const doc = new jsPDF({ unit: "pt", format: [PAGE_W, PAGE_H], compress: true });
-  const author = (config.authorName || config.author || config.writerName || "Antonino Campanella").trim();
+  const author = String(config.authorName || config.author || config.writerName || "").trim();
 
   const state: PdfState = {
     doc, y: MARGIN_TOP, pageNum: 1,

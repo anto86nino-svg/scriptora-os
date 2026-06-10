@@ -1,4 +1,5 @@
 import { normalizeExportProject, exportLabel, cleanExportText, parseExportBlocks, cleanMarkdownInline } from "@/lib/export-cleanup";
+import { assertExportReady } from "@/lib/export-readiness";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel,
@@ -143,9 +144,10 @@ function sectionH2(text: string): Paragraph {
 }
 
 export async function generateDocx(project: BookProject): Promise<Blob> {
+  assertExportReady(project);
   const normalizedProject = normalizeExportProject(project);
   const { config, frontMatter, chapters, backMatter } = normalizedProject;
-  const author = (config.authorName || config.author || config.writerName || "Antonino Campanella").trim();
+  const author = String(config.authorName || config.author || config.writerName || "").trim();
   const bookTitle = config.title || "Untitled";
 
   const children: Paragraph[] = [];

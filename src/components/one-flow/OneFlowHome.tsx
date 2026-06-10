@@ -24,6 +24,12 @@ interface OneFlowHomeProps {
   onProfile: () => void;
   onAdvancedTools?: () => void;
   showAdvancedLaunchpad?: boolean;
+  onAutoBestsellerShortcut?: () => void;
+  onOpenBestseller?: () => void;
+  onOpenWriter?: () => void;
+  onOpenPublishing?: () => void;
+  onOpenIdentity?: () => void;
+  compact?: boolean;
 }
 
 export function OneFlowHome({
@@ -45,9 +51,15 @@ export function OneFlowHome({
   onProfile,
   onAdvancedTools,
   showAdvancedLaunchpad = false,
+  onAutoBestsellerShortcut,
+  onOpenBestseller,
+  onOpenWriter,
+  onOpenPublishing,
+  onOpenIdentity,
+  compact = true,
 }: OneFlowHomeProps) {
   return (
-    <section className="mb-6 safe-area-pb">
+    <section className={`safe-area-pb ${compact ? "mb-3" : "mb-6"}`}>
       <AuthorIdentityHomeCard
         identity={authorIdentity}
         onConfigure={onAuthorConfigure}
@@ -58,13 +70,13 @@ export function OneFlowHome({
       <button
         type="button"
         onClick={onWriteBook}
-        className="group mb-4 flex w-full items-center justify-between gap-4 rounded-2xl border border-sky-400/30 bg-gradient-to-r from-sky-950/50 via-slate-900/50 to-sky-900/30 p-5 text-left shadow-[0_24px_80px_rgba(14,165,233,0.18)] transition-all hover:-translate-y-0.5 hover:border-sky-400/45 sm:p-6"
+        className={`group mb-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-sky-400/30 bg-gradient-to-r from-sky-950/50 via-slate-900/50 to-sky-900/30 text-left shadow-[0_20px_60px_rgba(14,165,233,0.16)] transition-all hover:-translate-y-0.5 hover:border-sky-400/45 ${compact ? "p-3.5 sm:p-4" : "mb-4 p-5 sm:p-6"}`}
       >
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-200/80">Passo 2</p>
-          <h2 className="mt-1 text-2xl font-bold tracking-tight text-white sm:text-3xl">🚀 Genera Bestseller</h2>
-          <p className="mt-2 max-w-lg text-sm leading-6 text-white/70">
-            Dall&apos;idea al libro completo con One Flow OS, blueprint e generazione capitoli.
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-200/80">Percorso principale</p>
+          <h2 className={`mt-1 font-bold tracking-tight text-white ${compact ? "text-lg sm:text-xl" : "text-2xl sm:text-3xl"}`}>✍️ Inizia il tuo libro</h2>
+          <p className={`mt-1 max-w-lg leading-6 text-white/70 ${compact ? "text-xs sm:text-sm" : "mt-2 text-sm"}`}>
+            Idea → Blueprint → Capitoli → Diagnostica → Cover → Export. Un solo percorso guidato.
           </p>
         </div>
         <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-950 shadow-[0_16px_40px_rgba(14,165,233,0.35)] transition-transform group-hover:translate-x-0.5">
@@ -72,7 +84,7 @@ export function OneFlowHome({
         </span>
       </button>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+      <div className={`grid gap-2 sm:grid-cols-3 ${compact ? "mb-3" : "mb-4 gap-3"}`}>
         <StudioCard
           step="3"
           emoji="📚"
@@ -99,58 +111,35 @@ export function OneFlowHome({
         />
       </div>
 
-      <p className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.05] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/70">
-        <Sparkles className="h-3 w-3 text-sky-300" /> Anche in Scriptora
-      </p>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <PrimaryCard
-          accent="sky"
-          emoji="✍️"
-          title="Scrivi libro"
-          subtitle="Wizard One Flow: idea, personaggi, struttura e lancio."
-          ctaLabel="Apri wizard"
-          ctaIcon={PenLine}
-          onClick={onWriteBook}
-        />
-        <PrimaryCard
-          accent="emerald"
-          emoji="🎓"
-          title="Studia con AI"
-          subtitle="Carica un libro, PDF o appunti e impara più velocemente."
-          ctaLabel="Studia con AI"
-          ctaIcon={GraduationCap}
-          onClick={onStudyWithAI}
-          badge="Beta Study Mode"
-        />
+      <div className={`grid gap-2 ${compact ? "grid-cols-2 sm:grid-cols-4" : "gap-3 sm:grid-cols-2 lg:grid-cols-4"}`}>
+        <ActionChip icon={PenLine} label="Writer Studio" onClick={onOpenWriter || onContinue || onWriteBook} accent="cyan" />
+        <ActionChip icon={GraduationCap} label="Study OS" onClick={onStudyWithAI} accent="cyan" />
+        <ActionChip icon={Wrench} label="Publishing" onClick={onOpenPublishing || onExportStudio} />
+        {(onAutoBestsellerShortcut || onOpenBestseller) && (
+          <ActionChip
+            icon={Rocket}
+            label="Auto Bestseller"
+            onClick={onAutoBestsellerShortcut || onOpenBestseller!}
+          />
+        )}
+        {onListenBook && <ActionChip icon={Headphones} label="Ascolta" onClick={onListenBook} />}
       </div>
 
-      <div className="mt-4">
-        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">6 · Strumenti avanzati</p>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          {lastProjectTitle && onContinue && (
-            <button
-              type="button"
-              onClick={onContinue}
-              className="col-span-2 flex flex-col items-start rounded-xl border border-sky-400/25 bg-sky-400/10 p-3 text-left transition-colors hover:bg-sky-400/16 sm:col-span-1"
-            >
-              <BookOpen className="h-4 w-4 text-sky-300" />
-              <span className="mt-2 text-xs font-bold text-white">Continua progetto</span>
-              <span className="mt-0.5 line-clamp-1 text-[10px] text-white/60">{lastProjectTitle}</span>
-              <span className="text-[10px] tabular-nums text-sky-200/80">{lastProjectProgress}%</span>
-            </button>
-          )}
-          {onListenBook && (
-            <ActionChip icon={Headphones} label="Ascolta libro" onClick={onListenBook} accent="cyan" />
-          )}
-          <ActionChip icon={FileSearch} label="Valuta manoscritto" onClick={onEvaluateManuscript} />
-          <ActionChip icon={Coins} label="Marketplace crediti" onClick={onCredits} />
-          <ActionChip icon={UserRound} label="Profilo" onClick={onProfile} />
-          {onAdvancedTools && !showAdvancedLaunchpad && (
-            <ActionChip icon={Wrench} label="Launchpad OS" onClick={onAdvancedTools} accent="cyan" />
-          )}
+      {!compact && (
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <PrimaryCard accent="sky" emoji="✍️" title="Scrivi libro" subtitle="Wizard One Flow." ctaLabel="Apri wizard" ctaIcon={PenLine} onClick={onWriteBook} />
+          <PrimaryCard accent="emerald" emoji="🎓" title="Studia con AI" subtitle="PDF, EPUB, appunti." ctaLabel="Studia con AI" ctaIcon={GraduationCap} onClick={onStudyWithAI} badge="Beta" />
         </div>
-      </div>
+      )}
+
+      {showAdvancedLaunchpad && (
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <ActionChip icon={FileSearch} label="Valuta MS" onClick={onEvaluateManuscript} />
+          <ActionChip icon={Coins} label="Crediti" onClick={onCredits} />
+          <ActionChip icon={UserRound} label="Profilo" onClick={onProfile} />
+          {onAdvancedTools && <ActionChip icon={Wrench} label="Launchpad" onClick={onAdvancedTools} />}
+        </div>
+      )}
     </section>
   );
 }
@@ -180,7 +169,7 @@ function StudioCard({
     <button
       type="button"
       onClick={onClick}
-      className={`flex flex-col items-start rounded-2xl border p-4 text-left transition-colors ${accentClass}`}
+      className={`flex flex-col items-start rounded-xl border p-3 text-left transition-colors sm:rounded-2xl sm:p-4 ${accentClass}`}
     >
       <span className="text-[10px] font-bold uppercase tracking-wider text-white/45">Passo {step}</span>
       <span className="mt-2 text-lg font-bold text-white">{emoji} {title}</span>

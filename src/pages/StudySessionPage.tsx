@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, GraduationCap, Loader2, Upload, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { analyzeStudyMaterial, readStudyFile, type StudySessionResult } from "@/lib/study-session";
@@ -7,6 +7,16 @@ import { generateStudySessionWithAI } from "@/lib/study-ai";
 import { evaluateStudyAnswerWithAI, type StudyAnswerEvaluation } from "@/lib/study-answer-evaluator";
 import { DEFAULT_STUDY_UX, loadStudyUxState, saveStudyUxState, type FlashcardConfidence } from "@/lib/study-ux";
 import { t } from "@/lib/i18n";
+import {
+  getStudyLearningMetrics,
+  getStudyProject,
+  recordStudyQuizAttempt,
+  saveStudyProject,
+  addStudyProjectBadges,
+} from "@/lib/study-project-storage";
+import { achievementById, evaluateStudyAchievements } from "@/lib/study-achievements";
+import { downloadStudyCertificate } from "@/lib/study-certificate";
+import { getSelectedAuthorIdentity } from "@/lib/author-identity";
 import { StudyMetricsCard } from "@/components/study/StudyMetricsCard";
 import { StudySummaryPanel } from "@/components/study/StudySummaryPanel";
 import { StudyOralPanel } from "@/components/study/StudyOralPanel";
@@ -92,12 +102,30 @@ function loadSaved(): { result: StudySessionResult; rawText: string } | null {
   return null;
 }
 
+function persistStudySession(
+  normalized: StudySessionResult,
+  text: string,
+  name: string,
+  projectId?: string,
+): string {
+  const saved = saveStudyProject({
+    id: projectId,
+    title: normalized.title,
+    sourceName: name,
+    rawText: text,
+    result: normalized,
+  });
+  return saved.id;
+}
+
 export default function StudySessionPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const saved = useMemo(loadSaved, []);
   const uxSaved = useMemo(loadStudyUxState, []);
 
+  const [projectId, setProjectId] = useState<string | undefined>(undefined);
   const [rawText, setRawText] = useState(saved?.rawText || "");
   const [sourceName, setSourceName] = useState(saved?.result?.sourceName || "testo-incollato.txt");
   const [result, setResult] = useState<StudySessionResult | null>(saved?.result ? normalizeStudyResultForUI(saved.result) : null);
@@ -127,6 +155,77 @@ export default function StudySessionPage() {
 
   const wordCount = useMemo(() => rawText.trim().split(/\s+/).filter(Boolean).length, [rawText]);
   const canAnalyze = wordCount >= 40 && !reading;
+
+  useEffect(() => {
+    const state = location.state as { projectId?: string } | null;
+    if (!state?.projectId) return;
+    const project = getStudyProject(state.projectId);
+    if (!project) {
+      toast.error("Progetto Study non trovato");
+      navigate(location.pathname, { replace: true, state: null });
+      return;
+    }
+    const text = project.rawText || project.rawTextPreview || "";
+    const normalized = normalizeStudyResultForUI(project.result);
+    setProjectId(project.id);
+    setRawText(text);
+    setSourceName(project.sourceName);
+    setResult(normalized);
+    saveResult(normalized, text);
+    setActiveSection("quiz");
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
+
+  const handleExamComplete = useCallback(
+    (report: { score: number; mode: "practice" | "exam"; total: number; correct: number }) => {
+      if (!projectId) return;
+      const updated = recordStudyQuizAttempt(projectId, {
+        score: report.score,
+        mode: report.mode,
+        totalQuestions: report.total,
+        correctCount: report.correct,
+      });
+      if (!updated) return;
+
+      const metrics = getStudyLearningMetrics();
+      const badges = evaluateStudyAchievements({
+        sessions: metrics.sessions,
+        words: updated.rawTextLength,
+        latestScore: report.score,
+        totalAttempts: updated.quizAttempts.length,
+        examCompleted: report.mode === "exam",
+      });
+      if (badges.length) {
+        addStudyProjectBadges(projectId, badges);
+        const labels = badges.map((id) => achievementById(id)?.label || id).join(", ");
+        toast.success(`Badge sbloccati: ${labels}`);
+      }
+
+      if (report.score >= 50) {
+        const identity = getSelectedAuthorIdentity();
+        const studentName = identity.penName || identity.realName || identity.name || "Studente Scriptora";
+        const level =
+          report.score >= 90 ? "Advanced" : report.score >= 75 ? "Proficient" : report.score >= 55 ? "Developing" : "Beginner";
+        toast.success("Verifica completata", {
+          description: `Punteggio ${report.score}/100 — scarica il certificato`,
+          action: {
+            label: "Certificato PDF",
+            onClick: () =>
+              downloadStudyCertificate({
+                studentName,
+                subject: updated.result.detectedSubject || updated.title,
+                date: new Date().toLocaleDateString(),
+                score: report.score,
+                level,
+                badges: badges.map((id) => achievementById(id)?.label || id),
+              }),
+          },
+        });
+      }
+    },
+    [projectId],
+  );
 
   const studyBrainProject = useMemo<BookProject>(
     () =>
@@ -195,7 +294,13 @@ export default function StudySessionPage() {
       setResult(normalized);
       resetSessionState();
       saveResult(normalized, rawText);
-      toast.success("Sessione Studio generata", { description: "Scriptora ha creato riassunti, parole difficili, flashcard e quiz." });
+      const id = persistStudySession(normalized, rawText, sourceName, projectId);
+      setProjectId(id);
+      setActiveSection("quiz");
+      saveStudyUxState({ activeSection: "quiz" });
+      toast.success("Pipeline Study completata", {
+        description: "Riassunti, flashcard e quiz pronti — inizia la verifica.",
+      });
     } catch (error) {
       console.warn("[StudySession] DeepSeek fallback locale", error);
       const local = analyzeStudyMaterial(rawText, sourceName);
@@ -203,6 +308,10 @@ export default function StudySessionPage() {
       setResult(normalized);
       resetSessionState();
       saveResult(normalized, rawText);
+      const id = persistStudySession(normalized, rawText, sourceName, projectId);
+      setProjectId(id);
+      setActiveSection("quiz");
+      saveStudyUxState({ activeSection: "quiz" });
       setAiMode("local");
       toast.warning("AI non disponibile: uso analisi locale", {
         description: error instanceof Error ? error.message.slice(0, 120) : "Fallback locale attivato.",
@@ -265,7 +374,11 @@ export default function StudySessionPage() {
         setResult(normalized);
         resetSessionState();
         saveResult(normalized, text);
-        toast.success("Materiale analizzato da Scriptora", { description: file.name });
+        const id = persistStudySession(normalized, text, file.name, projectId);
+        setProjectId(id);
+        setActiveSection("quiz");
+        saveStudyUxState({ activeSection: "quiz" });
+        toast.success("Pipeline Study completata", { description: `${file.name} — quiz e verifica pronti.` });
       } catch (error) {
         console.warn("[StudySession] DeepSeek file fallback locale", error);
         const local = analyzeStudyMaterial(text, file.name);
@@ -273,6 +386,10 @@ export default function StudySessionPage() {
         setResult(normalized);
         resetSessionState();
         saveResult(normalized, text);
+        const id = persistStudySession(normalized, text, file.name, projectId);
+        setProjectId(id);
+        setActiveSection("quiz");
+        saveStudyUxState({ activeSection: "quiz" });
         setAiMode("local");
         toast.warning("AI non disponibile: analisi locale attivata", {
           description: error instanceof Error ? error.message.slice(0, 120) : file.name,
@@ -300,7 +417,7 @@ export default function StudySessionPage() {
           <div>
             <button
               type="button"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/study")}
               className="mb-3 inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
@@ -512,6 +629,7 @@ export default function StudySessionPage() {
                       setQuizMode(state.quizMode);
                       setQuizOrder(state.quizOrder);
                     }}
+                    onExamComplete={handleExamComplete}
                   />
                 )}
               </>

@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { BookProject } from "@/types/book";
 import { resolveGenreKey } from "@/lib/genre-intelligence";
@@ -35,9 +35,34 @@ interface DominationContextValue {
 }
 
 const DominationContext = createContext<DominationContextValue | null>(null);
+const JOBS_STORAGE_KEY = "scriptora-domination-jobs-v1";
+
+function loadPersistedJobs(): Record<string, DominationJob> {
+  try {
+    const raw = sessionStorage.getItem(JOBS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, DominationJob>;
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([, job]) => job.status === "ready" || job.status === "error"),
+    );
+  } catch {
+    return {};
+  }
+}
 
 export function DominationProvider({ children }: { children: ReactNode }) {
-  const [jobs, setJobs] = useState<Record<string, DominationJob>>({});
+  const [jobs, setJobs] = useState<Record<string, DominationJob>>(() => loadPersistedJobs());
+
+  useEffect(() => {
+    try {
+      const persistable = Object.fromEntries(
+        Object.entries(jobs).filter(([, job]) => job.status === "ready" || job.status === "error"),
+      );
+      sessionStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(persistable));
+    } catch {
+      /* ignore quota errors */
+    }
+  }, [jobs]);
 
   const upsertJob = (job: DominationJob) =>
     setJobs(prev => ({ ...prev, [job.id]: job }));

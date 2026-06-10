@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Clock, GraduationCap, Lightbulb, RotateCcw, Trophy } from "lucide-react";
+import { Clock, GraduationCap, Lightbulb, Loader2, MessageCircle, RotateCcw, Trophy } from "lucide-react";
+import { explainStudyQuizError, type StudyErrorTutorResult } from "@/lib/study-ai";
 import type { OpenStudyQuestion, QuizQuestion } from "@/lib/study-session";
 import {
   buildQuizFeedback,
@@ -29,6 +30,7 @@ interface StudyQuizPanelProps {
     quizMode: "practice" | "exam";
     quizOrder: number[];
   }) => void;
+  onExamComplete?: (report: { score: number; mode: "practice" | "exam"; total: number; correct: number }) => void;
 }
 
 const EXAM_TIME_OPTIONS = [
@@ -49,6 +51,7 @@ export function StudyQuizPanel({
   initialMode = "practice",
   initialOrder = [],
   onStateChange,
+  onExamComplete,
 }: StudyQuizPanelProps) {
   const [quizMode, setQuizMode] = useState<"practice" | "exam">(initialMode);
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>(initialAnswers);
@@ -65,6 +68,8 @@ export function StudyQuizPanel({
   const [examElapsed, setExamElapsed] = useState(0);
   const [showExamSetup, setShowExamSetup] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [tutorLoading, setTutorLoading] = useState(false);
+  const [tutorResult, setTutorResult] = useState<StudyErrorTutorResult | null>(null);
 
   const performance = useMemo<UserPerformanceLevel>(
     () => computeUserPerformanceLevel({
@@ -96,8 +101,20 @@ export function StudyQuizPanel({
   }, [quizAnswers, currentQuestionIndex, quizMode, quizOrder, onStateChange]);
 
   useEffect(() => {
+    if (isComplete && report) {
+      onExamComplete?.({
+        score: report.score,
+        mode: quizMode,
+        total: quiz.length,
+        correct: Object.entries(quizAnswers).filter(([idx, ans]) => quiz[Number(idx)]?.answer === ans).length,
+      });
+    }
+  }, [isComplete, report, quizMode, quiz, quizAnswers, onExamComplete]);
+
+  useEffect(() => {
     if (answered) {
       setShowFeedback(false);
+      setTutorResult(null);
       const id = requestAnimationFrame(() => setShowFeedback(true));
       return () => cancelAnimationFrame(id);
     }
@@ -330,6 +347,38 @@ export function StudyQuizPanel({
                 <p><span className="font-semibold text-foreground/90">🧠 Memory trick: </span>{feedback.memoryTrick}</p>
                 <p><span className="font-semibold text-foreground/90">⚠ Confusione: </span>{feedback.commonConfusion}</p>
               </div>
+              {!feedback.isCorrect && q && (
+                <button
+                  type="button"
+                  disabled={tutorLoading}
+                  onClick={async () => {
+                    setTutorLoading(true);
+                    try {
+                      const result = await explainStudyQuizError({
+                        question: q.question,
+                        options: q.options,
+                        correctIndex: q.answer,
+                        selectedIndex: selected ?? -1,
+                        explanation: q.explanation,
+                      });
+                      setTutorResult(result);
+                    } finally {
+                      setTutorLoading(false);
+                    }
+                  }}
+                  className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-sky-400/25 bg-sky-400/10 text-xs font-semibold text-sky-100"
+                >
+                  {tutorLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MessageCircle className="h-3.5 w-3.5" />}
+                  Spiegami gli errori
+                </button>
+              )}
+              {tutorResult && (
+                <div className="mt-3 rounded-xl border border-sky-300/20 bg-sky-400/8 p-3 text-sm text-muted-foreground">
+                  <p><span className="font-semibold text-sky-100">Risposta corretta: </span>{tutorResult.correctAnswer}</p>
+                  <p className="mt-2"><span className="font-semibold text-sky-100">Perché hai sbagliato: </span>{tutorResult.whyWrong}</p>
+                  <p className="mt-2"><span className="font-semibold text-sky-100">Ripasso suggerito: </span>{tutorResult.reviewTip}</p>
+                </div>
+              )}
             </div>
           )}
 

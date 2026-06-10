@@ -6,10 +6,12 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import {
+  isPaymentsLive,
   paymentsConfig,
   resolvePlanAction,
   type PaymentPlan,
 } from "@/config/payments";
+import { FeatureStatusBadge } from "@/components/payments/FeatureStatusBadge";
 import { useSubscription } from "@/hooks/useSubscription";
 import { PricingCard } from "@/components/payments/PricingCard";
 import { PaymentStatusBanner } from "@/components/payments/PaymentStatusBanner";
@@ -70,16 +72,16 @@ export default function PricingPage() {
 
       <main className="scriptora-feature-scroll mx-auto max-w-6xl px-6 py-14">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-primary/30 bg-primary/10 text-[10px] font-bold uppercase tracking-wider text-primary mb-4">
-            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            Payments infrastructure ready
+          <div className="mb-4 flex justify-center">
+            <FeatureStatusBadge featureId="payments" />
           </div>
           <h1 className="text-4xl sm:text-5xl font-black tracking-tight">
-            Sblocca il pieno potenziale di Scriptora
+            {isPaymentsLive() ? "Sblocca il pieno potenziale di Scriptora" : "Piani premium in arrivo"}
           </h1>
           <p className="mt-4 text-base text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            I piani premium saranno presto disponibili. La struttura pagamenti è già predisposta
-            per l'attivazione.
+            {isPaymentsLive()
+              ? "Scegli il piano adatto al tuo percorso editoriale."
+              : "I pagamenti non sono ancora attivi. Puoi usare Scriptora e ti avviseremo al lancio dei piani premium."}
           </p>
         </div>
 

@@ -31,6 +31,11 @@ const BestsellerRadarPage = lazy(() => import("./pages/BestsellerRadarPage.tsx")
 const KeywordGoldPage = lazy(() => import("./pages/KeywordGoldPage.tsx"));
 const InstallPage = lazy(() => import("./pages/InstallPage.tsx"));
 const StudySessionPage = lazy(() => import("./pages/StudySessionPage.tsx"));
+const WriterOsPage = lazy(() => import("./pages/WriterOsPage.tsx"));
+const BestsellerOsPage = lazy(() => import("./pages/BestsellerOsPage.tsx"));
+const PublishingOsPage = lazy(() => import("./pages/PublishingOsPage.tsx"));
+const StudyOsPage = lazy(() => import("./pages/StudyOsPage.tsx"));
+const IdentityOsPage = lazy(() => import("./pages/IdentityOsPage.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -58,10 +63,14 @@ const App = () => (
                 <Route path="/" element={<Home />} />
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
-                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                <Route path="/study" element={<ProtectedRoute><FeatureErrorBoundary featureName="Study OS"><StudySessionPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/dashboard" element={<ProtectedRoute><FeatureErrorBoundary featureName="Dashboard"><Dashboard /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/writer" element={<ProtectedRoute><WriterOsPage /></ProtectedRoute>} />
+                <Route path="/bestseller" element={<ProtectedRoute><FeatureErrorBoundary featureName="Bestseller OS"><BestsellerOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/publishing" element={<ProtectedRoute><PublishingOsPage /></ProtectedRoute>} />
+                <Route path="/identity" element={<ProtectedRoute><IdentityOsPage /></ProtectedRoute>} />
+                <Route path="/study" element={<ProtectedRoute><FeatureErrorBoundary featureName="Study OS"><StudyOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/study-session" element={<ProtectedRoute><FeatureErrorBoundary featureName="Study OS"><StudySessionPage /></FeatureErrorBoundary></ProtectedRoute>} />
-                <Route path="/app" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+                <Route path="/app" element={<ProtectedRoute><FeatureErrorBoundary featureName="Writer Studio"><Index /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/auto-bestseller" element={<ProtectedRoute><FeatureErrorBoundary featureName="Auto Bestseller"><AutoBestsellerPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/usage" element={<ProtectedRoute><UsagePage /></ProtectedRoute>} />
                 <Route path="/kdp-launch" element={<ProtectedRoute requiredFeature="kdp_market_base"><FeatureErrorBoundary featureName="KDP Launch"><KdpLaunchPage /></FeatureErrorBoundary></ProtectedRoute>} />

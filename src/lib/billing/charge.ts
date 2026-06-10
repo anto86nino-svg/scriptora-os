@@ -1,9 +1,11 @@
-import type { BookLength } from "@/types/book";
+import type { BookLength, BookConfig } from "@/types/book";
 import type { CreditOperationId } from "./types";
 import { buildCreditIdempotencyKey } from "./idempotency";
 import { requireCreditsAsync } from "./commit";
-import { resolveChapterGenerationOperation } from "./creditPolicy";
-import type { BookConfig } from "@/types/book";
+import { resolveChapterGenerationOperation, getOperationCost } from "./creditPolicy";
+import { addCreditsToWallet } from "./wallet";
+import { appendLedgerEntry } from "./ledger";
+import { isDevUnlimitedCredits } from "./devMode";
 
 export async function chargeChapterGeneration(
   config: BookConfig,
@@ -37,4 +39,22 @@ export async function chargePremiumOperation(
     ? buildCreditIdempotencyKey(operation, ...idempotencyParts)
     : buildCreditIdempotencyKey(operation, metadata.projectId, Date.now());
   await requireCreditsAsync(operation, metadata, bookLength, key);
+}
+
+/** Refund credits when a charged operation did not deliver value (e.g. failed export). */
+export async function refundPremiumOperation(
+  operation: CreditOperationId,
+  metadata: Record<string, unknown>,
+  bookLength?: BookLength,
+): Promise<void> {
+  const cost = getOperationCost(operation, bookLength);
+  if (cost <= 0 || isDevUnlimitedCredits()) return;
+  const next = addCreditsToWallet(cost);
+  appendLedgerEntry({
+    operation: "refund",
+    amount: cost,
+    balanceAfter: next.balance,
+    metadata: { ...metadata, refundedOperation: operation },
+    simulated: false,
+  });
 }

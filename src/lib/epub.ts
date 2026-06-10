@@ -1,4 +1,5 @@
 import { normalizeExportProject, exportLabel, cleanExportText, parseExportBlocks, cleanMarkdownInline } from "@/lib/export-cleanup";
+import { assertExportReady } from "@/lib/export-readiness";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import { BookProject } from "@/types/book";
 
@@ -279,6 +280,7 @@ function getBackMatterLabels(lang: string) {
 }
 
 export async function generateEpub(project: BookProject, coverDataUrl?: string): Promise<Blob> {
+  assertExportReady(project);
   const normalizedProject = normalizeExportProject(project);
   const { config, frontMatter, chapters, backMatter } = normalizedProject;
   const lang = config.language;
@@ -299,7 +301,9 @@ export async function generateEpub(project: BookProject, coverDataUrl?: string):
     });
   }
 
-  const author = ((config as any).authorName || (config as any).author || (config as any).writerName || "Antonino Campanella").trim();
+  const author = String(
+    (config as any).authorName || (config as any).author || (config as any).writerName || "",
+  ).trim();
 
   // --- Half title (typographic tradition) ---
   entries.push({

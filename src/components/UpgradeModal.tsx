@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Lock, Check, Crown, Zap } from "lucide-react";
 import { PLAN_PRICING, PlanTier } from "@/lib/plan";
-import { paymentsConfig, resolvePlanAction, type PaymentPlan } from "@/config/payments";
+import { isPaymentsLive, paymentsConfig, resolvePlanAction, type PaymentPlan } from "@/config/payments";
 import { ComingSoonPaymentModal } from "@/components/payments/ComingSoonPaymentModal";
 
 interface UpgradeModalProps {
@@ -26,6 +26,7 @@ const REASON_COPY: Record<NonNullable<UpgradeModalProps["reason"]>, { title: str
 export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "free" }: UpgradeModalProps) {
   const copy = REASON_COPY[reason];
   const recommendPremium = reason === "dominate";
+  const paymentsLive = isPaymentsLive();
   const [comingSoonName, setComingSoonName] = useState<string | null>(null);
 
   const proPlan = paymentsConfig.plans.find((p) => p.id === "pro_monthly");
@@ -73,7 +74,7 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
                 "Export EPUB, PDF, DOCX",
                 "Cover Studio a template",
               ]}
-              cta="Passa a Pro"
+              cta={paymentsLive ? "Passa a Pro" : "Avvisami al lancio"}
               badge={!recommendPremium ? "Più scelto" : undefined}
               highlight={!recommendPremium}
               icon={<Zap className="h-3.5 w-3.5" />}
@@ -89,7 +90,7 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
                 "Analisi su segnali di mercato live",
                 "Dominate Mode con controllo qualità avanzato",
               ]}
-              cta="Sblocca Premium"
+              cta={paymentsLive ? "Sblocca Premium" : "Avvisami al lancio"}
               badge={recommendPremium ? "Max Power" : undefined}
               highlight={recommendPremium}
               icon={<Crown className="h-3.5 w-3.5" />}
@@ -98,7 +99,9 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
           </div>
 
           <p className="text-[11px] text-muted-foreground text-center">
-            Pagamento sicuro · Cancellazione in qualsiasi momento.
+            {paymentsLive
+              ? "Pagamento sicuro · Cancellazione in qualsiasi momento."
+              : "I pagamenti non sono ancora attivi — ti avviseremo al lancio."}
           </p>
         </div>
       </DialogContent>

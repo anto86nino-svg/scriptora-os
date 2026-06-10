@@ -18,6 +18,8 @@ import { loadProjects as loadRemoteProjects, deleteProjectAsync, saveProjectAsyn
 import { generateEpub, downloadEpub, validateEpubStructure } from "@/lib/epub";
 import { generateDocx, downloadDocx } from "@/lib/docx-export";
 import { generatePdf, downloadPdf } from "@/lib/pdf-export";
+import { getExportBlockers } from "@/lib/export-readiness";
+import { applyAuthorIdentityToConfig } from "@/lib/author-identity";
 import { BookProject, SectionId } from "@/types/book";
 import { WritingSettings, loadSettings, saveSettings } from "@/lib/settings";
 import { t, tt, UILanguage, useUILanguage } from "@/lib/i18n";
@@ -105,7 +107,7 @@ const Index = () => {
       toast.error(t("toast_free_book_used"));
       return;
     }
-    setShowNewBook(true);
+    navigate("/dashboard", { state: { openWizard: true } });
   };
 
   useEffect(() => {
@@ -245,7 +247,16 @@ const Index = () => {
 
   const handleExport = async (coverOverride?: string) => {
     if (!engine.project) return;
-    const errors = validateEpubStructure(engine.project);
+    const exportProject: BookProject = {
+      ...engine.project,
+      config: applyAuthorIdentityToConfig({ ...engine.project.config }),
+    };
+    const blockers = getExportBlockers(exportProject);
+    if (blockers.length > 0) {
+      toast.error(blockers.map((issue) => issue.message).join(" · "));
+      return;
+    }
+    const errors = validateEpubStructure(exportProject);
     if (errors.length > 0) {
       alert(`${t("export_blocked_epub")}:\n\n${errors.join("\n")}`);
       return;
@@ -253,7 +264,7 @@ const Index = () => {
     setIsExporting(true);
     setExportLabel(t("exporting_epub"));
     try {
-      const blob = await generateEpub(engine.project, coverOverride ?? coverDataUrl);
+      const blob = await generateEpub(exportProject, coverOverride ?? coverDataUrl);
       const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadEpub(blob, filename);
     } catch (e) {
@@ -266,10 +277,19 @@ const Index = () => {
 
   const handleExportDocx = async () => {
     if (!engine.project) return;
+    const exportProject: BookProject = {
+      ...engine.project,
+      config: applyAuthorIdentityToConfig({ ...engine.project.config }),
+    };
+    const blockers = getExportBlockers(exportProject);
+    if (blockers.length > 0) {
+      toast.error(blockers.map((issue) => issue.message).join(" · "));
+      return;
+    }
     setIsExporting(true);
     setExportLabel(t("preparing_docx"));
     try {
-      const blob = await generateDocx(engine.project);
+      const blob = await generateDocx(exportProject);
       const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadDocx(blob, filename);
     } catch (e) {
@@ -282,10 +302,19 @@ const Index = () => {
 
   const handleExportPdf = async () => {
     if (!engine.project) return;
+    const exportProject: BookProject = {
+      ...engine.project,
+      config: applyAuthorIdentityToConfig({ ...engine.project.config }),
+    };
+    const blockers = getExportBlockers(exportProject);
+    if (blockers.length > 0) {
+      toast.error(blockers.map((issue) => issue.message).join(" · "));
+      return;
+    }
     setIsExporting(true);
     setExportLabel(t("formatting_pdf"));
     try {
-      const blob = await generatePdf(engine.project);
+      const blob = await generatePdf(exportProject);
       const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadPdf(blob, filename);
     } catch (e) {
@@ -307,7 +336,7 @@ const Index = () => {
 
   if (focusMode && engine.project) {
     return (
-      <div className="scriptora-ios-screen scriptora-app-surface flex h-screen flex-col">
+      <div className="scriptora-ios-screen scriptora-app-surface flex min-h-dvh flex-col">
         <div className="ios-glass-soft flex h-12 shrink-0 items-center justify-between px-4">
           <span className="text-xs text-muted-foreground">{t("focus_mode")}</span>
           <button onClick={() => setFocusMode(false)}
@@ -376,7 +405,7 @@ const Index = () => {
   }
 
   return (
-    <div className="scriptora-ios-screen scriptora-app-surface relative flex h-screen overflow-hidden">
+    <div className="scriptora-ios-screen scriptora-app-surface relative flex min-h-dvh overflow-hidden">
       {/* Floating sidebar toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -410,7 +439,7 @@ const Index = () => {
 
       {/* Left Sidebar */}
       <aside
-        className={`ios-sidebar fixed z-40 flex h-screen shrink-0 flex-col transition-all duration-300 ease-out md:relative ${
+        className={`ios-sidebar fixed z-40 flex min-h-dvh shrink-0 flex-col transition-all duration-300 ease-out md:relative ${
           sidebarOpen
             ? "translate-x-0 w-[272px] opacity-100"
             : "-translate-x-full md:translate-x-0 md:w-0 md:opacity-0 overflow-hidden"
@@ -577,6 +606,19 @@ const Index = () => {
             setActiveSection(section);
             setSidebarOpen(false);
           }}
+          syncStatus={syncStatus}
+          authorPenName={engine.project?.config.authorName || engine.project?.config.author}
+          progressPercent={
+            engine.project?.chapters?.length
+              ? Math.round(
+                  ((engine.project.chapters.filter((c) => (c.content || "").trim().length > 50).length || 0) /
+                    Math.max(1, engine.project.config.numberOfChapters || engine.project.chapters.length)) *
+                    100,
+                )
+              : 0
+          }
+          onCover={() => setShowCover(true)}
+          onExport={guardedExportEpub}
         />
 
         <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm">

@@ -561,7 +561,7 @@ export function CoverGenerator({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
-      <div className="bg-card/95 border border-border/80 rounded-2xl shadow-2xl max-w-6xl lg:max-w-[1500px] w-full max-h-[92vh] lg:max-h-[94vh] overflow-hidden lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)]">
+      <div className="bg-card/95 border border-border/80 rounded-2xl shadow-2xl max-w-6xl lg:max-w-[1500px] w-full max-h-[min(94dvh,900px)] overflow-hidden lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)]">
         <div className="px-4 sm:px-5 lg:px-7 py-4 lg:py-5 border-b border-border/70 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary">

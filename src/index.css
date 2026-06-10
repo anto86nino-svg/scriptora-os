@@ -2009,7 +2009,11 @@
 }
 
 .ios-toolbar-button {
-  height: 34px;
+  min-height: 44px;
+  min-width: 44px;
+  height: auto;
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3796,4 +3800,95 @@ html[data-scriptora-smooth-scroll="1"] {
 
 .scriptora-settings-scroll {
   -webkit-overflow-scrolling: touch;
+}
+
+/* ── OS Home Hero — 3D active book ── */
+.os-book-3d-scene {
+  perspective: 900px;
+  width: min(220px, 70vw);
+  height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.os-book-3d {
+  position: relative;
+  width: 160px;
+  height: 220px;
+  transform-style: preserve-3d;
+  transform: rotateY(-22deg) rotateX(6deg);
+  animation: os-book-float 5s ease-in-out infinite;
+}
+
+@keyframes os-book-float {
+  0%, 100% { transform: rotateY(-22deg) rotateX(6deg) translateY(0); }
+  50% { transform: rotateY(-18deg) rotateX(4deg) translateY(-6px); }
+}
+
+.os-book-spine {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 18px;
+  height: calc(100% - 8px);
+  background: linear-gradient(180deg, #0f172a, #1e3a5f);
+  transform: rotateY(-90deg) translateZ(9px);
+  border-radius: 2px 0 0 2px;
+  box-shadow: inset -2px 0 6px rgba(0, 0, 0, 0.4);
+}
+
+.os-book-cover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 16px 14px;
+  background: linear-gradient(145deg, #0c4a6e 0%, #0369a1 45%, #0ea5e9 100%);
+  border-radius: 4px 8px 8px 4px;
+  box-shadow:
+    4px 8px 24px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transform: translateZ(12px);
+  backface-visibility: hidden;
+}
+
+.os-book-pages {
+  position: absolute;
+  inset: 4px 0 4px 6px;
+  background: linear-gradient(90deg, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: 2px 6px 6px 2px;
+  transform: translateZ(0);
+  box-shadow: inset -3px 0 8px rgba(0, 0, 0, 0.08);
+}
+
+.os-book-kicker {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: auto;
+}
+
+.os-book-title {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #fff;
+  margin-bottom: 6px;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.os-book-meta {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+html[data-scriptora-reduce-animations="1"] .os-book-3d {
+  animation: none;
 }

@@ -110,7 +110,7 @@ export function BookPreview({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40"
             >
               {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <Download className="h-3 w-3" />}
-              {!canExport ? "Unlock Export" : "Export EPUB"}
+              {!canExport ? "Export (piano Pro)" : "Export EPUB"}
             </button>
           </div>
         )}

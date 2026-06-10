@@ -131,7 +131,12 @@ function scheduleRemoteSave(project: BookProject, cbs?: any) {
     remoteSaveTimer = null;
     const p = pendingRemoteSave;
     pendingRemoteSave = null;
-    if (p) saveProjectAsync(p.project, p.cbs).catch(() => {});
+    if (p) {
+      saveProjectAsync(p.project, p.cbs).catch((err) => {
+        console.warn("[sync] remote save failed", err);
+        p.cbs?.onPending?.();
+      });
+    }
   }, 1500);
 }
 
@@ -237,7 +242,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     syncRef(newProject);
     setMessages([]);
     saveProject(newProject);
-    saveProjectAsync(newProject, syncCallbacks).catch(() => {});
+    saveProjectAsync(newProject, syncCallbacks).catch((err) => {
+      console.warn("[sync] remote save failed", err);
+      syncCallbacks?.onPending?.();
+    });
 
     addMessage("system", `Starting book: "${safeConfig.title}" — ${safeConfig.numberOfChapters} chapters, ${safeConfig.language}, ${safeConfig.genre}, ${safeConfig.bookLength} book`);
     addGenerating("blueprint");

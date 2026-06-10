@@ -16,7 +16,7 @@ export function DominationTray({ currentProjectId, onApplyToChapter, onJumpToCha
   if (list.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-40 w-[340px] max-w-[calc(100vw-2rem)] bg-card border border-border/60 rounded-xl shadow-2xl overflow-hidden animate-fade-in">
+    <div className="fixed bottom-4 left-4 right-4 z-40 mx-auto w-full max-w-[340px] sm:left-auto sm:right-4 sm:mx-0 safe-area-pb bg-card border border-border/60 rounded-xl shadow-2xl overflow-hidden animate-fade-in">
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-orange-500/10 to-pink-500/10 border-b border-border/40 hover:from-orange-500/15 hover:to-pink-500/15 transition-colors"

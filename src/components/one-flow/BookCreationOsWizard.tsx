@@ -4,7 +4,7 @@ import {
   X, ArrowLeft, ArrowRight, Rocket, Sparkles, Plus, Trash2, Users, Loader2, Fingerprint,
 } from "lucide-react";
 import type { AuthorIdentity, BookCharacter, BookConfig, Language } from "@/types/book";
-import { BOOK_LENGTH_CONFIG, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
+import { DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import {
   BOOK_OBJECTIVES,
   DEFAULT_STYLE_PROFILE,
@@ -126,37 +126,14 @@ export function BookCreationOsWizard({
       }
 
       const config = buildConfig();
-      const safeLength = isFree ? "short" : bookLength;
-      sessionStorage.setItem(
-        "nexora-auto-brief",
-        JSON.stringify({
-          idea: idea.trim(),
-          genre: detected?.genre || config.genre,
-          subcategory: detected?.subcategory || config.subcategory,
-          targetAudience: detected?.targetAudience || config.subcategory,
-          tone: config.tone,
-          language: config.language,
-          titleLanguage: config.language,
-          numberOfChapters: chapters,
-          subchaptersEnabled: true,
-          subchaptersPerChapter: DEFAULT_SUBCHAPTERS_PER_CHAPTER,
-          bookLength: safeLength,
-          totalWordTarget: BOOK_LENGTH_CONFIG[safeLength].totalWords,
-          level: detected?.level || "intermediate",
-          readerPromise: detected?.readerPromise || objective.subtitle,
-          prefilledTitle: title.trim() || config.title,
-          prefilledSubtitle: subtitle.trim() || config.subtitle,
-          authorIdentityId: authorIdentity.id,
-          authorIdentity,
-          authorName: authorIdentity.penName,
-          characters: config.characters,
-          writingProfile: styleProfile,
-          bookCreationOs: true,
-          autoStart: true,
-        }),
-      );
+      if (onManualStudio) {
+        onManualStudio(config);
+        onClose();
+        return;
+      }
+      sessionStorage.setItem("nexora-new-book", JSON.stringify(config));
       onClose();
-      navigate("/auto-bestseller");
+      navigate("/app");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Avvio non riuscito");
     } finally {

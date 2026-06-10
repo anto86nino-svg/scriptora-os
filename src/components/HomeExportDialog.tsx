@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { BookProject } from "@/types/book";
-import { X, FileDown, Loader2, BookOpen, FileText, FileType, Lock } from "lucide-react";
+import { X, FileDown, Loader2, BookOpen, FileText, FileType, Lock, ImagePlus } from "lucide-react";
 import { generateEpub, validateEpubStructure } from "@/lib/epub";
 import { generateDocx } from "@/lib/docx-export";
 import { generatePdf } from "@/lib/pdf-export";
@@ -8,12 +8,17 @@ import { saveBlobAs } from "@/lib/save-file";
 import { useToast } from "@/hooks/use-toast";
 import { usePlan, PLAN_LIMITS } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
-import { CoverGenerator } from "@/components/CoverGenerator";
 import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { isProjectComplete } from "@/lib/project-status";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
-import { chargePremiumOperation } from "@/lib/billing/charge";
+import { chargePremiumOperation, refundPremiumOperation } from "@/lib/billing/charge";
 import { InsufficientCreditsError } from "@/lib/billing";
+import { ExportBlockedError, getExportBlockers } from "@/lib/export-readiness";
+import { applyAuthorIdentityToConfig } from "@/lib/author-identity";
+
+const CoverGenerator = lazy(() =>
+  import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })),
+);
 
 type Format = "epub" | "docx" | "pdf";
 
@@ -46,41 +51,66 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
     (p.config.title || "book").replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
 
   const performExport = async (project: BookProject, coverOverride?: string) => {
+    const exportProject: BookProject = {
+      ...project,
+      config: applyAuthorIdentityToConfig({ ...project.config }),
+    };
+
+    const blockers = getExportBlockers(exportProject);
+    if (blockers.length > 0) {
+      toast({
+        title: "Export bloccato",
+        description: blockers.map((issue) => issue.message).join(" · "),
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (format === "epub") {
+      const errors = validateEpubStructure(exportProject);
+      if (errors.length > 0) {
+        toast({
+          title: "EPUB non esportabile",
+          description: errors.slice(0, 2).join(" · "),
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setIsExporting(true);
+    let charged = false;
     try {
-      await chargePremiumOperation("export_premium", { projectId: project.id, source: "export_dialog", format }, undefined, [project.id, format]);
-      const filename = filenameOf(project);
+      const filename = filenameOf(exportProject);
       let blob: Blob;
       let ext: "epub" | "docx" | "pdf";
       let mime: string;
       let description: string;
 
       if (format === "epub") {
-        const errors = validateEpubStructure(project);
-        if (errors.length > 0) {
-          toast({
-            title: "EPUB non esportabile",
-            description: errors.slice(0, 2).join(" · "),
-            variant: "destructive",
-          });
-          setIsExporting(false);
-          return;
-        }
-        blob = await generateEpub(project, coverOverride ?? coverDataUrls[project.id]);
+        blob = await generateEpub(exportProject, coverOverride ?? coverDataUrls[project.id]);
         ext = "epub";
         mime = "application/epub+zip";
         description = "EPUB Book";
       } else if (format === "docx") {
-        blob = await generateDocx(project);
+        blob = await generateDocx(exportProject);
         ext = "docx";
         mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
         description = "Word Document";
       } else {
-        blob = await generatePdf(project);
+        blob = await generatePdf(exportProject);
         ext = "pdf";
         mime = "application/pdf";
         description = "PDF Document";
       }
+
+      await chargePremiumOperation(
+        "export_premium",
+        { projectId: project.id, source: "export_dialog", format },
+        undefined,
+        [project.id, format],
+      );
+      charged = true;
 
       const saved = await saveBlobAs(blob, {
         suggestedName: filename,
@@ -94,9 +124,16 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
         onClose();
       }
     } catch (e) {
+      if (charged) {
+        await refundPremiumOperation("export_premium", {
+          projectId: project.id,
+          source: "export_dialog_refund",
+          format,
+        });
+      }
       console.error("Export failed:", e);
       toast({
-        title: "Esportazione fallita",
+        title: e instanceof ExportBlockedError ? "Export bloccato" : "Esportazione fallita",
         description: e instanceof Error ? e.message : "Errore sconosciuto",
         variant: "destructive",
       });
@@ -306,19 +343,21 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
         onClose={() => setCoverGateOpen(false)}
       />
       {showCover && selectedProject && (
-        <CoverGenerator
-          title={selectedProject.config.title}
-          subtitle={selectedProject.config.subtitle}
-          authorName={selectedProject.config.authorName || selectedProject.config.author || selectedProject.config.writerName}
-          description={selectedProject.blueprint?.overview || selectedProject.config.subtitle}
-          authorBio={selectedProject.frontMatter?.aboutAuthor || selectedProject.config.authorIdentity?.biography}
-          onGenerate={(dataUrl) => {
-            setCoverDataUrls((current) => ({ ...current, [selectedProject.id]: dataUrl }));
-            setShowCover(false);
-            void performExport(selectedProject, dataUrl);
-          }}
-          onClose={() => setShowCover(false)}
-        />
+        <Suspense fallback={<div className="fixed inset-0 z-[60] grid place-items-center bg-black/50"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}>
+          <CoverGenerator
+            title={selectedProject.config.title}
+            subtitle={selectedProject.config.subtitle}
+            authorName={selectedProject.config.authorName || selectedProject.config.author || selectedProject.config.writerName}
+            description={selectedProject.blueprint?.overview || selectedProject.config.subtitle}
+            authorBio={selectedProject.frontMatter?.aboutAuthor || selectedProject.config.authorIdentity?.biography}
+            onGenerate={(dataUrl) => {
+              setCoverDataUrls((current) => ({ ...current, [selectedProject.id]: dataUrl }));
+              setShowCover(false);
+              void performExport(selectedProject, dataUrl);
+            }}
+            onClose={() => setShowCover(false)}
+          />
+        </Suspense>
       )}
     </div>
   );

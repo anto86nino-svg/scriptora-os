@@ -284,3 +284,56 @@ ${material}`;
   const parsed = safeJsonParse(raw);
   return normalizeStudyResult(parsed, fallback);
 }
+
+export interface StudyErrorTutorInput {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  selectedIndex: number;
+  explanation?: string;
+  language?: string;
+}
+
+export interface StudyErrorTutorResult {
+  correctAnswer: string;
+  whyWrong: string;
+  reviewTip: string;
+  source: "ai" | "local";
+}
+
+export async function explainStudyQuizError(input: StudyErrorTutorInput): Promise<StudyErrorTutorResult> {
+  const correct = input.options[input.correctIndex] || "risposta corretta";
+  const selected = input.options[input.selectedIndex] || "la tua scelta";
+  const local: StudyErrorTutorResult = {
+    correctAnswer: correct,
+    whyWrong: `"${selected}" non è la risposta migliore. ${input.explanation || `La risposta corretta è: ${correct}`}`,
+    reviewTip: "Ripassa il concetto collegandolo a un esempio concreto, poi rifai 2 domande simili.",
+    source: "local",
+  };
+
+  try {
+    const { data, error } = await supabase.functions.invoke("scriptora-study-tutor", {
+      body: {
+        question: input.question,
+        options: input.options,
+        correctIndex: input.correctIndex,
+        selectedIndex: input.selectedIndex,
+        language: input.language || "Italian",
+      },
+    });
+    if (error) throw error;
+    const text = String(data?.whyWrong || data?.explanation || "").trim();
+    if (text) {
+      return {
+        correctAnswer: String(data?.correctAnswer || correct),
+        whyWrong: text,
+        reviewTip: String(data?.reviewTip || local.reviewTip),
+        source: "ai",
+      };
+    }
+  } catch {
+    /* fallback local */
+  }
+
+  return local;
+}

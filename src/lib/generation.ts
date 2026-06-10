@@ -1340,14 +1340,9 @@ Return a JSON object with:
   try {
     return normalizeBlueprint(JSON.parse(cleanJsonFence(result)), config);
   } catch {
-    return normalizeBlueprint({
-      overview: result,
-      chapterOutlines: Array.from({ length: config.numberOfChapters }, (_, i) => ({
-        title: resolveChapterTitle("", i, { config, summary: "", totalChapters: config.numberOfChapters }),
-        summary: "To be generated",
-      })),
-      themes: [], emotionalArc: "",
-    }, config);
+    throw new Error(
+      "Blueprint AI non valido. Riprova — la struttura del libro non è stata salvata per evitare corruzione.",
+    );
   }
 }
 
