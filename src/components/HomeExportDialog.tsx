@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from "react";
 import { BookProject } from "@/types/book";
-import { X, FileDown, Loader2, BookOpen, FileText, FileType, Lock, ImagePlus } from "lucide-react";
+import { X, FileDown, Loader2, BookOpen, FileText, FileType, Lock, ImagePlus, Headphones } from "lucide-react";
+import { AudiobookExportPanel } from "@/components/audiobook/AudiobookExportPanel";
 import { generateEpub, validateEpubStructure } from "@/lib/epub";
 import { generateDocx } from "@/lib/docx-export";
 import { generatePdf } from "@/lib/pdf-export";
@@ -21,6 +22,7 @@ const CoverGenerator = lazy(() =>
 );
 
 type Format = "epub" | "docx" | "pdf";
+type StudioTab = "documents" | "audiobook";
 
 interface HomeExportDialogProps {
   open: boolean;
@@ -37,6 +39,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   const [coverGateOpen, setCoverGateOpen] = useState(false);
   const [showCover, setShowCover] = useState(false);
   const [coverDataUrls, setCoverDataUrls] = useState<Record<string, string>>({});
+  const [studioTab, setStudioTab] = useState<StudioTab>("documents");
   const { plan } = usePlan();
   // Honour the dev-mode plan override: only the simulated tier's permissions
   // apply (Premium/Pro/Beta unlock export, Free does not).
@@ -198,7 +201,39 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           </button>
         </div>
 
+        <div className="flex shrink-0 gap-1 border-b border-border px-5 pt-4">
+          <button
+            type="button"
+            onClick={() => setStudioTab("documents")}
+            className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${
+              studioTab === "documents" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/40"
+            }`}
+          >
+            <FileDown className="h-3.5 w-3.5" />
+            Documenti
+          </button>
+          <button
+            type="button"
+            onClick={() => setStudioTab("audiobook")}
+            className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${
+              studioTab === "audiobook" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted/40"
+            }`}
+          >
+            <Headphones className="h-3.5 w-3.5" />
+            Audiolibro
+          </button>
+        </div>
+
         <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-5">
+          {studioTab === "audiobook" ? (
+            <AudiobookExportPanel
+              projects={projects}
+              selectedProjectId={selectedId || undefined}
+              onSelectProject={setSelectedId}
+              compact
+            />
+          ) : (
+          <>
           {/* Project Selection */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-foreground uppercase tracking-wider">
@@ -289,9 +324,12 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
               </div>
             </div>
           )}
+          </>
+          )}
         </div>
 
         {/* Footer — shrink-0 so it's always visible even on very short screens */}
+        {studioTab === "documents" && (
         <div className="flex shrink-0 items-center justify-between gap-2 p-4 border-t border-border bg-muted/20">
           <CreditCostBadge operation="export_premium" prominent />
           <div className="flex items-center gap-2">
@@ -327,6 +365,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
             </button>
           </div>
         </div>
+        )}
       </div>
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} reason="export" currentPlan={plan} />
       <CoverBeforeExportDialog

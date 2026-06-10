@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { BookProject, Language } from "@/types/book";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Pause, Play, Sparkles, ArrowDown, BookOpen, ClipboardList, Bookmark, Square } from "lucide-react";
+import { Pause, Play, Sparkles, ArrowDown, BookOpen, ClipboardList, Bookmark, Square, Headphones, ChevronDown } from "lucide-react";
 import { t } from "@/lib/i18n";
 import {
   VOICE_STUDIO_STYLES,
@@ -21,6 +21,7 @@ import {
 } from "@/lib/reading-session";
 import { ReadingSessionQuickNotes } from "@/components/ReadingSessionQuickNotes";
 import { ReadingSessionInsights } from "@/components/ReadingSessionInsights";
+import { AudiobookExportPanel } from "@/components/audiobook/AudiobookExportPanel";
 import { isKaraokeReadingEnabled, isMobileViewport } from "@/lib/mobile-viewport";
 import {
   buildReadingPosition,
@@ -93,6 +94,7 @@ export function VoiceStudioDialog({
   const [currentSentence, setCurrentSentence] = useState(0);
   const [sentences, setSentences] = useState<string[]>([]);
   const [immersiveMode, setImmersiveMode] = useState(true);
+  const [showAudiobookExport, setShowAudiobookExport] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const timerRef = useRef<number | null>(null);
   const karaokeScrollRef = useRef<HTMLDivElement | null>(null);
@@ -1720,6 +1722,31 @@ export function VoiceStudioDialog({
               )}
             </div>
           </div>
+
+          {selectedProject && !isMinimalImmersion && (
+            <div className="mt-4 border-t border-white/10 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowAudiobookExport((open) => !open)}
+                className="flex w-full items-center justify-between rounded-xl border border-white/12 bg-white/[0.04] px-3 py-2.5 text-left text-sm font-semibold text-white/85"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Headphones className="h-4 w-4 text-sky-300" />
+                  Esporta audiolibro
+                </span>
+                <ChevronDown className={`h-4 w-4 transition-transform ${showAudiobookExport ? "rotate-180" : ""}`} />
+              </button>
+              {showAudiobookExport && (
+                <div className="mt-3">
+                  <AudiobookExportPanel
+                    projects={[selectedProject]}
+                    selectedProjectId={selectedProject.id}
+                    compact
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
       </DialogContent>

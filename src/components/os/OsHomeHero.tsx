@@ -12,6 +12,27 @@ interface OsHomeHeroProps {
   onMyBooks: () => void;
 }
 
+function coverDisplayTitle(title: string): string {
+  const trimmed = title.trim();
+  if (trimmed.length <= 32) return trimmed;
+  const words = trimmed.split(/\s+/);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length > 16 && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+    if (lines.length >= 2) break;
+  }
+  if (lines.length < 2 && current) lines.push(current);
+  const preview = lines.join(" ");
+  return preview.length < trimmed.length ? `${preview}…` : preview;
+}
+
 function manuscriptStatus(project: BookProject | null | undefined): string {
   if (!project) return "Nessun libro attivo";
   if (isProjectComplete(project)) return "Manoscritto completo";
@@ -59,20 +80,23 @@ export function OsHomeHero({
               />
             </div>
 
-            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            <div className="mt-4 flex flex-col gap-2">
               <HeroCta
                 primary
+                fullWidth
                 icon={PenLine}
                 label="Continua a scrivere"
                 onClick={lastProject ? onContinue : onNewBook}
               />
-              <HeroCta
-                icon={Sparkles}
-                label="Genera capitolo"
-                onClick={lastProject ? onGenerateNextChapter : onNewBook}
-                disabled={!lastProject}
-              />
-              <HeroCta icon={Package} label="Esporta libro" onClick={onExport} disabled={!lastProject} />
+              <div className="grid grid-cols-2 gap-2">
+                <HeroCta
+                  icon={Sparkles}
+                  label="Genera capitolo"
+                  onClick={lastProject ? onGenerateNextChapter : onNewBook}
+                  disabled={!lastProject}
+                />
+                <HeroCta icon={Package} label="Esporta libro" onClick={onExport} disabled={!lastProject} />
+              </div>
             </div>
 
             <button
@@ -90,7 +114,7 @@ export function OsHomeHero({
                 <div className="os-book-spine" />
                 <div className="os-book-cover">
                   <p className="os-book-kicker">SCRIPTORA</p>
-                  <p className="os-book-title">{title.slice(0, 42)}</p>
+                  <p className="os-book-title" title={title}>{coverDisplayTitle(title)}</p>
                   <p className="os-book-meta">{progressPercent}% · {doneChapters} cap.</p>
                 </div>
                 <div className="os-book-pages" />
@@ -120,12 +144,14 @@ function HeroCta({
   onClick,
   primary,
   disabled,
+  fullWidth,
 }: {
   icon: typeof PenLine;
   label: string;
   onClick: () => void;
   primary?: boolean;
   disabled?: boolean;
+  fullWidth?: boolean;
 }) {
   return (
     <button
@@ -133,8 +159,10 @@ function HeroCta({
       onClick={onClick}
       disabled={disabled}
       className={`inline-flex h-11 items-center justify-center gap-2 rounded-xl px-3 text-xs font-bold transition-all sm:text-sm ${
+        fullWidth ? "w-full" : ""
+      } ${
         primary
-          ? "bg-white text-slate-950 shadow-[0_16px_40px_rgba(14,165,233,0.28)] hover:-translate-y-0.5"
+          ? "h-12 bg-white text-slate-950 shadow-[0_16px_40px_rgba(14,165,233,0.28)] hover:-translate-y-0.5 sm:h-11"
           : "border border-white/15 bg-white/8 text-white hover:bg-white/12"
       } disabled:cursor-not-allowed disabled:opacity-40`}
     >

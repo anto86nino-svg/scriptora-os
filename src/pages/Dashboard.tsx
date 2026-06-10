@@ -50,7 +50,13 @@ import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { PremiumOsGateway } from "@/components/premium/PremiumOsGateway";
 import { AuthorMomentumPanel } from "@/components/premium/AuthorMomentumPanel";
 import { OneFlowHome } from "@/components/one-flow/OneFlowHome";
+import { AuthorIdentityHomeCard } from "@/components/one-flow/AuthorIdentityHomeCard";
 import { OsHomeHero } from "@/components/os/OsHomeHero";
+import {
+  MobileDashboardCreditPill,
+  MobileDashboardMoreMenu,
+} from "@/components/mobile/MobileDashboardChrome";
+import { isUserAuthorIdentityConfigured } from "@/lib/author-identity";
 import { ScriptoraSettingsButton } from "@/components/settings/ScriptoraSettingsButton";
 
 const ScriptoraSettingsHub = lazy(() =>
@@ -158,6 +164,7 @@ export default function Dashboard() {
   const [showMobileStats, setShowMobileStats] = useState(false);
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   const currentLang = useUILanguage();
   const [activeRun, setActiveRun] = useState<{ runId: string; title: string; startedAt: number } | null>(null);
 
@@ -685,7 +692,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="scriptora-ios-screen scriptora-app-surface min-h-dvh relative overflow-hidden safe-area-pt">
+    <div className="scriptora-ios-screen scriptora-app-surface scriptora-dashboard-mobile min-h-dvh relative overflow-x-hidden safe-area-pt">
       <header className="sticky top-0 z-20 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl safe-area-pt">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
@@ -735,7 +742,7 @@ export default function Dashboard() {
                 <button
                   onClick={() => setShowProfileMenu(true)}
                   title={displayName}
-                  className="ml-1 flex h-8 min-w-0 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] pl-1 pr-2 transition-colors hover:bg-white/[0.12]"
+                  className="ml-1 hidden h-8 min-w-0 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] pl-1 pr-2 transition-colors hover:bg-white/[0.12] md:flex"
                 >
                   <Avatar className="h-6 w-6">
                     {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
@@ -756,7 +763,7 @@ export default function Dashboard() {
                     navigate("/auth");
                   }}
                   title={t("toast_signed_out")}
-                  className="ios-toolbar-button h-8 w-8 text-muted-foreground hover:text-destructive"
+                  className="ios-toolbar-button hidden h-8 w-8 text-muted-foreground hover:text-destructive md:inline-flex"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                 </button>
@@ -765,22 +772,9 @@ export default function Dashboard() {
           </div>
 
           <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
-            <button
-              type="button"
-              onClick={() => guardPlanFeature("book_engine_full", () => setShowCoverStudio(true))()}
-              className="ios-toolbar-button px-2 text-xs font-medium sm:hidden"
-              title="Cover Studio"
-            >
-              🎨
-            </button>
-            <button
-              type="button"
-              onClick={() => guardPlanFeature("export_epub", () => setShowExport(true))()}
-              className="ios-toolbar-button px-2 text-xs font-medium sm:hidden"
-              title="Export Studio"
-            >
-              📦
-            </button>
+            <div className="md:hidden">
+              <MobileDashboardCreditPill />
+            </div>
             <ScriptoraSettingsButton onClick={() => setShowSettingsHub(true)} />
             <button
               onClick={() => navigate("/usage")}
@@ -839,11 +833,13 @@ export default function Dashboard() {
                 ))}
               </select>
             </div>
-            <FocusMusicControl />
+            <div className="hidden md:block">
+              <FocusMusicControl />
+            </div>
             <button
               type="button"
               onClick={() => setShowAuthorIdentity(true)}
-              className="hidden sm:inline-flex ios-toolbar-button h-8 w-8 text-sky-200"
+              className="hidden md:inline-flex ios-toolbar-button h-8 w-8 text-sky-200"
               title={t("author_identity")}
             >
               <Settings className="h-3.5 w-3.5" />
@@ -871,17 +867,34 @@ export default function Dashboard() {
                 </>
               )}
             </div>
+            <MobileDashboardMoreMenu
+              showMoreMenu={showMobileMoreMenu}
+              onToggleMoreMenu={() => setShowMobileMoreMenu((open) => !open)}
+              onCloseMoreMenu={() => setShowMobileMoreMenu(false)}
+              onProfile={() => setShowProfileMenu(true)}
+              onCoverStudio={() => guardPlanFeature("book_engine_full", () => setShowCoverStudio(true))()}
+              onExportStudio={() => guardPlanFeature("export_epub", () => setShowExport(true))()}
+              onAuthorIdentity={() => openAuthorIdentity()}
+              onSignOut={async () => {
+                try {
+                  await signOut();
+                  toast.success(t("toast_signed_out"));
+                } catch { /* noop */ }
+                navigate("/auth");
+              }}
+              showUserActions={!!user}
+            />
           </div>
         </div>
       </header>
 
-      <div className="border-b border-white/8 bg-background/40">
+      <div className="hidden border-b border-white/8 bg-background/40 md:block">
         <div className="mx-auto max-w-7xl px-3 py-2 sm:px-6 lg:px-8">
           <GlobalCreditBar variant="inline" />
         </div>
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-3 pb-12 pt-3 sm:px-6 sm:pb-16 sm:pt-6 lg:px-8">
+      <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-3 sm:px-6 sm:pb-16 sm:pt-6 lg:px-8">
         <OsHomeHero
           lastProject={lastProject}
           progressPercent={lastProjectProgress}
@@ -891,6 +904,17 @@ export default function Dashboard() {
           onNewBook={openNewBookGuarded}
           onMyBooks={() => setShowProjects(true)}
         />
+
+        {!isUserAuthorIdentityConfigured(activeAuthor) && (
+          <div className="md:hidden">
+            <AuthorIdentityHomeCard
+              identity={activeAuthor}
+              onConfigure={() => openAuthorIdentity()}
+              onGenerateWithAi={handleGenerateAuthorWithAi}
+              onEdit={() => openAuthorIdentity(activeAuthor)}
+            />
+          </div>
+        )}
 
         <OneFlowHome
           compact

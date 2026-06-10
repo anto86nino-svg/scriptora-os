@@ -7,6 +7,7 @@ import { isDevMode } from "./devMode";
 import { formatCredits } from "@/lib/credit-economy";
 import type { BookLength } from "@/types/book";
 import { getCreditValuePresentation } from "./creditPsychology";
+import { getUILanguage } from "@/lib/i18n";
 
 export interface InsufficientCreditsDetail {
   operation: CreditOperationId;
@@ -16,9 +17,12 @@ export interface InsufficientCreditsDetail {
 }
 
 export function getPurchaseCtaLabel(): string {
+  const lang = getUILanguage();
   const provider = resolvePaymentProvider();
-  if (provider === "dev" && isDevMode()) return "Add Credits Instantly";
-  return "Acquista Crediti";
+  if (provider === "dev" && isDevMode()) {
+    return lang === "it" ? "Aggiungi crediti" : "Add Credits Instantly";
+  }
+  return lang === "it" ? "Acquista crediti" : "Buy Credits";
 }
 
 export function getOperationLabel(operation: CreditOperationId | string): string {

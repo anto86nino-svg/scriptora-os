@@ -7,7 +7,7 @@ import { creditSimulationBadge } from "@/lib/billing/devMode";
 import { cn } from "@/lib/utils";
 
 interface GlobalCreditBarProps {
-  variant?: "bar" | "inline" | "compact";
+  variant?: "bar" | "inline" | "compact" | "mobilePill";
   className?: string;
 }
 
@@ -20,6 +20,35 @@ export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarP
   const goUsage = (focus?: "purchase" | "history") => {
     navigate(focus ? `/usage?focus=${focus}` : "/usage");
   };
+
+  if (variant === "mobilePill") {
+    const needsTopUp = wallet.balance <= 0 || lowCreditLevel === "critical";
+    return (
+      <div className={cn("flex items-center gap-1", className)}>
+        <button
+          type="button"
+          onClick={() => goUsage()}
+          className="inline-flex max-w-[min(148px,42vw)] items-center gap-1 rounded-full border border-white/12 bg-white/[0.06] px-2.5 py-1 text-[10px] font-semibold text-foreground"
+          title={`Crediti: ${formatCredits(wallet.balance)}`}
+        >
+          <CreditCard className="h-3 w-3 shrink-0 text-sky-300" />
+          <span className="truncate tabular-nums">Crediti: {formatCredits(wallet.balance)}</span>
+          {needsTopUp && lowCreditHint && (
+            <span className="hidden min-[380px]:inline text-amber-300/90">· Ricarica</span>
+          )}
+        </button>
+        {needsTopUp && (
+          <button
+            type="button"
+            onClick={() => goUsage("purchase")}
+            className="inline-flex h-7 shrink-0 items-center rounded-full bg-primary px-2.5 text-[10px] font-bold text-primary-foreground"
+          >
+            Ricarica
+          </button>
+        )}
+      </div>
+    );
+  }
 
   if (variant === "compact") {
     return (

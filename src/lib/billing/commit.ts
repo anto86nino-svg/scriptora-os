@@ -64,7 +64,7 @@ function commitCreditsLocal(
     operation,
     amount: -cost,
     balanceAfter: next.balance,
-    metadata: { ...metadata, devMode: isDevMode(), local: true },
+    metadata: { ...metadata, devMode: isDevMode(), local: true, wallet: "dev_local" },
     simulated: false,
   });
 

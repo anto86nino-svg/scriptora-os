@@ -3540,7 +3540,43 @@ textarea,
 
   .scriptora-step-guide-button {
     right: 12px;
-    bottom: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    z-index: 45;
+    min-height: 36px;
+    min-width: 36px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .scriptora-step-guide-button-label {
+    display: none;
+  }
+
+  .scriptora-step-guide {
+    bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+    z-index: 46;
+  }
+
+  .os-book-3d-scene {
+    width: min(260px, 82vw);
+    height: 300px;
+  }
+
+  .os-book-3d {
+    width: 180px;
+    height: 248px;
+  }
+
+  .os-book-title {
+    font-size: 11px;
+    line-height: 1.3;
+    -webkit-line-clamp: 3;
+  }
+
+  .scriptora-dashboard-mobile {
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 }
 

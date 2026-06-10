@@ -121,7 +121,7 @@ export default function UsagePage() {
                 onChange={(e) => setDevUnlimitedCredits(e.target.checked)}
                 className="rounded border-border"
               />
-              DEV SIMULATION — crediti e operazioni simulate (OFF = checkout e wallet reali)
+              Crediti illimitati — nessun addebito sulle operazioni (OFF = wallet dev con consumo reale e ricarica simulata)
             </label>
           )}
         </section>

@@ -25,7 +25,7 @@ export function isDevMode(): boolean {
 }
 
 export function creditSimulationBadge(): string | null {
-  if (isDevUnlimitedCredits()) return "DEV SIMULATION";
-  if (isDevMode()) return "DEV MODE";
-  return null;
+  if (!isDevMode()) return null;
+  if (isDevUnlimitedCredits()) return "DEV · CREDITI ILLIMITATI";
+  return "DEV · WALLET LOCALE";
 }

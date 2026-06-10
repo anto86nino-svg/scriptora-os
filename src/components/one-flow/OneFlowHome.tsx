@@ -1,6 +1,7 @@
+import { useState } from "react";
 import {
   BookOpen, FileSearch, Coins, UserRound, PenLine, ArrowRight, Sparkles,
-  GraduationCap, Headphones, Wrench, Rocket,
+  GraduationCap, Headphones, Wrench, Rocket, ChevronDown, ImagePlus, Package,
 } from "lucide-react";
 import type { AuthorIdentity } from "@/types/book";
 import { AuthorIdentityHomeCard } from "./AuthorIdentityHomeCard";
@@ -30,6 +31,8 @@ interface OneFlowHomeProps {
   onOpenPublishing?: () => void;
   onOpenIdentity?: () => void;
   compact?: boolean;
+  /** Su mobile l'identità autore viene mostrata sotto l'hero dalla dashboard. */
+  hideAuthorIdentityOnMobile?: boolean;
 }
 
 export function OneFlowHome({
@@ -57,10 +60,14 @@ export function OneFlowHome({
   onOpenPublishing,
   onOpenIdentity,
   compact = true,
+  hideAuthorIdentityOnMobile = true,
 }: OneFlowHomeProps) {
+  const [showMoreTools, setShowMoreTools] = useState(false);
+
   return (
     <section className={`safe-area-pb ${compact ? "mb-3" : "mb-6"}`}>
       <AuthorIdentityHomeCard
+        className={hideAuthorIdentityOnMobile ? "hidden md:block" : undefined}
         identity={authorIdentity}
         onConfigure={onAuthorConfigure}
         onGenerateWithAi={onAuthorGenerateAi}
@@ -84,7 +91,7 @@ export function OneFlowHome({
         </span>
       </button>
 
-      <div className={`grid gap-2 sm:grid-cols-3 ${compact ? "mb-3" : "mb-4 gap-3"}`}>
+      <div className={`hidden gap-2 md:grid sm:grid-cols-3 ${compact ? "mb-3" : "mb-4 gap-3"}`}>
         <StudioCard
           step="3"
           emoji="📚"
@@ -111,7 +118,40 @@ export function OneFlowHome({
         />
       </div>
 
-      <div className={`grid gap-2 ${compact ? "grid-cols-2 sm:grid-cols-4" : "gap-3 sm:grid-cols-2 lg:grid-cols-4"}`}>
+      <div className={`mb-3 grid grid-cols-2 gap-2 md:hidden ${compact ? "" : "gap-3"}`}>
+        <EssentialToolCard icon={PenLine} label="Writer Studio" onClick={onOpenWriter || onContinue || onWriteBook} accent="cyan" />
+        <EssentialToolCard icon={BookOpen} label="I miei libri" onClick={onMyBooks} />
+        <EssentialToolCard icon={ImagePlus} label="Cover Studio" onClick={onCoverStudio} accent="violet" />
+        <EssentialToolCard icon={Package} label="Export Studio" onClick={onExportStudio} accent="amber" />
+      </div>
+
+      <div className="mb-3 md:hidden">
+        <button
+          type="button"
+          onClick={() => setShowMoreTools((open) => !open)}
+          className="flex w-full items-center justify-between rounded-xl border border-white/12 bg-white/[0.05] px-3 py-2.5 text-left text-xs font-semibold text-white/80"
+        >
+          <span>Altri strumenti</span>
+          <ChevronDown className={`h-4 w-4 transition-transform ${showMoreTools ? "rotate-180" : ""}`} />
+        </button>
+        {showMoreTools && (
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <ActionChip icon={GraduationCap} label="Study OS" onClick={onStudyWithAI} accent="cyan" />
+            <ActionChip icon={Wrench} label="Publishing" onClick={onOpenPublishing || onExportStudio} />
+            {(onAutoBestsellerShortcut || onOpenBestseller) && (
+              <ActionChip
+                icon={Rocket}
+                label="Auto Bestseller"
+                onClick={onAutoBestsellerShortcut || onOpenBestseller!}
+              />
+            )}
+            {onListenBook && <ActionChip icon={Headphones} label="Ascolta" onClick={onListenBook} />}
+            {onOpenIdentity && <ActionChip icon={UserRound} label="Identità" onClick={onOpenIdentity} />}
+          </div>
+        )}
+      </div>
+
+      <div className={`hidden gap-2 md:grid ${compact ? "grid-cols-2 sm:grid-cols-4" : "gap-3 sm:grid-cols-2 lg:grid-cols-4"}`}>
         <ActionChip icon={PenLine} label="Writer Studio" onClick={onOpenWriter || onContinue || onWriteBook} accent="cyan" />
         <ActionChip icon={GraduationCap} label="Study OS" onClick={onStudyWithAI} accent="cyan" />
         <ActionChip icon={Wrench} label="Publishing" onClick={onOpenPublishing || onExportStudio} />
@@ -235,6 +275,37 @@ function PrimaryCard({
         <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
       </button>
     </div>
+  );
+}
+
+function EssentialToolCard({
+  icon: Icon,
+  label,
+  onClick,
+  accent,
+}: {
+  icon: typeof BookOpen;
+  label: string;
+  onClick: () => void;
+  accent?: "cyan" | "violet" | "amber";
+}) {
+  const accentClass = accent === "cyan"
+    ? "border-cyan-400/25 bg-cyan-400/10"
+    : accent === "violet"
+      ? "border-violet-400/25 bg-violet-400/10"
+      : accent === "amber"
+        ? "border-amber-400/25 bg-amber-400/10"
+        : "border-white/12 bg-white/[0.06]";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-[88px] flex-col items-start justify-between rounded-xl border p-3 text-left transition-colors hover:bg-white/[0.10] ${accentClass}`}
+    >
+      <Icon className="h-4 w-4 text-white/80" />
+      <span className="text-[12px] font-semibold leading-4 text-white">{label}</span>
+    </button>
   );
 }
 

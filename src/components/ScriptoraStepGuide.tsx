@@ -336,18 +336,25 @@ export function ScriptoraStepGuide() {
           setCollapsed(false);
         }}
         className="scriptora-step-guide-button"
+        title={text.show}
+        aria-label={text.show}
       >
         <HelpCircle className="h-4 w-4" />
-        {text.show}
+        <span className="scriptora-step-guide-button-label">{text.show}</span>
       </button>
     );
   }
 
   if (collapsed) {
     return (
-      <button onClick={() => setCollapsed(false)} className="scriptora-step-guide-button">
+      <button
+        onClick={() => setCollapsed(false)}
+        className="scriptora-step-guide-button"
+        title={text.label}
+        aria-label={text.label}
+      >
         <Compass className="h-4 w-4" />
-        {text.label}
+        <span className="scriptora-step-guide-button-label">{text.label}</span>
       </button>
     );
   }

@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { Loader2, PlusCircle } from "lucide-react";
-import { DEV_PURCHASE_AMOUNTS, purchaseCreditsSimulator, resolvePaymentProvider } from "@/lib/billing";
+import {
+  DEV_PURCHASE_AMOUNTS,
+  canDevSimulateCreditPurchase,
+  purchaseCreditsSimulator,
+  resolvePaymentProvider,
+} from "@/lib/billing";
 import { getPurchaseCtaLabel } from "@/lib/billing/creditUx";
 import { formatCredits } from "@/lib/credit-economy";
-import { isDevMode } from "@/lib/dev-mode";
 import { isDevUnlimitedCredits } from "@/lib/billing/devMode";
 import { isPaymentsLive } from "@/config/payments";
 import { toast } from "sonner";
@@ -20,8 +24,8 @@ export function CreditPurchasePanel({ onPurchased, compact = false }: CreditPurc
   const provider = resolvePaymentProvider();
   const ctaLabel = getPurchaseCtaLabel();
   const isProd = import.meta.env.PROD;
-  const canSimulate = !isProd && isDevMode() && isDevUnlimitedCredits();
-  const checkoutLive = provider === "stripe" || provider === "lemon" || (isPaymentsLive() && !canSimulate);
+  const canSimulate = canDevSimulateCreditPurchase();
+  const checkoutLive = !canSimulate && (provider === "stripe" || provider === "lemon" || isPaymentsLive());
 
   const handlePurchase = async (amount: number) => {
     if (!checkoutLive && !canSimulate) return;
@@ -55,9 +59,15 @@ export function CreditPurchasePanel({ onPurchased, compact = false }: CreditPurc
 
   return (
     <div className={compact ? "space-y-3" : "space-y-4"}>
+      {canSimulate && (
+        <p className="rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-100/90">
+          Dev Mode: acquisto simulato sul wallet locale. I crediti si consumano sulle operazioni reali
+          {isDevUnlimitedCredits() ? " (modalità illimitata attiva — nessun addebito)." : " — quando finiscono, ricarica di nuovo."}
+        </p>
+      )}
       <CreditMarketplacePanel compact checkoutLive={checkoutLive} />
       <div className={compact ? "space-y-3" : "rounded-lg border border-border bg-card p-4 space-y-4"}>
-        <h3 className="text-sm font-semibold">Ricarica rapida</h3>
+        <h3 className="text-sm font-semibold">{canSimulate ? "Ricarica dev (simulata)" : "Ricarica rapida"}</h3>
         <div className={`grid gap-2 ${compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"}`}>
           {DEV_PURCHASE_AMOUNTS.map((amount) => (
             <button
