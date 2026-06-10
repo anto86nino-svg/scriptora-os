@@ -4,6 +4,8 @@ import { DEV_PURCHASE_AMOUNTS, purchaseCreditsSimulator, resolvePaymentProvider 
 import { getPurchaseCtaLabel } from "@/lib/billing/creditUx";
 import { formatCredits } from "@/lib/credit-economy";
 import { isDevMode } from "@/lib/dev-mode";
+import { isDevUnlimitedCredits } from "@/lib/billing/devMode";
+import { isPaymentsLive } from "@/config/payments";
 import { toast } from "sonner";
 import { getBillingProvider } from "@/lib/billing/billingProvider";
 import { CreditMarketplacePanel } from "./CreditMarketplacePanel";
@@ -18,8 +20,8 @@ export function CreditPurchasePanel({ onPurchased, compact = false }: CreditPurc
   const provider = resolvePaymentProvider();
   const ctaLabel = getPurchaseCtaLabel();
   const isProd = import.meta.env.PROD;
-  const canSimulate = !isProd && provider === "dev" && isDevMode();
-  const checkoutLive = provider === "stripe" || provider === "lemon";
+  const canSimulate = !isProd && isDevMode() && isDevUnlimitedCredits();
+  const checkoutLive = provider === "stripe" || provider === "lemon" || (isPaymentsLive() && !canSimulate);
 
   const handlePurchase = async (amount: number) => {
     if (!checkoutLive && !canSimulate) return;

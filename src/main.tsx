@@ -1,5 +1,6 @@
 import { applyScriptoraAppearance } from "@/lib/scriptora-appearance";
 import { applyVisualPreset } from "@/lib/performance-mode";
+import { applyHubPreferences } from "@/lib/settings-store";
 import { purgeImmersiveThemeExperiment } from "@/lib/theme-reset";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
@@ -76,6 +77,7 @@ try {
   purgeImmersiveThemeExperiment();
   applyScriptoraAppearance();
   applyVisualPreset();
+  applyHubPreferences();
 } catch {
   /* ignore appearance boot errors */
 }

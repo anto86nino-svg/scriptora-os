@@ -16,6 +16,7 @@ import { toast } from "sonner";
 interface AuthorIdentityDialogProps {
   open: boolean;
   onClose: () => void;
+  prefillDraft?: AuthorIdentity | null;
 }
 
 function createBlankAuthor(): AuthorIdentity {
@@ -55,7 +56,7 @@ function completeness(identity: AuthorIdentity): number {
   return Math.round((fields.filter((value) => String(value || "").trim().length > 8).length / fields.length) * 100);
 }
 
-export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProps) {
+export function AuthorIdentityDialog({ open, onClose, prefillDraft = null }: AuthorIdentityDialogProps) {
   useUILanguage();
   const [identities, setIdentities] = useState<AuthorIdentity[]>(() => loadAuthorIdentities());
   const [draft, setDraft] = useState<AuthorIdentity>(() => getSelectedAuthorIdentity());
@@ -63,10 +64,10 @@ export function AuthorIdentityDialog({ open, onClose }: AuthorIdentityDialogProp
   useEffect(() => {
     if (!open) return;
     const loaded = loadAuthorIdentities();
-    const selected = getSelectedAuthorIdentity() || loaded[0] || DEFAULT_AUTHOR_IDENTITIES[0];
+    const selected = prefillDraft || getSelectedAuthorIdentity() || loaded[0] || DEFAULT_AUTHOR_IDENTITIES[0];
     setIdentities(loaded);
     setDraft(selected);
-  }, [open]);
+  }, [open, prefillDraft]);
 
   const score = useMemo(() => completeness(draft), [draft]);
   const selectedId = getSelectedAuthorIdentity().id;

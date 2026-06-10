@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Users, Wand2, Save, X, Loader2, BookOpen, CheckCircle2, Sparkles } from "lucide-react";
+import { Users, Wand2, Save, X, Loader2, BookOpen, CheckCircle2, Sparkles, Fingerprint } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -259,6 +259,7 @@ function ChoiceGrid({
 interface Props {
   open: boolean;
   onClose: () => void;
+  onAuthorIdentity?: () => void;
 }
 
 const GENRES = [
@@ -582,7 +583,7 @@ function buildLocalUserStoryDevelopment(input: {
   return `${base} Scriptora la sviluppa come premessa editoriale completa: il cuore della storia resta quello indicato dall'utente, ma la traiettoria viene chiarita in ferita, desiderio, posta in gioco e conseguenza finale. Il genere resta ${optionLabel(ROMAN_GENRES_PRO.find(o => optionValue(o) === input.genre) || input.genre)}, con filone ${optionLabel(SUBGENRES_PRO.find(o => optionValue(o) === input.subcategory) || input.subcategory)}, tono ${input.tone || "cinematografico"} e intensità ${input.intensity || "media"}. La protagonista deve restare coerente con l'idea originale, ma ogni scena dovrà aumentare conflitto, scelta morale e tensione emotiva senza tradire la storia che l'utente vuole raccontare.`;
 }
 
-export function CharacterStudioDialog({ open, onClose }: Props) {
+export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props) {
   const [idea, setIdea] = useState("");
   const [genre, setGenre] = useState("romance");
   const [subcategory, setSubcategory] = useState("slow burn");
@@ -900,9 +901,17 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {onAuthorIdentity && (
+              <Button variant="outline" size="sm" onClick={onAuthorIdentity} className="gap-1.5 text-xs">
+                <Fingerprint className="h-3.5 w-3.5" />
+                Identità autore
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <div className="p-5 space-y-5">

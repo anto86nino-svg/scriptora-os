@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bomb, Flame, Loader2, RefreshCw } from "lucide-react";
+import { Bomb, Flame, Loader2, RefreshCw, Fingerprint } from "lucide-react";
+import { isUserAuthorIdentityConfigured } from "@/lib/author-identity";
 import { AutoBestsellerInput } from "@/services/autoBestsellerService";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
 import { BOOK_LENGTH_CONFIG, DEFAULT_SUBCHAPTERS_PER_CHAPTER, type BookLength, type Language } from "@/types/book";
@@ -17,6 +18,7 @@ interface Props {
   autoStart?: boolean;
   onGenerateOne: (input: AutoBestsellerInput) => void;
   onGenerateBatch: (input: AutoBestsellerInput, count: number) => void;
+  onAuthorIdentity?: () => void;
 }
 
 const GENRES = [
@@ -32,7 +34,7 @@ const TONES = [
 
 const LANGUAGES = ["English", "Italian", "Spanish", "French", "German", "Portuguese"];
 
-export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, onGenerateBatch }: Props) {
+export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, onGenerateBatch, onAuthorIdentity }: Props) {
   const selectedAuthor = getSelectedAuthorIdentity();
   const [idea, setIdea] = useState(initialInput?.idea ?? "");
   const [authorName, setAuthorName] = useState(initialInput?.authorName ?? selectedAuthor.penName);
@@ -185,10 +187,24 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
   return (
     <Card className="max-w-full overflow-hidden border-border/60 bg-card/95">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Flame className="h-5 w-5 text-primary" />
-          Book Architect Brief
-        </CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2">
+            <Flame className="h-5 w-5 text-primary" />
+            Book Architect Brief
+          </CardTitle>
+          {onAuthorIdentity && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onAuthorIdentity}
+              className="gap-1.5 text-xs"
+            >
+              <Fingerprint className="h-3.5 w-3.5" />
+              {isUserAuthorIdentityConfigured(selectedAuthor) ? "Identità autore" : "Configura autore"}
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>

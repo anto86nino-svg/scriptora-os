@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AuthorIdentityDialog } from "@/components/AuthorIdentityDialog";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Sparkles, ChevronDown, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ export default function AutoBestsellerPage() {
   const [architectError, setArchitectError] = useState<string | null>(null);
   const [selectedTitleIndex, setSelectedTitleIndex] = useState(0);
   const [forceBriefOnMobile, setForceBriefOnMobile] = useState(false);
+  const [showAuthorIdentity, setShowAuthorIdentity] = useState(false);
 
   const architectLang = normalizeArchitectLang(
     lastInput?.language ?? architectResult?.config?.language ?? "English",
@@ -329,6 +331,7 @@ export default function AutoBestsellerPage() {
         autoStart={autoStart}
         onGenerateOne={handleStartArchitect}
         onGenerateBatch={handleGenerateBatch}
+        onAuthorIdentity={() => setShowAuthorIdentity(true)}
       />
       {batchRuns.length > 0 && (
         <MultiRunPanel
@@ -597,6 +600,7 @@ export default function AutoBestsellerPage() {
         progressPercent={bookProgress.percent}
         progressLabel={`${bookProgress.chaptersDone}/${bookProgress.totalChapters} capitoli completati`}
       />
+      <AuthorIdentityDialog open={showAuthorIdentity} onClose={() => setShowAuthorIdentity(false)} />
     </div>
   );
 }

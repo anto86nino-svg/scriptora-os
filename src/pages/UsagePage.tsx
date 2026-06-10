@@ -121,7 +121,7 @@ export default function UsagePage() {
                 onChange={(e) => setDevUnlimitedCredits(e.target.checked)}
                 className="rounded border-border"
               />
-              DEV_UNLIMITED_CREDITS — operazioni a costo zero (solo sviluppo)
+              DEV SIMULATION — crediti e operazioni simulate (OFF = checkout e wallet reali)
             </label>
           )}
         </section>

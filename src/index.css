@@ -3763,3 +3763,37 @@ html[data-scriptora-bg="scifi-intel-lab"] body::after {
     repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(34, 211, 238, 0.03) 80px, rgba(34, 211, 238, 0.03) 81px),
     radial-gradient(circle at 60% 30%, rgba(59, 130, 246, 0.1), transparent 50%);
 }
+
+/* ── Settings Hub preference hooks (settings-store.ts) ── */
+html[data-scriptora-reduce-animations="1"] *,
+html.scriptora-no-smooth-transitions * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+html[data-scriptora-dynamic-bg="0"] body::after {
+  opacity: 0 !important;
+}
+
+html[data-scriptora-cinematic="1"] {
+  --env-motion-speed: 320ms;
+}
+
+html[data-scriptora-editor-width="narrow"] .scriptora-editor-surface {
+  max-width: 42rem;
+  margin-inline: auto;
+}
+
+html[data-scriptora-editor-width="wide"] .scriptora-editor-surface {
+  max-width: 56rem;
+  margin-inline: auto;
+}
+
+html[data-scriptora-smooth-scroll="1"] {
+  scroll-behavior: smooth;
+}
+
+.scriptora-settings-scroll {
+  -webkit-overflow-scrolling: touch;
+}

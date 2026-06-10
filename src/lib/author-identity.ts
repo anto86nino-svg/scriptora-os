@@ -4,6 +4,8 @@ const AUTHOR_IDENTITIES_KEY = "scriptora-author-identities-v1";
 export const SELECTED_AUTHOR_IDENTITY_KEY = "scriptora-selected-author-identity-v1";
 export const AUTHOR_IDENTITY_CHANGED_EVENT = "scriptora-author-identity-change";
 
+const BUILTIN_PLACEHOLDER_PEN_NAMES = new Set(["scriptora studio"]);
+
 export const DEFAULT_AUTHOR_IDENTITIES: AuthorIdentity[] = [
   {
     id: "builtin-scriptora-cinematic",
@@ -131,6 +133,62 @@ export function resolveAuthorIdentity(identity?: AuthorIdentity | null, id?: str
   return normalizeAuthorIdentity(identity) || normalizeAuthorIdentity(findAuthorIdentity(id));
 }
 
+export function isBuiltinPlaceholderIdentity(identity?: AuthorIdentity | null): boolean {
+  if (!identity) return true;
+  if (identity.id.startsWith("custom-")) return false;
+  const pen = String(identity.penName || identity.name || "").trim().toLowerCase();
+  return BUILTIN_PLACEHOLDER_PEN_NAMES.has(pen) || !identity.biography?.trim() || identity.biography.length < 24;
+}
+
+export function authorIdentityCompleteness(identity?: AuthorIdentity | null): number {
+  const id = identity || getSelectedAuthorIdentity();
+  const fields = [
+    id.name,
+    id.penName,
+    id.copyrightName || id.realName,
+    id.archetype,
+    id.biography,
+    id.authorNote,
+    id.voice,
+    id.signatureMoves,
+    id.forbiddenMoves,
+    id.recurringThemes,
+  ];
+  return Math.round((fields.filter((value) => String(value || "").trim().length > 8).length / fields.length) * 100);
+}
+
+/** True when the user saved a custom identity with enough public author data. */
+export function isUserAuthorIdentityConfigured(identity?: AuthorIdentity | null): boolean {
+  const id = identity || getSelectedAuthorIdentity();
+  if (!id.id.startsWith("custom-")) return false;
+  const penName = String(id.penName || "").trim();
+  const biography = String(id.biography || "").trim();
+  return penName.length >= 2 && biography.length >= 24 && authorIdentityCompleteness(id) >= 45;
+}
+
+export function generateAuthorIdentityDraft(genre = "fiction"): Partial<AuthorIdentity> {
+  const isNonfiction = /self-help|business|manual|education|non/i.test(genre);
+  return isNonfiction
+    ? {
+        archetype: "Esperto pratico, autorevole e orientato alla trasformazione del lettore.",
+        biography: "Scrive manuali e saggi costruiti su esempi concreti, framework chiari e applicazione immediata.",
+        authorNote: "La missione è rendere comprensibili problemi complessi e trasformarli in azioni concrete.",
+        voice: "Chiara, diretta, calma; alterna principio, esempio e passo operativo.",
+        signatureMoves: "Framework numerati; checklist; domande diagnostiche; esempi quotidiani.",
+        forbiddenMoves: "Niente motivazione vaga, gergo inutile o promesse non dimostrate.",
+        recurringThemes: "Metodo, identità, abitudini, decisioni, risultati misurabili.",
+      }
+    : {
+        archetype: "Autore narrativo con controllo di scena, desiderio e conseguenze emotive.",
+        biography: "Costruisce storie con ritmo editoriale, personaggi memorabili e payoff emotivi credibili.",
+        authorNote: "Ogni libro deve suonare scritto dallo stesso autore, con voce riconoscibile pagina dopo pagina.",
+        voice: "Sensoriale, cinematografica, con sottotesto emotivo e frasi pulite.",
+        signatureMoves: "Aperture in scena; dettagli fisici; cliffhanger emotivi; dialoghi con sottotesto.",
+        forbiddenMoves: "Non spiegare troppo. Non risolvere conflitti senza costo emotivo.",
+        recurringThemes: "Desiderio, identità, memoria, scelta irreversibile, trasformazione.",
+      };
+}
+
 export function normalizeAuthorIdentity(identity?: AuthorIdentity | null): AuthorIdentity | null {
   if (!identity) return null;
   const penName = String(identity.penName || identity.name || "").trim();
@@ -151,11 +209,16 @@ export function normalizeAuthorIdentity(identity?: AuthorIdentity | null): Autho
   };
 }
 
+export function resolveAuthorIdentityForPublishing(identity?: AuthorIdentity | null): AuthorIdentity | null {
+  if (!isUserAuthorIdentityConfigured(identity)) return null;
+  return normalizeAuthorIdentity(identity || getSelectedAuthorIdentity());
+}
+
 export function applyAuthorIdentityToConfig<T extends { [key: string]: any }>(
   config: T,
   identity: AuthorIdentity | null = getSelectedAuthorIdentity(),
 ): T {
-  const normalized = normalizeAuthorIdentity(identity);
+  const normalized = resolveAuthorIdentityForPublishing(identity);
   if (!normalized) return config;
   return {
     ...config,

@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { exitDevMode, isDevMode, useDevMode } from "@/lib/dev-mode";
+import { isDevUnlimitedCredits, setDevUnlimitedCredits } from "@/lib/billing/devMode";
 import {
   getDevPlanOverride,
   setDevPlanOverride,
@@ -55,6 +56,7 @@ export function DevModeBadge() {
   const navigate = useNavigate();
   const [planMenuOpen, setPlanMenuOpen] = useState(false);
   const [wipeOpen, setWipeOpen] = useState(false);
+  const [simulationOn, setSimulationOn] = useState(() => isDevUnlimitedCredits());
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof window === "undefined") return false;
     return window.matchMedia("(max-width: 639px)").matches;
@@ -137,6 +139,21 @@ export function DevModeBadge() {
         </button>
         <Terminal className="h-3 w-3" />
         <span className="font-semibold tracking-wider">DEV</span>
+
+        <button
+          onClick={() => {
+            const next = !simulationOn;
+            setDevUnlimitedCredits(next);
+            setSimulationOn(next);
+            toast.message(next ? "DEV SIMULATION attiva — crediti simulati" : "DEV SIMULATION off — checkout e wallet reali");
+          }}
+          title="DEV SIMULATION ON/OFF"
+          className={`h-6 px-2 rounded-full hover:bg-background/15 inline-flex items-center gap-1 ${
+            simulationOn ? "bg-amber-400/20 text-amber-100" : ""
+          }`}
+        >
+          <span className="uppercase tracking-wider text-[10px]">{simulationOn ? "SIM ON" : "SIM OFF"}</span>
+        </button>
 
         {/* Plan switcher */}
         <div className="relative ml-2">

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { NewBookDialog } from "@/components/NewBookDialog";
@@ -26,7 +26,14 @@ import {
 } from "lucide-react";
 import { BOOK_LENGTH_CONFIG, BookConfig, BookLength, BookProject, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
-import { AUTHOR_IDENTITY_CHANGED_EVENT, applyAuthorIdentityToConfig, getSelectedAuthorIdentity, loadAuthorIdentities, setSelectedAuthorIdentityId } from "@/lib/author-identity";
+import {
+  AUTHOR_IDENTITY_CHANGED_EVENT,
+  applyAuthorIdentityToConfig,
+  generateAuthorIdentityDraft,
+  getSelectedAuthorIdentity,
+  loadAuthorIdentities,
+  setSelectedAuthorIdentityId,
+} from "@/lib/author-identity";
 import { DevModeUnlockDialog } from "@/components/DevModeUnlockDialog";
 import { enableDevMode, isDevMode, exitDevMode, useDevMode } from "@/lib/dev-mode";
 import { BetaActivationDialog } from "@/components/BetaActivationDialog";
@@ -41,6 +48,11 @@ import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { PremiumOsGateway } from "@/components/premium/PremiumOsGateway";
 import { AuthorMomentumPanel } from "@/components/premium/AuthorMomentumPanel";
 import { OneFlowHome } from "@/components/one-flow/OneFlowHome";
+import { ScriptoraSettingsButton } from "@/components/settings/ScriptoraSettingsButton";
+
+const ScriptoraSettingsHub = lazy(() =>
+  import("@/components/settings/ScriptoraSettingsHub").then((m) => ({ default: m.ScriptoraSettingsHub })),
+);
 import { BookCreationOsWizard } from "@/components/one-flow/BookCreationOsWizard";
 import {
   ProfileMenuDialog,
@@ -127,11 +139,13 @@ export default function Dashboard() {
   const [showExport, setShowExport] = useState(false);
   const [showTitleIntel, setShowTitleIntel] = useState(false);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+  const [showSettingsHub, setShowSettingsHub] = useState(false);
   const [showCharacterStudio, setShowCharacterStudio] = useState(false);
   const [showCoverStudio, setShowCoverStudio] = useState(false);
   const [showManuscriptAnalyzer, setShowManuscriptAnalyzer] = useState(false);
   const [showNotepad, setShowNotepad] = useState(false);
   const [showAuthorIdentity, setShowAuthorIdentity] = useState(false);
+  const [authorIdentityPrefill, setAuthorIdentityPrefill] = useState<import("@/types/book").AuthorIdentity | null>(null);
   const [showLibrary, setShowLibrary] = useState(false);
   const [showIdeaModal, setShowIdeaModal] = useState(false);
   const [showBookCreationWizard, setShowBookCreationWizard] = useState(false);
@@ -319,6 +333,26 @@ export default function Dashboard() {
     setSelectedAuthorIdentityId(identity.id);
     setActiveAuthor(identity);
     toast.success(tt("author_identity_selected", { name: identity.penName }));
+  };
+
+  const openAuthorIdentity = (prefill?: import("@/types/book").AuthorIdentity | null) => {
+    setAuthorIdentityPrefill(prefill || null);
+    setShowAuthorIdentity(true);
+  };
+
+  const handleGenerateAuthorWithAi = () => {
+    const now = new Date().toISOString();
+    openAuthorIdentity({
+      id: `custom-${crypto.randomUUID()}`,
+      name: "Il mio profilo autore",
+      realName: "",
+      penName: "",
+      copyrightName: "",
+      language: "Italian",
+      createdAt: now,
+      updatedAt: now,
+      ...generateAuthorIdentityDraft(),
+    } as import("@/types/book").AuthorIdentity);
   };
 
   const goApp = (opts?: { section?: string; projectId?: string; voice?: boolean }) => {
@@ -680,6 +714,7 @@ export default function Dashboard() {
           </div>
 
           <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+            <ScriptoraSettingsButton onClick={() => setShowSettingsHub(true)} />
             <button
               onClick={() => navigate("/usage")}
               className="ios-toolbar-button hidden px-3 text-xs font-medium md:flex"
@@ -781,6 +816,7 @@ export default function Dashboard() {
 
       <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 sm:pt-8 lg:px-8">
         <OneFlowHome
+          authorIdentity={activeAuthor}
           lastProjectTitle={lastProject?.config.title}
           lastProjectProgress={lastProjectProgress}
           onWriteBook={openNewBookGuarded}
@@ -792,9 +828,16 @@ export default function Dashboard() {
           }
           onContinue={lastProject ? () => goApp({ projectId: lastProject.id }) : undefined}
           onMyBooks={() => setShowProjects(true)}
+          onCoverStudio={() => guardPlanFeature("book_engine_full", () => setShowCoverStudio(true))()}
+          onExportStudio={() => guardPlanFeature("export_epub", () => setShowExport(true))()}
+          onAuthorConfigure={() => openAuthorIdentity()}
+          onAuthorGenerateAi={handleGenerateAuthorWithAi}
+          onAuthorEdit={() => openAuthorIdentity(activeAuthor)}
           onEvaluateManuscript={() => guardPlanFeature("chapter_improvement", () => setShowManuscriptAnalyzer(true))()}
           onCredits={() => navigate("/usage?focus=purchase")}
           onProfile={() => setShowProfileMenu(true)}
+          onAdvancedTools={() => setAdvancedLaunchpadEnabled(true)}
+          showAdvancedLaunchpad={showAdvancedLaunchpad}
         />
 
         <div className="mb-4 sm:mb-6">
@@ -1285,7 +1328,22 @@ export default function Dashboard() {
       <HomeExportDialog open={showExport} projects={projects} onClose={() => setShowExport(false)} />
       <TitleIntelligenceDialog open={showTitleIntel} onClose={() => setShowTitleIntel(false)} />
       <AdvancedAppearanceDialog open={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} />
-      <CharacterStudioDialog open={showCharacterStudio} onClose={() => setShowCharacterStudio(false)} />
+      {showSettingsHub && (
+        <Suspense fallback={null}>
+          <ScriptoraSettingsHub
+            open={showSettingsHub}
+            onClose={() => setShowSettingsHub(false)}
+            onOpenAppearance={() => setShowAdvancedSettings(true)}
+            onOpenAuthorIdentity={() => openAuthorIdentity()}
+            onOpenUsage={() => navigate("/usage?focus=purchase")}
+          />
+        </Suspense>
+      )}
+      <CharacterStudioDialog
+        open={showCharacterStudio}
+        onClose={() => setShowCharacterStudio(false)}
+        onAuthorIdentity={() => openAuthorIdentity()}
+      />
       {showCoverStudio && (
         <CoverGenerator
           title={t("untitled")}
@@ -1305,12 +1363,20 @@ export default function Dashboard() {
         onLimitReached={() => navigate("/pricing")}
       />
       <NotepadDialog open={showNotepad} onClose={() => setShowNotepad(false)} />
-      <AuthorIdentityDialog open={showAuthorIdentity} onClose={() => setShowAuthorIdentity(false)} />
+      <AuthorIdentityDialog
+        open={showAuthorIdentity}
+        onClose={() => {
+          setShowAuthorIdentity(false);
+          setAuthorIdentityPrefill(null);
+        }}
+        prefillDraft={authorIdentityPrefill}
+      />
 
       <BookCreationOsWizard
         open={showBookCreationWizard}
         onClose={() => setShowBookCreationWizard(false)}
         authorIdentity={activeAuthor}
+        onAuthorIdentity={() => openAuthorIdentity()}
         onManualStudio={handleNewBook}
         onDetectIntent={async (ideaText, lang) => {
           setBookLang(lang);

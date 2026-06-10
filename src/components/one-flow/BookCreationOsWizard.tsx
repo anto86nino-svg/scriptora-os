@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  X, ArrowLeft, ArrowRight, Rocket, Sparkles, Plus, Trash2, Users, Loader2,
+  X, ArrowLeft, ArrowRight, Rocket, Sparkles, Plus, Trash2, Users, Loader2, Fingerprint,
 } from "lucide-react";
 import type { AuthorIdentity, BookCharacter, BookConfig, Language } from "@/types/book";
 import { BOOK_LENGTH_CONFIG, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
@@ -14,7 +14,12 @@ import {
   profileToStyleDirective,
   type WritingStyleProfile,
 } from "@/lib/book-creation-os/objectives";
-import { applyAuthorIdentityToConfig } from "@/lib/author-identity";
+import { applyAuthorIdentityToConfig, isUserAuthorIdentityConfigured } from "@/lib/author-identity";
+import {
+  consumeWizardCharacterFreeRegen,
+  generateWizardCharacter,
+  getWizardCharacterFreeRegensRemaining,
+} from "@/lib/book-creation-os/character-generator";
 import { usePlan } from "@/lib/plan";
 import { toast } from "sonner";
 import { WizardLiveIntelligencePanel, WizardLiveIntelligenceStrip } from "./WizardLiveIntelligencePanel";
@@ -25,6 +30,7 @@ interface BookCreationOsWizardProps {
   open: boolean;
   onClose: () => void;
   authorIdentity: AuthorIdentity;
+  onAuthorIdentity?: () => void;
   onManualStudio?: (config: BookConfig) => void;
   onDetectIntent?: (idea: string, language: Language) => Promise<{
     genre: string;
@@ -48,6 +54,7 @@ export function BookCreationOsWizard({
   open,
   onClose,
   authorIdentity,
+  onAuthorIdentity,
   onManualStudio,
   onDetectIntent,
 }: BookCreationOsWizardProps) {
@@ -64,6 +71,8 @@ export function BookCreationOsWizard({
   const [chapters, setChapters] = useState(18);
   const [bookLength, setBookLength] = useState<"short" | "medium" | "long">(isFree ? "short" : "medium");
   const [launching, setLaunching] = useState(false);
+  const [generatingCharacter, setGeneratingCharacter] = useState(false);
+  const [freeRegensLeft, setFreeRegensLeft] = useState(() => getWizardCharacterFreeRegensRemaining());
   const [language] = useState<Language>("Italian");
 
   if (!open) return null;
@@ -179,9 +188,25 @@ export function BookCreationOsWizard({
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-300">AI Book Architect</p>
             <p className="text-sm font-semibold text-white">Step {step + 1}/6 — {stepLabel}</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white">
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {onAuthorIdentity && (
+              <button
+                type="button"
+                onClick={onAuthorIdentity}
+                className={`hidden items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold sm:inline-flex ${
+                  isUserAuthorIdentityConfigured(authorIdentity)
+                    ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100"
+                    : "border-amber-400/30 bg-amber-400/10 text-amber-100"
+                }`}
+              >
+                <Fingerprint className="h-3.5 w-3.5" />
+                Identità autore
+              </button>
+            )}
+            <button type="button" onClick={onClose} className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         <WizardLiveIntelligenceStrip {...intelProps} />
@@ -298,16 +323,64 @@ export function BookCreationOsWizard({
 
           {step === 3 && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-xl font-semibold text-white">Personaggi</h2>
-                <button
-                  type="button"
-                  onClick={() => setCharacters((c) => [...c, emptyCharacter()])}
-                  className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1 text-[11px] text-white/80"
-                >
-                  <Plus className="h-3 w-3" /> Aggiungi
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={generatingCharacter}
+                    onClick={async () => {
+                      if (generatingCharacter) return;
+                      setGeneratingCharacter(true);
+                      try {
+                        const remaining = getWizardCharacterFreeRegensRemaining();
+                        if (remaining <= 0) {
+                          const { chargePremiumOperation } = await import("@/lib/billing/charge");
+                          await chargePremiumOperation(
+                            "character_studio_ai",
+                            { source: "wizard_character_generate", genre: objective.genre || "fiction" },
+                            undefined,
+                            [idea.slice(0, 32) || "wizard"],
+                          );
+                        } else {
+                          consumeWizardCharacterFreeRegen();
+                          setFreeRegensLeft(getWizardCharacterFreeRegensRemaining());
+                        }
+                        const generated = generateWizardCharacter(`${idea}|${Date.now()}|${characters.length}`);
+                        setCharacters((list) => {
+                          const emptyIdx = list.findIndex((c) => !String(c.name || "").trim());
+                          if (emptyIdx >= 0) {
+                            return list.map((c, i) => (i === emptyIdx ? generated : c));
+                          }
+                          return [...list, generated];
+                        });
+                        setFreeRegensLeft(getWizardCharacterFreeRegensRemaining());
+                        toast.success("Personaggio generato.");
+                      } catch (e) {
+                        const msg = e instanceof Error ? e.message : "Generazione non disponibile";
+                        toast.error(msg);
+                      } finally {
+                        setGeneratingCharacter(false);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1 rounded-lg border border-sky-400/30 bg-sky-400/12 px-2.5 py-1 text-[11px] font-semibold text-sky-100 disabled:opacity-50"
+                  >
+                    {generatingCharacter ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                    Genera Personaggio
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCharacters((c) => [...c, emptyCharacter()])}
+                    className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1 text-[11px] text-white/80"
+                  >
+                    <Plus className="h-3 w-3" /> Aggiungi
+                  </button>
+                </div>
               </div>
+              <p className="text-[11px] text-white/55">
+                Rigenerazioni gratuite rimaste: <span className="font-bold tabular-nums text-sky-200">{freeRegensLeft}</span>
+                {freeRegensLeft <= 0 && " · dalla prossima operazione verranno consumati crediti"}
+              </p>
               {characters.map((ch, idx) => (
                 <div key={idx} className="rounded-xl border border-white/12 bg-white/5 p-3 space-y-2">
                   <div className="flex gap-2">

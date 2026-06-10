@@ -6,7 +6,10 @@ import { buildWritingStyleBlock, findStylePresetById, findStylePresetByLabel } f
 import { buildEditorialMasteryBlock } from "@/lib/editorial-mastery";
 import { validateEditorial } from "@/lib/editorial-validator";
 import { withRetry, getBreakerCooldown } from "@/lib/api-resilience";
-import { normalizeAuthorIdentity } from "@/lib/author-identity";
+import {
+  normalizeAuthorIdentity,
+  resolveAuthorIdentityForPublishing,
+} from "@/lib/author-identity";
 import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
@@ -430,18 +433,20 @@ ${authorBlock}
 If previous chapters established a specific vocabulary, rhythm, or narrative device, CONTINUE using it. Style drift = failure.`;
 }
 
-function buildAuthorIdentityBlock(config: BookConfig): string {
-  const identity = normalizeAuthorIdentity(config.authorIdentity);
-  const penName = identity?.penName || config.authorName || config.author || config.writerName || "";
-  const copyrightName = identity?.copyrightName || identity?.realName || penName;
-  if (!identity && !String(penName || "").trim()) return "";
+export const AUTHOR_IDENTITY_MISSING_COPY = "Nessuna identità autore configurata";
 
+function buildAuthorIdentityBlock(config: BookConfig): string {
+  const identity = resolveAuthorIdentityForPublishing(config.authorIdentity);
   if (!identity) {
-    return `AUTHOR ATTRIBUTION LOCK:
-- Publishing author / pen name: ${penName}
-- Write as a coherent original authorial voice attributable to this name.
-- Maintain one consistent sensibility, vocabulary, rhythm, and worldview across the entire book.`;
+    return `AUTHOR IDENTITY:
+- No configured author identity.
+- Do NOT invent author names, pen names, or biographies.
+- Never use "Scriptora Studio" or placeholder authors.
+- Front/back matter must show exactly: "${AUTHOR_IDENTITY_MISSING_COPY}"`;
   }
+
+  const penName = identity.penName;
+  const copyrightName = identity.copyrightName || identity.realName || penName;
 
   return `AUTHOR IDENTITY LOCK — THIS BOOK MUST SOUND ATTRIBUTABLE TO THIS AUTHOR:
 Publishing author / pen name: ${identity.penName}
@@ -467,23 +472,24 @@ MANDATORY AUTHORSHIP RULES:
 }
 
 function getAuthorPenName(config: BookConfig): string {
-  const identity = normalizeAuthorIdentity(config.authorIdentity);
-  return (identity?.penName || config.authorName || config.author || config.writerName || "").trim();
+  const identity = resolveAuthorIdentityForPublishing(config.authorIdentity);
+  return (identity?.penName || "").trim();
 }
 
 function getAuthorCopyrightName(config: BookConfig): string {
-  const identity = normalizeAuthorIdentity(config.authorIdentity);
-  return (identity?.copyrightName || identity?.realName || identity?.penName || config.authorName || config.author || config.writerName || "").trim();
+  const identity = resolveAuthorIdentityForPublishing(config.authorIdentity);
+  return (identity?.copyrightName || identity?.realName || identity?.penName || "").trim();
 }
 
 function buildAuthorBookDeclaration(config: BookConfig): string {
-  const identity = normalizeAuthorIdentity(config.authorIdentity);
-  const penName = getAuthorPenName(config) || "Not specified";
-  const copyrightName = getAuthorCopyrightName(config) || penName;
+  const identity = resolveAuthorIdentityForPublishing(config.authorIdentity);
+  const penName = getAuthorPenName(config);
+  const copyrightName = getAuthorCopyrightName(config);
   if (!identity) {
     return `AUTHOR DECLARATION:
-- Pen name/public author: ${penName}
-- Copyright holder: ${copyrightName}`;
+- No configured author identity. Do NOT invent an author name or biography.
+- Front matter "About the Author" must use exactly: "${AUTHOR_IDENTITY_MISSING_COPY}"
+- Never use "Scriptora Studio" or any placeholder pen name.`;
   }
   return `AUTHOR DECLARATION:
 - Pen name/public author printed in the book: ${identity.penName}
@@ -841,7 +847,7 @@ function buildFallbackSubchapterTitle(chapterTitle: string, index: number, langu
 
 function normalizeFrontMatter(raw: unknown, config: BookConfig): FrontMatter {
   const source = raw && typeof raw === "object" ? raw as Partial<FrontMatter> : {};
-  const identity = normalizeAuthorIdentity(config.authorIdentity);
+  const identity = resolveAuthorIdentityForPublishing(config.authorIdentity);
   const penName = getAuthorPenName(config);
   const copyrightName = getAuthorCopyrightName(config);
   const year = new Date().getFullYear();
@@ -849,11 +855,14 @@ function normalizeFrontMatter(raw: unknown, config: BookConfig): FrontMatter {
   const copyrightFallback = copyrightName
     ? `© ${year} ${copyrightName}. Tutti i diritti riservati.\nAutore / pen name: ${penName || copyrightName}.`
     : `© ${year}`;
+  const aboutAuthorFallback = identity?.biography
+    ? `${penName ? `${penName}. ` : ""}${identity.biography}`
+    : AUTHOR_IDENTITY_MISSING_COPY;
   const result: FrontMatter = {
     titlePage: stringifyField(source.titlePage).trim() || titlePageFallback,
     copyright: stringifyField(source.copyright).trim() || copyrightFallback,
     dedication: stringifyField(source.dedication).trim(),
-    aboutAuthor: stringifyField(source.aboutAuthor).trim() || (identity?.biography ? `${penName ? `${penName}. ` : ""}${identity.biography}` : ""),
+    aboutAuthor: stringifyField(source.aboutAuthor).trim() || aboutAuthorFallback,
     howToUse: stringifyField(source.howToUse).trim(),
     letterToReader: stringifyField(source.letterToReader).trim() || (typeof raw === "string" ? raw : ""),
   };
@@ -873,9 +882,10 @@ function normalizeFrontMatter(raw: unknown, config: BookConfig): FrontMatter {
 
 function normalizeBackMatter(raw: unknown, config?: BookConfig): BackMatter {
   const source = raw && typeof raw === "object" ? raw as Partial<BackMatter> : {};
-  const identity = config ? normalizeAuthorIdentity(config.authorIdentity) : null;
+  const identity = config ? resolveAuthorIdentityForPublishing(config.authorIdentity) : null;
   const penName = config ? getAuthorPenName(config) : "";
-  const authorNoteFallback = identity?.authorNote || (identity?.biography ? `${penName ? `${penName}. ` : ""}${identity.biography}` : "");
+  const authorNoteFallback = identity?.authorNote
+    || (identity?.biography ? `${penName ? `${penName}. ` : ""}${identity.biography}` : AUTHOR_IDENTITY_MISSING_COPY);
   return {
     conclusion: stringifyField(source.conclusion).trim() || (typeof raw === "string" ? raw : ""),
     authorNote: stringifyField(source.authorNote).trim() || authorNoteFallback,
