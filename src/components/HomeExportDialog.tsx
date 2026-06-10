@@ -11,6 +11,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { CoverGenerator } from "@/components/CoverGenerator";
 import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { isProjectComplete } from "@/lib/project-status";
+import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 
 type Format = "epub" | "docx" | "pdf";
 
@@ -251,37 +252,40 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
         </div>
 
         {/* Footer — shrink-0 so it's always visible even on very short screens */}
-        <div className="flex shrink-0 items-center justify-end gap-2 p-4 border-t border-border bg-muted/20">
-          <button
-            onClick={onClose}
-            disabled={isExporting}
-            className="px-3 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
-          >
-            Annulla
-          </button>
-          <button
-            onClick={handleExport}
-            disabled={isExporting || !selectedId || exportableProjects.length === 0}
-            title={canExport ? "Export" : "Finish your book — unlock export"}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40"
-          >
-            {isExporting ? (
-              <>
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Esportazione...
-              </>
-            ) : !canExport ? (
-              <>
-                <Lock className="h-3 w-3" />
-                Unlock Export
-              </>
-            ) : (
-              <>
-                <FileDown className="h-3 w-3" />
-                Esporta
-              </>
-            )}
-          </button>
+        <div className="flex shrink-0 items-center justify-between gap-2 p-4 border-t border-border bg-muted/20">
+          <CreditCostBadge operation="export_premium" prominent />
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              disabled={isExporting}
+              className="px-3 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
+            >
+              Annulla
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={isExporting || !selectedId || exportableProjects.length === 0}
+              title={canExport ? "Export" : "Finish your book — unlock export"}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40"
+            >
+              {isExporting ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Esportazione...
+                </>
+              ) : !canExport ? (
+                <>
+                  <Lock className="h-3 w-3" />
+                  Unlock Export
+                </>
+              ) : (
+                <>
+                  <FileDown className="h-3 w-3" />
+                  Esporta
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} reason="export" currentPlan={plan} />

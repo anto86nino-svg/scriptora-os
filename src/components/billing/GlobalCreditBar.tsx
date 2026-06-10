@@ -7,7 +7,7 @@ import { creditSimulationBadge } from "@/lib/billing/devMode";
 import { cn } from "@/lib/utils";
 
 interface GlobalCreditBarProps {
-  variant?: "bar" | "inline";
+  variant?: "bar" | "inline" | "compact";
   className?: string;
 }
 
@@ -20,6 +20,36 @@ export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarP
   const goUsage = (focus?: "purchase" | "history") => {
     navigate(focus ? `/usage?focus=${focus}` : "/usage");
   };
+
+  if (variant === "compact") {
+    return (
+      <div className={cn(
+        "fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-md safe-area-pb",
+        className,
+      )}>
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2">
+          <div className="flex min-w-0 items-center gap-2 text-[11px]">
+            <CreditCard className="h-3.5 w-3.5 shrink-0 text-primary" />
+            <span className="font-bold tabular-nums text-foreground">{formatCredits(wallet.balance)}</span>
+            <span className="truncate text-muted-foreground">{analytics.planLabel}</span>
+            {simulationBadge && (
+              <span className="shrink-0 rounded-full border border-amber-500/50 bg-amber-500/15 px-1.5 py-0.5 text-[8px] font-bold tracking-wider text-amber-200">
+                SIM
+              </span>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <button type="button" onClick={() => goUsage("purchase")} className="rounded-lg bg-primary px-2.5 py-1 text-[10px] font-semibold text-primary-foreground">
+              <Plus className="h-3 w-3" />
+            </button>
+            <button type="button" onClick={() => goUsage()} className="rounded-lg border border-border px-2.5 py-1 text-[10px] text-muted-foreground">
+              <History className="h-3 w-3" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (variant === "inline") {
     return (

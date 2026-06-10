@@ -21,6 +21,7 @@ import BestsellerRadarPage from "./pages/BestsellerRadarPage.tsx";
 import KeywordGoldPage from "./pages/KeywordGoldPage.tsx";
 import InstallPage from "./pages/InstallPage.tsx";
 import { DevModeBadge } from "@/components/DevModeBadge";
+import { CreditVisibilityShell } from "@/components/billing/CreditVisibilityShell";
 import GlobalCuriosity from "./components/GlobalCuriosity";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
@@ -60,6 +61,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
               </AppErrorBoundary>
+              <CreditVisibilityShell />
               <ScriptoraStepGuide />
               <DevModeBadge />
               <GlobalCuriosity />

@@ -396,10 +396,13 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                 </button>
                 {showAdvanced && (
                   <div className="mt-3 space-y-2">
-                    <button onClick={() => { setShowRunAnalyze(true); runAnalysis(); }}
-                      className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-lg text-xs font-semibold bg-card border border-border hover:bg-accent transition-colors">
-                      <Sparkles className="h-3.5 w-3.5" /> Analyze paragraph-by-paragraph
-                    </button>
+                    <div className="space-y-1">
+                      <button onClick={() => { setShowRunAnalyze(true); runAnalysis(); }}
+                        className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-lg text-xs font-semibold bg-card border border-border hover:bg-accent transition-colors">
+                        <Sparkles className="h-3.5 w-3.5" /> Analyze paragraph-by-paragraph
+                      </button>
+                      <CreditCostBadge operation="chapter_diagnostic" className="mx-auto" />
+                    </div>
                     <button onClick={runDominate}
                       title={canDominate ? "Dominate Chapter — full rewrite" : "Unlock Dominate Mode (Premium)"}
                       className="w-full inline-flex items-center justify-center gap-2 h-9 rounded-lg text-xs font-bold bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 text-white hover:opacity-90 transition-all shadow-sm">
@@ -770,12 +773,15 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                 </div>
               )}
 
-              <div className="pt-2 border-t border-border/30 flex items-center justify-between">
+              <div className="pt-2 border-t border-border/30 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[10px] text-muted-foreground">{result.totalParagraphs} paragraphs analyzed</p>
-                <button onClick={runAnalysis} disabled={analyzing}
-                  className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
-                  <RefreshCw className="h-3 w-3" /> Re-analyze
-                </button>
+                <div className="flex items-center gap-2">
+                  <CreditCostBadge operation="fix_chapter" />
+                  <button onClick={runAnalysis} disabled={analyzing}
+                    className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+                    <RefreshCw className="h-3 w-3" /> Re-analyze
+                  </button>
+                </div>
               </div>
             </>
           )}

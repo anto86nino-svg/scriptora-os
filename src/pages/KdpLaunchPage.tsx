@@ -20,6 +20,7 @@ import {
 } from "@/lib/kdp/money-engine";
 import { useFeatureGate } from "@/components/PaywallGuard";
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
+import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 
 type Step = "idea" | "market" | "title" | "packaging" | "predict";
 
@@ -314,11 +315,12 @@ export default function KdpLaunchPage() {
                 onChange={(e) => setIdea(e.target.value)}
               />
             </div>
-            <div className="flex justify-end">
+            <div className="flex flex-col items-end gap-1.5">
               <Button onClick={runMarket} disabled={loading || !idea.trim()}>
                 {loading && step === "idea" ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <TrendingUp className="h-4 w-4 mr-2" />}
-                Analizza mercato · {operationCreditLabel("kdp_market", devCreditMode)}
+                Analizza mercato
               </Button>
+              <CreditCostBadge operation="kdp_launch" prominent />
             </div>
           </CardContent>
         </Card>
@@ -378,11 +380,12 @@ export default function KdpLaunchPage() {
                 </div>
               )}
 
-              <div className="flex justify-end">
+              <div className="flex flex-col items-end gap-1.5">
                 <Button onClick={runTitles} disabled={loading}>
                   {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
-                  Genera titoli · {operationCreditLabel("kdp_titles", devCreditMode)}
+                  Genera titoli
                 </Button>
+                <CreditCostBadge operation="kdp_launch" />
               </div>
             </CardContent>
           </Card>
@@ -421,10 +424,13 @@ export default function KdpLaunchPage() {
                 </div>
               </details>
               <div className="flex justify-end">
-                <Button onClick={runPackaging} disabled={loading || !chosenTitle}>
-                  {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Rocket className="h-4 w-4 mr-2" />}
-                  Crea packaging · {operationCreditLabel("kdp_packaging", devCreditMode)}
-                </Button>
+                <div className="flex flex-col items-end gap-1.5">
+                  <Button onClick={runPackaging} disabled={loading || !chosenTitle}>
+                    {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Rocket className="h-4 w-4 mr-2" />}
+                    Crea packaging
+                  </Button>
+                  <CreditCostBadge operation="kdp_launch" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -479,10 +485,13 @@ export default function KdpLaunchPage() {
                 <ul className="text-xs space-y-1 mt-1">{packaging.bulletPoints.map((b, i) => <li key={`stable-${i}`}>• {b}</li>)}</ul>
               </div>
               <div className="flex justify-end">
-                <Button onClick={runPredict} disabled={loading}>
-                  {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trophy className="h-4 w-4 mr-2" />}
-                  {predictionCopy.action} · {operationCreditLabel("kdp_prediction", devCreditMode)}
-                </Button>
+                <div className="flex flex-col items-end gap-1.5">
+                  <Button onClick={runPredict} disabled={loading}>
+                    {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trophy className="h-4 w-4 mr-2" />}
+                    {predictionCopy.action}
+                  </Button>
+                  <CreditCostBadge operation="kdp_launch" />
+                </div>
               </div>
             </CardContent>
           </Card>

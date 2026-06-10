@@ -13,6 +13,8 @@ import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { Progress } from "@/components/ui/progress";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
+import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
+import { resolveChapterGenerationOperation } from "@/lib/billing";
 
 interface EditorPanelProps {
   project: BookProject;
@@ -437,11 +439,18 @@ function ChapterView({
         </div>
         <div className="flex items-center gap-2 shrink-0 pt-1">
           {!isGenerated ? (
-            <button onClick={onGenerate} disabled={isGenerating || !project.blueprint}
-              className="flex items-center gap-2 h-10 px-5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 transition-colors">
-              {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-              {t("generate")}
-            </button>
+            <div className="flex flex-col items-end gap-1">
+              <button onClick={onGenerate} disabled={isGenerating || !project.blueprint}
+                className="flex items-center gap-2 h-10 px-5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 transition-colors">
+                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                {t("generate")}
+              </button>
+              <CreditCostBadge
+                operation={resolveChapterGenerationOperation(project.config)}
+                bookLength={project.config.bookLength}
+                prominent
+              />
+            </div>
           ) : (
             <>
               <ActionButton icon={<Download className="h-3.5 w-3.5" />} title="TXT" onClick={() => downloadText(`chapter-${chapterIndex + 1}-${(chapter?.title || "chapter").replace(/\s+/g, "_")}.txt`, chapter?.content || "")} disabled={!isGenerated} />
@@ -453,16 +462,20 @@ function ChapterView({
               >
                 <Zap className="h-3.5 w-3.5" /> Analysis Pro
               </button>
-              <ActionButton icon={<Search className="h-3.5 w-3.5" />} title={t("evaluate")} onClick={onEvaluate} disabled={isGenerating || isEvaluating} />
+              <div className="flex flex-col items-center gap-1">
+                <ActionButton icon={<Search className="h-3.5 w-3.5" />} title={t("evaluate")} onClick={onEvaluate} disabled={isGenerating || isEvaluating} />
+                <CreditCostBadge operation="chapter_diagnostic" />
+              </div>
               <ActionButton icon={<RefreshCw className="h-3.5 w-3.5" />} title={t("regenerate")} onClick={onRegenerate} disabled={isGenerating} />
-              
+
               {/* Rewrite with levels */}
-              <div className="relative">
+              <div className="relative flex flex-col items-end gap-1">
                 <button onClick={() => setShowRewriteMenu(!showRewriteMenu)} disabled={isGenerating}
                   className="h-9 flex items-center gap-1 px-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-30 transition-colors">
                   <Sparkles className="h-3.5 w-3.5" />
                   <ChevronDown className="h-3 w-3" />
                 </button>
+                <CreditCostBadge operation="rewrite_chapter" />
                 {showRewriteMenu && (
                   <div className="absolute right-0 top-10 z-20 bg-card border border-border rounded-lg shadow-xl py-1 w-48">
                     {([
