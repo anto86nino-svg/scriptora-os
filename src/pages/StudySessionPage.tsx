@@ -1,22 +1,39 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, BookOpen, Brain, CheckCircle2, FileText, GraduationCap, Loader2, Upload, Wand2 } from "lucide-react";
+import { ArrowLeft, GraduationCap, Loader2, Upload, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { analyzeStudyMaterial, readStudyFile, type StudySessionResult } from "@/lib/study-session";
 import { generateStudySessionWithAI } from "@/lib/study-ai";
 import { evaluateStudyAnswerWithAI, type StudyAnswerEvaluation } from "@/lib/study-answer-evaluator";
+import { DEFAULT_STUDY_UX, loadStudyUxState, saveStudyUxState } from "@/lib/study-ux";
+import { StudyMetricsCard } from "@/components/study/StudyMetricsCard";
+import { StudySummaryPanel } from "@/components/study/StudySummaryPanel";
+import { StudyOralPanel } from "@/components/study/StudyOralPanel";
+import { StudyVocabularyPanel } from "@/components/study/StudyVocabularyPanel";
+import { StudyFlashcardsPanel } from "@/components/study/StudyFlashcardsPanel";
+import { StudyQuizPanel } from "@/components/study/StudyQuizPanel";
 
 const STORAGE_KEY = "scriptora-study-session-v1";
 
-function normalizeStudyResultForUI(value: any): any {
+type StudySection = "summary" | "questions" | "vocabulary" | "flashcards" | "quiz";
+
+const TAB_CONFIG: { id: StudySection; label: string; icon: string }[] = [
+  { id: "summary", label: "Riassunti", icon: "📘" },
+  { id: "questions", label: "Interrogazione", icon: "🎤" },
+  { id: "vocabulary", label: "Parole", icon: "📚" },
+  { id: "flashcards", label: "Flashcard", icon: "🃏" },
+  { id: "quiz", label: "Quiz", icon: "📝" },
+];
+
+function normalizeStudyResultForUI(value: any): StudySessionResult {
   const result = value || {};
 
   return {
     title: String(result.title || "Sessione Studio"),
-    totalWords: Number(result.totalWords || result.words || 0),
+    sourceName: String(result.sourceName || "materiale-studio.txt"),
     words: Number(result.words || result.totalWords || 0),
     detectedSubject: String(result.detectedSubject || "Materiale di studio"),
-    difficulty: result.difficulty || "medium",
+    difficulty: result.difficulty === "soft" || result.difficulty === "pro" ? result.difficulty : "medium",
     lightSummary: String(result.lightSummary || ""),
     mediumSummary: String(result.mediumSummary || ""),
     proSummary: String(result.proSummary || ""),
@@ -36,12 +53,13 @@ function normalizeStudyResultForUI(value: any): any {
           options: Array.isArray(item?.options) ? item.options.map((o: any) => String(o || "")) : [],
           answer: Number.isFinite(Number(item?.answer)) ? Number(item.answer) : 0,
           explanation: String(item?.explanation || "Spiegazione non disponibile."),
+          difficulty: item?.difficulty,
+          memoryTrick: item?.memoryTrick,
+          commonMistake: item?.commonMistake,
         }))
       : [],
   };
 }
-
-
 
 function saveResult(result: StudySessionResult, rawText: string) {
   try {
@@ -65,36 +83,56 @@ export default function StudySessionPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const saved = useMemo(loadSaved, []);
+  const uxSaved = useMemo(loadStudyUxState, []);
 
   const [rawText, setRawText] = useState(saved?.rawText || "");
   const [sourceName, setSourceName] = useState(saved?.result?.sourceName || "testo-incollato.txt");
-  const [result, setResult] = useState<StudySessionResult | null>(saved?.result || null);
+  const [result, setResult] = useState<StudySessionResult | null>(saved?.result ? normalizeStudyResultForUI(saved.result) : null);
   const [reading, setReading] = useState(false);
   const [aiMode, setAiMode] = useState<"idle" | "deepseek" | "local">("idle");
-  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
-  const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
 
-  const [activeSection, setActiveSection] = useState<
-    "summary" |
-    "questions" |
-    "vocabulary" |
-    "flashcards" |
-    "quiz"
-  >("summary");
-
+  const [activeSection, setActiveSection] = useState<StudySection>(
+    (uxSaved.activeSection as StudySection) || DEFAULT_STUDY_UX.activeSection
+  );
   const [studyLanguage, setStudyLanguage] = useState<
-    "Italian" |
-    "English" |
-    "Spanish" |
-    "French" |
-    "German"
+    "Italian" | "English" | "Spanish" | "French" | "German"
   >("Italian");
-  const [openAnswers, setOpenAnswers] = useState<Record<number, string>>({});
-  const [openEvaluations, setOpenEvaluations] = useState<Record<number, StudyAnswerEvaluation>>({});
+
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>(uxSaved.quizAnswers || {});
+  const [currentQuizIndex, setCurrentQuizIndex] = useState(uxSaved.currentQuizIndex || 0);
+  const [quizMode, setQuizMode] = useState<"practice" | "exam">(uxSaved.quizMode || "practice");
+  const [quizOrder, setQuizOrder] = useState<number[]>(uxSaved.quizOrder || []);
+
+  const [openAnswers, setOpenAnswers] = useState<Record<number, string>>(uxSaved.openAnswers || {});
+  const [openEvaluations, setOpenEvaluations] = useState<Record<number, StudyAnswerEvaluation>>(
+    (uxSaved.openEvaluations as Record<number, StudyAnswerEvaluation>) || {}
+  );
   const [evaluatingOpenAnswer, setEvaluatingOpenAnswer] = useState<number | null>(null);
 
   const wordCount = useMemo(() => rawText.trim().split(/\s+/).filter(Boolean).length, [rawText]);
   const canAnalyze = wordCount >= 40 && !reading;
+
+  const resetSessionState = useCallback(() => {
+    setQuizAnswers({});
+    setCurrentQuizIndex(0);
+    setQuizMode("practice");
+    setQuizOrder([]);
+    setOpenAnswers({});
+    setOpenEvaluations({});
+    saveStudyUxState({
+      quizAnswers: {},
+      currentQuizIndex: 0,
+      quizMode: "practice",
+      quizOrder: [],
+      openAnswers: {},
+      openEvaluations: {},
+    });
+  }, []);
+
+  const handleSectionChange = useCallback((section: StudySection) => {
+    setActiveSection(section);
+    saveStudyUxState({ activeSection: section });
+  }, []);
 
   const analyze = async () => {
     if (!canAnalyze) {
@@ -111,22 +149,18 @@ export default function StudySessionPage() {
         sourceName,
         language: studyLanguage,
       });
-      setResult(normalizeStudyResultForUI(next));
-      setQuizAnswers({});
-      setCurrentQuizIndex(0);
-      setOpenAnswers({});
-      setOpenEvaluations({});
-      saveResult(next, rawText);
+      const normalized = normalizeStudyResultForUI(next);
+      setResult(normalized);
+      resetSessionState();
+      saveResult(normalized, rawText);
       toast.success("Sessione Studio generata", { description: "Scriptora ha creato riassunti, parole difficili, flashcard e quiz." });
     } catch (error) {
       console.warn("[StudySession] DeepSeek fallback locale", error);
       const local = analyzeStudyMaterial(rawText, sourceName);
-      setResult(normalizeStudyResultForUI(local));
-      setQuizAnswers({});
-      setCurrentQuizIndex(0);
-      setOpenAnswers({});
-      setOpenEvaluations({});
-      saveResult(local, rawText);
+      const normalized = normalizeStudyResultForUI(local);
+      setResult(normalized);
+      resetSessionState();
+      saveResult(normalized, rawText);
       setAiMode("local");
       toast.warning("AI non disponibile: uso analisi locale", {
         description: error instanceof Error ? error.message.slice(0, 120) : "Fallback locale attivato.",
@@ -155,7 +189,11 @@ export default function StudySessionPage() {
         language: studyLanguage,
       });
 
-      setOpenEvaluations((prev) => ({ ...prev, [index]: evaluation }));
+      setOpenEvaluations((prev) => {
+        const next = { ...prev, [index]: evaluation };
+        saveStudyUxState({ openEvaluations: next });
+        return next;
+      });
       toast.success(`Risposta valutata: ${evaluation.score}/100`);
     } catch (error) {
       toast.error("Valutazione non riuscita", {
@@ -181,22 +219,18 @@ export default function StudySessionPage() {
           sourceName: file.name,
           language: studyLanguage,
         });
-        setResult(normalizeStudyResultForUI(next));
-        setQuizAnswers({});
-        setCurrentQuizIndex(0);
-        setOpenAnswers({});
-        setOpenEvaluations({});
-        saveResult(next, text);
+        const normalized = normalizeStudyResultForUI(next);
+        setResult(normalized);
+        resetSessionState();
+        saveResult(normalized, text);
         toast.success("Materiale analizzato da Scriptora", { description: file.name });
       } catch (error) {
         console.warn("[StudySession] DeepSeek file fallback locale", error);
         const local = analyzeStudyMaterial(text, file.name);
-        setResult(normalizeStudyResultForUI(local));
-        setQuizAnswers({});
-        setCurrentQuizIndex(0);
-        setOpenAnswers({});
-        setOpenEvaluations({});
-        saveResult(local, text);
+        const normalized = normalizeStudyResultForUI(local);
+        setResult(normalized);
+        resetSessionState();
+        saveResult(normalized, text);
         setAiMode("local");
         toast.warning("AI non disponibile: analisi locale attivata", {
           description: error instanceof Error ? error.message.slice(0, 120) : file.name,
@@ -210,12 +244,12 @@ export default function StudySessionPage() {
     }
   };
 
-  const safeResult = result ? normalizeStudyResultForUI(result) : null;
-  const safeDifficultWords = Array.isArray(safeResult?.difficultWords) ? safeResult.difficultWords : [];
-  const safeFlashcards = Array.isArray(safeResult?.flashcards) ? safeResult.flashcards : [];
-  const safeQuiz = Array.isArray(safeResult?.quiz) ? safeResult.quiz : [];
-  const safeOpenQuestions = Array.isArray(safeResult?.openQuestions) ? safeResult.openQuestions : [];
-  const safeKeyConcepts = Array.isArray(safeResult?.keyConcepts) ? safeResult.keyConcepts : [];
+  const safeResult = result;
+  const safeDifficultWords = safeResult?.difficultWords || [];
+  const safeFlashcards = safeResult?.flashcards || [];
+  const safeQuiz = safeResult?.quiz || [];
+  const safeOpenQuestions = safeResult?.openQuestions || [];
+  const safeKeyConcepts = safeResult?.keyConcepts || [];
 
   return (
     <div className="scriptora-ios-screen scriptora-app-surface min-h-screen px-4 py-5 sm:px-8">
@@ -240,7 +274,7 @@ export default function StudySessionPage() {
               </div>
             </div>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Carica dispense, capitoli o manoscritti. Scriptora li trasforma in riassunti, parole difficili, flashcard e quiz finale.
+              Il tuo tutor privato per interrogazioni, verifiche e ripasso — non solo un generatore di testo.
             </p>
           </div>
 
@@ -266,7 +300,7 @@ export default function StudySessionPage() {
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <h2 className="font-semibold text-foreground">Materiale da studiare</h2>
-                <p className="text-xs text-muted-foreground">PDF, DOCX, TXT e Markdown supportati. Analizza libri, dispense, manuali e appunti.</p>
+                <p className="text-xs text-muted-foreground">PDF, DOCX, TXT e Markdown supportati.</p>
               </div>
               <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-muted-foreground">
                 {wordCount.toLocaleString()} parole
@@ -277,14 +311,13 @@ export default function StudySessionPage() {
               value={rawText}
               onChange={(event) => setRawText(event.target.value)}
               placeholder="Incolla qui capitoli, appunti, dispense o una parte del libro..."
-              className="min-h-[420px] w-full resize-y rounded-2xl border border-white/10 bg-background/70 p-4 text-sm leading-6 text-foreground outline-none focus:border-emerald-300/40"
+              className="min-h-[320px] w-full resize-y rounded-2xl border border-white/10 bg-background/70 p-4 text-sm leading-6 text-foreground outline-none focus:border-emerald-300/40 lg:min-h-[420px]"
             />
 
             <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
               <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.15em] text-emerald-200/80">
                 Lingua Studio
               </label>
-
               <select
                 value={studyLanguage}
                 onChange={(e) => setStudyLanguage(e.target.value as typeof studyLanguage)}
@@ -310,370 +343,103 @@ export default function StudySessionPage() {
           </section>
 
           <section className="space-y-4">
-            {!result ? (
+            {!safeResult ? (
               <div className="flex min-h-[420px] flex-col items-center justify-center rounded-3xl border border-dashed border-white/15 bg-white/[0.03] p-8 text-center">
-                <Brain className="mb-4 h-10 w-10 text-emerald-200/70" />
+                <GraduationCap className="mb-4 h-10 w-10 text-emerald-200/70" />
                 <h2 className="text-lg font-semibold">Nessuna sessione generata</h2>
                 <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-                  Carica un file o incolla un testo. Scriptora preparerà tre livelli di riassunto, parole difficili, flashcard e quiz.
+                  Carica un file o incolla un testo. Scriptora preparerà riassunti, interrogazione, vocabolario, flashcard e quiz.
                 </p>
               </div>
             ) : (
               <>
-                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/80">Analisi</p>
-                    <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-100">
-                      Motore: {aiMode === "local" ? "Analisi locale di sicurezza" : "Scriptora AI"}
-                    </span>
-                  </div>
-                  <h2 className="mt-1 text-xl font-semibold text-foreground">{result.title}</h2>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                    <MiniStat icon={<FileText className="h-4 w-4" />} label="Parole" value={Number(result?.words || 0).toLocaleString()} />
-                    <MiniStat icon={<BookOpen className="h-4 w-4" />} label="Tema" value={result.detectedSubject || "Studio"} />
-                    <MiniStat icon={<CheckCircle2 className="h-4 w-4" />} label="Livello" value={result.difficulty.toUpperCase()} />
-                  </div>
-                </div>
+                <StudyMetricsCard result={safeResult} aiMode={aiMode} />
 
-                <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.04] p-3 backdrop-blur-2xl">
-                  <div className="flex gap-2 overflow-x-auto pb-2">
-
-                    <button
-                      onClick={() => setActiveSection("summary")}
-                      className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-                        activeSection === "summary"
-                          ? "bg-emerald-300 text-slate-950"
-                          : "border border-white/10 bg-white/[0.04] text-muted-foreground"
-                      }`}
-                    >
-                      📘 Riassunti
-                    </button>
-
-                    <button
-                      onClick={() => setActiveSection("questions")}
-                      className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-                        activeSection === "questions"
-                          ? "bg-emerald-300 text-slate-950"
-                          : "border border-white/10 bg-white/[0.04] text-muted-foreground"
-                      }`}
-                    >
-                      🎤 Interrogazione
-                    </button>
-
-                    <button
-                      onClick={() => setActiveSection("vocabulary")}
-                      className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-                        activeSection === "vocabulary"
-                          ? "bg-emerald-300 text-slate-950"
-                          : "border border-white/10 bg-white/[0.04] text-muted-foreground"
-                      }`}
-                    >
-                      📚 Parole
-                    </button>
-
-                    <button
-                      onClick={() => setActiveSection("flashcards")}
-                      className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-                        activeSection === "flashcards"
-                          ? "bg-emerald-300 text-slate-950"
-                          : "border border-white/10 bg-white/[0.04] text-muted-foreground"
-                      }`}
-                    >
-                      🃏 Flashcard
-                    </button>
-
-                    <button
-                      onClick={() => setActiveSection("quiz")}
-                      className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
-                        activeSection === "quiz"
-                          ? "bg-emerald-300 text-slate-950"
-                          : "border border-white/10 bg-white/[0.04] text-muted-foreground"
-                      }`}
-                    >
-                      📝 Quiz
-                    </button>
-
+                <div className="sticky top-2 z-10 rounded-3xl border border-white/10 bg-background/80 p-2 backdrop-blur-xl">
+                  <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {TAB_CONFIG.map((tab) => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => handleSectionChange(tab.id)}
+                        className={[
+                          "shrink-0 rounded-2xl px-4 py-2 text-sm font-semibold transition",
+                          activeSection === tab.id
+                            ? "bg-emerald-300 text-slate-950"
+                            : "border border-white/10 bg-white/[0.04] text-muted-foreground",
+                        ].join(" ")}
+                      >
+                        {tab.icon} {tab.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 {activeSection === "summary" && (
-                  <>
-                    <StudyBlock title="Riassunto leggero" text={result.lightSummary} />
-                    <StudyBlock title="Riassunto medio" text={result.mediumSummary} />
-                    <StudyBlock title="Riassunto Pro" text={result.proSummary} />
-                    <StudyBlock title="Scheda Studio Pro" text={result.studyNotesPro} />
-                  </>
+                  <StudySummaryPanel
+                    lightSummary={safeResult.lightSummary}
+                    mediumSummary={safeResult.mediumSummary}
+                    proSummary={safeResult.proSummary}
+                    studyNotesPro={safeResult.studyNotesPro}
+                  />
                 )}
 
                 {activeSection === "questions" && (
-                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
-                  <h3 className="font-semibold">Domande aperte da interrogazione</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Usa queste domande per allenare esposizione orale, esame o verifica scritta.
-                  </p>
-                  <div className="mt-3 space-y-3">
-                    {safeOpenQuestions.length === 0 && (
-                      <p className="rounded-2xl border border-white/10 bg-background/45 p-3 text-sm text-muted-foreground">
-                        Nessuna domanda aperta disponibile in questa sessione. Rigenera l’analisi per creare le domande da interrogazione.
-                      </p>
-                    )}
-                    {safeOpenQuestions.map((item, index) => {
-                      const evaluation = openEvaluations[index];
-                      const isEvaluating = evaluatingOpenAnswer === index;
-
-                      return (
-                        <div key={index} className="rounded-2xl border border-white/10 bg-background/45 p-3">
-                          <p className="text-sm font-semibold leading-6">
-                            {index + 1}. {item.question}
-                          </p>
-
-                          <details className="mt-2">
-                            <summary className="cursor-pointer text-xs font-semibold text-emerald-200/80">
-                              Vedi guida risposta
-                            </summary>
-                            <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.answerGuide}</p>
-                          </details>
-
-                          <textarea
-                            value={openAnswers[index] || ""}
-                            onChange={(event) => setOpenAnswers((prev) => ({ ...prev, [index]: event.target.value }))}
-                            placeholder="Scrivi qui la tua risposta come se fossi all'interrogazione..."
-                            className="mt-3 min-h-[120px] w-full resize-y rounded-2xl border border-white/10 bg-background/70 p-3 text-sm leading-6 text-foreground outline-none focus:border-emerald-300/40"
-                          />
-
-                          <button
-                            type="button"
-                            onClick={() => void evaluateOpenAnswer(index, item.question, item.answerGuide)}
-                            disabled={isEvaluating}
-                            className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-2xl bg-emerald-300 px-4 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {isEvaluating ? "Scriptora corregge la risposta..." : "Correggi risposta aperta"}
-                          </button>
-
-                          {evaluation && (
-                            <div className="mt-3 rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-3">
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <p className="text-sm font-bold text-emerald-100">Valutazione risposta</p>
-                                <span className="rounded-full bg-background/60 px-3 py-1 text-xs font-bold text-emerald-100">
-                                  {evaluation.score}/100 · {evaluation.level}
-                                </span>
-                              </div>
-
-                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                <div>
-                                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/80">Punti forti</p>
-                                  <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                                    {(Array.isArray(evaluation.strengths) ? evaluation.strengths : []).map((line, i) => <li key={i}>• {line}</li>)}
-                                  </ul>
-                                </div>
-                                <div>
-                                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-200/80">Da migliorare</p>
-                                  <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                                    {(Array.isArray(evaluation.missing) ? evaluation.missing : []).map((line, i) => <li key={i}>• {line}</li>)}
-                                  </ul>
-                                </div>
-                              </div>
-
-                              <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
-                                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/80">Risposta modello</p>
-                                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{evaluation.improvedAnswer}</p>
-                              </div>
-
-                              <p className="mt-3 text-sm leading-6 text-emerald-100/85">{evaluation.advice}</p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                  <StudyOralPanel
+                    questions={safeOpenQuestions}
+                    openAnswers={openAnswers}
+                    openEvaluations={openEvaluations}
+                    evaluatingIndex={evaluatingOpenAnswer}
+                    currentIndex={uxSaved.currentOralIndex}
+                    onAnswerChange={(index, value) => {
+                      setOpenAnswers((prev) => {
+                        const next = { ...prev, [index]: value };
+                        saveStudyUxState({ openAnswers: next });
+                        return next;
+                      });
+                    }}
+                    onEvaluate={evaluateOpenAnswer}
+                  />
                 )}
 
                 {activeSection === "vocabulary" && (
-                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
-                  <h3 className="font-semibold">Parole difficili spiegate</h3>
-                  <div className="mt-3 space-y-3">
-                    {safeDifficultWords.map((item) => (
-                      <div key={item.word} className="rounded-2xl border border-white/10 bg-background/45 p-3">
-                        <p className="font-semibold text-emerald-100">{item.word}</p>
-                        <p className="mt-1 text-sm text-foreground/85">{item.simple}</p>
-                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.technical}</p>
-                        <p className="mt-1 text-xs italic text-emerald-100/75">{item.example}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                  <StudyVocabularyPanel
+                    words={safeDifficultWords}
+                    difficulty={safeResult.difficulty}
+                    easierMap={uxSaved.vocabularyEasier}
+                  />
                 )}
 
                 {activeSection === "flashcards" && (
-                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
-                  <h3 className="font-semibold">Flashcard</h3>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    {safeFlashcards.map((card, index) => (
-                      <div key={index} className="rounded-2xl border border-white/10 bg-background/45 p-3">
-                        <p className="text-sm font-semibold">{card.front}</p>
-                        <p className="mt-2 text-xs leading-5 text-muted-foreground">{card.back}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                  <StudyFlashcardsPanel
+                    cards={safeFlashcards}
+                    initialIndex={uxSaved.currentFlashcardIndex}
+                    initialConfidence={uxSaved.flashcardConfidence}
+                    initialFlipped={uxSaved.flashcardFlipped}
+                  />
                 )}
 
                 {activeSection === "quiz" && (
-                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h3 className="font-semibold">Quiz finale interattivo</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Rispondi alle domande, controlla gli errori e usa la spiegazione per ripassare.
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-background/50 px-4 py-2 text-sm">
-                      <span className="text-muted-foreground">Voto: </span>
-                      <span className="font-bold text-emerald-200">
-                        {Object.keys(quizAnswers).length === safeQuiz.length
-                          ? `${Math.round((safeQuiz.filter((q, i) => quizAnswers[i] === q.answer).length / Math.max(1, safeQuiz.length)) * 100)}/100`
-                          : `${Object.keys(quizAnswers).length}/${safeQuiz.length}`}
-                      </span>
-                    </div>
-                  </div>
-
-                  {safeQuiz.length === 0 && (
-                    <p className="mt-4 rounded-2xl border border-white/10 bg-background/45 p-3 text-sm text-muted-foreground">
-                      Nessun quiz disponibile in questa sessione. Rigenera l’analisi per creare domande a risposta multipla.
-                    </p>
-                  )}
-
-                  {safeQuiz.length > 0 && (() => {
-                    const safeQuizIndex = Math.min(currentQuizIndex, safeQuiz.length - 1);
-                    const q = safeQuiz[safeQuizIndex] || {
-                      question: "Domanda non disponibile",
-                      options: [],
-                      answer: 0,
-                      explanation: "Rigenera la sessione per ottenere un quiz completo.",
-                    };
-                    const selected = quizAnswers[safeQuizIndex];
-                    const answered = selected !== undefined;
-                    const correct = answered && selected === q.answer;
-
-                    return (
-                      <div className="mt-4 rounded-3xl border border-white/10 bg-background/45 p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-semibold text-muted-foreground">
-                            Domanda {safeQuizIndex + 1}/{safeQuiz.length}
-                          </span>
-                          {answered && (
-                            <span className={correct ? "rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200" : "rounded-full bg-rose-400/10 px-3 py-1 text-xs font-semibold text-rose-200"}>
-                              {correct ? "Corretta" : "Da ripassare"}
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="mt-4 text-base font-semibold leading-7">
-                          {q.question}
-                        </p>
-
-                        <div className="mt-4 grid gap-2">
-                          {(Array.isArray(q.options) ? q.options : []).map((option, optionIndex) => {
-                            const isSelected = selected === optionIndex;
-                            const isCorrect = q.answer === optionIndex;
-                            const showCorrect = answered && isCorrect;
-                            const showWrong = answered && isSelected && !isCorrect;
-
-                            return (
-                              <button
-                                key={optionIndex}
-                                type="button"
-                                onClick={() => setQuizAnswers((prev) => ({ ...prev, [safeQuizIndex]: optionIndex }))}
-                                className={[
-                                  "rounded-2xl border px-3 py-3 text-left text-sm leading-5 transition",
-                                  showCorrect
-                                    ? "border-emerald-300/40 bg-emerald-400/10 text-emerald-100"
-                                    : showWrong
-                                      ? "border-rose-300/40 bg-rose-400/10 text-rose-100"
-                                      : isSelected
-                                        ? "border-white/25 bg-white/10 text-foreground"
-                                        : "border-white/10 bg-white/[0.03] text-muted-foreground hover:bg-white/[0.06] hover:text-foreground",
-                                ].join(" ")}
-                              >
-                                <span className="mr-2 font-semibold">{String.fromCharCode(65 + optionIndex)}.</span>
-                                {option}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        {answered && (
-                          <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
-                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/80">Spiegazione</p>
-                            <p className="mt-1 text-sm leading-6 text-muted-foreground">{q.explanation}</p>
-                          </div>
-                        )}
-
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setCurrentQuizIndex((value) => Math.max(0, value - 1))}
-                            disabled={safeQuizIndex === 0}
-                            className="h-11 rounded-2xl border border-white/10 bg-white/[0.04] text-sm font-semibold text-muted-foreground disabled:cursor-not-allowed disabled:opacity-40 hover:text-foreground"
-                          >
-                            Indietro
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setCurrentQuizIndex((value) => Math.min(safeQuiz.length - 1, value + 1))}
-                            disabled={safeQuizIndex === safeQuiz.length - 1}
-                            className="h-11 rounded-2xl bg-emerald-300 text-sm font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40 hover:bg-emerald-200"
-                          >
-                            Avanti
-                          </button>
-                        </div>
-
-                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.06]">
-                          <div
-                            className="h-full rounded-full bg-emerald-300 transition-all"
-                            style={{ width: `${((safeQuizIndex + 1) / Math.max(1, safeQuiz.length)) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {safeQuiz.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => { setQuizAnswers({}); setCurrentQuizIndex(0); }}
-                      className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-sm font-semibold text-muted-foreground hover:text-foreground"
-                    >
-                      Rifai il quiz
-                    </button>
-                  )}
-                </div>
+                  <StudyQuizPanel
+                    quiz={safeQuiz}
+                    keyConcepts={safeKeyConcepts}
+                    initialAnswers={quizAnswers}
+                    initialIndex={currentQuizIndex}
+                    initialMode={quizMode}
+                    initialOrder={quizOrder}
+                    onStateChange={(state) => {
+                      setQuizAnswers(state.quizAnswers);
+                      setCurrentQuizIndex(state.currentQuizIndex);
+                      setQuizMode(state.quizMode);
+                      setQuizOrder(state.quizOrder);
+                    }}
+                  />
                 )}
               </>
             )}
           </section>
         </div>
       </div>
-    </div>
-  );
-}
-
-function MiniStat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-background/45 p-3">
-      <div className="mb-2 text-emerald-200">{icon}</div>
-      <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
-      <p className="mt-1 truncate text-sm font-semibold text-foreground">{value}</p>
-    </div>
-  );
-}
-
-function StudyBlock({ title, text }: { title: string; text: string }) {
-  return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
-      <h3 className="font-semibold">{title}</h3>
-      <pre className="mt-3 whitespace-pre-wrap font-sans text-sm leading-6 text-foreground/85">{text}</pre>
     </div>
   );
 }

@@ -61,11 +61,17 @@ function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudyS
   const quiz = normalizeArray<any>(parsed?.quiz).slice(0, 12).map((item) => {
     const options = normalizeArray<string>(item?.options).map((option) => String(option || "").trim()).filter(Boolean).slice(0, 4);
     const answer = Number.isFinite(Number(item?.answer)) ? Number(item.answer) : 0;
+    const diff = item?.difficulty === "easy" || item?.difficulty === "medium" || item?.difficulty === "hard"
+      ? item.difficulty
+      : undefined;
     return {
       question: normalizeString(item?.question, "Domanda di verifica"),
       options: options.length === 4 ? options : ["Opzione A", "Opzione B", "Opzione C", "Opzione D"],
       answer: Math.max(0, Math.min(3, answer)),
       explanation: normalizeString(item?.explanation, "Rileggi il concetto nel riassunto Pro."),
+      difficulty: diff,
+      memoryTrick: normalizeString(item?.memoryTrick, ""),
+      commonMistake: normalizeString(item?.commonMistake, ""),
     };
   });
 
@@ -197,14 +203,14 @@ Return ONLY valid JSON. No markdown. No commentary outside JSON.
 
 QUALITY RULES:
 - Do NOT make summaries too short. This is for real studying, not a marketing blurb.
-- Light summary: simple language, but still cover all major sections and the central message. Minimum 180-260 words when material is long.
+- Light summary: bullet-oriented, fast review, max 150-180 words. Simple school language. No walls of text.
 - Medium summary: structured, ordered, complete. Include main ideas, chapter/section progression, cause-effect links, and practical meaning. Minimum 350-550 words when material is long.
 - Pro summary: exam/interrogation-ready. Deep, detailed, organized by concepts, with connections, key arguments, mechanisms, examples, and what the student must remember. Minimum 700-1000 words when material is long.
-- Study Notes Pro: create a complete study handout, not a short summary. Include conceptual map, key ideas, section progression, cause/effect links, what to memorize, what to explain orally, common traps, and exam-style preparation. Minimum 900-1400 words when material is long.
+- Study Notes Pro: structured study handout with clear section headers: "Concetti da sapere", "Cosa ricordare", "Trappole d'esame", "Collegamenti causa-effetto", "Interrogazione orale". Scannable bullets, not dense paragraphs.
 - Open questions: create deep written/oral exam questions with answer guides.
 - Difficult words: explain simple meaning, technical meaning, and give concrete example.
 - Flashcards: useful for active recall, not generic.
-- Quiz: create challenging multiple-choice questions. Include answer index 0-3 and explanation.
+- Quiz: create challenging multiple-choice questions with PLAUSIBLE distractors (no joke answers). Include answer index 0-3, explanation, difficulty (easy|medium|hard), memoryTrick, and commonMistake for each question.
 - Do not invent facts not present in the material.
 - If the material is sampled because too long, still cover all detected major areas and do not say "chapters omitted" unless truly necessary.
 - Prefer clarity over elegance. The student must be able to study from this output.`;
@@ -248,7 +254,10 @@ Return this JSON shape exactly:
       "question": "string",
       "options": ["string", "string", "string", "string"],
       "answer": 0,
-      "explanation": "string"
+      "explanation": "string",
+      "difficulty": "easy | medium | hard",
+      "memoryTrick": "string",
+      "commonMistake": "string"
     }
   ],
   "keyConcepts": ["string"]
@@ -257,12 +266,16 @@ Return this JSON shape exactly:
 QUIZ REQUIREMENTS:
 Create at least 10 multiple-choice questions when the material is long.
 Questions must test understanding, not just memory.
-Mix:
+Wrong options must be plausible and educational — never obviously wrong or joke answers.
+Mix difficulty tiers: easy (definitions), medium (comprehension, comparison), hard (interpretation, oral-exam style).
+Mix question types:
 - definition questions
 - cause/effect questions
 - concept comparison
 - application to real examples
 - "what does the author mean by..." questions
+FLASHCARD REQUIREMENTS:
+Mix types: definition, cause-effect, comparison, true/false, application, oral-exam style. Break long answers into smaller chunks.
 
 MATERIAL:
 ${material}`;

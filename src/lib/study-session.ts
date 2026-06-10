@@ -14,11 +14,14 @@ export interface DifficultWord {
   simple: string;
   technical: string;
   example: string;
+  memoryTrick?: string;
+  commonMistake?: string;
 }
 
 export interface Flashcard {
   front: string;
   back: string;
+  type?: "definition" | "cause-effect" | "comparison" | "true-false" | "application" | "oral";
 }
 
 export interface QuizQuestion {
@@ -26,6 +29,9 @@ export interface QuizQuestion {
   options: string[];
   answer: number;
   explanation: string;
+  difficulty?: "easy" | "medium" | "hard";
+  memoryTrick?: string;
+  commonMistake?: string;
 }
 
 export interface OpenStudyQuestion {
