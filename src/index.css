@@ -3839,3 +3839,50 @@ html.scriptora-performance-mode .scriptora-landing-hero-visual {
 .scriptora-live-video.is-lite .scriptora-live-progress-track span {
   animation: none !important;
 }
+
+/* Study OS — subtle premium micro-animations (GPU-safe, mobile-friendly) */
+@keyframes study-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes study-card-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.study-fade-in {
+  animation: study-fade-in 0.22s ease-out both;
+}
+
+.study-card-enter {
+  animation: study-card-enter 0.28s ease-out both;
+}
+
+.study-card-expand {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.study-flip {
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.study-option {
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.study-progress {
+  transition: width 0.35s ease-out;
+}
+
+html.scriptora-performance-mode .study-fade-in,
+html.scriptora-performance-mode .study-card-enter {
+  animation: none !important;
+}
+
+html.scriptora-performance-mode .study-flip,
+html.scriptora-performance-mode .study-option,
+html.scriptora-performance-mode .study-progress,
+html.scriptora-performance-mode .study-card-expand {
+  transition: none !important;
+}

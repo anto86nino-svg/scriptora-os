@@ -53,14 +53,14 @@ export function PaywallGuard({ feature, children, label, hideWhenLocked, compact
         {chipLabel}
       </span>
 
-      {/* Click area trasparente: apre upgrade. CTA visibile solo on hover. */}
+      {/* Tap-friendly unlock — always visible on touch, hover-reveal on desktop */}
       <button
         type="button"
         onClick={() => setShowUpgrade(true)}
         aria-label={`Sblocca con piano ${chipLabel}`}
         className="absolute inset-0 flex items-end justify-center rounded-xl bg-transparent hover:bg-background/15 transition-colors cursor-pointer"
       >
-        <span className={`mb-3 inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-foreground text-background shadow-lg opacity-0 group-hover:opacity-100 transition-opacity ${compact ? "text-[10px] px-2 py-1" : ""}`}>
+        <span className={`mb-3 inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-foreground text-background shadow-lg opacity-100 sm:opacity-90 sm:group-hover:opacity-100 ${compact ? "text-[10px] px-2 py-1" : ""}`}>
           <Lock className="h-3 w-3" />
           Sblocca con {chipLabel}
         </span>

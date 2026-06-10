@@ -18,6 +18,7 @@ const ManuscriptAnalyzerDialog = lazy(() => import("@/components/ManuscriptAnaly
 const NotepadDialog = lazy(() => import("@/components/NotepadDialog").then((m) => ({ default: m.NotepadDialog })));
 const AuthorIdentityDialog = lazy(() => import("@/components/AuthorIdentityDialog").then((m) => ({ default: m.AuthorIdentityDialog })));
 import { FocusMusicControl } from "@/components/FocusMusicControl";
+import { NextStepBanner } from "@/components/NextStepBanner";
 import { InProgressSection } from "@/components/Home/InProgressSection";
 import { LibrarySection } from "@/components/Home/LibrarySection";
 import { PaywallGuard } from "@/components/PaywallGuard";
@@ -566,7 +567,7 @@ export default function Dashboard() {
     { group: "writer", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("story_architect_title"), desc: freeBookUsed ? t("upgrade_more_books") : t("story_architect_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: openNewBookGuarded, feature: "book_engine_full" as const, tag: t("os_tag_plan") },
     { group: "writer", icon: Wand2, title: t("manuscript_lab_title"), desc: t("manuscript_lab_desc"), iconBg: "ios-icon-teal", action: () => setShowManuscriptAnalyzer(true), feature: "chapter_improvement" as const, tag: t("os_tag_score") },
     { group: "writer", icon: BookOpen, title: "Sessione Studio", desc: "Carica dispense, capitoli o manoscritti: Scriptora crea riassunti, parole difficili, flashcard e quiz.", iconBg: "ios-icon-green", action: () => navigate("/study-session"), tag: "Studio" },
-    { group: "writer", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_premium_desc"), iconBg: "ios-icon-pink", action: () => goApp(), feature: "chapter_rewrite" as const, tag: t("os_tag_rewrite") },
+    { group: "writer", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_studio_desc"), iconBg: "ios-icon-pink", action: () => goApp(), feature: "chapter_rewrite" as const, tag: t("os_tag_rewrite") },
     { group: "writer", icon: Users, title: t("character_studio_title"), desc: t("character_studio_desc"), iconBg: "ios-icon-pink", action: () => setShowCharacterStudio(true), feature: "book_engine_full" as const, tag: t("os_tag_cast") },
     { group: "writer", icon: NotebookPen, title: t("block_notes"), desc: t("notepad_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowNotepad(true), tag: t("os_tag_notes") },
 
@@ -576,7 +577,7 @@ export default function Dashboard() {
     { group: "bestseller", icon: TrendingUp, title: "Bestseller Radar", desc: t("radar_premium_desc"), iconBg: "ios-icon-green", action: () => navigate("/bestseller-radar"), feature: "trending_niches_limited" as const, tag: t("os_tag_signal") },
     { group: "bestseller", icon: BarChart3, title: "Keyword Gold", desc: t("keyword_premium_desc"), iconBg: "ios-icon-yellow", action: () => navigate("/keyword-gold"), feature: "kdp_market_base" as const, tag: t("os_tag_metadata") },
 
-    { group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: () => setShowCoverStudio(true), feature: "cover_studio_template" as const, tag: t("os_tag_cover") },
+    { group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: () => { toast.message(t("cover_studio_dashboard_hint"), { duration: 5000 }); setShowCoverStudio(true); }, feature: "cover_studio_template" as const, tag: t("os_tag_cover") },
     { group: "publishing", icon: FileDown, title: t("export_studio_title"), desc: t("export_studio_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const, tag: t("os_tag_export") },
     { group: "publishing", icon: Library, title: t("library"), desc: t("library_premium_desc"), iconBg: "ios-icon-green", action: () => setShowLibrary(true), feature: "export_epub" as const, tag: t("os_tag_archive") },
 
@@ -868,6 +869,29 @@ export default function Dashboard() {
               </button>
             </div>
           </section>
+        </div>
+
+        <div className="mb-4">
+          <NextStepBanner
+            title={t("dashboard_next_step_title")}
+            hint={
+              lastProject
+                ? (lastProjectSnapshot.progress >= 85
+                    ? t("dashboard_next_export")
+                    : t("dashboard_next_continue"))
+                : t("dashboard_next_new_book")
+            }
+            actionLabel={
+              lastProject
+                ? (lastProjectSnapshot.progress >= 85 ? t("export_studio_title") : t("continue_action"))
+                : t("new_book")
+            }
+            onAction={() => {
+              if (!lastProject) openNewBookGuarded();
+              else if (lastProjectSnapshot.progress >= 85) setShowExport(true);
+              else goApp({ projectId: lastProject.id });
+            }}
+          />
         </div>
 
         {/* Mobile primary action strip — visible before stats accordion */}

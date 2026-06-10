@@ -201,7 +201,7 @@ const Index = () => {
 
   useEffect(() => {
     const init = async () => {
-      await loadRemoteProjects((fresh) => setProjects(fresh));
+      const loaded = await loadRemoteProjects((fresh) => setProjects(fresh));
 
       const openSection = sessionStorage.getItem("nexora-open-section");
       if (openSection) sessionStorage.removeItem("nexora-open-section");
@@ -592,7 +592,7 @@ const Index = () => {
           <MobileProgressPill project={engine.project} activeChapterIndex={activeChapterIndex} />
         )}
 
-        <div className="hidden md:block">
+        <div className={isMobile ? "px-1" : ""}>
         <GuidedProjectFlow
           project={engine.project}
           activeSection={activeSection}

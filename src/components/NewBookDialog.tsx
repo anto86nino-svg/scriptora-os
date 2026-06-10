@@ -582,6 +582,13 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
           )}
         </div>
 
+        <div className="border-t border-border px-5 py-3">
+          <p className="text-[11px] leading-5 text-muted-foreground">
+            <span className="font-semibold text-foreground/90">{t("next_step")}: </span>
+            {t("newbook_next_step_hint")}
+          </p>
+        </div>
+
         <div className="p-5 border-t border-border flex justify-end gap-2">
           <button onClick={onClose}
             className="h-9 px-4 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">

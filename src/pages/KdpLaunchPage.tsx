@@ -264,7 +264,7 @@ export default function KdpLaunchPage() {
               Crea un prodotto che vende su Amazon — non solo un libro.
             </p>
           </div>
-          <Button variant="ghost" onClick={() => navigate(-1)}>← Indietro</Button>
+          <Button variant="ghost" onClick={() => navigate("/dashboard")}>← Dashboard</Button>
         </header>
 
         {/* Step indicator */}

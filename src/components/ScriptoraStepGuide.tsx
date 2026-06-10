@@ -25,7 +25,8 @@ type GuideRoute =
   | "export"
   | "settings"
   | "library"
-  | "beta";
+  | "beta"
+  | "study";
 
 type GuideCopy = {
   label: string;
@@ -112,6 +113,7 @@ const copy: Record<UILanguage, GuideCopy> = {
       settings: { title: "Settings", subtitle: "Control the studio without touching the book language.", steps: ["Choose app language.", "Choose atmosphere and writing font.", "Keep book language inside New Book.", "Close settings when the workspace feels right."] },
       library: { title: "Library", subtitle: "Manage books already created in Scriptora.", steps: ["Open active drafts or completed books.", "Export only complete projects.", "Delete only what you no longer need.", "Return to Writer Studio to continue writing."] },
       beta: { title: "Beta Access", subtitle: "Activate testing access only when you have the beta code.", steps: ["Enter the beta tester code.", "Activate access.", "Check the plan badge after activation.", "Return to the dashboard and test unlocked features."] },
+      study: { title: "Study OS", subtitle: "Your private tutor for exams — not just AI summaries.", steps: ["Paste notes or upload a file (40+ words).", "Generate the study session.", "Work through summaries, oral training, vocabulary, flashcards, and quiz.", "Return to weak areas until you feel exam-ready."], cta: "Back to dashboard", ctaPath: "/dashboard" },
     },
   },
   it: {
@@ -185,6 +187,7 @@ const copy: Record<UILanguage, GuideCopy> = {
       settings: { title: "Impostazioni", subtitle: "Controlla lo studio senza toccare la lingua del libro.", steps: ["Scegli lingua app.", "Scegli atmosfera e font di scrittura.", "Lascia la lingua libro dentro Nuovo Libro.", "Chiudi quando il workspace ti somiglia."] },
       library: { title: "Biblioteca", subtitle: "Gestisci i libri già creati in Scriptora.", steps: ["Apri bozze attive o libri completati.", "Esporta solo progetti completi.", "Elimina solo ciò che non serve più.", "Torna in Writer Studio per continuare."] },
       beta: { title: "Accesso Beta", subtitle: "Attiva l'accesso tester solo se hai il codice beta.", steps: ["Inserisci il codice beta tester.", "Attiva l'accesso.", "Controlla il badge piano dopo l'attivazione.", "Torna alla dashboard e prova le funzioni sbloccate."] },
+      study: { title: "Study OS", subtitle: "Il tuo tutor privato per verifiche e interrogazioni.", steps: ["Incolla appunti o carica un file (40+ parole).", "Genera la sessione di studio.", "Usa riassunti, interrogazione, vocabolario, flashcard e quiz.", "Ripassa le aree deboli finché ti senti pronto."], cta: "Torna alla dashboard", ctaPath: "/dashboard" },
     },
   },
   es: {
@@ -216,6 +219,7 @@ const copy: Record<UILanguage, GuideCopy> = {
       settings: { title: "Configuración", subtitle: "Controla el estudio sin tocar el idioma del libro.", steps: ["Elige idioma de app.", "Elige atmósfera y fuente.", "El idioma del libro queda en Nuevo Libro.", "Cierra cuando esté listo."] },
       library: { title: "Biblioteca", subtitle: "Gestiona libros creados.", steps: ["Abre borradores o completados.", "Exporta proyectos completos.", "Elimina solo lo innecesario.", "Vuelve a Writer Studio."] },
       beta: { title: "Acceso Beta", subtitle: "Activa acceso tester con el código beta.", steps: ["Introduce el código beta.", "Activa acceso.", "Comprueba el badge del plan.", "Vuelve al panel y prueba funciones."] },
+      study: { title: "Study OS", subtitle: "Tu tutor privado para exámenes.", steps: ["Pega notas o sube un archivo (40+ palabras).", "Genera la sesión de estudio.", "Usa resúmenes, oral, vocabulario, flashcards y quiz.", "Repasa áreas débiles hasta sentirte listo."], cta: "Volver al panel", ctaPath: "/dashboard" },
     },
   },
   fr: {
@@ -247,6 +251,7 @@ const copy: Record<UILanguage, GuideCopy> = {
       settings: { title: "Paramètres", subtitle: "Contrôlez le studio sans changer la langue du livre.", steps: ["Choisissez langue app.", "Choisissez ambiance et police.", "La langue du livre reste dans Nouveau Livre.", "Fermez quand c'est prêt."] },
       library: { title: "Bibliothèque", subtitle: "Gérez les livres créés.", steps: ["Ouvrez brouillons ou terminés.", "Exportez les projets complets.", "Supprimez seulement l'inutile.", "Revenez à Writer Studio."] },
       beta: { title: "Accès Beta", subtitle: "Activez l'accès testeur avec le code beta.", steps: ["Entrez le code beta.", "Activez l'accès.", "Vérifiez le badge du plan.", "Revenez au dashboard et testez."] },
+      study: { title: "Study OS", subtitle: "Votre tuteur privé pour les examens.", steps: ["Collez des notes ou importez un fichier (40+ mots).", "Générez la session d'étude.", "Utilisez résumés, oral, vocabulaire, flashcards et quiz.", "Revenez sur les points faibles."], cta: "Retour dashboard", ctaPath: "/dashboard" },
     },
   },
   de: {
@@ -278,6 +283,7 @@ const copy: Record<UILanguage, GuideCopy> = {
       settings: { title: "Einstellungen", subtitle: "Studio steuern, ohne Buchsprache zu ändern.", steps: ["App-Sprache wählen.", "Atmosphäre und Schrift wählen.", "Buchsprache bleibt in Neues Buch.", "Schließen, wenn alles passt."] },
       library: { title: "Bibliothek", subtitle: "Erstellte Bücher verwalten.", steps: ["Entwürfe oder fertige Bücher öffnen.", "Nur fertige Projekte exportieren.", "Nur Unnötiges löschen.", "Zurück ins Writer Studio."] },
       beta: { title: "Beta-Zugang", subtitle: "Testerzugang mit Beta-Code aktivieren.", steps: ["Beta-Code eingeben.", "Zugang aktivieren.", "Plan-Badge prüfen.", "Zurück zum Dashboard und Funktionen testen."] },
+      study: { title: "Study OS", subtitle: "Dein privater Tutor für Prüfungen.", steps: ["Notizen einfügen oder Datei hochladen (40+ Wörter).", "Lernsitzung generieren.", "Nutze Zusammenfassungen, Oral, Vokabeln, Karteikarten und Quiz.", "Schwache Bereiche wiederholen."], cta: "Zurück zum Dashboard", ctaPath: "/dashboard" },
     },
   },
 };
@@ -301,6 +307,7 @@ export function ScriptoraStepGuide() {
     if (path === "/downloads") return "downloads";
     if (path === "/pricing") return "pricing";
     if (path === "/usage") return "usage";
+    if (path === "/study-session") return "study";
     return null;
   }, [location.pathname]);
 

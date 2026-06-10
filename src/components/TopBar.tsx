@@ -99,7 +99,7 @@ export function TopBar({
       <button
         onClick={guard(onExportDocx)}
         disabled={isExporting || phase !== "complete"}
-        title={canExport ? tt("export_format_title", { format: "DOCX" }) : t("export_locked_title")}
+        title={canExport ? tt("export_format_title", { format: "DOCX" }) : (phase !== "complete" ? t("export_phase_incomplete_hint") : t("export_locked_title"))}
         className="ios-toolbar-button shrink-0 px-2.5 text-[11px] font-medium disabled:opacity-40"
       >
         {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
@@ -108,7 +108,7 @@ export function TopBar({
       <button
         onClick={guard(onExportPdf)}
         disabled={isExporting || phase !== "complete"}
-        title={canExport ? tt("export_format_title", { format: "PDF" }) : t("export_locked_title")}
+        title={canExport ? tt("export_format_title", { format: "PDF" }) : (phase !== "complete" ? t("export_phase_incomplete_hint") : t("export_locked_title"))}
         className="ios-toolbar-button shrink-0 px-2.5 text-[11px] font-medium disabled:opacity-40"
       >
         {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <FileType className="h-3 w-3" />}
@@ -117,7 +117,7 @@ export function TopBar({
       <button
         onClick={guard(onExport)}
         disabled={isExporting || phase !== "complete"}
-        title={canExport ? tt("export_format_title", { format: "EPUB" }) : t("export_locked_title")}
+        title={canExport ? tt("export_format_title", { format: "EPUB" }) : (phase !== "complete" ? t("export_phase_incomplete_hint") : t("export_locked_title"))}
         className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-white px-2.5 text-[11px] font-semibold text-slate-950 transition-colors hover:bg-slate-100 disabled:opacity-40"
       >
         {isExporting ? <Loader2 className="h-3 w-3 animate-spin" /> : !canExport ? <Lock className="h-3 w-3" /> : <Download className="h-3 w-3" />}

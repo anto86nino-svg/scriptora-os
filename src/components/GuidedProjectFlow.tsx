@@ -125,12 +125,12 @@ export function GuidedProjectFlow({
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible xl:grid-cols-5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {steps.map((step, index) => (
           <div
             key={step.label}
             className={cn(
-              "rounded-lg border px-3 py-2 transition-colors",
+              "min-w-[9.5rem] shrink-0 rounded-lg border px-3 py-2 transition-colors sm:min-w-0",
               step.status === "done" && "border-emerald-400/25 bg-emerald-400/10",
               step.status === "active" && "border-sky-300/35 bg-sky-400/12 shadow-sm shadow-sky-500/10",
               step.status === "locked" && "border-white/8 bg-white/[0.03] opacity-60",

@@ -178,7 +178,7 @@ export function EditorPanel({
               {view.type === "subchapter" && (() => {
                 const ch = chapters[view.chapterIndex];
                 const sub = ch?.subchapters?.[view.subIndex];
-                if (!ch || !sub) return <EmptyState text="Subchapter not yet generated." />;
+                if (!ch || !sub) return <EmptyState text={t("subchapter_not_generated")} />;
                 return (
                   <SubchapterView
                     chapterIndex={view.chapterIndex} subIndex={view.subIndex}
@@ -243,7 +243,7 @@ function PreviewMode({ project, view, ws }: { project: BookProject; view: any; w
         )}
         {view.type === "chapter" && (() => {
           const ch = chapters[view.chapterIndex];
-          if (!ch?.content) return <p className="text-muted-foreground/40 italic text-center py-16">Chapter not yet generated.</p>;
+          if (!ch?.content) return <p className="text-muted-foreground/40 italic text-center py-16">{t("chapter_not_generated")}</p>;
           return (
             <div className="space-y-6">
               <div className="text-center pb-6 border-b border-border/20">
@@ -262,7 +262,7 @@ function PreviewMode({ project, view, ws }: { project: BookProject; view: any; w
         })()}
         {view.type === "subchapter" && (() => {
           const sub = chapters[view.chapterIndex]?.subchapters?.[view.subIndex];
-          if (!sub) return <p className="text-muted-foreground/40 italic text-center py-16">Subchapter not yet generated.</p>;
+          if (!sub) return <p className="text-muted-foreground/40 italic text-center py-16">{t("subchapter_not_generated")}</p>;
           return (
             <div className="space-y-4">
               <div className="pb-4 border-b border-border/20">
@@ -362,7 +362,7 @@ function BlueprintView({ blueprint, isGenerating, onUpdateField, onUpdateOutline
           </div>
         </>
       ) : (
-        <EmptyState text="Blueprint will be generated when you create the book." />
+        <EmptyState text={t("blueprint_pending_hint")} />
       )}
     </div>
   );
