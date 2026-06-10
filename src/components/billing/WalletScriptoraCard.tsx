@@ -5,6 +5,8 @@ import { formatCredits } from "@/lib/credit-economy";
 import { getPurchaseCtaLabel } from "@/lib/billing/creditUx";
 import { creditSimulationBadge } from "@/lib/billing/devMode";
 import { SmartCreditRecommendation } from "./SmartCreditRecommendation";
+import { DevCreditQuickBuy } from "./DevCreditQuickBuy";
+import { canDevSimulateCreditPurchase } from "@/lib/billing";
 
 export function WalletScriptoraCard() {
   const navigate = useNavigate();
@@ -50,14 +52,24 @@ export function WalletScriptoraCard() {
         <StatMini icon={<Coins className="h-3.5 w-3.5" />} label="Allocazione" value={formatCredits(analytics.planAllocation)} />
       </div>
 
+      {canDevSimulateCreditPurchase() && (
+        <div className="mt-4">
+          <DevCreditQuickBuy variant="panel" onPurchased={() => window.dispatchEvent(new Event("scriptora-credits-change"))} />
+        </div>
+      )}
+
       <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => navigate("/usage?focus=purchase")}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:opacity-90"
-        >
-          {purchaseLabel}
-        </button>
+        {canDevSimulateCreditPurchase() ? (
+          <DevCreditQuickBuy variant="toolbar" purchaseLabel={purchaseLabel} buttonClassName="inline-flex h-9 items-center gap-1.5 px-3 text-xs font-semibold" />
+        ) : (
+          <button
+            type="button"
+            onClick={() => navigate("/usage?focus=purchase")}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:opacity-90"
+          >
+            {purchaseLabel}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => navigate("/usage?focus=history")}

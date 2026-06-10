@@ -52,10 +52,7 @@ export function InsufficientCreditsPaywall() {
         </p>
 
         <div className="mt-4">
-          <DevCreditQuickBuy
-            compact={false}
-            onPurchased={() => setOpen(false)}
-          />
+          <DevCreditQuickBuy variant="panel" onPurchased={() => setOpen(false)} />
         </div>
 
         <div className="mt-6 flex flex-col gap-2 sm:flex-row">

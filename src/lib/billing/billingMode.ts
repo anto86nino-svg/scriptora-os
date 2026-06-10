@@ -3,10 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type BillingExecutionMode = "server" | "local_dev";
 
-/** Production always uses server wallet. Dev Mode uses local wallet (fake purchase, real debits). */
+/** Production uses server wallet. Local Vite dev (and Dev Mode) use local wallet for simulated top-up. */
 export function getBillingExecutionMode(): BillingExecutionMode {
   if (import.meta.env.PROD) return "server";
-  if (isDevMode()) return "local_dev";
+  if (import.meta.env.DEV || isDevMode()) return "local_dev";
   return "server";
 }
 

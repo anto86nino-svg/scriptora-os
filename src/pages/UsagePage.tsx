@@ -113,9 +113,9 @@ export default function UsagePage() {
           <h2 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <ShoppingBag className="h-4 w-4" /> Acquista Crediti
           </h2>
-          {devMode && !import.meta.env.PROD && (
+          {!import.meta.env.PROD && (
             <div className="mb-4">
-              <DevCreditQuickBuy onPurchased={refresh} />
+              <DevCreditQuickBuy variant="panel" onPurchased={refresh} />
             </div>
           )}
           <CreditPurchasePanel onPurchased={refresh} />

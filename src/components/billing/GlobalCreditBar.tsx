@@ -40,7 +40,7 @@ export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarP
           )}
         </button>
         {canDevSimulateCreditPurchase() ? (
-          <DevCreditQuickBuy compact onPurchased={() => window.dispatchEvent(new Event("scriptora-credits-change"))} />
+          <DevCreditQuickBuy variant="pill" />
         ) : needsTopUp ? (
           <button
             type="button"
@@ -72,9 +72,13 @@ export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarP
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <button type="button" onClick={() => goUsage("purchase")} className="rounded-lg bg-primary px-2.5 py-1 text-[10px] font-semibold text-primary-foreground">
-              <Plus className="h-3 w-3" />
-            </button>
+            {canDevSimulateCreditPurchase() ? (
+              <DevCreditQuickBuy variant="pill" />
+            ) : (
+              <button type="button" onClick={() => goUsage("purchase")} className="rounded-lg bg-primary px-2.5 py-1 text-[10px] font-semibold text-primary-foreground">
+                <Plus className="h-3 w-3" />
+              </button>
+            )}
             <button type="button" onClick={() => goUsage()} className="rounded-lg border border-border px-2.5 py-1 text-[10px] text-muted-foreground">
               <History className="h-3 w-3" />
             </button>
@@ -106,9 +110,13 @@ export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarP
             {lowCreditHint}
           </span>
         )}
-        <button type="button" onClick={() => goUsage("purchase")} className="ios-toolbar-button h-7 px-2 text-[10px] font-semibold">
-          <Plus className="h-3 w-3" /> {purchaseLabel}
-        </button>
+        {canDevSimulateCreditPurchase() ? (
+          <DevCreditQuickBuy variant="toolbar" purchaseLabel={purchaseLabel} buttonClassName="ios-toolbar-button" />
+        ) : (
+          <button type="button" onClick={() => goUsage("purchase")} className="ios-toolbar-button h-7 px-2 text-[10px] font-semibold">
+            <Plus className="h-3 w-3" /> {purchaseLabel}
+          </button>
+        )}
         <button type="button" onClick={() => goUsage("history")} className="ios-toolbar-button h-7 px-2 text-[10px]">
           <History className="h-3 w-3" /> Storico
         </button>
@@ -142,13 +150,21 @@ export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarP
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => goUsage("purchase")}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-[11px] font-semibold text-primary-foreground hover:opacity-90"
-          >
-            <Plus className="h-3.5 w-3.5" /> {purchaseLabel}
-          </button>
+          {canDevSimulateCreditPurchase() ? (
+            <DevCreditQuickBuy
+              variant="toolbar"
+              purchaseLabel={purchaseLabel}
+              buttonClassName="inline-flex h-8 items-center gap-1.5 px-3 text-[11px] font-semibold"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => goUsage("purchase")}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-primary px-3 text-[11px] font-semibold text-primary-foreground hover:opacity-90"
+            >
+              <Plus className="h-3.5 w-3.5" /> {purchaseLabel}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => goUsage("history")}
