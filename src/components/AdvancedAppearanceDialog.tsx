@@ -353,6 +353,64 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
           </section>
 
           <section className="rounded-2xl border border-border/70 bg-background/40 p-4">
+            <div className="mb-3">
+              <h3 className="font-semibold">Prestazioni dispositivo</h3>
+              <p className="text-sm text-muted-foreground">
+                Controlla qualità grafica, animazioni ed effetti visivi.
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              {[
+                {
+                  id: "premium",
+                  label: "Qualità Massima",
+                  description: "Massima immersione visiva e atmosfera."
+                },
+                {
+                  id: "balanced",
+                  label: "Bilanciata",
+                  description: "Equilibrio tra qualità e fluidità."
+                },
+                {
+                  id: "performance",
+                  label: "Prestazioni Massime",
+                  description: "Massima velocità e minore uso di risorse."
+                }
+              ].map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => {
+                    saveVisualPreset(
+                      preset.id as VisualPerformancePreset
+                    );
+                    setVisualPreset(
+                      preset.id as VisualPerformancePreset
+                    );
+                  }}
+                  className={`rounded-xl border p-3 text-left transition-all ${
+                    visualPreset === preset.id
+                      ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{preset.label}</span>
+                    {visualPreset === preset.id && (
+                      <Check className="h-4 w-4 text-primary" />
+                    )}
+                  </div>
+
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {preset.description}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-border/70 bg-background/40 p-4">
             <div className="mb-3 flex items-center gap-2">
               <Type className="h-4 w-4 text-primary" />
               <h3 className="font-semibold">{t("writing_font")}</h3>
