@@ -3551,4 +3551,120 @@ textarea,
   .scriptora-loading-dots i {
     animation: none !important;
   }
+
+  .premium-book-3d,
+  .premium-book-glow {
+    animation: none !important;
+  }
+}
+
+/* Premium OS — 3D living book hero */
+.premium-book-3d {
+  perspective: 900px;
+  width: 140px;
+  height: 180px;
+}
+
+.premium-book-cover {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  animation: premium-book-breathe 4.5s ease-in-out infinite;
+}
+
+.premium-book-spine {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px 10px 10px 4px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 45%, #0c4a6e 100%);
+  box-shadow: inset -8px 0 18px rgba(0, 0, 0, 0.45), 0 18px 40px rgba(14, 165, 233, 0.22);
+  transform: rotateY(-18deg);
+}
+
+.premium-book-pages {
+  position: absolute;
+  top: 6px;
+  right: -6px;
+  width: 12px;
+  height: calc(100% - 12px);
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, #f8fafc, #e2e8f0);
+  transform: translateZ(-4px);
+}
+
+.premium-book-glow {
+  position: absolute;
+  inset: -12px;
+  border-radius: 16px;
+  background: radial-gradient(circle at 40% 30%, rgba(56, 189, 248, 0.35), transparent 62%);
+  animation: premium-book-glow 3.2s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes premium-book-breathe {
+  0%, 100% { transform: rotateY(-16deg) translateY(0); }
+  50% { transform: rotateY(-20deg) translateY(-3px); }
+}
+
+@keyframes premium-book-glow {
+  from { opacity: 0.55; }
+  to { opacity: 0.95; }
+}
+
+.safe-area-pb {
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (max-width: 767px) {
+  .scriptora-app-surface {
+    padding-bottom: calc(3.25rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Immersive genre environment V2 — atmospheric overlays (readability-safe) */
+html[data-scriptora-bg="horror-crime-lab"] body::before,
+html[data-scriptora-bg="dark-romance-velvet"] body::before,
+html[data-scriptora-bg="fantasy-throne"] body::before,
+html[data-scriptora-bg="scifi-intel-lab"] body::before,
+html[data-scriptora-bg="classic-premium-author"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.22;
+}
+
+html[data-scriptora-bg="horror-crime-lab"] body::before {
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(30, 58, 95, 0.5), transparent 55%),
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255, 255, 255, 0.015) 2px, rgba(255, 255, 255, 0.015) 3px);
+}
+
+html[data-scriptora-bg="dark-romance-velvet"] body::before {
+  background:
+    radial-gradient(circle at 75% 20%, rgba(251, 191, 36, 0.18), transparent 45%),
+    radial-gradient(circle at 15% 80%, rgba(190, 24, 93, 0.12), transparent 50%);
+}
+
+html[data-scriptora-bg="fantasy-throne"] body::before {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(234, 179, 8, 0.14), transparent 48%),
+    radial-gradient(circle at 90% 70%, rgba(124, 58, 237, 0.1), transparent 42%);
+}
+
+html[data-scriptora-bg="scifi-intel-lab"] body::before {
+  background:
+    linear-gradient(120deg, transparent 40%, rgba(34, 211, 238, 0.06) 50%, transparent 60%),
+    radial-gradient(circle at 30% 40%, rgba(59, 130, 246, 0.12), transparent 55%);
+}
+
+html[data-scriptora-bg="classic-premium-author"] body::before {
+  background: radial-gradient(circle at 50% 30%, rgba(148, 163, 184, 0.1), transparent 60%);
+}
+
+.scriptora-visual-performance .premium-book-glow,
+.scriptora-turbo-mode .premium-book-glow {
+  display: none;
 }

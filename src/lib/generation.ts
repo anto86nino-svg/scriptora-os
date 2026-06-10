@@ -10,7 +10,7 @@ import { normalizeAuthorIdentity } from "@/lib/author-identity";
 import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
-import { sanitizeManuscript } from "@/lib/editorial-wow/FinalManuscriptSanitizer";
+import { buildPremiumWritingBlock, applyPremiumOutputGuard } from "@/lib/premium-writing";
 import {
   buildBlueprintIntegrityBlueprintRequest,
   buildBlueprintIntegrityFoundationBlock,
@@ -926,6 +926,12 @@ export async function generateChapterChunked(
     chapterIndex,
     outlineSummary: outline.summary,
   });
+  const premiumWritingBlock = buildPremiumWritingBlock({
+    config,
+    previousChapters,
+    chapterIndex,
+    outlineSummary: outline.summary,
+  });
 
   let accumulatedContent = "";
   let chapterTitle = outline.title;
@@ -987,6 +993,8 @@ ${characterLock}
 
 ${humanizerBlock}
 
+${premiumWritingBlock}
+
 BESTSELLER QUALITY REQUIREMENTS:
 - Open with a line that stops the reader — a hook they'll remember
 - Include 2-3 highlight-worthy sentences
@@ -1016,6 +1024,8 @@ REMAINING: ~${remainingWords} words needed
 PHASE: ${phase} — ${phaseInstruction}
 
 ${humanizerBlock}
+
+${premiumWritingBlock}
 
 TARGET for this chunk: Write approximately ${chunkTarget} words.
 
@@ -1210,7 +1220,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
 
   // Final sanitization pass — strip AI labels, language bleed, duplicate paragraphs,
   // broken punctuation, and debug artefacts before the chapter is stored or shown.
-  accumulatedContent = sanitizeManuscript(accumulatedContent, { language: config.language ?? "Italian" });
+  accumulatedContent = applyPremiumOutputGuard(accumulatedContent, { language: config.language ?? "Italian" });
 
   const finalChapter = humanizeChapter({
     title: resolveChapterTitle(chapterTitle, chapterIndex, {
@@ -1408,6 +1418,12 @@ export async function generateSubchapter(
     chapterIndex,
     outlineSummary: subOutline?.summary || outline.summary,
   });
+  const premiumWritingBlock = buildPremiumWritingBlock({
+    config,
+    previousChapters,
+    chapterIndex,
+    outlineSummary: subOutline?.summary || outline.summary,
+  });
 
   const prompt = `Write Subchapter ${subchapterIndex + 1} of ${subchapterCount} for Chapter ${chapterIndex + 1} "${chapter.title}" in "${config.title}".
 ${subOutline ? `Subchapter plan: "${subOutline.title}" — ${subOutline.summary}` : `Write the ${subchapterIndex + 1}th subchapter.`}
@@ -1425,6 +1441,8 @@ ${buildBlueprintIntegrityRuntimeBlock(config, blueprint, { chapterIndex, subchap
 
 ${humanizerBlock}
 
+${premiumWritingBlock}
+
 BESTSELLER QUALITY — same standard as main chapters. HONOR the genre directive above.
 This must be a real written section with scene/argument progression, not a heading preview.
 
@@ -1441,24 +1459,26 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
   );
   try {
     const parsed = JSON.parse(cleanJsonFence(result));
+    const rawContent = humanizeNarrativeText(stringifyField(parsed?.content).trim() || result, {
+      config,
+      previousChapters,
+      chapterIndex,
+      outlineSummary: subOutline?.summary || outline.summary,
+    });
     return {
       title: stringifyField(parsed?.title).trim() || subOutline?.title || `Subchapter ${subchapterIndex + 1}`,
-      content: humanizeNarrativeText(stringifyField(parsed?.content).trim() || result, {
-        config,
-        previousChapters,
-        chapterIndex,
-        outlineSummary: subOutline?.summary || outline.summary,
-      }),
+      content: applyPremiumOutputGuard(rawContent, { language: config.language ?? "Italian" }),
     };
   } catch {
+    const rawContent = humanizeNarrativeText(result, {
+      config,
+      previousChapters,
+      chapterIndex,
+      outlineSummary: subOutline?.summary || outline.summary,
+    });
     return {
       title: subOutline?.title || `Subchapter ${subchapterIndex + 1}`,
-      content: humanizeNarrativeText(result, {
-        config,
-        previousChapters,
-        chapterIndex,
-        outlineSummary: subOutline?.summary || outline.summary,
-      }),
+      content: applyPremiumOutputGuard(rawContent, { language: config.language ?? "Italian" }),
     };
   }
 }
@@ -1629,6 +1649,12 @@ export async function rewriteChapter(
     chapterIndex,
     outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary,
   });
+  const premiumWritingBlock = buildPremiumWritingBlock({
+    config,
+    previousChapters,
+    chapterIndex,
+    outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary,
+  });
 
   const prompt = `${level.toUpperCase()} REWRITE — Chapter ${chapterIndex + 1}: "${chapter.title}"
 
@@ -1643,6 +1669,8 @@ ${chapter.content.substring(0, 2500)}...
 ${contextMemory}
 
 ${humanizerBlock}
+
+${premiumWritingBlock}
 
 Book: "${config.title}"
 Genre: ${config.genre}
@@ -1667,24 +1695,32 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
   );
   try {
     const parsed = JSON.parse(result.replace(/```json\n?|```/g, "").trim());
+    const rewrittenContent = applyPremiumOutputGuard(
+      stringifyField(parsed?.content).trim() || chapter.content,
+      { language: config.language ?? "Italian" },
+    );
     return humanizeChapter(
       {
         ...chapter,
         ...parsed,
-        content: stringifyField(parsed?.content).trim() || chapter.content,
+        content: rewrittenContent,
         subchapters: Array.isArray(parsed?.subchapters) ? parsed.subchapters : chapter.subchapters,
       },
       { config, previousChapters, chapterIndex, outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary },
     );
   } catch {
-    return {
-      ...chapter,
-      content: humanizeNarrativeText(result, {
+    const fallbackContent = applyPremiumOutputGuard(
+      humanizeNarrativeText(result, {
         config,
         previousChapters,
         chapterIndex,
         outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary,
       }),
+      { language: config.language ?? "Italian" },
+    );
+    return {
+      ...chapter,
+      content: fallbackContent,
     };
   }
 }

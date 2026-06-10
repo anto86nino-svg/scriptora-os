@@ -101,6 +101,12 @@ export default function KdpLaunchPage() {
         genreAlignment: "Allineamento genere",
         bookTokPotential: "Potenziale social",
         retentionRisk: "Rischio retention",
+        conversionProbability: "Probabilita conversione",
+        promiseClarity: "Chiarezza promessa",
+        nicheDominance: "Dominanza nicchia",
+        authorityTrust: "Autorita e fiducia",
+        categoryFit: "Fit categoria",
+        commercialMomentum: "Momentum commerciale",
       }
     : {
         hookStrength: "Hook strength",
@@ -109,6 +115,12 @@ export default function KdpLaunchPage() {
         genreAlignment: "Genre alignment",
         bookTokPotential: "BookTok potential",
         retentionRisk: "Retention risk",
+        conversionProbability: "Conversion probability",
+        promiseClarity: "Promise clarity",
+        nicheDominance: "Niche dominance",
+        authorityTrust: "Authority trust",
+        categoryFit: "Category fit",
+        commercialMomentum: "Commercial momentum",
       };
   const predictionCopy = italianUi
     ? {
@@ -361,6 +373,12 @@ export default function KdpLaunchPage() {
                       [marketMetricLabels.bingeability, marketPremium.bingeability],
                       [marketMetricLabels.emotionalMomentum, marketPremium.emotionalMomentum],
                       [marketMetricLabels.genreAlignment, marketPremium.genreAlignment],
+                      [marketMetricLabels.conversionProbability, marketPremium.conversionProbability],
+                      [marketMetricLabels.promiseClarity, marketPremium.promiseClarity],
+                      [marketMetricLabels.nicheDominance, marketPremium.nicheDominance],
+                      [marketMetricLabels.authorityTrust, marketPremium.authorityTrust],
+                      [marketMetricLabels.categoryFit, marketPremium.categoryFit],
+                      [marketMetricLabels.commercialMomentum, marketPremium.commercialMomentum],
                       ...(marketPremium.bookTokPotential != null ? [[marketMetricLabels.bookTokPotential, marketPremium.bookTokPotential]] : []),
                     ].map(([label, score]) => (
                       <div key={label} className="rounded-lg bg-background/80 border border-border/50 px-2.5 py-2">

@@ -336,6 +336,7 @@ export function applyScriptoraAppearance(settings: ScriptoraAppearanceSettings =
 
   document.documentElement.style.setProperty("--scriptora-app-bg", finalBackground);
   document.documentElement.style.setProperty("--scriptora-writing-font", font.css);
+  document.documentElement.dataset.scriptoraBg = settings.backgroundId;
 
   // Inject immersive environment tokens for this theme category
   applyScriptoraEnvironment(bg.category);

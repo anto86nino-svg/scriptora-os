@@ -6,6 +6,7 @@ import { resolvePaymentProvider } from "./billingProvider";
 import { isDevMode } from "./devMode";
 import { formatCredits } from "@/lib/credit-economy";
 import type { BookLength } from "@/types/book";
+import { getCreditValuePresentation } from "./creditPsychology";
 
 export interface InsufficientCreditsDetail {
   operation: CreditOperationId;
@@ -25,15 +26,22 @@ export function getOperationLabel(operation: CreditOperationId | string): string
 }
 
 export function formatCreditCostLabel(operation: CreditOperationId, bookLength?: BookLength): string {
-  const cost = getOperationCost(operation, bookLength);
-  return `Costo: ${formatCredits(cost)} crediti`;
+  const { shortLabel } = getCreditValuePresentation(operation, bookLength);
+  return shortLabel;
 }
 
-export function notifyCreditDebit(cost: number, balanceAfter: number): void {
+export function formatCreditCostDetail(operation: CreditOperationId, bookLength?: BookLength): string {
+  const { premiumLabel, valueHint } = getCreditValuePresentation(operation, bookLength);
+  const cost = getOperationCost(operation, bookLength);
+  return `${premiumLabel} · ${formatCredits(cost)} crediti · ${valueHint}`;
+}
+
+export function notifyCreditDebit(cost: number, balanceAfter: number, operationLabel?: string): void {
   if (cost <= 0) return;
-  toast.message(`-${formatCredits(cost)} crediti`, {
-    description: `Saldo attuale: ${formatCredits(balanceAfter)}`,
-    duration: 3500,
+  const headline = operationLabel ? `✨ ${operationLabel}` : "✨ Azione completata";
+  toast.message(headline, {
+    description: `−${formatCredits(cost)} crediti · Rimangono: ${formatCredits(balanceAfter)} crediti`,
+    duration: 4000,
   });
 }
 

@@ -38,6 +38,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { WalletScriptoraCard } from "@/components/billing/WalletScriptoraCard";
 import { GlobalCreditBar } from "@/components/billing/GlobalCreditBar";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
+import { PremiumOsGateway } from "@/components/premium/PremiumOsGateway";
+import { AuthorMomentumPanel } from "@/components/premium/AuthorMomentumPanel";
 
 interface DetectedIntent {
   genre: string;
@@ -760,7 +762,24 @@ export default function Dashboard() {
 
       <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 sm:pt-8 lg:px-8">
         <div className="mb-4 sm:mb-6">
+          <PremiumOsGateway
+            lastProject={lastProject}
+            progressPercent={lastProjectProgress}
+            onContinue={() => lastProject && goApp({ projectId: lastProject.id })}
+            onNewBook={openNewBookGuarded}
+          />
+        </div>
+
+        <div className="mb-4 sm:mb-6">
           <WalletScriptoraCard />
+        </div>
+
+        <div className="mb-4 sm:mb-6">
+          <AuthorMomentumPanel
+            lastProject={lastProject}
+            progressPercent={lastProjectProgress}
+            onOpenProject={() => lastProject && goApp({ projectId: lastProject.id })}
+          />
         </div>
 
         <div className="mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">

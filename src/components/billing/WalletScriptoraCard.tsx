@@ -4,6 +4,7 @@ import { useCreditWallet } from "@/hooks/useCreditWallet";
 import { formatCredits } from "@/lib/credit-economy";
 import { getPurchaseCtaLabel } from "@/lib/billing/creditUx";
 import { creditSimulationBadge } from "@/lib/billing/devMode";
+import { SmartCreditRecommendation } from "./SmartCreditRecommendation";
 
 export function WalletScriptoraCard() {
   const navigate = useNavigate();
@@ -39,6 +40,8 @@ export function WalletScriptoraCard() {
           {lowCreditHint}
         </p>
       )}
+
+      <SmartCreditRecommendation />
 
       <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <StatMini icon={<TrendingDown className="h-3.5 w-3.5" />} label="Consumo mese" value={formatCredits(analytics.monthUsed)} />

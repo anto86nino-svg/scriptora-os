@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Sparkles, X, Loader2, AlertCircle, Check, Scissors, Flame, Wand2, Trash2, RefreshCw, TrendingUp, Swords, ArrowRight, ChevronDown, Eye, Lock, Bot, EyeOff, Quote, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { BookProject } from "@/types/book";
@@ -14,6 +14,7 @@ import { getCurrentUserId } from "@/services/storageService";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
 import { requireCredits, InsufficientCreditsError } from "@/lib/billing";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
+import { computePremiumEditorialScores } from "@/lib/editorial-intelligence-premium";
 
 
 function countWordsForChapterLock(value: unknown): number {
@@ -163,6 +164,17 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   // Honour dev-mode plan override: only Premium unlocks Dominate.
   // Free/Beta/Pro see the paywall exactly like real users on those tiers.
   const canDominate = PLAN_LIMITS[plan].canDominate;
+
+  const premiumEditorial = useMemo(() => {
+    const content = workingContent || chapter?.content || "";
+    if (content.split(/\s+/).filter(Boolean).length < 80) return null;
+    return computePremiumEditorialScores({
+      content,
+      genre: project.config.genre,
+      language: project.config.language,
+      chapterIndex,
+    });
+  }, [workingContent, chapter?.content, project.config.genre, project.config.language, chapterIndex]);
 
   const runPatch = async () => {
     if (await guardFreeChapterAi()) return;
@@ -387,6 +399,18 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                 <Eye className="h-4 w-4" /> Analizza & Patch
               </button>
 
+              {premiumEditorial && (
+                <div className="mx-auto max-w-md space-y-2 rounded-xl border border-sky-500/20 bg-sky-500/5 p-3 text-left">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-sky-400">Manuscript Intelligence</span>
+                    <span className="text-sm font-black text-primary">{premiumEditorial.composite}/100</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Hook {premiumEditorial.hookStrength} · Binge {premiumEditorial.bingeability} · Dialoghi {premiumEditorial.dialogueHumanity}
+                  </p>
+                </div>
+              )}
+
               {/* Advanced toggle */}
               <div className="pt-4 border-t border-border/30 max-w-md mx-auto">
                 <button onClick={() => setShowAdvanced(s => !s)}
@@ -607,6 +631,41 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                   </div>
                 ))}
               </div>
+
+              {premiumEditorial && (
+                <div className="space-y-3 p-4 rounded-xl border border-sky-500/25 bg-gradient-to-br from-sky-500/8 to-indigo-500/5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-sky-400">Manuscript Intelligence Pro</span>
+                    <span className="text-lg font-black text-primary">{premiumEditorial.composite}/100</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {[
+                      ["Leggibilita commerciale", premiumEditorial.commercialReadability],
+                      ["Rischio abbandono", premiumEditorial.readerDropRisk],
+                      ["Hook", premiumEditorial.hookStrength],
+                      ["Bingeability", premiumEditorial.bingeability],
+                      ["Pacing scene", premiumEditorial.scenePacing],
+                      ["Realismo emotivo", premiumEditorial.emotionalRealism],
+                      ["Umanita dialoghi", premiumEditorial.dialogueHumanity],
+                      ["Coerenza personaggi", premiumEditorial.characterConsistency],
+                      ...(premiumEditorial.bookTokIntensity != null ? [["BookTok", premiumEditorial.bookTokIntensity]] : []),
+                    ].map(([label, score]) => (
+                      <div key={String(label)} className="rounded-lg border border-border/40 bg-card/60 px-2.5 py-2">
+                        <p className="text-[9px] uppercase tracking-wider text-muted-foreground">{label}</p>
+                        <p className="text-sm font-bold text-foreground">{score}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {premiumEditorial.surgicalSuggestions.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Suggerimenti chirurgici</p>
+                      {premiumEditorial.surgicalSuggestions.map((s, i) => (
+                        <p key={i} className="text-[11px] text-foreground/85">→ {s}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {result.editorialMastery && (
                 <div className="space-y-3 p-4 rounded-xl border border-rose-500/30 bg-gradient-to-br from-orange-500/5 via-rose-500/5 to-fuchsia-500/5">

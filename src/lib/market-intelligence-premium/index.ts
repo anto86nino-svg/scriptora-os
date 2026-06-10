@@ -11,6 +11,12 @@ export interface MarketPremiumScores {
   genreAlignment: number;
   genreAlignmentNote: string;
   composite: number;
+  conversionProbability: number;
+  promiseClarity: number;
+  nicheDominance: number;
+  authorityTrust: number;
+  categoryFit: number;
+  commercialMomentum: number;
 }
 
 const BOOKTOK_GENRES = /romance|dark-romance|thriller|fantasy|memoir|fiction/i;
@@ -76,6 +82,16 @@ export function computeMarketPremiumScores(input: {
       (readerRetentionRisk === "low" ? 80 : readerRetentionRisk === "medium" ? 58 : 38) * 0.2,
   );
 
+  const promiseClarity = Math.round(Math.max(38, Math.min(94, editorial.subtextScore * 0.55 + hookStrength * 0.45)));
+  const nicheDominance = Math.round(Math.max(35, Math.min(92, genreAlignment * 0.7 + (bookTokPotential ?? bingeability) * 0.3)));
+  const authorityTrust = Math.round(Math.max(40, Math.min(90, 72 - editorial.warnings.length * 5 + emotionalMomentum * 0.15)));
+  const categoryFit = Math.round(Math.max(42, Math.min(93, genreAlignment * 0.65 + bingeability * 0.35)));
+  const conversionProbability = Math.round(
+    hookStrength * 0.22 + promiseClarity * 0.2 + nicheDominance * 0.18 + authorityTrust * 0.15 + categoryFit * 0.15 +
+      (readerRetentionRisk === "low" ? 82 : readerRetentionRisk === "medium" ? 58 : 34) * 0.1,
+  );
+  const commercialMomentum = Math.round((conversionProbability + emotionalMomentum + bingeability) / 3);
+
   return {
     hookStrength,
     bookTokPotential,
@@ -85,5 +101,11 @@ export function computeMarketPremiumScores(input: {
     genreAlignment,
     genreAlignmentNote: genreExpectationNote(genre, best, editorial),
     composite,
+    conversionProbability,
+    promiseClarity,
+    nicheDominance,
+    authorityTrust,
+    categoryFit,
+    commercialMomentum,
   };
 }

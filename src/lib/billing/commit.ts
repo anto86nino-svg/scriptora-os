@@ -7,6 +7,7 @@ import { isDevUnlimitedCredits, isDevMode } from "@/lib/billing/devMode";
 import {
   buildInsufficientCreditsDetail,
   dispatchInsufficientCredits,
+  getOperationLabel,
   notifyCreditDebit,
 } from "./creditUx";
 
@@ -65,7 +66,7 @@ export function commitCredits(
     simulated: false,
   });
 
-  notifyCreditDebit(cost, next.balance);
+  notifyCreditDebit(cost, next.balance, getOperationLabel(operation));
 
   return { ok: true, committed: true, cost, balanceAfter: next.balance, simulated: false };
 }

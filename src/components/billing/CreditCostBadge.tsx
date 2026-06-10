@@ -1,6 +1,6 @@
 import type { BookLength } from "@/types/book";
 import type { CreditOperationId } from "@/lib/billing/types";
-import { formatCreditCostLabel } from "@/lib/billing/creditUx";
+import { formatCreditCostLabel, formatCreditCostDetail } from "@/lib/billing/creditUx";
 import { cn } from "@/lib/utils";
 
 interface CreditCostBadgeProps {
@@ -11,8 +11,11 @@ interface CreditCostBadgeProps {
 }
 
 export function CreditCostBadge({ operation, bookLength, className, prominent = false }: CreditCostBadgeProps) {
+  const label = formatCreditCostLabel(operation, bookLength);
+  const detail = formatCreditCostDetail(operation, bookLength);
   return (
     <span
+      title={detail}
       className={cn(
         "inline-flex items-center rounded-md border px-2 py-0.5 font-medium tabular-nums",
         prominent
@@ -21,7 +24,7 @@ export function CreditCostBadge({ operation, bookLength, className, prominent = 
         className,
       )}
     >
-      {formatCreditCostLabel(operation, bookLength)}
+      {label}
     </span>
   );
 }
