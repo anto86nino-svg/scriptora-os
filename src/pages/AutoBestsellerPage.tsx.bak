@@ -22,9 +22,8 @@ import {
   type ArchitectPhaseId,
   type AutoBestsellerArchitectResult,
   persistAutoBestsellerHandoff,
+  runAutoBestsellerArchitect,
 } from "@/lib/auto-bestseller-architect";
-
-import { runAutoBestsellerArchitect } from "@/lib/auto-bestseller-architect/orchestrator";
 import {
   mergeCharacterStudioIntoAutoBestsellerInput,
   rebuildArchitectHandoffPack,

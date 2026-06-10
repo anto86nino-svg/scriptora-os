@@ -12,6 +12,21 @@ const FORBIDDEN_TITLE_RE =
 const FORBIDDEN_TITLE_FRAGMENT_RE =
   /^to\s+be\s+generated$/i;
 
+const TITLE_ARTIFACT_RE =
+  /\s+e\s+collega\b.*$|\s+and\s+connects\b.*$|^capitolo\s+\d+\s*:\s*.+\s+e\s+collega/i;
+
+function stripChapterTitleArtifacts(value: string): string {
+  return cleanText(value)
+    .replace(TITLE_ARTIFACT_RE, "")
+    .replace(/["'«»""]+/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function normalizeTitleKey(value: string): string {
+  return stripChapterTitleArtifacts(value).toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, "").trim();
+}
+
 export type ChapterPreflightResult =
   | { ok: true; title: string; summary: string; language: string }
   | { ok: false; code: string; message: string; userMessage: string };
@@ -138,8 +153,9 @@ export function sanitizeChapterTitle(
   previousTitles: string[] = [],
 ): string {
   const outline = blueprint?.chapterOutlines?.[chapterIndex];
+  const rawInput = stripChapterTitleArtifacts(cleanText(input || outline?.title));
   const summary = sanitizeChapterSummary(outline?.summary, chapterIndex, config, blueprint);
-  const resolved = resolveChapterTitle(input || outline?.title, chapterIndex, {
+  const resolved = resolveChapterTitle(rawInput, chapterIndex, {
     config,
     summary,
     totalChapters: config.numberOfChapters,
@@ -147,7 +163,11 @@ export function sanitizeChapterTitle(
     previousTitles,
   });
 
-  if (!isForbiddenChapterTitle(resolved)) return resolved;
+  const cleaned = stripChapterTitleArtifacts(resolved);
+  const dupKey = normalizeTitleKey(cleaned);
+  const isDuplicate = previousTitles.some((t) => normalizeTitleKey(t) === dupKey && dupKey.length > 4);
+
+  if (!isForbiddenChapterTitle(cleaned) && !isDuplicate) return cleaned;
 
   const italian = isItalian(config.language);
   if (isHistoryContext(config)) {
@@ -169,6 +189,21 @@ export function sanitizeChapterTitle(
   }
 
   return italian ? `Capitolo ${chapterIndex + 1}` : `Chapter ${chapterIndex + 1}`;
+}
+
+/** Re-sanitize all blueprint chapter titles for uniqueness and artifact removal. */
+export function sanitizeBlueprintChapterTitles(
+  blueprint: BookBlueprint,
+  config: BookConfig,
+): BookBlueprint {
+  const resolvedTitles: string[] = [];
+  const chapterOutlines = (blueprint.chapterOutlines || []).map((outline, i) => {
+    const title = sanitizeChapterTitle(outline?.title, i, config, blueprint, resolvedTitles);
+    resolvedTitles.push(title);
+    const summary = sanitizeChapterSummary(outline?.summary, i, config, blueprint);
+    return { ...outline, title, summary };
+  });
+  return { ...blueprint, chapterOutlines };
 }
 
 export function buildEditorialChapterPreview(

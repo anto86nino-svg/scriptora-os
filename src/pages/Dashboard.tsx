@@ -3,7 +3,6 @@ import { useState, useEffect, lazy, Suspense, useMemo, useCallback } from "react
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, getProjectsSnapshot } from "@/services/storageService";
 import { preloadRoute } from "@/lib/route-preload";
 import { isProjectComplete } from "@/lib/project-status";
-import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
 import { SCRIPTORA_OPEN_APPEARANCE_KEY } from "@/lib/performance-mode";
 import { computeDashboardMetrics, computeLastProjectProgress } from "@/lib/dashboard-metrics";
 
@@ -19,6 +18,7 @@ const NotepadDialog = lazy(() => import("@/components/NotepadDialog").then((m) =
 const AuthorIdentityDialog = lazy(() => import("@/components/AuthorIdentityDialog").then((m) => ({ default: m.AuthorIdentityDialog })));
 import { FocusMusicControl } from "@/components/FocusMusicControl";
 import { NextStepBanner } from "@/components/NextStepBanner";
+import { BookCreationContextBar } from "@/components/BookCreationContextBar";
 import { InProgressSection } from "@/components/Home/InProgressSection";
 import { LibrarySection } from "@/components/Home/LibrarySection";
 import { PaywallGuard } from "@/components/PaywallGuard";
@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { BOOK_LENGTH_CONFIG, BookConfig, BookLength, BookProject, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
-import { AUTHOR_IDENTITY_CHANGED_EVENT, applyAuthorIdentityToConfig, getSelectedAuthorIdentity, loadAuthorIdentities, setSelectedAuthorIdentityId } from "@/lib/author-identity";
+import { AUTHOR_IDENTITY_CHANGED_EVENT, getSelectedAuthorIdentity, loadAuthorIdentities, setSelectedAuthorIdentityId } from "@/lib/author-identity";
 import { DevModeUnlockDialog } from "@/components/DevModeUnlockDialog";
 import { enableDevMode, isDevMode, exitDevMode, useDevMode } from "@/lib/dev-mode";
 import { BetaActivationDialog } from "@/components/BetaActivationDialog";
@@ -41,6 +41,19 @@ import { usePlan } from "@/lib/plan";
 import { canUseFeature, type FeatureKey } from "@/lib/subscription";
 import { FlaskConical } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  defaultBestsellerProConfig,
+  AUTHOR_VOICE_OPTIONS,
+  type AuthorVoice,
+} from "@/lib/bestseller-pro-config";
+import {
+  buildDashboardAutoBrief,
+  persistAutoBestsellerBrief,
+  persistNewBookConfig,
+  buildAutoBriefFromCharacterStudio,
+  enrichBookConfigForCreation,
+  type CharacterStudioProject,
+} from "@/lib/book-creation-coherence";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface DetectedIntent {
@@ -56,63 +69,6 @@ interface DetectedIntent {
   bestTitleIndex: number;
 }
 
-
-function isNarrativeGenreForCharacters(genre?: string): boolean {
-  const g = String(genre || "").toLowerCase();
-  return ["romance", "dark-romance", "thriller", "fantasy", "fiction", "memoir", "historical", "horror", "sci-fi"].some(x => g.includes(x));
-}
-
-
-function getPendingCharacterProject(): any | null {
-  try {
-    const raw =
-      sessionStorage.getItem(SCRIPTORA_CHARACTER_PROJECT_KEY) ||
-      localStorage.getItem(SCRIPTORA_CHARACTER_PROJECT_KEY);
-
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed?.characterBible && !parsed?.idea) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function charactersFromBibleText(text?: string): any[] {
-  const raw = String(text || "").trim();
-  if (!raw) return [];
-
-  return raw
-    .split(/\n{2,}(?=Nome:|Name:)|^\s*[-•]\s*/gm)
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .map((block) => {
-      const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
-      const get = (label: string) => {
-        const found = lines.find(l => l.toLowerCase().startsWith(label.toLowerCase()));
-        return found ? found.replace(new RegExp("^" + label + "\\s*", "i"), "").trim() : "";
-      };
-
-      const nameLine = get("Nome:") || get("Name:") || lines[0] || "";
-      const surname = get("Cognome:") || get("Surname:");
-
-      return {
-        name: nameLine || "Personaggio",
-        surname,
-        age: get("Età:") || get("Age:"),
-        role: get("Ruolo nella storia:") || get("Role:"),
-        physicalDescription: get("Aspetto fisico:") || get("Physical description:"),
-        personality: get("Carattere:") || get("Personality:") || block,
-        wound: get("Ferita interiore:") || get("Core wound:"),
-        externalDesire: get("Desiderio esterno:") || get("External desire:"),
-        internalNeed: get("Bisogno interiore:") || get("Internal need:"),
-        secret: get("Segreto:") || get("Secret:"),
-        relationships: get("Rapporto con gli altri personaggi:") || get("Relationship to other characters:"),
-        strictRules: get("Regole di continuità:") || "Never rename this character. Preserve role, wound, desire, relationships and continuity."
-      };
-    })
-    .filter(c => String(c.name || "").trim());
-}
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -163,6 +119,7 @@ export default function Dashboard() {
   const [oneClickChapters, setOneClickChapters] = useState(10);
   const [oneClickSubchaptersEnabled, setOneClickSubchaptersEnabled] = useState(false);
   const [oneClickSubchaptersPerChapter, setOneClickSubchaptersPerChapter] = useState(DEFAULT_SUBCHAPTERS_PER_CHAPTER);
+  const [briefAuthorVoice, setBriefAuthorVoice] = useState<AuthorVoice>("commercial");
   const [authorIdentities, setAuthorIdentities] = useState(() => loadAuthorIdentities());
   const [activeAuthor, setActiveAuthor] = useState(() => getSelectedAuthorIdentity());
 
@@ -348,9 +305,17 @@ export default function Dashboard() {
       setShowCharacterStudio(false);
       openNewBookGuarded();
     };
+    const openAutoBestsellerFromCharacterStudio = (event: Event) => {
+      setShowCharacterStudio(false);
+      const detail = (event as CustomEvent<CharacterStudioProject>).detail;
+      const brief = buildAutoBriefFromCharacterStudio(detail || {});
+      persistAutoBestsellerBrief(brief);
+      navigate("/auto-bestseller");
+    };
     const openAppearance = () => setShowAdvancedSettings(true);
 
     window.addEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
+    window.addEventListener("scriptora-open-auto-bestseller-from-character-studio", openAutoBestsellerFromCharacterStudio as EventListener);
     window.addEventListener("scriptora-open-appearance-settings", openAppearance);
 
     if (sessionStorage.getItem(SCRIPTORA_OPEN_APPEARANCE_KEY)) {
@@ -360,43 +325,19 @@ export default function Dashboard() {
 
     return () => {
       window.removeEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
+      window.removeEventListener("scriptora-open-auto-bestseller-from-character-studio", openAutoBestsellerFromCharacterStudio as EventListener);
       window.removeEventListener("scriptora-open-appearance-settings", openAppearance);
     };
-  }, [openNewBookGuarded]);
+  }, [navigate, openNewBookGuarded]);
 
   const handleNewBook = (config: BookConfig) => {
-    let finalConfig: BookConfig = config;
-
-    try {
-      const pending = getPendingCharacterProject();
-      const bible =
-        pending?.characterBible ||
-        sessionStorage.getItem(SCRIPTORA_CHARACTER_BIBLE_KEY) ||
-        localStorage.getItem(SCRIPTORA_CHARACTER_BIBLE_KEY) ||
-        "";
-
-      const shouldAttachCharacters = String(bible || "").trim() && isNarrativeGenreForCharacters(pending?.genre || config.genre);
-
-      if (shouldAttachCharacters) {
-        finalConfig = {
-          ...config,
-          genre: (pending?.genre || config.genre || "romance") as any,
-          category: pending?.category || "Fiction",
-          subcategory: pending?.subcategory || config.subcategory || "",
-          tone: pending?.tone || config.tone || "poetic, emotional, cinematic",
-          language: pending?.language || config.language,
-          characters: charactersFromBibleText(bible),
-        } as BookConfig;
-
-        toast.success(tt("characters_attached_to_novel", { genre: `${finalConfig.genre}${finalConfig.subcategory ? " / " + finalConfig.subcategory : ""}` }));
-      }
-    } catch {
-      finalConfig = config;
+    const finalConfig = enrichBookConfigForCreation(config, activeAuthor);
+    const hadCharacters = (finalConfig.characters?.length || 0) > 0;
+    if (hadCharacters) {
+      toast.success(tt("characters_attached_to_novel", { genre: `${finalConfig.genre}${finalConfig.subcategory ? " / " + finalConfig.subcategory : ""}` }));
     }
-
-    finalConfig = applyAuthorIdentityToConfig(finalConfig, activeAuthor) as BookConfig;
     setSelectedAuthorIdentityId(activeAuthor.id);
-    sessionStorage.setItem("nexora-new-book", JSON.stringify(finalConfig));
+    persistNewBookConfig(finalConfig);
     setShowNewBook(false);
     navigate("/app");
   };
@@ -435,6 +376,7 @@ export default function Dashboard() {
       setOneClickChapters(Math.max(3, Math.min(50, Number(detected.numberOfChapters) || oneClickChapters)));
       if (!briefTitle.trim()) setBriefTitle(detected.suggestedTitles?.[best] || detected.suggestedTitles?.[0] || "");
       if (!briefSubtitle.trim()) setBriefSubtitle(detected.suggestedSubtitles?.[best] || detected.suggestedSubtitles?.[0] || "");
+      setBriefAuthorVoice(defaultBestsellerProConfig(detected.genre).authorVoice);
       return detected;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("detection_failed"));
@@ -453,34 +395,35 @@ export default function Dashboard() {
 
     const best = Math.max(0, Math.min(2, i.bestTitleIndex || 0));
     const safeBookLength = currentPlan === "free" ? "short" : bookLength;
-    sessionStorage.setItem(
-      "nexora-auto-brief",
-      JSON.stringify({
-        idea: idea.trim(),
-        genre: i.genre,
-        subcategory: i.subcategory,
-        targetAudience: i.targetAudience,
-        tone: i.tone,
-        language: bookLang,
-        titleLanguage: titleLang || bookLang,
-        numberOfChapters: Math.max(3, Math.min(50, Number(oneClickChapters || i.numberOfChapters) || 10)),
-        subchaptersEnabled: oneClickSubchaptersEnabled,
-        subchaptersPerChapter: oneClickSubchaptersEnabled
-          ? Math.max(1, Math.min(8, Number(oneClickSubchaptersPerChapter) || DEFAULT_SUBCHAPTERS_PER_CHAPTER))
-          : undefined,
-        bookLength: safeBookLength,
-        customTotalWords: safeBookLength === "custom" ? customTotalWords : undefined,
-        totalWordTarget: safeBookLength === "custom" ? customTotalWords : BOOK_LENGTH_CONFIG[safeBookLength].totalWords,
-        level: i.level,
-        readerPromise: i.readerPromise,
-        prefilledTitle: briefTitle.trim() || i.suggestedTitles?.[best],
-        prefilledSubtitle: briefSubtitle.trim() || i.suggestedSubtitles?.[best],
-        authorIdentityId: activeAuthor.id,
-        authorIdentity: activeAuthor,
-        authorName: activeAuthor.penName,
-        autoStart: true,
-      })
-    );
+    persistAutoBestsellerBrief(buildDashboardAutoBrief({
+      idea: idea.trim(),
+      genre: i.genre,
+      subcategory: i.subcategory,
+      targetAudience: i.targetAudience,
+      tone: i.tone,
+      language: bookLang,
+      titleLanguage: titleLang || bookLang,
+      numberOfChapters: Math.max(3, Math.min(50, Number(oneClickChapters || i.numberOfChapters) || 10)),
+      subchaptersEnabled: oneClickSubchaptersEnabled,
+      subchaptersPerChapter: oneClickSubchaptersEnabled
+        ? Math.max(1, Math.min(8, Number(oneClickSubchaptersPerChapter) || DEFAULT_SUBCHAPTERS_PER_CHAPTER))
+        : undefined,
+      bookLength: safeBookLength,
+      customTotalWords: safeBookLength === "custom" ? customTotalWords : undefined,
+      totalWordTarget: safeBookLength === "custom" ? customTotalWords : BOOK_LENGTH_CONFIG[safeBookLength].totalWords,
+      level: i.level,
+      readerPromise: i.readerPromise,
+      prefilledTitle: briefTitle.trim() || i.suggestedTitles?.[best],
+      prefilledSubtitle: briefSubtitle.trim() || i.suggestedSubtitles?.[best],
+      authorIdentityId: activeAuthor.id,
+      authorIdentity: activeAuthor,
+      authorName: activeAuthor.penName,
+      autoStart: true,
+      bestsellerPro: {
+        ...defaultBestsellerProConfig(i.genre),
+        authorVoice: briefAuthorVoice,
+      },
+    }));
     navigate("/auto-bestseller");
   };
 
@@ -1340,6 +1283,33 @@ export default function Dashboard() {
               className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.07] px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
             />
 
+            <BookCreationContextBar
+              variant="dashboard"
+              className="mt-3"
+              authorIdentity={activeAuthor}
+              authorVoice={briefAuthorVoice}
+              genre={intent?.genre}
+              bestsellerPro={intent ? { ...defaultBestsellerProConfig(intent.genre), authorVoice: briefAuthorVoice } : undefined}
+            />
+
+            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.05] p-3">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                ✍️ Author Identity
+              </p>
+              <label className="mb-1 block text-[10px] text-muted-foreground">Author Voice</label>
+              <select
+                value={briefAuthorVoice}
+                onChange={(e) => setBriefAuthorVoice(e.target.value as AuthorVoice)}
+                disabled={launching || detecting}
+                className="h-9 w-full rounded-lg border border-white/10 bg-white/[0.07] px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
+              >
+                {AUTHOR_VOICE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-[10px] text-muted-foreground">How should Scriptora sound?</p>
+            </div>
+
             <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.05] p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1562,7 +1532,39 @@ export default function Dashboard() {
                 </button>
               ) : (
                 <button
-                  onClick={() => { setShowIdeaModal(false); navigate("/auto-bestseller"); }}
+                  onClick={() => {
+                    persistAutoBestsellerBrief(buildDashboardAutoBrief({
+                      idea: idea.trim(),
+                      genre: intent.genre,
+                      subcategory: intent.subcategory,
+                      targetAudience: intent.targetAudience,
+                      tone: intent.tone,
+                      language: bookLang,
+                      titleLanguage: titleLang || bookLang,
+                      numberOfChapters: Math.max(3, Math.min(50, Number(oneClickChapters || intent.numberOfChapters) || 10)),
+                      subchaptersEnabled: oneClickSubchaptersEnabled,
+                      subchaptersPerChapter: oneClickSubchaptersEnabled
+                        ? Math.max(1, Math.min(8, Number(oneClickSubchaptersPerChapter) || DEFAULT_SUBCHAPTERS_PER_CHAPTER))
+                        : undefined,
+                      bookLength: currentPlan === "free" ? "short" : bookLength,
+                      customTotalWords: bookLength === "custom" ? customTotalWords : undefined,
+                      totalWordTarget: bookLength === "custom" ? customTotalWords : BOOK_LENGTH_CONFIG[currentPlan === "free" ? "short" : bookLength].totalWords,
+                      level: intent.level,
+                      readerPromise: intent.readerPromise,
+                      prefilledTitle: briefTitle.trim() || intent.suggestedTitles?.[intent.bestTitleIndex] || intent.suggestedTitles?.[0],
+                      prefilledSubtitle: briefSubtitle.trim() || intent.suggestedSubtitles?.[intent.bestTitleIndex] || intent.suggestedSubtitles?.[0],
+                      authorIdentityId: activeAuthor.id,
+                      authorIdentity: activeAuthor,
+                      authorName: activeAuthor.penName,
+                      bestsellerPro: {
+                        ...defaultBestsellerProConfig(intent.genre),
+                        authorVoice: briefAuthorVoice,
+                      },
+                      autoStart: false,
+                    }));
+                    setShowIdeaModal(false);
+                    navigate("/auto-bestseller");
+                  }}
                   disabled={launching}
                   className="ios-toolbar-button h-11 px-4 text-sm font-medium disabled:opacity-50"
                 >
@@ -1570,6 +1572,9 @@ export default function Dashboard() {
                 </button>
               )}
             </div>
+            <p className="mt-3 text-[11px] text-muted-foreground">
+              Next: Scriptora creates your book blueprint.
+            </p>
             {!heroValid && (
               <p className="mt-2 text-[11px] text-muted-foreground">
                 {t("min_idea_chars")}

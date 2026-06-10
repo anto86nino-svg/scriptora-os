@@ -8,6 +8,8 @@ import { getStylesForGenre, type WritingStylePreset } from "@/lib/writing-styles
 import { usePlan } from "@/lib/plan";
 import { DEFAULT_AUTHOR_IDENTITIES, deleteAuthorIdentity, getSelectedAuthorIdentity, loadAuthorIdentities, normalizeAuthorIdentity, saveAuthorIdentity, setSelectedAuthorIdentityId } from "@/lib/author-identity";
 import { ensureBookTitleMetadata, generateShadowTitleSet } from "@/lib/title-shadow";
+import { BookCreationContextBar } from "@/components/BookCreationContextBar";
+import { defaultBestsellerProConfig } from "@/lib/bestseller-pro-config";
 
 interface NewBookDialogProps {
   open: boolean;
@@ -329,6 +331,12 @@ export function NewBookDialog({ open, onClose, onSubmit }: NewBookDialogProps) {
         </div>
 
         <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto scrollbar-thin">
+          <BookCreationContextBar
+            authorIdentity={authorDraft}
+            bestsellerPro={defaultBestsellerProConfig(config.genre)}
+            genre={config.genre}
+          />
+
           <Field label={t("title")}>
             <input value={config.title} onChange={e => update("title", e.target.value)}
               className="w-full h-9 bg-muted/50 border border-border rounded-lg px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"

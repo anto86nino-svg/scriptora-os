@@ -5,11 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bomb, Flame, Loader2, RefreshCw } from "lucide-react";
+import { Bomb, Flame, Loader2 } from "lucide-react";
 import { AutoBestsellerInput } from "@/services/autoBestsellerService";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
-import { BOOK_LENGTH_CONFIG, DEFAULT_SUBCHAPTERS_PER_CHAPTER, type BookLength, type Language } from "@/types/book";
-import { generateShadowTitleSet } from "@/lib/title-shadow";
+import { BOOK_LENGTH_CONFIG, DEFAULT_SUBCHAPTERS_PER_CHAPTER, type BookLength } from "@/types/book";
+import { BestsellerProPanel } from "@/components/AutoBestseller/BestsellerProPanel";
+import { mergeBestsellerPro, applyBestsellerProToInput } from "@/lib/bestseller-pro-config";
+import { mergeCharacterStudioIntoAutoBestsellerInput } from "@/lib/book-creation-coherence";
+import { BookCreationContextBar } from "@/components/BookCreationContextBar";
 
 interface Props {
   isRunning: boolean;
@@ -54,6 +57,9 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
     initialInput?.customTotalWords ?? initialInput?.totalWordTarget ?? 30000,
   );
   const [charactersText, setCharactersText] = useState(initialInput?.charactersText ?? "");
+  const [bestsellerPro, setBestsellerPro] = useState(
+    mergeBestsellerPro(initialInput?.bestsellerPro, initialInput?.genre ?? "self-help"),
+  );
 
   // Apply external prefill (e.g. from Home or Recent Runs)
   useEffect(() => {
@@ -76,7 +82,10 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
       setCustomTotalWords(initialInput.customTotalWords ?? initialInput.totalWordTarget ?? 30000);
     }
     if (initialInput.charactersText !== undefined) setCharactersText(initialInput.charactersText);
-  }, [initialInput]);
+    if (initialInput.bestsellerPro !== undefined) {
+      setBestsellerPro(mergeBestsellerPro(initialInput.bestsellerPro, initialInput.genre ?? genre));
+    }
+  }, [initialInput, genre]);
 
   const valid = idea.trim().length > 10;
 
@@ -129,50 +138,33 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
     }
   };
 
-  const generateBookTitle = () => {
-    const candidates = generateShadowTitleSet({
-      title: prefilledTitle,
-      subtitle: prefilledSubtitle,
-      idea,
+  const buildInput = (): AutoBestsellerInput => {
+    const base: AutoBestsellerInput = {
+      idea: idea.trim(),
+      authorName: authorName.trim() || selectedAuthor.penName,
+      authorIdentityId: initialInput?.authorIdentityId || selectedAuthor.id,
+      authorIdentity: initialInput?.authorIdentity || selectedAuthor,
       genre,
-      subcategory,
-      targetAudience,
+      subcategory: subcategory.trim() || undefined,
+      targetAudience: targetAudience.trim() || "",
       tone,
       language,
-      titleLanguage: titleLanguage as Language,
-      readerPromise: targetAudience,
-      seed: Date.now(),
-    }, 1);
-    const best = candidates[0];
-    if (!best) return;
-    setPrefilledTitle(best.title);
-    setPrefilledSubtitle(best.subtitle);
+      titleLanguage,
+      prefilledTitle: prefilledTitle.trim() || undefined,
+      prefilledSubtitle: prefilledSubtitle.trim() || undefined,
+      numberOfChapters,
+      subchaptersEnabled,
+      subchaptersPerChapter: subchaptersEnabled
+        ? Math.max(1, Math.min(8, Number(subchaptersPerChapter) || DEFAULT_SUBCHAPTERS_PER_CHAPTER))
+        : undefined,
+      bookLength,
+      customTotalWords: bookLength === "custom" ? customTotalWords : undefined,
+      totalWordTarget: bookLength === "custom" ? customTotalWords : BOOK_LENGTH_CONFIG[bookLength].totalWords,
+      charactersText: charactersText.trim() || undefined,
+      bestsellerPro,
+    };
+    return mergeCharacterStudioIntoAutoBestsellerInput(applyBestsellerProToInput(base, bestsellerPro));
   };
-
-
-  const buildInput = (): AutoBestsellerInput => ({
-    idea: idea.trim(),
-    authorName: authorName.trim() || selectedAuthor.penName,
-    authorIdentityId: initialInput?.authorIdentityId || selectedAuthor.id,
-    authorIdentity: initialInput?.authorIdentity || selectedAuthor,
-    genre,
-    subcategory: subcategory.trim() || undefined,
-    targetAudience: targetAudience.trim() || "",
-    tone,
-    language,
-    titleLanguage,
-    prefilledTitle: prefilledTitle.trim() || undefined,
-    prefilledSubtitle: prefilledSubtitle.trim() || undefined,
-    numberOfChapters,
-    subchaptersEnabled,
-    subchaptersPerChapter: subchaptersEnabled
-      ? Math.max(1, Math.min(8, Number(subchaptersPerChapter) || DEFAULT_SUBCHAPTERS_PER_CHAPTER))
-      : undefined,
-    bookLength,
-    customTotalWords: bookLength === "custom" ? customTotalWords : undefined,
-    totalWordTarget: bookLength === "custom" ? customTotalWords : BOOK_LENGTH_CONFIG[bookLength].totalWords,
-    charactersText: charactersText.trim() || undefined,
-  });
 
   // Auto-start once when conditions met (e.g. coming from Home with prefilled brief)
   useEffect(() => {
@@ -191,6 +183,13 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <BookCreationContextBar
+          authorIdentity={initialInput?.authorIdentity || selectedAuthor}
+          authorVoice={bestsellerPro.authorVoice}
+          bestsellerPro={bestsellerPro}
+          genre={genre}
+        />
+
         <div>
           <div className="flex items-center justify-between gap-2">
             <Label htmlFor="idea">Idea / Argomento</Label>
@@ -208,46 +207,16 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="book-title">Titolo reale del libro</Label>
-            <Input
-              id="book-title"
-              value={prefilledTitle}
-              onChange={(e) => setPrefilledTitle(e.target.value)}
-              placeholder="Es. The Cathedral of Forgotten Souls"
-              disabled={isRunning}
-            />
-          </div>
-          <div>
-            <Label htmlFor="book-subtitle">Sottotitolo reale</Label>
-            <Input
-              id="book-subtitle"
-              value={prefilledSubtitle}
-              onChange={(e) => setPrefilledSubtitle(e.target.value)}
-              placeholder="Ogni segreto ha un prezzo."
-              disabled={isRunning}
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
-          <div className="min-w-0">
-            <Label htmlFor="title-language">Lingua titolo/sottotitolo</Label>
-            <Select value={titleLanguage} onValueChange={setTitleLanguage} disabled={isRunning}>
-              <SelectTrigger id="title-language" className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {LANGUAGES.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-stretch sm:items-end">
-            <Button type="button" variant="secondary" onClick={generateBookTitle} disabled={isRunning || idea.trim().length < 8} className="h-10 w-full sm:w-auto">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Genera titolo
-            </Button>
-          </div>
-        </div>
+        <BestsellerProPanel
+          pro={bestsellerPro}
+          onChange={setBestsellerPro}
+          disabled={isRunning}
+          brief={{ idea, genre, subcategory, targetAudience, tone, language, titleLanguage }}
+          title={prefilledTitle}
+          subtitle={prefilledSubtitle}
+          onTitleChange={setPrefilledTitle}
+          onSubtitleChange={setPrefilledSubtitle}
+        />
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
@@ -282,7 +251,7 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="min-w-0">
             <div className="flex items-center justify-between gap-2">
               <Label htmlFor="tone">Tono</Label>
@@ -301,6 +270,15 @@ export function InputPanel({ isRunning, initialInput, autoStart, onGenerateOne, 
             <Label htmlFor="language">Language</Label>
             <Select value={language} onValueChange={setLanguage} disabled={isRunning}>
               <SelectTrigger id="language" className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-0">
+            <Label htmlFor="title-language">Title language</Label>
+            <Select value={titleLanguage} onValueChange={setTitleLanguage} disabled={isRunning}>
+              <SelectTrigger id="title-language" className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {LANGUAGES.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}
               </SelectContent>

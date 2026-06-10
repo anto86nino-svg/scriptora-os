@@ -28,6 +28,9 @@ import {
 } from "@/lib/chapter-generation-guard";
 import { ensureBookTitleMetadata } from "@/lib/title-shadow";
 import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
+import { enrichBookConfigForCreation } from "@/lib/book-creation-coherence";
+import type { AutoBestsellerHandoffPack } from "@/lib/auto-bestseller-architect/types";
+import { sanitizeBlueprintChapterTitles } from "@/lib/chapter-generation-guard";
 
 const FREE_MAX_PROJECT_WORDS = 10_000;
 
@@ -205,17 +208,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       }
     }
 
-    const titleSafeInput = ensureBookTitleMetadata(config, {
-      genre: config.genre,
-      category: config.category,
-      subcategory: config.subcategory,
-      targetAudience: config.tone,
-      language: config.language,
-    });
-    const authorSafeInput = applyAuthorIdentityToConfig(
-      titleSafeInput,
-      resolveAuthorIdentity(titleSafeInput.authorIdentity, titleSafeInput.authorIdentityId) || getSelectedAuthorIdentity(),
-    ) as BookConfig;
+    const authorSafeInput = enrichBookConfigForCreation(config);
     const maxProjectWords = getPlanLimits(activePlan).maxWordsPerBook;
     const safeConfig: BookConfig = activePlan === "free"
       ? {
@@ -265,6 +258,61 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       removeGenerating("blueprint");
     }
   }, [addMessage, updateAndSave]);
+
+  const startNewBookFromHandoff = useCallback(async (pack: AutoBestsellerHandoffPack) => {
+    const activePlan = await getActivePlanForEngine();
+
+    if (activePlan === "free") {
+      const existingProjects = await loadScopedProjects().catch(() => []);
+      if (existingProjects.length > 0) {
+        const msg = "Hai già usato il libro gratuito. Passa a Pro/Premium per creare altri libri.";
+        addMessage("assistant", `🔒 ${msg}`);
+        toast.error(msg);
+        return;
+      }
+    }
+
+    const authorSafeInput = enrichBookConfigForCreation(pack.config);
+    const maxProjectWords = getPlanLimits(activePlan).maxWordsPerBook;
+    const safeConfig: BookConfig = activePlan === "free"
+      ? {
+          ...authorSafeInput,
+          bookLength: "short",
+          customTotalWords: Math.min(authorSafeInput.customTotalWords ?? FREE_MAX_PROJECT_WORDS, FREE_MAX_PROJECT_WORDS),
+        }
+      : {
+          ...authorSafeInput,
+          customTotalWords: authorSafeInput.bookLength === "custom"
+            ? Math.min(authorSafeInput.customTotalWords ?? maxProjectWords, maxProjectWords)
+            : authorSafeInput.customTotalWords,
+        };
+
+    const genreLock = buildGenreLock(safeConfig);
+    const blueprint = sanitizeBlueprintChapterTitles(pack.blueprint, safeConfig);
+    const newProject: BookProject = {
+      id: createProjectId(),
+      config: safeConfig,
+      blueprint,
+      frontMatter: null,
+      chapters: [],
+      backMatter: null,
+      phase: "front-matter",
+      genreLock,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ...(pack.memorySeed ? { longBookMemory: pack.memorySeed } : {}),
+    } as BookProject;
+
+    setProject(newProject);
+    syncRef(newProject);
+    setMessages([]);
+    saveProject(newProject);
+    saveProjectAsync(newProject, syncCallbacks).catch(() => {});
+
+    addMessage("system", `Starting book: "${safeConfig.title}" — blueprint imported from Auto Bestseller`);
+    addMessage("assistant", `Blueprint ready! ${blueprint.chapterOutlines.length} chapters planned. Opening Writer…`);
+    toast.success("Blueprint imported — Writer ready");
+  }, [addMessage, syncCallbacks]);
 
   const generateFrontMatterSection = useCallback(async () => {
     const p = getLatestProject() || project;
@@ -1128,7 +1176,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
   return {
     project, messages, isAnythingGenerating, generatingSet, chunkProgress, subchapterProgress,
-    startNewBook, generateNext, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter,
+    startNewBook, startNewBookFromHandoff, generateNext, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter,
     syncBlueprintSubchapterStructure: syncBlueprintSubchapterStructureSection,
     regenerateChapter, rewriteChapterWithDepth, evaluateChapter, autoRewriteToThreshold,
     updateConfig, updateChapterContent, updateChapterTitle, updateSubchapterContent, updateSubchapterTitle,

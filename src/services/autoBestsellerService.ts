@@ -3,6 +3,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import type { AuthorIdentity, BookLength } from "@/types/book";
+import type { BestsellerProConfig } from "@/lib/bestseller-pro-config";
 
 export interface AutoBestsellerInput {
   idea: string;
@@ -26,6 +27,7 @@ export interface AutoBestsellerInput {
   prefilledTitle?: string;
   prefilledSubtitle?: string;
   charactersText?: string;
+  bestsellerPro?: BestsellerProConfig;
 }
 
 export type StageId = "titles" | "market" | "blueprint" | "gono" | "chapters" | "aggregate";

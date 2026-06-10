@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Users, Wand2, Save, X, Loader2, BookOpen, CheckCircle2, Sparkles } from "lucide-react";
+import { Users, Wand2, Save, X, Loader2, BookOpen, CheckCircle2, Sparkles, Flame } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getCurrentUserId } from "@/services/storageService";
+import { BookCreationContextBar } from "@/components/BookCreationContextBar";
+import { defaultBestsellerProConfig } from "@/lib/bestseller-pro-config";
 
 import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
 export { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY };
@@ -815,12 +817,11 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
     }
   };
 
-  const saveAndLink = () => {
+  const persistCharacterPayload = () => {
     const bible = String(characterBible || "").trim();
-
     if (!bible) {
       toast.error("Prima genera i personaggi: l’output Character Bible è vuoto.");
-      return;
+      return null;
     }
 
     const payload = {
@@ -840,7 +841,6 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
     };
 
     const payloadJson = JSON.stringify(payload);
-
     let savedSomewhere = false;
 
     try {
@@ -861,13 +861,26 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
 
     if (!savedSomewhere) {
       toast.error("Non sono riuscito a salvare il collegamento personaggi. Prova a svuotare cache/spazio browser.");
-      return;
+      return null;
     }
 
     window.dispatchEvent(new Event("scriptora-character-bible-change"));
-    window.dispatchEvent(new CustomEvent("scriptora-open-new-book-from-character-studio", { detail: payload }));
     setSaved(true);
+    return payload;
+  };
+
+  const saveAndLink = () => {
+    const payload = persistCharacterPayload();
+    if (!payload) return;
+    window.dispatchEvent(new CustomEvent("scriptora-open-new-book-from-character-studio", { detail: payload }));
     toast.success("Personaggi collegati. Apro Nuovo Libro con cast, genere, filone e tono già pronti.");
+  };
+
+  const saveAndLinkAutoBestseller = () => {
+    const payload = persistCharacterPayload();
+    if (!payload) return;
+    window.dispatchEvent(new CustomEvent("scriptora-open-auto-bestseller-from-character-studio", { detail: payload }));
+    toast.success("Personaggi collegati. Apro Auto Bestseller con cast e regia narrativa già pronti.");
   };
 
   const clear = () => {
@@ -904,6 +917,11 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
         </div>
 
         <div className="p-5 space-y-5">
+          <BookCreationContextBar
+            bestsellerPro={defaultBestsellerProConfig(genre)}
+            genre={genre}
+          />
+
           <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
             <div>
               <div className="flex items-center justify-between gap-2">
@@ -1013,7 +1031,12 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
 
               <Button variant="secondary" onClick={saveAndLink} disabled={loading}>
                 <Save className="h-4 w-4 mr-2" />
-                Salva e collega a Nuovo Libro
+                Collega a Nuovo Libro
+              </Button>
+
+              <Button variant="secondary" onClick={saveAndLinkAutoBestseller} disabled={loading}>
+                <Flame className="h-4 w-4 mr-2" />
+                Collega a Auto Bestseller
               </Button>
 
               <Button variant="ghost" onClick={clear}>
@@ -1025,7 +1048,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
               <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-300 flex items-start gap-2">
                 <CheckCircle2 className="h-4 w-4 mt-0.5" />
                 <div>
-                  <strong>Collegamento attivo.</strong> Quando apri “Nuovo Libro”, Scriptora sa già che stai creando un romanzo di genere <strong>{genre}</strong>{subcategory ? ` / ${subcategory}` : ""} e userà questi personaggi come Character Lock.
+                  <strong>Collegamento attivo.</strong> Scriptora userà cast, genere <strong>{genre}</strong>{subcategory ? ` / ${subcategory}` : ""} e tono in Nuovo Libro o Auto Bestseller.
                 </div>
               </div>
             )}

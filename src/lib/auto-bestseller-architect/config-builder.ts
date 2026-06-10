@@ -11,6 +11,12 @@ import {
 import { applyBookIntelligenceToConfig, detectBookIntelligence } from "@/lib/book-intelligence";
 import type { IdeaIntelligenceResult, MarketPositioningResult, TitleConcept } from "./types";
 import { getCharacterStrictRules, normalizeArchitectLang } from "./localized-copy";
+import {
+  applyBestsellerProToInput,
+  buildAuthorStyleFromPro,
+  charactersProToText,
+  mergeBestsellerPro,
+} from "@/lib/bestseller-pro-config";
 
 const ALLOWED_GENRES = [
   "self-help", "romance", "dark-romance", "thriller", "fantasy", "philosophy", "business", "memoir",
@@ -65,6 +71,12 @@ export function buildArchitectBookConfig(
   market: MarketPositioningResult,
   selectedTitle: TitleConcept,
 ): BookConfig {
+  const pro = mergeBestsellerPro(input.bestsellerPro, idea.genre || input.genre);
+  const enrichedInput = applyBestsellerProToInput(input, pro);
+  const authorStyle = buildAuthorStyleFromPro(pro);
+  const charactersText =
+    charactersProToText(pro.characters) || enrichedInput.charactersText || input.charactersText;
+
   const authorIdentity =
     resolveAuthorIdentity(input.authorIdentity, input.authorIdentityId) || getSelectedAuthorIdentity();
   const authorName = String(authorIdentity?.penName || input.authorName || "").trim();
@@ -87,8 +99,8 @@ export function buildArchitectBookConfig(
           author: authorName,
           writerName: authorName,
           titleLanguage: normalizeLanguage(input.titleLanguage || input.language),
-          tone: input.tone || idea.report.tone || "warm, insightful, commercially informed",
-          authorStyle: input.tone || "",
+          tone: enrichedInput.tone || idea.report.tone || "warm, insightful, commercially informed",
+          authorStyle: authorStyle || enrichedInput.tone || "",
           language,
           genre,
           category: idea.report.layers.primaryGenre || input.genre || "Fiction",
@@ -102,7 +114,7 @@ export function buildArchitectBookConfig(
             1,
             Math.min(8, Number(input.subchaptersPerChapter) || DEFAULT_SUBCHAPTERS_PER_CHAPTER),
           ),
-          characters: charactersFromText(input.charactersText, input.language),
+          characters: charactersFromText(charactersText, input.language),
         } as BookConfig,
         authorIdentity,
       ) as BookConfig,

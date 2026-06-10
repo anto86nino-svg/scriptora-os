@@ -5,6 +5,9 @@ import { inferIdeaIntelligence } from "./idea-intelligence";
 import { buildMarketPositioning } from "./market-positioning";
 import { buildTitleConcepts } from "./titles";
 import { buildArchitectBookConfig } from "./config-builder";
+import { sanitizeBlueprintChapterTitles } from "@/lib/chapter-generation-guard";
+import { applyBestsellerProToInput, resolveSubtitleFromPro, mergeBestsellerPro } from "@/lib/bestseller-pro-config";
+import { mergeCharacterStudioIntoAutoBestsellerInput } from "@/lib/book-creation-coherence";
 import type {
   ArchitectPhaseId,
   AutoBestsellerArchitectResult,
@@ -28,14 +31,24 @@ export async function runAutoBestsellerArchitect(
     await delay(phase === "blueprint-architect" ? 0 : 280);
   };
 
+  const studioInput = mergeCharacterStudioIntoAutoBestsellerInput(input);
+  const pro = mergeBestsellerPro(studioInput.bestsellerPro, studioInput.genre);
+  const enrichedInput = applyBestsellerProToInput(studioInput, pro);
+  const subtitleResolved = resolveSubtitleFromPro(enrichedInput, pro);
+  const workingInput: AutoBestsellerInput = {
+    ...enrichedInput,
+    prefilledTitle: subtitleResolved.title || enrichedInput.prefilledTitle,
+    prefilledSubtitle: subtitleResolved.subtitle || enrichedInput.prefilledSubtitle,
+  };
+
   await tick("idea-intelligence");
-  const ideaIntelligence = inferIdeaIntelligence(input);
+  const ideaIntelligence = inferIdeaIntelligence(workingInput);
 
   await tick("market-positioning");
-  const marketPositioning = buildMarketPositioning(input, ideaIntelligence);
+  const marketPositioning = buildMarketPositioning(workingInput, ideaIntelligence);
 
   await tick("title-positioning");
-  const titleConcepts = buildTitleConcepts(input, ideaIntelligence, marketPositioning);
+  const titleConcepts = buildTitleConcepts(workingInput, ideaIntelligence, marketPositioning);
   const selectedTitleIndex = 0;
   const selectedTitle = titleConcepts[selectedTitleIndex] || titleConcepts[0];
 
@@ -43,11 +56,12 @@ export async function runAutoBestsellerArchitect(
     throw new Error("Could not derive commercial title concepts from this idea.");
   }
 
-  const config = buildArchitectBookConfig(input, ideaIntelligence, marketPositioning, selectedTitle);
+  const config = buildArchitectBookConfig(workingInput, ideaIntelligence, marketPositioning, selectedTitle);
   const genreLock = buildGenreLock(config);
 
   await tick("blueprint-architect");
-  const blueprint = await generateBlueprint(config, genreLock);
+  const rawBlueprint = await generateBlueprint(config, genreLock);
+  const blueprint = sanitizeBlueprintChapterTitles(rawBlueprint, config);
 
   await tick("handoff-ready");
   const memorySeed = buildLongBookMemory({

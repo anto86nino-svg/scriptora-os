@@ -23,6 +23,7 @@ import {
   validateEpubExport,
 } from "@/lib/export-runtime";
 import { BookProject, SectionId } from "@/types/book";
+import { consumeAutoBestsellerHandoffPack } from "@/lib/auto-bestseller-architect/handoff";
 import { WritingSettings, loadSettings, saveSettings } from "@/lib/settings";
 import { t, tt, UILanguage, useUILanguage } from "@/lib/i18n";
 import { toast } from "sonner";
@@ -235,9 +236,14 @@ const Index = () => {
       const newBookJson = sessionStorage.getItem("nexora-new-book");
       if (newBookJson) {
         sessionStorage.removeItem("nexora-new-book");
+        const handoffPack = consumeAutoBestsellerHandoffPack();
         try {
           const config = JSON.parse(newBookJson);
-          engine.startNewBook(config);
+          if (handoffPack?.blueprint?.chapterOutlines?.length) {
+            void engine.startNewBookFromHandoff(handoffPack);
+          } else {
+            void engine.startNewBook(config);
+          }
           setActiveSection("blueprint");
           setTimeout(refreshProjects, 500);
           return;
