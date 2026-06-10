@@ -70,6 +70,8 @@ const Index = () => {
   const [exportLabel, setExportLabel] = useState("");
   const [activeSection, setActiveSection] = useState<SectionId | null>("blueprint");
   const [writingSettings, setWritingSettings] = useState<WritingSettings>(loadSettings());
+  const openedFromDashboard =
+    sessionStorage.getItem("scriptora-open-from-dashboard") === "1";
   const [upgradeReason, setUpgradeReason] = useState<null | "export" | "token-limit" | "dominate" | "books-limit">(null);
   const { syncStatus, markSaving, markSaved, markPending, markOffline } = useSyncStatus();
   const engine = useBookEngine({
@@ -390,6 +392,21 @@ const Index = () => {
       {sidebarOpen && (
         <div className="fixed inset-0 z-30 bg-black/[0.55] backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)} />
       )}
+
+      {openedFromDashboard && (
+        <button
+          type="button"
+          onClick={() => {
+            sessionStorage.removeItem("scriptora-open-from-dashboard");
+            window.location.href = "/dashboard";
+          }}
+          className="fixed right-3 top-3 z-[60] inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-background/80 px-4 py-2 text-sm font-medium text-white shadow-xl backdrop-blur-xl transition-colors hover:bg-white/10"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Torna Dashboard
+        </button>
+      )}
+
 
       {/* Left Sidebar */}
       <aside
