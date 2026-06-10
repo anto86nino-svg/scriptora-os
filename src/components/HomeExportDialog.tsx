@@ -12,6 +12,8 @@ import { CoverGenerator } from "@/components/CoverGenerator";
 import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { isProjectComplete } from "@/lib/project-status";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
+import { chargePremiumOperation } from "@/lib/billing/charge";
+import { InsufficientCreditsError } from "@/lib/billing";
 
 type Format = "epub" | "docx" | "pdf";
 
@@ -46,6 +48,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   const performExport = async (project: BookProject, coverOverride?: string) => {
     setIsExporting(true);
     try {
+      await chargePremiumOperation("export_premium", { projectId: project.id, source: "export_dialog", format }, undefined, [project.id, format]);
       const filename = filenameOf(project);
       let blob: Blob;
       let ext: "epub" | "docx" | "pdf";

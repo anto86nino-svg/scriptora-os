@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
-      if (isOwnerEmail(newSession?.user?.email) && !isDevMode()) {
+      if (import.meta.env.DEV && isOwnerEmail(newSession?.user?.email) && !isDevMode()) {
         enableDevMode();
       }
     });
@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(existing);
       setUser(existing?.user ?? null);
       setLoading(false);
-      if (isOwnerEmail(existing?.user?.email) && !isDevMode()) {
+      if (import.meta.env.DEV && isOwnerEmail(existing?.user?.email) && !isDevMode()) {
         enableDevMode();
       }
     });

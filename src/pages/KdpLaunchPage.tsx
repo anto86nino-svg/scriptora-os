@@ -21,6 +21,7 @@ import {
 import { useFeatureGate } from "@/components/PaywallGuard";
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
+import { chargePremiumOperation } from "@/lib/billing/charge";
 
 type Step = "idea" | "market" | "title" | "packaging" | "predict";
 
@@ -205,6 +206,7 @@ export default function KdpLaunchPage() {
     if (!idea.trim()) return toast.error("Inserisci un'idea per iniziare");
     setLoading(true);
     try {
+      await chargePremiumOperation("market_intelligence", { source: "kdp_launch_market", genre }, undefined, ["market", idea.slice(0, 40)]);
       const plan = await getPlan();
       const m = await analyzeMarket(idea, { genre, language, plan });
       setMarket(m);
@@ -217,6 +219,7 @@ export default function KdpLaunchPage() {
   const runTitles = baseGate.guard(async () => {
     setLoading(true);
     try {
+      await chargePremiumOperation("kdp_launch", { source: "kdp_launch_titles", genre }, undefined, ["titles", idea.slice(0, 40)]);
       const plan = await getPlan();
       const t = await generateTitleVariants(market?.recommendedAngle || idea, {
         genre,

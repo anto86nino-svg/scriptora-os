@@ -208,6 +208,8 @@ export function useAutoBestseller() {
   }, []);
 
   const start = useCallback(async (input: AutoBestsellerInput, batchId?: string): Promise<AutoBestsellerResult | null> => {
+    const { chargePremiumOperation } = await import("@/lib/billing/charge");
+    await chargePremiumOperation("auto_bestseller", { source: "auto_bestseller", genre: input.genre }, undefined, [input.idea?.slice(0, 32) || "run"]);
     lastInputRef.current = input;
     partialProjectIdRef.current = null;
     attachedRunIdRef.current = null;

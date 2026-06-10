@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Download, ImagePlus, Settings2, Upload, Wand2, X } from "lucide-react";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
-import { requireCredits } from "@/lib/billing";
+import { requireCreditsAsync } from "@/lib/billing";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 
 interface CoverGeneratorProps {
@@ -540,9 +540,9 @@ export function CoverGenerator({
     reader.readAsDataURL(file);
   }
 
-  function generateScriptoraBackground() {
+  async function generateScriptoraBackground() {
     try {
-      requireCredits("cover_generation", { source: "cover_studio_background" });
+      await requireCreditsAsync("cover_generation", { source: "cover_studio_background" });
     } catch {
       return;
     }

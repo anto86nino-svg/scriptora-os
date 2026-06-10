@@ -39,7 +39,8 @@ export function ProtectedRoute({
     );
   }
 
-  if (!user && !isDevMode()) {
+  const devBypassAuth = import.meta.env.DEV && isDevMode();
+  if (!user && !devBypassAuth) {
     return <Navigate to="/auth" state={{ from: location.pathname }} replace />;
   }
 
@@ -54,8 +55,6 @@ export function ProtectedRoute({
   if (requiredFeature && !canUseFeature(plan, requiredFeature)) {
     return <Navigate to="/pricing" replace />;
   }
-
-  if (isDevMode()) return <>{children}</>;
 
   return <>{children}</>;
 }

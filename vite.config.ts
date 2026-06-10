@@ -32,6 +32,21 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger && componentTagger(),
   ].filter(Boolean),
 
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("html2canvas") || id.includes("jspdf")) return "export-pdf";
+          if (id.includes("jszip") || id.includes("docx")) return "export-docs";
+          if (id.includes("@supabase")) return "supabase";
+          if (id.includes("@radix-ui")) return "radix";
+          if (id.includes("recharts") || id.includes("d3-")) return "charts";
+        },
+      },
+    },
+  },
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

@@ -12,7 +12,7 @@ import { getEditorialTier } from "@/lib/editorial-mastery";
 import { toast } from "sonner";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
-import { requireCredits, InsufficientCreditsError } from "@/lib/billing";
+import { requireCreditsAsync, InsufficientCreditsError } from "@/lib/billing";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { computePremiumEditorialScores } from "@/lib/editorial-intelligence-premium";
 
@@ -218,7 +218,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
     setFixed(new Set());
     setWorkingContent(chapter.content);
     try {
-      requireCredits("chapter_diagnostic", { projectId: project.id, chapterIndex: chapterIndex + 1, source: "analyze_chapter" });
+      await requireCreditsAsync("chapter_diagnostic", { projectId: project.id, chapterIndex: chapterIndex + 1, source: "analyze_chapter" });
       const { data, error } = await supabase.functions.invoke("analyze-chapter", {
         body: {
           chapterTitle: chapter.title,
@@ -245,7 +245,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   const fixParagraph = async (weak: WeakParagraph, fixMode: "clean" | "power" = "clean") => {
     setFixing(weak.idx);
     try {
-      requireCredits("fix_chapter", { projectId: project.id, chapterIndex: chapterIndex + 1, source: "fix_section", mode: fixMode });
+      await requireCreditsAsync("fix_chapter", { projectId: project.id, chapterIndex: chapterIndex + 1, source: "fix_section", mode: fixMode });
       const { data, error } = await supabase.functions.invoke("fix-section", {
         body: {
           paragraphText: weak.text,
@@ -407,6 +407,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                   </div>
                   <p className="text-[11px] text-muted-foreground">
                     Hook {premiumEditorial.hookStrength} · Binge {premiumEditorial.bingeability} · Dialoghi {premiumEditorial.dialogueHumanity}
+                    {premiumEditorial.confidence !== "high" && ` · stima ${premiumEditorial.confidence}`}
                   </p>
                 </div>
               )}

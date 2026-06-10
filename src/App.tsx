@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -7,19 +8,6 @@ import { DominationProvider } from "@/contexts/DominationContext";
 import { MollyProvider } from "@/molly/MollyProvider";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import Home from "./pages/Home.tsx";
-import Dashboard from "./pages/Dashboard.tsx";
-import Index from "./pages/Index.tsx";
-import AuthPage from "./pages/Auth.tsx";
-import NotFound from "./pages/NotFound.tsx";
-import AutoBestsellerPage from "./pages/AutoBestsellerPage.tsx";
-import UsagePage from "./pages/UsagePage.tsx";
-import PricingPage from "./pages/PricingPage.tsx";
-import KdpLaunchPage from "./pages/KdpLaunchPage.tsx";
-import DownloadsPage from "./pages/DownloadsPage.tsx";
-import BestsellerRadarPage from "./pages/BestsellerRadarPage.tsx";
-import KeywordGoldPage from "./pages/KeywordGoldPage.tsx";
-import InstallPage from "./pages/InstallPage.tsx";
 import { DevModeBadge } from "@/components/DevModeBadge";
 import { CreditVisibilityShell } from "@/components/billing/CreditVisibilityShell";
 import GlobalCuriosity from "./components/GlobalCuriosity";
@@ -27,10 +15,31 @@ import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { MollyErrorBoundary } from "@/components/molly/MollyErrorBoundary";
 import { ScriptoraStepGuide } from "@/components/ScriptoraStepGuide";
+import { Loader2 } from "lucide-react";
 
-
+const Home = lazy(() => import("./pages/Home.tsx"));
+const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
+const Index = lazy(() => import("./pages/Index.tsx"));
+const AuthPage = lazy(() => import("./pages/Auth.tsx"));
+const NotFound = lazy(() => import("./pages/NotFound.tsx"));
+const AutoBestsellerPage = lazy(() => import("./pages/AutoBestsellerPage.tsx"));
+const UsagePage = lazy(() => import("./pages/UsagePage.tsx"));
+const PricingPage = lazy(() => import("./pages/PricingPage.tsx"));
+const KdpLaunchPage = lazy(() => import("./pages/KdpLaunchPage.tsx"));
+const DownloadsPage = lazy(() => import("./pages/DownloadsPage.tsx"));
+const BestsellerRadarPage = lazy(() => import("./pages/BestsellerRadarPage.tsx"));
+const KeywordGoldPage = lazy(() => import("./pages/KeywordGoldPage.tsx"));
+const InstallPage = lazy(() => import("./pages/InstallPage.tsx"));
 
 const queryClient = new QueryClient();
+
+function RouteFallback() {
+  return (
+    <div className="grid min-h-screen place-items-center bg-background">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -43,6 +52,7 @@ const App = () => (
               <Toaster />
               <Sonner />
               <AppErrorBoundary>
+              <Suspense fallback={<RouteFallback />}>
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/auth" element={<AuthPage />} />
@@ -56,10 +66,9 @@ const App = () => (
                 <Route path="/bestseller-radar" element={<ProtectedRoute requiredFeature="trending_niches_limited"><BestsellerRadarPage /></ProtectedRoute>} />
                 <Route path="/keyword-gold" element={<ProtectedRoute requiredFeature="kdp_market_base"><KeywordGoldPage /></ProtectedRoute>} />
                 <Route path="/install" element={<InstallPage />} />
-
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              </Suspense>
               </AppErrorBoundary>
               <CreditVisibilityShell />
               <ScriptoraStepGuide />

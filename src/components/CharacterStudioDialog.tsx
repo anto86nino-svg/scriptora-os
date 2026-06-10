@@ -761,6 +761,8 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
     setSaved(false);
 
     try {
+      const { chargePremiumOperation } = await import("@/lib/billing/charge");
+      await chargePremiumOperation("character_studio_ai", { source: "character_studio_bible", genre }, undefined, [idea.slice(0, 32)]);
       const { data, error } = await supabase.functions.invoke("scriptora-character-bible", {
         body: {
           idea: idea.trim(),

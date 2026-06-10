@@ -13,6 +13,7 @@ export interface PremiumEditorialScores {
   dialogueHumanity: number;
   characterConsistency: number;
   composite: number;
+  confidence: "high" | "medium" | "low";
   surgicalSuggestions: string[];
 }
 
@@ -98,6 +99,10 @@ export function computePremiumEditorialScores(input: {
       characterConsistency * 0.18,
   );
 
+  const wordCount = content.split(/\s+/).filter(Boolean).length;
+  const confidence: "high" | "medium" | "low" =
+    wordCount >= 1200 ? "high" : wordCount >= 400 ? "medium" : "low";
+
   return {
     commercialReadability: Math.round((editorial.subtextScore + best.scores.overall) / 2),
     readerDropRisk,
@@ -109,6 +114,7 @@ export function computePremiumEditorialScores(input: {
     dialogueHumanity,
     characterConsistency,
     composite,
+    confidence,
     surgicalSuggestions: buildSurgicalSuggestions(editorial, best, dialogueHumanity, emotionalRealism),
   };
 }

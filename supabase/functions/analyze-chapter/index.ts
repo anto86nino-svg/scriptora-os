@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callDeepSeekTracked } from "../_shared/ai-tracking.ts";
+import { guardCreditOperation } from "../_shared/credit-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +11,18 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { chapterTitle, chapterText, genre, tone, language, projectId = null } = await req.json();
+    const body = await req.json();
+    const { chapterTitle, chapterText, genre, tone, language, projectId = null } = body;
+    const credit = await guardCreditOperation(req, "chapter_diagnostic", {
+      metadata: { projectId, source: "analyze-chapter" },
+      idempotencyKey: typeof body?.idempotencyKey === "string" ? body.idempotencyKey : null,
+    });
+    if (!credit.ok) {
+      return new Response(JSON.stringify({ error: credit.error || "insufficient_credits" }), {
+        status: credit.status || 402,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
     if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
 

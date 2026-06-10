@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { loadCreditWallet } from "@/lib/billing/wallet";
+import { fetchServerWalletState } from "@/lib/billing/serverWallet";
+import { getBillingExecutionMode } from "@/lib/billing/billingMode";
 import { loadCreditLedger } from "@/lib/billing/ledger";
 import {
   computeWalletAnalytics,
@@ -15,13 +17,17 @@ export function useCreditWallet() {
   const [ledgerVersion, setLedgerVersion] = useState(0);
 
   useEffect(() => {
-    const refresh = () => {
+    const refresh = async () => {
+      if (getBillingExecutionMode() === "server") {
+        await fetchServerWalletState().catch(() => null);
+      }
       setWallet(loadCreditWallet());
       setLedgerVersion((v) => v + 1);
     };
-    refresh();
-    window.addEventListener("scriptora-credits-change", refresh);
-    return () => window.removeEventListener("scriptora-credits-change", refresh);
+    void refresh();
+    const onRefresh = () => { void refresh(); };
+    window.addEventListener("scriptora-credits-change", onRefresh);
+    return () => window.removeEventListener("scriptora-credits-change", onRefresh);
   }, []);
 
   const analytics: WalletAnalytics = useMemo(

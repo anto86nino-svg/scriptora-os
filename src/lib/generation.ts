@@ -10,7 +10,7 @@ import { normalizeAuthorIdentity } from "@/lib/author-identity";
 import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
-import { buildPremiumWritingBlock, applyPremiumOutputGuard } from "@/lib/premium-writing";
+import { buildPremiumWritingBlock, applyPremiumOutputGuard, scoreGeneratedOutput, buildQualityRetryInstruction } from "@/lib/premium-writing";
 import {
   buildBlueprintIntegrityBlueprintRequest,
   buildBlueprintIntegrityFoundationBlock,
@@ -84,15 +84,24 @@ export interface AIUsageContext {
   projectId?: string | null;
   userId?: string | null;
   taskType?: string;
+  creditOperation?: import("@/lib/billing/types").CreditOperationId;
+  idempotencyKey?: string;
   metadata?: Record<string, unknown>;
 }
 
 function usagePayload(usage?: AIUsageContext) {
+  const metadata = { ...(usage?.metadata || {}) };
+  if (usage?.creditOperation && !metadata.creditOperation) {
+    metadata.creditOperation = usage.creditOperation;
+  }
+  if (usage?.idempotencyKey && !metadata.idempotencyKey) {
+    metadata.idempotencyKey = usage.idempotencyKey;
+  }
   return {
     taskType: usage?.taskType || "generate_book",
     projectId: usage?.projectId || null,
     userId: usage?.userId || getCurrentUserId(),
-    metadata: usage?.metadata || {},
+    metadata,
   };
 }
 
@@ -1221,6 +1230,29 @@ Write in ${config.language}.${adaptiveSuffix}`;
   // Final sanitization pass — strip AI labels, language bleed, duplicate paragraphs,
   // broken punctuation, and debug artefacts before the chapter is stored or shown.
   accumulatedContent = applyPremiumOutputGuard(accumulatedContent, { language: config.language ?? "Italian" });
+
+  const priorText = previousChapters.map((c) => c.content).join("\n");
+  const quality = scoreGeneratedOutput(accumulatedContent, priorText);
+  if (!quality.passed && quality.score < 58) {
+    const retryHint = buildQualityRetryInstruction(quality);
+    if (retryHint) {
+      try {
+        const retryText = await callAIReduced(
+          getSystemPrompt(config, genreLock) + " Quality retry: fix the listed issues without restarting the chapter.",
+          `Improve this chapter continuation only. Issues: ${quality.issues.join(", ")}\n${retryHint}\n\nTEXT:\n${accumulatedContent.slice(-3500)}`,
+          withUsage(opts?.usage, {
+            taskType: "generate_chapter_quality_retry",
+            metadata: { chapterIndex: chapterIndex + 1, qualityScore: quality.score, noExtraCharge: true },
+          }),
+        );
+        if (retryText?.trim()) {
+          accumulatedContent = applyPremiumOutputGuard(retryText, { language: config.language ?? "Italian" });
+        }
+      } catch {
+        /* keep original on retry failure */
+      }
+    }
+  }
 
   const finalChapter = humanizeChapter({
     title: resolveChapterTitle(chapterTitle, chapterIndex, {

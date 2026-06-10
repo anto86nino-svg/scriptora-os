@@ -10,6 +10,8 @@ import {
   getOperationLabel,
   notifyCreditDebit,
 } from "./creditUx";
+import { getBillingExecutionMode, hasAuthenticatedServerUser } from "./billingMode";
+import { commitServerCreditOperation } from "./serverWallet";
 
 export class InsufficientCreditsError extends Error {
   readonly operation: CreditOperationId;
@@ -25,8 +27,7 @@ export class InsufficientCreditsError extends Error {
   }
 }
 
-/** creditPolicy → wallet → ledger → commit */
-export function commitCredits(
+function commitCreditsLocal(
   operation: CreditOperationId,
   metadata?: Record<string, unknown>,
   bookLength?: BookLength,
@@ -62,13 +63,86 @@ export function commitCredits(
     operation,
     amount: -cost,
     balanceAfter: next.balance,
-    metadata: { ...metadata, devMode: isDevMode() },
+    metadata: { ...metadata, devMode: isDevMode(), local: true },
     simulated: false,
   });
 
   notifyCreditDebit(cost, next.balance, getOperationLabel(operation));
-
   return { ok: true, committed: true, cost, balanceAfter: next.balance, simulated: false };
+}
+
+/** creditPolicy → server wallet (prod) or local wallet (dev simulation) */
+export async function commitCreditsAsync(
+  operation: CreditOperationId,
+  metadata?: Record<string, unknown>,
+  bookLength?: BookLength,
+  idempotencyKey?: string,
+): Promise<CreditCommitResult> {
+  if (getBillingExecutionMode() === "local_dev") {
+    return commitCreditsLocal(operation, metadata, bookLength);
+  }
+
+  const hasAuth = await hasAuthenticatedServerUser();
+  if (!hasAuth) {
+    if (import.meta.env.PROD) {
+      const cost = getOperationCost(operation, bookLength);
+      return {
+        ok: false,
+        committed: false,
+        cost,
+        balanceAfter: loadCreditWallet().balance,
+        simulated: false,
+        error: "Autenticazione richiesta per usare i crediti.",
+      };
+    }
+    return commitCreditsLocal(operation, metadata, bookLength);
+  }
+
+  const server = await commitServerCreditOperation(operation, metadata, bookLength, idempotencyKey);
+  if (!server.ok) {
+    return {
+      ok: false,
+      committed: false,
+      cost: server.cost,
+      balanceAfter: server.balanceAfter,
+      simulated: false,
+      error: server.error,
+    };
+  }
+
+  if (!server.idempotent) {
+    notifyCreditDebit(server.cost, server.balanceAfter, getOperationLabel(operation));
+  }
+
+  return {
+    ok: true,
+    committed: true,
+    cost: server.cost,
+    balanceAfter: server.balanceAfter,
+    simulated: server.simulated,
+  };
+}
+
+/** @deprecated Prefer commitCreditsAsync */
+export function commitCredits(
+  operation: CreditOperationId,
+  metadata?: Record<string, unknown>,
+  bookLength?: BookLength,
+): CreditCommitResult {
+  return commitCreditsLocal(operation, metadata, bookLength);
+}
+
+export async function requireCreditsAsync(
+  operation: CreditOperationId,
+  metadata?: Record<string, unknown>,
+  bookLength?: BookLength,
+  idempotencyKey?: string,
+): Promise<void> {
+  const result = await commitCreditsAsync(operation, metadata, bookLength, idempotencyKey);
+  if (!result.ok) {
+    dispatchInsufficientCredits(buildInsufficientCreditsDetail(operation, result.cost, result.balanceAfter));
+    throw new InsufficientCreditsError(operation, result.cost, result.balanceAfter);
+  }
 }
 
 export function requireCredits(
@@ -76,7 +150,7 @@ export function requireCredits(
   metadata?: Record<string, unknown>,
   bookLength?: BookLength,
 ): void {
-  const result = commitCredits(operation, metadata, bookLength);
+  const result = commitCreditsLocal(operation, metadata, bookLength);
   if (!result.ok) {
     dispatchInsufficientCredits(buildInsufficientCreditsDetail(operation, result.cost, result.balanceAfter));
     throw new InsufficientCreditsError(operation, result.cost, result.balanceAfter);

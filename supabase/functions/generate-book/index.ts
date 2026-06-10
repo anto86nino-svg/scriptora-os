@@ -1,5 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { logAIUsage, estimateTokens } from "../_shared/ai-tracking.ts";
+import { guardCreditOperation } from "../_shared/credit-guard.ts";
+import { getOperationCost } from "../_shared/credit-policy.ts";
+
+function resolveCreditOperation(taskType: string, metadata: Record<string, unknown>): string | null {
+  const explicit = metadata?.creditOperation;
+  if (typeof explicit === "string" && explicit.trim()) return explicit;
+  if (taskType.startsWith("generate_chapter")) return "generate_chapter_medium";
+  if (taskType === "rewrite_chapter") return "rewrite_chapter";
+  if (taskType === "generate_subchapter") return "generate_chapter_medium";
+  return null;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,6 +53,32 @@ serve(async (req) => {
     } = body;
     if (typeof systemPrompt !== "string" || typeof userPrompt !== "string" || !systemPrompt.trim() || !userPrompt.trim()) {
       return jsonResponse({ error: "Missing systemPrompt or userPrompt." }, 400);
+    }
+
+    const meta = (metadata && typeof metadata === "object" && !Array.isArray(metadata))
+      ? metadata as Record<string, unknown>
+      : {};
+    const creditOperation = resolveCreditOperation(String(taskType), meta);
+    const idempotencyKey = typeof meta.idempotencyKey === "string" ? meta.idempotencyKey : null;
+
+    if (creditOperation && getOperationCost(creditOperation) > 0) {
+      const credit = await guardCreditOperation(req, creditOperation, {
+        idempotencyKey,
+        metadata: {
+          taskType: String(taskType),
+          projectId,
+          userId,
+          ...meta,
+        },
+      });
+      if (!credit.ok) {
+        return jsonResponse({
+          error: credit.error === "insufficient_credits"
+            ? "Crediti insufficienti per questa operazione."
+            : (credit.error || "Credit check failed"),
+          balanceAfter: credit.balanceAfter ?? null,
+        }, credit.status || 402);
+      }
     }
 
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");

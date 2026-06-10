@@ -73,6 +73,8 @@ export function DominationProvider({ children }: { children: ReactNode }) {
     );
 
     try {
+      const { chargePremiumOperation } = await import("@/lib/billing/charge");
+      await chargePremiumOperation("rewrite_chapter", { projectId: project.id, chapterIndex: chapterIndex + 1, source: "dominate_chapter" }, undefined, [project.id, chapterIndex + 1, "dominate"]);
       const threshold = 8.5;
       // SINGLE-PASS by default. Multi-pass only when user explicitly requests
       // it via Dominate Mode amplifier (masteryMode). Saves ~50% latency & cost.
@@ -201,6 +203,8 @@ export function DominationProvider({ children }: { children: ReactNode }) {
     toast.success(`✂️ Patching "${chapter.title}" — surgical edit in background`);
 
     try {
+      const { chargePremiumOperation } = await import("@/lib/billing/charge");
+      await chargePremiumOperation("fix_chapter", { projectId: project.id, chapterIndex: chapterIndex + 1, source: "patch_chapter" }, undefined, [project.id, chapterIndex + 1, "patch"]);
       const { data, error } = await supabase.functions.invoke("patch-chapter", {
         body: {
           chapterTitle: chapter.title,

@@ -14,6 +14,12 @@ import { getPlanLimits } from "@/lib/subscription";
 import { normalizeProjectChapterTitles, resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { ensureBookTitleMetadata } from "@/lib/title-shadow";
 import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
+import {
+  buildCreditIdempotencyKey,
+  chargeChapterGeneration,
+  chargeRewriteChapter,
+  resolveChapterGenerationOperation,
+} from "@/lib/billing";
 
 const FREE_MAX_PROJECT_WORDS = 10_000;
 
@@ -401,6 +407,12 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       const prevChapters = latestP.chapters.filter((_, i) => i < index && latestP.chapters[i]?.content?.length > 0);
       const chapterOverride = latestP.chapters[index]?.lengthOverride;
       const activePlanForChapter = await getActivePlanForEngine();
+      const creditOperation = resolveChapterGenerationOperation(latestP.config);
+      const idempotencyKey = await chargeChapterGeneration(
+        latestP.config,
+        { projectId: latestP.id, chapterIndex: index + 1, source: "generate_chapter" },
+        index,
+      );
 
       const chapter = await generateChapterChunked(
         latestP.config, latestP.blueprint!, index, prevChapters, chapterOverride,
@@ -433,7 +445,15 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
           });
         },
         latestP.genreLock,
-        { adaptive: { plan: activePlanForChapter }, usage: { projectId: latestP.id } },
+        {
+          adaptive: { plan: activePlanForChapter },
+          usage: {
+            projectId: latestP.id,
+            creditOperation,
+            idempotencyKey,
+            taskType: "generate_chapter_chunk",
+          },
+        },
       );
 
       const activePlanAfterGeneration = await getActivePlanForEngine();
@@ -513,7 +533,19 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     try {
       addMessage("assistant", `Writing Subchapter ${subIndex + 1} of Chapter ${chapterIndex + 1}... ✍️`);
       const prevChapters = p.chapters.filter((_, i) => i < chapterIndex);
-      const sub = await generateSubchapter(p.config, p.blueprint, chapterIndex, subIndex, chapter, prevChapters, p.genreLock, { projectId: p.id });
+      const creditOperation = resolveChapterGenerationOperation(p.config);
+      const idempotencyKey = await chargeChapterGeneration(
+        p.config,
+        { projectId: p.id, chapterIndex: chapterIndex + 1, subchapterIndex: subIndex + 1, source: "generate_subchapter" },
+        chapterIndex,
+        buildCreditIdempotencyKey("subchapter", p.id, chapterIndex + 1, subIndex + 1),
+      );
+      const sub = await generateSubchapter(p.config, p.blueprint, chapterIndex, subIndex, chapter, prevChapters, p.genreLock, {
+        projectId: p.id,
+        creditOperation,
+        idempotencyKey,
+        taskType: "generate_subchapter",
+      });
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
         const ch = { ...chapters[chapterIndex] };
@@ -551,7 +583,19 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       addMessage("assistant", `Regenerating Chapter ${index + 1}... 🔄`);
       const latestP = getLatestProject() || p;
       const prevChapters = latestP.chapters.slice(0, index);
-      const chapter = await generateChapter(latestP.config, latestP.blueprint!, index, prevChapters, latestP.chapters[index]?.lengthOverride, latestP.genreLock, { projectId: latestP.id });
+      const creditOperation = resolveChapterGenerationOperation(latestP.config);
+      const idempotencyKey = await chargeChapterGeneration(
+        latestP.config,
+        { projectId: latestP.id, chapterIndex: index + 1, source: "regenerate_chapter" },
+        index,
+        buildCreditIdempotencyKey("regenerate", latestP.id, index + 1),
+      );
+      const chapter = await generateChapter(latestP.config, latestP.blueprint!, index, prevChapters, latestP.chapters[index]?.lengthOverride, latestP.genreLock, {
+        projectId: latestP.id,
+        creditOperation,
+        idempotencyKey,
+        taskType: "generate_chapter_chunk",
+      });
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
         chapters[index] = {
@@ -634,9 +678,19 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
       addMessage("assistant", `${levelLabels[level]} on Chapter ${index + 1}... ✨`);
       const latestP = getLatestProject() || p;
+      const idempotencyKey = await chargeRewriteChapter(
+        { projectId: latestP.id, chapterIndex: index + 1, source: "rewrite_chapter", level },
+        index,
+        buildCreditIdempotencyKey("rewrite", latestP.id, index + 1, level),
+      );
       const chapter = await rewriteChapter(
         latestP.config, latestP.blueprint!, latestP.chapters[index], index,
-        latestP.chapters.slice(0, index), instruction, aiRating, level, { projectId: latestP.id }
+        latestP.chapters.slice(0, index), instruction, aiRating, level, {
+          projectId: latestP.id,
+          creditOperation: "rewrite_chapter",
+          idempotencyKey,
+          taskType: "rewrite_chapter",
+        }
       );
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
