@@ -20,7 +20,6 @@ export function isOwnerEmail(email: string | null | undefined): boolean {
 
 /** Force-enable Dev Mode (used by owner auto-unlock). */
 export function enableDevMode(): void {
-  if (!import.meta.env.DEV) return;
   try { sessionStorage.setItem(KEY, "1"); } catch { /* noop */ }
   window.dispatchEvent(new Event("nexora-dev-mode-change"));
 }
@@ -42,7 +41,6 @@ export function isDevMode(): boolean {
 }
 
 export function tryUnlock(input: string): boolean {
-  if (!import.meta.env.DEV) return false;
   if (!input) return false;
   const ok = input === expectedPassword();
   if (ok) {
