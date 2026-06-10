@@ -44,6 +44,19 @@ export function classifyError(
   const op = context?.operation ?? "generation";
   const ch = context?.chapterIndex != null ? ` (chapter ${context.chapterIndex + 1})` : "";
 
+  if (err && typeof err === "object" && (err as { name?: string }).name === "ProjectGenerationBlockedError") {
+    const blocked = err as { message: string; issues?: Array<{ message: string }> };
+    const detail = blocked.issues?.map((issue) => issue.message).join(" · ") || blocked.message;
+    return {
+      category: "generation",
+      title: "Configurazione libro incompleta",
+      cause: detail,
+      probableFix: "Apri Struttura, completa genere/lingua/blueprint, oppure elimina il progetto e ricomincia dal Dashboard.",
+      fileHint: "src/lib/project-generation-readiness.ts",
+      runtimeData: blocked.issues,
+    };
+  }
+
   if (err && typeof err === "object" && (err as { name?: string }).name === "BlueprintValidationError") {
     const blueprintErr = err as { message: string; errors?: string[] };
     return {

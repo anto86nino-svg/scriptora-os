@@ -10,6 +10,7 @@ import { fetchPlan } from "@/lib/plan";
 import { isDevMode } from "@/lib/dev-mode";
 import { getDevPlanOverride } from "@/lib/dev-plan-override";
 import { classifyError, formatUserMessage, formatToastMessage } from "@/lib/scriptora-error";
+import { assertProjectReadyForGeneration, ProjectGenerationBlockedError } from "@/lib/project-generation-readiness";
 import { scriptoraLog } from "@/lib/scriptora-logger";
 import { getPlanLimits } from "@/lib/subscription";
 import { normalizeProjectChapterTitles, resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
@@ -110,6 +111,24 @@ function showFreeAiToolsLockedMessage(addMessage: (role: ChatMessage["role"], co
   const msg = "Strumenti AI bloccati nel piano Free dopo il libro gratuito. Passa a Pro/Premium per analisi, riscritture e upgrade capitoli.";
   addMessage("assistant", `🔒 ${msg}`);
   toast.error(msg);
+}
+
+function notifyGenerationBlocked(err: ProjectGenerationBlockedError) {
+  window.dispatchEvent(new CustomEvent("scriptora-generation-blocked", {
+    detail: { focusSection: err.focusSection },
+  }));
+}
+
+function handleGenerationBlocked(
+  err: ProjectGenerationBlockedError,
+  addMessage: (role: ChatMessage["role"], content: string) => void,
+  operation?: string,
+  chapterIndex?: number,
+) {
+  notifyGenerationBlocked(err);
+  const classified = classifyError(err, { operation, chapterIndex });
+  addMessage("assistant", formatUserMessage(classified));
+  toast.error(classified.cause);
 }
 
 function resolveProjectChapterTitle(project: BookProject, index: number, rawTitle?: string): string {
@@ -475,6 +494,16 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     const genKey = `chapter-${index}`;
     if (generatingSet.has(genKey)) return;
 
+    try {
+      assertProjectReadyForGeneration(p, index);
+    } catch (e) {
+      if (e instanceof ProjectGenerationBlockedError) {
+        handleGenerationBlocked(e, addMessage, "chapter", index);
+        return;
+      }
+      throw e;
+    }
+
     const maxProjectWords = await getMaxProjectWordsForActivePlan();
     if (countProjectWordsHard(p) >= maxProjectWords) {
       const msg = `Limite piano raggiunto: hai completato ${planLimitLabel(maxProjectWords)}.`;
@@ -664,6 +693,16 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     if (!p?.blueprint) return;
     const genKey = `chapter-${index}`;
     if (generatingSet.has(genKey)) return;
+
+    try {
+      assertProjectReadyForGeneration(p, index);
+    } catch (e) {
+      if (e instanceof ProjectGenerationBlockedError) {
+        handleGenerationBlocked(e, addMessage, "chapter", index);
+        return;
+      }
+      throw e;
+    }
 
     addGenerating(genKey);
     updateAndSave(proj => {
@@ -1020,9 +1059,15 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   // onSectionFocus permette al chiamante di auto-navigare alla sezione corrente
   const generateFullBook = useCallback(async (onSectionFocus?: (section: any) => void) => {
     const start = getLatestProject() || project;
-    if (!start?.blueprint) {
-      toast.error("Genera prima il blueprint");
-      return;
+    try {
+      assertProjectReadyForGeneration(start);
+    } catch (e) {
+      if (e instanceof ProjectGenerationBlockedError) {
+        handleGenerationBlocked(e, addMessage, "generation");
+        onSectionFocus?.("blueprint");
+        return;
+      }
+      throw e;
     }
     addMessage("assistant", "🚀 Avvio generazione completa del libro...");
     toast.success("Generazione libro completo avviata");

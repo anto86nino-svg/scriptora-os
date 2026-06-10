@@ -14,6 +14,7 @@ import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { Progress } from "@/components/ui/progress";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
+import { buildEditorialChapterPreview } from "@/lib/project-generation-readiness";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { resolveChapterGenerationOperation } from "@/lib/billing";
 
@@ -649,7 +650,9 @@ function ChapterView({
 
       {!isGenerated && !isGenerating && chapter?.status !== "error" && (
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground leading-relaxed">{outline.summary}</p>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {buildEditorialChapterPreview(outline.summary, chapterIndex, project.config.language)}
+          </p>
           <div className="p-10 rounded-lg border border-dashed border-border/50 bg-muted/5 text-center">
             <p className="text-sm text-muted-foreground/50">Click {t("generate")} to write this chapter</p>
           </div>
@@ -1263,7 +1266,13 @@ const GenerationProgress = memo(function GenerationProgress({
   const phaseMeta = generationPhaseMeta[phase] ?? generationPhaseMeta.OPENING;
   const liveContent = chunkProgress?.content?.trim() ?? "";
   const scene = analyzeLiveScene({ project, outline, chapterIndex, phase, content: liveContent, pct: realPct });
-  const previewFallback = `${outline?.title || ""}. ${outline?.summary || ""}`.trim() || `${project.config.title} ${project.config.genre}`;
+  const previewTitle = resolveChapterTitle(outline?.title || "", chapterIndex, {
+    config: project.config,
+    summary: outline?.summary,
+    totalChapters: project.config.numberOfChapters,
+  });
+  const previewDirection = buildEditorialChapterPreview(outline?.summary, chapterIndex, project.config.language);
+  const previewFallback = `${previewTitle}. ${previewDirection}`.trim() || `${project.config.title} · ${project.config.genre}`;
   const livePreviewLines = getLiveWritingPreviewLines(liveContent, previewFallback, chapterIndex);
   const livePreviewLabel = liveContent ? "Ultime righe generate" : "Direzione del capitolo";
   const livePreviewSnippet = getLiveParagraph(

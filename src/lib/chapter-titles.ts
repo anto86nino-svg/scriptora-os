@@ -11,6 +11,8 @@ const GENERIC_TITLE_RE =
   /^(?:chapter|capitolo|chapitre|kapitel|capitulo|capitulo|cap\.?|ch\.?)\s*\d+$/i;
 const PLACEHOLDER_TITLE_RE =
   /^(?:untitled|senza titolo|to be generated|da generare|chapter title|titolo capitolo|titolo del capitolo)$/i;
+const FORBIDDEN_TITLE_RE =
+  /^(?:to|the|a|an|titolo|title|section|sezione|part|parte|intro|introduction|preface|prefazione)$/i;
 const CHAPTER_PREFIX_RE =
   /^(?:chapter|capitolo|chapitre|kapitel|capitulo|capitulo|cap\.?|ch\.?)\s*\d+\s*(?:[:.\-–—·]\s*)?/i;
 
@@ -108,8 +110,10 @@ export function isGenericChapterTitle(value: unknown): boolean {
   const loose = normalizeLoose(cleaned);
   return (
     /^\d+$/.test(loose) ||
+    loose.length < 3 ||
     GENERIC_TITLE_RE.test(loose) ||
-    PLACEHOLDER_TITLE_RE.test(loose)
+    PLACEHOLDER_TITLE_RE.test(loose) ||
+    FORBIDDEN_TITLE_RE.test(loose)
   );
 }
 

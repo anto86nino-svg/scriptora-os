@@ -1,4 +1,4 @@
-import { BookConfig, Chapter, FrontMatter, BackMatter, BookBlueprint, Genre, AIQualityRating, BOOK_LENGTH_CONFIG, getBookTotalWords, getSubchaptersPerChapter, GenreLock } from "@/types/book";
+import { BookConfig, Chapter, FrontMatter, BackMatter, BookBlueprint, BookProject, Genre, AIQualityRating, BOOK_LENGTH_CONFIG, getBookTotalWords, getSubchaptersPerChapter, GenreLock } from "@/types/book";
 import { supabase } from "@/integrations/supabase/client";
 import { scriptoraLog, logGenerationStart, logGenerationEnd, logEdgeError } from "@/lib/scriptora-logger";
 import { buildGenreSystemBlock, buildGenreBlueprintBlock, buildGenreEditorialBlock, getGenreBlueprint, buildPromptByGenre, resolveGenreKey } from "@/lib/genre-intelligence";
@@ -30,6 +30,10 @@ import {
   resolveBlueprintFromAiResponse,
   type BlueprintSource,
 } from "@/lib/blueprint-recovery";
+import {
+  assertProjectReadyForGeneration,
+  sanitizeEditorialSummary,
+} from "@/lib/project-generation-readiness";
 
 /**
  * Verbose streaming logs are off by default — they intasavano la console
@@ -891,15 +895,30 @@ export async function generateChapterChunked(
   genreLock?: GenreLock,
   opts?: { adaptive?: { plan: import("@/lib/plan").PlanTier }; usage?: AIUsageContext },
 ): Promise<Chapter> {
+  const runtimeProject: BookProject = {
+    id: opts?.usage?.projectId || "runtime",
+    config,
+    blueprint,
+    chapters: previousChapters,
+    frontMatter: null,
+    backMatter: null,
+    phase: "chapters",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  assertProjectReadyForGeneration(runtimeProject, chapterIndex);
+
   const rawOutline = blueprint.chapterOutlines[chapterIndex] || {
     title: "",
     summary: `Develop chapter ${chapterIndex + 1} of "${config.title}".`,
   };
+  const safeSummary = sanitizeEditorialSummary(rawOutline.summary, chapterIndex, config.language);
   const outline = {
     ...rawOutline,
+    summary: safeSummary,
     title: resolveChapterTitle(rawOutline.title, chapterIndex, {
       config,
-      summary: rawOutline.summary,
+      summary: safeSummary,
       totalChapters: config.numberOfChapters,
     }),
   };
@@ -932,6 +951,7 @@ export async function generateChapterChunked(
   let chapterTitle = outline.title;
   let chunkIndex = 0;
   let consecutiveFailures = 0;
+  let lastChunkError: string | null = null;
   const maxChunks = Math.ceil(targetWords / 600) + 5; // generous safety cap for adaptive sizing
 
   if (DEV_DEBUG_STREAM) console.log(`[Nexora] Adaptive chunked generation: target=${targetWords} words, maxChunks=${maxChunks}`);
@@ -1047,19 +1067,30 @@ Write in ${config.language}.${adaptiveSuffix}`;
     let chunkText: string | null = null;
 
     try {
-      chunkText = await callAIOnce(
-        systemPrompt,
-        chunkPrompt,
-        sizeConfig.timeout,
-        withUsage(opts?.usage, {
-          taskType: "generate_chapter_chunk",
-          metadata: { chapterIndex: chapterIndex + 1, chunkIndex: chunkIndex + 1, phase, chunkSize },
-        }),
+      chunkText = await withRetry(
+        () => callAIOnce(
+          systemPrompt,
+          chunkPrompt,
+          sizeConfig.timeout,
+          withUsage(opts?.usage, {
+            taskType: "generate_chapter_chunk",
+            metadata: { chapterIndex: chapterIndex + 1, chunkIndex: chunkIndex + 1, phase, chunkSize },
+          }),
+        ),
+        {
+          maxAttempts: 2,
+          baseDelayMs: 1500,
+          maxDelayMs: 6000,
+          serviceKey: "deepseek-chunk",
+          shouldRetry: (err) => !(err instanceof AICreditsError),
+        },
       );
       consecutiveFailures = 0; // Reset on success
+      lastChunkError = null;
     } catch (e: any) {
       consecutiveFailures++;
-      console.error(`[Nexora] Chunk ${chunkIndex + 1} failed (failures=${consecutiveFailures}):`, e.message);
+      lastChunkError = e?.message || String(e);
+      console.error(`[Nexora] Chunk ${chunkIndex + 1} failed (failures=${consecutiveFailures}):`, lastChunkError);
 
       // Credit/auth errors = bail immediately
       if (e instanceof AICreditsError) throw e;
@@ -1080,8 +1111,10 @@ Write in ${config.language}.${adaptiveSuffix}`;
               }),
             );
             consecutiveFailures = 0;
-          } catch {
-            throw new Error(`Generation failed after multiple attempts. Try again or reduce chapter length.`);
+            lastChunkError = null;
+          } catch (fallbackErr: any) {
+            const reason = fallbackErr?.message || lastChunkError || "errore sconosciuto";
+            throw new Error(`Generazione non riuscita dopo vari tentativi: ${reason}`);
           }
         } else {
           console.warn(`[Nexora] Stopping with ${countWords(accumulatedContent)} words after ${consecutiveFailures} failures`);
@@ -1166,7 +1199,8 @@ Write in ${config.language}.${adaptiveSuffix}`;
   if (DEV_DEBUG_STREAM) console.log(`[Nexora] Chapter ${chapterIndex + 1} complete: ${countWords(accumulatedContent)} words in ${chunkIndex} chunks`);
 
   if (!accumulatedContent.trim()) {
-    throw new Error(`[Nexora] Chapter ${chapterIndex + 1} produced empty output after ${chunkIndex} chunks. Generation failed.`);
+    const reason = lastChunkError || "nessun testo restituito dal modello";
+    throw new Error(`Capitolo ${chapterIndex + 1}: generazione non riuscita (${reason}).`);
   }
 
   // Editorial QA gate (non-blocking — surfaces in console + Mastery diagnostic)

@@ -118,6 +118,15 @@ const Index = () => {
     localStorage.setItem("scriptora-guided-flow", guidedFlowEnabled ? "on" : "off");
   }, [guidedFlowEnabled]);
 
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ focusSection?: SectionId }>).detail;
+      if (detail?.focusSection) setActiveSection(detail.focusSection);
+    };
+    window.addEventListener("scriptora-generation-blocked", handler);
+    return () => window.removeEventListener("scriptora-generation-blocked", handler);
+  }, []);
+
   // Token guard for free users — gracefully stop generation when limit is reached
   useEffect(() => {
     if (quota?.isOverTokenLimit && engine.isAnythingGenerating) {
