@@ -266,7 +266,7 @@ export default function StudySessionPage() {
             <div className="mb-3 flex items-center justify-between gap-3">
               <div>
                 <h2 className="font-semibold text-foreground">Materiale da studiare</h2>
-                <p className="text-xs text-muted-foreground">TXT, Markdown e DOCX già attivi. PDF in arrivo.</p>
+                <p className="text-xs text-muted-foreground">PDF, DOCX, TXT e Markdown supportati. Analizza libri, dispense, manuali e appunti.</p>
               </div>
               <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-muted-foreground">
                 {wordCount.toLocaleString()} parole
