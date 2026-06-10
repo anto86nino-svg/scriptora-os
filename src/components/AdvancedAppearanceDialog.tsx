@@ -16,6 +16,11 @@ import {
   type ScriptoraThemeCategory,
 } from "@/lib/scriptora-appearance";
 import { getUILanguage, setUILanguage, t, UI_LANGUAGES, useUILanguage, type UILanguage } from "@/lib/i18n";
+import {
+  loadVisualPreset,
+  saveVisualPreset,
+  type VisualPerformancePreset,
+} from "@/lib/performance-mode";
 
 interface Props {
   open: boolean;
@@ -73,6 +78,8 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
   const [uiLanguage, setUiLanguage] = useState<UILanguage>(getUILanguage());
   const [hasCustomBackground, setHasCustomBackground] = useState(false);
   const [isUploadingCustomBackground, setIsUploadingCustomBackground] = useState(false);
+  const [visualPreset, setVisualPreset] =
+    useState<VisualPerformancePreset>(loadVisualPreset());
 
   useEffect(() => {
     if (!open) return;
