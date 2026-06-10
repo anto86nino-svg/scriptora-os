@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getCurrentUserId } from "@/services/storageService";
 import { BookCreationContextBar } from "@/components/BookCreationContextBar";
 import { defaultBestsellerProConfig } from "@/lib/bestseller-pro-config";
+import { requireCredits, InsufficientCreditsError } from "@/lib/billing";
 
 import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
 export { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY };
@@ -629,6 +630,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
     setIdeaLoading(true);
 
     try {
+      requireCredits("character_studio_ai", { source: "novel_idea" });
       const currentIdea = idea.trim();
       const currentLooksLikeGeneratedIdea = currentIdea.length > 180;
       const previousIdeas = [
@@ -662,7 +664,11 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
       setIdea(generated);
       saveIdeaToHistory(generated);
       toast.success("Idea romanzo generata da Scriptora con variante nuova.");
-    } catch {
+    } catch (e) {
+      if (e instanceof InsufficientCreditsError) {
+        toast.error(e.message);
+        return;
+      }
       const generated = buildLocalNovelIdea({
         genre,
         subcategory,
@@ -763,6 +769,7 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
     setSaved(false);
 
     try {
+      requireCredits("character_studio_ai", { source: "character_bible" });
       const { data, error } = await supabase.functions.invoke("scriptora-character-bible", {
         body: {
           idea: idea.trim(),
@@ -799,6 +806,10 @@ export function CharacterStudioDialog({ open, onClose }: Props) {
       setCharacterBible(applyManualNamesToBible(finalText, manualCharacterNames));
       toast.success("Personaggi generati. Ora salvali e collegali a Nuovo Libro.");
     } catch (e) {
+      if (e instanceof InsufficientCreditsError) {
+        toast.error(e.message);
+        return;
+      }
       const finalText = fallbackCharacterBible({
         idea,
         genre,

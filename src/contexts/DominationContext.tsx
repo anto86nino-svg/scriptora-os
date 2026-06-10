@@ -6,6 +6,7 @@ import { getEditorialTier } from "@/lib/editorial-mastery";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
 import { getCurrentUserId } from "@/services/storageService";
 import { toast } from "sonner";
+import { requireCredits, InsufficientCreditsError } from "@/lib/billing";
 
 export type JobKind = "dominate" | "patch";
 
@@ -73,6 +74,7 @@ export function DominationProvider({ children }: { children: ReactNode }) {
     );
 
     try {
+      requireCredits("rewrite_chapter", { projectId: project.id, chapterIndex: chapterIndex + 1, source: "dominate" });
       const threshold = 8.5;
       // SINGLE-PASS by default. Multi-pass only when user explicitly requests
       // it via Dominate Mode amplifier (masteryMode). Saves ~50% latency & cost.
@@ -201,6 +203,7 @@ export function DominationProvider({ children }: { children: ReactNode }) {
     toast.success(`✂️ Patching "${chapter.title}" — surgical edit in background`);
 
     try {
+      requireCredits("fix_chapter", { projectId: project.id, chapterIndex: chapterIndex + 1, source: "patch" });
       const { data, error } = await supabase.functions.invoke("patch-chapter", {
         body: {
           chapterTitle: chapter.title,

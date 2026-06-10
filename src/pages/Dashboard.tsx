@@ -54,6 +54,7 @@ import {
   enrichBookConfigForCreation,
   type CharacterStudioProject,
 } from "@/lib/book-creation-coherence";
+import { commitCredits, requireCredits, syncWalletPlanFromSubscription } from "@/lib/billing";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface DetectedIntent {
@@ -100,6 +101,11 @@ export default function Dashboard() {
   const [showDevUnlock, setShowDevUnlock] = useState(false);
   const [showBetaDialog, setShowBetaDialog] = useState(false);
   const { plan: currentPlan } = usePlan();
+
+  useEffect(() => {
+    syncWalletPlanFromSubscription(currentPlan);
+  }, [currentPlan]);
+
   const [logoClicks, setLogoClicks] = useState<number[]>([]);
   const { user, signOut } = useAuth();
   const avatarUrl = (user?.user_metadata as any)?.avatar_url || (user?.user_metadata as any)?.picture || null;
@@ -355,6 +361,11 @@ export default function Dashboard() {
     if (idea.trim().length < 6) return null;
     setDetecting(true);
     try {
+      const creditCheck = commitCredits("market_intelligence", { source: "detect_intent" });
+      if (!creditCheck.ok) {
+        toast.error(creditCheck.error || t("ai_credits_exhausted"));
+        return null;
+      }
       const { data, error } = await supabase.functions.invoke("detect-book-intent", {
         body: { idea: idea.trim(), language: bookLang, userId: getCurrentUserId() },
       });
@@ -389,6 +400,13 @@ export default function Dashboard() {
   const launchOneClick = async () => {
     if (idea.trim().length < 6) return;
     setLaunching(true);
+    try {
+      requireCredits("auto_bestseller", { source: "dashboard_one_click" });
+    } catch (e) {
+      setLaunching(false);
+      toast.error(e instanceof Error ? e.message : "Crediti insufficienti.");
+      return;
+    }
     let i = intent;
     if (!i) i = await detectIntent();
     if (!i) { setLaunching(false); return; }

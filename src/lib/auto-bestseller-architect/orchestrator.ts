@@ -14,6 +14,7 @@ import type {
   AutoBestsellerHandoffPack,
 } from "./types";
 import { getArchitectPhaseLabels, normalizeArchitectLang } from "./localized-copy";
+import { requireCredits } from "@/lib/billing";
 
 export type ArchitectProgressCallback = (phase: ArchitectPhaseId, message: string) => void;
 
@@ -25,6 +26,7 @@ export async function runAutoBestsellerArchitect(
   input: AutoBestsellerInput,
   onProgress?: ArchitectProgressCallback,
 ): Promise<AutoBestsellerArchitectResult> {
+  requireCredits("market_intelligence", { source: "auto_bestseller_architect", genre: input.genre });
   const phaseLabels = getArchitectPhaseLabels(normalizeArchitectLang(input.language));
   const tick = async (phase: ArchitectPhaseId) => {
     onProgress?.(phase, phaseLabels[phase]);

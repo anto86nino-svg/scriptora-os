@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Download, ImagePlus, Settings2, Upload, Wand2, X } from "lucide-react";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
+import { requireCredits, InsufficientCreditsError } from "@/lib/billing";
+import { toast } from "sonner";
 
 interface CoverGeneratorProps {
   title: string;
@@ -539,6 +541,12 @@ export function CoverGenerator({
   }
 
   function generateScriptoraBackground() {
+    try {
+      requireCredits("cover_generation", { source: "cover_studio_background" });
+    } catch (e) {
+      toast.error(e instanceof InsufficientCreditsError ? e.message : "Crediti insufficienti.");
+      return;
+    }
     const direction = inferScriptoraArtDirection([
       coverGenreBrief,
       coverTitle,

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { logAIUsage, estimateTokens } from "../_shared/ai-tracking.ts";
+import { buildNarrativeBrainV3EdgeBlock } from "../_shared/narrative-brain-v3.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -839,6 +840,21 @@ ${buildBlueprintIntegrityEngineForAuto(input, title, subtitle, blueprint, chapte
 
 ${characterLock}
 
+${buildNarrativeBrainV3EdgeBlock({
+  genre: input.genre,
+  subcategory: input.subcategory,
+  tone: input.tone,
+  language: input.language,
+  targetAudience: input.targetAudience,
+  readerPromise: promise,
+  charactersText: input.charactersText,
+  chapterIndex,
+  chapterTitle: outline.title,
+  chapterSummary: outline.summary,
+  totalChapters: total,
+  previousSummaries: ctx.previousSummaries,
+})}
+
 WRITE THIS CHAPTER NOW.
 - Target length: ${ctx.targetWords} words (±10%)
 - Open with a hook that stops the reader cold
@@ -885,7 +901,14 @@ Return JSON: { "summary": "2-3 sentence factual recap of what this chapter actua
   }
 }
 
-async function refineChapter(input: OrchestratorInput, chapterTitle: string, chapterText: string) {
+async function refineChapter(
+  input: OrchestratorInput,
+  chapterTitle: string,
+  chapterText: string,
+  chapterIndex = 0,
+  blueprint?: { chapterOutlines?: Array<{ title?: string; summary?: string }> },
+  previousSummaries: string[] = [],
+) {
   let coachReport: any = null;
   let autoFixBlock = "";
   try {
@@ -898,6 +921,24 @@ async function refineChapter(input: OrchestratorInput, chapterTitle: string, cha
     autoFixBlock = coachReport?.autoFixPromptBlock || coach?.autoFixPromptBlock || "";
   } catch (e) {
     console.error("genre-coach failed:", e);
+  }
+
+  const narrativeBrainBlock = buildNarrativeBrainV3EdgeBlock({
+    genre: input.genre,
+    subcategory: input.subcategory,
+    tone: input.tone,
+    language: input.language,
+    targetAudience: input.targetAudience,
+    readerPromise: input.readerPromise,
+    charactersText: input.charactersText,
+    chapterIndex,
+    chapterTitle,
+    chapterSummary: blueprint?.chapterOutlines?.[chapterIndex]?.summary || chapterTitle,
+    totalChapters: blueprint?.chapterOutlines?.length,
+    previousSummaries,
+  });
+  if (narrativeBrainBlock) {
+    autoFixBlock = [autoFixBlock, narrativeBrainBlock].filter(Boolean).join("\n\n");
   }
 
   let dominate: any = null;
@@ -1155,7 +1196,7 @@ Length: ~800 words. Self-contained, no preamble. Plain prose, no JSON.`;
     let refined: { finalText: string; coachReport?: any; voice?: any; rewriteConfidence: number; finalScore: number };
     try {
       refined = await withTimeout(
-        refineChapter(inputForWriting, outline.title, draft),
+        refineChapter(inputForWriting, outline.title, draft, i, blueprint, previousSummaries),
         30_000,
         `refineChapter ch${i + 1}`,
         { finalText: draft, coachReport: null, voice: null, rewriteConfidence: 0.5, finalScore: 6 },

@@ -29,6 +29,8 @@ import {
 import { ensureBookTitleMetadata } from "@/lib/title-shadow";
 import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
 import { enrichBookConfigForCreation } from "@/lib/book-creation-coherence";
+import { ensureProjectMemoryForChapter, refreshLongMemoryV3 } from "@/lib/narrative-brain-v3";
+import { requireCredits, resolveChapterGenerationOperation, InsufficientCreditsError } from "@/lib/billing";
 import type { AutoBestsellerHandoffPack } from "@/lib/auto-bestseller-architect/types";
 import { sanitizeBlueprintChapterTitles } from "@/lib/chapter-generation-guard";
 
@@ -492,14 +494,20 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     });
 
     try {
+      requireCredits(resolveChapterGenerationOperation(p.config), { projectId: p.id, chapterIndex: index + 1 }, p.config.bookLength);
       addMessage("assistant", `Writing Chapter ${index + 1}... ✍️`);
       const latestP = getLatestProject() || p;
       const prevChapters = latestP.chapters.filter((_, i) => i < index && latestP.chapters[i]?.content?.length > 0);
       const chapterOverride = latestP.chapters[index]?.lengthOverride;
       const activePlanForChapter = await getActivePlanForEngine();
 
+      const memoryReady = ensureProjectMemoryForChapter(latestP);
+      if (memoryReady !== latestP) {
+        updateAndSave(() => memoryReady);
+      }
+
       const chapter = await generateChapterChunked(
-        latestP.config, latestP.blueprint!, index, prevChapters, chapterOverride,
+        memoryReady.config, memoryReady.blueprint!, index, prevChapters, chapterOverride,
         (progress) => {
           // Throttle: skip UI/state churn when tokens arrive faster than ~6fps.
           // Always allow phase-change events through so UI feels responsive.
@@ -528,8 +536,15 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
             return { ...proj, chapters };
           });
         },
-        latestP.genreLock,
-        { adaptive: { plan: activePlanForChapter }, usage: { projectId: latestP.id } },
+        memoryReady.genreLock,
+        {
+          adaptive: { plan: activePlanForChapter },
+          usage: { projectId: memoryReady.id },
+          narrativeContext: {
+            longBookMemory: memoryReady.longBookMemory,
+            masterpieceMode: true,
+          },
+        },
       );
 
       const activePlanAfterGeneration = await getActivePlanForEngine();
@@ -562,7 +577,11 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
         chapters[index] = { ...finalChapter, status: "completed" as GenerationStatus, lengthOverride: proj.chapters[index]?.lengthOverride };
         const allGenerated = chapters.length >= proj.config.numberOfChapters && chapters.every(c => c.content.length > 0);
-        return { ...proj, chapters, phase: nextPhase === "complete" ? nextPhase : (allGenerated ? "back-matter" as GenerationPhase : proj.phase) };
+        const refreshed = refreshLongMemoryV3({ ...proj, chapters });
+        return {
+          ...refreshed,
+          phase: nextPhase === "complete" ? nextPhase : (allGenerated ? "back-matter" as GenerationPhase : refreshed.phase),
+        };
       });
 
       const latestAfterSave = getLatestProject();
@@ -580,6 +599,16 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         toast.error(msg);
       }
     } catch (e: any) {
+      if (e instanceof InsufficientCreditsError) {
+        toast.error(e.message);
+        addMessage("assistant", `🔒 ${e.message}`);
+        updateAndSave(proj => {
+          const chapters = [...proj.chapters];
+          if (chapters[index]) chapters[index] = { ...chapters[index], status: "idle" as GenerationStatus };
+          return { ...proj, chapters };
+        });
+        return;
+      }
       const mapped = classifyChapterGenerationError(e);
       logChapterGenerationDev({
         chapterIndex: index + 1,
@@ -648,12 +677,18 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     }));
 
     try {
+      requireCredits("generate_chapter_short", { projectId: p.id, chapterIndex: chapterIndex + 1, subchapterIndex: subIndex + 1 });
       const sceneMode = resolveEffectiveStructureMode(p.config) === "scene_based";
       addMessage("assistant", sceneMode
         ? `🎬 Scene ${chapterIndex + 1}.${subIndex + 1} → ${outlineTitle}`
         : `Generating Chapter ${chapterIndex + 1} → ${outlineTitle} ✍️`);
       const prevChapters = p.chapters.filter((_, i) => i < chapterIndex);
-      const sub = await generateSubchapter(p.config, p.blueprint, chapterIndex, subIndex, chapter, prevChapters, p.genreLock, { projectId: p.id });
+      const memoryReady = ensureProjectMemoryForChapter(p);
+      const sub = await generateSubchapter(
+        memoryReady.config, memoryReady.blueprint!, chapterIndex, subIndex, chapter, prevChapters,
+        memoryReady.genreLock, { projectId: memoryReady.id },
+        { longBookMemory: memoryReady.longBookMemory },
+      );
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
         const ch = { ...chapters[chapterIndex] };
@@ -675,6 +710,11 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       });
       addMessage("assistant", `→ ${outlineTitle} ✓`);
     } catch (e: any) {
+      if (e instanceof InsufficientCreditsError) {
+        toast.error(e.message);
+        addMessage("assistant", `🔒 ${e.message}`);
+        return;
+      }
       const err = classifyError(e);
       scriptoraLog.error("subchapter", formatUserMessage(err), { raw: e?.message });
       addMessage("assistant", `❌ ${formatUserMessage(err)}`);
@@ -702,6 +742,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     });
 
     try {
+      requireCredits(resolveChapterGenerationOperation(p.config), { projectId: p.id, chapterIndex: index + 1, source: "regenerate" }, p.config.bookLength);
       addMessage("assistant", `Regenerating Chapter ${index + 1}... 🔄`);
       const latestP = getLatestProject() || p;
       const prevChapters = latestP.chapters.slice(0, index);
@@ -745,6 +786,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
     addGenerating(genKey);
     try {
+      requireCredits("chapter_diagnostic", { projectId: p.id, chapterIndex: index + 1 });
       addMessage("assistant", `Evaluating Chapter ${index + 1} quality... 🔍`);
       const rating = await evaluateChapterQuality(p.config, p.chapters[index], index, { projectId: p.id });
       updateAndSave(proj => {
@@ -754,6 +796,11 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       });
       addMessage("assistant", `Chapter ${index + 1} rated ${rating.score}/5 ⭐ — ${rating.explanation}`);
     } catch (e: any) {
+      if (e instanceof InsufficientCreditsError) {
+        toast.error(e.message);
+        addMessage("assistant", `🔒 ${e.message}`);
+        return;
+      }
       addMessage("assistant", `❌ Evaluation error: ${e.message}`);
     } finally {
       removeGenerating(genKey);
@@ -781,6 +828,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     const levelLabels = { light: "Light Polish", deep: "Deep Rewrite", bestseller: "Bestseller Upgrade" };
 
     try {
+      requireCredits("rewrite_chapter", { projectId: p.id, chapterIndex: index + 1, level });
       const aiRating = p.chapters[index].aiRating;
       const instruction = aiRating
         ? `Address these weaknesses: ${aiRating.missing}. Improvements needed: ${aiRating.improvements}. Push toward 5/5 quality.`
@@ -788,9 +836,11 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
       addMessage("assistant", `${levelLabels[level]} on Chapter ${index + 1}... ✨`);
       const latestP = getLatestProject() || p;
+      const memoryReady = ensureProjectMemoryForChapter(latestP);
       const chapter = await rewriteChapter(
-        latestP.config, latestP.blueprint!, latestP.chapters[index], index,
-        latestP.chapters.slice(0, index), instruction, aiRating, level, { projectId: latestP.id }
+        memoryReady.config, memoryReady.blueprint!, memoryReady.chapters[index], index,
+        memoryReady.chapters.slice(0, index), instruction, aiRating, level, { projectId: memoryReady.id },
+        { longBookMemory: memoryReady.longBookMemory },
       );
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
@@ -802,15 +852,26 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
           qualityRating: undefined,
           lengthOverride: proj.chapters[index]?.lengthOverride,
         };
-        return { ...proj, chapters };
+        const refreshed = refreshLongMemoryV3({ ...proj, chapters });
+        return refreshed;
       });
       addMessage("assistant", `Chapter ${index + 1} — ${levelLabels[level]} complete! Re-evaluate to measure improvement.`);
     } catch (e: any) {
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
-        if (chapters[index]) chapters[index] = { ...chapters[index], status: "error" as GenerationStatus };
+        if (chapters[index]) {
+          chapters[index] = {
+            ...chapters[index],
+            status: e instanceof InsufficientCreditsError ? "idle" as GenerationStatus : "error" as GenerationStatus,
+          };
+        }
         return { ...proj, chapters };
       });
+      if (e instanceof InsufficientCreditsError) {
+        toast.error(e.message);
+        addMessage("assistant", `🔒 ${e.message}`);
+        return;
+      }
       const err = classifyError(e);
       scriptoraLog.error("rewrite-chapter", formatUserMessage(err), { chapterIndex: index + 1, level, raw: e?.message });
       addMessage("assistant", `❌ Capitolo ${index + 1}: ${formatUserMessage(err)}`);
@@ -838,6 +899,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       addGenerating(`eval-${index}`);
       let rating: AIQualityRating;
       try {
+        requireCredits("chapter_diagnostic", { projectId: p.id, chapterIndex: index + 1, source: "auto_rewrite_eval", attempt: attempt + 1 });
         const latestP = getLatestProject() || p;
         rating = await evaluateChapterQuality(latestP.config, latestP.chapters[index], index, { projectId: latestP.id });
         updateAndSave(proj => {
@@ -846,6 +908,11 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
           return { ...proj, chapters };
         });
       } catch (evalErr: any) {
+        if (evalErr instanceof InsufficientCreditsError) {
+          toast.error(evalErr.message);
+          addMessage("assistant", `🔒 ${evalErr.message}`);
+          return;
+        }
         scriptoraLog.warn("auto-rewrite", "Eval step failed — breaking auto-rewrite loop", { chapterIndex: index, raw: evalErr?.message });
         break;
       } finally {

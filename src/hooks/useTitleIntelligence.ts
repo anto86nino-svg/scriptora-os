@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/services/storageService";
+import { requireCredits } from "@/lib/billing";
 
 export type Level = "low" | "medium" | "high";
 
@@ -167,6 +168,7 @@ export function useTitleIntelligence() {
     setError(null);
     if (!regenerate) setData(null);
     try {
+      requireCredits("market_intelligence", { source: "title_intelligence", genre: input.genre });
       const { data: res, error: err } = await supabase.functions.invoke("title-intelligence", {
         body: { ...input, regenerate, userId: getCurrentUserId() },
       });

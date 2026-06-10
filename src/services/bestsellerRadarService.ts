@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/services/storageService";
+import { requireCredits } from "@/lib/billing";
 
 export type RadarResult = {
   title: string;
@@ -31,6 +32,7 @@ export async function runBestsellerRadar(payload: {
   keyword?: string;
   marketplace?: string;
 }): Promise<BestsellerRadarResponse> {
+  requireCredits("market_intelligence", { source: "bestseller_radar", genre: payload.genre });
   const { data, error } = await supabase.functions.invoke("bestseller-radar", {
     body: { ...payload, userId: getCurrentUserId() },
   });

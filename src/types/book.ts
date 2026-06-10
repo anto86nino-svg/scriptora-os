@@ -343,6 +343,8 @@ export interface BookProject {
   backMatterStatus?: GenerationStatus;
   /** Locked Genre Engine blueprint — set once on creation, never mutated by AI */
   genreLock?: GenreLock;
+  /** Long-book continuity + character psychology (Narrative Brain V3) */
+  longBookMemory?: import("@/lib/long-book-memory/types").LongBookMemorySnapshot;
   createdAt: string;
   updatedAt: string;
 }

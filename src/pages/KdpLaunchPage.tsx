@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowRight, Loader2, Rocket, Sparkles, TrendingUp, Trophy, Wand2 } from "lucide-react";
@@ -20,6 +20,7 @@ import {
 } from "@/lib/kdp/money-engine";
 import { useFeatureGate } from "@/components/PaywallGuard";
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
+import { requireCredits, InsufficientCreditsError } from "@/lib/billing";
 
 type Step = "idea" | "market" | "title" | "packaging" | "predict";
 
@@ -89,6 +90,13 @@ export default function KdpLaunchPage() {
   const [chosenSubtitle, setChosenSubtitle] = useState<string>("");
   const italianUi = language.toLowerCase().includes("ital");
   const devCreditMode = isDevMode();
+  const kdpCreditsCommitted = useRef(false);
+
+  const ensureKdpCredits = useCallback(() => {
+    if (kdpCreditsCommitted.current) return;
+    requireCredits("kdp_launch", { source: "kdp_launch_flow" });
+    kdpCreditsCommitted.current = true;
+  }, []);
   const stepLabels: Record<Step, string> = italianUi
     ? { idea: "idea", market: "mercato", title: "titoli", packaging: "packaging", predict: "previsione" }
     : { idea: "idea", market: "market", title: "title", packaging: "packaging", predict: "predict" };
@@ -192,18 +200,20 @@ export default function KdpLaunchPage() {
     if (!idea.trim()) return toast.error("Inserisci un'idea per iniziare");
     setLoading(true);
     try {
+      ensureKdpCredits();
       const plan = await getPlan();
       const m = await analyzeMarket(idea, { genre, language, plan });
       setMarket(m);
       setStep("market");
     } catch (e: any) {
-      toast.error(e?.message || "Analisi fallita");
+      toast.error(e instanceof InsufficientCreditsError ? e.message : (e?.message || "Analisi fallita"));
     } finally { setLoading(false); }
   });
 
   const runTitles = baseGate.guard(async () => {
     setLoading(true);
     try {
+      ensureKdpCredits();
       const plan = await getPlan();
       const t = await generateTitleVariants(market?.recommendedAngle || idea, {
         genre,
@@ -217,7 +227,7 @@ export default function KdpLaunchPage() {
       if (top) { setChosenTitle(top.title); setChosenSubtitle(top.subtitle); }
       setStep("title");
     } catch (e: any) {
-      toast.error(e?.message || "Generazione titoli fallita");
+      toast.error(e instanceof InsufficientCreditsError ? e.message : (e?.message || "Generazione titoli fallita"));
     } finally { setLoading(false); }
   });
 
@@ -225,6 +235,7 @@ export default function KdpLaunchPage() {
     if (!chosenTitle) return toast.error("Scegli un titolo");
     setLoading(true);
     try {
+      ensureKdpCredits();
       const plan = await getPlan();
       const p = await kdpPackaging(
         { title: chosenTitle, subtitle: chosenSubtitle, promise: market?.recommendedAngle, genre, language },
@@ -233,13 +244,14 @@ export default function KdpLaunchPage() {
       setPackaging(p);
       setStep("packaging");
     } catch (e: any) {
-      toast.error(e?.message || "Packaging fallito");
+      toast.error(e instanceof InsufficientCreditsError ? e.message : (e?.message || "Packaging fallito"));
     } finally { setLoading(false); }
   });
 
   const runPredict = predictGate.guard(async () => {
     setLoading(true);
     try {
+      ensureKdpCredits();
       const plan = await getPlan();
       const pr = await predictSuccess(
         { title: chosenTitle, subtitle: chosenSubtitle, promise: market?.recommendedAngle, genre, language },
@@ -248,7 +260,7 @@ export default function KdpLaunchPage() {
       setPrediction(pr);
       setStep("predict");
     } catch (e: any) {
-      toast.error(e?.message || "Predizione fallita");
+      toast.error(e instanceof InsufficientCreditsError ? e.message : (e?.message || "Predizione fallita"));
     } finally { setLoading(false); }
   });
 

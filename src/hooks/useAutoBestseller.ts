@@ -17,6 +17,8 @@ import { createProjectId } from "@/lib/storage";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveChapterTitle } from "@/lib/chapter-titles";
 import { humanizeNarrativeText } from "@/lib/HumanizerLayer";
+import { requireCredits, InsufficientCreditsError } from "@/lib/billing";
+import { toast } from "sonner";
 
 const INITIAL_STAGES: StageState[] = [
   { id: "titles", label: "Generating Titles", status: "pending" },
@@ -208,6 +210,14 @@ export function useAutoBestseller() {
   }, []);
 
   const start = useCallback(async (input: AutoBestsellerInput, batchId?: string): Promise<AutoBestsellerResult | null> => {
+    try {
+      requireCredits("auto_bestseller", { source: "auto_bestseller_stream", batchId });
+    } catch (e) {
+      const message = e instanceof InsufficientCreditsError ? e.message : "Crediti insufficienti.";
+      toast.error(message);
+      return null;
+    }
+
     lastInputRef.current = input;
     partialProjectIdRef.current = null;
     attachedRunIdRef.current = null;

@@ -2,7 +2,18 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DEEPSEEK_PRICING_NOTE, getUsageDiagnostics, getUserUsage, getRecentUsage, getUsageRowCost, formatCost, formatTokens, type UsageSummary, type UsageRow } from "@/lib/ai-usage";
 import { isDevMode } from "@/lib/dev-mode";
-import { ArrowLeft, Loader2, Activity, DollarSign, Hash, Zap, RefreshCw, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Loader2, Activity, DollarSign, Hash, Zap, RefreshCw, AlertTriangle, Coins, PlusCircle } from "lucide-react";
+import {
+  loadCreditWallet,
+  DEV_PURCHASE_AMOUNTS,
+  purchaseCreditsSimulator,
+  creditSimulationBadge,
+  isDevUnlimitedCredits,
+  setDevUnlimitedCredits,
+  resolvePaymentProvider,
+} from "@/lib/billing";
+import { formatCredits } from "@/lib/credit-economy";
+import { toast } from "sonner";
 
 export default function UsagePage() {
   const navigate = useNavigate();
@@ -11,6 +22,17 @@ export default function UsagePage() {
   const [recent, setRecent] = useState<UsageRow[]>([]);
   const [usageIssue, setUsageIssue] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [wallet, setWallet] = useState(() => loadCreditWallet());
+  const [purchasing, setPurchasing] = useState<number | null>(null);
+  const simulationBadge = creditSimulationBadge();
+  const paymentProvider = resolvePaymentProvider();
+
+  useEffect(() => {
+    const refreshWallet = () => setWallet(loadCreditWallet());
+    refreshWallet();
+    window.addEventListener("scriptora-credits-change", refreshWallet);
+    return () => window.removeEventListener("scriptora-credits-change", refreshWallet);
+  }, []);
 
   useEffect(() => {
     const load = () => {
@@ -85,9 +107,92 @@ export default function UsagePage() {
 
         {devMode && (
           <section className="rounded-lg border border-sky-400/25 bg-sky-400/10 p-4 text-xs leading-relaxed text-sky-50/85">
-            <div className="font-semibold text-sky-50">Dev Mode attivo · simulazione locale</div>
+            <div className="flex flex-wrap items-center gap-2 font-semibold text-sky-50">
+              <span>Dev Mode attivo · wallet locale</span>
+              {simulationBadge && (
+                <span className="rounded-full border border-amber-300/40 bg-amber-400/20 px-2 py-0.5 text-[10px] tracking-widest text-amber-50">
+                  {simulationBadge}
+                </span>
+              )}
+            </div>
             <div className="mt-1">
-              Il piano visualizzato in DEV e i relativi limiti sono simulati per testare la UX. Questa pagina mostra log/stime AI quando disponibili: non rappresenta un saldo Stripe, un wallet reale o un addebito billing.
+              Provider: <span className="font-mono">{paymentProvider}</span>. In produzione l&apos;acquisto istantaneo è disabilitato senza Stripe/Lemon.
+            </div>
+          </section>
+        )}
+
+        {devMode && (
+          <section className="rounded-lg border border-border bg-card p-4 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Coins className="h-4 w-4 text-primary" />
+                  Credit Wallet (DEV)
+                </div>
+                <div className="mt-1 text-2xl font-bold tabular-nums">{formatCredits(wallet.balance)}</div>
+                <div className="text-xs text-muted-foreground">Piano wallet: {wallet.planId}</div>
+              </div>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isDevUnlimitedCredits()}
+                  onChange={(e) => setDevUnlimitedCredits(e.target.checked)}
+                  className="rounded border-border"
+                />
+                DEV_UNLIMITED_CREDITS (zero cost operations)
+              </label>
+            </div>
+
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                Purchase Credits Simulator
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {DEV_PURCHASE_AMOUNTS.map((amount) => (
+                  <button
+                    key={amount}
+                    type="button"
+                    disabled={purchasing !== null}
+                    onClick={async () => {
+                      setPurchasing(amount);
+                      try {
+                        const result = await purchaseCreditsSimulator(amount);
+                        if (!result.ok) throw new Error(result.error || "Purchase failed");
+                        setWallet(loadCreditWallet());
+                        toast.success(`+${formatCredits(amount)} crediti aggiunti istantaneamente.`);
+                      } catch (e) {
+                        toast.error(e instanceof Error ? e.message : "Acquisto simulato fallito");
+                      } finally {
+                        setPurchasing(null);
+                      }
+                    }}
+                    className="rounded-lg border border-border px-3 py-2 text-xs font-medium hover:bg-muted/40 disabled:opacity-50"
+                  >
+                    {purchasing === amount ? <Loader2 className="h-3.5 w-3.5 animate-spin mx-auto" /> : formatCredits(amount)}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                disabled={purchasing !== null}
+                onClick={async () => {
+                  setPurchasing(-1);
+                  try {
+                    const result = await purchaseCreditsSimulator(5_000);
+                    if (!result.ok) throw new Error(result.error || "Purchase failed");
+                    setWallet(loadCreditWallet());
+                    toast.success("5.000 crediti aggiunti al wallet.");
+                  } catch (e) {
+                    toast.error(e instanceof Error ? e.message : "Acquisto simulato fallito");
+                  } finally {
+                    setPurchasing(null);
+                  }
+                }}
+                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                <PlusCircle className="h-3.5 w-3.5" />
+                Add Credits Instantly
+              </button>
             </div>
           </section>
         )}

@@ -1,3 +1,6 @@
+import { CREDIT_OPERATION_COSTS as BILLING_COSTS } from "@/lib/billing/creditPolicy";
+import { creditSimulationBadge, isDevUnlimitedCredits } from "@/lib/billing/devMode";
+
 export type CreditOperation =
   | "chapter_generation"
   | "chapter_rewrite"
@@ -10,17 +13,18 @@ export type CreditOperation =
   | "cover_generation"
   | "export_package";
 
+/** Legacy UI labels mapped to billing/creditPolicy costs */
 export const CREDIT_OPERATION_COSTS: Record<CreditOperation, number> = {
-  chapter_generation: 1200,
-  chapter_rewrite: 520,
-  chapter_diagnostic: 180,
-  manuscript_diagnostic: 260,
-  kdp_market: 420,
-  kdp_titles: 240,
-  kdp_packaging: 320,
-  kdp_prediction: 560,
-  cover_generation: 680,
-  export_package: 80,
+  chapter_generation: BILLING_COSTS.generate_chapter_medium,
+  chapter_rewrite: BILLING_COSTS.rewrite_chapter,
+  chapter_diagnostic: BILLING_COSTS.chapter_diagnostic,
+  manuscript_diagnostic: BILLING_COSTS.book_analysis,
+  kdp_market: BILLING_COSTS.kdp_launch,
+  kdp_titles: BILLING_COSTS.kdp_launch,
+  kdp_packaging: BILLING_COSTS.kdp_launch,
+  kdp_prediction: BILLING_COSTS.kdp_launch,
+  cover_generation: BILLING_COSTS.cover_generation,
+  export_package: BILLING_COSTS.export_premium,
 };
 
 export function estimateCreditsFromWords(words: number): number {
@@ -35,15 +39,21 @@ export function formatCredits(value: number | null | undefined): string {
 
 export function operationCreditLabel(operation: CreditOperation, devMode = false): string {
   const cost = formatCredits(CREDIT_OPERATION_COSTS[operation]);
-  return `${devMode ? "SIM DEV · " : ""}${cost} crediti`;
+  const badge = creditSimulationBadge();
+  if (badge === "DEV SIMULATION") return `${badge} · ${cost} crediti`;
+  return `${devMode ? "DEV · " : ""}${cost} crediti`;
 }
 
 export function creditModeLabel(devMode = false): string {
+  if (isDevUnlimitedCredits()) return "DEV SIMULATION";
   return devMode ? "Developer Mode" : "Real Credits";
 }
 
 export function creditModeDisclosure(devMode = false): string {
+  if (isDevUnlimitedCredits()) {
+    return "DEV SIMULATION attiva: nessun credito reale viene consumato. Il saldo mostrato è simulato.";
+  }
   return devMode
-    ? "Simulazione crediti attiva. Nessun credito reale viene consumato."
+    ? "Dev Mode: i crediti scalano normalmente sul wallet locale."
     : "I crediti verranno consumati in base all'operazione eseguita.";
 }

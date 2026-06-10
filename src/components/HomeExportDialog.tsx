@@ -14,6 +14,7 @@ import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { analyzeExportReadiness, type ExportIssue } from "@/lib/export-readiness";
 import { ExportIssuesDialog } from "@/components/ExportIssuesDialog";
 import { queueExportFixNavigation } from "@/lib/export-fix-navigation";
+import { requireCredits, InsufficientCreditsError } from "@/lib/billing";
 
 type Format = "epub" | "docx" | "pdf";
 
@@ -48,6 +49,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   const performExport = async (project: BookProject, coverOverride?: string) => {
     setIsExporting(true);
     try {
+      requireCredits("export_premium", { projectId: project.id, format });
       const filename = filenameOf(project);
       let blob: Blob;
       let ext: "epub" | "docx" | "pdf";
@@ -95,7 +97,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
     } catch (e) {
       console.error("Export failed:", e);
       toast({
-        title: "Esportazione fallita",
+        title: e instanceof InsufficientCreditsError ? "Crediti insufficienti" : "Esportazione fallita",
         description: e instanceof Error ? e.message : "Errore sconosciuto",
         variant: "destructive",
       });

@@ -35,6 +35,15 @@ import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
 import { sanitizeManuscript } from "@/lib/editorial-wow/FinalManuscriptSanitizer";
 import {
+  buildNarrativeBrainV3PromptBlock,
+  applyMasterpiecePostPass,
+  sanitizeNarrativeOutput,
+  isNarrativeBrainV3Enabled,
+  type NarrativeBrainV3Context,
+  buildNarrativeBrainV3InjectionBlock,
+} from "@/lib/narrative-brain-v3";
+import type { LongBookMemorySnapshot } from "@/lib/long-book-memory/types";
+import {
   buildBlueprintIntegrityBlueprintRequest,
   buildBlueprintIntegrityFoundationBlock,
   buildBlueprintIntegrityRuntimeBlock,
@@ -938,7 +947,14 @@ export async function generateChapterChunked(
   chapterLengthOverride?: string,
   onChunkProgress?: (progress: ChunkProgress) => void,
   genreLock?: GenreLock,
-  opts?: { adaptive?: { plan: import("@/lib/plan").PlanTier }; usage?: AIUsageContext },
+  opts?: {
+    adaptive?: { plan: import("@/lib/plan").PlanTier };
+    usage?: AIUsageContext;
+    narrativeContext?: {
+      longBookMemory?: LongBookMemorySnapshot | null;
+      masterpieceMode?: boolean;
+    };
+  },
 ): Promise<Chapter> {
   const rawOutline = blueprint.chapterOutlines[chapterIndex] || {
     title: "",
@@ -984,6 +1000,22 @@ export async function generateChapterChunked(
     chapterIndex,
     outlineSummary: outline.summary,
   });
+
+  const narrativeBrainContext: NarrativeBrainV3Context = {
+    config,
+    chapterIndex,
+    outlineSummary: outline.summary,
+    outlineTitle: outline.title,
+    previousChapters,
+    longBookMemory: opts?.narrativeContext?.longBookMemory,
+    masterpieceMode: opts?.narrativeContext?.masterpieceMode,
+  };
+  const narrativeBrainBlock = isNarrativeBrainV3Enabled()
+    ? buildNarrativeBrainV3PromptBlock(narrativeBrainContext)
+    : "";
+  const continuationBrainBlock = narrativeBrainBlock
+    ? `${narrativeBrainBlock.split("\n\n").slice(0, 4).join("\n\n")}\n\nCONTINUATION: Preserve all voice, psychology, and continuity rules above.`
+    : "";
 
   let accumulatedContent = "";
   let chapterTitle = outline.title;
@@ -1045,6 +1077,8 @@ ${characterLock}
 
 ${humanizerBlock}
 
+${narrativeBrainBlock}
+
 BESTSELLER QUALITY REQUIREMENTS:
 - Open with a line that stops the reader — a hook they'll remember
 - Include 2-3 highlight-worthy sentences
@@ -1074,6 +1108,10 @@ REMAINING: ~${remainingWords} words needed
 PHASE: ${phase} — ${phaseInstruction}
 
 ${humanizerBlock}
+
+${continuationBrainBlock}
+
+${characterLock}
 
 TARGET for this chunk: Write approximately ${chunkTarget} words.
 
@@ -1252,7 +1290,18 @@ Write in ${config.language}.${adaptiveSuffix}`;
         {
           rewrite: async (text, instructions, _mode) => {
             const sysBase = getSystemPrompt(config, genreLock);
-            const sysPrompt = `${sysBase}\n\n${instructions}`;
+            const adaptiveNarrativeBlock = isNarrativeBrainV3Enabled()
+              ? buildNarrativeBrainV3InjectionBlock({
+                config,
+                chapterIndex,
+                outlineSummary: outline.summary,
+                outlineTitle: outline.title,
+                previousChapters,
+                longBookMemory: opts?.narrativeContext?.longBookMemory,
+                compact: true,
+              })
+              : "";
+            const sysPrompt = `${sysBase}\n\n${instructions}${adaptiveNarrativeBlock ? `\n\n${adaptiveNarrativeBlock}` : ""}`;
             const userPrompt = `Original chapter text to revise (in ${config.language}):\n\n${text}`;
             return await callAI(
               sysPrompt,
@@ -1274,17 +1323,38 @@ Write in ${config.language}.${adaptiveSuffix}`;
   // Final sanitization pass — strip AI labels, language bleed, duplicate paragraphs,
   // broken punctuation, and debug artefacts before the chapter is stored or shown.
   accumulatedContent = sanitizeManuscript(accumulatedContent, { language: config.language ?? "Italian" });
-  accumulatedContent = sanitizeChapterOutput(accumulatedContent, config, outline.title);
+  accumulatedContent = isNarrativeBrainV3Enabled()
+    ? sanitizeNarrativeOutput(accumulatedContent, config, outline.title)
+    : sanitizeChapterOutput(accumulatedContent, config, outline.title);
 
   if (isChapterOutputTooShort(accumulatedContent)) {
     throw new Error("Il motore ha restituito una risposta vuota. Nessun testo è stato salvato.");
   }
 
-  const finalChapter = humanizeChapter({
+  const psychProfiles = opts?.narrativeContext?.longBookMemory?.characterPsychology;
+  const dominantPsych = psychProfiles?.[0];
+
+  let finalChapter = humanizeChapter({
     title: sanitizeChapterTitle(chapterTitle, chapterIndex, config, blueprint, previousTitles),
     content: accumulatedContent,
     subchapters: [],
-  }, { config, previousChapters, chapterIndex, outlineSummary: outline.summary });
+  }, {
+    config,
+    previousChapters,
+    chapterIndex,
+    outlineSummary: outline.summary,
+    characterVoiceProfile: dominantPsych?.copingMechanism === "avoidance"
+      ? "avoidant"
+      : dominantPsych?.copingMechanism === "anger"
+        ? "proud"
+        : dominantPsych?.copingMechanism === "people-pleasing"
+          ? "anxious"
+          : undefined,
+  });
+
+  if (isNarrativeBrainV3Enabled()) {
+    finalChapter = applyMasterpiecePostPass(finalChapter, narrativeBrainContext);
+  }
 
   return finalChapter;
 }
@@ -1449,6 +1519,7 @@ export async function generateSubchapter(
   subchapterIndex: number, chapter: Chapter, previousChapters: Chapter[],
   genreLock?: GenreLock,
   usage?: AIUsageContext,
+  narrativeContext?: { longBookMemory?: import("@/lib/long-book-memory/types").LongBookMemorySnapshot | null },
 ): Promise<{ title: string; content: string }> {
   const rawOutline = blueprint.chapterOutlines[chapterIndex] || {
     title: "",
@@ -1501,6 +1572,17 @@ export async function generateSubchapter(
     outlineSummary: subOutline?.summary || outline.summary,
   });
 
+  const narrativeBrainBlock = buildNarrativeBrainV3InjectionBlock({
+    config,
+    chapterIndex,
+    outlineSummary: subOutline?.summary || outline.summary,
+    outlineTitle: subOutline?.title || outline.title,
+    previousChapters,
+    longBookMemory: narrativeContext?.longBookMemory,
+    compact: true,
+  });
+  const characterLock = buildCharacterLock(config);
+
   const structureMode = resolveEffectiveStructureMode(config);
   const unitName = structureMode === "scene_based" ? "Scene" : "Subchapter";
   const sceneBlock = structureMode === "scene_based" ? `\n${buildScenePlannerPromptBlock(config)}\n` : "";
@@ -1531,6 +1613,10 @@ ${contextMemory}
 ${buildBlueprintIntegrityRuntimeBlock(config, blueprint, { chapterIndex, subchapterIndex, compact: true })}
 
 ${humanizerBlock}
+
+${characterLock}
+
+${narrativeBrainBlock}
 
 BESTSELLER QUALITY — same standard as main chapters. HONOR the genre directive above.
 This must be a real written section with scene/argument progression, not a heading preview.
@@ -1718,6 +1804,7 @@ export async function rewriteChapter(
   config: BookConfig, blueprint: BookBlueprint, chapter: Chapter,
   chapterIndex: number, previousChapters: Chapter[], instruction: string,
   aiRating?: AIQualityRating, level: RewriteLevel = "deep", usage?: AIUsageContext,
+  narrativeContext?: { longBookMemory?: import("@/lib/long-book-memory/types").LongBookMemorySnapshot | null },
 ): Promise<Chapter> {
   const weaknessTarget = aiRating
     ? `\n\nAI EDITOR FEEDBACK (you MUST address these weaknesses):
@@ -1737,6 +1824,17 @@ export async function rewriteChapter(
     outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary,
   });
 
+  const narrativeBrainBlock = buildNarrativeBrainV3InjectionBlock({
+    config,
+    chapterIndex,
+    outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary || "",
+    outlineTitle: chapter.title,
+    previousChapters,
+    longBookMemory: narrativeContext?.longBookMemory,
+    compact: false,
+  });
+  const characterLock = buildCharacterLock(config);
+
   const prompt = `${level.toUpperCase()} REWRITE — Chapter ${chapterIndex + 1}: "${chapter.title}"
 
 ${levelInstruction}
@@ -1751,6 +1849,10 @@ ${contextMemory}
 
 ${humanizerBlock}
 
+${characterLock}
+
+${narrativeBrainBlock}
+
 Book: "${config.title}"
 Genre: ${config.genre}
 Language: ${config.language} — WRITE ENTIRELY IN ${config.language}
@@ -1760,9 +1862,13 @@ EVOLUTION RULES:
 - Produce NEW PROSE — zero repeated sentences from original
 - Maintain continuity with previous chapters
 - The rewrite must be MEASURABLY BETTER than the original
+- Do NOT flatten dialogue — preserve character-specific psychology and subtext
 
 Return JSON: { "title": "...", "content": "...", "subchapters": [...] }
 ALL in ${config.language}. Return ONLY valid JSON.`;
+
+  const psychProfiles = narrativeContext?.longBookMemory?.characterPsychology;
+  const dominantPsych = psychProfiles?.[0];
 
   const result = await callAI(
     getSystemPrompt(config) + ` You are performing a ${level.toUpperCase()} rewrite. The new version must be superior.`,
@@ -1781,7 +1887,19 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
         content: stringifyField(parsed?.content).trim() || chapter.content,
         subchapters: Array.isArray(parsed?.subchapters) ? parsed.subchapters : chapter.subchapters,
       },
-      { config, previousChapters, chapterIndex, outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary },
+      {
+        config,
+        previousChapters,
+        chapterIndex,
+        outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary,
+        characterVoiceProfile: dominantPsych?.copingMechanism === "avoidance"
+          ? "avoidant"
+          : dominantPsych?.copingMechanism === "anger"
+            ? "proud"
+            : dominantPsych?.copingMechanism === "people-pleasing"
+              ? "anxious"
+              : undefined,
+      },
     );
   } catch {
     return {
