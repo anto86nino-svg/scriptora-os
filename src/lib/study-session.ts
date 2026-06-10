@@ -51,6 +51,29 @@ export interface StudySessionResult {
 }
 
 const STOP_WORDS = new Set([
+  // IT
+  "che","per","con","una","uno","del","della","delle",
+  "degli","alla","allo","come","non","sono","era",
+  "essere","anche","dopo","prima","questo","questa",
+  "quello","quella","quindi","perché","mentre","molto",
+  "sempre","ancora","nulla","qualcosa","qualcuno",
+  "giorno","volta","uomo","donna","casa","porta",
+  "stava","disse","diceva","guardò","guardava",
+  "sentì","pensò","fece","normale","normalità",
+
+  // EN
+  "the","and","that","with","from","this","have",
+  "were","was","you","your","because","chapter",
+  "dont","you're","youre","maybe","being","into",
+  "when","what","where","which","would","could",
+  "should","there","their","them","than","then",
+  "just","really","very","much","still","also",
+  "something","someone","nothing","everything",
+  "dont","didnt","cant","couldnt","ive","im",
+  "its","thats","theyre","hes","shes",
+
+  // FR / ES
+
   "che","per","con","una","uno","del","della","delle","degli","alla","allo","come","non","sono","era","essere","anche","dopo","prima","questo","questa","quello","quella",
   "the","and","that","with","from","this","have","were","was","you","your",
   "les","des","que","pour","dans","une","avec","est",
@@ -129,20 +152,58 @@ function sentences(text: string): string[] {
     .filter((s) => countStudyWords(s) >= 6) || [];
 }
 
-function keywords(text: string, limit = 12): string[] {
-  const words = text.toLowerCase().match(/[\p{L}][\p{L}'’-]{4,}/gu) || [];
-  const counts = new Map<string, number>();
 
-  for (const word of words) {
-    const clean = word.replace(/[’']/g, "");
-    if (STOP_WORDS.has(clean)) continue;
-    counts.set(clean, (counts.get(clean) || 0) + 1);
+function keywords(text: string, limit = 12): string[] {
+  const clean = text.toLowerCase();
+
+  // cattura frasi concetto tipo:
+  // emotional regulation, nervous system, attachment style
+  const phraseMatches =
+    clean.match(/[a-z][a-z'-]{3,}\s+[a-z][a-z'-]{3,}/g) || [];
+
+  const phraseCounts = new Map<string, number>();
+
+  for (const phrase of phraseMatches) {
+    const parts = phrase.split(" ");
+
+    if (parts.some((p) => STOP_WORDS.has(p))) continue;
+    if (phrase.length < 8) continue;
+
+    phraseCounts.set(
+      phrase,
+      (phraseCounts.get(phrase) || 0) + 1
+    );
   }
 
-  return [...counts.entries()]
+  const wordMatches =
+    clean.match(/[\p{L}][\p{L}'’-]{4,}/gu) || [];
+
+  const wordCounts = new Map<string, number>();
+
+  for (const word of wordMatches) {
+    const normalized = word.replace(/[’']/g, "");
+
+    if (STOP_WORDS.has(normalized)) continue;
+    if (normalized.length < 5) continue;
+
+    wordCounts.set(
+      normalized,
+      (wordCounts.get(normalized) || 0) + 1
+    );
+  }
+
+  const phrases = [...phraseCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, Math.max(3, Math.floor(limit / 2)))
+    .map(([w]) => w);
+
+  const words = [...wordCounts.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, limit)
-    .map(([word]) => word);
+    .map(([w]) => w);
+
+  return [...new Set([...phrases, ...words])]
+    .slice(0, limit);
 }
 
 function pickSentences(text: string, wanted: number): string[] {
@@ -194,13 +255,60 @@ function buildStudyNotesPro(title: string, concepts: string[], proLines: string[
   ].join("\n");
 }
 
-function buildOpenQuestions(title: string, concepts: string[]): OpenStudyQuestion[] {
-  const base = concepts.slice(0, 8);
-  const questions = base.length ? base : [title];
 
-  return questions.map((concept) => ({
-    question: `Spiega il ruolo di "${concept}" nel materiale e collegalo al tema principale.`,
-    answerGuide: `Definisci "${concept}", spiega perché è importante, collega il concetto al tema "${title}" e aggiungi un esempio concreto.`,
+function buildOpenQuestions(
+  title: string,
+  concepts: string[],
+  narrative = false
+): OpenStudyQuestion[] {
+
+  const joined = concepts.join(" ").toLowerCase();
+
+  const selfHelp =
+    joined.includes("trauma") ||
+    joined.includes("emotion") ||
+    joined.includes("relationship") ||
+    joined.includes("attachment") ||
+    joined.includes("mindset") ||
+    joined.includes("anxiety");
+
+  if (selfHelp) {
+    return [
+      {
+        question: "Qual è il messaggio centrale del testo e quale problema cerca di risolvere?",
+        answerGuide: "Spiega il problema principale, il ragionamento dell'autore e le possibili soluzioni."
+      },
+      {
+        question: "Quali concetti psicologici o emotivi vengono spiegati nel materiale?",
+        answerGuide: "Definisci i concetti chiave e collega ogni concetto a un esempio concreto."
+      },
+      {
+        question: "In che modo il testo suggerisce di cambiare comportamento o prospettiva?",
+        answerGuide: "Descrivi il cambiamento proposto e perché potrebbe essere utile."
+      }
+    ];
+  }
+
+  if (narrative) {
+    return [
+      {
+        question: "Qual è il conflitto principale della storia?",
+        answerGuide: "Spiega il problema centrale e come influenza la trama."
+      },
+      {
+        question: "Come cambia l’atmosfera del racconto?",
+        answerGuide: "Analizza emozioni, tensione e ambientazione."
+      },
+      {
+        question: "Come evolvono i personaggi principali?",
+        answerGuide: "Descrivi motivazioni, paure e cambiamenti."
+      }
+    ];
+  }
+
+  return concepts.slice(0, 5).map((concept) => ({
+    question: `Spiega il significato di "${concept}" nel testo.`,
+    answerGuide: `Definisci "${concept}" e collegalo al tema centrale del materiale.`,
   }));
 }
 
