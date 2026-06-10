@@ -633,37 +633,6 @@ export default function Dashboard() {
     { id: "system", title: t("system_os"), desc: t("system_os_desc") },
   ];
 
-
-  if (showBookCreationWizard) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="sticky top-0 z-50 border-b border-white/10 bg-background/85 backdrop-blur-2xl">
-          <div className="mx-auto flex h-14 max-w-7xl items-center px-4 sm:px-6 lg:px-8">
-            <button
-              type="button"
-              onClick={() => setShowBookCreationWizard(false)}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/[0.12]"
-            >
-              ← Torna alla Home
-            </button>
-          </div>
-        </div>
-
-        <BookCreationOsWizard
-          open={true}
-          onClose={() => setShowBookCreationWizard(false)}
-          authorIdentity={activeAuthor}
-          onAuthorIdentity={() => openAuthorIdentity()}
-          onManualStudio={handleNewBook}
-          onDetectIntent={async (ideaText, lang) => {
-            setBookLang(lang);
-            return detectIntent(ideaText);
-          }}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="scriptora-ios-screen scriptora-app-surface min-h-screen relative overflow-hidden">
       <header className="sticky top-0 z-20 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl">
@@ -1401,6 +1370,18 @@ export default function Dashboard() {
           setAuthorIdentityPrefill(null);
         }}
         prefillDraft={authorIdentityPrefill}
+      />
+
+      <BookCreationOsWizard
+        open={showBookCreationWizard}
+        onClose={() => setShowBookCreationWizard(false)}
+        authorIdentity={activeAuthor}
+        onAuthorIdentity={() => openAuthorIdentity()}
+        onManualStudio={handleNewBook}
+        onDetectIntent={async (ideaText, lang) => {
+          setBookLang(lang);
+          return detectIntent(ideaText);
+        }}
       />
       <ProfileMenuDialog
         open={showProfileMenu}
