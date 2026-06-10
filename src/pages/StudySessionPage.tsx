@@ -298,24 +298,6 @@ export default function StudySessionPage() {
               </select>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.15em] text-emerald-200/80">
-                Lingua Studio
-              </label>
-
-              <select
-                value={studyLanguage}
-                onChange={(e) => setStudyLanguage(e.target.value as typeof studyLanguage)}
-                className="w-full rounded-xl border border-white/10 bg-background/70 px-3 py-2 text-sm"
-              >
-                <option value="Italian">🇮🇹 Italiano</option>
-                <option value="English">🇬🇧 English</option>
-                <option value="Spanish">🇪🇸 Español</option>
-                <option value="French">🇫🇷 Français</option>
-                <option value="German">🇩🇪 Deutsch</option>
-              </select>
-            </div>
-
             <button
               type="button"
               onClick={analyze}
