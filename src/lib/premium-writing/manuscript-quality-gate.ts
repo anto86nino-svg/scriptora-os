@@ -2,6 +2,7 @@ import type { BookConfig } from "@/types/book";
 import { scoreEmotionalRepetition, detectStaleBeatLoop } from "./narrative-beat-engine";
 import { scoreSceneProgression } from "./scene-purpose-validator";
 import { scoreAiTellDensity } from "./ai-detection-reduction";
+import { scoreNarrativeAuthenticity } from "./narrative-human-authenticity-v3";
 import { wrapRetryWithVoicePreserve } from "./author-voice-preserve";
 
 export interface ManuscriptQualityScores {
@@ -79,6 +80,8 @@ export function evaluateManuscriptQuality(
   if (sceneProgression < THRESHOLDS.sceneProgression) issues.push("scene_stall");
   if (readerEngagement < THRESHOLDS.readerEngagement) issues.push("low_engagement");
   if (aiTell < 55) issues.push("ai_tells");
+  const authenticity = scoreNarrativeAuthenticity(text);
+  if (authenticity < 55) issues.push("inauthentic_voice");
   if (detectStaleBeatLoop(text, priorText)) issues.push("beat_loop");
 
   const composite = Math.round(
@@ -87,7 +90,8 @@ export function evaluateManuscriptQuality(
       characterConsistency * 0.16 +
       sceneProgression * 0.18 +
       readerEngagement * 0.14 +
-      aiTell * 0.08,
+      aiTell * 0.06 +
+      authenticity * 0.06,
   );
 
   const passed = composite >= 62 && issues.length <= 1;

@@ -40,6 +40,13 @@ import { GlobalCreditBar } from "@/components/billing/GlobalCreditBar";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { PremiumOsGateway } from "@/components/premium/PremiumOsGateway";
 import { AuthorMomentumPanel } from "@/components/premium/AuthorMomentumPanel";
+import { OneFlowHome } from "@/components/one-flow/OneFlowHome";
+import { BookCreationOsWizard } from "@/components/one-flow/BookCreationOsWizard";
+import {
+  ProfileMenuDialog,
+  isAdvancedLaunchpadEnabled,
+  setAdvancedLaunchpadEnabled,
+} from "@/components/one-flow/ProfileMenuDialog";
 
 interface DetectedIntent {
   genre: string;
@@ -127,6 +134,9 @@ export default function Dashboard() {
   const [showAuthorIdentity, setShowAuthorIdentity] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
   const [showIdeaModal, setShowIdeaModal] = useState(false);
+  const [showBookCreationWizard, setShowBookCreationWizard] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showAdvancedLaunchpad, setShowAdvancedLaunchpad] = useState(() => isAdvancedLaunchpadEnabled());
   const [showMobileStats, setShowMobileStats] = useState(false);
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [showLangMenu, setShowLangMenu] = useState(false);
@@ -261,8 +271,14 @@ export default function Dashboard() {
       navigate("/pricing");
       return;
     }
-    setShowNewBook(true);
+    setShowBookCreationWizard(true);
   };
+
+  useEffect(() => {
+    const onAdvancedChange = () => setShowAdvancedLaunchpad(isAdvancedLaunchpadEnabled());
+    window.addEventListener("scriptora-advanced-mode-change", onAdvancedChange);
+    return () => window.removeEventListener("scriptora-advanced-mode-change", onAdvancedChange);
+  }, []);
 
   const guardPlanFeature = (feature: FeatureKey, action: () => void) => () => {
     if (!canUseFeature(currentPlan, feature)) {
@@ -305,9 +321,10 @@ export default function Dashboard() {
     toast.success(tt("author_identity_selected", { name: identity.penName }));
   };
 
-  const goApp = (opts?: { section?: string; projectId?: string }) => {
+  const goApp = (opts?: { section?: string; projectId?: string; voice?: boolean }) => {
     if (opts?.projectId) sessionStorage.setItem("nexora-open-project", opts.projectId);
     if (opts?.section) sessionStorage.setItem("nexora-open-section", opts.section);
+    if (opts?.voice) sessionStorage.setItem("scriptora-open-voice-studio", "1");
     navigate("/app");
   };
 
@@ -367,12 +384,14 @@ export default function Dashboard() {
     });
   };
 
-  const detectIntent = async (): Promise<DetectedIntent | null> => {
-    if (idea.trim().length < 6) return null;
+  const detectIntent = async (ideaOverride?: string): Promise<DetectedIntent | null> => {
+    const source = (ideaOverride ?? idea).trim();
+    if (source.length < 6) return null;
+    if (ideaOverride) setIdea(ideaOverride);
     setDetecting(true);
     try {
       const { data, error } = await supabase.functions.invoke("detect-book-intent", {
-        body: { idea: idea.trim(), language: bookLang, userId: getCurrentUserId() },
+        body: { idea: source, language: bookLang, userId: getCurrentUserId() },
       });
       if (error) throw error;
       if (data?.fallback) {
@@ -629,7 +648,7 @@ export default function Dashboard() {
             {user && (
               <>
                 <button
-                  onClick={() => navigate("/pricing")}
+                  onClick={() => setShowProfileMenu(true)}
                   title={displayName}
                   className="ml-1 flex h-8 min-w-0 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] pl-1 pr-2 transition-colors hover:bg-white/[0.12]"
                 >
@@ -761,27 +780,48 @@ export default function Dashboard() {
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 sm:pt-8 lg:px-8">
-        <div className="mb-4 sm:mb-6">
-          <PremiumOsGateway
-            lastProject={lastProject}
-            progressPercent={lastProjectProgress}
-            onContinue={() => lastProject && goApp({ projectId: lastProject.id })}
-            onNewBook={openNewBookGuarded}
-          />
-        </div>
+        <OneFlowHome
+          lastProjectTitle={lastProject?.config.title}
+          lastProjectProgress={lastProjectProgress}
+          onWriteBook={openNewBookGuarded}
+          onStudyWithAI={() => navigate("/study-session")}
+          onListenBook={
+            lastProject
+              ? () => goApp({ projectId: lastProject.id, voice: true })
+              : () => goApp({ voice: true })
+          }
+          onContinue={lastProject ? () => goApp({ projectId: lastProject.id }) : undefined}
+          onMyBooks={() => setShowProjects(true)}
+          onEvaluateManuscript={() => guardPlanFeature("chapter_improvement", () => setShowManuscriptAnalyzer(true))()}
+          onCredits={() => navigate("/usage?focus=purchase")}
+          onProfile={() => setShowProfileMenu(true)}
+        />
 
         <div className="mb-4 sm:mb-6">
           <WalletScriptoraCard />
         </div>
 
-        <div className="mb-4 sm:mb-6">
-          <AuthorMomentumPanel
-            lastProject={lastProject}
-            progressPercent={lastProjectProgress}
-            onOpenProject={() => lastProject && goApp({ projectId: lastProject.id })}
-          />
-        </div>
+        {showAdvancedLaunchpad && (
+          <>
+            <div className="mb-4 sm:mb-6">
+              <PremiumOsGateway
+                lastProject={lastProject}
+                progressPercent={lastProjectProgress}
+                onContinue={() => lastProject && goApp({ projectId: lastProject.id })}
+                onNewBook={openNewBookGuarded}
+              />
+            </div>
+            <div className="mb-4 sm:mb-6">
+              <AuthorMomentumPanel
+                lastProject={lastProject}
+                progressPercent={lastProjectProgress}
+                onOpenProject={() => lastProject && goApp({ projectId: lastProject.id })}
+              />
+            </div>
+          </>
+        )}
 
+        {showAdvancedLaunchpad && (
         <div className="mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
           <section className="ios-panel border-white/15 bg-slate-950/34 p-4 shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur-2xl sm:p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -880,6 +920,7 @@ export default function Dashboard() {
             </div>
           </section>
         </div>
+        )}
 
         <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
 
@@ -1084,6 +1125,7 @@ export default function Dashboard() {
           </div>
         )}
 
+        {showAdvancedLaunchpad && (
         <section className="mb-10">
           <div className="mb-5 flex items-end justify-between gap-3">
             <div>
@@ -1153,6 +1195,7 @@ export default function Dashboard() {
             })}
           </div>
         </section>
+        )}
 
         {showProjects && (() => {
           const drafts = draftProjects;
@@ -1264,7 +1307,32 @@ export default function Dashboard() {
       <NotepadDialog open={showNotepad} onClose={() => setShowNotepad(false)} />
       <AuthorIdentityDialog open={showAuthorIdentity} onClose={() => setShowAuthorIdentity(false)} />
 
-      {/* Idea modal — primary generation flow */}
+      <BookCreationOsWizard
+        open={showBookCreationWizard}
+        onClose={() => setShowBookCreationWizard(false)}
+        authorIdentity={activeAuthor}
+        onManualStudio={handleNewBook}
+        onDetectIntent={async (ideaText, lang) => {
+          setBookLang(lang);
+          return detectIntent(ideaText);
+        }}
+      />
+      <ProfileMenuDialog
+        open={showProfileMenu}
+        onClose={() => setShowProfileMenu(false)}
+        advancedEnabled={showAdvancedLaunchpad}
+        onToggleAdvanced={(enabled) => {
+          setAdvancedLaunchpadEnabled(enabled);
+          setShowAdvancedLaunchpad(enabled);
+        }}
+        onOpenStudio={() => goApp()}
+        onAuthorIdentity={() => setShowAuthorIdentity(true)}
+        onAppearance={() => setShowAdvancedSettings(true)}
+        onCredits={() => navigate("/usage?focus=purchase")}
+        onPricing={() => navigate("/pricing")}
+      />
+
+      {/* Idea modal — advanced launchpad generation flow */}
       {showIdeaModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-2xl"

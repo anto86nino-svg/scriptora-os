@@ -26,6 +26,9 @@ export function buildSurgicalRewritePlan(
   if (quality.issues.includes("ai_tells")) {
     interventions.push("Remove aphorism endings; add concrete sensory anchors.");
   }
+  if (quality.issues.includes("inauthentic_voice")) {
+    interventions.push("Add subtext, hesitation, body language — remove therapy dialogue and instant confessions.");
+  }
   if (quality.issues.includes("low_engagement")) {
     interventions.push("Strengthen opening hook and end with unresolved tension.");
   }

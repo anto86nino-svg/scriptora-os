@@ -1,6 +1,7 @@
 import type { BookConfig } from "@/types/book";
 import { applyPremiumOutputGuard } from "./output-sanitization-guard";
 import { applyLightAiTellSoftening } from "./ai-detection-reduction";
+import { applyNarrativeHumanAuthenticityV3 } from "./narrative-human-authenticity-v3";
 import {
   evaluateManuscriptQuality,
   type ManuscriptQualityScores,
@@ -20,6 +21,11 @@ export function runUltraHumanFinalPass(
 ): UltraHumanPipelineResult {
   let processed = applyPremiumOutputGuard(text, { language: opts.language || "Italian" });
   processed = applyLightAiTellSoftening(processed);
+  processed = applyNarrativeHumanAuthenticityV3(processed, {
+    config: opts.config,
+    chapterIndex: opts.chapterIndex,
+    language: opts.language,
+  });
 
   const quality = evaluateManuscriptQuality(processed, opts.priorText || "", opts.config);
   const reader = simulateReaderResponse(processed, opts.chapterIndex ?? 0);

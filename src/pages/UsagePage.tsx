@@ -72,14 +72,15 @@ export default function UsagePage() {
         <section>
           <h1 className="text-2xl font-bold tracking-tight">Crediti e Utilizzo</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Wallet, storico consumi e acquisti · Provider {paymentProvider}
+            Wallet, storico consumi e acquisti
+            {!import.meta.env.PROD && paymentProvider ? ` · ${paymentProvider}` : ""}
           </p>
         </section>
 
-        {simulationBadge && (
+        {simulationBadge && !import.meta.env.PROD && (
           <section className="rounded-lg border-2 border-amber-500/50 bg-amber-500/10 p-4 text-xs leading-relaxed text-amber-50/90">
             <div className="font-bold tracking-[0.14em] text-amber-100">{simulationBadge}</div>
-            <div className="mt-1">Modalità simulazione attiva. Il saldo mostrato non rappresenta pagamenti reali.</div>
+            <div className="mt-1">Build di sviluppo — il saldo può essere simulato.</div>
           </section>
         )}
 
@@ -112,7 +113,7 @@ export default function UsagePage() {
             <ShoppingBag className="h-4 w-4" /> Acquista Crediti
           </h2>
           <CreditPurchasePanel onPurchased={refresh} />
-          {devMode && (
+          {devMode && !import.meta.env.PROD && (
             <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
               <input
                 type="checkbox"

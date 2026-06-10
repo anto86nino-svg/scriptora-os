@@ -30,6 +30,7 @@ const DownloadsPage = lazy(() => import("./pages/DownloadsPage.tsx"));
 const BestsellerRadarPage = lazy(() => import("./pages/BestsellerRadarPage.tsx"));
 const KeywordGoldPage = lazy(() => import("./pages/KeywordGoldPage.tsx"));
 const InstallPage = lazy(() => import("./pages/InstallPage.tsx"));
+const StudySessionPage = lazy(() => import("./pages/StudySessionPage.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -58,6 +59,8 @@ const App = () => (
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/study" element={<ProtectedRoute><FeatureErrorBoundary featureName="Study OS"><StudySessionPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/study-session" element={<ProtectedRoute><FeatureErrorBoundary featureName="Study OS"><StudySessionPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/app" element={<ProtectedRoute><Index /></ProtectedRoute>} />
                 <Route path="/auto-bestseller" element={<ProtectedRoute><FeatureErrorBoundary featureName="Auto Bestseller"><AutoBestsellerPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/usage" element={<ProtectedRoute><UsagePage /></ProtectedRoute>} />

@@ -9,7 +9,7 @@ import { SmartCreditRecommendation } from "./SmartCreditRecommendation";
 export function WalletScriptoraCard() {
   const navigate = useNavigate();
   const { wallet, analytics, lowCreditHint } = useCreditWallet();
-  const simulationBadge = creditSimulationBadge();
+  const simulationBadge = import.meta.env.PROD ? null : creditSimulationBadge();
   const purchaseLabel = getPurchaseCtaLabel();
 
   return (

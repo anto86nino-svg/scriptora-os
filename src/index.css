@@ -3668,3 +3668,98 @@ html[data-scriptora-bg="classic-premium-author"] body::before {
 .scriptora-turbo-mode .premium-book-glow {
   display: none;
 }
+
+/* ── Mobile UX: wizard + modals ── */
+.scriptora-wizard-shell {
+  max-height: min(94dvh, 900px);
+}
+.scriptora-wizard-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+.scriptora-wizard-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: rgba(2, 6, 23, 0.96);
+  backdrop-filter: blur(12px);
+}
+.scriptora-modal-overlay {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 767px) {
+  .scriptora-wizard-shell {
+    max-height: 100dvh;
+    border-radius: 1.25rem 1.25rem 0 0;
+  }
+  .scriptora-feature-scroll {
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ── Performance god-tier ── */
+.scriptora-turbo-mode *,
+.scriptora-visual-performance * {
+  scroll-behavior: auto !important;
+}
+.scriptora-turbo-mode .env-breathing,
+.scriptora-turbo-mode .premium-book-breathe,
+.scriptora-turbo-mode [class*="animate-"] {
+  animation: none !important;
+}
+.scriptora-turbo-mode .backdrop-blur-2xl,
+.scriptora-turbo-mode .backdrop-blur-xl {
+  backdrop-filter: blur(8px) !important;
+}
+.scriptora-turbo-mode .ios-panel {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* ── Immersive environments V3 (readability-first) ── */
+html[data-scriptora-bg="horror-crime-lab"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.08;
+  background-image:
+    linear-gradient(135deg, transparent 48%, rgba(255, 255, 255, 0.04) 50%, transparent 52%),
+    radial-gradient(circle at 85% 15%, rgba(220, 38, 38, 0.15), transparent 35%);
+}
+
+html[data-scriptora-bg="dark-romance-velvet"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.1;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(251, 191, 36, 0.12), transparent 55%),
+    linear-gradient(180deg, transparent 70%, rgba(190, 24, 93, 0.06) 100%);
+}
+
+html[data-scriptora-bg="fantasy-throne"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.09;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(234, 179, 8, 0.1), transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(124, 58, 237, 0.08), transparent 45%);
+}
+
+html[data-scriptora-bg="scifi-intel-lab"] body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.1;
+  background:
+    repeating-linear-gradient(90deg, transparent, transparent 80px, rgba(34, 211, 238, 0.03) 80px, rgba(34, 211, 238, 0.03) 81px),
+    radial-gradient(circle at 60% 30%, rgba(59, 130, 246, 0.1), transparent 50%);
+}

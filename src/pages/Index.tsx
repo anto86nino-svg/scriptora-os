@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { NavigationTree } from "@/components/NavigationTree";
 import { TopBar } from "@/components/TopBar";
 import { EditorPanel } from "@/components/EditorPanel";
@@ -27,8 +27,22 @@ import { Link } from "react-router-dom";
 import { useQuota, usePlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { isProjectComplete } from "@/lib/project-status";
+import { Loader2 } from "lucide-react";
+import { MollyBrainPanel } from "@/components/molly/MollyBrainPanel";
+
+const VoiceStudioDialog = lazy(() =>
+  import("@/components/VoiceStudioDialog").then((m) => ({ default: m.VoiceStudioDialog })),
+);
 
 type ExportFormat = "epub" | "docx" | "pdf";
+
+function VoiceStudioFallback() {
+  return (
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-background/60 backdrop-blur-sm">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 const Index = () => {
   useUILanguage();
@@ -38,6 +52,8 @@ const Index = () => {
   const [showPublish, setShowPublish] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCoach, setShowCoach] = useState(false);
+  const [showVoiceStudio, setShowVoiceStudio] = useState(false);
+  const [voiceStudioChapterIndex, setVoiceStudioChapterIndex] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
   const [guidedFlowEnabled, setGuidedFlowEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem("scriptora-guided-flow");
@@ -68,6 +84,18 @@ const Index = () => {
   const { quota } = useQuota(engine.project?.id || null);
   const { plan } = usePlan();
   const freeBookUsed = plan === "free" && projects.length > 0;
+
+  const voiceProjectList = useMemo(
+    () => (engine.project ? [engine.project, ...projects.filter((p) => p.id !== engine.project!.id)] : projects),
+    [engine.project, projects],
+  );
+
+  const openVoiceStudioForChapter = (chapterIndex: number) => {
+    setVoiceStudioChapterIndex(chapterIndex);
+    setShowVoiceStudio(true);
+  };
+
+  const closeVoiceStudio = () => setShowVoiceStudio(false);
 
   const openNewBookGuarded = () => {
     if (freeBookUsed) {
@@ -183,6 +211,11 @@ const Index = () => {
           engine.loadProject(last);
           applySection();
         }
+      }
+
+      if (sessionStorage.getItem("scriptora-open-voice-studio") === "1") {
+        sessionStorage.removeItem("scriptora-open-voice-studio");
+        setShowVoiceStudio(true);
       }
     };
     init();
@@ -307,8 +340,35 @@ const Index = () => {
             onUpdateBlueprintOutlineSummary={engine.updateBlueprintOutlineSummary}
             onUpdateFrontMatterField={engine.updateFrontMatterField}
             onUpdateBackMatterField={engine.updateBackMatterField}
+            onNarrateChapter={openVoiceStudioForChapter}
           />
         </div>
+        {showVoiceStudio && (
+          <Suspense fallback={<VoiceStudioFallback />}>
+            <VoiceStudioDialog
+              open={showVoiceStudio}
+              onClose={closeVoiceStudio}
+              projects={voiceProjectList}
+              initialProjectId={engine.project?.id}
+              initialChapterIndex={voiceStudioChapterIndex}
+              autoPlayOnOpen
+              onOpenChapterInEditor={(_projectId, chapterIdx) => {
+                closeVoiceStudio();
+                setActiveSection(`chapter-${chapterIdx}` as SectionId);
+              }}
+            />
+          </Suspense>
+        )}
+        <MollyBrainPanel
+          project={engine.project}
+          activeSection={activeSection}
+          appContext={showVoiceStudio ? "voice" : engine.isAnythingGenerating ? "generating" : "writing"}
+          voiceFeedback={showVoiceStudio ? "artificial_pacing" : undefined}
+          onApplyChapterContent={(chapterIdx, content, subIdx) => {
+            if (subIdx != null) engine.updateSubchapterContent(chapterIdx, subIdx, content);
+            else engine.updateChapterContent(chapterIdx, content);
+          }}
+        />
       </div>
     );
   }
@@ -532,6 +592,7 @@ const Index = () => {
                   onUpdateBlueprintOutlineSummary={engine.updateBlueprintOutlineSummary}
                   onUpdateFrontMatterField={engine.updateFrontMatterField}
                   onUpdateBackMatterField={engine.updateBackMatterField}
+                  onNarrateChapter={openVoiceStudioForChapter}
                 />
               </div>
               {showCoach && (
@@ -540,6 +601,22 @@ const Index = () => {
                     if (subIdx !== null) engine.updateSubchapterContent(chapterIdx, subIdx, text);
                     else engine.updateChapterContent(chapterIdx, text);
                   }} />
+              )}
+              {showVoiceStudio && (
+                <Suspense fallback={<VoiceStudioFallback />}>
+                  <VoiceStudioDialog
+                    open={showVoiceStudio}
+                    onClose={closeVoiceStudio}
+                    projects={voiceProjectList}
+                    initialProjectId={engine.project?.id}
+                    initialChapterIndex={voiceStudioChapterIndex}
+                    autoPlayOnOpen
+                    onOpenChapterInEditor={(_projectId, chapterIdx) => {
+                      closeVoiceStudio();
+                      setActiveSection(`chapter-${chapterIdx}` as SectionId);
+                    }}
+                  />
+                </Suspense>
               )}
             </>
           ) : (
@@ -720,6 +797,19 @@ const Index = () => {
           setSidebarOpen(false);
         }}
       />
+      {engine.project && (
+        <MollyBrainPanel
+          project={engine.project}
+          activeSection={activeSection}
+          appContext={showVoiceStudio ? "voice" : engine.isAnythingGenerating ? "generating" : "writing"}
+          voiceFeedback={showVoiceStudio ? "artificial_pacing" : undefined}
+          onApplyChapterContent={(chapterIdx, content, subIdx) => {
+            if (subIdx != null) engine.updateSubchapterContent(chapterIdx, subIdx, content);
+            else engine.updateChapterContent(chapterIdx, content);
+          }}
+        />
+      )}
+
       <UpgradeModal
         open={!!upgradeReason}
         reason={upgradeReason || "export"}

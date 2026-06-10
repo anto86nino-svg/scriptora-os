@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo } from "react";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating } from "@/types/book";
-import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, AlertTriangle, Download, Zap } from "lucide-react";
+import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, AlertTriangle, Download, Zap, Headphones } from "lucide-react";
 import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel";
 import { GenreProfileBadge } from "@/components/GenreProfileBadge";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
@@ -42,6 +42,7 @@ interface EditorPanelProps {
   onUpdateBlueprintOutlineSummary?: (index: number, summary: string) => void;
   onUpdateFrontMatterField?: (field: string, value: string) => void;
   onUpdateBackMatterField?: (field: string, value: string) => void;
+  onNarrateChapter?: (chapterIndex: number) => void;
 }
 
 export function EditorPanel({
@@ -56,6 +57,7 @@ export function EditorPanel({
   writingSettings,
   onUpdateBlueprintField, onUpdateBlueprintOutlineTitle, onUpdateBlueprintOutlineSummary,
   onUpdateFrontMatterField, onUpdateBackMatterField,
+  onNarrateChapter,
 }: EditorPanelProps) {
   const { blueprint, frontMatter, chapters, backMatter, config, phase } = project;
   const [mode, setMode] = useState<"edit" | "preview">("edit");
@@ -151,6 +153,7 @@ export function EditorPanel({
                   onCancel={onCancelGeneration ? () => onCancelGeneration(`chapter-${view.chapterIndex}`) : undefined}
                   chunkProgress={chunkProgress?.[`chapter-${view.chapterIndex}`]}
                   ws={ws}
+                  onNarrateChapter={onNarrateChapter}
                 />
               )}
               {view.type === "subchapter" && (() => {
@@ -392,6 +395,7 @@ function ChapterView({
   project, chapterIndex, outline, chapter, isGenerating, isEvaluating,
   onGenerate, onRegenerate, onRewrite, onEvaluate, onAutoRewrite, onGenerateSubchapter,
   onUpdateContent, onUpdateTitle, onUpdateSubContent, onUpdateSubTitle, onSetLengthOverride, isGeneratingSection, onCancel, chunkProgress, ws,
+  onNarrateChapter,
 }: {
   project: BookProject; chapterIndex: number;
   outline: { title: string; summary: string }; chapter: Chapter | undefined;
@@ -407,6 +411,7 @@ function ChapterView({
   onCancel?: () => void;
   chunkProgress?: ChunkProgress;
   ws: WritingSettings;
+  onNarrateChapter?: (chapterIndex: number) => void;
 }) {
   const isGenerated = chapter && chapter.content.length > 0;
   const currentLength = chapter?.lengthOverride || project.config.chapterLength;
@@ -453,6 +458,18 @@ function ChapterView({
             </div>
           ) : (
             <>
+              {onNarrateChapter && (
+                <button
+                  type="button"
+                  onClick={() => onNarrateChapter(chapterIndex)}
+                  disabled={!isGenerated || isGenerating || isEvaluating}
+                  title="Voice Studio — ascolta e rileggi il capitolo"
+                  className="h-9 flex items-center gap-1.5 px-3 rounded-lg text-[11px] font-bold bg-emerald-300 text-slate-950 hover:bg-emerald-200 disabled:opacity-30 transition-colors shrink-0"
+                >
+                  <Headphones className="h-3.5 w-3.5" />
+                  Ascolta capitolo
+                </button>
+              )}
               <ActionButton icon={<Download className="h-3.5 w-3.5" />} title="TXT" onClick={() => downloadText(`chapter-${chapterIndex + 1}-${(chapter?.title || "chapter").replace(/\s+/g, "_")}.txt`, chapter?.content || "")} disabled={!isGenerated} />
               <button
                 onClick={() => setShowIntelligence(true)}
@@ -467,6 +484,14 @@ function ChapterView({
                 <CreditCostBadge operation="chapter_diagnostic" />
               </div>
               <ActionButton icon={<RefreshCw className="h-3.5 w-3.5" />} title={t("regenerate")} onClick={onRegenerate} disabled={isGenerating} />
+              {onNarrateChapter && (
+                <ActionButton
+                  icon={<Headphones className="h-3.5 w-3.5" />}
+                  title="Modalità lettura"
+                  onClick={() => onNarrateChapter(chapterIndex)}
+                  disabled={!isGenerated || isGenerating || isEvaluating}
+                />
+              )}
 
               {/* Rewrite with levels */}
               <div className="relative flex flex-col items-end gap-1">
