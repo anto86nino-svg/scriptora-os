@@ -73,6 +73,14 @@ export default function StudySessionPage() {
   const [aiMode, setAiMode] = useState<"idle" | "deepseek" | "local">("idle");
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
+
+  const [activeSection, setActiveSection] = useState<
+    "summary" |
+    "questions" |
+    "vocabulary" |
+    "flashcards" |
+    "quiz"
+  >("summary");
   const [openAnswers, setOpenAnswers] = useState<Record<number, string>>({});
   const [openEvaluations, setOpenEvaluations] = useState<Record<number, StudyAnswerEvaluation>>({});
   const [evaluatingOpenAnswer, setEvaluatingOpenAnswer] = useState<number | null>(null);
@@ -301,10 +309,32 @@ export default function StudySessionPage() {
                   </div>
                 </div>
 
-                <StudyBlock title="Riassunto leggero" text={result.lightSummary} />
-                <StudyBlock title="Riassunto medio" text={result.mediumSummary} />
-                <StudyBlock title="Riassunto Pro" text={result.proSummary} />
-                <StudyBlock title="Scheda Studio Pro" text={result.studyNotesPro} />
+                <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
+                  <button onClick={() => setActiveSection("summary")} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold">
+                    Riassunti
+                  </button>
+                  <button onClick={() => setActiveSection("questions")} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold">
+                    Domande
+                  </button>
+                  <button onClick={() => setActiveSection("vocabulary")} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold">
+                    Vocabolario
+                  </button>
+                  <button onClick={() => setActiveSection("flashcards")} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold">
+                    Flashcard
+                  </button>
+                  <button onClick={() => setActiveSection("quiz")} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold">
+                    Quiz
+                  </button>
+                </div>
+
+                {activeSection === "summary" && (
+                  <>
+                    <StudyBlock title="Riassunto leggero" text={result.lightSummary} />
+                    <StudyBlock title="Riassunto medio" text={result.mediumSummary} />
+                    <StudyBlock title="Riassunto Pro" text={result.proSummary} />
+                    <StudyBlock title="Scheda Studio Pro" text={result.studyNotesPro} />
+                  </>
+                )}
 
                 <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
                   <h3 className="font-semibold">Domande aperte da interrogazione</h3>
