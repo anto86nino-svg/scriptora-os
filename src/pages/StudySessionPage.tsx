@@ -23,7 +23,7 @@ import { StudyOralPanel } from "@/components/study/StudyOralPanel";
 import { StudyVocabularyPanel } from "@/components/study/StudyVocabularyPanel";
 import { StudyFlashcardsPanel } from "@/components/study/StudyFlashcardsPanel";
 import { StudyQuizPanel } from "@/components/study/StudyQuizPanel";
-import { MollyBrainPanel } from "@/components/molly/MollyBrainPanel";
+import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
 import type { BookProject } from "@/types/book";
 
 const STORAGE_KEY = "scriptora-study-session-v1";
@@ -639,7 +639,7 @@ export default function StudySessionPage() {
       </div>
 
       {rawText.trim().length >= 120 && (
-        <MollyBrainPanel
+        <LazyMollyBrainPanel
           project={studyBrainProject}
           activeSection="chapter-0"
           appContext="study"

@@ -40,15 +40,17 @@ Lo script è **idempotente**: puoi rilanciarlo. Crea backup `.bak.<timestamp>` p
 
 ---
 
-## Edge Functions deployate (18)
+## Edge Functions deployate (22)
 
 ```
 activate-beta            generate-blueprint-fast   market-validator
-analyze-chapter          generate-book             molly-chat
-auto-bestseller-engine   genre-coach               patch-chapter
-detect-book-intent       go-no-go-engine           publish-tools
-dominate-chapter         kdp-money-engine          title-autofill
-fix-section              live-coach                title-intelligence
+ai-usage-summary         generate-scene-image      patch-chapter
+analyze-chapter          generate-book             publish-tools
+auto-bestseller-engine   genre-coach               scriptora-character-bible
+bestseller-radar         go-no-go-engine           scriptora-novel-idea
+detect-book-intent       kdp-money-engine          title-autofill
+dominate-chapter         live-coach                title-intelligence
+fix-section
 ```
 
 ---

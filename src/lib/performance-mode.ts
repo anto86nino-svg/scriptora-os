@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { isMobileDevice } from "@/lib/mobile-performance";
 
 export type VisualPerformancePreset = "premium" | "balanced" | "performance";
 
@@ -18,9 +19,11 @@ export function normalizeVisualPreset(raw: string | null): VisualPerformancePres
 
 export function loadVisualPreset(): VisualPerformancePreset {
   try {
-    return normalizeVisualPreset(localStorage.getItem(SCRIPTORA_PERFORMANCE_MODE_KEY));
+    const saved = localStorage.getItem(SCRIPTORA_PERFORMANCE_MODE_KEY);
+    if (saved) return normalizeVisualPreset(saved);
+    return isMobileDevice() ? "performance" : "premium";
   } catch {
-    return "premium";
+    return isMobileDevice() ? "performance" : "premium";
   }
 }
 

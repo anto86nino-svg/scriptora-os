@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo } from "react";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating } from "@/types/book";
-import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, AlertTriangle, Download, Zap, Headphones } from "lucide-react";
+import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, AlertTriangle, Download, Zap, Headphones, Shield } from "lucide-react";
+import { BlueprintRecoveryCard } from "@/components/blueprint/BlueprintRecoveryCard";
 import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel";
 import { GenreProfileBadge } from "@/components/GenreProfileBadge";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
@@ -40,6 +41,8 @@ interface EditorPanelProps {
   onUpdateBlueprintField?: (field: "overview" | "emotionalArc", value: string) => void;
   onUpdateBlueprintOutlineTitle?: (index: number, title: string) => void;
   onUpdateBlueprintOutlineSummary?: (index: number, summary: string) => void;
+  onRegenerateBlueprint?: () => void;
+  onCreateSafeBlueprint?: () => void;
   onUpdateFrontMatterField?: (field: string, value: string) => void;
   onUpdateBackMatterField?: (field: string, value: string) => void;
   onNarrateChapter?: (chapterIndex: number) => void;
@@ -56,6 +59,7 @@ export function EditorPanel({
   chunkProgress,
   writingSettings,
   onUpdateBlueprintField, onUpdateBlueprintOutlineTitle, onUpdateBlueprintOutlineSummary,
+  onRegenerateBlueprint, onCreateSafeBlueprint,
   onUpdateFrontMatterField, onUpdateBackMatterField,
   onNarrateChapter,
 }: EditorPanelProps) {
@@ -120,11 +124,14 @@ export function EditorPanel({
               </div>
               {view.type === "blueprint" && (
                 <BlueprintView
+                  project={project}
                   blueprint={blueprint}
                   isGenerating={isGeneratingSection("blueprint")}
                   onUpdateField={onUpdateBlueprintField}
                   onUpdateOutlineTitle={onUpdateBlueprintOutlineTitle}
                   onUpdateOutlineSummary={onUpdateBlueprintOutlineSummary}
+                  onRegenerateBlueprint={onRegenerateBlueprint}
+                  onCreateSafeBlueprint={onCreateSafeBlueprint}
                 />
               )}
               {view.type === "front-matter" && (
@@ -272,19 +279,60 @@ function PreviewMode({ project, view, ws }: { project: BookProject; view: any; w
 
 /* ============ Section Views ============ */
 
-function BlueprintView({ blueprint, isGenerating, onUpdateField, onUpdateOutlineTitle, onUpdateOutlineSummary }: {
+function BlueprintView({
+  project,
+  blueprint,
+  isGenerating,
+  onUpdateField,
+  onUpdateOutlineTitle,
+  onUpdateOutlineSummary,
+  onRegenerateBlueprint,
+  onCreateSafeBlueprint,
+}: {
+  project: BookProject;
   blueprint: BookProject["blueprint"];
   isGenerating: boolean;
   onUpdateField?: (field: "overview" | "emotionalArc", value: string) => void;
   onUpdateOutlineTitle?: (index: number, title: string) => void;
   onUpdateOutlineSummary?: (index: number, summary: string) => void;
+  onRegenerateBlueprint?: () => void;
+  onCreateSafeBlueprint?: () => void;
 }) {
+  const hasBlueprintError = project.blueprintStatus === "error" && !blueprint;
+
   return (
-    <div className="space-y-8">
-      <PageHeader title={t("blueprint")} subtitle="Book architecture and chapter plan" />
-      {isGenerating && <LoadingBanner text={`${t("generating")}...`} />}
+    <div className="space-y-6">
+      <PageHeader title={t("blueprint")} subtitle={t("blueprint_subtitle")} />
+
+      {isGenerating && (
+        <BlueprintRecoveryCard
+          isGenerating
+          onRegenerate={() => {}}
+          onCreateSafe={() => {}}
+        />
+      )}
+
+      {hasBlueprintError && !isGenerating && onRegenerateBlueprint && onCreateSafeBlueprint && (
+        <BlueprintRecoveryCard
+          errorMessage={project.blueprintLastError}
+          validationErrors={project.blueprintValidationErrors}
+          onRegenerate={onRegenerateBlueprint}
+          onCreateSafe={onCreateSafeBlueprint}
+        />
+      )}
+
       {blueprint ? (
         <>
+          {project.blueprintSource === "config_fallback" && (
+            <div className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-xs leading-relaxed text-sky-100/90">
+              {t("blueprint_safe_structure_notice")}
+            </div>
+          )}
+          {project.blueprintSource === "repaired" && (
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-100/90">
+              {t("blueprint_recovered_notice")}
+            </div>
+          )}
           <div className="prose-zone">
             <textarea
               value={blueprint.overview}
@@ -342,9 +390,36 @@ function BlueprintView({ blueprint, isGenerating, onUpdateField, onUpdateOutline
             </div>
           </div>
         </>
-      ) : (
-        <EmptyState text="Blueprint will be generated when you create the book." />
-      )}
+      ) : !isGenerating && !hasBlueprintError ? (
+        <div className="rounded-xl border border-border/50 bg-muted/10 p-5 space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">{t("blueprint_no_structure")}</h3>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t("blueprint_empty_hint")}</p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {onRegenerateBlueprint && (
+              <button
+                type="button"
+                onClick={onRegenerateBlueprint}
+                className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:opacity-90"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {t("blueprint_generate_cta")}
+              </button>
+            )}
+            {onCreateSafeBlueprint && (
+              <button
+                type="button"
+                onClick={onCreateSafeBlueprint}
+                className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 text-xs font-semibold text-foreground hover:bg-muted/40"
+              >
+                <Shield className="h-3.5 w-3.5" />
+                {t("blueprint_create_safe_cta")}
+              </button>
+            )}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

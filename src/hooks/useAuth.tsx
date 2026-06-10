@@ -6,6 +6,7 @@ import { isOwnerEmail } from "@/lib/auth/owner";
 import { setAuthSessionContext, clearAuthSessionContext } from "@/lib/auth/sessionContext";
 import { performLogout } from "@/lib/auth/logout";
 import { migrateLegacyWalletStorage } from "@/lib/billing/walletScope";
+import { seedDevWalletIfNeeded } from "@/lib/billing/wallet";
 
 type AuthContextValue = {
   user: User | null;
@@ -31,6 +32,7 @@ function applySessionToContext(
       email: nextUser.email ?? null,
     });
     migrateLegacyWalletStorage(nextUser.id);
+    seedDevWalletIfNeeded();
     window.dispatchEvent(new Event("scriptora-credits-change"));
     if (isOwnerEmail(nextUser.email) && !isDevMode()) {
       enableDevMode();

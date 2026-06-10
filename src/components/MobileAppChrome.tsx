@@ -1,0 +1,35 @@
+import { useEffect, useState } from "react";
+import { isMobileDevice } from "@/lib/mobile-performance";
+import GlobalCuriosity from "./GlobalCuriosity";
+import { ScriptoraStepGuide } from "./ScriptoraStepGuide";
+import { DevModeBadge } from "./DevModeBadge";
+
+/**
+ * Non-critical floating UI (guide, studio, dev badge).
+ * On mobile we mount after idle so the first route paints faster.
+ */
+export function MobileAppChrome() {
+  const [ready, setReady] = useState(() => !isMobileDevice());
+
+  useEffect(() => {
+    if (!isMobileDevice()) return;
+
+    const mount = () => setReady(true);
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(mount, { timeout: 1200 });
+      return () => cancelIdleCallback(id);
+    }
+    const timer = window.setTimeout(mount, 350);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  if (!ready) return null;
+
+  return (
+    <>
+      <ScriptoraStepGuide />
+      <DevModeBadge />
+      <GlobalCuriosity />
+    </>
+  );
+}

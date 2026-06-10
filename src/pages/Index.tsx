@@ -30,7 +30,7 @@ import { useQuota, usePlan } from "@/lib/plan";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { isProjectComplete } from "@/lib/project-status";
 import { Loader2 } from "lucide-react";
-import { MollyBrainPanel } from "@/components/molly/MollyBrainPanel";
+import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
 
 const VoiceStudioDialog = lazy(() =>
   import("@/components/VoiceStudioDialog").then((m) => ({ default: m.VoiceStudioDialog })),
@@ -369,6 +369,8 @@ const Index = () => {
             onUpdateBlueprintField={engine.updateBlueprintField}
             onUpdateBlueprintOutlineTitle={engine.updateBlueprintOutlineTitle}
             onUpdateBlueprintOutlineSummary={engine.updateBlueprintOutlineSummary}
+            onRegenerateBlueprint={engine.regenerateBlueprint}
+            onCreateSafeBlueprint={engine.createSafeBlueprint}
             onUpdateFrontMatterField={engine.updateFrontMatterField}
             onUpdateBackMatterField={engine.updateBackMatterField}
             onNarrateChapter={openVoiceStudioForChapter}
@@ -390,7 +392,7 @@ const Index = () => {
             />
           </Suspense>
         )}
-        <MollyBrainPanel
+        <LazyMollyBrainPanel
           project={engine.project}
           activeSection={activeSection}
           appContext={showVoiceStudio ? "voice" : engine.isAnythingGenerating ? "generating" : "writing"}
@@ -649,6 +651,8 @@ const Index = () => {
                   onUpdateBlueprintField={engine.updateBlueprintField}
                   onUpdateBlueprintOutlineTitle={engine.updateBlueprintOutlineTitle}
                   onUpdateBlueprintOutlineSummary={engine.updateBlueprintOutlineSummary}
+                  onRegenerateBlueprint={engine.regenerateBlueprint}
+                  onCreateSafeBlueprint={engine.createSafeBlueprint}
                   onUpdateFrontMatterField={engine.updateFrontMatterField}
                   onUpdateBackMatterField={engine.updateBackMatterField}
                   onNarrateChapter={openVoiceStudioForChapter}
@@ -857,7 +861,7 @@ const Index = () => {
         }}
       />
       {engine.project && (
-        <MollyBrainPanel
+        <LazyMollyBrainPanel
           project={engine.project}
           activeSection={activeSection}
           appContext={showVoiceStudio ? "voice" : engine.isAnythingGenerating ? "generating" : "writing"}

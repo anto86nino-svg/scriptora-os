@@ -307,6 +307,10 @@ export interface BookProject {
   phase: GenerationPhase;
   frontMatterStatus?: GenerationStatus;
   backMatterStatus?: GenerationStatus;
+  blueprintStatus?: GenerationStatus;
+  blueprintLastError?: string | null;
+  blueprintValidationErrors?: string[];
+  blueprintSource?: "ai" | "repaired" | "config_fallback";
   /** Locked Genre Engine blueprint — set once on creation, never mutated by AI */
   genreLock?: GenreLock;
   createdAt: string;

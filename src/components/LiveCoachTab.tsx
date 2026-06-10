@@ -4,7 +4,6 @@ import { Sparkles, Send, Loader2, MessageCircle, Heart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { MollySprite } from "@/components/molly/MollySprite";
-import { useMolly } from "@/molly/MollyProvider";
 import { getCurrentUserId } from "@/services/storageService";
 
 interface LiveCoachTabProps {
@@ -54,8 +53,6 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
   const [thinking, setThinking] = useState(false);
   const [input, setInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
-  const { state: mollyState, feed, drink, sleep, play } = useMolly();
-
   const lastSeenRef = useRef<string>("");
   const lastFiredAtRef = useRef<number>(0);
   const lastActivityRef = useRef<number>(Date.now());
@@ -219,33 +216,12 @@ export function LiveCoachTab({ project, activeSection }: LiveCoachTabProps) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* MOLLY — vive qui */}
-      <div className="shrink-0 border-b border-border/40 bg-gradient-to-b from-muted/30 to-transparent">
-        <div className="flex items-center gap-3 px-3 py-2">
-          <div className="relative shrink-0" style={{ width: 64, height: 64 }}>
-            <MollySprite visual={mollyState.visual} mood={mollyState.mood} size={64} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-foreground">Molly</span>
-              <span className="text-[9px] uppercase tracking-wider text-muted-foreground">{mollyState.mood} · bond {Math.round(mollyState.bond)}</span>
-            </div>
-            <div className="grid grid-cols-4 gap-1 mt-1">
-              <MiniStat label="H" value={mollyState.hunger} invert />
-              <MiniStat label="T" value={mollyState.thirst} invert />
-              <MiniStat label="E" value={mollyState.energy} />
-              <MiniStat label="♥" value={mollyState.happiness} />
-            </div>
-          </div>
-          <div className="flex flex-col gap-1 shrink-0">
-            <div className="flex gap-1">
-              <MollyBtn onClick={feed} title="Feed">🍖</MollyBtn>
-              <MollyBtn onClick={drink} title="Drink">💧</MollyBtn>
-            </div>
-            <div className="flex gap-1">
-              <MollyBtn onClick={sleep} title="Sleep">😴</MollyBtn>
-              <MollyBtn onClick={play} title="Play">🎾</MollyBtn>
-            </div>
+      <div className="shrink-0 border-b border-border/40 px-3 py-2">
+        <div className="flex items-center gap-2.5">
+          <MollySprite visual="idle" mood="calm" size={36} />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-foreground">Molly Coach</p>
+            <p className="text-[10px] text-muted-foreground">Feedback su richiesta — niente ascolto automatico</p>
           </div>
         </div>
       </div>
@@ -372,29 +348,3 @@ function BubbleRow({ bubble }: { bubble: Bubble }) {
   );
 }
 
-function MiniStat({ label, value, invert = false }: { label: string; value: number; invert?: boolean }) {
-  const pct = Math.max(0, Math.min(100, value));
-  const tone = invert
-    ? pct > 70 ? "bg-destructive" : pct > 40 ? "bg-amber-500" : "bg-emerald-500"
-    : pct < 25 ? "bg-destructive" : pct < 55 ? "bg-amber-500" : "bg-emerald-500";
-  return (
-    <div className="flex items-center gap-1">
-      <span className="text-[8px] text-muted-foreground/70 w-2">{label}</span>
-      <div className="flex-1 h-1 rounded bg-muted/50 overflow-hidden">
-        <div className={`h-full ${tone} transition-all duration-500`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function MollyBtn({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      className="h-6 w-6 flex items-center justify-center rounded-md bg-muted/40 hover:bg-primary/20 transition-colors text-sm leading-none"
-    >
-      {children}
-    </button>
-  );
-}

@@ -44,6 +44,18 @@ export function classifyError(
   const op = context?.operation ?? "generation";
   const ch = context?.chapterIndex != null ? ` (chapter ${context.chapterIndex + 1})` : "";
 
+  if (err && typeof err === "object" && (err as { name?: string }).name === "BlueprintValidationError") {
+    const blueprintErr = err as { message: string; errors?: string[] };
+    return {
+      category: "generation",
+      title: "Blueprint non valido",
+      cause: blueprintErr.message,
+      probableFix: "Apri Struttura e usa «Rigenera Blueprint» oppure «Crea struttura base sicura».",
+      fileHint: "src/lib/blueprint-recovery.ts",
+      runtimeData: blueprintErr.errors,
+    };
+  }
+
   // ── Auth / JWT ──
   if (/401|unauthorized|jwt|invalid.*token|not.*authenticated/i.test(msg)) {
     return {

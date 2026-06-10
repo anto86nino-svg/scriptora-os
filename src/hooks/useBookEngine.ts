@@ -3,6 +3,7 @@ import { BookProject, BookConfig, ChatMessage, GenerationPhase, GenerationStatus
 import { saveProjectAsync, createProjectId, setLastProjectId, loadProjects as loadScopedProjects } from "@/services/storageService";
 import { saveProject } from "@/lib/storage";
 import { generateBlueprint, generateFrontMatter, generateChapter, generateChapterChunked, generateSubchapter, generateBackMatter, rewriteChapter, evaluateChapterQuality, RewriteLevel, ChunkProgress, buildGenreLock } from "@/lib/generation";
+import { BlueprintValidationError, buildFallbackBlueprintFromConfig } from "@/lib/blueprint-recovery";
 import { toast } from "sonner";
 import { t } from "@/lib/i18n";
 import { fetchPlan } from "@/lib/plan";
@@ -251,19 +252,103 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     addGenerating("blueprint");
 
     try {
-      addMessage("assistant", "Generating book blueprint... 🏗️");
-      const blueprint = await generateBlueprint(safeConfig, genreLock, { projectId: newProject.id });
-      updateAndSave(p => ({ ...p, blueprint, phase: "front-matter" as GenerationPhase }));
-      addMessage("assistant", `Blueprint ready! ${blueprint.chapterOutlines.length} chapters planned.`);
+      addMessage("assistant", "Generazione blueprint in corso... 🏗️");
+      const { blueprint, source } = await generateBlueprint(safeConfig, genreLock, { projectId: newProject.id });
+      updateAndSave(p => ({
+        ...p,
+        blueprint,
+        blueprintSource: source,
+        blueprintStatus: "completed" as GenerationStatus,
+        blueprintLastError: null,
+        blueprintValidationErrors: [],
+        phase: "front-matter" as GenerationPhase,
+      }));
+      if (source === "repaired") toast.success("Blueprint recuperato e validato.");
+      addMessage("assistant", `Blueprint pronto! ${blueprint.chapterOutlines.length} capitoli pianificati.`);
     } catch (e: any) {
-      const err = classifyError(e);
+      const validationErrors = e instanceof BlueprintValidationError ? e.errors : [];
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      updateAndSave(p => ({
+        ...p,
+        blueprint: null,
+        blueprintStatus: "error" as GenerationStatus,
+        blueprintLastError: errorMessage,
+        blueprintValidationErrors: validationErrors,
+        phase: "blueprint" as GenerationPhase,
+      }));
+      const err = classifyError(e, { operation: "blueprint" });
       scriptoraLog.error("blueprint", formatUserMessage(err), { projectId: newProject?.id, raw: e?.message });
       addMessage("assistant", `❌ ${formatUserMessage(err)}`);
-      toast.error(formatToastMessage(err));
+      toast.error(errorMessage);
     } finally {
       removeGenerating("blueprint");
     }
   }, [addMessage, updateAndSave]);
+
+  const regenerateBlueprint = useCallback(async () => {
+    const p = getLatestProject() || project;
+    if (!p) return;
+
+    addGenerating("blueprint");
+    updateAndSave(pr => ({
+      ...pr,
+      blueprintStatus: "generating" as GenerationStatus,
+      blueprintLastError: null,
+      blueprintValidationErrors: [],
+    }));
+
+    try {
+      addMessage("assistant", "Rigenerazione blueprint in corso... 🏗️");
+      const { blueprint, source } = await generateBlueprint(p.config, p.genreLock, { projectId: p.id });
+      updateAndSave(pr => ({
+        ...pr,
+        blueprint,
+        blueprintSource: source,
+        blueprintStatus: "completed" as GenerationStatus,
+        blueprintLastError: null,
+        blueprintValidationErrors: [],
+        phase: pr.phase === "idle" || pr.phase === "blueprint" ? "front-matter" as GenerationPhase : pr.phase,
+      }));
+      if (source === "repaired") toast.success("Blueprint recuperato e validato.");
+      else toast.success("Blueprint rigenerato con successo.");
+      addMessage("assistant", `Blueprint pronto! ${blueprint.chapterOutlines.length} capitoli pianificati.`);
+    } catch (e: any) {
+      const validationErrors = e instanceof BlueprintValidationError ? e.errors : [];
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      updateAndSave(pr => ({
+        ...pr,
+        blueprint: null,
+        blueprintStatus: "error" as GenerationStatus,
+        blueprintLastError: errorMessage,
+        blueprintValidationErrors: validationErrors,
+        phase: "blueprint" as GenerationPhase,
+      }));
+      const err = classifyError(e, { operation: "blueprint" });
+      scriptoraLog.error("blueprint", formatUserMessage(err), { projectId: p.id, raw: e?.message });
+      addMessage("assistant", `❌ ${formatUserMessage(err)}`);
+      toast.error(errorMessage);
+    } finally {
+      removeGenerating("blueprint");
+    }
+  }, [project, addMessage, updateAndSave]);
+
+  const createSafeBlueprint = useCallback(() => {
+    const p = getLatestProject() || project;
+    if (!p) return;
+
+    const blueprint = buildFallbackBlueprintFromConfig(p.config);
+    updateAndSave(pr => ({
+      ...pr,
+      blueprint,
+      blueprintSource: "config_fallback",
+      blueprintStatus: "completed" as GenerationStatus,
+      blueprintLastError: null,
+      blueprintValidationErrors: [],
+      phase: pr.phase === "idle" || pr.phase === "blueprint" ? "front-matter" as GenerationPhase : pr.phase,
+    }));
+    toast.success("Struttura base creata dalla configurazione. Puoi raffinarla con AI.");
+    addMessage("assistant", "Struttura base sicura creata dalla configurazione. Puoi raffinarla capitolo per capitolo o rigenerare con AI.");
+  }, [project, addMessage, updateAndSave]);
 
   const generateFrontMatterSection = useCallback(async () => {
     const p = getLatestProject() || project;
@@ -1080,7 +1165,8 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
   return {
     project, messages, isAnythingGenerating, generatingSet, chunkProgress,
-    startNewBook, generateNext, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter,
+    startNewBook, regenerateBlueprint, createSafeBlueprint,
+    generateNext, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter,
     regenerateChapter, rewriteChapterWithDepth, evaluateChapter, autoRewriteToThreshold,
     updateConfig, updateChapterContent, updateChapterTitle, updateSubchapterContent, updateSubchapterTitle,
     updateBlueprintField, updateBlueprintOutlineTitle, updateBlueprintOutlineSummary,

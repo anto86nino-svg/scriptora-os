@@ -451,7 +451,14 @@ export function ScriptoraSettingsHub({
                 </button>
                 {advancedOpen && (
                   <div className="space-y-3 rounded-xl border border-amber-400/20 bg-amber-400/5 p-4">
-                    <Toggle label="Molly Brain OS" checked={snapshot.mollyBrain} onChange={setMollyBrainOsEnabled} />
+                    <Toggle
+                      label="Molly Brain (assistente editoriale)"
+                      checked={snapshot.mollyBrain}
+                      onChange={setMollyBrainOsEnabled}
+                    />
+                    <p className="text-[11px] text-white/50 px-1">
+                      Su mobile è disattivato di default. FAB in basso a sinistra — analisi solo su richiesta.
+                    </p>
                     <InfoRow label="Build" value={import.meta.env.MODE} />
                     <InfoRow label="App version" value="Scriptora OS" />
                     <InfoRow label="Verbose logs" value={localStorage.getItem("scriptora-verbose") === "1" ? "ON" : "OFF"} />

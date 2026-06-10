@@ -1,5 +1,6 @@
 import { applyScriptoraAppearance } from "@/lib/scriptora-appearance";
 import { applyVisualPreset } from "@/lib/performance-mode";
+import { applyMobilePerformanceBoot } from "@/lib/mobile-performance";
 import { applyHubPreferences } from "@/lib/settings-store";
 import { purgeImmersiveThemeExperiment } from "@/lib/theme-reset";
 import { createRoot } from "react-dom/client";
@@ -75,6 +76,7 @@ VITE_SUPABASE_PROJECT_ID=&lt;project-ref&gt;</pre>
 
 // Strip Horror / immersive experiment state, then apply clean default appearance.
 try {
+  applyMobilePerformanceBoot();
   purgeImmersiveThemeExperiment();
   applyScriptoraAppearance();
   applyVisualPreset();

@@ -28,7 +28,16 @@ const translations: Record<string, Record<UILanguage, string>> = {
   ch_len: { en: "Ch.Len", it: "Lung.Cap", es: "Long.Cap", fr: "Long.Ch", de: "Kap.Län" },
   tone: { en: "Tone", it: "Tono", es: "Tono", fr: "Ton", de: "Ton" },
   cover: { en: "Cover", it: "Copertina", es: "Portada", fr: "Couverture", de: "Cover" },
-  generating: { en: "Generating...", it: "Generazione...", es: "Generando...", fr: "Génération...", de: "Generierung..." },
+  generating: { en: "Generating...", it: "Generazione in corso...", es: "Generando...", fr: "Génération...", de: "Generierung..." },
+  blueprint_subtitle: { en: "Book architecture and chapter plan", it: "Architettura del libro e piano capitoli", es: "Arquitectura del libro y plan de capítulos", fr: "Architecture du livre et plan des chapitres", de: "Bucharchitektur und Kapitelplan" },
+  blueprint_empty_hint: { en: "The blueprint will be generated when you create or regenerate the book structure.", it: "Il blueprint verrà generato quando crei o rigeneri la struttura del libro.", es: "El blueprint se generará al crear o regenerar la estructura.", fr: "Le blueprint sera généré lors de la création ou régénération de la structure.", de: "Der Blueprint wird erstellt, wenn du die Buchstruktur erzeugst oder neu generierst." },
+  blueprint_no_structure: { en: "No structure saved", it: "Nessuna struttura salvata", es: "Sin estructura guardada", fr: "Aucune structure enregistrée", de: "Keine Struktur gespeichert" },
+  blueprint_generate_cta: { en: "Generate Blueprint", it: "Genera Blueprint", es: "Generar Blueprint", fr: "Générer le Blueprint", de: "Blueprint generieren" },
+  blueprint_create_safe_cta: { en: "Create safe base structure", it: "Crea struttura base", es: "Crear estructura base segura", fr: "Créer structure de base sûre", de: "Sichere Basisstruktur erstellen" },
+  blueprint_safe_structure_notice: { en: "Base structure created from configuration. You can refine it with AI.", it: "Struttura base creata dalla configurazione. Puoi raffinarla con AI.", es: "Estructura base creada desde la configuración. Puedes refinarla con IA.", fr: "Structure de base créée depuis la configuration. Vous pouvez la raffiner avec l'IA.", de: "Basisstruktur aus der Konfiguration erstellt. Du kannst sie mit KI verfeinern." },
+  blueprint_recovered_notice: { en: "Blueprint recovered and validated.", it: "Blueprint recuperato e validato.", es: "Blueprint recuperado y validado.", fr: "Blueprint récupéré et validé.", de: "Blueprint wiederhergestellt und validiert." },
+  writer_actions: { en: "Actions", it: "Azioni", es: "Acciones", fr: "Actions", de: "Aktionen" },
+  export_section: { en: "Export", it: "Esporta", es: "Exportar", fr: "Exporter", de: "Exportieren" },
   settings: { en: "Settings", it: "Impostazioni", es: "Configuración", fr: "Paramètres", de: "Einstellungen" },
 
   // Editor
@@ -147,7 +156,7 @@ const translations: Record<string, Record<UILanguage, string>> = {
   progress_enhancing: { en: "Enhancing narrative...", it: "Migliorando la narrativa...", es: "Mejorando la narrativa...", fr: "Amélioration du récit...", de: "Erzählung wird verbessert..." },
   progress_refining: { en: "Refining style...", it: "Raffinando lo stile...", es: "Refinando el estilo...", fr: "Affinement du style...", de: "Stil wird verfeinert..." },
   progress_finalizing: { en: "Finalizing...", it: "Finalizzando...", es: "Finalizando...", fr: "Finalisation...", de: "Abschluss..." },
-  generation_failed: { en: "Generation failed — retry?", it: "Generazione fallita — riprovare?", es: "Generación fallida — ¿reintentar?", fr: "Génération échouée — réessayer ?", de: "Generierung fehlgeschlagen — erneut versuchen?" },
+  generation_failed: { en: "Generation failed — retry?", it: "Generazione non riuscita — riprovare?", es: "Generación fallida — ¿reintentar?", fr: "Génération échouée — réessayer ?", de: "Generierung fehlgeschlagen — erneut versuchen?" },
   retry: { en: "Retry", it: "Riprova", es: "Reintentar", fr: "Réessayer", de: "Erneut versuchen" },
   stop_generation: { en: "Stop generation", it: "Ferma generazione", es: "Detener generación", fr: "Arrêter la génération", de: "Generierung stoppen" },
 

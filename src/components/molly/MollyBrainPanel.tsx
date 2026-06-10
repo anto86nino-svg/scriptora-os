@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import type { BookProject, SectionId } from "@/types/book";
 import { MollySprite } from "@/components/molly/MollySprite";
-import { useMolly } from "@/molly/MollyProvider";
+import { isMobileDevice } from "@/lib/mobile-performance";
 import {
   analyzeMollyBrain,
   executeMollyQuickAction,
@@ -66,15 +66,13 @@ export function MollyBrainPanel({
   onApplyChapterContent,
   onApplyStudyText,
 }: MollyBrainPanelProps) {
-  const { state: mollyState } = useMolly();
   const [enabled, setEnabled] = useState(isMollyBrainOsEnabled);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [insight, setInsight] = useState<MollyBrainInsight | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [applying, setApplying] = useState<MollyQuickActionId | null>(null);
   const [ack, setAck] = useState<string | null>(null);
   const lastInsightIdRef = useRef<string | null>(null);
-  const analyzeTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const sync = () => setEnabled(isMollyBrainOsEnabled());
@@ -87,8 +85,15 @@ export function MollyBrainPanel({
     [project, activeSection],
   );
 
+  const canAnalyze = appContext === "study"
+    ? Boolean(studyText?.trim())
+    : Boolean(target?.content);
+
   const runAnalyze = useCallback(() => {
-    if (!enabled) return;
+    if (!enabled || !canAnalyze) {
+      toast.message("Apri un capitolo con testo prima di analizzare.");
+      return;
+    }
     setAnalyzing(true);
     try {
       const next = analyzeMollyBrain({
@@ -102,22 +107,15 @@ export function MollyBrainPanel({
         setInsight(next);
         lastInsightIdRef.current = next.id;
         setAck(null);
+        setCollapsed(false);
       } else if (!next) {
         setInsight(null);
+        toast.message("Molly non ha trovato suggerimenti per questa sezione.");
       }
     } finally {
       setAnalyzing(false);
     }
-  }, [enabled, project, activeSection, appContext, studyText, voiceFeedback]);
-
-  useEffect(() => {
-    if (!enabled) return;
-    if (analyzeTimerRef.current) window.clearTimeout(analyzeTimerRef.current);
-    analyzeTimerRef.current = window.setTimeout(runAnalyze, 1400);
-    return () => {
-      if (analyzeTimerRef.current) window.clearTimeout(analyzeTimerRef.current);
-    };
-  }, [enabled, runAnalyze, target?.content, studyText, voiceFeedback]);
+  }, [enabled, canAnalyze, project, activeSection, appContext, studyText, voiceFeedback]);
 
   const handleDismiss = () => {
     if (insight?.actions[0]) {
@@ -125,6 +123,7 @@ export function MollyBrainPanel({
     }
     setInsight(null);
     lastInsightIdRef.current = null;
+    setCollapsed(true);
   };
 
   const handleAction = async (actionId: MollyQuickActionId) => {
@@ -167,6 +166,7 @@ export function MollyBrainPanel({
       setInsight(null);
       lastInsightIdRef.current = null;
       toast.success("Molly ha aggiornato il capitolo.");
+      setCollapsed(true);
     } finally {
       setApplying(null);
     }
@@ -175,31 +175,36 @@ export function MollyBrainPanel({
   if (!enabled) return null;
 
   const mood: MollyBrainMood = analyzing ? "analyzing" : insight?.mood || "observing";
-  const showGlow = insight?.priority === "high" || insight?.priority === "medium";
+  const hasTip = Boolean(insight);
+  const mobile = isMobileDevice();
 
   if (collapsed) {
     return (
       <button
         type="button"
-        onClick={() => setCollapsed(false)}
-        className={`fixed bottom-4 right-4 z-[70] flex h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-slate-950/90 shadow-2xl backdrop-blur-xl transition ${showGlow ? "molly-brain-glow" : ""}`}
-        aria-label="Apri Molly Brain"
+        onClick={() => (hasTip ? setCollapsed(false) : void runAnalyze())}
+        className={`molly-brain-fab fixed z-[68] flex items-center justify-center rounded-full border border-white/15 bg-slate-950/95 shadow-lg transition ${hasTip ? "molly-brain-fab--alert" : ""}`}
+        aria-label={hasTip ? "Apri suggerimento Molly" : "Analizza con Molly"}
+        title={hasTip ? "Suggerimento Molly" : "Analizza capitolo"}
       >
-        <MollySprite visual={MOOD_VISUAL[mood]} mood={mollyState.mood} size={44} />
+        <MollySprite visual={MOOD_VISUAL[mood]} mood="calm" size={mobile ? 32 : 36} />
+        {hasTip && (
+          <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-sky-400 ring-2 ring-slate-950" />
+        )}
       </button>
     );
   }
 
   return (
-    <div className={`fixed bottom-4 right-4 z-[70] w-[min(92vw,360px)] ${showGlow ? "molly-brain-glow" : ""}`}>
-      <div className="overflow-hidden rounded-3xl border border-white/12 bg-slate-950/92 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+    <div className="molly-brain-panel fixed z-[68] w-[min(92vw,340px)]">
+      <div className="overflow-hidden rounded-2xl border border-white/12 bg-slate-950/96 shadow-xl">
         <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
           <div className="flex items-center gap-2">
-            <MollySprite visual={MOOD_VISUAL[mood]} mood={mollyState.mood} size={36} />
+            <MollySprite visual={MOOD_VISUAL[mood]} mood="calm" size={32} />
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-200/80">Molly Brain OS</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-200/80">Molly</p>
               <p className="text-[11px] text-white/65">
-                {analyzing ? "Analizza…" : insight ? "Opportunità trovata" : "Osserva il manoscritto"}
+                {analyzing ? "Analisi…" : insight ? "Suggerimento pronto" : "Assistente editoriale"}
               </p>
             </div>
           </div>
@@ -214,17 +219,14 @@ export function MollyBrainPanel({
         </div>
 
         <div className="px-3 py-3">
-          {analyzing && !insight ? (
+          {analyzing ? (
             <div className="flex items-center gap-2 text-sm text-white/70">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Molly sta leggendo il capitolo…
+              Analisi in corso…
             </div>
           ) : insight ? (
             <div className="space-y-3">
-              <div className="relative rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-3">
-                <p className="whitespace-pre-line text-sm leading-6 text-white/90">{insight.comic}</p>
-                <span className="absolute -left-1 bottom-3 h-3 w-3 rotate-45 border-b border-l border-white/10 bg-white/[0.05]" />
-              </div>
+              <p className="whitespace-pre-line text-sm leading-6 text-white/90">{insight.comic}</p>
               <div className="flex flex-wrap gap-2">
                 {insight.actions.map((action) => (
                   <button
@@ -247,28 +249,29 @@ export function MollyBrainPanel({
               </div>
             </div>
           ) : (
-            <p className="text-sm text-white/60">
-              Molly osserva. Quando trova qualcosa di utile, lo propone qui — una sola azione alla volta.
-            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-white/60">
+                Analisi su richiesta — niente monitoraggio in background. Un suggerimento utile alla volta.
+              </p>
+              <button
+                type="button"
+                onClick={() => void runAnalyze()}
+                disabled={!canAnalyze || analyzing}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-sky-500/20 px-3 py-2 text-xs font-semibold text-sky-100 hover:bg-sky-500/30 disabled:opacity-40"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Analizza sezione
+              </button>
+            </div>
           )}
 
           {ack && (
             <p className="mt-3 rounded-xl border border-sky-400/20 bg-sky-400/10 px-3 py-2 text-xs text-sky-100">
-              🐶 {ack}
+              {ack}
             </p>
           )}
         </div>
       </div>
-
-      <style>{`
-        .molly-brain-glow {
-          animation: molly-brain-pulse 2.4s ease-in-out infinite;
-        }
-        @keyframes molly-brain-pulse {
-          0%, 100% { filter: drop-shadow(0 0 0 rgba(56, 189, 248, 0)); }
-          50% { filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.35)); }
-        }
-      `}</style>
     </div>
   );
 }

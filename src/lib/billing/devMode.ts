@@ -4,9 +4,8 @@ import { canUseDevWalletFeatures } from "@/lib/auth/devWalletAccess";
 const UNLIMITED_KEY = "scriptora-dev-unlimited-credits";
 
 export function isDevUnlimitedCredits(): boolean {
-  if (import.meta.env.VITE_DEV_UNLIMITED_CREDITS === "true") return true;
   try {
-    return localStorage.getItem(UNLIMITED_KEY) === "true" && baseDevMode();
+    return localStorage.getItem(UNLIMITED_KEY) === "true";
   } catch {
     return false;
   }

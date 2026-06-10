@@ -30,13 +30,14 @@ describe("dev wallet access", () => {
     expect(canDevSimulateCreditPurchase()).toBe(false);
   });
 
-  it("blocks simulated purchase in production builds", () => {
+  it("blocks simulated purchase in production but keeps local dev wallet for owner", () => {
     vi.stubEnv("PROD", true);
     enableDevMode();
     setAuthSessionContext({
       id: "owner-1",
       email: "natasharomanoff1990anto@gmail.com",
     });
+    expect(isAuthorizedDevWalletUser()).toBe(true);
     expect(canDevSimulateCreditPurchase()).toBe(false);
   });
 });

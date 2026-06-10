@@ -47,7 +47,7 @@ export async function runAutoBestsellerArchitect(
   const genreLock = buildGenreLock(config);
 
   await tick("blueprint-architect");
-  const blueprint = await generateBlueprint(config, genreLock);
+  const { blueprint } = await generateBlueprint(config, genreLock);
 
   await tick("handoff-ready");
   const memorySeed = buildLongBookMemory({

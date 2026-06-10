@@ -21,7 +21,7 @@ export default function GlobalCuriosity() {
         title="Apri Studio"
       >
         <Sparkles className="h-4 w-4" />
-        <span>Studio</span>
+        <span className="scriptora-studio-button-label">Studio</span>
       </button>
 
       {open && <CuriosityPanel onClose={() => setOpen(false)} />}

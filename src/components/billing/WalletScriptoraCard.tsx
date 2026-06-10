@@ -11,7 +11,7 @@ import { canDevSimulateCreditPurchase } from "@/lib/billing";
 export function WalletScriptoraCard() {
   const navigate = useNavigate();
   const { wallet, analytics, lowCreditHint } = useCreditWallet();
-  const simulationBadge = import.meta.env.PROD ? null : creditSimulationBadge();
+  const simulationBadge = creditSimulationBadge();
   const purchaseLabel = getPurchaseCtaLabel();
 
   return (

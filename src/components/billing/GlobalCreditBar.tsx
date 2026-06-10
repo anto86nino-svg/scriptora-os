@@ -17,7 +17,7 @@ interface GlobalCreditBarProps {
 export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarProps) {
   const navigate = useNavigate();
   const { wallet, analytics, lowCreditHint, lowCreditLevel } = useCreditWallet();
-  const simulationBadge = import.meta.env.PROD ? null : creditSimulationBadge();
+  const simulationBadge = creditSimulationBadge();
   const purchaseLabel = getPurchaseCtaLabel();
 
   const goUsage = (focus?: "purchase" | "history") => {

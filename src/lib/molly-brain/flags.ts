@@ -1,12 +1,14 @@
+import { isMobileDevice } from "@/lib/mobile-performance";
+
 const STORAGE_KEY = "scriptora-molly-brain-os";
 
-/** Feature flag — set localStorage `scriptora-molly-brain-os` to `"0"` to disable. */
+/** Feature flag — explicit "1" enables; "0" disables; default off on mobile. */
 export function isMollyBrainOsEnabled(): boolean {
-  if (typeof window === "undefined") return true;
+  if (typeof window === "undefined") return false;
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored === "0") return false;
   if (stored === "1") return true;
-  return true;
+  return !isMobileDevice();
 }
 
 export function setMollyBrainOsEnabled(enabled: boolean): void {

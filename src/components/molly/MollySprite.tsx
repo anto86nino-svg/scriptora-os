@@ -1,8 +1,9 @@
-import type { MollyVisual, MollyState } from "@/molly/mollyEngine";
+export type MollyMood = "playful" | "calm" | "tired" | "sad";
+export type MollyVisual = "idle" | "play" | "eat" | "sleep";
 
 interface Props {
   visual: MollyVisual;
-  mood: MollyState["mood"];
+  mood: MollyMood;
   size?: number;
 }
 

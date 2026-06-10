@@ -11,9 +11,12 @@ import { toast } from "sonner";
 interface PlanBadgeProps {
   /** Optional: token usage on current project (drives free-plan hint when present). */
   tokensUsed?: number;
+  /** Compact pill for mobile toolbar — DEV only shows tiny badge. */
+  compact?: boolean;
+  className?: string;
 }
 
-export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
+export function PlanBadge({ tokensUsed, compact = false, className }: PlanBadgeProps) {
   const { plan, isDev, refresh } = usePlan();
   const booksThisMonth = useBooksThisMonth();
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -70,7 +73,16 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
     }
   };
 
-  const badgeButton = (
+  const badgeButton = compact ? (
+    <button
+      disabled={isDev}
+      title={isDev ? "Developer mode active" : hint}
+      className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider shrink-0 disabled:cursor-default ${styles} ${className || ""}`}
+    >
+      <Icon className="h-2.5 w-2.5" />
+      <span>{isDev ? "DEV · ∞" : tier}</span>
+    </button>
+  ) : (
     <button
       onClick={() => {
         if (isDev) return;
@@ -87,7 +99,7 @@ export function PlanBadge({ tokensUsed }: PlanBadgeProps) {
           ? "You're on Premium"
           : "Click to upgrade"
       }
-      className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-bold uppercase tracking-wider shrink-0 transition-all hover:scale-[1.03] disabled:cursor-default disabled:hover:scale-100 ${styles}`}
+      className={`flex items-center gap-1.5 px-2 py-1 rounded-md border text-[10px] font-bold uppercase tracking-wider shrink-0 transition-all hover:scale-[1.03] disabled:cursor-default disabled:hover:scale-100 ${styles} ${className || ""}`}
     >
       <Icon className="h-3 w-3" />
       <div className="flex flex-col items-start leading-tight">

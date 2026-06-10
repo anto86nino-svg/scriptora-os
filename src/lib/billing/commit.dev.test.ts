@@ -3,6 +3,7 @@ import { enableDevMode, exitDevMode } from "@/lib/dev-mode";
 import { setAuthSessionContext, clearAuthSessionContext } from "@/lib/auth/sessionContext";
 import { setDevUnlimitedCredits } from "./devMode";
 import { loadCreditWallet, saveCreditWallet } from "./wallet";
+import { appendLedgerEntry } from "./ledger";
 import { commitCreditsAsync } from "./commit";
 
 describe("commit credits in dev wallet", () => {
@@ -50,6 +51,13 @@ describe("commit credits in dev wallet", () => {
       email: "natasharomanoff1990anto@gmail.com",
     });
     saveCreditWallet({ balance: 0, planId: "free", updatedAt: new Date().toISOString() });
+    appendLedgerEntry({
+      operation: "rewrite_chapter",
+      amount: -500,
+      balanceAfter: 0,
+      metadata: { test: "spent_all" },
+      simulated: false,
+    });
 
     const result = await commitCreditsAsync("rewrite_chapter", { projectId: "p1" });
     expect(result.ok).toBe(false);

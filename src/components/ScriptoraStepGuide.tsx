@@ -287,7 +287,14 @@ export function ScriptoraStepGuide() {
   const location = useLocation();
   const navigate = useNavigate();
   const [enabled, setEnabled] = useState(() => localStorage.getItem(GUIDE_ENABLED_KEY) !== "off");
-  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(GUIDE_COLLAPSED_KEY) === "yes");
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      const onWriterMobile = window.location.pathname === "/app"
+        && window.matchMedia("(max-width: 767px)").matches;
+      if (onWriterMobile) return true;
+    }
+    return localStorage.getItem(GUIDE_COLLAPSED_KEY) === "yes";
+  });
   const [overrideRoute, setOverrideRoute] = useState<GuideRoute | null>(null);
 
   const route = useMemo<GuideRoute | null>(() => {

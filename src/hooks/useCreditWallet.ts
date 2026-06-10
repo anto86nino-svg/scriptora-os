@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { loadCreditWallet } from "@/lib/billing/wallet";
+import { loadCreditWallet, seedDevWalletIfNeeded } from "@/lib/billing/wallet";
 import { fetchServerWalletState } from "@/lib/billing/serverWallet";
 import { getBillingExecutionMode } from "@/lib/billing/billingMode";
 import { loadCreditLedger } from "@/lib/billing/ledger";
@@ -24,8 +24,10 @@ export function useCreditWallet() {
     const refresh = async () => {
       if (getBillingExecutionMode() === "server") {
         await fetchServerWalletState().catch(() => null);
+        setWallet(loadCreditWallet());
+      } else {
+        setWallet(seedDevWalletIfNeeded());
       }
-      setWallet(loadCreditWallet());
       setLedgerVersion((v) => v + 1);
     };
     void refresh();
@@ -45,8 +47,10 @@ export function useCreditWallet() {
   const refreshFromSource = async () => {
     if (getBillingExecutionMode() === "server") {
       await fetchServerWalletState().catch(() => null);
+      setWallet(loadCreditWallet());
+    } else {
+      setWallet(seedDevWalletIfNeeded());
     }
-    setWallet(loadCreditWallet());
     setLedgerVersion((v) => v + 1);
   };
 

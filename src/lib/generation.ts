@@ -23,6 +23,13 @@ import {
   normalizeChapterOutlineExtras,
   normalizeSubchapterOutlineExtras,
 } from "@/lib/BlueprintIntegrityEngine";
+import {
+  BlueprintValidationError,
+  buildBlueprintCorrectivePrompt,
+  normalizeBlueprintShape,
+  resolveBlueprintFromAiResponse,
+  type BlueprintSource,
+} from "@/lib/blueprint-recovery";
 
 /**
  * Verbose streaming logs are off by default — they intasavano la console
@@ -284,8 +291,13 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
           "Content-Type": "application/json",
           Authorization: `Bearer ${bearer}`,
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          ...getBillingSimulationHeaders(),
         },
-        body: JSON.stringify({ systemPrompt, userPrompt, ...usagePayload({ ...usage, taskType: usage?.taskType || "generate_blueprint" }) }),
+        body: JSON.stringify(withBillingSimulationBody({
+          systemPrompt,
+          userPrompt,
+          ...usagePayload({ ...usage, taskType: usage?.taskType || "generate_blueprint" }),
+        })),
         signal: controller.signal,
       });
     } catch (err: any) {
@@ -794,45 +806,7 @@ function stringifyField(value: unknown): string {
 }
 
 function normalizeBlueprint(raw: unknown, config: BookConfig): BookBlueprint {
-  const source = raw && typeof raw === "object" ? raw as Partial<BookBlueprint> : {};
-  const outlines = Array.isArray(source.chapterOutlines) ? source.chapterOutlines : [];
-  const chapterOutlines = Array.from({ length: config.numberOfChapters }, (_, i) => {
-    const item = outlines[i] || {};
-    const summary = stringifyField((item as any).summary).trim() || `Develop chapter ${i + 1} of "${config.title}".`;
-    const title = resolveChapterTitle(stringifyField((item as any).title).trim(), i, {
-      config,
-      summary,
-      totalChapters: config.numberOfChapters,
-    });
-    const rawSubs = Array.isArray((item as any).subchapters) ? (item as any).subchapters : [];
-    const subchapterCount = getSubchaptersPerChapter(config);
-    const subchapters = subchapterCount > 0
-      ? Array.from({ length: subchapterCount }, (_, j) => {
-          const sub = rawSubs[j] || {};
-          const fallbackTitle = buildFallbackSubchapterTitle(title, j, config.language);
-          return {
-            title: stringifyField(sub?.title).trim() || fallbackTitle,
-            summary: stringifyField(sub?.summary).trim() || `${summary} Focus this section on ${fallbackTitle.toLowerCase()}.`,
-            ...normalizeSubchapterOutlineExtras(sub),
-          };
-        })
-      : undefined;
-
-    const extras = normalizeChapterOutlineExtras(item);
-    return subchapters?.length ? { title, summary, ...extras, subchapters } : { title, summary, ...extras };
-  });
-
-  const themes = Array.isArray(source.themes)
-    ? source.themes.map(stringifyField).map((x) => x.trim()).filter(Boolean)
-    : [];
-
-  return {
-    overview: stringifyField(source.overview).trim() || stringifyField(raw).trim() || `Blueprint for "${config.title}".`,
-    chapterOutlines,
-    themes,
-    emotionalArc: stringifyField(source.emotionalArc).trim(),
-    integrity: normalizeBlueprintIntegrity((source as any).integrity || (source as any).blueprintIntegrity, config, chapterOutlines),
-  };
+  return normalizeBlueprintShape(raw, config);
 }
 
 function buildFallbackSubchapterTitle(chapterTitle: string, index: number, language: string): string {
@@ -1291,7 +1265,12 @@ Write in ${config.language}.${adaptiveSuffix}`;
 
 /* ============ Blueprint ============ */
 
-export async function generateBlueprint(config: BookConfig, genreLock?: GenreLock, usage?: AIUsageContext): Promise<BookBlueprint> {
+export interface BlueprintGenerationResult {
+  blueprint: BookBlueprint;
+  source: BlueprintSource;
+}
+
+export async function generateBlueprint(config: BookConfig, genreLock?: GenreLock, usage?: AIUsageContext): Promise<BlueprintGenerationResult> {
   const bookInfo = BOOK_LENGTH_CONFIG[config.bookLength];
   const totalWords = getBookTotalWords(config);
   const subchapterCount = getSubchaptersPerChapter(config);
@@ -1330,20 +1309,35 @@ Return a JSON object with:
 - themes: Array of core themes (in ${config.language})
 - emotionalArc: Description of the emotional progression (in ${config.language})
 
-  Return ONLY valid JSON, no markdown.`;
+  Return ONLY valid JSON. No markdown fences. No commentary before or after the JSON object.`;
 
-  const result = await callBlueprintFast(
-    getSystemPrompt(config, genreLock) + " You are creating a book architecture optimized for the genre profile above.",
-    prompt,
+  const systemBase = getSystemPrompt(config, genreLock)
+    + " You are creating a book architecture optimized for the genre profile above. Output MUST be a single JSON object only.";
+
+  const attempt = async (userPrompt: string) => callBlueprintFast(
+    systemBase,
+    userPrompt,
     withUsage(usage, { taskType: "generate_blueprint" }),
   );
-  try {
-    return normalizeBlueprint(JSON.parse(cleanJsonFence(result)), config);
-  } catch {
-    throw new Error(
-      "Blueprint AI non valido. Riprova — la struttura del libro non è stata salvata per evitare corruzione.",
-    );
+
+  const rawPrimary = await attempt(prompt);
+  const primary = resolveBlueprintFromAiResponse(rawPrimary, config);
+  if (primary.ok) {
+    return { blueprint: primary.blueprint, source: primary.source };
   }
+
+  const corrective = buildBlueprintCorrectivePrompt(config, primary.errors);
+  const rawRetry = await attempt(`${prompt}\n\n${corrective}`);
+  const retry = resolveBlueprintFromAiResponse(rawRetry, config);
+  if (retry.ok) {
+    return { blueprint: retry.blueprint, source: retry.source };
+  }
+
+  throw new BlueprintValidationError(
+    "Blueprint AI non valido. Riprova — la struttura del libro non è stata salvata per evitare corruzione.",
+    retry.errors.length ? retry.errors : primary.errors,
+    rawRetry,
+  );
 }
 
 /* ============ Front Matter — TEMPLATE-DRIVEN PER GENRE ============ */

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { BookConfig, Language, Genre, ChapterLength, BookLength, CATEGORIES, BOOK_LENGTH_CONFIG, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
-import { Download, Image, Loader2, FileText, FileType, Rocket, Home, Cloud, CloudOff, Lock, CreditCard, LogOut, Fingerprint } from "lucide-react";
+import { Download, Image, Loader2, FileText, FileType, Rocket, Home, Cloud, CloudOff, Lock, CreditCard, LogOut, Fingerprint, MoreHorizontal } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useNavigate } from "react-router-dom";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 import type { SyncStatus } from "@/hooks/useSyncStatus";
@@ -60,6 +61,7 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
   const canExport = PLAN_LIMITS[plan].canExport;
   const { quota } = useQuota(projectId || null);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const { user, signOut } = useAuth();
   const [authorIdentities, setAuthorIdentities] = useState(() => loadAuthorIdentities());
   const guard = (fn: () => void) => () => (canExport ? fn() : setShowUpgrade(true));
@@ -161,7 +163,7 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
       ──────────────────────────────────────────────────────────────────────── */}
       <div className="flex h-14 min-w-0 items-center gap-2 overflow-x-auto px-3">
 
-        <button onClick={() => nav("/dashboard")} className="ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground">
+        <button onClick={() => nav("/dashboard")} className="hidden md:inline-flex ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground">
           <Home className="h-3.5 w-3.5" /> {t("home")}
         </button>
 
@@ -259,10 +261,54 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
             className={`mr-1 flex h-7 shrink-0 items-center gap-1 rounded-lg border px-2 ${syncTone}`}
             title={syncStatus === "offline" ? t("sync_offline") : syncStatus === "pending" ? t("sync_pending") : syncStatus === "saving" ? t("sync_saving") : t("sync_saved")}
           >
-            {syncStatus === "saving" && (<><Loader2 className="h-3 w-3 animate-spin text-amber-500" /><span className="text-[10px] font-semibold text-amber-500">{t("sync_saving")}</span></>)}
-            {syncStatus === "pending" && (<><Cloud className="h-3 w-3 text-sky-500" /><span className="text-[10px] font-semibold text-sky-500">{t("sync_pending")}</span></>)}
-            {(syncStatus === "saved" || syncStatus === "idle") && (<><Cloud className="h-3 w-3 text-emerald-500" /><span className="text-[10px] font-semibold text-emerald-500">{t("sync_saved")}</span></>)}
-            {syncStatus === "offline" && (<><CloudOff className="h-3 w-3 text-red-500" /><span className="text-[10px] font-semibold text-red-500">{t("sync_offline")}</span></>)}
+            {syncStatus === "saving" && (<><Loader2 className="h-3 w-3 animate-spin text-amber-500" /><span className="hidden sm:inline text-[10px] font-semibold text-amber-500">{t("sync_saving")}</span></>)}
+            {syncStatus === "pending" && (<><Cloud className="h-3 w-3 text-sky-500" /><span className="hidden sm:inline text-[10px] font-semibold text-sky-500">{t("sync_pending")}</span></>)}
+            {(syncStatus === "saved" || syncStatus === "idle") && (<><Cloud className="h-3 w-3 text-emerald-500" /><span className="hidden sm:inline text-[10px] font-semibold text-emerald-500">{t("sync_saved")}</span></>)}
+            {syncStatus === "offline" && (<><CloudOff className="h-3 w-3 text-red-500" /><span className="hidden sm:inline text-[10px] font-semibold text-red-500">{t("sync_offline")}</span></>)}
+          </div>
+        )}
+
+        {hasProject && (
+          <div className="md:hidden shrink-0">
+            <Sheet open={mobileActionsOpen} onOpenChange={setMobileActionsOpen}>
+              <SheetTrigger asChild>
+                <button className="ios-toolbar-button h-8 px-2.5 text-[11px] font-semibold">
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                  {t("writer_actions")}
+                </button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="rounded-t-2xl border-t border-white/10 pb-8">
+                <SheetHeader>
+                  <SheetTitle className="text-left text-sm">{t("writer_actions")}</SheetTitle>
+                </SheetHeader>
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("export_section")}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button onClick={() => { setMobileActionsOpen(false); onCover(); }}
+                    className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card text-xs font-medium">
+                    <Image className="h-3.5 w-3.5" /> {t("cover")}
+                  </button>
+                  <button onClick={() => { setMobileActionsOpen(false); guard(onExportDocx)(); }} disabled={isExporting || phase !== "complete"}
+                    className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card text-xs font-medium disabled:opacity-40">
+                    {!canExport ? <Lock className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
+                    DOCX
+                  </button>
+                  <button onClick={() => { setMobileActionsOpen(false); guard(onExportPdf)(); }} disabled={isExporting || phase !== "complete"}
+                    className="flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card text-xs font-medium disabled:opacity-40">
+                    {!canExport ? <Lock className="h-3.5 w-3.5" /> : <FileType className="h-3.5 w-3.5" />}
+                    PDF
+                  </button>
+                  <button onClick={() => { setMobileActionsOpen(false); guard(onExport)(); }} disabled={isExporting || phase !== "complete"}
+                    className="flex h-11 items-center justify-center gap-2 rounded-lg bg-white text-xs font-semibold text-slate-950 disabled:opacity-40">
+                    {!canExport ? <Lock className="h-3.5 w-3.5" /> : <Download className="h-3.5 w-3.5" />}
+                    EPUB
+                  </button>
+                </div>
+                <button onClick={() => { setMobileActionsOpen(false); onPublish(); }} disabled={phase !== "complete"}
+                  className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-accent text-xs font-semibold text-accent-foreground disabled:opacity-40">
+                  <Rocket className="h-3.5 w-3.5" /> {t("publish")}
+                </button>
+              </SheetContent>
+            </Sheet>
           </div>
         )}
 
@@ -275,7 +321,8 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
 
         {/* Plan badge — always visible */}
         <div className="ml-2 shrink-0">
-          <PlanBadge tokensUsed={quota?.tokensUsed} />
+          <PlanBadge tokensUsed={quota?.tokensUsed} compact className="md:hidden" />
+          <PlanBadge tokensUsed={quota?.tokensUsed} className="hidden md:block" />
         </div>
 
         {/* Word budget counter — desktop only.
@@ -312,17 +359,6 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
         )}
 
       </div>{/* end top row */}
-
-      {/* ── MOBILE ACTION ROW ──────────────────────────────────────────────────
-          Visible only below md. flex-wrap so buttons never cause horizontal
-          overflow — they reflow to a second line on very narrow screens.
-          Hidden on md+ because actions live in the top row there.
-      ──────────────────────────────────────────────────────────────────────── */}
-      {hasProject && (
-        <div className="flex md:hidden flex-wrap items-center gap-x-1.5 gap-y-1.5 px-3 pb-2.5 pt-1">
-          {actionButtons}
-        </div>
-      )}
 
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} reason="export" currentPlan={plan} />
     </div>

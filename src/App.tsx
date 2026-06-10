@@ -7,16 +7,12 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { DominationProvider } from "@/contexts/DominationContext";
-import { MollyProvider } from "@/molly/MollyProvider";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { DevModeBadge } from "@/components/DevModeBadge";
 import { CreditVisibilityShell } from "@/components/billing/CreditVisibilityShell";
-import GlobalCuriosity from "./components/GlobalCuriosity";
+import { MobileAppChrome } from "@/components/MobileAppChrome";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
-import { MollyErrorBoundary } from "@/components/molly/MollyErrorBoundary";
-import { ScriptoraStepGuide } from "@/components/ScriptoraStepGuide";
 import { Loader2 } from "lucide-react";
 
 const Home = lazyWithRetry(() => import("./pages/Home.tsx"));
@@ -54,8 +50,6 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <DominationProvider>
-            <MollyErrorBoundary>
-            <MollyProvider>
               <Toaster />
               <Sonner />
               <AppErrorBoundary>
@@ -84,11 +78,7 @@ const App = () => (
               </Suspense>
               </AppErrorBoundary>
               <CreditVisibilityShell />
-              <ScriptoraStepGuide />
-              <DevModeBadge />
-              <GlobalCuriosity />
-            </MollyProvider>
-            </MollyErrorBoundary>
+              <MobileAppChrome />
           </DominationProvider>
         </AuthProvider>
       </BrowserRouter>

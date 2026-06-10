@@ -37,11 +37,36 @@ export async function requireAuthenticatedUser(req: Request): Promise<{ userId: 
   return { userId: data.user.id };
 }
 
-function isCreditSimulationAllowed(req: Request, bodySim?: boolean): boolean {
+function parseOwnerEmails(): string[] {
+  const raw = Deno.env.get("SCRIPTORA_OWNER_EMAILS")
+    || "natasharomanoff1990anto@gmail.com";
+  return raw.split(",").map((email) => email.trim().toLowerCase()).filter(Boolean);
+}
+
+async function isOwnerUserId(userId: string): Promise<boolean> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceKey) return false;
+
+  const admin = createClient(supabaseUrl, serviceKey);
+  const { data, error } = await admin.auth.admin.getUserById(userId);
+  if (error || !data?.user?.email) return false;
+  return parseOwnerEmails().includes(data.user.email.trim().toLowerCase());
+}
+
+async function isCreditSimulationAllowed(req: Request, bodySim?: boolean, userId?: string): Promise<boolean> {
   const header = req.headers.get("x-scriptora-credit-simulation") === "true";
-  const allowed = Deno.env.get("SCRIPTORA_ALLOW_CREDIT_SIMULATION") === "1"
+  const flagged = header || bodySim === true;
+  if (!flagged) return false;
+
+  const envAllowed = Deno.env.get("SCRIPTORA_ALLOW_CREDIT_SIMULATION") === "1"
     || Deno.env.get("ENVIRONMENT") === "development";
-  return allowed && (header || bodySim === true);
+  if (envAllowed) return true;
+
+  if (userId) {
+    return isOwnerUserId(userId);
+  }
+  return false;
 }
 
 export async function commitCreditsForUser(input: {
@@ -116,6 +141,8 @@ export async function guardCreditOperation(
     return { ok: false, userId: null, cost: 0, error: "Invalid session", status: 401 };
   }
 
+  const simulated = await isCreditSimulationAllowed(req, opts?.bodySimulated, auth.userId);
+
   return commitCreditsForUser({
     userId: auth.userId,
     userJwt: token,
@@ -123,6 +150,6 @@ export async function guardCreditOperation(
     cost: opts?.cost,
     metadata: opts?.metadata,
     idempotencyKey: opts?.idempotencyKey,
-    simulated: isCreditSimulationAllowed(req, opts?.bodySimulated),
+    simulated,
   });
 }

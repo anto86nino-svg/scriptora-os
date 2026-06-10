@@ -9,14 +9,14 @@ describe("billing execution mode", () => {
     clearAuthSessionContext();
   });
 
-  it("uses server mode in production", () => {
+  it("uses local_dev for owner in production when dev mode is on", () => {
     vi.stubEnv("PROD", true);
     enableDevMode();
     setAuthSessionContext({
       id: "owner-1",
       email: "natasharomanoff1990anto@gmail.com",
     });
-    expect(getBillingExecutionMode()).toBe("server");
+    expect(getBillingExecutionMode()).toBe("local_dev");
   });
 
   it("uses local_dev for owner in dev mode (non-prod)", () => {

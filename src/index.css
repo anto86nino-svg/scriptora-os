@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -3526,8 +3526,17 @@ textarea,
   }
 
   .scriptora-studio-button {
-    right: 16px;
-    bottom: 16px;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    min-height: 36px;
+    min-width: 36px;
+    padding: 8px;
+    gap: 0;
+    border-radius: 999px;
+  }
+
+  .scriptora-studio-button-label {
+    display: none;
   }
 
   .scriptora-step-guide {
@@ -3927,4 +3936,186 @@ html[data-scriptora-smooth-scroll="1"] {
 
 html[data-scriptora-reduce-animations="1"] .os-book-3d {
   animation: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE LITE — ultra-fast boot on phones/tablets (features intact, visuals cut)
+   Applied via inline script in index.html + applyMobilePerformanceBoot()
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+html.scriptora-mobile-lite {
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: auto;
+}
+
+html.scriptora-mobile-lite body {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  text-rendering: optimizeSpeed;
+}
+
+/* Flat backgrounds — no fixed attachment repaint storms */
+html.scriptora-mobile-lite .scriptora-app-surface,
+html.scriptora-mobile-lite .scriptora-ios-screen {
+  background: hsl(var(--background)) !important;
+  background-image: none !important;
+  background-attachment: scroll !important;
+}
+
+html.scriptora-mobile-lite .scriptora-ios-screen::before,
+html.scriptora-mobile-lite body::before,
+html.scriptora-mobile-lite body::after,
+html.scriptora-mobile-lite .scriptora-landing-bg::before,
+html.scriptora-mobile-lite .scriptora-landing-bg::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Kill expensive glass blur — solid panels instead */
+html.scriptora-mobile-lite .ios-glass,
+html.scriptora-mobile-lite .ios-glass-soft,
+html.scriptora-mobile-lite .ios-panel,
+html.scriptora-mobile-lite .ios-sidebar,
+html.scriptora-mobile-lite .ios-editor-paper {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: rgba(14, 22, 38, 0.94) !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14) !important;
+}
+
+html.scriptora-mobile-lite .backdrop-blur,
+html.scriptora-mobile-lite .backdrop-blur-sm,
+html.scriptora-mobile-lite .backdrop-blur-md,
+html.scriptora-mobile-lite .backdrop-blur-lg,
+html.scriptora-mobile-lite .backdrop-blur-xl,
+html.scriptora-mobile-lite .backdrop-blur-2xl,
+html.scriptora-mobile-lite .backdrop-blur-3xl {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.scriptora-mobile-lite .bg-background\/95,
+html.scriptora-mobile-lite .bg-background\/90 {
+  background-color: hsl(var(--background) / 0.98) !important;
+}
+
+/* No decorative filters */
+html.scriptora-mobile-lite .scriptora-landing-bg,
+html.scriptora-mobile-lite .scriptora-live-video::before,
+html.scriptora-mobile-lite .env-hero-book::before {
+  filter: none !important;
+  opacity: 0 !important;
+}
+
+/* Stop motion — instant UI */
+html.scriptora-mobile-lite .env-breathing,
+html.scriptora-mobile-lite .premium-book-breathe,
+html.scriptora-mobile-lite .os-book-3d,
+html.scriptora-mobile-lite .nexora-aurora,
+html.scriptora-mobile-lite .nexora-title,
+html.scriptora-mobile-lite .scriptora-guide-pulse,
+html.scriptora-mobile-lite .scriptora-live-pulse i,
+html.scriptora-mobile-lite .scriptora-live-progress-track span,
+html.scriptora-mobile-lite .scriptora-live-scan,
+html.scriptora-mobile-lite [class*="animate-"] {
+  animation: none !important;
+  will-change: auto !important;
+}
+
+html.scriptora-mobile-lite * {
+  transition-duration: 0.12s !important;
+}
+
+html.scriptora-mobile-lite .ios-toolbar-button:active {
+  transform: none !important;
+}
+
+/* 3D book → static card on mobile */
+html.scriptora-mobile-lite .os-book-3d-scene {
+  perspective: none !important;
+  height: auto !important;
+}
+
+html.scriptora-mobile-lite .os-book-3d {
+  transform: none !important;
+  transform-style: flat !important;
+}
+
+html.scriptora-mobile-lite .os-book-spine,
+html.scriptora-mobile-lite .os-book-pages {
+  display: none !important;
+}
+
+html.scriptora-mobile-lite .os-book-cover {
+  position: relative !important;
+  transform: none !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22) !important;
+}
+
+/* Lighter shadows globally */
+html.scriptora-mobile-lite .shadow-2xl,
+html.scriptora-mobile-lite .shadow-xl {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* Scroll performance */
+html.scriptora-mobile-lite .scrollbar-thin,
+html.scriptora-mobile-lite .scriptora-wizard-scroll,
+html.scriptora-mobile-lite .scriptora-feature-scroll,
+html.scriptora-mobile-lite .scriptora-step-guide {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+html.scriptora-mobile-lite .scriptora-step-guide,
+html.scriptora-mobile-lite .scriptora-studio-button {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Credit bar / sticky headers without blur cost */
+html.scriptora-mobile-lite .safe-area-pb {
+  background: hsl(var(--background)) !important;
+}
+
+/* Molly Brain — compact FAB, left side (Studio stays bottom-right) */
+.molly-brain-fab {
+  left: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  width: 48px;
+  height: 48px;
+}
+
+.molly-brain-fab--alert {
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35);
+}
+
+.molly-brain-panel {
+  left: 12px;
+  bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 768px) {
+  .molly-brain-fab {
+    left: auto;
+    right: 72px;
+    bottom: 20px;
+    width: 52px;
+    height: 52px;
+  }
+
+  .molly-brain-panel {
+    left: auto;
+    right: 72px;
+    bottom: 84px;
+  }
+}
+
+html.scriptora-mobile-lite .molly-brain-fab,
+html.scriptora-mobile-lite .molly-brain-panel > div {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.scriptora-mobile-lite .molly-brain-fab--alert {
+  animation: none !important;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4) !important;
 }

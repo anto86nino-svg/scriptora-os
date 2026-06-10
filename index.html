@@ -26,6 +26,14 @@
 </head>
 
   <body>
+    <script>
+      (function () {
+        try {
+          var mq = window.matchMedia("(max-width:767px),(hover:none) and (pointer:coarse)");
+          if (mq.matches) document.documentElement.classList.add("scriptora-mobile-lite");
+        } catch (e) {}
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

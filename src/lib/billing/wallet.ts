@@ -2,7 +2,11 @@ import type { CreditPlanId, CreditWallet } from "./types";
 import { PLAN_CREDIT_ALLOCATION } from "./creditPolicy";
 import { mapSubscriptionPlanToCreditPlan } from "./creditPolicy";
 import { getWalletScopeUserId } from "@/lib/auth/sessionContext";
+import { isDevLocalWalletActive } from "./billingMode";
 import { getScopedWalletKey, migrateLegacyWalletStorage } from "./walletScope";
+import { loadCreditLedger } from "./ledger";
+
+const DEV_OWNER_STARTER_BALANCE = 1_000_000;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -14,21 +18,51 @@ function walletStorageKey(): string {
   return getScopedWalletKey(userId);
 }
 
-export function loadCreditWallet(fallbackPlan: CreditPlanId = "free"): CreditWallet {
+/** One-time seed for owner dev wallet when server sync left balance at 0. */
+export function seedDevWalletIfNeeded(): CreditWallet {
+  const wallet = loadCreditWalletRaw();
+  if (!isDevLocalWalletActive()) return wallet;
+  if (wallet.balance > 0) return wallet;
+  if (loadCreditLedger().length > 0) return wallet;
+
+  const seeded: CreditWallet = {
+    ...wallet,
+    balance: DEV_OWNER_STARTER_BALANCE,
+    updatedAt: nowIso(),
+  };
+  saveCreditWallet(seeded);
+  return seeded;
+}
+
+function loadCreditWalletRaw(fallbackPlan: CreditPlanId = "free"): CreditWallet {
+  const key = walletStorageKey();
+
   try {
-    const raw = localStorage.getItem(walletStorageKey());
+    const raw = localStorage.getItem(key);
     if (raw) {
       const parsed = JSON.parse(raw) as CreditWallet;
-      if (typeof parsed.balance === "number" && parsed.planId) return parsed;
+      if (typeof parsed.balance === "number" && parsed.planId) {
+        return parsed;
+      }
     }
   } catch { /* noop */ }
 
-  // No cached wallet — start at 0 until server sync populates the real balance.
-  return {
-    balance: 0,
+  const starterWallet: CreditWallet = {
+    balance: isDevLocalWalletActive() ? DEV_OWNER_STARTER_BALANCE : 0,
     planId: fallbackPlan,
     updatedAt: nowIso(),
   };
+
+  localStorage.setItem(key, JSON.stringify(starterWallet));
+  return starterWallet;
+}
+
+export function loadCreditWallet(fallbackPlan: CreditPlanId = "free"): CreditWallet {
+  const wallet = loadCreditWalletRaw(fallbackPlan);
+  if (isDevLocalWalletActive()) {
+    return seedDevWalletIfNeeded();
+  }
+  return wallet;
 }
 
 export function saveCreditWallet(wallet: CreditWallet): void {
