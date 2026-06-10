@@ -28,6 +28,7 @@ import { isDevMode } from "@/lib/dev-mode";
 import { CreditPurchasePanel } from "@/components/billing/CreditPurchasePanel";
 import { DevCreditQuickBuy } from "@/components/billing/DevCreditQuickBuy";
 import { GlobalCreditBar } from "@/components/billing/GlobalCreditBar";
+import { AuthSessionButton } from "@/components/auth/AuthSessionButton";
 
 export default function UsagePage() {
   const navigate = useNavigate();
@@ -61,11 +62,12 @@ export default function UsagePage() {
           <button onClick={() => navigate("/dashboard")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Dashboard
           </button>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button onClick={refresh} className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40">
               <RefreshCw className="h-3.5 w-3.5" /> Aggiorna
             </button>
-            <div className="text-[11px] font-mono tracking-widest text-muted-foreground">CREDITI E UTILIZZO</div>
+            <AuthSessionButton variant="button" />
+            <div className="hidden text-[11px] font-mono tracking-widest text-muted-foreground sm:block">CREDITI E UTILIZZO</div>
           </div>
         </div>
       </header>

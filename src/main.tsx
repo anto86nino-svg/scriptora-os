@@ -3,6 +3,7 @@ import { applyVisualPreset } from "@/lib/performance-mode";
 import { applyHubPreferences } from "@/lib/settings-store";
 import { purgeImmersiveThemeExperiment } from "@/lib/theme-reset";
 import { createRoot } from "react-dom/client";
+import { recoverFromChunkLoadError } from "@/lib/lazyWithRetry";
 import App from "./App.tsx";
 import "./index.css";
 import { hydrateFromIndexedDB } from "./lib/storage";
@@ -80,6 +81,15 @@ try {
   applyHubPreferences();
 } catch {
   /* ignore appearance boot errors */
+}
+
+// After deploy, stale tabs may reference old hashed chunks — reload once automatically.
+if (typeof window !== "undefined") {
+  window.addEventListener("unhandledrejection", (event) => {
+    if (recoverFromChunkLoadError(event.reason)) {
+      event.preventDefault();
+    }
+  });
 }
 
 // Render IMMEDIATELY — do not block first paint on IndexedDB or network.

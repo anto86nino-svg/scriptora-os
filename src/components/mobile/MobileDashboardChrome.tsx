@@ -144,7 +144,7 @@ export function MobileDashboardMoreMenu({
                 className="flex w-full items-center gap-2.5 border-t border-white/10 px-3 py-2.5 text-left text-xs text-destructive transition-colors hover:bg-destructive/10"
               >
                 <LogOut className="h-3.5 w-3.5" />
-                {t("toast_signed_out")}
+                {t("sign_out")}
               </button>
             )}
           </div>

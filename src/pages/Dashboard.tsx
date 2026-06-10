@@ -46,6 +46,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { WalletScriptoraCard } from "@/components/billing/WalletScriptoraCard";
 import { GlobalCreditBar } from "@/components/billing/GlobalCreditBar";
+import { AuthSessionButton } from "@/components/auth/AuthSessionButton";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { PremiumOsGateway } from "@/components/premium/PremiumOsGateway";
 import { AuthorMomentumPanel } from "@/components/premium/AuthorMomentumPanel";
@@ -737,7 +738,7 @@ export default function Dashboard() {
               {t("studio")}
             </span>
 
-            {user && (
+            {user ? (
               <>
                 <button
                   onClick={() => setShowProfileMenu(true)}
@@ -754,20 +755,14 @@ export default function Dashboard() {
                     {displayName}
                   </span>
                 </button>
-                <button
-                  onClick={async () => {
-                    try {
-                      await signOut();
-                      toast.success(t("toast_signed_out"));
-                    } catch { /* noop */ }
-                    navigate("/auth");
-                  }}
-                  title={t("toast_signed_out")}
-                  className="ios-toolbar-button hidden h-8 w-8 text-muted-foreground hover:text-destructive md:inline-flex"
-                >
-                  <LogOut className="h-3.5 w-3.5" />
-                </button>
+                <div className="hidden md:block">
+                  <AuthSessionButton />
+                </div>
               </>
+            ) : (
+              <div className="hidden md:block">
+                <AuthSessionButton />
+              </div>
             )}
           </div>
 

@@ -7,6 +7,7 @@ import { creditSimulationBadge } from "@/lib/billing/devMode";
 import { cn } from "@/lib/utils";
 import { DevCreditQuickBuy } from "@/components/billing/DevCreditQuickBuy";
 import { canDevSimulateCreditPurchase } from "@/lib/billing";
+import { AuthSessionButton } from "@/components/auth/AuthSessionButton";
 
 interface GlobalCreditBarProps {
   variant?: "bar" | "inline" | "compact" | "mobilePill";
@@ -50,6 +51,7 @@ export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarP
             Ricarica
           </button>
         ) : null}
+        <AuthSessionButton variant="pill" className="shrink-0" />
       </div>
     );
   }
@@ -120,6 +122,7 @@ export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarP
         <button type="button" onClick={() => goUsage("history")} className="ios-toolbar-button h-7 px-2 text-[10px]">
           <History className="h-3 w-3" /> Storico
         </button>
+        <AuthSessionButton />
       </div>
     );
   }
@@ -172,6 +175,7 @@ export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarP
           >
             <History className="h-3.5 w-3.5" /> Storico
           </button>
+          <AuthSessionButton variant="button" />
         </div>
       </div>
     </div>
