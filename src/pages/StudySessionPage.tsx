@@ -335,22 +335,65 @@ export default function StudySessionPage() {
                   </div>
                 </div>
 
-                <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
-                  <button onClick={() => setActiveSection("summary")} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold">
-                    Riassunti
-                  </button>
-                  <button onClick={() => setActiveSection("questions")} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold">
-                    Domande
-                  </button>
-                  <button onClick={() => setActiveSection("vocabulary")} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold">
-                    Vocabolario
-                  </button>
-                  <button onClick={() => setActiveSection("flashcards")} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold">
-                    Flashcard
-                  </button>
-                  <button onClick={() => setActiveSection("quiz")} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold">
-                    Quiz
-                  </button>
+                <div className="mt-4 rounded-3xl border border-white/10 bg-white/[0.04] p-3 backdrop-blur-2xl">
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+
+                    <button
+                      onClick={() => setActiveSection("summary")}
+                      className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+                        activeSection === "summary"
+                          ? "bg-emerald-300 text-slate-950"
+                          : "border border-white/10 bg-white/[0.04] text-muted-foreground"
+                      }`}
+                    >
+                      📘 Riassunti
+                    </button>
+
+                    <button
+                      onClick={() => setActiveSection("questions")}
+                      className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+                        activeSection === "questions"
+                          ? "bg-emerald-300 text-slate-950"
+                          : "border border-white/10 bg-white/[0.04] text-muted-foreground"
+                      }`}
+                    >
+                      🎤 Interrogazione
+                    </button>
+
+                    <button
+                      onClick={() => setActiveSection("vocabulary")}
+                      className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+                        activeSection === "vocabulary"
+                          ? "bg-emerald-300 text-slate-950"
+                          : "border border-white/10 bg-white/[0.04] text-muted-foreground"
+                      }`}
+                    >
+                      📚 Parole
+                    </button>
+
+                    <button
+                      onClick={() => setActiveSection("flashcards")}
+                      className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+                        activeSection === "flashcards"
+                          ? "bg-emerald-300 text-slate-950"
+                          : "border border-white/10 bg-white/[0.04] text-muted-foreground"
+                      }`}
+                    >
+                      🃏 Flashcard
+                    </button>
+
+                    <button
+                      onClick={() => setActiveSection("quiz")}
+                      className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${
+                        activeSection === "quiz"
+                          ? "bg-emerald-300 text-slate-950"
+                          : "border border-white/10 bg-white/[0.04] text-muted-foreground"
+                      }`}
+                    >
+                      📝 Quiz
+                    </button>
+
+                  </div>
                 </div>
 
                 {activeSection === "summary" && (
@@ -362,6 +405,7 @@ export default function StudySessionPage() {
                   </>
                 )}
 
+                {activeSection === "questions" && (
                 <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
                   <h3 className="font-semibold">Domande aperte da interrogazione</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -443,7 +487,9 @@ export default function StudySessionPage() {
                     })}
                   </div>
                 </div>
+                )}
 
+                {activeSection === "vocabulary" && (
                 <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
                   <h3 className="font-semibold">Parole difficili spiegate</h3>
                   <div className="mt-3 space-y-3">
@@ -457,7 +503,9 @@ export default function StudySessionPage() {
                     ))}
                   </div>
                 </div>
+                )}
 
+                {activeSection === "flashcards" && (
                 <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
                   <h3 className="font-semibold">Flashcard</h3>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -469,7 +517,9 @@ export default function StudySessionPage() {
                     ))}
                   </div>
                 </div>
+                )}
 
+                {activeSection === "quiz" && (
                 <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -599,6 +649,7 @@ export default function StudySessionPage() {
                     </button>
                   )}
                 </div>
+                )}
               </>
             )}
           </section>
