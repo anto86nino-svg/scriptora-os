@@ -1,12 +1,12 @@
-import { isDevMode } from "@/lib/dev-mode";
+import { isAuthorizedDevWalletUser } from "@/lib/auth/devWalletAccess";
 import { supabase } from "@/integrations/supabase/client";
 
 export type BillingExecutionMode = "server" | "local_dev";
 
-/** Production uses server wallet. Local Vite dev (and Dev Mode) use local wallet for simulated top-up. */
+/** Production uses server wallet. Owner Dev Mode uses scoped local wallet (simulated purchase, real debits). */
 export function getBillingExecutionMode(): BillingExecutionMode {
   if (import.meta.env.PROD) return "server";
-  if (import.meta.env.DEV || isDevMode()) return "local_dev";
+  if (isAuthorizedDevWalletUser()) return "local_dev";
   return "server";
 }
 

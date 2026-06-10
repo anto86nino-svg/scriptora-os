@@ -1,7 +1,14 @@
 import type { CreditLedgerEntry } from "./types";
+import { getWalletScopeUserId } from "@/lib/auth/sessionContext";
+import { getScopedLedgerKey, migrateLegacyWalletStorage } from "./walletScope";
 
-const LEDGER_KEY = "scriptora-credit-ledger-v1";
 const MAX_ENTRIES = 200;
+
+function ledgerStorageKey(): string {
+  const userId = getWalletScopeUserId();
+  if (userId !== "anonymous") migrateLegacyWalletStorage(userId);
+  return getScopedLedgerKey(userId);
+}
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -9,7 +16,7 @@ function nowIso(): string {
 
 export function loadCreditLedger(): CreditLedgerEntry[] {
   try {
-    const raw = localStorage.getItem(LEDGER_KEY);
+    const raw = localStorage.getItem(ledgerStorageKey());
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -27,7 +34,7 @@ export function appendLedgerEntry(
     createdAt: nowIso(),
   };
   const ledger = [full, ...loadCreditLedger()].slice(0, MAX_ENTRIES);
-  localStorage.setItem(LEDGER_KEY, JSON.stringify(ledger));
+  localStorage.setItem(ledgerStorageKey(), JSON.stringify(ledger));
   window.dispatchEvent(new Event("scriptora-credits-change"));
   return full;
 }

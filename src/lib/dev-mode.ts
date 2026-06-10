@@ -2,21 +2,14 @@
 // NOTE: This is NOT real security. It's an obfuscated MVP gate.
 // Real protection will come with backend auth later.
 
+import { useEffect, useState } from "react";
+
+export { isOwnerEmail, getOwnerEmails } from "@/lib/auth/owner";
+
 const KEY = "nexora_dev_mode";
 
 // Obfuscated password ("Linkon86" base64'd, then reversed) — avoids plain-text grep.
-// Decoded at runtime, never stored as a literal string.
 const OBF = "=YDOu92aulGT".split("").reverse().join("");
-
-// Owner emails — these accounts unlock Dev Mode automatically on login.
-export const OWNER_EMAILS: ReadonlyArray<string> = [
-  "natasharomanoff1990anto@gmail.com",
-];
-
-export function isOwnerEmail(email: string | null | undefined): boolean {
-  if (!email) return false;
-  return OWNER_EMAILS.includes(email.trim().toLowerCase());
-}
 
 /** Force-enable Dev Mode (used by owner auto-unlock). */
 export function enableDevMode(): void {
@@ -54,8 +47,6 @@ export function exitDevMode(): void {
   try { sessionStorage.removeItem(KEY); } catch { /* noop */ }
   window.dispatchEvent(new Event("nexora-dev-mode-change"));
 }
-
-import { useEffect, useState } from "react";
 
 export function useDevMode(): boolean {
   const [on, setOn] = useState<boolean>(() => isDevMode());

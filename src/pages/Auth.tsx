@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 
-const CANONICAL_APP_URL = "https://scriptora-os.vercel.app/app";
+const CANONICAL_DASHBOARD_URL = "https://scriptora-os.vercel.app/dashboard";
 const CANONICAL_AUTH_URL = "https://scriptora-os.vercel.app/auth";
 const AUTH_DEBUG_PREFIX = "[auth-debug]";
 
@@ -106,17 +106,17 @@ function getAuthRedirectUrl(): string {
   return CANONICAL_AUTH_URL;
 }
 
-function getAppRedirectUrl(): string {
-  if (typeof window === "undefined") return CANONICAL_APP_URL;
+function getDashboardRedirectUrl(): string {
+  if (typeof window === "undefined") return CANONICAL_DASHBOARD_URL;
   const host = window.location.hostname;
   if (host === "localhost" || host === "127.0.0.1") {
-    return `${window.location.origin}/app`;
+    return `${window.location.origin}/dashboard`;
   }
-  return CANONICAL_APP_URL;
+  return CANONICAL_DASHBOARD_URL;
 }
 
-function redirectToApp(navigate: NavigateFunction) {
-  const redirectUrl = getAppRedirectUrl();
+function redirectToDashboard(navigate: NavigateFunction) {
+  const redirectUrl = getDashboardRedirectUrl();
   if (typeof window !== "undefined" && redirectUrl.startsWith(`${window.location.origin}/`)) {
     const target = new URL(redirectUrl);
     navigate(`${target.pathname}${target.search}${target.hash}`, { replace: true });
@@ -178,11 +178,11 @@ export default function AuthPage() {
   const [authenticating, setAuthenticating] = useState(() => getAuthCallbackState().hasCallback);
   const [logoClicks, setLogoClicks] = useState(0);
 
-  const goToApp = useCallback(() => {
+  const goToDashboard = useCallback(() => {
     if (redirectingRef.current) return;
     redirectingRef.current = true;
     clearAuthCallbackUrl();
-    redirectToApp(navigate);
+    redirectToDashboard(navigate);
   }, [navigate]);
 
   useEffect(() => {
@@ -230,7 +230,7 @@ export default function AuthPage() {
         return;
       }
       if (data.session?.user) {
-        goToApp();
+        goToDashboard();
         return;
       }
       if (hasCallback) {
@@ -242,7 +242,7 @@ export default function AuthPage() {
           });
           if (cancelled) return;
           if (lateData.session?.user) {
-            goToApp();
+            goToDashboard();
             return;
           }
           if (lateError) console.error(AUTH_DEBUG_PREFIX, "Late session check failed", summarizeAuthError(lateError));
@@ -261,7 +261,7 @@ export default function AuthPage() {
         event: _event,
         session: summarizeSession(newSession),
       });
-      if (newSession?.user) goToApp();
+      if (newSession?.user) goToDashboard();
     });
 
     const completeOAuthCallback = async () => {
@@ -283,7 +283,7 @@ export default function AuthPage() {
         });
         if (cancelled) return;
         if (exchangeData.session?.user) {
-          goToApp();
+          goToDashboard();
           return;
         }
         if (exchangeError) {
@@ -306,12 +306,12 @@ export default function AuthPage() {
       if (timeoutId) window.clearTimeout(timeoutId);
       authListener.subscription.unsubscribe();
     };
-  }, [goToApp]);
+  }, [goToDashboard]);
 
   // Già autenticato → vai via
   useEffect(() => {
-    if (!loading && user) goToApp();
-  }, [user, loading, goToApp]);
+    if (!loading && user) goToDashboard();
+  }, [user, loading, goToDashboard]);
 
   useEffect(() => {
     if (logoClicks === 0) return;
@@ -347,7 +347,7 @@ export default function AuthPage() {
       return;
     }
     toast.success(t("welcome_back_toast"));
-    goToApp();
+    goToDashboard();
   };
 
   const handleSignUp = async (e: React.FormEvent) => {

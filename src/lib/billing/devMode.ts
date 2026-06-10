@@ -1,4 +1,5 @@
 import { isDevMode as baseDevMode } from "@/lib/dev-mode";
+import { canUseDevWalletFeatures } from "@/lib/auth/devWalletAccess";
 
 const UNLIMITED_KEY = "scriptora-dev-unlimited-credits";
 
@@ -25,7 +26,7 @@ export function isDevMode(): boolean {
 }
 
 export function creditSimulationBadge(): string | null {
-  if (!isDevMode()) return null;
+  if (!canUseDevWalletFeatures()) return null;
   if (isDevUnlimitedCredits()) return "DEV · CREDITI ILLIMITATI";
   return "DEV · WALLET LOCALE";
 }

@@ -17,6 +17,7 @@ import {
   type CreditConsumptionCategory,
 } from "@/lib/billing/walletAnalytics";
 import {
+  canDevSimulateCreditPurchase,
   creditSimulationBadge,
   isDevUnlimitedCredits,
   setDevUnlimitedCredits,
@@ -113,13 +114,13 @@ export default function UsagePage() {
           <h2 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wider flex items-center gap-2">
             <ShoppingBag className="h-4 w-4" /> Acquista Crediti
           </h2>
-          {!import.meta.env.PROD && (
+          {canDevSimulateCreditPurchase() && (
             <div className="mb-4">
               <DevCreditQuickBuy variant="panel" onPurchased={refresh} />
             </div>
           )}
           <CreditPurchasePanel onPurchased={refresh} />
-          {devMode && !import.meta.env.PROD && (
+          {canDevSimulateCreditPurchase() && (
             <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
               <input
                 type="checkbox"
@@ -127,7 +128,7 @@ export default function UsagePage() {
                 onChange={(e) => setDevUnlimitedCredits(e.target.checked)}
                 className="rounded border-border"
               />
-              Crediti illimitati — nessun addebito sulle operazioni (OFF = wallet dev con consumo reale e ricarica simulata)
+              Salta gli addebiti in Dev Mode. Disattiva per testare consumo crediti reale.
             </label>
           )}
         </section>

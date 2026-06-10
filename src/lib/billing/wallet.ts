@@ -1,16 +1,22 @@
 import type { CreditPlanId, CreditWallet } from "./types";
 import { PLAN_CREDIT_ALLOCATION } from "./creditPolicy";
 import { mapSubscriptionPlanToCreditPlan } from "./creditPolicy";
-
-const WALLET_KEY = "scriptora-credit-wallet-v1";
+import { getWalletScopeUserId } from "@/lib/auth/sessionContext";
+import { getScopedWalletKey, migrateLegacyWalletStorage } from "./walletScope";
 
 function nowIso(): string {
   return new Date().toISOString();
 }
 
+function walletStorageKey(): string {
+  const userId = getWalletScopeUserId();
+  if (userId !== "anonymous") migrateLegacyWalletStorage(userId);
+  return getScopedWalletKey(userId);
+}
+
 export function loadCreditWallet(fallbackPlan: CreditPlanId = "free"): CreditWallet {
   try {
-    const raw = localStorage.getItem(WALLET_KEY);
+    const raw = localStorage.getItem(walletStorageKey());
     if (raw) {
       const parsed = JSON.parse(raw) as CreditWallet;
       if (typeof parsed.balance === "number" && parsed.planId) return parsed;
@@ -26,7 +32,7 @@ export function loadCreditWallet(fallbackPlan: CreditPlanId = "free"): CreditWal
 }
 
 export function saveCreditWallet(wallet: CreditWallet): void {
-  localStorage.setItem(WALLET_KEY, JSON.stringify({ ...wallet, updatedAt: nowIso() }));
+  localStorage.setItem(walletStorageKey(), JSON.stringify({ ...wallet, updatedAt: nowIso() }));
   window.dispatchEvent(new Event("scriptora-credits-change"));
 }
 

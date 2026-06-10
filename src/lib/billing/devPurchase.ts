@@ -2,13 +2,11 @@ import { addCreditsToWallet } from "./wallet";
 import { appendLedgerEntry } from "./ledger";
 import { getBillingProvider } from "./billingProvider";
 import { isDevUnlimitedCredits } from "./devMode";
-import { isDevLocalWalletActive } from "./billingMode";
+import { canDevSimulateCreditPurchase } from "@/lib/auth/devWalletAccess";
 import type { BillingPurchaseResult } from "./types";
 import { notifyCreditCredit } from "./creditUx";
 
-export function canDevSimulateCreditPurchase(): boolean {
-  return !import.meta.env.PROD && isDevLocalWalletActive();
-}
+export { canDevSimulateCreditPurchase } from "@/lib/auth/devWalletAccess";
 
 /** DEV-only instant credit purchase — adds to local wallet, debits work like production. */
 export async function purchaseCreditsSimulator(amount: number): Promise<BillingPurchaseResult> {
@@ -19,7 +17,7 @@ export async function purchaseCreditsSimulator(amount: number): Promise<BillingP
       balanceAfter: 0,
       provider: "dev",
       simulated: false,
-      error: "Acquisto simulato disponibile solo in build di sviluppo (npm run dev).",
+      error: "Acquisto simulato disponibile solo per account owner in Dev Mode (build non di produzione).",
     };
   }
 

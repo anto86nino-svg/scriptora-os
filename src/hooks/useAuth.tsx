@@ -1,8 +1,11 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { enableDevMode, exitDevMode, isDevMode, isOwnerEmail } from "@/lib/dev-mode";
-import { clearDevPlanOverride } from "@/lib/dev-plan-override";
+import { enableDevMode, isDevMode } from "@/lib/dev-mode";
+import { isOwnerEmail } from "@/lib/auth/owner";
+import { setAuthSessionContext, clearAuthSessionContext } from "@/lib/auth/sessionContext";
+import { performLogout } from "@/lib/auth/logout";
+import { migrateLegacyWalletStorage } from "@/lib/billing/walletScope";
 
 type AuthContextValue = {
   user: User | null;
@@ -13,49 +16,56 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function applySessionToContext(
+  newSession: Session | null,
+  setSession: (s: Session | null) => void,
+  setUser: (u: User | null) => void,
+) {
+  setSession(newSession);
+  const nextUser = newSession?.user ?? null;
+  setUser(nextUser);
+
+  if (nextUser) {
+    setAuthSessionContext({
+      id: nextUser.id,
+      email: nextUser.email ?? null,
+    });
+    migrateLegacyWalletStorage(nextUser.id);
+    window.dispatchEvent(new Event("scriptora-credits-change"));
+    if (isOwnerEmail(nextUser.email) && !isDevMode()) {
+      enableDevMode();
+    }
+  } else {
+    clearAuthSessionContext();
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Listener FIRST (per evitare race condition), poi getSession
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-      if (isOwnerEmail(newSession?.user?.email) && !isDevMode()) {
-        enableDevMode();
-      }
+      applySessionToContext(newSession, setSession, setUser);
+      setLoading(false);
     });
 
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
-      setSession(existing);
-      setUser(existing?.user ?? null);
+      applySessionToContext(existing, setSession, setUser);
       setLoading(false);
-      if (isOwnerEmail(existing?.user?.email) && !isDevMode()) {
-        enableDevMode();
-      }
     });
 
     return () => sub.subscription.unsubscribe();
   }, []);
 
-  const signOut = async () => {
-    // Clean dev-mode + sandbox traces so the next login starts from a neutral
-    // state (Free plan, no simulated tier). The owner's real Premium projects
-    // are stored under the real user.id and survive this cleanup.
-    try {
-      exitDevMode();
-      clearDevPlanOverride();
-      sessionStorage.removeItem("nexora-active-run");
-      sessionStorage.removeItem("nexora-open-project");
-      sessionStorage.removeItem("nexora-open-section");
-      sessionStorage.removeItem("nexora-new-book");
-      localStorage.removeItem("nexora-last-project");
-      localStorage.removeItem("nexora_plan_cache_v1");
-    } catch { /* noop */ }
-    await supabase.auth.signOut();
-  };
+  const signOut = useCallback(async () => {
+    setSession(null);
+    setUser(null);
+    setLoading(false);
+    clearAuthSessionContext();
+    await performLogout();
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, session, loading, signOut }}>
