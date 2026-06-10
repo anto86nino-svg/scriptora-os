@@ -55,6 +55,16 @@ const STOP_WORDS = new Set([
   "the","and","that","with","from","this","have","were","was","you","your",
   "les","des","que","pour","dans","une","avec","est",
   "por","para","los","las","una","uno","con",
+
+  // parole inutili narrativa
+  "aveva","quella","quello","questa","questo",
+  "momento","qualsiasi","sotto","dentro","fuori",
+  "normale","normalità","parte","giorno","volta",
+  "uomo","donna","casa","porta","mano","occhi",
+  "stava","disse","diceva","guardò","guardava",
+  "sentì","pensò","fece","certo","molto","sempre",
+  "ancora","mentre","nulla","qualcosa","qualcuno",
+
 ]);
 
 export function countStudyWords(text: string): number {
@@ -62,11 +72,53 @@ export function countStudyWords(text: string): number {
 }
 
 function cleanText(value: string): string {
-  return String(value || "")
+  let text = String(value || "");
+
+  text = text
     .replace(/\r\n?/g, "\n")
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n{4,}/g, "\n\n\n")
+    .replace(/[ \t]+/g, " ");
+
+  // taglia front matter editoriale comune
+  const garbagePatterns = [
+    /copyright[\s\S]{0,800}/ig,
+    /tutti i diritti riservati[\s\S]{0,600}/ig,
+    /nessuna parte di questo libro[\s\S]{0,1200}/ig,
+    /about the author[\s\S]{0,1200}/ig,
+    /dedication[\s\S]{0,800}/ig,
+    /how to use this book[\s\S]{0,1200}/ig,
+    /table of contents[\s\S]{0,1000}/ig,
+    /auth-stephen-king/ig,
+  ];
+
+  for (const pattern of garbagePatterns) {
+    text = text.replace(pattern, " ");
+  }
+
+  // prova a partire dal primo capitolo vero
+  const chapterMatch = text.match(
+    /(chapter\s+1|capitolo\s+1|chapter one)/i
+  );
+
+  if (chapterMatch?.index && chapterMatch.index > 500) {
+    text = text.slice(chapterMatch.index);
+  }
+
+  return text
+    .replace(/\n{4,}/g, "\n\n")
     .trim();
+}
+
+
+
+function detectNarrative(text: string): boolean {
+  const lower = text.toLowerCase();
+
+  const score =
+    (lower.match(/chapter|capitolo/g)?.length || 0) * 2 +
+    (lower.match(/[“"]/g)?.length || 0) +
+    (lower.match(/disse|rispose|guardò|sussurrò|urlò/g)?.length || 0);
+
+  return score >= 4;
 }
 
 function sentences(text: string): string[] {
@@ -171,9 +223,13 @@ function explainWord(word: string): DifficultWord {
 
 export function analyzeStudyMaterial(text: string, sourceName = "materiale-studio.txt"): StudySessionResult {
   const clean = cleanText(text);
+  const narrativeMode = detectNarrative(clean);
   const words = countStudyWords(clean);
   const title = detectSubject(clean, sourceName);
-  const keyConcepts = keywords(clean, 10).map((k) => k[0].toUpperCase() + k.slice(1));
+  const keyConcepts = keywords(
+    clean,
+    narrativeMode ? 6 : 10
+  ).map((k) => k[0].toUpperCase() + k.slice(1));
 
   const light = pickSentences(clean, 8);
   const medium = pickSentences(clean, 16);
@@ -212,6 +268,7 @@ export function analyzeStudyMaterial(text: string, sourceName = "materiale-studi
     proSummary: paragraph("Riassunto Pro", pro.length ? pro : medium),
     difficultWords,
     flashcards,
+    openQuestions: buildOpenQuestions(title, keyConcepts, narrativeMode),
     quiz,
     keyConcepts,
   };
