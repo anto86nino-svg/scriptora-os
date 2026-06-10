@@ -81,6 +81,14 @@ export default function StudySessionPage() {
     "flashcards" |
     "quiz"
   >("summary");
+
+  const [studyLanguage, setStudyLanguage] = useState<
+    "Italian" |
+    "English" |
+    "Spanish" |
+    "French" |
+    "German"
+  >("Italian");
   const [openAnswers, setOpenAnswers] = useState<Record<number, string>>({});
   const [openEvaluations, setOpenEvaluations] = useState<Record<number, StudyAnswerEvaluation>>({});
   const [evaluatingOpenAnswer, setEvaluatingOpenAnswer] = useState<number | null>(null);
@@ -101,7 +109,7 @@ export default function StudySessionPage() {
       const next = await generateStudySessionWithAI({
         text: rawText,
         sourceName,
-        language: "Italian",
+        language: studyLanguage,
       });
       setResult(normalizeStudyResultForUI(next));
       setQuizAnswers({});
@@ -144,7 +152,7 @@ export default function StudySessionPage() {
         question,
         answerGuide,
         answer,
-        language: "Italian",
+        language: studyLanguage,
       });
 
       setOpenEvaluations((prev) => ({ ...prev, [index]: evaluation }));
@@ -171,7 +179,7 @@ export default function StudySessionPage() {
         const next = await generateStudySessionWithAI({
           text,
           sourceName: file.name,
-          language: "Italian",
+          language: studyLanguage,
         });
         setResult(normalizeStudyResultForUI(next));
         setQuizAnswers({});
@@ -271,6 +279,24 @@ export default function StudySessionPage() {
               placeholder="Incolla qui capitoli, appunti, dispense o una parte del libro..."
               className="min-h-[420px] w-full resize-y rounded-2xl border border-white/10 bg-background/70 p-4 text-sm leading-6 text-foreground outline-none focus:border-emerald-300/40"
             />
+
+            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.15em] text-emerald-200/80">
+                Lingua Studio
+              </label>
+
+              <select
+                value={studyLanguage}
+                onChange={(e) => setStudyLanguage(e.target.value as typeof studyLanguage)}
+                className="w-full rounded-xl border border-white/10 bg-background/70 px-3 py-2 text-sm"
+              >
+                <option value="Italian">🇮🇹 Italiano</option>
+                <option value="English">🇬🇧 English</option>
+                <option value="Spanish">🇪🇸 Español</option>
+                <option value="French">🇫🇷 Français</option>
+                <option value="German">🇩🇪 Deutsch</option>
+              </select>
+            </div>
 
             <button
               type="button"
