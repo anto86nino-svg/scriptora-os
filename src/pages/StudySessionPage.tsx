@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { analyzeStudyMaterial, readStudyFile, type StudySessionResult } from "@/lib/study-session";
 import { generateStudySessionWithAI } from "@/lib/study-ai";
 import { evaluateStudyAnswerWithAI, type StudyAnswerEvaluation } from "@/lib/study-answer-evaluator";
-import { DEFAULT_STUDY_UX, loadStudyUxState, saveStudyUxState } from "@/lib/study-ux";
+import { DEFAULT_STUDY_UX, loadStudyUxState, saveStudyUxState, type FlashcardConfidence } from "@/lib/study-ux";
+import { t } from "@/lib/i18n";
 import { StudyMetricsCard } from "@/components/study/StudyMetricsCard";
 import { StudySummaryPanel } from "@/components/study/StudySummaryPanel";
 import { StudyOralPanel } from "@/components/study/StudyOralPanel";
@@ -108,6 +109,9 @@ export default function StudySessionPage() {
     (uxSaved.openEvaluations as Record<number, StudyAnswerEvaluation>) || {}
   );
   const [evaluatingOpenAnswer, setEvaluatingOpenAnswer] = useState<number | null>(null);
+  const [flashcardConfidence, setFlashcardConfidence] = useState<Record<number, FlashcardConfidence>>(
+    uxSaved.flashcardConfidence || {}
+  );
 
   const wordCount = useMemo(() => rawText.trim().split(/\s+/).filter(Boolean).length, [rawText]);
   const canAnalyze = wordCount >= 40 && !reading;
@@ -313,6 +317,9 @@ export default function StudySessionPage() {
               placeholder="Incolla qui capitoli, appunti, dispense o una parte del libro..."
               className="min-h-[320px] w-full resize-y rounded-2xl border border-white/10 bg-background/70 p-4 text-sm leading-6 text-foreground outline-none focus:border-emerald-300/40 lg:min-h-[420px]"
             />
+            <p className={`mt-2 text-xs leading-5 ${wordCount < 40 ? "text-amber-200/90" : "text-muted-foreground"}`}>
+              {t("study_min_words_hint")} ({wordCount}/40)
+            </p>
 
             <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
               <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.15em] text-emerald-200/80">
@@ -353,7 +360,13 @@ export default function StudySessionPage() {
               </div>
             ) : (
               <>
-                <StudyMetricsCard result={safeResult} aiMode={aiMode} />
+                <StudyMetricsCard
+                  result={safeResult}
+                  aiMode={aiMode}
+                  quizAnswers={quizAnswers}
+                  openEvaluations={openEvaluations}
+                  flashcardConfidence={flashcardConfidence}
+                />
 
                 <div className="sticky top-2 z-10 rounded-3xl border border-white/10 bg-background/80 p-2 backdrop-blur-xl">
                   <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -407,6 +420,10 @@ export default function StudySessionPage() {
                     words={safeDifficultWords}
                     difficulty={safeResult.difficulty}
                     easierMap={uxSaved.vocabularyEasier}
+                    quiz={safeQuiz}
+                    quizAnswers={quizAnswers}
+                    openEvaluations={openEvaluations}
+                    flashcardConfidence={flashcardConfidence}
                   />
                 )}
 
@@ -414,8 +431,9 @@ export default function StudySessionPage() {
                   <StudyFlashcardsPanel
                     cards={safeFlashcards}
                     initialIndex={uxSaved.currentFlashcardIndex}
-                    initialConfidence={uxSaved.flashcardConfidence}
+                    initialConfidence={flashcardConfidence}
                     initialFlipped={uxSaved.flashcardFlipped}
+                    onConfidenceChange={setFlashcardConfidence}
                   />
                 )}
 
@@ -423,6 +441,9 @@ export default function StudySessionPage() {
                   <StudyQuizPanel
                     quiz={safeQuiz}
                     keyConcepts={safeKeyConcepts}
+                    openQuestions={safeOpenQuestions}
+                    flashcardConfidence={flashcardConfidence}
+                    openEvaluations={openEvaluations}
                     initialAnswers={quizAnswers}
                     initialIndex={currentQuizIndex}
                     initialMode={quizMode}
