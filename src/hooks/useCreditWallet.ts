@@ -38,14 +38,19 @@ export function useCreditWallet() {
   const lowCreditLevel: LowCreditLevel = useMemo(() => getLowCreditLevel(wallet), [wallet]);
   const lowCreditHint = lowCreditMessage(lowCreditLevel);
 
+  const refreshFromSource = async () => {
+    if (getBillingExecutionMode() === "server") {
+      await fetchServerWalletState().catch(() => null);
+    }
+    setWallet(loadCreditWallet());
+    setLedgerVersion((v) => v + 1);
+  };
+
   return {
     wallet,
     analytics,
     lowCreditLevel,
     lowCreditHint,
-    refresh: () => {
-      setWallet(loadCreditWallet());
-      setLedgerVersion((v) => v + 1);
-    },
+    refresh: () => { void refreshFromSource(); },
   };
 }

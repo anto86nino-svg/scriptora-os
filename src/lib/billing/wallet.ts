@@ -17,8 +17,9 @@ export function loadCreditWallet(fallbackPlan: CreditPlanId = "free"): CreditWal
     }
   } catch { /* noop */ }
 
+  // No cached wallet — start at 0 until server sync populates the real balance.
   return {
-    balance: PLAN_CREDIT_ALLOCATION[fallbackPlan],
+    balance: 0,
     planId: fallbackPlan,
     updatedAt: nowIso(),
   };

@@ -4,6 +4,7 @@ import { getOperationCost } from "./creditPolicy";
 import { loadCreditWallet, saveCreditWallet } from "./wallet";
 import { appendLedgerEntry } from "./ledger";
 import type { BookLength } from "@/types/book";
+import { getBillingExecutionMode } from "./billingMode";
 
 export interface ServerCreditCommitResult {
   ok: boolean;
@@ -40,7 +41,7 @@ export async function commitServerCreditOperation(
     p_cost: cost,
     p_metadata: metadata || {},
     p_idempotency_key: idempotencyKey || null,
-    p_simulated: false,
+    p_simulated: getBillingExecutionMode() === "local_dev",
   } as never);
 
   if (error) {

@@ -12,3 +12,5 @@ export * from "./billingMode";
 export * from "./idempotency";
 export * from "./serverWallet";
 export * from "./charge";
+export * from "./billingHeaders";
+export * from "./syncWallet";

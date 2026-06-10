@@ -10,7 +10,8 @@ import { normalizeAuthorIdentity } from "@/lib/author-identity";
 import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
-import { buildPremiumWritingBlock, applyPremiumOutputGuard, scoreGeneratedOutput, buildQualityRetryInstruction } from "@/lib/premium-writing";
+import { buildPremiumWritingBlock, runUltraHumanFinalPass } from "@/lib/premium-writing";
+import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/billing/billingHeaders";
 import {
   buildBlueprintIntegrityBlueprintRequest,
   buildBlueprintIntegrityFoundationBlock,
@@ -160,8 +161,9 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
         "Content-Type": "application/json",
         "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         "Authorization": `Bearer ${bearer}`,
+        ...getBillingSimulationHeaders(),
       },
-      body: JSON.stringify({ systemPrompt, userPrompt, ...currentUsage }),
+      body: JSON.stringify(withBillingSimulationBody({ systemPrompt, userPrompt, ...currentUsage })),
       signal: controller.signal,
     });
 
@@ -1227,30 +1229,40 @@ Write in ${config.language}.${adaptiveSuffix}`;
     }
   }
 
-  // Final sanitization pass — strip AI labels, language bleed, duplicate paragraphs,
-  // broken punctuation, and debug artefacts before the chapter is stored or shown.
-  accumulatedContent = applyPremiumOutputGuard(accumulatedContent, { language: config.language ?? "Italian" });
-
   const priorText = previousChapters.map((c) => c.content).join("\n");
-  const quality = scoreGeneratedOutput(accumulatedContent, priorText);
-  if (!quality.passed && quality.score < 58) {
-    const retryHint = buildQualityRetryInstruction(quality);
-    if (retryHint) {
-      try {
-        const retryText = await callAIReduced(
-          getSystemPrompt(config, genreLock) + " Quality retry: fix the listed issues without restarting the chapter.",
-          `Improve this chapter continuation only. Issues: ${quality.issues.join(", ")}\n${retryHint}\n\nTEXT:\n${accumulatedContent.slice(-3500)}`,
-          withUsage(opts?.usage, {
-            taskType: "generate_chapter_quality_retry",
-            metadata: { chapterIndex: chapterIndex + 1, qualityScore: quality.score, noExtraCharge: true },
-          }),
-        );
-        if (retryText?.trim()) {
-          accumulatedContent = applyPremiumOutputGuard(retryText, { language: config.language ?? "Italian" });
-        }
-      } catch {
-        /* keep original on retry failure */
+  const ultraPass = runUltraHumanFinalPass(accumulatedContent, {
+    language: config.language ?? "Italian",
+    priorText,
+    config,
+    chapterIndex,
+  });
+  accumulatedContent = ultraPass.text;
+
+  if (!ultraPass.quality.passed && ultraPass.quality.composite < 58 && ultraPass.retryInstruction) {
+    try {
+      const retryText = await callAIReduced(
+        getSystemPrompt(config, genreLock) + " Surgical quality retry — preserve author voice and genre. Fix only the listed issues.",
+        `Improve this chapter text surgically. Scores: repetition=${ultraPass.quality.emotionalRepetition}, dialogue=${ultraPass.quality.dialogueHumanity}, progression=${ultraPass.quality.sceneProgression}.\n${ultraPass.retryInstruction}\n\nTEXT (last segment):\n${accumulatedContent.slice(-4000)}`,
+        withUsage(opts?.usage, {
+          taskType: "generate_chapter_quality_retry",
+          metadata: {
+            chapterIndex: chapterIndex + 1,
+            qualityComposite: ultraPass.quality.composite,
+            issues: ultraPass.quality.issues,
+            noExtraCharge: true,
+          },
+        }),
+      );
+      if (retryText?.trim()) {
+        accumulatedContent = runUltraHumanFinalPass(retryText, {
+          language: config.language ?? "Italian",
+          priorText,
+          config,
+          chapterIndex,
+        }).text;
       }
+    } catch {
+      /* keep original on retry failure */
     }
   }
 
@@ -1497,9 +1509,14 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
       chapterIndex,
       outlineSummary: subOutline?.summary || outline.summary,
     });
+    const priorText = previousChapters.map((c) => c.content).join("\n");
     return {
       title: stringifyField(parsed?.title).trim() || subOutline?.title || `Subchapter ${subchapterIndex + 1}`,
-      content: applyPremiumOutputGuard(rawContent, { language: config.language ?? "Italian" }),
+      content: runUltraHumanFinalPass(rawContent, {
+        language: config.language ?? "Italian",
+        priorText,
+        config,
+      }).text,
     };
   } catch {
     const rawContent = humanizeNarrativeText(result, {
@@ -1508,9 +1525,14 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
       chapterIndex,
       outlineSummary: subOutline?.summary || outline.summary,
     });
+    const priorText = previousChapters.map((c) => c.content).join("\n");
     return {
       title: subOutline?.title || `Subchapter ${subchapterIndex + 1}`,
-      content: applyPremiumOutputGuard(rawContent, { language: config.language ?? "Italian" }),
+      content: runUltraHumanFinalPass(rawContent, {
+        language: config.language ?? "Italian",
+        priorText,
+        config,
+      }).text,
     };
   }
 }
@@ -1727,10 +1749,11 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
   );
   try {
     const parsed = JSON.parse(result.replace(/```json\n?|```/g, "").trim());
-    const rewrittenContent = applyPremiumOutputGuard(
+    const priorText = previousChapters.map((c) => c.content).join("\n");
+    const rewrittenContent = runUltraHumanFinalPass(
       stringifyField(parsed?.content).trim() || chapter.content,
-      { language: config.language ?? "Italian" },
-    );
+      { language: config.language ?? "Italian", priorText, config },
+    ).text;
     return humanizeChapter(
       {
         ...chapter,
@@ -1741,15 +1764,16 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
       { config, previousChapters, chapterIndex, outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary },
     );
   } catch {
-    const fallbackContent = applyPremiumOutputGuard(
+    const priorText = previousChapters.map((c) => c.content).join("\n");
+    const fallbackContent = runUltraHumanFinalPass(
       humanizeNarrativeText(result, {
         config,
         previousChapters,
         chapterIndex,
         outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary,
       }),
-      { language: config.language ?? "Italian" },
-    );
+      { language: config.language ?? "Italian", priorText, config },
+    ).text;
     return {
       ...chapter,
       content: fallbackContent,

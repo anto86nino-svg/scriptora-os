@@ -4,7 +4,7 @@ import { guardCreditOperation } from "../_shared/credit-guard.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-scriptora-credit-simulation",
 };
 
 serve(async (req) => {
@@ -16,6 +16,7 @@ serve(async (req) => {
     const credit = await guardCreditOperation(req, "chapter_diagnostic", {
       metadata: { projectId, source: "analyze-chapter" },
       idempotencyKey: typeof body?.idempotencyKey === "string" ? body.idempotencyKey : null,
+      bodySimulated: body?.creditSimulation === true,
     });
     if (!credit.ok) {
       return new Response(JSON.stringify({ error: credit.error || "insufficient_credits" }), {

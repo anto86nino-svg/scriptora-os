@@ -12,6 +12,7 @@ import {
 } from "./creditUx";
 import { getBillingExecutionMode, hasAuthenticatedServerUser } from "./billingMode";
 import { commitServerCreditOperation } from "./serverWallet";
+import { syncWalletBalanceFromServer } from "./syncWallet";
 
 export class InsufficientCreditsError extends Error {
   readonly operation: CreditOperationId;
@@ -100,6 +101,7 @@ export async function commitCreditsAsync(
 
   const server = await commitServerCreditOperation(operation, metadata, bookLength, idempotencyKey);
   if (!server.ok) {
+    syncWalletBalanceFromServer(server.balanceAfter);
     return {
       ok: false,
       committed: false,

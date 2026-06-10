@@ -37,6 +37,13 @@ export async function requireAuthenticatedUser(req: Request): Promise<{ userId: 
   return { userId: data.user.id };
 }
 
+function isCreditSimulationAllowed(req: Request, bodySim?: boolean): boolean {
+  const header = req.headers.get("x-scriptora-credit-simulation") === "true";
+  const allowed = Deno.env.get("SCRIPTORA_ALLOW_CREDIT_SIMULATION") === "1"
+    || Deno.env.get("ENVIRONMENT") === "development";
+  return allowed && (header || bodySim === true);
+}
+
 export async function commitCreditsForUser(input: {
   userId: string;
   userJwt: string;
@@ -44,6 +51,7 @@ export async function commitCreditsForUser(input: {
   cost?: number;
   metadata?: Record<string, unknown>;
   idempotencyKey?: string | null;
+  simulated?: boolean;
 }): Promise<CreditGuardResult> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY");
@@ -61,7 +69,7 @@ export async function commitCreditsForUser(input: {
     p_cost: cost,
     p_metadata: input.metadata || {},
     p_idempotency_key: input.idempotencyKey || null,
-    p_simulated: false,
+    p_simulated: Boolean(input.simulated),
   });
 
   if (error) {
@@ -94,6 +102,7 @@ export async function guardCreditOperation(
     cost?: number;
     metadata?: Record<string, unknown>;
     idempotencyKey?: string | null;
+    bodySimulated?: boolean;
   },
 ): Promise<CreditGuardResult> {
   const token = getBearerToken(req);
@@ -114,5 +123,6 @@ export async function guardCreditOperation(
     cost: opts?.cost,
     metadata: opts?.metadata,
     idempotencyKey: opts?.idempotencyKey,
+    simulated: isCreditSimulationAllowed(req, opts?.bodySimulated),
   });
 }

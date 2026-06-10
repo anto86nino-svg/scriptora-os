@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
 import { requireCreditsAsync, InsufficientCreditsError } from "@/lib/billing";
+import { buildCreditIdempotencyKey } from "@/lib/billing/idempotency";
+import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/billing/billingHeaders";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { computePremiumEditorialScores } from "@/lib/editorial-intelligence-premium";
 
@@ -218,9 +220,16 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
     setFixed(new Set());
     setWorkingContent(chapter.content);
     try {
-      await requireCreditsAsync("chapter_diagnostic", { projectId: project.id, chapterIndex: chapterIndex + 1, source: "analyze_chapter" });
+      const diagnosticKey = buildCreditIdempotencyKey("diagnostic", project.id, chapterIndex + 1);
+      await requireCreditsAsync(
+        "chapter_diagnostic",
+        { projectId: project.id, chapterIndex: chapterIndex + 1, source: "analyze_chapter" },
+        undefined,
+        diagnosticKey,
+      );
       const { data, error } = await supabase.functions.invoke("analyze-chapter", {
-        body: {
+        headers: getBillingSimulationHeaders(),
+        body: withBillingSimulationBody({
           chapterTitle: chapter.title,
           chapterText: chapter.content,
           genre: project.config.genre,
@@ -228,7 +237,8 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
           language: project.config.language,
           projectId: project.id,
           userId: getCurrentUserId(),
-        },
+          idempotencyKey: diagnosticKey,
+        }),
       });
       if (error) throw new Error(error.message || "Edge function error");
       if (!data) throw new Error("Nessuna risposta dal server");
