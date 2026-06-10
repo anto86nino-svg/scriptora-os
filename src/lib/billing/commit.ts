@@ -4,11 +4,23 @@ import { getOperationCost } from "./creditPolicy";
 import { loadCreditWallet, deductCreditsFromWallet } from "./wallet";
 import { appendLedgerEntry } from "./ledger";
 import { isDevUnlimitedCredits, isDevMode } from "@/lib/billing/devMode";
+import {
+  buildInsufficientCreditsDetail,
+  dispatchInsufficientCredits,
+  notifyCreditDebit,
+} from "./creditUx";
 
 export class InsufficientCreditsError extends Error {
-  constructor(message: string) {
-    super(message);
+  readonly operation: CreditOperationId;
+  readonly cost: number;
+  readonly balance: number;
+
+  constructor(operation: CreditOperationId, cost: number, balance: number) {
+    super(`Crediti insufficienti: servono ${cost}, disponibili ${balance}.`);
     this.name = "InsufficientCreditsError";
+    this.operation = operation;
+    this.cost = cost;
+    this.balance = balance;
   }
 }
 
@@ -53,6 +65,8 @@ export function commitCredits(
     simulated: false,
   });
 
+  notifyCreditDebit(cost, next.balance);
+
   return { ok: true, committed: true, cost, balanceAfter: next.balance, simulated: false };
 }
 
@@ -63,6 +77,7 @@ export function requireCredits(
 ): void {
   const result = commitCredits(operation, metadata, bookLength);
   if (!result.ok) {
-    throw new InsufficientCreditsError(result.error || "Crediti insufficienti.");
+    dispatchInsufficientCredits(buildInsufficientCreditsDetail(operation, result.cost, result.balanceAfter));
+    throw new InsufficientCreditsError(operation, result.cost, result.balanceAfter);
   }
 }

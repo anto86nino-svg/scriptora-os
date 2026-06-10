@@ -15,6 +15,7 @@ import type { BookProject } from "@/types/book";
 import { ProjectConfigFields } from "@/components/ProjectConfigFields";
 import { MobileProjectSettingsSheet } from "@/components/mobile/MobileProjectSettingsSheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { GlobalCreditBar } from "@/components/billing/GlobalCreditBar";
 
 interface TopBarProps {
   config: BookConfig | null;
@@ -187,6 +188,10 @@ export function TopBar({
           <Divider />
           <ProjectConfigFields config={config} onUpdateConfig={onUpdateConfig} layout="toolbar" />
         </span>
+
+        <div className="hidden lg:flex shrink-0">
+          <GlobalCreditBar variant="inline" />
+        </div>
 
         <div className="flex-1" />
 

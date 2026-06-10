@@ -55,6 +55,9 @@ import {
   type CharacterStudioProject,
 } from "@/lib/book-creation-coherence";
 import { commitCredits, requireCredits, syncWalletPlanFromSubscription } from "@/lib/billing";
+import { GlobalCreditBar } from "@/components/billing/GlobalCreditBar";
+import { WalletScriptoraCard } from "@/components/billing/WalletScriptoraCard";
+import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 interface DetectedIntent {
@@ -402,9 +405,8 @@ export default function Dashboard() {
     setLaunching(true);
     try {
       requireCredits("auto_bestseller", { source: "dashboard_one_click" });
-    } catch (e) {
+    } catch {
       setLaunching(false);
-      toast.error(e instanceof Error ? e.message : "Crediti insufficienti.");
       return;
     }
     let i = intent;
@@ -646,6 +648,13 @@ export default function Dashboard() {
 
           <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
             <button
+              onClick={() => navigate("/usage")}
+              className="ios-toolbar-button hidden px-3 text-xs font-medium md:flex"
+              title="Crediti e Utilizzo"
+            >
+              <BarChart3 className="h-3.5 w-3.5" /> Crediti
+            </button>
+            <button
               onClick={() => navigate("/pricing")}
               className="ios-toolbar-button hidden px-3 text-xs font-medium lg:flex"
               title={t("pricing")}
@@ -732,7 +741,17 @@ export default function Dashboard() {
         </div>
       </header>
 
+      <div className="border-b border-white/8 bg-background/40">
+        <div className="mx-auto max-w-7xl px-3 py-2 sm:px-6 lg:px-8">
+          <GlobalCreditBar variant="inline" />
+        </div>
+      </div>
+
       <div className="relative mx-auto max-w-7xl px-4 pb-16 pt-4 sm:px-6 sm:pt-8 lg:px-8">
+        <div className="mb-4 sm:mb-6">
+          <WalletScriptoraCard />
+        </div>
+
         <div className="mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
           <section className="ios-panel border-white/15 bg-slate-950/34 p-4 shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur-2xl sm:p-6">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -1532,22 +1551,28 @@ export default function Dashboard() {
             )}
 
             <div className="flex flex-col sm:flex-row gap-2 mt-4">
-              <button
-                onClick={launchOneClick}
-                disabled={!heroValid || launching || detecting}
-                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-white text-sm font-semibold text-slate-950 shadow-lg shadow-black/20 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {launching || detecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
-                {launching ? t("launching") : detecting ? t("detecting") : t("generate_full_book")}
-              </button>
-              {!intent ? (
+              <div className="flex flex-1 flex-col gap-1.5">
                 <button
-                  onClick={detectIntent}
-                  disabled={!heroValid || detecting || launching}
-                  className="ios-toolbar-button h-11 px-4 text-sm font-medium disabled:opacity-50"
+                  onClick={launchOneClick}
+                  disabled={!heroValid || launching || detecting}
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-white text-sm font-semibold text-slate-950 shadow-lg shadow-black/20 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <Wand2 className="h-3.5 w-3.5" /> {t("preview_action")}
+                  {launching || detecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
+                  {launching ? t("launching") : detecting ? t("detecting") : t("generate_full_book")}
                 </button>
+                <CreditCostBadge operation="auto_bestseller" prominent />
+              </div>
+              {!intent ? (
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    onClick={detectIntent}
+                    disabled={!heroValid || detecting || launching}
+                    className="ios-toolbar-button h-11 px-4 text-sm font-medium disabled:opacity-50"
+                  >
+                    <Wand2 className="h-3.5 w-3.5" /> {t("preview_action")}
+                  </button>
+                  <CreditCostBadge operation="market_intelligence" />
+                </div>
               ) : (
                 <button
                   onClick={() => {

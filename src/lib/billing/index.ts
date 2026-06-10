@@ -6,3 +6,5 @@ export * from "./commit";
 export * from "./billingProvider";
 export * from "./devMode";
 export * from "./devPurchase";
+export * from "./walletAnalytics";
+export * from "./creditUx";

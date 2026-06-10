@@ -34,6 +34,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { analyzeExportReadiness, type ExportFixAction, type ExportIssue } from "@/lib/export-readiness";
 import { consumeQueuedExportFix } from "@/lib/export-fix-navigation";
 import { ExportIssuesDialog } from "@/components/ExportIssuesDialog";
+import { GlobalCreditBar } from "@/components/billing/GlobalCreditBar";
 
 const NewBookDialog = lazy(() => import("@/components/NewBookDialog").then((m) => ({ default: m.NewBookDialog })));
 const CoverGenerator = lazy(() => import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })));
@@ -592,6 +593,11 @@ const Index = () => {
           projectId={engine.project?.id || null}
           project={engine.project}
           onMobileGenerate={handleMobileGenerate}
+        />
+
+        <GlobalCreditBar
+          variant="bar"
+          className={`mb-2 rounded-lg overflow-hidden border border-border/40 ${isMobile ? "" : "lg:hidden"}`}
         />
 
         {isMobile && engine.project && (

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Download, ImagePlus, Settings2, Upload, Wand2, X } from "lucide-react";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
-import { requireCredits, InsufficientCreditsError } from "@/lib/billing";
-import { toast } from "sonner";
+import { requireCredits } from "@/lib/billing";
+import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 
 interface CoverGeneratorProps {
   title: string;
@@ -543,8 +543,7 @@ export function CoverGenerator({
   function generateScriptoraBackground() {
     try {
       requireCredits("cover_generation", { source: "cover_studio_background" });
-    } catch (e) {
-      toast.error(e instanceof InsufficientCreditsError ? e.message : "Crediti insufficienti.");
+    } catch {
       return;
     }
     const direction = inferScriptoraArtDirection([
@@ -838,15 +837,18 @@ export function CoverGenerator({
                   <Upload className="h-4 w-4" />
                   Carica immagine
                 </button>
-                <button
-                  type="button"
-                  onClick={generateScriptoraBackground}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/12 px-3 py-2 lg:py-3 text-xs lg:text-sm font-semibold text-primary hover:bg-primary/18 transition-colors"
-                >
-                  <Wand2 className="h-4 w-4" />
-                  <span className="lg:hidden">Genera cover</span>
-                  <span className="hidden lg:inline">Genera copertina Scriptora</span>
-                </button>
+                <div className="flex flex-col gap-1.5">
+                  <button
+                    type="button"
+                    onClick={generateScriptoraBackground}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/12 px-3 py-2 lg:py-3 text-xs lg:text-sm font-semibold text-primary hover:bg-primary/18 transition-colors"
+                  >
+                    <Wand2 className="h-4 w-4" />
+                    <span className="lg:hidden">Genera cover</span>
+                    <span className="hidden lg:inline">Genera copertina Scriptora</span>
+                  </button>
+                  <CreditCostBadge operation="cover_generation" prominent className="self-center" />
+                </div>
               </div>
               {scriptoraArtDirection && (
                 <div className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] leading-4 text-primary">

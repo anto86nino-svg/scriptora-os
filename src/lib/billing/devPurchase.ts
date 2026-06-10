@@ -3,6 +3,7 @@ import { appendLedgerEntry } from "./ledger";
 import { getBillingProvider } from "./billingProvider";
 import { isDevMode, isDevUnlimitedCredits } from "./devMode";
 import type { BillingPurchaseResult } from "./types";
+import { notifyCreditCredit } from "./creditUx";
 
 /** DEV-only instant credit purchase simulator */
 export async function purchaseCreditsSimulator(amount: number): Promise<BillingPurchaseResult> {
@@ -32,6 +33,8 @@ export async function purchaseCreditsSimulator(amount: number): Promise<BillingP
     },
     simulated: true,
   });
+
+  notifyCreditCredit(amount, wallet.balance);
 
   return {
     ok: true,

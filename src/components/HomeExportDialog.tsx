@@ -15,6 +15,7 @@ import { analyzeExportReadiness, type ExportIssue } from "@/lib/export-readiness
 import { ExportIssuesDialog } from "@/components/ExportIssuesDialog";
 import { queueExportFixNavigation } from "@/lib/export-fix-navigation";
 import { requireCredits, InsufficientCreditsError } from "@/lib/billing";
+import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 
 type Format = "epub" | "docx" | "pdf";
 
@@ -265,7 +266,9 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           )}
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-muted/20 p-4">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border bg-muted/20 p-4">
+          <CreditCostBadge operation="export_premium" prominent />
+          <div className="flex items-center gap-2">
           <button
             onClick={onClose}
             disabled={isExporting}
@@ -296,6 +299,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
               </>
             )}
           </button>
+          </div>
         </div>
       </div>
 

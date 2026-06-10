@@ -16,6 +16,8 @@ import { Progress } from "@/components/ui/progress";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import { buildEditorialChapterPreview, sanitizeChapterTitle, isForbiddenChapterSummary } from "@/lib/chapter-generation-guard";
 import { ChapterReadingSession } from "@/components/ChapterReadingSession";
+import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
+import { resolveChapterGenerationOperation } from "@/lib/billing";
 
 interface EditorPanelProps {
   project: BookProject;
@@ -469,11 +471,18 @@ function ChapterView({
         {!mobileFocus && (
           <div className="flex shrink-0 items-center gap-2 pt-1">
             {!isGenerated ? (
-              <button onClick={onGenerate} disabled={isGenerating || !project.blueprint}
-                className="flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-30">
-                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                {t("generate")}
-              </button>
+              <div className="flex flex-col items-end gap-1">
+                <button onClick={onGenerate} disabled={isGenerating || !project.blueprint}
+                  className="flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-30">
+                  {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+                  {t("generate")}
+                </button>
+                <CreditCostBadge
+                  operation={resolveChapterGenerationOperation(project.config)}
+                  bookLength={project.config.bookLength}
+                  prominent
+                />
+              </div>
             ) : (
               <>
                 <ActionButton icon={<Download className="h-3.5 w-3.5" />} title="TXT" onClick={() => downloadText(`chapter-${chapterIndex + 1}-${(chapter?.title || "chapter").replace(/\s+/g, "_")}.txt`, chapter?.content || "")} disabled={!isGenerated} />
@@ -487,12 +496,13 @@ function ChapterView({
                 </button>
                 <ActionButton icon={<Search className="h-3.5 w-3.5" />} title={t("evaluate")} onClick={onEvaluate} disabled={isGenerating || isEvaluating} />
                 <ActionButton icon={<RefreshCw className="h-3.5 w-3.5" />} title={t("regenerate")} onClick={onRegenerate} disabled={isGenerating} />
-                <div className="relative">
+                <div className="relative flex flex-col items-end gap-1">
                   <button onClick={() => setShowRewriteMenu(!showRewriteMenu)} disabled={isGenerating}
                     className="flex h-9 items-center gap-1 rounded-lg px-2.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-30">
                     <Sparkles className="h-3.5 w-3.5" />
                     <ChevronDown className="h-3 w-3" />
                   </button>
+                  <CreditCostBadge operation="rewrite_chapter" />
                   {showRewriteMenu && (
                     <div className="absolute right-0 top-10 z-20 w-48 rounded-lg border border-border bg-card py-1 shadow-xl">
                       {([

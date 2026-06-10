@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
 import { requireCredits, InsufficientCreditsError } from "@/lib/billing";
+import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 
 
 function countWordsForChapterLock(value: unknown): number {

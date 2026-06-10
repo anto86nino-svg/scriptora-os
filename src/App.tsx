@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound.tsx";
 import DownloadsPage from "./pages/DownloadsPage.tsx";
 import InstallPage from "./pages/InstallPage.tsx";
 import { DevModeBadge } from "@/components/DevModeBadge";
+import { CreditVisibilityShell } from "@/components/billing/CreditVisibilityShell";
 import { PerformanceModeHint } from "@/components/PerformanceModeHint";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
@@ -79,6 +80,7 @@ const App = () => (
                 <ScriptoraStepGuide />
                 <GlobalCuriosity />
               </Suspense>
+              <CreditVisibilityShell />
               <DevModeBadge />
               <PerformanceModeHint />
             </MollyProvider>
