@@ -6,6 +6,7 @@ import { scriptoraLog, logGenerationStart, logGenerationEnd, logEdgeError } from
 import { buildGenreSystemBlock, buildGenreBlueprintBlock, buildGenreEditorialBlock, getGenreBlueprint, buildPromptByGenre, resolveGenreKey } from "@/lib/genre-intelligence";
 import { buildBookTypeEngineBlock, buildBookTypeLock, resolveBookTypeDefinition } from "@/lib/book-type-engine";
 import { runManuscriptQualityV3 } from "@/lib/manuscript-quality-v3";
+import { finalManuscriptGuard } from "@/lib/final-manuscript-guard";
 import { buildLongBookMemory, buildLongBookMemoryPromptBlock } from "@/lib/long-book-memory";
 import {
   applyMatterOptionsToBackMatter,
@@ -155,7 +156,7 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
       scriptoraLog.warn("generation", `No bytes received for ${timeoutMs}ms — aborting stream`, { taskType: usage?.taskType });
       controller.abort();
     }
-  }, 5000);
+  }, 15000);
 
   try {
     const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-book`;
@@ -236,10 +237,34 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
     if (!parsed.content) throw new Error("Empty response from AI");
     logGenerationEnd("GENERATION", "callAIOnce", { chars: parsed.content.length, taskType: usage?.taskType });
     notifyUsageChanged();
-    return parsed.content;
+
+    const cleanedContent = finalManuscriptGuard(
+      parsed.content,
+      {
+        language: String(
+          usage?.metadata?.language || "italian"
+        ),
+      }
+    );
+
+    return cleanedContent;
   } catch (e: any) {
     clearInterval(watchdog);
-    if (e.name === "AbortError") throw new Error("Generation timed out (no response)");
+
+    if (e.name === "AbortError") {
+      scriptoraLog.error(
+        "generation",
+        "Generation aborted by watchdog",
+        {
+          taskType: usage?.taskType,
+          timeoutMs,
+          lastByteAgo: Date.now() - lastByteAt,
+        }
+      );
+
+      throw new Error("Generation timed out (no response)");
+    }
+
     throw e;
   }
 }
@@ -254,7 +279,7 @@ async function callAI(systemPrompt: string, userPrompt: string, usage?: AIUsageC
     throw new Error(`AI temporarily unavailable. Retry in ${Math.ceil(cooldown / 1000)}s.`);
   }
   return withRetry(
-    () => callAIOnce(systemPrompt, userPrompt, 180000, usage),
+    () => callAIOnce(systemPrompt, userPrompt, 420000, usage),
     {
       maxAttempts: 3,
       baseDelayMs: 2000,
@@ -267,7 +292,7 @@ async function callAI(systemPrompt: string, userPrompt: string, usage?: AIUsageC
 
 // Reduced chunk size fallback for resilience
 async function callAIReduced(systemPrompt: string, userPrompt: string, usage?: AIUsageContext): Promise<string> {
-  return callAIOnce(systemPrompt, userPrompt, 180000, usage);
+  return callAIOnce(systemPrompt, userPrompt, 420000, usage);
 }
 
 /**
