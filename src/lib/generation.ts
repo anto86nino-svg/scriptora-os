@@ -1,7 +1,22 @@
 import { BookConfig, Chapter, FrontMatter, BackMatter, BookBlueprint, BookProject, Genre, AIQualityRating, BOOK_LENGTH_CONFIG, getBookTotalWords, getSubchaptersPerChapter, GenreLock } from "@/types/book";
+import type { ChunkProgress, RewriteLevel } from "@/lib/generation-types";
+export type { ChunkProgress, RewriteLevel } from "@/lib/generation-types";
 import { supabase } from "@/integrations/supabase/client";
 import { scriptoraLog, logGenerationStart, logGenerationEnd, logEdgeError } from "@/lib/scriptora-logger";
 import { buildGenreSystemBlock, buildGenreBlueprintBlock, buildGenreEditorialBlock, getGenreBlueprint, buildPromptByGenre, resolveGenreKey } from "@/lib/genre-intelligence";
+import { buildBookTypeEngineBlock, buildBookTypeLock, resolveBookTypeDefinition } from "@/lib/book-type-engine";
+import { runManuscriptQualityV3 } from "@/lib/manuscript-quality-v3";
+import { buildLongBookMemory, buildLongBookMemoryPromptBlock } from "@/lib/long-book-memory";
+import {
+  applyMatterOptionsToBackMatter,
+  applyMatterOptionsToFrontMatter,
+  filterBackMatterTemplateSections,
+  filterFrontMatterTemplateSections,
+  isBackMatterEnabled,
+  isFrontMatterEnabled,
+  matterOptionsPromptNote,
+  resolveMatterOptions,
+} from "@/lib/matter-options";
 import { buildWritingStyleBlock, findStylePresetById, findStylePresetByLabel } from "@/lib/writing-styles";
 import { buildEditorialMasteryBlock } from "@/lib/editorial-mastery";
 import { validateEditorial } from "@/lib/editorial-validator";
@@ -39,15 +54,15 @@ import {
  * Verbose streaming logs are off by default — they intasavano la console
  * during chunked generation (12+ logs per chunk × ~5 chunks × 12 chapters
  * = ~700 entries per book). Enable in DevTools with:
- *   window.__NEXORA_DEBUG_STREAM__ = true
- * or set localStorage key 'nexora-debug-stream' = '1'.
+ *   window.__SCRIPTORA_DEBUG_STREAM__ = true
+ * or set localStorage key 'scriptora-debug-stream' = '1'.
  * Critical events (start, completion, errors, warnings) always log.
  */
 const DEV_DEBUG_STREAM: boolean = (() => {
   try {
     if (typeof window === "undefined") return false;
-    if ((window as any).__NEXORA_DEBUG_STREAM__ === true) return true;
-    return localStorage.getItem("nexora-debug-stream") === "1";
+    if ((window as any).__SCRIPTORA_DEBUG_STREAM__ === true) return true;
+    return localStorage.getItem("scriptora-debug-stream") === "1";
   } catch { return false; }
 })();
 
@@ -57,19 +72,7 @@ const DEV_DEBUG_STREAM: boolean = (() => {
  * so the entire book stays editorially consistent.
  */
 export function buildGenreLock(config: BookConfig): GenreLock {
-  const bp = getGenreBlueprint(config.genre, (config as any).subcategory);
-  return {
-    genre: config.genre,
-    subcategory: (config as any).subcategory,
-    structure: bp.structure,
-    rules: bp.contentRules,
-    chapterStyle: bp.chapterStyle,
-    tone: bp.tone,
-    frontMatterTemplate: bp.frontMatterTemplate,
-    backMatterTemplate: bp.backMatterTemplate,
-    hasSubchapters: bp.hasSubchapters,
-    lockedAt: new Date().toISOString(),
-  };
+  return buildBookTypeLock(config);
 }
 
 /** Resolve effective blueprint: prefer locked one, else compute fresh. */
@@ -122,7 +125,7 @@ function usagePayload(usage?: AIUsageContext) {
 
 function notifyUsageChanged() {
   try {
-    window.dispatchEvent(new Event("nexora-usage-change"));
+    window.dispatchEvent(new Event("scriptora-usage-change"));
   } catch { /* noop */ }
 }
 
@@ -416,6 +419,13 @@ BOOK ARCHITECTURE:
 - Core themes: ${blueprint.themes.join(", ")}
 
 ${buildBlueprintIntegrityRuntimeBlock(config, blueprint, { chapterIndex })}
+
+${(() => {
+    const family = resolveBookTypeDefinition(config.genre, config.subcategory, config.subgenre, config.bookTypeId).family;
+    if (family !== "narrative" && family !== "poetry") return "";
+    const memory = buildLongBookMemory({ config, blueprint, chapters: previousChapters });
+    return buildLongBookMemoryPromptBlock(memory, chapterIndex);
+  })()}
 
 CONTINUITY RULES (MANDATORY):
 - Reference and BUILD UPON ideas from previous chapters — create callbacks
@@ -875,16 +885,6 @@ function normalizeBackMatter(raw: unknown, config?: BookConfig): BackMatter {
 
 /* ============ Chunked Chapter Generation ============ */
 
-export interface ChunkProgress {
-  chunkIndex: number;
-  totalChunks: number;
-  currentWords: number;
-  targetWords: number;
-  phase: ChunkPhase;
-  content: string;
-  chunkSize?: ChunkSize;
-}
-
 export async function generateChapterChunked(
   config: BookConfig,
   blueprint: BookBlueprint,
@@ -946,6 +946,7 @@ export async function generateChapterChunked(
     chapterIndex,
     outlineSummary: outline.summary,
   });
+  const bookTypeEngineBlock = buildBookTypeEngineBlock(config);
 
   let accumulatedContent = "";
   let chapterTitle = outline.title;
@@ -954,7 +955,7 @@ export async function generateChapterChunked(
   let lastChunkError: string | null = null;
   const maxChunks = Math.ceil(targetWords / 600) + 5; // generous safety cap for adaptive sizing
 
-  if (DEV_DEBUG_STREAM) console.log(`[Nexora] Adaptive chunked generation: target=${targetWords} words, maxChunks=${maxChunks}`);
+  if (DEV_DEBUG_STREAM) console.log(`[Scriptora] Adaptive chunked generation: target=${targetWords} words, maxChunks=${maxChunks}`);
 
   while (chunkIndex < maxChunks) {
     const currentWords = countWords(accumulatedContent);
@@ -964,13 +965,13 @@ export async function generateChapterChunked(
 
     // Stop if past target
     if (currentWords >= targetWords * 1.1) {
-      if (DEV_DEBUG_STREAM) console.log(`[Nexora] Target exceeded (${currentWords}/${targetWords}), stopping`);
+      if (DEV_DEBUG_STREAM) console.log(`[Scriptora] Target exceeded (${currentWords}/${targetWords}), stopping`);
       break;
     }
 
     // Stop if CLOSURE was already written
     if (phase === "CLOSURE" && currentWords >= targetWords * 0.9 && chunkIndex > 1) {
-      if (DEV_DEBUG_STREAM) console.log(`[Nexora] Closure already written, stopping`);
+      if (DEV_DEBUG_STREAM) console.log(`[Scriptora] Closure already written, stopping`);
       break;
     }
 
@@ -981,7 +982,7 @@ export async function generateChapterChunked(
       ? Math.min(remainingWords + 100, sizeConfig.max)
       : Math.min(Math.max(sizeConfig.min, remainingWords), sizeConfig.max);
 
-    if (DEV_DEBUG_STREAM) console.log(`[Nexora] Chunk ${chunkIndex + 1}: size=${chunkSize} (${sizeConfig.label}), failures=${consecutiveFailures}`);
+    if (DEV_DEBUG_STREAM) console.log(`[Scriptora] Chunk ${chunkIndex + 1}: size=${chunkSize} (${sizeConfig.label}), failures=${consecutiveFailures}`);
 
     const isFirstChunk = chunkIndex === 0;
     const lastTextSegment = accumulatedContent.slice(-1200);
@@ -1009,6 +1010,8 @@ ${characterLock}
 ${humanizerBlock}
 
 ${premiumWritingBlock}
+
+${bookTypeEngineBlock}
 
 BESTSELLER QUALITY REQUIREMENTS:
 - Open with a line that stops the reader — a hook they'll remember
@@ -1041,6 +1044,8 @@ PHASE: ${phase} — ${phaseInstruction}
 ${humanizerBlock}
 
 ${premiumWritingBlock}
+
+${bookTypeEngineBlock}
 
 TARGET for this chunk: Write approximately ${chunkTarget} words.
 
@@ -1090,7 +1095,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
     } catch (e: any) {
       consecutiveFailures++;
       lastChunkError = e?.message || String(e);
-      console.error(`[Nexora] Chunk ${chunkIndex + 1} failed (failures=${consecutiveFailures}):`, lastChunkError);
+      console.error(`[Scriptora] Chunk ${chunkIndex + 1} failed (failures=${consecutiveFailures}):`, lastChunkError);
 
       // Credit/auth errors = bail immediately
       if (e instanceof AICreditsError) throw e;
@@ -1099,7 +1104,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
       if (consecutiveFailures > 6) {
         if (chunkIndex === 0) {
           // Last-resort fallback for first chunk: smaller/simpler prompt
-          console.warn(`[Nexora] Emergency fallback for first chunk`);
+          console.warn(`[Scriptora] Emergency fallback for first chunk`);
           try {
             chunkText = await callAIOnce(
               `You are a ${config.genre} author writing in ${config.language}. Be concise and complete.`,
@@ -1117,7 +1122,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
             throw new Error(`Generazione non riuscita dopo vari tentativi: ${reason}`);
           }
         } else {
-          console.warn(`[Nexora] Stopping with ${countWords(accumulatedContent)} words after ${consecutiveFailures} failures`);
+          console.warn(`[Scriptora] Stopping with ${countWords(accumulatedContent)} words after ${consecutiveFailures} failures`);
           break;
         }
       } else {
@@ -1151,7 +1156,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
     if (!isFirstChunk && accumulatedContent.length > 0) {
       const overlap = checkOverlap(accumulatedContent, chunkText);
       if (overlap > 0.12) {
-        console.warn(`[Nexora] Chunk ${chunkIndex + 1} has ${(overlap * 100).toFixed(0)}% overlap — regenerating`);
+        console.warn(`[Scriptora] Chunk ${chunkIndex + 1} has ${(overlap * 100).toFixed(0)}% overlap — regenerating`);
         try {
           chunkText = await callAI(
             systemPrompt + " CRITICAL: Your previous attempt repeated content. Write ENTIRELY NEW prose that continues from the last sentence.",
@@ -1172,7 +1177,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
     chunkIndex++;
 
     const updatedWords = countWords(accumulatedContent);
-    if (DEV_DEBUG_STREAM) console.log(`[Nexora] Chunk ${chunkIndex} complete: ${updatedWords}/${targetWords} words, phase=${phase}, size=${chunkSize}`);
+    if (DEV_DEBUG_STREAM) console.log(`[Scriptora] Chunk ${chunkIndex} complete: ${updatedWords}/${targetWords} words, phase=${phase}, size=${chunkSize}`);
 
     // Report progress
     onChunkProgress?.({
@@ -1187,16 +1192,16 @@ Write in ${config.language}.${adaptiveSuffix}`;
 
     // Stop conditions
     if (phase === "CLOSURE" && updatedWords >= targetWords * 0.85) {
-      if (DEV_DEBUG_STREAM) console.log(`[Nexora] Closure phase complete at ${updatedWords} words`);
+      if (DEV_DEBUG_STREAM) console.log(`[Scriptora] Closure phase complete at ${updatedWords} words`);
       break;
     }
     if (updatedWords >= targetWords * 1.05) {
-      if (DEV_DEBUG_STREAM) console.log(`[Nexora] Target reached at ${updatedWords} words`);
+      if (DEV_DEBUG_STREAM) console.log(`[Scriptora] Target reached at ${updatedWords} words`);
       break;
     }
   }
 
-  if (DEV_DEBUG_STREAM) console.log(`[Nexora] Chapter ${chapterIndex + 1} complete: ${countWords(accumulatedContent)} words in ${chunkIndex} chunks`);
+  if (DEV_DEBUG_STREAM) console.log(`[Scriptora] Chapter ${chapterIndex + 1} complete: ${countWords(accumulatedContent)} words in ${chunkIndex} chunks`);
 
   if (!accumulatedContent.trim()) {
     const reason = lastChunkError || "nessun testo restituito dal modello";
@@ -1210,7 +1215,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
     qaScore = report.score;
     if (DEV_DEBUG_STREAM) {
       console.log(
-        `[Nexora] Editorial QA — Ch${chapterIndex + 1}: score ${report.score}/10` +
+        `[Scriptora] Editorial QA — Ch${chapterIndex + 1}: score ${report.score}/10` +
         (report.issues.length ? ` · ${report.issues.length} issue(s): ${report.issues.map(i => i.kind).join(", ")}` : " · clean"),
       );
     }
@@ -1243,7 +1248,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
       );
       if (result.rewritten) accumulatedContent = result.text;
     } catch (e) {
-      console.warn("[Nexora] Adaptive rewrite skipped:", e);
+      console.warn("[Scriptora] Adaptive rewrite skipped:", e);
     }
   }
 
@@ -1254,7 +1259,12 @@ Write in ${config.language}.${adaptiveSuffix}`;
     config,
     chapterIndex,
   });
-  accumulatedContent = ultraPass.text;
+  accumulatedContent = runManuscriptQualityV3(ultraPass.text, {
+    language: config.language ?? "Italian",
+    priorText,
+    config,
+    chapterIndex,
+  }).text;
 
   if (!ultraPass.quality.passed && ultraPass.quality.composite < 58 && ultraPass.retryInstruction) {
     try {
@@ -1272,7 +1282,13 @@ Write in ${config.language}.${adaptiveSuffix}`;
         }),
       );
       if (retryText?.trim()) {
-        accumulatedContent = runUltraHumanFinalPass(retryText, {
+        const retryUltra = runUltraHumanFinalPass(retryText, {
+          language: config.language ?? "Italian",
+          priorText,
+          config,
+          chapterIndex,
+        });
+        accumulatedContent = runManuscriptQualityV3(retryUltra.text, {
           language: config.language ?? "Italian",
           priorText,
           config,
@@ -1327,6 +1343,8 @@ ${subchapterCount > 0 ? `Include EXACTLY ${subchapterCount} real subchapters per
 ${structureScaffold}
 
 ${buildGenreBlueprintBlock(config.genre, (config as any).subcategory)}
+
+${buildBookTypeEngineBlock(config)}
 
 ${buildBlueprintIntegrityBlueprintRequest(config)}
 
@@ -1389,11 +1407,17 @@ export async function generateFrontMatter(
 ): Promise<FrontMatter> {
   const bp = resolveLockedBlueprint(config, genreLock);
   const genreKey = resolveGenreKey(config.genre, (config as any).subcategory);
-  const sectionsList = bp.frontMatterTemplate.length
-    ? bp.frontMatterTemplate
-    : ["Pagina titolo", "Copyright", "Dedica", "Nota sull’autore", "Come usare questo libro", "Lettera al lettore"];
+  const matterOpts = resolveMatterOptions(config);
+  const sectionsList = filterFrontMatterTemplateSections(
+    bp.frontMatterTemplate.length
+      ? bp.frontMatterTemplate
+      : ["Pagina titolo", "Copyright", "Dedica", "Nota sull’autore", "Come usare questo libro", "Lettera al lettore"],
+    matterOpts,
+  );
 
   const prompt = `Generate FRONT MATTER for a ${genreKey.toUpperCase()} book — sections must read as if written by a domain expert in this genre.
+
+${matterOptionsPromptNote(config)}
 
 BOOK:
 - Title: "${config.title}"
@@ -1432,9 +1456,10 @@ Return ONLY valid JSON. No markdown.`;
 
   const result = await callAI(getSystemPrompt(config, genreLock), prompt, withUsage(usage, { taskType: "generate_front_matter" }));
   try {
-    return normalizeFrontMatter(JSON.parse(cleanJsonFence(result)), config);
+    const parsed = normalizeFrontMatter(JSON.parse(cleanJsonFence(result)), config);
+    return applyMatterOptionsToFrontMatter(parsed, matterOpts);
   } catch {
-    return normalizeFrontMatter({ titlePage: config.title, letterToReader: result }, config);
+    return applyMatterOptionsToFrontMatter(normalizeFrontMatter({ titlePage: config.title, letterToReader: result }, config), matterOpts);
   }
 }
 
@@ -1586,11 +1611,17 @@ export async function generateBackMatter(
     summary: blueprint.chapterOutlines[i]?.summary,
     totalChapters: config.numberOfChapters,
   })).join("\n");
-  const sectionsList = bp.backMatterTemplate.length
-    ? bp.backMatterTemplate
-    : ["Conclusione", "Nota dell’autore", "Prossimo passo", "Richiesta recensione", "Letture consigliate"];
+  const matterOpts = resolveMatterOptions(config);
+  const sectionsList = filterBackMatterTemplateSections(
+    bp.backMatterTemplate.length
+      ? bp.backMatterTemplate
+      : ["Conclusione", "Nota dell’autore", "Prossimo passo", "Richiesta recensione", "Letture consigliate"],
+    matterOpts,
+  );
 
   const prompt = `Generate BACK MATTER for a ${genreKey.toUpperCase()} book — read as if written by a domain expert.
+
+${matterOptionsPromptNote(config)}
 
 BOOK:
 - Title: "${config.title}"
@@ -1626,11 +1657,14 @@ Return ONLY valid JSON.`;
 
   const result = await callAI(getSystemPrompt(config, genreLock), prompt, withUsage(usage, { taskType: "generate_back_matter" }));
   try {
-    return normalizeBackMatter(JSON.parse(cleanJsonFence(result)), config);
+    const parsed = normalizeBackMatter(JSON.parse(cleanJsonFence(result)), config);
+    return applyMatterOptionsToBackMatter(parsed, matterOpts);
   } catch {
-    return normalizeBackMatter({ conclusion: result }, config);
+    return applyMatterOptionsToBackMatter(normalizeBackMatter({ conclusion: result }, config), matterOpts);
   }
 }
+
+export { isFrontMatterEnabled, isBackMatterEnabled } from "@/lib/matter-options";
 
 /* ============ AI Quality Evaluation ============ */
 
@@ -1681,8 +1715,6 @@ Return ONLY valid JSON.`;
 }
 
 /* ============ Smart Rewrite with Levels ============ */
-
-export type RewriteLevel = "light" | "deep" | "bestseller";
 
 function getRewriteLevelInstruction(level: RewriteLevel): string {
   switch (level) {

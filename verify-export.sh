@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-# Nexora — Export readiness verifier (READ-ONLY)
+# Scriptora — Export readiness verifier (READ-ONLY)
 # Non modifica nulla. Solo controlla.
 #
 # Exit codes:
@@ -26,7 +26,7 @@ pass() { green "✅ PASS  $*"; PASS_COUNT=$((PASS_COUNT+1)); }
 fail() { red   "❌ FAIL  $*"; FAIL_COUNT=$((FAIL_COUNT+1)); }
 warn() { yellow "⚠️  WARN  $*"; WARN_COUNT=$((WARN_COUNT+1)); }
 
-hr; bold "▶ Nexora export verifier"; hr
+hr; bold "▶ Scriptora export verifier"; hr
 
 # ── 1. setup.sh exists ───────────────────────────────────────
 if [[ -f setup.sh ]]; then pass "setup.sh esiste"

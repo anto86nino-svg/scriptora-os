@@ -210,7 +210,7 @@ export function routeRequest(signal: RequestSignal, plan: PlanTier): {
   // Silent telemetry — never surfaced to UX.
   if (typeof console !== "undefined") {
     console.debug(
-      `[Nexora/Router] task=${signal.task} type=${classification.contentType} ` +
+      `[Scriptora/Router] task=${signal.task} type=${classification.contentType} ` +
       `complexity=${classification.complexity} → mode=${mode} ` +
       `(model=${config.model}, max=${config.maxTokens}, passes=${config.passes})`,
     );

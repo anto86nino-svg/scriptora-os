@@ -1,24 +1,27 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { NavigationTree } from "@/components/NavigationTree";
 import { TopBar } from "@/components/TopBar";
-import { EditorPanel } from "@/components/EditorPanel";
-import { NewBookDialog } from "@/components/NewBookDialog";
-import { CoverGenerator } from "@/components/CoverGenerator";
 import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
-import { PublishPanel } from "@/components/PublishPanel";
-import { SettingsPanel } from "@/components/SettingsPanel";
-import { AICoachPanel } from "@/components/AICoachPanel";
 import { ProgressTracker } from "@/components/ProgressTracker";
-import { DominationTray } from "@/components/DominationTray";
 import { GuidedProjectFlow } from "@/components/GuidedProjectFlow";
 import { useBookEngine } from "@/hooks/useBookEngine";
 import { useSyncStatus } from "@/hooks/useSyncStatus";
 import { deleteProject as removeProject, getLastProjectId } from "@/lib/storage";
 import { loadProjects as loadRemoteProjects, deleteProjectAsync, saveProjectAsync } from "@/services/storageService";
-import { generateEpub, downloadEpub, validateEpubStructure } from "@/lib/epub";
-import { generateDocx, downloadDocx } from "@/lib/docx-export";
-import { generatePdf, downloadPdf } from "@/lib/pdf-export";
-import { getExportBlockers } from "@/lib/export-readiness";
+import {
+  runEpubExport,
+  downloadEpubFile,
+  validateEpubExport,
+  runDocxExport,
+  downloadDocxFile,
+  runPdfExport,
+  downloadPdfFile,
+} from "@/lib/export-runtime";
+import { ExportBlockedError, getExportBlockers } from "@/lib/export-readiness";
+import { computeProjectProgressPercent } from "@/lib/project-progress";
+import { BookTypeBadge } from "@/components/BookTypeBadge";
+import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 import { applyAuthorIdentityToConfig } from "@/lib/author-identity";
 import { BookProject, SectionId } from "@/types/book";
 import { WritingSettings, loadSettings, saveSettings } from "@/lib/settings";
@@ -35,6 +38,24 @@ import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
 const VoiceStudioDialog = lazy(() =>
   import("@/components/VoiceStudioDialog").then((m) => ({ default: m.VoiceStudioDialog })),
 );
+const EditorPanel = lazyWithRetry(() =>
+  import("@/components/EditorPanel").then((m) => ({ default: m.EditorPanel })),
+);
+const CoverGenerator = lazyWithRetry(() =>
+  import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })),
+);
+const PublishPanel = lazyWithRetry(() =>
+  import("@/components/PublishPanel").then((m) => ({ default: m.PublishPanel })),
+);
+const SettingsPanel = lazyWithRetry(() =>
+  import("@/components/SettingsPanel").then((m) => ({ default: m.SettingsPanel })),
+);
+const AICoachPanel = lazyWithRetry(() =>
+  import("@/components/AICoachPanel").then((m) => ({ default: m.AICoachPanel })),
+);
+const DominationTray = lazyWithRetry(() =>
+  import("@/components/DominationTray").then((m) => ({ default: m.DominationTray })),
+);
 
 type ExportFormat = "epub" | "docx" | "pdf";
 
@@ -46,10 +67,17 @@ function VoiceStudioFallback() {
   );
 }
 
+function PanelFallback() {
+  return (
+    <div className="flex h-full min-h-[240px] items-center justify-center">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
+
 const Index = () => {
   useUILanguage();
   const [projects, setProjects] = useState<BookProject[]>([]);
-  const [showNewBook, setShowNewBook] = useState(false);
   const [showCover, setShowCover] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -127,6 +155,13 @@ const Index = () => {
     return () => window.removeEventListener("scriptora-generation-blocked", handler);
   }, []);
 
+  useEffect(() => {
+    if (!engine.project) return;
+    const cfg = engine.project.config;
+    if (activeSection === "front-matter" && !isFrontMatterEnabled(cfg)) setActiveSection("blueprint");
+    if (activeSection === "back-matter" && !isBackMatterEnabled(cfg)) setActiveSection("blueprint");
+  }, [engine.project, activeSection]);
+
   // Token guard for free users — gracefully stop generation when limit is reached
   useEffect(() => {
     if (quota?.isOverTokenLimit && engine.isAnythingGenerating) {
@@ -173,8 +208,8 @@ const Index = () => {
       const loaded = await loadRemoteProjects((fresh) => setProjects(fresh));
       setProjects(loaded);
 
-      const openSection = sessionStorage.getItem("nexora-open-section");
-      if (openSection) sessionStorage.removeItem("nexora-open-section");
+      const openSection = sessionStorage.getItem("scriptora-open-section");
+      if (openSection) sessionStorage.removeItem("scriptora-open-section");
 
       const applySection = () => {
         if (openSection === "publish") setShowPublish(true);
@@ -188,9 +223,9 @@ const Index = () => {
         }
       };
 
-      const openId = sessionStorage.getItem("nexora-open-project");
+      const openId = sessionStorage.getItem("scriptora-open-project");
       if (openId) {
-        sessionStorage.removeItem("nexora-open-project");
+        sessionStorage.removeItem("scriptora-open-project");
         const target = loaded.find(p => p.id === openId);
         if (target) {
           if (!target.config.category) target.config.category = "Self Help";
@@ -202,13 +237,24 @@ const Index = () => {
         }
       }
 
-      const newBookJson = sessionStorage.getItem("nexora-new-book");
+      const newBookJson = sessionStorage.getItem("scriptora-new-book");
       if (newBookJson) {
-        sessionStorage.removeItem("nexora-new-book");
+        sessionStorage.removeItem("scriptora-new-book");
         try {
-          const config = JSON.parse(newBookJson);
-          engine.startNewBook(config);
-          setActiveSection("blueprint");
+          const payload = JSON.parse(newBookJson);
+          if (payload?.mode === "studio-approved" && payload.config && payload.blueprint) {
+            void engine.createProjectWithApprovedBlueprint(payload.config, payload.blueprint, payload.blueprintSource || "ai");
+            setActiveSection("blueprint");
+          } else if (payload?.mode === "studio-draft" && payload.config) {
+            void engine.createProjectDraft(payload.config);
+            setActiveSection("blueprint");
+          } else if (payload?.config) {
+            void engine.startNewBook(payload.config);
+            setActiveSection("blueprint");
+          } else {
+            void engine.startNewBook(payload);
+            setActiveSection("blueprint");
+          }
           setTimeout(refreshProjects, 500);
           return;
         } catch { /* ignore */ }
@@ -244,14 +290,24 @@ const Index = () => {
       if (!p.config.genre) p.config.genre = "self-help";
       engine.loadProject(p);
       setActiveSection("blueprint");
-      setShowNewBook(false);
       setSidebarOpen(false);
     }
   };
 
   const handleDeleteProject = async (id: string) => {
+    const target = projects.find((p) => p.id === id);
+    const name = target?.config.title?.trim() || t("this_project");
+    if (!window.confirm(tt("confirm_delete_project", { name }))) return;
     await deleteProjectAsync(id);
-    refreshProjects();
+    const fresh = await loadRemoteProjects();
+    setProjects(fresh);
+    if (engine.project?.id === id && fresh[0]) {
+      if (!fresh[0].config.category) fresh[0].config.category = "Self Help";
+      if (!fresh[0].config.subcategory) fresh[0].config.subcategory = "Mindset";
+      if (!fresh[0].config.genre) fresh[0].config.genre = "self-help";
+      engine.loadProject(fresh[0]);
+      setActiveSection("blueprint");
+    }
   };
 
   const handleExport = async (coverOverride?: string) => {
@@ -265,19 +321,22 @@ const Index = () => {
       toast.error(blockers.map((issue) => issue.message).join(" · "));
       return;
     }
-    const errors = validateEpubStructure(exportProject);
+    const errors = await validateEpubExport(exportProject);
     if (errors.length > 0) {
-      alert(`${t("export_blocked_epub")}:\n\n${errors.join("\n")}`);
+      toast.error(t("export_blocked_epub"), { description: errors.join(" · ") });
       return;
     }
     setIsExporting(true);
     setExportLabel(t("exporting_epub"));
     try {
-      const blob = await generateEpub(exportProject, coverOverride ?? coverDataUrl);
+      const blob = await runEpubExport(exportProject, coverOverride ?? coverDataUrl);
       const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
-      downloadEpub(blob, filename);
+      await downloadEpubFile(blob, filename);
+      toast.success(t("export_saved"), { description: `${filename}.epub` });
     } catch (e) {
-      console.error("EPUB export failed:", e);
+      toast.error(e instanceof ExportBlockedError ? t("export_blocked_title") : t("export_failed"), {
+        description: e instanceof Error ? e.message : undefined,
+      });
     } finally {
       setIsExporting(false);
       setExportLabel("");
@@ -298,11 +357,14 @@ const Index = () => {
     setIsExporting(true);
     setExportLabel(t("preparing_docx"));
     try {
-      const blob = await generateDocx(exportProject);
+      const blob = await runDocxExport(exportProject);
       const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
-      downloadDocx(blob, filename);
+      await downloadDocxFile(blob, filename);
+      toast.success(t("export_saved"), { description: `${filename}.docx` });
     } catch (e) {
-      console.error("DOCX export failed:", e);
+      toast.error(e instanceof ExportBlockedError ? t("export_blocked_title") : t("export_failed"), {
+        description: e instanceof Error ? e.message : undefined,
+      });
     } finally {
       setIsExporting(false);
       setExportLabel("");
@@ -323,11 +385,14 @@ const Index = () => {
     setIsExporting(true);
     setExportLabel(t("formatting_pdf"));
     try {
-      const blob = await generatePdf(exportProject);
+      const blob = await runPdfExport(exportProject);
       const filename = engine.project.config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
-      downloadPdf(blob, filename);
+      await downloadPdfFile(blob, filename);
+      toast.success(t("export_saved"), { description: `${filename}.pdf` });
     } catch (e) {
-      console.error("PDF export failed:", e);
+      toast.error(e instanceof ExportBlockedError ? t("export_blocked_title") : t("export_failed"), {
+        description: e instanceof Error ? e.message : undefined,
+      });
     } finally {
       setIsExporting(false);
       setExportLabel("");
@@ -354,6 +419,7 @@ const Index = () => {
           </button>
         </div>
         <div className="min-h-0 flex-1 px-3 pb-3">
+          <Suspense fallback={<PanelFallback />}>
           <EditorPanel
             project={engine.project}
             activeSection={activeSection}
@@ -380,10 +446,13 @@ const Index = () => {
             onUpdateBlueprintOutlineSummary={engine.updateBlueprintOutlineSummary}
             onRegenerateBlueprint={engine.regenerateBlueprint}
             onCreateSafeBlueprint={engine.createSafeBlueprint}
+            onApproveBlueprint={engine.approveBlueprint}
+            onGenerateBlueprint={engine.generateBlueprintForProject}
             onUpdateFrontMatterField={engine.updateFrontMatterField}
             onUpdateBackMatterField={engine.updateBackMatterField}
             onNarrateChapter={openVoiceStudioForChapter}
           />
+          </Suspense>
         </div>
         {showVoiceStudio && (
           <Suspense fallback={<VoiceStudioFallback />}>
@@ -466,6 +535,9 @@ const Index = () => {
               <h1 className="truncate text-xs font-bold text-foreground">
                 {engine.project ? (engine.project.config.title || t("untitled")) : "SCRIPTORA"}
               </h1>
+              {engine.project && (
+                <BookTypeBadge config={engine.project.config} compact className="mt-1 scale-90 origin-left" />
+              )}
             </div>
           </div>
           <button onClick={() => setShowSettings(true)} className="ios-toolbar-button h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground" title={t("settings")}>
@@ -620,13 +692,7 @@ const Index = () => {
           syncStatus={syncStatus}
           authorPenName={engine.project?.config.authorName || engine.project?.config.author}
           progressPercent={
-            engine.project?.chapters?.length
-              ? Math.round(
-                  ((engine.project.chapters.filter((c) => (c.content || "").trim().length > 50).length || 0) /
-                    Math.max(1, engine.project.config.numberOfChapters || engine.project.chapters.length)) *
-                    100,
-                )
-              : 0
+            engine.project ? computeProjectProgressPercent(engine.project) : 0
           }
           onCover={() => setShowCover(true)}
           onExport={guardedExportEpub}
@@ -636,6 +702,7 @@ const Index = () => {
           {engine.project ? (
             <>
               <div className="min-w-0 flex-1">
+                <Suspense fallback={<PanelFallback />}>
                 <EditorPanel
                   project={engine.project}
                   activeSection={activeSection}
@@ -662,17 +729,22 @@ const Index = () => {
                   onUpdateBlueprintOutlineSummary={engine.updateBlueprintOutlineSummary}
                   onRegenerateBlueprint={engine.regenerateBlueprint}
                   onCreateSafeBlueprint={engine.createSafeBlueprint}
+                  onApproveBlueprint={engine.approveBlueprint}
+                  onGenerateBlueprint={engine.generateBlueprintForProject}
                   onUpdateFrontMatterField={engine.updateFrontMatterField}
                   onUpdateBackMatterField={engine.updateBackMatterField}
                   onNarrateChapter={openVoiceStudioForChapter}
                 />
+                </Suspense>
               </div>
               {showCoach && (
+                <Suspense fallback={<PanelFallback />}>
                 <AICoachPanel project={engine.project} activeSection={activeSection} onClose={() => setShowCoach(false)}
                   onApplyRewrite={(chapterIdx, subIdx, text) => {
                     if (subIdx !== null) engine.updateSubchapterContent(chapterIdx, subIdx, text);
                     else engine.updateChapterContent(chapterIdx, text);
                   }} />
+                </Suspense>
               )}
               {showVoiceStudio && (
                 <Suspense fallback={<VoiceStudioFallback />}>
@@ -744,24 +816,8 @@ const Index = () => {
         </div>
       </div>
 
-      <NewBookDialog
-        open={showNewBook}
-        onClose={() => setShowNewBook(false)}
-        onSubmit={(config) => {
-          if (freeBookUsed) {
-            setShowNewBook(false);
-            setUpgradeReason("books-limit");
-            toast.error(t("toast_free_book_used"));
-            return;
-          }
-          engine.startNewBook(config);
-          setShowNewBook(false);
-          setActiveSection("blueprint");
-          setTimeout(refreshProjects, 500);
-        }}
-      />
-
       {showCover && engine.project && (
+        <Suspense fallback={<VoiceStudioFallback />}>
         <CoverGenerator
           title={engine.project.config.title}
           subtitle={engine.project.config.subtitle}
@@ -782,6 +838,7 @@ const Index = () => {
             if (pendingExportFormat) setPendingExportFormat(null);
           }}
         />
+        </Suspense>
       )}
 
       <CoverBeforeExportDialog
@@ -804,6 +861,7 @@ const Index = () => {
       />
 
       {showPublish && (
+        <Suspense fallback={<VoiceStudioFallback />}>
         <PublishPanel
           project={engine.project}
           onClose={() => setShowPublish(false)}
@@ -829,8 +887,10 @@ const Index = () => {
           onExportPdf={guardedExportPdf}
           onExportDocx={guardedExportDocx}
         />
+        </Suspense>
       )}
 
+      <Suspense fallback={null}>
       <SettingsPanel
         open={showSettings}
         onClose={() => setShowSettings(false)}
@@ -838,7 +898,9 @@ const Index = () => {
         onUpdateSettings={handleUpdateSettings}
         onLanguageChange={handleLanguageChange}
       />
+      </Suspense>
 
+      <Suspense fallback={null}>
       <DominationTray
         currentProjectId={engine.project?.id}
         onApplyToChapter={async (projectId, chapterIndex, newContent) => {
@@ -869,6 +931,7 @@ const Index = () => {
           setSidebarOpen(false);
         }}
       />
+      </Suspense>
       {engine.project && (
         <LazyMollyBrainPanel
           project={engine.project}

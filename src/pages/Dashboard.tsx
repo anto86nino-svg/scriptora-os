@@ -2,17 +2,31 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { lazy, Suspense, useState, useEffect } from "react";
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
-import { NewBookDialog } from "@/components/NewBookDialog";
-import { HomeExportDialog } from "@/components/HomeExportDialog";
-import { TitleIntelligenceDialog } from "@/components/TitleIntelligenceDialog";
-import { AdvancedAppearanceDialog } from "@/components/AdvancedAppearanceDialog";
+import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
 const CoverGenerator = lazy(() =>
   import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })),
 );
-import { CharacterStudioDialog, SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/components/CharacterStudioDialog";
-import { ManuscriptAnalyzerDialog } from "@/components/ManuscriptAnalyzerDialog";
-import { NotepadDialog } from "@/components/NotepadDialog";
-import { AuthorIdentityDialog } from "@/components/AuthorIdentityDialog";
+const HomeExportDialog = lazy(() =>
+  import("@/components/HomeExportDialog").then((m) => ({ default: m.HomeExportDialog })),
+);
+const TitleIntelligenceDialog = lazy(() =>
+  import("@/components/TitleIntelligenceDialog").then((m) => ({ default: m.TitleIntelligenceDialog })),
+);
+const AdvancedAppearanceDialog = lazy(() =>
+  import("@/components/AdvancedAppearanceDialog").then((m) => ({ default: m.AdvancedAppearanceDialog })),
+);
+const CharacterStudioDialog = lazy(() =>
+  import("@/components/CharacterStudioDialog").then((m) => ({ default: m.CharacterStudioDialog })),
+);
+const ManuscriptAnalyzerDialog = lazy(() =>
+  import("@/components/ManuscriptAnalyzerDialog").then((m) => ({ default: m.ManuscriptAnalyzerDialog })),
+);
+const NotepadDialog = lazy(() =>
+  import("@/components/NotepadDialog").then((m) => ({ default: m.NotepadDialog })),
+);
+const AuthorIdentityDialog = lazy(() =>
+  import("@/components/AuthorIdentityDialog").then((m) => ({ default: m.AuthorIdentityDialog })),
+);
 import { FocusMusicControl } from "@/components/FocusMusicControl";
 import { InProgressSection } from "@/components/Home/InProgressSection";
 import { LibrarySection } from "@/components/Home/LibrarySection";
@@ -27,6 +41,10 @@ import {
   CheckCircle2, NotebookPen, Fingerprint, ImagePlus
 } from "lucide-react";
 import { BOOK_LENGTH_CONFIG, BookConfig, BookLength, BookProject, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
+import { normalizeBookConfig } from "@/lib/book-config-studio/defaults";
+import type { StudioLaunchPayload } from "@/lib/book-config-studio/types";
+import { buildBookTypeLock as buildGenreLock } from "@/lib/book-type-engine";
+import { runGenerateBlueprint } from "@/lib/generation-runtime";
 import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
 import {
   AUTHOR_IDENTITY_CHANGED_EVENT,
@@ -39,7 +57,8 @@ import {
 import { DevModeUnlockDialog } from "@/components/DevModeUnlockDialog";
 import { enableDevMode, isDevMode, exitDevMode, useDevMode } from "@/lib/dev-mode";
 import { BetaActivationDialog } from "@/components/BetaActivationDialog";
-import { usePlan } from "@/lib/plan";
+import { fetchPlan, usePlan } from "@/lib/plan";
+import { refreshPaymentStatus } from "@/lib/payments/checkout";
 import { canUseFeature, type FeatureKey } from "@/lib/subscription";
 import { FlaskConical } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -64,6 +83,7 @@ const ScriptoraSettingsHub = lazy(() =>
   import("@/components/settings/ScriptoraSettingsHub").then((m) => ({ default: m.ScriptoraSettingsHub })),
 );
 import { BookCreationOsWizard } from "@/components/one-flow/BookCreationOsWizard";
+import { getBookTypeLabel } from "@/components/BookTypeBadge";
 import {
   ProfileMenuDialog,
   isAdvancedLaunchpadEnabled,
@@ -145,7 +165,6 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const devOn = useDevMode();
-  const [showNewBook, setShowNewBook] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showTitleIntel, setShowTitleIntel] = useState(false);
@@ -176,7 +195,7 @@ export default function Dashboard() {
   const [launching, setLaunching] = useState(false);
   const [showDevUnlock, setShowDevUnlock] = useState(false);
   const [showBetaDialog, setShowBetaDialog] = useState(false);
-  const { plan: currentPlan } = usePlan();
+  const { plan: currentPlan, refresh: refreshPlan } = usePlan();
   const [logoClicks, setLogoClicks] = useState<number[]>([]);
   const { user, signOut } = useAuth();
   const avatarUrl = (user?.user_metadata as any)?.avatar_url || (user?.user_metadata as any)?.picture || null;
@@ -212,7 +231,7 @@ export default function Dashboard() {
     // in the background. Eliminates the visible "frozen" gap on first paint.
     loadProjects((fresh) => setProjects(fresh)).then(setProjects);
     try {
-      const raw = sessionStorage.getItem("nexora-active-run");
+      const raw = sessionStorage.getItem("scriptora-active-run");
       if (raw) setActiveRun(JSON.parse(raw));
     } catch { /* noop */ }
 
@@ -222,8 +241,8 @@ export default function Dashboard() {
       setActiveRun(null);
       loadProjects((fresh) => setProjects(fresh)).then(setProjects);
     };
-    window.addEventListener("nexora-dev-mode-change", onDevChange);
-    return () => window.removeEventListener("nexora-dev-mode-change", onDevChange);
+    window.addEventListener("scriptora-dev-mode-change", onDevChange);
+    return () => window.removeEventListener("scriptora-dev-mode-change", onDevChange);
   }, []);
 
   useEffect(() => {
@@ -242,7 +261,7 @@ export default function Dashboard() {
   useEffect(() => {
     const route =
       showIdeaModal ? "idea" :
-      showNewBook ? "newbook" :
+      showBookCreationWizard ? "newbook" :
       showAuthorIdentity ? "author" :
       showCoverStudio ? "cover" :
       showCharacterStudio ? "character" :
@@ -271,7 +290,7 @@ export default function Dashboard() {
     showIdeaModal,
     showLibrary,
     showManuscriptAnalyzer,
-    showNewBook,
+    showBookCreationWizard,
     showNotepad,
     showProjects,
     showTitleIntel,
@@ -331,6 +350,44 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const payment = params.get("payment");
+    if (payment !== "success") return;
+
+    const sessionId = params.get("session_id");
+    let cancelled = false;
+
+    (async () => {
+      for (let attempt = 0; attempt < 6; attempt++) {
+        if (cancelled) return;
+        const status = await refreshPaymentStatus(sessionId);
+        if (status.ok && status.plan && status.plan !== "free" && !status.pending) {
+          await fetchPlan();
+          refreshPlan();
+          toast.success(t("payment_success_title"), {
+            description: t("payment_success_desc"),
+          });
+          navigate(location.pathname, { replace: true });
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 1200));
+      }
+      if (!cancelled) {
+        await fetchPlan();
+        refreshPlan();
+        toast.success(t("payment_success_title"), {
+          description: t("payment_success_desc"),
+        });
+        navigate(location.pathname, { replace: true });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.search, location.pathname, navigate, refreshPlan]);
+
   const lastId = getLastProjectId();
   // Only surface "continue last" when the project still belongs to the active
   // environment (DEV vs USER). Cross-scope ids are silently ignored.
@@ -345,9 +402,9 @@ export default function Dashboard() {
     setProjects((items) => items.filter((p) => p.id !== projectId));
     try {
       if (getLastProjectId() === projectId) setLastProjectId("");
-      sessionStorage.removeItem("nexora-open-project");
+      sessionStorage.removeItem("scriptora-open-project");
     } catch {}
-    window.dispatchEvent(new Event("nexora-projects-change"));
+    window.dispatchEvent(new Event("scriptora-projects-change"));
   };
 
   const changeLang = (lang: UILanguage) => {
@@ -384,8 +441,8 @@ export default function Dashboard() {
   };
 
   const goApp = (opts?: { section?: string; projectId?: string; voice?: boolean }) => {
-    if (opts?.projectId) sessionStorage.setItem("nexora-open-project", opts.projectId);
-    if (opts?.section) sessionStorage.setItem("nexora-open-section", opts.section);
+    if (opts?.projectId) sessionStorage.setItem("scriptora-open-project", opts.projectId);
+    if (opts?.section) sessionStorage.setItem("scriptora-open-section", opts.section);
     if (opts?.voice) sessionStorage.setItem("scriptora-open-voice-studio", "1");
     navigate("/app");
   };
@@ -400,9 +457,8 @@ export default function Dashboard() {
     return () => window.removeEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
   }, []);
 
-  const handleNewBook = (config: BookConfig) => {
+  const mergeCharacterStudioIntoConfig = (config: BookConfig): BookConfig => {
     let finalConfig: BookConfig = config;
-
     try {
       const pending = getPendingCharacterProject();
       const bible =
@@ -422,6 +478,7 @@ export default function Dashboard() {
           tone: pending?.tone || config.tone || "poetic, emotional, cinematic",
           language: pending?.language || config.language,
           characters: charactersFromBibleText(bible),
+          characterBibleText: String(bible || ""),
         } as BookConfig;
 
         toast.success(tt("characters_attached_to_novel", { genre: `${finalConfig.genre}${finalConfig.subcategory ? " / " + finalConfig.subcategory : ""}` }));
@@ -430,11 +487,33 @@ export default function Dashboard() {
       finalConfig = config;
     }
 
-    finalConfig = applyAuthorIdentityToConfig(finalConfig, activeAuthor) as BookConfig;
+    return applyAuthorIdentityToConfig(normalizeBookConfig(finalConfig), activeAuthor) as BookConfig;
+  };
+
+  const handleNewBook = (config: BookConfig) => {
+    const finalConfig = mergeCharacterStudioIntoConfig(config);
     setSelectedAuthorIdentityId(activeAuthor.id);
-    sessionStorage.setItem("nexora-new-book", JSON.stringify(finalConfig));
+    sessionStorage.setItem("scriptora-new-book", JSON.stringify({ mode: "legacy", config: finalConfig }));
     setShowNewBook(false);
     navigate("/app");
+  };
+
+  const handleStudioComplete = (payload: StudioLaunchPayload) => {
+    const finalConfig = mergeCharacterStudioIntoConfig(payload.config);
+    setSelectedAuthorIdentityId(activeAuthor.id);
+    sessionStorage.setItem("scriptora-new-book", JSON.stringify({
+      ...payload,
+      config: finalConfig,
+    }));
+    setShowBookCreationWizard(false);
+    navigate("/app");
+  };
+
+  const handleStudioGenerateBlueprint = async (config: BookConfig) => {
+    const finalConfig = mergeCharacterStudioIntoConfig(config);
+    const genreLock = buildGenreLock(finalConfig);
+    const { blueprint } = await runGenerateBlueprint(finalConfig, genreLock);
+    return blueprint;
   };
 
   const handleDelete = async (id: string) => {
@@ -492,7 +571,7 @@ export default function Dashboard() {
     const best = Math.max(0, Math.min(2, i.bestTitleIndex || 0));
     const safeBookLength = currentPlan === "free" ? "short" : bookLength;
     sessionStorage.setItem(
-      "nexora-auto-brief",
+      "scriptora-auto-brief",
       JSON.stringify({
         idea: idea.trim(),
         genre: i.genre,
@@ -683,6 +762,8 @@ export default function Dashboard() {
           authorIdentity={activeAuthor}
           onAuthorIdentity={() => openAuthorIdentity()}
           onManualStudio={handleNewBook}
+          onStudioComplete={handleStudioComplete}
+          onGenerateBlueprint={handleStudioGenerateBlueprint}
           onDetectIntent={async (ideaText, lang) => {
             setBookLang(lang);
             return detectIntent(ideaText);
@@ -1070,6 +1151,26 @@ export default function Dashboard() {
 
         <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
 
+        {projects.length === 0 && !activeRun && (
+          <section className="mb-6 rounded-2xl border border-sky-300/25 bg-gradient-to-br from-sky-400/10 via-transparent to-violet-400/10 p-6 shadow-[0_16px_40px_rgba(0,0,0,0.12)]">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-300/80">{t("no_projects_yet")}</p>
+                <h2 className="mt-1 text-xl font-bold text-foreground">{t("empty_state_title")}</h2>
+                <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted-foreground">{t("empty_state_desc")}</p>
+              </div>
+              <button
+                type="button"
+                onClick={openNewBookGuarded}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-sky-300/40 bg-sky-400/15 px-5 py-3 text-sm font-bold text-white shadow-[0_8px_24px_rgba(0,0,0,0.16)] transition-all hover:bg-sky-400/22"
+              >
+                <Sparkles className="h-4 w-4 text-sky-300" />
+                {t("empty_state_cta")}
+              </button>
+            </div>
+          </section>
+        )}
+
         {/* Mobile primary action strip — visible before stats accordion */}
         <div className="mb-4 flex gap-2 xl:hidden">
           {lastProject ? (
@@ -1370,7 +1471,9 @@ export default function Dashboard() {
                     onClick={() => goApp({ projectId: p.id })}>
                     <div className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">{p.config.title || t("untitled")}</span>
-                      <span className="text-[10px] text-muted-foreground/70">{p.config.genre} · {p.chapters?.length || 0} ch · {p.phase}</span>
+                      <span className="text-[10px] text-muted-foreground/70">
+                        {getBookTypeLabel(p.config) || p.config.genre} · {p.chapters?.length || 0} ch · {isProjectComplete(p) ? "complete" : p.phase}
+                      </span>
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
                       className="rounded-md p-1 text-muted-foreground opacity-70 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100">
@@ -1415,19 +1518,7 @@ export default function Dashboard() {
 
       </div>
 
-      <NewBookDialog
-        open={showNewBook}
-        onClose={() => setShowNewBook(false)}
-        onSubmit={(config) => {
-          if (freeBookUsed) {
-            setShowNewBook(false);
-            toast.error(t("toast_free_book_used"));
-            navigate("/pricing");
-            return;
-          }
-          handleNewBook(config);
-        }}
-      />
+      <Suspense fallback={null}>
       <HomeExportDialog open={showExport} projects={projects} onClose={() => setShowExport(false)} />
       <TitleIntelligenceDialog open={showTitleIntel} onClose={() => setShowTitleIntel(false)} />
       <AdvancedAppearanceDialog open={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} />
@@ -1476,6 +1567,7 @@ export default function Dashboard() {
         }}
         prefillDraft={authorIdentityPrefill}
       />
+      </Suspense>
       <ProfileMenuDialog
         open={showProfileMenu}
         onClose={() => setShowProfileMenu(false)}

@@ -5,7 +5,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, Crown, Zap, Sparkles, ArrowRight, Terminal } from "lucide-react";
 import { PLAN_PRICING, PlanTier, usePlan } from "@/lib/plan";
-import { paymentsConfig, resolvePlanAction, type PaymentPlan } from "@/config/payments";
+import { paymentsConfig, type PaymentPlan } from "@/config/payments";
+import { executePlanAction } from "@/lib/payments/executePlanAction";
 import { ComingSoonPaymentModal } from "@/components/payments/ComingSoonPaymentModal";
 import { setDevPlanOverride } from "@/lib/dev-plan-override";
 import { toast } from "sonner";
@@ -98,18 +99,14 @@ export function PlansSection() {
   const activeTier: PlanTier = currentPlan;
   const [comingSoonName, setComingSoonName] = useState<string | null>(null);
 
-  const handlePaidClick = (planId: PaymentPlan["id"], fallbackName: string) => {
+  const handlePaidClick = async (planId: PaymentPlan["id"], fallbackName: string) => {
     const plan = paymentsConfig.plans.find((p) => p.id === planId);
     if (!plan) {
       setComingSoonName(fallbackName);
       return;
     }
-    const action = resolvePlanAction(plan);
-    if (action.kind === "external") {
-      window.open(action.url, "_blank", "noopener,noreferrer");
-      return;
-    }
-    setComingSoonName(plan.name);
+    const result = await executePlanAction(plan);
+    if (result.showComingSoon) setComingSoonName(plan.name);
   };
 
   // Dev-only: clicking a card simulates that tier instantly. Public users never reach this.

@@ -65,30 +65,30 @@
     border-radius: 3px;
   }
 
-  /* ===== NEXORA landing animations ===== */
-  @keyframes nexora-aurora-spin {
+  /* ===== SCRIPTORA landing animations ===== */
+  @keyframes scriptora-aurora-spin {
     0% { transform: translate(-50%, 0) rotate(0deg); }
     100% { transform: translate(-50%, 0) rotate(360deg); }
   }
-  @keyframes nexora-title-float {
+  @keyframes scriptora-title-float {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-6px); }
   }
-  @keyframes nexora-grid-drift {
+  @keyframes scriptora-grid-drift {
     0% { background-position: 0 0; }
     100% { background-position: 60px 60px; }
   }
 
-  .nexora-aurora {
-    animation: nexora-aurora-spin 60s linear infinite;
+  .scriptora-aurora {
+    animation: scriptora-aurora-spin 60s linear infinite;
     will-change: transform;
   }
-  .nexora-title {
-    animation: nexora-title-float 6s ease-in-out infinite;
+  .scriptora-title {
+    animation: scriptora-title-float 6s ease-in-out infinite;
     text-shadow: 0 0 80px hsl(var(--primary) / 0.25);
     will-change: transform;
   }
-  .nexora-grid {
+  .scriptora-grid {
     background-image:
       linear-gradient(hsl(var(--foreground) / 1) 1px, transparent 1px),
       linear-gradient(90deg, hsl(var(--foreground) / 1) 1px, transparent 1px);
@@ -98,7 +98,7 @@
 
   /* Respect users who prefer reduced motion — kills heavy animations. */
   @media (prefers-reduced-motion: reduce) {
-    .nexora-aurora, .nexora-title { animation: none !important; }
+    .scriptora-aurora, .scriptora-title { animation: none !important; }
   }
 }
 
@@ -4010,8 +4010,8 @@ html.scriptora-mobile-lite .env-hero-book::before {
 html.scriptora-mobile-lite .env-breathing,
 html.scriptora-mobile-lite .premium-book-breathe,
 html.scriptora-mobile-lite .os-book-3d,
-html.scriptora-mobile-lite .nexora-aurora,
-html.scriptora-mobile-lite .nexora-title,
+html.scriptora-mobile-lite .scriptora-aurora,
+html.scriptora-mobile-lite .scriptora-title,
 html.scriptora-mobile-lite .scriptora-guide-pulse,
 html.scriptora-mobile-lite .scriptora-live-pulse i,
 html.scriptora-mobile-lite .scriptora-live-progress-track span,
@@ -4118,4 +4118,64 @@ html.scriptora-mobile-lite .molly-brain-panel > div {
 html.scriptora-mobile-lite .molly-brain-fab--alert {
   animation: none !important;
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.4) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ADAPTIVE VIEWPORT ENGINE — layout self-healing by device class
+   Applied via applyAdaptiveViewportBoot() in main.tsx
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+html[data-scriptora-viewport="mobile-sm"] .dashboard-grid,
+html[data-scriptora-viewport="mobile"] .dashboard-grid {
+  grid-template-columns: 1fr !important;
+}
+
+html[data-scriptora-viewport="mobile-sm"] .editor-split,
+html[data-scriptora-viewport="mobile"] .editor-split {
+  flex-direction: column !important;
+}
+
+html[data-scriptora-viewport="mobile-sm"] .scriptora-generation-grid,
+html[data-scriptora-viewport="mobile"] .scriptora-generation-grid {
+  grid-template-columns: 1fr !important;
+  gap: 0.75rem !important;
+}
+
+html[data-scriptora-viewport="tablet"] .scriptora-generation-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 1fr) !important;
+}
+
+html[data-scriptora-viewport="tablet"] .dashboard-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+html[data-scriptora-viewport="ultrawide"] .scriptora-app-surface {
+  max-width: 2200px;
+  margin-inline: auto;
+}
+
+html[data-scriptora-viewport="mobile-sm"] .os-wizard-step-grid,
+html[data-scriptora-viewport="mobile"] .os-wizard-step-grid {
+  grid-template-columns: 1fr !important;
+  gap: 0.75rem !important;
+}
+
+html.scriptora-touch-device button,
+html.scriptora-touch-device [role="button"] {
+  min-height: 44px;
+}
+
+html[data-scriptora-viewport="mobile-sm"],
+html[data-scriptora-viewport="mobile"] {
+  --scriptora-content-padding: 0.75rem;
+}
+
+html[data-scriptora-viewport="tablet"] {
+  --scriptora-content-padding: 1rem;
+}
+
+html[data-scriptora-viewport="laptop"],
+html[data-scriptora-viewport="desktop"],
+html[data-scriptora-viewport="ultrawide"] {
+  --scriptora-content-padding: 1.25rem;
 }

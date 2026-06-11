@@ -211,15 +211,16 @@ export default function StudySessionPage() {
           description: `Punteggio ${report.score}/100 — scarica il certificato`,
           action: {
             label: "Certificato PDF",
-            onClick: () =>
-              downloadStudyCertificate({
+            onClick: () => {
+              void downloadStudyCertificate({
                 studentName,
                 subject: updated.result.detectedSubject || updated.title,
                 date: new Date().toLocaleDateString(),
                 score: report.score,
                 level,
                 badges: badges.map((id) => achievementById(id)?.label || id),
-              }),
+              });
+            },
           },
         });
       }

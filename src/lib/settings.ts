@@ -4,7 +4,7 @@ export interface WritingSettings {
   lineSpacing: number; // multiplier
 }
 
-const STORAGE_KEY = "nexora_writing_settings";
+const STORAGE_KEY = "scriptora_writing_settings";
 
 const DEFAULT: WritingSettings = {
   fontFamily: "'Times New Roman', Times, serif",

@@ -1,12 +1,14 @@
 import { applyScriptoraAppearance } from "@/lib/scriptora-appearance";
 import { applyVisualPreset } from "@/lib/performance-mode";
 import { applyMobilePerformanceBoot } from "@/lib/mobile-performance";
+import { applyAdaptiveViewportBoot } from "@/lib/adaptive-viewport-engine";
 import { applyHubPreferences } from "@/lib/settings-store";
 import { purgeImmersiveThemeExperiment } from "@/lib/theme-reset";
 import { createRoot } from "react-dom/client";
 import { recoverFromChunkLoadError } from "@/lib/lazyWithRetry";
 import App from "./App.tsx";
 import "./index.css";
+import { migrateLegacyStorageKeys } from "./lib/storage-key-migration";
 import { hydrateFromIndexedDB } from "./lib/storage";
 import { supabase } from "./integrations/supabase/client";
 
@@ -41,42 +43,13 @@ VITE_SUPABASE_PROJECT_ID=&lt;project-ref&gt;</pre>
   throw new Error("Missing Supabase env vars: VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY");
 }
 
-// One-time migration: rename legacy "scriptora-*" storage keys to "nexora-*"
-// so existing users don't lose their projects after the rebrand.
-// Synchronous + cheap (only iterates a handful of keys) — safe to keep before render.
-(() => {
-  try {
-    const migrate = (storage: Storage) => {
-      const keys: string[] = [];
-      for (let i = 0; i < storage.length; i++) {
-        const k = storage.key(i);
-        if (
-          k &&
-          k.toLowerCase().startsWith("scriptora") &&
-          !k.toLowerCase().includes("appearance")
-        ) keys.push(k);
-      }
-      for (const oldKey of keys) {
-        const newKey = oldKey.replace(/^scriptora/i, (m) =>
-          m === "SCRIPTORA" ? "NEXORA" : m === "Scriptora" ? "Nexora" : "nexora"
-        );
-        if (!storage.getItem(newKey)) {
-          const v = storage.getItem(oldKey);
-          if (v != null) storage.setItem(newKey, v);
-        }
-        storage.removeItem(oldKey);
-      }
-    };
-    migrate(localStorage);
-    migrate(sessionStorage);
-  } catch {
-    /* ignore */
-  }
-})();
+// Migrate pre-rebrand storage keys so existing users keep projects & settings.
+migrateLegacyStorageKeys();
 
 // Strip Horror / immersive experiment state, then apply clean default appearance.
 try {
   applyMobilePerformanceBoot();
+  applyAdaptiveViewportBoot();
   purgeImmersiveThemeExperiment();
   applyScriptoraAppearance();
   applyVisualPreset();

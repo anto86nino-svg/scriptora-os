@@ -40,7 +40,7 @@ export function InProgressSection({ refreshKey = 0 }: Props) {
 
     await deleteProjectAsync(projectId);
     setDrafts((items) => items.filter((p) => p.id !== projectId));
-    window.dispatchEvent(new Event("nexora-projects-change"));
+    window.dispatchEvent(new Event("scriptora-projects-change"));
   };
 
   useEffect(() => {
@@ -49,8 +49,8 @@ export function InProgressSection({ refreshKey = 0 }: Props) {
       setDrafts([]);
       setScopeTick((t) => t + 1);
     };
-    window.addEventListener("nexora-dev-mode-change", onScope);
-    return () => window.removeEventListener("nexora-dev-mode-change", onScope);
+    window.addEventListener("scriptora-dev-mode-change", onScope);
+    return () => window.removeEventListener("scriptora-dev-mode-change", onScope);
   }, []);
 
   useEffect(() => {
@@ -141,7 +141,7 @@ export function InProgressSection({ refreshKey = 0 }: Props) {
               <button
                 type="button"
                 onClick={() => {
-                  sessionStorage.setItem("nexora-open-project", p.id);
+                  sessionStorage.setItem("scriptora-open-project", p.id);
                   navigate("/app");
                 }}
                 className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-1 text-left"

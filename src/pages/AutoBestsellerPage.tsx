@@ -33,7 +33,7 @@ import {
   normalizeArchitectLang,
 } from "@/lib/auto-bestseller-architect/localized-copy";
 
-const ACTIVE_RUN_KEY = "nexora-active-run";
+const ACTIVE_RUN_KEY = "scriptora-active-run";
 
 type MobileArchitectScreen = "brief" | "building" | "blueprint" | "legacy" | "result";
 
@@ -70,9 +70,9 @@ export default function AutoBestsellerPage() {
   const flowCopy = useMemo(() => getArchitectFlowCopy(architectLang), [architectLang]);
 
   useEffect(() => {
-    const raw = sessionStorage.getItem("nexora-auto-brief");
+    const raw = sessionStorage.getItem("scriptora-auto-brief");
     if (raw) {
-      sessionStorage.removeItem("nexora-auto-brief");
+      sessionStorage.removeItem("scriptora-auto-brief");
       try {
         const parsed = JSON.parse(raw);
         setPrefill(parsed);
@@ -203,7 +203,7 @@ export default function AutoBestsellerPage() {
     });
 
     persistAutoBestsellerHandoff(pack);
-    sessionStorage.setItem("nexora-new-book", JSON.stringify(config));
+    sessionStorage.setItem("scriptora-new-book", JSON.stringify(config));
     toast.success(pageCopy.openingWriterRoom);
     navigate("/app");
   }, [architectResult, lastInput, navigate, pageCopy, selectedTitleIndex]);
@@ -220,7 +220,7 @@ export default function AutoBestsellerPage() {
       const project = autoBestsellerToProject(result, lastInput || undefined);
       await saveProjectAsync(project);
       toast.success("Project saved — opening editor…");
-      sessionStorage.setItem("nexora-open-project", project.id);
+      sessionStorage.setItem("scriptora-open-project", project.id);
       setTimeout(() => navigate("/app"), 300);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to save project");

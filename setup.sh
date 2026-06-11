@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────
-# Nexora — One-command post-export setup
+# Scriptora — One-command post-export setup
 #
 # Uso (dopo `git clone`):
 #   chmod +x setup.sh && ./setup.sh
@@ -69,7 +69,7 @@ confirm() {
 }
 
 # ─── 0. Sanity ───────────────────────────────────────────────
-hr; bold "▶ Nexora setup → Supabase: ${PROJECT_REF}"; hr
+hr; bold "▶ Scriptora setup → Supabase: ${PROJECT_REF}"; hr
 [[ -f package.json ]] || { red "✗ Esegui dalla root del progetto (package.json non trovato)."; exit 1; }
 [[ -d supabase/migrations ]] || { red "✗ Manca supabase/migrations/. Re-export da Lovable."; exit 1; }
 [[ -d supabase/functions ]]  || { red "✗ Manca supabase/functions/. Re-export da Lovable."; exit 1; }

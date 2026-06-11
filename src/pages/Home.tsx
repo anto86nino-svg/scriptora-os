@@ -66,6 +66,7 @@ export default function Home() {
   }, [legalState?.legalRequired, consentValid]);
 
   const handleLogoClick = () => {
+    if (!import.meta.env.DEV) return;
     const next = logoClicks + 1;
     if (next >= 3) {
       setLogoClicks(0);

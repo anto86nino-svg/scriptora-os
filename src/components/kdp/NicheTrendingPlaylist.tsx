@@ -158,13 +158,13 @@ export function NicheTrendingPlaylist({ language = "Italian", onImport, initialF
   useEffect(() => {
     refreshGate();
     const sync = () => refreshGate();
-    window.addEventListener("nexora-usage-change", sync);
-    window.addEventListener("nexora-plan-change", sync);
-    window.addEventListener("nexora-dev-mode-change", sync);
+    window.addEventListener("scriptora-usage-change", sync);
+    window.addEventListener("scriptora-plan-change", sync);
+    window.addEventListener("scriptora-dev-mode-change", sync);
     return () => {
-      window.removeEventListener("nexora-usage-change", sync);
-      window.removeEventListener("nexora-plan-change", sync);
-      window.removeEventListener("nexora-dev-mode-change", sync);
+      window.removeEventListener("scriptora-usage-change", sync);
+      window.removeEventListener("scriptora-plan-change", sync);
+      window.removeEventListener("scriptora-dev-mode-change", sync);
     };
   }, [refreshGate]);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

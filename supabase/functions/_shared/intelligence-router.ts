@@ -118,7 +118,7 @@ export function routeRequest(signal: RequestSignal, plan: PlanTier): {
   const mode = selectGenerationMode(classification, plan);
   const config = buildGenerationConfig(mode);
   console.log(
-    `[Nexora/Router] task=${signal.task} type=${classification.contentType} ` +
+    `[Scriptora/Router] task=${signal.task} type=${classification.contentType} ` +
     `complexity=${classification.complexity} → mode=${mode} ` +
     `(model=${config.model}, max=${config.maxTokens}, passes=${config.passes})`,
   );

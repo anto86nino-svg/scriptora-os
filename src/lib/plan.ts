@@ -2,6 +2,7 @@
 // Dev mode bypasses ALL limits. Token usage is sourced from ai_usage_logs per project_id.
 
 import { supabase } from "@/integrations/supabase/client";
+import { paymentsConfig } from "@/config/payments";
 import { isDevMode } from "@/lib/dev-mode";
 import { getDevPlanOverride } from "@/lib/dev-plan-override";
 import { getCurrentUserId } from "@/services/storageService";
@@ -31,13 +32,13 @@ export const PLAN_PRICING: Record<PlanTier, { price: string; period: string }> =
   premium: { price: "€59,99", period: "/mese" },
 };
 
-// External Stripe Payment Links (placeholders — replace with real ones).
+/** Legacy checkout URLs — sourced from payments config env vars. */
 export const STRIPE_LINKS = {
-  pro:     "https://buy.stripe.com/test_PRO_PLACEHOLDER",
-  premium: "https://buy.stripe.com/test_PREMIUM_PLACEHOLDER",
+  pro: paymentsConfig.plans.find((p) => p.id === "pro_monthly")?.externalUrl ?? "",
+  premium: paymentsConfig.plans.find((p) => p.id === "premium_monthly")?.externalUrl ?? "",
 };
 
-const PLAN_CACHE_KEY = "nexora_plan_cache_v1";
+const PLAN_CACHE_KEY = "scriptora_plan_cache_v1";
 
 export async function fetchPlan(): Promise<PlanTier> {
   const userId = getCurrentUserId();
@@ -63,13 +64,14 @@ export async function fetchPlan(): Promise<PlanTier> {
   }
 }
 
+/** Client-side plan write. Production only allows downgrade to `free` (DB trigger). */
 export async function setPlan(plan: PlanTier): Promise<void> {
   const userId = getCurrentUserId();
   await supabase
     .from("user_plans" as any)
     .upsert({ user_id: userId, plan, period_start: new Date().toISOString() }, { onConflict: "user_id" });
   try { localStorage.setItem(PLAN_CACHE_KEY, JSON.stringify({ userId, plan })); } catch { /* noop */ }
-  window.dispatchEvent(new Event("nexora-plan-change"));
+  window.dispatchEvent(new Event("scriptora-plan-change"));
 }
 
 export async function getProjectTokenUsage(projectId: string): Promise<number> {
@@ -146,23 +148,23 @@ export function usePlan(): { plan: PlanTier; isDev: boolean; loading: boolean; r
       setPlanState(getDevPlanOverride());
       setLoading(false);
       const sync = () => setTick((t) => t + 1);
-      window.addEventListener("nexora-plan-change", sync);
-      window.addEventListener("nexora-dev-mode-change", sync);
+      window.addEventListener("scriptora-plan-change", sync);
+      window.addEventListener("scriptora-dev-mode-change", sync);
       return () => {
-        window.removeEventListener("nexora-plan-change", sync);
-        window.removeEventListener("nexora-dev-mode-change", sync);
+        window.removeEventListener("scriptora-plan-change", sync);
+        window.removeEventListener("scriptora-dev-mode-change", sync);
       };
     }
     fetchPlan().then((p) => {
       if (!cancelled) { setPlanState(p); setLoading(false); }
     });
     const sync = () => setTick((t) => t + 1);
-    window.addEventListener("nexora-plan-change", sync);
-    window.addEventListener("nexora-dev-mode-change", sync);
+    window.addEventListener("scriptora-plan-change", sync);
+    window.addEventListener("scriptora-dev-mode-change", sync);
     return () => {
       cancelled = true;
-      window.removeEventListener("nexora-plan-change", sync);
-      window.removeEventListener("nexora-dev-mode-change", sync);
+      window.removeEventListener("scriptora-plan-change", sync);
+      window.removeEventListener("scriptora-dev-mode-change", sync);
     };
   }, [tick]);
 
@@ -176,14 +178,14 @@ export function useQuota(projectId: string | null): { quota: QuotaState | null; 
     let cancelled = false;
     getQuotaForProject(projectId).then((q) => { if (!cancelled) setQuota(q); });
     const sync = () => setTick((t) => t + 1);
-    window.addEventListener("nexora-plan-change", sync);
-    window.addEventListener("nexora-dev-mode-change", sync);
-    window.addEventListener("nexora-usage-change", sync);
+    window.addEventListener("scriptora-plan-change", sync);
+    window.addEventListener("scriptora-dev-mode-change", sync);
+    window.addEventListener("scriptora-usage-change", sync);
     return () => {
       cancelled = true;
-      window.removeEventListener("nexora-plan-change", sync);
-      window.removeEventListener("nexora-dev-mode-change", sync);
-      window.removeEventListener("nexora-usage-change", sync);
+      window.removeEventListener("scriptora-plan-change", sync);
+      window.removeEventListener("scriptora-dev-mode-change", sync);
+      window.removeEventListener("scriptora-usage-change", sync);
     };
   }, [projectId, tick]);
   return { quota, refresh: () => setTick((t) => t + 1) };
@@ -197,12 +199,12 @@ export function useBooksThisMonth(): number {
     let cancelled = false;
     getBooksThisMonth().then((n) => { if (!cancelled) setCount(n); });
     const sync = () => setTick((t) => t + 1);
-    window.addEventListener("nexora-plan-change", sync);
-    window.addEventListener("nexora-usage-change", sync);
+    window.addEventListener("scriptora-plan-change", sync);
+    window.addEventListener("scriptora-usage-change", sync);
     return () => {
       cancelled = true;
-      window.removeEventListener("nexora-plan-change", sync);
-      window.removeEventListener("nexora-usage-change", sync);
+      window.removeEventListener("scriptora-plan-change", sync);
+      window.removeEventListener("scriptora-usage-change", sync);
     };
   }, [tick]);
   return count;

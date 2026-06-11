@@ -28,7 +28,7 @@ Commit stabile:
 - Rimozione mount globali duplicati da main.tsx.
 - Build passata.
 - Deploy Vercel riuscito.
-- App live: https://nexora-scriptora.vercel.app
+- App live: https://scriptora-scriptora.vercel.app
 
 ## Regola d’oro
 

@@ -100,6 +100,13 @@ export function validateProjectGenerationReadiness(
     issues.push({ id: "chapters", message: "Numero capitoli non valido — imposta almeno 1 capitolo." });
   }
 
+  if (project.blueprintApproved === false && project.blueprint) {
+    issues.push({
+      id: "blueprint-approval",
+      message: "Blueprint non ancora approvato — rivedi la struttura e conferma prima di generare.",
+    });
+  }
+
   if (!project.blueprint?.chapterOutlines?.length) {
     issues.push({ id: "blueprint", message: "Blueprint mancante — apri Struttura e genera il blueprint." });
   } else if (project.blueprintStatus === "error") {

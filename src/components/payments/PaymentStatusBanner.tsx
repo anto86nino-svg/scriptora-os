@@ -2,11 +2,10 @@
 // payment infrastructure is ready but no live checkout is wired yet.
 
 import { Sparkles } from "lucide-react";
-import { paymentsConfig } from "@/config/payments";
+import { paymentsConfig, isPaymentsLive } from "@/config/payments";
 
 export function PaymentStatusBanner() {
-  const isLive = paymentsConfig.enabled && paymentsConfig.mode !== "coming_soon";
-  if (isLive) return null;
+  if (isPaymentsLive()) return null;
 
   return (
     <div className="mx-auto max-w-3xl mb-10 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent px-5 py-4 flex items-start gap-3">
@@ -17,7 +16,7 @@ export function PaymentStatusBanner() {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-bold text-foreground">Pagamenti in preparazione</span>
           <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/20 text-primary font-bold border border-primary/30">
-            Coming Soon Mode
+            In preparazione
           </span>
         </div>
         <p className="text-xs text-muted-foreground mt-1 leading-relaxed">

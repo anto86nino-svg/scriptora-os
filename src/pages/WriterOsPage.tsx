@@ -23,7 +23,7 @@ export default function WriterOsPage() {
           title="Continua a scrivere"
           desc="Writer Studio con editor, diagnostica e revisioni."
           onClick={() => {
-            if (lastId) sessionStorage.setItem("nexora-open-project", lastId);
+            if (lastId) sessionStorage.setItem("scriptora-open-project", lastId);
             navigate("/app");
           }}
         />

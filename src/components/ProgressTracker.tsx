@@ -1,43 +1,25 @@
-import { BookProject, getBookTotalWords } from "@/types/book";
+import type { BookProject } from "@/types/book";
+import { getBookTotalWords } from "@/types/book";
 import { t } from "@/lib/i18n";
 import { BarChart3 } from "lucide-react";
+import {
+  computeProjectProgressPercent,
+  computeWordProgressPercent,
+  countProjectWords,
+} from "@/lib/project-progress";
 
 interface ProgressTrackerProps {
   project: BookProject;
 }
 
 export function ProgressTracker({ project }: ProgressTrackerProps) {
-  const { config, chapters, frontMatter, backMatter, blueprint } = project;
+  const { config, chapters } = project;
   const totalTargetWords = getBookTotalWords(config);
-
-  // Count words
-  let totalWords = 0;
-  if (frontMatter) {
-    totalWords += Object.values(frontMatter).join(" ").split(/\s+/).length;
-  }
-  chapters.forEach(ch => {
-    if (ch.content) totalWords += ch.content.split(/\s+/).length;
-    ch.subchapters.forEach(sub => {
-      if (sub.content) totalWords += sub.content.split(/\s+/).length;
-    });
-  });
-  if (backMatter) {
-    totalWords += Object.values(backMatter).join(" ").split(/\s+/).length;
-  }
-
-  const completedChapters = chapters.filter(ch => ch.content && ch.content.length > 0).length;
+  const totalWords = countProjectWords(project);
+  const completedChapters = chapters.filter((ch) => ch.content && ch.content.length > 50).length;
   const totalChapters = config.numberOfChapters;
-
-  // Sections: blueprint, front matter, chapters, back matter
-  let sectionsComplete = 0;
-  const totalSections = 2 + totalChapters + 1; // blueprint + FM + chapters + BM
-  if (blueprint) sectionsComplete++;
-  if (frontMatter) sectionsComplete++;
-  sectionsComplete += completedChapters;
-  if (backMatter) sectionsComplete++;
-
-  const progressPercent = Math.min(100, Math.round((sectionsComplete / totalSections) * 100));
-  const wordPercent = Math.min(100, Math.round((totalWords / totalTargetWords) * 100));
+  const progressPercent = computeProjectProgressPercent(project);
+  const wordPercent = computeWordProgressPercent(project);
 
   return (
     <div className="mx-2 space-y-2 rounded-lg bg-white/[0.045] px-3 py-2">

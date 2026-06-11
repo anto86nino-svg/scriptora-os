@@ -4,6 +4,8 @@ import { ChevronRight, ChevronDown, FileText, Layers, Archive, ScrollText, Loade
 import { cn } from "@/lib/utils";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import { BookTypeBadge } from "@/components/BookTypeBadge";
+import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 
 interface NavigationTreeProps {
   project: BookProject | null;
@@ -46,6 +48,8 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
   }
 
   const { blueprint, frontMatter, chapters, backMatter, config } = project;
+  const showFrontMatter = isFrontMatterEnabled(config);
+  const showBackMatter = isBackMatterEnabled(config);
   const isActive = (id: SectionId) => activeSection === id;
 
   const getChapterStatus = (i: number): GenerationStatus => {
@@ -65,12 +69,14 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
 
   return (
     <nav className="scrollbar-thin flex-1 overflow-y-auto px-2 py-2">
-      {config.category && (
-        <div className="ios-glass-soft mb-2 rounded-lg px-3 py-2">
-          <div className="mb-0.5 text-[10px] uppercase text-muted-foreground/60">{t("category")}</div>
-          <div className="text-xs text-foreground/70">{config.category} › {config.subcategory}</div>
-        </div>
-      )}
+      <div className="ios-glass-soft mb-2 space-y-2 rounded-lg px-3 py-2">
+        <BookTypeBadge config={config} className="w-full justify-center" />
+        {config.category && (
+          <div className="text-[10px] text-foreground/60">
+            {config.category} › {config.subcategory}
+          </div>
+        )}
+      </div>
 
       <TreeItem
         icon={<Layers className="h-3.5 w-3.5" />}
@@ -80,13 +86,15 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
         onClick={() => onSelectSection("blueprint")}
       />
 
-      <TreeItem
-        icon={<ScrollText className="h-3.5 w-3.5" />}
-        label={t("front_matter")}
-        active={isActive("front-matter")}
-        status={frontMatter ? "completed" : generatingSet.has("front-matter") ? "generating" : "idle"}
-        onClick={() => onSelectSection("front-matter")}
-      />
+      {showFrontMatter && (
+        <TreeItem
+          icon={<ScrollText className="h-3.5 w-3.5" />}
+          label={t("front_matter")}
+          active={isActive("front-matter")}
+          status={frontMatter ? "completed" : generatingSet.has("front-matter") ? "generating" : "idle"}
+          onClick={() => onSelectSection("front-matter")}
+        />
+      )}
 
       {blueprint && (
         <div className="mt-1">
@@ -193,13 +201,15 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
         </div>
       )}
 
-      <TreeItem
-        icon={<Archive className="h-3.5 w-3.5" />}
-        label={t("back_matter")}
-        active={isActive("back-matter")}
-        status={backMatter ? "completed" : generatingSet.has("back-matter") ? "generating" : "idle"}
-        onClick={() => onSelectSection("back-matter")}
-      />
+      {showBackMatter && (
+        <TreeItem
+          icon={<Archive className="h-3.5 w-3.5" />}
+          label={t("back_matter")}
+          active={isActive("back-matter")}
+          status={backMatter ? "completed" : generatingSet.has("back-matter") ? "generating" : "idle"}
+          onClick={() => onSelectSection("back-matter")}
+        />
+      )}
     </nav>
   );
 }

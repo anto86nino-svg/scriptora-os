@@ -1,6 +1,10 @@
 // Centralized payments configuration. Reads .env, provides safe defaults,
 // and exposes a typed config consumed by the Pricing UI and paywall logic.
-// NOTE: No real payment SDK is wired here. This is a dormant, future-ready layer.
+//
+// Activation (no code changes):
+//   Phase 1 — VITE_PAYMENT_MODE=external_links + checkout URLs
+//   Phase 2 — deploy payments-webhook edge function + provider secrets
+//   Phase 3 — VITE_PAYMENT_MODE=provider_sdk + STRIPE_SECRET_KEY server-side
 
 export type PaymentMode = "coming_soon" | "external_links" | "provider_sdk";
 export type PaymentProvider = "none" | "stripe" | "paddle" | "lemonsqueezy" | "paypal";
@@ -38,6 +42,8 @@ export interface PaymentsConfig {
   provider: PaymentProvider;
   successUrl: string;
   cancelUrl: string;
+  /** True when at least one paid checkout URL or provider_sdk secrets path is configured. */
+  checkoutReady: boolean;
   plans: PaymentPlan[];
 }
 
@@ -71,6 +77,22 @@ const PREMIUM_MONTHLY_URL = readEnv("VITE_PAYMENT_PREMIUM_MONTHLY_URL", "");
 const PREMIUM_YEARLY_URL = readEnv("VITE_PAYMENT_PREMIUM_YEARLY_URL", "");
 const SUCCESS_URL = readEnv("VITE_PAYMENT_SUCCESS_URL", "/dashboard?payment=success");
 const CANCEL_URL = readEnv("VITE_PAYMENT_CANCEL_URL", "/pricing?payment=cancelled");
+const CREDITS_URL = readEnv("VITE_PAYMENT_CREDITS_URL", "");
+
+const CHECKOUT_URLS = [
+  MONTHLY_URL,
+  YEARLY_URL,
+  LIFETIME_URL,
+  PREMIUM_MONTHLY_URL,
+  PREMIUM_YEARLY_URL,
+  CREDITS_URL,
+].filter(Boolean);
+
+function resolvePlanCta(planId: PlanId, fallback: string, url?: string): string {
+  if (!ENABLED || MODE === "coming_soon") return fallback;
+  if (MODE === "provider_sdk") return fallback;
+  return url ? fallback : "Presto disponibile";
+}
 
 export const paymentsConfig: PaymentsConfig = {
   enabled: ENABLED,
@@ -78,6 +100,7 @@ export const paymentsConfig: PaymentsConfig = {
   provider: PROVIDER,
   successUrl: SUCCESS_URL,
   cancelUrl: CANCEL_URL,
+  checkoutReady: ENABLED && MODE !== "coming_soon" && (MODE === "provider_sdk" || CHECKOUT_URLS.length > 0),
   plans: [
     {
       id: "free",
@@ -127,7 +150,7 @@ export const paymentsConfig: PaymentsConfig = {
       priceNumeric: 299,
       period: "/anno",
       description: "Tutto Pro, con risparmio annuale.",
-      ctaLabel: "Presto disponibile",
+      ctaLabel: resolvePlanCta("pro_yearly", "Passa a Pro Yearly", YEARLY_URL),
       externalUrl: YEARLY_URL || undefined,
       badge: "Best Value",
       features: [
@@ -171,7 +194,7 @@ export const paymentsConfig: PaymentsConfig = {
       priceNumeric: 599,
       period: "/anno",
       description: "Tutto Premium, con risparmio annuale.",
-      ctaLabel: "Presto disponibile",
+      ctaLabel: resolvePlanCta("premium_yearly", "Sblocca Premium Yearly", PREMIUM_YEARLY_URL),
       externalUrl: PREMIUM_YEARLY_URL || undefined,
       badge: "Max Power",
       premium: true,
@@ -188,7 +211,7 @@ export const paymentsConfig: PaymentsConfig = {
       priceNumeric: 799,
       period: "una tantum",
       description: "Accesso permanente a Scriptora Premium, per sempre.",
-      ctaLabel: "Presto disponibile",
+      ctaLabel: resolvePlanCta("lifetime", "Founder Lifetime", LIFETIME_URL),
       externalUrl: LIFETIME_URL || undefined,
       badge: "Founder Deal",
       premium: true,
@@ -207,20 +230,29 @@ export function isPaymentsLive(): boolean {
   return paymentsConfig.enabled && paymentsConfig.mode !== "coming_soon";
 }
 
-/** Resolve the destination for a plan CTA based on current mode. */
-export function resolvePlanAction(plan: PaymentPlan):
+export type PlanAction =
   | { kind: "coming_soon" }
   | { kind: "external"; url: string }
+  | { kind: "checkout_session"; planId: PlanId }
   | { kind: "missing_link" }
-  | { kind: "free" } {
+  | { kind: "free" };
+
+/** Resolve the destination for a plan CTA based on current mode. */
+export function resolvePlanAction(plan: PaymentPlan): PlanAction {
   if (plan.id === "free") return { kind: "free" };
   if (!paymentsConfig.enabled || paymentsConfig.mode === "coming_soon") {
     return { kind: "coming_soon" };
+  }
+  if (paymentsConfig.mode === "provider_sdk") {
+    return { kind: "checkout_session", planId: plan.id };
   }
   if (paymentsConfig.mode === "external_links") {
     if (plan.externalUrl) return { kind: "external", url: plan.externalUrl };
     return { kind: "missing_link" };
   }
-  // provider_sdk: not implemented yet → fall back gracefully
   return { kind: "coming_soon" };
+}
+
+export function getPaymentPlan(planId: PlanId): PaymentPlan | undefined {
+  return paymentsConfig.plans.find((p) => p.id === planId);
 }

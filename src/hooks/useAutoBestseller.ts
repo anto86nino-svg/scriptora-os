@@ -27,7 +27,7 @@ const INITIAL_STAGES: StageState[] = [
   { id: "aggregate", label: "Final Aggregation", status: "pending" },
 ];
 
-const RUN_CACHE_PREFIX = "nexora-run-cache:";
+const RUN_CACHE_PREFIX = "scriptora-run-cache:";
 const RUN_STALE_AFTER_MS = 15 * 60 * 1000;
 
 export interface LiveChapter {

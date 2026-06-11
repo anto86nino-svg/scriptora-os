@@ -4,19 +4,19 @@ import { clearDevPlanOverride } from "@/lib/dev-plan-override";
 import { clearAuthSessionContext } from "./sessionContext";
 
 export const SESSION_NAV_KEYS = [
-  "nexora-active-run",
-  "nexora-open-project",
-  "nexora-open-section",
-  "nexora-new-book",
+  "scriptora-active-run",
+  "scriptora-open-project",
+  "scriptora-open-section",
+  "scriptora-new-book",
 ] as const;
 
 const SESSION_AUTH_KEYS = [
-  "nexora_dev_mode",
+  "scriptora_dev_mode",
 ] as const;
 
 const LOCAL_AUTH_CACHE_KEYS = [
-  "nexora-last-project",
-  "nexora_plan_cache_v1",
+  "scriptora-last-project",
+  "scriptora_plan_cache_v1",
 ] as const;
 
 export type LogoutResult =

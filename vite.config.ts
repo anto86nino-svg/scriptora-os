@@ -33,15 +33,43 @@ export default defineConfig(({ mode }) => ({
   ].filter(Boolean),
 
   build: {
+    chunkSizeWarningLimit: 500,
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (!id.includes("node_modules")) return;
-          if (id.includes("html2canvas") || id.includes("jspdf")) return "export-pdf";
-          if (id.includes("jszip") || id.includes("docx")) return "export-docs";
-          if (id.includes("@supabase")) return "supabase";
-          if (id.includes("@radix-ui")) return "radix";
-          if (id.includes("recharts") || id.includes("d3-")) return "charts";
+          if (id.includes("node_modules")) {
+            if (id.includes("pdfjs-dist")) return "vendor-pdfjs";
+            if (id.includes("html2canvas")) return "vendor-html2canvas";
+            if (id.includes("jspdf")) return "vendor-jspdf";
+            if (id.includes("jszip")) return "vendor-jszip";
+            if (id.includes("/docx/") || id.includes("docx")) return "vendor-docx";
+            if (id.includes("@supabase")) return "vendor-supabase";
+            if (id.includes("@radix-ui")) return "vendor-radix";
+            if (id.includes("framer-motion")) return "vendor-motion";
+            if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
+            if (id.includes("@tanstack")) return "vendor-query";
+            if (id.includes("lucide-react")) return "vendor-icons";
+            if (id.includes("react-dom")) return "vendor-react-dom";
+            if (id.includes("react-router")) return "vendor-router";
+            if (id.includes("/react/")) return "vendor-react";
+            if (id.includes("zod")) return "vendor-zod";
+            if (id.includes("date-fns")) return "vendor-dates";
+            return "vendor-misc";
+          }
+
+          if (id.includes("/src/lib/generation.ts") || id.includes("/src/lib/generation-runtime")) {
+            return "engine-generation";
+          }
+          if (id.includes("/src/lib/epub.ts")) return "export-epub";
+          if (id.includes("/src/lib/docx-export")) return "export-docx";
+          if (id.includes("/src/lib/pdf-export")) return "export-pdf";
+          if (id.includes("/src/lib/study-session")) return "study-session";
+          if (id.includes("/src/lib/study-certificate")) return "study-certificate";
+          if (id.includes("/src/components/EditorPanel")) return "ui-editor-panel";
+          if (id.includes("/src/pages/StudySessionPage")) return "page-study-session";
+          if (id.includes("/src/pages/Dashboard")) return "page-dashboard";
+          if (id.includes("/src/pages/Index")) return "page-writer";
+          if (id.includes("/src/pages/AutoBestsellerPage")) return "page-auto-bestseller";
         },
       },
     },
@@ -60,4 +88,4 @@ export default defineConfig(({ mode }) => ({
       "@tanstack/query-core",
     ],
   },
-}))
+}));

@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
-import UsagePage from "./pages/UsagePage.tsx";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -11,6 +10,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { CreditVisibilityShell } from "@/components/billing/CreditVisibilityShell";
 import { MobileAppChrome } from "@/components/MobileAppChrome";
+import { ResponsiveAuditOverlay } from "@/components/ResponsiveAuditOverlay";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { Loader2 } from "lucide-react";
@@ -33,6 +33,7 @@ const BestsellerOsPage = lazyWithRetry(() => import("./pages/BestsellerOsPage.ts
 const PublishingOsPage = lazyWithRetry(() => import("./pages/PublishingOsPage.tsx"));
 const StudyOsPage = lazyWithRetry(() => import("./pages/StudyOsPage.tsx"));
 const IdentityOsPage = lazyWithRetry(() => import("./pages/IdentityOsPage.tsx"));
+const UsagePage = lazyWithRetry(() => import("./pages/UsagePage.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -59,17 +60,17 @@ const App = () => (
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/dashboard" element={<ProtectedRoute><FeatureErrorBoundary featureName="Dashboard"><Dashboard /></FeatureErrorBoundary></ProtectedRoute>} />
-                <Route path="/writer" element={<ProtectedRoute><WriterOsPage /></ProtectedRoute>} />
+                <Route path="/writer" element={<ProtectedRoute><FeatureErrorBoundary featureName="Writer OS"><WriterOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/bestseller" element={<ProtectedRoute><FeatureErrorBoundary featureName="Bestseller OS"><BestsellerOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
-                <Route path="/publishing" element={<ProtectedRoute><PublishingOsPage /></ProtectedRoute>} />
-                <Route path="/identity" element={<ProtectedRoute><IdentityOsPage /></ProtectedRoute>} />
+                <Route path="/publishing" element={<ProtectedRoute><FeatureErrorBoundary featureName="Publishing OS"><PublishingOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/identity" element={<ProtectedRoute><FeatureErrorBoundary featureName="Identity OS"><IdentityOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/study" element={<ProtectedRoute><FeatureErrorBoundary featureName="Study OS"><StudyOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/study-session" element={<ProtectedRoute><FeatureErrorBoundary featureName="Study OS"><StudySessionPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/app" element={<ProtectedRoute><FeatureErrorBoundary featureName="Writer Studio"><Index /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/auto-bestseller" element={<ProtectedRoute><FeatureErrorBoundary featureName="Auto Bestseller"><AutoBestsellerPage /></FeatureErrorBoundary></ProtectedRoute>} />
-                <Route path="/usage" element={<ProtectedRoute><UsagePage /></ProtectedRoute>} />
+                <Route path="/usage" element={<ProtectedRoute><FeatureErrorBoundary featureName="Usage"><UsagePage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/kdp-launch" element={<ProtectedRoute requiredFeature="kdp_market_base"><FeatureErrorBoundary featureName="KDP Launch"><KdpLaunchPage /></FeatureErrorBoundary></ProtectedRoute>} />
-                <Route path="/downloads" element={<ProtectedRoute><DownloadsPage /></ProtectedRoute>} />
+                <Route path="/downloads" element={<ProtectedRoute><FeatureErrorBoundary featureName="Downloads"><DownloadsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/bestseller-radar" element={<ProtectedRoute requiredFeature="trending_niches_limited"><BestsellerRadarPage /></ProtectedRoute>} />
                 <Route path="/keyword-gold" element={<ProtectedRoute requiredFeature="kdp_market_base"><KeywordGoldPage /></ProtectedRoute>} />
                 <Route path="/install" element={<InstallPage />} />
@@ -79,6 +80,7 @@ const App = () => (
               </AppErrorBoundary>
               <CreditVisibilityShell />
               <MobileAppChrome />
+              <ResponsiveAuditOverlay />
           </DominationProvider>
         </AuthProvider>
       </BrowserRouter>

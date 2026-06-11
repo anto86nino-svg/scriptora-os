@@ -104,7 +104,7 @@ export async function logTrendingClick(plan: PlanTier): Promise<void> {
       total_cost: plan === "pro" || plan === "premium" ? TRENDING_PRICE_EUR : 0,
       metadata: { plan, billed: plan === "pro" || plan === "premium" },
     });
-    window.dispatchEvent(new Event("nexora-usage-change"));
+    window.dispatchEvent(new Event("scriptora-usage-change"));
   } catch (e) {
     // Non-blocking — UX continues even if logging fails.
     console.warn("[trending-paywall] log failed", e);

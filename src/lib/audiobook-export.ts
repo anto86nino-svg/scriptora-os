@@ -69,7 +69,7 @@ const PROMPT_LEAK_PATTERNS: RegExp[] = [
   /^CHUNK_END/i,
   /^<system>/i,
   /^\[Scriptora\]/i,
-  /^\[Nexora\]/i,
+  /^\[Scriptora\]/i,
   /^STYLE LOCK/i,
   /^GENRE LOCK/i,
 ];
@@ -102,7 +102,7 @@ export function sanitizeAudiobookText(text: string): string {
     .replace(/\*(.*?)\*/g, "$1")
     .replace(/_{1,2}(.*?)_{1,2}/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/\[(?:tap|click|select|genera|export|voice|scriptora|nexora)[^\]]*\]/gi, " ")
+    .replace(/\[(?:tap|click|select|genera|export|voice|scriptora|scriptora)[^\]]*\]/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/[•▪►▶◆★☆]/g, " ")
     .replace(/[ \t]+/g, " ")

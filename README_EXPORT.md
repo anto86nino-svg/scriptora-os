@@ -1,10 +1,10 @@
-# Nexora — Setup Post-Export (One Command)
+# Scriptora — Setup Post-Export (One Command)
 
 Dopo aver clonato il repo da GitHub:
 
 ```bash
-git clone <your-repo-url> nexora
-cd nexora
+git clone <your-repo-url> scriptora
+cd scriptora
 chmod +x setup.sh
 ./setup.sh
 ```

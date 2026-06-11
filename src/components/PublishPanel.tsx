@@ -7,6 +7,9 @@ import {
 import { toast } from "sonner";
 import { usePlan } from "@/lib/plan";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import { isProjectComplete } from "@/lib/project-status";
+import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
+import { BookTypeBadge } from "@/components/BookTypeBadge";
 
 interface PublishPanelProps {
   project: BookProject | null;
@@ -48,8 +51,12 @@ export function PublishPanel({
 }: PublishPanelProps) {
   const { plan } = usePlan();
   const isFreePlan = plan === "free";
-  // Session-local: each Publish open starts fresh, ignoring previous projects
-  const [sessionStarted, setSessionStarted] = useState(false);
+  // Linked project from Writer Studio skips the blank-session gate.
+  const [sessionStarted, setSessionStarted] = useState(() => !!project);
+
+  useEffect(() => {
+    if (project) setSessionStarted(true);
+  }, [project?.id]);
   const [draftConfig, setDraftConfig] = useState<BookConfig>({ ...BLANK_CONFIG });
 
   const [showConfigWizard, setShowConfigWizard] = useState(false);
@@ -284,7 +291,9 @@ export function PublishPanel({
     }
   };
 
-  const bookComplete = project.phase === "complete";
+  const bookComplete = isProjectComplete(project);
+  const showFrontMatter = isFrontMatterEnabled(project.config);
+  const showBackMatter = isBackMatterEnabled(project.config);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -502,11 +511,18 @@ export function PublishPanel({
               <BookOpen className="h-4 w-4 text-primary" />
               Stato del libro
             </h3>
+            <div className="mb-3">
+              <BookTypeBadge config={project.config} />
+            </div>
             <div className="space-y-1.5">
               <StatusRow done={!!project.blueprint} label="Blueprint generata" />
-              <StatusRow done={!!project.frontMatter} label="Front matter pronto" />
+              {showFrontMatter && (
+                <StatusRow done={!!project.frontMatter} label="Front matter pronto" />
+              )}
               <StatusRow done={completedChaptersLive > 0} label={`Capitoli scritti (${completedChaptersLive}/${totalChaptersTarget})`} />
-              <StatusRow done={!!project.backMatter} label="Back matter pronto" />
+              {showBackMatter && (
+                <StatusRow done={!!project.backMatter} label="Back matter pronto" />
+              )}
               <StatusRow done={bookComplete} label="Libro completo" />
             </div>
             {bookComplete && (

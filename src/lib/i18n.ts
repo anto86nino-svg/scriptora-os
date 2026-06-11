@@ -296,6 +296,7 @@ const translations: Record<string, Record<UILanguage, string>> = {
 	  manuscript_empty_desc: { en: "Upload or paste a book to see the overall score, chapter ratings, and editorial rewrite path.", it: "Carica o incolla un libro per vedere voto generale, voti dei capitoli e percorso editoriale di riscrittura.", es: "Sube o pega un libro para ver la nota general, las notas por capítulo y la ruta editorial de reescritura.", fr: "Importez ou collez un livre pour voir la note globale, les notes par chapitre et le parcours de réécriture.", de: "Lade ein Buch hoch oder füge es ein, um Gesamtbewertung, Kapitelnoten und Überarbeitungsweg zu sehen." },
 	  manuscript_book_score: { en: "Book score", it: "Voto libro", es: "Nota del libro", fr: "Note du livre", de: "Buchbewertung" },
 	  manuscript_rating_scale: { en: "out of 100", it: "su 100", es: "sobre 100", fr: "sur 100", de: "von 100" },
+	  manuscript_heuristic_disclaimer: { en: "Indicative editorial scan — not an AI deep review.", it: "Scansione editoriale indicativa — non è una revisione AI profonda.", es: "Escaneo editorial indicativo — no es una revisión IA profunda.", fr: "Scan éditorial indicatif — pas une révision IA approfondie.", de: "Indikativer Redaktions-Scan — keine tiefe KI-Prüfung." },
 	  metric_hook_strength: { en: "Hook Strength", it: "Forza Hook", es: "Fuerza del Hook", fr: "Force du Hook", de: "Hook-Stärke" },
 	  metric_hook_strength_desc: { en: "Opening pull and first-page urgency.", it: "Aggancio iniziale e urgenza delle prime pagine.", es: "Atracción inicial y urgencia de las primeras páginas.", fr: "Accroche initiale et urgence des premières pages.", de: "Einstiegskraft und Dringlichkeit der ersten Seiten." },
 	  metric_emotional_intensity: { en: "Emotional Intensity", it: "Intensità emotiva", es: "Intensidad emocional", fr: "Intensité émotionnelle", de: "Emotionale Intensität" },
@@ -437,6 +438,19 @@ const translations: Record<string, Record<UILanguage, string>> = {
   last_project: { en: "Last Project", it: "Ultimo Progetto", es: "Último Proyecto", fr: "Dernier Projet", de: "Letztes Projekt" },
   my_projects: { en: "My Projects", it: "I Miei Progetti", es: "Mis Proyectos", fr: "Mes Projets", de: "Meine Projekte" },
   no_projects_yet: { en: "No projects yet", it: "Nessun progetto", es: "Sin proyectos aún", fr: "Aucun projet", de: "Noch keine Projekte" },
+  empty_state_title: { en: "Your first book starts here", it: "Il tuo primo libro inizia qui", es: "Tu primer libro empieza aquí", fr: "Votre premier livre commence ici", de: "Dein erstes Buch beginnt hier" },
+  empty_state_desc: { en: "Create a professional manuscript in minutes with Scriptora's guided studio.", it: "Crea un manoscritto professionale in pochi minuti con lo studio guidato di Scriptora.", es: "Crea un manuscrito profesional en minutos con el estudio guiado de Scriptora.", fr: "Créez un manuscrit professionnel en quelques minutes avec le studio guidé de Scriptora.", de: "Erstelle in Minuten ein professionelles Manuskript mit Scriptoras geführtem Studio." },
+  empty_state_cta: { en: "Create my first book", it: "Crea il mio primo libro", es: "Crear mi primer libro", fr: "Créer mon premier livre", de: "Mein erstes Buch erstellen" },
+  payment_success_title: { en: "Payment received", it: "Pagamento ricevuto", es: "Pago recibido", fr: "Paiement reçu", de: "Zahlung erhalten" },
+  payment_success_desc: { en: "Your plan will update shortly. Welcome to Scriptora Pro.", it: "Il piano si aggiornerà a breve. Benvenuto in Scriptora Pro.", es: "Tu plan se actualizará en breve. Bienvenido a Scriptora Pro.", fr: "Votre forfait sera mis à jour sous peu. Bienvenue sur Scriptora Pro.", de: "Dein Tarif wird in Kürze aktualisiert. Willkommen bei Scriptora Pro." },
+  payment_cancelled_title: { en: "Checkout cancelled", it: "Checkout annullato", es: "Pago cancelado", fr: "Paiement annulé", de: "Checkout abgebrochen" },
+  payment_cancelled_desc: { en: "No charge was made. You can upgrade anytime from Pricing.", it: "Nessun addebito effettuato. Puoi passare al piano Pro quando vuoi.", es: "No se realizó ningún cargo. Puedes actualizar cuando quieras.", fr: "Aucun prélèvement effectué. Vous pouvez passer au Pro quand vous voulez.", de: "Keine Abbuchung. Du kannst jederzeit upgraden." },
+  export_failed: { en: "Export failed", it: "Esportazione fallita", es: "Exportación fallida", fr: "Export échoué", de: "Export fehlgeschlagen" },
+  export_blocked_title: { en: "Export blocked", it: "Export bloccato", es: "Exportación bloqueada", fr: "Export bloqué", de: "Export blockiert" },
+  export_saved: { en: "File saved", it: "File salvato", es: "Archivo guardado", fr: "Fichier enregistré", de: "Datei gespeichert" },
+  not_found_title: { en: "Page not found", it: "Pagina non trovata", es: "Página no encontrada", fr: "Page introuvable", de: "Seite nicht gefunden" },
+  not_found_desc: { en: "The page you're looking for doesn't exist or was moved.", it: "La pagina che cerchi non esiste o è stata spostata.", es: "La página que buscas no existe o fue movida.", fr: "La page recherchée n'existe pas ou a été déplacée.", de: "Die gesuchte Seite existiert nicht oder wurde verschoben." },
+  return_home: { en: "Return to Home", it: "Torna alla Home", es: "Volver al inicio", fr: "Retour à l'accueil", de: "Zur Startseite" },
   home: { en: "Home", it: "Home", es: "Inicio", fr: "Accueil", de: "Start" },
 
 	  // Publish Panel
@@ -577,11 +591,11 @@ const translations: Record<string, Record<UILanguage, string>> = {
 	  wipe_confirm: { en: "Delete tests (Premium intact)", it: "Cancella test (Premium intatto)", es: "Eliminar pruebas (Premium intacto)", fr: "Supprimer les tests (Premium intact)", de: "Tests löschen (Premium bleibt intakt)" },
 	};
 
-let currentLang: UILanguage = (localStorage.getItem("nexora_ui_lang") as UILanguage) || "en";
+let currentLang: UILanguage = (localStorage.getItem("scriptora_ui_lang") as UILanguage) || "en";
 
 export function setUILanguage(lang: UILanguage) {
 	  currentLang = lang;
-	  localStorage.setItem("nexora_ui_lang", lang);
+	  localStorage.setItem("scriptora_ui_lang", lang);
 	  window.dispatchEvent(new Event("scriptora-language-change"));
 }
 

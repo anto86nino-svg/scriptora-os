@@ -88,12 +88,12 @@ export function ScriptoraSettingsHub({
     const onChange = () => refresh();
     window.addEventListener("scriptora-settings-hub-change", onChange);
     window.addEventListener("scriptora-performance-mode-change", onChange);
-    window.addEventListener("nexora-language-change", onChange);
+    window.addEventListener("scriptora-language-change", onChange);
     window.addEventListener("scriptora-credits-change", onChange);
     return () => {
       window.removeEventListener("scriptora-settings-hub-change", onChange);
       window.removeEventListener("scriptora-performance-mode-change", onChange);
-      window.removeEventListener("nexora-language-change", onChange);
+      window.removeEventListener("scriptora-language-change", onChange);
       window.removeEventListener("scriptora-credits-change", onChange);
     };
   }, [open]);

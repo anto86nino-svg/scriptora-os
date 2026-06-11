@@ -1,11 +1,14 @@
 import JSZip from "jszip";
-import * as pdfjsLib from "pdfjs-dist";
 import { explainProfessionalWord, extractProfessionalTerms } from "@/lib/professional-dictionary";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.mjs",
-  import.meta.url
-).toString();
+async function loadPdfJs() {
+  const pdfjsLib = await import("pdfjs-dist");
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/build/pdf.worker.mjs",
+    import.meta.url,
+  ).toString();
+  return pdfjsLib;
+}
 
 export type StudyDifficulty = "soft" | "medium" | "pro";
 
@@ -406,6 +409,7 @@ async function readDocx(file: File): Promise<string> {
 
 async function readPdf(file: File): Promise<string> {
   try {
+    const pdfjsLib = await loadPdfJs();
     const arrayBuffer = await file.arrayBuffer();
 
     const pdf = await pdfjsLib.getDocument({

@@ -1,7 +1,7 @@
 // Lightweight device fingerprint — userAgent + language + timezone + screen.
 // Hashed with SHA-256, persisted in localStorage for stability across reloads.
 
-const KEY = "nexora_device_id";
+const KEY = "scriptora_device_id";
 
 async function sha256(input: string): Promise<string> {
   const buf = new TextEncoder().encode(input);

@@ -1,4 +1,5 @@
 import { isPaymentsLive, paymentsConfig } from "@/config/payments";
+import { buildExternalCheckoutUrl } from "@/lib/payments/checkout";
 import type { BillingPurchaseResult, PaymentProviderId } from "./types";
 
 function readEnv(key: string, fallback = ""): string {
@@ -55,8 +56,9 @@ class StripeBillingProvider implements BillingProvider {
 
   async purchaseCredits(amount: number): Promise<BillingPurchaseResult> {
     const checkoutUrl = resolveCreditsCheckoutUrl(amount);
-    if (isPaymentsLive() && paymentsConfig.mode === "external_links" && checkoutUrl) {
-      window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+    if (isPaymentsLive() && checkoutUrl) {
+      const url = buildExternalCheckoutUrl(checkoutUrl, "pro_monthly");
+      window.open(url, "_blank", "noopener,noreferrer");
       return {
         ok: true,
         creditsAdded: 0,
@@ -79,14 +81,26 @@ class StripeBillingProvider implements BillingProvider {
 class LemonBillingProvider implements BillingProvider {
   id: PaymentProviderId = "lemon";
 
-  async purchaseCredits(): Promise<BillingPurchaseResult> {
+  async purchaseCredits(amount: number): Promise<BillingPurchaseResult> {
+    const checkoutUrl = resolveCreditsCheckoutUrl(amount);
+    if (isPaymentsLive() && checkoutUrl) {
+      const url = buildExternalCheckoutUrl(checkoutUrl, "pro_monthly");
+      window.open(url, "_blank", "noopener,noreferrer");
+      return {
+        ok: true,
+        creditsAdded: 0,
+        balanceAfter: 0,
+        provider: "lemon",
+        simulated: false,
+      };
+    }
     return {
       ok: false,
       creditsAdded: 0,
       balanceAfter: 0,
       provider: "lemon",
       simulated: false,
-      error: "Lemon Squeezy checkout not activated yet. Set PAYMENT_PROVIDER=dev for local testing.",
+      error: "Checkout Lemon non configurato. Imposta VITE_PAYMENT_CREDITS_URL e VITE_ENABLE_PAYMENTS=true.",
     };
   }
 }

@@ -1,5 +1,6 @@
 import type { AutoBestsellerInput } from "@/services/autoBestsellerService";
-import { buildGenreLock, generateBlueprint } from "@/lib/generation";
+import { buildBookTypeLock as buildGenreLock } from "@/lib/book-type-engine";
+import { runGenerateBlueprint as generateBlueprint } from "@/lib/generation-runtime";
 import { buildLongBookMemory } from "@/lib/long-book-memory";
 import { inferIdeaIntelligence } from "./idea-intelligence";
 import { buildMarketPositioning } from "./market-positioning";

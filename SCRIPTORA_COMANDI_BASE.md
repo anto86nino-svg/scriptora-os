@@ -24,7 +24,7 @@ vercel --prod
 
 ## Aprire app live in Brave
 
-open -a "Brave Browser" "https://nexora-scriptora.vercel.app"
+open -a "Brave Browser" "https://scriptora-scriptora.vercel.app"
 
 ## Vedere ultimi commit
 

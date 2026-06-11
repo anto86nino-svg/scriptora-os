@@ -1,5 +1,6 @@
-export const SCRIPTORA_APPEARANCE_KEY = "nexora-appearance-v1";
-export const SCRIPTORA_APPEARANCE_LEGACY_KEY = "scriptora-appearance-v1";
+export const SCRIPTORA_APPEARANCE_KEY = "scriptora-appearance-v1";
+/** @deprecated pre-unification duplicate; read fallback only */
+export const SCRIPTORA_APPEARANCE_LEGACY_KEY = "scriptora-appearance-settings-v0";
 export const SCRIPTORA_APPEARANCE_OLD_SETTINGS_KEY = "scriptora-appearance-settings";
 export const SCRIPTORA_CUSTOM_BACKGROUND_KEY = "scriptora-custom-background-data-url-v1";
 
@@ -346,7 +347,7 @@ export function saveScriptoraAppearance(settings: ScriptoraAppearanceSettings) {
   const normalized = normalizeAppearanceSettings(settings);
   localStorage.setItem(SCRIPTORA_APPEARANCE_KEY, JSON.stringify(normalized));
 
-  // Manteniamo anche la vecchia chiave per compatibilità, ma la chiave vera ora è nexora-appearance-v1.
+  // Manteniamo anche la vecchia chiave per compatibilità, ma la chiave vera ora è scriptora-appearance-v1.
   try {
     localStorage.setItem(SCRIPTORA_APPEARANCE_LEGACY_KEY, JSON.stringify(normalized));
   } catch {

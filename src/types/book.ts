@@ -239,10 +239,39 @@ export interface AuthorIdentity {
   updatedAt?: string;
 }
 
+export interface BookMatterOptions {
+  frontMatterEnabled: boolean;
+  backMatterEnabled: boolean;
+  acknowledgmentsEnabled: boolean;
+  ctaEnabled: boolean;
+  bibliographyEnabled: boolean;
+}
+
+export type BookConfigStatus = "draft" | "validated" | "approved";
+
 export interface BookConfig {
+  /** Registry id from BOOK_TYPE_REGISTRY — disambiguates Cozy Fantasy vs Epic Fantasy, etc. */
+  bookTypeId?: string;
   title: string;
   subtitle: string;
   titleLanguage?: Language;
+  /** Concept / idea captured in Configuration Studio step 1 */
+  idea?: string;
+  /** Amazon marketplace target (e.g. amazon.it) */
+  amazonMarketplace?: string;
+  /** Fine-grained genre label beyond primary genre */
+  subgenre?: string;
+  /** Target reader profile for prompts */
+  targetReader?: string;
+  /** Reference authors for voice calibration */
+  referenceAuthors?: string;
+  /** Structured style sliders from Configuration Studio */
+  styleProfile?: import("@/lib/book-creation-os/objectives").WritingStyleProfile;
+  /** Raw character bible text (Story Bible) */
+  characterBibleText?: string;
+  /** Front/back matter section toggles */
+  matterOptions?: BookMatterOptions;
+  configStatus?: BookConfigStatus;
   tone: string;
   /**
    * Real publishing author / pen name.
@@ -285,6 +314,7 @@ export interface BookConfig {
  * never drift. Stored in projects.data (JSON).
  */
 export interface GenreLock {
+  bookTypeId?: string;
   genre: string;
   subcategory?: string;
   structure: string[];
@@ -313,6 +343,12 @@ export interface BookProject {
   blueprintSource?: "ai" | "repaired" | "config_fallback";
   /** Locked Genre Engine blueprint — set once on creation, never mutated by AI */
   genreLock?: GenreLock;
+  /** Configuration Studio: author approved blueprint before chapter generation */
+  blueprintApproved?: boolean;
+  blueprintApprovedAt?: string;
+  configStatus?: BookConfigStatus;
+  /** Cross-chapter narrative memory snapshot — refreshed after each chapter */
+  longBookMemory?: import("@/lib/long-book-memory/types").LongBookMemorySnapshot;
   createdAt: string;
   updatedAt: string;
 }

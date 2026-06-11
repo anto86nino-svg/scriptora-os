@@ -1,23 +1,17 @@
 import { BookProject } from "@/types/book";
+import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
+import { areChaptersComplete } from "@/lib/project-progress";
 
 /**
  * Single source of truth for "is this project complete?"
- *
- * A project is considered complete if EITHER:
- *  - phase === "complete" (explicitly marked by the engine)
- *  - it has reached its target chapter count (the front/back matter are optional
- *    and shouldn't keep a finished book stuck in "in progress" forever).
- *
- * This prevents desync between InProgressSection and LibrarySection where a
- * fully-written book stays visible as "in corso" because the final phase
- * transition never fired (user left the page, network blip, etc.).
+ * Respects matterOptions — disabled front/back matter is not required.
  */
 export function isProjectComplete(p: BookProject): boolean {
   if (p.phase === "complete") return true;
-  const target = p.config?.numberOfChapters || 0;
-  const done = (p.chapters || []).filter((c) => (c.content || "").trim().length > 50).length;
-  if (target > 0 && done >= target) return true;
-  return false;
+  if (!areChaptersComplete(p)) return false;
+  if (isFrontMatterEnabled(p.config) && !p.frontMatter) return false;
+  if (isBackMatterEnabled(p.config) && !p.backMatter) return false;
+  return true;
 }
 
 /**

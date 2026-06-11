@@ -1,5 +1,3 @@
-import { jsPDF } from "jspdf";
-
 export interface StudyCertificateInput {
   studentName: string;
   subject: string;
@@ -9,7 +7,8 @@ export interface StudyCertificateInput {
   badges: string[];
 }
 
-export function generateStudyCertificatePdf(input: StudyCertificateInput): Blob {
+export async function generateStudyCertificatePdf(input: StudyCertificateInput): Promise<Blob> {
+  const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
@@ -54,8 +53,8 @@ export function generateStudyCertificatePdf(input: StudyCertificateInput): Blob 
   return doc.output("blob");
 }
 
-export function downloadStudyCertificate(input: StudyCertificateInput, filename = "scriptora-certificate.pdf"): void {
-  const blob = generateStudyCertificatePdf(input);
+export async function downloadStudyCertificate(input: StudyCertificateInput, filename = "scriptora-certificate.pdf"): Promise<void> {
+  const blob = await generateStudyCertificatePdf(input);
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;

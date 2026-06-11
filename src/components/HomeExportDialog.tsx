@@ -2,9 +2,7 @@ import { lazy, Suspense, useState } from "react";
 import { BookProject } from "@/types/book";
 import { X, FileDown, Loader2, BookOpen, FileText, FileType, Lock, ImagePlus, Headphones } from "lucide-react";
 import { AudiobookExportPanel } from "@/components/audiobook/AudiobookExportPanel";
-import { generateEpub, validateEpubStructure } from "@/lib/epub";
-import { generateDocx } from "@/lib/docx-export";
-import { generatePdf } from "@/lib/pdf-export";
+import { runEpubExport, validateEpubExport, runDocxExport, runPdfExport } from "@/lib/export-runtime";
 import { saveBlobAs } from "@/lib/save-file";
 import { useToast } from "@/hooks/use-toast";
 import { usePlan, PLAN_LIMITS } from "@/lib/plan";
@@ -70,7 +68,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
     }
 
     if (format === "epub") {
-      const errors = validateEpubStructure(exportProject);
+      const errors = await validateEpubExport(exportProject);
       if (errors.length > 0) {
         toast({
           title: "EPUB non esportabile",
@@ -91,17 +89,17 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
       let description: string;
 
       if (format === "epub") {
-        blob = await generateEpub(exportProject, coverOverride ?? coverDataUrls[project.id]);
+        blob = await runEpubExport(exportProject, coverOverride ?? coverDataUrls[project.id]);
         ext = "epub";
         mime = "application/epub+zip";
         description = "EPUB Book";
       } else if (format === "docx") {
-        blob = await generateDocx(exportProject);
+        blob = await runDocxExport(exportProject);
         ext = "docx";
         mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
         description = "Word Document";
       } else {
-        blob = await generatePdf(exportProject);
+        blob = await runPdfExport(exportProject);
         ext = "pdf";
         mime = "application/pdf";
         description = "PDF Document";

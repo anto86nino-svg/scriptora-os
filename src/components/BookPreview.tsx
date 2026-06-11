@@ -8,6 +8,8 @@ import { usePlan, PLAN_LIMITS } from "@/lib/plan";
 import { isDevMode } from "@/lib/dev-mode";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import { toast } from "sonner";
+import { t } from "@/lib/i18n";
 
 interface BookPreviewProps {
   project: BookProject;
@@ -43,8 +45,7 @@ export function BookPreview({
     // Run validation first
     const errors = validateEpubStructure(project);
     if (errors.length > 0) {
-      console.error("EPUB validation failed:", errors);
-      alert(`EPUB export blocked — validation errors:\n\n${errors.join("\n")}`);
+      toast.error(t("export_blocked_title"), { description: errors.join(" · ") });
       return;
     }
 
@@ -53,8 +54,9 @@ export function BookPreview({
       const blob = await generateEpub(project, coverOverride ?? coverDataUrl);
       const filename = config.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";
       downloadEpub(blob, filename);
+      toast.success(t("export_saved"), { description: `${filename}.epub` });
     } catch (e) {
-      console.error("EPUB export failed:", e);
+      toast.error(t("export_failed"), { description: e instanceof Error ? e.message : undefined });
     } finally {
       setIsExporting(false);
     }
@@ -66,7 +68,7 @@ export function BookPreview({
       return;
     }
     if (phase !== "complete") {
-      alert("Completa tutto il libro prima di esportare.");
+      toast.error(t("export_blocked_title"), { description: t("complete_all_items") });
       return;
     }
     if (phase === "complete" && !coverDataUrl) {

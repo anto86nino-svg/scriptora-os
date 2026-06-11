@@ -1,15 +1,15 @@
 import { BookProject } from "@/types/book";
 import LZString from "lz-string";
 
-const STORAGE_KEY = "nexora-projects";
-const STORAGE_KEY_LZ = "nexora-projects-lz";
-const BACKUP_KEY = "nexora-projects-backup";
-const LAST_PROJECT_KEY = "nexora-last-project";
+const STORAGE_KEY = "scriptora-projects";
+const STORAGE_KEY_LZ = "scriptora-projects-lz";
+const BACKUP_KEY = "scriptora-projects-backup";
+const LAST_PROJECT_KEY = "scriptora-last-project";
 
 // =====================================================================
 // IndexedDB fallback (for projects too large for localStorage)
 // =====================================================================
-const IDB_NAME = "nexora-db";
+const IDB_NAME = "scriptora-db";
 const IDB_STORE = "projects";
 
 function openDB(): Promise<IDBDatabase | null> {

@@ -44,7 +44,7 @@ export interface SubscriptionState {
  */
 function mapLegacyPlan(plan: string, _isDev: boolean): SubscriptionPlan {
   if (plan === "premium") return "lifetime";
-  if (plan === "pro") return "pro";
+  if (plan === "pro" || plan === "beta") return "pro";
   return "free";
 }
 

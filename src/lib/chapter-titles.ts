@@ -1,4 +1,5 @@
 import type { BookConfig, BookProject } from "@/types/book";
+import { fallbackTitleForFamily, isForbiddenGenericTitle, resolveBookTypeDefinition } from "@/lib/book-type-engine";
 
 type ChapterTitleContext = {
   config?: Partial<BookConfig>;
@@ -113,7 +114,8 @@ export function isGenericChapterTitle(value: unknown): boolean {
     loose.length < 3 ||
     GENERIC_TITLE_RE.test(loose) ||
     PLACEHOLDER_TITLE_RE.test(loose) ||
-    FORBIDDEN_TITLE_RE.test(loose)
+    FORBIDDEN_TITLE_RE.test(loose) ||
+    isForbiddenGenericTitle(cleaned)
   );
 }
 
@@ -148,6 +150,17 @@ function titleFromSummary(summary?: string): string {
 
 function fallbackTitle(index: number, context: ChapterTitleContext = {}): string {
   const language = context.language || context.config?.language || "Italian";
+  if (context.config?.genre) {
+    const def = resolveBookTypeDefinition(
+      context.config.genre,
+      context.config.subcategory,
+      context.config.subgenre,
+      context.config.bookTypeId,
+    );
+    if (def.family !== "narrative") {
+      return fallbackTitleForFamily(def.family, index, language);
+    }
+  }
   const pool = language === "English" ? ENGLISH_FALLBACK_TITLES : ITALIAN_FALLBACK_TITLES;
   const base = pool[index % pool.length];
   if (index < pool.length) return base;

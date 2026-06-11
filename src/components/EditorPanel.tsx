@@ -6,9 +6,12 @@ import { BlueprintRecoveryCard } from "@/components/blueprint/BlueprintRecoveryC
 import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel";
 import { GenreProfileBadge } from "@/components/GenreProfileBadge";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
+import { BookTypeBadge } from "@/components/BookTypeBadge";
+import { MatterSectionDisabled } from "@/components/MatterSectionDisabled";
+import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 import { GenreCoachPanel } from "@/components/GenreCoachPanel";
 import { downloadText } from "@/lib/download";
-import { RewriteLevel, ChunkProgress } from "@/lib/generation";
+import type { RewriteLevel, ChunkProgress } from "@/lib/generation-types";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
@@ -44,6 +47,8 @@ interface EditorPanelProps {
   onUpdateBlueprintOutlineSummary?: (index: number, summary: string) => void;
   onRegenerateBlueprint?: () => void;
   onCreateSafeBlueprint?: () => void;
+  onApproveBlueprint?: () => void;
+  onGenerateBlueprint?: () => void;
   onUpdateFrontMatterField?: (field: string, value: string) => void;
   onUpdateBackMatterField?: (field: string, value: string) => void;
   onNarrateChapter?: (chapterIndex: number) => void;
@@ -60,7 +65,7 @@ export function EditorPanel({
   chunkProgress,
   writingSettings,
   onUpdateBlueprintField, onUpdateBlueprintOutlineTitle, onUpdateBlueprintOutlineSummary,
-  onRegenerateBlueprint, onCreateSafeBlueprint,
+  onRegenerateBlueprint, onCreateSafeBlueprint, onApproveBlueprint, onGenerateBlueprint,
   onUpdateFrontMatterField, onUpdateBackMatterField,
   onNarrateChapter,
 }: EditorPanelProps) {
@@ -116,6 +121,7 @@ export function EditorPanel({
           ) : (
             <>
               <div className="flex items-center gap-2 mb-6 flex-wrap">
+                <BookTypeBadge config={config} />
                 <GenreProfileBadge
                   genre={config.genre}
                   subcategory={config.subcategory}
@@ -133,6 +139,8 @@ export function EditorPanel({
                   onUpdateOutlineSummary={onUpdateBlueprintOutlineSummary}
                   onRegenerateBlueprint={onRegenerateBlueprint}
                   onCreateSafeBlueprint={onCreateSafeBlueprint}
+                  onApproveBlueprint={onApproveBlueprint}
+                  onGenerateBlueprint={onGenerateBlueprint}
                 />
               )}
               {view.type === "front-matter" && (
@@ -289,6 +297,8 @@ function BlueprintView({
   onUpdateOutlineSummary,
   onRegenerateBlueprint,
   onCreateSafeBlueprint,
+  onApproveBlueprint,
+  onGenerateBlueprint,
 }: {
   project: BookProject;
   blueprint: BookProject["blueprint"];
@@ -298,6 +308,8 @@ function BlueprintView({
   onUpdateOutlineSummary?: (index: number, summary: string) => void;
   onRegenerateBlueprint?: () => void;
   onCreateSafeBlueprint?: () => void;
+  onApproveBlueprint?: () => void;
+  onGenerateBlueprint?: () => void;
 }) {
   const hasBlueprintError = project.blueprintStatus === "error" && !blueprint;
 
@@ -320,6 +332,24 @@ function BlueprintView({
           onRegenerate={onRegenerateBlueprint}
           onCreateSafe={onCreateSafeBlueprint}
         />
+      )}
+
+      {!blueprint && !isGenerating && !hasBlueprintError && onGenerateBlueprint && (
+        <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-4 space-y-3">
+          <p className="text-sm text-sky-100">Configurazione salvata. Genera il blueprint per rivedere premessa e indice capitoli.</p>
+          <button type="button" onClick={onGenerateBlueprint} className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white">
+            Genera Blueprint
+          </button>
+        </div>
+      )}
+
+      {blueprint && project.blueprintApproved === false && onApproveBlueprint && (
+        <div className="rounded-xl border border-amber-400/35 bg-amber-400/10 p-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-amber-100">Rivedi la struttura e approva prima di generare capitoli e export.</p>
+          <button type="button" onClick={onApproveBlueprint} className="rounded-lg bg-amber-400 px-4 py-2 text-sm font-bold text-slate-950">
+            Approva struttura
+          </button>
+        </div>
       )}
 
       {blueprint ? (
@@ -429,7 +459,15 @@ function FrontMatterView({ project, frontMatter, isGenerating, onGenerate, ws, o
   project: BookProject; frontMatter: BookProject["frontMatter"]; isGenerating: boolean; onGenerate: () => void; ws: WritingSettings;
   onUpdateField?: (field: string, value: string) => void;
 }) {
-  // Front matter can be generated/regenerated any time the blueprint exists.
+  if (!isFrontMatterEnabled(project.config)) {
+    return (
+      <MatterSectionDisabled
+        title="Front Matter disabilitato"
+        description="Hai disattivato il front matter nella configurazione del libro. Puoi riattivarlo dalle impostazioni del progetto o ricreare il libro con le opzioni desiderate."
+      />
+    );
+  }
+
   const canGenerate = !!project.blueprint;
   return (
     <div className="space-y-8">
@@ -793,6 +831,15 @@ function BackMatterView({ project, backMatter, phase, isGenerating, onGenerate, 
   project: BookProject; backMatter: BookProject["backMatter"]; phase: string; isGenerating: boolean; onGenerate: () => void; ws: WritingSettings;
   onUpdateField?: (field: string, value: string) => void;
 }) {
+  if (!isBackMatterEnabled(project.config)) {
+    return (
+      <MatterSectionDisabled
+        title="Back Matter disabilitato"
+        description="Hai disattivato il back matter nella configurazione. Il libro può essere completato ed esportato senza postfazione."
+      />
+    );
+  }
+
   const missingChapters = Array.from({ length: project.config.numberOfChapters }, (_, i) => i)
     .filter((i) => !((project.chapters[i]?.content || "").trim().length > 50));
   const canGenerate = !!project.blueprint && missingChapters.length === 0;

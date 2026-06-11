@@ -2,53 +2,45 @@
 // Driven by src/config/payments.ts (env-aware). Defaults to "coming soon" mode:
 // Pro CTAs open an elegant modal instead of redirecting to a checkout.
 
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { t } from "@/lib/i18n";
 import { ArrowLeft } from "lucide-react";
-import {
-  isPaymentsLive,
-  paymentsConfig,
-  resolvePlanAction,
-  type PaymentPlan,
-} from "@/config/payments";
+import { isPaymentsLive, paymentsConfig, type PaymentPlan } from "@/config/payments";
+import { executePlanAction } from "@/lib/payments/executePlanAction";
 import { FeatureStatusBadge } from "@/components/payments/FeatureStatusBadge";
-import { useSubscription } from "@/hooks/useSubscription";
+import { usePlan } from "@/lib/plan";
 import { PricingCard } from "@/components/payments/PricingCard";
 import { PaymentStatusBanner } from "@/components/payments/PaymentStatusBanner";
 import { ComingSoonPaymentModal } from "@/components/payments/ComingSoonPaymentModal";
 import { toast } from "sonner";
 
 export default function PricingPage() {
-  const { currentPlan } = useSubscription();
+  const { plan: legacyPlan } = usePlan();
+  const paymentsLive = isPaymentsLive();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [comingSoonPlan, setComingSoonPlan] = useState<PaymentPlan | null>(null);
 
-  const handleAction = (plan: PaymentPlan) => {
-    const action = resolvePlanAction(plan);
-    switch (action.kind) {
-      case "free":
-        // Free CTA — already on the app, just send back to dashboard.
-        window.location.href = "/dashboard";
-        return;
-      case "external":
-        window.open(action.url, "_blank", "noopener,noreferrer");
-        return;
-      case "missing_link":
-        toast.error("Pagamento non configurato.", {
-          description: "Il link di checkout non è ancora stato impostato per questo piano.",
-        });
-        return;
-      case "coming_soon":
-      default:
-        setComingSoonPlan(plan);
-        return;
-    }
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("payment") !== "cancelled") return;
+    toast.info(t("payment_cancelled_title"), { description: t("payment_cancelled_desc") });
+    navigate(location.pathname, { replace: true });
+  }, [location.pathname, location.search, navigate]);
+
+  const handleAction = async (plan: PaymentPlan) => {
+    const result = await executePlanAction(plan);
+    if (result.showComingSoon) setComingSoonPlan(plan);
   };
 
   const isCurrentPlan = (planId: string) => {
-    if (planId === "free") return currentPlan === "free";
-    if (planId === "pro_monthly" || planId === "pro_yearly") return currentPlan === "pro";
+    if (planId === "free") return legacyPlan === "free";
+    if (planId === "pro_monthly" || planId === "pro_yearly") {
+      return legacyPlan === "pro" || legacyPlan === "beta";
+    }
     if (planId === "premium_monthly" || planId === "premium_yearly" || planId === "lifetime") {
-      return currentPlan === "lifetime";
+      return legacyPlan === "premium";
     }
     return false;
   };
@@ -64,7 +56,7 @@ export default function PricingPage() {
       <header className="shrink-0 border-b border-border bg-card/40 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/dashboard" className="inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-3.5 w-3.5" /> Back
+            <ArrowLeft className="h-3.5 w-3.5" /> {t("back")}
           </Link>
           <span className="text-xs font-bold tracking-wider uppercase text-muted-foreground">Scriptora · Pricing</span>
         </div>
@@ -105,7 +97,7 @@ export default function PricingPage() {
               <PricingCard
                 key={plan.id}
                 plan={plan}
-                comingSoon={paymentsConfig.mode === "coming_soon" || !paymentsConfig.enabled}
+                comingSoon={!paymentsLive}
                 isCurrent={isCurrentPlan(plan.id)}
                 onAction={handleAction}
               />
@@ -119,18 +111,28 @@ export default function PricingPage() {
 
         <section className="mt-20 max-w-3xl mx-auto space-y-6">
           <h2 className="text-2xl font-bold text-center">FAQ</h2>
-          <Faq q="Quando saranno attivi i pagamenti?">
-            L'infrastruttura è già pronta. I checkout verranno attivati non appena verranno
-            configurati provider e link di pagamento. Nessuna riscrittura dell'app sarà necessaria.
+          {paymentsLive ? (
+            <Faq q="Come funziona l'abbonamento?">
+              Scegli il piano, completa il checkout sicuro del provider, e il tuo account si
+              aggiorna automaticamente entro pochi secondi. Puoi gestire o cancellare dal portale
+              di fatturazione del provider.
+            </Faq>
+          ) : (
+            <Faq q="Quando saranno attivi i pagamenti?">
+              L'infrastruttura è già pronta. I checkout si attivano non appena configuri provider
+              e link — senza riscrittura dell'app.
+            </Faq>
+          )}
+          <Faq q="Posso usare Scriptora gratis?">
+            Sì. Il piano Free resta sempre disponibile con gli strumenti essenziali per iniziare
+            il tuo primo progetto editoriale.
           </Faq>
-          <Faq q="Posso usare Scriptora gratis nel frattempo?">
-            Sì. Il piano Free resta sempre disponibile e ti dà accesso agli strumenti essenziali
-            per iniziare a scrivere e pubblicare i tuoi primi progetti.
-          </Faq>
-          <Faq q="Cosa succede se clicco un piano Pro adesso?">
-            Vedrai un messaggio "presto disponibile". Nessun pagamento viene richiesto né
-            elaborato in questa versione.
-          </Faq>
+          {!paymentsLive && (
+            <Faq q="Cosa succede se clicco un piano Pro adesso?">
+              Vedrai un messaggio informativo. Nessun pagamento viene richiesto né elaborato finché
+              i checkout non sono attivi.
+            </Faq>
+          )}
           <Faq q="Posso cancellare in qualsiasi momento?">
             Sì. Quando i pagamenti saranno attivi, potrai gestire o cancellare l'abbonamento dal
             tuo portale di fatturazione, e mantenere l'accesso fino alla fine del periodo pagato.

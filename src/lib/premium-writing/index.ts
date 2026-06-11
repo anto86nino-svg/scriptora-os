@@ -1,4 +1,7 @@
 import type { BookConfig, Chapter } from "@/types/book";
+import { resolveBookTypeDefinition } from "@/lib/book-type-engine";
+import { buildCharacterMemoryDeepLock } from "./character-memory-lock";
+import { buildSceneContinuityBlock } from "./scene-continuity-v2";
 import { buildNarrativeBeatAntiRepetitionBlock } from "./narrative-beat-engine";
 import { buildHumanDialogueMasterBlock } from "./human-dialogue-master";
 import { buildShowDontTellBlock } from "./show-dont-tell";
@@ -23,16 +26,26 @@ export interface PremiumWritingContext {
 
 /** Ultra Human Manuscript Engine V2 — editorial injection block for generation prompts */
 export function buildPremiumWritingBlock(ctx: PremiumWritingContext): string {
+  const family = resolveBookTypeDefinition(
+    ctx.config.genre,
+    ctx.config.subcategory,
+    ctx.config.subgenre,
+    ctx.config.bookTypeId,
+  ).family;
+  const narrativeOnly = family === "narrative" || family === "poetry";
+
   const blocks = [
-    buildGlobalNovelBrainBlock(ctx.previousChapters, ctx.chapterIndex),
-    buildNarrativeConsequenceBlock(ctx.previousChapters, ctx.chapterIndex),
-    buildNarrativeBeatAntiRepetitionBlock(ctx),
+    narrativeOnly ? buildGlobalNovelBrainBlock(ctx.previousChapters, ctx.chapterIndex) : "",
+    narrativeOnly ? buildNarrativeConsequenceBlock(ctx.previousChapters, ctx.chapterIndex) : "",
+    narrativeOnly ? buildNarrativeBeatAntiRepetitionBlock(ctx) : "",
     buildEditorialSelectionBlock(),
-    buildHumanDialogueMasterBlock(ctx.config.language),
-    buildShowDontTellBlock(ctx.config.language),
+    narrativeOnly ? buildHumanDialogueMasterBlock(ctx.config.language) : "",
+    narrativeOnly ? buildShowDontTellBlock(ctx.config.language) : "",
     buildCharacterDepthLockBlock(ctx.config),
-    buildRomanceSlowBurnMaxBlock(ctx.config, ctx.chapterIndex),
-    buildScenePurposeBlock(),
+    narrativeOnly ? buildCharacterMemoryDeepLock(ctx.config) : "",
+    narrativeOnly ? buildSceneContinuityBlock(ctx) : "",
+    narrativeOnly ? buildRomanceSlowBurnMaxBlock(ctx.config, ctx.chapterIndex) : "",
+    narrativeOnly ? buildScenePurposeBlock() : "",
     buildReaderSimulationBlock(ctx.chapterIndex),
     buildAiDetectionReductionBlock(),
     buildAuthorVoicePreserveBlock(ctx.config),

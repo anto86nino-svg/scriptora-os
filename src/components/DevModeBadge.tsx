@@ -93,15 +93,15 @@ export function DevModeBadge() {
 
       // Clear last-project pointer if it referenced a wiped project.
       try {
-        const lastId = localStorage.getItem("nexora-last-project");
+        const lastId = localStorage.getItem("scriptora-last-project");
         if (lastId && !kept.find((p) => p.id === lastId)) {
-          localStorage.removeItem("nexora-last-project");
+          localStorage.removeItem("scriptora-last-project");
         }
       } catch { /* noop */ }
-      try { sessionStorage.removeItem("nexora-open-project"); } catch { /* noop */ }
+      try { sessionStorage.removeItem("scriptora-open-project"); } catch { /* noop */ }
 
-      window.dispatchEvent(new Event("nexora-projects-change"));
-      window.dispatchEvent(new Event("nexora-usage-change"));
+      window.dispatchEvent(new Event("scriptora-projects-change"));
+      window.dispatchEvent(new Event("scriptora-usage-change"));
       toast.success(
         removedCount > 0
           ? tt("dev_projects_deleted", { count: removedCount })

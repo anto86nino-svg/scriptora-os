@@ -211,7 +211,7 @@ export async function adaptiveRewritePipeline(
   });
 
   console.debug(
-    `[Nexora/AdaptiveRewrite] type=${metadata.contentType} plan=${metadata.plan} ` +
+    `[Scriptora/AdaptiveRewrite] type=${metadata.contentType} plan=${metadata.plan} ` +
     `score=${qualityScore.toFixed(1)} → ${decision.mode} (${decision.reason})`,
   );
 
@@ -224,13 +224,13 @@ export async function adaptiveRewritePipeline(
   try {
     revised = await deps.rewrite(text, block, decision.mode as Exclude<RewriteMode, "none">);
   } catch (e) {
-    console.warn("[Nexora/AdaptiveRewrite] rewrite failed, returning original:", e);
+    console.warn("[Scriptora/AdaptiveRewrite] rewrite failed, returning original:", e);
     return { text, decision, qualityScore, metrics, rewritten: false };
   }
 
   // Safety: never return a clearly broken / shorter-than-50% rewrite.
   if (!revised || revised.trim().length < text.trim().length * 0.5) {
-    console.warn("[Nexora/AdaptiveRewrite] revised text too short — keeping original");
+    console.warn("[Scriptora/AdaptiveRewrite] revised text too short — keeping original");
     return { text, decision, qualityScore, metrics, rewritten: false };
   }
 

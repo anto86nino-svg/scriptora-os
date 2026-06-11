@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 export { isOwnerEmail, getOwnerEmails } from "@/lib/auth/owner";
 
-const KEY = "nexora_dev_mode";
+const KEY = "scriptora_dev_mode";
 
 // Obfuscated password ("Linkon86" base64'd, then reversed) — avoids plain-text grep.
 const OBF = "=YDOu92aulGT".split("").reverse().join("");
@@ -14,7 +14,7 @@ const OBF = "=YDOu92aulGT".split("").reverse().join("");
 /** Force-enable Dev Mode (used by owner auto-unlock). */
 export function enableDevMode(): void {
   try { sessionStorage.setItem(KEY, "1"); } catch { /* noop */ }
-  window.dispatchEvent(new Event("nexora-dev-mode-change"));
+  window.dispatchEvent(new Event("scriptora-dev-mode-change"));
 }
 
 function expectedPassword(): string {
@@ -38,24 +38,24 @@ export function tryUnlock(input: string): boolean {
   const ok = input === expectedPassword();
   if (ok) {
     try { sessionStorage.setItem(KEY, "1"); } catch { /* noop */ }
-    window.dispatchEvent(new Event("nexora-dev-mode-change"));
+    window.dispatchEvent(new Event("scriptora-dev-mode-change"));
   }
   return ok;
 }
 
 export function exitDevMode(): void {
   try { sessionStorage.removeItem(KEY); } catch { /* noop */ }
-  window.dispatchEvent(new Event("nexora-dev-mode-change"));
+  window.dispatchEvent(new Event("scriptora-dev-mode-change"));
 }
 
 export function useDevMode(): boolean {
   const [on, setOn] = useState<boolean>(() => isDevMode());
   useEffect(() => {
     const sync = () => setOn(isDevMode());
-    window.addEventListener("nexora-dev-mode-change", sync);
+    window.addEventListener("scriptora-dev-mode-change", sync);
     window.addEventListener("storage", sync);
     return () => {
-      window.removeEventListener("nexora-dev-mode-change", sync);
+      window.removeEventListener("scriptora-dev-mode-change", sync);
       window.removeEventListener("storage", sync);
     };
   }, []);

@@ -1,6 +1,6 @@
 import { LEGAL_VERSION } from "@/lib/legal-content";
 
-export const CONSENT_KEY = "nexora_consent_v1";
+export const CONSENT_KEY = "scriptora_consent_v1";
 
 export type ConsentRecord = {
   privacy: boolean;

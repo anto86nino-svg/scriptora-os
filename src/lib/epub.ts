@@ -2,6 +2,7 @@ import { normalizeExportProject, exportLabel, cleanExportText, parseExportBlocks
 import { assertExportReady } from "@/lib/export-readiness";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import { BookProject } from "@/types/book";
+import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 
 function escapeXml(str: unknown): string {
   const s = str == null ? "" : typeof str === "string" ? str : String(str);
@@ -601,8 +602,8 @@ export function validateEpubStructure(project: BookProject): string[] {
     if (!ch.content || ch.content.length === 0) errors.push(`Chapter ${i + 1} has no content.`);
     if (!ch.title) errors.push(`Chapter ${i + 1} has no title.`);
   });
-  if (!frontMatter) errors.push("Front matter not generated.");
-  if (!backMatter) errors.push("Back matter not generated.");
+  if (isFrontMatterEnabled(config) && !frontMatter) errors.push("Front matter not generated.");
+  if (isBackMatterEnabled(config) && !backMatter) errors.push("Back matter not generated.");
 
   // 2. Build file→anchor map matching the generator
   const fileAnchors = new Map<string, Set<string>>();

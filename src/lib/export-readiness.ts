@@ -1,6 +1,7 @@
 import type { BookProject } from "@/types/book";
 import { applyAuthorIdentityToConfig } from "@/lib/author-identity";
 import { isProjectComplete } from "@/lib/project-status";
+import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 import { resolveExportAuthorName } from "@/lib/export-author";
 
 export type ExportReadinessSeverity = "blocker" | "warning";
@@ -74,10 +75,18 @@ export function validateExportReadiness(project: BookProject): ExportReadinessIs
   }
 
   if (!isProjectComplete(project)) {
+    const missing: string[] = [];
+    const target = project.config?.numberOfChapters || 0;
+    const done = (project.chapters || []).filter((c) => (c.content || "").trim().length > 50).length;
+    if (target > 0 && done < target) missing.push("capitoli");
+    if (isFrontMatterEnabled(config) && !project.frontMatter) missing.push("front matter");
+    if (isBackMatterEnabled(config) && !project.backMatter) missing.push("back matter");
     issues.push({
       id: "chapters",
       field: "chapters",
-      message: "Completa tutti i capitoli prima dell'export.",
+      message: missing.length
+        ? `Completa prima: ${missing.join(", ")}.`
+        : "Completa tutti i capitoli prima dell'export.",
       severity: "blocker",
     });
   }

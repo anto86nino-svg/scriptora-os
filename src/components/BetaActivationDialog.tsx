@@ -7,6 +7,7 @@ import { Sparkles, KeyRound, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getDeviceId } from "@/lib/device-fingerprint";
 import { getCurrentUserId } from "@/services/storageService";
+import { fetchPlan } from "@/lib/plan";
 import { toast } from "sonner";
 
 interface Props {
@@ -40,13 +41,8 @@ export function BetaActivationDialog({ open, onOpenChange, onActivated }: Props)
       if (!data?.ok) throw new Error(data?.error || "Activation failed");
 
       toast.success("Beta access activated 🎉");
-      try {
-        localStorage.setItem(
-          "nexora_plan_cache_v1",
-          JSON.stringify({ userId, plan: "beta" })
-        );
-      } catch { /* noop */ }
-      window.dispatchEvent(new Event("nexora-plan-change"));
+      await fetchPlan();
+      window.dispatchEvent(new Event("scriptora-plan-change"));
       setCode("");
       onOpenChange(false);
       onActivated?.();

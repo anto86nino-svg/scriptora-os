@@ -106,12 +106,17 @@ export interface WritingStyleProfile {
 }
 
 export const STYLE_PRESETS: Array<{ id: string; label: string; profile: Partial<WritingStyleProfile> }> = [
-  { id: "stephen-king", label: "Stephen King Style", profile: { narrativePace: 70, tensionIntensity: 80, psychologicalDepth: 75 } },
+  { id: "commercial-bestseller", label: "Bestseller Commerciale", profile: { narrativePace: 78, tensionIntensity: 72, showDontTell: 68 } },
+  { id: "booktok-viral", label: "BookTok", profile: { emotionalIntensity: 88, dialogueLevel: 72, narrativePace: 82 } },
+  { id: "dark-romance-premium", label: "Dark Romance", profile: { slowBurn: 80, tensionIntensity: 75, emotionalIntensity: 85 } },
+  { id: "netflix-thriller", label: "Thriller", profile: { tensionIntensity: 85, narrativePace: 80, showDontTell: 70 } },
+  { id: "fantasy-cinematic", label: "Fantasy", profile: { poeticLevel: 75, showDontTell: 80, psychologicalDepth: 65 } },
+  { id: "cozy-fantasy", label: "Cozy Fantasy", profile: { poeticLevel: 62, emotionalIntensity: 58, narrativePace: 48, dialogueLevel: 68 } },
+  { id: "self-help-authority", label: "Self Help", profile: { voiceIntensity: 72, showDontTell: 82, narrativePace: 55 } },
+  { id: "educational-clear", label: "Educational", profile: { voiceIntensity: 70, showDontTell: 85, dialogueLevel: 35 } },
+  { id: "literary-depth", label: "Literary", profile: { poeticLevel: 82, psychologicalDepth: 78, slowBurn: 60 } },
   { id: "colleen-hoover", label: "Colleen Hoover Emotion", profile: { emotionalIntensity: 90, dialogueLevel: 75, slowBurn: 65 } },
-  { id: "netflix-thriller", label: "Netflix Thriller", profile: { tensionIntensity: 85, narrativePace: 80, showDontTell: 70 } },
   { id: "livia-emerson", label: "Livia Emerson Romance", profile: { emotionalIntensity: 85, slowBurn: 70, poeticLevel: 60 } },
-  { id: "fantasy-cinematic", label: "Fantasy Cinematic", profile: { poeticLevel: 75, showDontTell: 80, psychologicalDepth: 65 } },
-  { id: "dark-romance-premium", label: "Dark Romance Premium", profile: { slowBurn: 80, tensionIntensity: 75, emotionalIntensity: 85 } },
 ];
 
 export function profileToStyleDirective(profile: WritingStyleProfile): string {

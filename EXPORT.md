@@ -1,6 +1,6 @@
 # Esportazione su GitHub & Distribuzione
 
-Guida per esportare NEXORA su GitHub, scaricare il codice e distribuire l'app installabile dal browser.
+Guida per esportare SCRIPTORA su GitHub, scaricare il codice e distribuire l'app installabile dal browser.
 
 ## 1. Esportare su GitHub (da Lovable)
 
@@ -73,5 +73,5 @@ L'app si installa come icona sulla Home, si apre senza barra del browser, e funz
 ## 7. Branding 100% indipendente (opzionale)
 
 Se vuoi rimuovere ogni riferimento a Lovable:
-1. **Google OAuth** → crea credenziali tue su Google Cloud Console e inseriscile in Lovable Cloud → Auth Settings → Google (sostituisce "Continua su lovable.app" con "Continua su Nexora")
+1. **Google OAuth** → crea credenziali tue su Google Cloud Console e inseriscile in Lovable Cloud → Auth Settings → Google (sostituisce "Continua su lovable.app" con "Continua su Scriptora")
 2. **lovable-tagger** → rimuovilo da `vite.config.ts` e `package.json` (perderai gli indicatori dev di Lovable, niente effetto in produzione)

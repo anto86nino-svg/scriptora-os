@@ -1,19 +1,42 @@
 import type { BookConfig } from "@/types/book";
+import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 
-export const PRIMARY_BOOK_PATH_STEPS = [
+export const PRIMARY_BOOK_PATH_CORE = [
   { id: "idea", label: "Idea" },
   { id: "blueprint", label: "Blueprint" },
   { id: "characters", label: "Personaggi" },
   { id: "structure", label: "Struttura" },
-  { id: "chapters", label: "Capitoli" },
+] as const;
+
+export const PRIMARY_BOOK_PATH_TAIL = [
   { id: "diagnostic", label: "Diagnostica" },
   { id: "cover", label: "Cover" },
   { id: "export", label: "Export" },
 ] as const;
 
-export type PrimaryBookPathStepId = (typeof PRIMARY_BOOK_PATH_STEPS)[number]["id"];
+/** @deprecated Use getPrimaryBookPathSteps(config) for matter-aware flow */
+export const PRIMARY_BOOK_PATH_STEPS = [
+  ...PRIMARY_BOOK_PATH_CORE,
+  { id: "chapters", label: "Capitoli" },
+  ...PRIMARY_BOOK_PATH_TAIL,
+] as const;
 
-export const PRIMARY_BOOK_LAUNCH_KEY = "nexora-new-book";
+export type PrimaryBookPathStepId =
+  | (typeof PRIMARY_BOOK_PATH_CORE)[number]["id"]
+  | "front-matter"
+  | "chapters"
+  | "back-matter"
+  | (typeof PRIMARY_BOOK_PATH_TAIL)[number]["id"];
+
+export function getPrimaryBookPathSteps(config: BookConfig) {
+  const mid: Array<{ id: PrimaryBookPathStepId; label: string }> = [];
+  if (isFrontMatterEnabled(config)) mid.push({ id: "front-matter", label: "Premessa" });
+  mid.push({ id: "chapters", label: "Capitoli" });
+  if (isBackMatterEnabled(config)) mid.push({ id: "back-matter", label: "Postfazione" });
+  return [...PRIMARY_BOOK_PATH_CORE, ...mid, ...PRIMARY_BOOK_PATH_TAIL];
+}
+
+export const PRIMARY_BOOK_LAUNCH_KEY = "scriptora-new-book";
 
 /** Persist config and return the storage key used by Writer Studio boot. */
 export function persistPrimaryBookLaunch(config: BookConfig): void {

@@ -26,7 +26,7 @@ vercel --prod
 
 ## Aprire app live
 
-open -a "Brave Browser" "https://nexora-scriptora.vercel.app"
+open -a "Brave Browser" "https://scriptora-scriptora.vercel.app"
 
 ## Aprire progetto in VS Code
 

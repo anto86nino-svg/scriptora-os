@@ -2,7 +2,21 @@ import { useState, useCallback, useRef } from "react";
 import { BookProject, BookConfig, ChatMessage, GenerationPhase, GenerationStatus, AIQualityRating, getSubchaptersPerChapter } from "@/types/book";
 import { saveProjectAsync, createProjectId, setLastProjectId, loadProjects as loadScopedProjects } from "@/services/storageService";
 import { saveProject } from "@/lib/storage";
-import { generateBlueprint, generateFrontMatter, generateChapter, generateChapterChunked, generateSubchapter, generateBackMatter, rewriteChapter, evaluateChapterQuality, RewriteLevel, ChunkProgress, buildGenreLock } from "@/lib/generation";
+import type { RewriteLevel, ChunkProgress } from "@/lib/generation-types";
+import { buildBookTypeLock as buildGenreLock } from "@/lib/book-type-engine";
+import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
+import {
+  runGenerateBlueprint,
+  runGenerateFrontMatter,
+  runGenerateBackMatter,
+  runGenerateChapter,
+  runGenerateChapterChunked,
+  runGenerateSubchapter,
+  runRewriteChapter,
+  runEvaluateChapterQuality,
+} from "@/lib/generation-runtime";
+import { initialPhaseAfterBlueprint, phaseAfterAllChapters } from "@/lib/matter-options";
+import { refreshProjectLongBookMemory } from "@/lib/long-book-memory";
 import { BlueprintValidationError, buildFallbackBlueprintFromConfig } from "@/lib/blueprint-recovery";
 import { toast } from "sonner";
 import { t } from "@/lib/i18n";
@@ -16,6 +30,8 @@ import { getPlanLimits } from "@/lib/subscription";
 import { normalizeProjectChapterTitles, resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { ensureBookTitleMetadata } from "@/lib/title-shadow";
 import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
+import { normalizeBookConfig, normalizeBookProject } from "@/lib/book-config-studio/defaults";
+import type { BookBlueprint } from "@/types/book";
 import {
   buildCreditIdempotencyKey,
   chargeChapterGeneration,
@@ -208,32 +224,32 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
   const getLatestProject = (): BookProject | null => projectRef.current;
 
-  const startNewBook = useCallback(async (config: BookConfig) => {
+  const prepareNewBookConfig = useCallback(async (config: BookConfig): Promise<BookConfig | null> => {
     const activePlan = await getActivePlanForEngine();
-
     if (activePlan === "free") {
       const existingProjects = await loadScopedProjects().catch(() => []);
       if (existingProjects.length > 0) {
         const msg = "Hai già usato il libro gratuito. Passa a Pro/Premium per creare altri libri.";
         addMessage("assistant", `🔒 ${msg}`);
         toast.error(msg);
-        return;
+        return null;
       }
     }
 
-    const titleSafeInput = ensureBookTitleMetadata(config, {
-      genre: config.genre,
-      category: config.category,
-      subcategory: config.subcategory,
-      targetAudience: config.tone,
-      language: config.language,
+    const normalized = normalizeBookConfig(config);
+    const titleSafeInput = ensureBookTitleMetadata(normalized, {
+      genre: normalized.genre,
+      category: normalized.category,
+      subcategory: normalized.subcategory,
+      targetAudience: normalized.tone,
+      language: normalized.language,
     });
     const authorSafeInput = applyAuthorIdentityToConfig(
       titleSafeInput,
       resolveAuthorIdentity(titleSafeInput.authorIdentity, titleSafeInput.authorIdentityId) || getSelectedAuthorIdentity(),
     ) as BookConfig;
     const maxProjectWords = getPlanLimits(activePlan).maxWordsPerBook;
-    const safeConfig: BookConfig = activePlan === "free"
+    return activePlan === "free"
       ? {
           ...authorSafeInput,
           bookLength: "short",
@@ -245,19 +261,28 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
             ? Math.min(authorSafeInput.customTotalWords ?? maxProjectWords, maxProjectWords)
             : authorSafeInput.customTotalWords,
         };
+  }, [addMessage]);
 
-    // Genre Lock — capture editorial blueprint at creation time so the
-    // entire book stays consistent (no drift between chapters/front/back).
+  const createProjectDraft = useCallback(async (config: BookConfig): Promise<BookProject | null> => {
+    const safeConfig = await prepareNewBookConfig(config);
+    if (!safeConfig) return null;
+
     const genreLock = buildGenreLock(safeConfig);
     const newProject: BookProject = {
       id: createProjectId(),
-      config: safeConfig,
-      blueprint: null, frontMatter: null, chapters: [], backMatter: null,
+      config: { ...safeConfig, configStatus: safeConfig.configStatus || "validated" },
+      blueprint: null,
+      frontMatter: null,
+      chapters: [],
+      backMatter: null,
       phase: "blueprint",
       genreLock,
+      blueprintApproved: false,
+      configStatus: safeConfig.configStatus || "validated",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+
     setProject(newProject);
     syncRef(newProject);
     setMessages([]);
@@ -266,29 +291,84 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       console.warn("[sync] remote save failed", err);
       syncCallbacks?.onPending?.();
     });
+    addMessage("system", `Progetto creato: "${safeConfig.title}" — configurazione salvata. Genera e approva il blueprint prima della scrittura.`);
+    return newProject;
+  }, [prepareNewBookConfig, addMessage, syncCallbacks]);
 
-    addMessage("system", `Starting book: "${safeConfig.title}" — ${safeConfig.numberOfChapters} chapters, ${safeConfig.language}, ${safeConfig.genre}, ${safeConfig.bookLength} book`);
+  const createProjectWithApprovedBlueprint = useCallback(async (
+    config: BookConfig,
+    blueprint: BookBlueprint,
+    source: BookProject["blueprintSource"] = "ai",
+  ): Promise<BookProject | null> => {
+    const safeConfig = await prepareNewBookConfig({ ...config, configStatus: "approved" });
+    if (!safeConfig) return null;
+
+    const genreLock = buildGenreLock(safeConfig);
+    const now = new Date().toISOString();
+    const newProject: BookProject = normalizeBookProject({
+      id: createProjectId(),
+      config: safeConfig,
+      blueprint,
+      frontMatter: null,
+      chapters: [],
+      backMatter: null,
+      phase: initialPhaseAfterBlueprint(safeConfig),
+      genreLock,
+      blueprintApproved: true,
+      blueprintApprovedAt: now,
+      blueprintStatus: "completed",
+      blueprintSource: source,
+      configStatus: "approved",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    setProject(newProject);
+    syncRef(newProject);
+    setMessages([]);
+    saveProject(newProject);
+    saveProjectAsync(newProject, syncCallbacks).catch((err) => {
+      console.warn("[sync] remote save failed", err);
+      syncCallbacks?.onPending?.();
+    });
+    addMessage("system", `Libro approvato: "${safeConfig.title}" — ${blueprint.chapterOutlines.length} capitoli pronti per la generazione.`);
+    addMessage("assistant", `Blueprint approvato! ${blueprint.chapterOutlines.length} capitoli pianificati.`);
+    return newProject;
+  }, [prepareNewBookConfig, addMessage, syncCallbacks]);
+
+  const generateBlueprintForProject = useCallback(async () => {
+    const p = getLatestProject() || project;
+    if (!p) return;
+
     addGenerating("blueprint");
+    updateAndSave(pr => ({
+      ...pr,
+      blueprintStatus: "generating" as GenerationStatus,
+      blueprintLastError: null,
+      blueprintValidationErrors: [],
+      blueprintApproved: false,
+    }));
 
     try {
       addMessage("assistant", "Generazione blueprint in corso... 🏗️");
-      const { blueprint, source } = await generateBlueprint(safeConfig, genreLock, { projectId: newProject.id });
-      updateAndSave(p => ({
-        ...p,
+      const { blueprint, source } = await runGenerateBlueprint(p.config, p.genreLock || buildGenreLock(p.config), { projectId: p.id });
+      updateAndSave(proj => ({
+        ...proj,
         blueprint,
         blueprintSource: source,
         blueprintStatus: "completed" as GenerationStatus,
         blueprintLastError: null,
         blueprintValidationErrors: [],
-        phase: "front-matter" as GenerationPhase,
+        blueprintApproved: false,
+        phase: "blueprint" as GenerationPhase,
       }));
       if (source === "repaired") toast.success("Blueprint recuperato e validato.");
-      addMessage("assistant", `Blueprint pronto! ${blueprint.chapterOutlines.length} capitoli pianificati.`);
+      addMessage("assistant", `Blueprint pronto! ${blueprint.chapterOutlines.length} capitoli pianificati. Approva la struttura per iniziare a scrivere.`);
     } catch (e: any) {
       const validationErrors = e instanceof BlueprintValidationError ? e.errors : [];
       const errorMessage = e instanceof Error ? e.message : String(e);
-      updateAndSave(p => ({
-        ...p,
+      updateAndSave(proj => ({
+        ...proj,
         blueprint: null,
         blueprintStatus: "error" as GenerationStatus,
         blueprintLastError: errorMessage,
@@ -296,13 +376,37 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         phase: "blueprint" as GenerationPhase,
       }));
       const err = classifyError(e, { operation: "blueprint" });
-      scriptoraLog.error("blueprint", formatUserMessage(err), { projectId: newProject?.id, raw: e?.message });
+      scriptoraLog.error("blueprint", formatUserMessage(err), { projectId: p?.id, raw: e?.message });
       addMessage("assistant", `❌ ${formatUserMessage(err)}`);
       toast.error(errorMessage);
     } finally {
       removeGenerating("blueprint");
     }
-  }, [addMessage, updateAndSave]);
+  }, [project, addMessage, updateAndSave]);
+
+  const approveBlueprint = useCallback(async () => {
+    const p = getLatestProject() || project;
+    if (!p?.blueprint) {
+      toast.error("Genera prima il blueprint.");
+      return;
+    }
+    const now = new Date().toISOString();
+    updateAndSave(proj => ({
+      ...proj,
+      blueprintApproved: true,
+      blueprintApprovedAt: now,
+      configStatus: "approved",
+      phase: initialPhaseAfterBlueprint(proj.config),
+    }));
+    addMessage("assistant", "✅ Struttura approvata. Puoi generare front matter, capitoli e back matter.");
+    toast.success("Blueprint approvato — generazione sbloccata");
+  }, [project, addMessage, updateAndSave]);
+
+  const startNewBook = useCallback(async (config: BookConfig) => {
+    const created = await createProjectDraft(config);
+    if (!created) return;
+    await generateBlueprintForProject();
+  }, [createProjectDraft, generateBlueprintForProject]);
 
   const regenerateBlueprint = useCallback(async () => {
     const p = getLatestProject() || project;
@@ -318,7 +422,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
     try {
       addMessage("assistant", "Rigenerazione blueprint in corso... 🏗️");
-      const { blueprint, source } = await generateBlueprint(p.config, p.genreLock, { projectId: p.id });
+      const { blueprint, source } = await runGenerateBlueprint(p.config, p.genreLock, { projectId: p.id });
       updateAndSave(pr => ({
         ...pr,
         blueprint,
@@ -326,7 +430,8 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         blueprintStatus: "completed" as GenerationStatus,
         blueprintLastError: null,
         blueprintValidationErrors: [],
-        phase: pr.phase === "idle" || pr.phase === "blueprint" ? "front-matter" as GenerationPhase : pr.phase,
+        blueprintApproved: false,
+        phase: "blueprint" as GenerationPhase,
       }));
       if (source === "repaired") toast.success("Blueprint recuperato e validato.");
       else toast.success("Blueprint rigenerato con successo.");
@@ -363,7 +468,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       blueprintStatus: "completed" as GenerationStatus,
       blueprintLastError: null,
       blueprintValidationErrors: [],
-      phase: pr.phase === "idle" || pr.phase === "blueprint" ? "front-matter" as GenerationPhase : pr.phase,
+      phase: pr.phase === "idle" || pr.phase === "blueprint" ? initialPhaseAfterBlueprint(pr.config) : pr.phase,
     }));
     toast.success("Struttura base creata dalla configurazione. Puoi raffinarla con AI.");
     addMessage("assistant", "Struttura base sicura creata dalla configurazione. Puoi raffinarla capitolo per capitolo o rigenerare con AI.");
@@ -372,6 +477,16 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   const generateFrontMatterSection = useCallback(async () => {
     const p = getLatestProject() || project;
     if (!p?.blueprint) return;
+
+    if (!isFrontMatterEnabled(p.config)) {
+      updateAndSave(pr => ({
+        ...pr,
+        frontMatter: null,
+        frontMatterStatus: "completed" as GenerationStatus,
+        phase: pr.phase === "front-matter" ? "chapters" as GenerationPhase : pr.phase,
+      }));
+      return;
+    }
 
     const maxProjectWords = await getMaxProjectWordsForActivePlan();
     if (countProjectWordsHard(p) >= maxProjectWords) {
@@ -387,7 +502,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     try {
       addMessage("assistant", p.frontMatter ? "Regenerating front matter... 📖" : "Generating front matter... 📖");
       const latestP = getLatestProject() || p;
-      const fm = await generateFrontMatter(latestP.config, latestP.blueprint!, latestP.genreLock, { projectId: latestP.id });
+      const fm = await runGenerateFrontMatter(latestP.config, latestP.blueprint!, latestP.genreLock, { projectId: latestP.id });
       updateAndSave(pr => ({
         ...pr,
         frontMatter: fm,
@@ -409,6 +524,17 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   const generateBackMatterSection = useCallback(async () => {
     const p = getLatestProject() || project;
     if (!p?.blueprint) return;
+
+    if (!isBackMatterEnabled(p.config)) {
+      updateAndSave(pr => ({
+        ...pr,
+        backMatter: null,
+        backMatterStatus: "completed" as GenerationStatus,
+        phase: "complete" as GenerationPhase,
+      }));
+      addMessage("assistant", "Back matter disabilitato — libro completato.");
+      return;
+    }
 
     const missing = getMissingChapterIndexes(p);
     if (missing.length > 0) {
@@ -450,7 +576,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     try {
       addMessage("assistant", p.backMatter ? "Regenerating back matter... 📝" : "Generating back matter... 📝");
       const latestP = getLatestProject() || p;
-      const bm = await generateBackMatter(latestP.config, latestP.blueprint!, latestP.chapters, latestP.genreLock, { projectId: latestP.id });
+      const bm = await runGenerateBackMatter(latestP.config, latestP.blueprint!, latestP.chapters, latestP.genreLock, { projectId: latestP.id });
       updateAndSave(pr => ({ ...pr, backMatter: bm, phase: "complete", backMatterStatus: "completed" as GenerationStatus }));
       addMessage("assistant", "🎉 Book generation complete!");
     } catch (e: any) {
@@ -468,9 +594,13 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     const p = getLatestProject() || project;
     if (!p) return;
 
-    if (!p.frontMatter || p.phase === "front-matter") {
+    if (isFrontMatterEnabled(p.config) && (!p.frontMatter || p.phase === "front-matter")) {
       await generateFrontMatterSection();
       return;
+    }
+
+    if (!isFrontMatterEnabled(p.config) && p.phase === "front-matter") {
+      updateAndSave(pr => ({ ...pr, phase: "chapters" as GenerationPhase }));
     }
 
     if (!allTargetChaptersGenerated(p)) {
@@ -483,8 +613,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       return;
     }
 
-    if (!p.backMatter || p.phase === "back-matter") {
+    if (isBackMatterEnabled(p.config) && (!p.backMatter || p.phase === "back-matter")) {
       await generateBackMatterSection();
+    } else if (!isBackMatterEnabled(p.config)) {
+      updateAndSave(pr => ({ ...pr, phase: "complete" as GenerationPhase }));
     }
   }, [project, addMessage, updateAndSave, generateFrontMatterSection, generateBackMatterSection]);
 
@@ -536,7 +668,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         index,
       );
 
-      const chapter = await generateChapterChunked(
+      const chapter = await runGenerateChapterChunked(
         latestP.config, latestP.blueprint!, index, prevChapters, chapterOverride,
         (progress) => {
           // Throttle: skip UI/state churn when tokens arrive faster than ~6fps.
@@ -608,7 +740,9 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
         chapters[index] = { ...finalChapter, status: "completed" as GenerationStatus, lengthOverride: proj.chapters[index]?.lengthOverride };
         const allGenerated = chapters.length >= proj.config.numberOfChapters && chapters.every(c => c.content.length > 0);
-        return { ...proj, chapters, phase: nextPhase === "complete" ? nextPhase : (allGenerated ? "back-matter" as GenerationPhase : proj.phase) };
+        const donePhase = allGenerated ? phaseAfterAllChapters(proj.config) : proj.phase;
+        const refreshed = refreshProjectLongBookMemory({ ...proj, chapters, phase: nextPhase === "complete" ? nextPhase : donePhase });
+        return { ...refreshed, chapters, phase: nextPhase === "complete" ? nextPhase : donePhase };
       });
 
       const latestAfterSave = getLatestProject();
@@ -662,7 +796,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         chapterIndex,
         buildCreditIdempotencyKey("subchapter", p.id, chapterIndex + 1, subIndex + 1),
       );
-      const sub = await generateSubchapter(p.config, p.blueprint, chapterIndex, subIndex, chapter, prevChapters, p.genreLock, {
+      const sub = await runGenerateSubchapter(p.config, p.blueprint, chapterIndex, subIndex, chapter, prevChapters, p.genreLock, {
         projectId: p.id,
         creditOperation,
         idempotencyKey,
@@ -722,7 +856,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         index,
         buildCreditIdempotencyKey("regenerate", latestP.id, index + 1),
       );
-      const chapter = await generateChapter(latestP.config, latestP.blueprint!, index, prevChapters, latestP.chapters[index]?.lengthOverride, latestP.genreLock, {
+      const chapter = await runGenerateChapter(latestP.config, latestP.blueprint!, index, prevChapters, latestP.chapters[index]?.lengthOverride, latestP.genreLock, {
         projectId: latestP.id,
         creditOperation,
         idempotencyKey,
@@ -768,7 +902,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     addGenerating(genKey);
     try {
       addMessage("assistant", `Evaluating Chapter ${index + 1} quality... 🔍`);
-      const rating = await evaluateChapterQuality(p.config, p.chapters[index], index, { projectId: p.id });
+      const rating = await runEvaluateChapterQuality(p.config, p.chapters[index], index, { projectId: p.id });
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
         chapters[index] = { ...chapters[index], aiRating: rating, qualityRating: rating.score };
@@ -815,7 +949,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         index,
         buildCreditIdempotencyKey("rewrite", latestP.id, index + 1, level),
       );
-      const chapter = await rewriteChapter(
+      const chapter = await runRewriteChapter(
         latestP.config, latestP.blueprint!, latestP.chapters[index], index,
         latestP.chapters.slice(0, index), instruction, aiRating, level, {
           projectId: latestP.id,
@@ -871,7 +1005,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       let rating: AIQualityRating;
       try {
         const latestP = getLatestProject() || p;
-        rating = await evaluateChapterQuality(latestP.config, latestP.chapters[index], index, { projectId: latestP.id });
+        rating = await runEvaluateChapterQuality(latestP.config, latestP.chapters[index], index, { projectId: latestP.id });
         updateAndSave(proj => {
           const chapters = [...proj.chapters];
           chapters[index] = { ...chapters[index], aiRating: rating, qualityRating: rating.score };
@@ -1029,14 +1163,16 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     };
     const resolvedAuthor = resolveAuthorIdentity(baseConfig.authorIdentity, baseConfig.authorIdentityId);
     const hasAuthorName = !!String(baseConfig.authorName || baseConfig.author || baseConfig.writerName || "").trim();
-    const hydrated: BookProject = {
+    const hydrated: BookProject = normalizeBookProject({
       ...p,
-      config: resolvedAuthor
-        ? applyAuthorIdentityToConfig(baseConfig, resolvedAuthor) as BookConfig
-        : hasAuthorName
-          ? baseConfig
-          : applyAuthorIdentityToConfig(baseConfig, getSelectedAuthorIdentity()) as BookConfig,
-    };
+      config: normalizeBookConfig(
+        resolvedAuthor
+          ? applyAuthorIdentityToConfig(baseConfig, resolvedAuthor) as BookConfig
+          : hasAuthorName
+            ? baseConfig
+            : applyAuthorIdentityToConfig(baseConfig, getSelectedAuthorIdentity()) as BookConfig,
+      ),
+    });
     const normalized = normalizeProjectChapterTitles(hydrated);
 
     setProject(normalized);
@@ -1073,12 +1209,14 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     toast.success("Generazione libro completo avviata");
 
     try {
-      // 1) Front matter (se mancante)
+      // 1) Front matter (se abilitato e mancante)
       let cur = getLatestProject() || start;
-      if (!cur.frontMatter) {
+      if (isFrontMatterEnabled(cur.config) && !cur.frontMatter) {
         onSectionFocus?.("front-matter");
         await generateFrontMatterSection();
         await new Promise(r => setTimeout(r, 300));
+      } else if (!isFrontMatterEnabled(cur.config) && cur.phase === "front-matter") {
+        updateAndSave(pr => ({ ...pr, phase: "chapters" as GenerationPhase }));
       }
 
       // 2) Tutti i capitoli in sequenza (coerenza garantita: ogni capitolo legge i precedenti)
@@ -1128,14 +1266,15 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         return;
       }
 
-      if (!cur.backMatter) {
-        // forza phase a back-matter se necessario
+      if (isBackMatterEnabled(cur.config) && !cur.backMatter) {
         if (cur.phase !== "back-matter") {
           updateAndSave(p => ({ ...p, phase: "back-matter" as GenerationPhase }));
           await new Promise(r => setTimeout(r, 200));
         }
         onSectionFocus?.("back-matter");
         await generateBackMatterSection();
+      } else if (!isBackMatterEnabled(cur.config)) {
+        updateAndSave(pr => ({ ...pr, phase: "complete" as GenerationPhase }));
       }
 
       addMessage("assistant", "🎉 Libro completo! Pronto per l'esportazione.");
@@ -1210,7 +1349,9 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
   return {
     project, messages, isAnythingGenerating, generatingSet, chunkProgress,
-    startNewBook, regenerateBlueprint, createSafeBlueprint,
+    startNewBook, createProjectDraft, createProjectWithApprovedBlueprint,
+    generateBlueprintForProject, approveBlueprint,
+    regenerateBlueprint, createSafeBlueprint,
     generateNext, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter,
     regenerateChapter, rewriteChapterWithDepth, evaluateChapter, autoRewriteToThreshold,
     updateConfig, updateChapterContent, updateChapterTitle, updateSubchapterContent, updateSubchapterTitle,

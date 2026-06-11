@@ -157,7 +157,7 @@ function removeInstructionBleed(text: string): string {
     /^GENRE LOCK/i,
     /^BOOK ARCHITECTURE/i,
     /^Arc position:/i,
-    /^\[Nexora\]/i,
+    /^\[Scriptora\]/i,
     /^\[Scriptora\]/i,
     /^Chunk \d+ of \d+/i,
     /^CHUNK_START\b/i,
@@ -205,8 +205,8 @@ function removeInstructionBleed(text: string): string {
   result = result.replace(/\s{2,}/g, " ");            // multiple spaces → single
   result = result.replace(/\[\s*\]/g, "");            // empty brackets []
   result = result.replace(/\(\s*\)/g, "");            // empty parens ()
-  // Strip orphaned bracket labels mid-line: [Nexora], [Scriptora], [DEBUG], etc.
-  result = result.replace(/\[(Nexora|Scriptora|Genre Coach|Assistente|Writing Coach|DEBUG|INTERNAL|PROMPT|CONTEXT)[^\]]*\]/gi, "");
+  // Strip orphaned bracket labels mid-line: [Scriptora], [Scriptora], [DEBUG], etc.
+  result = result.replace(/\[(Scriptora|Scriptora|Genre Coach|Assistente|Writing Coach|DEBUG|INTERNAL|PROMPT|CONTEXT)[^\]]*\]/gi, "");
   // Clean up any double-spaces left by above removals
   result = result.replace(/\s{2,}/g, " ").replace(/^ /gm, "");
 

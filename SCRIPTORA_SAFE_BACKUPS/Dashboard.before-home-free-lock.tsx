@@ -149,7 +149,7 @@ export default function Home() {
     // in the background. Eliminates the visible "frozen" gap on first paint.
     loadProjects((fresh) => setProjects(fresh)).then(setProjects);
     try {
-      const raw = sessionStorage.getItem("nexora-active-run");
+      const raw = sessionStorage.getItem("scriptora-active-run");
       if (raw) setActiveRun(JSON.parse(raw));
     } catch { /* noop */ }
 
@@ -159,8 +159,8 @@ export default function Home() {
       setActiveRun(null);
       loadProjects((fresh) => setProjects(fresh)).then(setProjects);
     };
-    window.addEventListener("nexora-dev-mode-change", onDevChange);
-    return () => window.removeEventListener("nexora-dev-mode-change", onDevChange);
+    window.addEventListener("scriptora-dev-mode-change", onDevChange);
+    return () => window.removeEventListener("scriptora-dev-mode-change", onDevChange);
   }, []);
 
   // Reset intent if user edits the idea after detection
@@ -194,9 +194,9 @@ export default function Home() {
     setProjects((items) => items.filter((p) => p.id !== projectId));
     try {
       if (getLastProjectId() === projectId) setLastProjectId("");
-      sessionStorage.removeItem("nexora-open-project");
+      sessionStorage.removeItem("scriptora-open-project");
     } catch {}
-    window.dispatchEvent(new Event("nexora-projects-change"));
+    window.dispatchEvent(new Event("scriptora-projects-change"));
   };
 
   const changeLang = (lang: UILanguage) => {
@@ -206,8 +206,8 @@ export default function Home() {
   };
 
   const goApp = (opts?: { section?: string; projectId?: string }) => {
-    if (opts?.projectId) sessionStorage.setItem("nexora-open-project", opts.projectId);
-    if (opts?.section) sessionStorage.setItem("nexora-open-section", opts.section);
+    if (opts?.projectId) sessionStorage.setItem("scriptora-open-project", opts.projectId);
+    if (opts?.section) sessionStorage.setItem("scriptora-open-section", opts.section);
     navigate("/app");
   };
 
@@ -251,7 +251,7 @@ export default function Home() {
       finalConfig = config;
     }
 
-    sessionStorage.setItem("nexora-new-book", JSON.stringify(finalConfig));
+    sessionStorage.setItem("scriptora-new-book", JSON.stringify(finalConfig));
     setShowNewBook(false);
     navigate("/app");
   };
@@ -303,7 +303,7 @@ export default function Home() {
 
     const best = Math.max(0, Math.min(2, i.bestTitleIndex || 0));
     sessionStorage.setItem(
-      "nexora-auto-brief",
+      "scriptora-auto-brief",
       JSON.stringify({
         idea: idea.trim(),
         genre: i.genre,

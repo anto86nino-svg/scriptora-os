@@ -7,8 +7,8 @@ import { useEffect, useState } from "react";
 import type { PlanTier } from "@/lib/plan";
 import { isDevMode } from "@/lib/dev-mode";
 
-const KEY = "nexora_dev_plan_override";
-const EVT = "nexora-dev-plan-override-change";
+const KEY = "scriptora_dev_plan_override";
+const EVT = "scriptora-dev-plan-override-change";
 
 export function getDevPlanOverride(): PlanTier {
   if (!isDevMode()) return "premium";
@@ -24,13 +24,13 @@ export function setDevPlanOverride(plan: PlanTier): void {
   try { sessionStorage.setItem(KEY, plan); } catch { /* noop */ }
   window.dispatchEvent(new Event(EVT));
   // Also fire generic plan-change so all hooks refresh.
-  window.dispatchEvent(new Event("nexora-plan-change"));
+  window.dispatchEvent(new Event("scriptora-plan-change"));
 }
 
 export function clearDevPlanOverride(): void {
   try { sessionStorage.removeItem(KEY); } catch { /* noop */ }
   window.dispatchEvent(new Event(EVT));
-  window.dispatchEvent(new Event("nexora-plan-change"));
+  window.dispatchEvent(new Event("scriptora-plan-change"));
 }
 
 export function useDevPlanOverride(): PlanTier {
@@ -38,10 +38,10 @@ export function useDevPlanOverride(): PlanTier {
   useEffect(() => {
     const sync = () => setPlan(getDevPlanOverride());
     window.addEventListener(EVT, sync);
-    window.addEventListener("nexora-dev-mode-change", sync);
+    window.addEventListener("scriptora-dev-mode-change", sync);
     return () => {
       window.removeEventListener(EVT, sync);
-      window.removeEventListener("nexora-dev-mode-change", sync);
+      window.removeEventListener("scriptora-dev-mode-change", sync);
     };
   }, []);
   return plan;

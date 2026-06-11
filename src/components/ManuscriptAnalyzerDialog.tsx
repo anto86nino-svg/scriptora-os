@@ -249,7 +249,7 @@ function analyzeChapter(title: string, content: string): ManuscriptChapterAnalys
   const strengths: EditorialSignal[] = [];
   const issues: EditorialSignal[] = [];
   const advice: EditorialSignal[] = [];
-  let score = 88;
+  let score = 68;
 
   if (wordCount < 700) {
     score -= 14;
@@ -590,10 +590,10 @@ export function ManuscriptAnalyzerDialog({
       const project = buildProjectFromAnalysis(analysis, genre, bookLanguage, subtitle);
       await saveProjectAsync(project);
       try {
-        sessionStorage.setItem("nexora-open-project", project.id);
-        sessionStorage.setItem("nexora-open-section", "chapter-0");
+        sessionStorage.setItem("scriptora-open-project", project.id);
+        sessionStorage.setItem("scriptora-open-section", "chapter-0");
       } catch { /* noop */ }
-      window.dispatchEvent(new Event("nexora-projects-change"));
+      window.dispatchEvent(new Event("scriptora-projects-change"));
       toast.success(t("manuscript_project_created"));
       onClose();
       navigate("/app");
@@ -784,6 +784,7 @@ export function ManuscriptAnalyzerDialog({
                       {analysis.score}
                     </p>
                     <p className="mt-1 text-[11px] text-muted-foreground">{t("manuscript_rating_scale")}</p>
+                    <p className="mt-2 text-[10px] leading-4 text-muted-foreground/80">{t("manuscript_heuristic_disclaimer")}</p>
                   </div>
                   <div className="rounded-lg border border-white/10 bg-white/[0.055] p-4">
                     <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("chapters")}</p>

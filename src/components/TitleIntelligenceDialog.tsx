@@ -118,7 +118,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
       n.keywords?.length ? `Keyword: ${n.keywords.join(", ")}` : "",
     ].filter(Boolean);
 
-    sessionStorage.setItem("nexora-auto-brief", JSON.stringify({
+    sessionStorage.setItem("scriptora-auto-brief", JSON.stringify({
       idea: ideaParts.join("\n"),
       genre: n.genre || bookGenre || "Self-help",
       subcategory: n.name || "",
@@ -157,7 +157,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
       return;
     }
 
-    sessionStorage.setItem("nexora-auto-brief", JSON.stringify({
+    sessionStorage.setItem("scriptora-auto-brief", JSON.stringify({
       idea: bookPromise || bookTitle || card.title,
       genre: bookGenre || "Self-help",
       subcategory: bookGenre || "",

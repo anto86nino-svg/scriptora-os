@@ -6,7 +6,8 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Lock, Check, Crown, Zap } from "lucide-react";
 import { PLAN_PRICING, PlanTier } from "@/lib/plan";
-import { isPaymentsLive, paymentsConfig, resolvePlanAction, type PaymentPlan } from "@/config/payments";
+import { isPaymentsLive, paymentsConfig, type PaymentPlan } from "@/config/payments";
+import { executePlanAction } from "@/lib/payments/executePlanAction";
 import { ComingSoonPaymentModal } from "@/components/payments/ComingSoonPaymentModal";
 
 interface UpgradeModalProps {
@@ -34,19 +35,17 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
     paymentsConfig.plans.find((p) => p.id === "premium_monthly") ??
     paymentsConfig.plans.find((p) => p.id === "lifetime");
 
-  const handlePick = (plan: PaymentPlan | undefined, fallbackName: string) => {
+  const handlePick = async (plan: PaymentPlan | undefined, fallbackName: string) => {
     if (!plan) {
       setComingSoonName(fallbackName);
       return;
     }
-    const action = resolvePlanAction(plan);
-    if (action.kind === "external") {
-      window.open(action.url, "_blank", "noopener,noreferrer");
+    const result = await executePlanAction(plan);
+    if (result.openedCheckout) {
       onClose();
       return;
     }
-    // coming_soon | missing_link | free → stay in-app
-    setComingSoonName(plan.name);
+    if (result.showComingSoon) setComingSoonName(plan.name);
   };
 
   return (

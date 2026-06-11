@@ -11,11 +11,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 
-const CANONICAL_DASHBOARD_URL = "https://scriptora-os.vercel.app/dashboard";
-const CANONICAL_AUTH_URL = "https://scriptora-os.vercel.app/auth";
 const AUTH_DEBUG_PREFIX = "[auth-debug]";
 
 function logAuthDebug(label: string, details?: Record<string, unknown>) {
+  if (!import.meta.env.DEV) return;
   if (details === undefined) {
     console.log(AUTH_DEBUG_PREFIX, label);
     appendAuthDebugTrace(label);
@@ -98,21 +97,13 @@ function getStorageDebugState() {
 }
 
 function getAuthRedirectUrl(): string {
-  if (typeof window === "undefined") return CANONICAL_AUTH_URL;
-  const host = window.location.hostname;
-  if (host === "localhost" || host === "127.0.0.1") {
-    return `${window.location.origin}/auth`;
-  }
-  return CANONICAL_AUTH_URL;
+  if (typeof window === "undefined") return "/auth";
+  return `${window.location.origin}/auth`;
 }
 
 function getDashboardRedirectUrl(): string {
-  if (typeof window === "undefined") return CANONICAL_DASHBOARD_URL;
-  const host = window.location.hostname;
-  if (host === "localhost" || host === "127.0.0.1") {
-    return `${window.location.origin}/dashboard`;
-  }
-  return CANONICAL_DASHBOARD_URL;
+  if (typeof window === "undefined") return "/dashboard";
+  return `${window.location.origin}/dashboard`;
 }
 
 function redirectToDashboard(navigate: NavigateFunction) {
@@ -320,6 +311,7 @@ export default function AuthPage() {
   }, [logoClicks]);
 
   const handleLogoClick = () => {
+    if (!import.meta.env.DEV) return;
     const next = logoClicks + 1;
     if (next >= 3) {
       setLogoClicks(0);
