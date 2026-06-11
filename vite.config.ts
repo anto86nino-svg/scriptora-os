@@ -49,9 +49,11 @@ export default defineConfig(({ mode }) => ({
             if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
             if (id.includes("@tanstack")) return "vendor-query";
             if (id.includes("lucide-react")) return "vendor-icons";
-            if (id.includes("react-dom")) return "vendor-react-dom";
-            if (id.includes("react-router")) return "vendor-router";
-            if (id.includes("/react/")) return "vendor-react";
+            // Do NOT manually chunk react/react-dom/scheduler/react-router — forced splits
+            // create vendor-react ↔ vendor-misc circular imports and a black screen in prod.
+            if (id.includes("react-router") || id.includes("@remix-run/router")) {
+              return "vendor-router";
+            }
             if (id.includes("zod")) return "vendor-zod";
             if (id.includes("date-fns")) return "vendor-dates";
             return "vendor-misc";
