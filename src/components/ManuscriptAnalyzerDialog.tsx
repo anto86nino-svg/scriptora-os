@@ -615,8 +615,8 @@ export function ManuscriptAnalyzerDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] max-w-6xl overflow-hidden border-white/10 bg-background/95 p-0 shadow-2xl backdrop-blur-2xl">
-        <DialogHeader className="border-b border-white/10 px-5 py-4 text-left sm:px-6">
+      <DialogContent className="flex max-h-[min(92dvh,900px)] w-[calc(100vw-1.5rem)] max-w-6xl flex-col gap-0 overflow-hidden border-white/10 bg-background/95 p-0 shadow-2xl backdrop-blur-2xl sm:max-w-6xl">
+        <DialogHeader className="shrink-0 border-b border-white/10 px-5 py-4 text-left sm:px-6">
           <div className="flex min-w-0 items-start gap-3 pr-8">
             <div className="ios-icon ios-icon-teal h-11 w-11 shrink-0 rounded-[16px]">
               <Wand2 className="h-5 w-5" />
@@ -632,8 +632,8 @@ export function ManuscriptAnalyzerDialog({
           </div>
         </DialogHeader>
 
-        <div className="grid max-h-[calc(92vh-84px)] gap-0 overflow-y-auto lg:grid-cols-[0.9fr_1.1fr]">
-          <section className="border-b border-white/10 p-4 sm:p-5 lg:border-b-0 lg:border-r">
+        <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[0.9fr_1.1fr] lg:overflow-hidden">
+          <section className="min-h-0 overflow-y-auto overscroll-contain border-b border-white/10 p-4 sm:p-5 lg:max-h-none lg:border-b-0 lg:border-r">
             <input
               ref={fileInputRef}
               type="file"
@@ -734,7 +734,7 @@ export function ManuscriptAnalyzerDialog({
                 }}
                 placeholder={t("manuscript_paste_placeholder")}
                 rows={10}
-                className="min-h-[220px] w-full resize-y rounded-lg border border-white/10 bg-white/[0.055] px-3 py-2.5 text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary"
+                className="max-h-[32dvh] min-h-[160px] w-full resize-y rounded-lg border border-white/10 bg-white/[0.055] px-3 py-2.5 text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary"
               />
             </label>
 
@@ -766,9 +766,9 @@ export function ManuscriptAnalyzerDialog({
             </div>
           </section>
 
-          <section className="p-4 sm:p-5">
+          <section className="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5">
             {!analysis ? (
-              <div className="flex min-h-[520px] flex-col items-center justify-center rounded-lg border border-white/10 bg-white/[0.035] p-8 text-center">
+              <div className="flex min-h-[min(40dvh,320px)] flex-col items-center justify-center rounded-lg border border-white/10 bg-white/[0.035] p-8 text-center">
                 <span className="ios-icon ios-icon-teal h-16 w-16 rounded-[22px]">
                   <FileText className="h-7 w-7" />
                 </span>
@@ -882,7 +882,7 @@ export function ManuscriptAnalyzerDialog({
                   </div>
                 </div>
 
-                <div className="sticky bottom-0 -mx-4 -mb-4 border-t border-white/10 bg-background/90 p-4 backdrop-blur-2xl sm:-mx-5 sm:-mb-5 sm:p-5">
+                <div className="border-t border-white/10 bg-background/90 p-4 sm:p-5">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[11px] leading-5 text-muted-foreground">
                       {t("manuscript_rewrite_hint")}

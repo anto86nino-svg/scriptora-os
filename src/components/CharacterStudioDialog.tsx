@@ -631,13 +631,14 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     if (ideaLoading || loading) return;
     setIdeaLoading(true);
 
+    const currentIdea = idea.trim();
+    const currentLooksLikeGeneratedIdea = currentIdea.length > 180;
+    const previousIdeas = [
+      ...(currentLooksLikeGeneratedIdea ? [currentIdea] : []),
+      ...readIdeaHistory(),
+    ].filter(Boolean).slice(0, 12);
+
     try {
-      const currentIdea = idea.trim();
-      const currentLooksLikeGeneratedIdea = currentIdea.length > 180;
-      const previousIdeas = [
-        ...(currentLooksLikeGeneratedIdea ? [currentIdea] : []),
-        ...readIdeaHistory(),
-      ].filter(Boolean).slice(0, 12);
       const diversitySeed = typeof crypto !== "undefined" && "randomUUID" in crypto
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -891,9 +892,9 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card/95 p-4 backdrop-blur">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-background/80 p-4 backdrop-blur-sm">
+      <div className="relative flex h-[min(92dvh,900px)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+        <div className="z-10 flex shrink-0 items-center justify-between border-b border-border bg-card/95 p-4 backdrop-blur">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-pink-500/15 text-pink-400 flex items-center justify-center">
               <Users className="h-5 w-5" />
@@ -918,7 +919,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
           </div>
         </div>
 
-        <div className="p-5 space-y-5">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-5">
           <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
             <div>
               <div className="flex items-center justify-between gap-2">
@@ -1103,9 +1104,9 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
                 setCharacterBible(e.target.value);
                 setSaved(false);
               }}
-              rows={18}
+              rows={10}
               placeholder="Qui apparirà la Character Bible generata da Scriptora..."
-              className="font-mono text-xs leading-relaxed"
+              className="max-h-[32dvh] min-h-[120px] resize-y font-mono text-xs leading-relaxed"
             />
           </div>
 

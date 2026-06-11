@@ -5,6 +5,7 @@ import { resolveGenreKey } from "@/lib/genre-intelligence";
 import { getEditorialTier } from "@/lib/editorial-mastery";
 import { buildBlueprintIntegrityRuntimeBlock } from "@/lib/BlueprintIntegrityEngine";
 import { getCurrentUserId } from "@/services/storageService";
+import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/billing/billingHeaders";
 import { toast } from "sonner";
 
 export type JobKind = "dominate" | "patch";
@@ -117,7 +118,8 @@ export function DominationProvider({ children }: { children: ReactNode }) {
 
       for (let iter = 1; iter <= maxIterations; iter++) {
         const { data, error } = await supabase.functions.invoke("dominate-chapter", {
-          body: {
+          headers: getBillingSimulationHeaders(),
+          body: withBillingSimulationBody({
             chapterTitle: chapter.title,
             chapterText: currentText,
             genre: project.config.genre,
@@ -132,7 +134,7 @@ export function DominationProvider({ children }: { children: ReactNode }) {
             masteryMode,
             projectId: project.id,
             userId: getCurrentUserId(),
-          },
+          }),
         });
         if (error) throw new Error(error.message || "Edge function error");
         if (!data) throw new Error("No response");
@@ -231,7 +233,8 @@ export function DominationProvider({ children }: { children: ReactNode }) {
       const { chargePremiumOperation } = await import("@/lib/billing/charge");
       await chargePremiumOperation("fix_chapter", { projectId: project.id, chapterIndex: chapterIndex + 1, source: "patch_chapter" }, undefined, [project.id, chapterIndex + 1, "patch"]);
       const { data, error } = await supabase.functions.invoke("patch-chapter", {
-        body: {
+        headers: getBillingSimulationHeaders(),
+        body: withBillingSimulationBody({
           chapterTitle: chapter.title,
           chapterText: chapter.content,
           genre: project.config.genre,
@@ -243,7 +246,7 @@ export function DominationProvider({ children }: { children: ReactNode }) {
           }),
           projectId: project.id,
           userId: getCurrentUserId(),
-        },
+        }),
       });
       if (error) throw new Error(error.message || "Edge function error");
       if (!data) throw new Error("No response");

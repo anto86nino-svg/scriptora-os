@@ -7,6 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { LiveCoachTab } from "@/components/LiveCoachTab";
+import { toast } from "sonner";
 
 interface AICoachPanelProps {
   project: BookProject;
@@ -201,6 +202,7 @@ Respond in ${bookLang}. Return ONLY valid JSON.`,
       }
     } catch (e: any) {
       console.error("AI Coach multi-pass error:", e);
+      toast.error(e?.message || "AI Coach non disponibile — riprova tra poco.");
     } finally {
       setLoading(false);
       setCurrentPass(0);

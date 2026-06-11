@@ -560,9 +560,9 @@ export function CoverGenerator({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
-      <div className="bg-card/95 border border-border/80 rounded-2xl shadow-2xl max-w-6xl lg:max-w-[1500px] w-full max-h-[min(94dvh,900px)] overflow-hidden lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)]">
-        <div className="px-4 sm:px-5 lg:px-7 py-4 lg:py-5 border-b border-border/70 flex items-center justify-between gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/75 p-3 backdrop-blur-sm sm:p-5">
+      <div className="flex h-[min(94dvh,900px)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-card/95 shadow-2xl lg:max-w-[1500px] lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)]">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 px-4 py-4 sm:px-5 lg:px-7 lg:py-5">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary">
               <BookOpen className="h-4 w-4" />
@@ -579,13 +579,13 @@ export function CoverGenerator({
           </button>
         </div>
 
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_460px] xl:grid-cols-[minmax(0,1fr)_500px] max-h-[calc(92vh-78px)] lg:max-h-[calc(94vh-86px)] overflow-y-auto lg:overflow-hidden">
-          <div className="relative p-4 sm:p-6 lg:p-8 xl:p-10 bg-black/20 lg:bg-gradient-to-br lg:from-black/45 lg:via-background/80 lg:to-primary/10 flex flex-col items-center justify-center gap-4 lg:min-h-[calc(94vh-86px)] lg:overflow-hidden">
+        <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_460px] lg:overflow-hidden xl:grid-cols-[minmax(0,1fr)_500px]">
+          <div className="relative flex min-h-0 flex-col items-center justify-center gap-4 overflow-y-auto overscroll-contain bg-black/20 p-4 sm:p-6 lg:overflow-hidden lg:bg-gradient-to-br lg:from-black/45 lg:via-background/80 lg:to-primary/10 lg:p-8 xl:p-10">
             <div className="w-full flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:absolute lg:left-8 lg:right-8 lg:top-6 lg:w-auto lg:rounded-2xl lg:border lg:border-white/10 lg:bg-background/35 lg:px-4 lg:py-3 lg:backdrop-blur-xl">
               <span>{spec.label}</span>
               <span>{spec.width} x {spec.height}px - {spec.exportNote}</span>
             </div>
-            <div className="w-full min-h-[360px] lg:min-h-0 lg:h-full flex items-center justify-center lg:pt-8">
+            <div className="flex min-h-[240px] w-full items-center justify-center lg:h-full lg:min-h-0 lg:pt-8">
               <div className="w-full flex items-center justify-center lg:rounded-[2rem] lg:border lg:border-white/10 lg:bg-white/[0.035] lg:p-6 xl:p-8 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_28px_80px_rgba(0,0,0,0.45)]">
                 <canvas
                   ref={canvasRef}
@@ -595,7 +595,7 @@ export function CoverGenerator({
             </div>
           </div>
 
-          <div className="p-4 sm:p-5 lg:p-6 space-y-5 lg:space-y-6 bg-background/55 lg:bg-background/75 lg:max-h-[calc(94vh-86px)] lg:overflow-y-auto">
+          <div className="min-h-0 space-y-5 overflow-y-auto overscroll-contain bg-background/55 p-4 sm:p-5 lg:space-y-6 lg:bg-background/75 lg:p-6">
             <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">

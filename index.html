@@ -35,6 +35,25 @@
       })();
     </script>
     <div id="root"></div>
+    <script>
+      (function () {
+        function show(msg) {
+          var root = document.getElementById("root");
+          if (!root || root.childElementCount > 0) return;
+          root.innerHTML =
+            '<div style="min-height:100vh;display:grid;place-items:center;background:#0a0a1a;color:#fff;font-family:system-ui;padding:24px">' +
+            '<div style="max-width:560px"><h1 style="font-size:22px;margin:0 0 12px">Avvio fallito</h1>' +
+            '<p style="opacity:.8;line-height:1.5;margin:0 0 12px">Errore JavaScript prima del render. Hard refresh (Cmd+Shift+R) o <code>npm run build</code>.</p>' +
+            '<pre style="background:#141432;padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap;overflow:auto">' +
+            String(msg).replace(/</g, "&lt;") +
+            "</pre></div></div>";
+        }
+        window.addEventListener("error", function (e) { show(e.message || "Unknown error"); });
+        window.addEventListener("unhandledrejection", function (e) {
+          show(e.reason && e.reason.message ? e.reason.message : String(e.reason));
+        });
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

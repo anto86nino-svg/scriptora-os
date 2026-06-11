@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { lazy, Suspense, useState, useEffect } from "react";
-import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId } from "@/services/storageService";
+import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
 const CoverGenerator = lazy(() =>
@@ -494,7 +494,7 @@ export default function Dashboard() {
     const finalConfig = mergeCharacterStudioIntoConfig(config);
     setSelectedAuthorIdentityId(activeAuthor.id);
     sessionStorage.setItem("scriptora-new-book", JSON.stringify({ mode: "legacy", config: finalConfig }));
-    setShowNewBook(false);
+    setShowBookCreationWizard(false);
     navigate("/app");
   };
 
@@ -1586,15 +1586,15 @@ export default function Dashboard() {
       {/* Idea modal — advanced launchpad generation flow */}
       {showIdeaModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-2xl"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-background/70 p-4 backdrop-blur-2xl"
           onClick={() => !launching && !detecting && setShowIdeaModal(false)}
         >
           <div
-            className="ios-panel relative max-h-[90vh] w-full max-w-xl overflow-y-auto p-6"
+            className="ios-panel relative flex h-[min(90dvh,900px)] w-full max-w-xl flex-col overflow-hidden p-0"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-            <div className="mb-4 flex items-center justify-between">
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+            <div className="flex shrink-0 items-center justify-between px-6 pb-4 pt-6">
               <div className="flex items-center gap-2">
                 <div className="ios-icon ios-icon-blue flex h-10 w-10 items-center justify-center rounded-[16px]">
                   <Sparkles className="h-4 w-4" />
@@ -1614,6 +1614,7 @@ export default function Dashboard() {
               </button>
             </div>
 
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6">
             <label htmlFor="idea-modal" className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
               <Sparkles className="h-3 w-3 text-primary" /> {t("your_book_idea")}
             </label>
@@ -1846,7 +1847,7 @@ export default function Dashboard() {
               {!intent ? (
                 <div className="flex flex-col gap-1.5">
                   <button
-                    onClick={detectIntent}
+                    onClick={() => void detectIntent()}
                     disabled={!heroValid || detecting || launching}
                     className="ios-toolbar-button h-11 px-4 text-sm font-medium disabled:opacity-50"
                   >
@@ -1869,6 +1870,7 @@ export default function Dashboard() {
                 {t("min_idea_chars")}
               </p>
             )}
+            </div>
           </div>
         </div>
       )}
@@ -1876,14 +1878,14 @@ export default function Dashboard() {
       {/* Library modal — opens via the Biblioteca card */}
       {showLibrary && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-2xl"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-background/70 p-4 backdrop-blur-2xl"
           onClick={() => setShowLibrary(false)}
         >
           <div
-            className="ios-panel relative max-h-[85vh] w-full max-w-2xl overflow-y-auto p-6"
+            className="ios-panel relative flex h-[min(85dvh,800px)] w-full max-w-2xl flex-col overflow-hidden p-0"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-4 flex items-center justify-between">
+            <div className="flex shrink-0 items-center justify-between px-6 pb-4 pt-6">
               <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
                 <Library className="h-4 w-4 text-emerald-500" />
                 {t("library")}
@@ -1896,12 +1898,14 @@ export default function Dashboard() {
                 <X className="h-4 w-4" />
               </button>
             </div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6">
             <LibrarySection
               projects={projects}
               onOpen={(id) => { setShowLibrary(false); goApp({ projectId: id }); }}
               onDelete={handleDelete}
               onExport={() => { setShowLibrary(false); setShowExport(true); }}
             />
+            </div>
           </div>
         </div>
       )}

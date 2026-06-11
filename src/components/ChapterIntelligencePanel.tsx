@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Sparkles, X, Loader2, AlertCircle, Check, Scissors, Flame, Wand2, Trash2, RefreshCw, TrendingUp, Swords, ArrowRight, ChevronDown, Eye, Lock, Bot, EyeOff, Quote, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { BookProject } from "@/types/book";
@@ -303,7 +304,8 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
     try {
       await requireCreditsAsync("fix_chapter", { projectId: project.id, chapterIndex: chapterIndex + 1, source: "fix_section", mode: fixMode });
       const { data, error } = await supabase.functions.invoke("fix-section", {
-        body: {
+        headers: getBillingSimulationHeaders(),
+        body: withBillingSimulationBody({
           paragraphText: weak.text,
           action: weak.action,
           problem: weak.problem,
@@ -318,7 +320,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
           mode: fixMode,
           projectId: project.id,
           userId: getCurrentUserId(),
-        },
+        }),
       });
       if (error) throw new Error(error.message || "Edge function error");
       if (!data) throw new Error("Nessuna risposta dal server");
@@ -418,9 +420,9 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
 
   const idle = !analyzing && !patching && !patchResult && !dominating && !dominateResult && !result;
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-      <div className="w-full max-w-4xl max-h-[min(94dvh,900px)] bg-card border border-border/60 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden bg-black/60 p-4 backdrop-blur-sm animate-fade-in">
+      <div className="flex h-[min(94dvh,900px)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border/50">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -466,7 +468,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
         )}
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin p-5 space-y-5 max-h-[min(72dvh,720px)]">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin p-5 space-y-5">
           {/* IDLE — Patch as default */}
           {idle && (
             <div className="text-center py-8 space-y-5">
@@ -932,6 +934,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
         </div>
       </div>
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} reason="dominate" currentPlan={plan} />
-    </div>
+    </div>,
+    document.body,
   );
 }

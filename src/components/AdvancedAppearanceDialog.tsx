@@ -174,9 +174,9 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl">
-        <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-card/95 p-4 backdrop-blur">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-black/70 p-4 backdrop-blur-sm">
+      <div className="flex h-[min(92dvh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+        <div className="z-20 flex shrink-0 items-center justify-between border-b border-border bg-card/95 p-4 backdrop-blur">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
               <Settings className="h-5 w-5" />
@@ -194,7 +194,7 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
           </Button>
         </div>
 
-        <div className="space-y-6 p-5">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain p-5">
           <section className="rounded-2xl border border-border/70 bg-background/40 p-4">
             <div className="mb-3 flex items-center gap-2">
               <Languages className="h-4 w-4 text-primary" />

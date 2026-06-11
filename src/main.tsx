@@ -4,85 +4,73 @@ import { applyMobilePerformanceBoot } from "@/lib/mobile-performance";
 import { applyAdaptiveViewportBoot } from "@/lib/adaptive-viewport-engine";
 import { applyHubPreferences } from "@/lib/settings-store";
 import { purgeImmersiveThemeExperiment } from "@/lib/theme-reset";
-import { createRoot } from "react-dom/client";
-import { recoverFromChunkLoadError } from "@/lib/lazyWithRetry";
-import App from "./App.tsx";
 import "./index.css";
 import { migrateLegacyStorageKeys } from "./lib/storage-key-migration";
-import { hydrateFromIndexedDB } from "./lib/storage";
-import { supabase } from "./integrations/supabase/client";
 
-
-
-// Env sanity check — mostra errore visibile invece di pagina bianca
-// se le variabili VITE_SUPABASE_* sono mancanti (es. .env vuoto dopo export).
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
   import.meta.env.VITE_SUPABASE_ANON_KEY;
-if (!SUPABASE_URL || !SUPABASE_KEY) {
+
+function showConfigError(): void {
   const root = document.getElementById("root");
-  if (root) {
-    root.innerHTML = `
-      <div style="min-height:100vh;display:grid;place-items:center;background:#0a0a1a;color:#fff;font-family:system-ui;padding:24px">
-        <div style="max-width:560px">
-          <h1 style="font-size:24px;margin:0 0 12px">Configurazione mancante</h1>
-          <p style="opacity:.8;line-height:1.5;margin:0 0 16px">
-            Scriptora non trova le variabili Supabase nel file <code>.env</code>.
-            Crea (o ripristina) un file <code>.env</code> nella root del progetto con:
-          </p>
-          <pre style="background:#141432;padding:16px;border-radius:8px;overflow:auto;font-size:13px;line-height:1.6">VITE_SUPABASE_URL=https://&lt;project&gt;.supabase.co
+  if (!root) return;
+  root.innerHTML = `
+    <div style="min-height:100vh;display:grid;place-items:center;background:#0a0a1a;color:#fff;font-family:system-ui;padding:24px">
+      <div style="max-width:560px">
+        <h1 style="font-size:24px;margin:0 0 12px">Configurazione mancante</h1>
+        <p style="opacity:.8;line-height:1.5;margin:0 0 16px">
+          Scriptora non trova le variabili Supabase. Crea un file <code style="background:#141432;padding:2px 6px;border-radius:4px">.env</code>
+          nella root del progetto, poi riavvia con <code style="background:#141432;padding:2px 6px;border-radius:4px">npm run dev</code>
+          (porta <strong>8081</strong>).
+        </p>
+        <pre style="background:#141432;padding:16px;border-radius:8px;overflow:auto;font-size:13px;line-height:1.6">VITE_SUPABASE_URL=https://&lt;project&gt;.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=&lt;anon-or-publishable-key&gt;
 VITE_SUPABASE_PROJECT_ID=&lt;project-ref&gt;</pre>
-          <p style="opacity:.6;font-size:13px;margin-top:16px">
-            Vedi <code>README_EXPORT.md</code> per la guida completa.
-          </p>
-        </div>
-      </div>`;
+        <p style="opacity:.6;font-size:13px;margin-top:16px">
+          Per deploy: imposta le stesse variabili nella piattaforma di hosting prima di <code>npm run build</code>.
+        </p>
+      </div>
+    </div>`;
+}
+
+function showBootError(message: string): void {
+  const root = document.getElementById("root");
+  if (!root || root.childElementCount > 0) return;
+  root.innerHTML = `
+    <div style="min-height:100vh;display:grid;place-items:center;background:#0a0a1a;color:#fff;font-family:system-ui;padding:24px">
+      <div style="max-width:560px">
+        <h1 style="font-size:24px;margin:0 0 12px">Avvio fallito</h1>
+        <p style="opacity:.8;line-height:1.5;margin:0 0 16px">
+          L'app non è partita. Prova un hard refresh (<strong>Cmd+Shift+R</strong>) o ricostruisci:
+        </p>
+        <pre style="background:#141432;padding:16px;border-radius:8px;overflow:auto;font-size:12px;line-height:1.5;white-space:pre-wrap">${message.replace(/</g, "&lt;")}</pre>
+        <button onclick="location.reload()" style="margin-top:16px;padding:10px 18px;border-radius:8px;border:none;background:#3b82f6;color:#fff;font-size:14px;cursor:pointer">
+          Ricarica
+        </button>
+      </div>
+    </div>`;
+}
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  showConfigError();
+} else {
+  migrateLegacyStorageKeys();
+
+  try {
+    applyMobilePerformanceBoot();
+    applyAdaptiveViewportBoot();
+    purgeImmersiveThemeExperiment();
+    applyScriptoraAppearance();
+    applyVisualPreset();
+    applyHubPreferences();
+  } catch {
+    /* ignore appearance boot errors */
   }
-  throw new Error("Missing Supabase env vars: VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY");
-}
 
-// Migrate pre-rebrand storage keys so existing users keep projects & settings.
-migrateLegacyStorageKeys();
-
-// Strip Horror / immersive experiment state, then apply clean default appearance.
-try {
-  applyMobilePerformanceBoot();
-  applyAdaptiveViewportBoot();
-  purgeImmersiveThemeExperiment();
-  applyScriptoraAppearance();
-  applyVisualPreset();
-  applyHubPreferences();
-} catch {
-  /* ignore appearance boot errors */
-}
-
-// After deploy, stale tabs may reference old hashed chunks — reload once automatically.
-if (typeof window !== "undefined") {
-  window.addEventListener("unhandledrejection", (event) => {
-    if (recoverFromChunkLoadError(event.reason)) {
-      event.preventDefault();
-    }
+  import("./app-boot.tsx").catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[Scriptora boot]", error);
+    showBootError(message);
   });
 }
-
-// Render IMMEDIATELY — do not block first paint on IndexedDB or network.
-// Hydration runs in the background; pages refetch when ready.
-createRoot(document.getElementById("root")!).render(<App />);
-
-// Background hydration (non-blocking).
-hydrateFromIndexedDB().catch(() => {});
-
-// Recovery: mark stale "running" generations as failed (best-effort, non-blocking).
-(async () => {
-  try {
-    const { data, error } = await supabase.rpc("auto_fail_stale_runs" as any);
-    if (!error && typeof data === "number" && data > 0) {
-      console.log(`[recovery] Auto-failed ${data} stale run(s).`);
-    }
-  } catch {
-    /* ignore */
-  }
-})();
-

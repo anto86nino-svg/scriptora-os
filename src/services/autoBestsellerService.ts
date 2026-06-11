@@ -107,9 +107,11 @@ export function runAutoBestsellerStream(
   const promise = (async (): Promise<AutoBestsellerResult | null> => {
     let result: AutoBestsellerResult | null = null;
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const authToken = sessionData.session?.access_token || PUBLISHABLE_KEY;
       const resp = await fetch(url, {
         method: "GET",
-        headers: { Accept: "text/event-stream", Authorization: `Bearer ${PUBLISHABLE_KEY}` },
+        headers: { Accept: "text/event-stream", Authorization: `Bearer ${authToken}` },
         signal: controller.signal,
       });
       if (!resp.ok || !resp.body) {
@@ -203,10 +205,16 @@ function dispatch(
 // =====================================================================
 
 export async function createRunRow(input: AutoBestsellerInput, batchId?: string): Promise<string | null> {
-  // Import lazily to avoid a cycle with storageService.
   const { getCurrentUserId } = await import("@/services/storageService");
+  const userId = getCurrentUserId();
   const { data, error } = await supabase
     .from("auto_bestseller_runs")
+    .insert({
+      user_id: userId,
+      input: input as unknown as Record<string, unknown>,
+      batch_id: batchId ?? null,
+      status: "running",
+    })
     .select("id")
     .single();
   if (error) {

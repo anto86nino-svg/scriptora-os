@@ -817,6 +817,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       const err = classifyError(e);
       scriptoraLog.error("subchapter", formatUserMessage(err), { raw: e?.message });
       addMessage("assistant", `❌ ${formatUserMessage(err)}`);
+      toast.error(formatToastMessage(err));
     } finally {
       removeGenerating(genKey);
     }
@@ -1224,6 +1225,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       const fullBookPlan = await getActivePlanForEngine();
       const fullBookMaxWords = getPlanLimits(fullBookPlan).maxWordsPerBook;
       const total = cur.config.numberOfChapters;
+      let chapterFailures = 0;
       for (let i = 0; i < total; i++) {
         const latest = getLatestProject() || cur;
 
@@ -1240,6 +1242,8 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         }
         onSectionFocus?.(`chapter-${i}`);
         await generateSingleChapter(i);
+        const afterChapterGen = getLatestProject();
+        if (afterChapterGen?.chapters[i]?.status === "error") chapterFailures += 1;
         await new Promise(r => setTimeout(r, 400));
 
         const afterChapter = getLatestProject() || latest;
@@ -1277,8 +1281,19 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         updateAndSave(pr => ({ ...pr, phase: "complete" as GenerationPhase }));
       }
 
-      addMessage("assistant", "🎉 Libro completo! Pronto per l'esportazione.");
-      toast.success("Libro completato! Esporta in EPUB, PDF, DOCX o TXT");
+      const finalProject = getLatestProject() || cur;
+      const incompleteChapters = finalProject.chapters.filter(
+        (ch, idx) => idx < total && (!ch?.content || ch.content.length <= 200),
+      ).length;
+      const failedCount = chapterFailures + incompleteChapters;
+
+      if (failedCount > 0) {
+        addMessage("assistant", `⚠️ Libro parzialmente generato: ${failedCount} capitolo/i non completati. Riprova dalle sezioni in errore.`);
+        toast.warning(`Generazione parziale: ${failedCount} capitolo/i da completare.`);
+      } else {
+        addMessage("assistant", "🎉 Libro completo! Pronto per l'esportazione.");
+        toast.success("Libro completato! Esporta in EPUB, PDF, DOCX o TXT");
+      }
     } catch (e: any) {
       const err = classifyError(e);
       scriptoraLog.error("generate-complete", formatUserMessage(err), { raw: e?.message });

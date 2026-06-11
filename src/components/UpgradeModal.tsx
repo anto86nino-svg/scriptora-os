@@ -50,7 +50,7 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden bg-background border-border">
+      <DialogContent className="flex max-h-[min(92dvh,900px)] max-w-2xl flex-col gap-0 overflow-hidden p-0 bg-background border-border sm:max-w-2xl">
         <div className="bg-gradient-to-br from-primary/15 via-background to-background p-6 border-b border-border">
           <DialogHeader>
             <div className="mx-auto h-12 w-12 rounded-full bg-primary/15 flex items-center justify-center mb-3">
