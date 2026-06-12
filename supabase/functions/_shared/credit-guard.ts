@@ -137,14 +137,15 @@ export async function guardCreditOperation(
 
   const auth = await requireAuthenticatedUser(req);
   if ("ok" in auth && auth.ok === false) return auth;
-  if (!("userId" in auth)) {
+  if (!("userId" in auth) || !auth.userId) {
     return { ok: false, userId: null, cost: 0, error: "Invalid session", status: 401 };
   }
+  const userId = auth.userId;
 
-  const simulated = await isCreditSimulationAllowed(req, opts?.bodySimulated, auth.userId);
+  const simulated = await isCreditSimulationAllowed(req, opts?.bodySimulated, userId);
 
   return commitCreditsForUser({
-    userId: auth.userId,
+    userId,
     userJwt: token,
     operation,
     cost: opts?.cost,

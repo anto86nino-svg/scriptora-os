@@ -24,6 +24,10 @@ function jsonResponse(payload: Record<string, unknown>, status: number) {
   });
 }
 
+function resultPayload(payload: Record<string, unknown>): Uint8Array {
+  return new TextEncoder().encode(`\n__RESULT__${JSON.stringify(payload)}`);
+}
+
 function publicErrorMessage(status: number): string {
   if (status === 429) return "Rate limited. Please wait a moment and try again.";
   if (status === 402 || status === 401) return "DeepSeek API key invalid or credits exhausted. Check your API key.";
@@ -167,8 +171,20 @@ serve(async (req) => {
             }
           }
 
+          if (!accumulated.trim()) {
+            safeEnqueue(resultPayload({
+              success: false,
+              error: "AI provider returned empty content. Please retry generation.",
+              code: "EMPTY_PROVIDER_CONTENT",
+            }));
+            if (!closed) {
+              try { controller.close(); } catch { /* already closed by client abort */ }
+            }
+            return;
+          }
+
           // Final payload as JSON line at the end
-          safeEnqueue(encoder.encode(`\n__RESULT__${JSON.stringify({ content: accumulated })}`));
+          safeEnqueue(resultPayload({ success: true, content: accumulated }));
 
           // Track usage (estimated — DeepSeek doesn't return usage in stream mode)
           logAIUsage({
@@ -194,7 +210,16 @@ serve(async (req) => {
           console.error("[generate-book] stream error:", e instanceof Error ? e.message : e);
           try { reader.cancel(); } catch { /* ignore */ }
           if (!closed) {
-            try { controller.error(e); } catch { /* already closed */ }
+            const message = e instanceof Error ? e.message : "AI provider stream failed.";
+            if (safeEnqueue(resultPayload({
+              success: false,
+              error: message,
+              code: "STREAM_INTERRUPTED",
+            }))) {
+              try { controller.close(); } catch { /* already closed */ }
+            } else {
+              try { controller.error(e); } catch { /* already closed */ }
+            }
           }
         }
       },

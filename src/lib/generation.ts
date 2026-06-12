@@ -146,6 +146,86 @@ function describeAIHttpError(status: number, message: string): string {
   return clean || `AI generation failed (${status})`;
 }
 
+function safeParseJson<T = any>(text: string): T | null {
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
+
+function extractErrorMessageFromBody(text: string): string {
+  const parsed = safeParseJson<{ error?: unknown; message?: unknown; code?: unknown }>(text);
+  const message = parsed?.error || parsed?.message || parsed?.code;
+  return typeof message === "string" && message.trim() ? message.trim() : text.trim();
+}
+
+function parseGenerationResultPayload(
+  body: string,
+  contentType: string,
+  taskType?: string,
+): { content: string } {
+  const trimmed = body.trim();
+  const marker = body.lastIndexOf("__RESULT__");
+  const payloadText = marker >= 0
+    ? body.slice(marker + "__RESULT__".length).trim()
+    : trimmed;
+
+  const expectsJson = marker >= 0
+    || contentType.toLowerCase().includes("application/json")
+    || /^[\[{]/.test(payloadText);
+
+  if (expectsJson) {
+    const parsed = safeParseJson<{ success?: boolean; content?: unknown; error?: unknown; message?: unknown }>(payloadText);
+    if (!parsed) {
+      scriptoraLog.error("generation", "Failed to parse generation payload", {
+        taskType,
+        contentType,
+        markerFound: marker >= 0,
+        payloadPreview: payloadText.slice(0, 240),
+      });
+      throw new Error("Risposta non JSON valida dalla funzione di generazione. Riprova.");
+    }
+    if (parsed.success === false || parsed.error || parsed.message) {
+      const message = String(parsed.error || parsed.message || "La generazione non e' riuscita.").trim();
+      if (message.includes("credits exhausted") || /crediti insufficienti/i.test(message)) {
+        throw new AICreditsError(message);
+      }
+      throw new Error(message);
+    }
+    if (typeof parsed.content !== "string" || !parsed.content.trim()) {
+      throw new Error("La funzione di generazione ha risposto senza testo del capitolo.");
+    }
+    return { content: parsed.content };
+  }
+
+  if (/<!doctype html|<html/i.test(trimmed)) {
+    scriptoraLog.error("generation", "Generation endpoint returned HTML instead of stream/JSON", {
+      taskType,
+      contentType,
+      preview: trimmed.slice(0, 240),
+    });
+    throw new Error("Risposta HTML dalla funzione di generazione: controlla deploy/env della Edge Function.");
+  }
+
+  if (trimmed.length > 80) {
+    scriptoraLog.warn("generation", "Generation response had no marker; using plain text body as fallback", {
+      taskType,
+      contentType,
+      chars: trimmed.length,
+    });
+    return { content: trimmed };
+  }
+
+  scriptoraLog.error("generation", "No result marker found in AI response", {
+    taskType,
+    contentType,
+    bufferLength: body.length,
+    preview: trimmed.slice(0, 240),
+  });
+  throw new Error("La risposta AI e' incompleta o vuota. Riprova la generazione.");
+}
+
 async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: number = 300000, usage?: AIUsageContext): Promise<string> {
   const controller = new AbortController();
   // Use a watchdog: reset whenever we receive bytes (DeepSeek can be slow but
@@ -185,10 +265,11 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
       signal: controller.signal,
     });
 
+    const contentType = res.headers.get("content-type") || "";
+
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      let errMsg = text;
-      try { errMsg = JSON.parse(text).error || text; } catch {}
+      const errMsg = extractErrorMessageFromBody(text);
       logEdgeError("GENERATION", "generate-book", {
         status: res.status,
         body: errMsg,
@@ -217,24 +298,7 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
     }
     clearInterval(watchdog);
 
-    const marker = buffer.lastIndexOf("__RESULT__");
-    if (marker === -1) {
-      scriptoraLog.error("generation", "No result marker found in AI response — stream may be incomplete", { taskType: usage?.taskType, bufferLength: buffer.length });
-      throw new Error("Empty response from AI");
-    }
-    const jsonStr = buffer.slice(marker + "__RESULT__".length).trim();
-    let parsed: { content?: string; error?: string };
-    try {
-      parsed = JSON.parse(jsonStr);
-    } catch (parseError) {
-      scriptoraLog.error("generation", "Failed to parse AI result payload", { parseError, taskType: usage?.taskType });
-      throw new Error("AI response was incomplete. Please retry generation.");
-    }
-    if (parsed.error) {
-      if (parsed.error.includes("credits exhausted")) throw new AICreditsError(parsed.error);
-      throw new Error(parsed.error);
-    }
-    if (!parsed.content) throw new Error("Empty response from AI");
+    const parsed = parseGenerationResultPayload(buffer, contentType, usage?.taskType);
     logGenerationEnd("GENERATION", "callAIOnce", { chars: parsed.content.length, taskType: usage?.taskType });
     notifyUsageChanged();
 
@@ -360,15 +424,26 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
       if (res.status === 402) throw new AICreditsError(errMsg || "AI credits exhausted");
       throw new Error(errMsg || `Blueprint generation failed (${res.status})`);
     }
-    const { content, error } = await res.json();
+    const responseText = await res.text().catch(() => "");
+    const parsedResponse = safeParseJson<{ content?: unknown; error?: unknown; message?: unknown }>(responseText);
+    if (!parsedResponse) {
+      scriptoraLog.error("generation", "Blueprint endpoint returned malformed response", {
+        taskType: usage?.taskType,
+        status: res.status,
+        contentType: res.headers.get("content-type") || "",
+        preview: responseText.slice(0, 240),
+      });
+      throw new Error("Risposta non JSON dalla funzione blueprint. Controlla deploy/env e riprova.");
+    }
+    const { content, error } = parsedResponse;
     if (error) {
       if (String(error).includes("credits")) throw new AICreditsError(error);
-      throw new Error(error);
+      throw new Error(String(error));
     }
-    if (!content) throw new Error("Empty blueprint response");
+    if (typeof content !== "string" || !content.trim()) throw new Error("Empty blueprint response");
     notifyUsageChanged();
     logGenerationEnd("BLUEPRINT", "callBlueprintFast", { chars: content.length, taskType: usage?.taskType });
-    return content as string;
+    return content;
   };
   return withRetry(callOnce, {
     maxAttempts: 2,
