@@ -74,22 +74,44 @@ export function OneFlowHome({
         onEdit={onAuthorEdit}
       />
 
-      <button
-        type="button"
-        onClick={onWriteBook}
-        className={`group mb-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-sky-400/30 bg-gradient-to-r from-sky-950/50 via-slate-900/50 to-sky-900/30 text-left shadow-[0_20px_60px_rgba(14,165,233,0.16)] transition-all hover:-translate-y-0.5 hover:border-sky-400/45 ${compact ? "p-3.5 sm:p-4" : "mb-4 p-5 sm:p-6"}`}
-      >
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-200/80">Percorso principale</p>
-          <h2 className={`mt-1 font-bold tracking-tight text-white ${compact ? "text-lg sm:text-xl" : "text-2xl sm:text-3xl"}`}>✍️ Inizia il tuo libro</h2>
-          <p className={`mt-1 max-w-lg leading-6 text-white/70 ${compact ? "text-xs sm:text-sm" : "mt-2 text-sm"}`}>
-            Idea → Blueprint → Capitoli → Diagnostica → Cover → Export. Un solo percorso guidato.
-          </p>
-        </div>
-        <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-950 shadow-[0_16px_40px_rgba(14,165,233,0.35)] transition-transform group-hover:translate-x-0.5">
-          <Rocket className="h-5 w-5 text-sky-600" />
-        </span>
-      </button>
+      <div className={`mb-3 grid gap-3 ${compact ? "lg:grid-cols-[minmax(0,1.55fr)_minmax(260px,0.85fr)]" : "lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.9fr)]"}`}>
+        <button
+          type="button"
+          onClick={onWriteBook}
+          className={`group flex w-full items-center justify-between gap-3 rounded-2xl border border-sky-400/30 bg-gradient-to-r from-sky-950/55 via-slate-900/55 to-sky-900/30 text-left shadow-[0_20px_60px_rgba(14,165,233,0.16)] transition-all hover:-translate-y-0.5 hover:border-sky-400/45 ${compact ? "p-3.5 sm:p-4" : "p-5 sm:p-6"}`}
+        >
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-200/80">Percorso principale</p>
+            <h2 className={`mt-1 font-bold tracking-tight text-white ${compact ? "text-lg sm:text-xl" : "text-2xl sm:text-3xl"}`}>✍️ Inizia il tuo libro</h2>
+            <p className={`mt-1 max-w-lg leading-6 text-white/72 ${compact ? "text-xs sm:text-sm" : "mt-2 text-sm"}`}>
+              Dal primo capitolo alla pubblicazione. Scriptora ti guida tra idea, blueprint, capitoli, cover, KDP ed export.
+            </p>
+            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/64">
+              20 decisioni guidate · nessun campo lasciato al caso
+            </span>
+          </div>
+          <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-slate-950 shadow-[0_16px_40px_rgba(14,165,233,0.35)] transition-transform group-hover:translate-x-0.5">
+            <Rocket className="h-5 w-5 text-sky-600" />
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onStudyWithAI}
+          className={`group flex w-full items-center justify-between gap-3 rounded-2xl border border-emerald-300/25 bg-gradient-to-br from-emerald-950/40 via-slate-900/48 to-slate-950/40 text-left shadow-[0_18px_52px_rgba(16,185,129,0.12)] transition-all hover:-translate-y-0.5 hover:border-emerald-300/45 ${compact ? "p-3.5 sm:p-4" : "p-5 sm:p-6"}`}
+        >
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-200/80">Seconda pelle</p>
+            <h2 className={`mt-1 font-bold tracking-tight text-white ${compact ? "text-base sm:text-lg" : "text-xl sm:text-2xl"}`}>🎓 Scriptora Study OS</h2>
+            <p className={`mt-1 max-w-md leading-6 text-white/68 ${compact ? "text-xs sm:text-sm" : "mt-2 text-sm"}`}>
+              Carica libri, PDF e appunti. Riassunti, quiz, flashcard e spiegazioni in pochi secondi.
+            </p>
+          </div>
+          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-300 text-slate-950 shadow-[0_14px_36px_rgba(16,185,129,0.25)] transition-transform group-hover:translate-x-0.5">
+            <GraduationCap className="h-5 w-5 text-emerald-800" />
+          </span>
+        </button>
+      </div>
 
       <div className={`hidden gap-2 md:grid sm:grid-cols-3 ${compact ? "mb-3" : "mb-4 gap-3"}`}>
         <StudioCard
@@ -136,7 +158,6 @@ export function OneFlowHome({
         </button>
         {showMoreTools && (
           <div className="mt-2 grid grid-cols-2 gap-2">
-            <ActionChip icon={GraduationCap} label="Study OS" onClick={onStudyWithAI} accent="cyan" />
             <ActionChip icon={Wrench} label="Publishing" onClick={onOpenPublishing || onExportStudio} />
             {(onAutoBestsellerShortcut || onOpenBestseller) && (
               <ActionChip
@@ -153,7 +174,6 @@ export function OneFlowHome({
 
       <div className={`hidden gap-2 md:grid ${compact ? "grid-cols-2 sm:grid-cols-4" : "gap-3 sm:grid-cols-2 lg:grid-cols-4"}`}>
         <ActionChip icon={PenLine} label="Writer Studio" onClick={onOpenWriter || onContinue || onWriteBook} accent="cyan" />
-        <ActionChip icon={GraduationCap} label="Study OS" onClick={onStudyWithAI} accent="cyan" />
         <ActionChip icon={Wrench} label="Publishing" onClick={onOpenPublishing || onExportStudio} />
         {(onAutoBestsellerShortcut || onOpenBestseller) && (
           <ActionChip

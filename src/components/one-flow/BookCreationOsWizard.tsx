@@ -55,6 +55,97 @@ function emptyCharacter(): BookCharacter {
 const inputClass =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/35 focus:border-sky-400/50 focus:outline-none";
 
+const BOOK_CREATION_DECISIONS = [
+  "Tipo libro",
+  "Sottogenere",
+  "Tono",
+  "Target lettore",
+  "Lunghezza",
+  "Struttura",
+  "Stile autore",
+  "Velocità narrativa",
+  "Intensità emotiva",
+  "Personaggi",
+  "Conflitto",
+  "Promessa",
+  "Ambientazione",
+  "Hook iniziale",
+  "Twist",
+  "Obiettivo commerciale",
+  "Voice consistency",
+  "Blueprint",
+  "Conferma",
+  "Generazione reale",
+] as const;
+
+const GUIDED_STARTERS = [
+  {
+    id: "dark-romance",
+    label: "Dark Romance",
+    title: "Il Patto delle Cose Spezzate",
+    subtitle: "Ogni desiderio ha un prezzo. Ogni promessa lascia un segno.",
+    bookTypeId: "dark-romance",
+    genre: "dark-romance" as Genre,
+    subgenre: "dark romance psicologico, tensione morale, slow burn",
+    tone: "oscuro, sensuale, trattenuto, cinematografico",
+    targetReader: "Lettrici romance adulte che amano tensione, ambiguità morale, ferite emotive e payoff lento.",
+    idea: "Una protagonista con una ferita antica entra in una relazione pericolosa con una persona che sembra offrirle salvezza, ma le chiede di guardare la parte più scomoda di sé.",
+    conflict: "Desiderio di essere vista contro paura di perdere controllo.",
+    promise: "Una storia di attrazione, potere, vulnerabilità progressiva e conseguenze emotive.",
+    setting: "Città notturna, luoghi privati, lusso freddo, stanze dove ogni gesto pesa.",
+    hook: "La protagonista riceve un invito che non dovrebbe accettare, firmato da qualcuno che conosce il suo segreto.",
+    commercialGoal: "Alta tensione emotiva, capitoli con micro-hook e posizionamento BookTok/dark romance.",
+  },
+  {
+    id: "fantasy",
+    label: "Fantasy",
+    title: "La Cattedrale delle Anime Dimenticate",
+    subtitle: "Ogni segreto ha un prezzo. Ogni anima reclama il proprio debito.",
+    bookTypeId: "fantasy",
+    genre: "fantasy" as Genre,
+    subgenre: "portal fantasy gotico, mito sacro, viaggio nel mondo ferito",
+    tone: "mitico, atmosferico, emotivo, immersivo",
+    targetReader: "Lettori fantasy adulti che cercano worldbuilding, mistero, colpa, magia con costo e personaggi contraddittori.",
+    idea: "Una restauratrice di reliquie viene chiamata a riparare un portale sacro, ma scopre che la sua memoria è parte della prigione che dovrebbe aprire.",
+    conflict: "Salvare un mondo che la condanna o distruggere la verità che la tiene viva.",
+    promise: "Un viaggio di colpa, fede, magia e scelta impossibile.",
+    setting: "Ducato in autunno eterno, cattedrali di nebbia, reliquie vive, campane funebri.",
+    hook: "La prima reliquia che tocca pronuncia il suo nome in una lingua morta.",
+    commercialGoal: "Fantasy immersivo con promessa forte, capitoli a rivelazione controllata e cover direction gotica.",
+  },
+  {
+    id: "self-help",
+    label: "Self Help",
+    title: "L'Arte di Tornare a Sé",
+    subtitle: "Una guida pratica per ritrovare calma, direzione e presenza.",
+    bookTypeId: "self-help",
+    genre: "self-help" as Genre,
+    subgenre: "crescita personale, regolazione emotiva, vita quotidiana",
+    tone: "chiaro, autorevole, caldo, pratico",
+    targetReader: "Persone sovraccariche che vogliono strumenti concreti, esempi semplici e un percorso trasformativo realistico.",
+    idea: "Un manuale che accompagna il lettore da confusione e ansia quotidiana verso abitudini pratiche di calma, scelta e presenza.",
+    conflict: "Smettere di vivere in reazione e ricostruire una relazione più stabile con sé stessi.",
+    promise: "Dal caos mentale a una pratica quotidiana sostenibile.",
+    setting: "Vita reale: mattine difficili, lavoro, relazioni, decisioni, corpo e respiro.",
+    hook: "Non hai bisogno di diventare un'altra persona. Hai bisogno di tornare raggiungibile a te stesso.",
+    commercialGoal: "Promessa chiara, capitoli pratici, esercizi e posizionamento Amazon self-help italiano.",
+  },
+] as const;
+
+const TARGET_READER_PRESETS = [
+  "Lettrici romance adulte che vogliono tensione emotiva, vulnerabilità lenta e payoff intenso.",
+  "Lettori fantasy adulti che cercano mondi coerenti, magia con costo e personaggi psicologicamente veri.",
+  "Lettori self-help che vogliono chiarezza, esempi concreti e trasformazione applicabile subito.",
+  "Lettori thriller che amano ritmo, sospetto, reversals e capitoli con domande aperte.",
+];
+
+const COMMERCIAL_GOAL_PRESETS = [
+  "Massima leggibilità Amazon: promessa chiara, titolo forte, hook immediato e capitoli ad alto retention.",
+  "Posizionamento premium: tono autoriale, cover direzionale, sottotitolo memorabile e target lettore netto.",
+  "Serialità: costruire un primo libro con mondo, personaggi e promessa capaci di sostenere una saga.",
+  "Libro pratico: trasformazione visibile, esempi concreti, esercizi e fiducia del lettore.",
+];
+
 export function BookCreationOsWizard({
   open,
   onClose,
@@ -91,6 +182,13 @@ export function BookCreationOsWizard({
   const [tone, setTone] = useState("editoriale, chiaro, coinvolgente");
   const [targetReader, setTargetReader] = useState("");
   const [referenceAuthors, setReferenceAuthors] = useState("");
+  const [coreConflict, setCoreConflict] = useState("");
+  const [narrativePromise, setNarrativePromise] = useState("");
+  const [setting, setSetting] = useState("");
+  const [openingHook, setOpeningHook] = useState("");
+  const [mainTwists, setMainTwists] = useState("");
+  const [commercialGoal, setCommercialGoal] = useState("");
+  const [voiceConsistency, setVoiceConsistency] = useState("Mantieni stessa voce, stesso punto di vista, stessi comportamenti e stessa promessa emotiva in ogni capitolo.");
   const [blueprintPreview, setBlueprintPreview] = useState<BookBlueprint | null>(null);
   const [generatingBlueprint, setGeneratingBlueprint] = useState(false);
   const [launching, setLaunching] = useState(false);
@@ -107,10 +205,21 @@ export function BookCreationOsWizard({
       voice: identityDraft.voice || "",
       language,
     });
+    const guidedBrief = [
+      idea.trim() && `Idea del libro:\n${idea.trim()}`,
+      coreConflict.trim() && `Conflitto principale:\n${coreConflict.trim()}`,
+      narrativePromise.trim() && `Promessa narrativa/editoriale:\n${narrativePromise.trim()}`,
+      setting.trim() && `Ambientazione:\n${setting.trim()}`,
+      openingHook.trim() && `Hook iniziale:\n${openingHook.trim()}`,
+      mainTwists.trim() && `Twist principali:\n${mainTwists.trim()}`,
+      commercialGoal.trim() && `Obiettivo commerciale:\n${commercialGoal.trim()}`,
+      voiceConsistency.trim() && `Voice consistency:\n${voiceConsistency.trim()}`,
+    ].filter(Boolean).join("\n\n");
+
     return normalizeBookConfig(applyAuthorIdentityToConfig({
       title: title.trim() || "Romanzo senza titolo",
       subtitle: subtitle.trim(),
-      idea: idea.trim(),
+      idea: guidedBrief || idea.trim(),
       language,
       titleLanguage: language,
       amazonMarketplace,
@@ -139,6 +248,7 @@ export function BookCreationOsWizard({
     styleProfile, identityDraft, authorName, title, subtitle, idea, language, amazonMarketplace,
     bookTypeId, genre, category, subcategory, subgenre, tone, targetReader, referenceAuthors, chapterLength,
     bookLength, isFree, chapters, subchaptersEnabled, subchaptersPerChapter, matterOptions, characters,
+    coreConflict, narrativePromise, setting, openingHook, mainTwists, commercialGoal, voiceConsistency,
   ]);
 
   const persistDraft = useCallback(() => {
@@ -147,12 +257,14 @@ export function BookCreationOsWizard({
         step, title, subtitle, idea, authorName, language, amazonMarketplace, category, subcategory,
         bookTypeId, genre, subgenre, chapters, chapterLength, bookLength, subchaptersEnabled, subchaptersPerChapter,
         matterOptions, characters, styleProfile, tone, targetReader, referenceAuthors,
+        coreConflict, narrativePromise, setting, openingHook, mainTwists, commercialGoal, voiceConsistency,
       }));
     } catch { /* noop */ }
   }, [
     step, title, subtitle, idea, authorName, language, amazonMarketplace, category, subcategory,
     bookTypeId, genre, subgenre, chapters, chapterLength, bookLength, subchaptersEnabled, subchaptersPerChapter,
     matterOptions, characters, styleProfile, tone, targetReader, referenceAuthors,
+    coreConflict, narrativePromise, setting, openingHook, mainTwists, commercialGoal, voiceConsistency,
   ]);
 
   useEffect(() => {
@@ -184,6 +296,13 @@ export function BookCreationOsWizard({
       if (draft.tone) setTone(draft.tone);
       if (draft.targetReader) setTargetReader(draft.targetReader);
       if (draft.referenceAuthors) setReferenceAuthors(draft.referenceAuthors);
+      if (draft.coreConflict) setCoreConflict(draft.coreConflict);
+      if (draft.narrativePromise) setNarrativePromise(draft.narrativePromise);
+      if (draft.setting) setSetting(draft.setting);
+      if (draft.openingHook) setOpeningHook(draft.openingHook);
+      if (draft.mainTwists) setMainTwists(draft.mainTwists);
+      if (draft.commercialGoal) setCommercialGoal(draft.commercialGoal);
+      if (draft.voiceConsistency) setVoiceConsistency(draft.voiceConsistency);
     } catch { /* noop */ }
   }, [open]);
 
@@ -206,6 +325,47 @@ export function BookCreationOsWizard({
     if (!preset) return;
     setStyleProfile((prev) => ({ ...prev, ...preset.profile, presetId }));
     setTone(preset.label);
+  };
+
+  const applyStudioGenre = (id: string) => {
+    const g = STUDIO_GENRES.find((x) => x.id === id);
+    if (!g) return;
+    setBookTypeId(g.id);
+    setGenre(g.genre);
+    setCategory(g.category);
+    setSubcategory(g.defaultSubcategory);
+    setSubgenre((current) => current || g.defaultSubcategory);
+    setSubchaptersEnabled(g.defaultSubchapters);
+  };
+
+  const applyGuidedStarter = (starter: (typeof GUIDED_STARTERS)[number]) => {
+    applyStudioGenre(starter.bookTypeId);
+    if (!title.trim()) setTitle(starter.title);
+    if (!subtitle.trim()) setSubtitle(starter.subtitle);
+    setGenre(starter.genre);
+    setSubgenre(starter.subgenre);
+    setTone(starter.tone);
+    setTargetReader(starter.targetReader);
+    setIdea(starter.idea);
+    setCoreConflict(starter.conflict);
+    setNarrativePromise(starter.promise);
+    setSetting(starter.setting);
+    setOpeningHook(starter.hook);
+    setCommercialGoal(starter.commercialGoal);
+    setVoiceConsistency("Non cambiare voce, desiderio, ferita, ritmo emotivo o promessa del libro durante i capitoli. La crescita deve essere graduale.");
+    setCharacters((current) => current.some((character) => character.name.trim())
+      ? current
+      : [
+          {
+            name: "Protagonista",
+            role: "Centro emotivo della storia",
+            externalDesire: starter.conflict,
+            wound: "Ferita coerente con il conflitto principale",
+            secret: "Una verità che deve emergere gradualmente",
+            personality: "Contraddittoria, specifica, non perfetta",
+          },
+        ]);
+    toast.success(`${starter.label}: percorso guidato applicato.`);
   };
 
   const goNext = async () => {
@@ -296,7 +456,8 @@ export function BookCreationOsWizard({
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-300">Book Configuration Studio</p>
-            <p className="text-sm font-semibold text-white">Step {step + 1}/{STUDIO_STEPS.length} — {stepLabel}</p>
+            <p className="text-sm font-semibold text-white">Macro step {step + 1}/{STUDIO_STEPS.length} — {stepLabel}</p>
+            <p className="mt-0.5 text-[11px] text-white/45">20 decisioni guidate prima della generazione reale</p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white">
             <X className="h-5 w-5" />
@@ -307,10 +468,37 @@ export function BookCreationOsWizard({
           {step === 0 && (
             <div className="space-y-3">
               <h2 className="text-xl font-semibold text-white">Crea libro</h2>
-              <p className="text-sm text-white/65">Metadati editoriali — nessun blueprint in questa fase.</p>
-              <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titolo libro *" className={inputClass} />
-              <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="Sottotitolo (opzionale)" className={inputClass} />
-              <input value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="Nome autore *" className={inputClass} />
+              <p className="text-sm text-white/65">Se parti da zero, scegli uno starter. Se hai già un'idea, scrivila: Scriptora la trasforma in una direzione editoriale.</p>
+
+              <GuidedDecisionRail activeIndex={0} />
+
+              <div className="grid gap-2 md:grid-cols-3">
+                {GUIDED_STARTERS.map((starter) => (
+                  <button
+                    key={starter.id}
+                    type="button"
+                    onClick={() => applyGuidedStarter(starter)}
+                    className="rounded-2xl border border-white/12 bg-white/[0.055] p-3 text-left transition-colors hover:border-sky-300/35 hover:bg-sky-400/10"
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-200/70">Starter guidato</span>
+                    <span className="mt-2 block text-sm font-bold text-white">{starter.label}</span>
+                    <span className="mt-1 line-clamp-2 text-[11px] leading-4 text-white/58">{starter.promise}</span>
+                  </button>
+                ))}
+              </div>
+
+              <label className="block space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Titolo reale</span>
+                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Es. La Cattedrale delle Anime Dimenticate" className={inputClass} />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Sottotitolo / promessa</span>
+                <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="Es. Ogni segreto ha un prezzo. Ogni anima reclama il proprio debito." className={inputClass} />
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Nome autore</span>
+                <input value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="Nome in copertina" className={inputClass} />
+              </label>
               <select value={language} onChange={(e) => setLanguage(e.target.value as Language)} className={inputClass}>
                 {STUDIO_LANGUAGES.map((lang) => <option key={lang} value={lang}>{lang}</option>)}
               </select>
@@ -319,15 +507,7 @@ export function BookCreationOsWizard({
               </select>
               <select
                 value={bookTypeId}
-                onChange={(e) => {
-                  const g = STUDIO_GENRES.find((x) => x.id === e.target.value);
-                  if (!g) return;
-                  setBookTypeId(g.id);
-                  setGenre(g.genre);
-                  setCategory(g.category);
-                  setSubcategory(g.defaultSubcategory);
-                  setSubchaptersEnabled(g.defaultSubchapters);
-                }}
+                onChange={(e) => applyStudioGenre(e.target.value)}
                 className={inputClass}
               >
                 {STUDIO_GENRES.map((g) => <option key={g.id} value={g.id}>{g.label} ({g.family})</option>)}
@@ -335,12 +515,37 @@ export function BookCreationOsWizard({
               <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Categoria" className={inputClass} />
               <input value={subcategory} onChange={(e) => setSubcategory(e.target.value)} placeholder="Sottocategoria" className={inputClass} />
               <input value={subgenre} onChange={(e) => setSubgenre(e.target.value)} placeholder="Sottogenere (opzionale)" className={inputClass} />
-              <textarea value={idea} onChange={(e) => setIdea(e.target.value)} rows={3} placeholder="Idea / concept (opzionale, per suggerimenti AI)" className={inputClass} />
+              <label className="block space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Idea del libro</span>
+                <textarea value={idea} onChange={(e) => setIdea(e.target.value)} rows={3} placeholder="Scrivi anche male: personaggio, desiderio, problema, atmosfera. Scriptora organizza il resto." className={inputClass} />
+              </label>
               {onDetectIntent && (
                 <button type="button" onClick={() => void detectFromIdea()} className="text-xs font-semibold text-sky-300 hover:text-sky-200">
                   Analizza idea e suggerisci titolo/genere
                 </button>
               )}
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <GuidedTextArea label="Conflitto principale" value={coreConflict} onChange={setCoreConflict} placeholder="Cosa vuole il protagonista, e cosa lo rende impossibile?" />
+                <GuidedTextArea label="Promessa narrativa" value={narrativePromise} onChange={setNarrativePromise} placeholder="Che emozione o trasformazione promette il libro al lettore?" />
+                <GuidedTextArea label="Ambientazione" value={setting} onChange={setSetting} placeholder="Dove accade? Quale mondo, atmosfera, regole, pressione?" />
+                <GuidedTextArea label="Hook iniziale" value={openingHook} onChange={setOpeningHook} placeholder="Quale evento apre il libro e costringe il lettore a restare?" />
+                <GuidedTextArea label="Twist principali" value={mainTwists} onChange={setMainTwists} placeholder="Rivelazioni, inversioni, segreti. Anche solo 2-3 appunti." />
+                <GuidedTextArea label="Voice consistency" value={voiceConsistency} onChange={setVoiceConsistency} placeholder="Cosa Scriptora non deve mai cambiare durante la scrittura?" />
+              </div>
+
+              <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-3">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Obiettivo commerciale</p>
+                <div className="flex flex-wrap gap-2">
+                  {COMMERCIAL_GOAL_PRESETS.map((preset) => (
+                    <button key={preset} type="button" onClick={() => setCommercialGoal(preset)}
+                      className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold ${commercialGoal === preset ? "border-emerald-300/50 bg-emerald-300/15 text-emerald-100" : "border-white/12 text-white/65 hover:bg-white/[0.07]"}`}>
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+                <textarea value={commercialGoal} onChange={(e) => setCommercialGoal(e.target.value)} rows={2} placeholder="Oppure scrivi tu l'obiettivo: Amazon, BookTok, saga, manuale pratico..." className={`${inputClass} mt-3`} />
+              </div>
             </div>
           )}
 
@@ -356,6 +561,18 @@ export function BookCreationOsWizard({
               <textarea value={identityDraft.biography || ""} onChange={(e) => setIdentityDraft((d) => ({ ...d, biography: e.target.value }))} rows={3} placeholder="Bio breve *" className={inputClass} />
               <textarea value={identityDraft.voice || ""} onChange={(e) => setIdentityDraft((d) => ({ ...d, voice: e.target.value }))} rows={2} placeholder="Voce narrativa *" className={inputClass} />
               <input value={targetReader} onChange={(e) => setTargetReader(e.target.value)} placeholder="Target lettore" className={inputClass} />
+              <div className="flex flex-wrap gap-2">
+                {TARGET_READER_PRESETS.map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setTargetReader(preset)}
+                    className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold ${targetReader === preset ? "border-sky-300/50 bg-sky-300/15 text-sky-100" : "border-white/12 text-white/65 hover:bg-white/[0.07]"}`}
+                  >
+                    {preset.slice(0, 42)}…
+                  </button>
+                ))}
+              </div>
               <input value={referenceAuthors} onChange={(e) => setReferenceAuthors(e.target.value)} placeholder="Autori di riferimento" className={inputClass} />
               <input value={identityDraft.archetype || ""} onChange={(e) => setIdentityDraft((d) => ({ ...d, archetype: e.target.value }))} placeholder="Stile prevalente / archetipo" className={inputClass} />
               {!isUserAuthorIdentityConfigured(identityDraft) && (
@@ -557,5 +774,60 @@ export function BookCreationOsWizard({
         </div>
       </div>
     </div>
+  );
+}
+
+function GuidedDecisionRail({ activeIndex }: { activeIndex: number }) {
+  return (
+    <div className="rounded-2xl border border-white/12 bg-white/[0.035] p-3">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/52">Book Creation Super Flow</p>
+        <span className="rounded-full border border-sky-300/25 bg-sky-300/10 px-2 py-1 text-[10px] font-semibold text-sky-100">
+          20 passaggi guidati
+        </span>
+      </div>
+      <div className="flex gap-1.5 overflow-x-auto pb-1">
+        {BOOK_CREATION_DECISIONS.map((decision, index) => (
+          <span
+            key={decision}
+            className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
+              index <= activeIndex
+                ? "border-sky-300/40 bg-sky-300/12 text-sky-100"
+                : "border-white/10 bg-white/[0.04] text-white/42"
+            }`}
+          >
+            {index + 1}. {decision}
+          </span>
+        ))}
+      </div>
+      <p className="mt-2 text-[11px] leading-4 text-white/52">
+        Ogni scelta alimenta blueprint, personaggi, struttura, mercato ed export. Puoi scrivere tu o usare gli starter.
+      </p>
+    </div>
+  );
+}
+
+function GuidedTextArea({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  return (
+    <label className="block rounded-2xl border border-white/12 bg-white/[0.035] p-3">
+      <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">{label}</span>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        rows={3}
+        placeholder={placeholder}
+        className={inputClass}
+      />
+    </label>
   );
 }
