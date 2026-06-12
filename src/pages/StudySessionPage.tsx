@@ -412,7 +412,7 @@ export default function StudySessionPage() {
   const safeKeyConcepts = safeResult?.keyConcepts || [];
 
   return (
-    <div className="scriptora-ios-screen scriptora-app-surface min-h-screen px-4 py-5 sm:px-8">
+    <div className="scriptora-ios-screen scriptora-app-surface scriptora-page-scroll min-h-[100dvh] px-4 py-5 pb-safe sm:px-8">
       <div className="mx-auto max-w-7xl">
         <header className="mb-6 flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/[0.04] p-4 shadow-2xl backdrop-blur-2xl sm:flex-row sm:items-center sm:justify-between">
           <div>

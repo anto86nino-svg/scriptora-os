@@ -179,11 +179,11 @@ export function NotepadDialog({ open, ownerId, onClose }: NotepadDialogProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/70 p-3 backdrop-blur-2xl sm:p-4"
+      className="scriptora-modal-overlay fixed inset-0 z-[9999] flex items-center justify-center bg-background/70 p-3 backdrop-blur-2xl sm:p-4"
       onClick={onClose}
     >
       <div
-        className="ios-panel flex h-[88vh] w-full max-w-6xl flex-col overflow-hidden"
+        className="scriptora-modal-panel ios-panel flex w-full max-w-6xl flex-col overflow-hidden"
         onClick={(event) => event.stopPropagation()}
       >
         <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
@@ -227,8 +227,8 @@ export function NotepadDialog({ open, ownerId, onClose }: NotepadDialogProps) {
           </div>
         </header>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="flex min-h-0 flex-col border-b border-white/10 bg-white/[0.035] p-3 md:border-b-0 md:border-r">
+        <div className="scriptora-modal-body grid min-h-0 flex-1 grid-cols-1 overflow-y-auto md:grid-cols-[300px_minmax(0,1fr)] md:overflow-hidden">
+          <aside className="flex min-h-[220px] flex-col border-b border-white/10 bg-white/[0.035] p-3 md:min-h-0 md:border-b-0 md:border-r">
             <div className="relative mb-3">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -286,7 +286,7 @@ export function NotepadDialog({ open, ownerId, onClose }: NotepadDialogProps) {
             </div>
           </aside>
 
-          <main className="flex min-h-0 flex-col bg-gradient-to-br from-white/[0.05] via-transparent to-amber-300/[0.035]">
+          <main className="flex min-h-[420px] flex-col bg-gradient-to-br from-white/[0.05] via-transparent to-amber-300/[0.035] md:min-h-0">
             {activeNote ? (
               <>
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-3">

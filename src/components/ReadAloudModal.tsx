@@ -109,7 +109,7 @@ export function ReadAloudModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-4">
+      <DialogContent className="scriptora-modal-body w-full max-w-xl overflow-y-auto overflow-x-hidden p-4">
         <DialogHeader>
           <DialogTitle>Scriptora Read Aloud</DialogTitle>
           <DialogDescription>

@@ -560,8 +560,8 @@ export function CoverGenerator({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/75 p-3 backdrop-blur-sm sm:p-5">
-      <div className="flex h-[min(94dvh,900px)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-card/95 shadow-2xl lg:max-w-[1500px] lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)]">
+    <div className="scriptora-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm sm:p-5">
+      <div className="scriptora-modal-panel flex h-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-card/95 shadow-2xl sm:max-h-[min(94dvh,900px)] lg:max-w-[1500px] lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)]">
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 px-4 py-4 sm:px-5 lg:px-7 lg:py-5">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary">
@@ -579,8 +579,8 @@ export function CoverGenerator({
           </button>
         </div>
 
-        <div className="grid min-h-0 flex-1 lg:grid-cols-[minmax(0,1fr)_460px] lg:overflow-hidden xl:grid-cols-[minmax(0,1fr)_500px]">
-          <div className="relative flex min-h-0 flex-col items-center justify-center gap-4 overflow-y-auto overscroll-contain bg-black/20 p-4 sm:p-6 lg:overflow-hidden lg:bg-gradient-to-br lg:from-black/45 lg:via-background/80 lg:to-primary/10 lg:p-8 xl:p-10">
+        <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_460px] lg:overflow-hidden xl:grid-cols-[minmax(0,1fr)_500px]">
+          <div className="relative flex min-h-[280px] flex-col items-center justify-center gap-4 overflow-visible bg-black/20 p-4 sm:min-h-[360px] sm:p-6 lg:min-h-0 lg:overflow-hidden lg:bg-gradient-to-br lg:from-black/45 lg:via-background/80 lg:to-primary/10 lg:p-8 xl:p-10">
             <div className="w-full flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:absolute lg:left-8 lg:right-8 lg:top-6 lg:w-auto lg:rounded-2xl lg:border lg:border-white/10 lg:bg-background/35 lg:px-4 lg:py-3 lg:backdrop-blur-xl">
               <span>{spec.label}</span>
               <span>{spec.width} x {spec.height}px - {spec.exportNote}</span>
@@ -589,13 +589,13 @@ export function CoverGenerator({
               <div className="w-full flex items-center justify-center lg:rounded-[2rem] lg:border lg:border-white/10 lg:bg-white/[0.035] lg:p-6 xl:p-8 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_28px_80px_rgba(0,0,0,0.45)]">
                 <canvas
                   ref={canvasRef}
-                  className="max-h-[66vh] lg:max-h-[72vh] xl:max-h-[76vh] w-auto max-w-full rounded-xl lg:rounded-2xl shadow-2xl lg:shadow-[0_26px_80px_rgba(0,0,0,0.62)] ring-1 ring-white/10"
+                  className="max-h-[58dvh] w-auto max-w-full rounded-xl shadow-2xl ring-1 ring-white/10 sm:max-h-[66dvh] lg:max-h-[72dvh] lg:rounded-2xl lg:shadow-[0_26px_80px_rgba(0,0,0,0.62)] xl:max-h-[76dvh]"
                 />
               </div>
             </div>
           </div>
 
-          <div className="min-h-0 space-y-5 overflow-y-auto overscroll-contain bg-background/55 p-4 sm:p-5 lg:space-y-6 lg:bg-background/75 lg:p-6">
+          <div className="scriptora-modal-body min-h-0 space-y-5 overflow-y-auto overscroll-contain bg-background/55 p-4 sm:p-5 lg:space-y-6 lg:bg-background/75 lg:p-6">
             <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">

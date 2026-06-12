@@ -292,7 +292,7 @@ export function BookCreationOsWizard({
 
   return (
     <div className="scriptora-modal-overlay fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="scriptora-wizard-shell flex max-h-[min(94dvh,900px)] w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-slate-950 shadow-2xl sm:rounded-3xl">
+      <div className="scriptora-modal-panel scriptora-wizard-shell flex w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-slate-950 shadow-2xl sm:rounded-3xl">
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-300">Book Configuration Studio</p>
@@ -303,7 +303,7 @@ export function BookCreationOsWizard({
           </button>
         </div>
 
-        <div className="scriptora-wizard-scroll flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5">
+        <div className="scriptora-modal-body scriptora-wizard-scroll flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5">
           {step === 0 && (
             <div className="space-y-3">
               <h2 className="text-xl font-semibold text-white">Crea libro</h2>

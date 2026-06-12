@@ -174,8 +174,8 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-black/70 p-4 backdrop-blur-sm">
-      <div className="flex h-[min(92dvh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+    <div className="scriptora-modal-overlay fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="scriptora-modal-panel flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
         <div className="z-20 flex shrink-0 items-center justify-between border-b border-border bg-card/95 p-4 backdrop-blur">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
@@ -194,7 +194,7 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
           </Button>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain p-5">
+        <div className="scriptora-modal-body min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain p-5">
           <section className="rounded-2xl border border-border/70 bg-background/40 p-4">
             <div className="mb-3 flex items-center gap-2">
               <Languages className="h-4 w-4 text-primary" />
@@ -446,8 +446,8 @@ export function AdvancedAppearanceDialog({ open, onClose, onLanguageChanged }: P
           </section>
         </div>
 
-        <div className="sticky bottom-0 z-20 border-t border-border bg-card/95 p-4 backdrop-blur">
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <div className="sticky bottom-0 z-20 border-t border-border bg-card/95 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] backdrop-blur">
+          <div className="scriptora-cta-row flex flex-col gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={onClose}

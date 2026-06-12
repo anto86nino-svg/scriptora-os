@@ -615,7 +615,7 @@ export function ManuscriptAnalyzerDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="flex max-h-[min(92dvh,900px)] w-[calc(100vw-1.5rem)] max-w-6xl flex-col gap-0 overflow-hidden border-white/10 bg-background/95 p-0 shadow-2xl backdrop-blur-2xl sm:max-w-6xl">
+      <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-6xl flex-col gap-0 overflow-hidden border-white/10 bg-background/95 p-0 shadow-2xl backdrop-blur-2xl sm:max-h-[min(92dvh,900px)] sm:max-w-6xl">
         <DialogHeader className="shrink-0 border-b border-white/10 px-5 py-4 text-left sm:px-6">
           <div className="flex min-w-0 items-start gap-3 pr-8">
             <div className="ios-icon ios-icon-teal h-11 w-11 shrink-0 rounded-[16px]">
@@ -632,8 +632,8 @@ export function ManuscriptAnalyzerDialog({
           </div>
         </DialogHeader>
 
-        <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[0.9fr_1.1fr] lg:overflow-hidden">
-          <section className="min-h-0 overflow-y-auto overscroll-contain border-b border-white/10 p-4 sm:p-5 lg:max-h-none lg:border-b-0 lg:border-r">
+        <div className="scriptora-modal-body grid min-h-0 flex-1 gap-0 overflow-y-auto lg:grid-cols-[0.9fr_1.1fr] lg:overflow-hidden">
+          <section className="min-h-0 border-b border-white/10 p-4 sm:p-5 lg:max-h-none lg:overflow-y-auto lg:overscroll-contain lg:border-b-0 lg:border-r">
             <input
               ref={fileInputRef}
               type="file"
@@ -766,7 +766,7 @@ export function ManuscriptAnalyzerDialog({
             </div>
           </section>
 
-          <section className="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5">
+          <section className="min-h-0 p-4 sm:p-5 lg:overflow-y-auto lg:overscroll-contain">
             {!analysis ? (
               <div className="flex min-h-[min(40dvh,320px)] flex-col items-center justify-center rounded-lg border border-white/10 bg-white/[0.035] p-8 text-center">
                 <span className="ios-icon ios-icon-teal h-16 w-16 rounded-[22px]">

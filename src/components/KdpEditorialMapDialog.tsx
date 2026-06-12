@@ -72,11 +72,11 @@ export function KdpEditorialMapDialog({ open, onClose, onUseBook }: KdpEditorial
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-background/75 p-3 backdrop-blur-2xl sm:p-4"
+      className="scriptora-modal-overlay fixed inset-0 z-[9999] flex items-center justify-center bg-background/75 p-3 backdrop-blur-2xl sm:p-4"
       onClick={onClose}
     >
       <div
-        className="ios-panel flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden"
+        className="scriptora-modal-panel ios-panel flex w-full max-w-6xl flex-col overflow-hidden"
         onClick={(event) => event.stopPropagation()}
       >
         <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
@@ -101,8 +101,8 @@ export function KdpEditorialMapDialog({ open, onClose, onUseBook }: KdpEditorial
           </div>
         </header>
 
-        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[340px_minmax(0,1fr)]">
-          <aside className="space-y-3 overflow-y-auto border-b border-white/10 bg-white/[0.035] p-4 lg:border-b-0 lg:border-r">
+        <div className="scriptora-modal-body grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[340px_minmax(0,1fr)] lg:overflow-hidden">
+          <aside className="space-y-3 border-b border-white/10 bg-white/[0.035] p-4 lg:overflow-y-auto lg:border-b-0 lg:border-r">
             <div>
               <label className="mb-1 block text-[10px] font-semibold uppercase text-muted-foreground">Nicchia da dominare</label>
               <textarea
@@ -168,7 +168,7 @@ export function KdpEditorialMapDialog({ open, onClose, onUseBook }: KdpEditorial
             )}
           </aside>
 
-          <main className="min-h-0 overflow-y-auto p-4 scrollbar-thin">
+          <main className="min-h-0 p-4 scrollbar-thin lg:overflow-y-auto">
             {visibleMap && (
               <div className="space-y-5">
                 <section>

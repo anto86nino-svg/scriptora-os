@@ -11,7 +11,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ projects, activeProjectId, onNewBook, onSelectProject, onDeleteProject }: AppSidebarProps) {
   return (
-    <aside className="w-60 shrink-0 border-r border-border bg-sidebar flex flex-col h-screen">
+    <aside className="flex h-[100dvh] w-60 shrink-0 flex-col border-r border-border bg-sidebar pb-safe">
       <div className="p-4 border-b border-border">
         <div className="flex items-center gap-2">
           <BookOpen className="h-5 w-5 text-primary" />

@@ -160,8 +160,8 @@ export function AuthorIdentityDialog({ open, onClose, prefillDraft = null }: Aut
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-black/70 p-4 backdrop-blur-sm">
-      <div className="flex h-[min(92dvh,900px)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-card shadow-2xl">
+    <div className="scriptora-modal-overlay fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="scriptora-modal-panel flex w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-card shadow-2xl">
         <div className="z-20 flex shrink-0 items-center justify-between border-b border-white/10 bg-card/95 p-4 backdrop-blur">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
@@ -180,7 +180,7 @@ export function AuthorIdentityDialog({ open, onClose, prefillDraft = null }: Aut
           </button>
         </div>
 
-        <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain p-5 lg:grid-cols-[300px_minmax(0,1fr)]">
+        <div className="scriptora-modal-body grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain p-5 lg:grid-cols-[300px_minmax(0,1fr)]">
           <aside className="space-y-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Author Vault</p>
@@ -311,7 +311,7 @@ export function AuthorIdentityDialog({ open, onClose, prefillDraft = null }: Aut
           </main>
         </div>
 
-        <div className="sticky bottom-0 flex flex-col gap-2 border-t border-white/10 bg-card/95 p-4 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+        <div className="scriptora-cta-row sticky bottom-0 flex flex-col gap-2 border-t border-white/10 bg-card/95 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] backdrop-blur sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Sparkles className="h-4 w-4 text-primary" />
             Autore attivo: <span className="font-semibold text-foreground">{publicAuthor?.penName || "non impostato"}</span>

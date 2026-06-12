@@ -176,9 +176,9 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="scriptora-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       {/* max-h: prevents modal from overflowing viewport on landscape/small screens */}
-      <div className="flex w-full max-w-lg flex-col bg-card border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[calc(100dvh-2rem)]">
+      <div className="scriptora-modal-panel flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-2.5">
@@ -222,7 +222,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           </button>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-5">
+        <div className="scriptora-modal-body min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
           {studioTab === "audiobook" ? (
             <AudiobookExportPanel
               projects={projects}
@@ -328,13 +328,13 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
 
         {/* Footer — shrink-0 so it's always visible even on very short screens */}
         {studioTab === "documents" && (
-        <div className="flex shrink-0 items-center justify-between gap-2 p-4 border-t border-border bg-muted/20">
+        <div className="scriptora-cta-row flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border bg-muted/20 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
           <CreditCostBadge operation="export_premium" prominent />
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               onClick={onClose}
               disabled={isExporting}
-              className="px-3 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
+              className="min-h-9 shrink-0 rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-40"
             >
               Annulla
             </button>
@@ -342,7 +342,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
               onClick={handleExport}
               disabled={isExporting || !selectedId || exportableProjects.length === 0}
               title={canExport ? "Export" : "Finish your book — unlock export"}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40"
+              className="flex min-h-9 shrink-0 items-center gap-1.5 rounded-md bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
             >
               {isExporting ? (
                 <>
@@ -380,7 +380,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
         onClose={() => setCoverGateOpen(false)}
       />
       {showCover && selectedProject && (
-        <Suspense fallback={<div className="fixed inset-0 z-[60] grid place-items-center bg-black/50"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}>
+        <Suspense fallback={<div className="scriptora-modal-overlay fixed inset-0 z-[60] grid place-items-center bg-black/50"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}>
           <CoverGenerator
             title={selectedProject.config.title}
             subtitle={selectedProject.config.subtitle}

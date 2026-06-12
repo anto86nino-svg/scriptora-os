@@ -410,7 +410,7 @@ const Index = () => {
 
   if (focusMode && engine.project) {
     return (
-      <div className="scriptora-ios-screen scriptora-app-surface flex min-h-dvh flex-col">
+      <div className="scriptora-ios-screen scriptora-app-surface flex min-h-[100dvh] flex-col overflow-x-hidden">
         <div className="ios-glass-soft flex h-12 shrink-0 items-center justify-between px-4">
           <span className="text-xs text-muted-foreground">{t("focus_mode")}</span>
           <button onClick={() => setFocusMode(false)}
@@ -418,7 +418,7 @@ const Index = () => {
             <Minimize2 className="h-3.5 w-3.5" /> {t("exit_focus")}
           </button>
         </div>
-        <div className="min-h-0 flex-1 px-3 pb-3">
+        <div className="min-h-0 flex-1 px-3 pb-safe">
           <Suspense fallback={<PanelFallback />}>
           <EditorPanel
             project={engine.project}
@@ -485,7 +485,7 @@ const Index = () => {
   }
 
   return (
-    <div className="scriptora-ios-screen scriptora-app-surface relative flex min-h-dvh overflow-hidden">
+    <div className="scriptora-ios-screen scriptora-app-surface relative flex min-h-[100dvh] overflow-x-hidden">
       {/* Floating sidebar toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -519,7 +519,7 @@ const Index = () => {
 
       {/* Left Sidebar */}
       <aside
-        className={`ios-sidebar fixed z-40 flex min-h-dvh shrink-0 flex-col transition-all duration-300 ease-out md:relative ${
+        className={`ios-sidebar fixed z-40 flex h-[100dvh] min-h-0 shrink-0 flex-col overflow-hidden pb-safe transition-all duration-300 ease-out md:relative md:h-auto md:pb-0 ${
           sidebarOpen
             ? "translate-x-0 w-[272px] opacity-100"
             : "-translate-x-full md:translate-x-0 md:w-0 md:opacity-0 overflow-hidden"
@@ -626,7 +626,7 @@ const Index = () => {
 
         {/* Bottom actions */}
         {engine.project && (
-          <div className="mt-auto space-y-1 border-t border-white/10 p-2">
+          <div className="mt-auto space-y-1 border-t border-white/10 p-2 pb-safe">
             <button onClick={() => setFocusMode(true)}
               className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground">
               <Minimize2 className="h-3 w-3" /> {t("focus_mode")}
@@ -641,7 +641,7 @@ const Index = () => {
 
       {/* Main Area */}
       <div
-        className={`flex min-w-0 flex-1 flex-col transition-all duration-300 ${
+        className={`flex min-h-[100dvh] min-w-0 flex-1 flex-col pb-safe transition-all duration-300 ${
           sidebarOpen ? "p-2 md:p-3" : "p-2 md:px-6 md:py-4"
         }`}
       >
@@ -698,10 +698,10 @@ const Index = () => {
           onExport={guardedExportEpub}
         />
 
-        <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm">
+        <div className="flex min-h-[420px] flex-1 overflow-hidden rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm md:min-h-0">
           {engine.project ? (
             <>
-              <div className="min-w-0 flex-1">
+              <div className="min-h-0 min-w-0 flex-1">
                 <Suspense fallback={<PanelFallback />}>
                 <EditorPanel
                   project={engine.project}

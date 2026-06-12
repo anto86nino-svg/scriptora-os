@@ -43,15 +43,121 @@
 }
 
 @layer base {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-height: 100%;
+  }
+
+  html {
+    overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+  }
+
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+  }
+
+  #root {
+    min-height: 100dvh;
+    isolation: isolate;
+  }
+
+  button,
+  [role="button"] {
+    min-height: 2.25rem;
+  }
+
+  button,
+  a {
+    min-width: 0;
   }
 }
 
 @layer utilities {
+  .pb-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+  .pt-safe {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+  }
+
+  .bottom-safe {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+  .scriptora-page-scroll {
+    min-height: 100dvh;
+    overflow-x: hidden;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem);
+  }
+
+  .scriptora-scroll-main {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);
+  }
+
+  .scriptora-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 0.75rem)
+      max(0.75rem, env(safe-area-inset-right, 0px))
+      calc(env(safe-area-inset-bottom, 0px) + 0.75rem)
+      max(0.75rem, env(safe-area-inset-left, 0px));
+  }
+
+  .scriptora-modal-panel {
+    display: flex;
+    min-height: 0;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.5rem) !important;
+    overflow: hidden;
+  }
+
+  .scriptora-modal-body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+  }
+
+  .scriptora-cta-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .scriptora-cta-row > button,
+  .scriptora-cta-row > a {
+    flex-shrink: 0;
+    min-height: 2.5rem;
+  }
+
+  .safe-touch {
+    min-height: 2.5rem;
+    flex-shrink: 0;
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: hsl(var(--border)) transparent;
@@ -99,6 +205,19 @@
   /* Respect users who prefer reduced motion — kills heavy animations. */
   @media (prefers-reduced-motion: reduce) {
     .scriptora-aurora, .scriptora-title { animation: none !important; }
+  }
+
+  @media (max-width: 767px) {
+    .scriptora-modal-overlay {
+      align-items: flex-end;
+    }
+
+    .scriptora-modal-panel {
+      width: 100%;
+      max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 0.75rem) !important;
+      border-bottom-left-radius: 0 !important;
+      border-bottom-right-radius: 0 !important;
+    }
   }
 }
 

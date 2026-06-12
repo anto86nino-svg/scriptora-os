@@ -39,7 +39,7 @@ const queryClient = new QueryClient();
 
 function RouteFallback() {
   return (
-    <div className="grid min-h-screen place-items-center bg-background">
+    <div className="grid min-h-[100dvh] place-items-center bg-background px-4 pb-safe pt-safe">
       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
     </div>
   );

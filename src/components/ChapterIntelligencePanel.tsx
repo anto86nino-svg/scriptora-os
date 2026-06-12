@@ -421,8 +421,8 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
   const idle = !analyzing && !patching && !patchResult && !dominating && !dominateResult && !result;
 
   return createPortal(
-    <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden bg-black/60 p-4 backdrop-blur-sm animate-fade-in">
-      <div className="flex h-[min(94dvh,900px)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl">
+    <div className="scriptora-modal-overlay fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fade-in">
+      <div className="scriptora-modal-panel flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border/50">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -468,7 +468,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
         )}
 
         {/* Body */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-thin p-5 space-y-5">
+        <div className="scriptora-modal-body scrollbar-thin min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-5">
           {/* IDLE — Patch as default */}
           {idle && (
             <div className="text-center py-8 space-y-5">

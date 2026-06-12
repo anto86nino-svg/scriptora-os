@@ -50,7 +50,7 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[min(92dvh,900px)] max-w-2xl flex-col gap-0 overflow-hidden p-0 bg-background border-border sm:max-w-2xl">
+      <DialogContent className="flex max-h-[calc(100dvh-1rem)] max-w-2xl flex-col gap-0 overflow-hidden border-border bg-background p-0 sm:max-h-[min(92dvh,900px)] sm:max-w-2xl">
         <div className="bg-gradient-to-br from-primary/15 via-background to-background p-6 border-b border-border">
           <DialogHeader>
             <div className="mx-auto h-12 w-12 rounded-full bg-primary/15 flex items-center justify-center mb-3">
@@ -61,7 +61,7 @@ export function UpgradeModal({ open, onClose, reason = "export", currentPlan = "
           </DialogHeader>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="scriptora-modal-body space-y-4 overflow-y-auto p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <PlanCard
               name="Pro"

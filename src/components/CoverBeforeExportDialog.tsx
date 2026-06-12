@@ -20,8 +20,8 @@ export function CoverBeforeExportDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-card shadow-2xl">
+    <div className="scriptora-modal-overlay fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4 backdrop-blur-xl">
+      <div className="scriptora-modal-panel flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-card shadow-2xl">
         <div className="flex items-start justify-between border-b border-border p-5">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-primary">
@@ -42,7 +42,7 @@ export function CoverBeforeExportDialog({
           </button>
         </div>
 
-        <div className="grid gap-3 p-5">
+        <div className="scriptora-modal-body grid gap-3 overflow-y-auto p-5">
           <button
             type="button"
             onClick={onCreateCover}

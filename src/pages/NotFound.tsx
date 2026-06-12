@@ -14,7 +14,7 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-muted px-4 pb-safe pt-safe">
       <div className="mx-auto max-w-md px-6 text-center">
         <p className="text-6xl font-black tracking-tight text-foreground/20">404</p>
         <h1 className="mt-2 text-2xl font-bold text-foreground">{t("not_found_title")}</h1>

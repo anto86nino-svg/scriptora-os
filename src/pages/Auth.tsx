@@ -391,7 +391,7 @@ export default function AuthPage() {
 
   if (authenticating) {
     return (
-      <main className="grid min-h-screen place-items-center bg-background px-6 text-foreground">
+      <main className="grid min-h-[100dvh] place-items-center bg-background px-6 pb-safe pt-safe text-foreground">
         <div className="flex flex-col items-center gap-3 text-center">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <h1 className="text-lg font-semibold">{t("auth_in_progress")}</h1>
@@ -404,7 +404,7 @@ export default function AuthPage() {
   }
 
   return (
-    <main className="relative min-h-screen w-full overflow-hidden bg-background text-foreground">
+    <main className="scriptora-page-scroll relative min-h-[100dvh] w-full overflow-x-hidden bg-background text-foreground">
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.18),transparent_55%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,hsl(var(--accent)/0.14),transparent_60%)]" />

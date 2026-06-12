@@ -743,7 +743,7 @@ export default function Dashboard() {
 
   if (showBookCreationWizard) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="scriptora-page-scroll min-h-[100dvh] bg-background">
         <div className="sticky top-0 z-50 border-b border-white/10 bg-background/85 backdrop-blur-2xl">
           <div className="mx-auto flex h-14 max-w-7xl items-center px-4 sm:px-6 lg:px-8">
             <button
@@ -774,7 +774,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="scriptora-ios-screen scriptora-app-surface scriptora-dashboard-mobile min-h-dvh relative overflow-x-hidden safe-area-pt">
+    <div className="scriptora-ios-screen scriptora-app-surface scriptora-dashboard-mobile scriptora-page-scroll relative min-h-[100dvh] overflow-x-hidden safe-area-pt">
       <header className="sticky top-0 z-20 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl safe-area-pt">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
@@ -1539,7 +1539,7 @@ export default function Dashboard() {
         onAuthorIdentity={() => openAuthorIdentity()}
       />
       {showCoverStudio && (
-        <Suspense fallback={<div className="fixed inset-0 z-50 grid place-items-center bg-black/50"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}>
+        <Suspense fallback={<div className="scriptora-modal-overlay fixed inset-0 z-50 grid place-items-center bg-black/50"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}>
           <CoverGenerator
             title={t("untitled")}
             subtitle=""
@@ -1586,11 +1586,11 @@ export default function Dashboard() {
       {/* Idea modal — advanced launchpad generation flow */}
       {showIdeaModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-background/70 p-4 backdrop-blur-2xl"
+          className="scriptora-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-2xl"
           onClick={() => !launching && !detecting && setShowIdeaModal(false)}
         >
           <div
-            className="ios-panel relative flex h-[min(90dvh,900px)] w-full max-w-xl flex-col overflow-hidden p-0"
+            className="scriptora-modal-panel ios-panel relative flex w-full max-w-xl flex-col overflow-hidden p-0"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
@@ -1614,7 +1614,7 @@ export default function Dashboard() {
               </button>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6">
+            <div className="scriptora-modal-body min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6">
             <label htmlFor="idea-modal" className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
               <Sparkles className="h-3 w-3 text-primary" /> {t("your_book_idea")}
             </label>
@@ -1878,11 +1878,11 @@ export default function Dashboard() {
       {/* Library modal — opens via the Biblioteca card */}
       {showLibrary && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-background/70 p-4 backdrop-blur-2xl"
+          className="scriptora-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-2xl"
           onClick={() => setShowLibrary(false)}
         >
           <div
-            className="ios-panel relative flex h-[min(85dvh,800px)] w-full max-w-2xl flex-col overflow-hidden p-0"
+            className="scriptora-modal-panel ios-panel relative flex w-full max-w-2xl flex-col overflow-hidden p-0"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex shrink-0 items-center justify-between px-6 pb-4 pt-6">
@@ -1898,7 +1898,7 @@ export default function Dashboard() {
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6">
+            <div className="scriptora-modal-body min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6">
             <LibrarySection
               projects={projects}
               onOpen={(id) => { setShowLibrary(false); goApp({ projectId: id }); }}
