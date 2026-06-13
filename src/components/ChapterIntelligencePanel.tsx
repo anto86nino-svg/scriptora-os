@@ -19,6 +19,7 @@ import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/bi
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { computePremiumEditorialScores } from "@/lib/editorial-intelligence-premium";
 import { isMemoryConsistencyV25Enabled, runDevelopmentalMemoryCheck } from "@/lib/memory-consistency-v25";
+import { evaluateGreatnessChapter, isGreatnessEngineEnabled } from "@/lib/greatness-engine";
 import {
   listChapterRevisions,
   peekChapterRevision,
@@ -176,6 +177,19 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
       chapterText: text,
     });
   }, [project, chapterIndex, workingContent, chapter?.content]);
+  const greatnessDiagnostic = useMemo(() => {
+    if (!isGreatnessEngineEnabled()) return null;
+    const text = workingContent || chapter?.content || "";
+    if (text.trim().length < 120) return null;
+    return evaluateGreatnessChapter({
+      content: text,
+      chapterIndex,
+      genre: project.config.genre,
+      subcategory: project.config.subcategory,
+      subgenre: project.config.subgenre,
+      bookTypeId: project.config.bookTypeId,
+    });
+  }, [project.config.bookTypeId, project.config.genre, project.config.subcategory, project.config.subgenre, chapterIndex, workingContent, chapter?.content]);
 
   const applyContentWithUndo = (newContent: string, reason: string, impact?: string) => {
     const before = workingContent || chapter?.content || "";
@@ -706,6 +720,37 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
             <div className="text-center py-12 space-y-3">
               <Loader2 className="h-7 w-7 text-primary animate-spin mx-auto" />
               <p className="text-xs text-muted-foreground">Reading every paragraph, scoring honestly…</p>
+            </div>
+          )}
+
+          {greatnessDiagnostic && (
+            <div className="space-y-2 rounded-lg border border-fuchsia-300/20 bg-fuchsia-300/5 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Zap className="h-3.5 w-3.5 text-fuchsia-300" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-fuchsia-100/80">
+                    Greatness Engine
+                  </span>
+                </div>
+                <span className={`text-[10px] font-bold ${greatnessDiagnostic.scores.overall >= 74 ? "text-emerald-300" : greatnessDiagnostic.scores.overall >= 58 ? "text-amber-300" : "text-rose-300"}`}>
+                  {greatnessDiagnostic.scores.overall}/100
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5 text-[10px] text-white/70">
+                <span>Hook {greatnessDiagnostic.scores.hookPower}</span>
+                <span>Ending {greatnessDiagnostic.scores.endingMagnetism}</span>
+                <span>Memorability {greatnessDiagnostic.scores.memorability}</span>
+                <span>Compulsive {greatnessDiagnostic.scores.compulsiveReadability}</span>
+                <span>Aftertaste {greatnessDiagnostic.scores.emotionalAftertaste}</span>
+                <span>Market {greatnessDiagnostic.scores.marketWinnerLite}</span>
+              </div>
+              {greatnessDiagnostic.optimizations.length > 0 && (
+                <ul className="space-y-1.5">
+                  {greatnessDiagnostic.optimizations.slice(0, 3).map((line) => (
+                    <li key={line} className="text-[11px] text-foreground/85">• {line}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 

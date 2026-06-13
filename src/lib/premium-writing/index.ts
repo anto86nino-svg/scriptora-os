@@ -17,6 +17,7 @@ import { buildGlobalNovelBrainBlock } from "./global-novel-brain";
 import { buildReaderSimulationBlock } from "./reader-simulation-engine";
 import { buildHumanNarrativeRealismV3Block } from "@/lib/human-narrative-realism-v3";
 import { buildMemoryConsistencyV25Block } from "@/lib/memory-consistency-v25";
+import { buildGreatnessEngineBlock } from "@/lib/greatness-engine";
 import { applyPremiumOutputGuard } from "./output-sanitization-guard";
 import { runUltraHumanFinalPass } from "./ultra-human-pipeline";
 
@@ -42,6 +43,7 @@ export function buildPremiumWritingBlock(ctx: PremiumWritingContext): string {
   const blocks = [
     buildHumanNarrativeRealismV3Block(ctx),
     narrativeOnly ? buildMemoryConsistencyV25Block(ctx) : "",
+    buildGreatnessEngineBlock(ctx),
     narrativeOnly ? buildGlobalNovelBrainBlock(ctx.previousChapters, ctx.chapterIndex) : "",
     narrativeOnly ? buildNarrativeConsequenceBlock(ctx.previousChapters, ctx.chapterIndex) : "",
     narrativeOnly ? buildNarrativeBeatAntiRepetitionBlock(ctx) : "",
