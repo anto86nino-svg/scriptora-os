@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, GraduationCap, Loader2, Upload, Wand2 } from "lucide-react";
 import { toast } from "sonner";
-import { analyzeStudyMaterial, readStudyFile, type StudySessionResult } from "@/lib/study-session";
+import { readStudyFile, type StudySessionResult } from "@/lib/study-session";
 import { generateStudySessionWithAI } from "@/lib/study-ai";
+import { ensureStudyOsFields, enrichStudySessionLocally, type StudyGoal, type StudyLevel } from "@/lib/study-os";
 import { evaluateStudyAnswerWithAI, type StudyAnswerEvaluation } from "@/lib/study-answer-evaluator";
 import { DEFAULT_STUDY_UX, loadStudyUxState, saveStudyUxState, type FlashcardConfidence } from "@/lib/study-ux";
 import { t } from "@/lib/i18n";
@@ -23,12 +24,16 @@ import { StudyOralPanel } from "@/components/study/StudyOralPanel";
 import { StudyVocabularyPanel } from "@/components/study/StudyVocabularyPanel";
 import { StudyFlashcardsPanel } from "@/components/study/StudyFlashcardsPanel";
 import { StudyQuizPanel } from "@/components/study/StudyQuizPanel";
+import { StudyDiagnosisPanel } from "@/components/study/StudyDiagnosisPanel";
+import { StudyExplanationPanel } from "@/components/study/StudyExplanationPanel";
+import { StudySchemaPanel } from "@/components/study/StudySchemaPanel";
+import { StudyPlanPanel } from "@/components/study/StudyPlanPanel";
 import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
 import type { BookProject } from "@/types/book";
 
 const STORAGE_KEY = "scriptora-study-session-v1";
 
-type StudySection = "summary" | "questions" | "vocabulary" | "flashcards" | "quiz";
+type StudySection = "diagnosis" | "summary" | "explain" | "schema" | "questions" | "vocabulary" | "flashcards" | "quiz" | "plan";
 
 const STUDY_OUTCOMES = [
   { icon: "✨", title: "Riassunto Soft", desc: "Facile e veloce" },
@@ -41,11 +46,15 @@ const STUDY_OUTCOMES = [
 ] as const;
 
 const TAB_CONFIG: { id: StudySection; label: string; icon: string }[] = [
+  { id: "diagnosis", label: "Diagnosi", icon: "🔎" },
   { id: "summary", label: "Riassunti", icon: "📘" },
+  { id: "explain", label: "Spiegazione", icon: "💡" },
+  { id: "schema", label: "Schema", icon: "🗺️" },
   { id: "questions", label: "Interrogazione", icon: "🎤" },
   { id: "vocabulary", label: "Parole", icon: "📚" },
   { id: "flashcards", label: "Flashcard", icon: "🃏" },
   { id: "quiz", label: "Quiz", icon: "📝" },
+  { id: "plan", label: "Piano", icon: "📅" },
 ];
 
 function normalizeStudyResultForUI(value: any): StudySessionResult {
@@ -81,6 +90,15 @@ function normalizeStudyResultForUI(value: any): StudySessionResult {
           commonMistake: item?.commonMistake,
         }))
       : [],
+    materialAnalysis: result.materialAnalysis,
+    simpleExplanation: result.simpleExplanation,
+    examLevelExplanation: result.examLevelExplanation,
+    advancedExplanation: result.advancedExplanation,
+    conceptMap: result.conceptMap,
+    studyPlan: result.studyPlan,
+    reviewChecklist: result.reviewChecklist,
+    explanationPack: result.explanationPack,
+    summaryPack: result.summaryPack,
   };
 }
 
@@ -138,6 +156,8 @@ export default function StudySessionPage() {
   const [studyLanguage, setStudyLanguage] = useState<
     "Italian" | "English" | "Spanish" | "French" | "German"
   >("Italian");
+  const [studyLevel, setStudyLevel] = useState<StudyLevel>("high_school");
+  const [studyGoal, setStudyGoal] = useState<StudyGoal>("exam");
 
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>(uxSaved.quizAnswers || {});
   const [currentQuizIndex, setCurrentQuizIndex] = useState(uxSaved.currentQuizIndex || 0);
@@ -166,13 +186,13 @@ export default function StudySessionPage() {
       return;
     }
     const text = project.rawText || project.rawTextPreview || "";
-    const normalized = normalizeStudyResultForUI(project.result);
+    const normalized = normalizeStudyResultForUI(ensureStudyOsFields(project.result, text, "exam"));
     setProjectId(project.id);
     setRawText(text);
     setSourceName(project.sourceName);
     setResult(normalized);
     saveResult(normalized, text);
-    setActiveSection("quiz");
+    setActiveSection("diagnosis");
     navigate(location.pathname, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
@@ -290,29 +310,31 @@ export default function StudySessionPage() {
         text: rawText,
         sourceName,
         language: studyLanguage,
+        studyLevel,
+        goal: studyGoal,
       });
-      const normalized = normalizeStudyResultForUI(next);
+      const normalized = normalizeStudyResultForUI(ensureStudyOsFields(next, rawText, studyGoal));
       setResult(normalized);
       resetSessionState();
       saveResult(normalized, rawText);
       const id = persistStudySession(normalized, rawText, sourceName, projectId);
       setProjectId(id);
-      setActiveSection("quiz");
-      saveStudyUxState({ activeSection: "quiz" });
+      setActiveSection("diagnosis");
+      saveStudyUxState({ activeSection: "diagnosis" });
       toast.success("Pipeline Study completata", {
         description: "Riassunti, flashcard e quiz pronti — inizia la verifica.",
       });
     } catch (error) {
       console.warn("[StudySession] DeepSeek fallback locale", error);
-      const local = analyzeStudyMaterial(rawText, sourceName);
+      const local = enrichStudySessionLocally(rawText, sourceName, studyGoal);
       const normalized = normalizeStudyResultForUI(local);
       setResult(normalized);
       resetSessionState();
       saveResult(normalized, rawText);
       const id = persistStudySession(normalized, rawText, sourceName, projectId);
       setProjectId(id);
-      setActiveSection("quiz");
-      saveStudyUxState({ activeSection: "quiz" });
+      setActiveSection("diagnosis");
+      saveStudyUxState({ activeSection: "diagnosis" });
       setAiMode("local");
       toast.warning("AI non disponibile: uso analisi locale", {
         description: error instanceof Error ? error.message.slice(0, 120) : "Fallback locale attivato.",
@@ -370,27 +392,29 @@ export default function StudySessionPage() {
           text,
           sourceName: file.name,
           language: studyLanguage,
+          studyLevel,
+          goal: studyGoal,
         });
-        const normalized = normalizeStudyResultForUI(next);
+        const normalized = normalizeStudyResultForUI(ensureStudyOsFields(next, text, studyGoal));
         setResult(normalized);
         resetSessionState();
         saveResult(normalized, text);
         const id = persistStudySession(normalized, text, file.name, projectId);
         setProjectId(id);
-        setActiveSection("quiz");
-        saveStudyUxState({ activeSection: "quiz" });
+        setActiveSection("diagnosis");
+        saveStudyUxState({ activeSection: "diagnosis" });
         toast.success("Pipeline Study completata", { description: `${file.name} — quiz e verifica pronti.` });
       } catch (error) {
         console.warn("[StudySession] DeepSeek file fallback locale", error);
-        const local = analyzeStudyMaterial(text, file.name);
+        const local = enrichStudySessionLocally(text, file.name, studyGoal);
         const normalized = normalizeStudyResultForUI(local);
         setResult(normalized);
         resetSessionState();
         saveResult(normalized, text);
         const id = persistStudySession(normalized, text, file.name, projectId);
         setProjectId(id);
-        setActiveSection("quiz");
-        saveStudyUxState({ activeSection: "quiz" });
+        setActiveSection("diagnosis");
+        saveStudyUxState({ activeSection: "diagnosis" });
         setAiMode("local");
         toast.warning("AI non disponibile: analisi locale attivata", {
           description: error instanceof Error ? error.message.slice(0, 120) : file.name,
@@ -482,6 +506,39 @@ export default function StudySessionPage() {
               {t("study_min_words_hint")} ({wordCount}/40)
             </p>
 
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.15em] text-emerald-200/80">
+                  Livello studente
+                </label>
+                <select
+                  value={studyLevel}
+                  onChange={(e) => setStudyLevel(e.target.value as StudyLevel)}
+                  className="w-full rounded-xl border border-white/10 bg-background/70 px-3 py-2 text-sm"
+                >
+                  <option value="middle_school">Scuola media</option>
+                  <option value="high_school">Scuola superiore</option>
+                  <option value="university">Università</option>
+                </select>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.15em] text-emerald-200/80">
+                  Obiettivo
+                </label>
+                <select
+                  value={studyGoal}
+                  onChange={(e) => setStudyGoal(e.target.value as StudyGoal)}
+                  className="w-full rounded-xl border border-white/10 bg-background/70 px-3 py-2 text-sm"
+                >
+                  <option value="interrogation">Interrogazione</option>
+                  <option value="exam">Esame</option>
+                  <option value="quiz">Verifica</option>
+                  <option value="summary">Riassunto</option>
+                  <option value="quick_review">Ripasso veloce</option>
+                </select>
+              </div>
+            </div>
+
             <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
               <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.15em] text-emerald-200/80">
                 Lingua Studio
@@ -499,9 +556,13 @@ export default function StudySessionPage() {
               </select>
             </div>
 
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {aiMode === "local"
+                ? "Modalità locale attiva — risultati base senza AI cloud."
+                : "Generazione AI Study OS — crediti: TODO audit billing dedicato."}
+            </p>
+
             <button
-              type="button"
-              onClick={analyze}
               disabled={!canAnalyze}
               className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-300 px-4 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -564,6 +625,10 @@ export default function StudySessionPage() {
                   </div>
                 </div>
 
+                {activeSection === "diagnosis" && safeResult.materialAnalysis && (
+                  <StudyDiagnosisPanel analysis={safeResult.materialAnalysis} />
+                )}
+
                 {activeSection === "summary" && (
                   <StudySummaryPanel
                     lightSummary={safeResult.lightSummary}
@@ -571,6 +636,18 @@ export default function StudySessionPage() {
                     proSummary={safeResult.proSummary}
                     studyNotesPro={safeResult.studyNotesPro}
                   />
+                )}
+
+                {activeSection === "explain" && (
+                  <StudyExplanationPanel
+                    simpleExplanation={safeResult.simpleExplanation}
+                    examLevelExplanation={safeResult.examLevelExplanation}
+                    advancedExplanation={safeResult.advancedExplanation}
+                  />
+                )}
+
+                {activeSection === "schema" && safeResult.conceptMap && (
+                  <StudySchemaPanel conceptMap={safeResult.conceptMap} />
                 )}
 
                 {activeSection === "questions" && (
@@ -632,6 +709,10 @@ export default function StudySessionPage() {
                     }}
                     onExamComplete={handleExamComplete}
                   />
+                )}
+
+                {activeSection === "plan" && safeResult.studyPlan && (
+                  <StudyPlanPanel plan={safeResult.studyPlan} checklist={safeResult.reviewChecklist} />
                 )}
               </>
             )}

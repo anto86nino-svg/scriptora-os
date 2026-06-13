@@ -57,6 +57,16 @@ export interface StudySessionResult {
   flashcards: Flashcard[];
   quiz: QuizQuestion[];
   keyConcepts: string[];
+  /** Study OS extended fields (optional) */
+  materialAnalysis?: import("@/lib/study-os").StudyMaterialAnalysis;
+  simpleExplanation?: string;
+  examLevelExplanation?: string;
+  advancedExplanation?: string;
+  conceptMap?: string;
+  studyPlan?: import("@/lib/study-os").StudyPlanPack;
+  reviewChecklist?: string[];
+  explanationPack?: import("@/lib/study-os").StudyExplanationPack;
+  summaryPack?: import("@/lib/study-os").StudySummaryPack;
 }
 
 const STOP_WORDS = new Set([
