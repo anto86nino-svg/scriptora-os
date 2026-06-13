@@ -66,7 +66,7 @@
     min-height: 100dvh;
     overflow-x: clip;
     overflow-y: auto;
-    overscroll-behavior-y: none;
+    overscroll-behavior-y: auto;
   }
 
   #root {
@@ -1249,7 +1249,11 @@
 
 .scriptora-live-video {
   position: relative;
-  overflow: hidden;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+  overflow-y: hidden;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background:
@@ -4480,4 +4484,53 @@ div.scriptora-page-scroll {
     max-height: none !important;
     overflow-y: visible !important;
   }
+}
+
+
+
+
+
+/* SCRIPTORA LANDING VIDEO SCROLL FIX
+   The hero product video must not steal wheel/touch scrolling from the landing page.
+*/
+.scriptora-real-product-video,
+.scriptora-real-product-video video,
+.scriptora-product-stage video {
+  pointer-events: none !important;
+  touch-action: pan-y !important;
+}
+
+/* SCRIPTORA LANDING SCROLL FIX — 2026-06-13
+   Home/landing must scroll even when the mouse/touch is over the hero video or decorative background.
+*/
+.scriptora-landing-bg,
+.scriptora-landing-bg::before,
+.scriptora-landing-bg::after,
+.scriptora-real-product-video,
+.scriptora-real-product-video video,
+.scriptora-product-stage video,
+.scriptora-landing-hero-visual video {
+  pointer-events: none !important;
+}
+
+.scriptora-landing,
+.scriptora-landing-hero,
+.scriptora-product-stage,
+.scriptora-landing-hero-visual {
+  touch-action: pan-y !important;
+  overscroll-behavior-y: auto !important;
+}
+
+/* SCRIPTORA HOME SCROLL INPUT FIX — allow real wheel/touch on landing */
+html,
+body,
+#root,
+.scriptora-landing {
+  overscroll-behavior-y: auto !important;
+  touch-action: pan-y !important;
+}
+
+.scriptora-landing *,
+.scriptora-landing video {
+  touch-action: pan-y !important;
 }
