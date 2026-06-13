@@ -18,6 +18,13 @@ import {
 } from "@/lib/generation-runtime";
 import { initialPhaseAfterBlueprint, phaseAfterAllChapters } from "@/lib/matter-options";
 import { refreshProjectLongBookMemory } from "@/lib/long-book-memory";
+import { isMemoryConsistencyV25Enabled, refreshProjectMemoryConsistencyV25 } from "@/lib/memory-consistency-v25";
+
+function refreshProjectNarrativeMemory(project: BookProject): BookProject {
+  return isMemoryConsistencyV25Enabled()
+    ? refreshProjectMemoryConsistencyV25(project)
+    : refreshProjectLongBookMemory(project);
+}
 import { BlueprintValidationError, buildFallbackBlueprintFromConfig } from "@/lib/blueprint-recovery";
 import { toast } from "sonner";
 import { t } from "@/lib/i18n";
@@ -709,6 +716,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
             idempotencyKey,
             taskType: "generate_chapter_chunk",
           },
+          longBookMemory: latestP.longBookMemory,
         },
       );
 
@@ -743,7 +751,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         chapters[index] = { ...finalChapter, status: "completed" as GenerationStatus, lengthOverride: proj.chapters[index]?.lengthOverride };
         const allGenerated = chapters.length >= proj.config.numberOfChapters && chapters.every(c => c.content.length > 0);
         const donePhase = allGenerated ? phaseAfterAllChapters(proj.config) : proj.phase;
-        const refreshed = refreshProjectLongBookMemory({ ...proj, chapters, phase: nextPhase === "complete" ? nextPhase : donePhase });
+        const refreshed = refreshProjectNarrativeMemory({ ...proj, chapters, phase: nextPhase === "complete" ? nextPhase : donePhase });
         return { ...refreshed, chapters, phase: nextPhase === "complete" ? nextPhase : donePhase };
       });
 

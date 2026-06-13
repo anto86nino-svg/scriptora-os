@@ -55,4 +55,6 @@ export interface LongBookMemorySnapshot {
   worldRules: WorldRuleLock[];
   continuityAnchors: string[];
   lastChapterEnding?: string;
+  /** Memory & Consistency Engine V2.5 — living canon snapshot */
+  memoryConsistencyV25?: import("@/lib/memory-consistency-v25/types").MemoryConsistencyV25Snapshot;
 }

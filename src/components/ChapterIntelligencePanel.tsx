@@ -18,6 +18,7 @@ import { buildCreditIdempotencyKey } from "@/lib/billing/idempotency";
 import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/billing/billingHeaders";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { computePremiumEditorialScores } from "@/lib/editorial-intelligence-premium";
+import { isMemoryConsistencyV25Enabled, runDevelopmentalMemoryCheck } from "@/lib/memory-consistency-v25";
 import {
   listChapterRevisions,
   peekChapterRevision,
@@ -165,6 +166,16 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
     () => listChapterRevisions(project.id, chapterIndex),
     [project.id, chapterIndex, lastRevision],
   );
+  const memoryDiagnostic = useMemo(() => {
+    if (!isMemoryConsistencyV25Enabled()) return null;
+    const text = workingContent || chapter?.content || "";
+    if (text.trim().length < 80) return null;
+    return runDevelopmentalMemoryCheck({
+      project,
+      chapterIndex,
+      chapterText: text,
+    });
+  }, [project, chapterIndex, workingContent, chapter?.content]);
 
   const applyContentWithUndo = (newContent: string, reason: string, impact?: string) => {
     const before = workingContent || chapter?.content || "";
@@ -695,6 +706,34 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
             <div className="text-center py-12 space-y-3">
               <Loader2 className="h-7 w-7 text-primary animate-spin mx-auto" />
               <p className="text-xs text-muted-foreground">Reading every paragraph, scoring honestly…</p>
+            </div>
+          )}
+
+          {memoryDiagnostic && memoryDiagnostic.issues.length > 0 && (
+            <div className="space-y-2 rounded-lg border border-cyan-300/20 bg-cyan-300/5 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Bot className="h-3.5 w-3.5 text-cyan-300" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-100/80">
+                    Memory & Consistency V2.5
+                  </span>
+                </div>
+                <span className={`text-[10px] font-bold ${memoryDiagnostic.score >= 80 ? "text-emerald-300" : memoryDiagnostic.score >= 60 ? "text-amber-300" : "text-rose-300"}`}>
+                  {memoryDiagnostic.score}/100
+                </span>
+              </div>
+              <ul className="space-y-2">
+                {memoryDiagnostic.issues.map((issue) => (
+                  <li key={issue.id} className="rounded-md border border-white/10 bg-black/20 px-2.5 py-2 text-[11px] text-foreground/85">
+                    <p>{issue.message}</p>
+                    {issue.surgicalFix && (
+                      <p className="mt-1 text-[10px] text-cyan-100/70">
+                        <span className="font-semibold text-cyan-200">Fix chirurgico:</span> {issue.surgicalFix}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

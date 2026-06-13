@@ -6,10 +6,11 @@
  * Phase 4 (Benchmark): gated
  */
 
-export type ExcellencePhase = "human-v3" | "greatness" | "developmental-editor" | "benchmark";
+export type ExcellencePhase = "human-v3" | "memory-v25" | "greatness" | "developmental-editor" | "benchmark";
 
 export const EXCELLENCE_PHASE_STATUS: Record<ExcellencePhase, "active" | "planned"> = {
   "human-v3": "active",
+  "memory-v25": "active",
   greatness: "planned",
   "developmental-editor": "planned",
   benchmark: "planned",

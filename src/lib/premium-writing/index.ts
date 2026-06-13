@@ -1,4 +1,5 @@
-import type { BookConfig, Chapter } from "@/types/book";
+import type { BookBlueprint, BookConfig, Chapter } from "@/types/book";
+import type { LongBookMemorySnapshot } from "@/lib/long-book-memory/types";
 import { resolveBookTypeDefinition } from "@/lib/book-type-engine";
 import { buildCharacterMemoryDeepLock } from "./character-memory-lock";
 import { buildSceneContinuityBlock } from "./scene-continuity-v2";
@@ -15,6 +16,7 @@ import { buildEditorialSelectionBlock } from "./editorial-selection-engine";
 import { buildGlobalNovelBrainBlock } from "./global-novel-brain";
 import { buildReaderSimulationBlock } from "./reader-simulation-engine";
 import { buildHumanNarrativeRealismV3Block } from "@/lib/human-narrative-realism-v3";
+import { buildMemoryConsistencyV25Block } from "@/lib/memory-consistency-v25";
 import { applyPremiumOutputGuard } from "./output-sanitization-guard";
 import { runUltraHumanFinalPass } from "./ultra-human-pipeline";
 
@@ -23,6 +25,8 @@ export interface PremiumWritingContext {
   previousChapters: Chapter[];
   chapterIndex: number;
   outlineSummary?: string;
+  blueprint?: BookBlueprint | null;
+  longBookMemory?: LongBookMemorySnapshot;
 }
 
 /** Ultra Human Manuscript Engine V2 — editorial injection block for generation prompts */
@@ -37,6 +41,7 @@ export function buildPremiumWritingBlock(ctx: PremiumWritingContext): string {
 
   const blocks = [
     buildHumanNarrativeRealismV3Block(ctx),
+    narrativeOnly ? buildMemoryConsistencyV25Block(ctx) : "",
     narrativeOnly ? buildGlobalNovelBrainBlock(ctx.previousChapters, ctx.chapterIndex) : "",
     narrativeOnly ? buildNarrativeConsequenceBlock(ctx.previousChapters, ctx.chapterIndex) : "",
     narrativeOnly ? buildNarrativeBeatAntiRepetitionBlock(ctx) : "",

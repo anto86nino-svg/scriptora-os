@@ -1098,7 +1098,7 @@ export async function generateChapterChunked(
   chapterLengthOverride?: string,
   onChunkProgress?: (progress: ChunkProgress) => void,
   genreLock?: GenreLock,
-  opts?: { adaptive?: { plan: import("@/lib/plan").PlanTier }; usage?: AIUsageContext },
+  opts?: { adaptive?: { plan: import("@/lib/plan").PlanTier }; usage?: AIUsageContext; longBookMemory?: import("@/lib/long-book-memory/types").LongBookMemorySnapshot },
 ): Promise<Chapter> {
   config = withSanitizedConfig(config);
   const runtimeProject: BookProject = {
@@ -1111,6 +1111,7 @@ export async function generateChapterChunked(
     phase: "chapters",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    longBookMemory: opts?.longBookMemory,
   };
   assertProjectReadyForGeneration(runtimeProject, chapterIndex);
 
@@ -1151,6 +1152,8 @@ export async function generateChapterChunked(
     previousChapters,
     chapterIndex,
     outlineSummary: outline.summary,
+    blueprint,
+    longBookMemory: opts?.longBookMemory ?? runtimeProject.longBookMemory,
   });
   const bookTypeEngineBlock = buildBookTypeEngineBlock(config);
 
