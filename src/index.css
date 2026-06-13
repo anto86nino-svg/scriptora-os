@@ -4416,6 +4416,12 @@ div.scriptora-page-scroll {
   }
 }
 
+/* Keep custom Scriptora modals from leaking wheel/touch scroll to the page behind. */
+html:has(.scriptora-modal-overlay),
+body:has(.scriptora-modal-overlay) {
+  overflow-y: hidden !important;
+}
+
 /* SCRIPTORA HARD GLOBAL SCROLL UNLOCK - diagnostic production fix */
 html,
 body,
