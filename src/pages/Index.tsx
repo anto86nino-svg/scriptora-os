@@ -485,7 +485,7 @@ const Index = () => {
   }
 
   return (
-    <div className="scriptora-ios-screen scriptora-app-surface relative flex min-h-[100dvh] overflow-x-hidden">
+    <div className="scriptora-ios-screen scriptora-app-surface relative flex min-h-[100dvh] overflow-x-hidden overflow-y-visible">
       {/* Floating sidebar toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -641,7 +641,7 @@ const Index = () => {
 
       {/* Main Area */}
       <div
-        className={`flex min-h-[100dvh] min-w-0 flex-1 flex-col pb-safe transition-all duration-300 ${
+        className={`flex min-h-[100dvh] min-w-0 flex-1 flex-col overflow-y-visible pb-[calc(env(safe-area-inset-bottom)+5rem)] transition-all duration-300 ${
           sidebarOpen ? "p-2 md:p-3" : "p-2 md:px-6 md:py-4"
         }`}
       >
@@ -698,7 +698,7 @@ const Index = () => {
           onExport={guardedExportEpub}
         />
 
-        <div className="flex min-h-[420px] flex-1 overflow-hidden rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm md:min-h-0">
+        <div className="flex min-h-[420px] flex-1 overflow-visible rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm md:min-h-0 md:overflow-hidden">
           {engine.project ? (
             <>
               <div className="min-h-0 min-w-0 flex-1">

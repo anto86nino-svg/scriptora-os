@@ -95,7 +95,7 @@ export function EditorPanel({
           : !!blueprint;
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col md:h-full">
       {hasContent && (
         <div className="flex h-12 shrink-0 items-center justify-center border-b border-white/10 bg-white/[0.035]">
           <div className="ios-segment">
@@ -113,7 +113,7 @@ export function EditorPanel({
         </div>
       )}
 
-      <div className="scriptora-scroll-main scrollbar-thin min-h-0 flex-1 overflow-y-auto">
+      <div className="scriptora-scroll-main scrollbar-thin min-h-0 flex-1 overflow-y-visible md:overflow-y-auto">
         <div className={cn("mx-auto px-3 py-4 pb-safe sm:px-8 sm:py-6", mode === "preview" ? "max-w-2xl" : "max-w-4xl")}>
           <div className={cn("ios-editor-paper p-5 sm:p-7", mode === "preview" && "bg-white/[0.055]")}>
           {mode === "preview" && hasContent ? (
