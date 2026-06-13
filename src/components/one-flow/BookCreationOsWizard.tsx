@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   X, ArrowLeft, ArrowRight, Rocket, Sparkles, Plus, Trash2, Users, Loader2,
-  CheckCircle2, AlertTriangle, BookOpen,
+  CheckCircle2, AlertTriangle, BookOpen, Clock3,
 } from "lucide-react";
 import type { AuthorIdentity, BookBlueprint, BookCharacter, BookConfig, Genre, Language } from "@/types/book";
 import { DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
@@ -162,6 +162,30 @@ const COMMERCIAL_GOAL_PRESETS = [
   "Libro pratico: trasformazione visibile, esempi concreti, esercizi e fiducia del lettore.",
 ];
 
+const BLUEPRINT_FORGE_STEPS = [
+  "Analisi idea",
+  "Architettura libro",
+  "Coerenza genere",
+  "Promessa narrativa/editoriale",
+  "Capitoli e ritmo",
+  "Controllo finale blueprint",
+] as const;
+
+const BLUEPRINT_FORGE_COPY = [
+  "Sto costruendo l'ossatura del libro…",
+  "Controllo promessa, genere e struttura…",
+  "Allineo capitoli, tono e direzione editoriale…",
+  "Creo una traiettoria leggibile per ogni capitolo…",
+  "Ultimo controllo prima del blueprint…",
+  "Non chiudere: Scriptora sta ancora lavorando.",
+] as const;
+
+function formatForgeTime(seconds: number): string {
+  const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const secs = Math.floor(seconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${secs}`;
+}
+
 export function BookCreationOsWizard({
   open,
   onClose,
@@ -207,6 +231,8 @@ export function BookCreationOsWizard({
   const [voiceConsistency, setVoiceConsistency] = useState("Mantieni stessa voce, stesso punto di vista, stessi comportamenti e stessa promessa emotiva in ogni capitolo.");
   const [blueprintPreview, setBlueprintPreview] = useState<BookBlueprint | null>(null);
   const [generatingBlueprint, setGeneratingBlueprint] = useState(false);
+  const [blueprintError, setBlueprintError] = useState<string | null>(null);
+  const [blueprintElapsedSeconds, setBlueprintElapsedSeconds] = useState(0);
   const [launching, setLaunching] = useState(false);
   const [generatingCharacter, setGeneratingCharacter] = useState(false);
   const [freeRegensLeft, setFreeRegensLeft] = useState(() => getWizardCharacterFreeRegensRemaining());
@@ -331,6 +357,18 @@ export function BookCreationOsWizard({
     if (!authorName.trim()) setAuthorName(authorIdentity.penName || "");
   }, [authorIdentity]);
 
+  useEffect(() => {
+    if (!generatingBlueprint) {
+      setBlueprintElapsedSeconds(0);
+      return;
+    }
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      setBlueprintElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [generatingBlueprint]);
+
   if (!open) return null;
 
   const validationIssues = validateBookConfigStudio(buildConfig(), identityDraft);
@@ -409,13 +447,16 @@ export function BookCreationOsWizard({
         return;
       }
       setGeneratingBlueprint(true);
+      setBlueprintError(null);
       try {
         const config = buildConfig();
         const bp = await onGenerateBlueprint(config);
         setBlueprintPreview(bp);
         setStep(7);
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Blueprint non generato");
+        const message = e instanceof Error ? e.message : "Blueprint non generato";
+        setBlueprintError(message);
+        toast.error(message);
       } finally {
         setGeneratingBlueprint(false);
       }
@@ -472,8 +513,11 @@ export function BookCreationOsWizard({
   };
 
   return (
-    <div className="scriptora-modal-overlay fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <div className="scriptora-modal-panel scriptora-wizard-shell flex w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-slate-950 shadow-2xl sm:rounded-3xl">
+    <div className="scriptora-modal-overlay fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-2 py-[calc(env(safe-area-inset-top,0px)+0.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] backdrop-blur-sm sm:p-4">
+      <div
+        className="scriptora-modal-panel scriptora-wizard-shell flex w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-slate-950 shadow-2xl"
+        style={{ maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1rem)" }}
+      >
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-300">Book Configuration Studio</p>
@@ -771,10 +815,35 @@ export function BookCreationOsWizard({
 
           {step === 6 && (
             <div className="space-y-4 text-center">
-              <BookOpen className="mx-auto h-10 w-10 text-sky-300" />
-              <h2 className="text-xl font-semibold text-white">Generazione Blueprint</h2>
-              <p className="text-sm text-white/65">Scriptora costruirà premessa, struttura, capitoli{subchaptersEnabled ? ", sottocapitoli" : ""}, front e back matter.</p>
-              {generatingBlueprint && <p className="text-sm text-sky-200 flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Generazione in corso…</p>}
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-sky-300/25 bg-sky-400/10 shadow-[0_0_40px_rgba(56,189,248,0.16)]">
+                <BookOpen className="h-6 w-6 text-sky-200" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-white">Generazione Blueprint</h2>
+                <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-white/65">
+                  Scriptora costruirà premessa, struttura, capitoli{subchaptersEnabled ? ", sottocapitoli" : ""}, front e back matter.
+                </p>
+              </div>
+              {generatingBlueprint ? (
+                <BlueprintForgePanel elapsedSeconds={blueprintElapsedSeconds} />
+              ) : blueprintError ? (
+                <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 p-4 text-left">
+                  <p className="text-sm font-semibold text-rose-100">Blueprint non completato</p>
+                  <p className="mt-1 text-xs leading-5 text-rose-100/70">
+                    {blueprintError}
+                  </p>
+                  <p className="mt-3 text-[11px] leading-4 text-white/45">
+                    Puoi correggere i campi o riprovare: nessun contenuto tecnico è stato salvato nel libro.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-white/12 bg-white/[0.045] p-4 text-left">
+                  <p className="text-sm font-semibold text-white">Pronto per la forgia</p>
+                  <p className="mt-1 text-xs leading-5 text-white/55">
+                    Quando avvii, vedrai gli step di preparazione e un orologio live. La durata reale dipende dal modello AI e dalla complessità del libro.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -852,6 +921,71 @@ function GuidedDecisionRail({ activeIndex }: { activeIndex: number }) {
       <p className="mt-2 text-[11px] leading-4 text-white/52">
         Ogni scelta alimenta blueprint, personaggi, struttura, mercato ed export. Puoi scrivere tu o usare gli starter.
       </p>
+    </div>
+  );
+}
+
+function BlueprintForgePanel({ elapsedSeconds }: { elapsedSeconds: number }) {
+  const activeStep = Math.min(
+    BLUEPRINT_FORGE_STEPS.length - 1,
+    Math.floor(elapsedSeconds / 14),
+  );
+  const visualProgress = Math.min(92, 10 + elapsedSeconds * 1.1);
+  const copy = BLUEPRINT_FORGE_COPY[activeStep] || BLUEPRINT_FORGE_COPY[BLUEPRINT_FORGE_COPY.length - 1];
+  const slow = elapsedSeconds >= 45;
+
+  return (
+    <div className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.18),rgba(15,23,42,0.96)_48%,rgba(2,6,23,0.98))] p-4 text-left shadow-[0_24px_70px_rgba(8,47,73,0.35)] sm:p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-200/70">Blueprint Forge</p>
+          <p className="mt-1 text-sm font-semibold text-white">{copy}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 rounded-2xl border border-cyan-300/25 bg-black/35 px-3 py-2 shadow-[inset_0_0_24px_rgba(34,211,238,0.12)]">
+          <Clock3 className="h-4 w-4 text-cyan-200" />
+          <span className="font-mono text-2xl font-bold tabular-nums tracking-[0.16em] text-cyan-100 drop-shadow-[0_0_12px_rgba(103,232,249,0.65)]">
+            {formatForgeTime(elapsedSeconds)}
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-4 h-2 overflow-hidden rounded-full border border-cyan-200/10 bg-black/35">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-sky-300 to-fuchsia-300 shadow-[0_0_18px_rgba(56,189,248,0.55)] transition-[width] duration-700 ease-out"
+          style={{ width: `${visualProgress}%` }}
+        />
+      </div>
+      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-white/35">
+        Preparazione visuale · il tempo reale dipende dalla complessità del libro
+      </p>
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        {BLUEPRINT_FORGE_STEPS.map((step, index) => {
+          const active = index === activeStep;
+          const done = index < activeStep;
+          return (
+            <div
+              key={step}
+              className={`flex items-center gap-2 rounded-2xl border px-3 py-2 text-xs transition-colors ${
+                active
+                  ? "border-cyan-300/45 bg-cyan-300/10 text-cyan-50"
+                  : done
+                    ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-50/75"
+                    : "border-white/10 bg-white/[0.035] text-white/45"
+              }`}
+            >
+              <span className={`h-2 w-2 shrink-0 rounded-full ${active ? "animate-pulse bg-cyan-200" : done ? "bg-emerald-300" : "bg-white/20"}`} />
+              <span className="min-w-0 truncate">{index + 1}. {step}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {slow && (
+        <div className="mt-4 rounded-2xl border border-amber-300/25 bg-amber-300/10 p-3 text-xs leading-5 text-amber-50/80">
+          Sta richiedendo più tempo del previsto, ma il processo è ancora attivo. Non chiudere questa finestra: Scriptora sta finendo la struttura.
+        </div>
+      )}
     </div>
   );
 }
