@@ -34,6 +34,7 @@ const PublishingOsPage = lazyWithRetry(() => import("./pages/PublishingOsPage.ts
 const StudyOsPage = lazyWithRetry(() => import("./pages/StudyOsPage.tsx"));
 const IdentityOsPage = lazyWithRetry(() => import("./pages/IdentityOsPage.tsx"));
 const UsagePage = lazyWithRetry(() => import("./pages/UsagePage.tsx"));
+const DiagnosticsPage = lazyWithRetry(() => import("./pages/DiagnosticsPage.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,7 @@ const App = () => (
                 <Route path="/bestseller-radar" element={<ProtectedRoute requiredFeature="trending_niches_limited"><BestsellerRadarPage /></ProtectedRoute>} />
                 <Route path="/keyword-gold" element={<ProtectedRoute requiredFeature="kdp_market_base"><KeywordGoldPage /></ProtectedRoute>} />
                 <Route path="/install" element={<InstallPage />} />
+                <Route path="/diagnostics" element={<DiagnosticsPage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               </Suspense>

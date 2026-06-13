@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   BarChart3,
@@ -565,6 +566,28 @@ export function ScriptoraLanding({
   const lang = useUILanguage();
   const copy = landingCopy[lang] ?? landingCopy.en;
   const showLiveProduct = canStart && (isSignedIn || devOn);
+  const navigate = useNavigate();
+  const logoTapCountRef = useRef(0);
+  const logoTapTimerRef = useRef<number | null>(null);
+
+  const onSecretDiagnostics = () => {
+    logoTapCountRef.current += 1;
+
+    if (logoTapTimerRef.current) {
+      window.clearTimeout(logoTapTimerRef.current);
+    }
+
+    if (logoTapCountRef.current >= 3) {
+      logoTapCountRef.current = 0;
+      navigate("/diagnostics");
+      return;
+    }
+
+    logoTapTimerRef.current = window.setTimeout(() => {
+      logoTapCountRef.current = 0;
+    }, 1200);
+  };
+
 
   useEffect(() => {
     document.title = "Scriptora OS — Build Books That Sell";
@@ -580,7 +603,7 @@ export function ScriptoraLanding({
       <header className="scriptora-landing-nav">
         <button
           type="button"
-          onClick={onLogoClick}
+          onClick={() => { onLogoClick?.(); onSecretDiagnostics(); }}
           className="scriptora-landing-brand"
           aria-label="SCRIPTORA"
           title="SCRIPTORA"
