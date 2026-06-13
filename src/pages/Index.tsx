@@ -698,7 +698,7 @@ const Index = () => {
           onExport={guardedExportEpub}
         />
 
-        <div className="flex min-h-[420px] flex-1 overflow-visible rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm md:min-h-0 md:overflow-hidden">
+        <div className="flex min-h-[420px] flex-1 overflow-visible rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm md:min-h-0 md:overflow-visible">
           {engine.project ? (
             <>
               <div className="min-h-0 min-w-0 flex-1">
