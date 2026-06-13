@@ -24,6 +24,7 @@ import { BookTypeBadge } from "@/components/BookTypeBadge";
 import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 import { applyAuthorIdentityToConfig } from "@/lib/author-identity";
 import { BookProject, SectionId } from "@/types/book";
+import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { WritingSettings, loadSettings, saveSettings } from "@/lib/settings";
 import { t, tt, UILanguage, useUILanguage } from "@/lib/i18n";
 import { toast } from "sonner";
@@ -75,6 +76,63 @@ function PanelFallback() {
   );
 }
 
+function getWriterHeaderContext(
+  project: BookProject | null,
+  activeSection: SectionId | null,
+  chunkProgress: Record<string, { currentWords?: number; targetWords?: number }> | undefined,
+  generatingSet: Set<string>,
+) {
+  if (!project) {
+    return {
+      breadcrumb: "Scriptora OS",
+      title: "Nessun progetto aperto",
+      progress: "Apri un libro dalla dashboard",
+      isGenerating: false,
+    };
+  }
+
+  let breadcrumb = "Blueprint";
+  let title = project.config.title || t("untitled");
+  let generationKey = String(activeSection || "blueprint");
+
+  if (activeSection === "blueprint") {
+    title = "Blueprint del libro";
+  } else if (activeSection === "front-matter") {
+    breadcrumb = "Blueprint → Front matter";
+    title = t("front_matter");
+  } else if (activeSection === "back-matter") {
+    breadcrumb = "Blueprint → Back matter";
+    title = t("back_matter");
+  } else {
+    const chapterMatch = String(activeSection || "").match(/^chapter-(\d+)(?:-sub-(\d+))?$/);
+    if (chapterMatch) {
+      const chapterIndex = Number(chapterMatch[1]);
+      const subIndex = chapterMatch[2] != null ? Number(chapterMatch[2]) : null;
+      const outline = project.blueprint?.chapterOutlines?.[chapterIndex];
+      const chapter = project.chapters?.[chapterIndex];
+      title = formatChapterDisplayTitle(chapterIndex, chapter?.title || outline?.title, {
+        config: project.config,
+        summary: outline?.summary,
+        totalChapters: project.config.numberOfChapters,
+      });
+      breadcrumb = subIndex != null
+        ? `Blueprint → Capitoli → ${chapterIndex + 1}.${subIndex + 1}`
+        : "Blueprint → Capitoli";
+      generationKey = subIndex != null ? `chapter-${chapterIndex}-sub-${subIndex}` : `chapter-${chapterIndex}`;
+    }
+  }
+
+  const liveProgress = chunkProgress?.[generationKey];
+  const isGenerating = generatingSet.has(generationKey);
+  const progress = liveProgress?.targetWords
+    ? `${Math.min(99, Math.round(((liveProgress.currentWords || 0) / Math.max(liveProgress.targetWords, 1)) * 100))}% · ${(liveProgress.currentWords || 0).toLocaleString()} / ${liveProgress.targetWords.toLocaleString()} parole`
+    : isGenerating
+      ? "Generazione live in corso"
+      : project.phase;
+
+  return { breadcrumb, title, progress, isGenerating };
+}
+
 const Index = () => {
   useUILanguage();
   const [projects, setProjects] = useState<BookProject[]>([]);
@@ -116,6 +174,12 @@ const Index = () => {
   const { quota } = useQuota(engine.project?.id || null);
   const { plan } = usePlan();
   const freeBookUsed = plan === "free" && projects.length > 0;
+  const writerHeaderContext = getWriterHeaderContext(
+    engine.project,
+    activeSection,
+    engine.chunkProgress,
+    engine.generatingSet,
+  );
 
   const voiceProjectList = useMemo(
     () => (engine.project ? [engine.project, ...projects.filter((p) => p.id !== engine.project!.id)] : projects),
@@ -519,7 +583,7 @@ const Index = () => {
 
       {/* Left Sidebar */}
       <aside
-        className={`ios-sidebar fixed z-40 flex h-[100dvh] min-h-0 shrink-0 flex-col overflow-hidden pb-safe transition-all duration-300 ease-out md:relative md:h-auto md:pb-0 ${
+        className={`ios-sidebar fixed z-40 flex h-[100dvh] min-h-0 shrink-0 flex-col overflow-hidden pb-safe transition-all duration-300 ease-out md:sticky md:top-3 md:h-[calc(100dvh-1.5rem)] md:self-start md:pb-0 ${
           sidebarOpen
             ? "translate-x-0 w-[272px] opacity-100"
             : "-translate-x-full md:translate-x-0 md:w-0 md:opacity-0 overflow-hidden"
@@ -660,23 +724,44 @@ const Index = () => {
             </span>
           </div>
         )}
-        <TopBar
-          config={engine.project?.config || null}
-          onUpdateConfig={engine.updateConfig}
-          isGenerating={engine.isAnythingGenerating}
-          hasProject={!!engine.project}
-          onExport={guardedExportEpub}
-          onExportDocx={guardedExportDocx}
-          onExportPdf={guardedExportPdf}
-          onCover={() => setShowCover(true)}
-          onPublish={() => setShowPublish(true)}
-          isExporting={isExporting}
-          exportLabel={exportLabel}
-          phase={engine.project?.phase || "idle"}
-          syncStatus={syncStatus}
-          projectId={engine.project?.id || null}
-          project={engine.project}
-        />
+        <div className="sticky top-[calc(env(safe-area-inset-top,0px)+0.5rem)] z-30 shrink-0">
+          <TopBar
+            config={engine.project?.config || null}
+            onUpdateConfig={engine.updateConfig}
+            isGenerating={engine.isAnythingGenerating}
+            hasProject={!!engine.project}
+            onExport={guardedExportEpub}
+            onExportDocx={guardedExportDocx}
+            onExportPdf={guardedExportPdf}
+            onCover={() => setShowCover(true)}
+            onPublish={() => setShowPublish(true)}
+            isExporting={isExporting}
+            exportLabel={exportLabel}
+            phase={engine.project?.phase || "idle"}
+            syncStatus={syncStatus}
+            projectId={engine.project?.id || null}
+            project={engine.project}
+          />
+
+          {engine.project && (
+            <div className="mb-2 ml-10 rounded-xl border border-white/10 bg-background/85 px-3 py-2 shadow-lg shadow-black/10 backdrop-blur-2xl md:ml-0">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200/70">
+                    {writerHeaderContext.breadcrumb}
+                  </p>
+                  <p className="truncate text-sm font-semibold text-white">
+                    {engine.project.config.title || t("untitled")} · {writerHeaderContext.title}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium text-white/68">
+                  {writerHeaderContext.isGenerating && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.8)]" />}
+                  <span>{writerHeaderContext.progress}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         <GuidedProjectFlow
           project={engine.project}

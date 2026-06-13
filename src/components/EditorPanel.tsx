@@ -95,7 +95,7 @@ export function EditorPanel({
           : !!blueprint;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col md:h-full">
+    <div className="flex flex-1 flex-col">
       {hasContent && (
         <div className="flex h-12 shrink-0 items-center justify-center border-b border-white/10 bg-white/[0.035]">
           <div className="ios-segment">
@@ -113,7 +113,7 @@ export function EditorPanel({
         </div>
       )}
 
-      <div className="scriptora-scroll-main scrollbar-thin min-h-0 flex-1 overflow-y-visible md:overflow-y-auto">
+      <div className="scriptora-scroll-main scrollbar-thin flex-1 overflow-y-visible">
         <div className={cn("mx-auto px-3 py-4 pb-safe sm:px-8 sm:py-6", mode === "preview" ? "max-w-2xl" : "max-w-4xl")}>
           <div className={cn("ios-editor-paper p-5 sm:p-7", mode === "preview" && "bg-white/[0.055]")}>
           {mode === "preview" && hasContent ? (
@@ -531,6 +531,9 @@ function ChapterView({
   const currentLength = chapter?.lengthOverride || project.config.chapterLength;
   const [showRewriteMenu, setShowRewriteMenu] = useState(false);
   const [showIntelligence, setShowIntelligence] = useState(false);
+  const liveAnchorRef = useRef<HTMLDivElement | null>(null);
+  const autoFollowLiveRef = useRef(true);
+  const [showReturnToLive, setShowReturnToLive] = useState(false);
 
   const displayedTitle = resolveChapterTitle(isGenerated ? (chapter!.title || outline.title) : outline.title, chapterIndex, {
     config: project.config,
@@ -542,6 +545,48 @@ function ChapterView({
     summary: outline.summary,
     totalChapters: project.config.numberOfChapters,
   });
+  const liveSignature = `${chunkProgress?.chunkIndex ?? 0}:${chunkProgress?.currentWords ?? 0}:${chunkProgress?.content?.length ?? chapter?.content?.length ?? 0}`;
+
+  const isNearDocumentBottom = useCallback(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return true;
+    const doc = document.documentElement;
+    const scrollTop = window.scrollY || doc.scrollTop || 0;
+    const viewportBottom = scrollTop + window.innerHeight;
+    const documentHeight = Math.max(doc.scrollHeight, document.body?.scrollHeight || 0);
+    return documentHeight - viewportBottom < 260;
+  }, []);
+
+  const scrollToLive = useCallback((behavior: ScrollBehavior = "smooth") => {
+    autoFollowLiveRef.current = true;
+    setShowReturnToLive(false);
+    requestAnimationFrame(() => {
+      liveAnchorRef.current?.scrollIntoView({ behavior, block: "end" });
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isGenerating) {
+      autoFollowLiveRef.current = true;
+      setShowReturnToLive(false);
+      return;
+    }
+
+    const handleScroll = () => {
+      const nearBottom = isNearDocumentBottom();
+      autoFollowLiveRef.current = nearBottom;
+      setShowReturnToLive(!nearBottom);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    scrollToLive("auto");
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isGenerating, isNearDocumentBottom, scrollToLive]);
+
+  useEffect(() => {
+    if (!isGenerating || !autoFollowLiveRef.current) return;
+    scrollToLive("smooth");
+  }, [isGenerating, liveSignature, scrollToLive]);
 
   return (
     <div className="space-y-8">
@@ -737,6 +782,8 @@ function ChapterView({
         </>
       )}
 
+      <div ref={liveAnchorRef} aria-hidden="true" className="h-px" />
+
       {isGenerated && (
         <GenreCoachPanel
           chapterTitle={displayedTitle}
@@ -758,6 +805,19 @@ function ChapterView({
             onApplyContent={(newContent) => onUpdateContent(newContent)}
           />
         </FeatureErrorBoundary>
+      )}
+
+      {isGenerating && showReturnToLive && (
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] right-3 z-[75] flex max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-2xl border border-cyan-300/25 bg-slate-950/92 px-3 py-2 text-xs text-white shadow-2xl shadow-cyan-950/40 backdrop-blur-xl sm:right-6">
+          <span className="hidden text-white/65 sm:inline">Stai leggendo più in alto</span>
+          <button
+            type="button"
+            onClick={() => scrollToLive("smooth")}
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-xl bg-cyan-300 px-3 text-[11px] font-bold text-slate-950 transition-colors hover:bg-cyan-200"
+          >
+            ↓ Torna al live
+          </button>
+        </div>
       )}
     </div>
   );
