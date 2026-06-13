@@ -6,6 +6,8 @@ import { normalizeProjectChapterTitles } from "@/lib/chapter-titles";
 import { applyAuthorIdentityToConfig, enforceAuthorIdentityLock, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
 import { applyBookIntelligenceToConfig, detectBookIntelligence } from "@/lib/book-intelligence";
 import { humanizeChapter } from "@/lib/HumanizerLayer";
+import { resolveBookTypeDefinition } from "@/lib/book-type-engine";
+import { inferLevel1FromConfig, sanitizeBookConfiguration, type Level1BookType } from "@/lib/book-config-engine";
 
 const ALLOWED_GENRES: Genre[] = [
   "self-help", "romance", "dark-romance", "thriller", "fantasy", "philosophy", "business", "memoir",
@@ -58,6 +60,46 @@ function normalizeCustomWords(input?: Partial<AutoBestsellerInput>): number | un
   return Math.max(1000, Number(input?.customTotalWords || input?.totalWordTarget || 30000));
 }
 
+const LEVEL1_CATEGORY: Record<Level1BookType, string> = {
+  romanzo: "Novel",
+  "self-help": "Self Help",
+  business: "Business",
+  manuale: "Manual",
+  educazione: "Education",
+  biografia: "Memoir",
+  poesia: "Poesia",
+  saggistica: "Non-Fiction",
+  spiritualita: "Spirituality",
+  marketing: "Marketing",
+  psicologia: "Psychology",
+  bambini: "Children",
+};
+
+/** Derive Amazon/editorial category from genre intelligence — never hardcode Self Help. */
+function resolveAutoBestsellerCategory(genre: Genre, subcategory?: string, subgenre?: string): string {
+  const typeDef = resolveBookTypeDefinition(genre, subcategory, subgenre);
+  const level1 = inferLevel1FromConfig({
+    bookTypeId: typeDef.id,
+    genre,
+    subcategory,
+    subgenre,
+  });
+  return LEVEL1_CATEGORY[level1];
+}
+
+function buildAutoBestsellerConfig(
+  base: Omit<BookConfig, "category"> & { category?: string },
+  authorIdentity: ReturnType<typeof resolveAuthorIdentity>,
+): BookConfig {
+  return sanitizeBookConfiguration(
+    applyBookIntelligenceToConfig(
+      enforceAuthorIdentityLock(
+        applyAuthorIdentityToConfig(base as BookConfig, authorIdentity) as BookConfig,
+      ),
+    ),
+  ).config;
+}
+
 export function autoBestsellerToProject(
   result: AutoBestsellerResult,
   input?: Partial<AutoBestsellerInput>,
@@ -71,9 +113,7 @@ export function autoBestsellerToProject(
   const bookLength = normalizeBookLength(input?.bookLength, input?.totalWordTarget);
   const customTotalWords = normalizeCustomWords(input);
 
-const config: BookConfig = applyBookIntelligenceToConfig(
-  enforceAuthorIdentityLock(
-    applyAuthorIdentityToConfig({
+const config: BookConfig = buildAutoBestsellerConfig({
     title: result.title || "Untitled Bestseller",
     subtitle: result.subtitle || "",
     authorName,
@@ -84,7 +124,7 @@ const config: BookConfig = applyBookIntelligenceToConfig(
     authorStyle: input?.tone || "",
     language,
     genre,
-    category: "Self Help",
+    category: resolveAutoBestsellerCategory(genre, input?.subcategory),
     subcategory: input?.subcategory || "",
     chapterLength: "medium",
     bookLength,
@@ -93,9 +133,7 @@ const config: BookConfig = applyBookIntelligenceToConfig(
     subchaptersEnabled: Boolean(input?.subchaptersEnabled),
     subchaptersPerChapter: Math.max(1, Math.min(8, Number(input?.subchaptersPerChapter) || 3)),
     characters,
-  }, authorIdentity) as BookConfig,
-  ),
-);
+  }, authorIdentity);
 
   const blueprint: BookBlueprint | null = result.blueprint
     ? {
@@ -160,9 +198,7 @@ export function liveBookToPartialProject(
   const bookLength = normalizeBookLength(input?.bookLength, input?.totalWordTarget);
   const customTotalWords = normalizeCustomWords(input);
 
-const config: BookConfig = applyBookIntelligenceToConfig(
-  enforceAuthorIdentityLock(
-    applyAuthorIdentityToConfig({
+const config: BookConfig = buildAutoBestsellerConfig({
     title: liveBook.title || input?.prefilledTitle || "Generating…",
     subtitle: liveBook.subtitle || input?.prefilledSubtitle || "",
     authorName,
@@ -173,7 +209,7 @@ const config: BookConfig = applyBookIntelligenceToConfig(
     authorStyle: input?.tone || "",
     language,
     genre,
-    category: "Self Help",
+    category: resolveAutoBestsellerCategory(genre, input?.subcategory),
     subcategory: input?.subcategory || "",
     chapterLength: "medium",
     bookLength,
@@ -182,9 +218,7 @@ const config: BookConfig = applyBookIntelligenceToConfig(
     subchaptersEnabled: Boolean(input?.subchaptersEnabled),
     subchaptersPerChapter: Math.max(1, Math.min(8, Number(input?.subchaptersPerChapter) || 3)),
     characters,
-  }, authorIdentity) as BookConfig,
-  ),
-);
+  }, authorIdentity);
 
   const blueprint: BookBlueprint | null = liveBook.outlines
     ? {

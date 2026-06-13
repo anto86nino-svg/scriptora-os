@@ -30,6 +30,7 @@ import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-ti
 import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
 import { buildPremiumWritingBlock, runUltraHumanFinalPass } from "@/lib/premium-writing";
+import { buildPromptFromCanonicalConfig, sanitizeBookConfiguration } from "@/lib/book-config-engine";
 import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/billing/billingHeaders";
 import {
   buildBlueprintIntegrityBlueprintRequest,
@@ -875,53 +876,12 @@ function getGenrePrompt(config: BookConfig): string {
 }
 
 function getSystemPrompt(config: BookConfig, lock?: GenreLock, opts?: { dominateMode?: boolean }): string {
-  const langMap: Record<string, string> = {
-    English: "English", Italian: "Italian (Italiano)", Spanish: "Spanish (Español)",
-    French: "French (Français)", German: "German (Deutsch)",
-  };
-  const lang = langMap[config.language] || config.language;
-  const genrePrompt = getGenrePrompt(config);
-  const bp = resolveLockedBlueprint(config, lock);
-  const editorialBlock = `EDITORIAL BLUEPRINT — ${resolveGenreKey(config.genre, (config as any).subcategory).toUpperCase()}${lock ? " (LOCKED)" : ""}
-Book structure (sections): ${bp.structure.join(" → ")}
-Editorial tone: ${bp.tone}
-Chapter style: ${bp.chapterStyle}
-Subchapters expected: ${bp.hasSubchapters ? "yes" : "no"}
+  return buildPromptFromCanonicalConfig(config, lock, opts).prompt;
+}
 
-CONTENT RULES (mandatory for every chapter):
-${bp.contentRules.map(r => `• ${r}`).join("\n")}`;
-
-  const masteryBlock = buildEditorialMasteryBlock({
-    genre: config.genre,
-    subcategory: (config as any).subcategory,
-    language: lang,
-    tone: config.tone,
-    dominateMode: opts?.dominateMode,
-  });
-
-  return `${genrePrompt}
-
-${buildBlueprintIntegrityFoundationBlock(config)}
-
-${editorialBlock}
-
-${getStyleLock(config)}
-
-${masteryBlock}
-
-ABSOLUTE RULES — BESTSELLER STANDARD:
-1. WRITE EVERYTHING IN ${lang.toUpperCase()}. Every word, title, sentence MUST be in ${lang}. No exceptions.
-2. START every chapter with a powerful HOOK — tension, uncomfortable truth, or scene-in-motion. Never throat-clearing.
-3. Include at least 3–5 quotable, highlight-worthy sentences per chapter.
-4. NEVER repeat ideas, phrases, examples, or structural patterns across chapters.
-5. Each chapter must escalate — building emotional, cognitive, or narrative momentum.
-6. Write at PUBLISHED BESTSELLER quality — superior to current market average.
-7. Create sentences readers will screenshot, highlight, and share.
-8. Use varied sentence rhythm — short punches mixed with flowing prose.
-9. Book scope: ${BOOK_LENGTH_CONFIG[config.bookLength].description} (target: ~${getBookTotalWords(config).toLocaleString()} total words)
-10. RESPECT THE EDITORIAL BLUEPRINT — chapter style and content rules are MANDATORY${lock ? " AND LOCKED" : ""}.
-11. RESPECT THE EDITORIAL MASTERY LAYER — apply silently, never expose its rules in the text.
-12. OUTPUT RULE: return ONLY the final content. No commentary, no explanations, no labels, no apologies.`;
+/** Sanitize config at generation boundaries — returns clean config for downstream use. */
+function withSanitizedConfig(config: BookConfig): BookConfig {
+  return sanitizeBookConfiguration(config).config;
 }
 
 /* ============ Phase Logic for Chunked Writing ============ */
@@ -1140,6 +1100,7 @@ export async function generateChapterChunked(
   genreLock?: GenreLock,
   opts?: { adaptive?: { plan: import("@/lib/plan").PlanTier }; usage?: AIUsageContext },
 ): Promise<Chapter> {
+  config = withSanitizedConfig(config);
   const runtimeProject: BookProject = {
     id: opts?.usage?.projectId || "runtime",
     config,
@@ -1569,6 +1530,7 @@ export interface BlueprintGenerationResult {
 }
 
 export async function generateBlueprint(config: BookConfig, genreLock?: GenreLock, usage?: AIUsageContext): Promise<BlueprintGenerationResult> {
+  config = withSanitizedConfig(config);
   const bookInfo = BOOK_LENGTH_CONFIG[config.bookLength];
   const totalWords = getBookTotalWords(config);
   const subchapterCount = getSubchaptersPerChapter(config);
@@ -1653,6 +1615,7 @@ export async function generateFrontMatter(
   genreLock?: GenreLock,
   usage?: AIUsageContext,
 ): Promise<FrontMatter> {
+  config = withSanitizedConfig(config);
   const bp = resolveLockedBlueprint(config, genreLock);
   const genreKey = resolveGenreKey(config.genre, (config as any).subcategory);
   const matterOpts = resolveMatterOptions(config);
@@ -1731,6 +1694,7 @@ export async function generateSubchapter(
   genreLock?: GenreLock,
   usage?: AIUsageContext,
 ): Promise<{ title: string; content: string }> {
+  config = withSanitizedConfig(config);
   const rawOutline = blueprint.chapterOutlines[chapterIndex] || {
     title: "",
     summary: `Develop chapter ${chapterIndex + 1} of "${config.title}".`,
@@ -1842,6 +1806,7 @@ export async function generateBackMatter(
   genreLock?: GenreLock,
   usage?: AIUsageContext,
 ): Promise<BackMatter> {
+  config = withSanitizedConfig(config);
   const bp = resolveLockedBlueprint(config, genreLock);
   const genreKey = resolveGenreKey(config.genre, (config as any).subcategory);
   const chapterTitles = chapters.map((c, i) => formatChapterDisplayTitle(i, c.title, {
@@ -1989,6 +1954,7 @@ export async function rewriteChapter(
   chapterIndex: number, previousChapters: Chapter[], instruction: string,
   aiRating?: AIQualityRating, level: RewriteLevel = "deep", usage?: AIUsageContext,
 ): Promise<Chapter> {
+  config = withSanitizedConfig(config);
   const weaknessTarget = aiRating
     ? `\n\nAI EDITOR FEEDBACK (you MUST address these weaknesses):
 - Current Score: ${aiRating.score}/5

@@ -9,6 +9,7 @@ export const BOOK_TYPE_REGISTRY: BookTypeDefinition[] = [
   { id: "fantasy", label: "Fantasy", family: "narrative", genre: "fantasy", subcategoryHints: ["epic", "cozy"], chapterStyle: "narrative", defaultSubchapters: true, titleMode: "contextual" },
   { id: "cozy-fantasy", label: "Cozy Fantasy", family: "narrative", genre: "fantasy", subcategoryHints: ["cozy", "comfort"], chapterStyle: "narrative", defaultSubchapters: true, titleMode: "contextual" },
   { id: "thriller", label: "Thriller", family: "narrative", genre: "thriller", subcategoryHints: ["psychological", "crime"], chapterStyle: "narrative", defaultSubchapters: true, titleMode: "contextual" },
+  { id: "gothic-thriller", label: "Gothic Thriller", family: "narrative", genre: "thriller", subcategoryHints: ["gothic", "noir", "atmospheric"], chapterStyle: "narrative", defaultSubchapters: true, titleMode: "contextual" },
   { id: "crime", label: "Crime", family: "narrative", genre: "thriller", subcategoryHints: ["crime", "noir"], chapterStyle: "narrative", defaultSubchapters: true, titleMode: "contextual" },
   { id: "horror", label: "Horror", family: "narrative", genre: "horror", subcategoryHints: ["supernatural"], chapterStyle: "narrative", defaultSubchapters: true, titleMode: "contextual" },
   { id: "mystery", label: "Mystery", family: "narrative", genre: "thriller", subcategoryHints: ["mystery", "whodunit"], chapterStyle: "narrative", defaultSubchapters: true, titleMode: "contextual" },

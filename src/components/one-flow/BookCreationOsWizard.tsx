@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   X, ArrowLeft, ArrowRight, Rocket, Sparkles, Plus, Trash2, Users, Loader2,
   CheckCircle2, AlertTriangle, BookOpen, Clock3,
@@ -28,6 +28,15 @@ import { DEFAULT_MATTER_OPTIONS, normalizeBookConfig } from "@/lib/book-config-s
 import { validateBookConfigStudio } from "@/lib/book-config-studio/validation";
 import type { StudioLaunchPayload } from "@/lib/book-config-studio/types";
 import { STUDIO_DRAFT_STORAGE_KEY } from "@/lib/book-config-studio/types";
+import {
+  getVisibleBookTypesForLevel1,
+  inferLevel1FromConfig,
+  resolveLevel1FromBookTypeId,
+  resetConfigForLevel1Change,
+  sanitizeBookConfiguration,
+  validateConfigCoherence,
+  type Level1BookType,
+} from "@/lib/book-config-engine";
 
 interface BookCreationOsWizardProps {
   open: boolean;
@@ -236,6 +245,12 @@ export function BookCreationOsWizard({
   const [launching, setLaunching] = useState(false);
   const [generatingCharacter, setGeneratingCharacter] = useState(false);
   const [freeRegensLeft, setFreeRegensLeft] = useState(() => getWizardCharacterFreeRegensRemaining());
+  const [level1BookType, setLevel1BookType] = useState<Level1BookType>("romanzo");
+  const [showTypeChangeModal, setShowTypeChangeModal] = useState(false);
+  const [pendingBookTypeId, setPendingBookTypeId] = useState<string | null>(null);
+  const [pendingFeaturedSubgenre, setPendingFeaturedSubgenre] = useState<string | undefined>();
+
+  const visibleGenres = useMemo(() => getVisibleBookTypesForLevel1(level1BookType), [level1BookType]);
 
   const buildConfig = useCallback((): BookConfig => {
     const styleDirective = profileToStyleDirective(styleProfile);
@@ -258,7 +273,7 @@ export function BookCreationOsWizard({
       voiceConsistency.trim() && `Voice consistency:\n${voiceConsistency.trim()}`,
     ].filter(Boolean).join("\n\n");
 
-    return normalizeBookConfig(applyAuthorIdentityToConfig({
+    const raw = normalizeBookConfig(applyAuthorIdentityToConfig({
       title: title.trim() || "Romanzo senza titolo",
       subtitle: subtitle.trim(),
       idea: guidedBrief || idea.trim(),
@@ -286,6 +301,8 @@ export function BookCreationOsWizard({
       characters: characters.filter((c) => String(c.name || "").trim()),
       configStatus: "validated",
     }, mergedIdentity) as BookConfig);
+    const { config: sanitized } = sanitizeBookConfiguration(raw);
+    return sanitized;
   }, [
     styleProfile, identityDraft, authorName, title, subtitle, idea, language, amazonMarketplace,
     bookTypeId, genre, category, subcategory, subgenre, tone, targetReader, referenceAuthors, chapterLength,
@@ -324,7 +341,10 @@ export function BookCreationOsWizard({
       if (draft.amazonMarketplace) setAmazonMarketplace(draft.amazonMarketplace);
       if (draft.category) setCategory(draft.category);
       if (draft.subcategory) setSubcategory(draft.subcategory);
-      if (draft.bookTypeId) setBookTypeId(draft.bookTypeId);
+      if (draft.bookTypeId) {
+        setBookTypeId(draft.bookTypeId);
+        setLevel1BookType(resolveLevel1FromBookTypeId(draft.bookTypeId));
+      }
       if (draft.genre) setGenre(draft.genre);
       if (draft.subgenre) setSubgenre(draft.subgenre);
       if (draft.chapters) setChapters(draft.chapters);
@@ -372,7 +392,24 @@ export function BookCreationOsWizard({
   if (!open) return null;
 
   const validationIssues = validateBookConfigStudio(buildConfig(), identityDraft);
+  const coherenceReport = step >= 5 ? validateConfigCoherence(buildConfig()) : null;
   const stepLabel = STUDIO_STEPS[step];
+
+  const applyCoherenceAutoFix = () => {
+    const { config } = sanitizeBookConfiguration(buildConfig());
+    if (config.bookTypeId) {
+      setBookTypeId(config.bookTypeId);
+      setLevel1BookType(resolveLevel1FromBookTypeId(config.bookTypeId));
+    }
+    setGenre(config.genre);
+    setCategory(config.category);
+    setSubcategory(config.subcategory);
+    setSubgenre(config.subgenre || config.subcategory);
+    setTone(config.tone.split(" · Voce autore:")[0]?.trim() || config.tone);
+    if (config.styleProfile) setStyleProfile({ ...DEFAULT_STYLE_PROFILE, ...config.styleProfile });
+    if (config.targetReader) setTargetReader(config.targetReader);
+    toast.success("Impostazioni corrette automaticamente.");
+  };
 
   const applyPreset = (presetId: string) => {
     const preset = STYLE_PRESETS.find((p) => p.id === presetId);
@@ -381,20 +418,61 @@ export function BookCreationOsWizard({
     setTone(preset.label);
   };
 
-  const applyStudioGenre = (id: string) => {
-    const g = STUDIO_GENRES.find((x) => x.id === id);
+  const applyStudioGenre = (id: string, opts?: { force?: boolean; featuredSubgenre?: string }) => {
+    const newLevel1 = resolveLevel1FromBookTypeId(id);
+    const prevLevel1 = resolveLevel1FromBookTypeId(bookTypeId);
+    if (!opts?.force && newLevel1 !== prevLevel1) {
+      setPendingBookTypeId(id);
+      setPendingFeaturedSubgenre(opts?.featuredSubgenre);
+      setShowTypeChangeModal(true);
+      return;
+    }
+
+    const g = visibleGenres.find((x) => x.id === id) || STUDIO_GENRES.find((x) => x.id === id);
     if (!g) return;
+
+    if (newLevel1 !== prevLevel1) {
+      const draft = normalizeBookConfig({
+        bookTypeId: id,
+        genre: g.genre,
+        category: g.category,
+        subcategory: g.defaultSubcategory,
+        subgenre: opts?.featuredSubgenre || g.defaultSubcategory,
+        tone,
+        authorStyle: STYLE_PRESETS.find((p) => p.id === styleProfile.presetId)?.label || "Bestseller Commerciale",
+        styleProfile,
+      } as BookConfig);
+      const { config: reset } = resetConfigForLevel1Change(draft, newLevel1, prevLevel1);
+      setTone(reset.tone);
+      setStyleProfile({ ...DEFAULT_STYLE_PROFILE, ...(reset.styleProfile || {}) });
+      setSubcategory(reset.subcategory);
+      setSubgenre(opts?.featuredSubgenre || reset.subgenre || reset.subcategory);
+      setLevel1BookType(newLevel1);
+      toast.info("Impostazioni aggiornate per mantenere coerenza narrativa.");
+    } else {
+      setSubgenre((current) => opts?.featuredSubgenre || current || g.defaultSubcategory);
+    }
+
     setBookTypeId(g.id);
     setGenre(g.genre);
     setCategory(g.category);
-    setSubcategory(g.defaultSubcategory);
-    setSubgenre((current) => current || g.defaultSubcategory);
+    if (newLevel1 === prevLevel1) {
+      setSubcategory(g.defaultSubcategory);
+      if (!opts?.featuredSubgenre) setSubgenre((current) => current || g.defaultSubcategory);
+    }
     setSubchaptersEnabled(g.defaultSubchapters);
   };
 
+  const confirmTypeChange = () => {
+    if (!pendingBookTypeId) return;
+    applyStudioGenre(pendingBookTypeId, { force: true, featuredSubgenre: pendingFeaturedSubgenre });
+    setShowTypeChangeModal(false);
+    setPendingBookTypeId(null);
+    setPendingFeaturedSubgenre(undefined);
+  };
+
   const applyFeaturedBookType = (type: (typeof FEATURED_BOOK_TYPES)[number]) => {
-    applyStudioGenre(type.id);
-    if (type.subgenre) setSubgenre(type.subgenre);
+    applyStudioGenre(type.id, { featuredSubgenre: type.subgenre });
   };
 
   const applyGuidedStarter = (starter: (typeof GUIDED_STARTERS)[number]) => {
@@ -603,7 +681,7 @@ export function BookCreationOsWizard({
                 onChange={(e) => applyStudioGenre(e.target.value)}
                 className={inputClass}
               >
-                {STUDIO_GENRES.map((g) => <option key={g.id} value={g.id}>{g.label} ({g.family})</option>)}
+                {visibleGenres.map((g) => <option key={g.id} value={g.id}>{g.label} ({g.family})</option>)}
               </select>
               <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Categoria" className={inputClass} />
               <input value={subcategory} onChange={(e) => setSubcategory(e.target.value)} placeholder="Sottocategoria" className={inputClass} />
@@ -789,6 +867,29 @@ export function BookCreationOsWizard({
           {step === 5 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-white">Validazione progetto</h2>
+              {coherenceReport && coherenceReport.needsCorrection && (
+                <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-5 w-5 shrink-0" />
+                    <div>
+                      <p className="font-semibold">Abbiamo rilevato alcune impostazioni incoerenti.</p>
+                      <p className="mt-1 text-xs text-amber-100/80">
+                        Coerenza complessiva: {coherenceReport.overall}/100
+                        {coherenceReport.suggestedFixes.length > 0
+                          ? ` · ${coherenceReport.suggestedFixes.length} correzioni disponibili`
+                          : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={applyCoherenceAutoFix}
+                    className="rounded-lg border border-amber-200/40 bg-amber-200/15 px-3 py-2 text-xs font-semibold text-amber-50 hover:bg-amber-200/25"
+                  >
+                    Correggi automaticamente
+                  </button>
+                </div>
+              )}
               {validationIssues.length === 0 ? (
                 <div className="flex items-start gap-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm text-emerald-100">
                   <CheckCircle2 className="h-5 w-5 shrink-0" />
@@ -891,6 +992,33 @@ export function BookCreationOsWizard({
           )}
         </div>
       </div>
+
+      {showTypeChangeModal && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-white/15 bg-slate-950 p-5 shadow-2xl">
+            <h3 className="text-lg font-semibold text-white">Hai cambiato tipo di libro</h3>
+            <p className="mt-2 text-sm leading-6 text-white/70">
+              Alcune impostazioni verranno aggiornate automaticamente per mantenere qualità e coerenza narrativa.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => { setShowTypeChangeModal(false); setPendingBookTypeId(null); setPendingFeaturedSubgenre(undefined); }}
+                className="rounded-xl border border-white/15 px-4 py-2 text-sm text-white/75"
+              >
+                Annulla
+              </button>
+              <button
+                type="button"
+                onClick={confirmTypeChange}
+                className="rounded-xl bg-sky-500 px-4 py-2 text-sm font-bold text-white"
+              >
+                Aggiorna impostazioni
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { buildNarrativeConsequenceBlock } from "./narrative-consequence-engine";
 import { buildEditorialSelectionBlock } from "./editorial-selection-engine";
 import { buildGlobalNovelBrainBlock } from "./global-novel-brain";
 import { buildReaderSimulationBlock } from "./reader-simulation-engine";
+import { buildHumanNarrativeRealismV3Block } from "@/lib/human-narrative-realism-v3";
 import { applyPremiumOutputGuard } from "./output-sanitization-guard";
 import { runUltraHumanFinalPass } from "./ultra-human-pipeline";
 
@@ -35,6 +36,7 @@ export function buildPremiumWritingBlock(ctx: PremiumWritingContext): string {
   const narrativeOnly = family === "narrative" || family === "poetry";
 
   const blocks = [
+    buildHumanNarrativeRealismV3Block(ctx),
     narrativeOnly ? buildGlobalNovelBrainBlock(ctx.previousChapters, ctx.chapterIndex) : "",
     narrativeOnly ? buildNarrativeConsequenceBlock(ctx.previousChapters, ctx.chapterIndex) : "",
     narrativeOnly ? buildNarrativeBeatAntiRepetitionBlock(ctx) : "",

@@ -4,6 +4,7 @@ import { saveProjectAsync, createProjectId, setLastProjectId, loadProjects as lo
 import { saveProject } from "@/lib/storage";
 import type { RewriteLevel, ChunkProgress } from "@/lib/generation-types";
 import { buildBookTypeLock as buildGenreLock } from "@/lib/book-type-engine";
+import { sanitizeBookConfiguration } from "@/lib/book-config-engine";
 import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 import {
   runGenerateBlueprint,
@@ -237,12 +238,13 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     }
 
     const normalized = normalizeBookConfig(config);
-    const titleSafeInput = ensureBookTitleMetadata(normalized, {
-      genre: normalized.genre,
-      category: normalized.category,
-      subcategory: normalized.subcategory,
-      targetAudience: normalized.tone,
-      language: normalized.language,
+    const { config: sanitized } = sanitizeBookConfiguration(normalized);
+    const titleSafeInput = ensureBookTitleMetadata(sanitized, {
+      genre: sanitized.genre,
+      category: sanitized.category,
+      subcategory: sanitized.subcategory,
+      targetAudience: sanitized.tone,
+      language: sanitized.language,
     });
     const authorSafeInput = applyAuthorIdentityToConfig(
       titleSafeInput,
@@ -1036,7 +1038,15 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   }, [project, generatingSet, addMessage, updateAndSave, rewriteChapterWithDepth]);
 
   const updateConfig = useCallback((key: keyof BookConfig, value: any) => {
-    updateAndSave(p => ({ ...p, config: { ...p.config, [key]: value } }));
+    updateAndSave(p => {
+      const nextConfig = { ...p.config, [key]: value };
+      const shouldSanitize = key === "bookTypeId" || key === "genre" || key === "subcategory" || key === "subgenre" || key === "category";
+      const finalConfig = shouldSanitize ? sanitizeBookConfiguration(nextConfig).config : nextConfig;
+      const genreLock = (key === "bookTypeId" || key === "genre" || key === "subcategory")
+        ? buildGenreLock(finalConfig)
+        : p.genreLock;
+      return { ...p, config: finalConfig, genreLock };
+    });
   }, [updateAndSave]);
 
   const updateChapterContent = useCallback((chapterIndex: number, content: string) => {

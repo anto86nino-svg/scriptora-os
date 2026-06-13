@@ -15,6 +15,11 @@ import {
 } from "@/lib/GenreBrain";
 import { applyHumanImperfectionLayer } from "@/lib/HumanImperfectionLayer";
 import { applyStoryBibleLock } from "@/lib/StoryBibleLock";
+import {
+  applyHumanNarrativeRealismV3,
+  buildHumanNarrativeRealismV3Block,
+  isHumanNarrativeRealismV3Enabled,
+} from "@/lib/human-narrative-realism-v3";
 
 export const HUMANIZER_LAYER_STORAGE_KEY = "scriptora-humanizer-v2-enabled";
 const MAX_CHANGED_PERCENT = 14.5;
@@ -161,8 +166,11 @@ export function shouldUseHumanizer(context: HumanizerContext = {}): boolean {
 }
 
 export function buildHumanizerPromptBlock(context: HumanizerContext = {}): string {
-  if (!shouldUseHumanizer(context)) return "";
-  return buildTensionPromptBlock(context);
+  const tension = shouldUseHumanizer(context) ? buildTensionPromptBlock(context) : "";
+  const realismV3 = isHumanNarrativeRealismV3Enabled()
+    ? buildHumanNarrativeRealismV3Block(context)
+    : "";
+  return [tension, realismV3].filter(Boolean).join("\n\n");
 }
 
 const GROUNDED_BEATS: Record<LanguageKey, string[]> = {
@@ -696,7 +704,10 @@ function removeTherapistClarity(text: string, language: LanguageKey): string {
 
 export function humanizeNarrativeText(text: string, context: HumanizerContext = {}): string {
   if (!text?.trim()) return text;
-  if (!shouldUseHumanizer(context)) return applyStoryBibleLock(text, context);
+  if (!shouldUseHumanizer(context)) {
+    const base = applyStoryBibleLock(text, context);
+    return isHumanNarrativeRealismV3Enabled() ? applyHumanNarrativeRealismV3(base, context) : base;
+  }
 
   const language = languageKey(context.config);
   const genreBrain = resolveGenreBrainProfile(context);
@@ -733,6 +744,9 @@ export function humanizeNarrativeText(text: string, context: HumanizerContext = 
   }
   next = acceptWithinBudget(original, next, applyHumanImperfectionLayer(next, context), genreBrain, "bodyBeat");
   next = applyStoryBibleLock(next, context);
+  if (isHumanNarrativeRealismV3Enabled()) {
+    next = applyHumanNarrativeRealismV3(next, context);
+  }
 
   return next.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }

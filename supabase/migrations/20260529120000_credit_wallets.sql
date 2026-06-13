@@ -121,7 +121,7 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'error', 'not_authenticated');
   END IF;
 
-  SELECT plan INTO v_plan FROM public.user_plans WHERE user_id = v_user_id LIMIT 1;
+  SELECT plan INTO v_plan FROM public.user_plans WHERE user_id = v_user_id::text LIMIT 1;
   v_wallet := public.ensure_credit_wallet(v_user_id, coalesce(v_plan, 'free'));
 
   RETURN jsonb_build_object(
@@ -160,7 +160,7 @@ BEGIN
   IF p_idempotency_key IS NOT NULL THEN
     SELECT * INTO v_existing
     FROM public.credit_ledger
-    WHERE user_id = v_user_id AND idempotency_key = p_idempotency_key
+    WHERE user_id = v_user_id::text AND idempotency_key = p_idempotency_key
     LIMIT 1;
     IF FOUND THEN
       RETURN jsonb_build_object(
@@ -177,7 +177,7 @@ BEGIN
   v_cost := coalesce(p_cost, public.credit_operation_cost(p_operation));
   IF v_cost < 0 THEN v_cost := 0; END IF;
 
-  SELECT plan INTO v_plan FROM public.user_plans WHERE user_id = v_user_id LIMIT 1;
+  SELECT plan INTO v_plan FROM public.user_plans WHERE user_id = v_user_id::text LIMIT 1;
   v_wallet := public.ensure_credit_wallet(v_user_id, coalesce(v_plan, 'free'));
 
   IF p_simulated THEN
@@ -190,7 +190,7 @@ BEGIN
     RETURN jsonb_build_object('ok', true, 'committed', true, 'cost', 0, 'balance_after', v_wallet.balance, 'simulated', false);
   END IF;
 
-  SELECT * INTO v_wallet FROM public.credit_wallets WHERE user_id = v_user_id FOR UPDATE;
+  SELECT * INTO v_wallet FROM public.credit_wallets WHERE user_id = v_user_id::text FOR UPDATE;
   IF v_wallet.balance < v_cost THEN
     RETURN jsonb_build_object(
       'ok', false,
@@ -203,7 +203,7 @@ BEGIN
   v_new_balance := v_wallet.balance - v_cost;
   UPDATE public.credit_wallets
   SET balance = v_new_balance, updated_at = now()
-  WHERE user_id = v_user_id;
+  WHERE user_id = v_user_id::text;
 
   INSERT INTO public.credit_ledger (user_id, operation, amount, balance_after, metadata, simulated, idempotency_key)
   VALUES (v_user_id, p_operation, -v_cost, v_new_balance, p_metadata, false, p_idempotency_key);

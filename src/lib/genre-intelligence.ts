@@ -1072,9 +1072,10 @@ export function resolveGenreKey(genre: string, subcategory?: string): GenreKey {
     g.includes("spirit")
   )
     return "spirituality";
+  if (sub.includes("gothic") || sub.includes("gotico") || sub.includes("noir")) return "thriller";
   if (g.includes("dark")) return "dark-romance";
   if (g.includes("romance")) return "romance";
-  if (g.includes("thrill")) return "thriller";
+  if (g.includes("thrill") || g.includes("gothic")) return "thriller";
   if (g.includes("fantasy")) return "fantasy";
   if (g.includes("philos") || g.includes("filos")) return "philosophy";
   if (g.includes("business")) return "business";
