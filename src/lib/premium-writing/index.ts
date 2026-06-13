@@ -18,6 +18,10 @@ import { buildReaderSimulationBlock } from "./reader-simulation-engine";
 import { buildHumanNarrativeRealismV3Block } from "@/lib/human-narrative-realism-v3";
 import { buildMemoryConsistencyV25Block } from "@/lib/memory-consistency-v25";
 import { buildGreatnessEngineBlock } from "@/lib/greatness-engine";
+import {
+  buildCrossGenreProtectionBlock,
+  buildOverOptimizationGuardBlock,
+} from "@/lib/narrative-baseline-lock";
 import { applyPremiumOutputGuard } from "./output-sanitization-guard";
 import { runUltraHumanFinalPass } from "./ultra-human-pipeline";
 
@@ -39,10 +43,13 @@ export function buildPremiumWritingBlock(ctx: PremiumWritingContext): string {
     ctx.config.bookTypeId,
   ).family;
   const narrativeOnly = family === "narrative" || family === "poetry";
+  const instructionalFamily = family === "nonfiction" || family === "educational" || family === "manual";
 
   const blocks = [
     buildHumanNarrativeRealismV3Block(ctx),
     narrativeOnly ? buildMemoryConsistencyV25Block(ctx) : "",
+    (narrativeOnly || instructionalFamily) ? buildCrossGenreProtectionBlock(ctx.config) : "",
+    buildOverOptimizationGuardBlock(),
     buildGreatnessEngineBlock(ctx),
     narrativeOnly ? buildGlobalNovelBrainBlock(ctx.previousChapters, ctx.chapterIndex) : "",
     narrativeOnly ? buildNarrativeConsequenceBlock(ctx.previousChapters, ctx.chapterIndex) : "",

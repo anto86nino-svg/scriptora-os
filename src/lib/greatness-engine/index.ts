@@ -1,23 +1,28 @@
 import type { PremiumWritingContext } from "@/lib/premium-writing";
-import { isExcellencePhaseActive } from "@/lib/generation-excellence-roadmap";
+import {
+  getGreatnessMode,
+  isGreatnessDiagnosticsEnabled,
+  isGreatnessPromptActive,
+} from "@/lib/narrative-baseline-lock/greatness-mode";
 import { buildGreatnessEnginePromptBlock } from "./prompt-block";
 
-export const GREATNESS_ENGINE_KEY = "scriptora-greatness-engine";
+export type GreatnessMode = import("@/lib/narrative-baseline-lock/greatness-mode").GreatnessMode;
 
+export {
+  getGreatnessMode,
+  isGreatnessDiagnosticsEnabled,
+  isGreatnessPromptActive,
+  setGreatnessMode,
+  GREATNESS_MODE_KEY,
+} from "@/lib/narrative-baseline-lock/greatness-mode";
+
+/** @deprecated Use isGreatnessDiagnosticsEnabled() */
 export function isGreatnessEngineEnabled(): boolean {
-  try {
-    if (!isExcellencePhaseActive("greatness")) return false;
-    if (import.meta.env.VITE_SCRIPTORA_GREATNESS === "off") return false;
-    if (typeof window === "undefined") return true;
-    const saved = localStorage.getItem(GREATNESS_ENGINE_KEY);
-    return saved !== "off" && saved !== "false";
-  } catch {
-    return isExcellencePhaseActive("greatness");
-  }
+  return isGreatnessDiagnosticsEnabled();
 }
 
 export function buildGreatnessEngineBlock(ctx: PremiumWritingContext): string {
-  if (!isGreatnessEngineEnabled()) return "";
+  if (!isGreatnessPromptActive()) return "";
   return buildGreatnessEnginePromptBlock(ctx);
 }
 

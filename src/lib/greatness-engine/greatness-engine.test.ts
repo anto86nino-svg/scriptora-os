@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildGreatnessEnginePromptBlock,
   evaluateGreatnessChapter,
-  isGreatnessEngineEnabled,
+  getGreatnessMode,
+  isGreatnessPromptActive,
 } from "@/lib/greatness-engine";
 import type { BookConfig } from "@/types/book";
 
@@ -57,8 +58,9 @@ function cfg(genre: string, subcategory = genre): BookConfig {
 }
 
 describe("Scriptora Greatness Engine", () => {
-  it("is enabled when excellence phase is active", () => {
-    expect(isGreatnessEngineEnabled()).toBe(true);
+  it("defaults to passive safe mode", () => {
+    expect(getGreatnessMode()).toBe("passive");
+    expect(isGreatnessPromptActive()).toBe(false);
   });
 
   it("scores gothic strong higher than weak on hook, ending, compulsive readability", () => {

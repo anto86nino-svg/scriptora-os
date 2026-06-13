@@ -19,7 +19,7 @@ import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/bi
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { computePremiumEditorialScores } from "@/lib/editorial-intelligence-premium";
 import { isMemoryConsistencyV25Enabled, runDevelopmentalMemoryCheck } from "@/lib/memory-consistency-v25";
-import { evaluateGreatnessChapter, isGreatnessEngineEnabled } from "@/lib/greatness-engine";
+import { evaluateGreatnessChapter, isGreatnessDiagnosticsEnabled, getGreatnessMode } from "@/lib/greatness-engine";
 import {
   listChapterRevisions,
   peekChapterRevision,
@@ -178,7 +178,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
     });
   }, [project, chapterIndex, workingContent, chapter?.content]);
   const greatnessDiagnostic = useMemo(() => {
-    if (!isGreatnessEngineEnabled()) return null;
+    if (!isGreatnessDiagnosticsEnabled()) return null;
     const text = workingContent || chapter?.content || "";
     if (text.trim().length < 120) return null;
     return evaluateGreatnessChapter({
@@ -729,7 +729,7 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
                 <div className="flex items-center gap-1.5">
                   <Zap className="h-3.5 w-3.5 text-fuchsia-300" />
                   <span className="text-[10px] font-bold uppercase tracking-widest text-fuchsia-100/80">
-                    Greatness Engine
+                    Greatness Engine · {getGreatnessMode()}
                   </span>
                 </div>
                 <span className={`text-[10px] font-bold ${greatnessDiagnostic.scores.overall >= 74 ? "text-emerald-300" : greatnessDiagnostic.scores.overall >= 58 ? "text-amber-300" : "text-rose-300"}`}>
