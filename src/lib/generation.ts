@@ -160,6 +160,26 @@ function extractErrorMessageFromBody(text: string): string {
   return typeof message === "string" && message.trim() ? message.trim() : text.trim();
 }
 
+function getSupabasePublicKey(): string {
+  return import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+}
+
+function blueprintDebug(event: string, payload?: Record<string, unknown>) {
+  try {
+    const enabled = import.meta.env.DEV
+      || (typeof window !== "undefined" && (
+        (window as any).__SCRIPTORA_BLUEPRINT_DEBUG__ === true
+        || localStorage.getItem("scriptora-blueprint-debug") === "1"
+      ));
+    if (enabled) console.info(`[${event}]`, payload || {});
+  } catch {
+    /* diagnostics must never block generation */
+  }
+}
+
+const BLUEPRINT_NETWORK_USER_MESSAGE =
+  "Scriptora non riesce a raggiungere il motore Blueprint in questo momento. Riprova tra pochi secondi.";
+
 function parseGenerationResultPayload(
   body: string,
   contentType: string,
@@ -364,15 +384,58 @@ async function callAIReduced(systemPrompt: string, userPrompt: string, usage?: A
  * 90s hard timeout; faster than streaming for short structured output.
  */
 async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage?: AIUsageContext): Promise<string> {
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-blueprint-fast`;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+  const supabasePublicKey = getSupabasePublicKey();
+  if (!supabaseUrl || !supabasePublicKey) {
+    blueprintDebug("BLUEPRINT_ERROR", {
+      reason: "missing_supabase_env",
+      hasSupabaseUrl: Boolean(supabaseUrl),
+      hasSupabasePublicKey: Boolean(supabasePublicKey),
+    });
+    throw new Error("Configurazione Supabase mancante per il motore Blueprint. Controlla le variabili Vercel e riprova.");
+  }
+
+  let url: string;
+  try {
+    url = new URL("/functions/v1/generate-blueprint-fast", supabaseUrl).toString();
+  } catch {
+    blueprintDebug("BLUEPRINT_ERROR", { reason: "invalid_supabase_url", supabaseUrl });
+    throw new Error("URL Supabase non valido per il motore Blueprint. Controlla VITE_SUPABASE_URL in Vercel.");
+  }
+
+  let attemptNumber = 0;
   const callOnce = async (): Promise<string> => {
+    attemptNumber += 1;
+    if (attemptNumber > 1) {
+      blueprintDebug("BLUEPRINT_RETRY", {
+        attempt: attemptNumber,
+        projectId: usage?.projectId,
+        taskType: usage?.taskType || "generate_blueprint",
+      });
+      await supabase.auth.refreshSession().catch((err) => {
+        blueprintDebug("BLUEPRINT_RETRY", {
+          attempt: attemptNumber,
+          refreshSession: "failed",
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+    }
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 90_000);
     // Resolve bearer: prefer the authenticated user JWT (same strategy as callAIOnce).
     // Falls back to anon key only when there is genuinely no session.
     const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: { session: null } } as any));
-    const bearer = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    const jwtKind = bearer === import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ? "anon" : "user";
+    const bearer = sessionData?.session?.access_token || supabasePublicKey;
+    const jwtKind = bearer === supabasePublicKey ? "anon" : "user";
+    blueprintDebug("BLUEPRINT_START", {
+      attempt: attemptNumber,
+      endpoint: url,
+      jwtKind,
+      hasSession: Boolean(sessionData?.session),
+      userId: sessionData?.session?.user?.id ?? null,
+      projectId: usage?.projectId,
+    });
     logGenerationStart("BLUEPRINT", "callBlueprintFast", {
       jwtPresent: jwtKind === "user",
       userId: sessionData?.session?.user?.id ?? null,
@@ -381,12 +444,17 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
     });
     let res: Response;
     try {
+      blueprintDebug("BLUEPRINT_REQUEST", {
+        attempt: attemptNumber,
+        taskType: usage?.taskType || "generate_blueprint",
+        projectId: usage?.projectId,
+      });
       res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${bearer}`,
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          apikey: supabasePublicKey,
           ...getBillingSimulationHeaders(),
         },
         body: JSON.stringify(withBillingSimulationBody({
@@ -399,13 +467,37 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
     } catch (err: any) {
       clearTimeout(timeout);
       if (err?.name === "AbortError") {
+        blueprintDebug("BLUEPRINT_ERROR", {
+          attempt: attemptNumber,
+          reason: "timeout",
+          timeoutMs: 90_000,
+          taskType: usage?.taskType,
+        });
         scriptoraLog.error("generation", "Blueprint timed out (AbortError)", { taskType: usage?.taskType });
-        throw new Error("Blueprint generation timed out. Please retry.");
+        throw new Error("Il motore Blueprint sta impiegando più tempo del previsto. Riprova tra pochi secondi.");
       }
-      scriptoraLog.error("generation", "Blueprint fetch failed", { error: err?.message, taskType: usage?.taskType });
-      throw err;
+      blueprintDebug("BLUEPRINT_ERROR", {
+        attempt: attemptNumber,
+        reason: "fetch_failed",
+        error: err?.message || String(err),
+        endpoint: url,
+        taskType: usage?.taskType,
+      });
+      scriptoraLog.error("generation", "Blueprint fetch failed", {
+        error: err?.message,
+        taskType: usage?.taskType,
+        endpoint: url,
+        attempt: attemptNumber,
+      });
+      throw new Error(BLUEPRINT_NETWORK_USER_MESSAGE);
     }
     clearTimeout(timeout);
+    blueprintDebug("BLUEPRINT_RESPONSE", {
+      attempt: attemptNumber,
+      status: res.status,
+      ok: res.ok,
+      contentType: res.headers.get("content-type") || "",
+    });
     scriptoraLog.info("BLUEPRINT", `Blueprint response: ${res.status}`, { jwtKind, taskType: usage?.taskType });
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -425,7 +517,7 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
       throw new Error(errMsg || `Blueprint generation failed (${res.status})`);
     }
     const responseText = await res.text().catch(() => "");
-    const parsedResponse = safeParseJson<{ content?: unknown; error?: unknown; message?: unknown }>(responseText);
+    const parsedResponse = safeParseJson<{ success?: boolean; content?: unknown; error?: unknown; message?: unknown }>(responseText);
     if (!parsedResponse) {
       scriptoraLog.error("generation", "Blueprint endpoint returned malformed response", {
         taskType: usage?.taskType,
@@ -435,22 +527,38 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
       });
       throw new Error("Risposta non JSON dalla funzione blueprint. Controlla deploy/env e riprova.");
     }
-    const { content, error } = parsedResponse;
-    if (error) {
-      if (String(error).includes("credits")) throw new AICreditsError(error);
-      throw new Error(String(error));
+    const { content, error, message, success } = parsedResponse;
+    if (success === false || error || message) {
+      const serverMessage = String(error || message || "La generazione Blueprint non e' riuscita.").trim();
+      if (serverMessage.includes("credits")) throw new AICreditsError(serverMessage);
+      throw new Error(serverMessage);
     }
     if (typeof content !== "string" || !content.trim()) throw new Error("Empty blueprint response");
     notifyUsageChanged();
+    blueprintDebug("BLUEPRINT_SUCCESS", {
+      attempt: attemptNumber,
+      chars: content.length,
+      taskType: usage?.taskType || "generate_blueprint",
+    });
     logGenerationEnd("BLUEPRINT", "callBlueprintFast", { chars: content.length, taskType: usage?.taskType });
     return content;
   };
   return withRetry(callOnce, {
-    maxAttempts: 2,
+    maxAttempts: 3,
     baseDelayMs: 1500,
     maxDelayMs: 4000,
     serviceKey: "deepseek-blueprint",
     shouldRetry: (err) => !(err instanceof AICreditsError),
+    onAttempt: (attempt, err) => {
+      if (err) {
+        blueprintDebug("BLUEPRINT_RETRY", {
+          attempt,
+          failed: true,
+          error: err.message,
+          willRetry: attempt < 3 && !(err instanceof AICreditsError),
+        });
+      }
+    },
   });
 }
 
