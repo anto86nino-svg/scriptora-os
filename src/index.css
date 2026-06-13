@@ -4355,3 +4355,123 @@ html[data-scriptora-viewport="ultrawide"] {
   }
 }
 
+
+/* SCRIPTORA HARD GLOBAL SCROLL UNLOCK - diagnostic production fix */
+html,
+body,
+#root {
+  width: 100% !important;
+  min-height: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+}
+
+html {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+body {
+  min-height: 100dvh !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  position: static !important;
+}
+
+#root {
+  min-height: 100dvh !important;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+}
+
+.scriptora-landing,
+.scriptora-ios-screen,
+.scriptora-app-surface,
+.scriptora-page-scroll,
+.scriptora-dashboard-mobile {
+  min-height: 100dvh !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+}
+
+main.scriptora-page-scroll,
+div.scriptora-page-scroll {
+  height: auto !important;
+  max-height: none !important;
+  overflow-y: visible !important;
+}
+
+@media (min-width: 768px) {
+  .scriptora-landing,
+  .scriptora-ios-screen,
+  .scriptora-app-surface,
+  .scriptora-page-scroll,
+  .scriptora-dashboard-mobile {
+    min-height: 100dvh !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+}
+
+/* SCRIPTORA HARD GLOBAL SCROLL UNLOCK - diagnostic production fix */
+html,
+body,
+#root {
+  width: 100% !important;
+  min-height: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+}
+
+html {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+body {
+  min-height: 100dvh !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  position: static !important;
+}
+
+#root {
+  min-height: 100dvh !important;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+}
+
+.scriptora-landing,
+.scriptora-ios-screen,
+.scriptora-app-surface,
+.scriptora-page-scroll,
+.scriptora-dashboard-mobile {
+  min-height: 100dvh !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow-x: clip !important;
+  overflow-y: visible !important;
+}
+
+main.scriptora-page-scroll,
+div.scriptora-page-scroll {
+  height: auto !important;
+  max-height: none !important;
+  overflow-y: visible !important;
+}
+
+@media (min-width: 768px) {
+  .scriptora-landing,
+  .scriptora-ios-screen,
+  .scriptora-app-surface,
+  .scriptora-page-scroll,
+  .scriptora-dashboard-mobile {
+    min-height: 100dvh !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+}
