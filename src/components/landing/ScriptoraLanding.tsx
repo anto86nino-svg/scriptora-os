@@ -574,7 +574,7 @@ export function ScriptoraLanding({
   );
 
   return (
-    <main className="scriptora-landing min-h-screen overflow-hidden bg-[#02030a] text-white">
+    <main className="scriptora-landing min-h-[100dvh] overflow-x-hidden bg-[#02030a] text-white">
       <div className="scriptora-landing-bg" aria-hidden="true" />
 
       <header className="scriptora-landing-nav">

@@ -47,11 +47,13 @@
   body,
   #root {
     width: 100%;
+    height: auto;
     min-height: 100%;
   }
 
   html {
-    overflow-x: hidden;
+    overflow-x: clip;
+    overflow-y: auto;
     -webkit-text-size-adjust: 100%;
   }
 
@@ -60,12 +62,15 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    height: auto;
     min-height: 100dvh;
-    overflow-x: hidden;
+    overflow-x: clip;
+    overflow-y: auto;
     overscroll-behavior-y: none;
   }
 
   #root {
+    height: auto;
     min-height: 100dvh;
     isolation: isolate;
   }
@@ -96,17 +101,26 @@
 
   .scriptora-page-scroll {
     min-height: 100dvh;
-    overflow-x: hidden;
+    height: auto;
+    max-height: none;
+    overflow-x: clip;
+    overflow-y: visible;
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem);
   }
 
-  @media (min-width: 768px) {
-    .scriptora-dashboard-mobile.scriptora-page-scroll {
-      height: auto;
-      max-height: none;
-      overflow-x: clip;
-      overflow-y: visible;
-    }
+  .scriptora-feature-page {
+    min-height: 100dvh;
+    height: auto;
+    max-height: none;
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+
+  .scriptora-feature-scroll {
+    min-height: 0;
+    overflow-x: clip;
+    overflow-y: visible;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);
   }
 
   .scriptora-scroll-main {
@@ -234,6 +248,11 @@
 .scriptora-landing {
   position: relative;
   isolation: isolate;
+  min-height: 100dvh;
+  height: auto;
+  max-height: none;
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 .scriptora-landing-bg {
@@ -2084,11 +2103,17 @@
 /* Atmosphere background is scoped to the writing app screens only.
    Landing page, auth, pricing, etc. use their own backgrounds. */
 .scriptora-app-surface {
+  height: auto;
+  max-height: none;
+  overflow-y: visible;
   background: var(--scriptora-app-bg) !important;
   background-attachment: fixed !important;
 }
 
 .scriptora-ios-screen {
+  height: auto;
+  max-height: none;
+  overflow-y: visible;
   background:
     linear-gradient(180deg, rgba(255,255,255,0.055) 0%, transparent 34%),
     linear-gradient(125deg, rgba(35,130,255,0.18) 0%, transparent 32%),
