@@ -4332,3 +4332,26 @@ html[data-scriptora-viewport="desktop"],
 html[data-scriptora-viewport="ultrawide"] {
   --scriptora-content-padding: 1.25rem;
 }
+
+
+/* Writer/App mobile scroll escape hatch.
+   On mobile the manuscript/editor content must grow naturally with the page.
+   Desktop can keep the internal editor scroll. */
+@media (max-width: 767px) {
+  .scriptora-app-surface,
+  .scriptora-ios-screen,
+  .scriptora-page-scroll {
+    height: auto !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+
+  .scriptora-scroll-main {
+    height: auto !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+    overscroll-behavior: auto !important;
+    -webkit-overflow-scrolling: auto !important;
+  }
+}
+
