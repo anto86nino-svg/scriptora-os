@@ -132,6 +132,22 @@ const GUIDED_STARTERS = [
   },
 ] as const;
 
+const FEATURED_BOOK_TYPES = [
+  { id: "literary", label: "Romanzo", helper: "Narrativa, contemporary o literary fiction.", subgenre: "romanzo contemporaneo" },
+  { id: "romance", label: "Romance", helper: "Slow burn, tensione, relazione e payoff emotivo." },
+  { id: "thriller", label: "Thriller", helper: "Pericolo, ritmo, indizi e capitoli a gancio." },
+  { id: "fantasy", label: "Fantasy", helper: "Mondo, lore, magia, quest e meraviglia." },
+  { id: "dark-romance", label: "Dark Romance", helper: "Desiderio, ombra, potere e attrito morale." },
+  { id: "self-help", label: "Self-help", helper: "Promessa chiara, metodo, esempi e trasformazione.", subgenre: "self-help pratico" },
+  { id: "manual", label: "Manuale", helper: "Guida pratica, struttura e istruzioni operative." },
+  { id: "education", label: "Scolastico / universitario", helper: "Studio, didattica, esercizi e spiegazioni." },
+  { id: "poetry", label: "Poesia", helper: "Voce, raccolta, ritmo e identità autoriale." },
+  { id: "literary", label: "Raccolta racconti", helper: "Storie brevi con filo tematico comune.", subgenre: "raccolta racconti" },
+  { id: "ya", label: "Bambini / ragazzi", helper: "Lettura giovane, accessibile e immaginativa." },
+  { id: "business", label: "Business", helper: "Autorità, promessa, metodo e casi pratici." },
+  { id: "self-help", label: "Memoir / biografia", helper: "Percorso personale, trasformazione e verità narrativa.", subgenre: "memoir / biografia" },
+] as const;
+
 const TARGET_READER_PRESETS = [
   "Lettrici romance adulte che vogliono tensione emotiva, vulnerabilità lenta e payoff intenso.",
   "Lettori fantasy adulti che cercano mondi coerenti, magia con costo e personaggi psicologicamente veri.",
@@ -338,6 +354,11 @@ export function BookCreationOsWizard({
     setSubchaptersEnabled(g.defaultSubchapters);
   };
 
+  const applyFeaturedBookType = (type: (typeof FEATURED_BOOK_TYPES)[number]) => {
+    applyStudioGenre(type.id);
+    if (type.subgenre) setSubgenre(type.subgenre);
+  };
+
   const applyGuidedStarter = (starter: (typeof GUIDED_STARTERS)[number]) => {
     applyStudioGenre(starter.bookTypeId);
     if (!title.trim()) setTitle(starter.title);
@@ -505,6 +526,34 @@ export function BookCreationOsWizard({
               <select value={amazonMarketplace} onChange={(e) => setAmazonMarketplace(e.target.value)} className={inputClass}>
                 {AMAZON_MARKETPLACES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
               </select>
+              <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Tipi libro principali</p>
+                <p className="mt-1 text-xs leading-5 text-white/50">
+                  Se non sai da dove partire, scegli un formato: Scriptora imposta genere, struttura e sottogenere senza lasciarti davanti a un campo vuoto.
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {FEATURED_BOOK_TYPES.map((type) => {
+                    const option = STUDIO_GENRES.find((g) => g.id === type.id);
+                    if (!option) return null;
+                    const active = bookTypeId === option.id && (!type.subgenre || subgenre === type.subgenre);
+                    return (
+                      <button
+                        key={`${type.id}-${type.label}`}
+                        type="button"
+                        onClick={() => applyFeaturedBookType(type)}
+                        className={`min-h-[86px] rounded-xl border p-2.5 text-left transition-colors ${
+                          active
+                            ? "border-sky-300/55 bg-sky-400/15 text-sky-50"
+                            : "border-white/12 bg-white/[0.045] text-white/72 hover:border-white/22 hover:bg-white/[0.075]"
+                        }`}
+                      >
+                        <span className="block text-xs font-bold leading-4">{type.label}</span>
+                        <span className="mt-1 block text-[10px] leading-4 text-white/50">{type.helper}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               <select
                 value={bookTypeId}
                 onChange={(e) => applyStudioGenre(e.target.value)}

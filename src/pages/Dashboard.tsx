@@ -70,13 +70,11 @@ import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { PremiumOsGateway } from "@/components/premium/PremiumOsGateway";
 import { AuthorMomentumPanel } from "@/components/premium/AuthorMomentumPanel";
 import { OneFlowHome } from "@/components/one-flow/OneFlowHome";
-import { AuthorIdentityHomeCard } from "@/components/one-flow/AuthorIdentityHomeCard";
 import { OsHomeHero } from "@/components/os/OsHomeHero";
 import {
   MobileDashboardCreditPill,
   MobileDashboardMoreMenu,
 } from "@/components/mobile/MobileDashboardChrome";
-import { isUserAuthorIdentityConfigured } from "@/lib/author-identity";
 import { ScriptoraSettingsButton } from "@/components/settings/ScriptoraSettingsButton";
 
 const ScriptoraSettingsHub = lazy(() =>
@@ -981,20 +979,10 @@ export default function Dashboard() {
           onMyBooks={() => setShowProjects(true)}
         />
 
-        {!isUserAuthorIdentityConfigured(activeAuthor) && (
-          <div className="md:hidden">
-            <AuthorIdentityHomeCard
-              identity={activeAuthor}
-              onConfigure={() => openAuthorIdentity()}
-              onGenerateWithAi={handleGenerateAuthorWithAi}
-              onEdit={() => openAuthorIdentity(activeAuthor)}
-            />
-          </div>
-        )}
-
         <OneFlowHome
           compact
           authorIdentity={activeAuthor}
+          hideAuthorIdentityOnMobile={false}
           lastProjectTitle={lastProject?.config.title}
           lastProjectProgress={lastProjectProgress}
           onWriteBook={openNewBookGuarded}
@@ -1016,6 +1004,9 @@ export default function Dashboard() {
           onAuthorGenerateAi={handleGenerateAuthorWithAi}
           onAuthorEdit={() => openAuthorIdentity(activeAuthor)}
           onEvaluateManuscript={() => guardPlanFeature("chapter_improvement", () => setShowManuscriptAnalyzer(true))()}
+          onCharacterStudio={() => guardPlanFeature("book_engine_full", () => setShowCharacterStudio(true))()}
+          onKdpLaunch={() => guardPlanFeature("kdp_market_base", () => navigate("/kdp-launch"))()}
+          onTitleDomination={() => guardPlanFeature("title_intelligence_base", () => setShowTitleIntel(true))()}
           onCredits={() => navigate("/usage?focus=purchase")}
           onProfile={() => setShowProfileMenu(true)}
           onAdvancedTools={() => setAdvancedLaunchpadEnabled(true)}

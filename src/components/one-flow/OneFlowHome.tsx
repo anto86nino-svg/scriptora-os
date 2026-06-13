@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   BookOpen, FileSearch, Coins, UserRound, PenLine, ArrowRight, Sparkles,
-  GraduationCap, Headphones, Wrench, Rocket, ChevronDown, ImagePlus, Package,
+  GraduationCap, Headphones, Wrench, Rocket, ChevronDown, ImagePlus, Package, Users,
 } from "lucide-react";
 import type { AuthorIdentity } from "@/types/book";
 import { AuthorIdentityHomeCard } from "./AuthorIdentityHomeCard";
@@ -21,6 +21,9 @@ interface OneFlowHomeProps {
   onAuthorGenerateAi: () => void;
   onAuthorEdit: () => void;
   onEvaluateManuscript: () => void;
+  onCharacterStudio?: () => void;
+  onKdpLaunch?: () => void;
+  onTitleDomination?: () => void;
   onCredits: () => void;
   onProfile: () => void;
   onAdvancedTools?: () => void;
@@ -50,6 +53,9 @@ export function OneFlowHome({
   onAuthorGenerateAi,
   onAuthorEdit,
   onEvaluateManuscript,
+  onCharacterStudio,
+  onKdpLaunch,
+  onTitleDomination,
   onCredits,
   onProfile,
   onAdvancedTools,
@@ -113,7 +119,7 @@ export function OneFlowHome({
         </button>
       </div>
 
-      <div className={`hidden gap-2 md:grid sm:grid-cols-3 ${compact ? "mb-3" : "mb-4 gap-3"}`}>
+      <div className={`hidden gap-2 md:grid sm:grid-cols-3 lg:grid-cols-4 ${compact ? "mb-3" : "mb-4 gap-3"}`}>
         <StudioCard
           step="3"
           emoji="📚"
@@ -122,8 +128,18 @@ export function OneFlowHome({
           onClick={onMyBooks}
           accent="slate"
         />
+        {onCharacterStudio && (
+          <StudioCard
+            step="4"
+            emoji="👥"
+            title="Character Studio"
+            subtitle="Voci, ferite, ruoli e coerenza dei personaggi"
+            onClick={onCharacterStudio}
+            accent="slate"
+          />
+        )}
         <StudioCard
-          step="4"
+          step="5"
           emoji="🎨"
           title="Cover Studio"
           subtitle="Copertine professionali in un click"
@@ -131,7 +147,7 @@ export function OneFlowHome({
           accent="violet"
         />
         <StudioCard
-          step="5"
+          step="6"
           emoji="📦"
           title="Export Studio"
           subtitle="EPUB, PDF, DOCX e packaging KDP"
@@ -142,7 +158,10 @@ export function OneFlowHome({
 
       <div className={`mb-3 grid grid-cols-2 gap-2 md:hidden ${compact ? "" : "gap-3"}`}>
         <EssentialToolCard icon={PenLine} label="Writer Studio" onClick={onOpenWriter || onContinue || onWriteBook} accent="cyan" />
-        <EssentialToolCard icon={BookOpen} label="I miei libri" onClick={onMyBooks} />
+        <EssentialToolCard icon={UserRound} label="Identità autore" onClick={onOpenIdentity || onAuthorConfigure} />
+        {onCharacterStudio && <EssentialToolCard icon={Users} label="Character Studio" onClick={onCharacterStudio} />}
+        <EssentialToolCard icon={FileSearch} label="Diagnostica" onClick={onEvaluateManuscript} />
+        {onKdpLaunch && <EssentialToolCard icon={Rocket} label="KDP Market" onClick={onKdpLaunch} accent="amber" />}
         <EssentialToolCard icon={ImagePlus} label="Cover Studio" onClick={onCoverStudio} accent="violet" />
         <EssentialToolCard icon={Package} label="Export Studio" onClick={onExportStudio} accent="amber" />
       </div>
@@ -158,7 +177,9 @@ export function OneFlowHome({
         </button>
         {showMoreTools && (
           <div className="mt-2 grid grid-cols-2 gap-2">
+            <ActionChip icon={BookOpen} label="I miei libri" onClick={onMyBooks} />
             <ActionChip icon={Wrench} label="Publishing" onClick={onOpenPublishing || onExportStudio} />
+            {onTitleDomination && <ActionChip icon={Sparkles} label="Title Domination" onClick={onTitleDomination} />}
             {(onAutoBestsellerShortcut || onOpenBestseller) && (
               <ActionChip
                 icon={Rocket}
@@ -174,6 +195,11 @@ export function OneFlowHome({
 
       <div className={`hidden gap-2 md:grid ${compact ? "grid-cols-2 sm:grid-cols-4" : "gap-3 sm:grid-cols-2 lg:grid-cols-4"}`}>
         <ActionChip icon={PenLine} label="Writer Studio" onClick={onOpenWriter || onContinue || onWriteBook} accent="cyan" />
+        <ActionChip icon={UserRound} label="Identità" onClick={onOpenIdentity || onAuthorConfigure} />
+        {onCharacterStudio && <ActionChip icon={Users} label="Character Studio" onClick={onCharacterStudio} />}
+        <ActionChip icon={FileSearch} label="Diagnostica" onClick={onEvaluateManuscript} />
+        {onKdpLaunch && <ActionChip icon={Rocket} label="KDP Market" onClick={onKdpLaunch} />}
+        {onTitleDomination && <ActionChip icon={Sparkles} label="Title Domination" onClick={onTitleDomination} />}
         <ActionChip icon={Wrench} label="Publishing" onClick={onOpenPublishing || onExportStudio} />
         {(onAutoBestsellerShortcut || onOpenBestseller) && (
           <ActionChip

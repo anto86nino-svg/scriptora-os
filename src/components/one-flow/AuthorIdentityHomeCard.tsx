@@ -40,7 +40,7 @@ export function AuthorIdentityHomeCard({
               </span>
             </p>
             <p className="mt-2 text-sm leading-6 text-white/65 [overflow-wrap:break-word]">
-              Aggiungi nome, pseudonimo e biografia per rendere coerenti front matter, export e branding.
+              Aggiungi nome, pseudonimo, voce e promessa editoriale: Scriptora usa questa identità per scrittura, packaging, KDP, cover ed export.
             </p>
           </div>
           <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:shrink-0 md:flex-wrap">
@@ -102,6 +102,9 @@ export function AuthorIdentityHomeCard({
               <dd className="line-clamp-2 text-white/78">{identity.voice}</dd>
             </div>
           </dl>
+          <p className="mt-3 rounded-xl border border-emerald-400/15 bg-emerald-400/10 px-3 py-2 text-xs leading-5 text-emerald-50/70">
+            Usata da Scriptora per coerenza voce, Character Studio, packaging KDP, cover ed export.
+          </p>
         </div>
         <button
           type="button"
