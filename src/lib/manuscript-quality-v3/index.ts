@@ -19,13 +19,17 @@ export function runManuscriptQualityV3(
   const language = opts.language || opts.config?.language || "Italian";
   let processed = text || "";
 
-  const anti = applyAntiRepetitionDirector(processed, language);
+  const anti = applyAntiRepetitionDirector(processed, language, opts.priorText || "");
   processed = anti.text;
 
   if (opts.config) {
     const ctx = resolveBookTypeContext(opts.config);
     if (ctx.definition.family === "narrative") {
       processed = applyPremiumOutputGuard(processed, { language });
+    } else if (ctx.definition.family === "nonfiction" || ctx.definition.family === "manual" || ctx.definition.family === "educational") {
+      processed = processed.replace(/\b(bestseller emotivo|slow burn|chimica romantica|attrazione irresistibile)\b/gi, "");
+    } else if (ctx.definition.family === "poetry") {
+      processed = processed.replace(/^(Obiettivo capitolo|Prompt|Istruzione)[:\-–—].*$/gim, "");
     }
   }
 

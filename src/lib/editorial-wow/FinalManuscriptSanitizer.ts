@@ -11,17 +11,25 @@
 const LABEL_PATTERNS: RegExp[] = [
   // AI assistant artefacts
   /^(Chapter outline|Outline|Chapter plan|Chapter summary)[:\-–—]\s*.*/gim,
-  /^(Genre Coach|GenreCoach|Editorial Coach|Assistant|AI Note|Note:|Writing Note)[:\-–—\s].*/gim,
+  /^(Genre Coach|GenreCoach|Editorial Coach|Editorial OS|Chapter Doctor|Assistant|Assistente|AI Note|Note:|Writing Note)[:\-–—\s].*/gim,
   /^The next (move|step|beat|scene)[:\-–—].*/gim,
+  /^The next move would not wait.*$/gim,
+  /^The detail finally revealed itself.*$/gim,
+  /^One detail stuck.*$/gim,
+  /^Some details stay.*$/gim,
+  /^Assistente per genere dentro.*$/gim,
+  /^usa dopo (Scansione rapida|Chapter Doctor).*$/gim,
   /^\*\*(Chapter|Scene|Beat|Note|Plan|Outline)[:\-–—\s].*\*\*$/gim,
   // Debug / meta
   /^\[.*\]\s*$/gm,
   /^```[a-z]*\s*$/gm,
   /^```\s*$/gm,
+  /^\s*[,.;:]\s*$/gm,
   // Planning leakage
   /^(Scene goal|Scene beat|Scene function|Scene type)[:\-–—].*/gim,
   /^(POV|Point of view)[:\-–—]\s*/gim,
   /^(Setting|Location|Time)[:\-–—]\s*(.*)/gim,
+  /^(Characters present|Target reader|Output|Instruction|Instructions|Prompt|User prompt|System prompt)[:\-–—]\s*(.*)/gim,
   /^\*\*(Setting|Location|Characters present|POV|Scene goal)[:\-–—\s]/gim,
   // Markdown headers inside prose (h1–h3 that aren't the chapter title)
   /^#{1,3}\s+.+$/gm,
@@ -34,13 +42,20 @@ const ENGLISH_IN_ITALIAN_PATTERNS: Array<[RegExp, string]> = [
   [/\bChapter \d+\b/g, ""],
   [/\b(Note|Warning|Important)\b(?=:)/gi, ""],
   [/\[([A-Z_]+)\]/g, ""],                // [PLACEHOLDER_STYLE] artefacts
+  [/^The next move would not wait.*$/gim, ""],
+  [/^The detail finally revealed itself.*$/gim, ""],
+  [/^One detail stuck.*$/gim, ""],
+  [/^Some details stay.*$/gim, ""],
 ];
 
 const PUNCTUATION_FIXES: Array<[RegExp, string]> = [
   [/\s+,/g, ","],
   [/,\s*\./g, "."],
+  [/,\s*,/g, ","],
   [/\s*\.\s*,/g, "."],
   [/\.\s*\.\s*\./g, "…"],
+  [/\s+([.!?;:])/g, "$1"],
+  [/([.!?]){4,}/g, "$1$1$1"],
   [/ {2,}/g, " "],
   [/\n{4,}/g, "\n\n\n"],
   [/^\s+$/gm, ""],

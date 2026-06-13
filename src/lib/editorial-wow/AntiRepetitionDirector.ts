@@ -99,6 +99,83 @@ function flagMetaRepetition(paras: string[], language: string): Set<number> {
   return flagged;
 }
 
+type BeatCategory =
+  | "fearConfession"
+  | "lossConfession"
+  | "traumaReveal"
+  | "oneDayPromise"
+  | "tearfulEmbrace"
+  | "intimateMorning"
+  | "homeFeeling"
+  | "instantHealing";
+
+const BEAT_PATTERNS: Record<"it" | "en", Record<BeatCategory, RegExp[]>> = {
+  it: {
+    fearConfession: [/\bho paura\b/i, /\baveva paura\b/i, /\bmi fa paura\b/i],
+    lossConfession: [/\bnon voglio perderti\b/i, /\bpaura di perdert[ia]\b/i, /\bnon posso perdert[ia]\b/i],
+    traumaReveal: [/\bnon l ho mai detto\b/i, /\bnon ne ho mai parlato\b/i, /\bquando ero piccol[oa]\b/i, /\bquella notte\b/i],
+    oneDayPromise: [/\bun giorno alla volta\b/i, /\bci proviamo piano\b/i, /\brestiamo qui\b/i],
+    tearfulEmbrace: [/\bsi abbracciarono\b/i, /\blacrime\b/i, /\bpiangeva\b/i, /\bpiangere\b/i],
+    intimateMorning: [/\bcolazione\b/i, /\bcaffe\b/i, /\bcaffè\b/i, /\bmattina\b/i, /\bletto\b/i],
+    homeFeeling: [/\bmi sento a casa\b/i, /\bsembrava casa\b/i, /\bera casa\b/i],
+    instantHealing: [/\bfinalmente guar[ìi]\b/i, /\btutto era risolto\b/i, /\bera finita la paura\b/i],
+  },
+  en: {
+    fearConfession: [/\bi'?m afraid\b/i, /\bi am afraid\b/i, /\bshe was afraid\b/i, /\bhe was afraid\b/i],
+    lossConfession: [/\bi don'?t want to lose you\b/i, /\bafraid of losing you\b/i, /\bi can'?t lose you\b/i],
+    traumaReveal: [/\bi never told anyone\b/i, /\bi never talked about it\b/i, /\bwhen i was a child\b/i, /\bthat night\b/i],
+    oneDayPromise: [/\bone day at a time\b/i, /\bwe try slowly\b/i, /\bwe stay here\b/i],
+    tearfulEmbrace: [/\bthey embraced\b/i, /\btears\b/i, /\bcrying\b/i, /\bcried\b/i],
+    intimateMorning: [/\bbreakfast\b/i, /\bcoffee\b/i, /\bmorning\b/i, /\bbed\b/i],
+    homeFeeling: [/\bi feel at home\b/i, /\bfelt like home\b/i, /\bit was home\b/i],
+    instantHealing: [/\bfinally healed\b/i, /\beverything was solved\b/i, /\bthe fear was gone\b/i],
+  },
+};
+
+const PROGRESSION_MARKERS: RegExp[] = [
+  /\b(decise|scelse|firmò|telefonò|uscì|entrò|trovò|rivelò|consegnò|sparì|fuggì|accettò|rifiutò|promise a se stessa|da quel momento|per questo|quindi|allora)\b/i,
+  /\b(decided|chose|signed|called|left|entered|found|revealed|handed|vanished|ran|accepted|refused|from that moment|because of that|so then)\b/i,
+];
+
+function locale(language: string): "it" | "en" {
+  return /ital/i.test(language) ? "it" : "en";
+}
+
+function beatCategories(text: string, language: string): Set<BeatCategory> {
+  const patterns = BEAT_PATTERNS[locale(language)];
+  const found = new Set<BeatCategory>();
+  for (const [category, tests] of Object.entries(patterns) as Array<[BeatCategory, RegExp[]]>) {
+    if (tests.some((pattern) => pattern.test(text))) found.add(category);
+  }
+  return found;
+}
+
+function hasProgression(text: string): boolean {
+  return PROGRESSION_MARKERS.some((pattern) => pattern.test(text));
+}
+
+function flagCrossChapterBeatRepetition(paras: string[], language: string, priorText = ""): Set<number> {
+  const flagged = new Set<number>();
+  if (!priorText.trim()) return flagged;
+  const priorBeats = beatCategories(priorText, language);
+  if (!priorBeats.size) return flagged;
+
+  for (let i = 0; i < paras.length; i++) {
+    const para = paras[i];
+    if (para.length < 55 || para.length > 520) continue;
+    if (hasProgression(para)) continue;
+    const currentBeats = beatCategories(para, language);
+    for (const beat of currentBeats) {
+      if (priorBeats.has(beat)) {
+        flagged.add(i);
+        break;
+      }
+    }
+  }
+
+  return flagged;
+}
+
 export interface AntiRepetitionResult {
   text: string;
   removedCount: number;
@@ -112,6 +189,7 @@ export interface AntiRepetitionResult {
 export function applyAntiRepetitionDirector(
   text: string,
   language = "Italian",
+  priorText = "",
 ): AntiRepetitionResult {
   if (!text?.trim()) return { text: text ?? "", removedCount: 0, interventions: [] };
 
@@ -120,7 +198,8 @@ export function applyAntiRepetitionDirector(
 
   const redundant = findRedundantParagraphs(paras, 0.40);
   const metaRepeat = flagMetaRepetition(paras, language);
-  const toRemove = new Set([...redundant, ...metaRepeat]);
+  const crossChapterBeats = flagCrossChapterBeatRepetition(paras, language, priorText);
+  const toRemove = new Set([...redundant, ...metaRepeat, ...crossChapterBeats]);
 
   if (!toRemove.size) return { text, removedCount: 0, interventions: [] };
 

@@ -919,6 +919,36 @@ function stringifyField(value: unknown): string {
   return String(value);
 }
 
+function priorTextFromChapters(chapters: Array<Pick<Chapter, "content">> = []): string {
+  return chapters.map((chapter) => chapter.content || "").filter(Boolean).join("\n");
+}
+
+function applyFinalManuscriptGuardToText(
+  text: string,
+  context: { config: BookConfig; previousChapters?: Array<Pick<Chapter, "content">>; chapterIndex?: number },
+): string {
+  return runManuscriptQualityV3(text, {
+    language: context.config.language ?? "Italian",
+    priorText: priorTextFromChapters(context.previousChapters),
+    config: context.config,
+    chapterIndex: context.chapterIndex,
+  }).text;
+}
+
+function applyUltraHumanAndFinalGuardToText(
+  text: string,
+  context: { config: BookConfig; previousChapters?: Array<Pick<Chapter, "content">>; chapterIndex?: number },
+): string {
+  const priorText = priorTextFromChapters(context.previousChapters);
+  const ultraPass = runUltraHumanFinalPass(text, {
+    language: context.config.language ?? "Italian",
+    priorText,
+    config: context.config,
+    chapterIndex: context.chapterIndex,
+  });
+  return applyFinalManuscriptGuardToText(ultraPass.text, context);
+}
+
 function normalizeBlueprint(raw: unknown, config: BookConfig): BookBlueprint {
   return normalizeBlueprintShape(raw, config);
 }
@@ -1410,7 +1440,10 @@ Write in ${config.language}.${adaptiveSuffix}`;
     subchapters: [],
   }, { config, previousChapters, chapterIndex, outlineSummary: outline.summary });
 
-  return finalChapter;
+  return {
+    ...finalChapter,
+    content: applyFinalManuscriptGuardToText(finalChapter.content, { config, previousChapters, chapterIndex }),
+  };
 }
 
 /* ============ Blueprint ============ */
@@ -1667,14 +1700,9 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
       chapterIndex,
       outlineSummary: subOutline?.summary || outline.summary,
     });
-    const priorText = previousChapters.map((c) => c.content).join("\n");
     return {
       title: stringifyField(parsed?.title).trim() || subOutline?.title || `Subchapter ${subchapterIndex + 1}`,
-      content: runUltraHumanFinalPass(rawContent, {
-        language: config.language ?? "Italian",
-        priorText,
-        config,
-      }).text,
+      content: applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex }),
     };
   } catch {
     const rawContent = humanizeNarrativeText(result, {
@@ -1683,14 +1711,9 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
       chapterIndex,
       outlineSummary: subOutline?.summary || outline.summary,
     });
-    const priorText = previousChapters.map((c) => c.content).join("\n");
     return {
       title: subOutline?.title || `Subchapter ${subchapterIndex + 1}`,
-      content: runUltraHumanFinalPass(rawContent, {
-        language: config.language ?? "Italian",
-        priorText,
-        config,
-      }).text,
+      content: applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex }),
     };
   }
 }
@@ -1914,12 +1937,11 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
   );
   try {
     const parsed = JSON.parse(result.replace(/```json\n?|```/g, "").trim());
-    const priorText = previousChapters.map((c) => c.content).join("\n");
-    const rewrittenContent = runUltraHumanFinalPass(
+    const rewrittenContent = applyUltraHumanAndFinalGuardToText(
       stringifyField(parsed?.content).trim() || chapter.content,
-      { language: config.language ?? "Italian", priorText, config },
-    ).text;
-    return humanizeChapter(
+      { config, previousChapters, chapterIndex },
+    );
+    const rewrittenChapter = humanizeChapter(
       {
         ...chapter,
         ...parsed,
@@ -1928,20 +1950,23 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
       },
       { config, previousChapters, chapterIndex, outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary },
     );
+    return {
+      ...rewrittenChapter,
+      content: applyFinalManuscriptGuardToText(rewrittenChapter.content, { config, previousChapters, chapterIndex }),
+    };
   } catch {
-    const priorText = previousChapters.map((c) => c.content).join("\n");
-    const fallbackContent = runUltraHumanFinalPass(
+    const fallbackContent = applyUltraHumanAndFinalGuardToText(
       humanizeNarrativeText(result, {
         config,
         previousChapters,
         chapterIndex,
         outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary,
       }),
-      { language: config.language ?? "Italian", priorText, config },
-    ).text;
+      { config, previousChapters, chapterIndex },
+    );
     return {
       ...chapter,
-      content: fallbackContent,
+      content: applyFinalManuscriptGuardToText(fallbackContent, { config, previousChapters, chapterIndex }),
     };
   }
 }
