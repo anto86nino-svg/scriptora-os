@@ -927,12 +927,19 @@ function applyFinalManuscriptGuardToText(
   text: string,
   context: { config: BookConfig; previousChapters?: Array<Pick<Chapter, "content">>; chapterIndex?: number },
 ): string {
-  return runManuscriptQualityV3(text, {
+  const cleaned = runManuscriptQualityV3(text, {
     language: context.config.language ?? "Italian",
     priorText: priorTextFromChapters(context.previousChapters),
     config: context.config,
     chapterIndex: context.chapterIndex,
   }).text;
+
+  if (!cleaned.trim() || countWords(cleaned) < 3) {
+    const label = context.chapterIndex != null ? `Capitolo ${context.chapterIndex + 1}` : "Output";
+    throw new Error(`${label}: output finale non valido dopo la pulizia del manoscritto.`);
+  }
+
+  return cleaned;
 }
 
 function applyUltraHumanAndFinalGuardToText(

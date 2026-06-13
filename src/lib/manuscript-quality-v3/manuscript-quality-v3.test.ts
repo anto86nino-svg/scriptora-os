@@ -79,4 +79,13 @@ describe("ManuscriptQualityV3", () => {
     expect(result.text).toContain("Non chiedeva perdono");
     expect(result.text).toContain("tre gocce");
   });
+
+  it("cleans marker-only output down to empty so generation can reject it", () => {
+    const raw = `Genre Coach: usa dopo Scansione rapida.\n\nThe next move would not wait for her.\n\n, .`;
+    const result = runManuscriptQualityV3(raw, {
+      language: "Italian",
+      config: { title: "Test", genre: "thriller", language: "Italian", numberOfChapters: 10 } as any,
+    });
+    expect(result.text).toBe("");
+  });
 });
