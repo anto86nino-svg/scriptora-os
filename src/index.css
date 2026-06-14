@@ -4749,6 +4749,18 @@ html[data-scriptora-viewport="ultrawide"] {
     max-width: 100%;
     min-width: 0;
   }
+
+  .scriptora-chapter-editorial-workbench {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  .scriptora-chapter-editorial-body {
+    max-height: 70dvh;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
 }
 
 
@@ -5240,4 +5252,51 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22) !important;
+}
+
+/* KDP Launch — narrative flow panel (mobile-safe) */
+.scriptora-kdp-narrative-flow {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  word-break: break-word;
+}
+
+.scriptora-kdp-stepper {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 767px) {
+  .scriptora-kdp-narrative-flow {
+    max-height: none;
+  }
+
+  .scriptora-feature-page .scriptora-feature-scroll {
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+    overflow-x: hidden;
+  }
+
+  .scriptora-kdp-mobile-grid {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .scriptora-bestseller-radar-page {
+    padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+    overflow-x: hidden;
+  }
+
+  .scriptora-bestseller-radar-commercial {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .scriptora-bestseller-radar-commercial .grid {
+    min-width: 0;
+  }
 }

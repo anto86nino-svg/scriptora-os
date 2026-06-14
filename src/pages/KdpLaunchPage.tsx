@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowRight, Loader2, Rocket, Sparkles, TrendingUp, Trophy, Wand2 } from "lucide-react";
@@ -11,6 +11,19 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { KdpScoreBadge } from "@/components/kdp/KdpScoreBadge";
 import { KdpTitleDomination } from "@/components/kdp/KdpTitleDomination";
+import { KdpNarrativeFlowPanel } from "@/components/kdp/KdpNarrativeFlowPanel";
+import {
+  clearKdpLaunchSession,
+  createEmptyKdpSession,
+  getOrCreateKdpSessionId,
+  isKdpSessionRecoverable,
+  loadKdpLaunchSession,
+  saveKdpLaunchSession,
+  sessionNeedsUnloadGuard,
+  type KdpLaunchSession,
+  type KdpLaunchStatus,
+} from "@/lib/kdp/kdp-launch-session";
+import { generateKdpNarrativeFlowAsync, type KdpNarrativeFlow } from "@/lib/kdp/narrative-flow";
 import { fetchPlan, type PlanTier } from "@/lib/plan";
 import { creditModeDisclosure, creditModeLabel, operationCreditLabel } from "@/lib/credit-economy";
 import { isDevMode } from "@/lib/dev-mode";
@@ -23,9 +36,10 @@ import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { chargePremiumOperation } from "@/lib/billing/charge";
 
-type Step = "idea" | "market" | "title" | "packaging" | "predict";
+type Step = "idea" | "market" | "title" | "packaging" | "predict" | "narrative-flow";
 
 const KDP_PREFILL_KEY = "scriptora-kdp-prefill";
+const KDP_NARRATIVE_PREFILL_KEY = "scriptora:kdp-narrative-prefill";
 
 function mapRadarGenre(genre: string): string {
   const map: Record<string, string> = {
@@ -70,8 +84,18 @@ function GroundingBadge({ meta }: { meta: { groundingUsed?: boolean; groundingRe
 
 export default function KdpLaunchPage() {
   const navigate = useNavigate();
+  const sessionIdRef = useRef(getOrCreateKdpSessionId());
   const [step, setStep] = useState<Step>("idea");
   const [loading, setLoading] = useState(false);
+  const [narrativeStatus, setNarrativeStatus] = useState<KdpLaunchStatus>("idle");
+  const [narrativeError, setNarrativeError] = useState<string | null>(null);
+  const [narrativeFlow, setNarrativeFlow] = useState<KdpNarrativeFlow | null>(null);
+  const [narrativeElapsed, setNarrativeElapsed] = useState(0);
+  const [showRecovery, setShowRecovery] = useState(false);
+  const [pendingRecovery, setPendingRecovery] = useState<KdpLaunchSession | null>(null);
+  const [sessionDirty, setSessionDirty] = useState(false);
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const narrativeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // KDP base (market analysis + titles + packaging) requires Pro.
   const baseGate = useFeatureGate("kdp_market_base");
   // Bestseller prediction requires Premium.
@@ -92,8 +116,8 @@ export default function KdpLaunchPage() {
   const italianUi = language.toLowerCase().includes("ital");
   const devCreditMode = isDevMode();
   const stepLabels: Record<Step, string> = italianUi
-    ? { idea: "idea", market: "mercato", title: "titoli", packaging: "packaging", predict: "previsione" }
-    : { idea: "idea", market: "market", title: "title", packaging: "packaging", predict: "predict" };
+    ? { idea: "idea", market: "mercato", title: "titoli", packaging: "packaging", predict: "previsione", "narrative-flow": "flusso narrativo" }
+    : { idea: "idea", market: "market", title: "title", packaging: "packaging", predict: "predict", "narrative-flow": "narrative flow" };
   const marketMetricLabels = italianUi
     ? {
         hookStrength: "Forza hook",
@@ -140,9 +164,13 @@ export default function KdpLaunchPage() {
       };
 
   const marketPremium = useMemo(() => {
-    const content = [idea, market?.recommendedAngle, market?.subNiche].filter(Boolean).join("\n\n");
-    if (content.split(/\s+/).filter(Boolean).length < 40) return null;
-    return computeMarketPremiumScores({ content, genre, language });
+    try {
+      const content = [idea, market?.recommendedAngle, market?.subNiche].filter(Boolean).join("\n\n");
+      if (content.split(/\s+/).filter(Boolean).length < 40) return null;
+      return computeMarketPremiumScores({ content, genre, language });
+    } catch {
+      return null;
+    }
   }, [idea, market?.recommendedAngle, market?.subNiche, genre, language]);
   const predictionMetrics = useMemo(() => {
     if (!prediction) return [];
@@ -182,6 +210,187 @@ export default function KdpLaunchPage() {
       { label: labels.momentum, score: clampKdpScore(base + prediction.strengths.length * 2 - prediction.weaknesses.length * 3), detail: italianUi ? "Forza complessiva dopo rischi e opportunità." : "Overall force after risks and opportunities." },
     ];
   }, [chosenSubtitle, chosenTitle, italianUi, market?.recommendedAngle, market?.subNiche, packaging, prediction]);
+
+  const buildSessionSnapshot = useCallback((): KdpLaunchSession => {
+    const currentStepMap: Record<Step, KdpLaunchSession["currentStep"]> = {
+      idea: "config",
+      market: "analysis",
+      title: "title",
+      packaging: "packaging",
+      predict: "predict",
+      "narrative-flow": "narrative-flow",
+    };
+    return {
+      sessionId: sessionIdRef.current,
+      currentStep: currentStepMap[step],
+      config: { idea, genre, language, chosenTitle, chosenSubtitle },
+      analysis: market,
+      titles,
+      packaging,
+      prediction,
+      narrativeFlow,
+      status: narrativeStatus,
+      error: narrativeError || undefined,
+      updatedAt: new Date().toISOString(),
+      dirty: sessionDirty,
+    };
+  }, [chosenSubtitle, chosenTitle, genre, idea, language, market, narrativeError, narrativeFlow, narrativeStatus, packaging, prediction, sessionDirty, step, titles]);
+
+  const applySessionSnapshot = useCallback((session: KdpLaunchSession) => {
+    const stepMap: Record<KdpLaunchSession["currentStep"], Step> = {
+      config: "idea",
+      analysis: "market",
+      title: "title",
+      packaging: "packaging",
+      predict: "predict",
+      "narrative-flow": "narrative-flow",
+      review: "predict",
+      done: "predict",
+    };
+    setIdea(session.config.idea);
+    setGenre(session.config.genre);
+    setLanguage(session.config.language);
+    setChosenTitle(session.config.chosenTitle);
+    setChosenSubtitle(session.config.chosenSubtitle);
+    setMarket(session.analysis);
+    setTitles(session.titles);
+    setPackaging(session.packaging);
+    setPrediction(session.prediction);
+    setNarrativeFlow(session.narrativeFlow ?? null);
+    setNarrativeStatus(session.status);
+    setNarrativeError(session.error ?? null);
+    setStep(stepMap[session.currentStep] || "idea");
+    setSessionDirty(false);
+  }, []);
+
+  const persistSession = useCallback((dirty = sessionDirty) => {
+    saveKdpLaunchSession({ ...buildSessionSnapshot(), dirty });
+  }, [buildSessionSnapshot, sessionDirty]);
+
+  const queuePersist = useCallback((dirty = true) => {
+    setSessionDirty(dirty);
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = setTimeout(() => {
+      saveKdpLaunchSession({ ...buildSessionSnapshot(), dirty });
+      persistTimerRef.current = null;
+    }, 400);
+  }, [buildSessionSnapshot]);
+
+  useEffect(() => {
+    const saved = loadKdpLaunchSession(sessionIdRef.current);
+    if (isKdpSessionRecoverable(saved)) {
+      setPendingRecovery(saved);
+      setShowRecovery(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showRecovery) return;
+    queuePersist(narrativeStatus === "running");
+  }, [
+    idea, genre, language, market, titles, packaging, prediction,
+    chosenTitle, chosenSubtitle, step, narrativeFlow, narrativeStatus, narrativeError,
+    showRecovery, queuePersist,
+  ]);
+
+  useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      const session = buildSessionSnapshot();
+      if (!sessionNeedsUnloadGuard(session)) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [buildSessionSnapshot]);
+
+  useEffect(() => () => {
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    if (narrativeTimerRef.current) clearInterval(narrativeTimerRef.current);
+  }, []);
+
+  const narrativeInputs = useMemo(() => {
+    const labels = italianUi
+      ? ["Configurazione libro", "Analisi mercato", "Promessa lettore", "Genere", "Target", "Angolo commerciale"]
+      : ["Book configuration", "Market analysis", "Reader promise", "Genre", "Target", "Commercial angle"];
+    return [
+      { label: labels[0], ok: Boolean(idea.trim()) },
+      { label: labels[1], ok: Boolean(market) },
+      { label: labels[2], ok: Boolean(market?.recommendedAngle || chosenSubtitle || idea.trim()) },
+      { label: labels[3], ok: Boolean(genre.trim()) },
+      { label: labels[4], ok: Boolean(market?.subNiche || chosenSubtitle) },
+      { label: labels[5], ok: Boolean(market?.recommendedAngle) },
+    ];
+  }, [chosenSubtitle, genre, idea, italianUi, market]);
+
+  const runNarrativeFlow = useCallback(async () => {
+    if (!market) {
+      const msg = italianUi ? "Analisi mercato mancante." : "Market analysis missing.";
+      setNarrativeError(msg);
+      setNarrativeStatus("error");
+      toast.error(msg);
+      return;
+    }
+    setNarrativeStatus("running");
+    setNarrativeError(null);
+    setNarrativeElapsed(0);
+    setStep("narrative-flow");
+    if (narrativeTimerRef.current) clearInterval(narrativeTimerRef.current);
+    narrativeTimerRef.current = setInterval(() => setNarrativeElapsed((s) => s + 1), 1000);
+    try {
+      const flow = await generateKdpNarrativeFlowAsync({
+        idea,
+        genre,
+        language,
+        title: chosenTitle,
+        subtitle: chosenSubtitle,
+        market,
+        packaging,
+        targetReader: market.subNiche,
+      });
+      setNarrativeFlow(flow);
+      setNarrativeStatus("done");
+      setSessionDirty(false);
+      persistSession(false);
+      toast.success(italianUi ? "Flusso narrativo creato" : "Narrative flow created");
+    } catch (e: any) {
+      const msg = e?.message || (italianUi ? "Generazione flusso narrativo fallita" : "Narrative flow generation failed");
+      setNarrativeError(msg);
+      setNarrativeStatus("error");
+      persistSession(true);
+      toast.error(msg);
+    } finally {
+      if (narrativeTimerRef.current) {
+        clearInterval(narrativeTimerRef.current);
+        narrativeTimerRef.current = null;
+      }
+      setLoading(false);
+    }
+  }, [chosenSubtitle, chosenTitle, genre, idea, italianUi, language, market, packaging, persistSession]);
+
+  const saveNarrativeToProject = useCallback(() => {
+    if (!narrativeFlow) return;
+    try {
+      sessionStorage.setItem(KDP_NARRATIVE_PREFILL_KEY, JSON.stringify({
+        idea,
+        genre,
+        language,
+        title: chosenTitle,
+        subtitle: chosenSubtitle,
+        market,
+        narrativeFlow,
+      }));
+      persistSession(false);
+      toast.success(italianUi ? "Flusso narrativo salvato — apri la dashboard per creare il progetto" : "Narrative flow saved — open dashboard to create project");
+    } catch {
+      toast.error(italianUi ? "Salvataggio non riuscito" : "Save failed");
+    }
+  }, [chosenSubtitle, chosenTitle, genre, idea, italianUi, language, market, narrativeFlow, persistSession]);
+
+  const goToBlueprint = useCallback(() => {
+    saveNarrativeToProject();
+    navigate("/dashboard", { state: { openNewBook: true, fromKdpLaunch: true } });
+  }, [navigate, saveNarrativeToProject]);
 
   useEffect(() => {
     try {
@@ -262,7 +471,8 @@ export default function KdpLaunchPage() {
         plan,
       );
       setPrediction(pr);
-      setStep("predict");
+      setStep("narrative-flow");
+      toast.success(italianUi ? "Previsione completata — passo al flusso narrativo" : "Prediction done — moving to narrative flow");
     } catch (e: any) {
       toast.error(e?.message || "Predizione fallita");
     } finally { setLoading(false); }
@@ -271,26 +481,66 @@ export default function KdpLaunchPage() {
   return (
     <div className="scriptora-feature-page bg-background">
       <main className="scriptora-feature-scroll mx-auto max-w-5xl space-y-5 p-4 sm:space-y-6 sm:p-6">
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Rocket className="h-6 w-6 text-primary" /> KDP Launch
+        <header className="flex items-center justify-between gap-2 min-w-0">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2 break-words">
+              <Rocket className="h-6 w-6 shrink-0 text-primary" /> KDP Launch
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground break-words">
               Crea un prodotto che vende su Amazon — non solo un libro.
             </p>
           </div>
-          <Button variant="ghost" onClick={() => navigate(-1)}>← Indietro</Button>
+          <Button variant="ghost" className="shrink-0" onClick={() => navigate(-1)}>← Indietro</Button>
         </header>
 
+        {showRecovery && pendingRecovery && (
+          <section className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm">
+            <p className="font-semibold">
+              {italianUi ? "Sessione KDP Launch trovata." : "KDP Launch session found."}
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              {italianUi
+                ? "Puoi riprendere dall'ultimo punto salvato."
+                : "You can resume from the last saved point."}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                onClick={() => {
+                  applySessionSnapshot(pendingRecovery);
+                  setShowRecovery(false);
+                  toast.success(italianUi ? "Sessione ripristinata" : "Session restored");
+                }}
+              >
+                {italianUi ? "Continua" : "Continue"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  clearKdpLaunchSession(sessionIdRef.current);
+                  sessionIdRef.current = getOrCreateKdpSessionId();
+                  const fresh = createEmptyKdpSession(sessionIdRef.current);
+                  applySessionSnapshot(fresh);
+                  setShowRecovery(false);
+                  setPendingRecovery(null);
+                  toast.info(italianUi ? "Nuova sessione KDP" : "New KDP session");
+                }}
+              >
+                {italianUi ? "Ricomincia" : "Start over"}
+              </Button>
+            </div>
+          </section>
+        )}
+
         {/* Step indicator */}
-        <div className="scriptora-kdp-stepper flex items-center gap-2 text-xs text-muted-foreground">
-          {(["idea", "market", "title", "packaging", "predict"] as Step[]).map((s, i) => (
+        <div className="scriptora-kdp-stepper flex flex-wrap items-center gap-2 text-xs text-muted-foreground overflow-x-hidden max-w-full">
+          {(["idea", "market", "title", "packaging", "predict", "narrative-flow"] as Step[]).map((s, i) => (
             <div key={s} className="flex shrink-0 items-center gap-2">
               <span className={`px-2 py-0.5 rounded-full border ${step === s ? "bg-primary text-primary-foreground border-primary" : "border-border"}`}>
                 {i + 1}. {stepLabels[s]}
               </span>
-              {i < 4 && <ArrowRight className="h-3 w-3" />}
+              {i < 5 && <ArrowRight className="h-3 w-3" />}
             </div>
           ))}
         </div>
@@ -557,10 +807,45 @@ export default function KdpLaunchPage() {
                 </div>
               </div>
               <Separator />
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => { setStep("idea"); setMarket(null); setTitles(null); setPackaging(null); setPrediction(null); setChosenTitle(""); setChosenSubtitle(""); setIdea(""); }}>Nuova idea</Button>
-                <Button onClick={() => navigate("/dashboard")}>Vai a scrivere il libro</Button>
+              <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:justify-end">
+                <Button variant="outline" onClick={() => { setStep("idea"); setMarket(null); setTitles(null); setPackaging(null); setPrediction(null); setNarrativeFlow(null); setNarrativeStatus("idle"); setNarrativeError(null); setChosenTitle(""); setChosenSubtitle(""); setIdea(""); clearKdpLaunchSession(sessionIdRef.current); sessionIdRef.current = getOrCreateKdpSessionId(); }}>
+                  {italianUi ? "Nuova idea" : "New idea"}
+                </Button>
+                <Button onClick={() => { setStep("narrative-flow"); void runNarrativeFlow(); }}>
+                  {italianUi ? "Continua al flusso narrativo" : "Continue to narrative flow"}
+                </Button>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* STEP 6 — Narrative flow (stable panel — never navigates away on error) */}
+        {(step === "narrative-flow" || narrativeFlow || narrativeStatus === "running" || narrativeStatus === "error") && market && (
+          <KdpNarrativeFlowPanel
+            italianUi={italianUi}
+            status={narrativeStatus}
+            error={narrativeError}
+            result={narrativeFlow}
+            inputs={narrativeInputs}
+            elapsedSec={narrativeElapsed}
+            onGenerate={() => void runNarrativeFlow()}
+            onRetry={() => void runNarrativeFlow()}
+            onBackToAnalysis={() => setStep("market")}
+            onSaveToProject={saveNarrativeToProject}
+            onGoBlueprint={goToBlueprint}
+            onRegenerate={() => void runNarrativeFlow()}
+          />
+        )}
+
+        {narrativeFlow && narrativeStatus === "done" && (
+          <Card>
+            <CardContent className="flex flex-col gap-2 py-4 sm:flex-row sm:justify-end">
+              <Button variant="outline" onClick={saveNarrativeToProject}>
+                {italianUi ? "Salva sessione" : "Save session"}
+              </Button>
+              <Button onClick={() => navigate("/dashboard")}>
+                {italianUi ? "Vai a scrivere il libro" : "Go write the book"}
+              </Button>
             </CardContent>
           </Card>
         )}

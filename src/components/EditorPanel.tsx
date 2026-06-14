@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo, type RefObject } from "react";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating } from "@/types/book";
-import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, AlertTriangle, Download, Zap, Headphones, Shield, Clock3 } from "lucide-react";
+import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, AlertTriangle, Download, Zap, Headphones, Shield, Clock3, Scissors } from "lucide-react";
 import { BlueprintRecoveryCard } from "@/components/blueprint/BlueprintRecoveryCard";
 import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel";
+import { ChapterEditorialWorkbench } from "@/components/ChapterEditorialWorkbench";
 import { GenreProfileBadge } from "@/components/GenreProfileBadge";
 import { EditorialMasteryBadge } from "@/components/EditorialMasteryBadge";
 import { BookTypeBadge } from "@/components/BookTypeBadge";
@@ -51,6 +52,11 @@ interface EditorPanelProps {
   onUpdateFrontMatterField?: (field: string, value: string) => void;
   onUpdateBackMatterField?: (field: string, value: string) => void;
   onNarrateChapter?: (chapterIndex: number) => void;
+  onPersistChapterEditorialAnalysis?: (
+    chapterIndex: number,
+    snapshot: import("@/types/book").ChapterEditorialSnapshot,
+    aiRating: import("@/types/book").AIQualityRating,
+  ) => void;
 }
 
 export function EditorPanel({
@@ -67,6 +73,7 @@ export function EditorPanel({
   onRegenerateBlueprint, onCreateSafeBlueprint, onApproveBlueprint, onGenerateBlueprint,
   onUpdateFrontMatterField, onUpdateBackMatterField,
   onNarrateChapter,
+  onPersistChapterEditorialAnalysis,
 }: EditorPanelProps) {
   const { blueprint, frontMatter, chapters, backMatter, config, phase } = project;
   const [mode, setMode] = useState<"edit" | "preview">("edit");
@@ -169,6 +176,7 @@ export function EditorPanel({
                   chunkProgress={chunkProgress?.[`chapter-${view.chapterIndex}`]}
                   ws={ws}
                   onNarrateChapter={onNarrateChapter}
+                  onPersistChapterEditorialAnalysis={onPersistChapterEditorialAnalysis}
                 />
               )}
               {view.type === "subchapter" && (() => {
@@ -509,6 +517,7 @@ function ChapterView({
   onGenerate, onRegenerate, onRewrite, onEvaluate, onAutoRewrite, onGenerateSubchapter,
   onUpdateContent, onUpdateTitle, onUpdateSubContent, onUpdateSubTitle, onSetLengthOverride, isGeneratingSection, onCancel, chunkProgress, ws,
   onNarrateChapter,
+  onPersistChapterEditorialAnalysis,
 }: {
   project: BookProject; chapterIndex: number;
   outline: { title: string; summary: string }; chapter: Chapter | undefined;
@@ -525,11 +534,14 @@ function ChapterView({
   chunkProgress?: ChunkProgress;
   ws: WritingSettings;
   onNarrateChapter?: (chapterIndex: number) => void;
+  onPersistChapterEditorialAnalysis?: EditorPanelProps["onPersistChapterEditorialAnalysis"];
 }) {
   const isGenerated = chapter && chapter.content.length > 0;
   const currentLength = chapter?.lengthOverride || project.config.chapterLength;
   const [showRewriteMenu, setShowRewriteMenu] = useState(false);
-  const [showIntelligence, setShowIntelligence] = useState(false);
+  const [editorialOpen, setEditorialOpen] = useState(false);
+  const [editorialMode, setEditorialMode] = useState<"analysis" | "patch">("analysis");
+  const [showFullReport, setShowFullReport] = useState(false);
   const liveAnchorRef = useRef<HTMLDivElement | null>(null);
   const autoFollowLiveRef = useRef(true);
   const [showReturnToLive, setShowReturnToLive] = useState(false);
@@ -631,7 +643,10 @@ function ChapterView({
               )}
               <ActionButton icon={<Download className="h-3.5 w-3.5" />} title="TXT" onClick={() => downloadText(`chapter-${chapterIndex + 1}-${(chapter?.title || "chapter").replace(/\s+/g, "_")}.txt`, chapter?.content || "")} disabled={!isGenerated} />
               <button
-                onClick={() => setShowIntelligence(true)}
+                onClick={() => {
+                  setEditorialMode("analysis");
+                  setEditorialOpen(true);
+                }}
                 disabled={isGenerating || isEvaluating}
                 title="AI Analysis Pro — score reali e fix mirati"
                 className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-gradient-to-r from-primary to-primary/80 px-3 text-[11px] font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-30"
@@ -639,6 +654,20 @@ function ChapterView({
                 <Zap className="h-3.5 w-3.5 shrink-0" />
                 <span className="sm:hidden">Analysis</span>
                 <span className="hidden sm:inline">Analysis Pro</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditorialMode("patch");
+                  setEditorialOpen(true);
+                }}
+                disabled={isGenerating || isEvaluating}
+                title="Patch chirurgica sul capitolo"
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-violet-400/35 bg-violet-500/15 px-3 text-[11px] font-semibold text-violet-100 disabled:opacity-30"
+              >
+                <Scissors className="h-3.5 w-3.5 shrink-0" />
+                <span className="sm:hidden">Patch</span>
+                <span className="hidden sm:inline">Patch</span>
               </button>
               <div className="flex shrink-0 flex-col items-center gap-1">
                 <ActionButton icon={<Search className="h-3.5 w-3.5" />} title={t("evaluate")} onClick={onEvaluate} disabled={isGenerating || isEvaluating} />
@@ -694,6 +723,20 @@ function ChapterView({
           )}
         </div>
       </div>
+
+      {editorialOpen && isGenerated && onPersistChapterEditorialAnalysis && (
+        <ChapterEditorialWorkbench
+          project={project}
+          chapterIndex={chapterIndex}
+          initialMode={editorialMode}
+          onApplyContent={onUpdateContent}
+          onPersistAnalysis={(snapshot, idx, aiRating) => {
+            onPersistChapterEditorialAnalysis(idx, snapshot, aiRating);
+          }}
+          onClose={() => setEditorialOpen(false)}
+          onOpenFullReport={() => setShowFullReport(true)}
+        />
+      )}
 
       <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
         <span className="shrink-0 text-[11px] uppercase text-muted-foreground">{t("chapter_length")}</span>
@@ -804,12 +847,12 @@ function ChapterView({
         />
       )}
 
-      {showIntelligence && isGenerated && (
+      {showFullReport && isGenerated && (
         <FeatureErrorBoundary featureName="Diagnostica capitolo">
           <ChapterIntelligencePanel
             project={project}
             chapterIndex={chapterIndex}
-            onClose={() => setShowIntelligence(false)}
+            onClose={() => setShowFullReport(false)}
             onApplyContent={(newContent) => onUpdateContent(newContent)}
           />
         </FeatureErrorBoundary>

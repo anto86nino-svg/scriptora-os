@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { BookProject, BookConfig, ChatMessage, GenerationPhase, GenerationStatus, AIQualityRating, getSubchaptersPerChapter } from "@/types/book";
+import { BookProject, BookConfig, ChatMessage, GenerationPhase, GenerationStatus, AIQualityRating, ChapterEditorialSnapshot, getSubchaptersPerChapter } from "@/types/book";
 import { saveProjectAsync, createProjectId, setLastProjectId, loadProjects as loadScopedProjects } from "@/services/storageService";
 import { saveProject } from "@/lib/storage";
 import type { RewriteLevel, ChunkProgress } from "@/lib/generation-types";
@@ -927,6 +927,23 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     }
   }, [project, generatingSet, addMessage, updateAndSave]);
 
+  const updateChapterEditorialAnalysis = useCallback((
+    index: number,
+    snapshot: ChapterEditorialSnapshot,
+    aiRating: AIQualityRating,
+  ) => {
+    updateAndSave((proj) => {
+      const chapters = [...proj.chapters];
+      chapters[index] = {
+        ...chapters[index],
+        editorialAnalysis: snapshot,
+        aiRating,
+        qualityRating: aiRating.score,
+      };
+      return { ...proj, chapters };
+    });
+  }, [updateAndSave]);
+
   // Smart Rewrite with levels
   const rewriteChapterWithDepth = useCallback(async (index: number, level: RewriteLevel = "deep") => {
     const p = getLatestProject() || project;
@@ -1387,6 +1404,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     regenerateBlueprint, createSafeBlueprint,
     generateNext, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter,
     regenerateChapter, rewriteChapterWithDepth, evaluateChapter, autoRewriteToThreshold,
+    updateChapterEditorialAnalysis,
     updateConfig, updateChapterContent, updateChapterTitle, updateSubchapterContent, updateSubchapterTitle,
     updateBlueprintField, updateBlueprintOutlineTitle, updateBlueprintOutlineSummary,
     updateFrontMatterField, updateBackMatterField,

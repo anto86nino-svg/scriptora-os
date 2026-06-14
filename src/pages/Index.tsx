@@ -508,6 +508,7 @@ const Index = () => {
             onUpdateFrontMatterField={engine.updateFrontMatterField}
             onUpdateBackMatterField={engine.updateBackMatterField}
             onNarrateChapter={openVoiceStudioForChapter}
+            onPersistChapterEditorialAnalysis={engine.updateChapterEditorialAnalysis}
           />
           </Suspense>
         </div>
@@ -812,6 +813,7 @@ const Index = () => {
                   onUpdateFrontMatterField={engine.updateFrontMatterField}
                   onUpdateBackMatterField={engine.updateBackMatterField}
                   onNarrateChapter={openVoiceStudioForChapter}
+            onPersistChapterEditorialAnalysis={engine.updateChapterEditorialAnalysis}
                 />
                 </Suspense>
               </div>

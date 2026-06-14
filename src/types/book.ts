@@ -50,6 +50,24 @@ export interface AIQualityRating {
   improvements: string;
 }
 
+/** Snapshot from Analysis Pro — persisted on chapter for patch workflow. */
+export interface ChapterEditorialSnapshot {
+  compositeScore: number;
+  scoreOutOf10: number;
+  emotionalRealism: number;
+  dialogueHumanity: number;
+  pacingBalance: number;
+  subtextStrength: number;
+  characterDepth: number;
+  commercialReadability: number;
+  bingeability: number;
+  strengths: string[];
+  issues: string[];
+  suggestions: string[];
+  primaryIssue: string;
+  analyzedAt: number;
+}
+
 export interface SubChapter {
   title: string;
   content: string;
@@ -63,6 +81,7 @@ export interface Chapter {
   status?: GenerationStatus;
   qualityRating?: number;
   aiRating?: AIQualityRating;
+  editorialAnalysis?: ChapterEditorialSnapshot;
   lengthOverride?: ChapterLength;
 }
 

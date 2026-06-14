@@ -1,10 +1,13 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, BarChart3, BookOpen, Rocket, Search, ShieldAlert, Sparkles, TrendingUp, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { runBestsellerRadar } from "@/services/bestsellerRadarService";
 import { analyzeRadarPublishingIntel, type RadarPublishingIntel } from "@/lib/publishing-intelligence";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
+import { BestsellerRadarCommercialPanel } from "@/components/bestseller-radar/BestsellerRadarCommercialPanel";
+import { loadProjects } from "@/services/storageService";
+import type { BookProject } from "@/types/book";
 
 const KDP_PREFILL_KEY = "scriptora-kdp-prefill";
 
@@ -106,6 +109,7 @@ const fallbackResults = sampleByGenre.romance;
 
 export default function BestsellerRadarPage() {
   const navigate = useNavigate();
+  const [projects, setProjects] = useState<BookProject[]>([]);
   const [genre, setGenre] = useState("romance");
   const [keyword, setKeyword] = useState("");
   const [searched, setSearched] = useState(false);
@@ -116,6 +120,10 @@ export default function BestsellerRadarPage() {
   const [error, setError] = useState("");
   const [loadingPhase, setLoadingPhase] = useState("");
   const [radarIntel, setRadarIntel] = useState<RadarPublishingIntel | null>(null);
+
+  useEffect(() => {
+    void loadProjects((fresh) => setProjects(fresh));
+  }, []);
 
   const results = useMemo(() => {
     return searched ? (liveResults ?? []) : (sampleByGenre[genre] ?? fallbackResults);
@@ -144,8 +152,8 @@ export default function BestsellerRadarPage() {
 
   return (
     <div className="scriptora-feature-page bg-background text-foreground">
-      <main className="scriptora-feature-scroll mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between gap-4">
+      <main className="scriptora-feature-scroll scriptora-bestseller-radar-page mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8 pb-safe">
+        <div className="flex items-center justify-between gap-4 min-w-0">
           <Button variant="ghost" onClick={() => navigate("/dashboard")} className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             Dashboard
@@ -156,7 +164,13 @@ export default function BestsellerRadarPage() {
           </div>
         </div>
 
-        <section className="overflow-hidden rounded-3xl border border-border/70 bg-card/70 p-6 shadow-2xl backdrop-blur md:p-8">
+        <BestsellerRadarCommercialPanel projects={projects} />
+
+        <section className="overflow-hidden rounded-3xl border border-border/70 bg-card/70 p-6 shadow-2xl backdrop-blur md:p-8 min-w-0 max-w-full">
+          <div className="mb-4 flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-bold">Market Scan — nicchia e competitor</h2>
+          </div>
           <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
             <div className="space-y-5">
               <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
@@ -253,7 +267,7 @@ export default function BestsellerRadarPage() {
               </div>
               <div className="text-5xl font-black">{searched ? marketScore : "—"}</div>
               <p className="text-sm leading-6 text-muted-foreground">
-                Punteggio stimato da Scriptora AI usando segnali pubblici, pattern editoriali e analisi competitiva.
+                Punteggio stimato editoriale — pattern di mercato e segnali pubblici. Non è rank Amazon reale.
               </p>
             </div>
           </div>
