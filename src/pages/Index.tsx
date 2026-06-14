@@ -546,12 +546,12 @@ const Index = () => {
       {/* Floating sidebar toggle */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className={`ios-toolbar-button fixed left-3 top-3 z-50 p-2 text-foreground shadow-lg backdrop-blur-xl ${
+        className={`scriptora-writer-menu-btn fixed left-2 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] z-50 flex items-center justify-center rounded-[10px] border border-white/10 bg-background/90 p-0 text-foreground shadow-md backdrop-blur-md ${
           guidedFlowEnabled && !!engine.project?.blueprint && !sidebarOpen ? "scriptora-guide-pulse" : ""
         }`}
         title={sidebarOpen ? t("hide_sidebar") : t("show_sidebar")}
       >
-        {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
       </button>
 
       {/* Overlay for mobile */}
@@ -698,13 +698,13 @@ const Index = () => {
 
       {/* Main Area */}
       <div
-        className={`flex min-h-[100dvh] min-w-0 flex-1 flex-col overflow-x-clip overflow-y-visible pb-[calc(env(safe-area-inset-bottom)+6.5rem)] transition-all duration-300 ${
+        className={`scriptora-writer-main flex min-h-[100dvh] min-w-0 flex-1 flex-col overflow-x-clip overflow-y-visible pb-[calc(env(safe-area-inset-bottom)+7.5rem)] transition-all duration-300 md:pb-[calc(env(safe-area-inset-bottom)+1.5rem)] ${
           sidebarOpen ? "p-2 md:p-3" : "p-2 md:px-6 md:py-4"
         }`}
       >
-        {/* Mobile back-to-dashboard strip — always visible when project loaded, sidebar closed, on mobile */}
+        {/* Mobile back-to-dashboard strip — desktop only; mobile uses TopBar title pill */}
         {engine.project && !sidebarOpen && (
-          <div className="mb-1 flex items-center gap-2 pl-12 md:hidden">
+          <div className="mb-1 hidden items-center gap-2 md:flex">
             <Link
               to="/dashboard"
               className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/60 transition-colors hover:bg-white/[0.07] hover:text-white"
@@ -737,13 +737,13 @@ const Index = () => {
           />
 
           {engine.project && (
-            <div className="mb-2 ml-10 min-w-0 rounded-xl border border-white/10 bg-background/85 px-3 py-2 shadow-lg shadow-black/10 backdrop-blur-2xl md:ml-0">
+            <div className="mb-2 min-w-0 rounded-xl border border-white/10 bg-background/85 px-3 py-2 shadow-lg shadow-black/10 backdrop-blur-2xl max-md:ml-11 md:ml-0">
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-0">
                   <p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200/70">
                     {writerHeaderContext.breadcrumb}
                   </p>
-                  <p className="line-clamp-2 break-words text-sm font-semibold text-white sm:truncate sm:line-clamp-none">
+                  <p className="line-clamp-2 break-words text-sm font-semibold text-white [overflow-wrap:anywhere]">
                     {engine.project.config.title || t("untitled")} · {writerHeaderContext.title}
                   </p>
                 </div>
@@ -776,7 +776,7 @@ const Index = () => {
           onExport={guardedExportEpub}
         />
 
-        <div className="flex min-h-[320px] min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm md:min-h-0 md:overflow-visible">
+        <div className="scriptora-writer-editor-card flex min-h-[320px] min-w-0 flex-1 flex-col overflow-x-clip max-md:overflow-y-visible md:min-h-0 md:overflow-hidden rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm max-md:rounded-xl max-md:border-x-0">
           {engine.project ? (
             <>
               <div className="min-h-0 min-w-0 flex-1">

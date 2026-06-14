@@ -94,7 +94,7 @@ export function EditorPanel({
           : !!blueprint;
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex min-w-0 w-full max-w-full flex-1 flex-col overflow-x-clip">
       {hasContent && (
         <div className="flex h-12 shrink-0 items-center justify-center border-b border-white/10 bg-white/[0.035]">
           <div className="ios-segment">
@@ -112,19 +112,19 @@ export function EditorPanel({
         </div>
       )}
 
-      <div className="scriptora-scroll-main scrollbar-thin min-h-0 flex-1 overflow-y-auto overflow-x-clip">
-        <div className={cn("mx-auto min-w-0 px-3 py-4 pb-safe sm:px-8 sm:py-6", mode === "preview" ? "max-w-2xl" : "max-w-4xl")}>
-          <div className={cn("ios-editor-paper p-5 sm:p-7", mode === "preview" && "bg-white/[0.055]")}>
+      <div className="scriptora-scroll-main scriptora-writer-scroll scrollbar-thin min-h-0 flex-1 overflow-y-auto overflow-x-clip">
+        <div className={cn("mx-auto min-h-0 w-full min-w-0 max-w-full px-5 py-4 pb-[calc(env(safe-area-inset-bottom)+5rem)] sm:px-8 sm:py-6 md:pb-safe", mode === "preview" ? "max-w-2xl" : "max-w-4xl")}>
+          <div className={cn("ios-editor-paper p-4 sm:p-7", mode === "preview" && "bg-white/[0.055]")}>
           {mode === "preview" && hasContent ? (
             <PreviewMode project={project} view={view} ws={ws} />
           ) : (
             <>
-              <div className="mb-6 flex min-w-0 flex-wrap items-center gap-2">
+              <div className="mb-4 flex min-w-0 w-full max-w-full flex-wrap items-center gap-2 sm:mb-6">
                 <BookTypeBadge config={config} />
                 <GenreProfileBadge
                   genre={config.genre}
                   subcategory={config.subcategory}
-                  className="min-w-0 max-w-full flex-1 basis-[140px]"
+                  className="min-w-0 max-w-full flex-1 basis-full sm:basis-[140px]"
                 />
                 <EditorialMasteryBadge genre={config.genre} subcategory={config.subcategory} size="md" />
               </div>
@@ -588,10 +588,10 @@ function ChapterView({
   }, [isGenerating, liveSignature, scrollToLive]);
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4">
-        <div className="mb-2 flex-1 min-w-0">
-          <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-1">
+    <div className="min-w-0 w-full max-w-full space-y-8">
+      <div className="scriptora-chapter-header flex min-w-0 w-full max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0 w-full flex-1">
+          <p className="mb-1 break-words text-[11px] font-semibold uppercase text-muted-foreground">
             {chapterDisplayLabel}
           </p>
           <EditableTitle
@@ -600,11 +600,11 @@ function ChapterView({
             disabled={!onUpdateTitle}
           />
         </div>
-        <div className="flex items-center gap-2 shrink-0 pt-1">
+        <div className="scriptora-chapter-toolbar w-full min-w-0 sm:w-auto sm:shrink-0 sm:pt-1">
           {!isGenerated ? (
-            <div className="flex flex-col items-end gap-1">
+            <div className="flex flex-col items-stretch gap-1 sm:items-end">
               <button onClick={onGenerate} disabled={isGenerating || !project.blueprint}
-                className="flex items-center gap-2 h-10 px-5 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-30 transition-colors">
+                className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-30">
                 {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
                 {t("generate")}
               </button>
@@ -622,10 +622,11 @@ function ChapterView({
                   onClick={() => onNarrateChapter(chapterIndex)}
                   disabled={!isGenerated || isGenerating || isEvaluating}
                   title="Voice Studio — ascolta e rileggi il capitolo"
-                  className="h-9 flex items-center gap-1.5 px-3 rounded-lg text-[11px] font-bold bg-emerald-300 text-slate-950 hover:bg-emerald-200 disabled:opacity-30 transition-colors shrink-0"
+                  className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-emerald-300 px-3 text-[11px] font-bold text-slate-950 transition-colors hover:bg-emerald-200 disabled:opacity-30"
                 >
-                  <Headphones className="h-3.5 w-3.5" />
-                  Ascolta capitolo
+                  <Headphones className="h-3.5 w-3.5 shrink-0" />
+                  <span className="sm:hidden">Ascolta</span>
+                  <span className="hidden sm:inline">Ascolta capitolo</span>
                 </button>
               )}
               <ActionButton icon={<Download className="h-3.5 w-3.5" />} title="TXT" onClick={() => downloadText(`chapter-${chapterIndex + 1}-${(chapter?.title || "chapter").replace(/\s+/g, "_")}.txt`, chapter?.content || "")} disabled={!isGenerated} />
@@ -633,13 +634,15 @@ function ChapterView({
                 onClick={() => setShowIntelligence(true)}
                 disabled={isGenerating || isEvaluating}
                 title="AI Analysis Pro — score reali e fix mirati"
-                className="h-9 flex items-center gap-1.5 px-3 rounded-lg text-[11px] font-semibold bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:opacity-90 disabled:opacity-30 transition-opacity"
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-gradient-to-r from-primary to-primary/80 px-3 text-[11px] font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-30"
               >
-                <Zap className="h-3.5 w-3.5" /> Analysis Pro
+                <Zap className="h-3.5 w-3.5 shrink-0" />
+                <span className="sm:hidden">Analysis</span>
+                <span className="hidden sm:inline">Analysis Pro</span>
               </button>
-              <div className="flex flex-col items-center gap-1">
+              <div className="flex shrink-0 flex-col items-center gap-1">
                 <ActionButton icon={<Search className="h-3.5 w-3.5" />} title={t("evaluate")} onClick={onEvaluate} disabled={isGenerating || isEvaluating} />
-                <CreditCostBadge operation="chapter_diagnostic" />
+                <CreditCostBadge operation="chapter_diagnostic" className="max-w-[5.5rem] truncate sm:max-w-none" />
               </div>
               <ActionButton icon={<RefreshCw className="h-3.5 w-3.5" />} title={t("regenerate")} onClick={onRegenerate} disabled={isGenerating} />
               {onNarrateChapter && (
@@ -652,15 +655,15 @@ function ChapterView({
               )}
 
               {/* Rewrite with levels */}
-              <div className="relative flex flex-col items-end gap-1">
+              <div className="relative flex shrink-0 flex-col items-center gap-1">
                 <button onClick={() => setShowRewriteMenu(!showRewriteMenu)} disabled={isGenerating}
-                  className="h-9 flex items-center gap-1 px-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-30 transition-colors">
+                  className="flex h-9 items-center gap-1 rounded-lg px-2.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-30">
                   <Sparkles className="h-3.5 w-3.5" />
                   <ChevronDown className="h-3 w-3" />
                 </button>
                 <CreditCostBadge operation="rewrite_chapter" />
                 {showRewriteMenu && (
-                  <div className="absolute right-0 top-10 z-20 bg-card border border-border rounded-lg shadow-xl py-1 w-48">
+                  <div className="absolute right-0 top-10 z-20 w-48 rounded-lg border border-border bg-card py-1 shadow-xl">
                     {([
                       { level: "light" as RewriteLevel, label: "Light Polish", desc: "Fix phrasing, tighten prose" },
                       { level: "deep" as RewriteLevel, label: "Deep Rewrite", desc: "Restructure + fresh insights" },
@@ -692,8 +695,8 @@ function ChapterView({
         </div>
       </div>
 
-      <div className="flex items-center gap-3">
-        <span className="text-[11px] text-muted-foreground uppercase">{t("chapter_length")}</span>
+      <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+        <span className="shrink-0 text-[11px] uppercase text-muted-foreground">{t("chapter_length")}</span>
         {(["short", "medium", "long"] as const).map(len => (
           <button key={len} onClick={() => onSetLengthOverride(len)}
             className={cn(
@@ -813,7 +816,7 @@ function ChapterView({
       )}
 
       {isGenerating && showReturnToLive && (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] left-3 right-auto z-[35] flex max-w-[calc(100dvw-1.5rem)] items-center gap-2 rounded-2xl border border-cyan-300/25 bg-slate-950/92 px-3 py-2 text-xs text-white shadow-2xl shadow-cyan-950/40 backdrop-blur-xl sm:left-auto sm:right-6">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+4.75rem)] left-3 right-auto z-[35] flex max-w-[calc(100dvw-1.5rem)] items-center gap-2 rounded-2xl border border-cyan-300/25 bg-slate-950/92 px-3 py-2 text-xs text-white shadow-2xl shadow-cyan-950/40 backdrop-blur-xl sm:bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] sm:left-auto sm:right-6">
           <span className="hidden text-white/65 sm:inline">Stai leggendo più in alto</span>
           <button
             type="button"
@@ -1041,12 +1044,14 @@ const EditableTitle = memo(function EditableTitle({
       title={disabled ? undefined : "Click to edit title"}
       className={cn(
         baseClass,
-        "group inline-flex items-baseline gap-2 text-left max-w-full",
+        "scriptora-chapter-title-btn group w-full min-w-0 max-w-full text-left",
         !disabled && "cursor-text hover:text-primary transition-colors",
         disabled && "cursor-default",
       )}
     >
-      <span className="truncate">{value || (disabled ? "" : "Untitled")}</span>
+      <span className="block w-full min-w-0 break-words [overflow-wrap:anywhere] line-clamp-3 sm:line-clamp-2">
+        {value || (disabled ? "" : "Untitled")}
+      </span>
       {!disabled && (
         <PenLine className="h-3.5 w-3.5 opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
       )}

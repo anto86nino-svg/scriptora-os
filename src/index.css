@@ -4687,6 +4687,68 @@ html[data-scriptora-viewport="ultrawide"] {
     overscroll-behavior: auto !important;
     -webkit-overflow-scrolling: auto !important;
   }
+
+  /* Writer mobile — chapter header, toolbar, manuscript breathing room */
+  .scriptora-writer-menu-btn {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .scriptora-writer-main {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 7.5rem) !important;
+  }
+
+  .scriptora-writer-editor-card {
+    overflow-x: clip !important;
+    overflow-y: visible !important;
+  }
+
+  .scriptora-chapter-header {
+    align-items: stretch;
+  }
+
+  .scriptora-chapter-toolbar {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.5rem;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .scriptora-chapter-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scriptora-writer-scroll .ios-editor-paper {
+    padding: 1rem 1.25rem;
+    max-width: 100%;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  }
+
+  .scriptora-chapter-title-btn {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .scriptora-chapter-title-btn span {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
 }
 
 

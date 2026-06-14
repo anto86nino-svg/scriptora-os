@@ -62,7 +62,7 @@ export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarP
         "fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-md safe-area-pb",
         className,
       )}>
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-2">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-1.5">
           <div className="flex min-w-0 items-center gap-2 text-[11px]">
             <CreditCard className="h-3.5 w-3.5 shrink-0 text-primary" />
             <span className="font-bold tabular-nums text-foreground">{formatCredits(wallet.balance)}</span>

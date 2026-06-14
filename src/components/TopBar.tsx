@@ -154,14 +154,14 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
     // Outer wrapper: flex-col so mobile action row can sit below top row without overflow.
     // min-w-0 prevents it from pushing out of the flex parent in Index.tsx.
     // shrink-0 keeps it from being compressed by flex-1 siblings.
-    <div className="ios-glass-soft mb-2 ml-10 min-w-0 shrink-0 rounded-lg md:ml-0">
+    <div className="ios-glass-soft mb-2 min-w-0 shrink-0 rounded-lg max-md:ml-11 md:ml-0">
 
       {/* ── TOP ROW ────────────────────────────────────────────────────────────
           Desktop: full toolbar — nav, selects, actions, badges, signout.
           Mobile: nav + title only. Actions and selects are hidden here.
           overflow-x-auto is kept for desktop where many selects are visible.
       ──────────────────────────────────────────────────────────────────────── */}
-      <div className="flex h-12 min-w-0 items-center gap-2 overflow-x-auto px-3 [-ms-overflow-style:none] [scrollbar-width:none] md:overflow-x-visible [&::-webkit-scrollbar]:hidden">
+      <div className="flex h-10 min-w-0 items-center gap-2 overflow-x-auto px-3 [-ms-overflow-style:none] [scrollbar-width:none] md:h-12 md:overflow-x-visible [&::-webkit-scrollbar]:hidden">
 
         <button onClick={() => nav("/dashboard")} className="hidden md:inline-flex ios-toolbar-button shrink-0 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground">
           <Home className="h-3.5 w-3.5" /> {t("home")}
@@ -169,7 +169,7 @@ export function TopBar({ config, onUpdateConfig, isGenerating, hasProject, onExp
 
         {/* Project title pill — mobile only */}
         {hasProject && config?.title && (
-          <span className="ml-1 flex min-w-0 max-w-[min(46vw,180px)] shrink items-center md:hidden">
+          <span className="ml-0.5 flex min-w-0 max-w-[min(52vw,220px)] shrink items-center md:hidden">
             <span className="w-full truncate rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[11px] font-semibold text-foreground">
               {config.title}
             </span>
