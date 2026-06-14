@@ -1532,14 +1532,22 @@ export default function Dashboard() {
       {showCoverStudio && (
         <Suspense fallback={<div className="scriptora-modal-overlay fixed inset-0 z-50 grid place-items-center bg-black/50"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}>
           <CoverGenerator
-            title={t("untitled")}
-            subtitle=""
-            authorName={activeAuthor.penName}
-            description=""
-            authorBio={activeAuthor.biography}
-            showPrimaryAction={false}
-            onGenerate={() => undefined}
+            title={lastProject?.config.title || t("untitled")}
+            subtitle={lastProject?.config.subtitle || ""}
+            authorName={lastProject?.config.authorName || activeAuthor.penName}
+            description={lastProject?.blueprint?.overview || ""}
+            authorBio={lastProject?.frontMatter?.aboutAuthor || activeAuthor.biography}
+            genre={lastProject?.config.genre || lastProject?.config.category}
+            language={lastProject?.config.language || lastProject?.config.titleLanguage}
+            projectId={lastProject?.id}
+            showPrimaryAction={Boolean(lastProject)}
+            primaryActionLabel="Salva cover nel progetto"
+            onGenerate={() => setShowCoverStudio(false)}
             onClose={() => setShowCoverStudio(false)}
+            onOpenExport={() => {
+              setShowCoverStudio(false);
+              setShowExport(true);
+            }}
           />
         </Suspense>
       )}

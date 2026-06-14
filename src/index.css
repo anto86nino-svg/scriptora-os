@@ -4832,3 +4832,34 @@ body,
 .scriptora-landing video {
   touch-action: pan-y !important;
 }
+
+/* Cover Studio — mobile-first war room */
+.cover-studio-war-room {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+@media (max-width: 1023px) {
+  .cover-studio-war-room .cover-studio-preview-panel {
+    order: -1;
+    padding-top: 0;
+  }
+
+  .cover-studio-war-room .cover-studio-sticky-cta {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    margin-top: auto;
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    background: linear-gradient(to top, hsl(var(--background)) 70%, transparent);
+  }
+}
+
+.cover-studio-war-room [data-state="active"] {
+  font-weight: 600;
+}
+
+.cover-studio-war-room .grid {
+  width: 100%;
+}

@@ -3,6 +3,12 @@ import { BookOpen, Download, ImagePlus, Settings2, Upload, Wand2, X } from "luci
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
 import { requireCreditsAsync } from "@/lib/billing";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
+import { buildCoverStudioPackage, recommendTemplate, COVER_TEMPLATES } from "@/lib/cover-studio";
+import { getProjectCoverDataUrl, setProjectCoverDataUrl } from "@/lib/cover-session";
+import { CoverStudioPanels } from "@/components/cover/CoverStudioPanels";
+import { creditModeDisclosure, creditModeLabel } from "@/lib/credit-economy";
+import { isDevMode } from "@/lib/dev-mode";
+import { Badge } from "@/components/ui/badge";
 
 interface CoverGeneratorProps {
   title: string;
@@ -10,10 +16,15 @@ interface CoverGeneratorProps {
   authorName?: string;
   description?: string;
   authorBio?: string;
+  genre?: string;
+  language?: string;
+  marketplace?: string;
+  projectId?: string;
   primaryActionLabel?: string;
   showPrimaryAction?: boolean;
   onGenerate: (dataUrl: string) => void;
   onClose: () => void;
+  onOpenExport?: () => void;
 }
 
 type CoverMode = "epub" | "kdp" | "lulu" | "custom";
@@ -199,11 +210,18 @@ export function CoverGenerator({
   authorName,
   description,
   authorBio,
+  genre = "",
+  language = "Italian",
+  marketplace,
+  projectId,
   primaryActionLabel = "Usa per EPUB",
   showPrimaryAction = true,
   onGenerate,
   onClose,
+  onOpenExport,
 }: CoverGeneratorProps) {
+  const devCreditMode = isDevMode();
+  const italianUi = language.toLowerCase().includes("ital");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const authorPhotoInputRef = useRef<HTMLInputElement>(null);
@@ -253,6 +271,53 @@ export function CoverGenerator({
   const [titleScale, setTitleScale] = useState(100);
   const [subtitleScale, setSubtitleScale] = useState(100);
   const [authorScale, setAuthorScale] = useState(100);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [coverSaved, setCoverSaved] = useState(() => Boolean(projectId && getProjectCoverDataUrl(projectId)));
+  const [dataMode, setDataMode] = useState<"template" | "ai-assisted" | "upload">("template");
+
+  const studioPackage = useMemo(
+    () =>
+      buildCoverStudioPackage(
+        {
+          title: coverTitle,
+          author: coverAuthor,
+          subtitle: coverSubtitle,
+          genre: coverGenreBrief || genre,
+          language,
+          marketplace,
+        },
+        {
+          templateId: selectedTemplateId || undefined,
+          dataMode,
+          hasSavedCover: coverSaved,
+          darkTemplate: TEMPLATES[selectedTemplate]?.dark,
+          hasUpload: Boolean(uploadedImage),
+        },
+      ),
+    [
+      coverTitle,
+      coverAuthor,
+      coverSubtitle,
+      coverGenreBrief,
+      genre,
+      language,
+      marketplace,
+      selectedTemplateId,
+      dataMode,
+      coverSaved,
+      selectedTemplate,
+      uploadedImage,
+    ],
+  );
+
+  useEffect(() => {
+    if (!genre && !coverGenreBrief) return;
+    const rec = recommendTemplate(studioPackage.brief.genreFamily);
+    if (!selectedTemplateId) {
+      setSelectedTemplateId(rec.id);
+      setSelectedTemplate(rec.templateIndex);
+    }
+  }, [genre, coverGenreBrief, studioPackage.brief.genreFamily, selectedTemplateId]);
 
   const template = TEMPLATES[selectedTemplate];
   const resolveFont = (font: string) => (font === "Template" ? template.font : font);
@@ -485,11 +550,50 @@ export function CoverGenerator({
     ctx.textAlign = previousAlign;
   }
 
+  function persistCover(dataUrl: string) {
+    if (projectId) {
+      const ok = setProjectCoverDataUrl(projectId, dataUrl);
+      setCoverSaved(ok);
+    }
+  }
+
+  function exportCoverDataUrl(): string | null {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    if (!spec.isPrint) return canvas.toDataURL("image/jpeg", 0.95);
+    const front = document.createElement("canvas");
+    front.width = EPUB_WIDTH;
+    front.height = EPUB_HEIGHT;
+    const ctx = front.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(
+      canvas,
+      spec.frontRect.x,
+      spec.frontRect.y,
+      spec.frontRect.w,
+      spec.frontRect.h,
+      0,
+      0,
+      EPUB_WIDTH,
+      EPUB_HEIGHT,
+    );
+    return front.toDataURL("image/jpeg", 0.95);
+  }
+
+  function handleSaveToProject() {
+    const dataUrl = exportCoverDataUrl();
+    if (!dataUrl) return;
+    persistCover(dataUrl);
+    onGenerate(dataUrl);
+  }
+
   function handleUseForEpub() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     if (!spec.isPrint) {
-      onGenerate(canvas.toDataURL("image/jpeg", 0.95));
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+      persistCover(dataUrl);
+      onGenerate(dataUrl);
       return;
     }
     const front = document.createElement("canvas");
@@ -508,7 +612,9 @@ export function CoverGenerator({
       EPUB_WIDTH,
       EPUB_HEIGHT,
     );
-    onGenerate(front.toDataURL("image/jpeg", 0.95));
+    const dataUrl = front.toDataURL("image/jpeg", 0.95);
+    persistCover(dataUrl);
+    onGenerate(dataUrl);
   }
 
   function handleDownload() {
@@ -526,6 +632,7 @@ export function CoverGenerator({
     const reader = new FileReader();
     reader.onload = () => {
       setUploadedImage(String(reader.result || ""));
+      setDataMode("upload");
     };
     reader.readAsDataURL(file);
   }
@@ -557,6 +664,9 @@ export function CoverGenerator({
     setSelectedTemplate(direction.templateIndex);
     setScriptoraArtDirection(direction);
     setScriptoraSeed(direction.seed + Date.now() % 997);
+    setDataMode("ai-assisted");
+    const rec = recommendTemplate(studioPackage.brief.genreFamily);
+    setSelectedTemplateId(rec.id);
   }
 
   return (
@@ -569,6 +679,10 @@ export function CoverGenerator({
               Scriptora Cover Studio
             </div>
             <h2 className="text-lg font-semibold text-foreground truncate">Copertine EPUB, KDP e Lulu</h2>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              <Badge variant="outline" className="text-[10px]">{studioPackage.honestyLabel}</Badge>
+              <Badge variant="secondary" className="text-[10px]">Score {studioPackage.score.finalScore}</Badge>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -585,17 +699,44 @@ export function CoverGenerator({
               <span>{spec.label}</span>
               <span>{spec.width} x {spec.height}px - {spec.exportNote}</span>
             </div>
-            <div className="flex min-h-[240px] w-full items-center justify-center lg:h-full lg:min-h-0 lg:pt-8">
+            <div className="flex min-h-[240px] w-full flex-col items-center justify-center gap-3 lg:h-full lg:min-h-0 lg:pt-8">
               <div className="w-full flex items-center justify-center lg:rounded-[2rem] lg:border lg:border-white/10 lg:bg-white/[0.035] lg:p-6 xl:p-8 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_28px_80px_rgba(0,0,0,0.45)]">
                 <canvas
                   ref={canvasRef}
-                  className="max-h-[58dvh] w-auto max-w-full rounded-xl shadow-2xl ring-1 ring-white/10 sm:max-h-[66dvh] lg:max-h-[72dvh] lg:rounded-2xl lg:shadow-[0_26px_80px_rgba(0,0,0,0.62)] xl:max-h-[76dvh]"
+                  className="max-h-[50dvh] w-auto max-w-full rounded-xl shadow-2xl ring-1 ring-white/10 sm:max-h-[58dvh] lg:max-h-[62dvh] lg:rounded-2xl lg:shadow-[0_26px_80px_rgba(0,0,0,0.62)] xl:max-h-[66dvh]"
                 />
+              </div>
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                <span>{italianUi ? "Potenza miniatura" : "Thumbnail power"}</span>
+                <Badge variant="outline" className="text-[10px] tabular-nums">
+                  {studioPackage.score.thumbnailReadability}/100
+                </Badge>
               </div>
             </div>
           </div>
 
           <div className="scriptora-modal-body min-h-0 space-y-5 overflow-y-auto overscroll-contain bg-background/55 p-4 sm:p-5 lg:space-y-6 lg:bg-background/75 lg:p-6">
+            <section className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
+              <span className="font-semibold text-foreground">{creditModeLabel(devCreditMode)}</span>
+              {" · "}
+              {italianUi ? "Genera sfondo AI consuma crediti. Salvataggio cover gratuito." : "AI background uses credits. Saving cover is free."}
+              <p className="mt-1">{creditModeDisclosure(devCreditMode)}</p>
+            </section>
+
+            <CoverStudioPanels
+              pkg={studioPackage}
+              italianUi={italianUi}
+              selectedTemplateId={selectedTemplateId || studioPackage.recommendedTemplateId}
+              onSelectVariant={(idx, id) => {
+                setSelectedTemplate(idx);
+                setSelectedTemplateId(id);
+                setDataMode("template");
+              }}
+              onSaveProject={projectId ? handleSaveToProject : undefined}
+              onOpenExport={onOpenExport}
+              saved={coverSaved}
+            />
+
             <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -689,7 +830,11 @@ export function CoverGenerator({
                 {TEMPLATES.map((t, i) => (
                   <button
                     key={t.name}
-                    onClick={() => setSelectedTemplate(i)}
+                    onClick={() => {
+                      setSelectedTemplate(i);
+                      const meta = COVER_TEMPLATES.find((t) => t.templateIndex === i);
+                      if (meta) setSelectedTemplateId(meta.id);
+                    }}
                     className={`min-h-16 lg:min-h-[76px] rounded-xl lg:rounded-2xl border p-2 lg:p-3 text-left transition-all duration-200 ${
                       i === selectedTemplate
                         ? "border-primary bg-primary/15 shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
@@ -943,7 +1088,11 @@ export function CoverGenerator({
                 {TEMPLATES.map((t, i) => (
                   <button
                     key={t.name}
-                    onClick={() => setSelectedTemplate(i)}
+                    onClick={() => {
+                      setSelectedTemplate(i);
+                      const meta = COVER_TEMPLATES.find((t) => t.templateIndex === i);
+                      if (meta) setSelectedTemplateId(meta.id);
+                    }}
                     className={`min-h-16 rounded-xl border p-2 text-left transition-colors ${
                       i === selectedTemplate
                         ? "border-primary bg-primary/15"
@@ -966,7 +1115,7 @@ export function CoverGenerator({
 
             </section>
 
-            <div className={`-mx-4 sm:-mx-5 lg:mx-0 -mb-4 sm:-mb-5 lg:mb-0 grid gap-2 lg:gap-3 border-t lg:border border-border/70 bg-background/90 lg:bg-card/75 p-4 backdrop-blur-xl sm:p-5 lg:rounded-2xl lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)] ${showPrimaryAction ? "grid-cols-2" : "grid-cols-1"}`}>
+            <div className={`-mx-4 sm:-mx-5 lg:mx-0 -mb-4 sm:-mb-5 lg:mb-0 sticky bottom-0 z-10 grid gap-2 lg:gap-3 border-t lg:border border-border/70 bg-background/95 lg:bg-card/90 p-4 backdrop-blur-xl sm:p-5 lg:rounded-2xl lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)] ${showPrimaryAction && projectId ? "grid-cols-2 sm:grid-cols-3" : showPrimaryAction ? "grid-cols-2" : projectId ? "grid-cols-2" : "grid-cols-1"}`}>
               <div className="hidden lg:block col-span-full">
                 <p className="text-sm font-semibold text-foreground">EXPORT</p>
                 <p className="mt-1 text-xs text-muted-foreground">Scarica, salva o applica la cover al progetto corrente.</p>
@@ -978,6 +1127,15 @@ export function CoverGenerator({
                 <Download className="h-4 w-4" />
                 Scarica PNG
               </button>
+              {projectId && (
+                <button
+                  onClick={handleSaveToProject}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 py-3 lg:py-3.5 text-sm font-semibold text-primary hover:bg-primary/15 transition-colors"
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  {italianUi ? "Salva progetto" : "Save project"}
+                </button>
+              )}
               {showPrimaryAction && (
                 <button
                   onClick={handleUseForEpub}

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { BookProject } from "@/types/book";
 import { X, FileDown, Loader2, BookOpen, FileText, FileType, Lock, ImagePlus, Headphones } from "lucide-react";
 import { AudiobookExportPanel } from "@/components/audiobook/AudiobookExportPanel";
@@ -14,6 +14,7 @@ import { chargePremiumOperation, refundPremiumOperation } from "@/lib/billing/ch
 import { InsufficientCreditsError } from "@/lib/billing";
 import { ExportBlockedError, getExportBlockers } from "@/lib/export-readiness";
 import { applyAuthorIdentityToConfig } from "@/lib/author-identity";
+import { listProjectCoverUrls } from "@/lib/cover-session";
 
 const CoverGenerator = lazy(() =>
   import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })),
@@ -42,6 +43,11 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   // Honour the dev-mode plan override: only the simulated tier's permissions
   // apply (Premium/Pro/Beta unlock export, Free does not).
   const canExport = PLAN_LIMITS[plan].canExport;
+
+  useEffect(() => {
+    if (!open) return;
+    setCoverDataUrls((current) => ({ ...listProjectCoverUrls(), ...current }));
+  }, [open]);
 
   if (!open) return null;
 
@@ -402,6 +408,10 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
               setShowCover(false);
               void performExport(selectedProject, dataUrl);
             }}
+            projectId={selectedProject.id}
+            genre={selectedProject.config.genre || selectedProject.config.category}
+            language={selectedProject.config.language || selectedProject.config.titleLanguage}
+            onOpenExport={() => setShowCover(false)}
             onClose={() => setShowCover(false)}
           />
         </Suspense>
