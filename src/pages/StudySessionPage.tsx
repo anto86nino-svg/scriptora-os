@@ -412,8 +412,8 @@ export default function StudySessionPage() {
   const safeKeyConcepts = safeResult?.keyConcepts || [];
 
   return (
-    <div className="scriptora-ios-screen scriptora-app-surface scriptora-page-scroll min-h-[100dvh] px-4 py-5 pb-safe sm:px-8">
-      <div className="mx-auto max-w-7xl">
+    <div className="scriptora-ios-screen scriptora-app-surface scriptora-page-scroll scriptora-study-session min-h-[100dvh] overflow-x-clip px-3 py-4 pb-safe sm:px-6 sm:py-5">
+      <div className="mx-auto w-full min-w-0 max-w-7xl">
         <header className="mb-6 flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/[0.04] p-4 shadow-2xl backdrop-blur-2xl sm:flex-row sm:items-center sm:justify-between">
           <div>
             <button
@@ -460,14 +460,14 @@ export default function StudySessionPage() {
           />
         </header>
 
-        <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-          <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div>
+        <div className="grid min-w-0 gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+          <section className="min-w-0 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] p-3 backdrop-blur-2xl sm:p-4">
+            <div className="mb-3 flex min-w-0 items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
                 <h2 className="font-semibold text-foreground">1. Carica o incolla</h2>
                 <p className="text-xs text-muted-foreground">PDF · Libro · Dispensa · Appunti · Capitoli · Testi copiati</p>
               </div>
-              <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-muted-foreground">
+              <span className="shrink-0 max-w-[42%] truncate rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] text-muted-foreground sm:max-w-none sm:px-3 sm:text-xs">
                 {wordCount.toLocaleString()} parole
               </span>
             </div>
@@ -476,7 +476,7 @@ export default function StudySessionPage() {
               value={rawText}
               onChange={(event) => setRawText(event.target.value)}
               placeholder="Incolla qui capitoli, appunti, dispense o una parte del libro..."
-              className="min-h-[320px] w-full resize-y rounded-2xl border border-white/10 bg-background/70 p-4 text-sm leading-6 text-foreground outline-none focus:border-emerald-300/40 lg:min-h-[420px]"
+              className="scriptora-text-safe min-h-[240px] w-full min-w-0 max-w-full resize-y overflow-x-hidden rounded-2xl border border-white/10 bg-background/70 p-3 text-sm leading-6 text-foreground outline-none focus:border-emerald-300/40 sm:min-h-[280px] sm:p-4 lg:min-h-[420px]"
             />
             <p className={`mt-2 text-xs leading-5 ${wordCount < 40 ? "text-amber-200/90" : "text-muted-foreground"}`}>
               {t("study_min_words_hint")} ({wordCount}/40)
@@ -510,7 +510,7 @@ export default function StudySessionPage() {
             </button>
           </section>
 
-          <section className="space-y-4">
+          <section className="min-w-0 space-y-4">
             {!safeResult ? (
               <div className="rounded-3xl border border-dashed border-white/15 bg-white/[0.03] p-5 sm:p-8">
                 <div className="mb-6 text-center sm:text-left">

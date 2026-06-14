@@ -112,19 +112,19 @@ export function EditorPanel({
         </div>
       )}
 
-      <div className="scriptora-scroll-main scrollbar-thin flex-1 overflow-y-visible">
-        <div className={cn("mx-auto px-3 py-4 pb-safe sm:px-8 sm:py-6", mode === "preview" ? "max-w-2xl" : "max-w-4xl")}>
+      <div className="scriptora-scroll-main scrollbar-thin min-h-0 flex-1 overflow-y-auto overflow-x-clip">
+        <div className={cn("mx-auto min-w-0 px-3 py-4 pb-safe sm:px-8 sm:py-6", mode === "preview" ? "max-w-2xl" : "max-w-4xl")}>
           <div className={cn("ios-editor-paper p-5 sm:p-7", mode === "preview" && "bg-white/[0.055]")}>
           {mode === "preview" && hasContent ? (
             <PreviewMode project={project} view={view} ws={ws} />
           ) : (
             <>
-              <div className="flex items-center gap-2 mb-6 flex-wrap">
+              <div className="mb-6 flex min-w-0 flex-wrap items-center gap-2">
                 <BookTypeBadge config={config} />
                 <GenreProfileBadge
                   genre={config.genre}
                   subcategory={config.subcategory}
-                  className="flex-1 min-w-[200px]"
+                  className="min-w-0 max-w-full flex-1 basis-[140px]"
                 />
                 <EditorialMasteryBadge genre={config.genre} subcategory={config.subcategory} size="md" />
               </div>

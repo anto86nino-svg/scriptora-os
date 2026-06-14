@@ -615,7 +615,7 @@ export function ManuscriptAnalyzerDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-6xl flex-col gap-0 overflow-hidden border-white/10 bg-background/95 p-0 shadow-2xl backdrop-blur-2xl sm:max-h-[min(92dvh,900px)] sm:max-w-6xl">
+      <DialogContent className="scriptora-manuscript-modal flex max-h-[100dvh] w-full max-w-6xl flex-col gap-0 overflow-hidden border-white/10 bg-background/95 p-0 shadow-2xl backdrop-blur-2xl sm:max-h-[min(92dvh,900px)] sm:w-[calc(100vw-1rem)] sm:max-w-6xl sm:rounded-lg">
         <DialogHeader className="shrink-0 border-b border-white/10 px-5 py-4 text-left sm:px-6">
           <div className="flex min-w-0 items-start gap-3 pr-8">
             <div className="ios-icon ios-icon-teal h-11 w-11 shrink-0 rounded-[16px]">
@@ -632,8 +632,8 @@ export function ManuscriptAnalyzerDialog({
           </div>
         </DialogHeader>
 
-        <div className="scriptora-modal-body grid min-h-0 flex-1 gap-0 overflow-y-auto lg:grid-cols-[0.9fr_1.1fr] lg:overflow-hidden">
-          <section className="min-h-0 border-b border-white/10 p-4 sm:p-5 lg:max-h-none lg:overflow-y-auto lg:overscroll-contain lg:border-b-0 lg:border-r">
+        <div className="scriptora-modal-body grid min-h-0 flex-1 grid-cols-1 gap-0 overflow-y-auto overscroll-contain lg:grid-cols-[0.9fr_1.1fr] lg:overflow-hidden">
+          <section className="min-h-0 shrink-0 border-b border-white/10 p-4 sm:p-5 lg:max-h-none lg:overflow-y-auto lg:overscroll-contain lg:border-b-0 lg:border-r">
             <input
               ref={fileInputRef}
               type="file"
@@ -734,7 +734,7 @@ export function ManuscriptAnalyzerDialog({
                 }}
                 placeholder={t("manuscript_paste_placeholder")}
                 rows={10}
-                className="max-h-[32dvh] min-h-[160px] w-full resize-y rounded-lg border border-white/10 bg-white/[0.055] px-3 py-2.5 text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary"
+                className="scriptora-text-safe max-h-[28dvh] min-h-[140px] w-full min-w-0 max-w-full resize-y overflow-x-hidden rounded-lg border border-white/10 bg-white/[0.055] px-3 py-2.5 text-sm leading-6 text-foreground outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-primary sm:max-h-[32dvh] sm:min-h-[160px]"
               />
             </label>
 

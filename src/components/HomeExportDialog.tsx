@@ -182,9 +182,8 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   ];
 
   return (
-    <div className="scriptora-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      {/* max-h: prevents modal from overflowing viewport on landscape/small screens */}
-      <div className="scriptora-modal-panel flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+    <div className="scriptora-modal-overlay scriptora-export-modal-overlay fixed inset-0 z-[60] flex items-stretch justify-center bg-black/80 p-0 backdrop-blur-md sm:items-center sm:bg-black/60 sm:p-4 sm:backdrop-blur-sm">
+      <div className="scriptora-modal-panel scriptora-export-modal-panel flex h-[100dvh] max-h-[100dvh] w-full max-w-lg flex-col overflow-hidden rounded-none border-0 bg-card shadow-2xl sm:h-auto sm:max-h-[min(94dvh,900px)] sm:rounded-2xl sm:border sm:border-border">
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-2.5">
@@ -228,7 +227,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
           </button>
         </div>
 
-        <div className="scriptora-modal-body min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+        <div className="scriptora-modal-body scriptora-export-modal-body min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-4 sm:p-5">
           {studioTab === "audiobook" ? (
             <AudiobookExportPanel
               projects={projects}
@@ -344,13 +343,13 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
 
         {/* Footer — shrink-0 so it's always visible even on very short screens */}
         {studioTab === "documents" && (
-        <div className="scriptora-cta-row flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border bg-muted/20 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+        <footer className="scriptora-export-modal-footer flex shrink-0 flex-col gap-3 border-t border-border bg-background/98 px-4 py-4 backdrop-blur-xl sm:bg-muted/20 sm:px-5">
           <CreditCostBadge operation="export_premium" prominent />
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
             <button
               onClick={onClose}
               disabled={isExporting}
-              className="min-h-9 shrink-0 rounded-md px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-40"
+              className="min-h-11 shrink-0 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-40"
             >
               Annulla
             </button>
@@ -358,7 +357,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
               onClick={handleExport}
               disabled={isExporting || !selectedId || exportableProjects.length === 0}
               title={canExport ? "Export" : "Finish your book — unlock export"}
-              className="flex min-h-9 shrink-0 items-center gap-1.5 rounded-md bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
+              className="flex min-h-11 w-full shrink-0 items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40 sm:w-auto"
             >
               {isExporting ? (
                 <>
@@ -378,7 +377,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
               )}
             </button>
           </div>
-        </div>
+        </footer>
         )}
       </div>
       <UpgradeModal open={showUpgrade} onClose={() => setShowUpgrade(false)} reason="export" currentPlan={plan} />

@@ -4893,14 +4893,42 @@ body,
   }
 }
 
-/* Hide floating dock while any Scriptora modal is open */
+/* Hide floating dock when modals, dense routes, or radix dialogs are active */
 html:has(.scriptora-modal-overlay) .scriptora-floating-dock,
-html:has(.scriptora-modal-overlay) .scriptora-floating-dock-pill {
+html:has(.scriptora-modal-overlay) .scriptora-floating-dock-pill,
+html:has([role="dialog"][data-state="open"]) .scriptora-floating-dock,
+html:has([role="dialog"][data-state="open"]) .scriptora-floating-dock-pill,
+body[data-scriptora-dock-dense="1"] .scriptora-floating-dock,
+body[data-scriptora-dock-dense="1"] .scriptora-floating-dock-pill {
+  display: none !important;
   visibility: hidden !important;
   pointer-events: none !important;
 }
 
+/* Long text / inputs — prevent horizontal page overflow */
+.scriptora-text-safe,
+.scriptora-study-session textarea,
+.scriptora-study-session pre,
+.scriptora-study-session [contenteditable="true"] {
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.scriptora-study-session {
+  overflow-x: clip;
+}
+
 /* SCRIPTORA MOBILE VIEWPORT HARDENING — global responsive foundations */
+html,
+body,
+#root {
+  max-width: 100vw;
+  overflow-x: clip;
+}
+
 .scriptora-ios-screen,
 .scriptora-app-surface,
 .scriptora-dashboard-mobile,
@@ -4941,11 +4969,65 @@ html:has(.scriptora-modal-overlay) .scriptora-floating-dock-pill {
     word-break: break-word;
   }
 
-  [role="dialog"] {
+  textarea,
+  input,
+  select {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  textarea,
+  pre,
+  code,
+  [contenteditable="true"] {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: pre-wrap;
+  }
+
+  .scriptora-export-modal-overlay {
+    align-items: stretch !important;
+    padding: 0 !important;
+  }
+
+  .scriptora-export-modal-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+
+  .scriptora-export-modal-body {
+    padding-bottom: 1rem;
+  }
+
+  .scriptora-export-modal-footer {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px) !important;
+    box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.16);
+  }
+
+  .scriptora-manuscript-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    translate: none !important;
+    left: 0 !important;
+    top: 0 !important;
+    transform: none !important;
+  }
+
+  [role="dialog"]:not(.scriptora-manuscript-modal) {
     width: min(calc(100dvw - 1rem), 100%) !important;
     max-width: min(calc(100dvw - 1rem), 100%) !important;
     max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1rem) !important;
-    overflow-y: auto;
+    overflow: hidden;
+  }
+
+  .scriptora-cover-studio-footer {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px) !important;
   }
 
   .scriptora-dev-mobile-anchor {
@@ -4963,7 +5045,7 @@ html:has(.scriptora-modal-overlay) .scriptora-floating-dock-pill {
 .scriptora-floating-dock,
 .scriptora-floating-dock-pill {
   position: fixed;
-  z-index: 35;
+  z-index: 30;
   pointer-events: auto;
   max-width: min(360px, calc(100vw - 24px));
 }
@@ -4986,8 +5068,8 @@ html:has(.scriptora-modal-overlay) .scriptora-floating-dock-pill {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(5, 8, 18, 0.92);

@@ -33,11 +33,49 @@ export function applyAdaptiveViewportBoot(): void {
   if (!viewportResizeBound) {
     viewportResizeBound = true;
     let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+    const runAudit = () => {
+      applyViewportClass();
+      detectHorizontalOverflowDev();
+    };
     window.addEventListener("resize", () => {
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => applyViewportClass(), 120);
+      resizeTimer = setTimeout(runAudit, 120);
     });
+    if (import.meta.env.DEV) {
+      setTimeout(detectHorizontalOverflowDev, 1500);
+    }
   }
+}
+
+export type OverflowOffender = {
+  tag: string;
+  className: string;
+  scrollWidth: number;
+  clientWidth: number;
+};
+
+/** Dev-only: log elements wider than their container. */
+export function detectHorizontalOverflowDev(): OverflowOffender[] {
+  if (!import.meta.env.DEV || typeof document === "undefined") return [];
+  const offenders: OverflowOffender[] = [];
+  document.querySelectorAll<HTMLElement>("body *").forEach((el) => {
+    if (el.clientWidth <= 0) return;
+    if (el.scrollWidth <= el.clientWidth + 2) return;
+    const cls = typeof el.className === "string" ? el.className.split(/\s+/).slice(0, 2).join(".") : "";
+    offenders.push({
+      tag: el.tagName.toLowerCase(),
+      className: cls,
+      scrollWidth: el.scrollWidth,
+      clientWidth: el.clientWidth,
+    });
+  });
+  if (offenders.length) {
+    console.warn(
+      `[scriptora-overflow] ${offenders.length} element(s) exceed viewport width`,
+      offenders.slice(0, 25),
+    );
+  }
+  return offenders;
 }
 
 /** Lightweight responsive audit — returns human-readable issues for dev overlay. */

@@ -705,7 +705,7 @@ const Index = () => {
 
       {/* Main Area */}
       <div
-        className={`flex min-h-[100dvh] min-w-0 flex-1 flex-col overflow-y-visible pb-[calc(env(safe-area-inset-bottom)+5rem)] transition-all duration-300 ${
+        className={`flex min-h-[100dvh] min-w-0 flex-1 flex-col overflow-x-clip overflow-y-visible pb-[calc(env(safe-area-inset-bottom)+6.5rem)] transition-all duration-300 ${
           sidebarOpen ? "p-2 md:p-3" : "p-2 md:px-6 md:py-4"
         }`}
       >
@@ -719,7 +719,7 @@ const Index = () => {
               <ArrowLeft className="h-3.5 w-3.5" />
               {t("back_to_dashboard")}
             </Link>
-            <span className="truncate text-[11px] font-medium text-white/40">
+            <span className="min-w-0 truncate text-[11px] font-medium text-white/40">
               {engine.project.config.title || t("untitled")}
             </span>
           </div>
@@ -744,13 +744,13 @@ const Index = () => {
           />
 
           {engine.project && (
-            <div className="mb-2 ml-10 rounded-xl border border-white/10 bg-background/85 px-3 py-2 shadow-lg shadow-black/10 backdrop-blur-2xl md:ml-0">
+            <div className="mb-2 ml-10 min-w-0 rounded-xl border border-white/10 bg-background/85 px-3 py-2 shadow-lg shadow-black/10 backdrop-blur-2xl md:ml-0">
               <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200/70">
                     {writerHeaderContext.breadcrumb}
                   </p>
-                  <p className="truncate text-sm font-semibold text-white">
+                  <p className="line-clamp-2 break-words text-sm font-semibold text-white sm:truncate sm:line-clamp-none">
                     {engine.project.config.title || t("untitled")} · {writerHeaderContext.title}
                   </p>
                 </div>
@@ -783,7 +783,7 @@ const Index = () => {
           onExport={guardedExportEpub}
         />
 
-        <div className="flex min-h-[420px] flex-1 overflow-visible rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm md:min-h-0 md:overflow-visible">
+        <div className="flex min-h-[320px] min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm md:min-h-0 md:overflow-visible">
           {engine.project ? (
             <>
               <div className="min-h-0 min-w-0 flex-1">

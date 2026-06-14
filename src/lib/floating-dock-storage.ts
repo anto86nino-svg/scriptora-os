@@ -17,10 +17,10 @@ export function isMobileDockViewport(): boolean {
 
 export function defaultDockPosition(): FloatingDockPosition {
   if (typeof window === "undefined") return { left: 12, top: 72 };
-  const safeTop = 12;
-  const safeBottom = 80;
+  const safeTop = 56;
+  const safeBottom = 120;
   if (isMobileDockViewport()) {
-    return { left: 12, top: Math.max(safeTop, window.innerHeight - 220 - safeBottom) };
+    return { left: 12, top: Math.max(safeTop, 68) };
   }
   return {
     left: Math.max(12, window.innerWidth - 380),
@@ -36,7 +36,7 @@ export function loadFloatingDockState(): FloatingDockState {
     }
     const parsed = JSON.parse(raw) as FloatingDockState;
     return {
-      collapsed: Boolean(parsed.collapsed),
+      collapsed: isMobileDockViewport() ? true : Boolean(parsed.collapsed),
       position: parsed.position ?? null,
     };
   } catch {
@@ -81,7 +81,7 @@ export function clampDockPosition(
   if (typeof window === "undefined") return { left, top };
   const pad = 12;
   const safeTop = 48;
-  const safeBottom = 88;
+  const safeBottom = isMobileDockViewport() ? 120 : 88;
   return {
     left: Math.max(pad, Math.min(left, window.innerWidth - width - pad)),
     top: Math.max(safeTop, Math.min(top, window.innerHeight - height - safeBottom)),
