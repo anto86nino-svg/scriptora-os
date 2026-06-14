@@ -183,7 +183,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   const formatOptions: { value: Format; icon: any; label: string; desc: string }[] = [
     { value: "epub", icon: BookOpen, label: "EPUB", desc: "Indice cliccabile · Kindle/Apple/Kobo" },
     { value: "docx", icon: FileText, label: "Word", desc: "Manoscritto editabile · Bestseller layout" },
-    { value: "pdf", icon: FileType, label: "PDF", desc: "KDP 6×9\" · Print-ready" },
+    { value: "pdf", icon: FileType, label: "PDF", desc: "Layout 6×9\" · export digitale" },
   ];
 
   return (
@@ -197,7 +197,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
             </div>
             <div>
               <h2 className="text-sm font-semibold text-foreground">Esporta Libro</h2>
-              <p className="text-xs text-muted-foreground">Scegli progetto e formato bestseller</p>
+              <p className="text-xs text-muted-foreground">Export digitale — pronto per revisione</p>
             </div>
           </div>
           <button

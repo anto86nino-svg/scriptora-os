@@ -1,5 +1,5 @@
 import {
-  BarChart3, BookOpen, FileDown, Fingerprint, ImagePlus, Layers3, PenLine, Rocket,
+  BarChart3, BookOpen, FileDown, ImagePlus, Layers3, PenLine, Rocket,
   Search, Sparkles, Target, Users, Wand2,
 } from "lucide-react";
 import type { UILanguage } from "@/lib/i18n";
@@ -9,9 +9,10 @@ type Props = {
 };
 
 const FEATURES = [
-  { icon: Layers3, title: { it: "Blueprint intelligente", en: "Smart blueprint" }, text: { it: "Struttura, pubblico e promessa in un piano coerente.", en: "Structure, audience and promise in one coherent plan." } },
-  { icon: PenLine, title: { it: "Writer OS", en: "Writer OS" }, text: { it: "Capitoli con memoria narrativa e continuità di voce.", en: "Chapters with narrative memory and voice continuity." } },
+  { icon: PenLine, title: { it: "Writer OS", en: "Writer OS" }, text: { it: "Capitoli con memoria narrativa, blueprint e export.", en: "Chapters with narrative memory, blueprint and export." } },
+  { icon: BookOpen, title: { it: "Study OS", en: "Study OS" }, text: { it: "Dispense, PDF e appunti → quiz, flashcard e ripasso guidato.", en: "Notes, PDFs and coursework → quizzes, flashcards and guided review." } },
   { icon: Users, title: { it: "Character Studio", en: "Character Studio" }, text: { it: "Personaggi, relazioni e pressione scenica integrate.", en: "Characters, relationships and scene pressure integrated." } },
+  { icon: Layers3, title: { it: "Blueprint intelligente", en: "Smart blueprint" }, text: { it: "Struttura, pubblico e promessa in un piano coerente.", en: "Structure, audience and promise in one coherent plan." } },
   { icon: Wand2, title: { it: "Analysis Pro", en: "Analysis Pro" }, text: { it: "Diagnosi editoriale su ritmo, dialoghi e sottotesto.", en: "Editorial diagnosis on pacing, dialogue and subtext." } },
   { icon: Target, title: { it: "Patch editoriale", en: "Editorial patch" }, text: { it: "Correzioni chirurgiche senza tradire trama e voce.", en: "Surgical fixes without betraying plot and voice." } },
   { icon: ImagePlus, title: { it: "Cover Studio", en: "Cover Studio" }, text: { it: "Direzione visiva da scaffale digitale.", en: "Shelf-ready visual direction." } },
@@ -19,8 +20,6 @@ const FEATURES = [
   { icon: Search, title: { it: "Title Domination", en: "Title Domination" }, text: { it: "Titoli con tensione commerciale e fit KDP.", en: "Titles with commercial tension and KDP fit." } },
   { icon: BarChart3, title: { it: "Bestseller Radar", en: "Bestseller Radar" }, text: { it: "Score commerciale basato sul progetto reale.", en: "Commercial score based on your real project." } },
   { icon: FileDown, title: { it: "Export EPUB/PDF/DOCX", en: "EPUB/PDF/DOCX export" }, text: { it: "Packaging finale quando il libro è pronto.", en: "Final packaging when the book is ready." } },
-  { icon: BookOpen, title: { it: "Study OS", en: "Study OS" }, text: { it: "Materiale → quiz, flashcard e studio guidato.", en: "Material → quizzes, flashcards and guided study." } },
-  { icon: Fingerprint, title: { it: "Identità autore", en: "Author identity" }, text: { it: "Voce, stile e promessa coerenti in tutto il flusso.", en: "Voice, style and promise coherent across the flow." } },
 ] as const;
 
 function L<T extends { it: string; en: string }>(value: T, lang: UILanguage) {

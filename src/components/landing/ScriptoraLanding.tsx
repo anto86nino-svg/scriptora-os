@@ -738,7 +738,7 @@ export function ScriptoraLanding({
           <a href="/pricing#compare-plans" className="scriptora-landing-secondary text-sm">
             {lang === "it" ? "Confronta piani" : "Compare plans"}
           </a>
-          <a href="/usage?focus=purchase" className="scriptora-landing-secondary text-sm text-white/50">
+          <a href="/pricing#credit-packs" className="scriptora-landing-secondary text-sm text-white/50">
             {lang === "it" ? "Acquista crediti" : "Buy credits"}
           </a>
         </div>

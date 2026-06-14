@@ -678,7 +678,7 @@ export function CoverGenerator({
               <BookOpen className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
               <span className="truncate">Scriptora Cover Studio</span>
             </div>
-            <h2 className="mt-0.5 line-clamp-2 text-base font-semibold leading-snug text-foreground sm:text-lg">Copertine EPUB, KDP e Lulu</h2>
+            <h2 className="mt-0.5 line-clamp-2 text-base font-semibold leading-snug text-foreground sm:text-lg">Cover concept — EPUB, KDP e Lulu</h2>
             <div className="mt-1 flex flex-wrap items-center gap-1">
               <Badge variant="outline" className="px-1.5 py-0 text-[9px] sm:text-[10px]">{studioPackage.honestyLabel}</Badge>
               <Badge variant="secondary" className="px-1.5 py-0 text-[9px] sm:text-[10px]">Score {studioPackage.score.finalScore}</Badge>

@@ -1510,12 +1510,20 @@ export default function Dashboard() {
 
       </div>
 
-      <Suspense fallback={null}>
-      <HomeExportDialog open={showExport} projects={projects} onClose={() => setShowExport(false)} />
-      <TitleIntelligenceDialog open={showTitleIntel} onClose={() => setShowTitleIntel(false)} />
-      <AdvancedAppearanceDialog open={showAdvancedSettings} onClose={() => setShowAdvancedSettings(false)} />
+      {(showExport || showTitleIntel || showAdvancedSettings || showSettingsHub || showCharacterStudio || showManuscriptAnalyzer || showNotepad || showAuthorIdentity) && (
+      <Suspense fallback={(
+        <ScriptoraAliveTransition
+          compact
+          overlay
+          tone="export"
+          title="Sto aprendo lo strumento…"
+          steps={["Caricamento pannello…", "Quasi pronto…"]}
+        />
+      )}>
+      {showExport && <HomeExportDialog open projects={projects} onClose={() => setShowExport(false)} />}
+      {showTitleIntel && <TitleIntelligenceDialog open onClose={() => setShowTitleIntel(false)} />}
+      {showAdvancedSettings && <AdvancedAppearanceDialog open onClose={() => setShowAdvancedSettings(false)} />}
       {showSettingsHub && (
-        <Suspense fallback={null}>
           <ScriptoraSettingsHub
             open={showSettingsHub}
             onClose={() => setShowSettingsHub(false)}
@@ -1523,13 +1531,35 @@ export default function Dashboard() {
             onOpenAuthorIdentity={() => openAuthorIdentity()}
             onOpenUsage={() => navigate("/usage?focus=purchase")}
           />
-        </Suspense>
       )}
+      {showCharacterStudio && (
       <CharacterStudioDialog
-        open={showCharacterStudio}
+        open
         onClose={() => setShowCharacterStudio(false)}
         onAuthorIdentity={() => openAuthorIdentity()}
       />
+      )}
+      {showManuscriptAnalyzer && (
+      <ManuscriptAnalyzerDialog
+        open
+        onClose={() => setShowManuscriptAnalyzer(false)}
+        canCreateProject={!freeBookUsed}
+        onLimitReached={() => navigate("/pricing")}
+      />
+      )}
+      {showNotepad && <NotepadDialog open onClose={() => setShowNotepad(false)} />}
+      {showAuthorIdentity && (
+      <AuthorIdentityDialog
+        open
+        onClose={() => {
+          setShowAuthorIdentity(false);
+          setAuthorIdentityPrefill(null);
+        }}
+        prefillDraft={authorIdentityPrefill}
+      />
+      )}
+      </Suspense>
+      )}
       {showCoverStudio && (
         <Suspense fallback={(
           <ScriptoraAliveTransition
@@ -1563,22 +1593,6 @@ export default function Dashboard() {
           />
         </Suspense>
       )}
-      <ManuscriptAnalyzerDialog
-        open={showManuscriptAnalyzer}
-        onClose={() => setShowManuscriptAnalyzer(false)}
-        canCreateProject={!freeBookUsed}
-        onLimitReached={() => navigate("/pricing")}
-      />
-      <NotepadDialog open={showNotepad} onClose={() => setShowNotepad(false)} />
-      <AuthorIdentityDialog
-        open={showAuthorIdentity}
-        onClose={() => {
-          setShowAuthorIdentity(false);
-          setAuthorIdentityPrefill(null);
-        }}
-        prefillDraft={authorIdentityPrefill}
-      />
-      </Suspense>
       <ProfileMenuDialog
         open={showProfileMenu}
         onClose={() => setShowProfileMenu(false)}

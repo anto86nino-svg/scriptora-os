@@ -1,107 +1,95 @@
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, Star } from "lucide-react";
 import type { UILanguage } from "@/lib/i18n";
 
 export type PublicTestimonial = {
   id: string;
-  initials: string;
-  tone: "cyan" | "violet" | "amber";
+  avatar: string;
   name: string;
   role: string;
   quote: string;
   metric: string;
-  /** Must be true for demo cards shown in UI */
-  isPlaceholder?: boolean;
+  kind: "writer" | "student";
+  isPlaceholder: true;
 };
 
-/** Real testimonials only — leave empty until authorized quotes are provided. */
+/** Real testimonials only — replace when authorized quotes are available. */
 export const AUTHOR_TESTIMONIALS: PublicTestimonial[] = [];
-
-const DEMO_PROMISES: Record<UILanguage, { title: string; items: string[] }> = {
-  it: {
-    title: "Cosa promette Scriptora agli autori",
-    items: [
-      "Un filo narrativo che non si disperde tra strumenti",
-      "Diagnosi editoriale prima di pubblicare",
-      "Packaging KDP, titolo e radar nello stesso progetto",
-      "Export professionale quando il libro è davvero pronto",
-    ],
-  },
-  en: {
-    title: "What Scriptora promises authors",
-    items: [
-      "A narrative thread that does not drift across tools",
-      "Editorial diagnosis before you publish",
-      "KDP packaging, title and radar in one project",
-      "Professional export when the book is truly ready",
-    ],
-  },
-  es: {
-    title: "Lo que Scriptora promete a los autores",
-    items: [
-      "Un hilo narrativo que no se dispersa entre herramientas",
-      "Diagnostico editorial antes de publicar",
-      "Packaging KDP, titulo y radar en un proyecto",
-      "Export profesional cuando el libro esta listo",
-    ],
-  },
-  fr: {
-    title: "Ce que Scriptora promet aux auteurs",
-    items: [
-      "Un fil narratif qui ne se disperse pas entre outils",
-      "Diagnostic editorial avant publication",
-      "Packaging KDP, titre et radar dans un projet",
-      "Export professionnel quand le livre est pret",
-    ],
-  },
-  de: {
-    title: "Was Scriptora Autoren verspricht",
-    items: [
-      "Ein Erzahlfaden, der nicht zwischen Tools verloren geht",
-      "Editoriale Diagnose vor der Veroffentlichung",
-      "KDP-Packaging, Titel und Radar in einem Projekt",
-      "Professioneller Export wenn das Buch wirklich bereit ist",
-    ],
-  },
-};
 
 const PLACEHOLDER_EXAMPLES: PublicTestimonial[] = [
   {
-    id: "beta-a",
-    initials: "GF",
-    tone: "cyan",
+    id: "w1",
+    avatar: "/landing/avatars/demo-writer-1.svg",
     name: "Giulia F.",
-    role: "Autrice romance · esempio beta",
-    quote: "Scriptora tiene insieme struttura, voce e revisione come un unico studio — non come chat sparse.",
+    role: "Autrice romance",
+    quote: "Non è un'altra chat che scrive pagine. È uno studio dove il libro resta coerente capitolo dopo capitolo.",
     metric: "Direzione narrativa",
+    kind: "writer",
     isPlaceholder: true,
   },
   {
-    id: "beta-b",
-    initials: "ML",
-    tone: "violet",
+    id: "s1",
+    avatar: "/landing/avatars/demo-student-1.svg",
+    name: "Luca M.",
+    role: "Studente medicina · 3° anno",
+    quote: "Carico le dispense e in pochi minuti ho quiz e flashcard pronti. Finalmente studio con metodo, non a caso.",
+    metric: "Ripasso esami",
+    kind: "student",
+    isPlaceholder: true,
+  },
+  {
+    id: "w2",
+    avatar: "/landing/avatars/demo-writer-2.svg",
     name: "Marco L.",
-    role: "Non-fiction · esempio beta",
-    quote: "Per la prima volta blueprint, capitoli e export sembrano parti dello stesso libro.",
-    metric: "Coerenza di flusso",
+    role: "Autore saggistica KDP",
+    quote: "Blueprint, capitoli, radar e export nello stesso posto. Meno strumenti sparsi, più libro finito.",
+    metric: "Flusso editoriale",
+    kind: "writer",
     isPlaceholder: true,
   },
   {
-    id: "beta-c",
-    initials: "ER",
-    tone: "amber",
+    id: "s2",
+    avatar: "/landing/avatars/demo-student-2.svg",
+    name: "Sara B.",
+    role: "Giurisprudenza · università",
+    quote: "Perfetto per PDF lunghi e appunti caotici: riassunto chiaro, domande aperte e simulazione d'esame.",
+    metric: "Sessioni studio",
+    kind: "student",
+    isPlaceholder: true,
+  },
+  {
+    id: "s3",
+    avatar: "/landing/avatars/demo-student-3.svg",
     name: "Elena R.",
-    role: "Publisher KDP · esempio beta",
-    quote: "Titolo, cover, radar e KDP Launch nello stesso progetto — meno emergenze, più controllo.",
-    metric: "Packaging commerciale",
+    role: "Liceo scientifico · maturità",
+    quote: "Uso Study OS per ripassare prima dei compiti in classe. Sembra fatto per studenti veri, non solo per autori.",
+    metric: "Quiz e verifica",
+    kind: "student",
     isPlaceholder: true,
   },
 ];
 
-const TONE_CLASS: Record<PublicTestimonial["tone"], string> = {
-  cyan: "from-cyan-400/30 to-sky-500/10",
-  violet: "from-violet-400/30 to-fuchsia-500/10",
-  amber: "from-amber-400/30 to-orange-500/10",
-};
+const headerCopy = {
+  it: {
+    label: "Voci dalla beta",
+    title: "Autori che pubblicano. Studenti che imparano.",
+    text: "Scriptora non è solo scrittura: è anche studio guidato per ogni indirizzo — università, liceo, medicina, giurisprudenza, STEM.",
+    badge: "Esempio beta / avatar illustrato",
+    cta: "Prova gratis Scriptora",
+    statWriters: "Author Studio",
+    statStudents: "Study OS",
+    statOne: "1 piattaforma",
+  },
+  en: {
+    label: "Beta voices",
+    title: "Authors who publish. Students who learn.",
+    text: "Scriptora is not only writing: guided study for every path — university, high school, medicine, law, STEM.",
+    badge: "Beta example / illustrated avatar",
+    cta: "Try Scriptora free",
+    statWriters: "Author Studio",
+    statStudents: "Study OS",
+    statOne: "1 platform",
+  },
+} as const;
 
 type Props = {
   lang: UILanguage;
@@ -109,56 +97,54 @@ type Props = {
 };
 
 export function PublicTestimonials({ lang, onEnter }: Props) {
-  const promises = DEMO_PROMISES[lang] ?? DEMO_PROMISES.en;
-  const real = AUTHOR_TESTIMONIALS;
-  const cards = real.length > 0 ? real : PLACEHOLDER_EXAMPLES;
+  const c = headerCopy[lang === "it" ? "it" : "en"];
+  const cards = AUTHOR_TESTIMONIALS.length > 0 ? AUTHOR_TESTIMONIALS : PLACEHOLDER_EXAMPLES;
 
   return (
     <section id="testimonials" className="scriptora-landing-section scriptora-testimonials-section">
-      <div className="scriptora-landing-section-label">
-        {real.length > 0
-          ? (lang === "it" ? "Voci autore" : "Author voices")
-          : (lang === "it" ? "Beta · proof" : "Beta · proof")}
+      <div className="scriptora-testimonials-conversion-head">
+        <div className="scriptora-landing-section-label">{c.label}</div>
+        <h2>{c.title}</h2>
+        <p>{c.text}</p>
+        <div className="scriptora-testimonials-stats">
+          <span>{c.statWriters}</span>
+          <span>{c.statStudents}</span>
+          <span className="is-accent">{c.statOne}</span>
+        </div>
       </div>
 
-      {real.length === 0 ? (
-        <div className="scriptora-public-beta-cta">
-          <h2>{lang === "it" ? "Vuoi essere tra i primi autori beta?" : "Want to be among the first beta authors?"}</h2>
-          <p>{promises.title}</p>
-          <ul className="scriptora-public-promise-list">
-            {promises.items.map((item) => (
-              <li key={item}>
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-cyan-300" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-          <button type="button" onClick={onEnter} className="scriptora-landing-primary">
-            {lang === "it" ? "Entra in Scriptora" : "Enter Scriptora"}
-            <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
-      ) : (
-        <div className="scriptora-testimonials-header">
-          <h2>{lang === "it" ? "Autori che usano Scriptora" : "Authors using Scriptora"}</h2>
-        </div>
+      {AUTHOR_TESTIMONIALS.length === 0 && (
+        <p className="scriptora-testimonials-placeholder-notice mb-4 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center text-xs text-white/55">
+          {lang === "it"
+            ? "Esempi illustrati per la beta — non testimonianze di clienti reali."
+            : "Illustrated beta examples — not quotes from real customers."}
+        </p>
       )}
 
       <div className="scriptora-testimonials-grid">
         {cards.map((item) => (
-          <article key={item.id} className="scriptora-testimonial-card">
-            {item.isPlaceholder && (
-              <span className="scriptora-testimonial-placeholder-badge">
-                {lang === "it" ? "Esempio beta / placeholder" : "Beta example / placeholder"}
-              </span>
-            )}
+          <article
+            key={item.id}
+            className={`scriptora-testimonial-card ${item.kind === "student" ? "is-student" : "is-writer"}`}
+          >
+            <span className="scriptora-testimonial-placeholder-badge">{c.badge}</span>
             <div className="scriptora-testimonial-person">
-              <span className={`scriptora-testimonial-avatar bg-gradient-to-br ${TONE_CLASS[item.tone]}`}>
-                {item.initials}
-              </span>
+              <img
+                src={item.avatar}
+                alt=""
+                width={48}
+                height={48}
+                loading="lazy"
+                className="scriptora-testimonial-photo"
+              />
               <div>
                 <strong>{item.name}</strong>
                 <span>{item.role}</span>
+              </div>
+              <div className="scriptora-testimonial-stars" aria-hidden="true">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star key={`${item.id}-star-${i}`} className="h-3 w-3 fill-amber-300 text-amber-300" />
+                ))}
               </div>
             </div>
             <p>{item.quote}</p>
@@ -168,6 +154,14 @@ export function PublicTestimonials({ lang, onEnter }: Props) {
             </div>
           </article>
         ))}
+      </div>
+
+      <div className="scriptora-testimonials-cta-bar">
+        <p>{lang === "it" ? "Scrivi il libro o studia meglio — entra con un solo account." : "Write your book or study smarter — one account."}</p>
+        <button type="button" onClick={onEnter} className="scriptora-landing-primary">
+          {c.cta}
+          <ArrowRight className="h-4 w-4" />
+        </button>
       </div>
     </section>
   );

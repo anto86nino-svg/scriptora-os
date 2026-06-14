@@ -51,7 +51,7 @@ export function InsufficientCreditsPaywall() {
           Saldo disponibile: <span className="font-semibold tabular-nums text-foreground">{formatCredits(detail.balance)}</span>
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
-          Crediti insufficienti. Ricarica crediti o passa a un piano con crediti mensili.
+          Puoi ricaricare crediti dal wallet o consultare i pacchetti in prezzi. In beta privata il checkout può non essere ancora attivo.
         </p>
 
         <div className="mt-4">
@@ -63,7 +63,7 @@ export function InsufficientCreditsPaywall() {
             type="button"
             onClick={() => {
               setOpen(false);
-              navigate("/usage?focus=purchase");
+              navigate("/pricing#credit-packs");
             }}
             className="inline-flex h-10 flex-1 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:opacity-90"
           >

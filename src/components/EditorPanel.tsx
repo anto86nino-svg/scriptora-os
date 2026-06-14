@@ -648,7 +648,7 @@ function ChapterView({
                   setEditorialOpen(true);
                 }}
                 disabled={isGenerating || isEvaluating}
-                title="AI Analysis Pro — score reali e fix mirati"
+                title="Diagnostica editoriale sul capitolo selezionato"
                 className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-gradient-to-r from-primary to-primary/80 px-3 text-[11px] font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-30"
               >
                 <Zap className="h-3.5 w-3.5 shrink-0" />

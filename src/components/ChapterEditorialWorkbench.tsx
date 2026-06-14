@@ -199,12 +199,12 @@ export function ChapterEditorialWorkbench({
             <p className="text-xs font-bold text-white">Analysis Pro</p>
             <p className="truncate text-[10px] text-white/55">
               {analysisStatus === "running"
-                ? "Analisi editoriale in corso…"
+                ? "Diagnostica editoriale in corso…"
                 : patchStatus === "running"
                   ? "Patch chirurgica in corso…"
                   : analysisStatus === "done"
-                    ? `Analisi completata${snapshot ? ` · ${snapshot.scoreOutOf10}/10` : ""}`
-                    : "Editoriale Scriptora"}
+                    ? `Diagnostica completata${snapshot ? ` · ${snapshot.scoreOutOf10}/10` : ""}`
+                    : "Diagnostica rapida sul capitolo — disponibile con testo"}
             </p>
           </div>
         </div>

@@ -187,7 +187,12 @@ export function KdpNarrativeFlowPanel({
 
         {showDone && result && (
           <div className="space-y-4">
-            <p className="text-sm font-semibold text-primary">{copy.created}</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold text-primary">{copy.created}</p>
+              <Badge variant="outline" className="text-[10px] font-normal">
+                {italianUi ? "Struttura editoriale · non generazione AI live" : "Editorial structure · not live AI generation"}
+              </Badge>
+            </div>
             <Section title={`1. ${copy.hook}`} body={result.initialHook} />
             <Section title={`2. ${copy.promise}`} body={result.centralPromise} />
             <Section title={`3. ${copy.chapters}`} list={result.chapterProgression} />

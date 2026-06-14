@@ -29,6 +29,8 @@ import { executePlanAction } from "@/lib/payments/executePlanAction";
 import { ComingSoonPaymentModal } from "@/components/payments/ComingSoonPaymentModal";
 import { creditSimulationBadge } from "@/lib/billing/devMode";
 import { canDevSimulateCreditPurchase } from "@/lib/billing";
+import { isPaymentsLive } from "@/config/payments";
+import { BetaAccessNotice } from "@/components/ui/BetaAccessNotice";
 
 type PricingTab = "authors" | "students";
 
@@ -42,6 +44,7 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
   const [comingSoonPlan, setComingSoonPlan] = useState<string | null>(null);
   const simulationBadge = creditSimulationBadge();
   const canSimulate = canDevSimulateCreditPurchase();
+  const paymentsLive = isPaymentsLive();
 
   const handlePlanAction = async (plan: SubscriptionPlanDefinition) => {
     if (plan.priceNumeric === 0) {
@@ -49,9 +52,9 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
       return;
     }
 
-    if (plan.audience === "students" || !plan.legacyCheckoutPlanId) {
-      toast.info("Checkout non ancora configurato per questo piano.", {
-        description: "TODO: map Stripe price id in env/config.",
+    if (!paymentsLive || plan.audience === "students" || !plan.legacyCheckoutPlanId) {
+      toast.message("Checkout non ancora attivo in questa beta.", {
+        description: "Puoi continuare a usare Scriptora con i crediti disponibili o richiedere accesso anticipato.",
       });
       setComingSoonPlan(plan.name);
       return;
@@ -59,7 +62,9 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
 
     const legacyPlan = paymentsConfig.plans.find((p) => p.id === plan.legacyCheckoutPlanId);
     if (!legacyPlan) {
-      toast.info("Checkout non ancora configurato per questo piano.");
+      toast.message("Checkout non ancora attivo in questa beta.", {
+        description: "Puoi continuare a usare Scriptora con i crediti disponibili.",
+      });
       setComingSoonPlan(plan.name);
       return;
     }
@@ -73,7 +78,14 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
       navigate("/usage?focus=purchase");
       return;
     }
-    navigate("/usage?focus=purchase");
+    if (paymentsLive) {
+      navigate("/usage?focus=purchase");
+      return;
+    }
+    document.getElementById("credit-packs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    toast.message("Pacchetti crediti — beta privata", {
+      description: "Consulta i pack qui sotto. Il checkout si attiverà nella prossima fase; intanto usa i crediti del tuo account.",
+    });
   };
 
   const plans = tab === "authors" ? AUTHOR_SUBSCRIPTION_PLANS : STUDENT_SUBSCRIPTION_PLANS;
@@ -81,6 +93,13 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
 
   return (
     <div className="space-y-16">
+      {!paymentsLive && (
+        <BetaAccessNotice
+          compact
+          title="Beta privata"
+          message="I prezzi sono definitivi per la roadmap commerciale. Il checkout reale non è ancora attivo: puoi usare Scriptora con crediti e accesso anticipato."
+        />
+      )}
       <section className="text-center">
         <p className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary">
           <Sparkles className="h-3 w-3" /> Crediti universali
@@ -154,7 +173,7 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
         </div>
       </section>
 
-      <section className="grid gap-8 lg:grid-cols-2">
+      <section id="credit-packs" className="grid gap-8 lg:grid-cols-2 scroll-mt-24">
         <CreditPackSection
           title="Crediti universali"
           message={UNIVERSAL_CREDITS_MESSAGE}

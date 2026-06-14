@@ -981,15 +981,19 @@ const Index = () => {
         </Suspense>
       )}
 
-      <Suspense fallback={null}>
+      {showSettings && (
+      <Suspense fallback={(
+        <ScriptoraAliveTransition compact overlay tone="writer" title="Impostazioni scrittura…" />
+      )}>
       <SettingsPanel
-        open={showSettings}
+        open
         onClose={() => setShowSettings(false)}
         settings={writingSettings}
         onUpdateSettings={handleUpdateSettings}
         onLanguageChange={handleLanguageChange}
       />
       </Suspense>
+      )}
 
       <Suspense fallback={null}>
       <DominationTray

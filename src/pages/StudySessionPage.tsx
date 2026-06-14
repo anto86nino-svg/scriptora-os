@@ -445,6 +445,7 @@ export default function StudySessionPage() {
             </div>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
               PDF, libro, dispensa, appunti, capitoli o testi copiati — Scriptora crea riassunti, quiz e simulazioni in pochi secondi.
+              Alcune azioni Study consumano crediti; in beta le funzioni base restano accessibili con il saldo del tuo account.
             </p>
           </div>
 
