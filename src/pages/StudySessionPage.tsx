@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, GraduationCap, Loader2, Upload, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { analyzeStudyMaterial, readStudyFile, type StudySessionResult } from "@/lib/study-session";
+import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
+import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { generateStudySessionWithAI } from "@/lib/study-ai";
 import { evaluateStudyAnswerWithAI, type StudyAnswerEvaluation } from "@/lib/study-answer-evaluator";
 import { DEFAULT_STUDY_UX, loadStudyUxState, saveStudyUxState, type FlashcardConfidence } from "@/lib/study-ux";
@@ -130,6 +132,7 @@ export default function StudySessionPage() {
   const [sourceName, setSourceName] = useState(saved?.result?.sourceName || "testo-incollato.txt");
   const [result, setResult] = useState<StudySessionResult | null>(saved?.result ? normalizeStudyResultForUI(saved.result) : null);
   const [reading, setReading] = useState(false);
+  const [workStartedAt, setWorkStartedAt] = useState<number | undefined>();
   const [aiMode, setAiMode] = useState<"idle" | "deepseek" | "local">("idle");
 
   const [activeSection, setActiveSection] = useState<StudySection>(
@@ -283,6 +286,7 @@ export default function StudySessionPage() {
     }
 
     setReading(true);
+    setWorkStartedAt(Date.now());
     setAiMode("deepseek");
 
     try {
@@ -359,6 +363,7 @@ export default function StudySessionPage() {
   const handleFile = async (file?: File) => {
     if (!file) return;
     setReading(true);
+    setWorkStartedAt(Date.now());
     try {
       const text = await readStudyFile(file);
       setRawText(text);
@@ -460,6 +465,18 @@ export default function StudySessionPage() {
           />
         </header>
 
+        {reading && (
+          <div className="mb-4 lg:hidden">
+            <ScriptoraWorkingState
+              title="Sto trasformando il materiale in studio guidato…"
+              tone="study"
+              variant="inline"
+              compact
+              startedAt={workStartedAt}
+            />
+          </div>
+        )}
+
         <div className="grid min-w-0 gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <section className="min-w-0 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] p-3 backdrop-blur-2xl sm:p-4">
             <div className="mb-3 flex min-w-0 items-start justify-between gap-2">
@@ -502,12 +519,24 @@ export default function StudySessionPage() {
             <button
               type="button"
               onClick={analyze}
-              disabled={!canAnalyze}
+              disabled={!canAnalyze || reading}
               className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-300 px-4 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
               {reading ? "Scriptora sta preparando la sessione..." : "Genera Sessione Studio"}
             </button>
+
+            {reading && (
+              <div className="mt-4">
+                <ScriptoraWorkingState
+                  title="Sto trasformando il materiale in studio guidato…"
+                  tone="study"
+                  variant="card"
+                  startedAt={workStartedAt}
+                  steps={[...WORKING_STEP_PRESETS.study]}
+                />
+              </div>
+            )}
           </section>
 
           <section className="min-w-0 space-y-4">

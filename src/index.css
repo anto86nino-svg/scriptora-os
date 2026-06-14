@@ -5390,3 +5390,79 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
     min-height: 520px;
   }
 }
+
+/* Scriptora alive motion — working states */
+.scriptora-working-state {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.scriptora-working-state--dense {
+  box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.45);
+}
+
+.scriptora-working-enter {
+  animation: scriptora-working-in 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.scriptora-working-pulse {
+  animation: scriptora-soft-pulse 1.8s ease-in-out infinite;
+}
+
+.scriptora-working-orbit {
+  animation: scriptora-soft-orbit 2.8s linear infinite;
+}
+
+.scriptora-working-steps--rail {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, #000 90%, transparent);
+}
+
+.scriptora-working-steps--rail::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes scriptora-working-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scriptora-soft-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.98); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes scriptora-soft-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 767px) {
+  .scriptora-working-state--dense {
+    padding: 0.75rem !important;
+  }
+
+  .scriptora-working-progress {
+    margin-top: 0.625rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scriptora-working-enter {
+    animation: none !important;
+  }
+
+  .scriptora-working-pulse,
+  .scriptora-working-orbit {
+    animation: none !important;
+  }
+}

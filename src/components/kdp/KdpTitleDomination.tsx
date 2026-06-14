@@ -17,6 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { dominateTitles, type TitleDominationResult, type DominateTitlesInput } from "@/lib/kdp/money-engine";
+import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
+import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { fetchPlan, type PlanTier } from "@/lib/plan";
 import { useFeatureGate } from "@/components/PaywallGuard";
 
@@ -81,6 +83,7 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
     restored?.result ? "done" : "idle",
   );
   const [loading, setLoading] = useState(false);
+  const [workStartedAt, setWorkStartedAt] = useState<number | undefined>();
   const [result, setResult] = useState<TitleDominationResult | null>(restored?.result ?? null);
   const [error, setError] = useState<string | null>(null);
 
@@ -115,6 +118,7 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
     if (!gate.allowed) { gate.open(); return; }
     if (!input.idea.trim()) { toast.error("Inserisci un'idea libro"); return; }
     setLoading(true);
+    setWorkStartedAt(Date.now());
     setError(null);
     setStage("brave");
     try {
@@ -246,10 +250,18 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
         </div>
 
         {/* Action */}
+        {loading && (
+          <ScriptoraWorkingState
+            title="Sto cercando titoli con più tensione commerciale…"
+            tone="market"
+            variant="panel"
+            startedAt={workStartedAt}
+            steps={[...WORKING_STEP_PRESETS.titleDomination]}
+            activeStep={stage === "brave" ? 0 : stage === "deepseek" ? 1 : 0}
+          />
+        )}
         <div className="flex items-center justify-between gap-3">
           <div className="text-xs text-muted-foreground">
-            {loading && stage === "brave"    && <span className="flex items-center gap-1"><Search className="h-3 w-3 animate-pulse" /> Scansione mercato in corso…</span>}
-            {loading && stage === "deepseek" && <span className="flex items-center gap-1"><Sparkles className="h-3 w-3 animate-pulse" /> Analisi strategica avanzata…</span>}
             {!loading && error && <span className="text-destructive">⚠ {error}</span>}
           </div>
           <Button onClick={() => run()} disabled={loading || !input.idea.trim()} size="lg">

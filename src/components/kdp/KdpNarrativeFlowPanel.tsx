@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, CheckCircle2, Loader2, RefreshCw, Save, Sparkles, AlertTriangle } from "lucide-react";
+import { BookOpen, CheckCircle2, RefreshCw, Save, Sparkles, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { KdpNarrativeFlow } from "@/lib/kdp/narrative-flow";
 import type { KdpLaunchStatus } from "@/lib/kdp/kdp-launch-session";
+import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
+import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 
 interface InputCheck {
   label: string;
@@ -32,7 +34,6 @@ export function KdpNarrativeFlowPanel({
   error,
   result,
   inputs,
-  elapsedSec = 0,
   onGenerate,
   onRetry,
   onBackToAnalysis,
@@ -42,6 +43,12 @@ export function KdpNarrativeFlowPanel({
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [autoStarted, setAutoStarted] = useState(false);
+  const [workStartedAt, setWorkStartedAt] = useState<number | undefined>();
+
+  useEffect(() => {
+    if (status === "running") setWorkStartedAt((prev) => prev ?? Date.now());
+    else if (status !== "running") setWorkStartedAt(undefined);
+  }, [status]);
 
   useEffect(() => {
     panelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -145,14 +152,14 @@ export function KdpNarrativeFlowPanel({
           </div>
         )}
 
-        {(showRunning || (!result && status === "idle" && !showError)) && (
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-            <p className="text-sm font-medium">{copy.running}</p>
-            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              <span>{elapsedSec > 0 ? `${elapsedSec}s` : "…"}</span>
-            </div>
-          </div>
+        {showRunning && (
+          <ScriptoraWorkingState
+            title={copy.running}
+            tone="market"
+            variant="panel"
+            startedAt={workStartedAt}
+            steps={[...WORKING_STEP_PRESETS.kdpNarrative]}
+          />
         )}
 
         <div className="rounded-lg border border-border/60 bg-muted/20 p-3">

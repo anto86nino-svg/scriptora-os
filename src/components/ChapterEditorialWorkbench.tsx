@@ -20,6 +20,8 @@ import {
   type AnalysisStatus,
   type PatchStatus,
 } from "@/lib/chapter-editorial-workflow";
+import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
+import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { cn } from "@/lib/utils";
 
 type PatchResult = {
@@ -76,6 +78,7 @@ export function ChapterEditorialWorkbench({
   );
   const [showDiff, setShowDiff] = useState(false);
   const [expanded, setExpanded] = useState(true);
+  const [workStartedAt, setWorkStartedAt] = useState<number | undefined>();
 
   const patchResult: PatchResult | null = patchJob?.status === "ready" ? patchJob.result : null;
 
@@ -88,6 +91,7 @@ export function ChapterEditorialWorkbench({
     }
     setAnalysisStatus("running");
     setAnalysisError(null);
+    setWorkStartedAt(Date.now());
     try {
       const result = runLocalChapterEditorialAnalysis(
         chapter.content,
@@ -117,6 +121,7 @@ export function ChapterEditorialWorkbench({
     }
     setPatchStatus("running");
     setPatchError(null);
+    setWorkStartedAt(Date.now());
     try {
       await startPatch(project, chapterIndex);
     } catch (e) {
@@ -226,15 +231,13 @@ export function ChapterEditorialWorkbench({
       {expanded && (
         <div className="scriptora-chapter-editorial-body max-h-[70dvh] min-h-0 overflow-y-auto overscroll-contain px-3 py-3 pb-safe sm:px-4">
           {analysisStatus === "running" && (
-            <div className="flex items-center gap-3 rounded-xl border border-sky-300/20 bg-sky-400/10 px-3 py-3">
-              <Loader2 className="h-5 w-5 shrink-0 animate-spin text-sky-200" />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-sky-50">Analisi editoriale in corso…</p>
-                <p className="text-[11px] leading-5 text-sky-100/70">
-                  Sto leggendo emozione, dialoghi, pacing, sottotesto e leggibilità commerciale.
-                </p>
-              </div>
-            </div>
+            <ScriptoraWorkingState
+              title="Analisi editoriale in corso…"
+              tone="editorial"
+              variant="card"
+              startedAt={workStartedAt}
+              steps={[...WORKING_STEP_PRESETS.editorialAnalysis]}
+            />
           )}
 
           {analysisStatus === "error" && analysisError && (
@@ -316,15 +319,14 @@ export function ChapterEditorialWorkbench({
           )}
 
           {patchStatus === "running" && (
-            <div className="flex items-center gap-3 rounded-xl border border-violet-300/20 bg-violet-400/10 px-3 py-3">
-              <Loader2 className="h-5 w-5 shrink-0 animate-spin text-violet-200" />
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-violet-50">Patch editoriale in corso…</p>
-                <p className="text-[11px] leading-5 text-violet-100/70">
-                  Intervento chirurgico sul capitolo — massimo 15% di modifica, voce e trama intatte.
-                </p>
-              </div>
-            </div>
+            <ScriptoraWorkingState
+              title="Patch editoriale in corso…"
+              description="Sto correggendo senza tradire voce, trama e personaggi."
+              tone="editorial"
+              variant="card"
+              startedAt={workStartedAt}
+              steps={[...WORKING_STEP_PRESETS.editorialPatch]}
+            />
           )}
 
           {patchStatus === "error" && patchError && (

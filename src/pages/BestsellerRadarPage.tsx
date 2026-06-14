@@ -6,6 +6,8 @@ import { runBestsellerRadar } from "@/services/bestsellerRadarService";
 import { analyzeRadarPublishingIntel, type RadarPublishingIntel } from "@/lib/publishing-intelligence";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
 import { BestsellerRadarCommercialPanel } from "@/components/bestseller-radar/BestsellerRadarCommercialPanel";
+import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
+import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { loadProjects } from "@/services/storageService";
 import type { BookProject } from "@/types/book";
 
@@ -119,6 +121,7 @@ export default function BestsellerRadarPage() {
   const [liveSummary, setLiveSummary] = useState("");
   const [error, setError] = useState("");
   const [loadingPhase, setLoadingPhase] = useState("");
+  const [scanStartedAt, setScanStartedAt] = useState<number | undefined>();
   const [radarIntel, setRadarIntel] = useState<RadarPublishingIntel | null>(null);
 
   useEffect(() => {
@@ -213,6 +216,7 @@ export default function BestsellerRadarPage() {
                   onClick={async () => {
                     setSearched(true);
                     setLoading(true);
+                    setScanStartedAt(Date.now());
                     setError("");
                     setLiveSummary("");
                     setRadarIntel(null);
@@ -258,6 +262,17 @@ export default function BestsellerRadarPage() {
                   {loading ? "Scanning market…" : "Analizza mercato"}
                 </Button>
               </div>
+
+              {loading && (
+                <ScriptoraWorkingState
+                  title="Scansione mercato in corso…"
+                  description={loadingPhase || "Sto leggendo segnali di nicchia e competitor."}
+                  tone="market"
+                  variant="panel"
+                  startedAt={scanStartedAt}
+                  steps={[...WORKING_STEP_PRESETS.marketScan]}
+                />
+              )}
             </div>
 
             <div className="grid gap-4 rounded-3xl border border-border/70 bg-background/70 p-5">

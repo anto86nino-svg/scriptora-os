@@ -24,6 +24,8 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { createProjectId, saveProjectAsync } from "@/services/storageService";
 import { BookConfig, BookProject, Chapter, Genre, Language } from "@/types/book";
+import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
+import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { cn } from "@/lib/utils";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 import { toast } from "sonner";
@@ -518,6 +520,7 @@ export function ManuscriptAnalyzerDialog({
   const [genre, setGenre] = useState<Genre>("self-help");
   const [analysis, setAnalysis] = useState<ManuscriptAnalysis | null>(null);
   const [reading, setReading] = useState(false);
+  const [workStartedAt, setWorkStartedAt] = useState<number | undefined>();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -539,7 +542,12 @@ export function ManuscriptAnalyzerDialog({
     ];
   })() : [];
 
-  const runAnalysis = (textOverride?: string, titleOverride?: string, sourceOverride?: string) => {
+  const runAnalysis = async (
+    textOverride?: string,
+    titleOverride?: string,
+    sourceOverride?: string,
+    opts?: { manageLoading?: boolean },
+  ) => {
     const nextText = (textOverride ?? rawText).trim();
     const nextTitle = (titleOverride ?? title).trim() || t("untitled");
     const nextSource = sourceOverride || sourceName || t("manuscript_manual_source");
@@ -551,12 +559,31 @@ export function ManuscriptAnalyzerDialog({
       return;
     }
 
+    const manageLoading = opts?.manageLoading ?? true;
+    if (manageLoading) {
+      setReading(true);
+      setWorkStartedAt(Date.now());
+    }
     setError("");
+
+    const started = Date.now();
+    await new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+    });
+
     setAnalysis(analyzeManuscript(nextText, nextTitle, nextSource));
+
+    if (manageLoading) {
+      const minVisibleMs = 520;
+      const wait = minVisibleMs - (Date.now() - started);
+      if (wait > 0) await new Promise((resolve) => window.setTimeout(resolve, wait));
+      setReading(false);
+    }
   };
 
   const handleFile = async (file: File) => {
     setReading(true);
+    setWorkStartedAt(Date.now());
     setError("");
     try {
       const text = await readManuscriptFile(file);
@@ -568,7 +595,7 @@ export function ManuscriptAnalyzerDialog({
       setTitle(detectedTitle);
       setBookLanguage(detectedLanguage);
       setGenre(detectedGenre);
-      runAnalysis(text, detectedTitle, file.name);
+      await runAnalysis(text, detectedTitle, file.name, { manageLoading: false });
     } catch (err) {
       setAnalysis(null);
       setError(err instanceof Error ? err.message : t("manuscript_file_error"));
@@ -745,10 +772,22 @@ export function ManuscriptAnalyzerDialog({
               </div>
             )}
 
+            {reading && (
+              <div className="mt-4">
+                <ScriptoraWorkingState
+                  title="Sto leggendo ritmo, conflitto e punti deboli…"
+                  tone="editorial"
+                  variant="card"
+                  startedAt={workStartedAt}
+                  steps={[...WORKING_STEP_PRESETS.manuscript]}
+                />
+              </div>
+            )}
+
             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
               <button
                 type="button"
-                onClick={() => runAnalysis()}
+                onClick={() => void runAnalysis()}
                 disabled={!canAnalyze}
                 className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-semibold text-slate-950 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
               >

@@ -18,6 +18,8 @@ import {
   type BestsellerRadarResult,
   type RadarStatus,
 } from "@/lib/bestseller-radar";
+import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
+import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 
 const KDP_PREFILL_KEY = "scriptora-kdp-prefill";
 
@@ -46,7 +48,7 @@ export function BestsellerRadarCommercialPanel({ projects, initialProjectId }: P
   const [status, setStatus] = useState<RadarStatus>("idle");
   const [result, setResult] = useState<BestsellerRadarResult | null>(null);
   const [error, setError] = useState("");
-  const [scanLog, setScanLog] = useState<string[]>([]);
+  const [scanStartedAt, setScanStartedAt] = useState<number | undefined>();
   const [showDetails, setShowDetails] = useState(true);
 
   const project = useMemo(
@@ -68,23 +70,10 @@ export function BestsellerRadarCommercialPanel({ projects, initialProjectId }: P
       return;
     }
     setStatus("scanning");
-    setScanLog(italian ? ["Scansione commerciale in corso…"] : ["Commercial scan running…"]);
+    setScanStartedAt(Date.now());
     await new Promise((r) => setTimeout(r, 350));
     try {
       const input = buildRadarInput(project);
-      setScanLog([
-        italian ? "Lettura configurazione…" : "Reading configuration…",
-        italian ? "Valutazione titolo e promessa…" : "Evaluating title and promise…",
-        input.kdp?.analysis
-          ? (italian ? "Analisi KDP collegata" : "KDP analysis linked")
-          : (italian ? "Stima editoriale (KDP assente)" : "Editorial estimate (no KDP)"),
-        project?.blueprint
-          ? (italian ? "Blueprint analizzato" : "Blueprint analyzed")
-          : (italian ? "Blueprint assente" : "Blueprint missing"),
-        project?.chapters?.[0]?.content
-          ? (italian ? "Manoscritto campione letto" : "Sample manuscript read")
-          : (italian ? "Manoscritto non disponibile" : "Manuscript unavailable"),
-      ]);
       const res = runBestsellerRadarEngine(input);
       setResult(res);
       setStatus("done");
@@ -169,11 +158,17 @@ export function BestsellerRadarCommercialPanel({ projects, initialProjectId }: P
       </div>
 
       {status === "scanning" && (
-        <div className="mt-4 rounded-xl border border-border/60 bg-background/60 p-4 text-sm">
-          <p className="font-medium">{italian ? "Scansione commerciale in corso…" : "Commercial scan in progress…"}</p>
-          <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
-            {scanLog.map((line, i) => <li key={`log-${i}`}>• {line}</li>)}
-          </ul>
+        <div className="mt-4">
+          <ScriptoraWorkingState
+          title={italian ? "Scansione commerciale in corso…" : "Commercial scan in progress…"}
+          description={italian
+            ? "Sto leggendo progetto, KDP, titolo, cover e capitoli."
+            : "Reading project, KDP, title, cover and chapters."}
+          tone="market"
+          variant="panel"
+          startedAt={scanStartedAt}
+          steps={[...WORKING_STEP_PRESETS.radar]}
+          />
         </div>
       )}
 

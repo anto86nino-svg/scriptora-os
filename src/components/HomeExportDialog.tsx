@@ -10,6 +10,8 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { isProjectComplete } from "@/lib/project-status";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
+import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
+import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { chargePremiumOperation, refundPremiumOperation } from "@/lib/billing/charge";
 import { InsufficientCreditsError } from "@/lib/billing";
 import { ExportBlockedError, getExportBlockers } from "@/lib/export-readiness";
@@ -34,6 +36,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   const [selectedId, setSelectedId] = useState<string>("");
   const [format, setFormat] = useState<Format>("epub");
   const [isExporting, setIsExporting] = useState(false);
+  const [exportStartedAt, setExportStartedAt] = useState<number | undefined>();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [coverGateOpen, setCoverGateOpen] = useState(false);
   const [showCover, setShowCover] = useState(false);
@@ -86,6 +89,7 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
     }
 
     setIsExporting(true);
+    setExportStartedAt(Date.now());
     let charged = false;
     try {
       const filename = filenameOf(exportProject);
@@ -228,6 +232,15 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
         </div>
 
         <div className="scriptora-modal-body scriptora-export-modal-body min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-4 sm:p-5">
+          {isExporting && studioTab === "documents" && (
+            <ScriptoraWorkingState
+              title="Sto preparando il file finale…"
+              tone="export"
+              variant="panel"
+              startedAt={exportStartedAt}
+              steps={[...WORKING_STEP_PRESETS.export]}
+            />
+          )}
           {studioTab === "audiobook" ? (
             <AudiobookExportPanel
               projects={projects}
