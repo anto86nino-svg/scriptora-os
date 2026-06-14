@@ -4972,6 +4972,8 @@ html:has(.scriptora-modal-overlay) .scriptora-floating-dock,
 html:has(.scriptora-modal-overlay) .scriptora-floating-dock-pill,
 html:has([role="dialog"][data-state="open"]) .scriptora-floating-dock,
 html:has([role="dialog"][data-state="open"]) .scriptora-floating-dock-pill,
+body[data-scriptora-notes-open="true"] .scriptora-floating-dock,
+body[data-scriptora-notes-open="true"] .scriptora-floating-dock-pill,
 body[data-scriptora-dock-dense="1"] .scriptora-floating-dock,
 body[data-scriptora-dock-dense="1"] .scriptora-floating-dock-pill {
   display: none !important;
@@ -5298,5 +5300,93 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
 
   .scriptora-bestseller-radar-commercial .grid {
     min-width: 0;
+  }
+}
+
+/* Author Notes — full-screen mobile, spacious desktop editor */
+.scriptora-notes-overlay {
+  z-index: 80;
+  background: hsl(var(--background) / 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.scriptora-notes-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.scriptora-notes-body {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.scriptora-notes-editor {
+  min-height: 0;
+}
+
+.scriptora-notes-textarea {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.scriptora-notes-footer {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+}
+
+@media (max-width: 767px) {
+  .scriptora-notes-overlay {
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+
+  .scriptora-notes-panel {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    min-height: 100dvh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+  }
+
+  .scriptora-notes-header {
+    min-height: 56px;
+    max-height: 64px;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+  }
+
+  .scriptora-notes-textarea {
+    min-height: calc(100dvh - 180px);
+  }
+}
+
+@media (min-width: 768px) {
+  .scriptora-notes-overlay {
+    align-items: center;
+    justify-content: center;
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 1rem)
+      max(1rem, env(safe-area-inset-right, 0px))
+      calc(env(safe-area-inset-bottom, 0px) + 1rem)
+      max(1rem, env(safe-area-inset-left, 0px));
+  }
+
+  .scriptora-notes-panel {
+    width: min(900px, 92vw) !important;
+    max-width: min(900px, 92vw) !important;
+    height: min(760px, 88vh) !important;
+    max-height: min(760px, 88vh) !important;
+    border-radius: 1.5rem;
+  }
+
+  .scriptora-notes-textarea {
+    min-height: 520px;
   }
 }

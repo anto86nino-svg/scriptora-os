@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Copy,
   Download,
@@ -69,6 +69,27 @@ export function NotepadDialog({ open, ownerId, onClose }: NotepadDialogProps) {
   const [activeId, setActiveId] = useState<string>("");
   const [query, setQuery] = useState("");
   const [savedAt, setSavedAt] = useState<string>("");
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const notesRef = useRef<ScriptoraNote[]>([]);
+
+  useEffect(() => {
+    notesRef.current = notes;
+  }, [notes]);
+
+  useEffect(() => {
+    if (open) {
+      document.body.dataset.scriptoraNotesOpen = "true";
+    } else {
+      delete document.body.dataset.scriptoraNotesOpen;
+    }
+    return () => {
+      delete document.body.dataset.scriptoraNotesOpen;
+    };
+  }, [open]);
+
+  useEffect(() => () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -116,17 +137,26 @@ export function NotepadDialog({ open, ownerId, onClose }: NotepadDialogProps) {
     setActiveId(note.id);
   };
 
-  const updateActiveNote = (patch: Partial<ScriptoraNote>) => {
+  const updateActiveNote = (patch: Partial<ScriptoraNote>, opts?: { debounce?: boolean }) => {
     if (!activeId) return;
     const now = new Date().toISOString();
     setNotes((current) => {
       const next = sortScriptoraNotes(current.map((note) => (
         note.id === activeId ? { ...note, ...patch, updatedAt: now } : note
       )));
-      saveScriptoraNotes(next, ownerId);
+      notesRef.current = next;
+      if (opts?.debounce) {
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => {
+          saveScriptoraNotes(notesRef.current, ownerId);
+          setSavedAt(new Date().toISOString());
+        }, 700);
+      } else {
+        saveScriptoraNotes(next, ownerId);
+      }
       return next;
     });
-    setSavedAt(now);
+    if (!opts?.debounce) setSavedAt(now);
   };
 
   const deleteNote = (id: string) => {
@@ -179,34 +209,37 @@ export function NotepadDialog({ open, ownerId, onClose }: NotepadDialogProps) {
 
   return (
     <div
-      className="scriptora-modal-overlay fixed inset-0 z-[9999] flex items-center justify-center bg-background/70 p-3 backdrop-blur-2xl sm:p-4"
+      className="scriptora-notes-overlay scriptora-modal-overlay"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Note autore"
     >
       <div
-        className="scriptora-modal-panel ios-panel flex w-full max-w-6xl flex-col overflow-hidden"
+        className="scriptora-notes-panel scriptora-modal-panel ios-panel"
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+        <header className="scriptora-notes-header flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="ios-icon ios-icon-yellow h-10 w-10 shrink-0 rounded-[16px]">
-              <NotebookPen className="h-5 w-5" />
+            <span className="ios-icon ios-icon-yellow h-9 w-9 shrink-0 rounded-[14px] sm:h-10 sm:w-10 sm:rounded-[16px]">
+              <NotebookPen className="h-4 w-4 sm:h-5 sm:w-5" />
             </span>
             <div className="min-w-0">
-              <h2 className="truncate text-sm font-bold text-foreground">Block Notes</h2>
+              <h2 className="truncate text-sm font-bold text-foreground">Note autore</h2>
               <p className="text-[11px] text-muted-foreground">
                 {notes.length} appunti · {savedAt ? `salvato ${formatNoteDate(savedAt)}` : "salvataggio attivo"}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1.5">
             <button
               type="button"
               onClick={createNote}
               className="ios-toolbar-button h-9 px-3 text-xs font-semibold"
             >
               <FilePlus2 className="h-3.5 w-3.5" />
-              Nuovo
+              <span className="hidden sm:inline">Nuovo</span>
             </button>
             <button
               type="button"
@@ -220,15 +253,31 @@ export function NotepadDialog({ open, ownerId, onClose }: NotepadDialogProps) {
               type="button"
               onClick={onClose}
               className="ios-toolbar-button h-9 w-9"
-              aria-label="Chiudi Block Notes"
+              aria-label="Chiudi Note"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         </header>
 
-        <div className="scriptora-modal-body grid min-h-0 flex-1 grid-cols-1 overflow-y-auto md:grid-cols-[300px_minmax(0,1fr)] md:overflow-hidden">
-          <aside className="flex min-h-[220px] flex-col border-b border-white/10 bg-white/[0.035] p-3 md:min-h-0 md:border-b-0 md:border-r">
+        {notes.length > 0 && (
+          <div className="scriptora-notes-mobile-picker shrink-0 border-b border-white/10 bg-white/[0.03] px-4 py-2 md:hidden">
+            <select
+              value={activeId}
+              onChange={(event) => setActiveId(event.target.value)}
+              className="h-10 w-full min-w-0 rounded-lg border border-white/10 bg-white/[0.07] px-3 text-sm text-foreground outline-none"
+            >
+              {sortScriptoraNotes(notes).map((note) => (
+                <option key={note.id} value={note.id}>
+                  {note.pinned ? "📌 " : ""}{note.title || "Senza titolo"}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        <div className="scriptora-notes-body scriptora-modal-body grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[300px_minmax(0,1fr)] md:overflow-hidden">
+          <aside className="scriptora-notes-sidebar hidden min-h-0 flex-col border-b border-white/10 bg-white/[0.035] p-3 md:flex md:border-b-0 md:border-r">
             <div className="relative mb-3">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -286,15 +335,14 @@ export function NotepadDialog({ open, ownerId, onClose }: NotepadDialogProps) {
             </div>
           </aside>
 
-          <main className="flex min-h-[420px] flex-col bg-gradient-to-br from-white/[0.05] via-transparent to-amber-300/[0.035] md:min-h-0">
+          <main className="scriptora-notes-editor flex min-h-0 flex-1 flex-col bg-gradient-to-br from-white/[0.05] via-transparent to-amber-300/[0.035]">
             {activeNote ? (
               <>
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-2 sm:py-3">
                   <div className="flex min-w-0 flex-1 items-center gap-2">
                     <StickyNote className="h-4 w-4 shrink-0 text-amber-300" />
                     <input
                       value={activeNote.title}
-                      onInput={(event) => updateActiveNote({ title: event.currentTarget.value })}
                       onChange={(event) => updateActiveNote({ title: event.target.value })}
                       className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 py-1 text-base font-semibold text-foreground outline-none transition focus:border-white/10 focus:bg-white/[0.06]"
                       placeholder="Titolo appunto"
@@ -370,11 +418,10 @@ export function NotepadDialog({ open, ownerId, onClose }: NotepadDialogProps) {
 
                 <textarea
                   value={activeNote.content}
-                  onInput={(event) => updateActiveNote({ content: event.currentTarget.value })}
-                  onChange={(event) => updateActiveNote({ content: event.target.value })}
-                  placeholder="Appunto..."
+                  onChange={(event) => updateActiveNote({ content: event.target.value }, { debounce: true })}
+                  placeholder="Scrivi appunti, idee, scene future, promemoria editoriali…"
                   spellCheck
-                  className="scriptora-writing-surface min-h-0 flex-1 resize-none border-0 px-5 py-5 text-[15px] leading-8 outline-none placeholder:text-slate-400 sm:px-8"
+                  className="scriptora-notes-textarea scriptora-writing-surface min-h-0 w-full flex-1 resize-none break-words border-0 px-4 py-4 text-[15px] leading-7 outline-none placeholder:text-slate-400 sm:px-6 sm:py-5 sm:leading-8"
                   style={{
                     backgroundColor: "#fffdf7",
                     backgroundImage: "linear-gradient(rgba(15, 23, 42, 0.11) 1px, transparent 1px)",
@@ -384,12 +431,21 @@ export function NotepadDialog({ open, ownerId, onClose }: NotepadDialogProps) {
                   }}
                 />
 
-                <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-4 py-2 text-[11px] text-muted-foreground">
+                <footer className="scriptora-notes-footer flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-white/10 px-4 py-2.5 text-[11px] text-muted-foreground pb-safe">
                   <span className="inline-flex items-center gap-1.5">
                     <Save className="h-3.5 w-3.5 text-emerald-300" />
-                    Salvato automaticamente
+                    Salvato automaticamente · {wordCount.toLocaleString()} parole
                   </span>
-                  <span>{wordCount.toLocaleString()} parole · {charCount.toLocaleString()} caratteri</span>
+                  <div className="flex items-center gap-2">
+                    <span>{charCount.toLocaleString()} caratteri</span>
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="ios-toolbar-button h-8 px-3 text-xs font-semibold md:hidden"
+                    >
+                      Chiudi
+                    </button>
+                  </div>
                 </footer>
               </>
             ) : (
