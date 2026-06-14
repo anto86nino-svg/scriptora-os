@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { requestAppEntryLoading } from "@/lib/app-entry-loading";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 
 const AUTH_DEBUG_PREFIX = "[auth-debug]";
@@ -173,6 +174,7 @@ export default function AuthPage() {
     if (redirectingRef.current) return;
     redirectingRef.current = true;
     clearAuthCallbackUrl();
+    requestAppEntryLoading();
     redirectToDashboard(navigate);
   }, [navigate]);
 
@@ -317,6 +319,7 @@ export default function AuthPage() {
       setLogoClicks(0);
       enableDevMode();
       toast.success(t("toast_dev_enabled"));
+      requestAppEntryLoading();
       navigate("/dashboard", { replace: true });
       return;
     }

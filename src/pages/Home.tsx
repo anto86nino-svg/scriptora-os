@@ -8,6 +8,7 @@ import { PRIVACY_POLICY, TERMS_OF_SERVICE, LEGAL_VERSION, LEGAL_UPDATED } from "
 import { hasValidConsent, readConsent, writeConsent, type ConsentRecord } from "@/lib/legal-consent";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { requestAppEntryLoading } from "@/lib/app-entry-loading";
 import { ScriptoraLanding } from "@/components/landing/ScriptoraLanding";
 
 type HomeLocationState = {
@@ -87,6 +88,7 @@ export default function Home() {
       openConsent();
       return;
     }
+    requestAppEntryLoading();
     if (!user && !devOn) {
       navigate("/auth");
       return;

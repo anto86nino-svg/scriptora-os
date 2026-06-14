@@ -5466,3 +5466,483 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
     animation: none !important;
   }
 }
+
+/* Public home WOW + product flow preview */
+.scriptora-landing-trust-line {
+  margin-top: 0.85rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.scriptora-product-flow-header {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.scriptora-product-flow-sub {
+  max-width: 42rem;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.scriptora-product-flow-shell {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.scriptora-product-flow-rail {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.scriptora-product-flow-rail::-webkit-scrollbar { display: none; }
+
+.scriptora-product-flow-step {
+  display: inline-flex;
+  shrink: 0;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.45rem 0.75rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  transition: border-color 0.25s, background 0.25s, color 0.25s;
+}
+
+.scriptora-product-flow-step.is-active {
+  border-color: rgba(34, 211, 238, 0.45);
+  background: rgba(34, 211, 238, 0.1);
+  color: #fff;
+}
+
+.scriptora-product-flow-step.is-done {
+  border-color: rgba(52, 211, 153, 0.28);
+  color: rgba(167, 243, 208, 0.85);
+}
+
+.scriptora-product-flow-stage {
+  overflow: hidden;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  min-height: 280px;
+}
+
+.scriptora-product-flow-panel {
+  padding: 1rem;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .scriptora-product-flow-shell { grid-template-columns: 1fr; }
+  .scriptora-product-flow-panel { padding: 1.25rem 1.5rem; }
+}
+
+.scriptora-product-flow-panel-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.scriptora-product-flow-panel-head p {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.scriptora-product-flow-panel-head h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.scriptora-product-flow-panel-icon {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.scriptora-product-flow-live {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: rgba(244, 114, 182, 0.9);
+}
+
+.scriptora-product-flow-live i {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: #f472b6;
+  animation: scriptora-soft-pulse 1.4s ease-in-out infinite;
+}
+
+.scriptora-product-flow-panel-copy {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.scriptora-product-flow-mini-grid {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+@media (min-width: 640px) {
+  .scriptora-product-flow-mini-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.scriptora-product-flow-mini-card {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.22);
+  padding: 0.65rem 0.75rem;
+  min-width: 0;
+}
+
+.scriptora-product-flow-mini-card strong {
+  display: block;
+  font-size: 0.72rem;
+}
+
+.scriptora-product-flow-mini-card span {
+  display: block;
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.scriptora-product-flow-progress {
+  margin-top: 1rem;
+  height: 0.35rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.scriptora-product-flow-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22d3ee, #a78bfa, #f472b6);
+  transition: width 0.8s ease;
+}
+
+.scriptora-product-flow-video {
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+  object-fit: cover;
+}
+
+.scriptora-public-features h2,
+.scriptora-public-difference h2,
+.scriptora-public-radar h2 {
+  margin-top: 0.5rem;
+  max-width: 18ch;
+}
+
+.scriptora-public-features-grid {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+}
+
+.scriptora-public-feature-card {
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.9rem;
+  min-width: 0;
+}
+
+.scriptora-public-feature-card h3 {
+  margin-top: 0.5rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.scriptora-public-feature-card p {
+  margin-top: 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.scriptora-public-feature-card span {
+  display: inline-block;
+  margin-top: 0.55rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(34, 211, 238, 0.75);
+}
+
+.scriptora-public-difference-grid {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 900px) {
+  .scriptora-public-difference-grid { grid-template-columns: 1fr 1fr; align-items: start; }
+}
+
+.scriptora-public-difference-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.scriptora-public-difference-list li {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.scriptora-public-ba-grid {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .scriptora-public-ba-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.scriptora-public-ba-card {
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+}
+
+.scriptora-public-ba-card.is-before {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.scriptora-public-ba-card.is-after {
+  border-color: rgba(34, 211, 238, 0.28);
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(167, 139, 250, 0.06));
+}
+
+.scriptora-public-radar-shell {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 0.75rem;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.08), rgba(2, 3, 10, 0.4));
+  padding: 1rem;
+}
+
+@media (min-width: 900px) {
+  .scriptora-public-radar-shell { grid-template-columns: 1fr 1fr; align-items: center; }
+}
+
+.scriptora-public-radar-badge {
+  display: inline-block;
+  margin-top: 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.35rem 0.65rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.scriptora-public-radar-overall {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.scriptora-public-radar-overall strong {
+  font-size: 3.5rem;
+  line-height: 1;
+  font-weight: 900;
+  color: #c4b5fd;
+}
+
+.scriptora-public-radar-metrics {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.scriptora-public-radar-metrics > div {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem 0.75rem;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.scriptora-public-radar-metrics > div > div {
+  grid-column: 1 / -1;
+  height: 0.3rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.scriptora-public-radar-metrics > div > div > i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22d3ee, #a78bfa);
+}
+
+.scriptora-public-beta-cta {
+  margin-bottom: 1rem;
+}
+
+.scriptora-public-beta-cta h2 {
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.scriptora-public-promise-list {
+  display: grid;
+  gap: 0.55rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.scriptora-public-promise-list li {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.scriptora-testimonial-placeholder-badge {
+  display: inline-block;
+  margin-bottom: 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  background: rgba(251, 191, 36, 0.08);
+  padding: 0.2rem 0.55rem;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(253, 230, 138, 0.9);
+}
+
+.scriptora-testimonial-avatar {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.scriptora-landing-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1.5rem 1.25rem 2rem;
+  padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.48);
+}
+
+@media (min-width: 640px) {
+  .scriptora-landing-footer {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding-inline: clamp(1.25rem, 4vw, 3rem);
+  }
+}
+
+.scriptora-landing-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+}
+
+.scriptora-landing-footer-links a,
+.scriptora-landing-footer-links button {
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.scriptora-landing-footer-links a:hover,
+.scriptora-landing-footer-links button:hover {
+  color: #fff;
+}
+
+/* App entry loading (6s safe) */
+.scriptora-app-loading-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(34, 211, 238, 0.14), transparent 42%),
+    radial-gradient(circle at 65% 60%, rgba(167, 139, 250, 0.12), transparent 38%);
+  pointer-events: none;
+}
+
+.scriptora-app-loading-card {
+  position: relative;
+  z-index: 1;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1.25rem;
+  backdrop-filter: blur(12px);
+}
+
+.scriptora-app-loading-orbit {
+  animation: scriptora-soft-orbit 3s linear infinite;
+}
+
+.scriptora-app-loading-bar-pulse {
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.35);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scriptora-product-flow-live i,
+  .scriptora-app-loading-orbit {
+    animation: none !important;
+  }
+}

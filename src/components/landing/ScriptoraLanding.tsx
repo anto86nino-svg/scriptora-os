@@ -23,6 +23,9 @@ import {
 } from "lucide-react";
 import { paymentsConfig } from "@/config/payments";
 import { setUILanguage, UI_LANGUAGES, useUILanguage, type UILanguage } from "@/lib/i18n";
+import { ProductFlowPreview } from "@/components/landing/ProductFlowPreview";
+import { PublicHomeWow } from "@/components/landing/PublicHomeWow";
+import { PublicTestimonials } from "@/components/landing/PublicTestimonials";
 
 interface ScriptoraLandingProps {
   mounted: boolean;
@@ -85,10 +88,10 @@ const landingCopy: Record<UILanguage, {
     enter: "Enter",
     languageLabel: "Interface language",
     kicker: "Where fragile ideas become books",
-    heroTitle: "Not a chatbot. An Author OS.",
-    heroText: "A private writing system that remembers the thread: voice, chapters, market, cover and export moving as one book.",
-    primary: "Enter Scriptora OS",
-    secondary: "See the system",
+    heroTitle: "The operating system for books that breathe, sell and endure.",
+    heroText: "Scriptora OS guides authors from idea to manuscript, editorial diagnosis to KDP packaging, cover and export — in one creative studio.",
+    primary: "Enter Scriptora",
+    secondary: "See the flow",
     proofSigned: "Your workspace is waiting",
     proofGuest: "Real login. Real workspace.",
     proofConsentReady: "Ready to enter",
@@ -119,8 +122,8 @@ const landingCopy: Record<UILanguage, {
     testimonialsLabel: "Author stories",
     testimonialsTitle: "Built for writers who refuse to lose the thread.",
     testimonialsText: "Short field notes from authors who use Scriptora as a creative cockpit: voice, structure and publishing preparation in one place.",
-    finalTitle: "Your book is already calling. Give it a system.",
-    finalText: "Enter the workspace where ideas stop drifting and start becoming manuscripts, covers, metadata and finished books.",
+    finalTitle: "Open your editorial studio.",
+    finalText: "From your first blueprint to export — one living system for authors who publish seriously.",
   },
   it: {
     navHow: "Come funziona",
@@ -129,10 +132,10 @@ const landingCopy: Record<UILanguage, {
     enter: "Entra",
     languageLabel: "Lingua interfaccia",
     kicker: "Dove le idee fragili diventano libri",
-    heroTitle: "Non un chatbot. Un Author OS.",
-    heroText: "Un sistema privato di scrittura che ricorda il filo: voce, capitoli, mercato, copertina ed export avanzano come un solo libro.",
-    primary: "Entra in Scriptora OS",
-    secondary: "Vedi il sistema",
+    heroTitle: "Il sistema operativo per creare libri che respirano, vendono e restano.",
+    heroText: "Scriptora OS accompagna l'autore dall'idea al manoscritto, dalla diagnosi editoriale al packaging KDP, fino alla copertina e all'export.",
+    primary: "Entra in Scriptora",
+    secondary: "Guarda il flusso",
     proofSigned: "Il tuo workspace ti aspetta",
     proofGuest: "Login reale. Workspace reale.",
     proofConsentReady: "Pronto per entrare",
@@ -163,8 +166,8 @@ const landingCopy: Record<UILanguage, {
     testimonialsLabel: "Storie autore",
     testimonialsTitle: "Creato per autori che non vogliono perdere il filo.",
     testimonialsText: "Appunti brevi da chi usa Scriptora come cabina creativa: voce, struttura e preparazione editoriale nello stesso luogo.",
-    finalTitle: "Il tuo libro sta già chiamando. Dagli un sistema.",
-    finalText: "Entra nel workspace dove le idee smettono di disperdersi e diventano manoscritti, copertine, metadata e libri finiti.",
+    finalTitle: "Apri il tuo studio editoriale.",
+    finalText: "Dal primo blueprint all'export — un sistema vivo per autori che pubblicano sul serio.",
   },
   es: {
     navHow: "Como funciona",
@@ -419,113 +422,6 @@ const productScreenshots: Record<AppPreviewVariant, string> = {
 
 const productTourVideo = "/landing/videos/scriptora-os-tour.webm";
 
-const liveGenerationCopy = {
-  label: { en: "Live generation", it: "Generazione live", es: "Generacion live", fr: "Generation live", de: "Live-Generierung" },
-  title: {
-    en: "Watch Scriptora write the book, chapter by chapter.",
-    it: "Guarda Scriptora scrivere il libro, capitolo dopo capitolo.",
-    es: "Mira a Scriptora escribir el libro, capitulo a capitulo.",
-    fr: "Regardez Scriptora ecrire le livre, chapitre apres chapitre.",
-    de: "Sieh, wie Scriptora das Buch Kapitel fur Kapitel schreibt.",
-  },
-  text: {
-    en: "A live product scene: structure, canon, chapter text and progress move together inside the same author workspace.",
-    it: "Una scena prodotto viva: struttura, canone, testo dei capitoli e progresso si muovono insieme nello stesso workspace autore.",
-    es: "Una escena de producto viva: estructura, canon, texto de capitulos y progreso avanzan juntos en el mismo workspace de autor.",
-    fr: "Une scene produit vivante: structure, canon, texte des chapitres et progression avancent ensemble dans le meme workspace auteur.",
-    de: "Eine lebende Produktszene: Struktur, Kanon, Kapiteltext und Fortschritt bewegen sich im selben Autoren-Workspace.",
-  },
-  playerLabel: { en: "Scriptora live book generation demo", it: "Demo live generazione libro Scriptora", es: "Demo live de generacion de libro Scriptora", fr: "Demo live de generation de livre Scriptora", de: "Scriptora Live-Buchgenerierung Demo" },
-  badge: { en: "Writing now", it: "Sta scrivendo", es: "Escribiendo", fr: "Ecriture en cours", de: "Schreibt gerade" },
-  workspace: { en: "Writer Studio", it: "Writer Studio", es: "Writer Studio", fr: "Writer Studio", de: "Writer Studio" },
-  bookTitle: { en: "The Cathedral of Forgotten Souls", it: "La Cattedrale delle Anime Dimenticate", es: "La Catedral de las Almas Olvidadas", fr: "La Cathedrale des Ames Oubliees", de: "Die Kathedrale der Vergessenen Seelen" },
-  sceneLabel: { en: "Chapter 03", it: "Capitolo 03", es: "Capitulo 03", fr: "Chapitre 03", de: "Kapitel 03" },
-  chapterTitle: { en: "The threshold remembers", it: "La soglia ricorda", es: "El umbral recuerda", fr: "Le seuil se souvient", de: "Die Schwelle erinnert sich" },
-  inspectorTitle: { en: "Generation stack", it: "Stack generazione", es: "Stack generacion", fr: "Stack generation", de: "Generierungsstack" },
-  memoryLock: { en: "Canon locked", it: "Canone bloccato", es: "Canon bloqueado", fr: "Canon verrouille", de: "Kanon gesperrt" },
-  continuity: { en: "Continuity", it: "Continuita", es: "Continuidad", fr: "Continuite", de: "Kontinuitat" },
-  quality: { en: "Quality", it: "Qualita", es: "Calidad", fr: "Qualite", de: "Qualitat" },
-  words: { en: "words", it: "parole", es: "palabras", fr: "mots", de: "Worter" },
-  chapters: [
-    { label: { en: "Blueprint", it: "Blueprint", es: "Blueprint", fr: "Blueprint", de: "Blueprint" }, status: { en: "ready", it: "pronto", es: "listo", fr: "pret", de: "bereit" } },
-    { label: { en: "Chapter 01", it: "Capitolo 01", es: "Capitulo 01", fr: "Chapitre 01", de: "Kapitel 01" }, status: { en: "written", it: "scritto", es: "escrito", fr: "ecrit", de: "geschrieben" } },
-    { label: { en: "Chapter 02", it: "Capitolo 02", es: "Capitulo 02", fr: "Chapitre 02", de: "Kapitel 02" }, status: { en: "written", it: "scritto", es: "escrito", fr: "ecrit", de: "geschrieben" } },
-    { label: { en: "Chapter 03", it: "Capitolo 03", es: "Capitulo 03", fr: "Chapitre 03", de: "Kapitel 03" }, status: { en: "live", it: "live", es: "live", fr: "live", de: "live" } },
-    { label: { en: "Chapter 04", it: "Capitolo 04", es: "Capitulo 04", fr: "Chapitre 04", de: "Kapitel 04" }, status: { en: "queued", it: "in coda", es: "en cola", fr: "en file", de: "wartet" } },
-  ],
-  lines: [
-    {
-      en: "The nave held its breath while the portal learned her name.",
-      it: "La navata trattenne il respiro mentre il portale imparava il suo nome.",
-      es: "La nave contuvo el aliento mientras el portal aprendia su nombre.",
-      fr: "La nef retenait son souffle pendant que le portail apprenait son nom.",
-      de: "Das Kirchenschiff hielt den Atem an, wahrend das Portal ihren Namen lernte.",
-    },
-    {
-      en: "Scriptora recalls the canon: same wounds, same promise, same cost.",
-      it: "Scriptora richiama il canone: stesse ferite, stessa promessa, stesso prezzo.",
-      es: "Scriptora recuerda el canon: mismas heridas, misma promesa, mismo precio.",
-      fr: "Scriptora rappelle le canon: memes blessures, meme promesse, meme prix.",
-      de: "Scriptora ruft den Kanon ab: dieselben Wunden, dasselbe Versprechen, derselbe Preis.",
-    },
-    {
-      en: "The scene advances without losing the book: pressure, choice, consequence.",
-      it: "La scena avanza senza perdere il libro: pressione, scelta, conseguenza.",
-      es: "La escena avanza sin perder el libro: presion, eleccion, consecuencia.",
-      fr: "La scene avance sans perdre le livre: pression, choix, consequence.",
-      de: "Die Szene schreitet voran, ohne das Buch zu verlieren: Druck, Wahl, Folge.",
-    },
-  ],
-  steps: [
-    { en: "Book structure", it: "Struttura libro", es: "Estructura libro", fr: "Structure livre", de: "Buchstruktur" },
-    { en: "Narrative memory", it: "Memoria narrativa", es: "Memoria narrativa", fr: "Memoire narrative", de: "Narratives Gedachtnis" },
-    { en: "Chapter writing", it: "Scrittura capitolo", es: "Escritura capitulo", fr: "Ecriture chapitre", de: "Kapitel schreiben" },
-    { en: "Cover and export ready", it: "Cover ed export pronti", es: "Portada y export listos", fr: "Couverture et export prets", de: "Cover und Export bereit" },
-  ],
-};
-
-const testimonials = [
-  {
-    name: "Giulia Ferri",
-    role: { en: "Romance author", it: "Autrice romance", es: "Autora romance", fr: "Autrice romance", de: "Romance-Autorin" },
-    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80",
-    quote: {
-      en: "It felt less like opening a tool and more like entering the room where the book already knew what it wanted to become.",
-      it: "Non sembrava di aprire un tool. Sembrava di entrare nella stanza dove il libro sapeva già cosa voleva diventare.",
-      es: "No se sintio como abrir una herramienta. Fue entrar en la sala donde el libro ya sabia en que queria convertirse.",
-      fr: "Ce n'etait pas ouvrir un outil. C'etait entrer dans la piece ou le livre savait deja ce qu'il voulait devenir.",
-      de: "Es fuhlte sich nicht wie ein Tool an, sondern wie der Raum, in dem das Buch schon wusste, was es werden will.",
-    },
-    metric: { en: "Story direction", it: "Direzione narrativa", es: "Direccion narrativa", fr: "Direction narrative", de: "Erzahlrichtung" },
-  },
-  {
-    name: "Marco L.",
-    role: { en: "Non-fiction creator", it: "Autore non-fiction", es: "Autor non-fiction", fr: "Auteur non-fiction", de: "Non-fiction Autor" },
-    photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=240&q=80",
-    quote: {
-      en: "The voice stopped drifting. Every chapter felt like the same author returning to the desk with a sharper intention.",
-      it: "La voce ha smesso di disperdersi. Ogni capitolo sembrava lo stesso autore che tornava alla scrivania con più intenzione.",
-      es: "La voz dejo de dispersarse. Cada capitulo parecia el mismo autor volviendo al escritorio con mas intencion.",
-      fr: "La voix a cesse de se disperser. Chaque chapitre semblait le meme auteur revenant au bureau avec plus d'intention.",
-      de: "Die Stimme driftete nicht mehr. Jedes Kapitel wirkte wie derselbe Autor, der mit klarerer Absicht zuruckkehrt.",
-    },
-    metric: { en: "Voice continuity", it: "Continuita di voce", es: "Continuidad de voz", fr: "Continuite de voix", de: "Stimmkontinuitat" },
-  },
-  {
-    name: "Elena Ruiz",
-    role: { en: "KDP publisher", it: "Publisher KDP", es: "Publisher KDP", fr: "Editeur KDP", de: "KDP Publisher" },
-    photo: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=240&q=80",
-    quote: {
-      en: "For the first time, title, cover, keywords and export felt like parts of the same book instead of separate emergencies.",
-      it: "Per la prima volta titolo, cover, keyword ed export sembravano parti dello stesso libro, non emergenze separate.",
-      es: "Por primera vez titulo, portada, keywords y export parecieron partes del mismo libro, no urgencias separadas.",
-      fr: "Pour la premiere fois, titre, couverture, mots-cles et export semblaient appartenir au meme livre, pas a des urgences separees.",
-      de: "Zum ersten Mal wirkten Titel, Cover, Keywords und Export wie Teile desselben Buches, nicht wie einzelne Notfalle.",
-    },
-    metric: { en: "Publishing coherence", it: "Coerenza editoriale", es: "Coherencia editorial", fr: "Coherence editoriale", de: "Publishing-Koharenz" },
-  },
-];
-
 const landingPlans: Record<string, Record<UILanguage, {
   name: string;
   description: string;
@@ -616,9 +512,9 @@ export function ScriptoraLanding({
         </button>
 
         <nav className="hidden items-center gap-6 text-xs font-semibold text-white/58 md:flex">
+          <a href="#product-flow">{lang === "it" ? "Flusso" : "Flow"}</a>
+          <a href="#features">{copy.navTools}</a>
           <a href="#how-to-use">{copy.navHow}</a>
-          <a href="#workflow">{copy.workflowLabel}</a>
-          <a href="#ecosystem">{copy.navTools}</a>
           <a href="#testimonials">{copy.testimonialsLabel}</a>
           <a href="#pricing">{copy.navPricing}</a>
         </nav>
@@ -660,10 +556,13 @@ export function ScriptoraLanding({
               {copy.primary}
               <ArrowRight className="h-4 w-4" />
             </button>
-            <a href="#preview" className="scriptora-landing-secondary">
+            <a href="#product-flow" className="scriptora-landing-secondary">
               {copy.secondary}
             </a>
           </div>
+          <p className="scriptora-landing-trust-line">
+            Blueprint · Writer OS · Cover Studio · KDP Launch · Bestseller Radar · Export
+          </p>
           <div className="scriptora-landing-proof">
             <span>{isSignedIn ? copy.proofSigned : copy.proofGuest}</span>
             <span>{canStart ? copy.proofConsentReady : copy.proofConsentNeeded}</span>
@@ -683,16 +582,11 @@ export function ScriptoraLanding({
         </div>
       </section>
 
-      <section id="live-generation" className="scriptora-landing-section scriptora-live-generation-section">
-        <div className="scriptora-live-generation-header">
-          <div>
-            <div className="scriptora-landing-section-label">{L(liveGenerationCopy.label, lang)}</div>
-            <h2>{L(liveGenerationCopy.title, lang)}</h2>
-          </div>
-          <p>{L(liveGenerationCopy.text, lang)}</p>
-        </div>
-        <LiveGenerationVideo lang={lang} />
+      <section className="scriptora-landing-section">
+        <ProductFlowPreview lang={lang} />
       </section>
+
+      <PublicHomeWow lang={lang} />
 
       <section id="manifesto" className="scriptora-landing-section">
         <div className="scriptora-landing-section-label">{copy.manifestoLabel}</div>
@@ -768,31 +662,7 @@ export function ScriptoraLanding({
         </div>
       </section>
 
-      <section id="testimonials" className="scriptora-landing-section scriptora-testimonials-section">
-        <div className="scriptora-landing-section-label">{copy.testimonialsLabel}</div>
-        <div className="scriptora-testimonials-header">
-          <h2>{copy.testimonialsTitle}</h2>
-          <p>{copy.testimonialsText}</p>
-        </div>
-        <div className="scriptora-testimonials-grid">
-          {testimonials.map((item) => (
-            <article key={item.name} className="scriptora-testimonial-card">
-              <div className="scriptora-testimonial-person">
-                <img src={item.photo} alt={item.name} loading="lazy" />
-                <div>
-                  <strong>{item.name}</strong>
-                  <span>{L(item.role, lang)}</span>
-                </div>
-              </div>
-              <p>{L(item.quote, lang)}</p>
-              <div className="scriptora-testimonial-metric">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                {L(item.metric, lang)}
-              </div>
-            </article>
-          ))}
-        </div>
-      </section>
+      <PublicTestimonials lang={lang} onEnter={onEnter} />
 
       <section className="scriptora-landing-section">
         <div className="scriptora-landing-split">
@@ -856,110 +726,21 @@ export function ScriptoraLanding({
         <h2>{copy.finalTitle}</h2>
         <p>{copy.finalText}</p>
         <button type="button" onClick={onEnter} className="scriptora-landing-primary">
-          {copy.primary}
+          {lang === "it" ? "Apri Scriptora OS" : "Open Scriptora OS"}
           <ArrowRight className="h-4 w-4" />
         </button>
       </section>
+
+      <footer className="scriptora-landing-footer">
+        <p>Scriptora OS · {lang === "it" ? "Piattaforma editoriale AI" : "AI editorial platform"}</p>
+        <div className="scriptora-landing-footer-links">
+          <button type="button" onClick={onEnter}>{copy.enter}</button>
+          <a href="/auth">{lang === "it" ? "Accedi" : "Sign in"}</a>
+          <a href="/pricing">{copy.navPricing}</a>
+          <a href="/install">{lang === "it" ? "Installa app" : "Install app"}</a>
+        </div>
+      </footer>
     </main>
-  );
-}
-
-function LiveGenerationVideo({ lang }: { lang: UILanguage }) {
-  const copy = liveGenerationCopy;
-
-  return (
-    <div className="scriptora-live-video" aria-label={L(copy.playerLabel, lang)}>
-      <div className="scriptora-live-video-chrome">
-        <div className="scriptora-window-dots" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-        <div className="scriptora-live-video-status">
-          <Sparkles className="h-3.5 w-3.5" />
-          {L(copy.badge, lang)}
-        </div>
-        <span>Scriptora OS</span>
-      </div>
-
-      <div className="scriptora-live-video-frame">
-        <aside className="scriptora-live-chapter-rail">
-          <div className="scriptora-live-book-head">
-            <span><BookOpen className="h-4 w-4" /></span>
-            <div>
-              <strong>{L(copy.bookTitle, lang)}</strong>
-              <em>{L(copy.workspace, lang)}</em>
-            </div>
-          </div>
-          <div className="scriptora-live-chapter-list">
-            {copy.chapters.map((chapter, index) => (
-              <div key={chapter.label.en} className={index === 3 ? "is-active" : ""}>
-                <span>{L(chapter.label, lang)}</span>
-                <em>{L(chapter.status, lang)}</em>
-              </div>
-            ))}
-          </div>
-        </aside>
-
-        <section className="scriptora-live-editor">
-          <div className="scriptora-live-editor-head">
-            <div>
-              <span>{L(copy.sceneLabel, lang)}</span>
-              <h3>{L(copy.chapterTitle, lang)}</h3>
-            </div>
-            <div className="scriptora-live-pulse">
-              <i />
-              {L(copy.badge, lang)}
-            </div>
-          </div>
-
-          <div className="scriptora-live-manuscript">
-            {copy.lines.map((line, index) => (
-              <p key={line.en} className={`scriptora-live-manuscript-line is-line-${index + 1}`}>
-                {L(line, lang)}
-              </p>
-            ))}
-            <span className="scriptora-live-cursor" aria-hidden="true" />
-          </div>
-
-          <div className="scriptora-live-player-bar" aria-hidden="true">
-            <div className="scriptora-live-progress-track">
-              <span />
-            </div>
-            <strong>03:42</strong>
-          </div>
-        </section>
-
-        <aside className="scriptora-live-inspector">
-          <div className="scriptora-live-inspector-card is-strong">
-            <span>{L(copy.inspectorTitle, lang)}</span>
-            <strong>{L(copy.memoryLock, lang)}</strong>
-          </div>
-          <div className="scriptora-live-score-grid">
-            <div>
-              <span>{L(copy.continuity, lang)}</span>
-              <strong>96%</strong>
-            </div>
-            <div>
-              <span>{L(copy.quality, lang)}</span>
-              <strong>91%</strong>
-            </div>
-            <div>
-              <span>4,820</span>
-              <strong>{L(copy.words, lang)}</strong>
-            </div>
-          </div>
-          <div className="scriptora-live-step-stack">
-            {copy.steps.map((step, index) => (
-              <span key={step.en} className={index < 3 ? "is-done" : ""}>
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                {L(step, lang)}
-              </span>
-            ))}
-          </div>
-        </aside>
-      </div>
-    </div>
   );
 }
 
