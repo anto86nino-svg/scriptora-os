@@ -12,7 +12,7 @@ import { CreditVisibilityShell } from "@/components/billing/CreditVisibilityShel
 import { MobileAppChrome } from "@/components/MobileAppChrome";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
-import { Loader2 } from "lucide-react";
+import { RouteSuspenseFallback } from "@/components/boot/ScriptoraAliveTransition";
 
 const Home = lazyWithRetry(() => import("./pages/Home.tsx"));
 const Dashboard = lazyWithRetry(() => import("./pages/Dashboard.tsx"));
@@ -37,14 +37,6 @@ const DiagnosticsPage = lazyWithRetry(() => import("./pages/DiagnosticsPage.tsx"
 
 const queryClient = new QueryClient();
 
-function RouteFallback() {
-  return (
-    <div className="grid min-h-[100dvh] place-items-center bg-background px-4 pb-safe pt-safe">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
-  );
-}
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -54,7 +46,7 @@ const App = () => (
               <Toaster />
               <Sonner />
               <AppErrorBoundary>
-              <Suspense fallback={<RouteFallback />}>
+              <Suspense fallback={<RouteSuspenseFallback />}>
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/auth" element={<AuthPage />} />

@@ -11,6 +11,7 @@ import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { isProjectComplete } from "@/lib/project-status";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
+import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { chargePremiumOperation, refundPremiumOperation } from "@/lib/billing/charge";
 import { InsufficientCreditsError } from "@/lib/billing";
@@ -408,7 +409,18 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
         onClose={() => setCoverGateOpen(false)}
       />
       {showCover && selectedProject && (
-        <Suspense fallback={<div className="scriptora-modal-overlay fixed inset-0 z-[60] grid place-items-center bg-black/50"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}>
+        <Suspense fallback={(
+          <ScriptoraAliveTransition
+            overlay
+            tone="cover"
+            title="Sto aprendo Cover Studio…"
+            steps={[
+              "Sto preparando genere, atmosfera e impatto visivo…",
+              "Sto caricando template e readiness…",
+              "Sto cercando una copertina che parli al lettore giusto…",
+            ]}
+          />
+        )}>
           <CoverGenerator
             title={selectedProject.config.title}
             subtitle={selectedProject.config.subtitle}

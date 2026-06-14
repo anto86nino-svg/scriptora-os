@@ -76,6 +76,7 @@ import {
   MobileDashboardMoreMenu,
 } from "@/components/mobile/MobileDashboardChrome";
 import { ScriptoraSettingsButton } from "@/components/settings/ScriptoraSettingsButton";
+import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 
 const ScriptoraSettingsHub = lazy(() =>
   import("@/components/settings/ScriptoraSettingsHub").then((m) => ({ default: m.ScriptoraSettingsHub })),
@@ -1530,7 +1531,18 @@ export default function Dashboard() {
         onAuthorIdentity={() => openAuthorIdentity()}
       />
       {showCoverStudio && (
-        <Suspense fallback={<div className="scriptora-modal-overlay fixed inset-0 z-50 grid place-items-center bg-black/50"><Loader2 className="h-6 w-6 animate-spin text-white" /></div>}>
+        <Suspense fallback={(
+          <ScriptoraAliveTransition
+            overlay
+            tone="cover"
+            title="Sto aprendo Cover Studio…"
+            steps={[
+              "Sto preparando genere, atmosfera e impatto visivo…",
+              "Sto caricando template e readiness…",
+              "Sto cercando una copertina che parli al lettore giusto…",
+            ]}
+          />
+        )}>
           <CoverGenerator
             title={lastProject?.config.title || t("untitled")}
             subtitle={lastProject?.config.subtitle || ""}

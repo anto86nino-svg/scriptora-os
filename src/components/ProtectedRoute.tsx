@@ -9,9 +9,9 @@ import {
   shouldPlayEntryLoading,
 } from "@/lib/app-entry-loading";
 import { ScriptoraAppLoadingExperience } from "@/components/boot/ScriptoraAppLoadingExperience";
+import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 import { usePlan } from "@/lib/plan";
 import { canUseFeature, type FeatureKey } from "@/lib/subscription";
-import { Loader2 } from "lucide-react";
 
 /** Protegge le rotte: consenso legale obbligatorio, poi utenti non autenticati → /auth. */
 export function ProtectedRoute({
@@ -68,9 +68,12 @@ export function ProtectedRoute({
 
   if (loading) {
     return (
-      <div className="grid min-h-[100dvh] place-items-center bg-background px-4 pb-safe pt-safe">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <ScriptoraAliveTransition
+        route={location.pathname}
+        tone="auth"
+        title="Sto verificando il tuo accesso…"
+        description="Controllo sessione e preparo il tuo studio."
+      />
     );
   }
 
@@ -81,9 +84,12 @@ export function ProtectedRoute({
 
   if (requiredFeature && planLoading) {
     return (
-      <div className="grid min-h-[100dvh] place-items-center bg-background px-4 pb-safe pt-safe">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <ScriptoraAliveTransition
+        route={location.pathname}
+        tone="dashboard"
+        title="Sto preparando i permessi del piano…"
+        description="Sto sincronizzando abbonamento e strumenti disponibili."
+      />
     );
   }
 

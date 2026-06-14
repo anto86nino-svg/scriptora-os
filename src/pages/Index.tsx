@@ -30,12 +30,8 @@ import { t, tt, UILanguage, useUILanguage } from "@/lib/i18n";
 import { fillMissingGenreFromInference } from "@/lib/book-creation-os/genre-inference";
 import { toast } from "sonner";
 import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu, X, ArrowLeft } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useQuota, usePlan } from "@/lib/plan";
-import { UpgradeModal } from "@/components/UpgradeModal";
-import { isProjectComplete } from "@/lib/project-status";
-import { Loader2 } from "lucide-react";
 import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
+import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 
 const VoiceStudioDialog = lazy(() =>
   import("@/components/VoiceStudioDialog").then((m) => ({ default: m.VoiceStudioDialog })),
@@ -63,17 +59,32 @@ type ExportFormat = "epub" | "docx" | "pdf";
 
 function VoiceStudioFallback() {
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-background/60 backdrop-blur-sm">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
+    <ScriptoraAliveTransition
+      overlay
+      tone="writer"
+      title="Sto aprendo Voice Studio…"
+      steps={[
+        "Sto caricando voce, ritmo e lettura avanzata…",
+        "Sto preparando il capitolo per l'ascolto…",
+        "Quasi pronto…",
+      ]}
+    />
   );
 }
 
 function PanelFallback() {
   return (
-    <div className="flex h-full min-h-[240px] items-center justify-center">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
+    <ScriptoraAliveTransition
+      compact
+      tone="writer"
+      title="Sto aprendo il pannello editoriale…"
+      minHeight="240px"
+      steps={[
+        "Sto caricando strumenti di scrittura…",
+        "Sto preparando editor e continuità…",
+        "Quasi pronto…",
+      ]}
+    />
   );
 }
 

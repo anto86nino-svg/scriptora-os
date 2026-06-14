@@ -1,4 +1,5 @@
 import { Component, ReactNode } from "react";
+import { Link } from "react-router-dom";
 
 interface Props {
   children: ReactNode;
@@ -35,25 +36,35 @@ export class FeatureErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       const name = this.props.featureName ?? "Questa funzione";
       return (
-        <div className="flex flex-col items-center justify-center min-h-[200px] p-6 text-center rounded-xl border border-border/40 bg-muted/10">
-          <div className="text-2xl mb-3">⚠️</div>
-          <p className="text-sm font-medium text-foreground mb-1">
-            {name} ha riscontrato un problema
-          </p>
-          <p className="text-xs text-muted-foreground mb-4 max-w-xs">
-            Nessun dato è andato perso. Puoi riprovare o tornare alla dashboard.
-          </p>
-          {this.state.message && (
-            <pre className="text-[10px] text-muted-foreground/60 bg-muted/20 rounded px-3 py-2 max-w-xs overflow-auto mb-4 max-h-24 whitespace-pre-wrap">
-              {this.state.message}
-            </pre>
-          )}
-          <button
-            onClick={this.reset}
-            className="h-8 px-4 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Riprova
-          </button>
+        <div className="scriptora-route-transition bg-[#02030a] text-white">
+          <div className="scriptora-alive-card-shell w-full max-w-md rounded-2xl border border-white/10 bg-white/[0.04] p-6 text-center shadow-2xl backdrop-blur-md">
+            <div className="text-2xl mb-3">⚠️</div>
+            <p className="text-sm font-semibold text-white/92 mb-1">
+              Non sono riuscito ad aprire questo spazio.
+            </p>
+            <p className="text-xs text-white/60 mb-4 max-w-xs mx-auto">
+              {name} ha riscontrato un problema. Nessun dato è andato perso.
+            </p>
+            {this.state.message && (
+              <pre className="text-[10px] text-white/45 bg-black/25 rounded px-3 py-2 max-w-xs overflow-auto mb-4 max-h-24 whitespace-pre-wrap mx-auto">
+                {this.state.message}
+              </pre>
+            )}
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
+              <button
+                onClick={this.reset}
+                className="h-9 px-4 rounded-lg text-xs font-semibold bg-white text-slate-950 hover:bg-white/90 transition-colors"
+              >
+                Riprova
+              </button>
+              <Link
+                to="/dashboard"
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-white/15 px-4 text-xs font-medium text-white/80 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                Torna alla dashboard
+              </Link>
+            </div>
+          </div>
         </div>
       );
     }

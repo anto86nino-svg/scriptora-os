@@ -481,15 +481,17 @@
 }
 
 .scriptora-landing-hero h1 {
-  font-size: clamp(48px, 9vw, 126px);
+  font-size: clamp(30px, 5.2vw, 58px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
 }
 
 .scriptora-landing-hero p {
-  max-width: 650px;
-  margin: 24px 0 34px;
+  max-width: 560px;
+  margin: 16px 0 22px;
   color: rgba(255, 255, 255, 0.68);
-  font-size: clamp(17px, 2.3vw, 23px);
-  line-height: 1.55;
+  font-size: clamp(14px, 1.8vw, 17px);
+  line-height: 1.6;
 }
 
 .scriptora-landing-primary {
@@ -1055,7 +1057,7 @@
 
 .scriptora-landing-section {
   position: relative;
-  padding: clamp(54px, 9vw, 116px) clamp(18px, 5vw, 72px);
+  padding: clamp(40px, 6.5vw, 80px) clamp(18px, 5vw, 72px);
 }
 
 .scriptora-landing-section > * {
@@ -1066,7 +1068,14 @@
 
 .scriptora-landing-section h2,
 .scriptora-landing-final h2 {
-  font-size: clamp(34px, 6vw, 78px);
+  font-size: clamp(24px, 4vw, 44px);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+.scriptora-landing-section--tight {
+  padding-top: clamp(28px, 5vw, 48px);
+  padding-bottom: clamp(28px, 5vw, 48px);
 }
 
 .scriptora-workflow-grid,
@@ -5469,8 +5478,8 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
 
 /* Public home WOW + product flow preview */
 .scriptora-landing-trust-line {
-  margin-top: 0.85rem;
-  font-size: 0.68rem;
+  margin-top: 0.65rem;
+  font-size: 0.6rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -5664,9 +5673,12 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
 
 .scriptora-public-features h2,
 .scriptora-public-difference h2,
-.scriptora-public-radar h2 {
+.scriptora-public-radar h2,
+.scriptora-dual-path-intro h2,
+.scriptora-testimonials-conversion-head h2 {
   margin-top: 0.5rem;
-  max-width: 18ch;
+  max-width: 22ch;
+  font-size: clamp(22px, 3.6vw, 36px);
 }
 
 .scriptora-public-features-grid {
@@ -5943,6 +5955,359 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
 @media (prefers-reduced-motion: reduce) {
   .scriptora-product-flow-live i,
   .scriptora-app-loading-orbit {
+    animation: none !important;
+  }
+}
+
+/* Dual path — Writer + Study (conversion hero) */
+.scriptora-dual-path {
+  position: relative;
+  padding: clamp(20px, 4vw, 36px) clamp(18px, 5vw, 72px) clamp(32px, 5vw, 52px);
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.scriptora-dual-path-intro {
+  max-width: 640px;
+  margin-bottom: 1rem;
+}
+
+.scriptora-dual-path-intro p {
+  margin-top: 0.5rem;
+  font-size: 0.88rem;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.scriptora-dual-path-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .scriptora-dual-path-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+}
+
+.scriptora-dual-path-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1rem;
+  min-width: 0;
+  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.scriptora-dual-path-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+.scriptora-dual-path-card.is-write {
+  background: linear-gradient(145deg, rgba(34, 211, 238, 0.1), rgba(255, 255, 255, 0.03));
+}
+
+.scriptora-dual-path-card.is-study {
+  background: linear-gradient(145deg, rgba(52, 211, 153, 0.1), rgba(255, 255, 255, 0.03));
+  border-color: rgba(52, 211, 153, 0.18);
+}
+
+.scriptora-dual-path-icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(34, 211, 238, 0.28);
+  background: rgba(34, 211, 238, 0.12);
+  color: #a5f3fc;
+  margin-bottom: 0.75rem;
+}
+
+.scriptora-dual-path-icon.is-study {
+  border-color: rgba(52, 211, 153, 0.28);
+  background: rgba(52, 211, 153, 0.12);
+  color: #a7f3d0;
+}
+
+.scriptora-dual-path-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.35rem;
+}
+
+.scriptora-dual-path-card h3 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.scriptora-dual-path-card > p {
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.scriptora-dual-path-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+
+.scriptora-dual-path-tags span {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.2rem 0.5rem;
+  font-size: 0.62rem;
+  font-weight: 650;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.scriptora-dual-path-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.85rem;
+  min-height: 2.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  background: rgba(34, 211, 238, 0.12);
+  padding: 0 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #cffafe;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.scriptora-dual-path-cta:hover {
+  background: rgba(34, 211, 238, 0.2);
+  transform: translateY(-1px);
+}
+
+.scriptora-dual-path-cta.is-study {
+  border-color: rgba(52, 211, 153, 0.35);
+  background: rgba(52, 211, 153, 0.12);
+  color: #d1fae5;
+}
+
+.scriptora-dual-path-cta.is-study:hover {
+  background: rgba(52, 211, 153, 0.2);
+}
+
+.scriptora-dual-path-foot {
+  margin-top: 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+/* Testimonials conversion */
+.scriptora-testimonials-conversion-head {
+  margin-bottom: 1.25rem;
+}
+
+.scriptora-testimonials-conversion-head p {
+  max-width: 52ch;
+  margin-top: 0.5rem;
+  font-size: 0.86rem;
+  line-height: 1.65;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.scriptora-testimonials-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+}
+
+.scriptora-testimonials-stats span {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.3rem 0.6rem;
+  font-size: 0.62rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.scriptora-testimonials-stats span.is-accent {
+  border-color: rgba(217, 70, 239, 0.28);
+  color: #f5d0fe;
+}
+
+.scriptora-testimonial-photo {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  object-fit: cover;
+  background: #0f172a;
+  flex-shrink: 0;
+}
+
+.scriptora-testimonial-card.is-student {
+  border-color: rgba(52, 211, 153, 0.16);
+}
+
+.scriptora-testimonial-card.is-writer {
+  border-color: rgba(34, 211, 238, 0.14);
+}
+
+.scriptora-testimonial-stars {
+  display: flex;
+  gap: 0.1rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.scriptora-testimonial-person {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+}
+
+.scriptora-testimonial-card p {
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.scriptora-testimonials-cta-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  align-items: flex-start;
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(217, 70, 239, 0.2);
+  background: linear-gradient(135deg, rgba(217, 70, 239, 0.08), rgba(34, 211, 238, 0.06));
+}
+
+@media (min-width: 640px) {
+  .scriptora-testimonials-cta-bar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.scriptora-testimonials-cta-bar p {
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.72);
+  max-width: 36ch;
+}
+
+.scriptora-use-header p {
+  font-size: 0.88rem;
+}
+
+.scriptora-product-flow-sub {
+  font-size: 0.82rem;
+}
+
+.scriptora-landing-final p {
+  font-size: 0.9rem;
+  line-height: 1.65;
+  max-width: 48ch;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+/* Route transitions — alive loading between lazy pages */
+.scriptora-route-transition {
+  position: relative;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  display: grid;
+  place-items: center;
+  padding:
+    calc(env(safe-area-inset-top, 0px) + 24px)
+    18px
+    calc(env(safe-area-inset-bottom, 0px) + 24px);
+}
+
+.scriptora-route-transition .scriptora-alive-card-shell {
+  width: min(100%, 28rem);
+}
+
+.scriptora-alive-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(34, 211, 238, 0.12), transparent 44%),
+    radial-gradient(circle at 62% 58%, rgba(167, 139, 250, 0.1), transparent 40%);
+  pointer-events: none;
+}
+
+.scriptora-alive-compact {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.scriptora-alive-orb {
+  animation: scriptora-alive-pulse 1.8s ease-in-out infinite;
+}
+
+.scriptora-alive-ring {
+  animation: scriptora-alive-spin 1.4s linear infinite;
+}
+
+.scriptora-alive-bar {
+  animation: scriptora-alive-bar 2.4s ease-in-out infinite;
+}
+
+@keyframes scriptora-alive-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes scriptora-alive-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.96);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes scriptora-alive-bar {
+  0% {
+    transform: translateX(-70%);
+  }
+
+  50% {
+    transform: translateX(20%);
+  }
+
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scriptora-alive-orb,
+  .scriptora-alive-ring,
+  .scriptora-alive-bar {
     animation: none !important;
   }
 }
