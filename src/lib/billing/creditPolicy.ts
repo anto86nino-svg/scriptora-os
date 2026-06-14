@@ -22,6 +22,7 @@ export const CREDIT_OPERATION_COSTS: Record<CreditOperationId, number> = {
   cover_generation: 150,
   character_studio_ai: 100,
   book_analysis: 75,
+  wizard_title_regeneration: 35,
   export_premium: 50,
   masterpiece_mode: 0,
 };

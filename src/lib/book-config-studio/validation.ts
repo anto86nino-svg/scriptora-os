@@ -59,6 +59,10 @@ export function validateBookConfigStudio(
     issues.push({ id: "tone", step: 5, message: "Tono editoriale obbligatorio." });
   }
 
+  if (!String(normalized.targetReader || "").trim() || String(normalized.targetReader).trim().length < 12) {
+    issues.push({ id: "targetReader", step: 2, message: "Pubblico ideale mancante — posso suggerirlo dal titolo." });
+  }
+
   return issues;
 }
 

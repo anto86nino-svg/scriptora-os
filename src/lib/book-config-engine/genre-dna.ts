@@ -98,6 +98,16 @@ export const GENRE_DNA_PROFILES: Record<string, GenreDnaProfile> = {
     blockedTonePatterns: [/mindset/i, /coaching/i, /self.?help/i],
     blockedAuthorStylePatterns: [/self.?help/i, /brianna/i],
   },
+  horror: {
+    id: "horror",
+    label: "Horror",
+    traits: { tension: "HIGH", atmosphere: "HIGH", mystery: "HIGH", therapeuticSpeech: "BLOCKED", motivationalTone: "BLOCKED", poeticDensity: "LOW" },
+    defaultTone: "oscuro, claustrofobico, disturbante, cinematografico",
+    defaultAuthorStyle: "Gothic Horror",
+    styleProfile: { poeticLevel: 32, tensionIntensity: 82, psychologicalDepth: 68, narrativePace: 72, presetId: "netflix-thriller" },
+    blockedTonePatterns: POETIC_BLOCKED,
+    blockedAuthorStylePatterns: THRILLER_BLOCKED,
+  },
   "cozy-fantasy": {
     id: "cozy-fantasy",
     label: "Cozy Fantasy",
@@ -123,6 +133,7 @@ export function resolveGenreDnaProfile(input: {
   }
   if (/gothic.*thrill|thrill.*gothic|gotico/i.test(hay)) return GENRE_DNA_PROFILES["gothic-thriller"];
   if (/dark.?romance/i.test(hay) || input.genre === "dark-romance") return GENRE_DNA_PROFILES["dark-romance"];
+  if (/horror|folk horror|gotico|supernatural/i.test(hay) || input.genre === "horror") return GENRE_DNA_PROFILES.horror;
   if (/cozy/i.test(hay)) return GENRE_DNA_PROFILES["cozy-fantasy"];
   if (/mindset/i.test(hay)) return GENRE_DNA_PROFILES.mindset;
   if (/educat|scuol|studio|storia scol|matematica/i.test(hay) || input.genre === "education") return GENRE_DNA_PROFILES.education;

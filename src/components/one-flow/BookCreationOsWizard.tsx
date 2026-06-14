@@ -37,6 +37,26 @@ import {
   validateConfigCoherence,
   type Level1BookType,
 } from "@/lib/book-config-engine";
+import {
+  inferGenreFromText,
+  isConfigIncoherentWithInference,
+  type GenreInference,
+} from "@/lib/book-creation-os/genre-inference";
+import {
+  buildWizardAutofillPatch,
+  humanizeBlueprintError,
+  runBlueprintPreflight,
+  type BlueprintPreflightResult,
+} from "@/lib/book-creation-os/blueprint-preflight";
+import {
+  consumeWizardTitleFreeRegen,
+  generateWizardTitleProposals,
+  getWizardTitleFreeRegensRemaining,
+  runTitleForgeAnimation,
+  type TitleProposal,
+  TITLE_FORGE_PHASES,
+  WIZARD_TITLE_FREE_REGENS,
+} from "@/lib/book-creation-os/title-generator";
 
 interface BookCreationOsWizardProps {
   open: boolean;
@@ -88,6 +108,23 @@ const BOOK_CREATION_DECISIONS = [
 ] as const;
 
 const GUIDED_STARTERS = [
+  {
+    id: "horror",
+    label: "Dark Horror",
+    title: "La Casa Sotto la Pelle",
+    subtitle: "La paura non arriva di colpo: si installa sotto la pelle.",
+    bookTypeId: "horror",
+    genre: "horror" as Genre,
+    subgenre: "dark horror / psychological horror",
+    tone: "oscuro, claustrofobico, disturbante, cinematografico",
+    targetReader: "Lettori horror adulti che cercano tensione, mistero e atmosfera inquietante.",
+    idea: "Un romanzo dark horror su un paese dove le madri spariscono e la casa nasconde ciò che nessuno vuole nominare.",
+    conflict: "Scoprire la verità senza perdere sé stessi nel buio che la protegge.",
+    promise: "Mistero disturbante con rivelazione progressiva e trauma familiare.",
+    setting: "Paese isolato, case antiche, nebbia, rituali dimenticati.",
+    hook: "La protagonista trova una stanza che non compare nelle planimetrie — e sente respirare qualcuno dentro.",
+    commercialGoal: "Posizionamento dark horror / gothic suspense su Amazon e BookTok horror.",
+  },
   {
     id: "dark-romance",
     label: "Dark Romance",
@@ -145,6 +182,7 @@ const FEATURED_BOOK_TYPES = [
   { id: "literary", label: "Romanzo", helper: "Narrativa, contemporary o literary fiction.", subgenre: "romanzo contemporaneo" },
   { id: "romance", label: "Romance", helper: "Slow burn, tensione, relazione e payoff emotivo." },
   { id: "thriller", label: "Thriller", helper: "Pericolo, ritmo, indizi e capitoli a gancio." },
+  { id: "horror", label: "Horror", helper: "Dark horror, tensione, atmosfera inquietante.", subgenre: "dark horror / psychological horror" },
   { id: "fantasy", label: "Fantasy", helper: "Mondo, lore, magia, quest e meraviglia." },
   { id: "dark-romance", label: "Dark Romance", helper: "Desiderio, ombra, potere e attrito morale." },
   { id: "self-help", label: "Self-help", helper: "Promessa chiara, metodo, esempi e trasformazione.", subgenre: "self-help pratico" },
@@ -249,8 +287,51 @@ export function BookCreationOsWizard({
   const [showTypeChangeModal, setShowTypeChangeModal] = useState(false);
   const [pendingBookTypeId, setPendingBookTypeId] = useState<string | null>(null);
   const [pendingFeaturedSubgenre, setPendingFeaturedSubgenre] = useState<string | undefined>();
+  const [titleProposals, setTitleProposals] = useState<TitleProposal[]>([]);
+  const [titleForgePhase, setTitleForgePhase] = useState(0);
+  const [titleForgeLabel, setTitleForgeLabel] = useState("");
+  const [generatingTitles, setGeneratingTitles] = useState(false);
+  const [freeTitleRegensLeft, setFreeTitleRegensLeft] = useState(() => getWizardTitleFreeRegensRemaining());
+  const [preflightResult, setPreflightResult] = useState<BlueprintPreflightResult | null>(null);
+  const [showCoherenceWarning, setShowCoherenceWarning] = useState(false);
+  const [coherenceDismissed, setCoherenceDismissed] = useState(false);
+
+  const textInference = useMemo(
+    () => inferGenreFromText(title, idea),
+    [title, idea],
+  );
+
+  useEffect(() => {
+    if (coherenceDismissed) return;
+    setShowCoherenceWarning(
+      isConfigIncoherentWithInference(textInference, category, genre, subcategory),
+    );
+  }, [textInference, category, genre, subcategory, coherenceDismissed]);
 
   const visibleGenres = useMemo(() => getVisibleBookTypesForLevel1(level1BookType), [level1BookType]);
+
+  const filteredFeaturedTypes = useMemo(() => {
+    if (textInference.level1 === "romanzo") {
+      return FEATURED_BOOK_TYPES.filter((t) => !["self-help", "manual", "education", "business"].includes(t.id));
+    }
+    if (textInference.level1 === "self-help") {
+      return FEATURED_BOOK_TYPES.filter((t) => ["self-help", "business", "manual", "education"].includes(t.id) || /memoir|biografia/i.test(t.label));
+    }
+    if (textInference.level1 === "business") {
+      return FEATURED_BOOK_TYPES.filter((t) => ["business", "self-help", "manual"].includes(t.id));
+    }
+    return FEATURED_BOOK_TYPES;
+  }, [textInference.level1]);
+
+  const filteredTargetPresets = useMemo(() => {
+    if (textInference.bookTypeId === "horror" || textInference.genre === "horror") {
+      return TARGET_READER_PRESETS.filter((p) => /thriller|horror|tensione/i.test(p));
+    }
+    if (textInference.level1 === "self-help") {
+      return TARGET_READER_PRESETS.filter((p) => /self-help/i.test(p));
+    }
+    return TARGET_READER_PRESETS;
+  }, [textInference]);
 
   const buildConfig = useCallback((): BookConfig => {
     const styleDirective = profileToStyleDirective(styleProfile);
@@ -309,6 +390,12 @@ export function BookCreationOsWizard({
     bookLength, isFree, chapters, subchaptersEnabled, subchaptersPerChapter, matterOptions, characters,
     coreConflict, narrativePromise, setting, openingHook, mainTwists, commercialGoal, voiceConsistency,
   ]);
+
+  useEffect(() => {
+    if (step === 6 && open) {
+      setPreflightResult(runBlueprintPreflight(buildConfig(), identityDraft));
+    }
+  }, [step, open, buildConfig, identityDraft]);
 
   const persistDraft = useCallback(() => {
     try {
@@ -475,6 +562,118 @@ export function BookCreationOsWizard({
     applyStudioGenre(type.id, { featuredSubgenre: type.subgenre });
   };
 
+  const applyInference = (inference: GenreInference, opts?: { keepTitle?: boolean }) => {
+    applyStudioGenre(inference.bookTypeId, { force: true, featuredSubgenre: inference.subgenre });
+    setGenre(inference.genre);
+    setCategory(inference.category);
+    setSubcategory(inference.subcategory);
+    setSubgenre(inference.subgenre);
+    setTone(inference.tone);
+    if (!targetReader.trim()) setTargetReader(inference.targetReader);
+    if (!narrativePromise.trim()) setNarrativePromise(inference.narrativePromise);
+    if (!commercialGoal.trim()) setCommercialGoal(inference.commercialGoal);
+    if (!chapters || chapters < 6) setChapters(inference.suggestedChapters);
+    setCoherenceDismissed(false);
+    toast.success("Configurazione aggiornata dal DNA del titolo.");
+  };
+
+  const applyTitleProposal = (proposal: TitleProposal) => {
+    setTitle(proposal.title);
+    setSubtitle(proposal.subtitle);
+    applyInference(proposal.inference, { keepTitle: true });
+  };
+
+  const runMagicalTitleGeneration = async () => {
+    if (!idea.trim() && !title.trim()) {
+      toast.error("Scrivi almeno un'idea o un titolo di partenza.");
+      return;
+    }
+    setGeneratingTitles(true);
+    setTitleProposals([]);
+    try {
+      const remaining = getWizardTitleFreeRegensRemaining();
+      if (remaining <= 0) {
+        const { chargePremiumOperation } = await import("@/lib/billing/charge");
+        await chargePremiumOperation("wizard_title_regeneration", { source: "wizard_title_forge" });
+      } else {
+        consumeWizardTitleFreeRegen();
+        setFreeTitleRegensLeft(getWizardTitleFreeRegensRemaining());
+      }
+
+      await runTitleForgeAnimation((idx, text) => {
+        setTitleForgePhase(idx);
+        setTitleForgeLabel(text);
+      });
+
+      const proposals = generateWizardTitleProposals(title, idea, language, String(Date.now()));
+      setTitleProposals(proposals);
+      if (onDetectIntent && idea.trim().length >= 6) {
+        try {
+          const detected = await onDetectIntent(idea.trim(), language);
+          if (detected?.suggestedTitles?.length) {
+            const best = Math.max(0, Math.min(2, detected.bestTitleIndex || 0));
+            const remoteTitle = detected.suggestedTitles[best];
+            const remoteSub = detected.suggestedSubtitles?.[best] || "";
+            if (remoteTitle) {
+              proposals[0] = {
+                ...proposals[0],
+                title: remoteTitle,
+                subtitle: remoteSub || proposals[0].subtitle,
+              };
+              setTitleProposals([...proposals]);
+            }
+            if (detected.genre) {
+              const remoteInference = inferGenreFromText(remoteTitle || title, `${idea} ${detected.genre} ${detected.subcategory || ""}`);
+              proposals[0] = { ...proposals[0], inference: remoteInference, perceivedGenre: remoteInference.label };
+              setTitleProposals([...proposals]);
+            }
+          }
+        } catch { /* local proposals still shown */ }
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Crediti insufficienti o rigenerazione non disponibile.");
+    } finally {
+      setGeneratingTitles(false);
+    }
+  };
+
+  const applyPreflightAutofill = () => {
+    const config = buildConfig();
+    const patch = buildWizardAutofillPatch(config, textInference, {
+      narrativePromise,
+      commercialGoal,
+      coreConflict,
+      setting,
+      openingHook,
+    });
+    if (patch.bookTypeId) applyStudioGenre(patch.bookTypeId, { force: true, featuredSubgenre: patch.subgenre });
+    if (patch.genre) setGenre(patch.genre);
+    if (patch.category) setCategory(patch.category);
+    if (patch.subcategory) setSubcategory(patch.subcategory);
+    if (patch.subgenre) setSubgenre(patch.subgenre);
+    if (patch.tone) setTone(patch.tone);
+    if (patch.targetReader) setTargetReader(patch.targetReader);
+    if (patch.narrativePromise && !narrativePromise.trim()) setNarrativePromise(patch.narrativePromise);
+    if (patch.commercialGoal && !commercialGoal.trim()) setCommercialGoal(patch.commercialGoal);
+    if (patch.chapters) setChapters(patch.chapters);
+    if (patch.subtitle && !subtitle.trim()) setSubtitle(patch.subtitle);
+    applyCoherenceAutoFix();
+    const merged = normalizeBookConfig({
+      ...config,
+      ...(patch.genre ? { genre: patch.genre } : {}),
+      ...(patch.category ? { category: patch.category } : {}),
+      ...(patch.subcategory ? { subcategory: patch.subcategory } : {}),
+      ...(patch.subgenre ? { subgenre: patch.subgenre } : {}),
+      ...(patch.tone ? { tone: patch.tone } : {}),
+      ...(patch.targetReader ? { targetReader: patch.targetReader } : {}),
+      ...(patch.chapters ? { numberOfChapters: patch.chapters } : {}),
+      ...(patch.subtitle ? { subtitle: patch.subtitle } : {}),
+      ...(patch.bookTypeId ? { bookTypeId: patch.bookTypeId } : {}),
+    });
+    setPreflightResult(runBlueprintPreflight(merged, identityDraft));
+    toast.success("Campi completati automaticamente.");
+  };
+
   const applyGuidedStarter = (starter: (typeof GUIDED_STARTERS)[number]) => {
     applyStudioGenre(starter.bookTypeId);
     if (!title.trim()) setTitle(starter.title);
@@ -506,12 +705,34 @@ export function BookCreationOsWizard({
   };
 
   const goNext = async () => {
-    if (step === 0 && !title.trim()) {
-      toast.error("Inserisci il titolo del libro.");
-      return;
+    if (step === 0) {
+      if (!title.trim()) {
+        toast.error("Inserisci il titolo del libro, oppure genera titoli magici dalla tua idea.");
+        return;
+      }
+      if (!genre || showCoherenceWarning) {
+        const inf = textInference;
+        if (showCoherenceWarning && !coherenceDismissed) {
+          toast.error("Titolo e categoria non sono allineati. Correggi automaticamente o conferma la scelta.");
+          return;
+        }
+        if (inf.confidence !== "low") applyInference(inf);
+      }
     }
     if (step === 1) {
+      if (!identityDraft.penName?.trim() && !authorName.trim()) {
+        toast.error("Serve il nome autore in copertina prima di continuare.");
+        return;
+      }
+      if (!targetReader.trim()) {
+        toast.message("Manca il pubblico ideale: lo suggerisco dal titolo.");
+        applyInference(textInference);
+      }
       saveAuthorIdentity({ ...identityDraft, penName: identityDraft.penName || authorName, language });
+    }
+    if (step === 2 && chapters < 1) {
+      toast.error("Imposta il numero di capitoli per la struttura del libro.");
+      return;
     }
     if (step === 5 && validationIssues.length) {
       toast.error("Completa i campi mancanti prima di continuare.");
@@ -524,6 +745,14 @@ export function BookCreationOsWizard({
         onClose();
         return;
       }
+
+      const preflight = runBlueprintPreflight(buildConfig(), identityDraft);
+      setPreflightResult(preflight);
+      if (!preflight.ready) {
+        toast.message(preflight.humanSummary);
+        return;
+      }
+
       setGeneratingBlueprint(true);
       setBlueprintError(null);
       try {
@@ -532,7 +761,7 @@ export function BookCreationOsWizard({
         setBlueprintPreview(bp);
         setStep(7);
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Blueprint non generato";
+        const message = humanizeBlueprintError(e, buildConfig());
         setBlueprintError(message);
         toast.error(message);
       } finally {
@@ -573,7 +802,13 @@ export function BookCreationOsWizard({
   };
 
   const detectFromIdea = async () => {
-    if (!onDetectIntent || idea.trim().length < 6) return;
+    if (idea.trim().length < 6) {
+      toast.error("Scrivi almeno qualche riga di idea: anche grezza va bene.");
+      return;
+    }
+    const local = inferGenreFromText(title, idea);
+    applyInference(local);
+    if (!onDetectIntent) return;
     try {
       const detected = await onDetectIntent(idea.trim(), language);
       if (detected?.suggestedTitles?.length && !title.trim()) {
@@ -581,12 +816,14 @@ export function BookCreationOsWizard({
         setTitle(detected.suggestedTitles[best] || "");
         setSubtitle(detected.suggestedSubtitles?.[best] || "");
       }
-      if (detected?.genre) setGenre(detected.genre as Genre);
-      if (detected?.subcategory) setSubcategory(detected.subcategory);
       if (detected?.numberOfChapters) setChapters(detected.numberOfChapters);
+      if (detected?.genre || detected?.subcategory) {
+        const merged = inferGenreFromText(title || detected.suggestedTitles?.[0] || "", `${idea} ${detected.genre || ""} ${detected.subcategory || ""}`);
+        applyInference(merged);
+      }
       toast.success("Suggerimenti applicati dall'idea.");
     } catch {
-      toast.error("Analisi idea non disponibile.");
+      toast.message("Analisi cloud non disponibile: ho applicato l'inferenza locale dal testo.");
     }
   };
 
@@ -638,6 +875,60 @@ export function BookCreationOsWizard({
                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Sottotitolo / promessa</span>
                 <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="Es. Ogni segreto ha un prezzo. Ogni anima reclama il proprio debito." className={inputClass} />
               </label>
+
+              <div className="rounded-2xl border border-violet-400/25 bg-gradient-to-br from-violet-500/10 via-sky-500/5 to-transparent p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-200/80">Forgia titoli magica</p>
+                    <p className="mt-1 text-xs text-white/55">3–5 proposte titolo + sottotitolo allineate al filone editoriale.</p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={generatingTitles}
+                    onClick={() => void runMagicalTitleGeneration()}
+                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-sky-500 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+                  >
+                    {generatingTitles ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                    {generatingTitles ? "Forgia in corso…" : "Genera titoli magici"}
+                  </button>
+                </div>
+                <p className="mt-2 text-[11px] text-white/45">
+                  {freeTitleRegensLeft > 0
+                    ? `Rigenerazioni gratuite rimaste: ${freeTitleRegensLeft}/${WIZARD_TITLE_FREE_REGENS}`
+                    : "Nuova rigenerazione premium: 35 crediti"}
+                </p>
+                {generatingTitles && (
+                  <div className="mt-4 space-y-2">
+                    <div className="flex gap-1">
+                      {TITLE_FORGE_PHASES.map((_, i) => (
+                        <span key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= titleForgePhase ? "bg-violet-400" : "bg-white/10"}`} />
+                      ))}
+                    </div>
+                    <p className="text-sm font-medium text-violet-100 animate-pulse">{titleForgeLabel || TITLE_FORGE_PHASES[0]}</p>
+                  </div>
+                )}
+                {titleProposals.length > 0 && !generatingTitles && (
+                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                    {titleProposals.map((proposal) => (
+                      <button
+                        key={`${proposal.title}-${proposal.badge}`}
+                        type="button"
+                        onClick={() => applyTitleProposal(proposal)}
+                        className="rounded-xl border border-white/12 bg-white/[0.05] p-3 text-left transition-colors hover:border-violet-300/40 hover:bg-violet-400/10"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-sm font-bold text-white">{proposal.title}</span>
+                          <span className="shrink-0 rounded-full border border-violet-300/30 bg-violet-300/10 px-2 py-0.5 text-[9px] font-bold text-violet-100">{proposal.badge}</span>
+                        </div>
+                        <p className="mt-1 text-[11px] leading-4 text-white/60">{proposal.subtitle}</p>
+                        <p className="mt-2 text-[10px] text-sky-200/80">{proposal.perceivedGenre} · Hook {proposal.hookScore}/100</p>
+                        <p className="mt-1 text-[10px] leading-4 text-white/45">{proposal.rationale}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <label className="block space-y-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Nome autore</span>
                 <input value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="Nome in copertina" className={inputClass} />
@@ -654,7 +945,7 @@ export function BookCreationOsWizard({
                   Se non sai da dove partire, scegli un formato: Scriptora imposta genere, struttura e sottogenere senza lasciarti davanti a un campo vuoto.
                 </p>
                 <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {FEATURED_BOOK_TYPES.map((type) => {
+                  {filteredFeaturedTypes.map((type) => {
                     const option = STUDIO_GENRES.find((g) => g.id === type.id);
                     if (!option) return null;
                     const active = bookTypeId === option.id && (!type.subgenre || subgenre === type.subgenre);
@@ -685,7 +976,36 @@ export function BookCreationOsWizard({
               </select>
               <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Categoria" className={inputClass} />
               <input value={subcategory} onChange={(e) => setSubcategory(e.target.value)} placeholder="Sottocategoria" className={inputClass} />
-              <input value={subgenre} onChange={(e) => setSubgenre(e.target.value)} placeholder="Sottogenere (opzionale)" className={inputClass} />
+              <input value={subgenre} onChange={(e) => { setSubgenre(e.target.value); setCoherenceDismissed(false); }} placeholder="Sottogenere (opzionale)" className={inputClass} />
+
+              {showCoherenceWarning && !coherenceDismissed && (
+                <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-5 w-5 shrink-0" />
+                    <p>
+                      Attenzione: il titolo sembra <strong>{textInference.label}</strong>, ma la categoria selezionata è {category || "—"} / {subcategory || "—"}.
+                      Questo può generare un blueprint debole.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => applyInference(textInference)}
+                      className="rounded-lg border border-amber-200/40 bg-amber-200/15 px-3 py-2 text-xs font-semibold text-amber-50"
+                    >
+                      Correggi automaticamente
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCoherenceDismissed(true)}
+                      className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white/70"
+                    >
+                      Mantieni comunque
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <label className="block space-y-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Idea del libro</span>
                 <textarea value={idea} onChange={(e) => setIdea(e.target.value)} rows={3} placeholder="Scrivi anche male: personaggio, desiderio, problema, atmosfera. Scriptora organizza il resto." className={inputClass} />
@@ -733,7 +1053,7 @@ export function BookCreationOsWizard({
               <textarea value={identityDraft.voice || ""} onChange={(e) => setIdentityDraft((d) => ({ ...d, voice: e.target.value }))} rows={2} placeholder="Voce narrativa *" className={inputClass} />
               <input value={targetReader} onChange={(e) => setTargetReader(e.target.value)} placeholder="Target lettore" className={inputClass} />
               <div className="flex flex-wrap gap-2">
-                {TARGET_READER_PRESETS.map((preset) => (
+                {filteredTargetPresets.map((preset) => (
                   <button
                     key={preset}
                     type="button"
@@ -937,6 +1257,29 @@ export function BookCreationOsWizard({
                     Puoi correggere i campi o riprovare: nessun contenuto tecnico è stato salvato nel libro.
                   </p>
                 </div>
+              ) : preflightResult && !preflightResult.ready ? (
+                <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-left space-y-3">
+                  <p className="text-sm font-semibold text-amber-100">Completiamo il progetto</p>
+                  <p className="text-xs leading-5 text-amber-100/75">{preflightResult.humanSummary}</p>
+                  <ul className="space-y-2">
+                    {preflightResult.issues.map((issue) => (
+                      <li key={issue.id} className="flex items-start gap-2 text-xs text-amber-50/90">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                        <span>{issue.humanHint}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {preflightResult.issues.some((i) => i.autoFillable) && (
+                    <button
+                      type="button"
+                      onClick={applyPreflightAutofill}
+                      className="inline-flex items-center gap-2 rounded-xl border border-amber-200/40 bg-amber-200/15 px-4 py-2 text-xs font-bold text-amber-50"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Completa automaticamente con Scriptora
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="rounded-2xl border border-white/12 bg-white/[0.045] p-4 text-left">
                   <p className="text-sm font-semibold text-white">Pronto per la forgia</p>
@@ -977,7 +1320,7 @@ export function BookCreationOsWizard({
             </button>
           )}
           {step === 6 && (
-            <button type="button" disabled={generatingBlueprint || validationIssues.length > 0} onClick={() => void goNext()}
+            <button type="button" disabled={generatingBlueprint} onClick={() => void goNext()}
               className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">
               {generatingBlueprint ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               Genera Blueprint

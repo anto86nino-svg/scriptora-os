@@ -25,7 +25,7 @@ export function normalizeLanguage(value: unknown): Language {
   return "Italian";
 }
 
-export function normalizeGenre(value: unknown): Genre {
+export function normalizeGenre(value: unknown, contextText = ""): Genre {
   const raw = String(value || "").trim().toLowerCase();
   const allowed: Genre[] = [
     "self-help", "romance", "dark-romance", "thriller", "fantasy", "philosophy", "business", "memoir",
@@ -33,7 +33,19 @@ export function normalizeGenre(value: unknown): Genre {
     "health-medicine", "diet-nutrition", "fitness", "productivity", "education", "horror", "sci-fi",
     "historical", "biography", "spirituality", "children", "fairy-tale", "poetry", "jokes", "manual",
   ];
-  return (allowed.includes(raw as Genre) ? raw : "self-help") as Genre;
+  if (allowed.includes(raw as Genre)) return raw as Genre;
+
+  const hay = contextText.toLowerCase();
+  if (/horror|dark horror|gotico|folk horror/i.test(hay)) return "horror";
+  if (/dark.?romance/i.test(hay)) return "dark-romance";
+  if (/thriller|noir|mistero|crime/i.test(hay)) return "thriller";
+  if (/fantasy|magia|epic/i.test(hay)) return "fantasy";
+  if (/romance/i.test(hay)) return "romance";
+  if (/self.?help|mindset|produttiv|abitudin|crescita personal/i.test(hay)) return "self-help";
+  if (/business|marketing|leadership/i.test(hay)) return "business";
+  if (/education|scuol|universit|didatt/i.test(hay)) return "education";
+
+  return "philosophy";
 }
 
 export function normalizeMatterOptions(value?: Partial<BookMatterOptions> | null): BookMatterOptions {
@@ -46,7 +58,7 @@ export function normalizeStyleProfile(value?: Partial<WritingStyleProfile> | nul
 
 /** Safe defaults — never crash generation for missing config. */
 export function normalizeBookConfig(input: Partial<BookConfig> | BookConfig): BookConfig {
-  const genre = normalizeGenre(input.genre);
+  const genre = normalizeGenre(input.genre, `${input.title || ""} ${input.idea || ""} ${input.subgenre || ""}`);
   const language = normalizeLanguage(input.language);
   const bookTypeDef = resolveBookTypeDefinition(
     genre,

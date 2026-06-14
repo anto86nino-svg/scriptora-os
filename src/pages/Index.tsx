@@ -27,6 +27,7 @@ import { BookProject, SectionId } from "@/types/book";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { WritingSettings, loadSettings, saveSettings } from "@/lib/settings";
 import { t, tt, UILanguage, useUILanguage } from "@/lib/i18n";
+import { fillMissingGenreFromInference } from "@/lib/book-creation-os/genre-inference";
 import { toast } from "sonner";
 import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu, X, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -292,9 +293,7 @@ const Index = () => {
         sessionStorage.removeItem("scriptora-open-project");
         const target = loaded.find(p => p.id === openId);
         if (target) {
-          if (!target.config.category) target.config.category = "Self Help";
-          if (!target.config.subcategory) target.config.subcategory = "Mindset";
-          if (!target.config.genre) target.config.genre = "self-help";
+          fillMissingGenreFromInference(target.config);
           engine.loadProject(target);
           applySection();
           return;
@@ -328,9 +327,7 @@ const Index = () => {
       if (lastId) {
         const last = loaded.find(p => p.id === lastId);
         if (last) {
-          if (!last.config.category) last.config.category = "Self Help";
-          if (!last.config.subcategory) last.config.subcategory = "Mindset";
-          if (!last.config.genre) last.config.genre = "self-help";
+          fillMissingGenreFromInference(last.config);
           engine.loadProject(last);
           applySection();
         }
@@ -349,9 +346,7 @@ const Index = () => {
   const handleSelectProject = (id: string) => {
     const p = projects.find(p => p.id === id);
     if (p) {
-      if (!p.config.category) p.config.category = "Self Help";
-      if (!p.config.subcategory) p.config.subcategory = "Mindset";
-      if (!p.config.genre) p.config.genre = "self-help";
+      fillMissingGenreFromInference(p.config);
       engine.loadProject(p);
       setActiveSection("blueprint");
       setSidebarOpen(false);
@@ -366,9 +361,7 @@ const Index = () => {
     const fresh = await loadRemoteProjects();
     setProjects(fresh);
     if (engine.project?.id === id && fresh[0]) {
-      if (!fresh[0].config.category) fresh[0].config.category = "Self Help";
-      if (!fresh[0].config.subcategory) fresh[0].config.subcategory = "Mindset";
-      if (!fresh[0].config.genre) fresh[0].config.genre = "self-help";
+      fillMissingGenreFromInference(fresh[0].config);
       engine.loadProject(fresh[0]);
       setActiveSection("blueprint");
     }

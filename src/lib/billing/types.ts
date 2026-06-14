@@ -15,6 +15,7 @@ export type CreditOperationId =
   | "cover_generation"
   | "character_studio_ai"
   | "book_analysis"
+  | "wizard_title_regeneration"
   | "export_premium"
   | "masterpiece_mode";
 
