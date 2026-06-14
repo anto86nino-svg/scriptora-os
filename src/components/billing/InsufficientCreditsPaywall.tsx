@@ -50,6 +50,9 @@ export function InsufficientCreditsPaywall() {
         <p className="mt-2 text-sm text-muted-foreground">
           Saldo disponibile: <span className="font-semibold tabular-nums text-foreground">{formatCredits(detail.balance)}</span>
         </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Crediti insufficienti. Ricarica crediti o passa a un piano con crediti mensili.
+        </p>
 
         <div className="mt-4">
           <DevCreditQuickBuy variant="panel" onPurchased={() => setOpen(false)} />
@@ -68,8 +71,18 @@ export function InsufficientCreditsPaywall() {
           </button>
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false);
+              navigate("/pricing");
+            }}
             className="inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-border px-4 text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            Vedi prezzi
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            className="inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-border px-4 text-sm font-medium text-muted-foreground hover:text-foreground sm:hidden"
           >
             Chiudi
           </button>

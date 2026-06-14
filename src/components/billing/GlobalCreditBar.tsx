@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { CreditCard, History, Plus, AlertCircle } from "lucide-react";
+import { CreditCard, History, Plus, AlertCircle, ExternalLink } from "lucide-react";
 import { useCreditWallet } from "@/hooks/useCreditWallet";
 import { formatCredits } from "@/lib/credit-economy";
 import { getPurchaseCtaLabel } from "@/lib/billing/creditUx";
@@ -16,7 +16,7 @@ interface GlobalCreditBarProps {
 
 export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarProps) {
   const navigate = useNavigate();
-  const { wallet, analytics, lowCreditHint, lowCreditLevel } = useCreditWallet();
+  const { wallet, analytics, lowCreditHint, lowCreditLevel, freePlanHint } = useCreditWallet();
   const simulationBadge = creditSimulationBadge();
   const purchaseLabel = getPurchaseCtaLabel();
 
@@ -104,14 +104,17 @@ export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarP
             {simulationBadge}
           </span>
         )}
-        {lowCreditHint && (
-          <span className={cn(
-            "text-[10px] font-medium",
-            lowCreditLevel === "critical" ? "text-amber-300" : "text-amber-200/80",
-          )}>
-            {lowCreditHint}
-          </span>
-        )}
+          {lowCreditHint && (
+            <span className={cn(
+              "text-[10px] font-medium",
+              lowCreditLevel === "critical" ? "text-amber-300" : "text-amber-200/80",
+            )}>
+              {lowCreditHint}
+            </span>
+          )}
+          {freePlanHint && !lowCreditHint && (
+            <span className="hidden text-[10px] text-muted-foreground lg:inline">{freePlanHint}</span>
+          )}
         {canDevSimulateCreditPurchase() ? (
           <DevCreditQuickBuy variant="toolbar" purchaseLabel={purchaseLabel} buttonClassName="ios-toolbar-button" />
         ) : (
@@ -151,8 +154,18 @@ export function GlobalCreditBar({ variant = "bar", className }: GlobalCreditBarP
               {lowCreditHint}
             </span>
           )}
+          {freePlanHint && !lowCreditHint && (
+            <span className="hidden text-[11px] text-muted-foreground md:inline">{freePlanHint}</span>
+          )}
         </div>
         <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => navigate("/pricing")}
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40"
+          >
+            <ExternalLink className="h-3.5 w-3.5" /> Prezzi
+          </button>
           {canDevSimulateCreditPurchase() ? (
             <DevCreditQuickBuy
               variant="toolbar"

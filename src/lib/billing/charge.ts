@@ -3,7 +3,7 @@ import type { CreditOperationId } from "./types";
 import { buildCreditIdempotencyKey } from "./idempotency";
 import { requireCreditsAsync } from "./commit";
 import { resolveChapterGenerationOperation, getOperationCost } from "./creditPolicy";
-import { addCreditsToWallet } from "./wallet";
+import { addCreditsToWallet, loadCreditWallet } from "./wallet";
 import { appendLedgerEntry } from "./ledger";
 import { isDevUnlimitedCredits } from "./devMode";
 
@@ -47,7 +47,8 @@ export async function refundPremiumOperation(
   metadata: Record<string, unknown>,
   bookLength?: BookLength,
 ): Promise<void> {
-  const cost = getOperationCost(operation, bookLength);
+  const wallet = loadCreditWallet();
+  const cost = getOperationCost(operation, { bookLength, planId: wallet.planId });
   if (cost <= 0 || isDevUnlimitedCredits()) return;
   const next = addCreditsToWallet(cost);
   appendLedgerEntry({

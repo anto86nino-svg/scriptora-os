@@ -8,6 +8,7 @@ import {
   computeWalletAnalytics,
   getLowCreditLevel,
   lowCreditMessage,
+  freePlanWalletHint,
   type WalletAnalytics,
   type LowCreditLevel,
 } from "@/lib/billing/walletAnalytics";
@@ -43,6 +44,7 @@ export function useCreditWallet() {
 
   const lowCreditLevel: LowCreditLevel = useMemo(() => getLowCreditLevel(wallet), [wallet]);
   const lowCreditHint = lowCreditMessage(lowCreditLevel);
+  const freePlanHint = useMemo(() => freePlanWalletHint(wallet.planId), [wallet.planId]);
 
   const refreshFromSource = async () => {
     if (getBillingExecutionMode() === "server") {
@@ -59,6 +61,7 @@ export function useCreditWallet() {
     analytics,
     lowCreditLevel,
     lowCreditHint,
+    freePlanHint,
     refresh: () => { void refreshFromSource(); },
   };
 }

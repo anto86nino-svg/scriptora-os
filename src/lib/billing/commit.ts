@@ -1,6 +1,6 @@
 import type { BookLength } from "@/types/book";
 import type { CreditCommitResult, CreditOperationId } from "./types";
-import { getOperationCost } from "./creditPolicy";
+import { getOperationCost, type OperationCostOptions } from "./creditPolicy";
 import { loadCreditWallet, deductCreditsFromWallet } from "./wallet";
 import { appendLedgerEntry } from "./ledger";
 import { isDevUnlimitedCredits, isDevMode } from "@/lib/billing/devMode";
@@ -28,12 +28,17 @@ export class InsufficientCreditsError extends Error {
   }
 }
 
+function resolveCostOptions(bookLength?: BookLength): OperationCostOptions {
+  const wallet = loadCreditWallet();
+  return { bookLength, planId: wallet.planId };
+}
+
 function commitCreditsLocal(
   operation: CreditOperationId,
   metadata?: Record<string, unknown>,
   bookLength?: BookLength,
 ): CreditCommitResult {
-  const cost = getOperationCost(operation, bookLength);
+  const cost = getOperationCost(operation, resolveCostOptions(bookLength));
   const wallet = loadCreditWallet();
   const simulated = isDevUnlimitedCredits();
 
@@ -86,7 +91,7 @@ export async function commitCreditsAsync(
   const hasAuth = await hasAuthenticatedServerUser();
   if (!hasAuth) {
     if (import.meta.env.PROD) {
-      const cost = getOperationCost(operation, bookLength);
+      const cost = getOperationCost(operation, resolveCostOptions(bookLength));
       return {
         ok: false,
         committed: false,

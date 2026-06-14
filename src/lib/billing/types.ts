@@ -1,6 +1,15 @@
 export type PaymentProviderId = "stripe" | "lemon" | "dev";
 
-export type CreditPlanId = "free" | "starter" | "pro_author" | "studio" | "publisher";
+export type CreditPlanId =
+  | "free"
+  | "starter"
+  | "pro_author"
+  | "studio"
+  | "publisher"
+  | "student_free"
+  | "student_basic"
+  | "student_plus"
+  | "student_pro_exam";
 
 export type CreditOperationId =
   | "generate_chapter_short"
@@ -17,7 +26,36 @@ export type CreditOperationId =
   | "book_analysis"
   | "wizard_title_regeneration"
   | "export_premium"
-  | "masterpiece_mode";
+  | "masterpiece_mode"
+  | "book_idea"
+  | "title_domination"
+  | "blueprint_generation"
+  | "chapter_regenerate"
+  | "analysis_pro_chapter"
+  | "patch_chapter"
+  | "manuscript_analyzer"
+  | "kdp_launch_analysis"
+  | "kdp_narrative_flow"
+  | "bestseller_radar_scan"
+  | "cover_variant"
+  | "export_epub"
+  | "export_docx"
+  | "export_pdf"
+  | "voice_advanced"
+  | "study_text_ingest"
+  | "study_summary_basic"
+  | "study_summary_advanced"
+  | "study_explain_simple"
+  | "study_explain_3_levels"
+  | "study_flashcards"
+  | "study_quiz"
+  | "study_oral_exam"
+  | "study_answer_review"
+  | "study_plan"
+  | "study_mindmap"
+  | "study_long_material"
+  | "study_long_material_heavy"
+  | "study_full_exam";
 
 export interface CreditWallet {
   balance: number;
@@ -51,4 +89,11 @@ export interface BillingPurchaseResult {
   provider: PaymentProviderId;
   simulated: boolean;
   error?: string;
+}
+
+export interface OperationCostQuote {
+  baseCost: number;
+  discountPercent: number;
+  finalCost: number;
+  label: string;
 }

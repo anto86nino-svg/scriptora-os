@@ -13,31 +13,61 @@ export type CreditConsumptionCategory =
   | "fix"
   | "market"
   | "character"
+  | "study"
   | "other"
   | "purchases";
 
 export const PLAN_DISPLAY_LABELS: Record<CreditPlanId, string> = {
   free: "Free",
   starter: "Starter",
-  pro_author: "Pro Author",
+  pro_author: "Author Pro",
   studio: "Studio",
   publisher: "Publisher",
+  student_free: "Student Free",
+  student_basic: "Student Basic",
+  student_plus: "Student Plus",
+  student_pro_exam: "Student Pro Exam",
 };
 
 export const OPERATION_DISPLAY_LABELS: Record<string, string> = {
   generate_chapter_short: "Capitolo breve",
-  generate_chapter_medium: "Capitolo medio",
+  generate_chapter_medium: "Capitolo standard",
   generate_chapter_long: "Capitolo lungo",
-  rewrite_chapter: "Rewrite",
-  chapter_diagnostic: "Diagnostica capitolo",
-  fix_chapter: "Fix capitolo",
-  auto_bestseller: "Auto Bestseller",
+  rewrite_chapter: "Riscrivi scena",
+  chapter_diagnostic: "Analysis Pro capitolo",
+  fix_chapter: "Patch capitolo",
+  auto_bestseller: "Bestseller Radar",
   market_intelligence: "Market Intelligence",
-  kdp_launch: "KDP Launch",
+  kdp_launch: "KDP Launch analysis",
   cover_generation: "Cover Studio",
   character_studio_ai: "Character Studio AI",
-  book_analysis: "Analisi manoscritto",
-  export_premium: "Export Premium",
+  book_analysis: "Manuscript Analyzer",
+  export_premium: "Export premium",
+  wizard_title_regeneration: "Rigenerazione titoli",
+  book_idea: "Genera idea libro",
+  title_domination: "Title Domination",
+  blueprint_generation: "Blueprint completo",
+  chapter_regenerate: "Rigenera capitolo",
+  kdp_narrative_flow: "KDP Narrative Flow",
+  cover_variant: "Cover variant extra",
+  export_epub: "Export EPUB",
+  export_docx: "Export DOCX",
+  export_pdf: "Export PDF premium",
+  voice_advanced: "Voice / lettura avanzata",
+  study_text_ingest: "Carica testo breve",
+  study_summary_basic: "Riassunto base",
+  study_summary_advanced: "Riassunto avanzato",
+  study_explain_simple: "Spiegazione semplice",
+  study_explain_3_levels: "Spiegazione 3 livelli",
+  study_flashcards: "Flashcard",
+  study_quiz: "Quiz",
+  study_oral_exam: "Simulazione interrogazione",
+  study_answer_review: "Correzione risposta",
+  study_plan: "Piano studio",
+  study_mindmap: "Mappa concettuale",
+  study_long_material: "Analisi PDF/dispensa lunga",
+  study_long_material_heavy: "Analisi PDF molto lungo",
+  study_full_exam: "Simulazione esame completa",
   masterpiece_mode: "Masterpiece Mode",
   dev_purchase: "Acquisto crediti",
   plan_grant: "Crediti piano",
@@ -60,6 +90,7 @@ export function mapOperationToCategory(operation: CreditLedgerEntry["operation"]
   if (operation === "fix_chapter") return "fix";
   if (operation === "market_intelligence") return "market";
   if (operation === "character_studio_ai") return "character";
+  if (operation.startsWith("study_")) return "study";
   return "other";
 }
 
@@ -74,6 +105,7 @@ export const CATEGORY_DISPLAY_LABELS: Record<CreditConsumptionCategory, string> 
   fix: "Fix capitolo",
   market: "Market Intelligence",
   character: "Character Studio",
+  study: "Study OS",
   other: "Altro",
   purchases: "Acquisti",
 };
@@ -142,7 +174,7 @@ export type LowCreditLevel = "ok" | "low" | "critical";
 
 export function getLowCreditLevel(wallet: CreditWallet): LowCreditLevel {
   if (isDevUnlimitedCredits()) return "ok";
-  const allocation = PLAN_CREDIT_ALLOCATION[wallet.planId] || 500;
+  const allocation = PLAN_CREDIT_ALLOCATION[wallet.planId] || 300;
   if (allocation <= 0) return "ok";
   const ratio = wallet.balance / allocation;
   if (ratio <= 0.1) return "critical";
@@ -151,7 +183,16 @@ export function getLowCreditLevel(wallet: CreditWallet): LowCreditLevel {
 }
 
 export function lowCreditMessage(level: LowCreditLevel): string | null {
+  if (level === "critical") {
+    return "Crediti insufficienti. Ricarica crediti o passa a un piano con crediti mensili.";
+  }
   if (level === "low") return "Crediti in esaurimento";
-  if (level === "critical") return "Ricarica consigliata";
+  return null;
+}
+
+export function freePlanWalletHint(planId: CreditPlanId): string | null {
+  if (planId === "free" || planId === "student_free") {
+    return "Free: puoi ricaricare crediti e usare funzioni premium.";
+  }
   return null;
 }

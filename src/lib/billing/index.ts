@@ -1,5 +1,6 @@
 export * from "./types";
 export * from "./creditPolicy";
+export * from "./pricingCatalog";
 export * from "./wallet";
 export * from "./ledger";
 export * from "./commit";

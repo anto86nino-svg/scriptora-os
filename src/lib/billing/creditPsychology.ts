@@ -55,12 +55,12 @@ export function getCreditValuePresentation(
   };
 }
 
-export function estimateChaptersRemaining(balance: number, chapterCost = 300): number {
+export function estimateChaptersRemaining(balance: number, chapterCost = 350): number {
   if (chapterCost <= 0) return 0;
   return Math.floor(balance / chapterCost);
 }
 
-export function buildSmartCreditRecommendation(balance: number, chapterCost = 300): string | null {
+export function buildSmartCreditRecommendation(balance: number, chapterCost = 350): string | null {
   const chapters = estimateChaptersRemaining(balance, chapterCost);
   if (chapters >= 5) return null;
   if (chapters >= 1) {

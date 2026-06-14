@@ -25,6 +25,7 @@ import { paymentsConfig } from "@/config/payments";
 import { setUILanguage, UI_LANGUAGES, useUILanguage, type UILanguage } from "@/lib/i18n";
 import { ProductFlowPreview } from "@/components/landing/ProductFlowPreview";
 import { PublicHomeWow } from "@/components/landing/PublicHomeWow";
+import { PublicDualPath } from "@/components/landing/PublicDualPath";
 import { PublicTestimonials } from "@/components/landing/PublicTestimonials";
 
 interface ScriptoraLandingProps {
@@ -87,10 +88,10 @@ const landingCopy: Record<UILanguage, {
     navPricing: "Plans",
     enter: "Enter",
     languageLabel: "Interface language",
-    kicker: "Where fragile ideas become books",
-    heroTitle: "The operating system for books that breathe, sell and endure.",
-    heroText: "Scriptora OS guides authors from idea to manuscript, editorial diagnosis to KDP packaging, cover and export — in one creative studio.",
-    primary: "Enter Scriptora",
+    kicker: "Author Studio + Study OS",
+    heroTitle: "Write books. Study smarter. One OS.",
+    heroText: "Scriptora is not another writing chat. It is a full editorial studio for authors and a guided study engine for students of every field.",
+    primary: "Start free",
     secondary: "See the flow",
     proofSigned: "Your workspace is waiting",
     proofGuest: "Real login. Real workspace.",
@@ -123,7 +124,7 @@ const landingCopy: Record<UILanguage, {
     testimonialsTitle: "Built for writers who refuse to lose the thread.",
     testimonialsText: "Short field notes from authors who use Scriptora as a creative cockpit: voice, structure and publishing preparation in one place.",
     finalTitle: "Open your editorial studio.",
-    finalText: "From your first blueprint to export — one living system for authors who publish seriously.",
+    finalText: "Write your book or ace your exams — same account, same premium platform.",
   },
   it: {
     navHow: "Come funziona",
@@ -131,10 +132,10 @@ const landingCopy: Record<UILanguage, {
     navPricing: "Piani",
     enter: "Entra",
     languageLabel: "Lingua interfaccia",
-    kicker: "Dove le idee fragili diventano libri",
-    heroTitle: "Il sistema operativo per creare libri che respirano, vendono e restano.",
-    heroText: "Scriptora OS accompagna l'autore dall'idea al manoscritto, dalla diagnosi editoriale al packaging KDP, fino alla copertina e all'export.",
-    primary: "Entra in Scriptora",
+    kicker: "Author Studio + Study OS",
+    heroTitle: "Scrivi libri. Studia meglio. Un solo OS.",
+    heroText: "Scriptora non è un'altra chat di scrittura. È uno studio editoriale completo per autori e un motore di studio guidato per studenti di ogni indirizzo.",
+    primary: "Inizia gratis",
     secondary: "Guarda il flusso",
     proofSigned: "Il tuo workspace ti aspetta",
     proofGuest: "Login reale. Workspace reale.",
@@ -167,7 +168,7 @@ const landingCopy: Record<UILanguage, {
     testimonialsTitle: "Creato per autori che non vogliono perdere il filo.",
     testimonialsText: "Appunti brevi da chi usa Scriptora come cabina creativa: voce, struttura e preparazione editoriale nello stesso luogo.",
     finalTitle: "Apri il tuo studio editoriale.",
-    finalText: "Dal primo blueprint all'export — un sistema vivo per autori che pubblicano sul serio.",
+    finalText: "Scrivi il libro o prepara l'esame — stesso account, stessa piattaforma premium.",
   },
   es: {
     navHow: "Como funciona",
@@ -512,11 +513,11 @@ export function ScriptoraLanding({
         </button>
 
         <nav className="hidden items-center gap-6 text-xs font-semibold text-white/58 md:flex">
+          <a href="#dual-path">{lang === "it" ? "Scrivi · Studia" : "Write · Study"}</a>
           <a href="#product-flow">{lang === "it" ? "Flusso" : "Flow"}</a>
           <a href="#features">{copy.navTools}</a>
-          <a href="#how-to-use">{copy.navHow}</a>
           <a href="#testimonials">{copy.testimonialsLabel}</a>
-          <a href="#pricing">{copy.navPricing}</a>
+          <a href="/pricing">{copy.navPricing}</a>
         </nav>
 
         <div className="scriptora-landing-actions">
@@ -551,7 +552,7 @@ export function ScriptoraLanding({
           </div>
           <h1>{copy.heroTitle}</h1>
           <p>{copy.heroText}</p>
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <button type="button" onClick={onEnter} className="scriptora-landing-primary">
               {copy.primary}
               <ArrowRight className="h-4 w-4" />
@@ -559,9 +560,17 @@ export function ScriptoraLanding({
             <a href="#product-flow" className="scriptora-landing-secondary">
               {copy.secondary}
             </a>
+            <a href="/pricing" className="scriptora-landing-secondary">
+              {lang === "it" ? "Vedi prezzi" : "See pricing"}
+            </a>
+            <a href="/pricing#compare-plans" className="scriptora-landing-secondary text-white/45">
+              {lang === "it" ? "Confronta piani" : "Compare plans"}
+            </a>
           </div>
           <p className="scriptora-landing-trust-line">
-            Blueprint · Writer OS · Cover Studio · KDP Launch · Bestseller Radar · Export
+            {lang === "it"
+              ? "Libri · Blueprint · KDP · Export · Dispense · Quiz · Flashcard"
+              : "Books · Blueprint · KDP · Export · Notes · Quizzes · Flashcards"}
           </p>
           <div className="scriptora-landing-proof">
             <span>{isSignedIn ? copy.proofSigned : copy.proofGuest}</span>
@@ -582,7 +591,9 @@ export function ScriptoraLanding({
         </div>
       </section>
 
-      <section className="scriptora-landing-section">
+      <PublicDualPath lang={lang} onEnter={onEnter} />
+
+      <section className="scriptora-landing-section scriptora-landing-section--tight">
         <ProductFlowPreview lang={lang} />
       </section>
 
@@ -592,7 +603,7 @@ export function ScriptoraLanding({
         <div className="scriptora-landing-section-label">{copy.manifestoLabel}</div>
         <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
           <h2>{copy.manifestoTitle}</h2>
-          <div className="space-y-4 text-lg leading-8 text-white/66">
+          <div className="space-y-3 text-sm leading-7 text-white/66 sm:text-[15px]">
             {copy.manifestoLines.map((line) => (
               <p key={line}>{line}</p>
             ))}
@@ -719,16 +730,36 @@ export function ScriptoraLanding({
             );
           })}
         </div>
+        <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+          <a href="/pricing" className="scriptora-landing-primary inline-flex items-center gap-2 px-5 py-3 text-sm">
+            {lang === "it" ? "Vedi prezzi completi" : "See full pricing"}
+            <ArrowRight className="h-4 w-4" />
+          </a>
+          <a href="/pricing#compare-plans" className="scriptora-landing-secondary text-sm">
+            {lang === "it" ? "Confronta piani" : "Compare plans"}
+          </a>
+          <a href="/usage?focus=purchase" className="scriptora-landing-secondary text-sm text-white/50">
+            {lang === "it" ? "Acquista crediti" : "Buy credits"}
+          </a>
+        </div>
       </section>
 
       <section className="scriptora-landing-final">
         <div className="scriptora-landing-section-label">Scriptora OS</div>
         <h2>{copy.finalTitle}</h2>
         <p>{copy.finalText}</p>
-        <button type="button" onClick={onEnter} className="scriptora-landing-primary">
-          {lang === "it" ? "Apri Scriptora OS" : "Open Scriptora OS"}
-          <ArrowRight className="h-4 w-4" />
-        </button>
+        <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          <button type="button" onClick={onEnter} className="scriptora-landing-primary">
+            {lang === "it" ? "Apri Scriptora OS" : "Open Scriptora OS"}
+            <ArrowRight className="h-4 w-4" />
+          </button>
+          <a href="/pricing" className="scriptora-landing-secondary">
+            {lang === "it" ? "Vedi prezzi" : "See pricing"}
+          </a>
+          <a href="/pricing#compare-plans" className="scriptora-landing-secondary text-white/50">
+            {lang === "it" ? "Confronta piani" : "Compare plans"}
+          </a>
+        </div>
       </section>
 
       <footer className="scriptora-landing-footer">
