@@ -2,7 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-scriptora-credit-simulation, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface Scores {
@@ -189,7 +190,12 @@ serve(async (req) => {
     const { chapterTitle, chapterText, genre, subcategory, genreKey: clientGenreKey, tone, language, threshold = 8.5, iteration = 1, genreAutoFixBlock = "", blueprintIntegrityBlock = "", masteryMode = false, projectId = null, userId = null } = await req.json();
     __trackCtx = { projectId, userId };
     const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-    if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY not configured");
+    if (!DEEPSEEK_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: "AI provider non configurato sul backend (DEEPSEEK_API_KEY mancante).", code: "ai_provider_missing" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     const finalElementInstruction = genreFinalElement(genre, language);
     const currentText: string = chapterText;

@@ -813,7 +813,7 @@ function ChapterView({
       )}
 
       {isGenerating && showReturnToLive && (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] right-3 z-[75] flex max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-2xl border border-cyan-300/25 bg-slate-950/92 px-3 py-2 text-xs text-white shadow-2xl shadow-cyan-950/40 backdrop-blur-xl sm:right-6">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)] left-3 right-auto z-[35] flex max-w-[calc(100dvw-1.5rem)] items-center gap-2 rounded-2xl border border-cyan-300/25 bg-slate-950/92 px-3 py-2 text-xs text-white shadow-2xl shadow-cyan-950/40 backdrop-blur-xl sm:left-auto sm:right-6">
           <span className="hidden text-white/65 sm:inline">Stai leggendo più in alto</span>
           <button
             type="button"

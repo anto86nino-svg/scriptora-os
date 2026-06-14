@@ -10,7 +10,6 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { CreditVisibilityShell } from "@/components/billing/CreditVisibilityShell";
 import { MobileAppChrome } from "@/components/MobileAppChrome";
-import { ResponsiveAuditOverlay } from "@/components/ResponsiveAuditOverlay";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { Loader2 } from "lucide-react";
@@ -82,7 +81,6 @@ const App = () => (
               </AppErrorBoundary>
               <CreditVisibilityShell />
               <MobileAppChrome />
-              <ResponsiveAuditOverlay />
           </DominationProvider>
         </AuthProvider>
       </BrowserRouter>

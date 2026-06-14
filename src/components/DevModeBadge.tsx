@@ -51,7 +51,7 @@ const PLAN_META: Record<PlanTier, { icon: React.ReactNode; hintKey: string }> = 
   premium: { icon: <Crown className="h-3 w-3" />,       hintKey: "dev_premium_hint" },
 };
 
-export function DevModeBadge() {
+export function DevModeBadge({ docked = false }: { docked?: boolean }) {
   useUILanguage();
   const on = useDevMode();
   const overridePlan = useDevPlanOverride();
@@ -61,6 +61,7 @@ export function DevModeBadge() {
   const [simulationOn, setSimulationOn] = useState(() => isDevUnlimitedCredits());
   const [creditsOpen, setCreditsOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
+    if (docked) return true;
     if (typeof window === "undefined") return false;
     return window.matchMedia("(max-width: 639px)").matches;
   });
@@ -115,33 +116,18 @@ export function DevModeBadge() {
     }
   };
 
-  return (
+  const toolbar = (
     <>
-      {collapsed && (
-        <button
-          type="button"
-          onClick={() => setCollapsed(false)}
-          title="Dev Mode"
-          className="bottom-safe fixed right-3 z-50 inline-flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-background/75 px-3 text-[10px] font-semibold uppercase tracking-wider text-foreground shadow-lg backdrop-blur-xl sm:hidden"
-        >
-          <Terminal className="h-3 w-3 text-sky-300" />
-          DEV
-        </button>
-      )}
-
-      <div className={`bottom-safe fixed right-3 z-50 max-w-[calc(100vw-1rem)] items-center gap-1 rounded-2xl bg-foreground/95 py-1 pl-2 pr-1 text-[11px] font-mono text-background shadow-lg backdrop-blur-xl sm:bottom-4 sm:right-4 sm:flex sm:max-w-[calc(100vw-2rem)] sm:rounded-full sm:bg-foreground ${
-        collapsed ? "hidden" : "flex"
-      }`}>
-        <button
-          type="button"
-          onClick={() => setCollapsed(true)}
-          title={t("close")}
-          className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-background/15 sm:hidden"
-        >
-          <ChevronDown className="h-3 w-3" />
-        </button>
-        <Terminal className="h-3 w-3" />
-        <span className="font-semibold tracking-wider">DEV</span>
+      <button
+        type="button"
+        onClick={() => setCollapsed(true)}
+        title={t("close")}
+        className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-background/15 sm:hidden"
+      >
+        <ChevronDown className="h-3 w-3" />
+      </button>
+      <Terminal className="h-3 w-3" />
+      <span className="font-semibold tracking-wider">DEV</span>
 
         <button
           onClick={() => {
@@ -244,32 +230,70 @@ export function DevModeBadge() {
         >
           <X className="h-3 w-3" />
         </button>
-      </div>
+    </>
+  );
 
-      <Dialog open={wipeOpen} onOpenChange={setWipeOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{t("wipe_dialog_title")}</DialogTitle>
-            <DialogDescription>
-              {t("wipe_dialog_desc")}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-2">
-            <button
-              onClick={() => setWipeOpen(false)}
-              className="px-3 py-2 rounded-md text-xs border border-border hover:bg-muted/50"
-            >
-              {t("cancel")}
-            </button>
-            <button
-              onClick={handleWipeTestProjects}
-              className="px-3 py-2 rounded-md text-xs font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {t("wipe_confirm")}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+  const wipeDialog = (
+    <Dialog open={wipeOpen} onOpenChange={setWipeOpen}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{t("wipe_dialog_title")}</DialogTitle>
+          <DialogDescription>{t("wipe_dialog_desc")}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-2">
+          <button onClick={() => setWipeOpen(false)} className="px-3 py-2 rounded-md text-xs border border-border hover:bg-muted/50">
+            {t("cancel")}
+          </button>
+          <button onClick={handleWipeTestProjects} className="px-3 py-2 rounded-md text-xs font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            {t("wipe_confirm")}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
+  if (docked) {
+    if (collapsed) {
+      return (
+        <>
+          <button type="button" onClick={() => setCollapsed(false)} className="scriptora-dock-inline-btn w-full justify-center" title="Dev Mode">
+            <Terminal className="h-3.5 w-3.5 text-sky-300" />
+            <span>DEV</span>
+          </button>
+          {wipeDialog}
+        </>
+      );
+    }
+    return (
+      <>
+        <div className="scriptora-dock-dev-bar flex max-w-full flex-wrap items-center gap-1 rounded-xl py-1 pl-2 pr-1 text-[11px] font-mono text-background">
+          {toolbar}
+        </div>
+        {wipeDialog}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {collapsed && (
+        <button
+          type="button"
+          onClick={() => setCollapsed(false)}
+          title="Dev Mode"
+          className="bottom-safe fixed right-3 z-40 inline-flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-background/75 px-3 text-[10px] font-semibold uppercase tracking-wider text-foreground shadow-lg backdrop-blur-xl sm:hidden"
+        >
+          <Terminal className="h-3 w-3 text-sky-300" />
+          DEV
+        </button>
+      )}
+
+      <div className={`bottom-safe fixed right-3 z-40 max-w-[calc(100dvw-1rem)] items-center gap-1 rounded-2xl bg-foreground/95 py-1 pl-2 pr-1 text-[11px] font-mono text-background shadow-lg backdrop-blur-xl sm:bottom-4 sm:right-4 sm:z-50 sm:flex sm:max-w-[calc(100dvw-2rem)] sm:rounded-full sm:bg-foreground ${
+        collapsed ? "hidden" : "flex"
+      }`}>
+        {toolbar}
+      </div>
+      {wipeDialog}
     </>
   );
 }

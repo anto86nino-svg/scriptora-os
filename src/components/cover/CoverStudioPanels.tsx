@@ -39,7 +39,7 @@ export function CoverStudioPanels({
 
   return (
     <Tabs defaultValue="templates" className="cover-studio-war-room w-full">
-      <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 bg-muted/40 p-1">
+      <TabsList className="flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto bg-muted/40 p-1 [-webkit-overflow-scrolling:touch]">
         <TabsTrigger value="templates" className="text-xs">{italianUi ? "Template" : "Templates"}</TabsTrigger>
         <TabsTrigger value="score" className="text-xs">Score</TabsTrigger>
         <TabsTrigger value="readiness" className="text-xs">{italianUi ? "Readiness" : "Readiness"}</TabsTrigger>

@@ -670,40 +670,40 @@ export function CoverGenerator({
   }
 
   return (
-    <div className="scriptora-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm sm:p-5">
-      <div className="scriptora-modal-panel flex h-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border/80 bg-card/95 shadow-2xl sm:max-h-[min(94dvh,900px)] lg:max-w-[1500px] lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)]">
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border/70 px-4 py-4 sm:px-5 lg:px-7 lg:py-5">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-primary">
-              <BookOpen className="h-4 w-4" />
-              Scriptora Cover Studio
+    <div className="scriptora-modal-overlay scriptora-cover-studio-overlay fixed inset-0 z-[60] flex items-stretch justify-center bg-black/88 p-0 backdrop-blur-md sm:items-center sm:bg-black/75 sm:p-5 sm:backdrop-blur-sm">
+      <div className="scriptora-modal-panel scriptora-cover-studio-panel flex h-[100dvh] max-h-[100dvh] w-full max-w-6xl flex-col overflow-hidden rounded-none border-0 bg-card shadow-2xl sm:h-auto sm:max-h-[min(94dvh,900px)] sm:rounded-2xl sm:border sm:border-border/80 lg:max-w-[1500px] lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)]">
+        <div className="scriptora-cover-studio-header flex shrink-0 items-center justify-between gap-2 border-b border-border/70 px-3 py-3 sm:gap-3 sm:px-5 sm:py-4 lg:px-7 lg:py-5">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-primary sm:gap-2 sm:text-xs sm:tracking-[0.2em]">
+              <BookOpen className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+              <span className="truncate">Scriptora Cover Studio</span>
             </div>
-            <h2 className="text-lg font-semibold text-foreground truncate">Copertine EPUB, KDP e Lulu</h2>
-            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-              <Badge variant="outline" className="text-[10px]">{studioPackage.honestyLabel}</Badge>
-              <Badge variant="secondary" className="text-[10px]">Score {studioPackage.score.finalScore}</Badge>
+            <h2 className="mt-0.5 line-clamp-2 text-base font-semibold leading-snug text-foreground sm:text-lg">Copertine EPUB, KDP e Lulu</h2>
+            <div className="mt-1 flex flex-wrap items-center gap-1">
+              <Badge variant="outline" className="px-1.5 py-0 text-[9px] sm:text-[10px]">{studioPackage.honestyLabel}</Badge>
+              <Badge variant="secondary" className="px-1.5 py-0 text-[9px] sm:text-[10px]">Score {studioPackage.score.finalScore}</Badge>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="h-9 w-9 shrink-0 rounded-full border border-border/70 bg-background/60 text-muted-foreground hover:text-foreground hover:bg-background transition-colors grid place-items-center"
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border/70 bg-background/60 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
             aria-label="Chiudi"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_460px] lg:overflow-hidden xl:grid-cols-[minmax(0,1fr)_500px]">
-          <div className="relative flex min-h-[280px] flex-col items-center justify-center gap-4 overflow-visible bg-black/20 p-4 sm:min-h-[360px] sm:p-6 lg:min-h-0 lg:overflow-hidden lg:bg-gradient-to-br lg:from-black/45 lg:via-background/80 lg:to-primary/10 lg:p-8 xl:p-10">
-            <div className="w-full flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:absolute lg:left-8 lg:right-8 lg:top-6 lg:w-auto lg:rounded-2xl lg:border lg:border-white/10 lg:bg-background/35 lg:px-4 lg:py-3 lg:backdrop-blur-xl">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:overflow-hidden xl:grid-cols-[minmax(0,1fr)_500px]">
+          <div className="scriptora-cover-studio-preview shrink-0 border-b border-border/50 bg-black/25 px-3 py-3 sm:px-4 sm:py-4 lg:relative lg:flex lg:min-h-0 lg:flex-col lg:items-center lg:justify-center lg:overflow-hidden lg:border-b-0 lg:bg-gradient-to-br lg:from-black/45 lg:via-background/80 lg:to-primary/10 lg:p-8 xl:p-10">
+            <div className="hidden w-full flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:absolute lg:left-8 lg:right-8 lg:top-6 lg:flex lg:w-auto lg:rounded-2xl lg:border lg:border-white/10 lg:bg-background/35 lg:px-4 lg:py-3 lg:backdrop-blur-xl">
               <span>{spec.label}</span>
               <span>{spec.width} x {spec.height}px - {spec.exportNote}</span>
             </div>
-            <div className="flex min-h-[240px] w-full flex-col items-center justify-center gap-3 lg:h-full lg:min-h-0 lg:pt-8">
-              <div className="w-full flex items-center justify-center lg:rounded-[2rem] lg:border lg:border-white/10 lg:bg-white/[0.035] lg:p-6 xl:p-8 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_28px_80px_rgba(0,0,0,0.45)]">
+            <div className="flex flex-col items-center justify-center gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:gap-3 lg:pt-8">
+              <div className="flex w-full items-center justify-center lg:rounded-[2rem] lg:border lg:border-white/10 lg:bg-white/[0.035] lg:p-6 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_28px_80px_rgba(0,0,0,0.45)] xl:p-8">
                 <canvas
                   ref={canvasRef}
-                  className="max-h-[50dvh] w-auto max-w-full rounded-xl shadow-2xl ring-1 ring-white/10 sm:max-h-[58dvh] lg:max-h-[62dvh] lg:rounded-2xl lg:shadow-[0_26px_80px_rgba(0,0,0,0.62)] xl:max-h-[66dvh]"
+                  className="scriptora-cover-studio-canvas max-h-[42dvh] w-auto max-w-[min(78vw,360px)] rounded-lg shadow-xl ring-1 ring-white/10 sm:max-h-[44dvh] lg:max-h-[62dvh] lg:max-w-full lg:rounded-2xl lg:shadow-[0_26px_80px_rgba(0,0,0,0.62)] xl:max-h-[66dvh]"
                 />
               </div>
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
@@ -713,9 +713,13 @@ export function CoverGenerator({
                 </Badge>
               </div>
             </div>
+            <p className="mt-1 text-center text-[10px] text-muted-foreground lg:hidden">
+              {spec.label} · {spec.width}×{spec.height}px
+            </p>
           </div>
 
-          <div className="scriptora-modal-body min-h-0 space-y-5 overflow-y-auto overscroll-contain bg-background/55 p-4 sm:p-5 lg:space-y-6 lg:bg-background/75 lg:p-6">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="scriptora-cover-studio-scroll scriptora-modal-body min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain bg-background/55 p-3 sm:space-y-5 sm:p-5 lg:space-y-6 lg:bg-background/75 lg:p-6">
             <section className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
               <span className="font-semibold text-foreground">{creditModeLabel(devCreditMode)}</span>
               {" · "}
@@ -890,7 +894,7 @@ export function CoverGenerator({
                   onChange={(e) => setCoverAuthor(e.target.value)}
                 />
               </label>
-              <div className="grid gap-3 pt-2 lg:grid-cols-3">
+              <div className="grid gap-3 pt-2 max-lg:grid-cols-1 lg:grid-cols-3">
                 <TextStyleControls
                   label="Titolo"
                   fontValue={titleFont}
@@ -1114,38 +1118,43 @@ export function CoverGenerator({
               </div>
 
             </section>
+            </div>
 
-            <div className={`-mx-4 sm:-mx-5 lg:mx-0 -mb-4 sm:-mb-5 lg:mb-0 sticky bottom-0 z-10 grid gap-2 lg:gap-3 border-t lg:border border-border/70 bg-background/95 lg:bg-card/90 p-4 backdrop-blur-xl sm:p-5 lg:rounded-2xl lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)] ${showPrimaryAction && projectId ? "grid-cols-2 sm:grid-cols-3" : showPrimaryAction ? "grid-cols-2" : projectId ? "grid-cols-2" : "grid-cols-1"}`}>
-              <div className="hidden lg:block col-span-full">
+            <footer className="scriptora-cover-studio-footer shrink-0 border-t border-border/70 bg-background/98 px-3 py-3 backdrop-blur-xl sm:px-5 sm:py-4 lg:border lg:bg-card/90 lg:p-5">
+              <div className="hidden lg:block">
                 <p className="text-sm font-semibold text-foreground">EXPORT</p>
                 <p className="mt-1 text-xs text-muted-foreground">Scarica, salva o applica la cover al progetto corrente.</p>
               </div>
-              <button
-                onClick={handleDownload}
-                className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-3 lg:py-3.5 text-sm font-semibold text-foreground hover:bg-surface/80 transition-colors"
-              >
-                <Download className="h-4 w-4" />
-                Scarica PNG
-              </button>
-              {projectId && (
-                <button
-                  onClick={handleSaveToProject}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 py-3 lg:py-3.5 text-sm font-semibold text-primary hover:bg-primary/15 transition-colors"
-                >
-                  <ImagePlus className="h-4 w-4" />
-                  {italianUi ? "Salva progetto" : "Save project"}
-                </button>
-              )}
-              {showPrimaryAction && (
-                <button
-                  onClick={handleUseForEpub}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-primary px-3 py-3 lg:py-3.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
-                >
-                  <ImagePlus className="h-4 w-4" />
-                  {primaryActionLabel}
-                </button>
-              )}
-            </div>
+              <div className="mt-0 flex flex-col gap-2 lg:mt-3 lg:grid lg:grid-cols-3 lg:gap-3">
+                {showPrimaryAction && (
+                  <button
+                    onClick={handleUseForEpub}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 lg:py-3.5"
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                    {primaryActionLabel}
+                  </button>
+                )}
+                <div className={`grid gap-2 ${showPrimaryAction || projectId ? "grid-cols-2" : "grid-cols-1"} lg:contents`}>
+                  <button
+                    onClick={handleDownload}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-surface/80 lg:py-3.5"
+                  >
+                    <Download className="h-4 w-4" />
+                    Scarica PNG
+                  </button>
+                  {projectId && (
+                    <button
+                      onClick={handleSaveToProject}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/15 lg:py-3.5"
+                    >
+                      <ImagePlus className="h-4 w-4" />
+                      {italianUi ? "Salva progetto" : "Save project"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </footer>
           </div>
         </div>
       </div>
@@ -1233,15 +1242,15 @@ function TextStyleControls({
       </label>
       <div className="mt-2 space-y-2">
         <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Colore</span>
-        <div className="flex items-center gap-2">
-          <input
-            type="color"
-            value={colorValue}
-            onChange={(e) => onColorChange(e.target.value)}
-            className="h-8 w-10 rounded-lg border border-border bg-background p-1"
-            aria-label={`Colore ${label}`}
-          />
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex min-w-0 items-center gap-2 overflow-x-auto pb-0.5">
+            <input
+              type="color"
+              value={colorValue}
+              onChange={(e) => onColorChange(e.target.value)}
+              className="h-8 w-10 shrink-0 rounded-lg border border-border bg-background p-1"
+              aria-label={`Colore ${label}`}
+            />
+            <div className="flex flex-nowrap gap-1.5">
             {TEXT_COLOR_SWATCHES.slice(0, 8).map((color) => (
               <button
                 key={`${label}-${color}`}

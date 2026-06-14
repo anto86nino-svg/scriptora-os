@@ -44,13 +44,20 @@ export function applyAdaptiveViewportBoot(): void {
 export function auditViewportLayout(): string[] {
   if (typeof document === "undefined") return [];
   const issues: string[] = [];
+  const docOverflow = document.documentElement.scrollWidth > document.documentElement.clientWidth + 2;
+  if (docOverflow) issues.push("document horizontal overflow");
+
   const overflowEls = document.querySelectorAll<HTMLElement>("body *");
   overflowEls.forEach((el) => {
     if (el.scrollWidth > el.clientWidth + 4 && el.clientWidth > 0) {
       const tag = `${el.tagName.toLowerCase()}${el.className ? `.${String(el.className).split(" ")[0]}` : ""}`;
-      if (!issues.includes(`overflow: ${tag}`)) issues.push(`overflow: ${tag}`);
+      const key = `overflow: ${tag}`;
+      if (!issues.includes(key)) issues.push(key);
     }
   });
+  if (import.meta.env.DEV && issues.length) {
+    console.debug("[scriptora-viewport-audit]", issues);
+  }
   if (issues.length > 12) return issues.slice(0, 12).concat(["…altri overflow"]);
   return issues;
 }

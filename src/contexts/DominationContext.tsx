@@ -8,6 +8,25 @@ import { getCurrentUserId } from "@/services/storageService";
 import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/billing/billingHeaders";
 import { toast } from "sonner";
 
+function formatEdgeFunctionError(message: string, kind: JobKind = "dominate"): string {
+  const raw = (message || "").trim();
+  if (/failed to send a request to the edge function/i.test(raw)) {
+    return kind === "dominate"
+      ? "Auto-Fix non riuscito: funzione backend non disponibile. Verifica connessione o riprova tra poco."
+      : "Patch non riuscita: funzione backend non disponibile. Verifica connessione o riprova.";
+  }
+  if (/deepseek_api_key|ai provider non configurato|ai_provider_missing/i.test(raw)) {
+    return "Auto-Fix non riuscito: AI provider non configurato sul backend.";
+  }
+  if (/insufficient|crediti|credit/i.test(raw)) {
+    return "Auto-Fix non riuscito: crediti insufficienti.";
+  }
+  if (/rate limit/i.test(raw)) {
+    return "Auto-Fix non riuscito: limite richieste raggiunto. Riprova tra qualche minuto.";
+  }
+  return raw || "Operazione non riuscita";
+}
+
 export type JobKind = "dominate" | "patch";
 
 export interface DominationJob {
@@ -98,9 +117,11 @@ export function DominationProvider({ children }: { children: ReactNode }) {
         : `🔥 Dominating "${chapter.title}" — runs in background`
     );
 
+    let charged = false;
     try {
-      const { chargePremiumOperation } = await import("@/lib/billing/charge");
+      const { chargePremiumOperation, refundPremiumOperation } = await import("@/lib/billing/charge");
       await chargePremiumOperation("rewrite_chapter", { projectId: project.id, chapterIndex: chapterIndex + 1, source: "dominate_chapter" }, undefined, [project.id, chapterIndex + 1, "dominate"]);
+      charged = true;
       const threshold = 8.5;
       // SINGLE-PASS by default. Multi-pass only when user explicitly requests
       // it via Dominate Mode amplifier (masteryMode). Saves ~50% latency & cost.
@@ -136,8 +157,11 @@ export function DominationProvider({ children }: { children: ReactNode }) {
             userId: getCurrentUserId(),
           }),
         });
-        if (error) throw new Error(error.message || "Edge function error");
-        if (!data) throw new Error("No response");
+        if (error) {
+          const detail = typeof (data as { error?: string } | null)?.error === "string" ? (data as { error: string }).error : null;
+          throw new Error(detail || error.message || "Edge function error");
+        }
+        if (!data) throw new Error("Nessuna risposta dal backend");
         if (data.error) throw new Error(data.error);
 
         passes.push(data.pass);
@@ -189,6 +213,20 @@ export function DominationProvider({ children }: { children: ReactNode }) {
         }
       }
     } catch (e: any) {
+      if (charged) {
+        try {
+          const { refundPremiumOperation } = await import("@/lib/billing/charge");
+          await refundPremiumOperation("rewrite_chapter", {
+            projectId: project.id,
+            chapterIndex: chapterIndex + 1,
+            source: "dominate_chapter",
+          });
+        } catch (refundErr) {
+          console.error("[dominate-chapter] credit refund failed:", refundErr);
+        }
+      }
+      console.error("[dominate-chapter] job failed:", e);
+      const friendly = formatEdgeFunctionError(e?.message || "Domination failed", "dominate");
       upsertJob({
         id,
         kind: "dominate",
@@ -199,9 +237,9 @@ export function DominationProvider({ children }: { children: ReactNode }) {
         status: "error",
         startedAt: jobs[id]?.startedAt || Date.now(),
         finishedAt: Date.now(),
-        error: e.message || "Domination failed",
+        error: friendly,
       });
-      toast.error(`❌ "${chapter.title}": ${e.message || "failed"}`);
+      toast.error(`❌ "${chapter.title}": ${friendly}`);
     }
   }, [jobs]);
 

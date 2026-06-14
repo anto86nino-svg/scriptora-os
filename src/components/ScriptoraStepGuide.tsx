@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowRight, CheckCircle2, ChevronDown, Compass, EyeOff, HelpCircle, X } from "lucide-react";
 import { type UILanguage, useUILanguage } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { dismissGuideForSession, isGuideSessionDismissed } from "@/lib/floating-dock-storage";
 
 type GuideRoute =
   | "dashboard"
@@ -282,7 +283,7 @@ const copy: Record<UILanguage, GuideCopy> = {
   },
 };
 
-export function ScriptoraStepGuide() {
+export function ScriptoraStepGuide({ docked = false }: { docked?: boolean }) {
   const lang = useUILanguage();
   const location = useLocation();
   const navigate = useNavigate();
@@ -332,8 +333,15 @@ export function ScriptoraStepGuide() {
   const activeRoute = overrideRoute || route;
   if (!activeRoute) return null;
 
+  const sessionDismissed = isGuideSessionDismissed(activeRoute);
+
   const text = copy[lang] || copy.en;
   const guide = text.routes[activeRoute] || copy.en.routes[activeRoute];
+
+  const btnClass = docked ? "scriptora-dock-inline-btn" : "scriptora-step-guide-button";
+  const panelClass = docked ? "scriptora-dock-guide-panel" : "scriptora-step-guide";
+
+  if (sessionDismissed) return null;
 
   if (!enabled) {
     return (
@@ -342,12 +350,12 @@ export function ScriptoraStepGuide() {
           setEnabled(true);
           setCollapsed(false);
         }}
-        className="scriptora-step-guide-button"
+        className={btnClass}
         title={text.show}
         aria-label={text.show}
       >
         <HelpCircle className="h-4 w-4" />
-        <span className="scriptora-step-guide-button-label">{text.show}</span>
+        <span className={docked ? "" : "scriptora-step-guide-button-label"}>{text.show}</span>
       </button>
     );
   }
@@ -356,18 +364,18 @@ export function ScriptoraStepGuide() {
     return (
       <button
         onClick={() => setCollapsed(false)}
-        className="scriptora-step-guide-button"
+        className={btnClass}
         title={text.label}
         aria-label={text.label}
       >
         <Compass className="h-4 w-4" />
-        <span className="scriptora-step-guide-button-label">{text.label}</span>
+        <span className={docked ? "" : "scriptora-step-guide-button-label"}>{text.label}</span>
       </button>
     );
   }
 
   return (
-    <aside className="scriptora-step-guide" aria-label={text.label}>
+    <aside className={panelClass} aria-label={text.label}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-cyan-200/80">
@@ -386,7 +394,11 @@ export function ScriptoraStepGuide() {
             <ChevronDown className="h-3.5 w-3.5" />
           </button>
           <button
-            onClick={() => setEnabled(false)}
+            onClick={() => {
+              setEnabled(false);
+              setCollapsed(true);
+              dismissGuideForSession(activeRoute);
+            }}
             className="scriptora-step-guide-icon"
             title={text.hide}
           >
