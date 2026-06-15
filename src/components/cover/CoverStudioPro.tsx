@@ -44,6 +44,11 @@ import { COVER_VIEW_MODES, type CoverViewMode } from "@/lib/cover-studio/cover-v
 
 import { CoverStickerSvg } from "@/components/cover/CoverStickerSvg";
 import { EFFECT_CONTROLS } from "@/lib/cover-studio/cover-effects";
+import { sanitizeCoverVisibleText } from "@/lib/cover-studio/cover-text-sanitize";
+import {
+  applyVisualIntensity,
+  VISUAL_INTENSITY_OPTIONS,
+} from "@/lib/cover-studio/cover-visual-intensity";
 
 interface Props {
   pkg: CoverStudioPackage;
@@ -73,6 +78,13 @@ interface Props {
   onBackBioChange?: (value: string) => void;
   onBackQuoteChange?: (value: string) => void;
   onUploadBackImage?: (file: File) => void;
+  onUploadFrontImage?: (file: File | undefined) => void;
+  onRemoveFrontImage?: () => void;
+  onRemoveBackImage?: () => void;
+  hasFrontImage?: boolean;
+  hasBackImage?: boolean;
+  imageFit?: "cover" | "contain" | "soft";
+  onImageFitChange?: (fit: "cover" | "contain" | "soft") => void;
   isPrintMode?: boolean;
   spineWidthIn?: number;
   pageCount?: number;
@@ -119,6 +131,13 @@ export function CoverStudioPro({
   onBackBioChange,
   onBackQuoteChange,
   onUploadBackImage,
+  onUploadFrontImage,
+  onRemoveFrontImage,
+  onRemoveBackImage,
+  hasFrontImage = false,
+  hasBackImage = false,
+  imageFit = "cover",
+  onImageFitChange,
   isPrintMode = false,
   spineWidthIn = 0.5,
   pageCount = 260,
@@ -176,13 +195,13 @@ export function CoverStudioPro({
         </p>
       </div>
 
-      <Tabs defaultValue="backgrounds" className="w-full min-w-0">
+      <Tabs defaultValue="style" className="w-full min-w-0">
         <TabsList className="flex h-auto w-full flex-nowrap justify-start gap-0.5 overflow-x-auto bg-muted/40 p-1 [-webkit-overflow-scrolling:touch]">
-          {(["templates", "backgrounds", "text", "layers", "stickers", "effects", "print", "readiness"] as const).map((tab) => (
+          {(["style", "text", "images", "layers", "stickers", "effects", "print", "readiness"] as const).map((tab) => (
             <TabsTrigger key={tab} value={tab} className="shrink-0 px-2.5 py-1.5 text-[10px] sm:text-xs">
-              {tab === "templates" && (italianUi ? "Template" : "Templates")}
-              {tab === "backgrounds" && (italianUi ? "Sfondi" : "Backgrounds")}
+              {tab === "style" && (italianUi ? "Stile" : "Style")}
               {tab === "text" && "Testo"}
+              {tab === "images" && (italianUi ? "Immagini" : "Images")}
               {tab === "layers" && "Layer"}
               {tab === "stickers" && "Sticker"}
               {tab === "effects" && (italianUi ? "Effetti" : "Effects")}
@@ -192,7 +211,29 @@ export function CoverStudioPro({
           ))}
         </TabsList>
 
-        <TabsContent value="templates" className="mt-3 space-y-3 text-xs">
+        <TabsContent value="style" className="mt-3 space-y-4 text-xs">
+          <div className="space-y-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {italianUi ? "Intensità visiva" : "Visual intensity"}
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {VISUAL_INTENSITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => patch((c) => applyVisualIntensity(c, opt.id))}
+                  className={`rounded-lg border px-2.5 py-1 text-[10px] font-medium transition ${
+                    (composition.visualIntensity ?? "premium") === opt.id
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border/70 text-muted-foreground hover:bg-muted/40"
+                  }`}
+                >
+                  {italianUi ? opt.labelIt : opt.labelEn}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <p className="text-muted-foreground leading-relaxed">{pkg.brief.visualPromise}</p>
           <div className="space-y-1">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -237,44 +278,47 @@ export function CoverStudioPro({
               </button>
             ))}
           </div>
-        </TabsContent>
 
-        <TabsContent value="backgrounds" className="mt-3 space-y-3">
-          <div className="flex flex-wrap gap-1">
-            {COVER_BACKGROUND_CATEGORIES.map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setBgCategory(cat.id)}
-                className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                  bgCategory === cat.id ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"
-                }`}
-              >
-                {cat.label}
-              </button>
-            ))}
+          <div className="space-y-2 border-t border-border/50 pt-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {italianUi ? "Sfondi procedurali" : "Procedural backgrounds"}
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {COVER_BACKGROUND_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setBgCategory(cat.id)}
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                    bgCategory === cat.id ? "border-primary bg-primary/15 text-primary" : "border-border text-muted-foreground"
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {backgrounds.map((bg) => (
+                <button
+                  key={bg.id}
+                  type="button"
+                  title={bg.name}
+                  onClick={() => patch((c) => ({ ...c, backgroundPresetId: bg.id }))}
+                  className={`group relative aspect-[2/3] overflow-hidden rounded-lg border transition ${
+                    composition.backgroundPresetId === bg.id ? "border-primary ring-2 ring-primary/40" : "border-border/60 hover:border-primary/40"
+                  }`}
+                >
+                  <div className="absolute inset-0" style={bg.previewStyle} />
+                  <span className="absolute inset-x-0 bottom-0 bg-black/55 px-1 py-0.5 text-[8px] text-white truncate">
+                    {bg.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              {COVER_BACKGROUND_PRESETS.length} sfondi · {italianUi ? "nessuna immagine remota" : "no remote images"}
+            </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-            {backgrounds.map((bg) => (
-              <button
-                key={bg.id}
-                type="button"
-                title={bg.name}
-                onClick={() => patch((c) => ({ ...c, backgroundPresetId: bg.id }))}
-                className={`group relative aspect-[2/3] overflow-hidden rounded-lg border transition ${
-                  composition.backgroundPresetId === bg.id ? "border-primary ring-2 ring-primary/40" : "border-border/60 hover:border-primary/40"
-                }`}
-              >
-                <div className="absolute inset-0" style={bg.previewStyle} />
-                <span className="absolute inset-x-0 bottom-0 bg-black/55 px-1 py-0.5 text-[8px] text-white truncate">
-                  {bg.name}
-                </span>
-              </button>
-            ))}
-          </div>
-          <p className="text-[10px] text-muted-foreground">
-            {COVER_BACKGROUND_PRESETS.length} sfondi procedurali · {italianUi ? "nessuna immagine remota" : "no remote images"}
-          </p>
         </TabsContent>
 
         <TabsContent value="text" className="mt-3 space-y-3">
@@ -305,6 +349,50 @@ export function CoverStudioPro({
             </label>
           </div>
 
+          {isPrintMode && (
+            <div className="space-y-2 rounded-xl border border-border/60 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {italianUi ? "Testi retro / dorso" : "Back / spine copy"}
+              </p>
+              {onBackTaglineChange && (
+                <label className="block space-y-1">
+                  <span className="text-muted-foreground">Tagline / CTA</span>
+                  <input className="h-9 w-full rounded-lg border border-border bg-surface px-2 text-sm" value={backTagline} onChange={(e) => onBackTaglineChange(e.target.value)} />
+                </label>
+              )}
+              {onBackBlurbChange && (
+                <label className="block space-y-1">
+                  <span className="text-muted-foreground">{italianUi ? "Descrizione libro" : "Book description"}</span>
+                  <textarea
+                    rows={3}
+                    className="w-full resize-none rounded-lg border border-border bg-surface px-2 py-1.5 text-sm"
+                    value={backBlurb}
+                    onChange={(e) => onBackBlurbChange(e.target.value)}
+                    onBlur={(e) => onBackBlurbChange(sanitizeCoverVisibleText(e.target.value, backBlurb))}
+                  />
+                </label>
+              )}
+              {onBackBioChange && (
+                <label className="block space-y-1">
+                  <span className="text-muted-foreground">{italianUi ? "Bio autore" : "Author bio"}</span>
+                  <textarea
+                    rows={2}
+                    className="w-full resize-none rounded-lg border border-border bg-surface px-2 py-1.5 text-sm"
+                    value={backBio}
+                    onChange={(e) => onBackBioChange(e.target.value)}
+                    onBlur={(e) => onBackBioChange(sanitizeCoverVisibleText(e.target.value, backBio))}
+                  />
+                </label>
+              )}
+              {onBackQuoteChange && (
+                <label className="block space-y-1">
+                  <span className="text-muted-foreground">{italianUi ? "Citazione recensione" : "Review quote"}</span>
+                  <input className="h-9 w-full rounded-lg border border-border bg-surface px-2 text-sm" value={backQuote} onChange={(e) => onBackQuoteChange(e.target.value)} />
+                </label>
+              )}
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-1">
             {TEXT_PRESETS.map((p) => (
               <button
@@ -327,6 +415,75 @@ export function CoverStudioPro({
 
           {selectedLayer && ["title", "subtitle", "author", "back-tagline", "back-blurb", "back-bio", "back-quote", "spine-title", "spine-author"].includes(selectedLayer.type) && (
             <TextLayerControls layer={selectedLayer} onChange={(p) => patchLayer(selectedLayer.id, p)} italianUi={italianUi} />
+          )}
+        </TabsContent>
+
+        <TabsContent value="images" className="mt-3 space-y-3 text-xs">
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            {italianUi
+              ? "Carica immagini dedicate per fronte e retro. In modalità wrap KDP/Lulu ogni immagine resta nel proprio pannello."
+              : "Upload dedicated front and back images. In KDP/Lulu wrap mode each image stays on its panel."}
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2 rounded-xl border border-border/60 p-3">
+              <p className="font-semibold text-foreground">{italianUi ? "Fronte" : "Front cover"}</p>
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border/70 bg-surface/40 px-3 py-3 text-[11px] font-medium hover:bg-surface/70">
+                <ImagePlus className="h-4 w-4" />
+                {italianUi ? "Carica immagine fronte" : "Upload front image"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    onUploadFrontImage?.(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              {hasFrontImage && onRemoveFrontImage && (
+                <button type="button" onClick={onRemoveFrontImage} className="text-[10px] text-destructive hover:underline">
+                  {italianUi ? "Rimuovi immagine fronte" : "Remove front image"}
+                </button>
+              )}
+            </div>
+            {isPrintMode && (
+              <div className="space-y-2 rounded-xl border border-border/60 p-3">
+                <p className="font-semibold text-foreground">{italianUi ? "Retro" : "Back cover"}</p>
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-dashed border-border/70 bg-surface/40 px-3 py-3 text-[11px] font-medium hover:bg-surface/70">
+                  <ImagePlus className="h-4 w-4" />
+                  {italianUi ? "Carica immagine retro" : "Upload back image"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) onUploadBackImage?.(f);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {hasBackImage && onRemoveBackImage && (
+                  <button type="button" onClick={onRemoveBackImage} className="text-[10px] text-destructive hover:underline">
+                    {italianUi ? "Rimuovi immagine retro" : "Remove back image"}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          {onImageFitChange && (
+            <label className="block space-y-1">
+              <span className="text-muted-foreground">{italianUi ? "Adattamento immagine" : "Image fit"}</span>
+              <select
+                value={imageFit}
+                onChange={(e) => onImageFitChange(e.target.value as "cover" | "contain" | "soft")}
+                className="h-9 w-full rounded-lg border border-border bg-surface px-2 text-sm"
+              >
+                <option value="soft">{italianUi ? "Cover morbida" : "Soft cover"}</option>
+                <option value="cover">{italianUi ? "Riempi" : "Fill"}</option>
+                <option value="contain">{italianUi ? "Contieni" : "Contain"}</option>
+              </select>
+            </label>
           )}
         </TabsContent>
 
@@ -469,6 +626,14 @@ export function CoverStudioPro({
           <label className="flex items-center gap-2 text-[11px]">
             <input
               type="checkbox"
+              checked={composition.wrapLabels !== false}
+              onChange={(e) => patch((c) => ({ ...c, wrapLabels: e.target.checked }))}
+            />
+            {italianUi ? "Etichette pannelli wrap (BACK / SPINE / FRONT)" : "Wrap panel labels (BACK / SPINE / FRONT)"}
+          </label>
+          <label className="flex items-center gap-2 text-[11px]">
+            <input
+              type="checkbox"
               checked={Boolean(composition.showPrintGuides)}
               onChange={(e) => patch((c) => ({ ...c, showPrintGuides: e.target.checked }))}
             />
@@ -525,23 +690,6 @@ export function CoverStudioPro({
                 ? italianUi ? "Layout: foto autore + bio affiancata" : "Layout: author photo + bio side-by-side"
                 : italianUi ? "Layout: bio full width" : "Layout: full-width bio"}
             </p>
-            {onUploadBackImage && (
-              <label className="block">
-                <span className="mb-1 block text-[10px] text-muted-foreground">
-                  {italianUi ? "Immagine retro (texture / full bleed)" : "Back cover image"}
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="w-full text-[10px]"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) onUploadBackImage(f);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
-            )}
           </div>
           <div className="space-y-2 rounded-xl border border-border/60 p-3">
             <div className="flex items-center justify-between">

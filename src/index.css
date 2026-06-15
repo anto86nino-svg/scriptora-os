@@ -5001,6 +5001,13 @@ body,
 
 .cover-viewport-toolbar {
   min-height: 32px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.cover-zoom-pct:hover {
+  color: var(--foreground);
 }
 
 .cover-zoom-btn {

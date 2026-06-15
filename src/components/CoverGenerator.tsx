@@ -12,13 +12,17 @@ import {
   syncTextLayerContent,
   syncBackMatterContent,
   upsertFrontImageLayer,
+  createStoredCoverImage,
+  getStoredImageDataUrl,
   type CoverComposition,
 } from "@/lib/cover-studio/cover-layers";
 import { serializeCoverComposition, validateCoverComposition } from "@/lib/cover-studio/cover-composition-utils";
-import { recommendBackgroundForGenre } from "@/lib/cover-studio/cover-backgrounds";
+import { recommendBackgroundForGenre, drawBackgroundPreset, getBackgroundById } from "@/lib/cover-studio/cover-backgrounds";
 import { drawComposedFrontCover, drawPanelImageLayers } from "@/lib/cover-studio/cover-canvas-compose";
 import { drawComposedBackMatter, drawComposedSpine } from "@/lib/cover-studio/cover-back-matter-compose";
 import { drawPrintSafeGuides } from "@/lib/cover-studio/cover-view-modes";
+import { drawWrapPremiumFinish, drawBackPanelBase } from "@/lib/cover-studio/cover-wrap-render";
+import { sanitizeCoverVisibleText } from "@/lib/cover-studio/cover-text-sanitize";
 import { runCinematicGenerateSequence } from "@/lib/cover-studio/cover-cinematic-generate";
 import { CoverCinematicOverlay } from "@/components/cover/CoverCinematicOverlay";
 import { toast } from "sonner";
@@ -247,7 +251,6 @@ export function CoverGenerator({
         !getProjectCoverDataUrl(projectId)?.startsWith("data:image"),
     ),
   );
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const authorPhotoInputRef = useRef<HTMLInputElement>(null);
   const selectedIdentity = useMemo(() => {
     try {
@@ -264,10 +267,13 @@ export function CoverGenerator({
     authorName || selectedIdentity?.penName || "",
   );
   const [bookDescription, setBookDescription] = useState(
-    description || "Scrivi qui una descrizione editoriale del libro: promessa, conflitto, tono e motivo per cui il lettore dovrebbe aprirlo.",
+    sanitizeCoverVisibleText(
+      description,
+      "Scrivi qui una descrizione editoriale del libro: promessa, conflitto, tono e motivo per cui il lettore dovrebbe aprirlo.",
+    ),
   );
   const [coverAuthorBio, setCoverAuthorBio] = useState(
-    authorBio || selectedIdentity?.biography || "Breve bio autore, credibilita e nota editoriale.",
+    sanitizeCoverVisibleText(authorBio || selectedIdentity?.biography, "Breve bio autore, credibilità e nota editoriale."),
   );
   const [backTagline, setBackTagline] = useState("Una storia creata con Scriptora OS");
   const [backReviewQuote, setBackReviewQuote] = useState("");
@@ -281,7 +287,7 @@ export function CoverGenerator({
   const [customHeight, setCustomHeight] = useState(9);
   const [customSpine, setCustomSpine] = useState(0.65);
   const [dpi, setDpi] = useState(300);
-  const [imageFit, setImageFit] = useState<ImageFit>("soft");
+  const [imageFit, setImageFit] = useState<ImageFit>("cover");
   const [authorPhoto, setAuthorPhoto] = useState<string | null>(null);
   const [showAuthorPhoto, setShowAuthorPhoto] = useState(false);
   const [scriptoraSeed, setScriptoraSeed] = useState(1);
@@ -328,7 +334,13 @@ export function CoverGenerator({
     return migrateComposition(null, fallback);
   });
 
+  useEffect(() => {
+    if (composition.imageFit) setImageFit(composition.imageFit);
+  }, [composition.imageFit]);
+
   const frontCoverImage = composition.images?.front ?? null;
+  const frontCoverImageUrl = getStoredImageDataUrl(frontCoverImage);
+  const backCoverImageUrl = getStoredImageDataUrl(composition.images?.back);
 
   const studioPackage = useMemo(
     () =>
@@ -346,7 +358,7 @@ export function CoverGenerator({
           dataMode,
           hasSavedCover: coverSaved,
           darkTemplate: TEMPLATES[selectedTemplate]?.dark,
-          hasUpload: Boolean(frontCoverImage),
+          hasUpload: Boolean(frontCoverImageUrl),
         },
       ),
     [
@@ -429,7 +441,8 @@ export function CoverGenerator({
     bookDescription,
     coverAuthorBio,
     backTagline,
-    frontCoverImage,
+    frontCoverImageUrl,
+    backCoverImageUrl,
     authorPhoto,
     showAuthorPhoto,
     imageFit,
@@ -462,7 +475,9 @@ export function CoverGenerator({
 
     if (spec.isPrint && spec.backRect && spec.spineRect) {
       let authorImage: HTMLImageElement | null = null;
-      const photoSrc = showAuthorPhoto ? (authorPhoto ?? composition.images?.authorPhoto ?? null) : null;
+      const photoSrc = showAuthorPhoto
+        ? (authorPhoto ?? getStoredImageDataUrl(composition.images?.authorPhoto) ?? null)
+        : null;
       if (photoSrc) {
         try {
           authorImage = await loadImage(photoSrc);
@@ -473,7 +488,7 @@ export function CoverGenerator({
       drawPanelTint(ctx, spec.backRect, template, 0.06);
       drawPanelTint(ctx, spec.spineRect, template, 0.12);
       drawPanelTint(ctx, spec.frontRect, template, 0.04);
-      if (!frontCoverImage) {
+      if (!frontCoverImageUrl) {
         await drawComposedFrontCover(ctx, spec.frontRect, {
           composition,
           template,
@@ -490,22 +505,45 @@ export function CoverGenerator({
         await drawComposedFrontCover(ctx, spec.frontRect, {
           composition,
           template,
-          uploadedImage: frontCoverImage,
+          uploadedImage: frontCoverImageUrl,
           imageFit,
           loadImage,
           seed: scriptoraSeed,
         });
       }
-      await drawPanelImageLayers(ctx, spec.backRect, composition, "back", loadImage);
+      const drawBackProcedural = () => {
+        const bg = getBackgroundById(composition.backgroundPresetId);
+        if (bg) {
+          drawBackgroundPreset(ctx, spec.backRect, bg, scriptoraSeed + 3);
+        } else {
+          const grad = ctx.createLinearGradient(spec.backRect.x, spec.backRect.y, spec.backRect.x + spec.backRect.w, spec.backRect.y + spec.backRect.h);
+          grad.addColorStop(0, template.dark ? "#0a0a0c" : "#f8f4ec");
+          grad.addColorStop(1, template.dark ? "#1a1420" : "#e8e0d0");
+          ctx.fillStyle = grad;
+          ctx.fillRect(spec.backRect.x, spec.backRect.y, spec.backRect.w, spec.backRect.h);
+        }
+      };
+      await drawBackPanelBase(ctx, spec.backRect, {
+        backImageDataUrl: backCoverImageUrl,
+        backgroundDraw: drawBackProcedural,
+        loadImage,
+        fit: composition.imageFit ?? imageFit,
+      });
       drawComposedBackMatter(ctx, spec.backRect, composition, template, {
         authorImage: showAuthorPhoto ? authorImage : null,
         seed: scriptoraSeed,
+        skipBackground: Boolean(backCoverImageUrl),
       });
+      await drawPanelImageLayers(ctx, spec.backRect, composition, "back", loadImage);
       drawComposedSpine(ctx, spec.spineRect, composition, template);
       if (composition.showPrintGuides) drawPrintSafeGuides(ctx, spec, italianUi);
       if (showGuides) drawPrintGuides(ctx, spec, template);
+      drawWrapPremiumFinish(ctx, spec, {
+        showLabels: composition.wrapLabels !== false && Boolean(composition.showPrintGuides),
+        italian: italianUi,
+      });
     } else {
-      if (!frontCoverImage) {
+      if (!frontCoverImageUrl) {
         await drawComposedFrontCover(ctx, spec.frontRect, {
           composition,
           template,
@@ -522,7 +560,7 @@ export function CoverGenerator({
         await drawComposedFrontCover(ctx, spec.frontRect, {
           composition,
           template,
-          uploadedImage: frontCoverImage,
+          uploadedImage: frontCoverImageUrl,
           imageFit,
           loadImage,
           seed: scriptoraSeed,
@@ -801,7 +839,7 @@ export function CoverGenerator({
       setComposition((c) => ({
         ...c,
         updatedAt: new Date().toISOString(),
-        images: { ...c.images, front: dataUrl },
+        images: { ...c.images, front: createStoredCoverImage(dataUrl, "front", file.name, imageFit) },
         imageFit,
         layers: upsertFrontImageLayer(c.layers, dataUrl),
       }));
@@ -823,11 +861,19 @@ export function CoverGenerator({
       setComposition((c) => ({
         ...c,
         updatedAt: new Date().toISOString(),
-        images: { ...c.images, back: dataUrl },
+        images: { ...c.images, back: createStoredCoverImage(dataUrl, "back", file.name, imageFit) },
       }));
       toast.success(italianUi ? "Immagine retro caricata" : "Back image uploaded");
     };
     reader.readAsDataURL(file);
+  }
+
+  function clearBackImage() {
+    setComposition((c) => ({
+      ...c,
+      images: { ...c.images, back: null },
+      updatedAt: new Date().toISOString(),
+    }));
   }
 
   function clearFrontImage() {
@@ -1000,6 +1046,16 @@ export function CoverGenerator({
               onBackBioChange={setCoverAuthorBio}
               onBackQuoteChange={setBackReviewQuote}
               onUploadBackImage={handleBackImageUpload}
+              onUploadFrontImage={handleUpload}
+              onRemoveFrontImage={clearFrontImage}
+              onRemoveBackImage={clearBackImage}
+              hasFrontImage={Boolean(frontCoverImageUrl)}
+              hasBackImage={Boolean(backCoverImageUrl)}
+              imageFit={imageFit}
+              onImageFitChange={(fit) => {
+                setImageFit(fit);
+                setComposition((c) => ({ ...c, imageFit: fit, updatedAt: new Date().toISOString() }));
+              }}
               isPrintMode={spec.isPrint}
               spineWidthIn={spec.spineIn}
               pageCount={pageCount}
@@ -1010,11 +1066,12 @@ export function CoverGenerator({
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <Settings2 className="h-4 w-4 text-primary" />
-                  <span className="lg:hidden">Formato</span>
-                  <span className="hidden lg:inline">COVER STYLE</span>
+                  <span>{italianUi ? "Formato" : "Format"}</span>
                 </div>
-                <p className="hidden lg:block text-xs leading-5 text-muted-foreground">
-                  Formato editoriale, dimensioni di stampa e direzione visiva della copertina.
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {italianUi
+                    ? "EPUB, KDP, Lulu o custom — dimensioni stampa, pagine e bleed."
+                    : "EPUB, KDP, Lulu or custom — trim size, pages and bleed."}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-2 lg:gap-3">
@@ -1095,34 +1152,6 @@ export function CoverGenerator({
                 </div>
               )}
 
-              <div className="hidden lg:grid grid-cols-2 gap-2 lg:gap-3">
-                {TEMPLATES.map((t, i) => (
-                  <button
-                    key={t.name}
-                    onClick={() => {
-                      setSelectedTemplate(i);
-                      const meta = COVER_TEMPLATES.find((t) => t.templateIndex === i);
-                      if (meta) setSelectedTemplateId(meta.id);
-                    }}
-                    className={`min-h-16 lg:min-h-[76px] rounded-xl lg:rounded-2xl border p-2 lg:p-3 text-left transition-all duration-200 ${
-                      i === selectedTemplate
-                        ? "border-primary bg-primary/15 shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
-                        : "border-border/70 bg-surface/50 hover:bg-surface hover:-translate-y-0.5"
-                    }`}
-                  >
-                    <span className="flex items-center gap-2 lg:gap-3">
-                      <span
-                        className="h-7 w-7 lg:h-9 lg:w-9 rounded-lg lg:rounded-xl border border-white/20 shadow-inner"
-                        style={{ background: `linear-gradient(135deg, ${t.palette[0]}, ${t.palette[1]}, ${t.palette[3]})` }}
-                      />
-                      <span className="min-w-0">
-                        <span className="block truncate text-xs lg:text-sm font-semibold text-foreground">{t.name}</span>
-                        <span className="block truncate text-[10px] lg:text-[11px] text-muted-foreground">{t.mood}</span>
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
             </section>
 
             <details className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
@@ -1165,11 +1194,10 @@ export function CoverGenerator({
               </div>
             </details>
 
-            <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
-              <p className="text-sm font-semibold text-foreground">
-                <span className="lg:hidden">Retro copertina</span>
-                <span className="hidden lg:inline">BACK MATTER</span>
-              </p>
+            <details className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+              <summary className="cursor-pointer text-sm font-semibold text-foreground list-none">
+                {italianUi ? "Retro copertina (avanzato)" : "Back matter (advanced)"}
+              </summary>
               <label className="space-y-1 block">
                 <span className="text-xs font-medium text-muted-foreground">Headline retro</span>
                 <input
@@ -1185,6 +1213,9 @@ export function CoverGenerator({
                   className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
                   value={bookDescription}
                   onChange={(e) => setBookDescription(e.target.value)}
+                  onBlur={(e) =>
+                    setBookDescription(sanitizeCoverVisibleText(e.target.value, bookDescription))
+                  }
                 />
               </label>
               <label className="space-y-1 block">
@@ -1194,18 +1225,22 @@ export function CoverGenerator({
                   className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
                   value={coverAuthorBio}
                   onChange={(e) => setCoverAuthorBio(e.target.value)}
+                  onBlur={(e) =>
+                    setCoverAuthorBio(sanitizeCoverVisibleText(e.target.value, coverAuthorBio))
+                  }
                 />
               </label>
-            </section>
+            </details>
 
             <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-foreground">
-                  <span className="lg:hidden">Immagine e stile</span>
-                  <span className="hidden lg:inline">AI ENHANCEMENT</span>
+                  {italianUi ? "Sfondo AI" : "AI background"}
                 </p>
-                <p className="hidden lg:block text-xs leading-5 text-muted-foreground">
-                  Scriptora interpreta genere e tono per creare solo lo sfondo. Titolo, sottotitolo e autore restano modificabili dai controlli testo.
+                <p className="text-xs leading-5 text-muted-foreground">
+                  {italianUi
+                    ? "Scriptora genera solo lo sfondo procedurale. Carica fronte/retro dal tab Immagini in Cover Studio Pro."
+                    : "Scriptora generates procedural background only. Upload front/back from Images tab in Cover Studio Pro."}
                 </p>
               </div>
               <label className="space-y-1 block">
@@ -1217,15 +1252,7 @@ export function CoverGenerator({
                   className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </label>
-              <div className="grid grid-cols-2 gap-2 lg:gap-3">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-border/70 bg-surface/60 px-3 py-2 lg:py-3 text-xs lg:text-sm font-semibold text-foreground hover:bg-surface transition-colors"
-                >
-                  <Upload className="h-4 w-4" />
-                  Carica immagine
-                </button>
+              <div className="grid grid-cols-1 gap-2 lg:gap-3">
                 <div className="flex flex-col gap-1.5">
                   <button
                     type="button"
@@ -1233,8 +1260,7 @@ export function CoverGenerator({
                     className="flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/12 px-3 py-2 lg:py-3 text-xs lg:text-sm font-semibold text-primary hover:bg-primary/18 transition-colors"
                   >
                     <Wand2 className="h-4 w-4" />
-                    <span className="lg:hidden">Genera cover</span>
-                    <span className="hidden lg:inline">Genera copertina Scriptora</span>
+                    <span>{italianUi ? "Genera sfondo Scriptora" : "Generate Scriptora background"}</span>
                   </button>
                   <CreditCostBadge operation="cover_generation" prominent className="self-center" />
                 </div>
@@ -1244,34 +1270,6 @@ export function CoverGenerator({
                   Direzione AI: {scriptoraArtDirection.label}. Sfondo generato senza testo incorporato.
                 </div>
               )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleUpload(e.target.files?.[0])}
-              />
-              {frontCoverImage && (
-                <button
-                  type="button"
-                  onClick={clearFrontImage}
-                  className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                  Rimuovi immagine caricata
-                </button>
-              )}
-              <label className="space-y-1 block">
-                <span className="text-xs font-medium text-muted-foreground">Adattamento immagine</span>
-                <select
-                  value={imageFit}
-                  onChange={(e) => setImageFit(e.target.value as ImageFit)}
-                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-2 lg:px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="soft">Cover morbida</option>
-                  <option value="cover">Riempi</option>
-                  <option value="contain">Contieni</option>
-                </select>
-              </label>
 
               {mode !== "epub" && (
                 <div className="rounded-xl lg:rounded-2xl border border-border/70 bg-surface/40 p-3 lg:p-4">
@@ -1327,36 +1325,6 @@ export function CoverGenerator({
                   />
                 </div>
               )}
-
-              <div className="grid grid-cols-2 gap-2 lg:hidden">
-                {TEMPLATES.map((t, i) => (
-                  <button
-                    key={t.name}
-                    onClick={() => {
-                      setSelectedTemplate(i);
-                      const meta = COVER_TEMPLATES.find((t) => t.templateIndex === i);
-                      if (meta) setSelectedTemplateId(meta.id);
-                    }}
-                    className={`min-h-16 rounded-xl border p-2 text-left transition-colors ${
-                      i === selectedTemplate
-                        ? "border-primary bg-primary/15"
-                        : "border-border/70 bg-surface/50 hover:bg-surface"
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span
-                        className="h-7 w-7 rounded-lg border border-white/20 shadow-inner"
-                        style={{ background: `linear-gradient(135deg, ${t.palette[0]}, ${t.palette[1]}, ${t.palette[3]})` }}
-                      />
-                      <span className="min-w-0">
-                        <span className="block truncate text-xs font-semibold text-foreground">{t.name}</span>
-                        <span className="block truncate text-[10px] text-muted-foreground">{t.mood}</span>
-                      </span>
-                    </span>
-                  </button>
-                ))}
-              </div>
-
             </section>
             </div>
 

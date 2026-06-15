@@ -80,7 +80,7 @@ export function computeViewportFit(input: ViewportFitInput): ViewportFitResult {
   }
 
   const baseScale = displayWidth / canvasWidth;
-  const zoom = Math.max(0.35, Math.min(2.5, userZoom));
+  const zoom = Math.max(0.25, Math.min(2.5, userZoom));
 
   let panX = 0;
   let panY = 0;
@@ -114,5 +114,5 @@ export function computeViewportFit(input: ViewportFitInput): ViewportFitResult {
 }
 
 export function clampUserZoom(zoom: number): number {
-  return Math.max(0.35, Math.min(2.5, zoom));
+  return Math.max(0.25, Math.min(2.5, zoom));
 }

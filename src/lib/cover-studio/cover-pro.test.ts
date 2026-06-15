@@ -25,6 +25,7 @@ describe("cover-studio pro assets", () => {
     expect(c.layers.some((l) => l.type === "title")).toBe(true);
     expect(c.layers.some((l) => l.type === "back-bio")).toBe(true);
     expect(c.layers.find((l) => l.type === "title")?.content).toBe("Test Book");
+    expect(c.visualIntensity).toBe("premium");
   });
 
   it("default layers include title subtitle author", () => {
@@ -112,5 +113,36 @@ describe("cover composition utils", () => {
     });
     expect(["pass", "warning", "fail"]).toContain(report.overall);
     expect(report.items.length).toBeGreaterThan(3);
+  });
+});
+
+describe("cover text sanitize", () => {
+  it("strips JSON metadata from visible text", async () => {
+    const { sanitizeCoverVisibleText } = await import("./cover-text-sanitize");
+    const raw = JSON.stringify({
+      purpose: "hook reader",
+      emotionalFunction: "tension",
+      description: "Un thriller psicologico che esplora i confini della memoria e della colpa.",
+    });
+    const clean = sanitizeCoverVisibleText(raw);
+    expect(clean).not.toMatch(/purpose|emotionalFunction/i);
+    expect(clean).toContain("thriller");
+  });
+
+  it("returns fallback for empty technical blobs", async () => {
+    const { sanitizeCoverVisibleText } = await import("./cover-text-sanitize");
+    expect(sanitizeCoverVisibleText('{"purpose":"x","emotionalFunction":"y"}', "Bio pulita")).toBe("Bio pulita");
+  });
+});
+
+describe("stored cover images", () => {
+  it("normalizes legacy string images to StoredCoverImage", async () => {
+    const { normalizeCoverImages, getStoredImageDataUrl } = await import("./cover-layers");
+    const norm = normalizeCoverImages({
+      front: "data:image/png;base64,abc",
+      back: null,
+    });
+    expect(typeof norm.front).toBe("object");
+    expect(getStoredImageDataUrl(norm.front)).toBe("data:image/png;base64,abc");
   });
 });

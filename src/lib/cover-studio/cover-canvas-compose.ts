@@ -1,5 +1,6 @@
 import type { CoverComposition } from "./cover-layers";
 import type { CoverLayer } from "./cover-layers";
+import { getStoredImageDataUrl } from "./cover-layers";
 import type { CanvasRect } from "./cover-backgrounds";
 import { drawBackgroundPreset, getBackgroundById } from "./cover-backgrounds";
 import { drawStickerSymbol, getStickerById } from "./cover-stickers";
@@ -28,7 +29,7 @@ export async function drawComposedFrontCover(
 ) {
   const { composition, template, seed = 1 } = opts;
   const frontImage =
-    opts.uploadedImage ?? composition.images?.front ?? null;
+    opts.uploadedImage ?? getStoredImageDataUrl(composition.images?.front) ?? null;
 
   if (frontImage && opts.loadImage) {
     try {
@@ -86,22 +87,6 @@ export async function drawPanelImageLayers(
   panel: "front" | "back" | "spine",
   loadImage?: (src: string) => Promise<HTMLImageElement>,
 ) {
-  const panelImage =
-    panel === "back"
-      ? composition.images?.back
-      : panel === "spine"
-        ? composition.images?.spine
-        : composition.images?.front;
-
-  if (panelImage && loadImage) {
-    try {
-      const image = await loadImage(panelImage);
-      drawImageInRect(ctx, image, rect, composition.imageFit ?? "cover");
-    } catch {
-      /* skip */
-    }
-  }
-
   const sorted = [...composition.layers]
     .filter((l) => l.visible !== false && l.type === "image" && l.style?.imagePanel === panel)
     .sort((a, b) => a.zIndex - b.zIndex);

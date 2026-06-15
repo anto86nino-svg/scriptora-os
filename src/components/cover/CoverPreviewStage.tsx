@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Minus, Plus, RotateCcw } from "lucide-react";
+import { Minus, Plus, RotateCcw, Maximize2 } from "lucide-react";
 import type { CoverComposition, CoverLayer } from "@/lib/cover-studio/cover-layers";
 import {
   getDraggableLayersForView,
@@ -60,6 +60,7 @@ export function CoverPreviewStage({
   onActivePanelChange,
 }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const lastTapRef = useRef(0);
@@ -86,7 +87,7 @@ export function CoverPreviewStage({
   }, []);
 
   useEffect(() => {
-    const el = viewportRef.current;
+    const el = measureRef.current;
     if (!el) return;
     const ro = new ResizeObserver((entries) => {
       const rect = entries[0]?.contentRect;
@@ -231,8 +232,8 @@ export function CoverPreviewStage({
     effectiveSpec.isPrint && (viewMode === "open-book" || viewMode === "paperback");
 
   return (
-    <div className="cover-preview-stage-root w-full max-w-full min-w-0">
-      <div className="cover-viewport-toolbar mb-2 flex flex-wrap items-center justify-center gap-1.5">
+    <div className="cover-preview-stage-root relative w-full max-w-full min-w-0">
+      <div className="cover-viewport-toolbar sticky top-0 z-20 mb-2 flex w-full flex-wrap items-center justify-center gap-1.5 rounded-lg border border-border/50 bg-background/92 px-2 py-1.5 backdrop-blur-md">
         {showPanelNav &&
           (["front", "spine", "back"] as CoverPanel[]).map((panel) => (
             <button
@@ -249,15 +250,29 @@ export function CoverPreviewStage({
               {italianUi ? PANEL_LABELS[panel].it : PANEL_LABELS[panel].en}
             </button>
           ))}
-        <div className="flex items-center gap-0.5 rounded-lg border border-border/60 bg-background/40 p-0.5">
+        <div className="flex items-center gap-0.5 rounded-lg border border-border/60 bg-background/60 p-0.5 shadow-sm">
           <button type="button" className="cover-zoom-btn" onClick={() => setUserZoom((z) => clampUserZoom(z - 0.12))} aria-label="Zoom out">
             <Minus className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            className="cover-zoom-pct min-w-[44px] px-1 text-[10px] font-semibold tabular-nums text-muted-foreground"
+            onClick={resetFit}
+            aria-label={italianUi ? "Reset zoom" : "Reset zoom"}
+          >
+            {Math.round(fit.userZoom * 100)}%
           </button>
           <button type="button" className="cover-zoom-btn" onClick={() => setUserZoom((z) => clampUserZoom(z + 0.12))} aria-label="Zoom in">
             <Plus className="h-3.5 w-3.5" />
           </button>
-          <button type="button" className="cover-zoom-btn" onClick={resetFit} aria-label={italianUi ? "Reset fit" : "Reset fit"}>
-            <RotateCcw className="h-3.5 w-3.5" />
+          <button
+            type="button"
+            className="cover-zoom-btn"
+            onClick={resetFit}
+            aria-label={italianUi ? "Adatta allo schermo" : "Fit to screen"}
+            title={italianUi ? "Adatta allo schermo" : "Fit to screen"}
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
@@ -265,10 +280,12 @@ export function CoverPreviewStage({
       <div
         ref={viewportRef}
         className={cn(
-          "cover-viewport-frame relative mx-auto flex w-full items-center justify-center overflow-hidden",
+          "cover-viewport-frame relative mx-auto flex w-full flex-col",
+          fit.userZoom > 1.02 ? "overflow-auto" : "overflow-hidden",
           isMobile ? "cover-viewport-frame--mobile" : "cover-viewport-frame--desktop",
         )}
       >
+        <div ref={measureRef} className="flex min-h-0 flex-1 items-center justify-center p-1">
         <div
           ref={stageRef}
           className="cover-studio-pro-stage relative touch-none select-none shrink-0"
@@ -381,6 +398,7 @@ export function CoverPreviewStage({
               })}
             </div>
           </div>
+        </div>
         </div>
       </div>
       <p className="mt-2 text-center text-[10px] text-muted-foreground lg:text-left">

@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { CoverPanel, CoverViewMode } from "./cover-view-modes";
+import type { CoverVisualIntensity } from "./cover-visual-intensity";
 
 export type CoverLayerType =
   | "title"
@@ -27,11 +28,55 @@ export type CoverImageRole =
   | "quote-bg"
   | "background-art";
 
+export interface StoredCoverImage {
+  dataUrl: string;
+  name?: string;
+  createdAt: string;
+  placement: CoverPanel;
+  fitMode?: "cover" | "contain" | "soft";
+}
+
 export interface CoverImageAssets {
-  front?: string | null;
-  back?: string | null;
-  spine?: string | null;
-  authorPhoto?: string | null;
+  front?: StoredCoverImage | string | null;
+  back?: StoredCoverImage | string | null;
+  spine?: StoredCoverImage | string | null;
+  authorPhoto?: StoredCoverImage | string | null;
+}
+
+export function getStoredImageDataUrl(img?: StoredCoverImage | string | null): string | null {
+  if (!img) return null;
+  if (typeof img === "string") return img.startsWith("data:image") ? img : null;
+  return img.dataUrl?.startsWith("data:image") ? img.dataUrl : null;
+}
+
+export function createStoredCoverImage(
+  dataUrl: string,
+  placement: CoverPanel,
+  name?: string,
+  fitMode: "cover" | "contain" | "soft" = "cover",
+): StoredCoverImage {
+  return {
+    dataUrl,
+    name,
+    createdAt: new Date().toISOString(),
+    placement,
+    fitMode,
+  };
+}
+
+export function normalizeCoverImages(raw?: CoverImageAssets): CoverImageAssets {
+  if (!raw) return {};
+  const norm = (v?: StoredCoverImage | string | null, placement: CoverPanel = "front") => {
+    if (!v) return null;
+    if (typeof v === "string") return createStoredCoverImage(v, placement);
+    return v;
+  };
+  return {
+    front: norm(raw.front, "front"),
+    back: norm(raw.back, "back"),
+    spine: norm(raw.spine, "spine"),
+    authorPhoto: norm(raw.authorPhoto, "front"),
+  };
 }
 
 export interface CoverLayer {
@@ -92,6 +137,8 @@ export interface CoverComposition {
   activePanel?: CoverPanel;
   images?: CoverImageAssets;
   imageFit?: "cover" | "contain" | "soft";
+  visualIntensity?: CoverVisualIntensity;
+  wrapLabels?: boolean;
 }
 
 export type TextPositionPreset =
@@ -392,8 +439,10 @@ export function migrateComposition(
       viewMode: raw.viewMode ?? "front",
       showPrintGuides: raw.showPrintGuides ?? false,
       activePanel: raw.activePanel ?? "front",
-      images: raw.images ?? {},
-      imageFit: raw.imageFit ?? "soft",
+      images: normalizeCoverImages(raw.images),
+      imageFit: raw.imageFit ?? "cover",
+      visualIntensity: raw.visualIntensity ?? "premium",
+      wrapLabels: raw.wrapLabels ?? true,
     };
   }
   return {
@@ -418,7 +467,9 @@ export function migrateComposition(
     showPrintGuides: false,
     activePanel: "front",
     images: {},
-    imageFit: "soft",
+    imageFit: "cover",
+    visualIntensity: "premium",
+    wrapLabels: true,
   };
 }
 

@@ -20,18 +20,21 @@ export function drawComposedBackMatter(
   opts?: {
     authorImage?: HTMLImageElement | null;
     seed?: number;
+    skipBackground?: boolean;
   },
 ) {
   const seed = opts?.seed ?? 1;
-  const bg = getBackgroundById(composition.backgroundPresetId);
-  if (bg) {
-    drawBackgroundPreset(ctx, rect, bg, seed + 3);
-  } else {
-    const grad = ctx.createLinearGradient(rect.x, rect.y, rect.x + rect.w, rect.y + rect.h);
-    grad.addColorStop(0, template.dark ? "#0a0a0c" : "#f8f4ec");
-    grad.addColorStop(1, template.dark ? "#1a1420" : "#e8e0d0");
-    ctx.fillStyle = grad;
-    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+  if (!opts?.skipBackground) {
+    const bg = getBackgroundById(composition.backgroundPresetId);
+    if (bg) {
+      drawBackgroundPreset(ctx, rect, bg, seed + 3);
+    } else {
+      const grad = ctx.createLinearGradient(rect.x, rect.y, rect.x + rect.w, rect.y + rect.h);
+      grad.addColorStop(0, template.dark ? "#0a0a0c" : "#f8f4ec");
+      grad.addColorStop(1, template.dark ? "#1a1420" : "#e8e0d0");
+      ctx.fillStyle = grad;
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    }
   }
 
   ctx.save();
