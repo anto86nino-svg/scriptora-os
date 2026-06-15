@@ -6613,3 +6613,47 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
     flex-shrink: 0 !important;
   }
 }
+
+/* SCRIPTORA MOBILE — NEW BOOK WIZARD PAGE-SCROLL FALLBACK
+   Strong fallback: scroll the whole fixed overlay instead of relying on inner scroll.
+   This is intentionally scoped to overlays containing .scriptora-wizard-shell.
+*/
+@media (max-width: 767px) {
+  .scriptora-modal-overlay:has(.scriptora-wizard-shell) {
+    display: block !important;
+    align-items: initial !important;
+    justify-content: initial !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 0.5rem) !important;
+    padding-right: 0.5rem !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem) !important;
+    padding-left: 0.5rem !important;
+  }
+
+  .scriptora-modal-overlay:has(.scriptora-wizard-shell) .scriptora-wizard-shell {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    border-radius: 1.25rem !important;
+  }
+
+  .scriptora-modal-overlay:has(.scriptora-wizard-shell) .scriptora-wizard-scroll {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding-bottom: 1rem !important;
+  }
+
+  .scriptora-modal-overlay:has(.scriptora-wizard-shell) .scriptora-wizard-footer {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 5 !important;
+    margin-right: -0.01px;
+  }
+}
