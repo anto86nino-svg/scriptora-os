@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, lazy, Suspense } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { NavigationTree } from "@/components/NavigationTree";
 import { TopBar } from "@/components/TopBar";
@@ -34,6 +34,7 @@ import { toast } from "sonner";
 import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu, X, ArrowLeft } from "lucide-react";
 import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
+import { UpgradeModal } from "@/components/UpgradeModal";
 
 const VoiceStudioDialog = lazy(() =>
   import("@/components/VoiceStudioDialog").then((m) => ({ default: m.VoiceStudioDialog })),
@@ -149,6 +150,7 @@ function getWriterHeaderContext(
 
 const Index = () => {
   useUILanguage();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [showCover, setShowCover] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
