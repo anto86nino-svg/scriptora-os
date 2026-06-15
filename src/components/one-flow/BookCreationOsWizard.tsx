@@ -1127,65 +1127,67 @@ export function BookCreationOsWizard({
 
               <label className="block space-y-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Titolo reale</span>
-                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Es. La Cattedrale delle Anime Dimenticate" className={inputClass} />
+                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={forgePresetId === "poetry" ? "Es. Geografia delle cose non dette" : "Es. La Cattedrale delle Anime Dimenticate"} className={inputClass} />
               </label>
               <label className="block space-y-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Sottotitolo / promessa</span>
-                <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder="Es. Ogni segreto ha un prezzo. Ogni anima reclama il proprio debito." className={inputClass} />
+                <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder={forgePresetId === "poetry" ? "Es. Poesie sul silenzio, la memoria e la rinascita" : "Es. Ogni segreto ha un prezzo. Ogni anima reclama il proprio debito."} className={inputClass} />
               </label>
 
-              <div className="rounded-2xl border border-violet-400/25 bg-gradient-to-br from-violet-500/10 via-sky-500/5 to-transparent p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-200/80">Forgia titoli magica</p>
-                    <p className="mt-1 text-xs text-white/55">3–5 proposte titolo + sottotitolo allineate al filone editoriale.</p>
+              {forgePresetId !== "poetry" && (
+                <div className="rounded-2xl border border-violet-400/25 bg-gradient-to-br from-violet-500/10 via-sky-500/5 to-transparent p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-200/80">Forgia titoli magica</p>
+                      <p className="mt-1 text-xs text-white/55">3–5 proposte titolo + sottotitolo allineate al filone editoriale.</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={generatingTitles}
+                      onClick={() => void runMagicalTitleGeneration()}
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-sky-500 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+                    >
+                      {generatingTitles ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                      {generatingTitles ? "Forgia in corso…" : "Genera titoli magici"}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    disabled={generatingTitles}
-                    onClick={() => void runMagicalTitleGeneration()}
-                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-sky-500 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
-                  >
-                    {generatingTitles ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    {generatingTitles ? "Forgia in corso…" : "Genera titoli magici"}
-                  </button>
-                </div>
-                <p className="mt-2 text-[11px] text-white/45">
-                  {freeTitleRegensLeft > 0
-                    ? `Rigenerazioni gratuite rimaste: ${freeTitleRegensLeft}/${WIZARD_TITLE_FREE_REGENS}`
-                    : "Nuova rigenerazione premium: 35 crediti"}
-                </p>
-                {generatingTitles && (
-                  <div className="mt-4 space-y-2">
-                    <div className="flex gap-1">
-                      {TITLE_FORGE_PHASES.map((_, i) => (
-                        <span key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= titleForgePhase ? "bg-violet-400" : "bg-white/10"}`} />
+                  <p className="mt-2 text-[11px] text-white/45">
+                    {freeTitleRegensLeft > 0
+                      ? `Rigenerazioni gratuite rimaste: ${freeTitleRegensLeft}/${WIZARD_TITLE_FREE_REGENS}`
+                      : "Nuova rigenerazione premium: 35 crediti"}
+                  </p>
+                  {generatingTitles && (
+                    <div className="mt-4 space-y-2">
+                      <div className="flex gap-1">
+                        {TITLE_FORGE_PHASES.map((_, i) => (
+                          <span key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= titleForgePhase ? "bg-violet-400" : "bg-white/10"}`} />
+                        ))}
+                      </div>
+                      <p className="text-sm font-medium text-violet-100 animate-pulse">{titleForgeLabel || TITLE_FORGE_PHASES[0]}</p>
+                    </div>
+                  )}
+                  {titleProposals.length > 0 && !generatingTitles && (
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      {titleProposals.map((proposal) => (
+                        <button
+                          key={`${proposal.title}-${proposal.badge}`}
+                          type="button"
+                          onClick={() => applyTitleProposal(proposal)}
+                          className="rounded-xl border border-white/12 bg-white/[0.05] p-3 text-left transition-colors hover:border-violet-300/40 hover:bg-violet-400/10"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-sm font-bold text-white">{proposal.title}</span>
+                            <span className="shrink-0 rounded-full border border-violet-300/30 bg-violet-300/10 px-2 py-0.5 text-[9px] font-bold text-violet-100">{proposal.badge}</span>
+                          </div>
+                          <p className="mt-1 text-[11px] leading-4 text-white/60">{proposal.subtitle}</p>
+                          <p className="mt-2 text-[10px] text-sky-200/80">{proposal.perceivedGenre} · Hook {proposal.hookScore}/100</p>
+                          <p className="mt-1 text-[10px] leading-4 text-white/45">{proposal.rationale}</p>
+                        </button>
                       ))}
                     </div>
-                    <p className="text-sm font-medium text-violet-100 animate-pulse">{titleForgeLabel || TITLE_FORGE_PHASES[0]}</p>
-                  </div>
-                )}
-                {titleProposals.length > 0 && !generatingTitles && (
-                  <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                    {titleProposals.map((proposal) => (
-                      <button
-                        key={`${proposal.title}-${proposal.badge}`}
-                        type="button"
-                        onClick={() => applyTitleProposal(proposal)}
-                        className="rounded-xl border border-white/12 bg-white/[0.05] p-3 text-left transition-colors hover:border-violet-300/40 hover:bg-violet-400/10"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-sm font-bold text-white">{proposal.title}</span>
-                          <span className="shrink-0 rounded-full border border-violet-300/30 bg-violet-300/10 px-2 py-0.5 text-[9px] font-bold text-violet-100">{proposal.badge}</span>
-                        </div>
-                        <p className="mt-1 text-[11px] leading-4 text-white/60">{proposal.subtitle}</p>
-                        <p className="mt-2 text-[10px] text-sky-200/80">{proposal.perceivedGenre} · Hook {proposal.hookScore}/100</p>
-                        <p className="mt-1 text-[10px] leading-4 text-white/45">{proposal.rationale}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               <label className="block space-y-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Nome autore</span>
@@ -1227,6 +1229,14 @@ export function BookCreationOsWizard({
                 </div>
               </div>
               )}
+              {forgePresetId === "poetry" ? (
+                <div className="rounded-2xl border border-sky-300/20 bg-sky-400/10 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-200/80">Raccolta poetica configurata</p>
+                  <p className="mt-1 text-sm font-semibold text-white">Poesie · Versi liberi · Sezioni emotive</p>
+                  <p className="mt-1 text-xs leading-5 text-white/55">Scriptora userà una struttura da raccolta poetica, non da romanzo: titoli evocativi, ritmo, immagini concrete, spazio bianco e poca spiegazione.</p>
+                </div>
+              ) : (
+                <>
               <select
                 value={bookTypeId}
                 onChange={(e) => applyStudioGenre(e.target.value)}
@@ -1237,6 +1247,8 @@ export function BookCreationOsWizard({
               <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Categoria" className={inputClass} />
               <input value={subcategory} onChange={(e) => setSubcategory(e.target.value)} placeholder="Sottocategoria" className={inputClass} />
               <input value={subgenre} onChange={(e) => { setSubgenre(e.target.value); setCoherenceDismissed(false); }} placeholder="Sottogenere (opzionale)" className={inputClass} />
+                </>
+              )}
 
               {showCoherenceWarning && !coherenceDismissed && (
                 <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100 space-y-3">
@@ -1268,7 +1280,7 @@ export function BookCreationOsWizard({
 
               <label className="block space-y-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Idea del libro</span>
-                <textarea value={idea} onChange={(e) => setIdea(e.target.value)} rows={3} placeholder="Scrivi anche male: personaggio, desiderio, problema, atmosfera. Scriptora organizza il resto." className={inputClass} />
+                <textarea value={idea} onChange={(e) => setIdea(e.target.value)} rows={3} placeholder={forgePresetId === "poetry" ? "Scrivi il tema della raccolta: amore, perdita, rinascita, famiglia, buio, fede, corpo, memoria..." : "Scrivi anche male: personaggio, desiderio, problema, atmosfera. Scriptora organizza il resto."} className={inputClass} />
               </label>
               {onDetectIntent && (
                 <button type="button" onClick={() => void detectFromIdea()} className="text-xs font-semibold text-sky-300 hover:text-sky-200">
