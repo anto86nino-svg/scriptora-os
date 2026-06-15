@@ -456,6 +456,234 @@ export function BookCreationOsWizard({
   }, [open]);
 
   useEffect(() => {
+    if (!open) return;
+
+    const applyForgePresetFromSession = () => {
+      try {
+        const raw = sessionStorage.getItem("scriptora-forge-selected-preset");
+        if (!raw) return;
+
+        const preset = JSON.parse(raw) as {
+          id?: string;
+          label?: string;
+          defaultChapters?: number;
+          defaultLanguage?: Language;
+          tone?: string;
+          blueprintHint?: string;
+          promise?: string;
+        };
+
+        sessionStorage.removeItem("scriptora-forge-selected-preset");
+
+        const presetId = String(preset.id || "");
+        const presetTone = String(preset.tone || "").trim();
+        const presetHint = String(preset.blueprintHint || "").trim();
+        const presetPromise = String(preset.promise || "").trim();
+
+        setStep(0);
+        setLanguage(preset.defaultLanguage || "Italian");
+        setChapters(Number(preset.defaultChapters || 8));
+        setChapterLength("medium");
+        setBookLength(isFree ? "short" : "medium");
+        setTargetReader("");
+        setReferenceAuthors("");
+        setCommercialGoal(presetPromise);
+        setNarrativePromise(presetPromise);
+        setVoiceConsistency(
+          presetHint ||
+          "Mantieni coerenza di struttura, tono, promessa editoriale e lettore in ogni sezione."
+        );
+        setCoherenceDismissed(true);
+        setShowCoherenceWarning(false);
+
+        if (presetTone) setTone(presetTone);
+
+        if (presetId === "poetry") {
+          setBookTypeId("literary");
+          setLevel1BookType("romanzo");
+          setGenre("literary" as Genre);
+          setCategory("Poetry");
+          setSubcategory("Poetry Collection");
+          setSubgenre("raccolta poetica contemporanea");
+          setChapters(6);
+          setSubchaptersEnabled(false);
+          setSubchaptersPerChapter(0);
+          setChapterLength("short");
+          setBookLength(isFree ? "short" : "short");
+          setTone(presetTone || "lirico, essenziale, emotivo, contemporaneo");
+          setIdea((current) =>
+            current ||
+            "Una raccolta di poesie organizzata in sezioni emotive, con versi liberi, immagini concrete, silenzi, ritmo e nessuna struttura da romanzo."
+          );
+          setCommercialGoal("Raccolta poetica leggibile, intima e pubblicabile, con sezioni coerenti e forte identità emotiva.");
+          setNarrativePromise("Trasformare emozioni, memoria e immagini in una raccolta poetica coerente.");
+          return;
+        }
+
+        if (presetId === "songs") {
+          setBookTypeId("literary");
+          setLevel1BookType("romanzo");
+          setGenre("literary" as Genre);
+          setCategory("Music");
+          setSubcategory("Songbook");
+          setSubgenre("raccolta testi canzoni");
+          setChapters(8);
+          setSubchaptersEnabled(false);
+          setSubchaptersPerChapter(0);
+          setChapterLength("short");
+          setTone(presetTone || "musicale, emotivo, memorabile");
+          setIdea((current) =>
+            current ||
+            "Una raccolta di testi musicali con strofe, ritornelli, bridge, hook cantabili e identità emotiva coerente."
+          );
+          return;
+        }
+
+        if (presetId === "history") {
+          setBookTypeId("education");
+          setLevel1BookType("self-help");
+          setGenre("nonfiction" as Genre);
+          setCategory("Education");
+          setSubcategory("History");
+          setSubgenre("storia divulgativa");
+          setChapters(14);
+          setSubchaptersEnabled(true);
+          setSubchaptersPerChapter(3);
+          setTone(presetTone || "divulgativo, accurato, ordinato");
+          setIdea((current) =>
+            current ||
+            "Un libro di storia con cronologia, contesto, cause, conseguenze, protagonisti e box di approfondimento."
+          );
+          return;
+        }
+
+        if (presetId === "math") {
+          setBookTypeId("education");
+          setLevel1BookType("self-help");
+          setGenre("nonfiction" as Genre);
+          setCategory("Education");
+          setSubcategory("Mathematics");
+          setSubgenre("matematica didattica");
+          setChapters(10);
+          setSubchaptersEnabled(true);
+          setSubchaptersPerChapter(3);
+          setTone(presetTone || "didattico, preciso, progressivo");
+          setIdea((current) =>
+            current ||
+            "Un libro didattico di matematica con teoria, formule, esempi svolti, esercizi graduati e soluzioni."
+          );
+          return;
+        }
+
+        if (presetId === "physics") {
+          setBookTypeId("education");
+          setLevel1BookType("self-help");
+          setGenre("nonfiction" as Genre);
+          setCategory("Education");
+          setSubcategory("Physics");
+          setSubgenre("fisica didattica");
+          setChapters(10);
+          setSubchaptersEnabled(true);
+          setSubchaptersPerChapter(3);
+          setTone(presetTone || "scientifico, chiaro, visuale");
+          setIdea((current) =>
+            current ||
+            "Un libro didattico di fisica con concetti, formule, esempi reali, problemi risolti, esperimenti e sintesi."
+          );
+          return;
+        }
+
+        if (presetId === "manual") {
+          setBookTypeId("manual");
+          setLevel1BookType("self-help");
+          setGenre("nonfiction" as Genre);
+          setCategory("Nonfiction");
+          setSubcategory("Manual");
+          setSubgenre("manuale pratico");
+          setChapters(12);
+          setSubchaptersEnabled(true);
+          setSubchaptersPerChapter(3);
+          setTone(presetTone || "chiaro, pratico, autorevole");
+          return;
+        }
+
+        if (presetId === "essay" || presetId === "philosophy") {
+          setBookTypeId("literary");
+          setLevel1BookType("romanzo");
+          setGenre("literary" as Genre);
+          setCategory("Nonfiction");
+          setSubcategory(presetId === "philosophy" ? "Philosophy" : "Essay");
+          setSubgenre(presetId === "philosophy" ? "filosofia divulgativa" : "saggio argomentativo");
+          setChapters(presetId === "philosophy" ? 12 : 10);
+          setSubchaptersEnabled(true);
+          setSubchaptersPerChapter(3);
+          setTone(presetTone || "profondo, chiaro, argomentativo");
+          return;
+        }
+
+        if (presetId === "children") {
+          setBookTypeId("children");
+          setLevel1BookType("romanzo");
+          setGenre("children" as Genre);
+          setCategory("Children");
+          setSubcategory("Children Book");
+          setSubgenre("libro per bambini");
+          setChapters(8);
+          setSubchaptersEnabled(false);
+          setSubchaptersPerChapter(0);
+          setChapterLength("short");
+          setTone(presetTone || "semplice, caldo, immaginifico");
+          return;
+        }
+
+        if (presetId === "self_help") {
+          setBookTypeId("self-help");
+          setLevel1BookType("self-help");
+          setGenre("self-help" as Genre);
+          setCategory("Nonfiction");
+          setSubcategory("Self-help");
+          setSubgenre("self-help pratico");
+          setChapters(12);
+          setSubchaptersEnabled(true);
+          setSubchaptersPerChapter(3);
+          setTone(presetTone || "motivazionale, umano, pratico");
+          return;
+        }
+
+        if (presetId === "business") {
+          setBookTypeId("business");
+          setLevel1BookType("business");
+          setGenre("nonfiction" as Genre);
+          setCategory("Business");
+          setSubcategory("Business Strategy");
+          setSubgenre("business pratico");
+          setChapters(12);
+          setSubchaptersEnabled(true);
+          setSubchaptersPerChapter(3);
+          setTone(presetTone || "autorevole, concreto, commerciale");
+          return;
+        }
+
+        // Romanzo/default
+        setBookTypeId("literary");
+        setLevel1BookType("romanzo");
+        setGenre("literary" as Genre);
+        setCategory("Fiction");
+        setSubcategory("Literary Fiction");
+        setSubgenre("romanzo contemporaneo");
+        setChapters(18);
+        setSubchaptersEnabled(true);
+        setSubchaptersPerChapter(3);
+        setTone(presetTone || "narrativo, immersivo, cinematografico");
+      } catch {
+        // Non bloccare mai il wizard se il preset non è leggibile.
+      }
+    };
+
+    applyForgePresetFromSession();
+  }, [open, isFree]);
+
+  useEffect(() => {
     if (open) persistDraft();
   }, [open, persistDraft]);
 
