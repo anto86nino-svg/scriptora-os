@@ -1,4 +1,5 @@
 import type { StudySessionResult } from "@/lib/study-session";
+import { computeStudySourceHash } from "@/lib/study-os/session-store";
 
 const STORAGE_KEY = "scriptora-study-projects-v1";
 const CHANGE_EVENT = "scriptora-study-projects-change";
@@ -21,6 +22,7 @@ export interface StudyProjectRecord {
   rawTextPreview: string;
   rawText: string;
   rawTextLength: number;
+  sourceHash: string;
   result: StudySessionResult;
   quizAttempts: StudyQuizAttempt[];
   earnedBadges: string[];
@@ -46,6 +48,7 @@ function readAll(): StudyProjectRecord[] {
     return parsed.map((r: StudyProjectRecord) => ({
       ...r,
       rawText: r.rawText || r.rawTextPreview || "",
+      sourceHash: r.sourceHash || computeStudySourceHash(r.rawText || r.rawTextPreview || "", r.sourceName),
     }));
   } catch {
     return [];
@@ -83,6 +86,7 @@ export function saveStudyProject(input: {
     rawTextPreview: input.rawText.slice(0, 4000),
     rawText: input.rawText,
     rawTextLength: input.rawText.length,
+    sourceHash: computeStudySourceHash(input.rawText, input.sourceName),
     result: input.result,
     quizAttempts: existing?.quizAttempts || [],
     earnedBadges: existing?.earnedBadges || [],

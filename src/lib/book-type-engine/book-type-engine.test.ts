@@ -24,6 +24,12 @@ describe("BookTypeEngine", () => {
     expect(def.family).toBe("educational");
   });
 
+  it("resolves memoir, children and biography without falling back to romance", () => {
+    expect(resolveBookTypeDefinition("memoir", "memorie").id).toBe("memoir");
+    expect(resolveBookTypeDefinition("children", "bambini").id).toBe("children");
+    expect(resolveBookTypeDefinition("biography", "biografia").id).toBe("biography");
+  });
+
   it("buildBookTypeEngineBlock includes real title engine", () => {
     const block = buildBookTypeEngineBlock({
       title: "Test",

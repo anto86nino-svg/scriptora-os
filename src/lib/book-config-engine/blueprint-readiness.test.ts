@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { BookConfig } from "@/types/book";
 import {
   autoCompleteBookConfig,
+  autoCompleteBookConfigForBlueprint,
+  normalizeBookConfigForBlueprint,
   validateBookReadinessForBlueprint,
 } from "./blueprint-readiness";
 
@@ -50,6 +52,27 @@ describe("validateBookReadinessForBlueprint", () => {
     expect(report.ready).toBe(true);
     expect(report.score).toBeGreaterThanOrEqual(75);
     expect(report.missingFields).toEqual([]);
+  });
+
+  it("turns a thin romance idea into a blueprint-ready config through autocomplete", () => {
+    const completed = autoCompleteBookConfigForBlueprint(baseConfig({
+      title: "Ritorno a casa",
+      subtitle: "",
+      idea: "Una donna torna nel paese d'infanzia.",
+      targetReader: "",
+      tone: "",
+      subcategory: "General",
+      subgenre: "",
+      characters: [],
+    }));
+
+    const report = validateBookReadinessForBlueprint(completed.config);
+
+    expect(completed.completedFields).toContain("Target lettore");
+    expect(completed.completedFields).toContain("Protagonista/personaggi");
+    expect(completed.config.idea).toMatch(/slow burn|ostacolo emotivo|payoff/i);
+    expect(report.ready).toBe(true);
+    expect(report.score).toBeGreaterThanOrEqual(75);
   });
 
   it("allows a complete self-help configuration with practical promise", () => {
@@ -102,5 +125,41 @@ describe("validateBookReadinessForBlueprint", () => {
     expect(result.completedFields).toContain("Idea centrale");
     expect(result.config.idea).toMatch(/raccolta/i);
     expect(result.config.idea).not.toMatch(/conflitto centrale/i);
+  });
+
+  it("normalizes poetry without forcing novel-only structure fields", () => {
+    const { preview } = normalizeBookConfigForBlueprint(baseConfig({
+      title: "La memoria delle stanze",
+      idea: "Una raccolta poetica su case vuote, infanzia e memoria.",
+      genre: "poetry",
+      category: "Poesia",
+      subcategory: "Poesia contemporanea",
+      targetReader: "Lettori di poesia narrativa e raccolte intime contemporanee.",
+      tone: "evocativo, concreto, musicale",
+      characters: [],
+    }));
+
+    expect(preview.family).toBe("poetry");
+    expect(preview.poetryConfig?.collectionStructure).toBeTruthy();
+    expect(preview.fictionConfig).toBeUndefined();
+  });
+
+  it("normalizes short story collections as collections with a thread", () => {
+    const completed = autoCompleteBookConfigForBlueprint(baseConfig({
+      title: "Stanze chiuse",
+      idea: "Una raccolta racconti su persone che entrano in stanze dove devono scegliere cosa ricordare.",
+      genre: "philosophy",
+      category: "Fiction",
+      subcategory: "Raccolta racconti",
+      subgenre: "raccolta racconti",
+      targetReader: "",
+      tone: "",
+      characters: [],
+    }));
+    const { preview } = normalizeBookConfigForBlueprint(completed.config);
+
+    expect(preview.shortStoriesConfig?.thread).toBeTruthy();
+    expect(preview.shortStoriesConfig?.storyCount).toBe(String(completed.config.numberOfChapters));
+    expect(preview.shortStoriesConfig?.varietyStrategy).toMatch(/variazione/i);
   });
 });

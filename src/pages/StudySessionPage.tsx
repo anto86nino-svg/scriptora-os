@@ -27,8 +27,18 @@ import { StudyFlashcardsPanel } from "@/components/study/StudyFlashcardsPanel";
 import { StudyQuizPanel } from "@/components/study/StudyQuizPanel";
 import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
 import type { BookProject } from "@/types/book";
-
-const STORAGE_KEY = "scriptora-study-session-v1";
+import {
+  attachStudyResult,
+  computeStudySourceHash,
+  createEmptyStudySession,
+  detectStudySourceType,
+  getFreshStudyResult,
+  getStudySession,
+  setCurrentStudySessionId,
+  updateStudySessionSource,
+  type StudySessionRecord,
+  type StudySourceType,
+} from "@/lib/study-os/session-store";
 
 type StudySection = "summary" | "questions" | "vocabulary" | "flashcards" | "quiz";
 
@@ -86,24 +96,6 @@ function normalizeStudyResultForUI(value: any): StudySessionResult {
   };
 }
 
-function saveResult(result: StudySessionResult, rawText: string) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ result, rawText, updatedAt: Date.now() }));
-  } catch {
-    /* ignore */
-  }
-}
-
-function loadSaved(): { result: StudySessionResult; rawText: string } | null {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    if (parsed?.result) return { result: parsed.result, rawText: parsed.rawText || "" };
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
 function persistStudySession(
   normalized: StudySessionResult,
   text: string,
@@ -133,17 +125,27 @@ function describeStudyFallback(error: unknown): string {
   return message ? message.slice(0, 120) : "Fallback locale attivato.";
 }
 
+function mapStoredSourceType(type: string): StudySourceType {
+  if (type === "notes") return "manual";
+  if (type === "text") return "txt";
+  if (type === "epub") return "file";
+  if (type === "pdf" || type === "docx") return type;
+  return "file";
+}
+
 export default function StudySessionPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const saved = useMemo(loadSaved, []);
   const uxSaved = useMemo(loadStudyUxState, []);
+  const initialSession = useMemo(() => createEmptyStudySession({ language: "Italian" }), []);
 
+  const [studySession, setStudySession] = useState<StudySessionRecord>(initialSession);
   const [projectId, setProjectId] = useState<string | undefined>(undefined);
-  const [rawText, setRawText] = useState(saved?.rawText || "");
-  const [sourceName, setSourceName] = useState(saved?.result?.sourceName || "testo-incollato.txt");
-  const [result, setResult] = useState<StudySessionResult | null>(saved?.result ? normalizeStudyResultForUI(saved.result) : null);
+  const [rawText, setRawText] = useState("");
+  const [sourceName, setSourceName] = useState("testo-incollato.txt");
+  const [result, setResult] = useState<StudySessionResult | null>(null);
+  const [staleNotice, setStaleNotice] = useState("");
   const [reading, setReading] = useState(false);
   const [workStartedAt, setWorkStartedAt] = useState<number | undefined>();
   const [studyGenerationStatus, setStudyGenerationStatus] = useState("");
@@ -174,9 +176,107 @@ export default function StudySessionPage() {
 
   const wordCount = useMemo(() => rawText.trim().split(/\s+/).filter(Boolean).length, [rawText]);
   const canAnalyze = wordCount >= 40 && !reading;
+  const currentSourceHash = useMemo(() => computeStudySourceHash(rawText, sourceName), [rawText, sourceName]);
+  const resultFresh = Boolean(result && studySession.results.analysis?.sourceHash === currentSourceHash);
+
+  const resetSessionState = useCallback(() => {
+    setQuizAnswers({});
+    setCurrentQuizIndex(0);
+    setQuizMode("practice");
+    setQuizOrder([]);
+    setOpenAnswers({});
+    setOpenEvaluations({});
+    saveStudyUxState({
+      quizAnswers: {},
+      currentQuizIndex: 0,
+      quizMode: "practice",
+      quizOrder: [],
+      openAnswers: {},
+      openEvaluations: {},
+    });
+  }, []);
+
+  const replaceStudySource = useCallback((
+    text: string,
+    name = "testo-incollato.txt",
+    sourceType?: StudySourceType,
+    options: { toastChanged?: boolean } = {},
+  ) => {
+    const hadResult = Boolean(studySession.results.analysis || result);
+    const next = updateStudySessionSource(studySession, { sourceText: text, sourceName: name, sourceType });
+    setStudySession(next.session);
+    setRawText(next.session.sourceText);
+    setSourceName(next.session.sourceName || name);
+    if (next.sourceChanged) {
+      setResult(null);
+      setProjectId(undefined);
+      resetSessionState();
+      setStaleNotice(hadResult ? "Nuovo materiale rilevato. I risultati precedenti sono stati separati da questa sessione." : "");
+      if (options.toastChanged && hadResult) {
+        toast.message("Nuovo materiale rilevato", {
+          description: "I risultati vecchi non verranno mostrati sopra il nuovo testo.",
+        });
+      }
+    }
+  }, [result, resetSessionState, studySession]);
+
+  const commitStudyResult = useCallback((
+    normalized: StudySessionResult,
+    text: string,
+    name: string,
+    baseSession: StudySessionRecord = studySession,
+    sourceType?: StudySourceType,
+    projectOverride: string | undefined = projectId,
+  ) => {
+    const prepared = updateStudySessionSource(baseSession, { sourceText: text, sourceName: name, sourceType }).session;
+    const stored = attachStudyResult(prepared, normalized);
+    setStudySession(stored);
+    setCurrentStudySessionId(stored.id);
+    setRawText(stored.sourceText);
+    setSourceName(stored.sourceName || name);
+    setResult(getFreshStudyResult(stored));
+    setStaleNotice("");
+    resetSessionState();
+    const id = persistStudySession(normalized, text, name, projectOverride);
+    setProjectId(id);
+    return stored;
+  }, [projectId, resetSessionState, studySession]);
+
+  const startNewStudySession = useCallback(() => {
+    const next = createEmptyStudySession({ language: studyLanguage });
+    setStudySession(next);
+    setRawText("");
+    setSourceName("testo-incollato.txt");
+    setResult(null);
+    setProjectId(undefined);
+    setStaleNotice("");
+    setAiMode("idle");
+    setStudyGenerationStatus("");
+    setCurrentStudySessionId(null);
+    resetSessionState();
+    toast.success("Nuova sessione pulita");
+  }, [resetSessionState, studyLanguage]);
 
   useEffect(() => {
-    const state = location.state as { projectId?: string } | null;
+    const state = location.state as { projectId?: string; sessionId?: string } | null;
+    if (state?.sessionId) {
+      const session = getStudySession(state.sessionId);
+      if (!session) {
+        toast.error("Sessione Study non trovata");
+        navigate(location.pathname, { replace: true, state: null });
+        return;
+      }
+      setStudySession(session);
+      setCurrentStudySessionId(session.id);
+      setProjectId(undefined);
+      setRawText(session.sourceText);
+      setSourceName(session.sourceName || "sessione-studio.txt");
+      setResult(getFreshStudyResult(session));
+      setStaleNotice(getFreshStudyResult(session) ? "" : "Risultati da rigenerare per il materiale di questa sessione.");
+      resetSessionState();
+      navigate(location.pathname, { replace: true, state: null });
+      return;
+    }
     if (!state?.projectId) return;
     const project = getStudyProject(state.projectId);
     if (!project) {
@@ -186,12 +286,21 @@ export default function StudySessionPage() {
     }
     const text = project.rawText || project.rawTextPreview || "";
     const normalized = normalizeStudyResultForUI(project.result);
+    const opened = attachStudyResult(createEmptyStudySession({
+      sourceText: text,
+      sourceName: project.sourceName,
+      sourceType: mapStoredSourceType(project.sourceType),
+      language: studyLanguage,
+    }), normalized);
+    setStudySession(opened);
+    setCurrentStudySessionId(opened.id);
     setProjectId(project.id);
     setRawText(text);
     setSourceName(project.sourceName);
-    setResult(normalized);
-    saveResult(normalized, text);
+    setResult(getFreshStudyResult(opened));
+    setStaleNotice("");
     setActiveSection("quiz");
+    resetSessionState();
     navigate(location.pathname, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
@@ -273,23 +382,6 @@ export default function StudySessionPage() {
     [rawText, result?.title, sourceName, studyLanguage],
   );
 
-  const resetSessionState = useCallback(() => {
-    setQuizAnswers({});
-    setCurrentQuizIndex(0);
-    setQuizMode("practice");
-    setQuizOrder([]);
-    setOpenAnswers({});
-    setOpenEvaluations({});
-    saveStudyUxState({
-      quizAnswers: {},
-      currentQuizIndex: 0,
-      quizMode: "practice",
-      quizOrder: [],
-      openAnswers: {},
-      openEvaluations: {},
-    });
-  }, []);
-
   const handleSectionChange = useCallback((section: StudySection) => {
     setActiveSection(section);
     saveStudyUxState({ activeSection: section });
@@ -358,11 +450,7 @@ export default function StudySessionPage() {
     try {
       const next = await generateStudyResultWithRuntimeGuard(rawText, sourceName);
       const normalized = normalizeStudyResultForUI(next);
-      setResult(normalized);
-      resetSessionState();
-      saveResult(normalized, rawText);
-      const id = persistStudySession(normalized, rawText, sourceName, projectId);
-      setProjectId(id);
+      commitStudyResult(normalized, rawText, sourceName, studySession, detectStudySourceType(sourceName));
       setActiveSection("quiz");
       saveStudyUxState({ activeSection: "quiz" });
       if (studyFallbackReasonRef.current) {
@@ -379,11 +467,7 @@ export default function StudySessionPage() {
       try {
         const local = analyzeStudyMaterial(rawText, sourceName);
         const normalized = normalizeStudyResultForUI(local);
-        setResult(normalized);
-        resetSessionState();
-        saveResult(normalized, rawText);
-        const id = persistStudySession(normalized, rawText, sourceName, projectId);
-        setProjectId(id);
+        commitStudyResult(normalized, rawText, sourceName, studySession, detectStudySourceType(sourceName));
         setActiveSection("quiz");
         saveStudyUxState({ activeSection: "quiz" });
         setAiMode("local");
@@ -442,18 +526,26 @@ export default function StudySessionPage() {
     setWorkStartedAt(Date.now());
     try {
       const text = await readStudyFile(file);
+      const sourceType = detectStudySourceType(file.name);
+      const fileSession = updateStudySessionSource(createEmptyStudySession({ language: studyLanguage }), {
+        sourceText: text,
+        sourceName: file.name,
+        sourceType,
+      }).session;
+      setStudySession(fileSession);
+      setCurrentStudySessionId(null);
       setRawText(text);
       setSourceName(file.name);
+      setResult(null);
+      setProjectId(undefined);
+      setStaleNotice("");
+      resetSessionState();
       setAiMode("deepseek");
 
       try {
         const next = await generateStudyResultWithRuntimeGuard(text, file.name);
         const normalized = normalizeStudyResultForUI(next);
-        setResult(normalized);
-        resetSessionState();
-        saveResult(normalized, text);
-        const id = persistStudySession(normalized, text, file.name, projectId);
-        setProjectId(id);
+        commitStudyResult(normalized, text, file.name, fileSession, sourceType, undefined);
         setActiveSection("quiz");
         saveStudyUxState({ activeSection: "quiz" });
         if (studyFallbackReasonRef.current) {
@@ -468,11 +560,7 @@ export default function StudySessionPage() {
         try {
           const local = analyzeStudyMaterial(text, file.name);
           const normalized = normalizeStudyResultForUI(local);
-          setResult(normalized);
-          resetSessionState();
-          saveResult(normalized, text);
-          const id = persistStudySession(normalized, text, file.name, projectId);
-          setProjectId(id);
+          commitStudyResult(normalized, text, file.name, fileSession, sourceType, undefined);
           setActiveSection("quiz");
           saveStudyUxState({ activeSection: "quiz" });
           setAiMode("local");
@@ -495,7 +583,7 @@ export default function StudySessionPage() {
     }
   };
 
-  const safeResult = result;
+  const safeResult = resultFresh ? result : null;
   const safeDifficultWords = safeResult?.difficultWords || [];
   const safeFlashcards = safeResult?.flashcards || [];
   const safeQuiz = safeResult?.quiz || [];
@@ -535,14 +623,23 @@ export default function StudySessionPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="ios-toolbar-button h-11 justify-center px-4 text-sm font-semibold text-emerald-100"
-          >
-            {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            Carica file
-          </button>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={startNewStudySession}
+              className="ios-toolbar-button h-11 justify-center px-4 text-sm font-semibold text-emerald-100"
+            >
+              Nuova sessione
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="ios-toolbar-button h-11 justify-center px-4 text-sm font-semibold text-emerald-100"
+            >
+              {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              Carica file
+            </button>
+          </div>
           <input
             ref={fileInputRef}
             type="file"
@@ -578,13 +675,18 @@ export default function StudySessionPage() {
 
             <textarea
               value={rawText}
-              onChange={(event) => setRawText(event.target.value)}
+              onChange={(event) => replaceStudySource(event.target.value, sourceName, "paste", { toastChanged: Boolean(result) })}
               placeholder="Incolla qui capitoli, appunti, dispense o una parte del libro..."
               className="scriptora-text-safe min-h-[240px] w-full min-w-0 max-w-full resize-y overflow-x-hidden rounded-2xl border border-white/10 bg-background/70 p-3 text-sm leading-6 text-foreground outline-none focus:border-emerald-300/40 sm:min-h-[280px] sm:p-4 lg:min-h-[420px]"
             />
             <p className={`mt-2 text-xs leading-5 ${wordCount < 40 ? "text-amber-200/90" : "text-muted-foreground"}`}>
               {t("study_min_words_hint")} ({wordCount}/40)
             </p>
+            {staleNotice && (
+              <div className="mt-3 rounded-2xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100">
+                {staleNotice}
+              </div>
+            )}
 
             <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
               <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.15em] text-emerald-200/80">
@@ -766,8 +868,12 @@ export default function StudySessionPage() {
           activeSection="chapter-0"
           appContext="study"
           studyText={rawText}
-          onApplyChapterContent={(_chapterIdx, content) => setRawText(content)}
-          onApplyStudyText={setRawText}
+          onApplyChapterContent={(_chapterIdx, content) =>
+            replaceStudySource(content, sourceName, "paste", { toastChanged: Boolean(result) })
+          }
+          onApplyStudyText={(content) =>
+            replaceStudySource(content, sourceName, "paste", { toastChanged: Boolean(result) })
+          }
         />
       )}
     </div>
