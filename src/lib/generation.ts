@@ -43,6 +43,7 @@ import {
 import {
   BlueprintValidationError,
   buildBlueprintCorrectivePrompt,
+  buildFallbackBlueprintFromConfig,
   normalizeBlueprintShape,
   resolveBlueprintFromAiResponse,
   type BlueprintSource,
@@ -1612,11 +1613,15 @@ Return a JSON object with:
   });
   console.error("======================================");
 
-  throw new BlueprintValidationError(
-    "Blueprint AI non valido. Riprova — la struttura del libro non è stata salvata per evitare corruzione.",
-    retry.errors.length ? retry.errors : primary.errors,
-    rawRetry,
-  );
+  console.warn("Blueprint AI invalid after retry — using safe config fallback", {
+    primaryErrors: primary.errors,
+    retryErrors: retry.errors,
+  });
+
+  return {
+    blueprint: buildFallbackBlueprintFromConfig(config),
+    source: "config_fallback",
+  };
 }
 
 /* ============ Front Matter — TEMPLATE-DRIVEN PER GENRE ============ */
