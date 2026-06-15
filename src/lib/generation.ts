@@ -29,6 +29,7 @@ import {
 import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
+import { buildHumanBestsellerModeV11Block } from "@/lib/human-bestseller-mode-v11";
 import { buildPremiumWritingBlock, runUltraHumanFinalPass } from "@/lib/premium-writing";
 import { buildPromptFromCanonicalConfig, sanitizeBookConfiguration } from "@/lib/book-config-engine";
 import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/billing/billingHeaders";
@@ -643,8 +644,8 @@ CONTINUITY RULES (MANDATORY):
 - Progress the emotional arc naturally — escalate, deepen, transform
 - Each chapter must feel like the NEXT step in a journey, not a standalone piece
 - The reader must sense ONE author mind behind the entire book
-- Include 2-4 sentences per chapter that are highlight-worthy — emotionally powerful, quotable, shareable
-- These "highlight sentences" must feel natural, not forced — embed them within the flow`;
+- Use restraint with highlight-worthy sentences: one strong line should land because the surrounding prose is concrete and alive
+- Never stack quotable lines until the chapter sounds written instead of lived`;
 }
 
 /* ============ Style Lock ============ */
@@ -1178,6 +1179,7 @@ export async function generateChapterChunked(
   const scriptoraWritingBrain = buildScriptoraWritingBrain(config);
   const characterLock = buildCharacterLock(config);
   const humanNarrativeRealismV4 = buildHumanNarrativeRealismV4Block(config, chapterIndex);
+  const humanBestsellerModeV11 = buildHumanBestsellerModeV11Block(config, { chapterIndex, mode: "generation" });
   const genreDirective = buildPromptByGenre({
     genre: genreLock?.genre || config.genre,
     subcategory: genreLock?.subcategory || (config as any).subcategory,
@@ -1262,6 +1264,8 @@ ${characterLock}
 
 ${humanNarrativeRealismV4}
 
+${humanBestsellerModeV11}
+
 ${humanizerBlock}
 
 ${premiumWritingBlock}
@@ -1270,8 +1274,8 @@ ${bookTypeEngineBlock}
 
 BESTSELLER QUALITY REQUIREMENTS:
 - Open with a line that stops the reader — a hook they'll remember
-- Include 2-3 highlight-worthy sentences
-- Write like a PUBLISHED BESTSELLER
+- Use only restrained highlight-worthy moments; do not stack quotable lines
+- Write like a human bestselling author, not like a polished AI sample
 - Use varied sentence rhythm
 - HONOR the GENRE DIRECTIVE above — chapter style and content rules are MANDATORY
 
@@ -1299,6 +1303,8 @@ PHASE: ${phase} — ${phaseInstruction}
 ${humanizerBlock}
 
 ${humanNarrativeRealismV4}
+
+${humanBestsellerModeV11}
 
 ${premiumWritingBlock}
 
@@ -1996,7 +2002,7 @@ function getRewriteLevelInstruction(level: RewriteLevel): string {
 - Improve word choice for precision and rhythm
 - Strengthen transitions between paragraphs
 - Keep the same structure and core ideas
-- Enhance 2-3 key sentences for quotability`;
+- Make one or two key moments more readable without over-polishing the voice`;
     case "deep":
       return `DEEP REWRITE:
 - Restructure paragraphs for better flow and impact
@@ -2009,12 +2015,11 @@ function getRewriteLevelInstruction(level: RewriteLevel): string {
       return `BESTSELLER UPGRADE — TOTAL TRANSFORMATION:
 - COMPLETELY reimagine the prose from scratch
 - Every paragraph must be publishable in a top-selling book
-- Add 5+ highlight-worthy, screenshot-worthy sentences
-- Create moments of genuine surprise and emotional power
+- Create moments of genuine surprise and emotional power through action, subtext and consequence
 - Use literary techniques: foreshadowing, callback, rhythm breaks
-- The reader must feel changed after reading this chapter
+- The reader must need the next chapter after reading this one
 - Channel the DNA of bestsellers in this genre
-- Zero generic phrasing — every sentence must be SPECIFIC and VIVID`;
+- Zero generic phrasing, but avoid decorative over-writing`;
   }
 }
 
@@ -2037,6 +2042,7 @@ export async function rewriteChapter(
   const levelInstruction = getRewriteLevelInstruction(level);
   const characterLock = buildCharacterLock(config);
   const humanNarrativeRealismV4 = buildHumanNarrativeRealismV4Block(config, chapterIndex);
+  const humanBestsellerModeV11 = buildHumanBestsellerModeV11Block(config, { chapterIndex, mode: "rewrite" });
   const bookTypeEngineBlock = buildBookTypeEngineBlock(config);
   const humanizerBlock = buildHumanizerPromptBlock({
     config,
@@ -2066,6 +2072,8 @@ ${contextMemory}
 ${characterLock}
 
 ${humanNarrativeRealismV4}
+
+${humanBestsellerModeV11}
 
 ${humanizerBlock}
 

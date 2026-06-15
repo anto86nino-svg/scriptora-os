@@ -1,5 +1,6 @@
 import type { BookConfig } from "@/types/book";
 import { applyAntiRepetitionDirector } from "@/lib/editorial-wow/AntiRepetitionDirector";
+import { applyHumanBestsellerModeV11Postprocess } from "@/lib/human-bestseller-mode-v11";
 import { applyPremiumOutputGuard } from "@/lib/premium-writing/output-sanitization-guard";
 import { resolveBookTypeContext } from "@/lib/book-type-engine";
 
@@ -26,6 +27,12 @@ export function runManuscriptQualityV3(
     const ctx = resolveBookTypeContext(opts.config);
     if (ctx.definition.family === "narrative") {
       processed = applyPremiumOutputGuard(processed, { language });
+      processed = applyHumanBestsellerModeV11Postprocess(processed, {
+        language,
+        priorText: opts.priorText || "",
+        config: opts.config,
+        chapterIndex: opts.chapterIndex,
+      });
     } else if (ctx.definition.family === "nonfiction" || ctx.definition.family === "manual" || ctx.definition.family === "educational") {
       processed = processed.replace(/\b(bestseller emotivo|slow burn|chimica romantica|attrazione irresistibile)\b/gi, "");
     } else if (ctx.definition.family === "poetry") {

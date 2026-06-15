@@ -59,6 +59,25 @@ describe("ManuscriptQualityV3", () => {
     expect(result.antiRepetitionRemoved).toBeGreaterThan(0);
   });
 
+  it("applies Human Bestseller Mode V11 cleanup without leaving prompt or therapy leakage", () => {
+    const raw = [
+      "ANTI-AI DETECTOR: terapia emotiva perfetta vietata.",
+      "Viola fissò il corridoio vuoto.",
+      "«Devo spiegarti il mio trauma prima di potermi fidare di te.»",
+      "«Ho paura di soffrire ancora.»",
+      "Damien lasciò cadere le chiavi nella ciotola e non disse niente.",
+    ].join("\n\n");
+    const result = runManuscriptQualityV3(raw, {
+      language: "Italian",
+      config: { title: "Test", genre: "romance", category: "Fiction", subcategory: "Romance", language: "Italian", numberOfChapters: 10 } as any,
+    });
+    expect(result.text).not.toContain("ANTI-AI DETECTOR");
+    expect(result.text).not.toMatch(/spiegarti il mio trauma/i);
+    expect(result.text).not.toMatch(/Ho paura di soffrire ancora/i);
+    expect(result.text).toContain("«Non faccio più quella cosa.»");
+    expect(result.text).toContain("lasciò cadere le chiavi");
+  });
+
   it("does not romance-humanize nonfiction/manual output", () => {
     const raw = `Framework operativo\n\nStep 1: definisci il risultato.\n\nslow burn e chimica romantica non appartengono a questa sezione.\n\nChecklist: misura, esegui, rivedi.`;
     const result = runManuscriptQualityV3(raw, {
