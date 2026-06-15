@@ -232,8 +232,8 @@ export function CoverPreviewStage({
     effectiveSpec.isPrint && (viewMode === "open-book" || viewMode === "paperback");
 
   return (
-    <div className="cover-preview-stage-root relative w-full max-w-full min-w-0">
-      <div className="cover-viewport-toolbar sticky top-0 z-20 mb-2 flex w-full flex-wrap items-center justify-center gap-1.5 rounded-lg border border-border/50 bg-background/92 px-2 py-1.5 backdrop-blur-md">
+    <div className="cover-preview-stage-root relative flex h-full min-h-0 w-full max-w-full min-w-0 flex-col">
+      <div className="cover-viewport-toolbar sticky top-0 z-30 mb-2 flex w-full shrink-0 flex-wrap items-center justify-center gap-1.5 rounded-lg border border-border/50 bg-background/92 px-2 py-1.5 backdrop-blur-md">
         {showPanelNav &&
           (["front", "spine", "back"] as CoverPanel[]).map((panel) => (
             <button
@@ -280,7 +280,7 @@ export function CoverPreviewStage({
       <div
         ref={viewportRef}
         className={cn(
-          "cover-viewport-frame relative mx-auto flex w-full flex-col",
+          "cover-viewport-frame relative mx-auto flex min-h-0 w-full flex-1 flex-col",
           fit.userZoom > 1.02 ? "overflow-auto" : "overflow-hidden",
           isMobile ? "cover-viewport-frame--mobile" : "cover-viewport-frame--desktop",
         )}

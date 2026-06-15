@@ -942,22 +942,43 @@ export function CoverGenerator({
   }
 
   return (
-    <div className="scriptora-modal-overlay scriptora-cover-studio-overlay fixed inset-0 z-[60] flex items-stretch justify-center bg-black/88 p-0 backdrop-blur-md sm:items-center sm:bg-black/75 sm:p-5 sm:backdrop-blur-sm">
-      <div className="scriptora-modal-panel scriptora-cover-studio-panel flex h-[100dvh] max-h-[100dvh] w-full max-w-6xl flex-col overflow-hidden rounded-none border-0 bg-card shadow-2xl sm:h-auto sm:max-h-[min(94dvh,900px)] sm:rounded-2xl sm:border sm:border-border/80 lg:max-w-[1500px] lg:rounded-[2rem] lg:shadow-[0_32px_120px_rgba(0,0,0,0.55)]">
-        <div className="scriptora-cover-studio-header flex shrink-0 items-center justify-between gap-2 border-b border-border/70 px-3 py-3 sm:gap-3 sm:px-5 sm:py-4 lg:px-7 lg:py-5">
+    <div className="scriptora-modal-overlay scriptora-cover-studio-overlay fixed inset-0 z-[60] flex h-[100dvh] w-[100dvw] items-stretch justify-center overflow-hidden bg-black/92 p-0 backdrop-blur-md">
+      <div className="scriptora-modal-panel scriptora-cover-studio-panel fixed inset-0 flex h-[100dvh] max-h-none w-[100dvw] max-w-none translate-x-0 translate-y-0 flex-col overflow-hidden rounded-none border-0 bg-card shadow-2xl">
+        <div className="scriptora-cover-studio-header flex shrink-0 items-center justify-between gap-2 border-b border-border/70 bg-background/96 px-3 py-2.5 backdrop-blur-xl sm:gap-3 sm:px-5 sm:py-3.5 lg:px-6 lg:py-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-primary sm:gap-2 sm:text-xs sm:tracking-[0.2em]">
               <BookOpen className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
               <span className="truncate">Cover Studio Pro</span>
             </div>
-            <h2 className="mt-0.5 line-clamp-2 text-base font-semibold leading-snug text-foreground sm:text-lg">
+            <h2 className="mt-0.5 line-clamp-1 text-sm font-semibold leading-snug text-foreground sm:text-base lg:text-lg">
               Builder copertina digitale — concept cover avanzato
             </h2>
-            <div className="mt-1 flex flex-wrap items-center gap-1">
+            <div className="mt-1 flex flex-wrap items-center gap-1 max-sm:hidden">
               <Badge variant="outline" className="px-1.5 py-0 text-[9px] sm:text-[10px]">{studioPackage.honestyLabel}</Badge>
               <Badge variant="secondary" className="px-1.5 py-0 text-[9px] sm:text-[10px]">Score {studioPackage.score.finalScore}</Badge>
             </div>
           </div>
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+            {projectId && (
+              <button
+                type="button"
+                onClick={handleSaveToProject}
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-primary/40 bg-primary/12 px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/18"
+              >
+                <ImagePlus className="h-4 w-4" />
+                <span className="hidden sm:inline">{italianUi ? "Salva" : "Save"}</span>
+              </button>
+            )}
+            {onOpenExport && (
+              <button
+                type="button"
+                onClick={onOpenExport}
+                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full border border-border/70 bg-background/60 px-3 text-xs font-semibold text-foreground transition-colors hover:bg-background"
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Export</span>
+              </button>
+            )}
           <button
             onClick={onClose}
             className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border/70 bg-background/60 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
@@ -965,16 +986,17 @@ export function CoverGenerator({
           >
             <X className="h-4 w-4" />
           </button>
+          </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:grid lg:grid-cols-[minmax(0,1fr)_460px] lg:overflow-hidden xl:grid-cols-[minmax(0,1fr)_500px]">
-          <div className="scriptora-cover-studio-preview shrink-0 border-b border-border/50 bg-black/25 px-3 py-3 sm:px-4 sm:py-4 lg:relative lg:flex lg:min-h-0 lg:flex-col lg:items-center lg:justify-center lg:overflow-hidden lg:border-b-0 lg:bg-gradient-to-br lg:from-black/45 lg:via-background/80 lg:to-primary/10 lg:p-8 xl:p-10">
+        <div className="scriptora-cover-studio-workspace min-h-0 flex-1 overflow-y-auto bg-background lg:grid lg:grid-cols-[330px_minmax(0,1fr)_380px] lg:overflow-hidden xl:grid-cols-[360px_minmax(0,1fr)_430px]">
+          <div className="scriptora-cover-studio-preview order-1 flex min-h-[min(54dvh,620px)] flex-col border-b border-border/50 bg-black/25 px-3 py-3 sm:px-4 sm:py-4 lg:order-2 lg:relative lg:min-h-0 lg:items-center lg:justify-center lg:overflow-hidden lg:border-x lg:border-b-0 lg:border-border/50 lg:bg-gradient-to-br lg:from-black/45 lg:via-background/80 lg:to-primary/10 lg:p-6 xl:p-8">
             <div className="hidden w-full flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:absolute lg:left-8 lg:right-8 lg:top-6 lg:flex lg:w-auto lg:rounded-2xl lg:border lg:border-white/10 lg:bg-background/35 lg:px-4 lg:py-3 lg:backdrop-blur-xl">
               <span>{spec.label}</span>
               <span>{spec.width} x {spec.height}px - {spec.exportNote}</span>
             </div>
-            <div className="flex flex-col items-center justify-center gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:gap-3 lg:pt-8">
-              <div className="relative flex w-full items-center justify-center lg:rounded-[2rem] lg:border lg:border-white/10 lg:bg-white/[0.035] lg:p-6 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_28px_80px_rgba(0,0,0,0.45)] xl:p-8">
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 lg:h-full lg:w-full lg:gap-3 lg:pt-8">
+              <div className="relative flex min-h-0 w-full flex-1 items-center justify-center lg:rounded-[2rem] lg:border lg:border-white/10 lg:bg-white/[0.035] lg:p-4 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_28px_80px_rgba(0,0,0,0.45)] xl:p-6">
                 {cinematicStep && cinematicStep !== "done" && (
                   <CoverCinematicOverlay stepId={cinematicStep} progress={cinematicProgress} italianUi={italianUi} />
                 )}
@@ -1004,8 +1026,8 @@ export function CoverGenerator({
             </p>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="scriptora-cover-studio-scroll scriptora-modal-body min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain bg-background/55 p-3 pb-6 sm:space-y-6 sm:p-5 sm:pb-8 lg:space-y-6 lg:bg-background/75 lg:p-6">
+          <aside className="scriptora-cover-studio-tools order-2 min-h-0 border-b border-border/60 bg-background/80 lg:order-1 lg:flex lg:flex-col lg:overflow-hidden lg:border-b-0">
+            <div className="scriptora-cover-studio-scroll scriptora-modal-body min-h-0 flex-1 space-y-5 overflow-visible bg-background/55 p-3 pb-4 sm:space-y-6 sm:p-5 lg:overflow-y-auto lg:overscroll-contain lg:bg-background/75 lg:p-5">
             <section className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
               <span className="font-semibold text-foreground">{creditModeLabel(devCreditMode)}</span>
               {" · "}
@@ -1061,7 +1083,11 @@ export function CoverGenerator({
               pageCount={pageCount}
               hasAuthorPhoto={showAuthorPhoto && Boolean(authorPhoto)}
             />
+            </div>
+          </aside>
 
+          <aside className="scriptora-cover-studio-properties order-3 min-h-0 bg-background/85 lg:flex lg:flex-col lg:overflow-hidden">
+            <div className="scriptora-cover-studio-scroll scriptora-modal-body min-h-0 flex-1 space-y-5 overflow-visible bg-background/55 p-3 pb-4 sm:space-y-6 sm:p-5 lg:overflow-y-auto lg:overscroll-contain lg:bg-background/75 lg:p-5">
             <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -1328,7 +1354,7 @@ export function CoverGenerator({
             </section>
             </div>
 
-            <footer className="scriptora-cover-studio-footer shrink-0 border-t border-border/70 bg-background/98 px-3 py-4 backdrop-blur-xl sm:px-5 sm:py-5 lg:border lg:bg-card/90 lg:p-5">
+            <footer className="scriptora-cover-studio-footer sticky bottom-0 z-20 shrink-0 border-t border-border/70 bg-background/98 px-3 py-4 backdrop-blur-xl sm:px-5 sm:py-5 lg:border lg:bg-card/90 lg:p-5">
               <div className="hidden lg:block">
                 <p className="text-sm font-semibold text-foreground">EXPORT</p>
                 <p className="mt-1 text-xs text-muted-foreground">Scarica, salva o applica la cover al progetto corrente.</p>
@@ -1363,7 +1389,7 @@ export function CoverGenerator({
                 </div>
               </div>
             </footer>
-          </div>
+          </aside>
         </div>
       </div>
     </div>

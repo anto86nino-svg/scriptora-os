@@ -4923,7 +4923,24 @@ body,
   width: 100%;
 }
 
-/* Cover Studio — mobile full-screen cabina */
+/* Cover Studio — full-screen workspace */
+.scriptora-cover-studio-overlay {
+  width: 100dvw;
+  height: 100dvh;
+}
+
+.scriptora-cover-studio-panel {
+  width: 100dvw !important;
+  max-width: none !important;
+  height: 100dvh !important;
+  max-height: none !important;
+  border-radius: 0 !important;
+}
+
+.scriptora-cover-studio-workspace {
+  min-height: 0;
+}
+
 @media (max-width: 767px) {
   .scriptora-cover-studio-overlay {
     align-items: stretch !important;
@@ -4943,7 +4960,7 @@ body,
   }
 
   .scriptora-cover-studio-preview {
-    min-height: 0;
+    min-height: min(54dvh, 620px);
     max-height: none;
   }
 
@@ -4957,7 +4974,8 @@ body,
   }
 
   .cover-viewport-frame--mobile {
-    max-height: min(46dvh, 400px);
+    min-height: min(42dvh, 430px);
+    max-height: none;
   }
 
   .scriptora-cover-studio-scroll {
@@ -4986,17 +5004,18 @@ body,
 
 .cover-viewport-frame {
   width: 100%;
+  height: 100%;
   min-height: 0;
 }
 
 .cover-viewport-frame--desktop {
-  max-height: min(88vh, 720px);
-  min-height: min(52vh, 420px);
+  min-height: min(68dvh, 640px);
+  max-height: none;
 }
 
 .cover-viewport-frame--mobile {
-  max-height: min(48dvh, 420px);
-  min-height: min(36dvh, 280px);
+  min-height: min(42dvh, 430px);
+  max-height: none;
 }
 
 .cover-viewport-toolbar {
@@ -5157,14 +5176,11 @@ body,
 
 @media (max-width: 767px) {
   .scriptora-cover-studio-canvas {
-    max-height: min(46dvh, 420px) !important;
+    max-height: none !important;
   }
 
   .cover-studio-pro-stage {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    max-width: 100%;
   }
 }
 
