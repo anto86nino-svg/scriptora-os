@@ -244,6 +244,8 @@ export function CoverGenerator({
   const devCreditMode = isDevMode();
   const italianUi = language.toLowerCase().includes("ital");
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const renderFrameRef = useRef<number | null>(null);
+  const renderSeqRef = useRef(0);
   const pendingRegenRef = useRef(
     Boolean(
       projectId &&
@@ -417,8 +419,21 @@ export function CoverGenerator({
 
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      await drawCover();
+    const seq = renderSeqRef.current + 1;
+    renderSeqRef.current = seq;
+    if (renderFrameRef.current != null) {
+      cancelAnimationFrame(renderFrameRef.current);
+    }
+    renderFrameRef.current = requestAnimationFrame(() => {
+      renderFrameRef.current = null;
+      void (async () => {
+      try {
+        await drawCover();
+      } catch (err) {
+        console.warn("[cover-studio] preview render failed", err);
+        return;
+      }
+      if (seq !== renderSeqRef.current) return;
       if (cancelled || !projectId || !pendingRegenRef.current) return;
       const dataUrl = exportCoverDataUrl();
       if (!dataUrl) return;
@@ -428,9 +443,14 @@ export function CoverGenerator({
       toast.message(
         italianUi ? "Anteprima cover rigenerata dalla composizione salvata" : "Cover preview regenerated from saved composition",
       );
-    })();
+      })();
+    });
     return () => {
       cancelled = true;
+      if (renderFrameRef.current != null) {
+        cancelAnimationFrame(renderFrameRef.current);
+        renderFrameRef.current = null;
+      }
     };
   }, [
     spec,

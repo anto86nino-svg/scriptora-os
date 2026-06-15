@@ -823,6 +823,7 @@ const Index = () => {
                   onUpdateBlueprintOutlineSummary={engine.updateBlueprintOutlineSummary}
                   onRegenerateBlueprint={engine.regenerateBlueprint}
                   onCreateSafeBlueprint={engine.createSafeBlueprint}
+                  onAutoCompleteBlueprintConfig={engine.autoCompleteBlueprintConfig}
                   onApproveBlueprint={engine.approveBlueprint}
                   onGenerateBlueprint={engine.generateBlueprintForProject}
                   onUpdateFrontMatterField={engine.updateFrontMatterField}

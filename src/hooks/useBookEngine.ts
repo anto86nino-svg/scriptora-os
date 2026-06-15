@@ -41,6 +41,10 @@ import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorId
 import { normalizeBookConfig, normalizeBookProject } from "@/lib/book-config-studio/defaults";
 import type { BookBlueprint } from "@/types/book";
 import {
+  autoCompleteBookConfig,
+  validateBookReadinessForBlueprint,
+} from "@/lib/book-config-engine/blueprint-readiness";
+import {
   buildCreditIdempotencyKey,
   chargeChapterGeneration,
   chargeRewriteChapter,
@@ -141,6 +145,17 @@ function notifyGenerationBlocked(err: ProjectGenerationBlockedError) {
   window.dispatchEvent(new CustomEvent("scriptora-generation-blocked", {
     detail: { focusSection: err.focusSection },
   }));
+}
+
+function humanBlueprintErrorMessage(raw: unknown): string {
+  const text = raw instanceof Error ? raw.message : String(raw || "");
+  if (/failed to fetch|network|abort|timeout|non json|empty blueprint/i.test(text)) {
+    return "Il motore Blueprint non ha restituito una risposta completa. Ho preparato una bozza locale sicura dalla configurazione.";
+  }
+  if (/json|schema|validation|capitoli|chapter/i.test(text)) {
+    return "La risposta Blueprint era incompleta o non valida. Ho recuperato una struttura locale pulita dalla configurazione.";
+  }
+  return "Il blueprint AI non è arrivato integro. Ho creato una struttura locale sicura per non lasciarti fermo.";
 }
 
 function handleGenerationBlocked(
@@ -349,6 +364,21 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     const p = getLatestProject() || project;
     if (!p) return;
 
+    const readiness = validateBookReadinessForBlueprint(p.config);
+    if (!readiness.ready) {
+      const issues = [...readiness.missingFields, ...readiness.weakFields, ...readiness.genreSpecificWarnings];
+      updateAndSave(pr => ({
+        ...pr,
+        blueprintStatus: "idle" as GenerationStatus,
+        blueprintLastError: null,
+        blueprintValidationErrors: issues,
+      }));
+      const msg = "Prima mettiamo fondamenta solide: completa o migliora la configurazione, poi genero il blueprint.";
+      addMessage("assistant", `🧭 ${msg}`);
+      toast.warning(msg);
+      return;
+    }
+
     addGenerating("blueprint");
     updateAndSave(pr => ({
       ...pr,
@@ -374,20 +404,22 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       if (source === "repaired") toast.success("Blueprint recuperato e validato.");
       addMessage("assistant", `Blueprint pronto! ${blueprint.chapterOutlines.length} capitoli pianificati. Approva la struttura per iniziare a scrivere.`);
     } catch (e: any) {
+      const fallbackBlueprint = buildFallbackBlueprintFromConfig(p.config);
       const validationErrors = e instanceof BlueprintValidationError ? e.errors : [];
-      const errorMessage = e instanceof Error ? e.message : String(e);
+      const errorMessage = humanBlueprintErrorMessage(e);
       updateAndSave(proj => ({
         ...proj,
-        blueprint: null,
-        blueprintStatus: "error" as GenerationStatus,
+        blueprint: fallbackBlueprint,
+        blueprintSource: "config_fallback",
+        blueprintStatus: "completed" as GenerationStatus,
         blueprintLastError: errorMessage,
         blueprintValidationErrors: validationErrors,
         phase: "blueprint" as GenerationPhase,
       }));
       const err = classifyError(e, { operation: "blueprint" });
       scriptoraLog.error("blueprint", formatUserMessage(err), { projectId: p?.id, raw: e?.message });
-      addMessage("assistant", `❌ ${formatUserMessage(err)}`);
-      toast.error(errorMessage);
+      addMessage("assistant", `⚠️ ${errorMessage} Nessun errore tecnico è stato salvato nel libro.`);
+      toast.warning("Blueprint locale sicuro creato. Puoi raffinarlo o rigenerare con AI.");
     } finally {
       removeGenerating("blueprint");
     }
@@ -421,6 +453,20 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     const p = getLatestProject() || project;
     if (!p) return;
 
+    const readiness = validateBookReadinessForBlueprint(p.config);
+    if (!readiness.ready) {
+      const issues = [...readiness.missingFields, ...readiness.weakFields, ...readiness.genreSpecificWarnings];
+      updateAndSave(pr => ({
+        ...pr,
+        blueprintStatus: "idle" as GenerationStatus,
+        blueprintValidationErrors: issues,
+      }));
+      const msg = "Configurazione non ancora abbastanza solida per rigenerare un blueprint affidabile.";
+      addMessage("assistant", `🧭 ${msg}`);
+      toast.warning(msg);
+      return;
+    }
+
     addGenerating("blueprint");
     updateAndSave(pr => ({
       ...pr,
@@ -447,21 +493,42 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       addMessage("assistant", `Blueprint pronto! ${blueprint.chapterOutlines.length} capitoli pianificati.`);
     } catch (e: any) {
       const validationErrors = e instanceof BlueprintValidationError ? e.errors : [];
-      const errorMessage = e instanceof Error ? e.message : String(e);
+      const errorMessage = humanBlueprintErrorMessage(e);
       updateAndSave(pr => ({
         ...pr,
-        blueprint: null,
-        blueprintStatus: "error" as GenerationStatus,
+        blueprint: pr.blueprint || buildFallbackBlueprintFromConfig(p.config),
+        blueprintSource: pr.blueprint ? pr.blueprintSource : "config_fallback",
+        blueprintStatus: pr.blueprint ? "completed" as GenerationStatus : "completed" as GenerationStatus,
         blueprintLastError: errorMessage,
         blueprintValidationErrors: validationErrors,
         phase: "blueprint" as GenerationPhase,
       }));
       const err = classifyError(e, { operation: "blueprint" });
       scriptoraLog.error("blueprint", formatUserMessage(err), { projectId: p.id, raw: e?.message });
-      addMessage("assistant", `❌ ${formatUserMessage(err)}`);
-      toast.error(errorMessage);
+      addMessage("assistant", `⚠️ ${errorMessage} La struttura precedente è stata preservata o recuperata.`);
+      toast.warning("Rigenerazione AI non completata: struttura sicura preservata.");
     } finally {
       removeGenerating("blueprint");
+    }
+  }, [project, addMessage, updateAndSave]);
+
+  const autoCompleteBlueprintConfig = useCallback(() => {
+    const p = getLatestProject() || project;
+    if (!p) return;
+    const result = autoCompleteBookConfig(p.config);
+    updateAndSave(pr => ({
+      ...pr,
+      config: result.config,
+      genreLock: buildGenreLock(result.config),
+      configStatus: "validated",
+      blueprintValidationErrors: [],
+    }));
+    if (result.completedFields.length) {
+      const fields = result.completedFields.join(", ");
+      addMessage("assistant", `Ho completato questi dettagli per rendere il blueprint più solido: ${fields}. Puoi modificarli prima di generare.`);
+      toast.success(`Configurazione migliorata: ${fields}`);
+    } else {
+      toast.info("La configurazione è già completa.");
     }
   }, [project, addMessage, updateAndSave]);
 
@@ -1401,7 +1468,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     project, messages, isAnythingGenerating, generatingSet, chunkProgress,
     startNewBook, createProjectDraft, createProjectWithApprovedBlueprint,
     generateBlueprintForProject, approveBlueprint,
-    regenerateBlueprint, createSafeBlueprint,
+    regenerateBlueprint, createSafeBlueprint, autoCompleteBlueprintConfig,
     generateNext, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter,
     regenerateChapter, rewriteChapterWithDepth, evaluateChapter, autoRewriteToThreshold,
     updateChapterEditorialAnalysis,

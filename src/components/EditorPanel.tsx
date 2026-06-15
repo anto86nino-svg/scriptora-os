@@ -20,6 +20,7 @@ import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-ti
 import { buildEditorialChapterPreview } from "@/lib/project-generation-readiness";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { resolveChapterGenerationOperation } from "@/lib/billing";
+import { validateBookReadinessForBlueprint } from "@/lib/book-config-engine/blueprint-readiness";
 
 interface EditorPanelProps {
   project: BookProject;
@@ -47,6 +48,7 @@ interface EditorPanelProps {
   onUpdateBlueprintOutlineSummary?: (index: number, summary: string) => void;
   onRegenerateBlueprint?: () => void;
   onCreateSafeBlueprint?: () => void;
+  onAutoCompleteBlueprintConfig?: () => void;
   onApproveBlueprint?: () => void;
   onGenerateBlueprint?: () => void;
   onUpdateFrontMatterField?: (field: string, value: string) => void;
@@ -70,7 +72,7 @@ export function EditorPanel({
   chunkProgress,
   writingSettings,
   onUpdateBlueprintField, onUpdateBlueprintOutlineTitle, onUpdateBlueprintOutlineSummary,
-  onRegenerateBlueprint, onCreateSafeBlueprint, onApproveBlueprint, onGenerateBlueprint,
+  onRegenerateBlueprint, onCreateSafeBlueprint, onAutoCompleteBlueprintConfig, onApproveBlueprint, onGenerateBlueprint,
   onUpdateFrontMatterField, onUpdateBackMatterField,
   onNarrateChapter,
   onPersistChapterEditorialAnalysis,
@@ -145,6 +147,7 @@ export function EditorPanel({
                   onUpdateOutlineSummary={onUpdateBlueprintOutlineSummary}
                   onRegenerateBlueprint={onRegenerateBlueprint}
                   onCreateSafeBlueprint={onCreateSafeBlueprint}
+                  onAutoCompleteBlueprintConfig={onAutoCompleteBlueprintConfig}
                   onApproveBlueprint={onApproveBlueprint}
                   onGenerateBlueprint={onGenerateBlueprint}
                 />
@@ -304,6 +307,7 @@ function BlueprintView({
   onUpdateOutlineSummary,
   onRegenerateBlueprint,
   onCreateSafeBlueprint,
+  onAutoCompleteBlueprintConfig,
   onApproveBlueprint,
   onGenerateBlueprint,
 }: {
@@ -315,10 +319,16 @@ function BlueprintView({
   onUpdateOutlineSummary?: (index: number, summary: string) => void;
   onRegenerateBlueprint?: () => void;
   onCreateSafeBlueprint?: () => void;
+  onAutoCompleteBlueprintConfig?: () => void;
   onApproveBlueprint?: () => void;
   onGenerateBlueprint?: () => void;
 }) {
   const hasBlueprintError = project.blueprintStatus === "error" && !blueprint;
+  const readiness = useMemo(() => validateBookReadinessForBlueprint(project.config), [project.config]);
+  const readinessIssues = [
+    ...readiness.missingFields.map((field) => ({ field, type: "missing" as const })),
+    ...readiness.weakFields.map((field) => ({ field, type: "weak" as const })),
+  ];
 
   return (
     <div className="space-y-6">
@@ -339,15 +349,6 @@ function BlueprintView({
           onRegenerate={onRegenerateBlueprint}
           onCreateSafe={onCreateSafeBlueprint}
         />
-      )}
-
-      {!blueprint && !isGenerating && !hasBlueprintError && onGenerateBlueprint && (
-        <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-4 space-y-3">
-          <p className="text-sm text-sky-100">Configurazione salvata. Genera il blueprint per rivedere premessa e indice capitoli.</p>
-          <button type="button" onClick={onGenerateBlueprint} className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white">
-            Genera Blueprint
-          </button>
-        </div>
       )}
 
       {blueprint && project.blueprintApproved === false && onApproveBlueprint && (
@@ -429,20 +430,85 @@ function BlueprintView({
           </div>
         </>
       ) : !isGenerating && !hasBlueprintError ? (
-        <div className="rounded-xl border border-border/50 bg-muted/10 p-5 space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">{t("blueprint_no_structure")}</h3>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{t("blueprint_empty_hint")}</p>
+        <div className={cn(
+          "rounded-xl border p-5 space-y-4",
+          readiness.ready ? "border-sky-500/35 bg-sky-500/10" : "border-amber-400/35 bg-amber-400/10",
+        )}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">
+                {readiness.ready ? "Blueprint quasi pronto da costruire" : "Manca ancora qualcosa per un blueprint solido"}
+              </h3>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {readiness.ready
+                  ? "La configurazione ha basi sufficienti. Ora Scriptora può generare una struttura coerente e recuperabile."
+                  : "Prima mettiamo fondamenta solide: dati mancanti o troppo deboli generano blueprint fragili e capitoli confusi."}
+              </p>
+            </div>
+            <div className="shrink-0 rounded-full border border-white/10 bg-black/20 px-3 py-1 text-xs font-bold text-white">
+              Readiness {readiness.score}/100
+            </div>
           </div>
+
+          {(readinessIssues.length > 0 || readiness.genreSpecificWarnings.length > 0) && (
+            <div className="grid gap-3 md:grid-cols-2">
+              {readinessIssues.slice(0, 6).map((issue) => (
+                <div key={`${issue.type}-${issue.field}`} className="rounded-lg border border-white/10 bg-black/15 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-white/50">
+                    {issue.type === "missing" ? "Campo mancante" : "Campo debole"}
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-white">{issue.field}</p>
+                </div>
+              ))}
+              {readiness.genreSpecificWarnings.slice(0, 4).map((warning) => (
+                <div key={warning} className="rounded-lg border border-amber-300/20 bg-amber-300/10 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-100/60">Avviso genere</p>
+                  <p className="mt-1 text-xs leading-relaxed text-amber-50/90">{warning}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {Object.keys(readiness.suggestions).length > 0 && (
+            <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Cosa sistemare ora</p>
+              <ul className="mt-2 space-y-1.5 text-xs leading-relaxed text-muted-foreground">
+                {Object.entries(readiness.suggestions).slice(0, 5).map(([key, suggestion]) => (
+                  <li key={key}>→ {suggestion}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="flex flex-col gap-2 sm:flex-row">
-            {onRegenerateBlueprint && (
+            {readiness.ready && onGenerateBlueprint && (
               <button
                 type="button"
-                onClick={onRegenerateBlueprint}
+                onClick={onGenerateBlueprint}
                 className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:opacity-90"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                {t("blueprint_generate_cta")}
+                Genera Blueprint
+              </button>
+            )}
+            {!readiness.ready && onAutoCompleteBlueprintConfig && readiness.canAutoComplete && (
+              <button
+                type="button"
+                onClick={onAutoCompleteBlueprintConfig}
+                className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-amber-400 px-3 text-xs font-bold text-slate-950 hover:opacity-90"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                Suggerisci automaticamente
+              </button>
+            )}
+            {!readiness.ready && (
+              <button
+                type="button"
+                disabled
+                className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-xs font-semibold text-muted-foreground"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Completa configurazione
               </button>
             )}
             {onCreateSafeBlueprint && (
