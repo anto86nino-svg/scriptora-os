@@ -182,6 +182,7 @@ export default function Dashboard() {
   const [showAdvancedLaunchpad, setShowAdvancedLaunchpad] = useState(() => isAdvancedLaunchpadEnabled());
   const [showMobileStats, setShowMobileStats] = useState(false);
   const [projects, setProjects] = useState<BookProject[]>([]);
+  const [flowProjectId, setFlowProjectId] = useState<string | null>(null);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   const currentLang = useUILanguage();
@@ -336,12 +337,18 @@ export default function Dashboard() {
   useEffect(() => {
     const state = location.state as {
       openWizard?: boolean;
+      openNewBook?: boolean;
       openProjects?: boolean;
       openCover?: boolean;
       openExport?: boolean;
+      projectId?: string;
     } | null;
     if (!state) return;
-    if (state.openWizard) openNewBookGuarded();
+    if (state.projectId) {
+      setFlowProjectId(state.projectId);
+      setLastProjectId(state.projectId);
+    }
+    if (state.openWizard || state.openNewBook) openNewBookGuarded();
     if (state.openProjects) setShowProjects(true);
     if (state.openCover) guardPlanFeature("book_engine_full", () => setShowCoverStudio(true))();
     if (state.openExport) guardPlanFeature("export_epub", () => setShowExport(true))();
@@ -391,6 +398,8 @@ export default function Dashboard() {
   // Only surface "continue last" when the project still belongs to the active
   // environment (DEV vs USER). Cross-scope ids are silently ignored.
   const lastProject = lastId ? projects.find(p => p.id === lastId) : null;
+  const flowProject = flowProjectId ? projects.find((p) => p.id === flowProjectId) : null;
+  const dashboardContextProject = flowProject || lastProject;
 
   const deleteHomeProject = async (projectId: string, title?: string) => {
     const name = title || t("this_project");
@@ -1520,7 +1529,14 @@ export default function Dashboard() {
           steps={["Caricamento pannello…", "Quasi pronto…"]}
         />
       )}>
-      {showExport && <HomeExportDialog open projects={projects} onClose={() => setShowExport(false)} />}
+      {showExport && (
+        <HomeExportDialog
+          open
+          projects={projects}
+          initialProjectId={flowProjectId || lastProject?.id}
+          onClose={() => setShowExport(false)}
+        />
+      )}
       {showTitleIntel && <TitleIntelligenceDialog open onClose={() => setShowTitleIntel(false)} />}
       {showAdvancedSettings && <AdvancedAppearanceDialog open onClose={() => setShowAdvancedSettings(false)} />}
       {showSettingsHub && (
@@ -1574,15 +1590,15 @@ export default function Dashboard() {
           />
         )}>
           <CoverGenerator
-            title={lastProject?.config.title || t("untitled")}
-            subtitle={lastProject?.config.subtitle || ""}
-            authorName={lastProject?.config.authorName || activeAuthor.penName}
-            description={lastProject?.blueprint?.overview || ""}
-            authorBio={lastProject?.frontMatter?.aboutAuthor || activeAuthor.biography}
-            genre={lastProject?.config.genre || lastProject?.config.category}
-            language={lastProject?.config.language || lastProject?.config.titleLanguage}
-            projectId={lastProject?.id}
-            showPrimaryAction={Boolean(lastProject)}
+            title={dashboardContextProject?.config.title || t("untitled")}
+            subtitle={dashboardContextProject?.config.subtitle || ""}
+            authorName={dashboardContextProject?.config.authorName || activeAuthor.penName}
+            description={dashboardContextProject?.blueprint?.overview || ""}
+            authorBio={dashboardContextProject?.frontMatter?.aboutAuthor || activeAuthor.biography}
+            genre={dashboardContextProject?.config.genre || dashboardContextProject?.config.category}
+            language={dashboardContextProject?.config.language || dashboardContextProject?.config.titleLanguage}
+            projectId={dashboardContextProject?.id}
+            showPrimaryAction={Boolean(dashboardContextProject)}
             primaryActionLabel="Salva cover nel progetto"
             onGenerate={() => setShowCoverStudio(false)}
             onClose={() => setShowCoverStudio(false)}

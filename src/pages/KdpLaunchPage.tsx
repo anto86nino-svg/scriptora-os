@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowRight, Loader2, Rocket, Sparkles, TrendingUp, Trophy, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -84,6 +84,7 @@ function GroundingBadge({ meta }: { meta: { groundingUsed?: boolean; groundingRe
 
 export default function KdpLaunchPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const sessionIdRef = useRef(getOrCreateKdpSessionId());
   const [step, setStep] = useState<Step>("idea");
   const [loading, setLoading] = useState(false);
@@ -406,6 +407,13 @@ export default function KdpLaunchPage() {
       // non-blocking
     }
   }, []);
+
+  useEffect(() => {
+    if (location.hash !== "#title-domination") return;
+    window.setTimeout(() => {
+      document.getElementById("title-domination")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  }, [location.hash]);
 
   async function getPlan(): Promise<PlanTier> {
     return await fetchPlan().catch(() => "free");
@@ -843,7 +851,7 @@ export default function KdpLaunchPage() {
               <Button variant="outline" onClick={saveNarrativeToProject}>
                 {italianUi ? "Salva sessione" : "Save session"}
               </Button>
-              <Button onClick={() => navigate("/dashboard")}>
+              <Button onClick={goToBlueprint}>
                 {italianUi ? "Vai a scrivere il libro" : "Go write the book"}
               </Button>
             </CardContent>
@@ -851,20 +859,22 @@ export default function KdpLaunchPage() {
         )}
 
         {/* === KDP Title Domination — incremental, isolated section === */}
-        <KdpTitleDomination
-          defaults={{
-            idea,
-            genre,
-            language,
-            mainProblem: market?.subNiche,
-            desiredPromise: market?.recommendedAngle,
-          }}
-          onUseTitle={(t, s) => {
-            setChosenTitle(t);
-            setChosenSubtitle(s);
-            if (step === "idea" || step === "market") setStep("title");
-          }}
-        />
+        <section id="title-domination" className="scroll-mt-24">
+          <KdpTitleDomination
+            defaults={{
+              idea,
+              genre,
+              language,
+              mainProblem: market?.subNiche,
+              desiredPromise: market?.recommendedAngle,
+            }}
+            onUseTitle={(t, s) => {
+              setChosenTitle(t);
+              setChosenSubtitle(s);
+              if (step === "idea" || step === "market") setStep("title");
+            }}
+          />
+        </section>
       </main>
     </div>
   );

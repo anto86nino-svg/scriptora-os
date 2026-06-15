@@ -29,10 +29,26 @@ type StudioTab = "documents" | "audiobook";
 interface HomeExportDialogProps {
   open: boolean;
   projects: BookProject[];
+  initialProjectId?: string;
   onClose: () => void;
 }
 
-export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogProps) {
+export function resolveInitialExportProjectId(
+  projects: BookProject[],
+  currentId = "",
+  initialProjectId = "",
+): string {
+  const exportableProjects = projects.filter(isProjectComplete);
+  if (initialProjectId && exportableProjects.some((project) => project.id === initialProjectId)) {
+    return initialProjectId;
+  }
+  if (currentId && exportableProjects.some((project) => project.id === currentId)) {
+    return currentId;
+  }
+  return exportableProjects[0]?.id || "";
+}
+
+export function HomeExportDialog({ open, projects, initialProjectId, onClose }: HomeExportDialogProps) {
   const { toast } = useToast();
   const [selectedId, setSelectedId] = useState<string>("");
   const [format, setFormat] = useState<Format>("epub");
@@ -51,7 +67,8 @@ export function HomeExportDialog({ open, projects, onClose }: HomeExportDialogPr
   useEffect(() => {
     if (!open) return;
     setCoverDataUrls((current) => ({ ...listProjectCoverUrls(), ...current }));
-  }, [open]);
+    setSelectedId((current) => resolveInitialExportProjectId(projects, current, initialProjectId));
+  }, [initialProjectId, open, projects]);
 
   if (!open) return null;
 
