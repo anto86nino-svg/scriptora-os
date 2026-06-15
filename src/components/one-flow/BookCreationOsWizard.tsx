@@ -1197,6 +1197,7 @@ export function BookCreationOsWizard({
               <select value={amazonMarketplace} onChange={(e) => setAmazonMarketplace(e.target.value)} className={inputClass}>
                 {AMAZON_MARKETPLACES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
               </select>
+              {forgePresetId !== "poetry" && (
               <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-3">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Tipi libro principali</p>
                 <p className="mt-1 text-xs leading-5 text-white/50">
@@ -1225,6 +1226,7 @@ export function BookCreationOsWizard({
                   })}
                 </div>
               </div>
+              )}
               <select
                 value={bookTypeId}
                 onChange={(e) => applyStudioGenre(e.target.value)}
@@ -1274,14 +1276,31 @@ export function BookCreationOsWizard({
                 </button>
               )}
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <GuidedTextArea label="Conflitto principale" value={coreConflict} onChange={setCoreConflict} placeholder="Cosa vuole il protagonista, e cosa lo rende impossibile?" />
-                <GuidedTextArea label="Promessa narrativa" value={narrativePromise} onChange={setNarrativePromise} placeholder="Che emozione o trasformazione promette il libro al lettore?" />
-                <GuidedTextArea label="Ambientazione" value={setting} onChange={setSetting} placeholder="Dove accade? Quale mondo, atmosfera, regole, pressione?" />
-                <GuidedTextArea label="Hook iniziale" value={openingHook} onChange={setOpeningHook} placeholder="Quale evento apre il libro e costringe il lettore a restare?" />
-                <GuidedTextArea label="Twist principali" value={mainTwists} onChange={setMainTwists} placeholder="Rivelazioni, inversioni, segreti. Anche solo 2-3 appunti." />
-                <GuidedTextArea label="Voice consistency" value={voiceConsistency} onChange={setVoiceConsistency} placeholder="Cosa Scriptora non deve mai cambiare durante la scrittura?" />
-              </div>
+              {forgePresetId === "poetry" ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <GuidedTextArea
+                    label="Promessa poetica"
+                    value={narrativePromise}
+                    onChange={setNarrativePromise}
+                    placeholder="Che ferita, emozione, domanda o immagine attraversa tutta la raccolta?"
+                  />
+                  <GuidedTextArea
+                    label="Voce poetica"
+                    value={voiceConsistency}
+                    onChange={setVoiceConsistency}
+                    placeholder="Cosa Scriptora non deve mai perdere: ritmo, immagini, silenzi, tono, ricorrenze?"
+                  />
+                </div>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2">
+                  <GuidedTextArea label="Conflitto principale" value={coreConflict} onChange={setCoreConflict} placeholder="Cosa vuole il protagonista, e cosa lo rende impossibile?" />
+                  <GuidedTextArea label="Promessa narrativa" value={narrativePromise} onChange={setNarrativePromise} placeholder="Che emozione o trasformazione promette il libro al lettore?" />
+                  <GuidedTextArea label="Ambientazione" value={setting} onChange={setSetting} placeholder="Dove accade? Quale mondo, atmosfera, regole, pressione?" />
+                  <GuidedTextArea label="Hook iniziale" value={openingHook} onChange={setOpeningHook} placeholder="Quale evento apre il libro e costringe il lettore a restare?" />
+                  <GuidedTextArea label="Twist principali" value={mainTwists} onChange={setMainTwists} placeholder="Rivelazioni, inversioni, segreti. Anche solo 2-3 appunti." />
+                  <GuidedTextArea label="Voice consistency" value={voiceConsistency} onChange={setVoiceConsistency} placeholder="Cosa Scriptora non deve mai cambiare durante la scrittura?" />
+                </div>
+              )}
 
               <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-3">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Obiettivo commerciale</p>
