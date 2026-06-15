@@ -1249,12 +1249,12 @@ export function BookCreationOsWizard({
                 <BlueprintForgePanel elapsedSeconds={blueprintElapsedSeconds} />
               ) : blueprintError ? (
                 <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 p-4 text-left">
-                  <p className="text-sm font-semibold text-rose-100">Blueprint non completato</p>
+                  <p className="text-sm font-semibold text-rose-100">Blueprint non completato — controlliamo i punti critici</p>
                   <p className="mt-1 text-xs leading-5 text-rose-100/70">
                     {blueprintError}
                   </p>
                   <p className="mt-3 text-[11px] leading-4 text-white/45">
-                    Puoi correggere i campi o riprovare: nessun contenuto tecnico è stato salvato nel libro.
+                    Controlla gli step precedenti: quelli incompleti o dubbi devono indicare chiaramente cosa manca. Nessun contenuto tecnico è stato salvato nel libro.
                   </p>
                 </div>
               ) : preflightResult && !preflightResult.ready ? (

@@ -209,6 +209,23 @@ export function buildWizardAutofillPatch(
 
 export function humanizeBlueprintError(error: unknown, config: BookConfig): string {
   const raw = error instanceof Error ? error.message : String(error || "");
+
+  console.error("🚨 BLUEPRINT HUMANIZER");
+  console.error("RAW ERROR:", error);
+  console.error("MESSAGE:", raw);
+
+  const validationErrors =
+    (error as any)?.errors ||
+    (error as any)?.details ||
+    [];
+
+  if (Array.isArray(validationErrors) && validationErrors.length) {
+    console.error("VALIDATION ERRORS:", validationErrors);
+
+    return `Blueprint non completato: ${validationErrors
+      .slice(0, 3)
+      .join(" • ")}`;
+  }
   const lower = raw.toLowerCase();
 
   if (/genre|category|config|undefined|null|missing|invalid/i.test(lower)) {
@@ -224,5 +241,13 @@ export function humanizeBlueprintError(error: unknown, config: BookConfig): stri
   if (/title/i.test(lower)) {
     return "Serve un titolo commerciale prima di generare il blueprint.";
   }
-  return "Non sono riuscito a generare il blueprint. Controlliamo insieme i passaggi precedenti.";
+  const cleaned =
+    raw
+      ?.replace(/^error:\s*/i, "")
+      ?.replace(/^blueprint/i, "")
+      ?.trim();
+
+  return cleaned && cleaned.length > 8
+    ? `Blueprint non completato: ${cleaned}`
+    : "Blueprint non completato. Uno o più step potrebbero essere incompleti o incoerenti.";
 }

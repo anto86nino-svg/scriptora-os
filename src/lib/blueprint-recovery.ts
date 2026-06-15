@@ -52,23 +52,38 @@ function buildFallbackSubchapterTitle(chapterTitle: string, index: number, langu
 export function extractJsonFromText(raw: string): string | null {
   const cleaned = cleanJsonFence(raw);
   if (!cleaned) return null;
-  try {
-    JSON.parse(cleaned);
-    return cleaned;
-  } catch {
-    /* continue */
-  }
+
+  const candidates: string[] = [cleaned];
+
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
-  if (start >= 0 && end > start) {
-    const slice = cleaned.slice(start, end + 1);
+  if (start >= 0) {
+    if (end > start) candidates.push(cleaned.slice(start, end + 1));
+    candidates.push(cleaned.slice(start));
+  }
+
+  for (const candidate of candidates) {
+    const value = candidate.trim();
+    if (!value) continue;
+
     try {
-      JSON.parse(slice);
-      return slice;
+      JSON.parse(value);
+      return value;
     } catch {
-      return null;
+      const open = (value.match(/\{/g) || []).length;
+      const close = (value.match(/\}/g) || []).length;
+      if (open > close) {
+        const repaired = value + "}".repeat(open - close);
+        try {
+          JSON.parse(repaired);
+          return repaired;
+        } catch {
+          /* keep trying */
+        }
+      }
     }
   }
+
   return null;
 }
 

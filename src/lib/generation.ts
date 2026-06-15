@@ -1598,6 +1598,20 @@ Return a JSON object with:
     return { blueprint: retry.blueprint, source: retry.source };
   }
 
+  console.error("========== BLUEPRINT FAILURE ==========");
+  console.error("PRIMARY ERRORS:", primary.errors);
+  console.error("RETRY ERRORS:", retry.errors);
+  console.error("RAW PRIMARY PREVIEW:", rawPrimary?.slice(0, 4000));
+  console.error("RAW RETRY PREVIEW:", rawRetry?.slice(0, 4000));
+  console.error("CONFIG:", {
+    title: config.title,
+    genre: config.genre,
+    language: config.language,
+    numberOfChapters: config.numberOfChapters,
+    subchapters: getSubchaptersPerChapter(config),
+  });
+  console.error("======================================");
+
   throw new BlueprintValidationError(
     "Blueprint AI non valido. Riprova — la struttura del libro non è stata salvata per evitare corruzione.",
     retry.errors.length ? retry.errors : primary.errors,
