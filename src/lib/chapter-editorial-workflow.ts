@@ -14,6 +14,16 @@ export type ChapterEditorialAnalysisResult = {
   aiRating: AIQualityRating;
 };
 
+export type LocalChapterPatchFallback = {
+  patches: Array<{ idx: number; original: string; patched: string; type: string; reason: string }>;
+  patchedText: string;
+  originalText: string;
+  modificationPercent: number;
+  evaluation: { score: number; improvements: string[]; strengths: string[] };
+  fallbackMode: true;
+  fallbackReason: string;
+};
+
 function scoreToFive(composite: number): number {
   return Math.max(1, Math.min(5, Math.round(composite / 20) || 1));
 }
@@ -85,6 +95,32 @@ export function runLocalChapterEditorialAnalysis(
   };
 
   return { snapshot, aiRating };
+}
+
+export function buildLocalChapterPatchFallback(
+  content: string,
+  config: Pick<BookConfig, "genre" | "language" | "tone">,
+  chapterIndex: number,
+  reason = "AI unavailable → fallback mode",
+): LocalChapterPatchFallback {
+  const originalText = String(content || "").trim();
+  const analysis = runLocalChapterEditorialAnalysis(originalText, config, chapterIndex);
+  return {
+    patches: [],
+    patchedText: originalText,
+    originalText,
+    modificationPercent: 0,
+    evaluation: {
+      score: analysis.snapshot.scoreOutOf10,
+      improvements: [
+        reason,
+        ...analysis.snapshot.suggestions.slice(0, 4),
+      ],
+      strengths: analysis.snapshot.strengths.slice(0, 4),
+    },
+    fallbackMode: true,
+    fallbackReason: reason,
+  };
 }
 
 export function humanizeEditorialError(error: unknown): string {

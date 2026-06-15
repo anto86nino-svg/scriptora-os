@@ -108,7 +108,8 @@ export function shouldRequireStructuralSubchapters(project: Pick<BookProject, "c
 }
 
 export function getActiveSubchaptersPerChapter(project: Pick<BookProject, "config" | "blueprint">): number {
-  return getBookStructureTruth(project).subchaptersPerChapter;
+  const truth = getBookStructureTruth(project);
+  return shouldRequireStructuralSubchapters(project) ? truth.subchaptersPerChapter : 0;
 }
 
 export function getMissingActiveSubchapterRefs(project: StructureProject): Array<{ chapterIndex: number; subIndex: number }> {

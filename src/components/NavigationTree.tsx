@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookProject, SectionId, GenerationStatus } from "@/types/book";
+import { BookProject, SectionId, GenerationStatus, isGenerationCompleteStatus, isGenerationFailureStatus } from "@/types/book";
 import { ChevronRight, ChevronDown, FileText, Layers, Archive, ScrollText, Loader2, CheckCircle2, AlertCircle, Circle, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t, tt, useUILanguage } from "@/lib/i18n";
@@ -56,7 +56,8 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
     if (generatingSet.has(`chapter-${i}`)) return "generating";
     const ch = chapters[i];
     if (!ch || !ch.content) return "idle";
-    if (ch.status === "error") return "error";
+    if (isGenerationFailureStatus(ch.status)) return "error";
+    if (isGenerationCompleteStatus(ch.status)) return ch.status || "completed";
     return "completed";
   };
 
@@ -219,8 +220,15 @@ function StatusIcon({ status }: { status: GenerationStatus }) {
     case "generating":
       return <Loader2 className="h-3 w-3 animate-spin text-primary" />;
     case "completed":
+    case "completed_with_warning":
       return <CheckCircle2 className="h-3 w-3 text-[hsl(var(--success))]" />;
+    case "recovered_partial":
+      return <AlertCircle className="h-3 w-3 text-amber-500" />;
     case "error":
+    case "failed_empty":
+    case "failed_wrong_chapter":
+    case "failed_duplicate":
+    case "failed_canon_drift":
       return <AlertCircle className="h-3 w-3 text-destructive" />;
     default:
       return <Circle className="h-2.5 w-2.5 text-muted-foreground/30" />;
@@ -240,7 +248,7 @@ function TreeItem({
         "my-0.5 flex w-full items-center gap-2 truncate rounded-lg px-2.5 py-1.5 text-left text-[13px] transition-colors",
         active
           ? "border border-primary/30 bg-primary/15 font-medium text-primary shadow-sm shadow-primary/10"
-          : status === "completed"
+          : isGenerationCompleteStatus(status)
             ? "text-foreground/[0.85] hover:bg-white/[0.07]"
             : "text-muted-foreground/[0.65] hover:bg-white/[0.06]",
         className

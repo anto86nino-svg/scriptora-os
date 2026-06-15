@@ -1,5 +1,14 @@
 import { useState, useCallback, useRef } from "react";
-import { BookProject, BookConfig, ChatMessage, GenerationPhase, GenerationStatus, AIQualityRating, ChapterEditorialSnapshot } from "@/types/book";
+import {
+  BookProject,
+  BookConfig,
+  ChatMessage,
+  GenerationPhase,
+  GenerationStatus,
+  AIQualityRating,
+  ChapterEditorialSnapshot,
+  isGenerationFailureStatus,
+} from "@/types/book";
 import { saveProjectAsync, createProjectId, setLastProjectId, loadProjects as loadScopedProjects } from "@/services/storageService";
 import { saveProject } from "@/lib/storage";
 import type { RewriteLevel, ChunkProgress } from "@/lib/generation-types";
@@ -98,6 +107,27 @@ function trimTextToWordLimit(text: string, maxWords: number): string {
   const markerWords = marker.split(/\s+/).filter(Boolean);
   const allowedBodyWords = Math.max(0, maxWords - markerWords.length);
   return [...words.slice(0, allowedBodyWords), ...markerWords].join(" ");
+}
+
+function chapterGenerationKey(projectId: string, index: number): string {
+  return `${projectId}:${index}`;
+}
+
+function stripGeneratedHeading(text: string): string {
+  return String(text || "")
+    .replace(/^#\s+.*(?:\r?\n)+/, "")
+    .trim();
+}
+
+function recoveredStatusForContent(content: string): GenerationStatus {
+  const words = countWordsSafe(content);
+  if (words >= 120) return "completed_with_warning";
+  if (words >= 35) return "recovered_partial";
+  return "failed_empty";
+}
+
+function hasRecoverableChapterContent(content: unknown): boolean {
+  return recoveredStatusForContent(String(content || "")) !== "failed_empty";
 }
 
 async function getActivePlanForEngine() {
@@ -214,7 +244,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   // multiple chapters generate in parallel and emit hundreds of token events.
   const lastProgressRenderAt = useRef<Map<string, number>>(new Map());
   const lastSaveAt = useRef<Map<string, number>>(new Map());
-  const chapterGenerationIds = useRef<Map<number, string>>(new Map());
+  const chapterGenerationIds = useRef<Map<string, string>>(new Map());
   const rewriteLocks = useRef<Set<number>>(new Set());
   const PROGRESS_RENDER_MS = 150; // ~6fps for streaming text — perceptually smooth
   const SAVE_THROTTLE_MS = 1000;  // local IDB save throttled during streaming
@@ -247,14 +277,21 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
   const getLatestProject = (): BookProject | null => projectRef.current;
 
-  const startChapterGeneration = (index: number, prefix: string) => {
+  const startChapterGeneration = (projectId: string, index: number, prefix: string) => {
     const generationId = createRuntimeGenerationId(prefix);
-    chapterGenerationIds.current.set(index, generationId);
+    chapterGenerationIds.current.set(chapterGenerationKey(projectId, index), generationId);
     return generationId;
   };
 
-  const isCurrentChapterGeneration = (index: number, generationId: string) =>
-    chapterGenerationIds.current.get(index) === generationId;
+  const isCurrentChapterGeneration = (projectId: string, index: number, generationId: string) => {
+    const latest = projectRef.current;
+    return latest?.id === projectId && chapterGenerationIds.current.get(chapterGenerationKey(projectId, index)) === generationId;
+  };
+
+  const clearChapterGenerationIfCurrent = (projectId: string, index: number, generationId: string) => {
+    const key = chapterGenerationKey(projectId, index);
+    if (chapterGenerationIds.current.get(key) === generationId) chapterGenerationIds.current.delete(key);
+  };
 
   const prepareNewBookConfig = useCallback(async (config: BookConfig): Promise<BookConfig | null> => {
     const activePlan = await getActivePlanForEngine();
@@ -740,8 +777,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     }
 
     addGenerating(genKey);
-    const generationId = startChapterGeneration(index, "chapter");
+    const targetProjectId = p.id;
+    const generationId = startChapterGeneration(targetProjectId, index, "chapter");
     updateAndSave(proj => {
+      if (proj.id !== targetProjectId) return proj;
       const chapters = [...proj.chapters];
       while (chapters.length <= index) {
         chapters.push({ title: resolveProjectChapterTitle(proj, chapters.length), content: "", subchapters: [], status: "idle" });
@@ -773,7 +812,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       const chapter = await runGenerateChapterChunked(
         latestP.config, latestP.blueprint!, index, prevChapters, chapterOverride,
         (progress) => {
-          if (!isCurrentChapterGeneration(index, generationId)) return;
+          if (!isCurrentChapterGeneration(targetProjectId, index, generationId)) return;
           // Throttle: skip UI/state churn when tokens arrive faster than ~6fps.
           // Always allow phase-change events through so UI feels responsive.
           const key = `chapter-${index}`;
@@ -788,6 +827,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
           if (now - lastSave < SAVE_THROTTLE_MS) return;
           lastSaveAt.current.set(key, now);
           updateAndSave(proj => {
+            if (proj.id !== targetProjectId) return proj;
             const chapters = [...proj.chapters];
             while (chapters.length <= index) {
               chapters.push({ title: resolveProjectChapterTitle(proj, chapters.length), content: "", subchapters: [], status: "idle" });
@@ -818,12 +858,13 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       const activePlanAfterGeneration = await getActivePlanForEngine();
       const maxProjectWordsAfterGeneration = getPlanLimits(activePlanAfterGeneration).maxWordsPerBook;
 
-      if (!isCurrentChapterGeneration(index, generationId)) {
+      if (!isCurrentChapterGeneration(targetProjectId, index, generationId)) {
         scriptoraLog.warn("chapter", "Ignored stale chapter generation result", { chapterIndex: index + 1, generationId });
         return;
       }
 
       updateAndSave(proj => {
+        if (proj.id !== targetProjectId) return proj;
         const chapters = [...proj.chapters];
         while (chapters.length <= index) {
           chapters.push({ title: resolveProjectChapterTitle(proj, chapters.length), content: "", subchapters: [], status: "idle" });
@@ -876,21 +917,41 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         toast.error(msg);
       }
     } catch (e: any) {
-      if (!isCurrentChapterGeneration(index, generationId)) {
+      if (!isCurrentChapterGeneration(targetProjectId, index, generationId)) {
         scriptoraLog.warn("chapter", "Ignored stale chapter generation error", { chapterIndex: index + 1, generationId, raw: e?.message });
         return;
       }
+      let recoveredStatus: GenerationStatus | null = null;
       updateAndSave(proj => {
+        if (proj.id !== targetProjectId) return proj;
         const chapters = [...proj.chapters];
-        if (chapters[index]) chapters[index] = { ...chapters[index], status: "error" as GenerationStatus };
+        const existing = chapters[index];
+        const recoveredContent = stripGeneratedHeading(existing?.content || "");
+        if (existing && hasRecoverableChapterContent(recoveredContent)) {
+          recoveredStatus = recoveredStatusForContent(recoveredContent);
+          chapters[index] = {
+            ...existing,
+            content: recoveredContent,
+            status: recoveredStatus,
+            rewriteInProgress: false,
+            lastGenerationId: generationId,
+          };
+        } else if (existing) {
+          chapters[index] = { ...existing, status: "failed_empty" as GenerationStatus, rewriteInProgress: false };
+        }
         return { ...proj, chapters };
       });
       const err = classifyError(e);
-      scriptoraLog.error("chapter", formatUserMessage(err), { chapterIndex: index + 1, raw: e?.message });
-      addMessage("assistant", `❌ Capitolo ${index + 1}: ${formatUserMessage(err)}`);
-      toast.error(formatToastMessage(err));
+      scriptoraLog.error("chapter", formatUserMessage(err), { chapterIndex: index + 1, raw: e?.message, recoveredStatus });
+      if (recoveredStatus) {
+        addMessage("assistant", `⚠️ Capitolo ${index + 1} scritto e salvato, ma con warning finale: ${formatUserMessage(err)}`);
+        toast.warning(`Capitolo ${index + 1} salvato con warning non bloccante.`);
+      } else {
+        addMessage("assistant", `❌ Capitolo ${index + 1}: ${formatUserMessage(err)}`);
+        toast.error(formatToastMessage(err));
+      }
     } finally {
-      if (isCurrentChapterGeneration(index, generationId)) chapterGenerationIds.current.delete(index);
+      clearChapterGenerationIfCurrent(targetProjectId, index, generationId);
       removeGenerating(genKey);
       setChunkProgress(prev => { const next = { ...prev }; delete next[genKey]; return next; });
       lastProgressRenderAt.current.delete(`chapter-${index}`);
@@ -961,8 +1022,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     }
 
     addGenerating(genKey);
-    const generationId = startChapterGeneration(index, "regenerate");
+    const targetProjectId = p.id;
+    const generationId = startChapterGeneration(targetProjectId, index, "regenerate");
     updateAndSave(proj => {
+      if (proj.id !== targetProjectId) return proj;
       const chapters = [...proj.chapters];
       if (chapters[index]) {
         chapters[index] = {
@@ -992,11 +1055,12 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         idempotencyKey,
         taskType: "generate_chapter_chunk",
       });
-      if (!isCurrentChapterGeneration(index, generationId)) {
+      if (!isCurrentChapterGeneration(targetProjectId, index, generationId)) {
         scriptoraLog.warn("regenerate-chapter", "Ignored stale regenerate result", { chapterIndex: index + 1, generationId });
         return;
       }
       updateAndSave(proj => {
+        if (proj.id !== targetProjectId) return proj;
         const chapters = [...proj.chapters];
         chapters[index] = {
           ...chapter,
@@ -1010,26 +1074,29 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       });
       addMessage("assistant", `Chapter ${index + 1} regenerated!`);
       } catch (e: any) {
-        if (!isCurrentChapterGeneration(index, generationId)) {
+        if (!isCurrentChapterGeneration(targetProjectId, index, generationId)) {
           scriptoraLog.warn("regenerate-chapter", "Ignored stale regenerate error", { chapterIndex: index + 1, generationId, raw: e?.message });
           return;
         }
-        let recoveredWithContent = false;
+        let recoveredStatus: GenerationStatus | null = null;
 
         updateAndSave(proj => {
+          if (proj.id !== targetProjectId) return proj;
           const chapters = [...proj.chapters];
           const existing = chapters[index];
-          const existingContent = typeof existing?.content === "string" ? existing.content.trim() : "";
+          const existingContent = stripGeneratedHeading(typeof existing?.content === "string" ? existing.content : "");
 
-          if (existing && existingContent.length > 500) {
-            recoveredWithContent = true;
+          if (existing && hasRecoverableChapterContent(existingContent)) {
+            recoveredStatus = recoveredStatusForContent(existingContent);
             chapters[index] = {
               ...existing,
-              content: existingContent.replace(/^#\s+.*(?:\r?\n)+/, "").trim(),
-              status: "completed" as GenerationStatus,
+              content: existingContent,
+              status: recoveredStatus,
+              lastGenerationId: generationId,
+              rewriteInProgress: false,
             };
           } else if (existing) {
-            chapters[index] = { ...existing, status: "error" as GenerationStatus };
+            chapters[index] = { ...existing, status: "failed_empty" as GenerationStatus, rewriteInProgress: false };
           }
 
           return { ...proj, chapters };
@@ -1039,10 +1106,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         scriptoraLog.error("regenerate-chapter", formatUserMessage(err), {
           chapterIndex: index + 1,
           raw: e?.message,
-          recoveredWithContent,
+          recoveredStatus,
         });
 
-        if (recoveredWithContent) {
+        if (recoveredStatus) {
           addMessage("assistant", `⚠️ Capitolo ${index + 1} generato, ma con un warning finale: ${formatUserMessage(err)}`);
           toast.warning(`Capitolo ${index + 1} generato. Warning finale non bloccante.`);
         } else {
@@ -1050,7 +1117,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
           toast.error(formatToastMessage(err));
         }
     } finally {
-      if (isCurrentChapterGeneration(index, generationId)) chapterGenerationIds.current.delete(index);
+      clearChapterGenerationIfCurrent(targetProjectId, index, generationId);
       removeGenerating(genKey);
     }
   }, [project, generatingSet, addMessage, updateAndSave]);
@@ -1119,8 +1186,10 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
 
     addGenerating(genKey);
     rewriteLocks.current.add(index);
-    const generationId = startChapterGeneration(index, "rewrite");
+    const targetProjectId = p.id;
+    const generationId = startChapterGeneration(targetProjectId, index, "rewrite");
     updateAndSave(proj => {
+      if (proj.id !== targetProjectId) return proj;
       const chapters = [...proj.chapters];
       chapters[index] = {
         ...chapters[index],
@@ -1156,11 +1225,12 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
           taskType: "rewrite_chapter",
         }
       );
-      if (!isCurrentChapterGeneration(index, generationId)) {
+      if (!isCurrentChapterGeneration(targetProjectId, index, generationId)) {
         scriptoraLog.warn("rewrite-chapter", "Ignored stale rewrite result", { chapterIndex: index + 1, generationId, level });
         return;
       }
       updateAndSave(proj => {
+        if (proj.id !== targetProjectId) return proj;
         const chapters = [...proj.chapters];
         chapters[index] = {
           ...chapter,
@@ -1177,22 +1247,34 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
       });
       addMessage("assistant", `Chapter ${index + 1} — ${levelLabels[level]} complete! Re-evaluate to measure improvement.`);
     } catch (e: any) {
-      if (!isCurrentChapterGeneration(index, generationId)) {
+      if (!isCurrentChapterGeneration(targetProjectId, index, generationId)) {
         scriptoraLog.warn("rewrite-chapter", "Ignored stale rewrite error", { chapterIndex: index + 1, generationId, level, raw: e?.message });
         return;
       }
       updateAndSave(proj => {
+        if (proj.id !== targetProjectId) return proj;
         const chapters = [...proj.chapters];
-        if (chapters[index]) chapters[index] = { ...chapters[index], status: "error" as GenerationStatus, rewriteInProgress: false };
+        if (chapters[index]) {
+          const currentContent = stripGeneratedHeading(chapters[index].content || "");
+          chapters[index] = {
+            ...chapters[index],
+            content: currentContent || chapters[index].content,
+            status: hasRecoverableChapterContent(currentContent)
+              ? "completed_with_warning" as GenerationStatus
+              : "failed_empty" as GenerationStatus,
+            rewriteInProgress: false,
+            lastGenerationId: generationId,
+          };
+        }
         return { ...proj, chapters };
       });
       const err = classifyError(e);
       scriptoraLog.error("rewrite-chapter", formatUserMessage(err), { chapterIndex: index + 1, level, raw: e?.message });
-      addMessage("assistant", `❌ Capitolo ${index + 1}: ${formatUserMessage(err)}`);
-      toast.error(formatToastMessage(err));
+      addMessage("assistant", `⚠️ Riscrittura capitolo ${index + 1} non completata: ${formatUserMessage(err)}. Ho conservato il testo esistente.`);
+      toast.warning(`Riscrittura non completata. Testo esistente conservato.`);
     } finally {
       rewriteLocks.current.delete(index);
-      if (isCurrentChapterGeneration(index, generationId)) chapterGenerationIds.current.delete(index);
+      clearChapterGenerationIfCurrent(targetProjectId, index, generationId);
       removeGenerating(genKey);
     }
   }, [project, generatingSet, addMessage, updateAndSave]);
@@ -1485,7 +1567,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         onSectionFocus?.(`chapter-${i}`);
         await generateSingleChapter(i);
         const afterChapterGen = getLatestProject();
-        if (afterChapterGen?.chapters[i]?.status === "error") chapterFailures += 1;
+        if (isGenerationFailureStatus(afterChapterGen?.chapters[i]?.status)) chapterFailures += 1;
         await new Promise(r => setTimeout(r, 400));
 
         const afterChapter = getLatestProject() || latest;

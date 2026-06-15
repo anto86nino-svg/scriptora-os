@@ -30,6 +30,7 @@ import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-ti
 import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
 import { buildHumanBestsellerModeV11Block } from "@/lib/human-bestseller-mode-v11";
+import { buildHumanBestsellerModeV12Block } from "@/lib/human-bestseller-mode-v12";
 import { buildPremiumWritingBlock, runUltraHumanFinalPass } from "@/lib/premium-writing";
 import { buildPromptFromCanonicalConfig, sanitizeBookConfiguration } from "@/lib/book-config-engine";
 import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/billing/billingHeaders";
@@ -977,6 +978,61 @@ function checkOverlap(existingText: string, newChunk: string): number {
   return overlapping / newSentences.length;
 }
 
+function normalizeForChunkCompare(value: string): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[“”"']/g, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function stripChunkHeading(chunk: string, chapterIndex: number, chapterTitle: string): string {
+  const titleNorm = normalizeForChunkCompare(chapterTitle);
+  const lines = String(chunk || "").split("\n");
+  while (lines.length) {
+    const first = lines[0].trim();
+    const firstNorm = normalizeForChunkCompare(first);
+    const looksLikeHeading = /^#{1,3}\s+/.test(first)
+      || /^chapter\s+\d+/i.test(first)
+      || /^capitolo\s+\d+/i.test(first)
+      || (titleNorm.length > 8 && firstNorm === titleNorm)
+      || firstNorm === `chapter ${chapterIndex + 1}`
+      || firstNorm === `capitolo ${chapterIndex + 1}`;
+    if (!looksLikeHeading) break;
+    lines.shift();
+  }
+  return lines.join("\n").trim();
+}
+
+function mergeChapterChunk(existingText: string, nextChunk: string, chapterIndex: number, chapterTitle: string): string {
+  const existing = String(existingText || "").trim();
+  let next = stripChunkHeading(nextChunk, chapterIndex, chapterTitle);
+  if (!existing) return next.trim();
+  if (!next.trim()) return existing;
+
+  const existingNorm = normalizeForChunkCompare(existing);
+  const nextNorm = normalizeForChunkCompare(next);
+  if (nextNorm.length > 80 && existingNorm.includes(nextNorm)) return existing;
+
+  const paragraphs = next.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  while (paragraphs.length) {
+    const firstNorm = normalizeForChunkCompare(paragraphs[0]);
+    if (firstNorm.length < 60 || !existingNorm.includes(firstNorm)) break;
+    paragraphs.shift();
+  }
+  next = paragraphs.join("\n\n").trim();
+  if (!next) return existing;
+
+  const existingTail = normalizeForChunkCompare(existing.split(/[.!?]+/).filter(Boolean).slice(-1)[0] || "");
+  const nextSentences = next.split(/(?<=[.!?])\s+/).filter(Boolean);
+  if (existingTail.length > 30 && nextSentences.length > 1 && normalizeForChunkCompare(nextSentences[0]).includes(existingTail.slice(0, 80))) {
+    next = nextSentences.slice(1).join(" ").trim();
+  }
+
+  return next ? `${existing}\n\n${next}` : existing;
+}
+
 /* ============ Adaptive Chunk Intelligence ============ */
 
 type ChunkSize = "LARGE" | "MEDIUM" | "SMALL" | "MICRO";
@@ -1180,6 +1236,7 @@ export async function generateChapterChunked(
   const characterLock = buildCharacterLock(config);
   const humanNarrativeRealismV4 = buildHumanNarrativeRealismV4Block(config, chapterIndex);
   const humanBestsellerModeV11 = buildHumanBestsellerModeV11Block(config, { chapterIndex, mode: "generation" });
+  const humanBestsellerModeV12 = buildHumanBestsellerModeV12Block(config, { chapterIndex, mode: "generation" });
   const genreDirective = buildPromptByGenre({
     genre: genreLock?.genre || config.genre,
     subcategory: genreLock?.subcategory || (config as any).subcategory,
@@ -1266,6 +1323,8 @@ ${humanNarrativeRealismV4}
 
 ${humanBestsellerModeV11}
 
+${humanBestsellerModeV12}
+
 ${humanizerBlock}
 
 ${premiumWritingBlock}
@@ -1305,6 +1364,8 @@ ${humanizerBlock}
 ${humanNarrativeRealismV4}
 
 ${humanBestsellerModeV11}
+
+${humanBestsellerModeV12}
 
 ${premiumWritingBlock}
 
@@ -1436,7 +1497,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
       }
     }
 
-    accumulatedContent += (accumulatedContent ? "\n\n" : "") + chunkText;
+    accumulatedContent = mergeChapterChunk(accumulatedContent, chunkText, chapterIndex, chapterTitle);
     chunkIndex++;
 
     const updatedWords = countWords(accumulatedContent);
@@ -2043,6 +2104,7 @@ export async function rewriteChapter(
   const characterLock = buildCharacterLock(config);
   const humanNarrativeRealismV4 = buildHumanNarrativeRealismV4Block(config, chapterIndex);
   const humanBestsellerModeV11 = buildHumanBestsellerModeV11Block(config, { chapterIndex, mode: "rewrite" });
+  const humanBestsellerModeV12 = buildHumanBestsellerModeV12Block(config, { chapterIndex, mode: "rewrite" });
   const bookTypeEngineBlock = buildBookTypeEngineBlock(config);
   const humanizerBlock = buildHumanizerPromptBlock({
     config,
@@ -2074,6 +2136,8 @@ ${characterLock}
 ${humanNarrativeRealismV4}
 
 ${humanBestsellerModeV11}
+
+${humanBestsellerModeV12}
 
 ${humanizerBlock}
 

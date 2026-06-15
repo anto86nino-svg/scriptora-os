@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getActiveSubchaptersPerChapter,
   getBookStructureTruth,
   getMissingActiveSubchapterRefs,
   isNarrativeFictionProject,
@@ -42,6 +43,7 @@ describe("book structure truth — fiction export subchapter blocker", () => {
 
     expect(isNarrativeFictionProject(project)).toBe(true);
     expect(shouldRequireStructuralSubchapters(project)).toBe(false);
+    expect(getActiveSubchaptersPerChapter(project)).toBe(0);
     expect(getMissingActiveSubchapterRefs(project)).toEqual([]);
 
     const truth = getBookStructureTruth(project);

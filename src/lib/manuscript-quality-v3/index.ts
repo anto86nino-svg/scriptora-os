@@ -1,6 +1,7 @@
 import type { BookConfig } from "@/types/book";
 import { applyAntiRepetitionDirector } from "@/lib/editorial-wow/AntiRepetitionDirector";
 import { applyHumanBestsellerModeV11Postprocess } from "@/lib/human-bestseller-mode-v11";
+import { applyHumanBestsellerModeV12Postprocess } from "@/lib/human-bestseller-mode-v12";
 import { applyPremiumOutputGuard } from "@/lib/premium-writing/output-sanitization-guard";
 import { resolveBookTypeContext } from "@/lib/book-type-engine";
 
@@ -28,6 +29,12 @@ export function runManuscriptQualityV3(
     if (ctx.definition.family === "narrative") {
       processed = applyPremiumOutputGuard(processed, { language });
       processed = applyHumanBestsellerModeV11Postprocess(processed, {
+        language,
+        priorText: opts.priorText || "",
+        config: opts.config,
+        chapterIndex: opts.chapterIndex,
+      });
+      processed = applyHumanBestsellerModeV12Postprocess(processed, {
         language,
         priorText: opts.priorText || "",
         config: opts.config,

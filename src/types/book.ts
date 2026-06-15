@@ -41,7 +41,29 @@ export type GenerationPhase =
   | "back-matter" 
   | "complete";
 
-export type GenerationStatus = "idle" | "generating" | "completed" | "error";
+export type GenerationStatus =
+  | "idle"
+  | "generating"
+  | "completed"
+  | "completed_with_warning"
+  | "recovered_partial"
+  | "error"
+  | "failed_empty"
+  | "failed_wrong_chapter"
+  | "failed_duplicate"
+  | "failed_canon_drift";
+
+export function isGenerationCompleteStatus(status?: GenerationStatus): boolean {
+  return status === "completed" || status === "completed_with_warning" || status === "recovered_partial";
+}
+
+export function isGenerationFailureStatus(status?: GenerationStatus): boolean {
+  return status === "error"
+    || status === "failed_empty"
+    || status === "failed_wrong_chapter"
+    || status === "failed_duplicate"
+    || status === "failed_canon_drift";
+}
 
 export interface AIQualityRating {
   score: number; // 1-5

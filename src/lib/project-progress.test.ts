@@ -52,4 +52,32 @@ describe("project-progress", () => {
     const p = baseProject({ phase: "complete" });
     expect(isProjectComplete(p)).toBe(true);
   });
+
+  it("does not count narrative fiction blueprint subchapters as required progress", () => {
+    const p = baseProject({
+      config: {
+        ...baseProject().config,
+        genre: "dark-romance",
+        category: "Fiction",
+        subchaptersEnabled: true,
+        subchaptersPerChapter: 3,
+      } as BookProject["config"],
+      blueprint: {
+        overview: "o",
+        themes: [],
+        emotionalArc: "a",
+        chapterOutlines: [
+          { title: "1", summary: "s", subchapters: [{ title: "A", summary: "s" }, { title: "B", summary: "s" }] },
+          { title: "2", summary: "s", subchapters: [{ title: "A", summary: "s" }, { title: "B", summary: "s" }] },
+        ],
+      },
+      chapters: [
+        { title: "1", content: "word ".repeat(60), subchapters: [] },
+        { title: "2", content: "word ".repeat(60), subchapters: [] },
+      ],
+    });
+
+    expect(areChaptersComplete(p)).toBe(true);
+    expect(computeProjectProgressPercent(p)).toBe(100);
+  });
 });

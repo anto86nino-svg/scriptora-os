@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo, type RefObject } from "react";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
-import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating } from "@/types/book";
+import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating, isGenerationFailureStatus } from "@/types/book";
 import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, AlertTriangle, Download, Zap, Headphones, Shield, Clock3, Scissors } from "lucide-react";
 import { BlueprintRecoveryCard } from "@/components/blueprint/BlueprintRecoveryCard";
 import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel";
@@ -832,7 +832,7 @@ function ChapterView({
       {isEvaluating && <LoadingBanner text={`${t("evaluate")}...`} />}
 
       {/* Error retry state */}
-      {!isGenerating && chapter?.status === "error" && (
+      {!isGenerating && isGenerationFailureStatus(chapter?.status) && (
         <div className="flex items-center gap-3 px-5 py-3 rounded-lg bg-destructive/5 border border-destructive/20 animate-fade-in">
           <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
           <span className="text-sm text-destructive font-medium flex-1">{t("generation_failed")}</span>
@@ -843,7 +843,7 @@ function ChapterView({
         </div>
       )}
 
-      {!isGenerated && !isGenerating && chapter?.status !== "error" && (
+      {!isGenerated && !isGenerating && !isGenerationFailureStatus(chapter?.status) && (
         <div className="space-y-3">
           <div className="scriptora-chapter-brief scriptora-chapter-brief-static">
             <p className="scriptora-chapter-brief-label">Micro brief editoriale</p>

@@ -1,6 +1,6 @@
 import type { BookProject } from "@/types/book";
 import { getBookTotalWords } from "@/types/book";
-import { getBookStructureTruth, getMissingActiveSubchapterRefs } from "@/lib/book-structure-truth";
+import { getActiveSubchaptersPerChapter, getBookStructureTruth, getMissingActiveSubchapterRefs } from "@/lib/book-structure-truth";
 import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 
 export function areChaptersComplete(project: BookProject): boolean {
@@ -29,12 +29,12 @@ export function countSectionProgress(project: BookProject): { complete: number; 
   total += totalChapters;
   complete += (chapters || []).filter((c) => (c.content || "").trim().length > 50).length;
 
-  const structure = getBookStructureTruth(project);
-  if (structure.requiresSubchapters && structure.subchaptersPerChapter > 0) {
-    total += totalChapters * structure.subchaptersPerChapter;
+  const activeSubchaptersPerChapter = getActiveSubchaptersPerChapter(project);
+  if (activeSubchaptersPerChapter > 0) {
+    total += totalChapters * activeSubchaptersPerChapter;
     complete += (chapters || []).reduce((sum, chapter) => {
       const done = (chapter.subchapters || [])
-        .slice(0, structure.subchaptersPerChapter)
+        .slice(0, activeSubchaptersPerChapter)
         .filter((sub) => (sub.content || "").trim().length > 50).length;
       return sum + done;
     }, 0);

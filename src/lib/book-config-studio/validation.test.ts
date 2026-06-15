@@ -13,6 +13,7 @@ describe("book config studio validation", () => {
       authorName: "Lua Galli",
       numberOfChapters: 12,
       tone: "emotivo",
+      targetReader: "Lettrici romance contemporaneo che cercano tensione emotiva e slow burn.",
     });
     const issues = validateBookConfigStudio(config, {
       id: "custom-test",
