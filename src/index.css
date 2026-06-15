@@ -6519,3 +6519,46 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
     animation: none !important;
   }
 }
+
+/* SCRIPTORA MOBILE LITE — PAGE SCROLL CONTRACT HOTFIX
+   Scope: mobile page surfaces only.
+   Purpose: prevent dashboard/app wrappers from trapping vertical scroll.
+   Do not target modal panels: Cover, Export, Notes keep their own 100dvh behavior.
+*/
+@media (max-width: 767px) {
+  html,
+  body,
+  #root {
+    height: auto !important;
+    min-height: 100% !important;
+    max-height: none !important;
+    overflow-x: clip !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: auto !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .scriptora-page-scroll,
+  .scriptora-dashboard-mobile,
+  .scriptora-app-surface,
+  .scriptora-ios-screen {
+    height: auto !important;
+    min-height: 100dvh !important;
+    max-height: none !important;
+    overflow-x: clip !important;
+    overflow-y: visible !important;
+    overscroll-behavior-y: auto !important;
+    touch-action: pan-y !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .scriptora-dashboard-mobile.scriptora-page-scroll {
+    display: block !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 7.5rem) !important;
+  }
+
+  .scriptora-dashboard-mobile * {
+    touch-action: pan-y;
+  }
+}
