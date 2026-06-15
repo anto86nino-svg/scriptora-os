@@ -4,8 +4,15 @@ import { getSelectedAuthorIdentity } from "@/lib/author-identity";
 import { requireCreditsAsync } from "@/lib/billing";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { buildCoverStudioPackage, recommendTemplate, COVER_TEMPLATES } from "@/lib/cover-studio";
-import { getProjectCoverDataUrl, setProjectCoverDataUrl } from "@/lib/cover-session";
-import { CoverStudioPanels } from "@/components/cover/CoverStudioPanels";
+import { getProjectCoverDataUrl, getProjectCoverComposition, setProjectCoverDataUrl } from "@/lib/cover-session";
+import { CoverStudioPro } from "@/components/cover/CoverStudioPro";
+import {
+  migrateComposition,
+  syncTextLayerContent,
+  type CoverComposition,
+} from "@/lib/cover-studio/cover-layers";
+import { recommendBackgroundForGenre } from "@/lib/cover-studio/cover-backgrounds";
+import { drawComposedFrontCover } from "@/lib/cover-studio/cover-canvas-compose";
 import { creditModeDisclosure, creditModeLabel } from "@/lib/credit-economy";
 import { isDevMode } from "@/lib/dev-mode";
 import { Badge } from "@/components/ui/badge";
@@ -274,6 +281,29 @@ export function CoverGenerator({
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [coverSaved, setCoverSaved] = useState(() => Boolean(projectId && getProjectCoverDataUrl(projectId)));
   const [dataMode, setDataMode] = useState<"template" | "ai-assisted" | "upload">("template");
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const [composition, setComposition] = useState<CoverComposition>(() => {
+    const bg = recommendBackgroundForGenre(genre || "");
+    const fallback = {
+      title: title || "Untitled Book",
+      subtitle: subtitle || "",
+      author: authorName || "",
+      templateId: "",
+      templateIndex: 0,
+      backgroundPresetId: bg.id,
+    };
+    if (projectId) {
+      const raw = getProjectCoverComposition(projectId);
+      if (raw) {
+        try {
+          return migrateComposition(JSON.parse(raw), fallback);
+        } catch {
+          /* use defaults */
+        }
+      }
+    }
+    return migrateComposition(null, fallback);
+  });
 
   const studioPackage = useMemo(
     () =>
@@ -327,6 +357,13 @@ export function CoverGenerator({
   );
 
   useEffect(() => {
+    setComposition((c) => ({
+      ...c,
+      layers: syncTextLayerContent(c.layers, coverTitle, coverSubtitle, coverAuthor),
+    }));
+  }, [coverTitle, coverSubtitle, coverAuthor]);
+
+  useEffect(() => {
     void drawCover();
   }, [
     spec,
@@ -353,6 +390,7 @@ export function CoverGenerator({
     titleScale,
     subtitleScale,
     authorScale,
+    composition,
   ]);
 
   async function drawCover() {
@@ -379,12 +417,38 @@ export function CoverGenerator({
       drawPanelTint(ctx, spec.backRect, template, 0.06);
       drawPanelTint(ctx, spec.spineRect, template, 0.12);
       drawPanelTint(ctx, spec.frontRect, template, 0.04);
-      await drawFrontCover(ctx, spec.frontRect, template, uploadedImage, imageFit);
+      if (!uploadedImage) {
+        drawComposedFrontCover(ctx, spec.frontRect, {
+          composition,
+          template,
+          seed: scriptoraSeed,
+          legacyDraw: () => {
+            drawTemplateBackground(ctx, spec.frontRect, template, scriptoraSeed + 11);
+            drawScriptoraAiScene(ctx, spec.frontRect, template, scriptoraSeed, scriptoraArtDirection);
+            drawCoverOrnaments(ctx, spec.frontRect, template, scriptoraSeed);
+          },
+        });
+      } else {
+        await drawFrontCover(ctx, spec.frontRect, template, uploadedImage, imageFit);
+      }
       drawBackCover(ctx, spec.backRect, template, authorImage);
       drawSpine(ctx, spec.spineRect, template);
       if (showGuides) drawPrintGuides(ctx, spec, template);
     } else {
-      await drawFrontCover(ctx, spec.frontRect, template, uploadedImage, imageFit);
+      if (!uploadedImage) {
+        drawComposedFrontCover(ctx, spec.frontRect, {
+          composition,
+          template,
+          seed: scriptoraSeed,
+          legacyDraw: () => {
+            drawTemplateBackground(ctx, spec.frontRect, template, scriptoraSeed + 11);
+            drawScriptoraAiScene(ctx, spec.frontRect, template, scriptoraSeed, scriptoraArtDirection);
+            drawCoverOrnaments(ctx, spec.frontRect, template, scriptoraSeed);
+          },
+        });
+      } else {
+        await drawFrontCover(ctx, spec.frontRect, template, uploadedImage, imageFit);
+      }
     }
   }
 
@@ -551,8 +615,9 @@ export function CoverGenerator({
   }
 
   function persistCover(dataUrl: string) {
+    const compositionJson = JSON.stringify(composition);
     if (projectId) {
-      const ok = setProjectCoverDataUrl(projectId, dataUrl);
+      const ok = setProjectCoverDataUrl(projectId, dataUrl, compositionJson);
       setCoverSaved(ok);
     }
   }
@@ -676,9 +741,9 @@ export function CoverGenerator({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-primary sm:gap-2 sm:text-xs sm:tracking-[0.2em]">
               <BookOpen className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
-              <span className="truncate">Scriptora Cover Studio</span>
+              <span className="truncate">Cover Studio Pro</span>
             </div>
-            <h2 className="mt-0.5 line-clamp-2 text-base font-semibold leading-snug text-foreground sm:text-lg">Cover concept — EPUB, KDP e Lulu</h2>
+            <h2 className="mt-0.5 line-clamp-2 text-base font-semibold leading-snug text-foreground sm:text-lg">Cover concept — costruisci la tua copertina</h2>
             <div className="mt-1 flex flex-wrap items-center gap-1">
               <Badge variant="outline" className="px-1.5 py-0 text-[9px] sm:text-[10px]">{studioPackage.honestyLabel}</Badge>
               <Badge variant="secondary" className="px-1.5 py-0 text-[9px] sm:text-[10px]">Score {studioPackage.score.finalScore}</Badge>
@@ -727,14 +792,20 @@ export function CoverGenerator({
               <p className="mt-1">{creditModeDisclosure(devCreditMode)}</p>
             </section>
 
-            <CoverStudioPanels
+            <CoverStudioPro
               pkg={studioPackage}
               italianUi={italianUi}
+              composition={composition}
+              onCompositionChange={setComposition}
+              selectedLayerId={selectedLayerId}
+              onSelectLayer={setSelectedLayerId}
+              genre={coverGenreBrief || genre}
               selectedTemplateId={selectedTemplateId || studioPackage.recommendedTemplateId}
               onSelectVariant={(idx, id) => {
                 setSelectedTemplate(idx);
                 setSelectedTemplateId(id);
                 setDataMode("template");
+                setComposition((c) => ({ ...c, templateId: id, templateIndex: idx }));
               }}
               onSaveProject={projectId ? handleSaveToProject : undefined}
               onOpenExport={onOpenExport}
