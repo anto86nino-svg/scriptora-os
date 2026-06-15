@@ -11,11 +11,12 @@ import {
   migrateComposition,
   syncTextLayerContent,
   syncBackMatterContent,
+  upsertFrontImageLayer,
   type CoverComposition,
 } from "@/lib/cover-studio/cover-layers";
 import { serializeCoverComposition, validateCoverComposition } from "@/lib/cover-studio/cover-composition-utils";
 import { recommendBackgroundForGenre } from "@/lib/cover-studio/cover-backgrounds";
-import { drawComposedFrontCover } from "@/lib/cover-studio/cover-canvas-compose";
+import { drawComposedFrontCover, drawPanelImageLayers } from "@/lib/cover-studio/cover-canvas-compose";
 import { drawComposedBackMatter, drawComposedSpine } from "@/lib/cover-studio/cover-back-matter-compose";
 import { drawPrintSafeGuides } from "@/lib/cover-studio/cover-view-modes";
 import { runCinematicGenerateSequence } from "@/lib/cover-studio/cover-cinematic-generate";
@@ -281,7 +282,6 @@ export function CoverGenerator({
   const [customSpine, setCustomSpine] = useState(0.65);
   const [dpi, setDpi] = useState(300);
   const [imageFit, setImageFit] = useState<ImageFit>("soft");
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [authorPhoto, setAuthorPhoto] = useState<string | null>(null);
   const [showAuthorPhoto, setShowAuthorPhoto] = useState(false);
   const [scriptoraSeed, setScriptoraSeed] = useState(1);
@@ -328,6 +328,8 @@ export function CoverGenerator({
     return migrateComposition(null, fallback);
   });
 
+  const frontCoverImage = composition.images?.front ?? null;
+
   const studioPackage = useMemo(
     () =>
       buildCoverStudioPackage(
@@ -344,7 +346,7 @@ export function CoverGenerator({
           dataMode,
           hasSavedCover: coverSaved,
           darkTemplate: TEMPLATES[selectedTemplate]?.dark,
-          hasUpload: Boolean(uploadedImage),
+          hasUpload: Boolean(frontCoverImage),
         },
       ),
     [
@@ -359,7 +361,7 @@ export function CoverGenerator({
       dataMode,
       coverSaved,
       selectedTemplate,
-      uploadedImage,
+      frontCoverImage,
     ],
   );
 
@@ -427,7 +429,7 @@ export function CoverGenerator({
     bookDescription,
     coverAuthorBio,
     backTagline,
-    uploadedImage,
+    frontCoverImage,
     authorPhoto,
     showAuthorPhoto,
     imageFit,
@@ -460,9 +462,10 @@ export function CoverGenerator({
 
     if (spec.isPrint && spec.backRect && spec.spineRect) {
       let authorImage: HTMLImageElement | null = null;
-      if (showAuthorPhoto && authorPhoto) {
+      const photoSrc = showAuthorPhoto ? (authorPhoto ?? composition.images?.authorPhoto ?? null) : null;
+      if (photoSrc) {
         try {
-          authorImage = await loadImage(authorPhoto);
+          authorImage = await loadImage(photoSrc);
         } catch {
           authorImage = null;
         }
@@ -470,11 +473,13 @@ export function CoverGenerator({
       drawPanelTint(ctx, spec.backRect, template, 0.06);
       drawPanelTint(ctx, spec.spineRect, template, 0.12);
       drawPanelTint(ctx, spec.frontRect, template, 0.04);
-      if (!uploadedImage) {
-        drawComposedFrontCover(ctx, spec.frontRect, {
+      if (!frontCoverImage) {
+        await drawComposedFrontCover(ctx, spec.frontRect, {
           composition,
           template,
           seed: scriptoraSeed,
+          imageFit,
+          loadImage,
           legacyDraw: () => {
             drawTemplateBackground(ctx, spec.frontRect, template, scriptoraSeed + 11);
             drawScriptoraAiScene(ctx, spec.frontRect, template, scriptoraSeed, scriptoraArtDirection);
@@ -482,8 +487,16 @@ export function CoverGenerator({
           },
         });
       } else {
-        await drawFrontCover(ctx, spec.frontRect, template, uploadedImage, imageFit);
+        await drawComposedFrontCover(ctx, spec.frontRect, {
+          composition,
+          template,
+          uploadedImage: frontCoverImage,
+          imageFit,
+          loadImage,
+          seed: scriptoraSeed,
+        });
       }
+      await drawPanelImageLayers(ctx, spec.backRect, composition, "back", loadImage);
       drawComposedBackMatter(ctx, spec.backRect, composition, template, {
         authorImage: showAuthorPhoto ? authorImage : null,
         seed: scriptoraSeed,
@@ -492,11 +505,13 @@ export function CoverGenerator({
       if (composition.showPrintGuides) drawPrintSafeGuides(ctx, spec, italianUi);
       if (showGuides) drawPrintGuides(ctx, spec, template);
     } else {
-      if (!uploadedImage) {
-        drawComposedFrontCover(ctx, spec.frontRect, {
+      if (!frontCoverImage) {
+        await drawComposedFrontCover(ctx, spec.frontRect, {
           composition,
           template,
           seed: scriptoraSeed,
+          imageFit,
+          loadImage,
           legacyDraw: () => {
             drawTemplateBackground(ctx, spec.frontRect, template, scriptoraSeed + 11);
             drawScriptoraAiScene(ctx, spec.frontRect, template, scriptoraSeed, scriptoraArtDirection);
@@ -504,7 +519,14 @@ export function CoverGenerator({
           },
         });
       } else {
-        await drawFrontCover(ctx, spec.frontRect, template, uploadedImage, imageFit);
+        await drawComposedFrontCover(ctx, spec.frontRect, {
+          composition,
+          template,
+          uploadedImage: frontCoverImage,
+          imageFit,
+          loadImage,
+          seed: scriptoraSeed,
+        });
       }
     }
   }
@@ -771,18 +793,65 @@ export function CoverGenerator({
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setUploadedImage(String(reader.result || ""));
+      const dataUrl = String(reader.result || "");
+      if (!dataUrl.startsWith("data:image")) {
+        toast.error(italianUi ? "Formato immagine non valido" : "Invalid image format");
+        return;
+      }
+      setComposition((c) => ({
+        ...c,
+        updatedAt: new Date().toISOString(),
+        images: { ...c.images, front: dataUrl },
+        imageFit,
+        layers: upsertFrontImageLayer(c.layers, dataUrl),
+      }));
       setDataMode("upload");
+      toast.success(italianUi ? "Immagine caricata" : "Image uploaded");
+    };
+    reader.onerror = () => {
+      toast.error(italianUi ? "Errore lettura file" : "File read error");
     };
     reader.readAsDataURL(file);
+  }
+
+  function handleBackImageUpload(file: File | undefined) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || "");
+      if (!dataUrl.startsWith("data:image")) return;
+      setComposition((c) => ({
+        ...c,
+        updatedAt: new Date().toISOString(),
+        images: { ...c.images, back: dataUrl },
+      }));
+      toast.success(italianUi ? "Immagine retro caricata" : "Back image uploaded");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearFrontImage() {
+    setComposition((c) => ({
+      ...c,
+      images: { ...c.images, front: null },
+      layers: upsertFrontImageLayer(c.layers, null),
+      updatedAt: new Date().toISOString(),
+    }));
+    setDataMode("template");
   }
 
   function handleAuthorPhotoUpload(file: File | undefined) {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      setAuthorPhoto(String(reader.result || ""));
+      const dataUrl = String(reader.result || "");
+      setAuthorPhoto(dataUrl);
       setShowAuthorPhoto(true);
+      setComposition((c) => ({
+        ...c,
+        images: { ...c.images, authorPhoto: dataUrl },
+        updatedAt: new Date().toISOString(),
+      }));
     };
     reader.readAsDataURL(file);
   }
@@ -808,7 +877,11 @@ export function CoverGenerator({
           bookDescription,
           backTagline,
         ].join(" "));
-        setUploadedImage(null);
+        setComposition((c) => ({
+          ...c,
+          images: { ...c.images, front: null },
+          layers: upsertFrontImageLayer(c.layers, null),
+        }));
         setSelectedTemplate(direction.templateIndex);
         setScriptoraArtDirection(direction);
         setScriptoraSeed(direction.seed + Date.now() % 997);
@@ -870,7 +943,7 @@ export function CoverGenerator({
                   viewMode={composition.viewMode ?? "front"}
                   activePanel={composition.activePanel ?? "front"}
                   onActivePanelChange={(panel) => setComposition((c) => ({ ...c, activePanel: panel }))}
-                  canvasClassName="scriptora-cover-studio-canvas max-h-[42dvh] w-auto max-w-[min(78vw,360px)] rounded-lg shadow-xl ring-1 ring-white/10 sm:max-h-[44dvh] lg:max-h-[62dvh] lg:max-w-full lg:rounded-2xl lg:shadow-[0_26px_80px_rgba(0,0,0,0.62)] xl:max-h-[66dvh]"
+                  canvasClassName="rounded-lg shadow-xl ring-1 ring-white/10 lg:rounded-2xl"
                 />
               </div>
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
@@ -926,6 +999,7 @@ export function CoverGenerator({
               onBackBlurbChange={setBookDescription}
               onBackBioChange={setCoverAuthorBio}
               onBackQuoteChange={setBackReviewQuote}
+              onUploadBackImage={handleBackImageUpload}
               isPrintMode={spec.isPrint}
               spineWidthIn={spec.spineIn}
               pageCount={pageCount}
@@ -1177,10 +1251,10 @@ export function CoverGenerator({
                 className="hidden"
                 onChange={(e) => handleUpload(e.target.files?.[0])}
               />
-              {uploadedImage && (
+              {frontCoverImage && (
                 <button
                   type="button"
-                  onClick={() => setUploadedImage(null)}
+                  onClick={clearFrontImage}
                   className="text-xs text-muted-foreground hover:text-foreground"
                 >
                   Rimuovi immagine caricata

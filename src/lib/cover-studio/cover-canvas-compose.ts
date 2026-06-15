@@ -1,9 +1,9 @@
 import type { CoverComposition } from "./cover-layers";
+import type { CoverLayer } from "./cover-layers";
 import type { CanvasRect } from "./cover-backgrounds";
 import { drawBackgroundPreset, getBackgroundById } from "./cover-backgrounds";
 import { drawStickerSymbol, getStickerById } from "./cover-stickers";
 import { applyCoverEffects } from "./cover-effects";
-import type { CoverLayer } from "./cover-layers";
 
 type CoverTemplateLike = {
   dark: boolean;
@@ -13,7 +13,7 @@ type CoverTemplateLike = {
   font: string;
 };
 
-export function drawComposedFrontCover(
+export async function drawComposedFrontCover(
   ctx: CanvasRenderingContext2D,
   rect: CanvasRect,
   opts: {
@@ -27,40 +27,128 @@ export function drawComposedFrontCover(
   },
 ) {
   const { composition, template, seed = 1 } = opts;
-  const bg = getBackgroundById(composition.backgroundPresetId);
+  const frontImage =
+    opts.uploadedImage ?? composition.images?.front ?? null;
 
-  if (opts.uploadedImage && opts.loadImage) {
-    void opts.loadImage(opts.uploadedImage).then((image) => {
-      drawImageInRect(ctx, image, rect, opts.imageFit ?? "soft");
-      finishCompose();
-    }).catch(() => finishCompose());
-    return;
+  if (frontImage && opts.loadImage) {
+    try {
+      const image = await opts.loadImage(frontImage);
+      drawImageInRect(ctx, image, rect, opts.imageFit ?? composition.imageFit ?? "soft");
+      const overlay = ctx.createLinearGradient(rect.x, rect.y, rect.x, rect.y + rect.h);
+      overlay.addColorStop(0, template.dark ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.06)");
+      overlay.addColorStop(0.55, template.dark ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.14)");
+      overlay.addColorStop(1, template.dark ? "rgba(0,0,0,0.42)" : "rgba(255,255,255,0.32)");
+      ctx.fillStyle = overlay;
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    } catch {
+      drawBaseBackground();
+    }
+  } else {
+    drawBaseBackground();
   }
 
-  finishCompose();
+  const sorted = [...composition.layers]
+    .filter((l) => l.visible !== false)
+    .sort((a, b) => a.zIndex - b.zIndex);
 
-  function finishCompose() {
+  for (const layer of sorted) {
+    if (layer.type === "image" && layer.style?.imagePanel !== "back" && layer.style?.imagePanel !== "spine") {
+      await drawImageLayer(ctx, rect, layer, opts.loadImage);
+    }
+  }
+
+  for (const layer of sorted) {
+    if (layer.type === "sticker") drawStickerLayer(ctx, rect, layer);
+  }
+
+  for (const layer of sorted) {
+    if (layer.type === "title" || layer.type === "subtitle" || layer.type === "author") {
+      drawTextLayer(ctx, rect, layer, template);
+    }
+  }
+
+  applyCoverEffects(ctx, rect, composition.effects);
+
+  function drawBaseBackground() {
+    const bg = getBackgroundById(composition.backgroundPresetId);
     if (bg) {
       drawBackgroundPreset(ctx, rect, bg, seed);
     } else if (opts.legacyDraw) {
       opts.legacyDraw();
     }
+  }
+}
 
-    const sorted = [...composition.layers]
-      .filter((l) => l.visible !== false)
-      .sort((a, b) => a.zIndex - b.zIndex);
+export async function drawPanelImageLayers(
+  ctx: CanvasRenderingContext2D,
+  rect: CanvasRect,
+  composition: CoverComposition,
+  panel: "front" | "back" | "spine",
+  loadImage?: (src: string) => Promise<HTMLImageElement>,
+) {
+  const panelImage =
+    panel === "back"
+      ? composition.images?.back
+      : panel === "spine"
+        ? composition.images?.spine
+        : composition.images?.front;
 
-    for (const layer of sorted) {
-      if (layer.type === "sticker") drawStickerLayer(ctx, rect, layer);
+  if (panelImage && loadImage) {
+    try {
+      const image = await loadImage(panelImage);
+      drawImageInRect(ctx, image, rect, composition.imageFit ?? "cover");
+    } catch {
+      /* skip */
     }
+  }
 
-    for (const layer of sorted) {
-      if (layer.type === "title" || layer.type === "subtitle" || layer.type === "author") {
-        drawTextLayer(ctx, rect, layer, template);
-      }
+  const sorted = [...composition.layers]
+    .filter((l) => l.visible !== false && l.type === "image" && l.style?.imagePanel === panel)
+    .sort((a, b) => a.zIndex - b.zIndex);
+
+  for (const layer of sorted) {
+    await drawImageLayer(ctx, rect, layer, loadImage);
+  }
+}
+
+async function drawImageLayer(
+  ctx: CanvasRenderingContext2D,
+  rect: CanvasRect,
+  layer: CoverLayer,
+  loadImage?: (src: string) => Promise<HTMLImageElement>,
+) {
+  const src = layer.content?.trim();
+  if (!src?.startsWith("data:image") || !loadImage) return;
+  try {
+    const image = await loadImage(src);
+    const wPct = layer.width ?? 92;
+    const hPct = layer.height ?? 92;
+    const cx = rect.x + (rect.w * layer.x) / 100;
+    const cy = rect.y + (rect.h * layer.y) / 100;
+    const drawW = rect.w * (wPct / 100);
+    const drawH = rect.h * (hPct / 100);
+    const fit = (layer.style?.objectFit as "cover" | "contain" | "soft") ?? "cover";
+    const blur = Number(layer.style?.blur ?? 0);
+
+    ctx.save();
+    ctx.globalAlpha = layer.opacity ?? 1;
+    if (layer.rotation) {
+      ctx.translate(cx, cy);
+      ctx.rotate((layer.rotation * Math.PI) / 180);
+      ctx.translate(-cx, -cy);
     }
+    if (blur > 0) ctx.filter = `blur(${blur}px)`;
 
-    applyCoverEffects(ctx, rect, composition.effects);
+    const imageRect = {
+      x: cx - drawW / 2,
+      y: cy - drawH / 2,
+      w: drawW,
+      h: drawH,
+    };
+    drawImageInRect(ctx, image, imageRect, fit);
+    ctx.restore();
+  } catch {
+    /* skip broken image */
   }
 }
 
@@ -99,7 +187,6 @@ function drawTextLayer(
     ctx.shadowOffsetY = rect.w * 0.004;
   }
   if (s.boxBackground) {
-    const metrics = ctx.measureText(uppercase);
     ctx.fillStyle = String(s.boxBackground);
     ctx.fillRect(x - maxWidth / 2, y - baseSize * 0.6, maxWidth, baseSize * 1.4);
   }
@@ -170,7 +257,15 @@ function drawImageInRect(
   const rectRatio = rect.w / rect.h;
   let drawW = rect.w;
   let drawH = rect.h;
-  if (imageRatio > rectRatio) {
+  if (fit === "contain") {
+    if (imageRatio > rectRatio) {
+      drawW = rect.w;
+      drawH = rect.w / imageRatio;
+    } else {
+      drawH = rect.h;
+      drawW = rect.h * imageRatio;
+    }
+  } else if (imageRatio > rectRatio) {
     drawH = rect.h;
     drawW = rect.h * imageRatio;
   } else {
@@ -181,10 +276,11 @@ function drawImageInRect(
   const dy = rect.y + (rect.h - drawH) / 2;
   if (fit === "soft") {
     ctx.save();
-    ctx.globalAlpha = 0.42;
-    ctx.filter = "blur(22px)";
-    ctx.drawImage(image, rect.x - rect.w * 0.04, rect.y - rect.h * 0.04, rect.w * 1.08, rect.h * 1.08);
+    ctx.globalAlpha = 0.55;
+    ctx.filter = "blur(18px)";
+    ctx.drawImage(image, rect.x - rect.w * 0.03, rect.y - rect.h * 0.03, rect.w * 1.06, rect.h * 1.06);
     ctx.restore();
+    ctx.globalAlpha = 0.92;
   }
   ctx.drawImage(image, dx, dy, drawW, drawH);
 }

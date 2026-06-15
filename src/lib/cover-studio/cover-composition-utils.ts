@@ -183,6 +183,9 @@ export function getLayerHitbox(layer: CoverLayer): { widthPct: number; heightPct
   if (layer.type === "spine-title" || layer.type === "spine-author") {
     return { widthPct: 85, heightPct: 8 };
   }
+  if (layer.type === "image") {
+    return { widthPct: layer.width ?? 40, heightPct: layer.height ?? 40 };
+  }
   const w = layer.width ?? 18;
   return { widthPct: w, heightPct: layer.height ?? w };
 }
@@ -195,7 +198,7 @@ export function getDraggableLayersForView(
   return composition.layers.filter((l) => {
     if (l.visible === false || l.locked) return false;
     if (!isDraggableLayer(l)) return false;
-    const panel = getLayerPanel(l.type);
+    const panel = getLayerPanel(l.type, l);
     if (viewMode === "front" || viewMode === "thumbnail") return panel === "front";
     if (viewMode === "open-book" || viewMode === "paperback") return panel === activePanel;
     return panel === "front";

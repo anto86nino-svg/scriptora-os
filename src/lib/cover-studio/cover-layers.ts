@@ -15,7 +15,24 @@ export type CoverLayerType =
   | "back-bio"
   | "back-quote"
   | "spine-title"
-  | "spine-author";
+  | "spine-author"
+  | "image";
+
+export type CoverImageRole =
+  | "front-cover"
+  | "back-cover"
+  | "spine-art"
+  | "texture"
+  | "author-photo"
+  | "quote-bg"
+  | "background-art";
+
+export interface CoverImageAssets {
+  front?: string | null;
+  back?: string | null;
+  spine?: string | null;
+  authorPhoto?: string | null;
+}
 
 export interface CoverLayer {
   id: string;
@@ -73,6 +90,8 @@ export interface CoverComposition {
   viewMode?: CoverViewMode;
   showPrintGuides?: boolean;
   activePanel?: CoverPanel;
+  images?: CoverImageAssets;
+  imageFit?: "cover" | "contain" | "soft";
 }
 
 export type TextPositionPreset =
@@ -294,6 +313,46 @@ export function createStickerLayer(presetId: string, name: string): CoverLayer {
   };
 }
 
+export function createImageLayer(
+  dataUrl: string,
+  panel: CoverPanel,
+  role: CoverImageRole = "front-cover",
+  defaults: Partial<CoverLayer> = {},
+): CoverLayer {
+  return {
+    id: uid(),
+    type: "image",
+    content: dataUrl,
+    x: 50,
+    y: 50,
+    width: panel === "spine" ? 90 : 92,
+    height: panel === "spine" ? 40 : 92,
+    rotation: 0,
+    opacity: 1,
+    zIndex: panel === "front" ? 12 : 14,
+    visible: true,
+    style: {
+      imagePanel: panel,
+      imageRole: role,
+      objectFit: "cover",
+      blur: 0,
+    },
+    ...defaults,
+  };
+}
+
+export function upsertFrontImageLayer(layers: CoverLayer[], dataUrl: string | null): CoverLayer[] {
+  const without = layers.filter((l) => !(l.type === "image" && l.style?.imageRole === "front-cover"));
+  if (!dataUrl) return without;
+  const existing = layers.find((l) => l.type === "image" && l.style?.imageRole === "front-cover");
+  if (existing) {
+    return layers.map((l) =>
+      l.id === existing.id ? { ...l, content: dataUrl, visible: true } : l,
+    );
+  }
+  return [...without, createImageLayer(dataUrl, "front", "front-cover")];
+}
+
 export function migrateComposition(
   raw: Partial<CoverComposition> | null | undefined,
   fallback: {
@@ -333,6 +392,8 @@ export function migrateComposition(
       viewMode: raw.viewMode ?? "front",
       showPrintGuides: raw.showPrintGuides ?? false,
       activePanel: raw.activePanel ?? "front",
+      images: raw.images ?? {},
+      imageFit: raw.imageFit ?? "soft",
     };
   }
   return {
@@ -356,6 +417,8 @@ export function migrateComposition(
     viewMode: "front",
     showPrintGuides: false,
     activePanel: "front",
+    images: {},
+    imageFit: "soft",
   };
 }
 

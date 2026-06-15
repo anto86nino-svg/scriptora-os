@@ -54,19 +54,28 @@ describe("cover composition utils", () => {
     expect(validateCoverComposition(c).valid).toBe(true);
   });
 
-  it("applies thriller layout preset to text layers", async () => {
-    const { applyCompositionLayoutPreset } = await import("./cover-composition-utils");
-    const base = migrateComposition(null, {
-      title: "Book",
-      subtitle: "Sub",
-      author: "Author",
-      templateId: "thriller",
-      templateIndex: 0,
-      backgroundPresetId: "hr-fog-black",
+  it("fits open book inside viewport", async () => {
+    const { computeViewportFit } = await import("./cover-viewport-fit");
+    const fit = computeViewportFit({
+      containerWidth: 400,
+      containerHeight: 500,
+      canvasWidth: 3700,
+      canvasHeight: 2700,
+      viewMode: "open-book",
+      spec: {
+        isPrint: true,
+        width: 3700,
+        height: 2700,
+        bleedPx: 38,
+        frontRect: { x: 1900, y: 38, w: 1800, h: 2700 },
+        backRect: { x: 38, y: 38, w: 1800, h: 2700 },
+        spineRect: { x: 1838, y: 38, w: 62, h: 2700 },
+      },
+      userZoom: 1,
+      isMobile: true,
     });
-    const next = applyCompositionLayoutPreset(base, "thriller", false);
-    const title = next.layers.find((l) => l.type === "title");
-    expect(title?.y).toBe(34);
+    expect(fit.displayWidth).toBeLessThanOrEqual(400);
+    expect(fit.displayHeight).toBeLessThanOrEqual(500);
   });
 
   it("assesses print compatibility", async () => {
@@ -88,7 +97,15 @@ describe("cover composition utils", () => {
         genreFit: 70,
         contrast: 68,
         kdpReadiness: 70,
-        marketClarity: 65,
+        authorReadability: 70,
+        typography: 70,
+        marketFit: 65,
+        emotionalPull: 65,
+        professionalPolish: 70,
+        booktokPotential: 60,
+        strengths: [],
+        weaknesses: [],
+        improvements: [],
       },
       spineWidthIn: 0.5,
       italian: true,

@@ -72,6 +72,7 @@ interface Props {
   onBackBlurbChange?: (value: string) => void;
   onBackBioChange?: (value: string) => void;
   onBackQuoteChange?: (value: string) => void;
+  onUploadBackImage?: (file: File) => void;
   isPrintMode?: boolean;
   spineWidthIn?: number;
   pageCount?: number;
@@ -117,6 +118,7 @@ export function CoverStudioPro({
   onBackBlurbChange,
   onBackBioChange,
   onBackQuoteChange,
+  onUploadBackImage,
   isPrintMode = false,
   spineWidthIn = 0.5,
   pageCount = 260,
@@ -523,6 +525,23 @@ export function CoverStudioPro({
                 ? italianUi ? "Layout: foto autore + bio affiancata" : "Layout: author photo + bio side-by-side"
                 : italianUi ? "Layout: bio full width" : "Layout: full-width bio"}
             </p>
+            {onUploadBackImage && (
+              <label className="block">
+                <span className="mb-1 block text-[10px] text-muted-foreground">
+                  {italianUi ? "Immagine retro (texture / full bleed)" : "Back cover image"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="w-full text-[10px]"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) onUploadBackImage(f);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            )}
           </div>
           <div className="space-y-2 rounded-xl border border-border/60 p-3">
             <div className="flex items-center justify-between">

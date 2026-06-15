@@ -1,3 +1,5 @@
+import type { CoverLayer } from "./cover-layers";
+
 export type CoverViewMode = "front" | "open-book" | "paperback" | "thumbnail";
 
 export type CoverPanel = "front" | "back" | "spine";
@@ -30,7 +32,13 @@ export const TRIM_PRESETS_PRO = [
 /** Safe text inset as % inside a panel (KDP/Lulu editorial margin). */
 export const SAFE_TEXT_INSET_PCT = 10;
 
-export function getLayerPanel(type: string): CoverPanel {
+export function getLayerPanel(type: string, layer?: CoverLayer): CoverPanel {
+  if (type === "image" && layer?.style?.imagePanel) {
+    const p = String(layer.style.imagePanel);
+    if (p === "back") return "back";
+    if (p === "spine") return "spine";
+    return "front";
+  }
   if (type.startsWith("back-")) return "back";
   if (type.startsWith("spine-")) return "spine";
   return "front";
