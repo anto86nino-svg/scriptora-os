@@ -828,12 +828,15 @@ export function BookCreationOsWizard({
   };
 
   return (
-    <div className="scriptora-modal-overlay fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-2 py-[calc(env(safe-area-inset-top,0px)+0.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] backdrop-blur-sm sm:p-4">
+    <div className="scriptora-modal-overlay fixed inset-0 z-[80] flex items-stretch justify-stretch overflow-hidden bg-black/70 p-[calc(env(safe-area-inset-top,0px)+0.35rem)_0.35rem_calc(env(safe-area-inset-bottom,0px)+0.35rem)] backdrop-blur-sm sm:items-center sm:justify-center sm:p-4">
       <div
-        className="scriptora-modal-panel scriptora-wizard-shell flex w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-slate-950 shadow-2xl"
-        style={{ maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1rem)" }}
+        className="scriptora-modal-panel scriptora-wizard-shell flex h-full min-h-0 w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-slate-950 shadow-2xl"
+          style={{
+            height: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.7rem)",
+            maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.7rem)",
+          }}
       >
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4">
+        <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-300">Book Configuration Studio</p>
             <p className="text-sm font-semibold text-white">Macro step {step + 1}/{STUDIO_STEPS.length} — {stepLabel}</p>
@@ -844,7 +847,14 @@ export function BookCreationOsWizard({
           </button>
         </div>
 
-        <div className="scriptora-modal-body scriptora-wizard-scroll flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5">
+        <div
+            className="scriptora-modal-body scriptora-wizard-scroll min-h-0 flex-1 overflow-x-clip overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5"
+            style={{
+              WebkitOverflowScrolling: "touch",
+              overflowY: "auto",
+              touchAction: "pan-y",
+            }}
+          >
           {step === 0 && (
             <div className="space-y-3">
               <h2 className="text-xl font-semibold text-white">Crea libro</h2>
