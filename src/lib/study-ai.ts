@@ -8,6 +8,8 @@ interface GenerateStudySessionAIInput {
   level?: "soft" | "medium" | "pro";
 }
 
+export const STUDY_AI_TIMEOUT_MS = 240_000;
+
 function safeJsonParse(raw: string): any {
   const clean = String(raw || "")
     .replace(/^```json\s*/i, "")
@@ -25,6 +27,20 @@ function safeJsonParse(raw: string): any {
     }
     throw new Error("Risposta AI non leggibile.");
   }
+}
+
+function humanizeStudyAiError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error || "");
+  if (/abort|timeout|timed out|tempo/i.test(message)) {
+    return "L'AI sta impiegando troppo tempo. Preparo una sessione locale sicura.";
+  }
+  if (/failed to fetch|network|cors|load failed|internet|raggiungibile/i.test(message)) {
+    return "Motore AI Study non raggiungibile. Creo una sessione locale.";
+  }
+  if (/^ai error\b|ai studio|provider|500|502|503|504/i.test(message)) {
+    return "Il motore AI non ha risposto correttamente. Creo una sessione locale.";
+  }
+  return message || "AI Study non disponibile. Creo una sessione locale.";
 }
 
 function normalizeString(value: unknown, fallback = ""): string {
@@ -135,6 +151,8 @@ async function callScriptoraStudyAI(systemPrompt: string, userPrompt: string): P
 
   const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: { session: null } } as any));
   const bearer = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), STUDY_AI_TIMEOUT_MS);
 
   let res: Response;
   try {
@@ -156,15 +174,18 @@ async function callScriptoraStudyAI(systemPrompt: string, userPrompt: string): P
           mode: "deepseek",
         },
       }),
+      signal: controller.signal,
     });
   } catch (error) {
     console.warn("[StudySession] AI network unavailable", error);
-    throw new Error("Motore AI Study non raggiungibile. Creo una sessione locale.");
+    throw new Error(humanizeStudyAiError(error));
+  } finally {
+    window.clearTimeout(timeout);
   }
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(text || `AI Studio non disponibile (${res.status}).`);
+    throw new Error(humanizeStudyAiError(text || `provider unavailable ${res.status}`));
   }
 
   if (!res.body) throw new Error("Stream AI non disponibile.");
@@ -182,7 +203,7 @@ async function callScriptoraStudyAI(systemPrompt: string, userPrompt: string): P
   const marker = buffer.lastIndexOf("__RESULT__");
   if (marker === -1) {
     const parsed = safeJsonParse(buffer);
-    if (parsed?.error) throw new Error(parsed.error);
+    if (parsed?.error) throw new Error(humanizeStudyAiError(parsed.error));
     if (typeof parsed?.content === "string" && parsed.content.trim()) return parsed.content;
     return JSON.stringify(parsed);
   }
@@ -190,7 +211,7 @@ async function callScriptoraStudyAI(systemPrompt: string, userPrompt: string): P
   const jsonStr = buffer.slice(marker + "__RESULT__".length).trim();
   const parsed = JSON.parse(jsonStr);
 
-  if (parsed.error) throw new Error(parsed.error);
+  if (parsed.error) throw new Error(humanizeStudyAiError(parsed.error));
   if (!parsed.content) throw new Error("Scriptora non ha restituito contenuto.");
 
   return parsed.content;

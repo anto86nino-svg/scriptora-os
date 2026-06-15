@@ -119,7 +119,7 @@ Return this exact JSON (ALL values in ${bookLang}):
 Respond in ${bookLang}. Return ONLY valid JSON.`,
       }),
     });
-    if (!res.ok) throw new Error(`AI error ${res.status}`);
+    if (!res.ok) throw new Error(`Il motore AI non ha risposto correttamente (${res.status}). Riprova tra poco.`);
     const reader = res.body!.getReader();
     const decoder = new TextDecoder();
     let buffer = "";

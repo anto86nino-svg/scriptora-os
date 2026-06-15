@@ -146,7 +146,10 @@ export default function StudySessionPage() {
   const [result, setResult] = useState<StudySessionResult | null>(saved?.result ? normalizeStudyResultForUI(saved.result) : null);
   const [reading, setReading] = useState(false);
   const [workStartedAt, setWorkStartedAt] = useState<number | undefined>();
+  const [studyGenerationStatus, setStudyGenerationStatus] = useState("");
   const [aiMode, setAiMode] = useState<"idle" | "deepseek" | "local">("idle");
+  const studyNoticeTimersRef = useRef<number[]>([]);
+  const studyFallbackReasonRef = useRef<string | null>(null);
 
   const [activeSection, setActiveSection] = useState<StudySection>(
     (uxSaved.activeSection as StudySection) || DEFAULT_STUDY_UX.activeSection
@@ -292,6 +295,56 @@ export default function StudySessionPage() {
     saveStudyUxState({ activeSection: section });
   }, []);
 
+  const clearStudyNoticeTimers = useCallback(() => {
+    studyNoticeTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    studyNoticeTimersRef.current = [];
+  }, []);
+
+  useEffect(() => clearStudyNoticeTimers, [clearStudyNoticeTimers]);
+
+  const generateStudyResultWithRuntimeGuard = useCallback(
+    async (text: string, name: string): Promise<StudySessionResult> => {
+      clearStudyNoticeTimers();
+      studyFallbackReasonRef.current = null;
+      setStudyGenerationStatus("Sto analizzando il materiale e preparando la sessione...");
+      setAiMode("deepseek");
+
+      studyNoticeTimersRef.current = [
+        window.setTimeout(
+          () => setStudyGenerationStatus("Ci sta mettendo più del previsto. Sto continuando l'analisi..."),
+          30_000,
+        ),
+        window.setTimeout(
+          () => setStudyGenerationStatus("Sto preparando una versione locale se l'AI non risponde."),
+          90_000,
+        ),
+      ];
+
+      let fallbackTimer: number | null = null;
+      const aiResult = generateStudySessionWithAI({
+        text,
+        sourceName: name,
+        language: studyLanguage,
+      });
+      const safeLocalFallback = new Promise<StudySessionResult>((resolve) => {
+        fallbackTimer = window.setTimeout(() => {
+          studyFallbackReasonRef.current = "L'AI non ha risposto in tempo, ho creato una sessione locale sicura.";
+          setStudyGenerationStatus(studyFallbackReasonRef.current);
+          setAiMode("local");
+          resolve(normalizeStudyResultForUI(analyzeStudyMaterial(text, name)));
+        }, 120_000);
+      });
+
+      try {
+        return normalizeStudyResultForUI(await Promise.race([aiResult, safeLocalFallback]));
+      } finally {
+        if (fallbackTimer != null) window.clearTimeout(fallbackTimer);
+        clearStudyNoticeTimers();
+      }
+    },
+    [clearStudyNoticeTimers, studyLanguage],
+  );
+
   const analyze = async () => {
     if (!canAnalyze) {
       toast.error("Materiale troppo breve", { description: "Carica o incolla almeno 40 parole." });
@@ -303,11 +356,7 @@ export default function StudySessionPage() {
     setAiMode("deepseek");
 
     try {
-      const next = await generateStudySessionWithAI({
-        text: rawText,
-        sourceName,
-        language: studyLanguage,
-      });
+      const next = await generateStudyResultWithRuntimeGuard(rawText, sourceName);
       const normalized = normalizeStudyResultForUI(next);
       setResult(normalized);
       resetSessionState();
@@ -316,9 +365,15 @@ export default function StudySessionPage() {
       setProjectId(id);
       setActiveSection("quiz");
       saveStudyUxState({ activeSection: "quiz" });
-      toast.success("Pipeline Study completata", {
-        description: "Riassunti, flashcard e quiz pronti — inizia la verifica.",
-      });
+      if (studyFallbackReasonRef.current) {
+        toast.warning("Sessione locale pronta", {
+          description: studyFallbackReasonRef.current,
+        });
+      } else {
+        toast.success("Pipeline Study completata", {
+          description: "Riassunti, flashcard e quiz pronti — inizia la verifica.",
+        });
+      }
     } catch (error) {
       console.warn("[StudySession] DeepSeek fallback locale", error);
       try {
@@ -343,6 +398,7 @@ export default function StudySessionPage() {
       }
     } finally {
       setReading(false);
+      setStudyGenerationStatus("");
     }
   };
 
@@ -391,11 +447,7 @@ export default function StudySessionPage() {
       setAiMode("deepseek");
 
       try {
-        const next = await generateStudySessionWithAI({
-          text,
-          sourceName: file.name,
-          language: studyLanguage,
-        });
+        const next = await generateStudyResultWithRuntimeGuard(text, file.name);
         const normalized = normalizeStudyResultForUI(next);
         setResult(normalized);
         resetSessionState();
@@ -404,7 +456,13 @@ export default function StudySessionPage() {
         setProjectId(id);
         setActiveSection("quiz");
         saveStudyUxState({ activeSection: "quiz" });
-        toast.success("Pipeline Study completata", { description: `${file.name} — quiz e verifica pronti.` });
+        if (studyFallbackReasonRef.current) {
+          toast.warning("Sessione locale pronta", {
+            description: studyFallbackReasonRef.current,
+          });
+        } else {
+          toast.success("Pipeline Study completata", { description: `${file.name} — quiz e verifica pronti.` });
+        }
       } catch (error) {
         console.warn("[StudySession] DeepSeek file fallback locale", error);
         try {
@@ -432,6 +490,7 @@ export default function StudySessionPage() {
       toast.error("File non leggibile", { description: error instanceof Error ? error.message : "Formato non supportato." });
     } finally {
       setReading(false);
+      setStudyGenerationStatus("");
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
@@ -553,6 +612,11 @@ export default function StudySessionPage() {
               {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
               {reading ? "Scriptora sta preparando la sessione..." : "Genera Sessione Studio"}
             </button>
+            {reading && studyGenerationStatus && (
+              <p className="mt-2 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-xs leading-5 text-emerald-100">
+                {studyGenerationStatus}
+              </p>
+            )}
 
             {reading && (
               <div className="mt-4">
