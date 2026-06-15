@@ -4,15 +4,23 @@ import { getSelectedAuthorIdentity } from "@/lib/author-identity";
 import { requireCreditsAsync } from "@/lib/billing";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { buildCoverStudioPackage, recommendTemplate, COVER_TEMPLATES } from "@/lib/cover-studio";
-import { getProjectCoverDataUrl, getProjectCoverComposition, setProjectCoverDataUrl } from "@/lib/cover-session";
+import { getProjectCoverDataUrl, getProjectCoverComposition, saveProjectCoverFull } from "@/lib/cover-session";
 import { CoverStudioPro } from "@/components/cover/CoverStudioPro";
+import { CoverPreviewStage } from "@/components/cover/CoverPreviewStage";
 import {
   migrateComposition,
   syncTextLayerContent,
+  syncBackMatterContent,
   type CoverComposition,
 } from "@/lib/cover-studio/cover-layers";
+import { serializeCoverComposition, validateCoverComposition } from "@/lib/cover-studio/cover-composition-utils";
 import { recommendBackgroundForGenre } from "@/lib/cover-studio/cover-backgrounds";
 import { drawComposedFrontCover } from "@/lib/cover-studio/cover-canvas-compose";
+import { drawComposedBackMatter, drawComposedSpine } from "@/lib/cover-studio/cover-back-matter-compose";
+import { drawPrintSafeGuides } from "@/lib/cover-studio/cover-view-modes";
+import { runCinematicGenerateSequence } from "@/lib/cover-studio/cover-cinematic-generate";
+import { CoverCinematicOverlay } from "@/components/cover/CoverCinematicOverlay";
+import { toast } from "sonner";
 import { creditModeDisclosure, creditModeLabel } from "@/lib/credit-economy";
 import { isDevMode } from "@/lib/dev-mode";
 import { Badge } from "@/components/ui/badge";
@@ -195,6 +203,7 @@ const TRIM_PRESETS: TrimPreset[] = [
   { id: "5x8", label: "5 x 8 in", width: 5, height: 8 },
   { id: "5.5x8.5", label: "5.5 x 8.5 in", width: 5.5, height: 8.5 },
   { id: "6x9", label: "6 x 9 in", width: 6, height: 9 },
+  { id: "a4", label: "A4 (8.27 x 11.69 in)", width: 8.27, height: 11.69 },
   { id: "7x10", label: "7 x 10 in", width: 7, height: 10 },
   { id: "8.5x11", label: "8.5 x 11 in", width: 8.5, height: 11 },
 ];
@@ -230,6 +239,13 @@ export function CoverGenerator({
   const devCreditMode = isDevMode();
   const italianUi = language.toLowerCase().includes("ital");
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const pendingRegenRef = useRef(
+    Boolean(
+      projectId &&
+        getProjectCoverComposition(projectId) &&
+        !getProjectCoverDataUrl(projectId)?.startsWith("data:image"),
+    ),
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const authorPhotoInputRef = useRef<HTMLInputElement>(null);
   const selectedIdentity = useMemo(() => {
@@ -253,6 +269,9 @@ export function CoverGenerator({
     authorBio || selectedIdentity?.biography || "Breve bio autore, credibilita e nota editoriale.",
   );
   const [backTagline, setBackTagline] = useState("Una storia creata con Scriptora OS");
+  const [backReviewQuote, setBackReviewQuote] = useState("");
+  const [cinematicStep, setCinematicStep] = useState<string | null>(null);
+  const [cinematicProgress, setCinematicProgress] = useState(0);
   const [selectedTemplate, setSelectedTemplate] = useState(0);
   const [trimId, setTrimId] = useState("6x9");
   const [pageCount, setPageCount] = useState(260);
@@ -291,6 +310,10 @@ export function CoverGenerator({
       templateId: "",
       templateIndex: 0,
       backgroundPresetId: bg.id,
+      tagline: "Una storia creata con Scriptora OS",
+      blurb: description || "",
+      bio: authorBio || "",
+      quote: "",
     };
     if (projectId) {
       const raw = getProjectCoverComposition(projectId);
@@ -364,7 +387,37 @@ export function CoverGenerator({
   }, [coverTitle, coverSubtitle, coverAuthor]);
 
   useEffect(() => {
-    void drawCover();
+    setComposition((c) => ({
+      ...c,
+      layers: syncBackMatterContent(
+        c.layers,
+        backTagline,
+        bookDescription,
+        coverAuthorBio,
+        backReviewQuote,
+        coverTitle,
+        coverAuthor,
+      ),
+    }));
+  }, [backTagline, bookDescription, coverAuthorBio, backReviewQuote, coverTitle, coverAuthor]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await drawCover();
+      if (cancelled || !projectId || !pendingRegenRef.current) return;
+      const dataUrl = exportCoverDataUrl();
+      if (!dataUrl) return;
+      pendingRegenRef.current = false;
+      persistCover(dataUrl);
+      onGenerate(dataUrl);
+      toast.message(
+        italianUi ? "Anteprima cover rigenerata dalla composizione salvata" : "Cover preview regenerated from saved composition",
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [
     spec,
     template,
@@ -431,8 +484,12 @@ export function CoverGenerator({
       } else {
         await drawFrontCover(ctx, spec.frontRect, template, uploadedImage, imageFit);
       }
-      drawBackCover(ctx, spec.backRect, template, authorImage);
-      drawSpine(ctx, spec.spineRect, template);
+      drawComposedBackMatter(ctx, spec.backRect, composition, template, {
+        authorImage: showAuthorPhoto ? authorImage : null,
+        seed: scriptoraSeed,
+      });
+      drawComposedSpine(ctx, spec.spineRect, composition, template);
+      if (composition.showPrintGuides) drawPrintSafeGuides(ctx, spec, italianUi);
       if (showGuides) drawPrintGuides(ctx, spec, template);
     } else {
       if (!uploadedImage) {
@@ -615,10 +672,35 @@ export function CoverGenerator({
   }
 
   function persistCover(dataUrl: string) {
-    const compositionJson = JSON.stringify(composition);
-    if (projectId) {
-      const ok = setProjectCoverDataUrl(projectId, dataUrl, compositionJson);
-      setCoverSaved(ok);
+    if (!projectId) return;
+    const compositionJson = serializeCoverComposition(composition);
+    const result = saveProjectCoverFull(projectId, dataUrl, compositionJson);
+    setCoverSaved(result.ok && result.dataUrlSaved);
+    if (result.error) toast.error(result.error);
+    if (result.warning) toast.message(result.warning);
+  }
+
+  function handleSaveToProject() {
+    const validation = validateCoverComposition(composition);
+    if (!validation.valid) {
+      toast.error(validation.errors[0] ?? "Composizione cover non valida");
+      return;
+    }
+    const dataUrl = exportCoverDataUrl();
+    if (!projectId) return;
+    const compositionJson = serializeCoverComposition(composition);
+    const result = saveProjectCoverFull(projectId, dataUrl, compositionJson);
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    if (result.warning) toast.message(result.warning);
+    if (result.ok && dataUrl) {
+      setCoverSaved(true);
+      onGenerate(dataUrl);
+      toast.success(italianUi ? "Cover salvata nel progetto" : "Cover saved to project");
+    } else if (result.compositionSaved) {
+      toast.success(italianUi ? "Composizione salvata — rigenera anteprima con Salva" : "Composition saved — regenerate preview on save");
     }
   }
 
@@ -643,13 +725,6 @@ export function CoverGenerator({
       EPUB_HEIGHT,
     );
     return front.toDataURL("image/jpeg", 0.95);
-  }
-
-  function handleSaveToProject() {
-    const dataUrl = exportCoverDataUrl();
-    if (!dataUrl) return;
-    persistCover(dataUrl);
-    onGenerate(dataUrl);
   }
 
   function handleUseForEpub() {
@@ -718,20 +793,33 @@ export function CoverGenerator({
     } catch {
       return;
     }
-    const direction = inferScriptoraArtDirection([
-      coverGenreBrief,
-      coverTitle,
-      coverSubtitle,
-      bookDescription,
-      backTagline,
-    ].join(" "));
-    setUploadedImage(null);
-    setSelectedTemplate(direction.templateIndex);
-    setScriptoraArtDirection(direction);
-    setScriptoraSeed(direction.seed + Date.now() % 997);
-    setDataMode("ai-assisted");
-    const rec = recommendTemplate(studioPackage.brief.genreFamily);
-    setSelectedTemplateId(rec.id);
+    setCinematicStep("analyze");
+    setCinematicProgress(0);
+    await runCinematicGenerateSequence(
+      (stepId, progress) => {
+        setCinematicStep(stepId);
+        setCinematicProgress(progress);
+      },
+      async () => {
+        const direction = inferScriptoraArtDirection([
+          coverGenreBrief,
+          coverTitle,
+          coverSubtitle,
+          bookDescription,
+          backTagline,
+        ].join(" "));
+        setUploadedImage(null);
+        setSelectedTemplate(direction.templateIndex);
+        setScriptoraArtDirection(direction);
+        setScriptoraSeed(direction.seed + Date.now() % 997);
+        setDataMode("ai-assisted");
+        const rec = recommendTemplate(studioPackage.brief.genreFamily);
+        setSelectedTemplateId(rec.id);
+        const recBg = recommendBackgroundForGenre(coverGenreBrief || genre || direction.label);
+        setComposition((c) => ({ ...c, backgroundPresetId: recBg.id }));
+      },
+    );
+    setTimeout(() => setCinematicStep(null), 600);
   }
 
   return (
@@ -743,7 +831,9 @@ export function CoverGenerator({
               <BookOpen className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
               <span className="truncate">Cover Studio Pro</span>
             </div>
-            <h2 className="mt-0.5 line-clamp-2 text-base font-semibold leading-snug text-foreground sm:text-lg">Cover concept — costruisci la tua copertina</h2>
+            <h2 className="mt-0.5 line-clamp-2 text-base font-semibold leading-snug text-foreground sm:text-lg">
+              Builder copertina digitale — concept cover avanzato
+            </h2>
             <div className="mt-1 flex flex-wrap items-center gap-1">
               <Badge variant="outline" className="px-1.5 py-0 text-[9px] sm:text-[10px]">{studioPackage.honestyLabel}</Badge>
               <Badge variant="secondary" className="px-1.5 py-0 text-[9px] sm:text-[10px]">Score {studioPackage.score.finalScore}</Badge>
@@ -765,10 +855,22 @@ export function CoverGenerator({
               <span>{spec.width} x {spec.height}px - {spec.exportNote}</span>
             </div>
             <div className="flex flex-col items-center justify-center gap-2 lg:h-full lg:min-h-0 lg:flex-1 lg:gap-3 lg:pt-8">
-              <div className="flex w-full items-center justify-center lg:rounded-[2rem] lg:border lg:border-white/10 lg:bg-white/[0.035] lg:p-6 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_28px_80px_rgba(0,0,0,0.45)] xl:p-8">
-                <canvas
-                  ref={canvasRef}
-                  className="scriptora-cover-studio-canvas max-h-[42dvh] w-auto max-w-[min(78vw,360px)] rounded-lg shadow-xl ring-1 ring-white/10 sm:max-h-[44dvh] lg:max-h-[62dvh] lg:max-w-full lg:rounded-2xl lg:shadow-[0_26px_80px_rgba(0,0,0,0.62)] xl:max-h-[66dvh]"
+              <div className="relative flex w-full items-center justify-center lg:rounded-[2rem] lg:border lg:border-white/10 lg:bg-white/[0.035] lg:p-6 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_28px_80px_rgba(0,0,0,0.45)] xl:p-8">
+                {cinematicStep && cinematicStep !== "done" && (
+                  <CoverCinematicOverlay stepId={cinematicStep} progress={cinematicProgress} italianUi={italianUi} />
+                )}
+                <CoverPreviewStage
+                  composition={composition}
+                  selectedLayerId={selectedLayerId}
+                  onSelectLayer={setSelectedLayerId}
+                  onCompositionChange={setComposition}
+                  canvasRef={canvasRef}
+                  italianUi={italianUi}
+                  spec={spec}
+                  viewMode={composition.viewMode ?? "front"}
+                  activePanel={composition.activePanel ?? "front"}
+                  onActivePanelChange={(panel) => setComposition((c) => ({ ...c, activePanel: panel }))}
+                  canvasClassName="scriptora-cover-studio-canvas max-h-[42dvh] w-auto max-w-[min(78vw,360px)] rounded-lg shadow-xl ring-1 ring-white/10 sm:max-h-[44dvh] lg:max-h-[62dvh] lg:max-w-full lg:rounded-2xl lg:shadow-[0_26px_80px_rgba(0,0,0,0.62)] xl:max-h-[66dvh]"
                 />
               </div>
               <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
@@ -810,6 +912,24 @@ export function CoverGenerator({
               onSaveProject={projectId ? handleSaveToProject : undefined}
               onOpenExport={onOpenExport}
               saved={coverSaved}
+              coverTitle={coverTitle}
+              coverSubtitle={coverSubtitle}
+              coverAuthor={coverAuthor}
+              onTitleChange={setCoverTitle}
+              onSubtitleChange={setCoverSubtitle}
+              onAuthorChange={setCoverAuthor}
+              backTagline={backTagline}
+              backBlurb={bookDescription}
+              backBio={coverAuthorBio}
+              backQuote={backReviewQuote}
+              onBackTaglineChange={setBackTagline}
+              onBackBlurbChange={setBookDescription}
+              onBackBioChange={setCoverAuthorBio}
+              onBackQuoteChange={setBackReviewQuote}
+              isPrintMode={spec.isPrint}
+              spineWidthIn={spec.spineIn}
+              pageCount={pageCount}
+              hasAuthorPhoto={showAuthorPhoto && Boolean(authorPhoto)}
             />
 
             <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
@@ -931,40 +1051,15 @@ export function CoverGenerator({
               </div>
             </section>
 
-            <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-foreground">
-                  <span className="lg:hidden">Testi copertina</span>
-                  <span className="hidden lg:inline">TEXT SETTINGS</span>
-                </p>
-                <p className="hidden lg:block text-xs leading-5 text-muted-foreground">
-                  Titolo, sottotitolo, autore e copy editoriale per fronte e retro.
-                </p>
-              </div>
-              <label className="space-y-1 block">
-                <span className="text-xs font-medium text-muted-foreground">Titolo</span>
-                <input
-                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  value={coverTitle}
-                  onChange={(e) => setCoverTitle(e.target.value)}
-                />
-              </label>
-              <label className="space-y-1 block">
-                <span className="text-xs font-medium text-muted-foreground">Sottotitolo</span>
-                <input
-                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  value={coverSubtitle}
-                  onChange={(e) => setCoverSubtitle(e.target.value)}
-                />
-              </label>
-              <label className="space-y-1 block">
-                <span className="text-xs font-medium text-muted-foreground">Autore</span>
-                <input
-                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  value={coverAuthor}
-                  onChange={(e) => setCoverAuthor(e.target.value)}
-                />
-              </label>
+            <details className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+              <summary className="cursor-pointer text-sm font-semibold text-foreground list-none">
+                {italianUi ? "Impostazioni testo avanzate (compatibilità)" : "Advanced text settings (compatibility)"}
+              </summary>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {italianUi
+                  ? "Usa il tab Testo in Cover Studio Pro per titolo, sottotitolo e autore. Qui restano solo opzioni legacy font/scale."
+                  : "Use Cover Studio Pro Text tab for title, subtitle and author. Legacy font/scale only here."}
+              </p>
               <div className="grid gap-3 pt-2 max-lg:grid-cols-1 lg:grid-cols-3">
                 <TextStyleControls
                   label="Titolo"
@@ -994,7 +1089,7 @@ export function CoverGenerator({
                   onScaleChange={setAuthorScale}
                 />
               </div>
-            </section>
+            </details>
 
             <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
               <p className="text-sm font-semibold text-foreground">

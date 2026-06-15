@@ -334,6 +334,130 @@ export function drawBackgroundPreset(
     }
     ctx.restore();
   }
+
+  drawGenrePremiumOverlay(ctx, rect, preset.category, seed);
+}
+
+/** Editorial bestseller atmosphere — layered on top of procedural base. */
+export function drawGenrePremiumOverlay(
+  ctx: CanvasRenderingContext2D,
+  rect: CanvasRect,
+  category: CoverBackgroundCategory,
+  seed: number,
+) {
+  ctx.save();
+  const [c0, c1, c2, c3 = c1] = ["#000", "#111", "#222", "#333"];
+
+  switch (category) {
+    case "thriller": {
+      const fog = ctx.createRadialGradient(rect.x + rect.w * 0.5, rect.y + rect.h * 0.3, 0, rect.x + rect.w * 0.5, rect.y + rect.h * 0.35, rect.w * 0.9);
+      fog.addColorStop(0, "rgba(180,200,220,0.08)");
+      fog.addColorStop(1, "transparent");
+      ctx.fillStyle = fog;
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.globalAlpha = 0.14;
+      ctx.strokeStyle = "rgba(200,220,255,0.35)";
+      for (let i = 0; i < 18; i++) {
+        const ox = pseudo(seed + i) * rect.w * 0.6 - rect.w * 0.1;
+        ctx.beginPath();
+        ctx.moveTo(rect.x + ox, rect.y);
+        ctx.lineTo(rect.x + ox + rect.h * 0.35, rect.y + rect.h);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = "rgba(255,255,255,0.06)";
+      ctx.beginPath();
+      ctx.arc(rect.x + rect.w * 0.78, rect.y + rect.h * 0.22, rect.w * 0.04, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    }
+    case "dark-romance": {
+      const velvet = ctx.createLinearGradient(rect.x, rect.y, rect.x + rect.w, rect.y + rect.h);
+      velvet.addColorStop(0, "rgba(127,29,58,0.12)");
+      velvet.addColorStop(0.5, "transparent");
+      velvet.addColorStop(1, "rgba(230,195,106,0.08)");
+      ctx.fillStyle = velvet;
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.globalAlpha = 0.18;
+      for (let i = 0; i < 5; i++) {
+        const gx = rect.x + pseudo(seed + i) * rect.w;
+        const gy = rect.y + pseudo(seed + i + 2) * rect.h * 0.5;
+        const rg = ctx.createRadialGradient(gx, gy, 0, gx, gy, rect.w * 0.18);
+        rg.addColorStop(0, "rgba(240,184,200,0.2)");
+        rg.addColorStop(1, "transparent");
+        ctx.fillStyle = rg;
+        ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      }
+      break;
+    }
+    case "fantasy": {
+      ctx.globalAlpha = 0.12;
+      ctx.fillStyle = "rgba(230,195,106,0.35)";
+      for (let i = 0; i < 24; i++) {
+        const px = rect.x + pseudo(seed + i) * rect.w;
+        const py = rect.y + pseudo(seed + i + 12) * rect.h;
+        ctx.beginPath();
+        ctx.arc(px, py, rect.w * 0.003, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 0.08;
+      ctx.strokeStyle = "rgba(125,211,252,0.4)";
+      const step = rect.w * 0.14;
+      for (let x = rect.x; x < rect.x + rect.w; x += step) {
+        ctx.beginPath();
+        ctx.moveTo(x, rect.y + rect.h * 0.2);
+        ctx.lineTo(x + step * 0.3, rect.y + rect.h * 0.8);
+        ctx.stroke();
+      }
+      break;
+    }
+    case "sci-fi": {
+      const neon = ctx.createLinearGradient(rect.x, rect.y + rect.h, rect.x + rect.w, rect.y);
+      neon.addColorStop(0, "rgba(34,211,238,0.06)");
+      neon.addColorStop(0.5, "transparent");
+      neon.addColorStop(1, "rgba(167,139,250,0.08)");
+      ctx.fillStyle = neon;
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.globalAlpha = 0.1;
+      ctx.strokeStyle = "rgba(56,189,248,0.25)";
+      const grid = rect.w * 0.06;
+      for (let x = rect.x; x < rect.x + rect.w; x += grid) {
+        ctx.beginPath();
+        ctx.moveTo(x, rect.y);
+        ctx.lineTo(x, rect.y + rect.h);
+        ctx.stroke();
+      }
+      break;
+    }
+    case "self-help":
+    case "business": {
+      ctx.globalAlpha = 0.06;
+      for (let i = 0; i < 40; i++) {
+        const nx = rect.x + pseudo(seed + i) * rect.w;
+        const ny = rect.y + pseudo(seed + i + 20) * rect.h;
+        ctx.fillStyle = i % 2 ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.15)";
+        ctx.fillRect(nx, ny, rect.w * 0.002, rect.h * 0.002);
+      }
+      const trust = ctx.createRadialGradient(rect.x + rect.w * 0.5, rect.y + rect.h * 0.25, 0, rect.x + rect.w * 0.5, rect.y + rect.h * 0.3, rect.w * 0.65);
+      trust.addColorStop(0, "rgba(255,255,255,0.1)");
+      trust.addColorStop(1, "transparent");
+      ctx.fillStyle = trust;
+      ctx.globalAlpha = 1;
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      break;
+    }
+    default:
+      ctx.globalAlpha = 0.05;
+      ctx.fillStyle = c3;
+      for (let i = 0; i < 12; i++) {
+        const px = rect.x + pseudo(seed + i) * rect.w;
+        const py = rect.y + pseudo(seed + i + 6) * rect.h;
+        ctx.beginPath();
+        ctx.arc(px, py, rect.w * 0.008, 0, Math.PI * 2);
+        ctx.fill();
+      }
+  }
+  ctx.restore();
 }
 
 function pseudo(n: number) {

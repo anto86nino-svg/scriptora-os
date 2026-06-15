@@ -168,6 +168,9 @@ export function drawStickerSymbol(
   ctx.translate(cx, cy);
   ctx.rotate((rotation * Math.PI) / 180);
   ctx.globalAlpha = opacity;
+  ctx.shadowColor = "rgba(0,0,0,0.45)";
+  ctx.shadowBlur = size * 0.08;
+  ctx.shadowOffsetY = size * 0.03;
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
   ctx.lineWidth = Math.max(1.5, size * 0.04);
@@ -314,6 +317,263 @@ export function drawStickerSymbol(
       ctx.lineTo(r * 0.9, -r * 0.1);
       ctx.closePath();
       ctx.fill();
+      break;
+    case "key":
+      ctx.beginPath();
+      ctx.arc(-r * 0.25, 0, r * 0.28, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeRect(r * 0.05, -r * 0.08, r * 0.55, r * 0.16);
+      ctx.beginPath();
+      ctx.moveTo(r * 0.45, r * 0.08);
+      ctx.lineTo(r * 0.45, r * 0.35);
+      ctx.moveTo(r * 0.32, r * 0.08);
+      ctx.lineTo(r * 0.32, r * 0.28);
+      ctx.stroke();
+      break;
+    case "feather":
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 0.8);
+      ctx.quadraticCurveTo(r * 0.5, 0, 0, r * 0.8);
+      ctx.quadraticCurveTo(-r * 0.15, 0, 0, -r * 0.8);
+      ctx.stroke();
+      for (let i = -3; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(0, i * r * 0.15);
+        ctx.lineTo(r * 0.35, i * r * 0.12);
+        ctx.stroke();
+      }
+      break;
+    case "eye":
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 0.75, r * 0.38, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case "compass":
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.7, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 0.55);
+      ctx.lineTo(r * 0.12, r * 0.45);
+      ctx.lineTo(-r * 0.12, r * 0.45);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case "hourglass":
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.45, -r * 0.7);
+      ctx.lineTo(r * 0.45, -r * 0.7);
+      ctx.lineTo(0, 0);
+      ctx.lineTo(r * 0.45, r * 0.7);
+      ctx.lineTo(-r * 0.45, r * 0.7);
+      ctx.closePath();
+      ctx.stroke();
+      break;
+    case "scroll":
+      ctx.strokeRect(-r * 0.55, -r * 0.35, r * 1.1, r * 0.7);
+      ctx.beginPath();
+      ctx.arc(-r * 0.55, 0, r * 0.18, -Math.PI / 2, Math.PI / 2);
+      ctx.stroke();
+      break;
+    case "crystal":
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 0.75);
+      ctx.lineTo(r * 0.4, 0);
+      ctx.lineTo(0, r * 0.75);
+      ctx.lineTo(-r * 0.4, 0);
+      ctx.closePath();
+      ctx.stroke();
+      break;
+    case "rune":
+      ctx.strokeRect(-r * 0.35, -r * 0.45, r * 0.7, r * 0.9);
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.2, -r * 0.25);
+      ctx.lineTo(r * 0.2, r * 0.25);
+      ctx.moveTo(r * 0.2, -r * 0.25);
+      ctx.lineTo(-r * 0.2, r * 0.25);
+      ctx.stroke();
+      break;
+    case "portal":
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 0.65, r * 0.85, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = opacity * 0.45;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 0.35, r * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case "sword":
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 0.75);
+      ctx.lineTo(0, r * 0.45);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.35, r * 0.45);
+      ctx.lineTo(r * 0.35, r * 0.45);
+      ctx.stroke();
+      ctx.fillRect(-r * 0.08, r * 0.45, r * 0.16, r * 0.22);
+      break;
+    case "mask":
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * 0.7, r * 0.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillRect(-r * 0.22, -r * 0.05, r * 0.18, r * 0.12);
+      ctx.fillRect(r * 0.04, -r * 0.05, r * 0.18, r * 0.12);
+      break;
+    case "footprint":
+      ctx.beginPath();
+      ctx.ellipse(0, r * 0.2, r * 0.28, r * 0.38, 0, 0, Math.PI * 2);
+      ctx.fill();
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.arc(-r * 0.2 + i * r * 0.13, -r * 0.25, r * 0.07, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    case "blood-drop":
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 0.7);
+      ctx.bezierCurveTo(r * 0.55, -r * 0.1, r * 0.45, r * 0.55, 0, r * 0.7);
+      ctx.bezierCurveTo(-r * 0.45, r * 0.55, -r * 0.55, -r * 0.1, 0, -r * 0.7);
+      ctx.fill();
+      break;
+    case "knife":
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.15, -r * 0.65);
+      ctx.lineTo(r * 0.2, r * 0.55);
+      ctx.lineTo(0, r * 0.65);
+      ctx.lineTo(-r * 0.35, -r * 0.55);
+      ctx.closePath();
+      ctx.stroke();
+      break;
+    case "pen":
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.55, r * 0.55);
+      ctx.lineTo(r * 0.45, -r * 0.45);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(r * 0.45, -r * 0.45);
+      ctx.lineTo(r * 0.65, -r * 0.25);
+      ctx.lineTo(r * 0.25, -r * 0.65);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case "ribbon":
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.55, -r * 0.15);
+      ctx.lineTo(r * 0.55, -r * 0.15);
+      ctx.lineTo(r * 0.55, r * 0.15);
+      ctx.lineTo(-r * 0.55, r * 0.15);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.1, r * 0.15);
+      ctx.lineTo(0, r * 0.55);
+      ctx.lineTo(r * 0.1, r * 0.15);
+      ctx.fill();
+      break;
+    case "corner-deco":
+    case "filigree":
+      ctx.strokeRect(-r * 0.75, -r * 0.75, r * 0.35, r * 0.35);
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.75, -r * 0.4);
+      ctx.quadraticCurveTo(-r * 0.4, -r * 0.4, -r * 0.4, -r * 0.75);
+      ctx.stroke();
+      if (symbol === "filigree") {
+        ctx.beginPath();
+        ctx.arc(-r * 0.55, -r * 0.55, r * 0.12, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      break;
+    case "spotlight":
+      ctx.globalAlpha = opacity * 0.35;
+      const sg = ctx.createRadialGradient(0, -r * 0.2, 0, 0, 0, r);
+      sg.addColorStop(0, color);
+      sg.addColorStop(1, "transparent");
+      ctx.fillStyle = sg;
+      ctx.fillRect(-r, -r, r * 2, r * 2);
+      break;
+    case "rain":
+      ctx.globalAlpha = opacity * 0.4;
+      for (let i = 0; i < 14; i++) {
+        const rx = -r * 0.8 + (i % 7) * r * 0.25;
+        const ry = -r * 0.7 + Math.floor(i / 7) * r * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(rx, ry);
+        ctx.lineTo(rx - r * 0.08, ry + r * 0.35);
+        ctx.stroke();
+      }
+      break;
+    case "scratches":
+      ctx.globalAlpha = opacity * 0.35;
+      for (let i = 0; i < 6; i++) {
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.7 + i * r * 0.22, -r * 0.5);
+        ctx.lineTo(-r * 0.4 + i * r * 0.18, r * 0.55);
+        ctx.stroke();
+      }
+      break;
+    case "bokeh":
+      ctx.globalAlpha = opacity * 0.25;
+      for (let i = 0; i < 5; i++) {
+        ctx.beginPath();
+        ctx.arc(Math.cos(i * 1.4) * r * 0.45, Math.sin(i * 1.7) * r * 0.45, r * (0.12 + i * 0.04), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      break;
+    case "neon-glow":
+      ctx.shadowColor = color;
+      ctx.shadowBlur = r * 0.35;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.35, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      break;
+    case "target":
+      for (let i = 3; i > 0; i--) {
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.22 * i, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      break;
+    case "bulb":
+      ctx.beginPath();
+      ctx.arc(0, -r * 0.15, r * 0.38, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillRect(-r * 0.18, r * 0.2, r * 0.36, r * 0.22);
+      break;
+    case "diagonal-light":
+      ctx.globalAlpha = opacity * 0.2;
+      ctx.beginPath();
+      ctx.moveTo(-r, -r);
+      ctx.lineTo(r * 0.3, r);
+      ctx.lineTo(-r * 0.1, r);
+      ctx.lineTo(-r, -r * 0.2);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case "vignette":
+    case "paper-tex":
+    case "film-grain":
+    case "dust":
+    case "blood-abstract":
+      ctx.globalAlpha = opacity * 0.35;
+      if (symbol === "vignette") {
+        const vg = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r);
+        vg.addColorStop(0, "transparent");
+        vg.addColorStop(1, color);
+        ctx.fillStyle = vg;
+        ctx.fillRect(-r, -r, r * 2, r * 2);
+      } else {
+        for (let i = 0; i < 24; i++) {
+          ctx.beginPath();
+          ctx.arc((Math.sin(i * 12.7) * 0.5) * r * 1.4, (Math.cos(i * 8.3) * 0.5) * r * 1.4, r * 0.04, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
       break;
     default:
       ctx.beginPath();

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   AlignCenter, AlignLeft, AlignRight, ArrowDown, ArrowUp, Copy, Layers,
-  Trash2, Type, ImagePlus, Download, Sparkles, AlertTriangle, Check,
+  Trash2, Type, ImagePlus, Download, Sparkles, AlertTriangle, Check, Eye, EyeOff, Lock, Unlock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,6 @@ import {
   STICKER_CATEGORIES,
   filterStickers,
 } from "@/lib/cover-studio/cover-stickers";
-import { CoverStickerSvg } from "@/components/cover/CoverStickerSvg";
-import { EFFECT_CONTROLS } from "@/lib/cover-studio/cover-effects";
 import {
   applyTextPositionPreset,
   createStickerLayer,
@@ -33,6 +31,19 @@ import {
   type CoverLayer,
   type TextPositionPreset,
 } from "@/lib/cover-studio/cover-layers";
+import {
+  applyCompositionLayoutPreset,
+  COMPOSITION_LAYOUT_PRESETS,
+  getLayerDisplayName,
+  toggleLayerLock,
+  toggleLayerVisibility,
+  type CompositionLayoutPreset,
+} from "@/lib/cover-studio/cover-composition-utils";
+import { assessPrintCompatibility } from "@/lib/cover-studio/cover-print-check";
+import { COVER_VIEW_MODES, type CoverViewMode } from "@/lib/cover-studio/cover-view-modes";
+
+import { CoverStickerSvg } from "@/components/cover/CoverStickerSvg";
+import { EFFECT_CONTROLS } from "@/lib/cover-studio/cover-effects";
 
 interface Props {
   pkg: CoverStudioPackage;
@@ -47,6 +58,24 @@ interface Props {
   onSaveProject?: () => void;
   onOpenExport?: () => void;
   saved: boolean;
+  coverTitle: string;
+  coverSubtitle: string;
+  coverAuthor: string;
+  onTitleChange: (value: string) => void;
+  onSubtitleChange: (value: string) => void;
+  onAuthorChange: (value: string) => void;
+  backTagline?: string;
+  backBlurb?: string;
+  backBio?: string;
+  backQuote?: string;
+  onBackTaglineChange?: (value: string) => void;
+  onBackBlurbChange?: (value: string) => void;
+  onBackBioChange?: (value: string) => void;
+  onBackQuoteChange?: (value: string) => void;
+  isPrintMode?: boolean;
+  spineWidthIn?: number;
+  pageCount?: number;
+  hasAuthorPhoto?: boolean;
 }
 
 const TEXT_PRESETS: { id: TextPositionPreset; label: string }[] = [
@@ -74,6 +103,24 @@ export function CoverStudioPro({
   onSaveProject,
   onOpenExport,
   saved,
+  coverTitle,
+  coverSubtitle,
+  coverAuthor,
+  onTitleChange,
+  onSubtitleChange,
+  onAuthorChange,
+  backTagline = "",
+  backBlurb = "",
+  backBio = "",
+  backQuote = "",
+  onBackTaglineChange,
+  onBackBlurbChange,
+  onBackBioChange,
+  onBackQuoteChange,
+  isPrintMode = false,
+  spineWidthIn = 0.5,
+  pageCount = 260,
+  hasAuthorPhoto = false,
 }: Props) {
   const [bgCategory, setBgCategory] = useState<CoverBackgroundCategory | "all">("all");
   const [stickerCategory, setStickerCategory] = useState("Tutti");
@@ -81,6 +128,19 @@ export function CoverStudioPro({
   const readinessPro = useMemo(
     () => assessCoverReadinessPro(composition, pkg.score, genre ?? pkg.brief.genre, italianUi),
     [composition, pkg.score, genre, pkg.brief.genre, italianUi],
+  );
+
+  const printCheck = useMemo(
+    () =>
+      assessPrintCompatibility({
+        composition,
+        score: pkg.score,
+        genre: genre ?? pkg.brief.genre,
+        spineWidthIn,
+        pageCount,
+        italian: italianUi,
+      }),
+    [composition, pkg.score, genre, pkg.brief.genre, spineWidthIn, pageCount, italianUi],
   );
 
   const selectedLayer = composition.layers.find((l) => l.id === selectedLayerId) ?? null;
@@ -109,27 +169,54 @@ export function CoverStudioPro({
         </div>
         <p className="text-[11px] leading-relaxed text-muted-foreground">
           {italianUi
-            ? "Costruisci la copertina del tuo libro senza uscire da Scriptora."
-            : "Build your book cover without leaving Scriptora."}
+            ? "Builder copertina digitale — trascina elementi sulla preview, pronta per anteprima store."
+            : "Digital cover builder — drag elements on preview, store-preview ready."}
         </p>
       </div>
 
       <Tabs defaultValue="backgrounds" className="w-full min-w-0">
         <TabsList className="flex h-auto w-full flex-nowrap justify-start gap-0.5 overflow-x-auto bg-muted/40 p-1 [-webkit-overflow-scrolling:touch]">
-          {(["templates", "backgrounds", "text", "stickers", "effects", "readiness"] as const).map((tab) => (
+          {(["templates", "backgrounds", "text", "layers", "stickers", "effects", "print", "readiness"] as const).map((tab) => (
             <TabsTrigger key={tab} value={tab} className="shrink-0 px-2.5 py-1.5 text-[10px] sm:text-xs">
               {tab === "templates" && (italianUi ? "Template" : "Templates")}
               {tab === "backgrounds" && (italianUi ? "Sfondi" : "Backgrounds")}
               {tab === "text" && "Testo"}
+              {tab === "layers" && "Layer"}
               {tab === "stickers" && "Sticker"}
               {tab === "effects" && (italianUi ? "Effetti" : "Effects")}
+              {tab === "print" && (italianUi ? "Stampa" : "Print")}
               {tab === "readiness" && "Readiness"}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        <TabsContent value="templates" className="mt-3 space-y-2 text-xs">
+        <TabsContent value="templates" className="mt-3 space-y-3 text-xs">
           <p className="text-muted-foreground leading-relaxed">{pkg.brief.visualPromise}</p>
+          <div className="space-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {italianUi ? "Layout intelligenti" : "Smart layouts"}
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {COMPOSITION_LAYOUT_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    const ok = window.confirm(
+                      italianUi
+                        ? "Questo aggiornerà posizione e stile dei layer testuali. Gli sticker esistenti restano. Continuare?"
+                        : "This updates text layer positions and styles. Existing stickers stay. Continue?",
+                    );
+                    if (!ok) return;
+                    patch((c) => applyCompositionLayoutPreset(c, p.id as CompositionLayoutPreset));
+                  }}
+                  className="rounded-lg border border-border/70 px-2 py-1 text-[10px] hover:bg-muted/40"
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-1 gap-2">
             {pkg.variants.map((v) => (
               <button
@@ -189,6 +276,33 @@ export function CoverStudioPro({
         </TabsContent>
 
         <TabsContent value="text" className="mt-3 space-y-3">
+          <div className="grid gap-2">
+            <label className="block space-y-1 text-xs">
+              <span className="font-medium text-muted-foreground">{italianUi ? "Titolo" : "Title"}</span>
+              <input
+                className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm"
+                value={coverTitle}
+                onChange={(e) => onTitleChange(e.target.value)}
+              />
+            </label>
+            <label className="block space-y-1 text-xs">
+              <span className="font-medium text-muted-foreground">{italianUi ? "Sottotitolo" : "Subtitle"}</span>
+              <input
+                className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm"
+                value={coverSubtitle}
+                onChange={(e) => onSubtitleChange(e.target.value)}
+              />
+            </label>
+            <label className="block space-y-1 text-xs">
+              <span className="font-medium text-muted-foreground">{italianUi ? "Autore" : "Author"}</span>
+              <input
+                className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm"
+                value={coverAuthor}
+                onChange={(e) => onAuthorChange(e.target.value)}
+              />
+            </label>
+          </div>
+
           <div className="flex flex-wrap gap-1">
             {TEXT_PRESETS.map((p) => (
               <button
@@ -209,8 +323,30 @@ export function CoverStudioPro({
             italianUi={italianUi}
           />
 
-          {selectedLayer && ["title", "subtitle", "author"].includes(selectedLayer.type) && (
+          {selectedLayer && ["title", "subtitle", "author", "back-tagline", "back-blurb", "back-bio", "back-quote", "spine-title", "spine-author"].includes(selectedLayer.type) && (
             <TextLayerControls layer={selectedLayer} onChange={(p) => patchLayer(selectedLayer.id, p)} italianUi={italianUi} />
+          )}
+        </TabsContent>
+
+        <TabsContent value="layers" className="mt-3 space-y-2">
+          <LayerListPanel
+            layers={[...composition.layers].sort((a, b) => b.zIndex - a.zIndex)}
+            selectedId={selectedLayerId}
+            italianUi={italianUi}
+            onSelect={onSelectLayer}
+            onToggleVisible={(id) => patch((c) => ({ ...c, layers: toggleLayerVisibility(c.layers, id) }))}
+            onToggleLock={(id) => patch((c) => ({ ...c, layers: toggleLayerLock(c.layers, id) }))}
+            onReorder={(id, dir) => patch((c) => ({ ...c, layers: reorderLayer(c.layers, id, dir) }))}
+            onDuplicate={(id) => patch((c) => ({ ...c, layers: duplicateLayer(c.layers, id) }))}
+            onDelete={(id) => {
+              patch((c) => ({ ...c, layers: removeLayer(c.layers, id) }));
+              if (selectedLayerId === id) onSelectLayer(null);
+            }}
+          />
+          {selectedLayer && (
+            <p className="text-[10px] text-muted-foreground">
+              {italianUi ? "Trascina anche sulla preview oppure usa gli slider nel tab Testo/Sticker." : "Drag on preview or use sliders in Text/Sticker tabs."}
+            </p>
           )}
         </TabsContent>
 
@@ -300,6 +436,116 @@ export function CoverStudioPro({
           )}
         </TabsContent>
 
+        <TabsContent value="print" className="mt-3 space-y-3 text-xs">
+          <p className="text-[11px] leading-relaxed text-muted-foreground">
+            {italianUi
+              ? "Modalità libro aperto per KDP/Lulu — fronte, dorso e retro. Da verificare prima di stampa paperback."
+              : "Open book mode for KDP/Lulu — front, spine and back. Verify before paperback print."}
+          </p>
+          <div className="space-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {italianUi ? "Vista editoriale" : "Editorial view"}
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {COVER_VIEW_MODES.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  disabled={!isPrintMode && m.id !== "front" && m.id !== "thumbnail"}
+                  onClick={() => patch((c) => ({ ...c, viewMode: m.id as CoverViewMode }))}
+                  className={`rounded-lg border px-2 py-1 text-[10px] disabled:opacity-40 ${
+                    (composition.viewMode ?? "front") === m.id
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border/70 hover:bg-muted/40"
+                  }`}
+                >
+                  {italianUi ? m.labelIt : m.labelEn}
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-[11px]">
+            <input
+              type="checkbox"
+              checked={Boolean(composition.showPrintGuides)}
+              onChange={(e) => patch((c) => ({ ...c, showPrintGuides: e.target.checked }))}
+            />
+            {italianUi ? "Mostra guide stampa (non esportate)" : "Show print guides (not exported)"}
+          </label>
+          {isPrintMode && (
+            <div className="flex flex-wrap gap-1">
+              {(["front", "back", "spine"] as const).map((panel) => (
+                <button
+                  key={panel}
+                  type="button"
+                  onClick={() => patch((c) => ({ ...c, activePanel: panel }))}
+                  className={`rounded-lg border px-2 py-1 text-[10px] ${
+                    (composition.activePanel ?? "front") === panel
+                      ? "border-primary bg-primary/15"
+                      : "border-border/70"
+                  }`}
+                >
+                  {panel === "front" ? "Front" : panel === "back" ? "Retro" : "Dorso"}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="space-y-2 rounded-xl border border-border/60 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {italianUi ? "Retro editoriale" : "Back matter"}
+            </p>
+            {onBackTaglineChange && (
+              <label className="block space-y-1">
+                <span className="text-muted-foreground">Tagline / CTA</span>
+                <input className="h-9 w-full rounded-lg border border-border bg-surface px-2 text-sm" value={backTagline} onChange={(e) => onBackTaglineChange(e.target.value)} />
+              </label>
+            )}
+            {onBackBlurbChange && (
+              <label className="block space-y-1">
+                <span className="text-muted-foreground">{italianUi ? "Testo retro" : "Back blurb"}</span>
+                <textarea rows={3} className="w-full resize-none rounded-lg border border-border bg-surface px-2 py-1.5 text-sm" value={backBlurb} onChange={(e) => onBackBlurbChange(e.target.value)} />
+              </label>
+            )}
+            {onBackBioChange && (
+              <label className="block space-y-1">
+                <span className="text-muted-foreground">{italianUi ? "Bio autore" : "Author bio"}</span>
+                <textarea rows={2} className="w-full resize-none rounded-lg border border-border bg-surface px-2 py-1.5 text-sm" value={backBio} onChange={(e) => onBackBioChange(e.target.value)} />
+              </label>
+            )}
+            {onBackQuoteChange && (
+              <label className="block space-y-1">
+                <span className="text-muted-foreground">{italianUi ? "Citazione recensione" : "Review quote"}</span>
+                <input className="h-9 w-full rounded-lg border border-border bg-surface px-2 text-sm" value={backQuote} onChange={(e) => onBackQuoteChange(e.target.value)} />
+              </label>
+            )}
+            <p className="text-[10px] text-muted-foreground">
+              {hasAuthorPhoto
+                ? italianUi ? "Layout: foto autore + bio affiancata" : "Layout: author photo + bio side-by-side"
+                : italianUi ? "Layout: bio full width" : "Layout: full-width bio"}
+            </p>
+          </div>
+          <div className="space-y-2 rounded-xl border border-border/60 p-3">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold text-foreground">
+                {italianUi ? "Verifica compatibilità stampa" : "Print compatibility"}
+              </p>
+              <Badge
+                variant={printCheck.overall === "pass" ? "default" : printCheck.overall === "warning" ? "secondary" : "destructive"}
+                className="text-[10px] uppercase"
+              >
+                {printCheck.overall}
+              </Badge>
+            </div>
+            <p className="text-[11px] text-muted-foreground">{printCheck.summary}</p>
+            {printCheck.items.map((item) => (
+              <p key={item.id} className={`flex gap-1 text-[10px] ${item.status === "pass" ? "text-primary" : item.status === "warning" ? "text-amber-500" : "text-destructive"}`}>
+                {item.status === "pass" ? <Check className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
+                <span>{item.message}{item.suggestion ? ` → ${item.suggestion}` : ""}</span>
+              </p>
+            ))}
+          </div>
+        </TabsContent>
+
         <TabsContent value="readiness" className="mt-3 space-y-3 text-xs">
           <div className="grid grid-cols-2 gap-2">
             {[
@@ -350,6 +596,62 @@ export function CoverStudioPro({
           )}
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function LayerListPanel({
+  layers,
+  selectedId,
+  italianUi,
+  onSelect,
+  onToggleVisible,
+  onToggleLock,
+  onReorder,
+  onDuplicate,
+  onDelete,
+}: {
+  layers: CoverLayer[];
+  selectedId: string | null;
+  italianUi: boolean;
+  onSelect: (id: string) => void;
+  onToggleVisible: (id: string) => void;
+  onToggleLock: (id: string) => void;
+  onReorder: (id: string, dir: "up" | "down") => void;
+  onDuplicate: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <div className="max-h-56 space-y-1 overflow-y-auto overscroll-contain pr-1">
+      {layers.map((layer) => {
+        const isCore = layer.type === "title" || layer.type === "subtitle" || layer.type === "author";
+        return (
+          <div
+            key={layer.id}
+            className={`cover-studio-layer-row rounded-lg border px-2 py-1.5 ${
+              selectedId === layer.id ? "border-primary bg-primary/10" : "border-border/60"
+            }`}
+          >
+            <button type="button" className="min-w-0 flex-1 truncate text-left text-[11px] font-medium" onClick={() => onSelect(layer.id)}>
+              {getLayerDisplayName(layer, italianUi)}
+            </button>
+            <button type="button" className="p-1 text-muted-foreground" onClick={() => onToggleVisible(layer.id)} aria-label="visibility">
+              {layer.visible === false ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+            <button type="button" className="p-1 text-muted-foreground" onClick={() => onToggleLock(layer.id)} aria-label="lock">
+              {layer.locked ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+            </button>
+            <button type="button" className="p-1" onClick={() => onReorder(layer.id, "up")}><ArrowUp className="h-3.5 w-3.5" /></button>
+            <button type="button" className="p-1" onClick={() => onReorder(layer.id, "down")}><ArrowDown className="h-3.5 w-3.5" /></button>
+            {!isCore && (
+              <>
+                <button type="button" className="p-1" onClick={() => onDuplicate(layer.id)}><Copy className="h-3.5 w-3.5" /></button>
+                <button type="button" className="p-1 text-destructive" onClick={() => onDelete(layer.id)}><Trash2 className="h-3.5 w-3.5" /></button>
+              </>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -445,6 +747,12 @@ function TextLayerControls({
       <label className="flex items-center gap-2 text-[10px]">
         <input type="checkbox" checked={Boolean(style.uppercase)} onChange={(e) => setStyle("uppercase", e.target.checked ? 1 : 0)} />
         UPPERCASE
+      </label>
+      <SliderRow label={italianUi ? "Rotazione" : "Rotation"} value={layer.rotation ?? 0} min={-12} max={12} onChange={(v) => onChange({ rotation: v })} />
+      <SliderRow label="Line height" value={Number(style.lineHeight ?? 1.1) * 100} min={90} max={160} onChange={(v) => setStyle("lineHeight", v / 100)} />
+      <label className="flex items-center gap-2 text-[10px]">
+        <input type="checkbox" checked={Boolean(style.boxBackground)} onChange={(e) => setStyle("boxBackground", e.target.checked ? "rgba(0,0,0,0.45)" : "")} />
+        {italianUi ? "Box sfondo titolo" : "Title background box"}
       </label>
       <button
         type="button"

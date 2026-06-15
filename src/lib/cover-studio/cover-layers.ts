@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type { CoverPanel, CoverViewMode } from "./cover-view-modes";
 
 export type CoverLayerType =
   | "title"
@@ -8,7 +9,13 @@ export type CoverLayerType =
   | "shape"
   | "line"
   | "badge"
-  | "texture";
+  | "texture"
+  | "back-tagline"
+  | "back-blurb"
+  | "back-bio"
+  | "back-quote"
+  | "spine-title"
+  | "spine-author";
 
 export interface CoverLayer {
   id: string;
@@ -63,6 +70,9 @@ export interface CoverComposition {
   layers: CoverLayer[];
   effects: CoverEffectsState;
   updatedAt: string;
+  viewMode?: CoverViewMode;
+  showPrintGuides?: boolean;
+  activePanel?: CoverPanel;
 }
 
 export type TextPositionPreset =
@@ -157,6 +167,115 @@ export function createDefaultLayers(title: string, subtitle: string, author: str
   return layers.sort((a, b) => a.zIndex - b.zIndex);
 }
 
+export function createBackMatterLayers(opts: {
+  tagline: string;
+  blurb: string;
+  bio: string;
+  quote?: string;
+  spineTitle?: string;
+  spineAuthor?: string;
+}): CoverLayer[] {
+  const layers: CoverLayer[] = [
+    {
+      id: uid(),
+      type: "back-tagline",
+      content: opts.tagline,
+      x: 12,
+      y: 14,
+      width: 78,
+      visible: Boolean(opts.tagline.trim()),
+      zIndex: 40,
+      style: { fontSize: 100, fontWeight: 700, align: "left", color: "#e6c36a", lineHeight: 1.15 },
+    },
+    {
+      id: uid(),
+      type: "back-blurb",
+      content: opts.blurb,
+      x: 12,
+      y: 38,
+      width: 78,
+      visible: Boolean(opts.blurb.trim()),
+      zIndex: 38,
+      style: { fontSize: 100, fontWeight: 400, align: "left", color: "#d9c9aa", lineHeight: 1.35 },
+    },
+    {
+      id: uid(),
+      type: "back-bio",
+      content: opts.bio,
+      x: 12,
+      y: 72,
+      width: 78,
+      visible: Boolean(opts.bio.trim()),
+      zIndex: 36,
+      style: { fontSize: 100, fontWeight: 400, align: "left", color: "#cfc6b3", lineHeight: 1.3 },
+    },
+    {
+      id: uid(),
+      type: "spine-title",
+      content: opts.spineTitle ?? "",
+      x: 50,
+      y: 42,
+      width: 90,
+      visible: true,
+      zIndex: 34,
+      style: { fontSize: 100, fontWeight: 700, align: "center", uppercase: 1, letterSpacing: 2 },
+    },
+    {
+      id: uid(),
+      type: "spine-author",
+      content: opts.spineAuthor ?? "",
+      x: 50,
+      y: 58,
+      width: 90,
+      visible: Boolean((opts.spineAuthor ?? "").trim()),
+      zIndex: 32,
+      style: { fontSize: 90, fontWeight: 600, align: "center", uppercase: 1 },
+    },
+  ];
+  if (opts.quote?.trim()) {
+    layers.push({
+      id: uid(),
+      type: "back-quote",
+      content: opts.quote,
+      x: 50,
+      y: 56,
+      width: 72,
+      visible: true,
+      zIndex: 37,
+      style: { fontSize: 95, fontStyle: "italic", align: "center", color: "#f5d27a", lineHeight: 1.25 },
+    });
+  }
+  return layers;
+}
+
+export function isBackMatterLayer(type: CoverLayerType): boolean {
+  return type.startsWith("back-") || type.startsWith("spine-");
+}
+
+export function isDraggableLayerType(type: CoverLayerType): boolean {
+  return !["shape", "line", "texture"].includes(type);
+}
+
+export function syncBackMatterContent(
+  layers: CoverLayer[],
+  tagline: string,
+  blurb: string,
+  bio: string,
+  quote: string,
+  spineTitle: string,
+  spineAuthor: string,
+): CoverLayer[] {
+  return layers.map((layer) => {
+    if (layer.type === "back-tagline") return { ...layer, content: tagline, visible: Boolean(tagline.trim()) };
+    if (layer.type === "back-blurb") return { ...layer, content: blurb, visible: Boolean(blurb.trim()) };
+    if (layer.type === "back-bio") return { ...layer, content: bio, visible: Boolean(bio.trim()) };
+    if (layer.type === "back-quote") return { ...layer, content: quote, visible: Boolean(quote.trim()) };
+    if (layer.type === "spine-title") return { ...layer, content: spineTitle || layer.content };
+    if (layer.type === "spine-author") return { ...layer, content: spineAuthor, visible: Boolean(spineAuthor.trim()) };
+    return layer;
+  });
+}
+
 export function createStickerLayer(presetId: string, name: string): CoverLayer {
   return {
     id: uid(),
@@ -177,17 +296,43 @@ export function createStickerLayer(presetId: string, name: string): CoverLayer {
 
 export function migrateComposition(
   raw: Partial<CoverComposition> | null | undefined,
-  fallback: { title: string; subtitle: string; author: string; templateId: string; templateIndex: number; backgroundPresetId: string },
+  fallback: {
+    title: string;
+    subtitle: string;
+    author: string;
+    templateId: string;
+    templateIndex: number;
+    backgroundPresetId: string;
+    tagline?: string;
+    blurb?: string;
+    bio?: string;
+    quote?: string;
+  },
 ): CoverComposition {
   if (raw?.version === 1 && Array.isArray(raw.layers) && raw.layers.length > 0) {
+    const hasBack = raw.layers.some((l) => isBackMatterLayer(l.type));
+    const frontLayers = raw.layers.filter((l) => !isBackMatterLayer(l.type));
+    const backLayers = hasBack
+      ? raw.layers.filter((l) => isBackMatterLayer(l.type))
+      : createBackMatterLayers({
+          tagline: fallback.tagline ?? "",
+          blurb: fallback.blurb ?? "",
+          bio: fallback.bio ?? "",
+          quote: fallback.quote ?? "",
+          spineTitle: fallback.title,
+          spineAuthor: fallback.author,
+        });
     return {
       version: 1,
       backgroundPresetId: raw.backgroundPresetId || fallback.backgroundPresetId,
       templateId: raw.templateId || fallback.templateId,
       templateIndex: raw.templateIndex ?? fallback.templateIndex,
-      layers: raw.layers.map((l) => ({ ...l, visible: l.visible !== false })),
+      layers: [...frontLayers, ...backLayers].map((l) => ({ ...l, visible: l.visible !== false })),
       effects: { ...DEFAULT_COVER_EFFECTS, ...raw.effects },
       updatedAt: raw.updatedAt || new Date().toISOString(),
+      viewMode: raw.viewMode ?? "front",
+      showPrintGuides: raw.showPrintGuides ?? false,
+      activePanel: raw.activePanel ?? "front",
     };
   }
   return {
@@ -195,9 +340,22 @@ export function migrateComposition(
     backgroundPresetId: fallback.backgroundPresetId,
     templateId: fallback.templateId,
     templateIndex: fallback.templateIndex,
-    layers: createDefaultLayers(fallback.title, fallback.subtitle, fallback.author),
+    layers: [
+      ...createDefaultLayers(fallback.title, fallback.subtitle, fallback.author),
+      ...createBackMatterLayers({
+        tagline: fallback.tagline ?? "Una storia creata con Scriptora OS",
+        blurb: fallback.blurb ?? "",
+        bio: fallback.bio ?? "",
+        quote: fallback.quote ?? "",
+        spineTitle: fallback.title,
+        spineAuthor: fallback.author,
+      }),
+    ],
     effects: { ...DEFAULT_COVER_EFFECTS },
     updatedAt: new Date().toISOString(),
+    viewMode: "front",
+    showPrintGuides: false,
+    activePanel: "front",
   };
 }
 
@@ -215,7 +373,14 @@ export function updateLayer(layers: CoverLayer[], id: string, patch: Partial<Cov
 }
 
 export function removeLayer(layers: CoverLayer[], id: string): CoverLayer[] {
-  return layers.filter((l) => l.id !== id || l.type === "title" || l.type === "subtitle" || l.type === "author");
+  return layers.filter(
+    (l) =>
+      l.id !== id ||
+      l.type === "title" ||
+      l.type === "subtitle" ||
+      l.type === "author" ||
+      l.type === "spine-title",
+  );
 }
 
 export function duplicateLayer(layers: CoverLayer[], id: string): CoverLayer[] {

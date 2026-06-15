@@ -64,9 +64,64 @@ export function clearProjectCover(projectId: string): void {
   writeStore(store);
 }
 
+export type CoverSaveResult = {
+  ok: boolean;
+  dataUrlSaved: boolean;
+  compositionSaved: boolean;
+  warning?: string;
+  error?: string;
+};
+
+export function saveProjectCoverFull(
+  projectId: string,
+  dataUrl: string | null | undefined,
+  compositionJson?: string,
+): CoverSaveResult {
+  if (!projectId) {
+    return { ok: false, dataUrlSaved: false, compositionSaved: false, error: "Progetto non valido" };
+  }
+
+  let dataUrlSaved = false;
+  let compositionSaved = false;
+  let warning: string | undefined;
+  let error: string | undefined;
+
+  if (dataUrl?.startsWith("data:image")) {
+    if (dataUrl.length > MAX_COVER_BYTES) {
+      error = "Cover troppo pesante per il salvataggio locale. Riduci effetti o dimensioni.";
+      return { ok: false, dataUrlSaved: false, compositionSaved: false, error };
+    }
+    dataUrlSaved = setProjectCoverDataUrl(projectId, dataUrl, compositionJson);
+    compositionSaved = Boolean(compositionJson);
+    if (!dataUrlSaved) {
+      error = "Impossibile salvare l'anteprima cover. Spazio locale insufficiente.";
+    }
+  } else if (compositionJson) {
+    compositionSaved = setProjectCoverComposition(projectId, compositionJson);
+    warning = "Composizione salvata. L'anteprima verrà rigenerata al prossimo salvataggio.";
+    dataUrlSaved = false;
+  } else {
+    error = "Nessuna cover da salvare.";
+  }
+
+  return {
+    ok: dataUrlSaved || compositionSaved,
+    dataUrlSaved,
+    compositionSaved,
+    warning,
+    error,
+  };
+}
+
+export function hasProjectCoverComposition(projectId: string): boolean {
+  return Boolean(getProjectCoverComposition(projectId));
+}
+
 export function listProjectCoverUrls(): Record<string, string> {
   const store = readStore();
   return Object.fromEntries(
-    Object.entries(store).map(([id, entry]) => [id, entry.dataUrl]),
+    Object.entries(store)
+      .filter(([, entry]) => entry.dataUrl?.startsWith("data:image"))
+      .map(([id, entry]) => [id, entry.dataUrl]),
   );
 }

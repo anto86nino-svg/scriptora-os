@@ -4976,6 +4976,145 @@ body,
   }
 }
 
+/* Cover Studio Pro — drag stage + layer hitboxes */
+.cover-studio-pro-stage {
+  touch-action: none;
+  max-width: 100%;
+}
+
+.cover-interaction-layer {
+  border-radius: inherit;
+}
+
+.cover-layer-hitbox {
+  border: 1.5px dashed transparent;
+  border-radius: 6px;
+  cursor: grab;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.cover-layer-hitbox:hover {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.cover-layer-hitbox--selected {
+  border-color: rgba(56, 189, 248, 0.9);
+  background: rgba(56, 189, 248, 0.1);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25);
+}
+
+.cover-layer-hitbox--dragging {
+  cursor: grabbing;
+  border-color: rgba(167, 139, 250, 0.95);
+  background: rgba(167, 139, 250, 0.12);
+}
+
+.cover-layer-hitbox--locked {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.cover-layer-hitbox-label {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.72);
+  padding: 1px 6px;
+  font-size: 9px;
+  font-weight: 600;
+  color: #e0f2fe;
+  pointer-events: none;
+}
+
+.cover-layer-resize-handle {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(56, 189, 248, 0.9);
+  background: rgba(15, 23, 42, 0.92);
+  cursor: nwse-resize;
+  pointer-events: auto;
+}
+
+.cover-snap-guide {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(125, 211, 252, 0.55);
+  z-index: 200;
+}
+
+.cover-snap-guide--v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.45);
+}
+
+.cover-snap-guide--h {
+  left: 0;
+  right: 0;
+  height: 1px;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.45);
+}
+
+.cover-panel-selector {
+  position: absolute;
+  border: 1px dashed transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.cover-panel-selector:hover,
+.cover-panel-selector--active {
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.cover-cinematic-overlay {
+  animation: cover-cinematic-fade-in 0.35s ease-out;
+}
+
+@keyframes cover-cinematic-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.cover-studio-pro-stage--thumbnail .scriptora-cover-studio-canvas {
+  max-height: min(38dvh, 320px) !important;
+}
+
+.cover-studio-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 36px;
+}
+
+.cover-studio-pro input[type="range"] {
+  min-height: 28px;
+}
+
+@media (max-width: 767px) {
+  .scriptora-cover-studio-canvas {
+    max-height: min(46dvh, 420px) !important;
+  }
+
+  .cover-studio-pro-stage {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+}
+
 /* Hide floating dock when modals, dense routes, or radix dialogs are active */
 html:has(.scriptora-modal-overlay) .scriptora-floating-dock,
 html:has(.scriptora-modal-overlay) .scriptora-floating-dock-pill,
