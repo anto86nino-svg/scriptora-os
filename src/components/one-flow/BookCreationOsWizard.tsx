@@ -295,6 +295,8 @@ export function BookCreationOsWizard({
   const [preflightResult, setPreflightResult] = useState<BlueprintPreflightResult | null>(null);
   const [showCoherenceWarning, setShowCoherenceWarning] = useState(false);
   const [coherenceDismissed, setCoherenceDismissed] = useState(false);
+  const [forgePresetId, setForgePresetId] = useState<string | null>(null);
+  const [forgePresetLabel, setForgePresetLabel] = useState<string | null>(null);
 
   const textInference = useMemo(
     () => inferGenreFromText(title, idea),
@@ -476,6 +478,8 @@ export function BookCreationOsWizard({
         sessionStorage.removeItem("scriptora-forge-selected-preset");
 
         const presetId = String(preset.id || "");
+        setForgePresetId(presetId);
+        setForgePresetLabel(String(preset.label || ""));
         const presetTone = String(preset.tone || "").trim();
         const presetHint = String(preset.blueprintHint || "").trim();
         const presetPromise = String(preset.promise || "").trim();
@@ -1066,9 +1070,15 @@ export function BookCreationOsWizard({
       >
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-300">Book Configuration Studio</p>
-            <p className="text-sm font-semibold text-white">Macro step {step + 1}/{STUDIO_STEPS.length} — {stepLabel}</p>
-            <p className="mt-0.5 text-[11px] text-white/45">20 decisioni guidate prima della generazione reale</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-300">
+                {forgePresetId ? "Scriptora Forge" : "Book Configuration Studio"}
+              </p>
+            <p className="text-sm font-semibold text-white">
+                {forgePresetId ? `Preset: ${forgePresetLabel || "Libro rapido"}` : `Macro step ${step + 1}/${STUDIO_STEPS.length} — ${stepLabel}`}
+              </p>
+            <p className="mt-0.5 text-[11px] text-white/45">
+                {forgePresetId ? "Configurazione rapida: controlla solo titolo, autore, lingua e idea." : "20 decisioni guidate prima della generazione reale"}
+              </p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white">
             <X className="h-5 w-5" />
@@ -1085,11 +1095,20 @@ export function BookCreationOsWizard({
           >
           {step === 0 && (
             <div className="space-y-3">
-              <h2 className="text-xl font-semibold text-white">Crea libro</h2>
-              <p className="text-sm text-white/65">Se parti da zero, scegli uno starter. Se hai già un'idea, scrivila: Scriptora la trasforma in una direzione editoriale.</p>
+              <h2 className="text-xl font-semibold text-white">
+                  {forgePresetId === "poetry" ? "Crea raccolta poetica" : forgePresetId ? `Crea ${forgePresetLabel || "libro"}` : "Crea libro"}
+                </h2>
+              <p className="text-sm text-white/65">
+                  {forgePresetId === "poetry"
+                    ? "Hai scelto Poesie: Scriptora userà sezioni poetiche, versi liberi, immagini, ritmo e silenzi. Niente dark romance, niente romanzo, niente saggio mascherato."
+                    : forgePresetId
+                      ? "Hai scelto un preset Forge: Scriptora ha già impostato struttura, tono e direzione. Controlla solo i campi essenziali."
+                      : "Se parti da zero, scegli uno starter. Se hai già un'idea, scrivila: Scriptora la trasforma in una direzione editoriale."}
+                </p>
 
-              <GuidedDecisionRail activeIndex={0} />
+              {!forgePresetId && <GuidedDecisionRail activeIndex={0} />}
 
+              {!forgePresetId && (
               <div className="grid gap-2 md:grid-cols-3">
                 {GUIDED_STARTERS.map((starter) => (
                   <button
@@ -1104,6 +1123,7 @@ export function BookCreationOsWizard({
                   </button>
                 ))}
               </div>
+              )}
 
               <label className="block space-y-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Titolo reale</span>
