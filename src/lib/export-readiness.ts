@@ -1,5 +1,6 @@
 import type { BookProject } from "@/types/book";
 import { applyAuthorIdentityToConfig } from "@/lib/author-identity";
+import { getBookStructureTruth, getMissingActiveSubchapterRefs } from "@/lib/book-structure-truth";
 import { isProjectComplete } from "@/lib/project-status";
 import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 import { resolveExportAuthorName } from "@/lib/export-author";
@@ -39,6 +40,8 @@ export function validateExportReadiness(project: BookProject): ExportReadinessIs
   const issues: ExportReadinessIssue[] = [];
   const config = applyAuthorIdentityToConfig({ ...project.config });
   const title = String(config.title || "").trim();
+  const structure = getBookStructureTruth(project);
+  const missingSubchapters = getMissingActiveSubchapterRefs(project);
 
   if (!title || title === "Senza titolo" || title === "Untitled") {
     issues.push({
@@ -79,15 +82,25 @@ export function validateExportReadiness(project: BookProject): ExportReadinessIs
     const target = project.config?.numberOfChapters || 0;
     const done = (project.chapters || []).filter((c) => (c.content || "").trim().length > 50).length;
     if (target > 0 && done < target) missing.push("capitoli");
+    if (structure.requiresSubchapters && missingSubchapters.length > 0) missing.push("sottocapitoli");
     if (isFrontMatterEnabled(config) && !project.frontMatter) missing.push("front matter");
     if (isBackMatterEnabled(config) && !project.backMatter) missing.push("back matter");
     issues.push({
-      id: "chapters",
-      field: "chapters",
+      id: missing.includes("sottocapitoli") ? "subchapters" : "chapters",
+      field: missing.includes("sottocapitoli") ? "subchapters" : "chapters",
       message: missing.length
         ? `Completa prima: ${missing.join(", ")}.`
         : "Completa tutti i capitoli prima dell'export.",
       severity: "blocker",
+    });
+  }
+
+  if (structure.diagnostics.length > 0) {
+    issues.push({
+      id: "structure-ghost-config",
+      field: "structure",
+      message: structure.diagnostics[0],
+      severity: "warning",
     });
   }
 

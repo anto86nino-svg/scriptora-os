@@ -7,7 +7,6 @@ import { areChaptersComplete } from "@/lib/project-progress";
  * Respects matterOptions — disabled front/back matter is not required.
  */
 export function isProjectComplete(p: BookProject): boolean {
-  if (p.phase === "complete") return true;
   if (!areChaptersComplete(p)) return false;
   if (isFrontMatterEnabled(p.config) && !p.frontMatter) return false;
   if (isBackMatterEnabled(p.config) && !p.backMatter) return false;

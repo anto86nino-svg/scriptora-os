@@ -1,12 +1,18 @@
 import type { BookProject } from "@/types/book";
 import { getBookTotalWords } from "@/types/book";
+import { getBookStructureTruth, getMissingActiveSubchapterRefs } from "@/lib/book-structure-truth";
 import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 
 export function areChaptersComplete(project: BookProject): boolean {
   const target = project.config?.numberOfChapters || 0;
   if (!target) return false;
   const done = (project.chapters || []).filter((c) => (c.content || "").trim().length > 50).length;
-  return done >= target;
+  if (done < target) return false;
+
+  const structure = getBookStructureTruth(project);
+  if (!structure.requiresSubchapters) return true;
+
+  return getMissingActiveSubchapterRefs(project).length === 0;
 }
 
 export function countSectionProgress(project: BookProject): { complete: number; total: number } {
@@ -22,6 +28,17 @@ export function countSectionProgress(project: BookProject): { complete: number; 
 
   total += totalChapters;
   complete += (chapters || []).filter((c) => (c.content || "").trim().length > 50).length;
+
+  const structure = getBookStructureTruth(project);
+  if (structure.requiresSubchapters && structure.subchaptersPerChapter > 0) {
+    total += totalChapters * structure.subchaptersPerChapter;
+    complete += (chapters || []).reduce((sum, chapter) => {
+      const done = (chapter.subchapters || [])
+        .slice(0, structure.subchaptersPerChapter)
+        .filter((sub) => (sub.content || "").trim().length > 50).length;
+      return sum + done;
+    }, 0);
+  }
 
   if (isBackMatterEnabled(config)) {
     total += 1;

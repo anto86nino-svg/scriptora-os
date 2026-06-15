@@ -79,6 +79,9 @@ export interface Chapter {
   content: string;
   subchapters: SubChapter[];
   status?: GenerationStatus;
+  rewriteInProgress?: boolean;
+  lastGenerationId?: string;
+  rewriteAttemptCount?: number;
   qualityRating?: number;
   aiRating?: AIQualityRating;
   editorialAnalysis?: ChapterEditorialSnapshot;

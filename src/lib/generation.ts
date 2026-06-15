@@ -842,6 +842,48 @@ ${narrativeMode ? `FICTION / ROMANCE / MEMOIR EXTRA RULES:
 `;
 }
 
+function buildHumanNarrativeRealismV4Block(config: BookConfig, chapterIndex?: number): string {
+  const genre = String(config.genre || "").toLowerCase();
+  const subgenre = String(config.subgenre || config.subcategory || "").toLowerCase();
+  const isRomance = genre.includes("romance") || subgenre.includes("romance");
+  const isDarkRomance = genre.includes("dark") || subgenre.includes("dark");
+  const isSuspense = ["thriller", "crime", "horror"].some((key) => genre.includes(key) || subgenre.includes(key));
+  const isSpeculative = ["fantasy", "sci-fi", "science fiction"].some((key) => genre.includes(key) || subgenre.includes(key));
+  const chapterLabel = typeof chapterIndex === "number" ? `Chapter ${chapterIndex + 1}` : "This chapter";
+
+  return `
+HUMAN NARRATIVE REALISM V4 — HARD RUNTIME RULES:
+- ${chapterLabel} must advance through behavior, pressure, choice and consequence, not emotional explanation.
+- Show before explaining: breath, body, silence, objects, delayed replies, unfinished sentences, defensive humor, avoidance, contradiction.
+- Never let a character perfectly diagnose their trauma in polished therapeutic dialogue.
+- After vulnerability, add friction: distance, embarrassment, misunderstanding, anger, practical consequence, or a reason to retreat.
+- Preserve unresolved tension. Do not heal the relationship, solve the wound, or complete the payoff too early.
+- If a beat already appeared in previous chapters, transform it into action or consequence. Do not repeat the same confession, fear, promise, or ending in prettier words.
+- Protect canon: character names, relationships, setting, timeline, wounds, secrets, rules of the world and emotional state must not drift.
+
+${isRomance ? `ROMANCE PACING / EMOTIONAL STARVATION:
+- Use tension -> micro reward -> distance -> craving -> new obstacle -> almost payoff -> frustration -> earned payoff later.
+- Do not make the love interest emotionally available too soon.
+- Avoid instant safety, instant forgiveness, instant confession and instant healing.
+- After a charged scene, leave the reader wanting the kiss/conversation/resolution, not receiving the whole emotional answer.` : ""}
+
+${isDarkRomance ? `DARK ROMANCE CONTROL:
+- Keep danger, obsession, moral tension and consent clarity alive without cartoon melodrama.
+- Let attraction create risk. Let tenderness cost something.
+- Never flatten a dangerous character into immediate emotional fluency.` : ""}
+
+${isSuspense ? `SUSPENSE BREATHING:
+- Before payoff, make the reader wait: sound, absence, wrong detail, repeated signal, delayed reveal, physical dread.
+- Do not compress call -> attack -> blood -> confession into one rush unless the outline demands it.
+- Every chapter must raise a question, danger, clue, suspicion, deadline or consequence.` : ""}
+
+${isSpeculative ? `FANTASY / SCI-FI CANON:
+- Show worldbuilding through conflict, limits, cost and consequence.
+- Never change magic/technology/world rules midstream.
+- Avoid encyclopedia paragraphs; reveal rules when they hurt, help, tempt or trap a character.` : ""}
+`;
+}
+
 function getChapterTargetWords(config: BookConfig, chapterIndex: number, totalChapters: number, chapterLengthOverride?: string): number {
   const configuredTotal = getBookTotalWords(config);
   const bookTotal = Number.isFinite(configuredTotal) && configuredTotal > 0
@@ -1135,6 +1177,7 @@ export async function generateChapterChunked(
   const systemBase = getSystemPrompt(config, genreLock);
   const scriptoraWritingBrain = buildScriptoraWritingBrain(config);
   const characterLock = buildCharacterLock(config);
+  const humanNarrativeRealismV4 = buildHumanNarrativeRealismV4Block(config, chapterIndex);
   const genreDirective = buildPromptByGenre({
     genre: genreLock?.genre || config.genre,
     subcategory: genreLock?.subcategory || (config as any).subcategory,
@@ -1217,6 +1260,8 @@ ${scriptoraWritingBrain}
 
 ${characterLock}
 
+${humanNarrativeRealismV4}
+
 ${humanizerBlock}
 
 ${premiumWritingBlock}
@@ -1252,6 +1297,8 @@ REMAINING: ~${remainingWords} words needed
 PHASE: ${phase} — ${phaseInstruction}
 
 ${humanizerBlock}
+
+${humanNarrativeRealismV4}
 
 ${premiumWritingBlock}
 
@@ -1988,6 +2035,9 @@ export async function rewriteChapter(
   const contextMemory = buildContextMemory(config, blueprint, previousChapters, chapterIndex);
   const lengthInstruction = getChapterLengthInstruction(config, chapterIndex, config.numberOfChapters);
   const levelInstruction = getRewriteLevelInstruction(level);
+  const characterLock = buildCharacterLock(config);
+  const humanNarrativeRealismV4 = buildHumanNarrativeRealismV4Block(config, chapterIndex);
+  const bookTypeEngineBlock = buildBookTypeEngineBlock(config);
   const humanizerBlock = buildHumanizerPromptBlock({
     config,
     previousChapters,
@@ -2013,9 +2063,15 @@ ${chapter.content.substring(0, 2500)}...
 
 ${contextMemory}
 
+${characterLock}
+
+${humanNarrativeRealismV4}
+
 ${humanizerBlock}
 
 ${premiumWritingBlock}
+
+${bookTypeEngineBlock}
 
 Book: "${config.title}"
 Genre: ${config.genre}
