@@ -10,11 +10,33 @@ export function isMobileDevice(): boolean {
   return narrow || coarse || shortViewport;
 }
 
+/**
+ * Product-level Mobile Lite detection.
+ * This intentionally avoids user-agent checks: Scriptora Lite is for compact,
+ * touch-first surfaces, not for desktop browsers or large tablet workstations.
+ */
+export function isMobileLiteMode(): boolean {
+  if (typeof window === "undefined") return false;
+
+  const width = window.innerWidth || document.documentElement.clientWidth || 0;
+  const height = window.innerHeight || document.documentElement.clientHeight || 0;
+  const minSide = Math.min(width, height);
+  const maxSide = Math.max(width, height);
+  const coarsePointer = window.matchMedia("(hover: none) and (pointer: coarse)").matches ||
+    window.matchMedia("(pointer: coarse)").matches;
+
+  const phoneViewport = width <= 767;
+  const smallTouchTablet = coarsePointer && minSide <= 820 && maxSide <= 1180;
+  const crampedTouchLandscape = coarsePointer && height <= 520 && width <= 1024;
+
+  return phoneViewport || smallTouchTablet || crampedTouchLandscape;
+}
+
 /** Apply before first React paint (also called from main.tsx). */
 export function applyMobilePerformanceBoot(): void {
   if (typeof document === "undefined") return;
   const root = document.documentElement;
-  if (!isMobileDevice()) return;
+  if (!isMobileLiteMode()) return;
 
   root.classList.add(SCRIPTORA_MOBILE_LITE_CLASS);
   root.dataset.scriptoraMobileLite = "1";
