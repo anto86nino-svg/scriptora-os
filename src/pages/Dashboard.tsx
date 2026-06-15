@@ -70,6 +70,8 @@ import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { PremiumOsGateway } from "@/components/premium/PremiumOsGateway";
 import { AuthorMomentumPanel } from "@/components/premium/AuthorMomentumPanel";
 import { OneFlowHome } from "@/components/one-flow/OneFlowHome";
+import { ScriptoraForgePanel } from "@/components/scriptora-forge/ScriptoraForgePanel";
+import type { ForgePreset } from "@/lib/scriptora-forge/forge-presets";
 import { OsHomeHero } from "@/components/os/OsHomeHero";
 import {
   MobileDashboardCreditPill,
@@ -397,6 +399,16 @@ export default function Dashboard() {
   const lastId = getLastProjectId();
   // Only surface "continue last" when the project still belongs to the active
   // environment (DEV vs USER). Cross-scope ids are silently ignored.
+  const openForgePreset = (preset: ForgePreset) => {
+    try {
+      sessionStorage.setItem("scriptora-forge-selected-preset", JSON.stringify(preset));
+      toast.success(`${preset.label}: preset preparato.`);
+    } catch {
+      toast.message(`${preset.label}: preset selezionato.`);
+    }
+    openNewBookGuarded();
+  };
+
   const lastProject = lastId ? projects.find(p => p.id === lastId) : null;
   const flowProject = flowProjectId ? projects.find((p) => p.id === flowProjectId) : null;
   const dashboardContextProject = flowProject || lastProject;
@@ -988,6 +1000,8 @@ export default function Dashboard() {
           onNewBook={openNewBookGuarded}
           onMyBooks={() => setShowProjects(true)}
         />
+
+        <ScriptoraForgePanel onSelectPreset={openForgePreset} />
 
         <OneFlowHome
           compact
