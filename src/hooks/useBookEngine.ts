@@ -951,16 +951,42 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
         return { ...proj, chapters };
       });
       addMessage("assistant", `Chapter ${index + 1} regenerated!`);
-    } catch (e: any) {
-      updateAndSave(proj => {
-        const chapters = [...proj.chapters];
-        if (chapters[index]) chapters[index] = { ...chapters[index], status: "error" as GenerationStatus };
-        return { ...proj, chapters };
-      });
-      const err = classifyError(e);
-      scriptoraLog.error("regenerate-chapter", formatUserMessage(err), { chapterIndex: index + 1, raw: e?.message });
-      addMessage("assistant", `❌ Capitolo ${index + 1}: ${formatUserMessage(err)}`);
-      toast.error(formatToastMessage(err));
+      } catch (e: any) {
+        let recoveredWithContent = false;
+
+        updateAndSave(proj => {
+          const chapters = [...proj.chapters];
+          const existing = chapters[index];
+          const existingContent = typeof existing?.content === "string" ? existing.content.trim() : "";
+
+          if (existing && existingContent.length > 500) {
+            recoveredWithContent = true;
+            chapters[index] = {
+              ...existing,
+              content: existingContent.replace(/^#\s+.*(?:\r?\n)+/, "").trim(),
+              status: "completed" as GenerationStatus,
+            };
+          } else if (existing) {
+            chapters[index] = { ...existing, status: "error" as GenerationStatus };
+          }
+
+          return { ...proj, chapters };
+        });
+
+        const err = classifyError(e);
+        scriptoraLog.error("regenerate-chapter", formatUserMessage(err), {
+          chapterIndex: index + 1,
+          raw: e?.message,
+          recoveredWithContent,
+        });
+
+        if (recoveredWithContent) {
+          addMessage("assistant", `⚠️ Capitolo ${index + 1} generato, ma con un warning finale: ${formatUserMessage(err)}`);
+          toast.warning(`Capitolo ${index + 1} generato. Warning finale non bloccante.`);
+        } else {
+          addMessage("assistant", `❌ Capitolo ${index + 1}: ${formatUserMessage(err)}`);
+          toast.error(formatToastMessage(err));
+        }
     } finally {
       removeGenerating(genKey);
     }
