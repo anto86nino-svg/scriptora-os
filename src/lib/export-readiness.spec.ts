@@ -76,6 +76,9 @@ describe("export-readiness trust gate", () => {
 
   it("blocks only when the active blueprint really requires missing subchapters", () => {
     const project = mockCompleteProject("Livia Noir");
+    project.config.genre = "Manuale";
+    project.config.category = "Educational";
+    (project.config as any).bookType = "study";
     project.config.subchaptersEnabled = false;
     project.blueprint!.chapterOutlines = project.blueprint!.chapterOutlines.map((outline) => ({
       ...outline,

@@ -69,7 +69,9 @@ describe("book structure truth", () => {
     const project = baseProject({
       config: {
         ...baseProject().config,
-        genre: "thriller",
+        genre: "Manuale",
+        category: "Educational",
+        bookType: "study",
         subchaptersEnabled: false,
       },
       blueprint: {

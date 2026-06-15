@@ -12,6 +12,41 @@ export interface BookStructureTruth {
 
 type StructureProject = Pick<BookProject, "config" | "blueprint" | "chapters">;
 
+function readConfigText(project: Pick<BookProject, "config" | "blueprint">): string {
+  const config: any = project.config || {};
+  return [
+    config.genre,
+    config.category,
+    config.bookType,
+    config.bookTypeFamily,
+    config.type,
+    config.niche,
+    config.marketCategory,
+    config.structureMode,
+    config.title,
+    config.subtitle,
+    project.blueprint?.genre,
+    project.blueprint?.category,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+export function isStructuralSubchapterProject(project: Pick<BookProject, "config" | "blueprint">): boolean {
+  const text = readConfigText(project);
+
+  return /\b(nonfiction|non-fiction|manual|manuale|study|studio|educational|education|scolastico|scolastica|universitario|universitaria|didattico|didattica|business|self-help|self help|guide|guida|course|corso|textbook|workbook|saggio)\b/i.test(text);
+}
+
+export function isNarrativeFictionProject(project: Pick<BookProject, "config" | "blueprint">): boolean {
+  const text = readConfigText(project);
+
+  if (isStructuralSubchapterProject(project)) return false;
+
+  return /\b(fiction|narrativa|romance|dark romance|thriller|fantasy|horror|crime|sci-fi|sci fi|giallo|noir|romanzo|racconto|novel|small town|memoir narrativo)\b/i.test(text);
+}
+
 export function getBlueprintSubchaptersPerChapter(blueprint: BookBlueprint | null | undefined): number {
   const outlines = blueprint?.chapterOutlines || [];
   return outlines.reduce((max, outline) => {
@@ -26,11 +61,18 @@ export function getBookStructureTruth(project: Pick<BookProject, "config" | "blu
   const hasActiveBlueprint = Boolean(project.blueprint?.chapterOutlines?.length);
   const blueprintHasSubchapters = blueprintCount > 0;
   const configRequestsSubchapters = configCount > 0;
+  const narrativeFiction = isNarrativeFictionProject(project);
 
   if (hasActiveBlueprint) {
-    const diagnostics = configRequestsSubchapters && !blueprintHasSubchapters
-      ? ["Config legacy richiede sottocapitoli, ma il blueprint attivo e' chapter-only. Ignoro lo stato fantasma."]
-      : [];
+    const diagnostics: string[] = [];
+
+    if (configRequestsSubchapters && !blueprintHasSubchapters) {
+      diagnostics.push("Config legacy richiede sottocapitoli, ma il blueprint attivo è chapter-only. Ignoro lo stato fantasma.");
+    }
+
+    if (blueprintHasSubchapters && narrativeFiction) {
+      diagnostics.push("Il blueprint contiene sottocapitoli, ma il libro è narrativa/fiction: export consentito come capitoli lineari.");
+    }
 
     return {
       requiresSubchapters: blueprintHasSubchapters,
@@ -52,13 +94,28 @@ export function getBookStructureTruth(project: Pick<BookProject, "config" | "blu
   };
 }
 
+export function shouldRequireStructuralSubchapters(project: Pick<BookProject, "config" | "blueprint">): boolean {
+  const truth = getBookStructureTruth(project);
+
+  if (!truth.requiresSubchapters || truth.subchaptersPerChapter <= 0) return false;
+  if (isStructuralSubchapterProject(project)) return true;
+  if (isNarrativeFictionProject(project)) return false;
+
+  // Preserve the previous safe behavior for unknown/generic projects:
+  // if an active blueprint explicitly declares subchapters and the project is not
+  // recognized as narrative fiction, treat those subchapters as structurally required.
+  return true;
+}
+
 export function getActiveSubchaptersPerChapter(project: Pick<BookProject, "config" | "blueprint">): number {
   return getBookStructureTruth(project).subchaptersPerChapter;
 }
 
 export function getMissingActiveSubchapterRefs(project: StructureProject): Array<{ chapterIndex: number; subIndex: number }> {
   const truth = getBookStructureTruth(project);
+
   if (!truth.requiresSubchapters || truth.subchaptersPerChapter <= 0) return [];
+  if (!shouldRequireStructuralSubchapters(project)) return [];
 
   const missing: Array<{ chapterIndex: number; subIndex: number }> = [];
   const totalChapters = Math.max(0, project.config?.numberOfChapters || 0);
