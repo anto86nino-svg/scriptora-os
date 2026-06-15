@@ -27,6 +27,7 @@ import { BookProject, SectionId } from "@/types/book";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { WritingSettings, loadSettings, saveSettings } from "@/lib/settings";
 import { t, tt, UILanguage, useUILanguage } from "@/lib/i18n";
+import { usePlan, useQuota } from "@/lib/plan";
 import { fillMissingGenreFromInference } from "@/lib/book-creation-os/genre-inference";
 import { toast } from "sonner";
 import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu, X, ArrowLeft } from "lucide-react";

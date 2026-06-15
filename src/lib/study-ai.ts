@@ -136,25 +136,31 @@ async function callScriptoraStudyAI(systemPrompt: string, userPrompt: string): P
   const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: { session: null } } as any));
   const bearer = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      "Authorization": `Bearer ${bearer}`,
-    },
-    body: JSON.stringify({
-      systemPrompt,
-      userPrompt,
-      taskType: "study_session",
-      projectId: null,
-      userId: sessionData?.session?.user?.id || null,
-      metadata: {
-        feature: "study_session",
-        mode: "deepseek",
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        "Authorization": `Bearer ${bearer}`,
       },
-    }),
-  });
+      body: JSON.stringify({
+        systemPrompt,
+        userPrompt,
+        taskType: "study_session",
+        projectId: null,
+        userId: sessionData?.session?.user?.id || null,
+        metadata: {
+          feature: "study_session",
+          mode: "deepseek",
+        },
+      }),
+    });
+  } catch (error) {
+    console.warn("[StudySession] AI network unavailable", error);
+    throw new Error("Motore AI Study non raggiungibile. Creo una sessione locale.");
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -174,7 +180,12 @@ async function callScriptoraStudyAI(systemPrompt: string, userPrompt: string): P
   }
 
   const marker = buffer.lastIndexOf("__RESULT__");
-  if (marker === -1) throw new Error("Risposta AI vuota o incompleta.");
+  if (marker === -1) {
+    const parsed = safeJsonParse(buffer);
+    if (parsed?.error) throw new Error(parsed.error);
+    if (typeof parsed?.content === "string" && parsed.content.trim()) return parsed.content;
+    return JSON.stringify(parsed);
+  }
 
   const jsonStr = buffer.slice(marker + "__RESULT__".length).trim();
   const parsed = JSON.parse(jsonStr);

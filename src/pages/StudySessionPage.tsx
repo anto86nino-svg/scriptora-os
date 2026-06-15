@@ -109,15 +109,28 @@ function persistStudySession(
   text: string,
   name: string,
   projectId?: string,
-): string {
-  const saved = saveStudyProject({
-    id: projectId,
-    title: normalized.title,
-    sourceName: name,
-    rawText: text,
-    result: normalized,
-  });
-  return saved.id;
+): string | undefined {
+  try {
+    const saved = saveStudyProject({
+      id: projectId,
+      title: normalized.title,
+      sourceName: name,
+      rawText: text,
+      result: normalized,
+    });
+    return saved.id;
+  } catch (error) {
+    console.warn("[StudySession] save project failed", error);
+    return projectId;
+  }
+}
+
+function describeStudyFallback(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  if (/failed to fetch|network|motore ai|raggiungibile|cors/i.test(message)) {
+    return "Il motore AI non è raggiungibile: ho preparato una sessione locale.";
+  }
+  return message ? message.slice(0, 120) : "Fallback locale attivato.";
 }
 
 export default function StudySessionPage() {
@@ -308,19 +321,26 @@ export default function StudySessionPage() {
       });
     } catch (error) {
       console.warn("[StudySession] DeepSeek fallback locale", error);
-      const local = analyzeStudyMaterial(rawText, sourceName);
-      const normalized = normalizeStudyResultForUI(local);
-      setResult(normalized);
-      resetSessionState();
-      saveResult(normalized, rawText);
-      const id = persistStudySession(normalized, rawText, sourceName, projectId);
-      setProjectId(id);
-      setActiveSection("quiz");
-      saveStudyUxState({ activeSection: "quiz" });
-      setAiMode("local");
-      toast.warning("AI non disponibile: uso analisi locale", {
-        description: error instanceof Error ? error.message.slice(0, 120) : "Fallback locale attivato.",
-      });
+      try {
+        const local = analyzeStudyMaterial(rawText, sourceName);
+        const normalized = normalizeStudyResultForUI(local);
+        setResult(normalized);
+        resetSessionState();
+        saveResult(normalized, rawText);
+        const id = persistStudySession(normalized, rawText, sourceName, projectId);
+        setProjectId(id);
+        setActiveSection("quiz");
+        saveStudyUxState({ activeSection: "quiz" });
+        setAiMode("local");
+        toast.warning("AI non disponibile: uso analisi locale", {
+          description: describeStudyFallback(error),
+        });
+      } catch (fallbackError) {
+        console.error("[StudySession] local fallback failed", fallbackError);
+        toast.error("Sessione Studio non creata", {
+          description: fallbackError instanceof Error ? fallbackError.message : "Riprova con un testo diverso o più breve.",
+        });
+      }
     } finally {
       setReading(false);
     }
@@ -387,19 +407,26 @@ export default function StudySessionPage() {
         toast.success("Pipeline Study completata", { description: `${file.name} — quiz e verifica pronti.` });
       } catch (error) {
         console.warn("[StudySession] DeepSeek file fallback locale", error);
-        const local = analyzeStudyMaterial(text, file.name);
-        const normalized = normalizeStudyResultForUI(local);
-        setResult(normalized);
-        resetSessionState();
-        saveResult(normalized, text);
-        const id = persistStudySession(normalized, text, file.name, projectId);
-        setProjectId(id);
-        setActiveSection("quiz");
-        saveStudyUxState({ activeSection: "quiz" });
-        setAiMode("local");
-        toast.warning("AI non disponibile: analisi locale attivata", {
-          description: error instanceof Error ? error.message.slice(0, 120) : file.name,
-        });
+        try {
+          const local = analyzeStudyMaterial(text, file.name);
+          const normalized = normalizeStudyResultForUI(local);
+          setResult(normalized);
+          resetSessionState();
+          saveResult(normalized, text);
+          const id = persistStudySession(normalized, text, file.name, projectId);
+          setProjectId(id);
+          setActiveSection("quiz");
+          saveStudyUxState({ activeSection: "quiz" });
+          setAiMode("local");
+          toast.warning("AI non disponibile: analisi locale attivata", {
+            description: describeStudyFallback(error),
+          });
+        } catch (fallbackError) {
+          console.error("[StudySession] local file fallback failed", fallbackError);
+          toast.error("Sessione Studio non creata", {
+            description: fallbackError instanceof Error ? fallbackError.message : file.name,
+          });
+        }
       }
     } catch (error) {
       toast.error("File non leggibile", { description: error instanceof Error ? error.message : "Formato non supportato." });
@@ -460,7 +487,7 @@ export default function StudySessionPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".txt,.md,.markdown,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            accept=".txt,.md,.markdown,.docx,.pdf,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             className="hidden"
             onChange={(event) => void handleFile(event.target.files?.[0])}
           />
