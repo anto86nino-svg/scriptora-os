@@ -9,7 +9,10 @@ export type TitleProposalBadge =
   | "Più commerciale"
   | "Più poetico"
   | "Più BookTok"
-  | "Più KDP";
+  | "Più KDP"
+  | "Più pratico"
+  | "Più metodo"
+  | "Più chiaro";
 
 export type TitleProposal = {
   title: string;
@@ -20,6 +23,15 @@ export type TitleProposal = {
   rationale: string;
   badge: TitleProposalBadge;
   inference: GenreInference;
+};
+
+export type TitleForgeContext = {
+  bookTypeId?: string;
+  level1BookType?: string;
+  forgePresetId?: string | null;
+  category?: string;
+  subcategory?: string;
+  subgenre?: string;
 };
 
 export const TITLE_FORGE_PHASES = [
@@ -57,7 +69,9 @@ export function consumeWizardTitleFreeRegen(): number {
   try {
     const used = WIZARD_TITLE_FREE_REGENS - before + 1;
     sessionStorage.setItem(FREE_REGENS_KEY, String(used));
-  } catch { /* noop */ }
+  } catch {
+    /* noop */
+  }
   return getWizardTitleFreeRegensRemaining();
 }
 
@@ -85,7 +99,82 @@ const THRILLER_TITLES = ["La Verità che Non Aspetta", "Ombre sul Confine", "Il 
 const SELF_HELP_TITLES = ["L'Arte di Tornare a Sé", "Disciplina Senza Violenza", "Piccoli Passi, Grande Direzione"];
 const FANTASY_TITLES = ["La Cattedrale delle Anime Dimenticate", "Il Regno delle Ombre Lente", "La Porta dei Nomi Persi"];
 
+const MANUAL_TITLES = [
+  "La Guida Essenziale",
+  "Il Metodo Chiaro",
+  "Manuale Pratico per Cominciare",
+  "Dal Problema al Metodo",
+  "Capire, Applicare, Migliorare",
+  "La Mappa Pratica",
+  "Il Sistema Semplice",
+  "Guida Operativa Passo Dopo Passo",
+];
+
+const MANUAL_SUBS = [
+  "Un percorso pratico per capire le basi, evitare errori comuni e applicare subito il metodo.",
+  "Strategie, esempi e passaggi chiari per trasformare la teoria in pratica.",
+  "Una guida concreta per orientarti, decidere meglio e costruire risultati misurabili.",
+  "Dalle prime nozioni agli strumenti operativi: tutto quello che serve, senza confusione.",
+  "Checklist, spiegazioni semplici ed esempi applicabili per passare dall'idea all'azione.",
+];
+
 const BADGES: TitleProposalBadge[] = ["Più dark", "Più commerciale", "Più poetico", "Più BookTok", "Più KDP"];
+const MANUAL_BADGES: TitleProposalBadge[] = ["Più pratico", "Più metodo", "Più chiaro", "Più commerciale", "Più KDP"];
+
+const MANUAL_CONTEXT_IDS = new Set([
+  "manuale",
+  "manual",
+  "technical-manual",
+  "software-guide",
+  "ai-tools-guide",
+  "handbook",
+  "guide",
+  "guida",
+  "workbook",
+  "study",
+  "educational",
+  "education",
+  "cookbook",
+]);
+
+function cleanContextToken(value?: string | null): string {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isManualTitleForgeContext(ctx?: TitleForgeContext, titleSeed = "", idea = ""): boolean {
+  const tokens = [
+    ctx?.level1BookType,
+    ctx?.bookTypeId,
+    ctx?.forgePresetId,
+    ctx?.category,
+    ctx?.subcategory,
+    ctx?.subgenre,
+  ].map(cleanContextToken);
+
+  if (tokens.some((token) => MANUAL_CONTEXT_IDS.has(token))) return true;
+
+  const hay = `${titleSeed} ${idea} ${tokens.join(" ")}`.toLowerCase();
+  return /\b(manuale|manual|guida|guide|handbook|workbook|tutorial|istruzioni|technical|software|didattic|educational|study|studio|corso|course|ricettario|cookbook)\b/i.test(hay);
+}
+
+function buildManualInference(idea: string, ctx?: TitleForgeContext): GenreInference {
+  const base = inferGenreFromText("manuale guida metodo", `${idea} manuale guida metodo ${ctx?.category || ""} ${ctx?.subcategory || ""}`);
+
+  return {
+    ...base,
+    bookTypeId: "manual",
+    level1: "manuale",
+    genre: "manual",
+    category: "Manuali",
+    subcategory: ctx?.subcategory || "Manuale pratico",
+    subgenre: ctx?.subgenre || "guida pratica",
+    label: "Manuale / guida",
+    tone: "pratico, chiaro, orientato all'applicazione",
+    targetReader: "Lettori che cercano un metodo chiaro, applicabile e concreto.",
+    narrativePromise: "Un percorso pratico per capire, applicare e ottenere un risultato concreto.",
+    commercialGoal: "Promessa chiara, beneficio immediato, struttura leggibile su Amazon/KDP.",
+  } as GenreInference;
+}
 
 function titlesForInference(inference: GenreInference): string[] {
   if (inference.bookTypeId === "horror" || inference.genre === "horror") return HORROR_TITLES;
@@ -119,6 +208,23 @@ function rationaleFor(badge: TitleProposalBadge, inference: GenreInference): str
     "Più poetico": "Immagini forti senza perdere leggibilità commerciale.",
     "Più BookTok": "Hook emotivo adatto a clip, citazioni e tensione visiva.",
     "Più KDP": "Keyword naturali e posizionamento categoria coerente.",
+    "Più pratico": "Promette utilità concreta, non atmosfera narrativa.",
+    "Più metodo": "Comunica percorso, struttura e applicazione pratica.",
+    "Più chiaro": "Riduce ambiguità e rende subito leggibile il beneficio.",
+  };
+  return `${map[badge]} Filone: ${inference.label}.`;
+}
+
+function manualRationaleFor(badge: TitleProposalBadge, inference: GenreInference): string {
+  const map: Record<TitleProposalBadge, string> = {
+    "Più dark": "Bloccato: un manuale non deve essere venduto come horror o thriller.",
+    "Più commerciale": "Titolo scannable su Amazon con beneficio pratico nel sottotitolo.",
+    "Più poetico": "Leggero tono evocativo, ma sempre dentro una promessa pratica.",
+    "Più BookTok": "Angolo comunicabile in clip senza trasformare il libro in romanzo.",
+    "Più KDP": "Keyword naturali per manuale, guida, metodo e applicazione.",
+    "Più pratico": "Promette utilità concreta, non atmosfera narrativa.",
+    "Più metodo": "Comunica percorso, struttura e applicazione pratica.",
+    "Più chiaro": "Riduce ambiguità e rende subito leggibile il beneficio.",
   };
   return `${map[badge]} Filone: ${inference.label}.`;
 }
@@ -128,9 +234,37 @@ export function generateWizardTitleProposals(
   idea: string,
   language: Language,
   regenSalt = "",
+  context?: TitleForgeContext,
 ): TitleProposal[] {
-  const inference = inferGenreFromText(titleSeed || idea, idea);
   const seed = hashSeed(`${titleSeed}|${idea}|${language}|${regenSalt}|${Date.now()}`);
+
+  if (isManualTitleForgeContext(context, titleSeed, idea)) {
+    const manualInference = buildManualInference(idea, context);
+
+    const proposals: TitleProposal[] = [];
+    for (let i = 0; i < 5; i += 1) {
+      const badge = MANUAL_BADGES[i % MANUAL_BADGES.length];
+      const candidateTitle = pick(MANUAL_TITLES, seed, i * 3);
+      const title = i === 0 && titleSeed.trim().length >= 4 ? titleSeed.trim() : candidateTitle;
+      const subtitle = pick(MANUAL_SUBS, seed, i * 5 + 1);
+      const hookScore = Math.min(96, 76 + ((seed + i * 7) % 18));
+
+      proposals.push({
+        title,
+        subtitle,
+        perceivedGenre: manualInference.label,
+        editorialPromise: manualInference.narrativePromise,
+        hookScore,
+        rationale: manualRationaleFor(badge, manualInference),
+        badge,
+        inference: manualInference,
+      });
+    }
+
+    return proposals.filter((p, idx, arr) => arr.findIndex((x) => x.title === p.title) === idx);
+  }
+
+  const inference = inferGenreFromText(titleSeed || idea, idea);
   const titles = titlesForInference(inference);
   const subs = subtitlesForInference(inference);
 

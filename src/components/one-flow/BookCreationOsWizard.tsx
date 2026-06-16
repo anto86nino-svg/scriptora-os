@@ -23,6 +23,7 @@ import {
 } from "@/lib/book-creation-os/character-generator";
 import { usePlan } from "@/lib/plan";
 import { toast } from "sonner";
+import { GuidedInterviewPanel } from "@/components/guided-interview/GuidedInterviewPanel";
 import { STUDIO_STEPS, AMAZON_MARKETPLACES, STUDIO_GENRES, STUDIO_LANGUAGES } from "@/lib/book-config-studio/constants";
 import { DEFAULT_MATTER_OPTIONS, normalizeBookConfig } from "@/lib/book-config-studio/defaults";
 import { validateBookConfigStudio } from "@/lib/book-config-studio/validation";
@@ -54,6 +55,7 @@ import {
   getWizardTitleFreeRegensRemaining,
   runTitleForgeAnimation,
   type TitleProposal,
+  type TitleForgeContext,
   TITLE_FORGE_PHASES,
   WIZARD_TITLE_FREE_REGENS,
 } from "@/lib/book-creation-os/title-generator";
@@ -79,6 +81,77 @@ interface BookCreationOsWizardProps {
 
 function emptyCharacter(): BookCharacter {
   return { name: "", role: "", wound: "", secret: "", externalDesire: "", personality: "" };
+}
+
+
+
+function mapForgeGenreToInterviewGenre(
+  forgePresetId?: string | null,
+  bookTypeId?: string
+) {
+  const source =
+    forgePresetId
+      ? forgePresetId.toLowerCase()
+      : (bookTypeId || "general").toLowerCase();
+
+  const map: Record<string, string> = {
+    poetry: "poetry",
+    romance: "romance",
+    "dark-romance": "dark-romance",
+    thriller: "thriller",
+    horror: "thriller",
+    fantasy: "fantasy",
+    "self-help": "self-help",
+    business: "business",
+    manual: "manual",
+    story: "literary-fiction",
+    storia: "literary-fiction",
+    historical: "literary-fiction",
+    history: "literary-fiction",
+    "historical-fiction": "literary-fiction",
+    novel: "literary-fiction",
+    fiction: "literary-fiction",
+    handbook: "manual",
+  };
+
+  return map[source] || "general";
+}
+
+function handleInterviewCompleteFactory({
+  setNarrativePromise,
+  setCoreConflict,
+  setSetting,
+  setVoiceConsistency,
+  setCommercialGoal,
+  setShowAdvancedForge,
+}: any) {
+  return (state: any) => {
+    const extracted = state?.extracted || {};
+
+    setNarrativePromise(
+      extracted.promise ||
+      extracted.readerTransformation ||
+      ""
+    );
+
+    setCoreConflict(
+      extracted.centralConflict || ""
+    );
+
+    setSetting(
+      extracted.setting || ""
+    );
+
+    setVoiceConsistency(
+      extracted.emotionalTone || ""
+    );
+
+    setCommercialGoal(
+      extracted.promise || ""
+    );
+
+    setShowAdvancedForge(true);
+  };
 }
 
 const inputClass =
@@ -247,6 +320,9 @@ export function BookCreationOsWizard({
   const isFree = plan === "free";
   const [step, setStep] = useState(0);
   const [showAdvancedForge, setShowAdvancedForge] = useState(false);
+
+  const [useGuidedInterview, setUseGuidedInterview] = useState(true);
+
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [idea, setIdea] = useState("");
@@ -311,7 +387,73 @@ export function BookCreationOsWizard({
     );
   }, [textInference, category, genre, subcategory, coherenceDismissed]);
 
-  const visibleGenres = useMemo(() => getVisibleBookTypesForLevel1(level1BookType), [level1BookType]);
+  const visibleGenres = useMemo(() => {
+  const baseGenres =
+    getVisibleBookTypesForLevel1(level1BookType);
+
+  if (!forgePresetId) {
+    return baseGenres;
+  }
+
+  const presetFilters: Record<string, string[]> = {
+    poetry: ["poetry"],
+
+    history: [
+      "historical-fiction",
+      "literary",
+      "history",
+    ],
+
+    manual: [
+      "manual",
+      "self-help",
+      "business",
+      "educational",
+    ],
+
+    romance: [
+      "romance",
+      "dark-romance",
+    ],
+
+    thriller: [
+      "thriller",
+      "crime",
+      "horror",
+    ],
+
+    horror: [
+      "horror",
+      "thriller",
+    ],
+
+    fantasy: [
+      "fantasy",
+      "sci-fi",
+    ],
+
+    "dark-romance": [
+      "dark-romance",
+      "romance",
+    ],
+
+    story: [
+      "literary",
+      "historical-fiction",
+      "fiction",
+    ],
+  };
+
+  const allowed =
+    presetFilters[forgePresetId] || [];
+
+  return baseGenres.filter((g) =>
+    allowed.includes(g.id)
+  );
+}, [
+  level1BookType,
+  forgePresetId,
+]);
 
   const filteredFeaturedTypes = useMemo(() => {
     if (textInference.level1 === "romanzo") {
@@ -838,9 +980,21 @@ export function BookCreationOsWizard({
         setTitleForgeLabel(text);
       });
 
-      const proposals = generateWizardTitleProposals(title, idea, language, String(Date.now()));
+      const titleForgeContext: TitleForgeContext = {
+        bookTypeId,
+        level1BookType,
+        forgePresetId,
+        category,
+        subcategory,
+        subgenre,
+      };
+      const titleForgeLocksBookType =
+        level1BookType === "manuale" ||
+        ["manual", "manuale", "technical-manual", "software-guide", "ai-tools-guide", "handbook", "guide", "guida", "workbook", "study", "educational", "education", "cookbook"].includes(String(bookTypeId || "").toLowerCase());
+
+      const proposals = generateWizardTitleProposals(title, idea, language, String(Date.now()), titleForgeContext);
       setTitleProposals(proposals);
-      if (onDetectIntent && idea.trim().length >= 6) {
+      if (onDetectIntent && idea.trim().length >= 6 && !titleForgeLocksBookType) {
         try {
           const detected = await onDetectIntent(idea.trim(), language);
           if (detected?.suggestedTitles?.length) {
@@ -1202,6 +1356,49 @@ export function BookCreationOsWizard({
                 </button>
               </div>
 
+
+              <div className="mb-4 rounded-2xl border border-violet-400/20 bg-violet-500/10 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-200/80">
+                      Forge intelligente
+                    </p>
+
+                    <p className="mt-1 text-sm text-white/65">
+                      Lascia che Scriptora ti intervisti e costruisca il libro sotto il cofano.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setUseGuidedInterview(v => !v)}
+                    className="rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-xs font-semibold text-white/70"
+                  >
+                    {useGuidedInterview
+                      ? "✨ Intervista attiva"
+                      : "⚙️ Manuale"}
+                  </button>
+                </div>
+
+                {useGuidedInterview && (
+                  <div className="mt-4 h-[620px] overflow-hidden rounded-[28px]">
+                    <GuidedInterviewPanel
+                      selectedGenre={mapForgeGenreToInterviewGenre(
+                        forgePresetId,
+                        bookTypeId
+                      )}
+                      onComplete={handleInterviewCompleteFactory({
+                        setNarrativePromise,
+                        setCoreConflict,
+                        setSetting,
+                        setVoiceConsistency,
+                        setCommercialGoal,
+                        setShowAdvancedForge,
+                      })}
+                    />
+                  </div>
+                )}
+              </div>
 
               <label className="block space-y-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Nome autore</span>
