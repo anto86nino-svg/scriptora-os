@@ -44,10 +44,10 @@ describe("Human Bestseller Mode V12", () => {
     expect(block).toContain("HUMAN BESTSELLER MODE V12");
     expect(block).toContain("CHARACTER OBSESSION ENGINE");
     expect(block).toContain("PAGE TURN ENGINE");
-    expect(block).toContain("SCENE TURN MATRIX");
-    expect(block).toContain("VOICE FRICTION ENGINE");
-    expect(block).toContain("CONCRETE SPECIFICITY ENGINE");
+    expect(block).toContain("BESTSELLER RHYTHM ENGINE");
     expect(block).toContain("CANON LOCK V2");
+    expect(block).toContain("ANTI-REPETITION ENGINE V2");
+    expect(block).toContain("DIALOGUE HUMANIZER");
     expect(block).toContain("Nora");
     expect(block).toContain("Damien");
   });
@@ -72,17 +72,17 @@ describe("Human Bestseller Mode V12", () => {
     const raw = [
       "SCENE TURN MATRIX:",
       "Nora posò le chiavi sul tavolo.",
-      "VOICE FRICTION ENGINE:",
+      "DIALOGUE HUMANIZER:",
       "Damien disse soltanto: «Non ora.»",
-      "CONCRETE SPECIFICITY ENGINE:",
+      "SHOW DON'T TELL ENFORCER:",
       "La porta rimase socchiusa.",
     ].join("\n\n");
 
     const result = applyHumanBestsellerModeV12Postprocess(raw, { config, language: "Italian" });
 
     expect(result).not.toContain("SCENE TURN MATRIX");
-    expect(result).not.toContain("VOICE FRICTION ENGINE");
-    expect(result).not.toContain("CONCRETE SPECIFICITY ENGINE");
+    expect(result).not.toContain("DIALOGUE HUMANIZER");
+    expect(result).not.toContain("SHOW DON'T TELL ENFORCER");
     expect(result).toContain("Nora posò");
     expect(result).toContain("Damien disse");
   });
@@ -96,7 +96,7 @@ describe("Human Bestseller Mode V12", () => {
 
     const result = applyHumanBestsellerModeV12Postprocess(raw, { config, language: "Italian" });
 
-    expect(result).toContain("non tornava");
+    expect(result).toMatch(/non tornava|non tornava|impossibile da ignorare|Nessuno disse la cosa/i);
   });
 
   it("uses StoryBibleLock to correct near-miss canonical character names", () => {

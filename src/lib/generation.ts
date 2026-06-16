@@ -31,6 +31,7 @@ import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
 import { buildHumanBestsellerModeV11Block } from "@/lib/human-bestseller-mode-v11";
 import { buildHumanBestsellerModeV12Block } from "@/lib/human-bestseller-mode-v12";
+import { validateCanonChunkBeforeMerge } from "@/lib/writing-engine/canon-lock-v2";
 import { buildPremiumWritingBlock, runUltraHumanFinalPass } from "@/lib/premium-writing";
 import { buildPromptFromCanonicalConfig, sanitizeBookConfiguration } from "@/lib/book-config-engine";
 import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/billing/billingHeaders";
@@ -1236,7 +1237,11 @@ export async function generateChapterChunked(
   const characterLock = buildCharacterLock(config);
   const humanNarrativeRealismV4 = buildHumanNarrativeRealismV4Block(config, chapterIndex);
   const humanBestsellerModeV11 = buildHumanBestsellerModeV11Block(config, { chapterIndex, mode: "generation" });
-  const humanBestsellerModeV12 = buildHumanBestsellerModeV12Block(config, { chapterIndex, mode: "generation" });
+  const humanBestsellerModeV12 = buildHumanBestsellerModeV12Block(config, {
+    chapterIndex,
+    mode: "generation",
+    previousChapters,
+  });
   const genreDirective = buildPromptByGenre({
     genre: genreLock?.genre || config.genre,
     subcategory: genreLock?.subcategory || (config as any).subcategory,
@@ -1473,6 +1478,29 @@ Write in ${config.language}.${adaptiveSuffix}`;
           totalChapters: config.numberOfChapters,
         });
         chunkText = lines.slice(1).join("\n").trim();
+      }
+    }
+
+    const canonChunkCheck = validateCanonChunkBeforeMerge(chunkText, {
+      config,
+      chapterIndex,
+      previousChapters,
+      accumulatedContent,
+    });
+    if (canonChunkCheck.reject) {
+      console.warn(`[Scriptora] Chunk ${chunkIndex + 1} canon drift (${canonChunkCheck.reason}) — regenerating`);
+      try {
+        chunkText = await callAI(
+          systemPrompt + " CRITICAL: Previous output violated story canon (wrong character names or facts). Use ONLY established character names and facts.",
+          chunkPrompt + "\n\nCANON VIOLATION FIX: Rewrite this chunk with correct canonical names, setting and relationships. No rename drift.",
+          withUsage(opts?.usage, {
+            taskType: "generate_chapter_canon_fix",
+            metadata: { chapterIndex: chapterIndex + 1, chunkIndex, reason: canonChunkCheck.reason },
+          }),
+        );
+        chunkText = chunkText.replace(/^```[a-z]*\n?/g, "").replace(/\n?```$/g, "").trim();
+      } catch {
+        // keep original if regen fails; postprocess StoryBibleLock will still run
       }
     }
 
@@ -2104,7 +2132,11 @@ export async function rewriteChapter(
   const characterLock = buildCharacterLock(config);
   const humanNarrativeRealismV4 = buildHumanNarrativeRealismV4Block(config, chapterIndex);
   const humanBestsellerModeV11 = buildHumanBestsellerModeV11Block(config, { chapterIndex, mode: "rewrite" });
-  const humanBestsellerModeV12 = buildHumanBestsellerModeV12Block(config, { chapterIndex, mode: "rewrite" });
+  const humanBestsellerModeV12 = buildHumanBestsellerModeV12Block(config, {
+    chapterIndex,
+    mode: "rewrite",
+    previousChapters,
+  });
   const bookTypeEngineBlock = buildBookTypeEngineBlock(config);
   const humanizerBlock = buildHumanizerPromptBlock({
     config,
