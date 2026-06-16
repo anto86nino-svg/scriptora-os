@@ -9,11 +9,15 @@ import {
 type GuidedInterviewPanelProps = {
   selectedGenre?: string;
   onComplete?: (data: any) => void;
+  onConfirmDna?: () => void;
+  onContinueInterview?: () => void;
 };
 
 export function GuidedInterviewPanel({
   selectedGenre,
   onComplete,
+  onConfirmDna,
+  onContinueInterview,
 }: GuidedInterviewPanelProps) {
   const [state, setState] = useState(() =>
     getInitialInterviewState({
