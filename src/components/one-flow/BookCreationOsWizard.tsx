@@ -1166,6 +1166,51 @@ export function BookCreationOsWizard({
     setStep((s) => Math.min(STUDIO_STEPS.length - 1, s + 1));
   };
 
+  const updateBlueprintChapterTitle = (chapterIndex: number, value: string) => {
+    setBlueprintPreview((current) => {
+      if (!current) return current;
+
+      return {
+        ...current,
+        chapterOutlines: current.chapterOutlines.map((outline, index) =>
+          index === chapterIndex
+            ? { ...outline, title: value }
+            : outline
+        ),
+      };
+    });
+  };
+
+  const updateBlueprintSubchapterTitle = (
+    chapterIndex: number,
+    subchapterIndex: number,
+    value: string
+  ) => {
+    setBlueprintPreview((current) => {
+      if (!current) return current;
+
+      return {
+        ...current,
+        chapterOutlines: current.chapterOutlines.map((outline, index) => {
+          if (index !== chapterIndex) return outline;
+
+          const subchapters = Array.isArray((outline as any).subchapters)
+            ? (outline as any).subchapters
+            : [];
+
+          return {
+            ...outline,
+            subchapters: subchapters.map((subchapter: any, subIndex: number) =>
+              subIndex === subchapterIndex
+                ? { ...subchapter, title: value }
+                : subchapter
+            ),
+          };
+        }),
+      };
+    });
+  };
+
   const finishApproved = async () => {
     if (!blueprintPreview) {
       toast.error("Genera e rivedi il blueprint prima di approvare.");
@@ -1823,18 +1868,117 @@ export function BookCreationOsWizard({
           )}
 
           {step === 7 && blueprintPreview && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-white">Approvazione autore</h2>
-              <p className="text-sm text-white/65">Rivedi la struttura. Solo dopo l'approvazione potrai generare il libro.</p>
-              <div className="rounded-xl border border-white/12 bg-white/5 p-4 text-sm text-white/80 space-y-2">
-                <p className="font-semibold text-white">{title}{subtitle ? `: ${subtitle}` : ""}</p>
-                <p className="text-xs leading-relaxed">{blueprintPreview.overview.slice(0, 500)}{blueprintPreview.overview.length > 500 ? "…" : ""}</p>
-                <p className="text-[11px] text-white/55">{blueprintPreview.chapterOutlines.length} capitoli pianificati</p>
-                <ul className="max-h-40 overflow-y-auto text-xs space-y-1">
-                  {blueprintPreview.chapterOutlines.slice(0, 12).map((o, i) => (
-                    <li key={i}>{i + 1}. {o.title}</li>
-                  ))}
-                </ul>
+            <div className="space-y-5">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200/80">
+                  Indice protagonista
+                </p>
+                <h2 className="mt-1 text-2xl font-semibold text-white">Approvazione autore</h2>
+                <p className="mt-2 text-sm leading-6 text-white/65">
+                  Rivedi e modifica i titoli prima dell’approvazione. Questi titoli diventeranno la struttura reale usata da Writer, generazione capitoli ed export.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/12 bg-white/[0.045] p-4 text-sm text-white/80 space-y-3">
+                <p className="text-lg font-semibold text-white">{title}{subtitle ? `: ${subtitle}` : ""}</p>
+                <p className="text-xs leading-relaxed text-white/60">
+                  {blueprintPreview.overview.slice(0, 700)}{blueprintPreview.overview.length > 700 ? "…" : ""}
+                </p>
+                <div className="flex flex-wrap gap-2 text-[11px] text-white/55">
+                  <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">
+                    {blueprintPreview.chapterOutlines.length} capitoli pianificati
+                  </span>
+                  {subchaptersEnabled && (
+                    <span className="rounded-full border border-violet-300/20 bg-violet-500/10 px-3 py-1 text-violet-100">
+                      {subchaptersPerChapter} sottocapitoli per capitolo
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-amber-300/20 bg-amber-500/[0.06] p-4">
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-bold text-white">Indice modificabile</h3>
+                    <p className="mt-1 text-xs leading-5 text-white/55">
+                      Modifica i titoli qui. Non stai cambiando solo una preview: stai correggendo il blueprint che verrà approvato.
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-100">
+                    Live blueprint
+                  </span>
+                </div>
+
+                <div className="max-h-[520px] space-y-4 overflow-y-auto pr-1">
+                  {blueprintPreview.chapterOutlines.map((outline, chapterIndex) => {
+                    const subchapters = Array.isArray((outline as any).subchapters)
+                      ? (outline as any).subchapters
+                      : [];
+
+                    return (
+                      <div
+                        key={`editable-outline-${chapterIndex}`}
+                        className="rounded-2xl border border-white/10 bg-black/25 p-4"
+                      >
+                        <label className="block">
+                          <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-amber-200/80">
+                            Capitolo {chapterIndex + 1}
+                          </span>
+                          <input
+                            value={outline.title || ""}
+                            onChange={(event) =>
+                              updateBlueprintChapterTitle(chapterIndex, event.target.value)
+                            }
+                            className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-base font-semibold text-white outline-none focus:border-amber-300/50"
+                            placeholder={`Titolo capitolo ${chapterIndex + 1}`}
+                          />
+                        </label>
+
+                        {outline.summary && (
+                          <p className="mt-3 rounded-xl bg-white/[0.035] p-3 text-xs leading-5 text-white/55">
+                            {outline.summary}
+                          </p>
+                        )}
+
+                        {subchapters.length > 0 && (
+                          <div className="mt-4 space-y-2 border-l border-violet-300/20 pl-3">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-200/80">
+                              Sottocapitoli
+                            </p>
+
+                            {subchapters.map((subchapter: any, subIndex: number) => (
+                              <label
+                                key={`editable-outline-${chapterIndex}-${subIndex}`}
+                                className="block rounded-xl border border-white/8 bg-white/[0.035] p-3"
+                              >
+                                <span className="mb-1 block text-[10px] text-white/45">
+                                  {chapterIndex + 1}.{subIndex + 1}
+                                </span>
+                                <input
+                                  value={subchapter?.title || ""}
+                                  onChange={(event) =>
+                                    updateBlueprintSubchapterTitle(
+                                      chapterIndex,
+                                      subIndex,
+                                      event.target.value
+                                    )
+                                  }
+                                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm font-medium text-white outline-none focus:border-violet-300/50"
+                                  placeholder={`Titolo sottocapitolo ${subIndex + 1}`}
+                                />
+                                {subchapter?.summary && (
+                                  <p className="mt-2 text-[11px] leading-5 text-white/45">
+                                    {subchapter.summary}
+                                  </p>
+                                )}
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
