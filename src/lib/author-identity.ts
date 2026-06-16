@@ -100,7 +100,12 @@ export function saveAuthorIdentity(identity: AuthorIdentity): AuthorIdentity {
   const now = new Date().toISOString();
   const saved: AuthorIdentity = {
     ...identity,
-    id: identity.id?.startsWith("custom-") ? identity.id : `custom-${crypto.randomUUID()}`,
+    id: identity.id?.startsWith("custom-") ? identity.id : `custom-${(
+typeof crypto !== "undefined" &&
+typeof crypto.randomUUID === "function"
+? crypto.randomUUID()
+: `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+)}`,
     name: identity.name.trim() || identity.penName.trim() || identity.realName?.trim() || "Nuovo autore",
     realName: String(identity.realName || "").trim(),
     penName: identity.penName.trim() || identity.name.trim() || "Autore",

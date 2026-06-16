@@ -269,7 +269,12 @@ export function deleteProject(id: string): void {
 }
 
 export function createProjectId(): string {
-  return crypto.randomUUID();
+  return (
+typeof crypto !== "undefined" &&
+typeof crypto.randomUUID === "function"
+? crypto.randomUUID()
+: `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+);
 }
 
 export function getLastProjectId(): string | null {

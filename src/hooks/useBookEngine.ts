@@ -65,7 +65,12 @@ const FREE_MAX_PROJECT_WORDS = 10_000;
 
 function createRuntimeGenerationId(prefix: string): string {
   try {
-    return `${prefix}-${crypto.randomUUID()}`;
+    return `${prefix}-${(
+typeof crypto !== "undefined" &&
+typeof crypto.randomUUID === "function"
+? crypto.randomUUID()
+: `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+)}`;
   } catch {
     return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
@@ -260,7 +265,12 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   });
 
   const addMessage = useCallback((role: ChatMessage["role"], content: string) => {
-    const msg: ChatMessage = { id: crypto.randomUUID(), role, content, timestamp: new Date().toISOString() };
+    const msg: ChatMessage = { id: (
+typeof crypto !== "undefined" &&
+typeof crypto.randomUUID === "function"
+? crypto.randomUUID()
+: `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+), role, content, timestamp: new Date().toISOString() };
     setMessages(prev => [...prev, msg]);
   }, []);
 
@@ -1505,7 +1515,12 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
     setLastProjectId(normalized.id);
     saveProject(normalized);
     scheduleRemoteSave(normalized, syncCallbacks);
-    setMessages([{ id: crypto.randomUUID(), role: "system", content: `Loaded project: "${normalized.config.title}" — Phase: ${normalized.phase}`, timestamp: new Date().toISOString() }]);
+    setMessages([{ id: (
+typeof crypto !== "undefined" &&
+typeof crypto.randomUUID === "function"
+? crypto.randomUUID()
+: `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+), role: "system", content: `Loaded project: "${normalized.config.title}" — Phase: ${normalized.phase}`, timestamp: new Date().toISOString() }]);
   }, [syncCallbacks]);
 
   const handleUserMessage = useCallback((content: string) => {

@@ -19,7 +19,12 @@ function notesStorageKey(scope?: string | null): string {
 
 function makeId(): string {
   try {
-    return `note-${crypto.randomUUID()}`;
+    return `note-${(
+typeof crypto !== "undefined" &&
+typeof crypto.randomUUID === "function"
+? crypto.randomUUID()
+: `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+)}`;
   } catch {
     return `note-${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }

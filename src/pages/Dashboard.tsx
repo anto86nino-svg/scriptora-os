@@ -448,7 +448,12 @@ export default function Dashboard() {
   const handleGenerateAuthorWithAi = () => {
     const now = new Date().toISOString();
     openAuthorIdentity({
-      id: `custom-${crypto.randomUUID()}`,
+      id: `custom-${(
+typeof crypto !== "undefined" &&
+typeof crypto.randomUUID === "function"
+? crypto.randomUUID()
+: `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+)}`,
       name: "Il mio profilo autore",
       realName: "",
       penName: "",
