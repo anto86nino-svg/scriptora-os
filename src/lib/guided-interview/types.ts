@@ -55,6 +55,7 @@ export interface GuidedInterviewState {
   selectedTone?: string;
   selectedLength?: string;
   wantsSubchapters?: boolean;
+  dnaLock?: BookDnaLock;
 }
 
 export interface NextQuestionResult {
