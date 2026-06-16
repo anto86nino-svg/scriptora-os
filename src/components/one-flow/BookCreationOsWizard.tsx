@@ -1395,6 +1395,12 @@ export function BookCreationOsWizard({
                         setCommercialGoal,
                         setShowAdvancedForge,
                       })}
+                      onConfirmDna={() => {
+                        setShowAdvancedForge(true);
+                      }}
+                      onContinueInterview={() => {
+                        setShowAdvancedForge(false);
+                      }}
                     />
                   </div>
                 )}
