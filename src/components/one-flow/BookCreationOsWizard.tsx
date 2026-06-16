@@ -246,6 +246,7 @@ export function BookCreationOsWizard({
   const { plan } = usePlan();
   const isFree = plan === "free";
   const [step, setStep] = useState(0);
+  const [showAdvancedForge, setShowAdvancedForge] = useState(false);
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [idea, setIdea] = useState("");
@@ -1189,6 +1190,19 @@ export function BookCreationOsWizard({
                 </div>
               )}
 
+              <div className="mb-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedForge(v => !v)}
+                  className="rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-xs font-semibold text-white/70 hover:bg-white/[0.08]"
+                >
+                  {showAdvancedForge
+                    ? "Nascondi modalità avanzata"
+                    : "⚙️ Modalità avanzata"}
+                </button>
+              </div>
+
+
               <label className="block space-y-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Nome autore</span>
                 <input value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="Nome in copertina" className={inputClass} />
@@ -1199,133 +1213,140 @@ export function BookCreationOsWizard({
               <select value={amazonMarketplace} onChange={(e) => setAmazonMarketplace(e.target.value)} className={inputClass}>
                 {AMAZON_MARKETPLACES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
               </select>
-              {forgePresetId !== "poetry" && (
-              <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-3">
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Tipi libro principali</p>
-                <p className="mt-1 text-xs leading-5 text-white/50">
-                  Se non sai da dove partire, scegli un formato: Scriptora imposta genere, struttura e sottogenere senza lasciarti davanti a un campo vuoto.
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {filteredFeaturedTypes.map((type) => {
-                    const option = STUDIO_GENRES.find((g) => g.id === type.id);
-                    if (!option) return null;
-                    const active = bookTypeId === option.id && (!type.subgenre || subgenre === type.subgenre);
-                    return (
-                      <button
-                        key={`${type.id}-${type.label}`}
-                        type="button"
-                        onClick={() => applyFeaturedBookType(type)}
-                        className={`min-h-[86px] rounded-xl border p-2.5 text-left transition-colors ${
-                          active
-                            ? "border-sky-300/55 bg-sky-400/15 text-sky-50"
-                            : "border-white/12 bg-white/[0.045] text-white/72 hover:border-white/22 hover:bg-white/[0.075]"
-                        }`}
-                      >
-                        <span className="block text-xs font-bold leading-4">{type.label}</span>
-                        <span className="mt-1 block text-[10px] leading-4 text-white/50">{type.helper}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              )}
-              {forgePresetId === "poetry" ? (
-                <div className="rounded-2xl border border-sky-300/20 bg-sky-400/10 p-3">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-200/80">Raccolta poetica configurata</p>
-                  <p className="mt-1 text-sm font-semibold text-white">Poesie · Versi liberi · Sezioni emotive</p>
-                  <p className="mt-1 text-xs leading-5 text-white/55">Scriptora userà una struttura da raccolta poetica, non da romanzo: titoli evocativi, ritmo, immagini concrete, spazio bianco e poca spiegazione.</p>
-                </div>
-              ) : (
+              {showAdvancedForge && (
                 <>
-              <select
-                value={bookTypeId}
-                onChange={(e) => applyStudioGenre(e.target.value)}
-                className={inputClass}
-              >
-                {visibleGenres.map((g) => <option key={g.id} value={g.id}>{g.label} ({g.family})</option>)}
-              </select>
-              <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Categoria" className={inputClass} />
-              <input value={subcategory} onChange={(e) => setSubcategory(e.target.value)} placeholder="Sottocategoria" className={inputClass} />
-              <input value={subgenre} onChange={(e) => { setSubgenre(e.target.value); setCoherenceDismissed(false); }} placeholder="Sottogenere (opzionale)" className={inputClass} />
+                  {forgePresetId !== "poetry" && (
+                    <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">
+                        Tipi libro principali
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-white/50">
+                        Se non sai da dove partire, scegli un formato:
+                        Scriptora imposta genere, struttura e sottogenere.
+                      </p>
+
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {filteredFeaturedTypes.map((type) => {
+                          const option = STUDIO_GENRES.find((g) => g.id === type.id);
+                          if (!option) return null;
+
+                          const active =
+                            bookTypeId === option.id &&
+                            (!type.subgenre || subgenre === type.subgenre);
+
+                          return (
+                            <button
+                              key={`${type.id}-${type.label}`}
+                              type="button"
+                              onClick={() => applyFeaturedBookType(type)}
+                              className={`min-h-[86px] rounded-xl border p-2.5 text-left transition-colors ${
+                                active
+                                  ? "border-sky-300/55 bg-sky-400/15 text-sky-50"
+                                  : "border-white/12 bg-white/[0.045] text-white/72 hover:border-white/22 hover:bg-white/[0.075]"
+                              }`}
+                            >
+                              <span className="block text-xs font-bold leading-4">
+                                {type.label}
+                              </span>
+
+                              <span className="mt-1 block text-[10px] leading-4 text-white/50">
+                                {type.helper}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {forgePresetId === "poetry" ? (
+                    <div className="rounded-2xl border border-sky-300/20 bg-sky-400/10 p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-200/80">
+                        Raccolta poetica configurata
+                      </p>
+
+                      <p className="mt-1 text-sm font-semibold text-white">
+                        Poesie · Versi liberi · Sezioni emotive
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-white/55">
+                        Scriptora userà una struttura da raccolta poetica,
+                        non da romanzo.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-3">
+                      <select
+                        value={bookTypeId}
+                        onChange={(e) => applyStudioGenre(e.target.value)}
+                        className={inputClass}
+                      >
+                        {visibleGenres.map((g) => (
+                          <option key={g.id} value={g.id}>
+                            {g.label} ({g.family})
+                          </option>
+                        ))}
+                      </select>
+
+                      <input
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        placeholder="Categoria"
+                        className={inputClass}
+                      />
+
+                      <input
+                        value={subcategory}
+                        onChange={(e) => setSubcategory(e.target.value)}
+                        placeholder="Sottocategoria"
+                        className={inputClass}
+                      />
+
+                      <input
+                        value={subgenre}
+                        onChange={(e) => {
+                          setSubgenre(e.target.value);
+                          setCoherenceDismissed(false);
+                        }}
+                        placeholder="Sottogenere (opzionale)"
+                        className={inputClass}
+                      />
+                    </div>
+                  )}
+
+                  <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-3">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">
+                      Obiettivo commerciale
+                    </p>
+
+                    <div className="flex flex-wrap gap-2">
+                      {COMMERCIAL_GOAL_PRESETS.map((preset) => (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setCommercialGoal(preset)}
+                          className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
+                            commercialGoal === preset
+                              ? "border-emerald-300/50 bg-emerald-300/15 text-emerald-100"
+                              : "border-white/12 text-white/65 hover:bg-white/[0.07]"
+                          }`}
+                        >
+                          {preset}
+                        </button>
+                      ))}
+                    </div>
+
+                    <textarea
+                      value={commercialGoal}
+                      onChange={(e) => setCommercialGoal(e.target.value)}
+                      rows={2}
+                      placeholder="Oppure scrivi tu l'obiettivo: Amazon, BookTok, saga, manuale pratico..."
+                      className={`${inputClass} mt-3`}
+                    />
+                  </div>
                 </>
               )}
-
-              {showCoherenceWarning && !coherenceDismissed && (
-                <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100 space-y-3">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="h-5 w-5 shrink-0" />
-                    <p>
-                      Attenzione: il titolo sembra <strong>{textInference.label}</strong>, ma la categoria selezionata è {category || "—"} / {subcategory || "—"}.
-                      Questo può generare un blueprint debole.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => applyInference(textInference)}
-                      className="rounded-lg border border-amber-200/40 bg-amber-200/15 px-3 py-2 text-xs font-semibold text-amber-50"
-                    >
-                      Correggi automaticamente
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCoherenceDismissed(true)}
-                      className="rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white/70"
-                    >
-                      Mantieni comunque
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <label className="block space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Idea del libro</span>
-                <textarea value={idea} onChange={(e) => setIdea(e.target.value)} rows={3} placeholder={forgePresetId === "poetry" ? "Scrivi il tema della raccolta: amore, perdita, rinascita, famiglia, buio, fede, corpo, memoria..." : "Scrivi anche male: personaggio, desiderio, problema, atmosfera. Scriptora organizza il resto."} className={inputClass} />
-              </label>
-              {onDetectIntent && (
-                <button type="button" onClick={() => void detectFromIdea()} className="text-xs font-semibold text-sky-300 hover:text-sky-200">
-                  Analizza idea e suggerisci titolo/genere
-                </button>
-              )}
-
-              {forgePresetId === "poetry" ? (
-                <div className="grid gap-3 md:grid-cols-2">
-                  <GuidedTextArea
-                    label="Promessa poetica"
-                    value={narrativePromise}
-                    onChange={setNarrativePromise}
-                    placeholder="Che ferita, emozione, domanda o immagine attraversa tutta la raccolta?"
-                  />
-                  <GuidedTextArea
-                    label="Voce poetica"
-                    value={voiceConsistency}
-                    onChange={setVoiceConsistency}
-                    placeholder="Cosa Scriptora non deve mai perdere: ritmo, immagini, silenzi, tono, ricorrenze?"
-                  />
-                </div>
-              ) : (
-                <div className="grid gap-3 md:grid-cols-2">
-                  <GuidedTextArea label="Conflitto principale" value={coreConflict} onChange={setCoreConflict} placeholder="Cosa vuole il protagonista, e cosa lo rende impossibile?" />
-                  <GuidedTextArea label="Promessa narrativa" value={narrativePromise} onChange={setNarrativePromise} placeholder="Che emozione o trasformazione promette il libro al lettore?" />
-                  <GuidedTextArea label="Ambientazione" value={setting} onChange={setSetting} placeholder="Dove accade? Quale mondo, atmosfera, regole, pressione?" />
-                  <GuidedTextArea label="Hook iniziale" value={openingHook} onChange={setOpeningHook} placeholder="Quale evento apre il libro e costringe il lettore a restare?" />
-                  <GuidedTextArea label="Twist principali" value={mainTwists} onChange={setMainTwists} placeholder="Rivelazioni, inversioni, segreti. Anche solo 2-3 appunti." />
-                  <GuidedTextArea label="Voice consistency" value={voiceConsistency} onChange={setVoiceConsistency} placeholder="Cosa Scriptora non deve mai cambiare durante la scrittura?" />
-                </div>
-              )}
-
-              <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-3">
-                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Obiettivo commerciale</p>
-                <div className="flex flex-wrap gap-2">
-                  {COMMERCIAL_GOAL_PRESETS.map((preset) => (
-                    <button key={preset} type="button" onClick={() => setCommercialGoal(preset)}
-                      className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold ${commercialGoal === preset ? "border-emerald-300/50 bg-emerald-300/15 text-emerald-100" : "border-white/12 text-white/65 hover:bg-white/[0.07]"}`}>
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-                <textarea value={commercialGoal} onChange={(e) => setCommercialGoal(e.target.value)} rows={2} placeholder="Oppure scrivi tu l'obiettivo: Amazon, BookTok, saga, manuale pratico..." className={`${inputClass} mt-3`} />
-              </div>
             </div>
           )}
 
