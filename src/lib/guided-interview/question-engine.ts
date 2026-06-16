@@ -4,6 +4,7 @@ import type {
   NextQuestionResult,
   InterviewGenre,
 } from "./types";
+import { buildDnaLockFromInterviewState } from "./dna-lock";
 
 const GENERIC_PLACEHOLDER =
   "Inizia a scrivere liberamente… Scriptora organizzerà il resto.";
@@ -281,7 +282,7 @@ export function applyInterviewAnswer(
 
   if (!currentQuestion) return state;
 
-  return {
+  const nextState: GuidedInterviewState = {
     ...state,
     currentStep: state.currentStep + 1,
     confidence: calculateInterviewConfidence(state, currentQuestion.key, answer),
@@ -289,5 +290,10 @@ export function applyInterviewAnswer(
       ...state.extracted,
       [currentQuestion.key]: answer,
     },
+  };
+
+  return {
+    ...nextState,
+    dnaLock: buildDnaLockFromInterviewState(nextState),
   };
 }

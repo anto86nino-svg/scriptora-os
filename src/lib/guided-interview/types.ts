@@ -1,3 +1,4 @@
+import type { BookDnaLock } from "./dna-lock";
 export type InterviewRole = "assistant" | "user";
 
 export type InterviewGenre =
