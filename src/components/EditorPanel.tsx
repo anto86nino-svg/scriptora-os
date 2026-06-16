@@ -59,6 +59,10 @@ interface EditorPanelProps {
     snapshot: import("@/types/book").ChapterEditorialSnapshot,
     aiRating: import("@/types/book").AIQualityRating,
   ) => void;
+  premiumWriter?: boolean;
+  hideDesktopToolbar?: boolean;
+  chapterToolRequest?: { mode: "analysis" | "patch"; nonce: number } | null;
+  onSelectChapter?: (index: number) => void;
 }
 
 export function EditorPanel({
@@ -76,6 +80,10 @@ export function EditorPanel({
   onUpdateFrontMatterField, onUpdateBackMatterField,
   onNarrateChapter,
   onPersistChapterEditorialAnalysis,
+  premiumWriter = true,
+  hideDesktopToolbar = false,
+  chapterToolRequest = null,
+  onSelectChapter,
 }: EditorPanelProps) {
   const { blueprint, frontMatter, chapters, backMatter, config, phase } = project;
   const [mode, setMode] = useState<"edit" | "preview">("edit");
@@ -104,7 +112,7 @@ export function EditorPanel({
 
   return (
     <div className="flex min-w-0 w-full max-w-full flex-1 flex-col overflow-x-clip">
-      {hasContent && (
+      {hasContent && !premiumWriter && (
         <div className="flex h-12 shrink-0 items-center justify-center border-b border-white/10 bg-white/[0.035]">
           <div className="ios-segment">
           <button onClick={() => setMode("edit")}
@@ -122,12 +130,19 @@ export function EditorPanel({
       )}
 
       <div className="scriptora-scroll-main scriptora-writer-scroll scrollbar-thin min-h-0 flex-1 overflow-y-auto overflow-x-clip">
-        <div className={cn("mx-auto min-h-0 w-full min-w-0 max-w-full px-5 py-4 pb-[calc(env(safe-area-inset-bottom)+5rem)] sm:px-8 sm:py-6 md:pb-safe", mode === "preview" ? "max-w-2xl" : "max-w-4xl")}>
-          <div className={cn("ios-editor-paper p-4 sm:p-7", mode === "preview" && "bg-white/[0.055]")}>
-          {mode === "preview" && hasContent ? (
+        <div className={cn(
+          "mx-auto min-h-0 w-full min-w-0 max-w-full px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+5rem)] sm:px-6 sm:py-6 md:pb-safe",
+          premiumWriter ? "max-w-[850px]" : mode === "preview" ? "max-w-2xl" : "max-w-4xl",
+        )}>
+          <div className={cn(
+            premiumWriter ? "scriptora-manuscript-premium rounded-2xl p-5 sm:p-10" : "ios-editor-paper p-4 sm:p-7",
+            mode === "preview" && !premiumWriter && "bg-white/[0.055]",
+          )}>
+          {mode === "preview" && hasContent && !premiumWriter ? (
             <PreviewMode project={project} view={view} ws={ws} />
           ) : (
             <>
+              {!premiumWriter && (
               <div className="mb-4 flex min-w-0 w-full max-w-full flex-wrap items-center gap-2 sm:mb-6">
                 <BookTypeBadge config={config} />
                 <GenreProfileBadge
@@ -137,6 +152,7 @@ export function EditorPanel({
                 />
                 <EditorialMasteryBadge genre={config.genre} subcategory={config.subcategory} size="md" />
               </div>
+              )}
               {view.type === "blueprint" && (
                 <BlueprintView
                   project={project}
@@ -150,6 +166,8 @@ export function EditorPanel({
                   onAutoCompleteBlueprintConfig={onAutoCompleteBlueprintConfig}
                   onApproveBlueprint={onApproveBlueprint}
                   onGenerateBlueprint={onGenerateBlueprint}
+                  premiumWriter={premiumWriter}
+                  onSelectChapter={onSelectChapter}
                 />
               )}
               {view.type === "front-matter" && (
@@ -180,6 +198,9 @@ export function EditorPanel({
                   ws={ws}
                   onNarrateChapter={onNarrateChapter}
                   onPersistChapterEditorialAnalysis={onPersistChapterEditorialAnalysis}
+                  premiumWriter={premiumWriter}
+                  hideDesktopToolbar={hideDesktopToolbar}
+                  chapterToolRequest={chapterToolRequest}
                 />
               )}
               {view.type === "subchapter" && (() => {
@@ -310,6 +331,8 @@ function BlueprintView({
   onAutoCompleteBlueprintConfig,
   onApproveBlueprint,
   onGenerateBlueprint,
+  premiumWriter = false,
+  onSelectChapter,
 }: {
   project: BookProject;
   blueprint: BookProject["blueprint"];
@@ -322,6 +345,8 @@ function BlueprintView({
   onAutoCompleteBlueprintConfig?: () => void;
   onApproveBlueprint?: () => void;
   onGenerateBlueprint?: () => void;
+  premiumWriter?: boolean;
+  onSelectChapter?: (index: number) => void;
 }) {
   const hasBlueprintError = project.blueprintStatus === "error" && !blueprint;
   const readiness = useMemo(() => validateBookReadinessForBlueprint(project.config), [project.config]);
@@ -331,8 +356,36 @@ function BlueprintView({
   ];
 
   return (
-    <div className="space-y-6">
-      <PageHeader title={t("blueprint")} subtitle={t("blueprint_subtitle")} />
+    <div className={cn("space-y-6", premiumWriter && "scriptora-blueprint-premium space-y-8")}>
+      {!premiumWriter && <PageHeader title={t("blueprint")} subtitle={t("blueprint_subtitle")} />}
+
+      {premiumWriter && blueprint && (
+        <header className="scriptora-blueprint-hero space-y-4 border-b border-white/[0.08] pb-8">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">Mappa del libro</p>
+          <h1 className="text-3xl font-bold leading-tight text-white sm:text-4xl">{project.config.title || t("untitled")}</h1>
+          {project.config.subtitle && (
+            <p className="text-base italic text-white/55">{project.config.subtitle}</p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {project.config.genre && (
+              <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-white/70">
+                {project.config.genre}{project.config.subcategory ? ` · ${project.config.subcategory}` : ""}
+              </span>
+            )}
+            {project.config.tone && (
+              <span className="rounded-full border border-violet-400/25 bg-violet-500/10 px-3 py-1 text-xs text-violet-100">
+                {project.config.tone}
+              </span>
+            )}
+            <span className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-100">
+              {project.chapters.filter((c) => c.content?.length).length}/{blueprint.chapterOutlines.length} capitoli scritti
+            </span>
+          </div>
+          {blueprint.overview && (
+            <p className="max-w-2xl text-sm leading-7 text-white/65">{blueprint.overview.split("\n")[0]}</p>
+          )}
+        </header>
+      )}
 
       {isGenerating && (
         <BlueprintRecoveryCard
@@ -404,9 +457,78 @@ function BlueprintView({
             </div>
           )}
           <div>
-            <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-4">{t("chapter_outlines")}</p>
-            <div className="space-y-3">
-              {blueprint.chapterOutlines.map((o, i) => (
+            {!premiumWriter && (
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-4">{t("chapter_outlines")}</p>
+            )}
+            {premiumWriter && (
+              <p className="mb-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/40">Capitoli</p>
+            )}
+            <div className={cn("space-y-3", premiumWriter && "space-y-4")}>
+              {blueprint.chapterOutlines.map((o, i) => {
+                const chapter = project.chapters[i];
+                const written = !!(chapter?.content?.length);
+                const words = written ? chapter.content.trim().split(/\s+/).filter(Boolean).length : 0;
+                const tension = Math.min(5, Math.max(1, Math.round((o.summary?.length || 40) / 80)));
+
+                if (premiumWriter) {
+                  return (
+                    <button
+                      key={`row-${i}`}
+                      type="button"
+                      onClick={() => onSelectChapter?.(i)}
+                      className="scriptora-blueprint-chapter-card group w-full rounded-2xl border border-white/[0.1] bg-white/[0.03] p-5 text-left transition hover:border-white/20 hover:bg-white/[0.06]"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                            Capitolo {i + 1}
+                          </p>
+                          <input
+                            value={o.title}
+                            onChange={(e) => onUpdateOutlineTitle?.(i, e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            readOnly={!onUpdateOutlineTitle}
+                            className="mt-1 w-full bg-transparent text-lg font-semibold text-white focus:outline-none"
+                          />
+                        </div>
+                        <span className={cn(
+                          "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold",
+                          written ? "bg-emerald-500/15 text-emerald-200" : "bg-white/[0.06] text-white/45",
+                        )}>
+                          {written ? "✓ scritto" : "○ da scrivere"}
+                        </span>
+                      </div>
+                      {o.summary && (
+                        <p className="mt-3 text-xs text-white/45">
+                          <span className="font-semibold text-white/55">Obiettivo: </span>
+                          {o.summary.split(".")[0]}
+                        </p>
+                      )}
+                      <div className="mt-3 flex flex-wrap items-center gap-3 text-[10px] text-white/45">
+                        <span className="inline-flex items-center gap-1.5">
+                          Tensione
+                          <span className="inline-flex gap-0.5">
+                            {Array.from({ length: 5 }).map((_, bar) => (
+                              <span
+                                key={bar}
+                                className={cn(
+                                  "h-2 w-2 rounded-sm",
+                                  bar < tension ? "bg-violet-400/80" : "bg-white/10",
+                                )}
+                              />
+                            ))}
+                          </span>
+                        </span>
+                        {chapter?.subchapters?.length ? (
+                          <span>Sottocapitoli: {chapter.subchapters.length}</span>
+                        ) : null}
+                        {written && <span>{words.toLocaleString()} parole</span>}
+                      </div>
+                    </button>
+                  );
+                }
+
+                return (
                 <div key={`row-${i}`} className="flex gap-4 p-4 rounded-lg bg-muted/15 border border-border/30 hover:bg-muted/25 transition-colors">
                   <span className="text-sm font-bold text-primary/50 shrink-0 pt-0.5 w-6 text-right">{i + 1}</span>
                   <div className="flex-1 min-w-0">
@@ -425,7 +547,8 @@ function BlueprintView({
                     />
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </>
@@ -584,6 +707,9 @@ function ChapterView({
   onUpdateContent, onUpdateTitle, onUpdateSubContent, onUpdateSubTitle, onSetLengthOverride, isGeneratingSection, onCancel, chunkProgress, ws,
   onNarrateChapter,
   onPersistChapterEditorialAnalysis,
+  premiumWriter = false,
+  hideDesktopToolbar = false,
+  chapterToolRequest = null,
 }: {
   project: BookProject; chapterIndex: number;
   outline: { title: string; summary: string }; chapter: Chapter | undefined;
@@ -601,6 +727,9 @@ function ChapterView({
   ws: WritingSettings;
   onNarrateChapter?: (chapterIndex: number) => void;
   onPersistChapterEditorialAnalysis?: EditorPanelProps["onPersistChapterEditorialAnalysis"];
+  premiumWriter?: boolean;
+  hideDesktopToolbar?: boolean;
+  chapterToolRequest?: { mode: "analysis" | "patch"; nonce: number } | null;
 }) {
   const isGenerated = chapter && chapter.content.length > 0;
   const currentLength = chapter?.lengthOverride || project.config.chapterLength;
@@ -665,20 +794,55 @@ function ChapterView({
     scrollToLive("smooth");
   }, [isGenerating, liveSignature, scrollToLive]);
 
+  useEffect(() => {
+    if (!chapterToolRequest) return;
+    if (chapterToolRequest.mode === "analysis") {
+      setEditorialMode("analysis");
+      setEditorialOpen(true);
+    } else {
+      setEditorialMode("patch");
+      setEditorialOpen(true);
+    }
+  }, [chapterToolRequest?.nonce, chapterToolRequest?.mode]);
+
   return (
-    <div className="min-w-0 w-full max-w-full space-y-8">
-      <div className="scriptora-chapter-header flex min-w-0 w-full max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+    <div className={cn("min-w-0 w-full max-w-full", premiumWriter ? "space-y-6" : "space-y-8")}>
+      <div className={cn(
+        "scriptora-chapter-header flex min-w-0 w-full max-w-full flex-col gap-3",
+        !premiumWriter && "sm:flex-row sm:items-start sm:justify-between sm:gap-4",
+      )}>
         <div className="min-w-0 w-full flex-1">
-          <p className="mb-1 break-words text-[11px] font-semibold uppercase text-muted-foreground">
-            {chapterDisplayLabel}
-          </p>
-          <EditableTitle
-            value={displayedTitle}
-            onChange={(v) => onUpdateTitle?.(v)}
-            disabled={!onUpdateTitle}
-          />
+          {premiumWriter ? (
+            <>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/40">
+                {project.config.title || t("untitled")}
+              </p>
+              <p className="mb-1 text-xs font-medium text-white/50">{chapterDisplayLabel.split(" — ")[0] || `Capitolo ${chapterIndex + 1}`}</p>
+              <EditableTitle
+                value={displayedTitle}
+                onChange={(v) => onUpdateTitle?.(v)}
+                disabled={!onUpdateTitle}
+                className="scriptora-chapter-title-premium"
+              />
+            </>
+          ) : (
+            <>
+              <p className="mb-1 break-words text-[11px] font-semibold uppercase text-muted-foreground">
+                {chapterDisplayLabel}
+              </p>
+              <EditableTitle
+                value={displayedTitle}
+                onChange={(v) => onUpdateTitle?.(v)}
+                disabled={!onUpdateTitle}
+              />
+            </>
+          )}
         </div>
-        <div className="scriptora-chapter-toolbar w-full min-w-0 sm:w-auto sm:shrink-0 sm:pt-1">
+        <div className={cn(
+          "scriptora-chapter-toolbar w-full min-w-0 sm:w-auto sm:shrink-0 sm:pt-1",
+          hideDesktopToolbar && isGenerated && "lg:hidden",
+          premiumWriter && isGenerated && "max-lg:hidden",
+        )}>
           {!isGenerated ? (
             <div className="flex flex-col items-stretch gap-1 sm:items-end">
               <button onClick={onGenerate} disabled={isGenerating || !project.blueprint}
@@ -861,8 +1025,8 @@ function ChapterView({
 
       {isGenerated && (
         <>
-          <AIRatingCard rating={chapter.aiRating} />
-          <EditableBlock content={chapter.content} onChange={onUpdateContent} ws={ws} />
+          {!premiumWriter && <AIRatingCard rating={chapter.aiRating} />}
+          <EditableBlock content={chapter.content} onChange={onUpdateContent} ws={ws} premium={premiumWriter} />
 
           {chapter.subchapters.length > 0 && (
             <div className="space-y-6 mt-10">
@@ -901,7 +1065,7 @@ function ChapterView({
 
       {!isGenerating && <div ref={liveAnchorRef} aria-hidden="true" className="h-px" />}
 
-      {isGenerated && (
+      {isGenerated && !premiumWriter && (
         <GenreCoachPanel
           chapterTitle={displayedTitle}
           chapterText={chapter?.content || ""}
@@ -1096,11 +1260,13 @@ const EditableTitle = memo(function EditableTitle({
   onChange,
   disabled = false,
   size = "lg",
+  className,
 }: {
   value: string;
   onChange: (v: string) => void;
   disabled?: boolean;
   size?: "sm" | "lg";
+  className?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
@@ -1124,8 +1290,8 @@ const EditableTitle = memo(function EditableTitle({
   const cancel = () => { setDraft(value); setEditing(false); };
 
   const baseClass = size === "lg"
-    ? "text-2xl font-bold text-foreground"
-    : "text-base font-semibold text-foreground/90";
+    ? cn("text-2xl font-bold text-foreground", className)
+    : cn("text-base font-semibold text-foreground/90", className);
 
   if (editing && !disabled) {
     return (
@@ -1452,11 +1618,14 @@ const EditableBlock = memo(function EditableBlock({
   content,
   onChange,
   ws,
-}: { content: string; onChange: (val: string) => void; ws?: WritingSettings }) {
+  premium = false,
+}: { content: string; onChange: (val: string) => void; ws?: WritingSettings; premium?: boolean }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fontStyle = ws ? { fontFamily: ws.fontFamily, fontSize: `${ws.fontSize}px`, lineHeight: `${ws.lineSpacing}` } : {};
+  const fontStyle = premium
+    ? { fontFamily: "var(--scriptora-manuscript-font)", fontSize: "1.125rem", lineHeight: "1.85" }
+    : ws ? { fontFamily: ws.fontFamily, fontSize: `${ws.fontSize}px`, lineHeight: `${ws.lineSpacing}` } : {};
 
   // CRITICAL: do NOT reset editValue while user is editing.
   // During AI streaming, parent passes a new `content` ~6×/sec — without this
@@ -1480,7 +1649,12 @@ const EditableBlock = memo(function EditableBlock({
         <textarea ref={textareaRef} value={editValue}
           onChange={e => { setEditValue(e.target.value); e.target.style.height = "auto"; e.target.style.height = e.target.scrollHeight + "px"; }}
           onBlur={() => { onChange(editValue); setIsEditing(false); }}
-          className="w-full text-foreground/[0.85] bg-muted/10 border border-primary/20 rounded-lg p-5 resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className={cn(
+            "w-full resize-none text-foreground/[0.85] focus:outline-none",
+            premium
+              ? "scriptora-manuscript-body border-0 bg-transparent p-0 focus:ring-0"
+              : "rounded-lg border border-primary/20 bg-muted/10 p-5 focus:ring-2 focus:ring-primary/20",
+          )}
           style={fontStyle}
           autoFocus />
         <span className="absolute top-3 right-4 text-[9px] text-primary/50 uppercase font-sans">{t("editing")}</span>
@@ -1490,7 +1664,12 @@ const EditableBlock = memo(function EditableBlock({
 
   return (
     <div onClick={() => setIsEditing(true)}
-      className="text-foreground/[0.85] whitespace-pre-wrap cursor-text rounded-lg p-5 hover:bg-muted/10 transition-colors border border-transparent hover:border-border/20 min-h-[120px]"
+      className={cn(
+        "scriptora-manuscript-body min-h-[120px] cursor-text whitespace-pre-wrap text-foreground/[0.88] transition-colors",
+        premium
+          ? "border-0 p-0 hover:bg-transparent"
+          : "rounded-lg border border-transparent p-5 hover:border-border/20 hover:bg-muted/10",
+      )}
       style={fontStyle}
       title={t("click_to_edit")}>
       {content || <span className="text-muted-foreground/40 italic">{t("empty_click_to_add")}</span>}
@@ -1499,5 +1678,5 @@ const EditableBlock = memo(function EditableBlock({
 }, (prev, next) => {
   // Skip re-render when content + ws + onChange ref are stable.
   // onChange is typically a useCallback in the parent, so reference equality holds.
-  return prev.content === next.content && prev.onChange === next.onChange && prev.ws === next.ws;
+  return prev.content === next.content && prev.onChange === next.onChange && prev.ws === next.ws && prev.premium === next.premium;
 });

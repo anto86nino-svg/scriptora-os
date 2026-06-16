@@ -6657,3 +6657,91 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
     margin-right: -0.01px;
   }
 }
+
+/* Book Forge mobile — single scroll region (MobileForgeScrollShell / embedded wizard).
+   Prevents global modal/wizard rules from creating nested scroll traps. */
+@media (max-width: 767px) {
+  .scriptora-book-forge-mobile {
+    touch-action: manipulation;
+  }
+
+  .scriptora-book-forge-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+  }
+
+  .scriptora-book-forge-footer {
+    background: rgba(7, 7, 11, 0.96);
+    backdrop-filter: blur(12px);
+  }
+
+  /* Do not apply body scroll-lock from modal overlay when forge uses its own shell */
+  html:has(.scriptora-book-forge-mobile) body {
+    overflow: hidden !important;
+  }
+}
+
+/* ── Writer Experience Premium ── */
+.scriptora-writer-studio {
+  background: radial-gradient(1200px 600px at 50% -10%, rgba(88, 28, 135, 0.12), transparent 55%), #07070b;
+}
+
+.scriptora-manuscript-premium {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+}
+
+:root {
+  --scriptora-manuscript-font: "Literata", "Source Serif 4", "Merriweather", Georgia, serif;
+}
+
+.scriptora-manuscript-body {
+  font-family: var(--scriptora-manuscript-font);
+  font-size: 1.125rem;
+  line-height: 1.85;
+  letter-spacing: 0.01em;
+}
+
+.scriptora-chapter-title-premium {
+  font-family: var(--scriptora-manuscript-font);
+  font-size: 1.75rem !important;
+  font-weight: 600 !important;
+  line-height: 1.25;
+  color: rgba(255, 255, 255, 0.94) !important;
+}
+
+.scriptora-story-nav {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent), rgba(8, 8, 12, 0.92);
+}
+
+.scriptora-writer-tools-toggle {
+  top: calc(env(safe-area-inset-top, 0px) + 4.25rem);
+}
+
+@media (max-width: 1023px) {
+  .scriptora-writer-tools-panel,
+  .scriptora-writer-tools-toggle {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .scriptora-writer-main {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem) !important;
+  }
+
+  .scriptora-manuscript-premium {
+    padding: 1.25rem 1rem !important;
+    border-radius: 0 !important;
+    border-left: 0;
+    border-right: 0;
+    box-shadow: none;
+  }
+
+  .scriptora-manuscript-body {
+    font-size: 1.0625rem;
+    line-height: 1.8;
+  }
+}

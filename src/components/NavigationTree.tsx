@@ -13,9 +13,24 @@ interface NavigationTreeProps {
   onSelectSection: (id: SectionId) => void;
   generatingSet: Set<string>;
   onGenerateChaptersParallel?: (indices: number[]) => void;
+  variant?: "default" | "premium";
 }
 
-export function NavigationTree({ project, activeSection, onSelectSection, generatingSet, onGenerateChaptersParallel }: NavigationTreeProps) {
+function countWords(text: string): number {
+  return text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
+}
+
+function readingMinutes(words: number): number {
+  return Math.max(1, Math.round(words / 200));
+}
+
+function chapterStatusLabel(status: GenerationStatus, hasContent: boolean): string {
+  if (status === "generating") return "in scrittura";
+  if (hasContent) return "scritto";
+  return "non scritto";
+}
+
+export function NavigationTree({ project, activeSection, onSelectSection, generatingSet, onGenerateChaptersParallel, variant = "premium" }: NavigationTreeProps) {
   useUILanguage();
   const [expandedChapters, setExpandedChapters] = useState<Set<number>>(new Set());
   const [selectMode, setSelectMode] = useState(false);
@@ -69,7 +84,8 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
   };
 
   return (
-    <nav className="scrollbar-thin flex-1 overflow-y-auto px-2 py-2">
+    <nav className={cn("scrollbar-thin flex-1 overflow-y-auto px-2 py-2", variant === "premium" && "scriptora-story-nav px-3")}>
+      {variant === "default" && (
       <div className="ios-glass-soft mb-2 space-y-2 rounded-lg px-3 py-2">
         <BookTypeBadge config={config} className="w-full justify-center" />
         {config.category && (
@@ -78,6 +94,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
           </div>
         )}
       </div>
+      )}
 
       <TreeItem
         icon={<Layers className="h-3.5 w-3.5" />}
@@ -103,7 +120,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
             <span className="text-[10px] font-semibold uppercase text-muted-foreground/70">
               {t("chapters")}
             </span>
-            {onGenerateChaptersParallel && (
+            {onGenerateChaptersParallel && variant !== "premium" && (
               <button
                 onClick={() => { setSelectMode(v => !v); setSelected(new Set()); }}
                 className={cn(
@@ -146,6 +163,17 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
 
             return (
               <div key={`stable-${i}`}>
+                {variant === "premium" ? (
+                  <PremiumChapterCard
+                    index={i}
+                    title={chapterTitle}
+                    active={isActive(`chapter-${i}`)}
+                    status={chStatus}
+                    words={chGenerated ? countWords(chapters[i].content) : 0}
+                    subCount={chGenerated ? chapters[i].subchapters.length : 0}
+                    onClick={() => onSelectSection(`chapter-${i}`)}
+                  />
+                ) : (
                 <div className={cn("flex items-center rounded-lg", isSelected && "bg-primary/10")}>
                   {selectMode ? (
                     <button
@@ -177,6 +205,7 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
                     className={(!selectMode && !(hasSubs || config.subchaptersEnabled)) ? "pl-6" : ""}
                   />
                 </div>
+                )}
 
                 {isExpanded && !selectMode && chGenerated && (
                   <div className="ml-6 border-l border-white/10">
@@ -212,6 +241,70 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
         />
       )}
     </nav>
+  );
+}
+
+function PremiumChapterCard({
+  index,
+  title,
+  active,
+  status,
+  words,
+  subCount,
+  onClick,
+}: {
+  index: number;
+  title: string;
+  active: boolean;
+  status: GenerationStatus;
+  words: number;
+  subCount: number;
+  onClick: () => void;
+}) {
+  const hasContent = words > 0;
+  const statusText = active ? "attuale" : chapterStatusLabel(status, hasContent);
+  const titleParts = title.split(" — ");
+  const chapterNum = titleParts[0] || `Capitolo ${index + 1}`;
+  const chapterName = titleParts.slice(1).join(" — ") || title;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "scriptora-story-chapter-card mb-2 w-full rounded-2xl border px-3.5 py-3 text-left transition",
+        active
+          ? "border-violet-400/35 bg-violet-500/10 shadow-lg shadow-violet-950/20"
+          : "border-white/[0.08] bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.06]",
+      )}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">{chapterNum}</p>
+      <p className="mt-0.5 line-clamp-2 text-sm font-semibold leading-snug text-white">{chapterName}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-white/50">
+        <span className={cn(
+          "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
+          active ? "bg-violet-400/20 text-violet-100" : "bg-white/[0.06]",
+        )}>
+          {status === "generating" ? (
+            <Loader2 className="h-2.5 w-2.5 animate-spin" />
+          ) : active ? (
+            <span className="h-1.5 w-1.5 rounded-full bg-violet-300" />
+          ) : hasContent ? (
+            <CheckCircle2 className="h-2.5 w-2.5 text-emerald-300" />
+          ) : (
+            <Circle className="h-2 w-2" />
+          )}
+          {statusText}
+        </span>
+        {hasContent && (
+          <>
+            <span>{readingMinutes(words)} min</span>
+            <span>{words >= 1000 ? `${(words / 1000).toFixed(1)}k` : words} parole</span>
+          </>
+        )}
+        {subCount > 0 && <span>{subCount} sottocapitoli</span>}
+      </div>
+    </button>
   );
 }
 

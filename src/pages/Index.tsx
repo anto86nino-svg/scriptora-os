@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { NavigationTree } from "@/components/NavigationTree";
-import { TopBar } from "@/components/TopBar";
 import { CoverBeforeExportDialog } from "@/components/CoverBeforeExportDialog";
 import { ProgressTracker } from "@/components/ProgressTracker";
 import { GuidedProjectFlow } from "@/components/GuidedProjectFlow";
@@ -32,6 +31,11 @@ import { usePlan, useQuota } from "@/lib/plan";
 import { fillMissingGenreFromInference } from "@/lib/book-creation-os/genre-inference";
 import { toast } from "sonner";
 import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu, X, ArrowLeft } from "lucide-react";
+import { WriterCleanHeader } from "@/components/writer/WriterCleanHeader";
+import { WriterToolsPanel } from "@/components/writer/WriterToolsPanel";
+import { MobileWriterBar } from "@/components/writer/MobileWriterBar";
+import { WriterOverflowMenu } from "@/components/writer/WriterOverflowMenu";
+import type { RewriteLevel } from "@/lib/generation-types";
 import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 import { UpgradeModal } from "@/components/UpgradeModal";
@@ -173,6 +177,9 @@ const Index = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportLabel, setExportLabel] = useState("");
   const [activeSection, setActiveSection] = useState<SectionId | null>("blueprint");
+  const [toolsPanelOpen, setToolsPanelOpen] = useState(false);
+  const [writerMenuOpen, setWriterMenuOpen] = useState(false);
+  const [chapterToolRequest, setChapterToolRequest] = useState<{ mode: "analysis" | "patch"; nonce: number } | null>(null);
   const [writingSettings, setWritingSettings] = useState<WritingSettings>(loadSettings());
   const openedFromDashboard =
     sessionStorage.getItem("scriptora-open-from-dashboard") === "1";
@@ -196,6 +203,20 @@ const Index = () => {
     engine.chunkProgress,
     engine.generatingSet,
   );
+
+  const activeChapterIndex = useMemo(() => {
+    if (!activeSection) return null;
+    const match = activeSection.match(/^chapter-(\d+)/);
+    return match ? parseInt(match[1], 10) : null;
+  }, [activeSection]);
+
+  const activeChapter = activeChapterIndex != null ? engine.project?.chapters[activeChapterIndex] : undefined;
+  const activeChapterGenerated = !!(activeChapter?.content?.length);
+  const isChapterView = activeChapterIndex != null;
+
+  const triggerChapterTool = (mode: "analysis" | "patch") => {
+    setChapterToolRequest({ mode, nonce: Date.now() });
+  };
 
   const voiceProjectList = useMemo(
     () => (engine.project ? [engine.project, ...projects.filter((p) => p.id !== engine.project!.id)] : projects),
@@ -524,6 +545,7 @@ const Index = () => {
             onUpdateBackMatterField={engine.updateBackMatterField}
             onNarrateChapter={openVoiceStudioForChapter}
             onPersistChapterEditorialAnalysis={engine.updateChapterEditorialAnalysis}
+            premiumWriter
           />
           </Suspense>
         </div>
@@ -558,11 +580,11 @@ const Index = () => {
   }
 
   return (
-    <div className="scriptora-ios-screen scriptora-app-surface relative flex min-h-[100dvh] overflow-x-hidden overflow-y-visible">
-      {/* Floating sidebar toggle */}
+    <div className="scriptora-ios-screen scriptora-app-surface scriptora-writer-studio relative flex min-h-[100dvh] overflow-x-hidden overflow-y-visible lg:flex-row">
+      {/* Floating sidebar toggle — mobile only */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className={`scriptora-writer-menu-btn fixed left-2 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] z-50 flex items-center justify-center rounded-[10px] border border-white/10 bg-background/90 p-0 text-foreground shadow-md backdrop-blur-md ${
+        className={`scriptora-writer-menu-btn fixed left-2 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] z-50 flex items-center justify-center rounded-[10px] border border-white/10 bg-background/90 p-0 text-foreground shadow-md backdrop-blur-md lg:hidden ${
           guidedFlowEnabled && !!engine.project?.blueprint && !sidebarOpen ? "scriptora-guide-pulse" : ""
         }`}
         title={sidebarOpen ? t("hide_sidebar") : t("show_sidebar")}
@@ -590,12 +612,12 @@ const Index = () => {
       )}
 
 
-      {/* Left Sidebar */}
+      {/* Left Sidebar — Story Navigator */}
       <aside
-        className={`ios-sidebar fixed z-40 flex h-[100dvh] min-h-0 shrink-0 flex-col overflow-hidden pb-safe transition-all duration-300 ease-out md:sticky md:top-3 md:h-[calc(100dvh-1.5rem)] md:self-start md:pb-0 ${
+        className={`ios-sidebar scriptora-story-nav fixed z-40 flex h-[100dvh] min-h-0 shrink-0 flex-col overflow-hidden pb-safe transition-all duration-300 ease-out lg:sticky lg:top-0 lg:z-auto lg:h-[100dvh] lg:w-[min(280px,25%)] lg:translate-x-0 lg:opacity-100 lg:pb-0 ${
           sidebarOpen
-            ? "translate-x-0 w-[272px] opacity-100"
-            : "-translate-x-full md:translate-x-0 md:w-0 md:opacity-0 overflow-hidden"
+            ? "translate-x-0 w-[min(280px,25%)] opacity-100"
+            : "-translate-x-full w-0 opacity-0 lg:translate-x-0 lg:w-[min(280px,25%)] lg:opacity-100"
         }`}
       >
         <div className="flex items-center justify-between border-b border-white/10 p-3 pl-14 md:pl-3">
@@ -688,6 +710,7 @@ const Index = () => {
           onSelectSection={(s) => { setActiveSection(s); setSidebarOpen(false); }}
           generatingSet={engine.generatingSet}
           onGenerateChaptersParallel={engine.generateChaptersParallel}
+          variant="premium"
         />
 
         {engine.project && (
@@ -712,66 +735,37 @@ const Index = () => {
         )}
       </aside>
 
-      {/* Main Area */}
+      {/* Main Area + Tools */}
+      <div className="flex min-h-[100dvh] min-w-0 flex-1 flex-col lg:flex-row">
       <div
-        className={`scriptora-writer-main flex min-h-[100dvh] min-w-0 flex-1 flex-col overflow-x-clip overflow-y-visible pb-[calc(env(safe-area-inset-bottom)+7.5rem)] transition-all duration-300 md:pb-[calc(env(safe-area-inset-bottom)+1.5rem)] ${
-          sidebarOpen ? "p-2 md:p-3" : "p-2 md:px-6 md:py-4"
+        className={`scriptora-writer-main flex min-h-[100dvh] min-w-0 flex-1 flex-col overflow-x-clip overflow-y-visible pb-[calc(env(safe-area-inset-bottom)+7.5rem)] transition-all duration-300 md:pb-[calc(env(safe-area-inset-bottom)+1.5rem)] lg:pb-0 ${
+          sidebarOpen ? "p-2 md:p-3" : "p-2 md:px-4 md:py-3"
         }`}
       >
-        {/* Mobile back-to-dashboard strip — desktop only; mobile uses TopBar title pill */}
-        {engine.project && !sidebarOpen && (
-          <div className="mb-1 hidden items-center gap-2 md:flex">
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium text-white/60 transition-colors hover:bg-white/[0.07] hover:text-white"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              {t("back_to_dashboard")}
-            </Link>
-            <span className="min-w-0 truncate text-[11px] font-medium text-white/40">
-              {engine.project.config.title || t("untitled")}
-            </span>
+        {engine.project && (
+          <div className="relative sticky top-0 z-30 shrink-0">
+            <WriterCleanHeader
+              bookTitle={engine.project.config.title || t("untitled")}
+              sectionLabel={writerHeaderContext.title}
+              progressLabel={writerHeaderContext.progress}
+              isGenerating={writerHeaderContext.isGenerating}
+              focusMode={focusMode}
+              onFocusMode={() => setFocusMode(true)}
+              onMenuToggle={() => setWriterMenuOpen((v) => !v)}
+              className="rounded-xl border border-white/[0.08] max-lg:ml-11"
+            />
+            <WriterOverflowMenu
+              open={writerMenuOpen}
+              onClose={() => setWriterMenuOpen(false)}
+              onExport={guardedExportEpub}
+              onVoice={() => activeChapterIndex != null && openVoiceStudioForChapter(activeChapterIndex)}
+              onSettings={() => setShowSettings(true)}
+              onCoach={() => setShowCoach(true)}
+            />
           </div>
         )}
-        <div className="sticky top-[calc(env(safe-area-inset-top,0px)+0.5rem)] z-30 shrink-0">
-          <TopBar
-            config={engine.project?.config || null}
-            onUpdateConfig={engine.updateConfig}
-            isGenerating={engine.isAnythingGenerating}
-            hasProject={!!engine.project}
-            onExport={guardedExportEpub}
-            onExportDocx={guardedExportDocx}
-            onExportPdf={guardedExportPdf}
-            onCover={() => setShowCover(true)}
-            onPublish={() => setShowPublish(true)}
-            isExporting={isExporting}
-            exportLabel={exportLabel}
-            phase={engine.project?.phase || "idle"}
-            syncStatus={syncStatus}
-            projectId={engine.project?.id || null}
-            project={engine.project}
-          />
 
-          {engine.project && (
-            <div className="mb-2 min-w-0 rounded-xl border border-white/10 bg-background/85 px-3 py-2 shadow-lg shadow-black/10 backdrop-blur-2xl max-md:ml-11 md:ml-0">
-              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0 flex-1 basis-0">
-                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200/70">
-                    {writerHeaderContext.breadcrumb}
-                  </p>
-                  <p className="line-clamp-2 break-words text-sm font-semibold text-white [overflow-wrap:anywhere]">
-                    {engine.project.config.title || t("untitled")} · {writerHeaderContext.title}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-2.5 py-1 text-[11px] font-medium text-white/68">
-                  {writerHeaderContext.isGenerating && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.8)]" />}
-                  <span>{writerHeaderContext.progress}</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
+        {!isChapterView && (
         <GuidedProjectFlow
           project={engine.project}
           activeSection={activeSection}
@@ -791,8 +785,9 @@ const Index = () => {
           onCover={() => setShowCover(true)}
           onExport={guardedExportEpub}
         />
+        )}
 
-        <div className="scriptora-writer-editor-card flex min-h-[320px] min-w-0 flex-1 flex-col overflow-x-clip max-md:overflow-y-visible md:min-h-0 md:overflow-hidden rounded-lg border border-white/10 bg-black/10 shadow-2xl shadow-black/20 backdrop-blur-sm max-md:rounded-xl max-md:border-x-0">
+        <div className="scriptora-writer-editor-card flex min-h-[320px] min-w-0 flex-1 flex-col overflow-x-clip max-md:overflow-y-visible md:min-h-0 md:overflow-hidden max-md:rounded-xl max-md:border-x-0 lg:border-0 lg:bg-transparent lg:shadow-none">
           {engine.project ? (
             <>
               <div className="min-h-0 min-w-0 flex-1">
@@ -829,7 +824,11 @@ const Index = () => {
                   onUpdateFrontMatterField={engine.updateFrontMatterField}
                   onUpdateBackMatterField={engine.updateBackMatterField}
                   onNarrateChapter={openVoiceStudioForChapter}
-            onPersistChapterEditorialAnalysis={engine.updateChapterEditorialAnalysis}
+                  onPersistChapterEditorialAnalysis={engine.updateChapterEditorialAnalysis}
+                  premiumWriter
+                  hideDesktopToolbar={isChapterView}
+                  chapterToolRequest={chapterToolRequest}
+                  onSelectChapter={(idx) => setActiveSection(`chapter-${idx}` as SectionId)}
                 />
                 </Suspense>
               </div>
@@ -911,6 +910,37 @@ const Index = () => {
           )}
         </div>
       </div>
+
+      {engine.project && isChapterView && (
+        <WriterToolsPanel
+          open={toolsPanelOpen}
+          onToggle={() => setToolsPanelOpen((v) => !v)}
+          isGenerated={activeChapterGenerated}
+          isGenerating={activeChapterIndex != null && engine.isGeneratingSection(`chapter-${activeChapterIndex}`)}
+          isEvaluating={activeChapterIndex != null && engine.isGeneratingSection(`eval-${activeChapterIndex}`)}
+          onGenerate={activeChapterIndex != null ? () => engine.generateSingleChapter(activeChapterIndex, { onChunkProgress: () => {} }) : undefined}
+          onListen={activeChapterIndex != null ? () => openVoiceStudioForChapter(activeChapterIndex) : undefined}
+          onAnalysis={() => triggerChapterTool("analysis")}
+          onPatch={() => triggerChapterTool("patch")}
+          onEvaluate={activeChapterIndex != null ? () => engine.evaluateChapter(activeChapterIndex) : undefined}
+          onRegenerate={activeChapterIndex != null ? () => engine.regenerateChapter(activeChapterIndex) : undefined}
+          onRewrite={activeChapterIndex != null ? (level: RewriteLevel) => engine.rewriteChapterWithDepth(activeChapterIndex, level) : undefined}
+          onAutoRewrite={activeChapterIndex != null ? (threshold: number) => engine.autoRewriteToThreshold(activeChapterIndex, threshold) : undefined}
+        />
+      )}
+      </div>
+
+      {engine.project && isChapterView && (
+        <MobileWriterBar
+          onOpenIndex={() => setSidebarOpen(true)}
+          onListen={activeChapterGenerated && activeChapterIndex != null ? () => openVoiceStudioForChapter(activeChapterIndex) : undefined}
+          onPatch={activeChapterGenerated ? () => triggerChapterTool("patch") : undefined}
+          onAnalysis={activeChapterGenerated ? () => triggerChapterTool("analysis") : undefined}
+          onMore={() => setWriterMenuOpen(true)}
+          listenDisabled={!activeChapterGenerated}
+          toolsDisabled={!activeChapterGenerated}
+        />
+      )}
 
       {showCover && engine.project && (
         <Suspense fallback={<VoiceStudioFallback />}>
