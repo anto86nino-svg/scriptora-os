@@ -123,35 +123,37 @@ function handleInterviewCompleteFactory({
   setSetting,
   setVoiceConsistency,
   setCommercialGoal,
+  setTargetReader,
   setShowAdvancedForge,
-}: any) {
-  return (state: any) => {
-    const extracted = state?.extracted || {};
+}: {
+  setNarrativePromise: (value: string) => void;
+  setCoreConflict: (value: string) => void;
+  setSetting: (value: string) => void;
+  setVoiceConsistency: (value: string) => void;
+  setCommercialGoal: (value: string) => void;
+  setTargetReader?: (value: string) => void;
+  setShowAdvancedForge: (value: boolean) => void;
+}) {
+  return (state: { extracted?: Record<string, string | undefined> }) => {
+    const extracted = state?.extracted ?? {};
 
     setNarrativePromise(
-      extracted.promise ||
-      extracted.readerTransformation ||
-      ""
+      cleanStr(extracted.promise) ||
+      cleanStr(extracted.readerTransformation),
     );
 
-    setCoreConflict(
-      extracted.centralConflict || ""
-    );
-
-    setSetting(
-      extracted.setting || ""
-    );
-
-    setVoiceConsistency(
-      extracted.emotionalTone || ""
-    );
-
-    setCommercialGoal(
-      extracted.promise || ""
-    );
+    setCoreConflict(cleanStr(extracted.centralConflict));
+    setSetting(cleanStr(extracted.setting));
+    setVoiceConsistency(cleanStr(extracted.emotionalTone));
+    setCommercialGoal(cleanStr(extracted.promise));
+    if (setTargetReader) setTargetReader(cleanStr(extracted.targetReader));
 
     setShowAdvancedForge(true);
   };
+}
+
+function cleanStr(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 const inputClass =
@@ -320,14 +322,27 @@ export function BookCreationOsWizard({
   const isFree = plan === "free";
   const [step, setStep] = useState(0);
   const [showAdvancedForge, setShowAdvancedForge] = useState(false);
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobileViewport(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   const [useGuidedInterview, setUseGuidedInterview] = useState(true);
   const [dnaConfirmed, setDnaConfirmed] = useState(false);
 
+  const mobileInterviewMode = isMobileViewport && step === 0 && useGuidedInterview;
+
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
   const [idea, setIdea] = useState("");
-  const [authorName, setAuthorName] = useState(authorIdentity.penName || "");
+  const [authorName, setAuthorName] = useState(authorIdentity?.penName?.trim() || "");
   const [language, setLanguage] = useState<Language>("Italian");
   const [amazonMarketplace, setAmazonMarketplace] = useState("amazon.it");
   const [category, setCategory] = useState("Fiction");
@@ -837,7 +852,7 @@ export function BookCreationOsWizard({
 
   useEffect(() => {
     setIdentityDraft(authorIdentity);
-    if (!authorName.trim()) setAuthorName(authorIdentity.penName || "");
+    if (!authorName.trim()) setAuthorName(authorIdentity?.penName?.trim() || "");
   }, [authorIdentity]);
 
   useEffect(() => {
@@ -1284,7 +1299,11 @@ export function BookCreationOsWizard({
                 {forgePresetId ? `Preset: ${forgePresetLabel || "Libro rapido"}` : `Macro step ${step + 1}/${STUDIO_STEPS.length} — ${stepLabel}`}
               </p>
             <p className="mt-0.5 text-[11px] text-white/45">
-                {forgePresetId ? "Configurazione rapida: controlla solo titolo, autore, lingua e idea." : "20 decisioni guidate prima della generazione reale"}
+                {useGuidedInterview
+                  ? "Book Forge · intervista chat-first fino al DNA Lock"
+                  : forgePresetId
+                    ? "Configurazione rapida: controlla solo titolo, autore, lingua e idea."
+                    : "20 decisioni guidate prima della generazione reale"}
               </p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white">
@@ -1300,7 +1319,32 @@ export function BookCreationOsWizard({
               touchAction: "pan-y",
             }}
           >
-          {step === 0 && (
+          {step === 0 && mobileInterviewMode ? (
+            <div className="flex min-h-[calc(100dvh-11rem)] flex-col">
+              <GuidedInterviewPanel
+                selectedGenre={mapForgeGenreToInterviewGenre(forgePresetId, bookTypeId)}
+                language={language}
+                variant="mobile"
+                onComplete={handleInterviewCompleteFactory({
+                  setNarrativePromise,
+                  setCoreConflict,
+                  setSetting,
+                  setVoiceConsistency,
+                  setCommercialGoal,
+                  setTargetReader,
+                  setShowAdvancedForge,
+                })}
+                onConfirmDna={() => {
+                  setDnaConfirmed(true);
+                  setShowAdvancedForge(true);
+                }}
+                onContinueInterview={() => {
+                  setDnaConfirmed(false);
+                  setShowAdvancedForge(false);
+                }}
+              />
+            </div>
+          ) : step === 0 && (
             <div className="space-y-3">
               <h2 className="text-xl font-semibold text-white">
                   {forgePresetId === "poetry" ? "Crea raccolta poetica" : forgePresetId ? `Crea ${forgePresetLabel || "libro"}` : "Crea libro"}
@@ -1436,18 +1480,21 @@ export function BookCreationOsWizard({
                 </div>
 
                 {useGuidedInterview && (
-                  <div className="mt-4 h-[620px] overflow-hidden rounded-[28px]">
+                  <div className={`mt-4 overflow-hidden rounded-[28px] ${isMobileViewport ? "h-[min(72dvh,680px)]" : "h-[620px]"}`}>
                     <GuidedInterviewPanel
                       selectedGenre={mapForgeGenreToInterviewGenre(
                         forgePresetId,
                         bookTypeId
                       )}
+                      language={language}
+                      variant={isMobileViewport ? "mobile" : "desktop"}
                       onComplete={handleInterviewCompleteFactory({
                         setNarrativePromise,
                         setCoreConflict,
                         setSetting,
                         setVoiceConsistency,
                         setCommercialGoal,
+                        setTargetReader,
                         setShowAdvancedForge,
                       })}
                       onConfirmDna={() => {

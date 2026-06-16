@@ -20,6 +20,11 @@ export interface InterviewMessage {
   createdAt: number;
 }
 
+export type InterviewQuickSuggestion = {
+  label: string;
+  value: string;
+};
+
 export interface InterviewQuestion {
   id: string;
   key: string;
@@ -27,6 +32,7 @@ export interface InterviewQuestion {
   helper?: string;
   placeholder?: string;
   genre?: InterviewGenre[];
+  quickSuggestions?: InterviewQuickSuggestion[];
 }
 
 export interface ExtractedBookIntent {
@@ -38,7 +44,8 @@ export interface ExtractedBookIntent {
   setting?: string;
   targetReader?: string;
   narrativeDrive?: string;
-  genreDNA?: string[];
+  genreDNA?: string;
+  targetReader?: string;
 }
 
 export interface GuidedInterviewState {

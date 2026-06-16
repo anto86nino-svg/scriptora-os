@@ -22,7 +22,7 @@ const MobileDesktopStudioNotice = lazyWithRetry(() => import("./mobile/MobileDes
 const Index = lazyWithRetry(() => import("./pages/Index.tsx"));
 const AuthPage = lazyWithRetry(() => import("./pages/Auth.tsx"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound.tsx"));
-const AutoBestsellerPage = lazyWithRetry(() => import("./pages/AutoBestsellerPage.tsx"));
+const AutoBestsellerRedirectPage = lazyWithRetry(() => import("./pages/AutoBestsellerRedirectPage.tsx"));
 const PricingPage = lazyWithRetry(() => import("./pages/PricingPage.tsx"));
 const KdpLaunchPage = lazyWithRetry(() => import("./pages/KdpLaunchPage.tsx"));
 const DownloadsPage = lazyWithRetry(() => import("./pages/DownloadsPage.tsx"));
@@ -72,7 +72,7 @@ const App = () => (
                 <Route path="/study" element={<ProtectedRoute><FeatureErrorBoundary featureName="Study OS"><StudyOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/study-session" element={<ProtectedRoute><FeatureErrorBoundary featureName="Study OS"><StudySessionPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/app" element={<ProtectedRoute><FeatureErrorBoundary featureName="Writer Studio"><Index /></FeatureErrorBoundary></ProtectedRoute>} />
-                <Route path="/auto-bestseller" element={<ProtectedRoute><FeatureErrorBoundary featureName="Auto Bestseller"><AutoBestsellerPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/auto-bestseller" element={<ProtectedRoute><FeatureErrorBoundary featureName="Book Forge"><AutoBestsellerRedirectPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/usage" element={<ProtectedRoute><FeatureErrorBoundary featureName="Usage"><UsagePage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/kdp-launch" element={<ProtectedRoute requiredFeature="kdp_market_base"><FeatureErrorBoundary featureName="KDP Launch"><MobileDesktopOnlyRoute featureName="KDP Launch"><KdpLaunchPage /></MobileDesktopOnlyRoute></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/downloads" element={<ProtectedRoute><FeatureErrorBoundary featureName="Downloads"><DownloadsPage /></FeatureErrorBoundary></ProtectedRoute>} />

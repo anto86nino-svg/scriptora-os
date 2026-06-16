@@ -160,7 +160,7 @@ export function BookDnaConfirmationPanel({
           disabled={!ready}
           className="rounded-2xl bg-violet-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
         >
-          Conferma DNA e genera blueprint
+          Conferma DNA
         </button>
       </div>
     </section>

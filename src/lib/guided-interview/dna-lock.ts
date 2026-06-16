@@ -24,6 +24,7 @@ const CRITICAL_FIELDS = [
   "genreDNA",
   "promise",
   "setting",
+  "targetReader",
 ] as const;
 
 function clean(value: unknown): string {
@@ -57,6 +58,8 @@ export function buildDnaLockFromInterviewState(
   const promise = clean((extracted as any).promise);
   const setting = clean((extracted as any).setting);
 
+  const targetReader = clean((extracted as any).targetReader);
+
   const missingCriticalAnswers = CRITICAL_FIELDS.filter(
     (field) => !hasMeaning((extracted as any)[field])
   );
@@ -68,6 +71,7 @@ export function buildDnaLockFromInterviewState(
     genreDNA && `DNA di genere/stile: ${genreDNA}`,
     promise && `Promessa narrativa/editoriale: ${promise}`,
     setting && `Mondo, contesto o atmosfera: ${setting}`,
+    targetReader && `Lettore ideale: ${targetReader}`,
   ].filter(Boolean) as string[];
 
   const whatBookIsNot = [

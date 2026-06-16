@@ -164,7 +164,11 @@ export default function MobileLiteDashboardPage() {
 
         <button
           type="button"
-          onClick={() => lastProject ? openProject(lastProject) : navigate("/auto-bestseller")}
+          onClick={() =>
+            lastProject
+              ? openProject(lastProject)
+              : navigate("/dashboard", { state: { openWizard: true } })
+          }
           className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white px-5 text-base font-bold text-slate-950 shadow-lg"
         >
           {lastProject ? "Continua a scrivere" : "Inizia il tuo libro"}
@@ -177,7 +181,7 @@ export default function MobileLiteDashboardPage() {
           icon={Plus}
           title="Nuovo libro"
           description="Idea, configurazione, blueprint e writer in un flusso guidato."
-          onClick={() => navigate("/auto-bestseller")}
+          onClick={() => navigate("/dashboard", { state: { openWizard: true } })}
         />
         <MobileLiteAction
           icon={GraduationCap}
@@ -256,7 +260,7 @@ export default function MobileLiteDashboardPage() {
 
       <nav className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] z-40 grid grid-cols-4 gap-2 rounded-3xl border border-white/10 bg-slate-950/96 p-2 shadow-xl">
         <LiteDockButton icon={BookOpen} label="Writer" onClick={() => openProject(lastProject)} />
-        <LiteDockButton icon={Plus} label="Nuovo" onClick={() => navigate("/auto-bestseller")} />
+        <LiteDockButton icon={Plus} label="Nuovo" onClick={() => navigate("/dashboard", { state: { openWizard: true } })} />
         <LiteDockButton icon={GraduationCap} label="Study" onClick={() => navigate("/study")} />
         <LiteDockButton icon={Library} label="Export" onClick={() => setShowExport(true)} disabled={projects.length === 0} />
       </nav>

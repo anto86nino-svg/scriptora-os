@@ -11,7 +11,7 @@ describe("guided interview DNA lock", () => {
 
     expect(lock.readyForBlueprint).toBe(false);
     expect(lock.confidenceScore).toBe(0.1);
-    expect(lock.missingCriticalAnswers.length).toBeGreaterThan(0);
+    expect(lock.missingCriticalAnswers.length).toBe(7);
     expect(lock.whatBookIs).toEqual([]);
     expect(lock.antiDriftRules).toEqual([]);
   });
@@ -36,6 +36,8 @@ describe("guided interview DNA lock", () => {
           "Un metodo semplice per riprendere controllo delle giornate senza perfezionismo.",
         setting:
           "Vita quotidiana moderna, lavoro, famiglia, stanchezza, caos digitale.",
+        targetReader:
+          "Professionisti e creativi under pressure che procrastinano per perfezionismo.",
       },
     } as any);
 

@@ -39,7 +39,7 @@ describe("BookDnaConfirmationPanel", () => {
     );
 
     const button = screen.getByRole("button", {
-      name: /Conferma DNA e genera blueprint/i,
+      name: /Conferma DNA/i,
     });
 
     expect(button).toBeEnabled();
@@ -53,7 +53,7 @@ describe("BookDnaConfirmationPanel", () => {
     expect(screen.getByText("centralConflict")).toBeInTheDocument();
 
     const button = screen.getByRole("button", {
-      name: /Conferma DNA e genera blueprint/i,
+      name: /Conferma DNA/i,
     });
 
     expect(button).toBeDisabled();

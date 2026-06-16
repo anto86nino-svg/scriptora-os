@@ -596,7 +596,7 @@ typeof crypto.randomUUID === "function"
     const best = Math.max(0, Math.min(2, i.bestTitleIndex || 0));
     const safeBookLength = currentPlan === "free" ? "short" : bookLength;
     sessionStorage.setItem(
-      "scriptora-auto-brief",
+      "scriptora-forge-brief",
       JSON.stringify({
         idea: idea.trim(),
         genre: i.genre,
@@ -620,10 +620,10 @@ typeof crypto.randomUUID === "function"
         authorIdentityId: activeAuthor.id,
         authorIdentity: activeAuthor,
         authorName: activeAuthor.penName,
-        autoStart: true,
-      })
+      }),
     );
-    navigate("/auto-bestseller");
+    setShowIdeaModal(false);
+    openNewBookGuarded();
   };
 
   const heroValid = idea.trim().length >= 6;
@@ -1015,7 +1015,7 @@ typeof crypto.randomUUID === "function"
           lastProjectTitle={lastProject?.config.title}
           lastProjectProgress={lastProjectProgress}
           onWriteBook={openNewBookGuarded}
-          onAutoBestsellerShortcut={() => navigate("/auto-bestseller")}
+          onAutoBestsellerShortcut={openNewBookGuarded}
           onOpenWriter={() => navigate("/writer")}
           onOpenPublishing={() => navigate("/publishing")}
           onOpenIdentity={() => navigate("/identity")}
@@ -1917,7 +1917,7 @@ typeof crypto.randomUUID === "function"
                 </div>
               ) : (
                 <button
-                  onClick={() => { setShowIdeaModal(false); navigate("/auto-bestseller"); }}
+                  onClick={() => { setShowIdeaModal(false); openNewBookGuarded(); }}
                   disabled={launching}
                   className="ios-toolbar-button h-11 px-4 text-sm font-medium disabled:opacity-50"
                 >
