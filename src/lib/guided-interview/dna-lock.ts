@@ -1,4 +1,11 @@
 import type { GuidedInterviewState } from "./types";
+import {
+  assessDnaQuality,
+  getBlockedDnaMessage,
+  sanitizeDnaText,
+  sanitizeExtractedFields,
+  type DnaQualityReport,
+} from "./dna-cleaner";
 
 export type BookDnaLock = {
   coreTopic?: string;
@@ -6,6 +13,15 @@ export type BookDnaLock = {
   targetReader?: string;
   tone?: string;
   educationalLevel?: string;
+
+  /** Inferred editorial identity */
+  inferredBookType?: string;
+  inferredGenre?: string;
+  inferredSubgenre?: string;
+  pacingLock?: string;
+  emotionalLock?: string;
+  promiseLock?: string;
+  forbiddenPatterns: string[];
 
   whatBookIs: string[];
   whatBookIsNot: string[];
@@ -15,7 +31,11 @@ export type BookDnaLock = {
   confidenceScore: number;
   missingCriticalAnswers: string[];
   readyForBlueprint: boolean;
+  dnaQuality: DnaQualityReport;
+  blockedMessage?: string;
 };
+
+export const CONFIDENCE_BLUEPRINT_THRESHOLD = 0.95;
 
 const CRITICAL_FIELDS = [
   "readerTransformation",
@@ -28,7 +48,7 @@ const CRITICAL_FIELDS = [
 ] as const;
 
 function clean(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
+  return sanitizeDnaText(value);
 }
 
 function hasMeaning(value: unknown, min = 12): boolean {
@@ -36,49 +56,72 @@ function hasMeaning(value: unknown, min = 12): boolean {
 }
 
 export function buildInitialDnaLock(): BookDnaLock {
+  const dnaQuality = assessDnaQuality({}, { missingCount: CRITICAL_FIELDS.length, confidence: 0.1 });
   return {
     confidenceScore: 0.1,
     whatBookIs: [],
     whatBookIsNot: [],
     antiDriftRules: [],
+    forbiddenPatterns: [],
     missingCriticalAnswers: [...CRITICAL_FIELDS],
     readyForBlueprint: false,
+    dnaQuality,
+    blockedMessage: getBlockedDnaMessage(dnaQuality),
   };
 }
 
-export function buildDnaLockFromInterviewState(
-  state: GuidedInterviewState
-): BookDnaLock {
-  const extracted = state.extracted ?? {};
+export function buildDnaLockFromInterviewState(state: GuidedInterviewState): BookDnaLock {
+  const sanitized = sanitizeExtractedFields((state.extracted ?? {}) as Record<string, unknown>);
+  const extracted = sanitized;
 
-  const readerTransformation = clean((extracted as any).readerTransformation);
-  const centralConflict = clean((extracted as any).centralConflict);
-  const emotionalTone = clean((extracted as any).emotionalTone);
-  const genreDNA = clean((extracted as any).genreDNA);
-  const promise = clean((extracted as any).promise);
-  const setting = clean((extracted as any).setting);
-
-  const targetReader = clean((extracted as any).targetReader);
+  const readerTransformation = clean(extracted.readerTransformation);
+  const centralConflict = clean(extracted.centralConflict);
+  const emotionalTone = clean(extracted.emotionalTone);
+  const genreDNA = clean(extracted.genreDNA);
+  const promise = clean(extracted.promise);
+  const setting = clean(extracted.setting);
+  const targetReader = clean(extracted.targetReader);
 
   const missingCriticalAnswers = CRITICAL_FIELDS.filter(
-    (field) => !hasMeaning((extracted as any)[field])
+    (field) => !hasMeaning(extracted[field]),
   );
 
+  const inferredGenre = state.selectedGenre || state.inferredProfile?.genre || undefined;
+  const inferredBookType = state.inferredProfile?.bookType || state.selectedBookType;
+  const inferredSubgenre = state.inferredProfile?.subgenre;
+  const pacingLock = state.inferredProfile?.pacing;
+  const emotionalLock = emotionalTone || state.inferredProfile?.tone;
+  const promiseLock = promise || readerTransformation;
+
   const whatBookIs = [
+    inferredBookType && `Tipo libro: ${inferredBookType}`,
+    inferredSubgenre && `Genere dedotto: ${inferredSubgenre}`,
     readerTransformation && `Trasformazione/promessa lettore: ${readerTransformation}`,
     centralConflict && `Conflitto o problema centrale: ${centralConflict}`,
     emotionalTone && `Tono emotivo dominante: ${emotionalTone}`,
-    genreDNA && `DNA di genere/stile: ${genreDNA}`,
+    genreDNA && `DNA editoriale: ${genreDNA}`,
     promise && `Promessa narrativa/editoriale: ${promise}`,
     setting && `Mondo, contesto o atmosfera: ${setting}`,
     targetReader && `Lettore ideale: ${targetReader}`,
+    pacingLock && `Ritmo/pacing: ${pacingLock}`,
   ].filter(Boolean) as string[];
 
   const whatBookIsNot = [
-    "Non deve cambiare genere senza conferma esplicita dell'autore.",
+    inferredGenre === "romance"
+      ? "Non deve diventare un saggio motivazionale mascherato."
+      : inferredGenre === "self-help"
+        ? "Non deve diventare un romanzo con troppa fiction."
+        : "Non deve cambiare genere senza conferma esplicita dell'autore.",
     "Non deve sostituire il cuore del libro con un tema più generico.",
     "Non deve ignorare tono, promessa e pubblico ricavati dall'intervista.",
-    "Non deve generare blueprint se mancano risposte critiche.",
+    "Non deve generare blueprint se mancano risposte critiche o DNA sporco.",
+  ];
+
+  const forbiddenPatterns = [
+    "Cambiare genere a metà struttura",
+    "Appiattire il tono emotivo verso il generico",
+    "Ignorare la promessa al lettore",
+    pacingLock ? `Tradire il pacing: ${pacingLock}` : "Tradire il ritmo narrativo dedotto",
   ];
 
   const antiDriftRules = [
@@ -88,41 +131,79 @@ export function buildDnaLockFromInterviewState(
     centralConflict
       ? `Ogni struttura deve servire questo conflitto/problema: ${centralConflict}`
       : "Prima di generare, chiarisci il conflitto o problema principale.",
-    emotionalTone
-      ? `Mantieni il tono emotivo richiesto: ${emotionalTone}`
+    emotionalLock
+      ? `Mantieni il tono emotivo richiesto: ${emotionalLock}`
       : "Prima di generare, chiarisci il tono emotivo.",
     genreDNA
-      ? `Non tradire il DNA di genere/stile: ${genreDNA}`
+      ? `Non tradire il DNA editoriale: ${genreDNA}`
       : "Prima di generare, chiarisci il DNA di genere o stile.",
+    promiseLock ? `Promessa lock: ${promiseLock}` : "Prima di generare, chiarisci la promessa editoriale.",
   ];
 
   const baseConfidence = typeof state.confidence === "number" ? state.confidence : 0.1;
-  const completenessBonus = (CRITICAL_FIELDS.length - missingCriticalAnswers.length) * 0.04;
-  const confidenceScore = Math.min(0.98, Math.max(0.1, baseConfidence + completenessBonus));
+  const inferenceBoost = state.inferredProfile?.confidence ?? 0;
+  const completenessBonus = (CRITICAL_FIELDS.length - missingCriticalAnswers.length) * 0.035;
+  const confidenceScore = Math.min(
+    0.99,
+    Math.max(0.1, baseConfidence + completenessBonus + inferenceBoost * 0.15),
+  );
+
+  const dnaQuality = assessDnaQuality(extracted, {
+    missingCount: missingCriticalAnswers.length,
+    confidence: confidenceScore,
+  });
+
+  const readyForBlueprint =
+    confidenceScore >= CONFIDENCE_BLUEPRINT_THRESHOLD &&
+    missingCriticalAnswers.length === 0 &&
+    dnaQuality.pass;
 
   return {
     coreTopic: promise || readerTransformation || centralConflict || undefined,
     primaryIntent: readerTransformation || promise || undefined,
-    targetReader: clean((extracted as any).targetReader) || undefined,
-    tone: emotionalTone || undefined,
-    educationalLevel: clean((extracted as any).educationalLevel) || undefined,
+    targetReader: targetReader || undefined,
+    tone: emotionalLock || undefined,
+    educationalLevel: clean(extracted.educationalLevel) || undefined,
+    inferredBookType,
+    inferredGenre,
+    inferredSubgenre,
+    pacingLock,
+    emotionalLock,
+    promiseLock,
+    forbiddenPatterns,
     whatBookIs,
     whatBookIsNot,
     antiDriftRules,
     confidenceScore,
     missingCriticalAnswers,
-    readyForBlueprint: confidenceScore >= 0.82 && missingCriticalAnswers.length <= 1,
+    readyForBlueprint,
+    dnaQuality,
+    blockedMessage: readyForBlueprint ? undefined : getBlockedDnaMessage(dnaQuality),
   };
 }
 
 export function getDnaLockReadinessMessage(lock: BookDnaLock): string {
   if (lock.readyForBlueprint) {
-    return "DNA del libro abbastanza chiaro: puoi confermare e generare il blueprint.";
+    return "DNA del libro chiaro al 95%+: puoi confermare e generare il blueprint.";
+  }
+
+  if (lock.blockedMessage && lock.missingCriticalAnswers.length === 0) {
+    return lock.blockedMessage;
   }
 
   if (lock.missingCriticalAnswers.length > 0) {
     return `Servono ancora risposte chiave: ${lock.missingCriticalAnswers.join(", ")}.`;
   }
 
-  return "Il DNA del libro esiste, ma la confidenza non è ancora abbastanza alta.";
+  if (lock.blockedMessage) return lock.blockedMessage;
+
+  if (lock.confidenceScore < CONFIDENCE_BLUEPRINT_THRESHOLD) {
+    return `Confidenza ${Math.round(lock.confidenceScore * 100)}% — serve almeno 95% prima del blueprint.`;
+  }
+
+  return "Il DNA del libro esiste, ma la qualità non è ancora abbastanza alta.";
+}
+
+export function persistDnaLock(state: GuidedInterviewState): BookDnaLock {
+  return buildDnaLockFromInterviewState(state);
 }

@@ -5,6 +5,7 @@ import type { StudioLaunchPayload } from "@/lib/book-config-studio/types";
 import { GuidedInterviewPanel } from "@/components/guided-interview/GuidedInterviewPanel";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
+import { saveForgeDnaLock } from "@/lib/guided-interview/interview-state";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/services/storageService";
 
@@ -22,6 +23,30 @@ export type MobileBookForgeProps = {
 };
 
 type Phase = "interview" | "blueprint";
+
+function ForgeTopHeader({ onClose }: { onClose: () => void }) {
+  return (
+    <header className="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <button
+        type="button"
+        onClick={onClose}
+        className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-white/12 px-3 text-sm font-medium text-white/80"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Dashboard
+      </button>
+      <div className="min-w-0 flex-1">
+        <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-violet-300/80">
+          <Sparkles className="h-3.5 w-3.5" />
+          Book Forge
+        </p>
+        <p className="truncate text-xs text-white/55">
+          Parla il libro a Scriptora. Non generiamo finché il DNA non è chiaro.
+        </p>
+      </div>
+    </header>
+  );
+}
 
 export function MobileBookForge({
   onClose,
@@ -54,41 +79,21 @@ export function MobileBookForge({
 
   if (phase === "interview") {
     return (
-      <div className="fixed inset-0 z-[100] flex min-h-[100dvh] flex-col overflow-hidden bg-[#07070b]">
-        <header className="flex shrink-0 items-center gap-3 border-b border-white/10 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-white/12 px-3 text-sm font-medium text-white/80"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Dashboard
-          </button>
-          <div className="min-w-0 flex-1">
-            <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-violet-300/80">
-              <Sparkles className="h-3.5 w-3.5" />
-              Book Forge
-            </p>
-            <p className="truncate text-xs text-white/55">
-              Parla il libro a Scriptora. Non generiamo finché il DNA non è chiaro.
-            </p>
-          </div>
-        </header>
-
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <GuidedInterviewPanel
-            variant="mobile"
-            language={authorIdentity.language || "Italian"}
-            onComplete={(data) => {
-              setInterviewState(data as GuidedInterviewState);
-            }}
-            onConfirmDna={(state) => {
-              setInterviewState(state);
-              setPhase("blueprint");
-            }}
-          />
-        </div>
-      </div>
+      <GuidedInterviewPanel
+        variant="mobile"
+        chatFirst
+        unifiedScroll
+        forgeHeader={<ForgeTopHeader onClose={onClose} />}
+        language={authorIdentity.language || "Italian"}
+        onComplete={(data) => {
+          setInterviewState(data as GuidedInterviewState);
+        }}
+        onConfirmDna={(state) => {
+          setInterviewState(state);
+          saveForgeDnaLock(state);
+          setPhase("blueprint");
+        }}
+      />
     );
   }
 
@@ -106,13 +111,16 @@ export function MobileBookForge({
     >
       <BookCreationOsWizard
         open
+        embeddedInMobileForge
+        mobileForgeHeader={<ForgeTopHeader onClose={onClose} />}
         forgeEntry="post-dna"
         initialStep={6}
         interviewSeed={
           interviewState
             ? {
                 extracted: interviewState.extracted as Record<string, string | undefined>,
-                selectedGenre: interviewState.selectedGenre,
+                selectedGenre: interviewState.selectedGenre || interviewState.inferredProfile?.genre,
+                dnaLock: interviewState.dnaLock,
               }
             : undefined
         }

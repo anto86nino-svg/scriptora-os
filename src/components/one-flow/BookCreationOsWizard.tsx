@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   X, ArrowLeft, ArrowRight, Rocket, Sparkles, Plus, Trash2, Users, Loader2,
   CheckCircle2, AlertTriangle, BookOpen, Clock3,
@@ -49,6 +49,7 @@ import {
   runBlueprintPreflight,
   type BlueprintPreflightResult,
 } from "@/lib/book-creation-os/blueprint-preflight";
+import { useMobileForgeBodyLock } from "@/hooks/useMobileForgeViewport";
 import {
   consumeWizardTitleFreeRegen,
   generateWizardTitleProposals,
@@ -84,6 +85,9 @@ interface BookCreationOsWizardProps {
     extracted?: Record<string, string | undefined>;
     selectedGenre?: string;
   };
+  /** Render inside Mobile Book Forge shell — single page scroll, no modal overlay. */
+  embeddedInMobileForge?: boolean;
+  mobileForgeHeader?: ReactNode;
 }
 
 function emptyCharacter(): BookCharacter {
@@ -352,7 +356,10 @@ export function BookCreationOsWizard({
   forgeEntry = "full",
   initialStep = 0,
   interviewSeed,
+  embeddedInMobileForge = false,
+  mobileForgeHeader,
 }: BookCreationOsWizardProps) {
+  useMobileForgeBodyLock(embeddedInMobileForge && open);
   const { plan } = usePlan();
   const isFree = plan === "free";
   const [step, setStep] = useState(forgeEntry === "post-dna" ? initialStep : 0);
@@ -1354,13 +1361,28 @@ export function BookCreationOsWizard({
   };
 
   return (
-    <div className="scriptora-modal-overlay fixed inset-0 z-[80] flex items-stretch justify-stretch overflow-hidden bg-black/70 p-[calc(env(safe-area-inset-top,0px)+0.35rem)_0.35rem_calc(env(safe-area-inset-bottom,0px)+0.35rem)] backdrop-blur-sm sm:items-center sm:justify-center sm:p-4">
+    <div
+      className={
+        embeddedInMobileForge
+          ? "scriptora-book-forge-mobile fixed inset-0 z-[100] flex h-[100dvh] max-h-[100dvh] flex-col bg-slate-950"
+          : "scriptora-modal-overlay fixed inset-0 z-[80] flex items-stretch justify-stretch overflow-hidden bg-black/70 p-[calc(env(safe-area-inset-top,0px)+0.35rem)_0.35rem_calc(env(safe-area-inset-bottom,0px)+0.35rem)] backdrop-blur-sm sm:items-center sm:justify-center sm:p-4"
+      }
+    >
+      {embeddedInMobileForge ? mobileForgeHeader : null}
       <div
-        className="scriptora-modal-panel scriptora-wizard-shell flex h-full min-h-0 w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-slate-950 shadow-2xl"
-          style={{
-            height: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.7rem)",
-            maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.7rem)",
-          }}
+        className={
+          embeddedInMobileForge
+            ? "flex min-h-0 flex-1 flex-col"
+            : "scriptora-modal-panel scriptora-wizard-shell flex h-full min-h-0 w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-slate-950 shadow-2xl"
+        }
+        style={
+          embeddedInMobileForge
+            ? undefined
+            : {
+                height: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.7rem)",
+                maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.7rem)",
+              }
+        }
       >
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4">
           <div>
@@ -1386,16 +1408,21 @@ export function BookCreationOsWizard({
                       : "20 decisioni guidate prima della generazione reale"}
               </p>
           </div>
+          {!embeddedInMobileForge && (
           <button type="button" onClick={onClose} className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white">
             <X className="h-5 w-5" />
           </button>
+          )}
         </div>
 
         <div
-            className="scriptora-modal-body scriptora-wizard-scroll min-h-0 flex-1 overflow-x-clip overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5"
+            className={
+              embeddedInMobileForge
+                ? "scriptora-book-forge-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 py-4 pb-8 sm:px-5 sm:py-5"
+                : "scriptora-modal-body scriptora-wizard-scroll min-h-0 flex-1 overflow-x-clip overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5"
+            }
             style={{
               WebkitOverflowScrolling: "touch",
-              overflowY: "auto",
               touchAction: "pan-y",
             }}
           >
@@ -2036,7 +2063,13 @@ export function BookCreationOsWizard({
                   </span>
                 </div>
 
-                <div className="max-h-[520px] space-y-4 overflow-y-auto pr-1">
+                <div
+                  className={
+                    postDnaForge && (embeddedInMobileForge || isMobileViewport)
+                      ? "space-y-4"
+                      : "max-h-[520px] space-y-4 overflow-y-auto pr-1"
+                  }
+                >
                   {blueprintPreview.chapterOutlines.map((outline, chapterIndex) => {
                     const subchapters = Array.isArray((outline as any).subchapters)
                       ? (outline as any).subchapters
@@ -2056,7 +2089,7 @@ export function BookCreationOsWizard({
                             onChange={(event) =>
                               updateBlueprintChapterTitle(chapterIndex, event.target.value)
                             }
-                            className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-base font-semibold text-white outline-none focus:border-amber-300/50"
+                            className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3.5 text-lg font-semibold text-white outline-none focus:border-amber-300/50 sm:text-base"
                             placeholder={`Titolo capitolo ${chapterIndex + 1}`}
                           />
                         </label>
@@ -2111,7 +2144,7 @@ export function BookCreationOsWizard({
           )}
         </div>
 
-        <div className="scriptora-wizard-footer flex shrink-0 items-center justify-between gap-3 border-t border-white/10 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-5 sm:py-4">
+        <div className="scriptora-wizard-footer flex shrink-0 items-center justify-between gap-3 border-t border-white/10 bg-slate-950/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:py-4">
           <button
             type="button"
             disabled={!postDnaForge && step === 0}

@@ -6,9 +6,18 @@ import type {
   InterviewQuickSuggestion,
 } from "./types";
 import { buildDnaLockFromInterviewState, type BookDnaLock } from "./dna-lock";
+import { sanitizeDnaText } from "./dna-cleaner";
+import {
+  getAdaptiveQuestion,
+  inferBookProfileFromText,
+  mergeInferenceIntoExtracted,
+} from "./dna-inference";
 
 const GENERIC_PLACEHOLDER =
-  "Inizia a scrivere liberamente… Scriptora organizzerà il resto.";
+  "Parla liberamente: idea, note, voce, caos… Scriptora organizzerà il resto.";
+
+export const OPENING_ASSISTANT_MESSAGE =
+  "Raccontami il cuore del libro che vuoi scrivere.";
 
 const STRONG_ANSWER_MIN = 12;
 
@@ -23,7 +32,7 @@ export const CRITICAL_FIELD_KEYS = [
 ] as const;
 
 function clean(value: unknown): string {
-  return typeof value === "string" ? value.trim() : "";
+  return sanitizeDnaText(value);
 }
 
 function hasStrongSignal(value: unknown): boolean {
@@ -343,12 +352,23 @@ const QUESTIONS_BY_GENRE: Record<InterviewGenre, InterviewQuestion[]> = {
 export function getInitialInterviewState(
   partial?: Partial<GuidedInterviewState>,
 ): GuidedInterviewState {
+  const chatFirst = partial?.chatFirst ?? !partial?.selectedGenre;
   const base = {
     completed: false,
     currentStep: 0,
-    confidence: 0.15,
-    messages: [],
+    confidence: 0.12,
+    messages: chatFirst
+      ? [
+          {
+            id: "assistant-opening",
+            role: "assistant" as const,
+            content: OPENING_ASSISTANT_MESSAGE,
+            createdAt: Date.now(),
+          },
+        ]
+      : [],
     extracted: {},
+    chatFirst,
     ...partial,
   };
   return {
@@ -370,7 +390,7 @@ function getWeakFields(state: GuidedInterviewState): string[] {
   );
 }
 
-/** Full static queue for genre + critical fields + follow-ups (order stable). */
+/** Full static queue — chat-first skips genre presets until inferred. */
 function buildFullQueue(state: GuidedInterviewState): InterviewQuestion[] {
   const queue: InterviewQuestion[] = [];
   const seenIds = new Set<string>();
@@ -381,7 +401,22 @@ function buildFullQueue(state: GuidedInterviewState): InterviewQuestion[] {
     queue.push(q);
   };
 
-  for (const q of getQuestionsForGenre(state.selectedGenre)) push(q);
+  const chatFirst = state.chatFirst && !state.selectedGenre;
+  if (!chatFirst) {
+    for (const q of getQuestionsForGenre(state.selectedGenre)) push(q);
+  } else {
+    push({
+      id: "chat-first-opening",
+      key: "readerTransformation",
+      question: OPENING_ASSISTANT_MESSAGE,
+      placeholder: GENERIC_PLACEHOLDER,
+    });
+  }
+
+  if (state.selectedGenre && state.chatFirst) {
+    for (const q of getQuestionsForGenre(state.selectedGenre)) push(q);
+  }
+
   for (const q of CRITICAL_FIELD_QUESTIONS) push(q);
   for (const field of CRITICAL_FIELD_KEYS) {
     for (const q of FOLLOW_UP_BY_FIELD[field] ?? []) push(q);
@@ -434,12 +469,19 @@ export function getNextInterviewQuestion(
 
   const weak = getWeakFields(state);
   if (weak.length > 0) {
+    const field = weak[0];
+    const adaptive = getAdaptiveQuestion(
+      (state.selectedGenre || state.inferredProfile?.genre) as InterviewGenre | undefined,
+      field,
+    );
     const fallback =
-      CRITICAL_FIELD_QUESTIONS.find((q) => q.key === weak[0]) ??
+      CRITICAL_FIELD_QUESTIONS.find((q) => q.key === field) ??
       ({
-        id: `adaptive-${weak[0]}-${state.currentStep}`,
-        key: weak[0],
-        question: `Aiutami a capire meglio ${weak[0]}: cosa deve essere chiarissimo per te?`,
+        id: `adaptive-${field}-${state.currentStep}`,
+        key: field,
+        question: adaptive.question,
+        helper: adaptive.helper,
+        quickSuggestions: adaptive.quickSuggestions,
         placeholder: GENERIC_PLACEHOLDER,
       } satisfies InterviewQuestion);
     return { done: false, question: fallback, state: { ...state, dnaLock } };
@@ -477,9 +519,18 @@ function calculateInterviewConfidence(
   ).length;
   score += longAnswers * 0.025;
 
+  if (strongCount >= CRITICAL_FIELD_KEYS.length) score += 0.1;
   if (strongCount >= CRITICAL_FIELD_KEYS.length - 1) score += 0.06;
 
-  return Math.min(0.96, score);
+  return Math.min(0.97, score);
+}
+
+function collectUserBlob(state: GuidedInterviewState, latest?: string): string {
+  const parts = state.messages
+    .filter((m) => m.role === "user")
+    .map((m) => m.content);
+  if (latest) parts.push(latest);
+  return parts.join("\n\n");
 }
 
 export function applyInterviewAnswer(
@@ -492,10 +543,23 @@ export function applyInterviewAnswer(
   const currentQuestion = findNextUnansweredQuestion(state);
   if (!currentQuestion) return state;
 
-  const extracted = {
+  let extracted = {
     ...state.extracted,
     [currentQuestion.key]: normalized,
   };
+
+  const userBlob = collectUserBlob(state, normalized);
+  const inference = inferBookProfileFromText(userBlob, extracted);
+  extracted = mergeInferenceIntoExtracted(extracted, inference, normalized);
+
+  const selectedGenre =
+    state.selectedGenre ||
+    inference.genre ||
+    undefined;
+  const selectedBookType =
+    state.selectedBookType ||
+    inference.bookType ||
+    undefined;
 
   const nextState: GuidedInterviewState = {
     ...state,
@@ -503,6 +567,13 @@ export function applyInterviewAnswer(
     completed: false,
     confidence: calculateInterviewConfidence(extracted as Record<string, unknown>),
     extracted,
+    selectedGenre,
+    selectedBookType,
+    inferredProfile: {
+      ...state.inferredProfile,
+      ...inference,
+      confidence: Math.max(state.inferredProfile?.confidence ?? 0, inference.confidence),
+    },
     messages: [
       ...state.messages,
       {

@@ -42,7 +42,7 @@ describe("guided interview DNA lock", () => {
     } as any);
 
     expect(lock.readyForBlueprint).toBe(true);
-    expect(lock.confidenceScore).toBeGreaterThanOrEqual(0.82);
+    expect(lock.confidenceScore).toBeGreaterThanOrEqual(0.95);
     expect(lock.missingCriticalAnswers).toEqual([]);
     expect(lock.whatBookIs.join(" ")).toContain("disciplina");
     expect(lock.antiDriftRules.join(" ")).toContain("Preserva sempre");

@@ -1,6 +1,6 @@
 import type { BookDnaLock } from "@/lib/guided-interview/dna-lock";
 import { getDnaLockReadinessMessage } from "@/lib/guided-interview/dna-lock";
-import { AlertTriangle, CheckCircle2, Fingerprint, LockKeyhole, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Fingerprint, LockKeyhole, Pencil, ShieldCheck } from "lucide-react";
 
 type BookDnaConfirmationPanelProps = {
   dnaLock?: BookDnaLock;
@@ -26,9 +26,9 @@ export function BookDnaConfirmationPanel({
             <Fingerprint className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold">DNA del libro non ancora costruito</h3>
+            <h3 className="text-lg font-semibold">Scriptora sta ascoltando</h3>
             <p className="text-sm text-slate-400">
-              Rispondi alle prime domande: Scriptora deve capire il libro prima di scriverlo.
+              Racconta il libro liberamente — genere, tono e promessa emergono dalla chat.
             </p>
           </div>
         </div>
@@ -37,9 +37,10 @@ export function BookDnaConfirmationPanel({
   }
 
   const ready = dnaLock.readyForBlueprint;
+  const discovery = dnaLock.confidenceScore >= 0.72;
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-slate-950/90 p-5 text-slate-100 shadow-2xl">
+    <section className="rounded-3xl border border-white/10 bg-slate-950/90 p-4 text-slate-100 shadow-2xl sm:p-5">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="flex items-start gap-3">
           <div className="rounded-2xl bg-violet-500/10 p-3 text-violet-300">
@@ -48,14 +49,15 @@ export function BookDnaConfirmationPanel({
 
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-violet-300/80">
-              Scriptora DNA Lock
+              {discovery ? "Genre discovery" : "DNA in costruzione"}
             </p>
             <h3 className="mt-1 text-xl font-semibold">
-              Questo è il libro che Scriptora ha capito
+              {discovery ? "Credo di aver capito il tuo libro" : "Sto scoprendo il tuo libro"}
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-              Prima del blueprint, conferma l’identità profonda del libro. Se qualcosa non torna,
-              continua l’intervista: è meglio una domanda in più adesso che un manoscritto fuori rotta dopo.
+              {ready
+                ? "DNA Lock attivo — conferma prima del blueprint."
+                : "Inferisco genere, tono e promessa. Se qualcosa non torna, correggi o continua l'intervista."}
             </p>
           </div>
         </div>
@@ -64,10 +66,23 @@ export function BookDnaConfirmationPanel({
           <p className="text-xs text-slate-400">Confidenza</p>
           <p className="text-2xl font-bold text-white">{formatPercent(dnaLock.confidenceScore)}</p>
           <p className={ready ? "text-xs text-emerald-300" : "text-xs text-amber-300"}>
-            {ready ? "Pronto per blueprint" : "Servono ancora segnali"}
+            {ready ? "Pronto per blueprint" : "Soglia 95%"}
           </p>
         </div>
       </div>
+
+      {(dnaLock.inferredBookType || dnaLock.inferredSubgenre) && (
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {dnaLock.inferredBookType && (
+            <DnaCard label="Tipo libro" value={dnaLock.inferredBookType} />
+          )}
+          {dnaLock.inferredSubgenre && (
+            <DnaCard label="Genere dedotto" value={dnaLock.inferredSubgenre} />
+          )}
+          {dnaLock.tone && <DnaCard label="Tono" value={dnaLock.tone} />}
+          {dnaLock.targetReader && <DnaCard label="Target" value={dnaLock.targetReader} />}
+        </div>
+      )}
 
       <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
         <div className="flex items-center gap-2">
@@ -78,6 +93,13 @@ export function BookDnaConfirmationPanel({
           )}
           <p className="text-sm font-medium">{getDnaLockReadinessMessage(dnaLock)}</p>
         </div>
+        {!ready && dnaLock.dnaQuality?.issues?.length > 0 && (
+          <ul className="mt-2 space-y-1 text-xs text-amber-200/90">
+            {dnaLock.dnaQuality.issues.map((issue) => (
+              <li key={issue}>• {issue}</li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
@@ -101,10 +123,7 @@ export function BookDnaConfirmationPanel({
         </div>
 
         <div className="rounded-2xl border border-rose-400/20 bg-rose-500/5 p-4">
-          <h4 className="mb-3 text-sm font-semibold text-rose-200">
-            Il libro non deve diventare
-          </h4>
-
+          <h4 className="mb-3 text-sm font-semibold text-rose-200">Cosa NON è</h4>
           <ul className="space-y-2 text-sm leading-6 text-slate-300">
             {dnaLock.whatBookIsNot.map((item, index) => (
               <li key={`${item}-${index}`} className="rounded-xl bg-black/20 p-3">
@@ -115,10 +134,7 @@ export function BookDnaConfirmationPanel({
         </div>
 
         <div className="rounded-2xl border border-violet-400/20 bg-violet-500/5 p-4">
-          <h4 className="mb-3 text-sm font-semibold text-violet-200">
-            Regole anti-drift
-          </h4>
-
+          <h4 className="mb-3 text-sm font-semibold text-violet-200">Regole anti-drift</h4>
           <ul className="space-y-2 text-sm leading-6 text-slate-300">
             {dnaLock.antiDriftRules.map((item, index) => (
               <li key={`${item}-${index}`} className="rounded-xl bg-black/20 p-3">
@@ -131,7 +147,7 @@ export function BookDnaConfirmationPanel({
 
       {dnaLock.missingCriticalAnswers.length > 0 && (
         <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-500/5 p-4">
-          <h4 className="text-sm font-semibold text-amber-200">Risposte ancora mancanti</h4>
+          <h4 className="text-sm font-semibold text-amber-200">Segnali ancora mancanti</h4>
           <div className="mt-3 flex flex-wrap gap-2">
             {dnaLock.missingCriticalAnswers.map((field) => (
               <span
@@ -149,9 +165,10 @@ export function BookDnaConfirmationPanel({
         <button
           type="button"
           onClick={onContinueInterview}
-          className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10"
         >
-          Continua l’intervista
+          <Pencil className="h-4 w-4" />
+          Correggi / Continua intervista
         </button>
 
         <button
@@ -164,5 +181,14 @@ export function BookDnaConfirmationPanel({
         </button>
       </div>
     </section>
+  );
+}
+
+function DnaCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-black/25 p-3">
+      <p className="text-[10px] uppercase tracking-[0.14em] text-white/45">{label}</p>
+      <p className="mt-1 line-clamp-2 text-xs font-semibold text-white">{value}</p>
+    </div>
   );
 }

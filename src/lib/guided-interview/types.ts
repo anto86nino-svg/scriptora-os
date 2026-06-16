@@ -1,4 +1,6 @@
 import type { BookDnaLock } from "./dna-lock";
+import type { InferredBookProfile } from "./dna-inference";
+
 export type InterviewRole = "assistant" | "user";
 
 export type InterviewGenre =
@@ -45,7 +47,6 @@ export interface ExtractedBookIntent {
   targetReader?: string;
   narrativeDrive?: string;
   genreDNA?: string;
-  targetReader?: string;
 }
 
 export interface GuidedInterviewState {
@@ -56,6 +57,10 @@ export interface GuidedInterviewState {
   messages: InterviewMessage[];
 
   extracted: ExtractedBookIntent;
+
+  /** Chat-first: Scriptora discovers genre — never asks upfront */
+  chatFirst?: boolean;
+  inferredProfile?: InferredBookProfile;
 
   selectedGenre?: string;
   selectedBookType?: string;

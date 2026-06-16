@@ -171,7 +171,7 @@ export default function MobileLiteDashboardPage() {
     "Autore";
 
   return (
-    <main className="scriptora-page-scroll min-h-[100dvh] bg-background px-4 pb-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] pt-3 safe-area-pt">
+    <main className="scriptora-page-scroll min-h-[100dvh] bg-background px-4 pb-[calc(env(safe-area-inset-bottom,0px)+6.75rem)] pt-3 safe-area-pt">
       <header className="sticky top-0 z-30 -mx-4 border-b border-white/10 bg-background/98 px-4 pb-3 pt-[calc(env(safe-area-inset-top,0px)+0.5rem)]">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
