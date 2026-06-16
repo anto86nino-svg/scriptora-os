@@ -46,6 +46,54 @@ function buildValidationBlock(family: BookTypeContext["definition"]["family"]): 
   return `VALIDATION: every scene/section must advance content, change state, or produce consequence — no spinning on the same idea. Family=${family}. ${familyChecks[family] || familyChecks.narrative}`;
 }
 
+function buildCategoryWritingMaxBlock(family: BookTypeContext["definition"]["family"]): string {
+  const blocks: Record<string, string> = {
+    narrative: `CATEGORY WRITING INTELLIGENCE MAX — NARRATIVE:
+- Every chapter must create story movement: desire changes, danger rises, intimacy shifts, trust breaks, knowledge changes, or a decision becomes unavoidable.
+- Character interiority must be dramatized through behavior, gesture, silence, subtext, conflict, and consequence.
+- Dialogue must carry friction. Avoid perfect therapeutic clarity, repeated emotional explanations, and instant healing.
+- The final movement of a chapter must leave pressure open: question, threat, attraction, secret, reversal, cost, clue, or hard choice.
+- Commercial goal: one-more-chapter momentum without sacrificing literary taste.`,
+
+    nonfiction: `CATEGORY WRITING INTELLIGENCE MAX — NONFICTION / SELF-HELP / BUSINESS:
+- Every chapter must transform the reader from confusion to usable clarity.
+- Use a strong structure: problem -> insight -> framework -> example -> exercise/checklist -> next action.
+- Avoid motivational fog, guru language, recycled advice, vague authority, and poetic filler.
+- Make concepts concrete with scenarios, decision paths, mistakes to avoid, and practical diagnostics.
+- Commercial goal: the reader must feel "this understands my problem and gives me something I can use today."`,
+
+    educational: `CATEGORY WRITING INTELLIGENCE MAX — EDUCATIONAL / STUDY:
+- Teach progressively: objective -> simple definition -> explanation -> example -> worked application -> recap -> check question.
+- Match the reader level. Do not sound like a university textbook unless the target requires it.
+- Use analogies only when they reduce difficulty. Avoid decorative storytelling that confuses the lesson.
+- Every section must reduce cognitive load and increase recall.
+- Commercial goal: the reader must feel smarter, calmer, and ready to answer questions.`,
+
+    manual: `CATEGORY WRITING INTELLIGENCE MAX — MANUAL / HOW-TO:
+- Every section must be executable, not inspirational.
+- Use prerequisites, numbered steps, examples, warnings, troubleshooting, edge cases, and verification checkpoints.
+- Separate "what to do", "why it matters", "common mistakes", and "how to know it worked".
+- Avoid theory without procedure and procedure without context.
+- Commercial goal: the reader must be able to perform the task with fewer errors.`,
+
+    cookbook: `CATEGORY WRITING INTELLIGENCE MAX — COOKBOOK / RECIPES:
+- Recipes must be specific: ingredients, quantities, timing, texture, technique, substitutions, mistakes, storage, and serving result.
+- Add sensory cues: color, smell, consistency, sound, doneness, and plating.
+- Avoid generic food adjectives without practical cooking information.
+- Each recipe/section must help the reader cook better, not just describe food beautifully.
+- Commercial goal: trustworthy kitchen guidance with appetite and precision.`,
+
+    poetry: `CATEGORY WRITING INTELLIGENCE MAX — POETRY:
+- Preserve silence, line tension, image logic, rhythm variation, and emotional pressure.
+- Concrete image beats abstract declaration. One precise object can carry the whole poem.
+- Avoid generic AI-poem phrases, repeated symbols, obvious explanations, and motivational poster endings.
+- Do not force novel/chapter structure onto poems.
+- Commercial goal: poems must feel authored, necessary, memorable, and rereadable.`,
+  };
+
+  return blocks[family] || blocks.narrative;
+}
+
 function buildEditorialRulesBlock(config: BookConfig, family: BookTypeContext["definition"]["family"]): string {
   const editorial = buildGenreEditorialBlock(config.genre, config.subcategory);
   const familyRules: Record<string, string> = {
@@ -107,6 +155,7 @@ export function buildBookTypeEngineBlock(config: BookConfig): string {
     ctx.titleRulesBlock,
     ctx.subchapterRulesBlock,
     ctx.humanizationBlock,
+    buildCategoryWritingMaxBlock(ctx.definition.family),
     ctx.validationBlock,
   ].join("\n\n");
 }
