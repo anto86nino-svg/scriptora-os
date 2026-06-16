@@ -235,6 +235,39 @@ export function getNextInterviewQuestion(
   };
 }
 
+
+function calculateInterviewConfidence(state: GuidedInterviewState, key: string, answer: string): number {
+  const normalized = (answer ?? "").trim();
+  if (!normalized) return state.confidence ?? 0;
+
+  let score = Math.max(0.15, state.confidence ?? 0.1);
+
+  const importantFields = [
+    "readerTransformation",
+    "centralConflict",
+    "emotionalTone",
+    "genreDNA",
+    "promise",
+    "setting",
+  ];
+
+  // base signal: we answered something
+  score += 0.10;
+
+  // structured questions answered add more confidence
+  for (const field of importantFields) {
+    const v = (state.extracted as any)?.[field];
+    if (typeof v === "string" && v.trim().length > 10) score += 0.08;
+  }
+
+  // longer answers indicate greater clarity
+  const longAnswers = Object.values(state.extracted ?? {})
+    .filter((v) => typeof v === "string" && (v as string).trim().length > 140).length;
+
+  score += longAnswers * 0.05;
+  return Math.min(0.96, score);
+}
+
 export function applyInterviewAnswer(
   state: GuidedInterviewState,
   answer: string
@@ -251,10 +284,7 @@ export function applyInterviewAnswer(
   return {
     ...state,
     currentStep: state.currentStep + 1,
-    confidence: Math.min(
-      0.92,
-      state.confidence + 0.15
-    ),
+    confidence: calculateInterviewConfidence(state, currentQuestion.key, answer),
     extracted: {
       ...state.extracted,
       [currentQuestion.key]: answer,
