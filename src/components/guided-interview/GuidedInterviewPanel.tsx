@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { BookDnaConfirmationPanel } from "./BookDnaConfirmationPanel";
 import {
   applyInterviewAnswer,
   getInitialInterviewState,
@@ -156,6 +157,13 @@ export function GuidedInterviewPanel({
           </div>
         </div>
       )}
+
+      <BookDnaConfirmationPanel
+        dnaLock={state.dnaLock}
+        onContinueInterview={onContinueInterview}
+        onConfirmDna={onConfirmDna}
+      />
+
     </div>
   );
 }
