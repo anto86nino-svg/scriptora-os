@@ -142,11 +142,28 @@ PAGE TURN ENGINE:
 - Every scene/chapter must leave a micro open loop: question, threat, attraction, secret, friction, promise, reversal or hard choice.
 - A beautiful sentence is allowed only when it increases pull. If it slows reading, compress it.
 - Endings should not feel fully emotionally solved unless this is an earned late-book payoff.
+- The final 10% of the chapter must introduce pressure: a consequence, withheld answer, new risk, intimate distance, contradiction, clue, deadline or irreversible choice.
+
+SCENE TURN MATRIX:
+- Every scene must change at least one thing: power, desire, danger, trust, knowledge, intimacy, status, plan or moral cost.
+- If the scene begins and ends with the same emotional information, transform it into action, revelation, decision or consequence.
+- No decorative scene: every beat must either reveal, escalate, complicate, tempt, wound, force a choice or make the next page necessary.
+
+VOICE FRICTION ENGINE:
+- Dialogue must contain resistance. Characters should dodge, interrupt, under-answer, overreact, joke badly, contradict themselves or say the almost-right thing.
+- Avoid perfect therapeutic clarity. Let characters protect themselves, misunderstand, lie by omission or change the subject.
+- Make subtext audible through what is avoided, not explained.
+
+CONCRETE SPECIFICITY ENGINE:
+- Replace abstract emotion with object, body, setting pressure, gesture, silence, interruption or physical choice.
+- Prefer one specific detail that carries meaning over three generic emotional sentences.
+- If a paragraph explains a feeling, ground it with visible behavior before it ends.
 
 BESTSELLER RHYTHM ENGINE:
 - Balance dialogue, gesture, silence, tension, mystery, introspection and consequence.
 - If introspection lasts too long, interrupt with object, body, decision or external pressure.
 - If dialogue sounds perfect, break it with avoidance, misfire, contradiction or a wrong joke.
+- Alternate compression and release: short pressure beats, then one breath, then a sharper turn.
 
 CANON LOCK V2:
 - Before writing, verify blueprint, character memory, active project canon, chapter continuity and protagonist truth.
@@ -167,8 +184,8 @@ FINAL V12 CHECK:
 }
 
 const V12_LEAKAGE_PATTERNS: RegExp[] = [
-  /^(HUMAN BESTSELLER MODE V12|CHARACTER OBSESSION ENGINE|PAGE TURN ENGINE|BESTSELLER RHYTHM ENGINE|CANON LOCK V2|ANTI-REPETITION V2|FINAL V12 CHECK)[:\s—-].*$/gim,
-  /\b(HUMAN BESTSELLER MODE V12|CHARACTER OBSESSION ENGINE|PAGE TURN ENGINE|BESTSELLER RHYTHM ENGINE|CANON LOCK V2|ANTI-REPETITION V2)\b/gi,
+  /^(HUMAN BESTSELLER MODE V12|CHARACTER OBSESSION ENGINE|PAGE TURN ENGINE|SCENE TURN MATRIX|VOICE FRICTION ENGINE|CONCRETE SPECIFICITY ENGINE|BESTSELLER RHYTHM ENGINE|CANON LOCK V2|ANTI-REPETITION V2|FINAL V12 CHECK)[:\s—-].*$/gim,
+  /\b(HUMAN BESTSELLER MODE V12|CHARACTER OBSESSION ENGINE|PAGE TURN ENGINE|SCENE TURN MATRIX|VOICE FRICTION ENGINE|CONCRETE SPECIFICITY ENGINE|BESTSELLER RHYTHM ENGINE|CANON LOCK V2|ANTI-REPETITION V2)\b/gi,
 ];
 
 const ITALIAN_OVEREXPLAINED_TRAUMA: RegExp[] = [
@@ -176,6 +193,9 @@ const ITALIAN_OVEREXPLAINED_TRAUMA: RegExp[] = [
   /«?\s*questa è la mia ferita emotiva[^».\n]*(?:[.»])?/gi,
   /«?\s*il mio punto cieco emotivo[^».\n]*(?:[.»])?/gi,
   /«?\s*ora sono finalmente guarita[^».\n]*(?:[.»])?/gi,
+  /«?\s*sto elaborando il mio dolore[^».\n]*(?:[.»])?/gi,
+  /«?\s*devo imparare ad amare me stessa[^».\n]*(?:[.»])?/gi,
+  /\bera come se il suo cuore (?:si spezzasse|avesse capito tutto)[^.\n]*(?:\.)?/gi,
 ];
 
 const ENGLISH_OVEREXPLAINED_TRAUMA: RegExp[] = [
@@ -183,6 +203,9 @@ const ENGLISH_OVEREXPLAINED_TRAUMA: RegExp[] = [
   /"?\s*this is my emotional wound[^".\n]*(?:[."])?/gi,
   /"?\s*my emotional blind spot is[^".\n]*(?:[."])?/gi,
   /"?\s*i am finally healed now[^".\n]*(?:[."])?/gi,
+  /"?\s*i am processing my pain[^".\n]*(?:[."])?/gi,
+  /"?\s*i need to learn to love myself[^".\n]*(?:[."])?/gi,
+  /\bit was as if her heart (?:broke|understood everything)[^.\n]*(?:\.)?/gi,
 ];
 
 function stripV12Leakage(text: string): string {
@@ -196,6 +219,27 @@ function reduceOverexplainedTrauma(text: string, language: string): string {
   const patterns = isItalian(language) ? ITALIAN_OVEREXPLAINED_TRAUMA : ENGLISH_OVEREXPLAINED_TRAUMA;
   for (const pattern of patterns) next = next.replace(pattern, "");
   return next;
+}
+
+function hardenFlatClosedEnding(text: string, language: string): string {
+  const paragraphs = text.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
+  if (paragraphs.length < 3) return text;
+
+  const last = paragraphs[paragraphs.length - 1] || "";
+  const closedItalian = /\b(finalmente|per sempre|tutto era chiaro|era finita|non aveva più paura|andrà tutto bene)\b/i.test(last);
+  const closedEnglish = /\b(finally|forever|everything was clear|it was over|she was no longer afraid|everything would be fine)\b/i.test(last);
+
+  if (isItalian(language) && closedItalian) {
+    paragraphs[paragraphs.length - 1] = last.replace(/\s*$/, " Ma qualcosa, nel silenzio dopo, non tornava.");
+    return paragraphs.join("\n\n");
+  }
+
+  if (!isItalian(language) && closedEnglish) {
+    paragraphs[paragraphs.length - 1] = last.replace(/\s*$/, " But something in the silence after it did not fit.");
+    return paragraphs.join("\n\n");
+  }
+
+  return text;
 }
 
 function removeBeatEchoes(text: string, priorText = ""): string {
@@ -237,6 +281,7 @@ export function applyHumanBestsellerModeV12Postprocess(
   if (family === "narrative") {
     next = reduceOverexplainedTrauma(next, language);
     next = removeBeatEchoes(next, opts.priorText || "");
+    next = hardenFlatClosedEnding(next, language);
     if (opts.config) {
       const previousChapters = opts.previousChapters || (opts.priorText ? [{ title: "Prior text", content: opts.priorText }] : []);
       next = applyStoryBibleLock(next, {

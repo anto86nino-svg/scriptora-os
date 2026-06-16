@@ -44,6 +44,9 @@ describe("Human Bestseller Mode V12", () => {
     expect(block).toContain("HUMAN BESTSELLER MODE V12");
     expect(block).toContain("CHARACTER OBSESSION ENGINE");
     expect(block).toContain("PAGE TURN ENGINE");
+    expect(block).toContain("SCENE TURN MATRIX");
+    expect(block).toContain("VOICE FRICTION ENGINE");
+    expect(block).toContain("CONCRETE SPECIFICITY ENGINE");
     expect(block).toContain("CANON LOCK V2");
     expect(block).toContain("Nora");
     expect(block).toContain("Damien");
@@ -63,6 +66,37 @@ describe("Human Bestseller Mode V12", () => {
     expect(result).not.toMatch(/raccontarti tutto il mio trauma/i);
     expect(result).toContain("Nora guardò");
     expect(result).toContain("Damien non toccò");
+  });
+
+  it("strips new V12 engine labels from leaked manuscript text", () => {
+    const raw = [
+      "SCENE TURN MATRIX:",
+      "Nora posò le chiavi sul tavolo.",
+      "VOICE FRICTION ENGINE:",
+      "Damien disse soltanto: «Non ora.»",
+      "CONCRETE SPECIFICITY ENGINE:",
+      "La porta rimase socchiusa.",
+    ].join("\n\n");
+
+    const result = applyHumanBestsellerModeV12Postprocess(raw, { config, language: "Italian" });
+
+    expect(result).not.toContain("SCENE TURN MATRIX");
+    expect(result).not.toContain("VOICE FRICTION ENGINE");
+    expect(result).not.toContain("CONCRETE SPECIFICITY ENGINE");
+    expect(result).toContain("Nora posò");
+    expect(result).toContain("Damien disse");
+  });
+
+  it("hardens flat closed endings with a light open loop", () => {
+    const raw = [
+      "Nora chiuse la finestra.",
+      "Damien rimase dietro di lei senza parlare.",
+      "Finalmente non aveva più paura.",
+    ].join("\n\n");
+
+    const result = applyHumanBestsellerModeV12Postprocess(raw, { config, language: "Italian" });
+
+    expect(result).toContain("non tornava");
   });
 
   it("uses StoryBibleLock to correct near-miss canonical character names", () => {
