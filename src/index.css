@@ -6663,6 +6663,7 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
 @media (max-width: 767px) {
   .scriptora-book-forge-mobile {
     touch-action: manipulation;
+    background: radial-gradient(900px 420px at 50% -5%, rgba(88, 28, 135, 0.14), transparent 55%), #07070b !important;
   }
 
   .scriptora-book-forge-scroll {
@@ -6741,7 +6742,66 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
   }
 
   .scriptora-manuscript-body {
-    font-size: 1.0625rem;
-    line-height: 1.8;
+    font-size: 1.125rem;
+    line-height: 1.75;
+  }
+
+  .scriptora-chapter-title-premium {
+    font-size: clamp(1.75rem, 5vw, 2rem) !important;
+    line-height: 1.2 !important;
+  }
+
+  .scriptora-manuscript-premium .scriptora-chapter-header p {
+    font-size: 0.6875rem;
+  }
+
+  .scriptora-mobile-book-nav {
+    animation: scriptora-nav-in 0.28s ease-out;
+  }
+
+  .scriptora-live-dna-discovery {
+    animation: scriptora-dna-in 0.35s ease-out;
+  }
+}
+
+@keyframes scriptora-nav-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scriptora-dna-in {
+  from {
+    opacity: 0.6;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 767px) {
+  html.scriptora-mobile-lite .scriptora-manuscript-body,
+  .scriptora-manuscript-body {
+    font-size: 1.125rem !important;
+    max-width: 100%;
+    line-height: 1.72 !important;
+  }
+
+  html.scriptora-mobile-lite .scriptora-chapter-title-premium,
+  .scriptora-chapter-title-premium {
+    font-size: clamp(1.75rem, 8vw, 2.25rem) !important;
+  }
+
+  .scriptora-story-progress-os {
+    top: 0;
+  }
+
+  .scriptora-mobile-chapter-card {
+    min-height: 4.25rem;
   }
 }

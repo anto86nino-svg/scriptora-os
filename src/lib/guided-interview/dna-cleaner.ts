@@ -18,11 +18,20 @@ function clean(value: unknown): string {
 
 /** Remove loops, dedupe phrases, normalize whitespace. */
 export function sanitizeDnaText(value: unknown): string {
+  return hardSanitizeDnaText(value);
+}
+
+/** Hard sanitize — dedupe tokens, remove loops, phrase repair, semantic compression. */
+export function hardSanitizeDnaText(value: unknown): string {
   let text = clean(value);
   if (!text) return "";
 
   text = text.replace(ARTIFACT_PATTERN, "$1 ");
   text = text.replace(REPETITION_LOOP, "$1");
+
+  // Phrase-level dedup: "un romanzo un romanzo" → "un romanzo"
+  text = text.replace(/\b(\w+(?:\s+\w+){0,3})\s+\1\b/gi, "$1");
+  text = text.replace(/\b(un|il|la|lo|di|che|e|a|in)\s+(?:\1\s+)+/gi, "$1 ");
 
   const words = text.split(/\s+/).filter(Boolean);
   const deduped: string[] = [];
@@ -39,9 +48,14 @@ export function sanitizeDnaText(value: unknown): string {
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim())
     .filter(Boolean);
-  const uniqueSentences = [...new Set(sentences.map((s) => s.toLowerCase()))].map((lower) =>
-    sentences.find((s) => s.toLowerCase() === lower) ?? lower,
-  );
+  const seen = new Set<string>();
+  const uniqueSentences: string[] = [];
+  for (const s of sentences) {
+    const key = s.toLowerCase().replace(/\s+/g, " ");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniqueSentences.push(s);
+  }
   text = uniqueSentences.join(" ").trim();
 
   if (text.length > 420) {
@@ -51,15 +65,26 @@ export function sanitizeDnaText(value: unknown): string {
   return text.replace(/\s{2,}/g, " ").trim();
 }
 
+export function isDnaTooDirtyToShow(extracted: Record<string, unknown>): boolean {
+  const joined = Object.values(extracted).map(hardSanitizeDnaText).join(" ");
+  if (!joined.trim()) return false;
+  const report = assessDnaQuality(extracted, { confidence: 1 });
+  return report.isDirty || report.isRepetitive || /\bun un\b|\bun romanzo un romanzo\b/i.test(joined);
+}
+
+export function repairDnaFields(extracted: Record<string, unknown>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(extracted)) {
+    const sanitized = hardSanitizeDnaText(value);
+    if (sanitized && sanitized.length >= 8) out[key] = sanitized;
+  }
+  return out;
+}
+
 export function sanitizeExtractedFields(
   extracted: Record<string, unknown>,
 ): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [key, value] of Object.entries(extracted)) {
-    const sanitized = sanitizeDnaText(value);
-    if (sanitized) out[key] = sanitized;
-  }
-  return out;
+  return repairDnaFields(extracted);
 }
 
 function repetitionScore(text: string): number {
@@ -76,17 +101,22 @@ export function assessDnaQuality(
   opts?: { missingCount?: number; confidence?: number },
 ): DnaQualityReport {
   const issues: string[] = [];
-  const values = Object.values(extracted).map(sanitizeDnaText).filter(Boolean);
+  const rawJoined = Object.values(extracted)
+    .map((v) => (typeof v === "string" ? v.trim() : ""))
+    .filter(Boolean)
+    .join(" ");
+  const values = Object.values(extracted).map(hardSanitizeDnaText).filter(Boolean);
   const joined = values.join(" ");
 
   const isRepetitive =
+    repetitionScore(rawJoined) > 0.22 ||
     repetitionScore(joined) > 0.22 ||
-    REPETITION_LOOP.test(joined) ||
-    /\b(\w+)\s+\1\b/i.test(joined);
+    REPETITION_LOOP.test(rawJoined) ||
+    /\b(\w+)\s+\1\b/i.test(rawJoined);
 
   const isDirty =
-    values.some((v) => v !== sanitizeDnaText(v)) ||
-    /\bun un\b|\bun romanzo un romanzo\b/i.test(joined);
+    /\bun un\b|\bun romanzo un romanzo\b/i.test(rawJoined) ||
+    (rawJoined.length > 0 && joined.length < rawJoined.length * 0.55);
 
   const isAmbiguous =
     values.length > 0 &&

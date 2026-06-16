@@ -1,9 +1,13 @@
 import type { BookDnaLock } from "@/lib/guided-interview/dna-lock";
 import { getDnaLockReadinessMessage } from "@/lib/guided-interview/dna-lock";
-import { AlertTriangle, CheckCircle2, Fingerprint, LockKeyhole, Pencil, ShieldCheck } from "lucide-react";
+import { isDnaTooDirtyToShow } from "@/lib/guided-interview/dna-cleaner";
+import type { GuidedInterviewState } from "@/lib/guided-interview/types";
+import { AlertTriangle, CheckCircle2, Fingerprint, Loader2, LockKeyhole, Pencil, ShieldCheck } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 type BookDnaConfirmationPanelProps = {
   dnaLock?: BookDnaLock;
+  extracted?: GuidedInterviewState["extracted"];
   onContinueInterview?: () => void;
   onConfirmDna?: () => void;
 };
@@ -15,9 +19,44 @@ function formatPercent(value: number | undefined): string {
 
 export function BookDnaConfirmationPanel({
   dnaLock,
+  extracted,
   onContinueInterview,
   onConfirmDna,
 }: BookDnaConfirmationPanelProps) {
+  const [clarifying, setClarifying] = useState(false);
+
+  const extractedRecord = useMemo(
+    () => (extracted ?? {}) as Record<string, unknown>,
+    [extracted],
+  );
+
+  const dirty = useMemo(
+    () => isDnaTooDirtyToShow(extractedRecord),
+    [extractedRecord],
+  );
+
+  useEffect(() => {
+    if (!dirty) {
+      setClarifying(false);
+      return;
+    }
+    setClarifying(true);
+    const timer = window.setTimeout(() => setClarifying(false), 1600);
+    return () => window.clearTimeout(timer);
+  }, [dirty, extractedRecord]);
+
+  if (clarifying) {
+    return (
+      <section className="rounded-3xl border border-violet-400/20 bg-violet-500/10 p-6 text-center text-slate-100 shadow-2xl">
+        <Loader2 className="mx-auto h-6 w-6 animate-spin text-violet-300" />
+        <p className="mt-3 text-sm font-medium text-violet-100">
+          Scriptora sta chiarendo il DNA del libro…
+        </p>
+        <p className="mt-1 text-xs text-white/45">Un attimo — niente output sporco.</p>
+      </section>
+    );
+  }
+
   if (!dnaLock) {
     return (
       <section className="rounded-3xl border border-white/10 bg-slate-950/80 p-5 text-slate-100 shadow-2xl">

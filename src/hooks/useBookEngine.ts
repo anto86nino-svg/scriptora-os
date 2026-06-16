@@ -26,6 +26,7 @@ import {
   runEvaluateChapterQuality,
 } from "@/lib/generation-runtime";
 import { initialPhaseAfterBlueprint, phaseAfterAllChapters } from "@/lib/matter-options";
+import { scaffoldMatterForApprovedBlueprint } from "@/lib/matter-scaffold";
 import { refreshProjectLongBookMemory } from "@/lib/long-book-memory";
 import { isMemoryConsistencyV25Enabled, refreshProjectMemoryConsistencyV25 } from "@/lib/memory-consistency-v25";
 
@@ -488,14 +489,16 @@ typeof crypto.randomUUID === "function"
       return;
     }
     const now = new Date().toISOString();
+    const matterPatch = scaffoldMatterForApprovedBlueprint(p);
     updateAndSave(proj => ({
       ...proj,
       blueprintApproved: true,
       blueprintApprovedAt: now,
       configStatus: "approved",
       phase: initialPhaseAfterBlueprint(proj.config),
+      ...matterPatch,
     }));
-    addMessage("assistant", "✅ Struttura approvata. Puoi generare front matter, capitoli e back matter.");
+    addMessage("assistant", "✅ Struttura approvata. Front/back matter pronti. Puoi generare capitoli ed esportare.");
     toast.success("Blueprint approvato — generazione sbloccata");
   }, [project, addMessage, updateAndSave]);
 

@@ -2,6 +2,7 @@ import type { ReactNode, RefObject } from "react";
 import { useRef } from "react";
 import { Mic, MicOff, Send, Sparkles } from "lucide-react";
 import { BookDnaConfirmationPanel } from "./BookDnaConfirmationPanel";
+import { LiveDnaDiscovery } from "./LiveDnaDiscovery";
 import { useGuidedInterviewController } from "./useGuidedInterviewController";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import { MobileForgeScrollShell } from "@/mobile/MobileForgeScrollShell";
@@ -77,6 +78,7 @@ export function GuidedInterviewPanel({
           <>
             {forgeHeader}
             <ConfidenceStrip confidencePct={ctrl.confidencePct} progress={ctrl.progress} compact />
+            <LiveDnaDiscovery state={ctrl.state} isThinking={ctrl.isThinking} compact />
           </>
         }
         footer={inputFooter}
@@ -95,7 +97,10 @@ export function GuidedInterviewPanel({
     >
       {!hideHeader && <DesktopHeader confidencePct={ctrl.confidencePct} progress={ctrl.progress} />}
       {hideHeader && !unifiedScroll && (
-        <ConfidenceStrip confidencePct={ctrl.confidencePct} progress={ctrl.progress} compact />
+        <>
+          <ConfidenceStrip confidencePct={ctrl.confidencePct} progress={ctrl.progress} compact />
+          {isMobile && <LiveDnaDiscovery state={ctrl.state} isThinking={ctrl.isThinking} compact />}
+        </>
       )}
 
       <div className={cn("flex min-h-0 flex-1 flex-col", !isMobile && "lg:grid lg:grid-cols-[1fr_280px]")}>
@@ -116,6 +121,7 @@ export function GuidedInterviewPanel({
           <div className="shrink-0 border-t border-white/10 p-3 sm:p-4">
             <BookDnaConfirmationPanel
               dnaLock={ctrl.progress.dnaLock}
+              extracted={ctrl.state.extracted}
               onContinueInterview={ctrl.handleContinueInterview}
               onConfirmDna={ctrl.handleConfirmDna}
             />
@@ -253,6 +259,7 @@ function InterviewBody({
         <div className="pt-2">
           <BookDnaConfirmationPanel
             dnaLock={ctrl.progress.dnaLock}
+            extracted={ctrl.state.extracted}
             onContinueInterview={ctrl.handleContinueInterview}
             onConfirmDna={ctrl.handleConfirmDna}
           />

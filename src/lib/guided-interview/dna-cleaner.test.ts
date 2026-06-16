@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { sanitizeDnaText, assessDnaQuality } from "./dna-cleaner";
+import { sanitizeDnaText, assessDnaQuality, hardSanitizeDnaText, isDnaTooDirtyToShow } from "./dna-cleaner";
 
 describe("dna-cleaner", () => {
   it("removes repetition loops", () => {
     const dirty = "un un un romanzo un romanzo d'amore intenso";
-    const clean = sanitizeDnaText(dirty);
+    const clean = hardSanitizeDnaText(dirty);
     expect(clean).not.toMatch(/un un un/);
     expect(clean.toLowerCase()).toContain("romanzo");
+  });
+
+  it("dedupes phrase repetition", () => {
+    const dirty = "un romanzo un romanzo d'amore";
+    expect(hardSanitizeDnaText(dirty).toLowerCase()).not.toMatch(/romanzo un romanzo/);
+  });
+
+  it("flags dirty DNA for hiding", () => {
+    expect(isDnaTooDirtyToShow({ promise: "un un un romanzo un romanzo" })).toBe(true);
   });
 
   it("blocks dirty repetitive DNA", () => {

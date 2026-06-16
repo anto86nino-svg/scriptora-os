@@ -35,6 +35,8 @@ import { WriterCleanHeader } from "@/components/writer/WriterCleanHeader";
 import { WriterToolsPanel } from "@/components/writer/WriterToolsPanel";
 import { MobileWriterBar } from "@/components/writer/MobileWriterBar";
 import { WriterOverflowMenu } from "@/components/writer/WriterOverflowMenu";
+import { MobileBookNavigator } from "@/mobile/MobileBookNavigator";
+import { StoryProgressOs } from "@/mobile/StoryProgressOs";
 import type { RewriteLevel } from "@/lib/generation-types";
 import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
@@ -171,6 +173,7 @@ const Index = () => {
     const saved = localStorage.getItem("scriptora-sidebar-open");
     return saved ? JSON.parse(saved) : false;
   });
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [coverDataUrl, setCoverDataUrl] = useState<string | undefined>();
   const [coverGateOpen, setCoverGateOpen] = useState(false);
   const [pendingExportFormat, setPendingExportFormat] = useState<ExportFormat | null>(null);
@@ -581,9 +584,15 @@ const Index = () => {
 
   return (
     <div className="scriptora-ios-screen scriptora-app-surface scriptora-writer-studio relative flex min-h-[100dvh] overflow-x-hidden overflow-y-visible lg:flex-row">
-      {/* Floating sidebar toggle — mobile only */}
+      {/* Floating sidebar toggle — mobile opens fullscreen navigator; desktop toggles sidebar */}
       <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
+        onClick={() => {
+          if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
+            setMobileNavOpen(true);
+          } else {
+            setSidebarOpen(!sidebarOpen);
+          }
+        }}
         className={`scriptora-writer-menu-btn fixed left-2 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] z-50 flex items-center justify-center rounded-[10px] border border-white/10 bg-background/90 p-0 text-foreground shadow-md backdrop-blur-md lg:hidden ${
           guidedFlowEnabled && !!engine.project?.blueprint && !sidebarOpen ? "scriptora-guide-pulse" : ""
         }`}
@@ -592,9 +601,24 @@ const Index = () => {
         {sidebarOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
       </button>
 
-      {/* Overlay for mobile */}
+      {engine.project && (
+        <MobileBookNavigator
+          open={mobileNavOpen}
+          onClose={() => setMobileNavOpen(false)}
+          project={engine.project}
+          activeSection={activeSection}
+          generatingSet={engine.generatingSet}
+          chunkProgress={engine.chunkProgress}
+          onSelectSection={(s) => {
+            setActiveSection(s);
+            setMobileNavOpen(false);
+          }}
+        />
+      )}
+
+      {/* Overlay for mobile legacy sidebar — disabled; fullscreen nav replaces it */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-30 bg-black/[0.55] backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 z-30 hidden bg-black/[0.55] backdrop-blur-sm lg:block" onClick={() => setSidebarOpen(false)} />
       )}
 
       {openedFromDashboard && (
@@ -614,11 +638,7 @@ const Index = () => {
 
       {/* Left Sidebar — Story Navigator */}
       <aside
-        className={`ios-sidebar scriptora-story-nav fixed z-40 flex h-[100dvh] min-h-0 shrink-0 flex-col overflow-hidden pb-safe transition-all duration-300 ease-out lg:sticky lg:top-0 lg:z-auto lg:h-[100dvh] lg:w-[min(280px,25%)] lg:translate-x-0 lg:opacity-100 lg:pb-0 ${
-          sidebarOpen
-            ? "translate-x-0 w-[min(280px,25%)] opacity-100"
-            : "-translate-x-full w-0 opacity-0 lg:translate-x-0 lg:w-[min(280px,25%)] lg:opacity-100"
-        }`}
+        className="ios-sidebar scriptora-story-nav hidden lg:flex lg:sticky lg:top-0 lg:z-auto lg:h-[100dvh] lg:w-[min(280px,25%)] lg:min-h-0 lg:shrink-0 lg:flex-col lg:overflow-hidden lg:pb-0"
       >
         <div className="flex items-center justify-between border-b border-white/10 p-3 pl-14 md:pl-3">
           <div className="flex items-center gap-2 min-w-0">
@@ -765,6 +785,15 @@ const Index = () => {
           </div>
         )}
 
+        {engine.project && (
+          <StoryProgressOs
+            project={engine.project}
+            activeSection={activeSection}
+            generatingSet={engine.generatingSet}
+            chunkProgress={engine.chunkProgress}
+          />
+        )}
+
         {!isChapterView && (
         <GuidedProjectFlow
           project={engine.project}
@@ -772,7 +801,13 @@ const Index = () => {
           sidebarOpen={sidebarOpen}
           enabled={guidedFlowEnabled}
           onEnabledChange={setGuidedFlowEnabled}
-          onOpenSidebar={() => setSidebarOpen(true)}
+          onOpenSidebar={() => {
+            if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
+              setMobileNavOpen(true);
+            } else {
+              setSidebarOpen(true);
+            }
+          }}
           onSelectSection={(section) => {
             setActiveSection(section);
             setSidebarOpen(false);
@@ -932,7 +967,7 @@ const Index = () => {
 
       {engine.project && isChapterView && (
         <MobileWriterBar
-          onOpenIndex={() => setSidebarOpen(true)}
+          onOpenIndex={() => setMobileNavOpen(true)}
           onListen={activeChapterGenerated && activeChapterIndex != null ? () => openVoiceStudioForChapter(activeChapterIndex) : undefined}
           onPatch={activeChapterGenerated ? () => triggerChapterTool("patch") : undefined}
           onAnalysis={activeChapterGenerated ? () => triggerChapterTool("analysis") : undefined}
