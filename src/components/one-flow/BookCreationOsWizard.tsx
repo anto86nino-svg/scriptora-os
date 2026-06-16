@@ -1127,6 +1127,12 @@ export function BookCreationOsWizard({
       return;
     }
     if (step === 6) {
+      if (useGuidedInterview && !dnaConfirmed) {
+        toast.error("Conferma il DNA del libro prima di generare il blueprint.");
+        setShowAdvancedForge(true);
+        return;
+      }
+
       if (!onGenerateBlueprint) {
         const config = buildConfig();
         onStudioComplete?.({ config, mode: "studio-draft" });
