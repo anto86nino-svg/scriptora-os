@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   BookOpen,
@@ -8,11 +8,12 @@ import {
   GraduationCap,
   Library,
   Loader2,
-  Plus,
+  Sparkles,
   UserRound,
   WalletCards,
 } from "lucide-react";
-import type { BookProject } from "@/types/book";
+import type { AuthorIdentity, BookBlueprint, BookConfig, BookProject } from "@/types/book";
+import type { StudioLaunchPayload } from "@/lib/book-config-studio/types";
 import { AuthSessionButton } from "@/components/auth/AuthSessionButton";
 import { GlobalCreditBar } from "@/components/billing/GlobalCreditBar";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
@@ -20,6 +21,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { getProjectCoverDataUrl } from "@/lib/cover-session";
 import { isProjectComplete } from "@/lib/project-status";
 import { getLastProjectId, loadProjects, setLastProjectId } from "@/services/storageService";
+import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity } from "@/lib/author-identity";
+import { normalizeBookConfig } from "@/lib/book-config-studio/defaults";
+import { buildBookTypeLock as buildGenreLock } from "@/lib/book-type-engine";
+import { runGenerateBlueprint } from "@/lib/generation-runtime";
+import { usePlan } from "@/lib/plan";
+import { toast } from "sonner";
+import { MobileBookForge } from "@/mobile/MobileBookForge";
 
 const HomeExportDialog = lazy(() =>
   import("@/components/HomeExportDialog").then((m) => ({ default: m.HomeExportDialog })),
@@ -59,10 +67,59 @@ function coverFor(project?: BookProject | null): string | null {
 
 export default function MobileLiteDashboardPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+  const { currentPlan } = usePlan();
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [showExport, setShowExport] = useState(false);
+  const [showBookForge, setShowBookForge] = useState(false);
+  const [authorIdentity, setAuthorIdentity] = useState<AuthorIdentity>(() => getSelectedAuthorIdentity());
+
+  const freeBookUsed = currentPlan === "free" && projects.length > 0;
+
+  const openMobileBookForge = useCallback(() => {
+    if (freeBookUsed) {
+      toast.error("Hai già usato il libro gratuito. Passa a un piano superiore per crearne altri.");
+      navigate("/pricing");
+      return;
+    }
+    setAuthorIdentity(getSelectedAuthorIdentity());
+    setShowBookForge(true);
+  }, [freeBookUsed, navigate]);
+
+  useEffect(() => {
+    const state = location.state as { openForge?: boolean; openWizard?: boolean; openNewBook?: boolean } | null;
+    if (!state?.openForge && !state?.openWizard && !state?.openNewBook) return;
+    openMobileBookForge();
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate, openMobileBookForge]);
+
+  const handleStudioComplete = useCallback(
+    (payload: StudioLaunchPayload) => {
+      const finalConfig = applyAuthorIdentityToConfig(
+        normalizeBookConfig(payload.config),
+        authorIdentity,
+      ) as BookConfig;
+      sessionStorage.setItem(
+        "scriptora-new-book",
+        JSON.stringify({
+          ...payload,
+          config: finalConfig,
+        }),
+      );
+      setShowBookForge(false);
+      navigate("/app");
+    },
+    [authorIdentity, navigate],
+  );
+
+  const handleGenerateBlueprint = useCallback(async (config: BookConfig): Promise<BookBlueprint> => {
+    const finalConfig = applyAuthorIdentityToConfig(normalizeBookConfig(config), authorIdentity) as BookConfig;
+    const genreLock = buildGenreLock(finalConfig);
+    const { blueprint } = await runGenerateBlueprint(finalConfig, genreLock);
+    return blueprint;
+  }, [authorIdentity]);
 
   useEffect(() => {
     let mounted = true;
@@ -164,24 +221,20 @@ export default function MobileLiteDashboardPage() {
 
         <button
           type="button"
-          onClick={() =>
-            lastProject
-              ? openProject(lastProject)
-              : navigate("/dashboard", { state: { openWizard: true } })
-          }
+          onClick={() => (lastProject ? openProject(lastProject) : openMobileBookForge())}
           className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white px-5 text-base font-bold text-slate-950 shadow-lg"
         >
-          {lastProject ? "Continua a scrivere" : "Inizia il tuo libro"}
+          {lastProject ? "Continua a scrivere" : "Apri Book Forge"}
           <ArrowRight className="h-5 w-5" />
         </button>
       </section>
 
       <section className="mt-4 grid gap-3">
         <MobileLiteAction
-          icon={Plus}
-          title="Nuovo libro"
-          description="Idea, configurazione, blueprint e writer in un flusso guidato."
-          onClick={() => navigate("/dashboard", { state: { openWizard: true } })}
+          icon={Sparkles}
+          title="Book Forge"
+          description="Racconta il libro a Scriptora: intervista, DNA Lock, blueprint e indice editabile."
+          onClick={openMobileBookForge}
         />
         <MobileLiteAction
           icon={GraduationCap}
@@ -252,7 +305,7 @@ export default function MobileLiteDashboardPage() {
           ))}
           {!loading && projects.length === 0 && (
             <div className="rounded-2xl border border-dashed border-white/12 p-4 text-sm leading-6 text-white/58">
-              Nessun libro ancora. Parti da un'idea e lascia che Scriptora costruisca il blueprint.
+              Nessun libro ancora. Apri Book Forge e racconta il libro a Scriptora.
             </div>
           )}
         </div>
@@ -260,10 +313,19 @@ export default function MobileLiteDashboardPage() {
 
       <nav className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] z-40 grid grid-cols-4 gap-2 rounded-3xl border border-white/10 bg-slate-950/96 p-2 shadow-xl">
         <LiteDockButton icon={BookOpen} label="Writer" onClick={() => openProject(lastProject)} />
-        <LiteDockButton icon={Plus} label="Nuovo" onClick={() => navigate("/dashboard", { state: { openWizard: true } })} />
+        <LiteDockButton icon={Sparkles} label="Forge" onClick={openMobileBookForge} />
         <LiteDockButton icon={GraduationCap} label="Study" onClick={() => navigate("/study")} />
         <LiteDockButton icon={Library} label="Export" onClick={() => setShowExport(true)} disabled={projects.length === 0} />
       </nav>
+
+      {showBookForge && (
+        <MobileBookForge
+          onClose={() => setShowBookForge(false)}
+          authorIdentity={authorIdentity}
+          onStudioComplete={handleStudioComplete}
+          onGenerateBlueprint={handleGenerateBlueprint}
+        />
+      )}
 
       {showExport && (
         <Suspense fallback={<ScriptoraAliveTransition compact overlay tone="export" title="Sto aprendo Export..." steps={["Controllo libro...", "Preparo formati..."]} />}>

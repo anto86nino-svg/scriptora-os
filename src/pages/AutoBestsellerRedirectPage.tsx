@@ -6,7 +6,7 @@ export default function AutoBestsellerRedirectPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    navigate("/dashboard", { replace: true, state: { openWizard: true } });
+    navigate("/dashboard", { replace: true, state: { openForge: true } });
   }, [navigate]);
 
   return (

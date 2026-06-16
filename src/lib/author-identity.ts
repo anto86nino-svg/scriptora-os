@@ -106,9 +106,9 @@ typeof crypto.randomUUID === "function"
 ? crypto.randomUUID()
 : `id-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 )}`,
-    name: identity.name.trim() || identity.penName.trim() || identity.realName?.trim() || "Nuovo autore",
+    name: String(identity.name || identity.penName || identity.realName || "Nuovo autore").trim(),
     realName: String(identity.realName || "").trim(),
-    penName: identity.penName.trim() || identity.name.trim() || "Autore",
+    penName: String(identity.penName || identity.name || "Autore").trim(),
     copyrightName: String(identity.copyrightName || identity.realName || identity.penName || identity.name || "").trim(),
     biography: String(identity.biography || "").trim(),
     authorNote: String(identity.authorNote || "").trim(),

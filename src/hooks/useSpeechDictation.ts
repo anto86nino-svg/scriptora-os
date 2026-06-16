@@ -71,7 +71,17 @@ export function useSpeechDictation(language?: string) {
         };
 
         recognition.onerror = (event: any) => {
-          setError(event?.error ? `Errore microfono: ${event.error}` : "Errore microfono.");
+          const code = String(event?.error || "").toLowerCase();
+          let message = "Dettatura non disponibile. Puoi continuare scrivendo.";
+          if (code === "network") {
+            message =
+              "La dettatura del browser non è disponibile ora. Puoi continuare scrivendo o riprovare da Chrome con connessione attiva.";
+          } else if (code === "not-allowed" || code === "permission-denied") {
+            message = "Permesso microfono negato. Abilita il microfono nel browser e riprova.";
+          } else if (code === "no-speech") {
+            message = "Non ho sentito parole chiare. Riprova parlando più vicino al microfono.";
+          }
+          setError(message);
           setIsListening(false);
         };
 

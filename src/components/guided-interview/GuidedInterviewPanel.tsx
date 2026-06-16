@@ -16,7 +16,7 @@ type GuidedInterviewPanelProps = {
   language?: string;
   variant?: "desktop" | "mobile";
   onComplete?: (data: unknown) => void;
-  onConfirmDna?: () => void;
+  onConfirmDna?: (state: GuidedInterviewState) => void;
   onContinueInterview?: () => void;
 };
 
@@ -308,7 +308,7 @@ export function GuidedInterviewPanel({
             onContinueInterview={handleContinueInterview}
             onConfirmDna={() => {
               if (!ready) return;
-              onConfirmDna?.();
+              onConfirmDna?.(state);
             }}
           />
         </div>

@@ -77,6 +77,13 @@ interface BookCreationOsWizardProps {
     suggestedSubtitles: string[];
     bestTitleIndex: number;
   } | null>;
+  /** Skip interview — open directly at blueprint after mobile Book Forge DNA */
+  forgeEntry?: "full" | "post-dna";
+  initialStep?: number;
+  interviewSeed?: {
+    extracted?: Record<string, string | undefined>;
+    selectedGenre?: string;
+  };
 }
 
 function emptyCharacter(): BookCharacter {
@@ -154,6 +161,31 @@ function handleInterviewCompleteFactory({
 
 function cleanStr(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function applyInterviewGenreToWizard(
+  selectedGenre: string | undefined,
+  setters: {
+    setBookTypeId: (v: string) => void;
+    setGenre: (v: Genre) => void;
+    setLevel1BookType: (v: Level1BookType) => void;
+  },
+) {
+  const map: Record<string, { bookTypeId: string; genre: Genre }> = {
+    romance: { bookTypeId: "romance", genre: "romance" },
+    "dark-romance": { bookTypeId: "dark-romance", genre: "dark-romance" },
+    thriller: { bookTypeId: "thriller", genre: "thriller" },
+    fantasy: { bookTypeId: "fantasy", genre: "fantasy" },
+    "self-help": { bookTypeId: "self-help", genre: "self-help" },
+    business: { bookTypeId: "business", genre: "business" },
+    manual: { bookTypeId: "manual", genre: "manual" },
+    poetry: { bookTypeId: "poetry", genre: "poetry" },
+    "literary-fiction": { bookTypeId: "literary", genre: "literary-fiction" },
+  };
+  const hit = map[selectedGenre || ""] ?? { bookTypeId: "literary", genre: "literary-fiction" as Genre };
+  setters.setBookTypeId(hit.bookTypeId);
+  setters.setGenre(hit.genre);
+  setters.setLevel1BookType(resolveLevel1FromBookTypeId(hit.bookTypeId));
 }
 
 const inputClass =
@@ -317,11 +349,14 @@ export function BookCreationOsWizard({
   onStudioComplete,
   onGenerateBlueprint,
   onDetectIntent,
+  forgeEntry = "full",
+  initialStep = 0,
+  interviewSeed,
 }: BookCreationOsWizardProps) {
   const { plan } = usePlan();
   const isFree = plan === "free";
-  const [step, setStep] = useState(0);
-  const [showAdvancedForge, setShowAdvancedForge] = useState(false);
+  const [step, setStep] = useState(forgeEntry === "post-dna" ? initialStep : 0);
+  const [showAdvancedForge, setShowAdvancedForge] = useState(forgeEntry === "post-dna");
   const [isMobileViewport, setIsMobileViewport] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches,
   );
@@ -334,10 +369,47 @@ export function BookCreationOsWizard({
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  const [useGuidedInterview, setUseGuidedInterview] = useState(true);
-  const [dnaConfirmed, setDnaConfirmed] = useState(false);
+  const [useGuidedInterview, setUseGuidedInterview] = useState(forgeEntry !== "post-dna");
+  const [dnaConfirmed, setDnaConfirmed] = useState(forgeEntry === "post-dna");
 
-  const mobileInterviewMode = isMobileViewport && step === 0 && useGuidedInterview;
+  const mobileInterviewMode = forgeEntry !== "post-dna" && isMobileViewport && step === 0 && useGuidedInterview;
+  const postDnaForge = forgeEntry === "post-dna";
+
+  useEffect(() => {
+    if (!open || forgeEntry !== "post-dna" || !interviewSeed) return;
+    const ext = interviewSeed.extracted ?? {};
+    setNarrativePromise(cleanStr(ext.promise) || cleanStr(ext.readerTransformation));
+    setCoreConflict(cleanStr(ext.centralConflict));
+    setSetting(cleanStr(ext.setting));
+    setVoiceConsistency(cleanStr(ext.emotionalTone));
+    setTargetReader(cleanStr(ext.targetReader));
+    setCommercialGoal(cleanStr(ext.promise));
+    setTone((prev) => cleanStr(ext.emotionalTone) || prev);
+    const ideaBlob = [
+      ext.readerTransformation,
+      ext.centralConflict,
+      ext.emotionalTone,
+      ext.genreDNA,
+      ext.promise,
+      ext.setting,
+      ext.targetReader,
+    ]
+      .map((v) => cleanStr(v))
+      .filter(Boolean)
+      .join("\n\n");
+    if (ideaBlob) setIdea(ideaBlob);
+    const seedTitle = cleanStr(ext.promise) || cleanStr(ext.readerTransformation);
+    if (seedTitle) setTitle(seedTitle.slice(0, 96));
+    applyInterviewGenreToWizard(interviewSeed.selectedGenre, {
+      setBookTypeId,
+      setGenre,
+      setLevel1BookType,
+    });
+    setStep(initialStep);
+    setDnaConfirmed(true);
+    setUseGuidedInterview(false);
+    setShowAdvancedForge(true);
+  }, [open, forgeEntry, interviewSeed, initialStep]);
 
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
@@ -1293,17 +1365,25 @@ export function BookCreationOsWizard({
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-300">
-                {forgePresetId ? "Scriptora Forge" : "Book Configuration Studio"}
+                {postDnaForge ? "Book Forge" : forgePresetId ? "Scriptora Forge" : "Book Configuration Studio"}
               </p>
             <p className="text-sm font-semibold text-white">
-                {forgePresetId ? `Preset: ${forgePresetLabel || "Libro rapido"}` : `Macro step ${step + 1}/${STUDIO_STEPS.length} — ${stepLabel}`}
+                {postDnaForge
+                  ? step === 7
+                    ? "Indice editabile"
+                    : "Blueprint"
+                  : forgePresetId
+                    ? `Preset: ${forgePresetLabel || "Libro rapido"}`
+                    : `Macro step ${step + 1}/${STUDIO_STEPS.length} — ${stepLabel}`}
               </p>
             <p className="mt-0.5 text-[11px] text-white/45">
-                {useGuidedInterview
-                  ? "Book Forge · intervista chat-first fino al DNA Lock"
-                  : forgePresetId
-                    ? "Configurazione rapida: controlla solo titolo, autore, lingua e idea."
-                    : "20 decisioni guidate prima della generazione reale"}
+                {postDnaForge
+                  ? "DNA confermato — genera architettura e indice prima del writer"
+                  : useGuidedInterview
+                    ? "Book Forge · intervista chat-first fino al DNA Lock"
+                    : forgePresetId
+                      ? "Configurazione rapida: controlla solo titolo, autore, lingua e idea."
+                      : "20 decisioni guidate prima della generazione reale"}
               </p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white">
@@ -2032,9 +2112,19 @@ export function BookCreationOsWizard({
         </div>
 
         <div className="scriptora-wizard-footer flex shrink-0 items-center justify-between gap-3 border-t border-white/10 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:px-5 sm:py-4">
-          <button type="button" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))}
-            className="inline-flex items-center gap-1 rounded-xl border border-white/15 px-4 py-2 text-sm text-white/80 disabled:opacity-30">
-            <ArrowLeft className="h-4 w-4" /> Indietro
+          <button
+            type="button"
+            disabled={!postDnaForge && step === 0}
+            onClick={() => {
+              if (postDnaForge && step === 6) {
+                onClose();
+                return;
+              }
+              setStep((s) => Math.max(postDnaForge ? 6 : 0, s - 1));
+            }}
+            className="inline-flex items-center gap-1 rounded-xl border border-white/15 px-4 py-2 text-sm text-white/80 disabled:opacity-30"
+          >
+            <ArrowLeft className="h-4 w-4" /> {postDnaForge && step === 6 ? "Dashboard" : "Indietro"}
           </button>
           {step < 6 && (
             <button type="button" onClick={() => void goNext()} className="inline-flex items-center gap-1 rounded-xl bg-white px-5 py-2 text-sm font-bold text-slate-950">
