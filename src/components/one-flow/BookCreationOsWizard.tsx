@@ -322,6 +322,7 @@ export function BookCreationOsWizard({
   const [showAdvancedForge, setShowAdvancedForge] = useState(false);
 
   const [useGuidedInterview, setUseGuidedInterview] = useState(true);
+  const [dnaConfirmed, setDnaConfirmed] = useState(false);
 
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
@@ -1371,7 +1372,10 @@ export function BookCreationOsWizard({
 
                   <button
                     type="button"
-                    onClick={() => setUseGuidedInterview(v => !v)}
+                    onClick={() => {
+                      setUseGuidedInterview(v => !v);
+                      setDnaConfirmed(false);
+                    }}
                     className="rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-xs font-semibold text-white/70"
                   >
                     {useGuidedInterview
@@ -1396,12 +1400,20 @@ export function BookCreationOsWizard({
                         setShowAdvancedForge,
                       })}
                       onConfirmDna={() => {
+                        setDnaConfirmed(true);
                         setShowAdvancedForge(true);
                       }}
                       onContinueInterview={() => {
+                        setDnaConfirmed(false);
                         setShowAdvancedForge(false);
                       }}
                     />
+                  </div>
+                )}
+
+                {useGuidedInterview && dnaConfirmed && (
+                  <div className="mt-3 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-xs text-emerald-100">
+                    ✅ DNA del libro confermato. Scriptora può usare questa identità come blocco anti-drift prima del blueprint.
                   </div>
                 )}
               </div>
