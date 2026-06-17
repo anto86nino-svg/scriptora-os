@@ -60,7 +60,8 @@ import {
   TITLE_FORGE_PHASES,
   WIZARD_TITLE_FREE_REGENS,
 } from "@/lib/book-creation-os/title-generator";
-import type { ForgeInterviewSeed } from "@/lib/guided-interview/forge-blueprint-handoff";
+import { BlueprintTheater } from "@/components/blueprint-theater/BlueprintTheater";
+import { consumeForgeBrief } from "@/lib/one-flow/forge-brief-prefill";
 import {
   buildForgeGuidedBriefExtras,
   buildForgeInterviewSeed,
@@ -703,6 +704,28 @@ export function BookCreationOsWizard({
       });
     }
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const brief = consumeForgeBrief();
+    if (!brief) return;
+    if (brief.prefilledTitle) setTitle(brief.prefilledTitle);
+    if (brief.prefilledSubtitle) setSubtitle(brief.prefilledSubtitle);
+    if (brief.idea) setIdea(brief.idea);
+    if (brief.language) setLanguage(brief.language as Language);
+    if (brief.authorName) setAuthorName(brief.authorName);
+    if (brief.authorIdentity) setIdentityDraft(brief.authorIdentity);
+    if (brief.numberOfChapters) setChapters(brief.numberOfChapters);
+    if (brief.subchaptersEnabled != null) setSubchaptersEnabled(brief.subchaptersEnabled);
+    if (brief.subchaptersPerChapter) setSubchaptersPerChapter(brief.subchaptersPerChapter);
+    if (brief.bookLength) setBookLength(brief.bookLength);
+    if (brief.readerPromise) {
+      setNarrativePromise(brief.readerPromise);
+      setCommercialGoal(brief.readerPromise);
+    }
+    if (brief.targetAudience) setTargetReader(brief.targetAudience);
+    if (brief.tone) setTone(brief.tone);
+  }, [open]);
 
   useEffect(() => {
     if (!open || !interviewSeed) return;
@@ -1614,6 +1637,22 @@ export function BookCreationOsWizard({
     });
   };
 
+  const reorderBlueprintChapter = (index: number, direction: "up" | "down") => {
+    setBlueprintPreview((current) => {
+      if (!current) return current;
+      const outlines = [...current.chapterOutlines];
+      const target = direction === "up" ? index - 1 : index + 1;
+      if (target < 0 || target >= outlines.length) return current;
+      [outlines[index], outlines[target]] = [outlines[target], outlines[index]];
+      return { ...current, chapterOutlines: outlines };
+    });
+  };
+
+  const forgeTheaterCopy =
+    BLUEPRINT_FORGE_COPY[
+      Math.min(BLUEPRINT_FORGE_COPY.length - 1, Math.floor(blueprintElapsedSeconds / 14))
+    ] || BLUEPRINT_FORGE_COPY[0];
+
   const finishApproved = async () => {
     if (!blueprintPreview) {
       toast.error("Genera e rivedi il blueprint prima di approvare.");
@@ -1696,13 +1735,13 @@ export function BookCreationOsWizard({
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-300">
-                {postDnaForge ? "Book Forge" : forgePresetId ? "Scriptora Forge" : "Book Configuration Studio"}
+                {postDnaForge ? "Blueprint Theater" : forgePresetId ? "Scriptora Forge" : "Book Configuration Studio"}
               </p>
             <p className="text-sm font-semibold text-white">
                 {postDnaForge
                   ? step === 7
-                    ? "Indice editabile"
-                    : "Blueprint"
+                    ? "Il tuo libro prende forma"
+                    : "Forgia la struttura"
                   : forgePresetId
                     ? `Preset: ${forgePresetLabel || "Libro rapido"}`
                     : `Macro step ${step + 1}/${STUDIO_STEPS.length} — ${stepLabel}`}
@@ -2267,30 +2306,15 @@ export function BookCreationOsWizard({
             </div>
           )}
 
-          {step === 6 && (
-            <div className="space-y-4 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-sky-300/25 bg-sky-400/10 shadow-[0_0_40px_rgba(56,189,248,0.16)]">
-                <BookOpen className="h-6 w-6 text-sky-200" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-white">Generazione Blueprint</h2>
-                <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-white/65">
-                  Scriptora costruirà premessa, struttura, capitoli{subchaptersEnabled ? ", sottocapitoli" : ""}, front e back matter.
-                </p>
-              </div>
-              {generatingBlueprint ? (
-                <BlueprintForgePanel elapsedSeconds={blueprintElapsedSeconds} />
-              ) : blueprintError ? (
+          {postDnaForge && (step === 6 || step === 7) ? (
+            <div className="space-y-4">
+              {step === 6 && blueprintError && (
                 <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 p-4 text-left">
                   <p className="text-sm font-semibold text-rose-100">Blueprint non completato — controlliamo i punti critici</p>
-                  <p className="mt-1 text-xs leading-5 text-rose-100/70">
-                    {blueprintError}
-                  </p>
-                  <p className="mt-3 text-[11px] leading-4 text-white/45">
-                    Controlla gli step precedenti: quelli incompleti o dubbi devono indicare chiaramente cosa manca. Nessun contenuto tecnico è stato salvato nel libro.
-                  </p>
+                  <p className="mt-1 text-xs leading-5 text-rose-100/70">{blueprintError}</p>
                 </div>
-              ) : preflightResult && !preflightResult.ready ? (
+              )}
+              {step === 6 && !blueprintError && preflightResult && !preflightResult.ready && (
                 <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-left space-y-3">
                   <p className="text-sm font-semibold text-amber-100">Completiamo il progetto</p>
                   <p className="text-xs leading-5 text-amber-100/75">{preflightResult.humanSummary}</p>
@@ -2313,138 +2337,63 @@ export function BookCreationOsWizard({
                     </button>
                   )}
                 </div>
+              )}
+              <BlueprintTheater
+                mode="forge"
+                title={title}
+                subtitle={subtitle}
+                author={authorName || identityDraft.penName}
+                genre={[genre, subcategory].filter(Boolean).join(" · ")}
+                blueprint={blueprintPreview}
+                generatingBlueprint={generatingBlueprint}
+                blueprintElapsedSeconds={blueprintElapsedSeconds}
+                forgeCopy={forgeTheaterCopy}
+                chapterCount={chapters}
+                editable={step === 7 && Boolean(blueprintPreview)}
+                reorderable={step === 7 && Boolean(blueprintPreview)}
+                onChapterTitleChange={updateBlueprintChapterTitle}
+                onSubchapterTitleChange={updateBlueprintSubchapterTitle}
+                onReorderChapter={reorderBlueprintChapter}
+                onTitleChange={setTitle}
+                onSubtitleChange={setSubtitle}
+                italianUi={language === "Italian"}
+              />
+            </div>
+          ) : step === 6 ? (
+            <div className="space-y-4 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-sky-300/25 bg-sky-400/10 shadow-[0_0_40px_rgba(56,189,248,0.16)]">
+                <BookOpen className="h-6 w-6 text-sky-200" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-white">Generazione Blueprint</h2>
+                <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-white/65">
+                  Scriptora costruirà premessa, struttura, capitoli{subchaptersEnabled ? ", sottocapitoli" : ""}, front e back matter.
+                </p>
+              </div>
+              {generatingBlueprint ? (
+                <BlueprintForgePanel elapsedSeconds={blueprintElapsedSeconds} />
+              ) : blueprintError ? (
+                <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 p-4 text-left">
+                  <p className="text-sm font-semibold text-rose-100">Blueprint non completato — controlliamo i punti critici</p>
+                  <p className="mt-1 text-xs leading-5 text-rose-100/70">{blueprintError}</p>
+                </div>
+              ) : preflightResult && !preflightResult.ready ? (
+                <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-left space-y-3">
+                  <p className="text-sm font-semibold text-amber-100">Completiamo il progetto</p>
+                  <p className="text-xs leading-5 text-amber-100/75">{preflightResult.humanSummary}</p>
+                </div>
               ) : (
                 <div className="rounded-2xl border border-white/12 bg-white/[0.045] p-4 text-left">
                   <p className="text-sm font-semibold text-white">Pronto per la forgia</p>
-                  <p className="mt-1 text-xs leading-5 text-white/55">
-                    Quando avvii, vedrai gli step di preparazione e un orologio live. La durata reale dipende dal modello AI e dalla complessità del libro.
-                  </p>
                 </div>
               )}
             </div>
-          )}
-
-          {step === 7 && blueprintPreview && (
+          ) : step === 7 && blueprintPreview ? (
             <div className="space-y-5">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200/80">
-                  Indice protagonista
-                </p>
-                <h2 className="mt-1 text-2xl font-semibold text-white">Approvazione autore</h2>
-                <p className="mt-2 text-sm leading-6 text-white/65">
-                  Rivedi e modifica i titoli prima dell’approvazione. Questi titoli diventeranno la struttura reale usata da Writer, generazione capitoli ed export.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-white/12 bg-white/[0.045] p-4 text-sm text-white/80 space-y-3">
-                <p className="text-lg font-semibold text-white">{title}{subtitle ? `: ${subtitle}` : ""}</p>
-                <p className="text-xs leading-relaxed text-white/60">
-                  {blueprintPreview.overview.slice(0, 700)}{blueprintPreview.overview.length > 700 ? "…" : ""}
-                </p>
-                <div className="flex flex-wrap gap-2 text-[11px] text-white/55">
-                  <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1">
-                    {blueprintPreview.chapterOutlines.length} capitoli pianificati
-                  </span>
-                  {subchaptersEnabled && (
-                    <span className="rounded-full border border-violet-300/20 bg-violet-500/10 px-3 py-1 text-violet-100">
-                      {subchaptersPerChapter} sottocapitoli per capitolo
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-amber-300/20 bg-amber-500/[0.06] p-4">
-                <div className="mb-4 flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-bold text-white">Indice modificabile</h3>
-                    <p className="mt-1 text-xs leading-5 text-white/55">
-                      Modifica i titoli qui. Non stai cambiando solo una preview: stai correggendo il blueprint che verrà approvato.
-                    </p>
-                  </div>
-                  <span className="rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-100">
-                    Live blueprint
-                  </span>
-                </div>
-
-                <div
-                  className={
-                    postDnaForge && (embeddedInMobileForge || isMobileViewport)
-                      ? "space-y-4"
-                      : "max-h-[520px] space-y-4 overflow-y-auto pr-1"
-                  }
-                >
-                  {blueprintPreview.chapterOutlines.map((outline, chapterIndex) => {
-                    const subchapters = Array.isArray((outline as any).subchapters)
-                      ? (outline as any).subchapters
-                      : [];
-
-                    return (
-                      <div
-                        key={`editable-outline-${chapterIndex}`}
-                        className="rounded-2xl border border-white/10 bg-black/25 p-4"
-                      >
-                        <label className="block">
-                          <span className="mb-2 block text-[10px] font-bold uppercase tracking-[0.16em] text-amber-200/80">
-                            Capitolo {chapterIndex + 1}
-                          </span>
-                          <input
-                            value={outline.title || ""}
-                            onChange={(event) =>
-                              updateBlueprintChapterTitle(chapterIndex, event.target.value)
-                            }
-                            className="w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3.5 text-lg font-semibold text-white outline-none focus:border-amber-300/50 sm:text-base"
-                            placeholder={`Titolo capitolo ${chapterIndex + 1}`}
-                          />
-                        </label>
-
-                        {outline.summary && (
-                          <p className="mt-3 rounded-xl bg-white/[0.035] p-3 text-xs leading-5 text-white/55">
-                            {outline.summary}
-                          </p>
-                        )}
-
-                        {subchapters.length > 0 && (
-                          <div className="mt-4 space-y-2 border-l border-violet-300/20 pl-3">
-                            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-200/80">
-                              Sottocapitoli
-                            </p>
-
-                            {subchapters.map((subchapter: any, subIndex: number) => (
-                              <label
-                                key={`editable-outline-${chapterIndex}-${subIndex}`}
-                                className="block rounded-xl border border-white/8 bg-white/[0.035] p-3"
-                              >
-                                <span className="mb-1 block text-[10px] text-white/45">
-                                  {chapterIndex + 1}.{subIndex + 1}
-                                </span>
-                                <input
-                                  value={subchapter?.title || ""}
-                                  onChange={(event) =>
-                                    updateBlueprintSubchapterTitle(
-                                      chapterIndex,
-                                      subIndex,
-                                      event.target.value
-                                    )
-                                  }
-                                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm font-medium text-white outline-none focus:border-violet-300/50"
-                                  placeholder={`Titolo sottocapitolo ${subIndex + 1}`}
-                                />
-                                {subchapter?.summary && (
-                                  <p className="mt-2 text-[11px] leading-5 text-white/45">
-                                    {subchapter.summary}
-                                  </p>
-                                )}
-                              </label>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <h2 className="text-2xl font-semibold text-white">Approvazione autore</h2>
+              <p className="text-sm text-white/65">Rivedi e modifica i titoli prima dell'approvazione.</p>
             </div>
-          )}
+          ) : null}
         </div>
 
         <div className="scriptora-wizard-footer flex shrink-0 items-center justify-between gap-3 border-t border-white/10 bg-slate-950/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:py-4">

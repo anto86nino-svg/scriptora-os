@@ -11,12 +11,16 @@ import { useFeatureGate } from "@/components/PaywallGuard";
 import { getCurrentUserId } from "@/services/storageService";
 import { AUTHOR_IDENTITY_CHANGED_EVENT, getSelectedAuthorIdentity } from "@/lib/author-identity";
 
+import { saveForgeBrief, forgeBriefToTitlePayload } from "@/lib/one-flow/forge-brief-prefill";
+
 interface Props {
   open: boolean;
   onClose: () => void;
   initialTitle?: string;
   initialGenre?: string;
   onSelect?: (title: string, subtitle: string) => void;
+  /** Optimization path: apply title to Book Forge instead of legacy auto-bestseller */
+  onLaunchForge?: () => void;
 }
 
 // Map UI language code → human-readable name expected by the AI prompts.
@@ -24,7 +28,7 @@ const UI_LANG_TO_NAME: Record<string, string> = {
   en: "English", it: "Italian", es: "Spanish", fr: "French", de: "German",
 };
 
-export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGenre, onSelect }: Props) {
+export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGenre, onSelect, onLaunchForge }: Props) {
   const navigate = useNavigate();
   const [bookTitle, setBookTitle] = useState(initialTitle || "");
   const [bookGenre, setBookGenre] = useState(initialGenre || "");
@@ -118,7 +122,7 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
       n.keywords?.length ? `Keyword: ${n.keywords.join(", ")}` : "",
     ].filter(Boolean);
 
-    sessionStorage.setItem("scriptora-auto-brief", JSON.stringify({
+    saveForgeBrief({
       idea: ideaParts.join("\n"),
       genre: n.genre || bookGenre || "Self-help",
       subcategory: n.name || "",
@@ -133,11 +137,15 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
       authorName: authorIdentity.penName,
       authorIdentityId: authorIdentity.id,
       authorIdentity,
-      autoStart: false,
-    }));
+    });
 
     onClose();
-    navigate("/auto-bestseller");
+    if (onLaunchForge) {
+      onLaunchForge();
+      toast.success("Nicchia applicata a Book Forge");
+      return;
+    }
+    toast.success("Brief salvato — apri Book Forge per continuare");
   };
 
 
@@ -157,28 +165,30 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
       return;
     }
 
-    sessionStorage.setItem("scriptora-auto-brief", JSON.stringify({
-      idea: bookPromise || bookTitle || card.title,
-      genre: bookGenre || "Self-help",
-      subcategory: bookGenre || "",
-      targetAudience: targetAudience || "Lettori interessati a questo argomento",
-      tone,
-      language,
-      numberOfChapters: 8,
-      level: "intermediate",
-      readerPromise: bookPromise || card.subtitle,
-      prefilledTitle: card.title,
-      prefilledSubtitle: card.subtitle,
-      authorName: authorIdentity.penName,
-      authorIdentityId: authorIdentity.id,
-      authorIdentity,
-      autoStart: false,
-    }));
+    if (onLaunchForge) {
+      saveForgeBrief(
+        forgeBriefToTitlePayload(
+          {},
+          card,
+          authorIdentity,
+          language,
+          tone,
+          bookGenre,
+          targetAudience,
+          bookPromise,
+        ),
+      );
+      reset();
+      onClose();
+      onLaunchForge();
+      toast.success(`Titolo applicato a Book Forge: ${card.title}`);
+      return;
+    }
 
+    navigator.clipboard.writeText(`${card.title}\n${card.subtitle}`);
     reset();
     onClose();
-    toast.success("Progetto preparato — completa il brief e avvia la scrittura");
-    navigate("/auto-bestseller");
+    toast.success("Titolo copiato — applica da Packaging Center o Book Forge");
   };
 
   const copyTitle = (card: TitleCard) => {
