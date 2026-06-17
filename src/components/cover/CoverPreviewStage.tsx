@@ -288,7 +288,7 @@ export function CoverPreviewStage({
           isMobile ? "cover-viewport-frame--mobile" : "cover-viewport-frame--desktop",
         )}
       >
-        <div ref={measureRef} className="flex min-h-0 flex-1 items-center justify-center p-1">
+        <div ref={measureRef} className="flex h-full w-full min-h-[52dvh] flex-1 items-center justify-center p-1 lg:min-h-[68dvh]">
         <div
           ref={stageRef}
           className="cover-studio-pro-stage relative touch-none select-none shrink-0"

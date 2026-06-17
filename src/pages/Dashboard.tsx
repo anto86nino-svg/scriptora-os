@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { lazy, Suspense, useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect, useMemo } from "react";
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
@@ -64,11 +64,12 @@ import { WalletScriptoraCard } from "@/components/billing/WalletScriptoraCard";
 import { GlobalCreditBar } from "@/components/billing/GlobalCreditBar";
 import { AuthSessionButton } from "@/components/auth/AuthSessionButton";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
-import { PremiumOsGateway } from "@/components/premium/PremiumOsGateway";
-import { AuthorMomentumPanel } from "@/components/premium/AuthorMomentumPanel";
-import { OneFlowHome } from "@/components/one-flow/OneFlowHome";
 import type { ForgePreset } from "@/lib/scriptora-forge/forge-presets";
 import { ONE_FLOW_TOOL_ROLES } from "@/lib/one-flow/one-flow-tool-roles";
+import { DashboardHomePillars } from "@/components/one-flow/DashboardHomePillars";
+import { DashboardPackagingRow } from "@/components/one-flow/DashboardPackagingRow";
+import { DashboardAdvancedToolsPanel } from "@/components/one-flow/DashboardAdvancedToolsPanel";
+import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
 import { OsHomeHero } from "@/components/os/OsHomeHero";
 import {
   MobileDashboardCreditPill,
@@ -178,7 +179,6 @@ export default function Dashboard() {
   const [showBookCreationWizard, setShowBookCreationWizard] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showAdvancedLaunchpad, setShowAdvancedLaunchpad] = useState(() => isAdvancedLaunchpadEnabled());
-  const [showMobileStats, setShowMobileStats] = useState(false);
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [flowProjectId, setFlowProjectId] = useState<string | null>(null);
   const [showLangMenu, setShowLangMenu] = useState(false);
@@ -635,14 +635,6 @@ typeof crypto.randomUUID === "function"
   const currentLangLabel = UI_LANGUAGES.find(l => l.value === currentLang)?.label || "English";
   const completedProjects = projects.filter(isProjectComplete);
   const draftProjects = projects.filter((p) => !isProjectComplete(p));
-  const totalChapters = projects.reduce((sum, p) => sum + (p.chapters?.length || 0), 0);
-  const totalWords = projects.reduce(
-    (sum, p) => sum + (p.chapters || []).reduce(
-      (chapterSum, ch) => chapterSum + (ch.content?.split(/\s+/).filter(Boolean).length || 0),
-      0,
-    ),
-    0,
-  );
   const planLabel = currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1);
   const lastProjectDoneChapters = lastProject?.chapters?.filter((chapter) => (chapter.content || "").trim().length > 50).length || 0;
   const lastProjectTargetChapters = lastProject?.config?.numberOfChapters || lastProject?.chapters?.length || 0;
@@ -654,122 +646,24 @@ typeof crypto.randomUUID === "function"
         : 0
     : 0;
 
-  const wordCountForProject = (project: BookProject) =>
-    (project.chapters || []).reduce(
-      (sum, chapter) => sum + (chapter.content?.split(/\s+/).filter(Boolean).length || 0),
-      0,
-    );
-  const dayKey = (date: Date) => date.toISOString().slice(0, 10);
-  const todayKey = dayKey(new Date());
-  const wordsToday = projects
-    .filter((project) => {
-      const updated = new Date(project.updatedAt);
-      return !Number.isNaN(updated.getTime()) && dayKey(updated) === todayKey;
-    })
-    .reduce((sum, project) => sum + wordCountForProject(project), 0);
-  const updateDays = new Set(
-    projects
-      .map((project) => {
-        const updated = new Date(project.updatedAt);
-        return Number.isNaN(updated.getTime()) ? "" : dayKey(updated);
-      })
-      .filter(Boolean),
+  const dashboardActionContext = useMemo<DashboardActionContext>(
+    () => ({
+      hasActiveBook: Boolean(lastProject),
+      onNewBook: openNewBookGuarded,
+      onContinue: lastProject ? () => goApp({ projectId: lastProject.id }) : undefined,
+      onOpenProjects: () => setShowProjects(true),
+      onOpenExport: () => guardPlanFeature("export_epub", () => setShowExport(true))(),
+      onOpenCover: () => guardPlanFeature("cover_studio_template", openCoverStudioPage)(),
+      onOpenTitleIntel: () => guardPlanFeature("title_intelligence_base", () => setShowTitleIntel(true))(),
+      onOpenIdeaPreview: () => setShowIdeaModal(true),
+      onOpenManuscriptLab: () => guardPlanFeature("chapter_improvement", () => setShowManuscriptAnalyzer(true))(),
+      onOpenCharacterStudio: () => guardPlanFeature("book_engine_full", () => setShowCharacterStudio(true))(),
+      onOpenAuthorIdentity: () => openAuthorIdentity(),
+      onOpenNotepad: () => setShowNotepad(true),
+      onNavigate: (path: string) => navigate(path),
+    }),
+    [lastProject, navigate],
   );
-  let writingStreak = 0;
-  for (const cursor = new Date(); updateDays.has(dayKey(cursor)); cursor.setDate(cursor.getDate() - 1)) {
-    writingStreak += 1;
-  }
-  const aiQualityValues = projects.flatMap((project) =>
-    (project.chapters || []).map((chapter) => {
-      const c = chapter as any;
-      if (typeof c?.aiRating?.score === "number") return Math.round(c.aiRating.score * 20);
-      if (typeof c?.qualityRating === "number") return Math.round(c.qualityRating * 20);
-      return null;
-    }).filter((value): value is number => typeof value === "number"),
-  );
-  const aiQualityScore = aiQualityValues.length
-    ? Math.round(aiQualityValues.reduce((sum, value) => sum + value, 0) / aiQualityValues.length)
-    : null;
-  const dashboardWidgets = [
-    {
-      label: t("active_book_widget"),
-      value: lastProject?.config.title || t("no_active_book"),
-      detail: lastProject ? t("open_manuscript") : t("start_or_import_book"),
-      icon: BookOpen,
-      tone: "from-sky-400/18 to-cyan-300/8",
-      action: lastProject ? () => goApp({ projectId: lastProject.id }) : openNewBookGuarded,
-    },
-    {
-      label: t("words_today_widget"),
-      value: wordsToday.toLocaleString(),
-      detail: t("from_updated_projects"),
-      icon: NotebookPen,
-      tone: "from-emerald-400/18 to-lime-300/8",
-      action: () => goApp(),
-    },
-    {
-      label: t("writing_streak_widget"),
-      value: writingStreak.toLocaleString(),
-      detail: t("consecutive_days"),
-      icon: Flame,
-      tone: "from-amber-400/20 to-orange-300/8",
-      action: () => goApp(),
-    },
-    {
-      label: t("project_progress_widget"),
-      value: lastProject ? `${lastProjectProgress}%` : "0%",
-      detail: lastProject ? t("active_draft_progress") : t("no_active_book"),
-      icon: BarChart3,
-      tone: "from-violet-400/18 to-fuchsia-300/8",
-      action: lastProject ? () => goApp({ projectId: lastProject.id }) : () => setShowProjects(true),
-    },
-    {
-      label: t("ai_quality_score_widget"),
-      value: aiQualityScore == null ? "—" : `${aiQualityScore}`,
-      detail: aiQualityScore == null ? t("run_analysis_to_score") : t("analysis_based_score"),
-      icon: Sparkles,
-      tone: "from-rose-400/18 to-pink-300/8",
-      action: guardPlanFeature("chapter_improvement", () => setShowManuscriptAnalyzer(true)),
-    },
-  ];
-  const workspaceStats = [
-    { label: t("projects"), value: projects.length.toLocaleString(), detail: tt("draft_count", { count: draftProjects.length }), icon: FolderOpen, iconBg: "ios-icon-blue" },
-    { label: t("completed"), value: completedProjects.length.toLocaleString(), detail: t("ready_to_export"), icon: CheckCircle2, iconBg: "ios-icon-green" },
-    { label: t("chapters"), value: totalChapters.toLocaleString(), detail: t("generated_detail"), icon: BookOpen, iconBg: "ios-icon-orange" },
-    { label: t("words_unit"), value: totalWords > 0 ? totalWords.toLocaleString() : "0", detail: t("in_library"), icon: FileDown, iconBg: "ios-icon-pink" },
-  ];
-
-  const cards = [
-    { group: "writer", icon: BookOpen, title: t("writer_studio_title"), desc: t("writer_studio_desc"), iconBg: "ios-icon-violet", action: () => goApp(), tag: t("os_tag_write") },
-    { group: "writer", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("story_architect_title"), desc: freeBookUsed ? t("upgrade_more_books") : t("story_architect_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: openNewBookGuarded, feature: "book_engine_full" as const, tag: t("os_tag_plan") },
-    { group: "writer", icon: Wand2, title: t("manuscript_lab_title"), desc: t("manuscript_lab_desc"), iconBg: "ios-icon-teal", action: () => setShowManuscriptAnalyzer(true), feature: "chapter_improvement" as const, tag: t("os_tag_score") },
-    { group: "writer", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_premium_desc"), iconBg: "ios-icon-pink", action: () => goApp(), feature: "chapter_rewrite" as const, tag: t("os_tag_rewrite") },
-    { group: "writer", icon: Users, title: t("character_studio_title"), desc: t("character_studio_desc"), iconBg: "ios-icon-pink", action: () => setShowCharacterStudio(true), feature: "book_engine_full" as const, tag: t("os_tag_cast") },
-    { group: "writer", icon: NotebookPen, title: t("block_notes"), desc: t("notepad_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowNotepad(true), tag: t("os_tag_notes") },
-
-    { group: "bestseller", icon: Flame, title: "Anteprima idea", desc: ONE_FLOW_TOOL_ROLES.ideaPreview.it, iconBg: "ios-icon-blue", action: () => setShowIdeaModal(true), tag: t("os_tag_launch") },
-    { group: "bestseller", icon: Rocket, title: t("kdp_intelligence_title"), desc: ONE_FLOW_TOOL_ROLES.kdpLaunch.it, iconBg: "ios-icon-violet", action: () => navigate("/kdp-launch"), feature: "kdp_market_base" as const, tag: t("os_tag_market") },
-    { group: "bestseller", icon: Zap, title: t("title_intelligence"), desc: ONE_FLOW_TOOL_ROLES.titleIntelligence.it, iconBg: "ios-icon-teal", action: () => setShowTitleIntel(true), feature: "title_intelligence_base" as const, tag: t("os_tag_titles") },
-    { group: "bestseller", icon: TrendingUp, title: "Bestseller Radar", desc: ONE_FLOW_TOOL_ROLES.bestsellerRadar.it, iconBg: "ios-icon-green", action: () => navigate("/bestseller-radar"), feature: "trending_niches_limited" as const, tag: t("os_tag_signal") },
-    { group: "bestseller", icon: BarChart3, title: "Keyword Gold", desc: ONE_FLOW_TOOL_ROLES.keywordGold.it, iconBg: "ios-icon-yellow", action: () => navigate("/keyword-gold"), feature: "kdp_market_base" as const, tag: t("os_tag_metadata") },
-
-    { group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: openCoverStudioPage, feature: "cover_studio_template" as const, tag: t("os_tag_cover") },
-    { group: "publishing", icon: FileDown, title: t("export_studio_title"), desc: t("export_studio_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const, tag: t("os_tag_export") },
-    { group: "publishing", icon: Library, title: t("library"), desc: t("library_premium_desc"), iconBg: "ios-icon-green", action: () => setShowLibrary(true), feature: "export_epub" as const, tag: t("os_tag_archive") },
-
-    { group: "system", icon: Users, title: t("author_identity"), desc: t("author_identity_premium_desc"), iconBg: "ios-icon-blue", action: () => setShowAuthorIdentity(true), feature: "book_engine_full" as const, tag: t("os_tag_identity") },
-    { group: "system", icon: Settings, title: t("background_atmosphere"), desc: t("atmosphere_premium_desc"), iconBg: "ios-icon-slate", action: () => setShowAdvancedSettings(true), feature: "book_engine_full" as const, tag: t("os_tag_space") },
-    { group: "system", icon: FolderOpen, title: t("projects"), desc: t("projects_premium_desc"), iconBg: "ios-icon-cyan", action: () => setShowProjects(!showProjects), feature: "book_engine_full" as const, tag: t("os_tag_library") },
-  ];
-
-  const cardGroups = [
-    { id: "writer", title: t("writer_os"), desc: t("writer_os_desc") },
-    { id: "bestseller", title: "Packaging & Mercato", desc: "Ottimizzazione titolo, keyword, cover e pubblicazione — non creazione libro." },
-    { id: "publishing", title: t("publishing_os"), desc: t("publishing_os_desc") },
-    { id: "system", title: t("system_os"), desc: t("system_os_desc") },
-  ];
-
-
 
   if (showBookCreationWizard) {
     return (
@@ -999,6 +893,11 @@ typeof crypto.randomUUID === "function"
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-3 sm:px-6 sm:pb-16 sm:pt-6 lg:px-8">
+        <DashboardHomePillars
+          onNewBook={openNewBookGuarded}
+          onStudyOs={() => navigate("/study")}
+        />
+
         <OsHomeHero
           lastProject={lastProject}
           progressPercent={lastProjectProgress}
@@ -1009,107 +908,36 @@ typeof crypto.randomUUID === "function"
           onMyBooks={() => setShowProjects(true)}
         />
 
-        <section className="scriptora-home-essential-grid mb-4 grid gap-2 sm:mb-6 sm:grid-cols-2 lg:grid-cols-4">
-          <button
-            type="button"
-            onClick={openNewBookGuarded}
-            className="scriptora-action-tile scriptora-action-tile-primary group rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
-          >
-            <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
-              <Plus className="h-4 w-4" />
-            </span>
-            <p className="text-sm font-bold text-white">Nuovo Libro</p>
-            <p className="mt-1 line-clamp-2 text-xs text-white/55">{ONE_FLOW_TOOL_ROLES.forge.it}</p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => (lastProject ? goApp({ projectId: lastProject.id }) : setShowProjects(true))}
-            className="scriptora-action-tile group rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
-          >
-            <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
-              <BookOpen className="h-4 w-4" />
-            </span>
-            <p className="text-sm font-bold text-white">
-              {lastProject ? t("continue_action") : t("projects")}
-            </p>
-            <p className="mt-1 line-clamp-2 text-xs text-white/55">
-              {lastProject
-                ? lastProject.config.title || t("open_manuscript")
-                : "Apri i tuoi progetti e riprendi la scrittura."}
-            </p>
-          </button>
-
+        <section className="mb-4 flex flex-wrap gap-2 sm:mb-6">
           <button
             type="button"
             onClick={() => setShowProjects(true)}
-            className="scriptora-action-tile group rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
+            className="scriptora-action-tile inline-flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-left transition-all hover:-translate-y-0.5"
           >
-            <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
-              <FolderOpen className="h-4 w-4" />
+            <FolderOpen className="h-4 w-4 text-white/75" />
+            <span className="text-sm font-semibold text-white">I miei libri</span>
+            <span className="text-xs text-white/45">
+              {projects.length > 0 ? `${projects.length} progetti` : "Biblioteca vuota"}
             </span>
-            <p className="text-sm font-bold text-white">I miei libri</p>
-            <p className="mt-1 line-clamp-2 text-xs text-white/55">
-              {projects.length > 0
-                ? `${projects.length} ${projects.length === 1 ? "progetto" : "progetti"} in libreria`
-                : "Nessun libro ancora — inizia da Forge."}
-            </p>
           </button>
-
-          <button
-            type="button"
-            onClick={() => navigate("/study")}
-            className="scriptora-action-tile group rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
-          >
-            <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
-              <NotebookPen className="h-4 w-4" />
-            </span>
-            <p className="text-sm font-bold text-white">Study OS</p>
-            <p className="mt-1 line-clamp-2 text-xs text-white/55">Ecosistema studio separato — riassunti, quiz, flashcard.</p>
-          </button>
+          {lastProject && (
+            <button
+              type="button"
+              onClick={() => setShowLibrary(true)}
+              className="scriptora-action-tile inline-flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-left transition-all hover:-translate-y-0.5"
+            >
+              <Library className="h-4 w-4 text-white/75" />
+              <span className="text-sm font-semibold text-white">Libreria</span>
+              <span className="text-xs text-white/45">{completedProjects.length} completati</span>
+            </button>
+          )}
         </section>
 
         {lastProject && (
-          <section className="mb-4 grid gap-2 sm:mb-6 sm:grid-cols-3">
-            <p className="col-span-full text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
-              Packaging Center · {lastProject.config.title || t("untitled")}
-            </p>
-            <button
-              type="button"
-              onClick={() => guardPlanFeature("cover_studio_template", openCoverStudioPage)()}
-              className="scriptora-action-tile group rounded-xl p-3 text-left opacity-90 transition-all hover:-translate-y-0.5"
-            >
-              <span className="ios-icon scriptora-theme-icon mb-2 h-8 w-8">
-                <ImagePlus className="h-3.5 w-3.5" />
-              </span>
-              <p className="text-xs font-bold text-white">Cover Studio</p>
-              <p className="mt-0.5 line-clamp-2 text-[11px] text-white/50">Copertina del libro attivo.</p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => guardPlanFeature("export_epub", () => setShowExport(true))()}
-              className="scriptora-action-tile group rounded-xl p-3 text-left opacity-90 transition-all hover:-translate-y-0.5"
-            >
-              <span className="ios-icon scriptora-theme-icon mb-2 h-8 w-8">
-                <FileDown className="h-3.5 w-3.5" />
-              </span>
-              <p className="text-xs font-bold text-white">Export</p>
-              <p className="mt-0.5 line-clamp-2 text-[11px] text-white/50">EPUB, DOCX, PDF.</p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => guardPlanFeature("kdp_market_base", () => navigate("/kdp-launch"))()}
-              className="scriptora-action-tile group rounded-xl p-3 text-left opacity-90 transition-all hover:-translate-y-0.5"
-            >
-              <span className="ios-icon scriptora-theme-icon mb-2 h-8 w-8">
-                <Rocket className="h-3.5 w-3.5" />
-              </span>
-              <p className="text-xs font-bold text-white">KDP / Pubblicazione</p>
-              <p className="mt-0.5 line-clamp-2 text-[11px] text-white/50">{ONE_FLOW_TOOL_ROLES.kdpLaunch.it}</p>
-            </button>
-          </section>
+          <DashboardPackagingRow
+            projectTitle={lastProject.config.title}
+            context={dashboardActionContext}
+          />
         )}
 
         <div className="mb-4 flex justify-end sm:mb-6">
@@ -1126,168 +954,8 @@ typeof crypto.randomUUID === "function"
           </button>
         </div>
 
-        {/* ScriptoraForgePanel hidden: Book Forge is now the primary creation flow */}
-
         {showAdvancedLaunchpad && (
-        <OneFlowHome
-          compact
-          authorIdentity={activeAuthor}
-          hideAuthorIdentityOnMobile={false}
-          lastProjectTitle={lastProject?.config.title}
-          lastProjectProgress={lastProjectProgress}
-          onWriteBook={openNewBookGuarded}
-          onAutoBestsellerShortcut={openNewBookGuarded}
-          onOpenWriter={() => navigate("/writer")}
-          onOpenPublishing={() => navigate("/publishing")}
-          onOpenIdentity={() => navigate("/identity")}
-          onStudyWithAI={() => navigate("/study")}
-          onListenBook={
-            lastProject
-              ? () => goApp({ projectId: lastProject.id, voice: true })
-              : () => goApp({ voice: true })
-          }
-          onContinue={lastProject ? () => goApp({ projectId: lastProject.id }) : undefined}
-          onMyBooks={() => setShowProjects(true)}
-          onCoverStudio={() => guardPlanFeature("cover_studio_template", openCoverStudioPage)()}
-          onExportStudio={() => guardPlanFeature("export_epub", () => setShowExport(true))()}
-          onAuthorConfigure={() => openAuthorIdentity()}
-          onAuthorGenerateAi={handleGenerateAuthorWithAi}
-          onAuthorEdit={() => openAuthorIdentity(activeAuthor)}
-          onEvaluateManuscript={() => guardPlanFeature("chapter_improvement", () => setShowManuscriptAnalyzer(true))()}
-          onCharacterStudio={() => guardPlanFeature("book_engine_full", () => setShowCharacterStudio(true))()}
-          onKdpLaunch={() => guardPlanFeature("kdp_market_base", () => navigate("/kdp-launch"))()}
-          onTitleDomination={() => guardPlanFeature("title_intelligence_base", () => setShowTitleIntel(true))()}
-          onCredits={() => navigate("/usage?focus=purchase")}
-          onProfile={() => setShowProfileMenu(true)}
-          onAdvancedTools={() => setAdvancedLaunchpadEnabled(true)}
-          showAdvancedLaunchpad={showAdvancedLaunchpad}
-        />
-        )}
-
-        {showAdvancedLaunchpad && (
-          <div className="mb-4 sm:mb-6">
-            <WalletScriptoraCard />
-          </div>
-        )}
-
-        {showAdvancedLaunchpad && (
-          <>
-            <div className="mb-4 sm:mb-6">
-              <PremiumOsGateway
-                lastProject={lastProject}
-                progressPercent={lastProjectProgress}
-                onContinue={() => lastProject && goApp({ projectId: lastProject.id })}
-                onNewBook={openNewBookGuarded}
-              />
-            </div>
-            <div className="mb-4 sm:mb-6">
-              <AuthorMomentumPanel
-                lastProject={lastProject}
-                progressPercent={lastProjectProgress}
-                onOpenProject={() => lastProject && goApp({ projectId: lastProject.id })}
-              />
-            </div>
-          </>
-        )}
-
-        {showAdvancedLaunchpad && (
-        <div className="mb-4 grid gap-3 sm:mb-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
-          <section className="ios-panel border-white/15 bg-slate-950/34 p-4 shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur-2xl sm:p-6">
-            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <div className="min-w-0">
-                <div className="mb-2 flex flex-wrap items-center gap-2 sm:mb-3">
-                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/15 bg-white/[0.10] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/78 shadow-sm">
-                    <Sparkles className="h-3 w-3 text-sky-300" /> {t("ai_book_studio")}
-                  </span>
-                  <span className={`inline-flex items-center rounded-lg border px-2 py-1 text-[10px] font-semibold uppercase sm:hidden ${
-                    activeRun
-                      ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
-                      : "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
-                  }`}>
-                    {activeRun ? t("live") : t("stable")}
-                  </span>
-                </div>
-                <h1 className="max-w-2xl text-2xl font-semibold leading-tight text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.45)] sm:text-4xl">
-                  Scriptora OS
-                </h1>
-                <p className="mt-2 max-h-10 max-w-xl overflow-hidden text-xs font-medium leading-5 text-white/74 drop-shadow-[0_1px_10px_rgba(0,0,0,0.45)] sm:mt-3 sm:max-h-none sm:text-sm sm:leading-6">
-                  {tt("plan_active_sentence", { plan: devOn ? "DEV" : planLabel })}
-                </p>
-              </div>
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                {lastProject ? (
-                  <button
-                    onClick={() => goApp({ projectId: lastProject.id })}
-                    className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-sky-200/60 bg-white px-3 text-xs font-bold text-slate-950 shadow-[0_16px_42px_rgba(14,165,233,0.22)] ring-1 ring-white/50 transition-all hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_18px_48px_rgba(14,165,233,0.30)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
-                  >
-                    <BookOpen className="h-4 w-4 text-sky-600" />
-                    {t("continue_action")}
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                  </button>
-                ) : (
-                  <button
-                    onClick={openNewBookGuarded}
-                    className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-sky-200/60 bg-white px-3 text-xs font-bold text-slate-950 shadow-[0_16px_42px_rgba(14,165,233,0.22)] ring-1 ring-white/50 transition-all hover:-translate-y-0.5 hover:bg-slate-100 hover:shadow-[0_18px_48px_rgba(14,165,233,0.30)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
-                  >
-                    <Plus className="h-4 w-4 text-sky-600" />
-                    {t("new_book")}
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowIdeaModal(true)}
-                  className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-3 text-xs font-semibold text-white/82 shadow-[0_12px_32px_rgba(0,0,0,0.18)] transition-all hover:-translate-y-0.5 hover:border-amber-200/35 hover:bg-amber-300/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:h-12 sm:px-4 sm:text-sm"
-                >
-                  <Flame className="h-4 w-4 text-amber-200" />
-                  <span className="hidden sm:inline">{ONE_FLOW_TOOL_ROLES.ideaPreview.it}</span>
-                  <span className="sm:hidden">Anteprima</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate("/")}
-                  className="hidden sm:inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-3 text-xs font-bold text-white/82 shadow-[0_12px_32px_rgba(0,0,0,0.18)] transition-all hover:-translate-y-0.5 hover:border-cyan-200/40 hover:bg-cyan-300/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:h-12 sm:px-4 sm:text-sm"
-                  title={t("public_site")}
-                >
-                  <HomeIcon className="h-4 w-4 text-cyan-200" />
-                  {t("public_site")}
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section className="ios-panel hidden border-white/15 bg-slate-950/30 p-5 shadow-[0_18px_60px_rgba(0,0,0,0.20)] backdrop-blur-2xl xl:block xl:p-6">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("workspace_status")}</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">
-                  {activeRun ? t("generation_running") : t("ready")}
-                </p>
-              </div>
-              <div className={`rounded-lg border px-2.5 py-1 text-[10px] font-semibold uppercase ${
-                activeRun
-                  ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
-                  : "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
-              }`}>
-                {activeRun ? t("live") : t("stable")}
-              </div>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setShowProjects(true)}
-                className="rounded-xl border border-white/15 bg-white/[0.10] p-3 text-left shadow-[0_10px_28px_rgba(0,0,0,0.14)] transition-colors hover:border-sky-300/45 hover:bg-sky-400/14"
-              >
-                <p className="text-[10px] uppercase text-muted-foreground">{t("drafts")}</p>
-                <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{draftProjects.length}</p>
-              </button>
-              <button
-                onClick={() => setShowLibrary(true)}
-                className="rounded-xl border border-white/15 bg-white/[0.10] p-3 text-left shadow-[0_10px_28px_rgba(0,0,0,0.14)] transition-colors hover:border-emerald-300/45 hover:bg-emerald-400/14"
-              >
-                <p className="text-[10px] uppercase text-muted-foreground">{t("library")}</p>
-                <p className="mt-1 text-xl font-semibold tabular-nums text-foreground">{completedProjects.length}</p>
-              </button>
-            </div>
-          </section>
-        </div>
+          <DashboardAdvancedToolsPanel context={dashboardActionContext} />
         )}
 
         <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
@@ -1310,279 +978,6 @@ typeof crypto.randomUUID === "function"
               </button>
             </div>
           </section>
-        )}
-
-        {/* Mobile primary action strip — visible before stats accordion */}
-        <div className="mb-4 flex gap-2 xl:hidden">
-          {lastProject ? (
-            <button
-              onClick={() => goApp({ projectId: lastProject.id })}
-              className="group inline-flex flex-1 h-11 items-center justify-center gap-2 rounded-xl border border-sky-300/40 bg-sky-400/12 px-4 text-sm font-bold text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition-all hover:bg-sky-400/20"
-            >
-              <BookOpen className="h-4 w-4 text-sky-300" />
-              {t("continue_action")}
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </button>
-          ) : (
-            <button
-              onClick={openNewBookGuarded}
-              className="group inline-flex flex-1 h-11 items-center justify-center gap-2 rounded-xl border border-sky-300/40 bg-sky-400/12 px-4 text-sm font-bold text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition-all hover:bg-sky-400/20"
-            >
-              <Plus className="h-4 w-4 text-sky-300" />
-              {t("new_book")}
-            </button>
-          )}
-          <button
-            onClick={() => setShowProjects(true)}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.07] px-4 text-sm font-medium text-white/80 transition-all hover:bg-white/[0.12]"
-          >
-            <FolderOpen className="h-4 w-4" />
-            {t("projects")}
-          </button>
-        </div>
-
-        <section className="mb-4 xl:hidden">
-          <button
-            type="button"
-            onClick={() => setShowMobileStats((value) => !value)}
-            className="ios-panel flex w-full items-center justify-between gap-3 border-white/15 bg-slate-950/30 p-3 text-left shadow-[0_12px_36px_rgba(0,0,0,0.16)] backdrop-blur-2xl"
-            aria-expanded={showMobileStats}
-          >
-            <span className="flex min-w-0 items-center gap-3">
-              <span className="ios-icon ios-icon-blue h-10 w-10 shrink-0 rounded-[16px]">
-                <BarChart3 className="h-4 w-4" />
-              </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold leading-5 text-white">{t("mobile_status_summary")}</span>
-                <span className="mt-0.5 block truncate text-[11px] font-medium text-white/62">
-                  {projects.length.toLocaleString()} {t("projects").toLowerCase()} · {draftProjects.length.toLocaleString()} {t("drafts").toLowerCase()}
-                </span>
-              </span>
-            </span>
-            <span className="flex shrink-0 items-center gap-2">
-              <span className={`rounded-lg border px-2 py-1 text-[10px] font-semibold uppercase ${
-                activeRun
-                  ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
-                  : "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
-              }`}>
-                {activeRun ? t("live") : t("stable")}
-              </span>
-              <span className="hidden rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[10px] font-semibold text-white/70 min-[420px]:inline">
-                {showMobileStats ? t("hide_metrics") : t("show_metrics")}
-              </span>
-              <ArrowRight className={`h-4 w-4 text-white/55 transition-transform ${showMobileStats ? "rotate-90" : ""}`} />
-            </span>
-          </button>
-
-          {showMobileStats && (
-            <div className="mt-2 space-y-2 rounded-2xl border border-white/15 bg-slate-950/28 p-2 shadow-[0_16px_44px_rgba(0,0,0,0.18)] backdrop-blur-2xl">
-              <div className="grid grid-cols-2 gap-2">
-                {dashboardWidgets.slice(0, 4).map((widget) => (
-                  <button
-                    key={widget.label}
-                    type="button"
-                    onClick={widget.action}
-                    className={`rounded-xl border border-white/12 bg-gradient-to-br ${widget.tone} p-2.5 text-left`}
-                  >
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="truncate text-[9px] font-bold uppercase tracking-[0.13em] text-white/55">{widget.label}</span>
-                      <widget.icon className="h-3.5 w-3.5 shrink-0 text-white/75" />
-                    </span>
-                    <span className="mt-1 block truncate text-sm font-semibold text-white">{widget.value}</span>
-                    <span className="mt-0.5 block truncate text-[10px] text-white/58">{widget.detail}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="grid grid-cols-4 gap-1.5">
-                {workspaceStats.map((stat) => (
-                  <button
-                    key={stat.label}
-                    type="button"
-                    onClick={() => stat.label === t("completed") ? setShowLibrary(true) : setShowProjects(true)}
-                    className="rounded-xl border border-white/12 bg-white/[0.07] p-2 text-center"
-                  >
-                    <span className="block truncate text-[8px] font-semibold uppercase text-white/48">{stat.label}</span>
-                    <span className="mt-0.5 block text-sm font-semibold tabular-nums text-white">{stat.value}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
-
-        <div className="mb-4 hidden gap-2 sm:mb-6 xl:grid xl:grid-cols-5">
-          {dashboardWidgets.map((widget) => (
-            <button
-              key={widget.label}
-              type="button"
-              onClick={widget.action}
-              className={`group relative min-h-[104px] overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-br ${widget.tone} p-3 text-left shadow-[0_14px_44px_rgba(0,0,0,0.18)] backdrop-blur-2xl transition-all duration-200 hover:-translate-y-0.5 hover:border-white/30 hover:bg-white/[0.10] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50`}
-            >
-              <div className="absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-60" />
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-white/58">{widget.label}</p>
-                  <p className="mt-2 truncate text-lg font-semibold leading-6 text-white sm:text-xl">{widget.value}</p>
-                </div>
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/15 bg-white/[0.10] text-white/85 shadow-lg shadow-black/20 transition-transform group-hover:scale-105">
-                  <widget.icon className="h-4 w-4" />
-                </span>
-              </div>
-              <p className="mt-2 line-clamp-2 text-[11px] font-medium leading-4 text-white/66">{widget.detail}</p>
-            </button>
-          ))}
-        </div>
-
-        <div className="mb-4 hidden grid-cols-4 gap-1.5 sm:mb-6 sm:grid-cols-2 sm:gap-2.5 xl:grid xl:grid-cols-4">
-          {workspaceStats.map((stat) => (
-            <div key={stat.label} className="ios-glass-soft rounded-xl border-white/15 bg-white/[0.075] p-2 shadow-[0_10px_32px_rgba(0,0,0,0.14)] backdrop-blur-xl sm:p-3">
-              <div className="flex items-center justify-between gap-2 sm:gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-[8px] font-semibold uppercase text-foreground/58 sm:text-[10px]">{stat.label}</p>
-                  <p className="mt-0.5 text-base font-semibold tabular-nums text-foreground sm:mt-1 sm:text-xl">{stat.value}</p>
-                </div>
-                <span className={`ios-icon ${stat.iconBg} hidden h-9 w-9 rounded-[14px] sm:inline-flex`}>
-                  <stat.icon className="h-4 w-4" />
-                </span>
-              </div>
-              <p className="mt-1 hidden truncate text-[11px] text-foreground/60 sm:block">{stat.detail}</p>
-            </div>
-          ))}
-        </div>
-
-        {lastProject && (
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => goApp({ projectId: lastProject.id })}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                goApp({ projectId: lastProject.id });
-              }
-            }}
-            className="ios-panel env-hero-book env-breathing group mb-5 w-full cursor-pointer overflow-hidden p-0 text-left transition-colors hover:border-primary/40"
-          >
-            <div className="bg-gradient-to-r from-sky-400/10 via-white/[0.055] to-emerald-400/10 p-3 sm:p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="mb-1.5 inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.07] px-2 py-1 text-[9px] font-semibold uppercase text-foreground/70">
-                    <Clock className="h-3 w-3 text-sky-300" /> {t("continue_project")}
-                  </p>
-                  <p className="truncate text-base font-semibold leading-5 text-foreground sm:text-lg">
-                    {lastProject.config.title || t("untitled")}
-                  </p>
-                  <p className="mt-0.5 text-[11px] leading-4 text-foreground/65">
-                    {lastProjectDoneChapters}/{lastProjectTargetChapters || lastProject.chapters?.length || 0} {t("chapters").toLowerCase()} · {lastProject.phase}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  title={t("delete")}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    deleteHomeProject(lastProject.id, lastProject.config.title);
-                  }}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-destructive/30 bg-destructive/10 text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-              <div className="mt-3 flex items-center gap-3">
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-sky-300 to-emerald-300 transition-all"
-                    style={{ width: `${lastProjectProgress}%` }}
-                  />
-                </div>
-                <span className="min-w-10 text-right text-[11px] font-semibold tabular-nums text-foreground/70">
-                  {lastProjectProgress}%
-                </span>
-              </div>
-              <div className="mt-3 flex items-center justify-between gap-3">
-                <span className="text-[11px] leading-4 text-foreground/60">
-                  {t("continue_project_hint")}
-                </span>
-                <span className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-white px-2.5 text-[11px] font-semibold text-slate-950 shadow-lg shadow-black/20 transition-colors group-hover:bg-slate-100">
-                  {t("continue_action")}
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showAdvancedLaunchpad && (
-        <section className="mb-10">
-          <div className="mb-5 flex items-end justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t("home_screen")}</p>
-              <h2 className="mt-1 text-xl font-semibold text-white drop-shadow-[0_1px_12px_rgba(0,0,0,0.38)]">{t("launchpad")}</h2>
-              <p className="mt-1 max-w-xl text-xs font-medium leading-5 text-white/72 drop-shadow-[0_1px_10px_rgba(0,0,0,0.38)]">{t("launchpad_desc")}</p>
-            </div>
-            <span className="hidden text-[11px] text-muted-foreground sm:inline">
-              {tt("total_suffix", { count: projects.length, plan: planLabel })}
-            </span>
-          </div>
-
-          <div className="space-y-7">
-            {showAdvancedLaunchpad && cardGroups.map((group) => {
-              const groupCards = cards.filter((card) => card.group === group.id);
-              return (
-                <div key={group.id}>
-                  <div className="mb-3 flex items-center justify-between gap-3 border-b border-white/15 pb-2">
-                    <div>
-                      <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>
-                      <p className="mt-0.5 text-[11px] text-foreground/62">{group.desc}</p>
-                    </div>
-                    <span className="text-[10px] font-semibold tabular-nums text-muted-foreground">
-                      {groupCards.length}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-                    {groupCards.map(card => {
-                      const Icon = card.icon;
-                      const inner = (
-                        <button
-                          key={card.title}
-                          onClick={card.action}
-                          className={`group relative flex min-h-[154px] w-full overflow-hidden flex-col items-start justify-between rounded-2xl border p-3.5 text-left backdrop-blur-xl transition-all duration-200 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 motion-safe:hover:scale-[1.012] ${
-                            (card as any).emphasis
-                              ? "sm:col-span-2 lg:col-span-2 border-sky-400/35 bg-gradient-to-br from-sky-400/14 via-slate-950/30 to-slate-950/30 shadow-[0_18px_46px_rgba(14,165,233,0.14)] ring-1 ring-sky-400/10 hover:border-sky-300/55 hover:bg-sky-400/18 hover:shadow-[0_24px_58px_rgba(14,165,233,0.22)]"
-                              : "border-white/15 bg-slate-950/30 shadow-[0_18px_46px_rgba(0,0,0,0.20)] ring-1 ring-white/[0.03] hover:border-white/30 hover:bg-white/[0.11] hover:shadow-[0_24px_58px_rgba(0,0,0,0.26)]"
-                          }`}
-                        >
-                          <span className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent opacity-70" />
-                          <span className="flex w-full items-start justify-between gap-3">
-                            <span className={`ios-icon ${card.iconBg} h-11 w-11 rounded-[17px] shadow-[0_10px_24px_rgba(0,0,0,0.22)] ring-1 ring-white/18 sm:h-12 sm:w-12`}>
-                              <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
-                            </span>
-                            {(card as any).tag && (
-                              <span className="rounded-full border border-white/10 bg-white/[0.07] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-white/54">
-                                {(card as any).tag}
-                              </span>
-                            )}
-                          </span>
-                          <span className="mt-3 text-[15px] font-bold leading-5 text-white drop-shadow-[0_1px_8px_rgba(0,0,0,0.35)]">{card.title}</span>
-                          <span className="mt-1 text-[11px] font-medium leading-4 text-white/72 drop-shadow-[0_1px_8px_rgba(0,0,0,0.32)]">{card.desc}</span>
-                          <span className="mt-3 inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45 transition-colors group-hover:text-white/78">
-                            {t("open_studio")}
-                            <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-                          </span>
-                        </button>
-                      );
-                      return (card as any).feature
-                        ? <PaywallGuard key={card.title} feature={(card as any).feature} compact>{inner}</PaywallGuard>
-                        : <div key={card.title}>{inner}</div>;
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
         )}
 
         {showProjects && (() => {

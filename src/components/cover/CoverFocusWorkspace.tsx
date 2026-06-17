@@ -92,7 +92,7 @@ export function CoverFocusWorkspace({
           </Badge>
         </div>
 
-        <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center px-2 pb-[calc(4.5rem+env(safe-area-inset-bottom))] pt-2 sm:px-4 lg:px-10 lg:pb-24 lg:pt-6">
+        <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center px-1 pb-[calc(4.75rem+env(safe-area-inset-bottom))] pt-1 sm:px-3 lg:px-8 lg:pb-20 lg:pt-4">
           {isMobileStudio && (
             <div className="mb-1.5 flex w-full max-w-full shrink-0 flex-wrap items-center justify-center gap-1 overflow-x-auto">
               {COVER_VIEW_MODES.map((m) => (
@@ -136,7 +136,7 @@ export function CoverFocusWorkspace({
             </div>
           )}
 
-          <div className="cover-focus-canvas-frame relative flex h-full w-full min-h-0 flex-1 items-center justify-center rounded-[1.75rem] border border-white/10 bg-gradient-to-br from-black/55 via-background/15 to-primary/10 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_32px_100px_rgba(0,0,0,0.55)] sm:p-3 lg:rounded-[2.25rem] lg:p-6">
+          <div className="cover-focus-canvas-frame relative flex h-full w-full min-h-0 flex-1 items-center justify-center rounded-[1.5rem] border border-white/10 bg-gradient-to-br from-black/55 via-background/15 to-primary/10 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_32px_100px_rgba(0,0,0,0.55)] sm:p-2 lg:rounded-[2rem] lg:p-4">
             {cinematicStep && cinematicStep !== "done" && (
               <CoverCinematicOverlay stepId={cinematicStep} progress={cinematicProgress} italianUi={italianUi} />
             )}

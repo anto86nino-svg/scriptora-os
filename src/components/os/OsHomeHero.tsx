@@ -52,8 +52,8 @@ export function OsHomeHero({
   onNewBook,
   onMyBooks,
 }: OsHomeHeroProps) {
-  const title = lastProject?.config?.title || "Il tuo prossimo bestseller";
-  const subtitle = lastProject?.config?.subtitle || "Crea o continua un progetto editoriale";
+  const title = lastProject?.config?.title || "Nessun libro attivo";
+  const subtitle = lastProject?.config?.subtitle || "Crea un libro con Book Forge o continua un progetto esistente";
   const doneChapters = lastProject?.chapters?.filter((c) => (c.content || "").trim().length > 50).length || 0;
   const targetChapters = lastProject?.config?.numberOfChapters || lastProject?.chapters?.length || 0;
   const status = manuscriptStatus(lastProject);

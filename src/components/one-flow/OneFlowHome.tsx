@@ -142,7 +142,7 @@ export function OneFlowHome({
           step="5"
           emoji="🎨"
           title="Cover Studio"
-          subtitle="Copertine professionali in un click"
+          subtitle="Studio copertina — formato, titolo, autore, anteprima"
           onClick={onCoverStudio}
           accent="violet"
         />

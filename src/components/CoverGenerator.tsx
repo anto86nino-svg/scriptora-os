@@ -414,13 +414,31 @@ export function CoverGenerator({
   }, [highlightLayerType, composition.layers]);
 
   const commercialIntel = useMemo(
-    () =>
-      assessCoverCommercialIntelligence(
-        composition,
-        studioPackage.score,
-        coverGenreBrief || genre,
-        italianUi,
-      ),
+    () => {
+      try {
+        return assessCoverCommercialIntelligence(
+          {
+            ...composition,
+            layers: Array.isArray(composition.layers) ? composition.layers : [],
+          },
+          studioPackage.score,
+          coverGenreBrief || genre,
+          italianUi,
+        );
+      } catch {
+        return {
+          overallScore: 0,
+          genreFit: 0,
+          thumbnailReadability: 0,
+          titleVisibility: 0,
+          contrast: 0,
+          bookTokImpact: 0,
+          commercialClarity: 0,
+          suggestions: [],
+          strengths: [],
+        };
+      }
+    },
     [composition, studioPackage.score, coverGenreBrief, genre, italianUi],
   );
 
@@ -1027,11 +1045,16 @@ export function CoverGenerator({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-primary sm:gap-2 sm:text-xs sm:tracking-[0.2em]">
               <BookOpen className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
-              <span className="truncate">Cover Studio Pro</span>
+              <span className="truncate">Cover Focus Studio</span>
             </div>
             <h2 className="mt-0.5 line-clamp-1 text-sm font-semibold leading-snug text-foreground sm:text-base">
-              {italianUi ? "Studio creativo copertina" : "Cover creative studio"}
+              {italianUi ? "Studio copertina del libro attivo" : "Active book cover studio"}
             </h2>
+            <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground max-sm:hidden">
+              {italianUi
+                ? "Lavora su formato, titolo, autore, anteprima e export."
+                : "Work on format, title, author, preview and export."}
+            </p>
             <div className="mt-1 flex flex-wrap items-center gap-1 max-sm:hidden">
               <Badge variant="outline" className="px-1.5 py-0 text-[9px] sm:text-[10px]">{studioPackage.honestyLabel}</Badge>
               <Badge variant="secondary" className="px-1.5 py-0 text-[9px] sm:text-[10px]">Score {studioPackage.score.finalScore}</Badge>
