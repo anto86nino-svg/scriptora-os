@@ -40,9 +40,6 @@ function ForgeTopHeader({ onClose }: { onClose: () => void }) {
           <Sparkles className="h-3.5 w-3.5" />
           Book Forge
         </p>
-        <p className="truncate text-xs text-white/55">
-          Parla il libro a Scriptora. Non generiamo finché il DNA non è chiaro.
-        </p>
       </div>
     </header>
   );

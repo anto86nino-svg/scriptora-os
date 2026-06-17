@@ -1,5 +1,6 @@
 import type { ExtractedBookIntent, InterviewGenre } from "./types";
 import { sanitizeDnaText } from "./dna-cleaner";
+import { humanizeMissingField } from "./interview-ui-copy";
 
 export type InferredBookProfile = {
   bookType?: string;
@@ -190,26 +191,41 @@ export function getAdaptiveQuestion(
   const byGenreField: Record<string, Partial<Record<InterviewGenre, string>>> = {
     emotionalTone: {
       romance: "Vuoi un romance slow burn o payoff emotivo più rapido?",
-      thriller: "Preferisci tensione psicologica o adrenalina e ritmo incalzante?",
+      thriller: "Che atmosfera immagini: claustrofobica, investigativa, disturbante, gotica, realistica?",
       "self-help": "Guida morbida e compassionevole, o trasformazione più dura e diretta?",
       fantasy: "Che atmosfera emotiva deve dominare il mondo?",
     },
     centralConflict: {
       romance: "Cosa rende questa storia d'amore difficile o impossibile?",
-      thriller: "Qual è il segreto o il pericolo che mette tutto in moto?",
+      thriller: "Quale evento rompe l'equilibrio della storia?",
       "self-help": "Qual è il blocco principale del lettore oggi?",
       fantasy: "Quale forza minaccia il mondo o il protagonista?",
     },
     genreDNA: {
-      romance: "Che tipo di romance è — contemporaneo, storico, proibito, intimo?",
-      thriller: "Più investigative, psicologico, action o paranoid?",
+      romance: "Che sensazione di lettura vuoi — intima, proibita, lenta, appassionata?",
+      thriller: "Il pericolo è umano, soprannaturale, psicologico o ambiguo?",
       poetry: "Che immagini, simboli o ritmo poetico ti stanno a cuore?",
+    },
+    setting: {
+      thriller: "Dove si svolge la storia e che sensazione deve dare quel luogo?",
+      fantasy: "Che mondo o atmosfera vuoi far respirare al lettore?",
+    },
+    promise: {
+      thriller: "Cosa il lettore deve scoprire poco alla volta?",
+      romance: "Quale segreto emotivo non deve essere rivelato troppo presto?",
+    },
+    targetReader: {
+      general: "A chi stai parlando, come a una persona reale che conosci?",
+    },
+    readerTransformation: {
+      general: "Che emozione vuoi lasciare nel lettore quando chiude il libro?",
     },
   };
 
   const question =
     byGenreField[weakField]?.[g] ??
-    `Aiutami a capire meglio ${weakField}: cosa deve essere chiarissimo per te?`;
+    byGenreField[weakField]?.general ??
+    humanizeMissingField(weakField);
 
   return { question };
 }

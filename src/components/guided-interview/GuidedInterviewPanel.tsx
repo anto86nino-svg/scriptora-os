@@ -2,9 +2,12 @@ import type { ReactNode, RefObject } from "react";
 import { useRef } from "react";
 import { Mic, MicOff, Send } from "lucide-react";
 import { BookDnaConfirmationPanel } from "./BookDnaConfirmationPanel";
+import { ForgeInterviewConfirmation } from "./ForgeInterviewConfirmation";
 import { ForgeLiveMap } from "./ForgeLiveMap";
+import { MobileInterviewProgress } from "./MobileInterviewProgress";
 import { useGuidedInterviewController } from "./useGuidedInterviewController";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
+import { getEditorialBlockedPrompt } from "@/lib/guided-interview/interview-ui-copy";
 import { MobileForgeScrollShell } from "@/mobile/MobileForgeScrollShell";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +38,7 @@ export function GuidedInterviewPanel({
   onContinueInterview,
 }: GuidedInterviewPanelProps) {
   const isMobile = variant === "mobile";
+  const interviewOnly = isMobile && unifiedScroll;
   const shellScrollRef = useRef<HTMLElement>(null);
 
   const ctrl = useGuidedInterviewController({
@@ -42,25 +46,31 @@ export function GuidedInterviewPanel({
     language,
     chatFirst,
     isMobile,
+    interviewOnly,
     scrollContainerRef: unifiedScroll && isMobile ? shellScrollRef : undefined,
     onComplete: onComplete as ((data: GuidedInterviewState) => void) | undefined,
     onConfirmDna,
     onContinueInterview,
   });
 
+  const showMobileConfirmation = interviewOnly && ctrl.showDnaPanel;
+
   const body = (
     <InterviewBody
       ctrl={ctrl}
       isMobile={isMobile}
+      interviewOnly={interviewOnly}
+      showMobileConfirmation={showMobileConfirmation}
       unifiedScroll={unifiedScroll && isMobile}
     />
   );
 
-  const inputFooter = !ctrl.next.done ? (
-    <InterviewInputFooter ctrl={ctrl} isMobile={isMobile} unifiedScroll />
-  ) : null;
+  const inputFooter =
+    !ctrl.next.done && !showMobileConfirmation ? (
+      <InterviewInputFooter ctrl={ctrl} isMobile={isMobile} unifiedScroll interviewOnly={interviewOnly} />
+    ) : null;
 
-  const liveMap = (
+  const liveMap = !interviewOnly ? (
     <ForgeLiveMap
       state={ctrl.state}
       dnaLock={ctrl.progress.dnaLock}
@@ -72,7 +82,7 @@ export function GuidedInterviewPanel({
       onCorrect={() => ctrl.setInput("In realtà vorrei precisare che ")}
       onDeepen={() => ctrl.setInput("Vorrei approfondire: ")}
     />
-  );
+  ) : null;
 
   if (isMobile && unifiedScroll) {
     return (
@@ -81,7 +91,12 @@ export function GuidedInterviewPanel({
         header={
           <>
             {forgeHeader}
-            {liveMap}
+            {!showMobileConfirmation && (
+              <MobileInterviewProgress
+                answeredCount={ctrl.progress.answeredCount}
+                total={ctrl.progress.totalCritical}
+              />
+            )}
           </>
         }
         footer={inputFooter}
@@ -133,16 +148,40 @@ type Ctrl = ReturnType<typeof useGuidedInterviewController>;
 function InterviewBody({
   ctrl,
   isMobile,
+  interviewOnly,
+  showMobileConfirmation,
   unifiedScroll,
 }: {
   ctrl: Ctrl;
   isMobile: boolean;
+  interviewOnly: boolean;
+  showMobileConfirmation: boolean;
   unifiedScroll: boolean;
 }) {
   const showDnaInline =
-    unifiedScroll ||
-    ctrl.showDnaPanel ||
-    (!isMobile && ctrl.progress.dnaLock.confidenceScore > 0.35);
+    !interviewOnly &&
+    (unifiedScroll ||
+      ctrl.showDnaPanel ||
+      (!isMobile && ctrl.progress.dnaLock.confidenceScore > 0.35));
+
+  if (showMobileConfirmation) {
+    return (
+      <div className="px-4 py-5 pb-8">
+        <ForgeInterviewConfirmation
+          dnaLock={ctrl.progress.dnaLock}
+          extracted={ctrl.state.extracted}
+          onConfirm={ctrl.handleConfirmDna}
+          onCorrect={ctrl.handleContinueInterview}
+        />
+      </div>
+    );
+  }
+
+  if (interviewOnly) {
+    return (
+      <MobileInterviewOnlyBody ctrl={ctrl} unifiedScroll={unifiedScroll} />
+    );
+  }
 
   return (
     <div className={cn("space-y-3", unifiedScroll ? "px-4 py-4 pb-8" : "")}>
@@ -171,36 +210,14 @@ function InterviewBody({
         </div>
       ))}
 
-      {ctrl.isThinking && (
-        <div className="max-w-[70%] rounded-[22px] rounded-tl-md bg-violet-500/12 px-4 py-3 text-sm text-violet-100">
-          <span className="inline-flex items-center gap-2">
-            <span className="flex gap-1">
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-300 [animation-delay:0ms]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-300 [animation-delay:120ms]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-300 [animation-delay:240ms]" />
-            </span>
-            Scriptora sta riflettendo…
-          </span>
-        </div>
-      )}
+      {ctrl.isThinking && <ThinkingBubble />}
 
       {!ctrl.next.done && ctrl.next.question?.helper && (
         <p className="text-xs leading-5 text-white/45">{ctrl.next.question.helper}</p>
       )}
 
       {!ctrl.next.done && (ctrl.next.question?.quickSuggestions?.length ?? 0) > 0 && (
-        <div className="flex flex-wrap gap-2 pt-1">
-          {ctrl.next.question!.quickSuggestions!.map((chip) => (
-            <button
-              key={chip.label}
-              type="button"
-              onClick={() => ctrl.sendMessage(chip.value)}
-              className="rounded-full border border-white/12 bg-white/[0.05] px-3 py-1.5 text-[11px] font-medium text-white/80 transition hover:border-violet-300/40 hover:bg-violet-500/15"
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
+        <QuickSuggestionChips ctrl={ctrl} />
       )}
 
       {ctrl.ready && !ctrl.showDnaPanel && !unifiedScroll && (
@@ -244,14 +261,116 @@ function InterviewBody({
   );
 }
 
+function MobileInterviewOnlyBody({
+  ctrl,
+  unifiedScroll,
+}: {
+  ctrl: Ctrl;
+  unifiedScroll: boolean;
+}) {
+  const assistantMessages = ctrl.state.messages.filter((m) => m.role === "assistant");
+  const userMessages = ctrl.state.messages.filter((m) => m.role === "user");
+  const currentQuestion =
+    ctrl.next.question?.question ??
+    assistantMessages[assistantMessages.length - 1]?.content ??
+    "Raccontami il libro che hai dentro.";
+  const lastUserReply = userMessages[userMessages.length - 1]?.content;
+  const empathicLine = ctrl.next.question?.helper;
+
+  return (
+    <div className={cn("flex min-h-[min(70dvh,520px)] flex-col justify-center", unifiedScroll ? "px-4 py-6 pb-10" : "px-4 py-4")}>
+      <div className="mx-auto w-full max-w-lg">
+        {lastUserReply && (
+          <p className="mb-4 line-clamp-3 text-right text-xs leading-5 text-white/35">
+            Tu: {lastUserReply}
+          </p>
+        )}
+
+        <div className="animate-in fade-in slide-in-from-bottom-2 rounded-[24px] border border-violet-400/15 bg-violet-500/10 px-5 py-5 duration-300">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-200/80">
+            Scriptora
+          </p>
+          <p className="mt-2 text-base font-medium leading-7 text-white sm:text-lg">
+            {currentQuestion}
+          </p>
+          {empathicLine && (
+            <p className="mt-3 text-sm leading-6 text-white/50">{empathicLine}</p>
+          )}
+        </div>
+
+        {ctrl.isThinking && (
+          <div className="mt-4">
+            <ThinkingBubble />
+          </div>
+        )}
+
+        {!ctrl.isThinking && (ctrl.next.question?.quickSuggestions?.length ?? 0) > 0 && (
+          <div className="mt-4">
+            <QuickSuggestionChips ctrl={ctrl} />
+          </div>
+        )}
+
+        {!ctrl.ready && ctrl.next.done && (
+          <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
+            <p className="text-sm leading-6 text-amber-50/90">
+              {getEditorialBlockedPrompt(ctrl.progress.dnaLock)}
+            </p>
+            <button
+              type="button"
+              onClick={ctrl.handleContinueInterview}
+              className="mt-3 rounded-xl border border-white/15 px-4 py-2.5 text-xs font-semibold text-white"
+            >
+              Continua
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ThinkingBubble() {
+  return (
+    <div className="max-w-[70%] rounded-[22px] rounded-tl-md bg-violet-500/12 px-4 py-3 text-sm text-violet-100">
+      <span className="inline-flex items-center gap-2">
+        <span className="flex gap-1">
+          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-300 [animation-delay:0ms]" />
+          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-300 [animation-delay:120ms]" />
+          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-300 [animation-delay:240ms]" />
+        </span>
+        Scriptora sta riflettendo…
+      </span>
+    </div>
+  );
+}
+
+function QuickSuggestionChips({ ctrl }: { ctrl: Ctrl }) {
+  return (
+    <div className="flex flex-wrap gap-2 pt-1">
+      {ctrl.next.question!.quickSuggestions!.map((chip) => (
+        <button
+          key={chip.label}
+          type="button"
+          onClick={() => ctrl.sendMessage(chip.value)}
+          className="rounded-full border border-white/12 bg-white/[0.05] px-3 py-1.5 text-[11px] font-medium text-white/80 transition hover:border-violet-300/40 hover:bg-violet-500/15"
+        >
+          {chip.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function InterviewInputFooter({
   ctrl,
   isMobile,
   unifiedScroll,
+  interviewOnly,
 }: {
   ctrl: Ctrl;
   isMobile: boolean;
   unifiedScroll?: boolean;
+  interviewOnly?: boolean;
 }) {
   return (
     <div
@@ -293,7 +412,11 @@ function InterviewInputFooter({
               ctrl.sendMessage();
             }
           }}
-          placeholder={ctrl.next.question?.placeholder || "Scrivi liberamente…"}
+          placeholder={
+            interviewOnly
+              ? "Rispondi come ti viene…"
+              : ctrl.next.question?.placeholder || "Scrivi liberamente…"
+          }
           rows={isMobile ? 2 : 3}
           className="max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-violet-400/40"
         />

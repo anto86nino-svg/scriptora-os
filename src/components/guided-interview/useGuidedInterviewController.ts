@@ -16,6 +16,8 @@ export type UseGuidedInterviewOptions = {
   language?: string;
   chatFirst?: boolean;
   isMobile?: boolean;
+  /** Mobile Book Forge: hide DNA engine UI until final confirmation. */
+  interviewOnly?: boolean;
   onComplete?: (data: GuidedInterviewState) => void;
   onConfirmDna?: (state: GuidedInterviewState) => void;
   onContinueInterview?: () => void;
@@ -41,6 +43,7 @@ export function useGuidedInterviewController({
   );
   const [input, setInput] = useState("");
   const [showDnaPanel, setShowDnaPanel] = useState(false);
+  const [dnaConfirmationDismissed, setDnaConfirmationDismissed] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const internalScrollRef = useRef<HTMLDivElement>(null);
   const lastQuestionIdRef = useRef<string | null>(null);
@@ -55,6 +58,7 @@ export function useGuidedInterviewController({
       }),
     );
     setShowDnaPanel(false);
+    setDnaConfirmationDismissed(false);
     lastQuestionIdRef.current = null;
   }, [selectedGenre, chatFirst]);
 
@@ -100,10 +104,16 @@ export function useGuidedInterviewController({
   }, [state.messages.length, showDnaPanel, isThinking]);
 
   useEffect(() => {
-    if (isMobile && discoveryReady && !showDnaPanel) {
+    if (!isMobile) return;
+    if (ready && !showDnaPanel) {
+      setShowDnaPanel(true);
+      setDnaConfirmationDismissed(false);
+      return;
+    }
+    if (discoveryReady && !showDnaPanel && !dnaConfirmationDismissed) {
       setShowDnaPanel(true);
     }
-  }, [discoveryReady, isMobile, showDnaPanel]);
+  }, [ready, discoveryReady, isMobile, showDnaPanel, dnaConfirmationDismissed]);
 
   useEffect(() => {
     if (next.done && ready) {
@@ -128,6 +138,7 @@ export function useGuidedInterviewController({
   const handleContinueInterview = () => {
     setState((prev) => resumeInterview(prev));
     setShowDnaPanel(false);
+    setDnaConfirmationDismissed(true);
     onContinueInterview?.();
   };
 
