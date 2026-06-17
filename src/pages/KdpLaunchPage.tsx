@@ -36,7 +36,7 @@ import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { chargePremiumOperation } from "@/lib/billing/charge";
 import { ScriptoraLogoMark } from "@/components/brand/ScriptoraLogoMark";
-import { getProjectCoverDataUrl } from "@/lib/cover-session";
+import { useDashboardReturn } from "@/hooks/useDashboardReturn";
 import { getLastProjectId, loadProjects, setLastProjectId } from "@/services/storageService";
 import type { BookProject } from "@/types/book";
 
@@ -206,6 +206,7 @@ function KdpPublishingPreview({
 export default function KdpLaunchPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { goBackToDashboard } = useDashboardReturn();
   const sessionIdRef = useRef(getOrCreateKdpSessionId());
   const [step, setStep] = useState<Step>("idea");
   const [loading, setLoading] = useState(false);
@@ -625,7 +626,7 @@ export default function KdpLaunchPage() {
               Crea un prodotto che vende su Amazon — non solo un libro.
             </p>
           </div>
-          <Button variant="ghost" className="shrink-0" onClick={() => navigate(-1)}>← Indietro</Button>
+          <Button variant="ghost" className="shrink-0" onClick={goBackToDashboard}>← Indietro</Button>
         </header>
 
         {showRecovery && pendingRecovery && (

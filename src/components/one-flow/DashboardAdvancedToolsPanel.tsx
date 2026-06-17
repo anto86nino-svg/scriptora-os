@@ -1,3 +1,4 @@
+import { memo, useCallback, useMemo } from "react";
 import { ArrowRight } from "lucide-react";
 import { PaywallGuard } from "@/components/PaywallGuard";
 import {
@@ -18,25 +19,42 @@ const GROUP_LABELS: Record<DashboardHomeAction["group"], string> = {
   system: "Sistema",
 };
 
-export function DashboardAdvancedToolsPanel({ context }: Props) {
-  const actions = buildDashboardAdvancedActions(context);
-  const groups = (["optimization", "writer", "system"] as const).filter((group) =>
-    actions.some((action) => action.group === group),
+const GROUP_ORDER = ["optimization", "writer", "system"] as const;
+
+function DashboardAdvancedToolsPanelInner({ context }: Props) {
+  const actions = useMemo(() => buildDashboardAdvancedActions(context), [context]);
+  const groups = useMemo(
+    () => GROUP_ORDER.filter((group) => actions.some((action) => action.group === group)),
+    [actions],
+  );
+  const actionsByGroup = useMemo(() => {
+    const map = new Map<DashboardHomeAction["group"], DashboardHomeAction[]>();
+    for (const group of groups) {
+      map.set(group, actions.filter((action) => action.group === group));
+    }
+    return map;
+  }, [actions, groups]);
+
+  const handleAction = useCallback(
+    (action: DashboardHomeAction) => {
+      safeExecuteDashboardAction(action, context, "advanced-tools");
+    },
+    [context],
   );
 
   if (actions.length === 0) return null;
 
   return (
-    <section className="mb-8 space-y-5">
+    <section className="scriptora-advanced-tools-panel mb-8 space-y-5">
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">Strumenti avanzati</p>
         <p className="mt-1 text-sm text-white/62">
-          Ogni strumento apre una schermata dedicata — la Dashboard resta compatta.
+          Ogni strumento apre una pagina dedicata — la Dashboard resta compatta.
         </p>
       </div>
 
       {groups.map((group) => {
-        const groupActions = actions.filter((action) => action.group === group);
+        const groupActions = actionsByGroup.get(group) || [];
         return (
           <div key={group}>
             <h3 className="mb-2 text-xs font-semibold text-white/72">{GROUP_LABELS[group]}</h3>
@@ -46,7 +64,7 @@ export function DashboardAdvancedToolsPanel({ context }: Props) {
                   <button
                     key={action.id}
                     type="button"
-                    onClick={() => safeExecuteDashboardAction(action, context)}
+                    onClick={() => handleAction(action)}
                     className="group flex min-h-[108px] w-full flex-col items-start justify-between rounded-2xl border border-white/12 bg-slate-950/35 p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-white/22 hover:bg-white/[0.08]"
                   >
                     <span className="text-sm font-bold text-white">{action.label}</span>
@@ -73,3 +91,5 @@ export function DashboardAdvancedToolsPanel({ context }: Props) {
     </section>
   );
 }
+
+export const DashboardAdvancedToolsPanel = memo(DashboardAdvancedToolsPanelInner);

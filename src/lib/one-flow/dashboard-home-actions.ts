@@ -3,6 +3,10 @@ import type { FeatureKey } from "@/lib/subscription";
 import { isProjectComplete } from "@/lib/project-status";
 import type { ActiveDashboardTool } from "@/lib/one-flow/dashboard-active-tool";
 import { resetRouteScroll } from "@/lib/one-flow/dashboard-navigation";
+import {
+  returnStateForOrigin,
+  type DashboardReturnContext,
+} from "@/lib/one-flow/dashboard-return-context";
 
 export type DashboardActionMode = "route" | "tool" | "callback";
 
@@ -31,7 +35,7 @@ export type DashboardActionContext = {
   onNewBook: () => void;
   onContinue?: () => void;
   onOpenCover: () => void;
-  onNavigate: (path: string) => void;
+  onNavigate: (path: string, state?: Record<string, unknown>) => void;
 };
 
 export const DASHBOARD_TOOL_ROUTES: Partial<Record<ActiveDashboardTool, string>> = {
@@ -91,7 +95,11 @@ export function isDashboardActionRenderable(
   return isDashboardActionAvailable(action, ctx);
 }
 
-export function safeExecuteDashboardAction(action: DashboardHomeAction, ctx: DashboardActionContext): void {
+export function safeExecuteDashboardAction(
+  action: DashboardHomeAction,
+  ctx: DashboardActionContext,
+  returnFrom?: DashboardReturnContext["from"],
+): void {
   try {
     ctx.closeAllTools();
 
@@ -122,7 +130,7 @@ export function safeExecuteDashboardAction(action: DashboardHomeAction, ctx: Das
       case "route":
         if (action.route && isValidDashboardRoute(action.route)) {
           resetRouteScroll();
-          ctx.onNavigate(action.route);
+          ctx.onNavigate(action.route, returnStateForOrigin(returnFrom));
         } else {
           toast.error(action.fallbackMessage || "Destinazione non valida.");
         }
@@ -131,7 +139,7 @@ export function safeExecuteDashboardAction(action: DashboardHomeAction, ctx: Das
         const route = action.toolId ? DASHBOARD_TOOL_ROUTES[action.toolId] : undefined;
         if (route) {
           resetRouteScroll();
-          ctx.onNavigate(route);
+          ctx.onNavigate(route, returnStateForOrigin(returnFrom));
           break;
         }
         if (action.toolId) {

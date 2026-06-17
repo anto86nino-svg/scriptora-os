@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { TitleIntelligenceDialog } from "@/components/TitleIntelligenceDialog";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
+import { useDashboardReturn } from "@/hooks/useDashboardReturn";
 import { getLastProjectId, loadProjects } from "@/lib/storage";
 
 export default function TitleIntelligencePage() {
-  const navigate = useNavigate();
+  const { goBackToDashboard, navigateWithReturn } = useDashboardReturn();
   const activeProject = useMemo(() => {
     try {
       const projects = Array.isArray(loadProjects()) ? loadProjects() : [];
@@ -22,8 +22,8 @@ export default function TitleIntelligencePage() {
         open
         initialTitle={activeProject?.config?.title}
         initialGenre={activeProject?.config?.genre || activeProject?.config?.category}
-        onClose={() => navigate("/dashboard")}
-        onLaunchForge={() => navigate("/dashboard", { state: { openForge: true } })}
+        onClose={goBackToDashboard}
+        onLaunchForge={() => navigateWithReturn("/dashboard", { openForge: true })}
       />
     </FeatureErrorBoundary>
   );

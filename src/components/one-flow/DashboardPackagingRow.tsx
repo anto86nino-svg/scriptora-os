@@ -1,9 +1,11 @@
+import { memo, useCallback, useMemo } from "react";
 import { ArrowRight } from "lucide-react";
 import { PaywallGuard } from "@/components/PaywallGuard";
 import {
   buildDashboardPackagingActions,
-  executeDashboardAction,
+  safeExecuteDashboardAction,
   type DashboardActionContext,
+  type DashboardHomeAction,
 } from "@/lib/one-flow/dashboard-home-actions";
 import { t } from "@/lib/i18n";
 
@@ -12,8 +14,16 @@ type Props = {
   context: DashboardActionContext;
 };
 
-export function DashboardPackagingRow({ projectTitle, context }: Props) {
-  const actions = buildDashboardPackagingActions(context);
+function DashboardPackagingRowInner({ projectTitle, context }: Props) {
+  const actions = useMemo(() => buildDashboardPackagingActions(context), [context]);
+
+  const handleAction = useCallback(
+    (action: DashboardHomeAction) => {
+      safeExecuteDashboardAction(action, context, "packaging");
+    },
+    [context],
+  );
+
   if (actions.length === 0) return null;
 
   return (
@@ -27,7 +37,7 @@ export function DashboardPackagingRow({ projectTitle, context }: Props) {
             <button
               key={action.id}
               type="button"
-              onClick={() => executeDashboardAction(action, context)}
+              onClick={() => handleAction(action)}
               className="scriptora-action-tile group rounded-xl p-3 text-left opacity-95 transition-all hover:-translate-y-0.5"
             >
               <p className="text-xs font-bold text-white">{action.label}</p>
@@ -50,3 +60,5 @@ export function DashboardPackagingRow({ projectTitle, context }: Props) {
     </section>
   );
 }
+
+export const DashboardPackagingRow = memo(DashboardPackagingRowInner);

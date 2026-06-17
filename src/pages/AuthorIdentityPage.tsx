@@ -1,19 +1,22 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import type { AuthorIdentity } from "@/types/book";
 import { AuthorIdentityDialog } from "@/components/AuthorIdentityDialog";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
+import { useDashboardReturn } from "@/hooks/useDashboardReturn";
+import type { DashboardRouteState } from "@/lib/one-flow/dashboard-return-context";
 
 export default function AuthorIdentityPage() {
-  const navigate = useNavigate();
   const location = useLocation();
-  const prefillDraft = (location.state as { prefill?: AuthorIdentity | null } | null)?.prefill ?? null;
+  const { goBackToDashboard } = useDashboardReturn();
+  const state = location.state as (DashboardRouteState & { prefill?: AuthorIdentity | null }) | null;
+  const prefillDraft = state?.prefill ?? null;
 
   return (
     <FeatureErrorBoundary featureName="Author Identity">
       <AuthorIdentityDialog
         open
         prefillDraft={prefillDraft}
-        onClose={() => navigate("/dashboard")}
+        onClose={goBackToDashboard}
       />
     </FeatureErrorBoundary>
   );

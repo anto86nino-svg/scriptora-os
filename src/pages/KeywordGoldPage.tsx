@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { fetchPlan, type PlanTier } from "@/lib/plan";
 import { keywordGold, type KeywordGoldResult } from "@/lib/kdp/money-engine";
 import { useFeatureGate } from "@/components/PaywallGuard";
+import { useDashboardReturn } from "@/hooks/useDashboardReturn";
 
 function copyText(value: string, label = "Copiato") {
   navigator.clipboard?.writeText(value).then(
@@ -21,6 +22,7 @@ function copyText(value: string, label = "Copiato") {
 
 export default function KeywordGoldPage() {
   const navigate = useNavigate();
+  const { goBackToDashboard } = useDashboardReturn();
   const gate = useFeatureGate("kdp_market_base");
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("");
@@ -67,7 +69,7 @@ export default function KeywordGoldPage() {
       <main className="scriptora-feature-scroll mx-auto max-w-4xl space-y-6 p-6">
         <header className="flex items-center justify-between">
           <div>
-            <Button variant="ghost" onClick={() => navigate("/dashboard")} className="mb-3 gap-2">
+            <Button variant="ghost" onClick={goBackToDashboard} className="mb-3 gap-2">
               <ArrowLeft className="h-4 w-4" /> Dashboard
             </Button>
             <h1 className="text-3xl font-black tracking-tight flex items-center gap-2">

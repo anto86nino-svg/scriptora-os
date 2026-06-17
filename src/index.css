@@ -7914,6 +7914,15 @@ body:has(.scriptora-dedicated-screen) {
   overflow: hidden;
 }
 
+.scriptora-dashboard-shell {
+  contain: layout paint;
+}
+
+.scriptora-advanced-tools-panel {
+  content-visibility: auto;
+  contain-intrinsic-size: 720px;
+}
+
 /* Chapter navigation anchors — offset for sticky writer header */
 .scriptora-chapter-anchor {
   scroll-margin-top: 96px;

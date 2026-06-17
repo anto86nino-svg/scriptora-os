@@ -9,7 +9,7 @@ import { BestsellerRadarCommercialPanel } from "@/components/bestseller-radar/Be
 import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
 import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { loadProjects } from "@/services/storageService";
-import type { BookProject } from "@/types/book";
+import { useDashboardReturn } from "@/hooks/useDashboardReturn";
 
 const KDP_PREFILL_KEY = "scriptora-kdp-prefill";
 
@@ -111,6 +111,7 @@ const fallbackResults = sampleByGenre.romance;
 
 export default function BestsellerRadarPage() {
   const navigate = useNavigate();
+  const { goBackToDashboard } = useDashboardReturn();
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [genre, setGenre] = useState("romance");
   const [keyword, setKeyword] = useState("");
@@ -157,7 +158,7 @@ export default function BestsellerRadarPage() {
     <div className="scriptora-feature-page bg-background text-foreground">
       <main className="scriptora-feature-scroll scriptora-bestseller-radar-page mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:px-8 pb-safe">
         <div className="flex items-center justify-between gap-4 min-w-0">
-          <Button variant="ghost" onClick={() => navigate("/dashboard")} className="gap-2">
+          <Button variant="ghost" onClick={goBackToDashboard} className="gap-2">
             <ArrowLeft className="h-4 w-4" />
             Dashboard
           </Button>

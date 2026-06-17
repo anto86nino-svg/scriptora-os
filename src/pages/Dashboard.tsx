@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { lazy, Suspense, useState, useEffect, useMemo, useCallback } from "react";
+import { lazy, Suspense, useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
@@ -311,20 +311,14 @@ export default function Dashboard() {
     return () => window.removeEventListener("scriptora-advanced-mode-change", onAdvancedChange);
   }, []);
 
-  const guardPlanFeature = (feature: FeatureKey, action: () => void) => () => {
+  const guardPlanFeature = useCallback((feature: FeatureKey, action: () => void) => () => {
     if (!canUseFeature(currentPlan, feature)) {
       toast.error(t("unlock_pro"));
       navigate("/pricing");
       return;
     }
     action();
-  };
-
-  const openCoverStudioPage = () => {
-    const projectId = dashboardContextProject?.id || lastProject?.id || getLastProjectId();
-    if (projectId) setLastProjectId(projectId);
-    navigateFromDashboard("/cover", projectId ? { projectId } : undefined);
-  };
+  }, [currentPlan, navigate]);
 
   useEffect(() => {
     const state = location.state as {
@@ -405,6 +399,42 @@ export default function Dashboard() {
   const lastProject = lastId ? projects.find(p => p.id === lastId) : null;
   const flowProject = flowProjectId ? projects.find((p) => p.id === flowProjectId) : null;
   const dashboardContextProject = flowProject || lastProject;
+
+  const openCoverStudioPage = useCallback(() => {
+    const projectId = dashboardContextProject?.id || lastProject?.id || getLastProjectId();
+    if (projectId) setLastProjectId(projectId);
+    navigateFromDashboard("/cover", projectId ? { projectId } : undefined);
+  }, [dashboardContextProject?.id, lastProject?.id, navigateFromDashboard]);
+
+  const advancedToolsAnchorRef = useRef<HTMLDivElement | null>(null);
+  const packagingAnchorRef = useRef<HTMLDivElement | null>(null);
+  const panelHandledRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const panel = new URLSearchParams(location.search).get("panel");
+    if (!panel) {
+      panelHandledRef.current = null;
+      return;
+    }
+    const key = location.search;
+    if (panelHandledRef.current === key) return;
+    panelHandledRef.current = key;
+
+    if (panel === "advanced-tools") {
+      setAdvancedLaunchpadEnabled(true);
+      setShowAdvancedLaunchpad(true);
+      openDashboardTool("advanced-tools");
+      requestAnimationFrame(() => {
+        advancedToolsAnchorRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+      });
+      return;
+    }
+    if (panel === "packaging") {
+      requestAnimationFrame(() => {
+        packagingAnchorRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+      });
+    }
+  }, [location.search, openDashboardTool]);
 
   const deleteHomeProject = async (projectId: string, title?: string) => {
     const name = title || t("this_project");
@@ -644,9 +674,9 @@ typeof crypto.randomUUID === "function"
       onNewBook: openNewBookGuarded,
       onContinue: lastProject ? () => { closeAllDashboardTools(); goApp({ projectId: lastProject.id }); } : undefined,
       onOpenCover: () => { closeAllDashboardTools(); guardPlanFeature("cover_studio_template", openCoverStudioPage)(); },
-      onNavigate: (path: string) => navigateFromDashboard(path),
+      onNavigate: navigateFromDashboard,
     }),
-    [lastProject, completedProjects.length, closeAllDashboardTools, openDashboardTool, navigateFromDashboard, openNewBookGuarded, goApp, openCoverStudioPage, guardPlanFeature],
+    [lastProject, completedProjects.length, closeAllDashboardTools, openDashboardTool, navigateFromDashboard, openNewBookGuarded, goApp, openCoverStudioPage],
   );
 
   const ideaPreviewProps = useMemo(() => ({
@@ -711,7 +741,7 @@ typeof crypto.randomUUID === "function"
   }
 
   return (
-    <div className="scriptora-ios-screen scriptora-app-surface scriptora-dashboard-mobile scriptora-page-scroll scriptora-cinematic-shell scriptora-brand-shell relative min-h-[100dvh] overflow-x-hidden safe-area-pt">
+    <div className="scriptora-dashboard-shell scriptora-ios-screen scriptora-app-surface scriptora-dashboard-mobile scriptora-page-scroll scriptora-cinematic-shell scriptora-brand-shell relative min-h-[100dvh] overflow-x-hidden safe-area-pt">
       <header className="sticky top-0 z-20 border-b border-[#f2c400]/20 bg-[#050505]/72 shadow-[0_10px_40px_rgba(0,0,0,0.35)] backdrop-blur-2xl safe-area-pt">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
@@ -954,13 +984,15 @@ typeof crypto.randomUUID === "function"
         </section>
 
         {lastProject && (
-          <DashboardPackagingRow
-            projectTitle={lastProject.config.title}
-            context={dashboardActionContext}
-          />
+          <div ref={packagingAnchorRef}>
+            <DashboardPackagingRow
+              projectTitle={lastProject.config.title}
+              context={dashboardActionContext}
+            />
+          </div>
         )}
 
-        <div className="mb-4 flex justify-end sm:mb-6">
+        <div ref={advancedToolsAnchorRef} className="mb-4 flex justify-end sm:mb-6">
           <button
             type="button"
             onClick={() => {

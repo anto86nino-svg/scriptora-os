@@ -1,16 +1,16 @@
-import { useNavigate } from "react-router-dom";
 import { CharacterStudioDialog } from "@/components/CharacterStudioDialog";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
+import { useDashboardReturn } from "@/hooks/useDashboardReturn";
 
 export default function CharacterStudioPage() {
-  const navigate = useNavigate();
+  const { goBackToDashboard, navigateWithReturn } = useDashboardReturn();
 
   return (
     <FeatureErrorBoundary featureName="Character Studio">
       <CharacterStudioDialog
         open
-        onClose={() => navigate("/dashboard")}
-        onAuthorIdentity={() => navigate("/author-identity")}
+        onClose={goBackToDashboard}
+        onAuthorIdentity={() => navigateWithReturn("/author-identity")}
       />
     </FeatureErrorBoundary>
   );

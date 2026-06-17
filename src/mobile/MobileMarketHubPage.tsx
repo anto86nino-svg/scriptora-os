@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { BarChart3, BookOpen, Loader2, Rocket, Sparkles, Target } from "lucide-react";
 import type { BookProject } from "@/types/book";
 import { MobileFullscreenShell } from "./MobileFullscreenShell";
@@ -14,6 +14,8 @@ import {
   resolveMarketCloseNavigation,
 } from "./mobileMarketContext";
 import { restoreWriterScrollPosition } from "./clearProjectSession";
+import { useDashboardReturn } from "@/hooks/useDashboardReturn";
+import { getDashboardReturnPath } from "@/lib/one-flow/dashboard-return-context";
 
 const BestsellerRadarCommercialPanel = lazy(() =>
   import("@/components/bestseller-radar/BestsellerRadarCommercialPanel").then((m) => ({
@@ -25,6 +27,8 @@ type Tab = "market" | "kdp" | "title";
 
 export default function MobileMarketHubPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { returnContext } = useDashboardReturn();
   const { plan } = usePlan();
   const marketCtx = useMemo(() => readMobileMarketContext(), []);
   const [tab, setTab] = useState<Tab>("market");
@@ -52,6 +56,12 @@ export default function MobileMarketHubPage() {
   }, [projects, marketCtx?.projectId]);
 
   const handleClose = () => {
+    const returnPath = getDashboardReturnPath(returnContext);
+    if (returnPath !== "/dashboard" || returnContext) {
+      clearMobileMarketContext();
+      navigate(returnPath);
+      return;
+    }
     const nav = resolveMarketCloseNavigation(marketCtx);
     clearMobileMarketContext();
     if (nav.restoreSection) {

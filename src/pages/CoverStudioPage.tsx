@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
 import { ArrowLeft, ImagePlus } from "lucide-react";
 import { CoverGenerator } from "@/components/CoverGenerator";
 import { ScriptoraLogoMark } from "@/components/brand/ScriptoraLogoMark";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
 import { getLastProjectId, loadProjects, setLastProjectId } from "@/lib/storage";
 import type { BookProject } from "@/types/book";
+import { useDashboardReturn } from "@/hooks/useDashboardReturn";
 
 function loadBestProject(): BookProject | null {
   try {
@@ -26,7 +26,7 @@ function loadBestProject(): BookProject | null {
 }
 
 export default function CoverStudioPage() {
-  const navigate = useNavigate();
+  const { goBackToDashboard, navigateWithReturn } = useDashboardReturn();
   const project = useMemo(() => loadBestProject(), []);
   const activeAuthor = useMemo(() => {
     try {
@@ -53,7 +53,7 @@ export default function CoverStudioPage() {
         <div className="mt-6 flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
-            onClick={() => navigate("/dashboard", { state: { openForge: true } })}
+            onClick={() => navigateWithReturn("/dashboard", { openForge: true })}
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#f2c400] px-5 py-3 text-sm font-black text-black"
           >
             <ImagePlus className="h-4 w-4" />
@@ -61,7 +61,7 @@ export default function CoverStudioPage() {
           </button>
           <button
             type="button"
-            onClick={() => navigate("/dashboard")}
+            onClick={goBackToDashboard}
             className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 px-5 py-3 text-sm font-semibold text-white/80"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -85,8 +85,8 @@ export default function CoverStudioPage() {
       showPrimaryAction
       primaryActionLabel="Salva cover nel progetto"
       onGenerate={() => setLastProjectId(project.id)}
-      onClose={() => navigate("/dashboard")}
-      onOpenExport={() => navigate("/export-studio", { state: { projectId: project.id } })}
+      onClose={goBackToDashboard}
+      onOpenExport={() => navigateWithReturn("/export-studio", { projectId: project.id })}
     />
   );
 }

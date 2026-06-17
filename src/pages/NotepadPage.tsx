@@ -1,13 +1,13 @@
-import { useNavigate } from "react-router-dom";
 import { NotepadDialog } from "@/components/NotepadDialog";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
+import { useDashboardReturn } from "@/hooks/useDashboardReturn";
 
 export default function NotepadPage() {
-  const navigate = useNavigate();
+  const { goBackToDashboard } = useDashboardReturn();
 
   return (
     <FeatureErrorBoundary featureName="Block Notes">
-      <NotepadDialog open onClose={() => navigate("/dashboard")} />
+      <NotepadDialog open onClose={goBackToDashboard} />
     </FeatureErrorBoundary>
   );
 }
