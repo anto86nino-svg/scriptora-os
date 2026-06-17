@@ -505,8 +505,13 @@ export function ScriptoraLanding({
           aria-label="SCRIPTORA"
           title="SCRIPTORA"
         >
-          <span className="scriptora-landing-brand-mark">
-            <Sparkles className="h-4 w-4" />
+          <span className="scriptora-landing-brand-mark overflow-hidden bg-[#f2c400]">
+            <img
+              src="/brand/scriptora-logo.png"
+              alt=""
+              aria-hidden="true"
+              className="h-full w-full object-cover"
+            />
           </span>
           <span>Scriptora OS</span>
           {devOn && <span className="scriptora-landing-dev">DEV</span>}

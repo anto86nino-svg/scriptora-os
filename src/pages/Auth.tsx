@@ -424,9 +424,14 @@ export default function AuthPage() {
             onClick={handleLogoClick}
             aria-label={t("activate_dev_mode")}
             title="SCRIPTORA"
-            className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-primary to-accent outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="grid h-9 w-9 place-items-center overflow-hidden rounded-xl bg-[#f2c400] shadow-sm outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-primary/50"
           >
-            <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
+            <img
+              src="/brand/scriptora-logo.png"
+              alt=""
+              aria-hidden="true"
+              className="h-full w-full object-cover"
+            />
           </button>
           <span className="text-sm font-semibold tracking-[0.25em]">SCRIPTORA</span>
         </div>

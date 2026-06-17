@@ -829,8 +829,13 @@ typeof crypto.randomUUID === "function"
               className="group flex items-center gap-2 text-sm select-none"
               title="SCRIPTORA"
             >
-              <span className="ios-icon ios-icon-blue h-9 w-9 transition-transform group-hover:scale-[1.03]">
-                <BookOpen className="h-3.5 w-3.5" />
+              <span className="h-9 w-9 overflow-hidden rounded-xl bg-[#f2c400] shadow-sm transition-transform group-hover:scale-[1.03]">
+                <img
+                  src="/brand/scriptora-logo.png"
+                  alt=""
+                  aria-hidden="true"
+                  className="h-full w-full object-cover"
+                />
               </span>
               <span className="hidden text-[13px] font-bold text-foreground sm:inline">SCRIPTORA</span>
             </button>
