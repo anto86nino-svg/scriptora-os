@@ -70,7 +70,6 @@ import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { PremiumOsGateway } from "@/components/premium/PremiumOsGateway";
 import { AuthorMomentumPanel } from "@/components/premium/AuthorMomentumPanel";
 import { OneFlowHome } from "@/components/one-flow/OneFlowHome";
-import { ScriptoraForgePanel } from "@/components/scriptora-forge/ScriptoraForgePanel";
 import type { ForgePreset } from "@/lib/scriptora-forge/forge-presets";
 import { OsHomeHero } from "@/components/os/OsHomeHero";
 import {
@@ -1085,7 +1084,7 @@ typeof crypto.randomUUID === "function"
           </button>
         </section>
 
-        {showAdvancedLaunchpad && <ScriptoraForgePanel onSelectPreset={openForgePreset} />}
+        {/* ScriptoraForgePanel hidden: Book Forge is now the primary creation flow */}
 
         {showAdvancedLaunchpad && (
         <OneFlowHome
