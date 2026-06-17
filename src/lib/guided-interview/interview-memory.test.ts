@@ -41,7 +41,7 @@ describe("interview memory", () => {
     );
     const next = selectNextMemoryQuestion(state);
     expect(next?.id).not.toBe("genre-direction");
-    expect(["tone-preset", "audience-preset", "promise-preset", "characters-preset"]).toContain(
+    expect(["characters-protagonist", "characters-attraction", "characters-antagonist", "promise-preset", "plot-stakes"]).toContain(
       next?.id,
     );
   });
@@ -83,12 +83,16 @@ describe("interview memory", () => {
     expect(isSlotFilled(memory, "genre")).toBe(true);
   });
 
-  it("readiness false when language missing", () => {
+  it("readiness false when narrative core missing in fiction", () => {
     let state = getInitialInterviewState({ chatFirst: true });
     state = applyInterviewAnswer(state, "thriller psicologico su segreti familiari");
     const report = evaluateForgeReadiness(state);
     expect(report.ready).toBe(false);
-    expect(report.missingCritical).toContain("lingua");
+    expect(
+      report.missingCritical.some((item) =>
+        /protagonista|antagonista|conflitto|promessa|posto in gioco/i.test(item),
+      ),
+    ).toBe(true);
   });
 
   it("readiness false when genre missing", () => {
@@ -121,6 +125,7 @@ describe("interview memory", () => {
           audience: "Lettrici adulte che amano ossessione e vulnerabilità.",
           promise: "Desiderio proibito con conseguenze reali.",
           protagonist: "Lei fragile, lui pericoloso, entrambi feriti.",
+          loveInterest: "Magnetismo pericoloso che non riescono a ignorare.",
           antagonist: "Lui pericoloso: ossessione elegante, non gratuita.",
           narrativeArc: "Dalla negazione al punto di non ritorno emotivo.",
           centralConflict: "Attrazione e paura del tradimento.",
@@ -139,6 +144,7 @@ describe("interview memory", () => {
           audience: true,
           promise: true,
           protagonist: true,
+          loveInterest: true,
           antagonist: true,
           narrativeArc: true,
           centralConflict: true,

@@ -1,5 +1,4 @@
 import type { GuidedInterviewState, InterviewQuestion } from "./types";
-import { enrichCoAuthorWithOrchestrator } from "./forge-orchestrator";
 import {
   type ForgeInterviewMemory,
   type ForgeSlotKey,
@@ -7,6 +6,9 @@ import {
   getForgeMemory,
   isSlotFilled,
 } from "./interview-memory";
+import { collectForgeEditorialAdvice } from "./forge-orchestrator";
+import { renderEditorialAdviceBlock } from "./editorial-advice-render";
+import { hasNarrativeCore, isRomanceMode } from "./narrative-first-engine";
 
 export type CoAuthorTurn = {
   memory: string;
@@ -194,6 +196,11 @@ function buildProposal(
   }
 
   if (intent.includes("structure") || intent.includes("index")) {
+    if (!hasNarrativeCore(memory)) {
+      return isRomanceMode(memory)
+        ? "Potremmo prima chiarire attrazione, ferita e rischio emotivo — poi pensiamo alla struttura."
+        : "Potremmo prima rendere vivo il conflitto e la posta in gioco — la struttura verrà dopo.";
+    }
     return "Potremmo impostare un indice che segue l'escalation emotiva, non solo la cronologia.";
   }
 
@@ -259,14 +266,31 @@ export function composeCoAuthorTurn(
 }
 
 export function formatCoAuthorMessage(turn: CoAuthorTurn): string {
-  const blocks = [
-    turn.memory,
-    turn.interpretation,
-    turn.proposal,
-    turn.decision,
-  ];
-  if (turn.editorNote) blocks.splice(3, 0, turn.editorNote);
+  const blocks = [turn.memory, turn.interpretation, turn.proposal, turn.decision];
   return blocks.filter(Boolean).join("\n\n");
+}
+
+export function enrichCoAuthorWithOrchestrator(
+  state: GuidedInterviewState,
+  message: string,
+  question: InterviewQuestion,
+  editorNote?: string,
+): string {
+  const advice = collectForgeEditorialAdvice(
+    state,
+    question,
+    editorNote ? [editorNote] : [],
+  );
+  const adviceBlock = renderEditorialAdviceBlock(advice, 3);
+  if (!adviceBlock) return message;
+  if (message.includes(adviceBlock)) return message;
+
+  const parts = message.split("\n\n");
+  if (parts.length >= 3) {
+    parts.splice(3, 0, adviceBlock);
+    return parts.filter(Boolean).join("\n\n");
+  }
+  return `${message}\n\n${adviceBlock}`;
 }
 
 export function enrichQuestionWithCoAuthor(
@@ -281,7 +305,7 @@ export function enrichQuestionWithCoAuthor(
   const formatted = formatCoAuthorMessage(turn);
   return {
     ...question,
-    question: enrichCoAuthorWithOrchestrator(state, formatted, question),
+    question: enrichCoAuthorWithOrchestrator(state, formatted, question, turn.editorNote),
     helper: question.helper,
   };
 }

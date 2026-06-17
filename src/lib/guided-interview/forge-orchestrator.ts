@@ -14,6 +14,14 @@ import { getForgeMemory, isSlotFilled } from "./interview-memory";
 import { buildStoryRoomSnapshot } from "./story-room-engine";
 import type { GuidedInterviewState, InterviewQuestion } from "./types";
 import { sanitizeDnaText } from "./dna-cleaner";
+import {
+  deduplicateEditorialAdvice,
+  mergeAdviceMessages,
+  renderEditorialAdviceBlock,
+  type EditorialAdviceItem,
+} from "./editorial-advice-render";
+import { hasNarrativeCore, isNarrativeFictionBook } from "./narrative-first-engine";
+import { getForgeMemory } from "./interview-memory";
 
 export type OrchestratorBrainId =
   | "character"
@@ -305,15 +313,73 @@ export function evaluateAuthorDecision(
   };
 }
 
-export function formatAdvisorEvaluation(evaluation: AuthorDecisionEvaluation): string {
-  const lines = [evaluation.headline];
-  for (const insight of evaluation.insights) {
-    const prefix =
-      insight.status === "warn" ? "Attenzione" : insight.label.replace(/ Intelligence$/, "");
-    lines.push(`${prefix}: ${insight.message}`);
+export function collectForgeEditorialAdvice(
+  state: GuidedInterviewState,
+  question?: InterviewQuestion,
+  extraNotes: string[] = [],
+): EditorialAdviceItem[] {
+  const items: EditorialAdviceItem[] = [];
+
+  const answer = lastUserMessage(state);
+  if (answer && question?.key) {
+    const evaluation = evaluateAuthorDecision(state, answer, question.key);
+    if (evaluation) {
+      items.push({
+        id: "headline",
+        source: "editorial",
+        message: evaluation.headline,
+        severity: evaluation.verdict === "caution" ? "warn" : "note",
+      });
+      for (const insight of evaluation.insights) {
+        items.push({
+          id: insight.brain,
+          source: insight.label,
+          message: insight.message,
+          severity: insight.status === "warn" ? "warn" : "note",
+        });
+      }
+      if (evaluation.refinement) {
+        items.push({
+          id: "refinement",
+          source: "editorial",
+          message: evaluation.refinement,
+        });
+      }
+    }
   }
-  if (evaluation.refinement) lines.push(evaluation.refinement);
-  return lines.join("\n");
+
+  for (const note of getPassiveCommercialNotes(state)) {
+    items.push({ id: `commercial-${note.slice(0, 12)}`, source: "market", message: note });
+  }
+
+  for (const note of extraNotes) {
+    if (note.trim()) {
+      items.push({ id: `extra-${note.slice(0, 12)}`, source: "editorial", message: note.trim() });
+    }
+  }
+
+  return deduplicateEditorialAdvice(items, 3);
+}
+
+export function formatAdvisorEvaluation(evaluation: AuthorDecisionEvaluation): string {
+  const items: EditorialAdviceItem[] = [
+    {
+      id: "headline",
+      source: "editorial",
+      message: evaluation.headline,
+      severity: evaluation.verdict === "caution" ? "warn" : "note",
+    },
+    ...evaluation.insights.map((insight) => ({
+      id: insight.brain,
+      source: insight.label,
+      message: insight.message,
+      severity: insight.status === "warn" ? ("warn" as const) : ("note" as const),
+    })),
+  ];
+  if (evaluation.refinement) {
+    items.push({ id: "refinement", source: "editorial", message: evaluation.refinement });
+  }
+  return renderEditorialAdviceBlock(items, 3);
 }
 
 export function getPassiveCommercialNotes(state: GuidedInterviewState): string[] {
@@ -347,17 +413,37 @@ export function getPassiveCommercialNotes(state: GuidedInterviewState): string[]
 }
 
 export function evaluateDnaLockPremium(state: GuidedInterviewState): DnaLockPremiumReport {
-  const insights = consultForgeBrains(state);
+  const rawInsights = consultForgeBrains(state);
+  const deduped = deduplicateEditorialAdvice(
+    rawInsights.map((insight, index) => ({
+      id: `${insight.brain}-${index}`,
+      source: insight.label,
+      message: insight.message,
+      severity: insight.status === "warn" ? "warn" : "note",
+    })),
+    3,
+  );
+  const insights: BrainInsight[] = deduped.map((item) => {
+    const original = rawInsights.find((insight) => insight.message === item.message);
+    return (
+      original ?? {
+        brain: "editorial",
+        label: item.source,
+        status: item.severity === "warn" ? "warn" : "note",
+        message: item.message,
+      }
+    );
+  });
   const incoherences = insights
     .filter((insight) => insight.status === "warn")
     .map((insight) => `${insight.label}: ${insight.message}`);
-  const commercialNotes = getPassiveCommercialNotes(state);
+  const commercialNotes = mergeAdviceMessages(getPassiveCommercialNotes(state), 3);
   const editorial = evaluateEditorialUnderstanding(state);
 
   return {
     ready: incoherences.length === 0 && editorial.contradictions.length === 0,
     insights,
-    incoherences,
+    incoherences: mergeAdviceMessages(incoherences, 3),
     commercialNotes,
   };
 }
@@ -383,32 +469,15 @@ export function buildOrchestratorEditorNote(
   state: GuidedInterviewState,
   question: InterviewQuestion,
 ): string | undefined {
-  const answer = lastUserMessage(state);
-  if (!answer) return undefined;
-
-  const evaluation = evaluateAuthorDecision(state, answer, question.key);
-  if (evaluation) return formatAdvisorEvaluation(evaluation);
-
-  const notes = getPassiveCommercialNotes(state);
-  if (notes.length > 0 && state.messages.filter((m) => m.role === "user").length % 4 === 0) {
-    return notes[0];
+  const memory = getForgeMemory(state);
+  const advice = collectForgeEditorialAdvice(state, question);
+  if (advice.length === 0) return undefined;
+  if (
+    isNarrativeFictionBook(memory) &&
+    !hasNarrativeCore(memory) &&
+    (question.id.includes("structure") || question.id.includes("index") || question.key === "language")
+  ) {
+    return undefined;
   }
-
-  return undefined;
-}
-
-export function enrichCoAuthorWithOrchestrator(
-  state: GuidedInterviewState,
-  message: string,
-  question: InterviewQuestion,
-): string {
-  const note = buildOrchestratorEditorNote(state, question);
-  if (!note) return message;
-  if (message.includes(note)) return message;
-  const parts = message.split("\n\n");
-  if (parts.length >= 3) {
-    parts.splice(3, 0, note);
-    return parts.filter(Boolean).join("\n\n");
-  }
-  return `${message}\n\n${note}`;
+  return renderEditorialAdviceBlock(advice, 3) || undefined;
 }

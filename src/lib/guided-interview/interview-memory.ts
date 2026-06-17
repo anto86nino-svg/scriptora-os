@@ -12,6 +12,14 @@ import {
   TONE_PRESETS,
   UNCERTAINTY_PRESETS,
 } from "./interview-presets";
+import {
+  filterNarrativeFirstSlots,
+  hasNarrativeCore,
+  isDeferredAdminSlot,
+  isNarrativeFictionBook,
+  isRomanceMode,
+  pickNextNarrativeSlot,
+} from "./narrative-first-engine";
 
 export type ForgeMemoryStage =
   | "welcome"
@@ -174,8 +182,10 @@ const QUESTION_INTENT_ALIASES: Record<string, string[]> = {
   audience: ["audience", "target-reader", "stage-audience"],
   promise: ["promise", "stage-promise"],
   protagonist: ["protagonist", "stage-character", "characters-protagonist"],
+  loveInterest: ["confirm-attraction", "characters-attraction"],
   antagonist: ["antagonist", "characters-antagonist", "characterWound"],
-  centralConflict: ["conflict", "plot", "stage-plot", "stage-genre-thriller"],
+  stakes: ["confirm-stakes", "plot-stakes"],
+  centralConflict: ["conflict", "plot", "stage-plot", "stage-genre-thriller", "plot-conflict"],
   structure: ["structure", "stage-structure", "chapter-count"],
   title: ["title", "stage-title"],
   rawIdea: ["spark", "opening", "welcome", "openingSpark"],
@@ -332,7 +342,9 @@ function questionKeyToSlot(questionKey: string): ForgeSlotKey | null {
     audience: "audience",
     promise: "promise",
     protagonist: "protagonist",
+    loveInterest: "loveInterest",
     antagonist: "antagonist",
+    stakes: "stakes",
     characterWound: "antagonist",
     centralConflict: "centralConflict",
     structure: "chapterCount",
@@ -413,24 +425,41 @@ export function detectBookMode(memory: ForgeInterviewMemory): "fiction" | "nonfi
 export function getCriticalMissingSlots(memory: ForgeInterviewMemory): ForgeSlotKey[] {
   const missing: ForgeSlotKey[] = [];
   const mode = detectBookMode(memory);
+  const romance = isRomanceMode(memory);
+  const narrativeFiction = isNarrativeFictionBook(memory);
+  const coreReady = !narrativeFiction || hasNarrativeCore(memory);
 
   if (!isSlotFilled(memory, "rawIdea")) missing.push("rawIdea");
-  if (!isSlotFilled(memory, "language")) missing.push("language");
   if (!isSlotFilled(memory, "genre") && !isSlotFilled(memory, "bookType")) missing.push("genre");
-  if (!isSlotFilled(memory, "tone")) missing.push("tone");
-  if (!isSlotFilled(memory, "audience")) missing.push("audience");
-  if (!isSlotFilled(memory, "promise")) missing.push("promise");
-  if (!isSlotFilled(memory, "chapterCount") && !isSlotFilled(memory, "pov")) missing.push("chapterCount");
-  if (!isSlotFilled(memory, "title")) missing.push("title");
 
   if (mode === "fiction") {
     if (!isSlotFilled(memory, "protagonist")) missing.push("protagonist");
+    if (romance && !isSlotFilled(memory, "loveInterest")) missing.push("loveInterest");
     if (!isSlotFilled(memory, "antagonist")) missing.push("antagonist");
+    if (!isSlotFilled(memory, "promise")) missing.push("promise");
+    if (!isSlotFilled(memory, "stakes") && !isSlotFilled(memory, "centralConflict")) {
+      missing.push("stakes");
+    }
     if (!isSlotFilled(memory, "centralConflict")) missing.push("centralConflict");
     if (!isSlotFilled(memory, "narrativeArc") && !isSlotFilled(memory, "endingDirection")) {
       missing.push("narrativeArc");
     }
     if (!isSlotFilled(memory, "endingDirection")) missing.push("endingDirection");
+  }
+
+  if (!coreReady) {
+    return filterNarrativeFirstSlots(memory, missing);
+  }
+
+  if (!isSlotFilled(memory, "language")) missing.push("language");
+  if (!isSlotFilled(memory, "tone")) missing.push("tone");
+  if (!isSlotFilled(memory, "audience")) missing.push("audience");
+  if (!isSlotFilled(memory, "chapterCount") && !isSlotFilled(memory, "pov")) {
+    missing.push("chapterCount");
+  }
+  if (!isSlotFilled(memory, "title")) missing.push("title");
+
+  if (mode === "fiction") {
     if (!isSlotFilled(memory, "indexOutline") && isSlotFilled(memory, "chapterCount")) {
       missing.push("indexOutline");
     }
@@ -440,13 +469,18 @@ export function getCriticalMissingSlots(memory: ForgeInterviewMemory): ForgeSlot
     if (!isSlotFilled(memory, "problem")) missing.push("problem");
     if (!isSlotFilled(memory, "method")) missing.push("method");
     if (!isSlotFilled(memory, "outcome")) missing.push("outcome");
+    if (!isSlotFilled(memory, "promise")) missing.push("promise");
   }
 
-  return missing;
+  return filterNarrativeFirstSlots(memory, missing);
 }
 
 export function getNextBestMissingSlot(memory: ForgeInterviewMemory): ForgeSlotKey | null {
   const missing = getCriticalMissingSlots(memory);
+  if (isNarrativeFictionBook(memory)) {
+    return pickNextNarrativeSlot(memory, missing);
+  }
+
   const stageSlot: Partial<Record<ForgeMemoryStage, ForgeSlotKey>> = {
     language: "language",
     "book-type": "bookType",
@@ -472,29 +506,42 @@ export function resolveMemoryStage(memory: ForgeInterviewMemory): ForgeMemorySta
   if (!isSlotFilled(memory, "rawIdea")) {
     return memory.usefulAnswerCount > 0 ? "spark" : "welcome";
   }
-  if (!isSlotFilled(memory, "language")) return "language";
   if (!isSlotFilled(memory, "bookType") && !isSlotFilled(memory, "genre")) return "book-type";
   if (!isSlotFilled(memory, "genre")) return "genre";
-  if (!isSlotFilled(memory, "tone")) return "tone";
-  if (!isSlotFilled(memory, "audience")) return "audience";
-  if (!isSlotFilled(memory, "promise")) return "promise";
 
   const mode = detectBookMode(memory);
+  const romance = isRomanceMode(memory);
+  const narrativeFiction = isNarrativeFictionBook(memory);
+  const coreReady = !narrativeFiction || hasNarrativeCore(memory);
+
   if (mode === "fiction") {
     if (!isSlotFilled(memory, "protagonist")) return "characters";
+    if (romance && !isSlotFilled(memory, "loveInterest")) return "characters";
     if (!isSlotFilled(memory, "antagonist")) return "characters";
-    if (!isSlotFilled(memory, "centralConflict") || !isSlotFilled(memory, "endingDirection")) {
+    if (!isSlotFilled(memory, "promise")) return "promise";
+    if (!isSlotFilled(memory, "stakes")) return "plot";
+    if (!isSlotFilled(memory, "centralConflict")) return "plot";
+    if (!isSlotFilled(memory, "endingDirection") || !isSlotFilled(memory, "narrativeArc")) {
       return "plot";
     }
-    if (!isSlotFilled(memory, "narrativeArc")) return "plot";
   }
+
+  if (!coreReady) {
+    return mode === "fiction" ? "characters" : "promise";
+  }
+
+  if (!isSlotFilled(memory, "tone")) return "tone";
+  if (!isSlotFilled(memory, "audience")) return "audience";
+  if (!isSlotFilled(memory, "promise") && mode !== "fiction") return "promise";
+
   if (mode === "nonfiction") {
     if (!isSlotFilled(memory, "problem") || !isSlotFilled(memory, "method")) return "promise";
     if (!isSlotFilled(memory, "outcome")) return "audience";
   }
 
+  if (!isSlotFilled(memory, "language")) return "language";
   if (!isSlotFilled(memory, "chapterCount") && !isSlotFilled(memory, "pov")) return "structure";
-  if (!isSlotFilled(memory, "indexOutline") && detectBookMode(memory) === "fiction") return "index";
+  if (!isSlotFilled(memory, "indexOutline") && narrativeFiction) return "index";
   if (!isSlotFilled(memory, "title")) return "title";
   return "dna-lock";
 }
@@ -754,7 +801,9 @@ function presetQuestionForSlot(
           stage: "language",
           intent: "confirm-language",
           key: "language",
-          text: "Prima di costruire l'indice: confermiamo la lingua definitiva del libro?",
+          text: hasNarrativeCore(memory)
+            ? "Confermiamo la lingua definitiva del libro?"
+            : "Annoto la lingua — la confermeremo quando avremo il cuore della storia.",
           quickChoices: LANGUAGE_PRESETS,
           shouldAsk: (m) => !isSlotFilled(m, "language"),
         },
@@ -829,7 +878,9 @@ function presetQuestionForSlot(
           stage: "promise",
           intent: "confirm-promise",
           key: "promise",
-          text: "Quale promessa non possiamo tradire — nemmeno nel finale?",
+          text: isRomanceMode(memory)
+            ? "Cosa desidera davvero — oltre la ragione e la paura?"
+            : "Quale promessa non possiamo tradire — nemmeno nel finale?",
           quickChoices: [
             { label: "Ferire bene", value: "Un'esperienza che ferisce ma resta giusta." },
             { label: "Guarire", value: "Un percorso di guarigione concreto." },
@@ -848,13 +899,39 @@ function presetQuestionForSlot(
           stage: "characters",
           intent: "confirm-protagonist",
           key: "protagonistWound",
-          text: "Il protagonista combatte fino alla fine — o cede e cambia tutto con una scelta irreversibile?",
-          quickChoices: [
-            { label: "Combatte", value: "Combatte fino alla fine, anche se costa tutto." },
-            { label: "Cede e cambia", value: "Cede a una scelta che non può più rimangiare." },
-            { label: "Si spezza", value: "Si spezza prima di riuscire a salvarsi." },
-          ],
+          text: isRomanceMode(memory)
+            ? "Chi è il protagonista — e quale ferita lo rende vulnerabile all'attrazione sbagliata?"
+            : "Il protagonista combatte fino alla fine — o cede e cambia tutto con una scelta irreversibile?",
+          quickChoices: isRomanceMode(memory)
+            ? [
+                { label: "Ferita profonda", value: "Porta una ferita che lo rende vulnerabile all'amore sbagliato." },
+                { label: "Si protegge", value: "Si protegge finché qualcuno lo attraversa." },
+                { label: "Si spezza", value: "Si spezza prima di riuscire a fidarsi." },
+              ]
+            : [
+                { label: "Combatte", value: "Combatte fino alla fine, anche se costa tutto." },
+                { label: "Cede e cambia", value: "Cede a una scelta che non può più rimangiare." },
+                { label: "Si spezza", value: "Si spezza prima di riuscire a salvarsi." },
+              ],
           shouldAsk: (m) => !isSlotFilled(m, "protagonist"),
+        },
+        memory,
+      );
+    case "loveInterest":
+      return buildQuestionFromDef(
+        {
+          id: "characters-attraction",
+          slotTarget: "loveInterest",
+          stage: "characters",
+          intent: "confirm-attraction",
+          key: "protagonistWound",
+          text: "Cosa li attrae l'uno verso l'altro — anche quando sarebbe più saggio allontanarsi?",
+          quickChoices: [
+            { label: "Magnetismo pericoloso", value: "Un magnetismo pericoloso che non riescono a ignorare." },
+            { label: "Riconoscimento", value: "Si riconoscono nella ferita dell'altro." },
+            { label: "Ossessione", value: "Un'ossessione che confonde desiderio e distruzione." },
+          ],
+          shouldAsk: (m) => isRomanceMode(m) && !isSlotFilled(m, "loveInterest"),
         },
         memory,
       );
@@ -885,9 +962,32 @@ function presetQuestionForSlot(
           stage: "plot",
           intent: "confirm-conflict",
           key: "centralConflict",
-          text: "Il conflitto centrale esplode subito — o cresce fino a diventare insopportabile?",
+          text: isRomanceMode(memory)
+            ? "Quale ostacolo rende impossibile cedere all'attrazione — senza distruggersi?"
+            : "Il conflitto centrale esplode subito — o cresce fino a diventare insopportabile?",
           quickChoices: UNCERTAINTY_PRESETS,
           shouldAsk: (m) => !isSlotFilled(m, "centralConflict"),
+        },
+        memory,
+      );
+    case "stakes":
+      return buildQuestionFromDef(
+        {
+          id: "plot-stakes",
+          slotTarget: "stakes",
+          stage: "plot",
+          intent: "confirm-stakes",
+          key: "centralConflict",
+          text: isRomanceMode(memory)
+            ? "Cosa rischia emotivamente se si avvicina troppo — identità, sicurezza, amore, controllo?"
+            : "Cosa c'è in gioco se il protagonista sbaglia — o se non sceglie?",
+          quickChoices: [
+            { label: "Tutto", value: "Se sbaglia, perde tutto ciò che conta." },
+            { label: "Identità", value: "Rischia di non riconoscersi più." },
+            { label: "Relazioni", value: "Rischia di perdere chi ama." },
+            { label: "Libertà", value: "Rischia la libertà o il controllo sulla propria vita." },
+          ],
+          shouldAsk: (m) => !isSlotFilled(m, "stakes"),
         },
         memory,
       );
@@ -938,7 +1038,10 @@ function presetQuestionForSlot(
           key: "structurePreference",
           text: "Quanti capitoli e che POV senti più giusti per questa storia?",
           quickChoices: [...LENGTH_PRESETS.slice(0, 3), ...STRUCTURE_PRESETS.slice(0, 3)],
-          shouldAsk: (m) => !isSlotFilled(m, "chapterCount") && !isSlotFilled(m, "pov"),
+          shouldAsk: (m) =>
+            hasNarrativeCore(m) &&
+            !isSlotFilled(m, "chapterCount") &&
+            !isSlotFilled(m, "pov"),
         },
         memory,
       );
@@ -956,10 +1059,14 @@ function presetQuestionForSlot(
             { label: "Atti netti", value: "Tre atti netti con midpoint devastante." },
             { label: "Mini-arci", value: "Capitoli che chiudono mini-arci emotivi." },
           ],
-          shouldAsk: (m) => !isSlotFilled(m, "indexOutline"),
+          shouldAsk: (m) =>
+            hasNarrativeCore(m) &&
+            !isSlotFilled(m, "indexOutline") &&
+            isSlotFilled(m, "chapterCount"),
         },
         memory,
       );
+    case "title":
       return buildQuestionFromDef(
         {
           id: "title-preset",
@@ -1062,6 +1169,7 @@ export function selectNextMemoryQuestion(state: GuidedInterviewState): Interview
   }
 
   for (const slot of getCriticalMissingSlots(memory)) {
+    if (isDeferredAdminSlot(memory, slot)) continue;
     const question = presetQuestionForSlot(slot, memory);
     if (!question) continue;
     if (isQuestionAlreadyAnswered(question.id, memory)) continue;

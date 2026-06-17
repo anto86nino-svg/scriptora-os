@@ -32,7 +32,7 @@ describe("forge orchestrator", () => {
     expect(evaluation).not.toBeNull();
     expect(evaluation?.verdict).toBe("caution");
     expect(formatAdvisorEvaluation(evaluation!)).toMatch(/Funziona/i);
-    expect(formatAdvisorEvaluation(evaluation!)).toMatch(/monodimensionale|vulnerabilit/i);
+    expect(formatAdvisorEvaluation(evaluation!)).toMatch(/Rischio|cliché|attenzione/i);
   });
 
   it("blocks final decision mode until structure exists", () => {
