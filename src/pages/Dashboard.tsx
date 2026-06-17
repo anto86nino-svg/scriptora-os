@@ -796,8 +796,8 @@ typeof crypto.randomUUID === "function"
   }
 
   return (
-    <div className="scriptora-ios-screen scriptora-app-surface scriptora-dashboard-mobile scriptora-page-scroll scriptora-cinematic-shell relative min-h-[100dvh] overflow-x-hidden safe-area-pt">
-      <header className="sticky top-0 z-20 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl safe-area-pt">
+    <div className="scriptora-ios-screen scriptora-app-surface scriptora-dashboard-mobile scriptora-page-scroll scriptora-cinematic-shell scriptora-brand-shell relative min-h-[100dvh] overflow-x-hidden safe-area-pt">
+      <header className="sticky top-0 z-20 border-b border-[#f2c400]/20 bg-[#050505]/72 shadow-[0_10px_40px_rgba(0,0,0,0.35)] backdrop-blur-2xl safe-area-pt">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             <button
@@ -829,7 +829,7 @@ typeof crypto.randomUUID === "function"
               className="group flex items-center gap-2 text-sm select-none"
               title="SCRIPTORA"
             >
-              <span className="h-9 w-9 overflow-hidden rounded-xl bg-[#f2c400] shadow-sm transition-transform group-hover:scale-[1.03]">
+              <span className="h-10 w-10 overflow-hidden rounded-2xl bg-[#f2c400] shadow-[0_0_28px_rgba(242,196,0,0.28)] ring-1 ring-[#f2c400]/35 transition-transform group-hover:scale-[1.04]">
                 <img
                   src="/brand/scriptora-logo.png"
                   alt=""
@@ -837,7 +837,7 @@ typeof crypto.randomUUID === "function"
                   className="h-full w-full object-cover"
                 />
               </span>
-              <span className="hidden text-[13px] font-bold text-foreground sm:inline">SCRIPTORA</span>
+              <span className="hidden text-[13px] font-black tracking-[0.18em] text-[#f2c400] sm:inline">SCRIPTORA</span>
             </button>
 
             <div className="hidden h-5 w-px bg-white/10 sm:block" />

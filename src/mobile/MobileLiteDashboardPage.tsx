@@ -239,7 +239,7 @@ export default function MobileLiteDashboardPage() {
       <header className="sticky top-0 z-30 -mx-4 border-b border-white/10 bg-background/98 px-4 pb-3 pt-[calc(env(safe-area-inset-top,0px)+0.5rem)]">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-200/70">Scriptora Mobile Lite</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#f2c400]/75">Scriptora Mobile Lite</p>
             <h1 className="truncate text-xl font-semibold text-white">Pure Creator Experience</h1>
           </div>
           <GlobalCreditBar variant="mobilePill" />
@@ -248,7 +248,7 @@ export default function MobileLiteDashboardPage() {
 
       <section className="mt-4 rounded-[28px] border border-sky-300/18 bg-gradient-to-br from-slate-950 via-slate-950 to-sky-950/45 p-4 shadow-xl">
         <div className="flex items-start gap-4">
-          <div className="h-36 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-sky-400/20 via-slate-900 to-violet-500/20 shadow-lg">
+          <div className="h-36 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#f2c400]/20 via-slate-900 to-violet-500/20 shadow-lg">
             {cover ? (
               <img src={cover} alt={lastProject?.config.title || "Cover"} className="h-full w-full object-cover" />
             ) : (

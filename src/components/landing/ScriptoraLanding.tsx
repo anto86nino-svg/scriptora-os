@@ -505,7 +505,7 @@ export function ScriptoraLanding({
           aria-label="SCRIPTORA"
           title="SCRIPTORA"
         >
-          <span className="scriptora-landing-brand-mark overflow-hidden bg-[#f2c400]">
+          <span className="scriptora-landing-brand-mark overflow-hidden bg-[#f2c400] shadow-[0_0_26px_rgba(242,196,0,0.28)] ring-1 ring-[#f2c400]/35">
             <img
               src="/brand/scriptora-logo.png"
               alt=""

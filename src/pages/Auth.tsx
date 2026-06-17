@@ -407,7 +407,7 @@ export default function AuthPage() {
   }
 
   return (
-    <main className="scriptora-page-scroll relative min-h-[100dvh] w-full overflow-x-hidden bg-background text-foreground">
+    <main className="scriptora-page-scroll scriptora-brand-shell relative min-h-[100dvh] w-full overflow-x-hidden bg-[#050505] text-foreground">
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.18),transparent_55%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,hsl(var(--accent)/0.14),transparent_60%)]" />
@@ -424,7 +424,7 @@ export default function AuthPage() {
             onClick={handleLogoClick}
             aria-label={t("activate_dev_mode")}
             title="SCRIPTORA"
-            className="grid h-9 w-9 place-items-center overflow-hidden rounded-xl bg-[#f2c400] shadow-sm outline-none transition-transform hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-primary/50"
+            className="grid h-10 w-10 place-items-center overflow-hidden rounded-2xl bg-[#f2c400] shadow-[0_0_28px_rgba(242,196,0,0.30)] outline-none ring-1 ring-[#f2c400]/30 transition-transform hover:scale-[1.04] focus-visible:ring-2 focus-visible:ring-[#f2c400]/60"
           >
             <img
               src="/brand/scriptora-logo.png"
@@ -433,7 +433,7 @@ export default function AuthPage() {
               className="h-full w-full object-cover"
             />
           </button>
-          <span className="text-sm font-semibold tracking-[0.25em]">SCRIPTORA</span>
+          <span className="text-sm font-black tracking-[0.25em] text-[#f2c400]">SCRIPTORA</span>
         </div>
       </header>
 

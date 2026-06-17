@@ -7548,3 +7548,69 @@ html[data-theme="classic-premium"],
 .scriptora-brand-glow {
   box-shadow: 0 0 0 1px rgba(242, 196, 0, 0.18), 0 0 34px rgba(242, 196, 0, 0.18);
 }
+
+/* Scriptora OS — app-wide black/yellow brand skin */
+.scriptora-brand-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(242, 196, 0, 0.16), transparent 30rem),
+    radial-gradient(circle at 88% 12%, rgba(242, 196, 0, 0.08), transparent 26rem),
+    linear-gradient(180deg, rgba(242, 196, 0, 0.035), transparent 34%);
+}
+
+.scriptora-brand-shell > * {
+  position: relative;
+}
+
+.scriptora-brand-shell .ios-panel,
+.scriptora-brand-shell .ios-glass,
+.scriptora-brand-shell .ios-card {
+  border-color: rgba(242, 196, 0, 0.16);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.065), rgba(242,196,0,0.035)),
+    rgba(5, 5, 5, 0.68);
+}
+
+.scriptora-brand-shell .ios-icon,
+.scriptora-brand-shell .ios-toolbar-button:hover {
+  box-shadow: 0 0 0 1px rgba(242, 196, 0, 0.18), 0 0 22px rgba(242, 196, 0, 0.10);
+}
+
+.scriptora-brand-shell button[class*="bg-primary"],
+.scriptora-brand-shell .bg-primary {
+  background: linear-gradient(135deg, #f2c400, #ffe680) !important;
+  color: #050505 !important;
+}
+
+.scriptora-brand-shell .text-primary {
+  color: #f2c400 !important;
+}
+
+.scriptora-brand-shell .border-primary,
+.scriptora-brand-shell .border-primary\/20,
+.scriptora-brand-shell .border-primary\/30 {
+  border-color: rgba(242, 196, 0, 0.28) !important;
+}
+
+.scriptora-brand-shell .ring-primary,
+.scriptora-brand-shell .ring-primary\/50 {
+  --tw-ring-color: rgba(242, 196, 0, 0.42) !important;
+}
+
+@media (max-width: 767px) {
+  .scriptora-brand-shell::before {
+    background:
+      radial-gradient(circle at 50% -10%, rgba(242, 196, 0, 0.18), transparent 22rem),
+      linear-gradient(180deg, rgba(242, 196, 0, 0.04), transparent 42%);
+  }
+
+  .scriptora-brand-shell .ios-panel,
+  .scriptora-brand-shell .ios-glass,
+  .scriptora-brand-shell .ios-card {
+    border-color: rgba(242, 196, 0, 0.14);
+  }
+}
