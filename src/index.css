@@ -7522,3 +7522,29 @@ html[data-theme="classic-premium"],
 .scriptora-app-surface .scriptora-card > * {
   min-width: 0;
 }
+
+/* Scriptora brand lock — black/yellow identity refresh */
+.scriptora-brand-shell {
+  background:
+    radial-gradient(circle at top left, rgba(242, 196, 0, 0.16), transparent 34rem),
+    radial-gradient(circle at bottom right, rgba(242, 196, 0, 0.08), transparent 28rem),
+    #050505;
+}
+
+.scriptora-brand-card {
+  border: 1px solid rgba(242, 196, 0, 0.18);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.075), rgba(242, 196, 0, 0.035)),
+    rgba(5, 5, 5, 0.74);
+  box-shadow: 0 22px 80px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.scriptora-brand-primary {
+  background: linear-gradient(135deg, #f2c400, #ffe680);
+  color: #050505;
+  box-shadow: 0 16px 44px rgba(242, 196, 0, 0.22);
+}
+
+.scriptora-brand-glow {
+  box-shadow: 0 0 0 1px rgba(242, 196, 0, 0.18), 0 0 34px rgba(242, 196, 0, 0.18);
+}

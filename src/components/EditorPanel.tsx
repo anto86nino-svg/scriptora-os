@@ -12,6 +12,9 @@ import { MatterSectionDisabled } from "@/components/MatterSectionDisabled";
 import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 import { GenreCoachPanel } from "@/components/GenreCoachPanel";
 import { downloadText } from "@/lib/download";
+import { usePlan } from "@/lib/plan";
+import { ScriptoraFreeWatermark } from "@/components/brand/ScriptoraFreeWatermark";
+import { appendScriptoraFreeWatermarkToText, shouldApplyScriptoraFreeWatermark } from "@/lib/brand/scriptoraBrand";
 import type { RewriteLevel, ChunkProgress } from "@/lib/generation-types";
 import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
@@ -732,6 +735,9 @@ function ChapterView({
   chapterToolRequest?: { mode: "analysis" | "patch"; nonce: number } | null;
 }) {
   const isGenerated = chapter && chapter.content.length > 0;
+  const { plan } = usePlan();
+  const showFreeWatermark = Boolean(isGenerated && shouldApplyScriptoraFreeWatermark(plan));
+  const chapterLanguage = ws?.config?.language || ws?.config?.bookLanguage || ws?.config?.uiLanguage || "it";
   const currentLength = chapter?.lengthOverride || project.config.chapterLength;
   const [showRewriteMenu, setShowRewriteMenu] = useState(false);
   const [editorialOpen, setEditorialOpen] = useState(false);
@@ -871,7 +877,7 @@ function ChapterView({
                   <span className="hidden sm:inline">Ascolta capitolo</span>
                 </button>
               )}
-              <ActionButton icon={<Download className="h-3.5 w-3.5" />} title="TXT" onClick={() => downloadText(`chapter-${chapterIndex + 1}-${(chapter?.title || "chapter").replace(/\s+/g, "_")}.txt`, chapter?.content || "")} disabled={!isGenerated} />
+              <ActionButton icon={<Download className="h-3.5 w-3.5" />} title="TXT" onClick={() => downloadText(`chapter-${chapterIndex + 1}-${(chapter?.title || "chapter").replace(/\s+/g, "_")}.txt`, appendScriptoraFreeWatermarkToText(chapter?.content || "", plan, chapterLanguage))} disabled={!isGenerated} />
               <button
                 onClick={() => {
                   setEditorialMode("analysis");
@@ -1027,6 +1033,9 @@ function ChapterView({
         <>
           {!premiumWriter && <AIRatingCard rating={chapter.aiRating} />}
           <EditableBlock content={chapter.content} onChange={onUpdateContent} ws={ws} premium={premiumWriter} />
+          {showFreeWatermark && (
+            <ScriptoraFreeWatermark language={chapterLanguage} />
+          )}
 
           {chapter.subchapters.length > 0 && (
             <div className="space-y-6 mt-10">
