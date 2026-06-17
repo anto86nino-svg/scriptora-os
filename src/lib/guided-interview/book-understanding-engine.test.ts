@@ -47,6 +47,7 @@ describe("book understanding engine", () => {
 
   it("blocks blueprint for generic concepts", () => {
     const report = evaluateEditorialUnderstanding(state({
+      chatFirst: false,
       selectedGenre: "dark-romance",
       extracted: {
         genreDNA: "Dark romance",

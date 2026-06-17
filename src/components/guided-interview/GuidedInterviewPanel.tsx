@@ -7,7 +7,8 @@ import { MobileInterviewProgress } from "./MobileInterviewProgress";
 import { useGuidedInterviewController } from "./useGuidedInterviewController";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import { getEditorialBlockedPrompt } from "@/lib/guided-interview/interview-ui-copy";
-import { getContinueCtaLabel } from "@/lib/guided-interview/contextual-interview";
+import { getInterviewProgressLabel } from "@/lib/guided-interview/interview-stages";
+import { countForgeUserAnswers } from "@/lib/guided-interview/opening-experience";
 import { MobileForgeScrollShell } from "@/mobile/MobileForgeScrollShell";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +55,8 @@ export function GuidedInterviewPanel({
   });
 
   const showMobileConfirmation = interviewOnly && ctrl.showDnaPanel;
+  const earlyInterview = countForgeUserAnswers(ctrl.state) < 3;
+  const canShowDnaUi = ctrl.forgeReady.canShowConfirmation && !earlyInterview;
 
   const body = (
     <InterviewBody
@@ -62,6 +65,7 @@ export function GuidedInterviewPanel({
       interviewOnly={interviewOnly}
       showMobileConfirmation={showMobileConfirmation}
       unifiedScroll={unifiedScroll && isMobile}
+      canShowDnaUi={canShowDnaUi}
     />
   );
 
@@ -69,7 +73,7 @@ export function GuidedInterviewPanel({
     <InterviewInputFooter ctrl={ctrl} isMobile={isMobile} unifiedScroll interviewOnly={interviewOnly} />
   ) : null;
 
-  const liveMap = !interviewOnly ? (
+  const liveMap = !interviewOnly && canShowDnaUi ? (
     <ForgeLiveMap
       state={ctrl.state}
       dnaLock={ctrl.progress.dnaLock}
@@ -94,6 +98,7 @@ export function GuidedInterviewPanel({
               <MobileInterviewProgress
                 answeredCount={ctrl.progress.answeredCount}
                 total={ctrl.progress.totalCritical}
+                label={getInterviewProgressLabel(ctrl.state)}
               />
             )}
           </>
@@ -127,7 +132,7 @@ export function GuidedInterviewPanel({
 
       {inputFooter}
 
-      {(ctrl.showDnaPanel || (!isMobile && ctrl.progress.dnaLock.confidenceScore > 0.35)) &&
+      {(ctrl.showDnaPanel || (!isMobile && canShowDnaUi && ctrl.progress.dnaLock.confidenceScore > 0.55)) &&
         !(unifiedScroll && isMobile) && (
           <div className="shrink-0 border-t border-white/10 p-3 sm:p-4">
             <BookDnaConfirmationPanel
@@ -150,18 +155,21 @@ function InterviewBody({
   interviewOnly,
   showMobileConfirmation,
   unifiedScroll,
+  canShowDnaUi = false,
 }: {
   ctrl: Ctrl;
   isMobile: boolean;
   interviewOnly: boolean;
   showMobileConfirmation: boolean;
   unifiedScroll: boolean;
+  canShowDnaUi?: boolean;
 }) {
   const showDnaInline =
     !interviewOnly &&
+    canShowDnaUi &&
     (unifiedScroll ||
       ctrl.showDnaPanel ||
-      (!isMobile && ctrl.progress.dnaLock.confidenceScore > 0.35));
+      (!isMobile && ctrl.progress.dnaLock.confidenceScore > 0.55));
 
   if (showMobileConfirmation) {
     return (
@@ -226,7 +234,8 @@ function InterviewBody({
             Credo di aver capito il tuo libro
           </p>
           <p className="mt-1 text-sm text-white/75">
-            Confidenza {ctrl.confidencePct}%. Conferma l&apos;identità del libro per passare al blueprint.
+            {ctrl.forgeReady.humanGapMessage ??
+              "Se ti risuona, possiamo bloccare il DNA e passare all'indice."}
           </p>
         </div>
       )}
@@ -344,7 +353,7 @@ function UnderstandingPulse() {
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-300/70 opacity-70" />
         <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-200" />
       </span>
-      Scriptora sta capendo il libro…
+      Scriptora sta mettendo a fuoco…
     </div>
   );
 }
@@ -358,7 +367,7 @@ function ThinkingBubble() {
           <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-300 [animation-delay:120ms]" />
           <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-violet-300 [animation-delay:240ms]" />
         </span>
-        Scriptora sta riflettendo…
+        Scriptora sta mettendo a fuoco…
       </span>
     </div>
   );

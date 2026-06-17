@@ -30,7 +30,7 @@ describe("ForgeInterviewConfirmation", () => {
       />,
     );
 
-    expect(screen.getByText(/Il libro è pronto/i)).toBeInTheDocument();
+    expect(screen.getByText(/Ecco il DNA del libro/i)).toBeInTheDocument();
     expect(screen.getByText(/Thriller psicologico/i)).toBeInTheDocument();
     expect(screen.queryByText(/95%/)).not.toBeInTheDocument();
     expect(screen.queryByText(/emotionalTone/i)).not.toBeInTheDocument();
@@ -47,7 +47,7 @@ describe("ForgeInterviewConfirmation", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Conferma e crea blueprint/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Blocca DNA e procedi/i }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
@@ -67,7 +67,7 @@ describe("ForgeInterviewConfirmation", () => {
       />,
     );
 
-    expect(screen.queryByText(/Il libro è pronto/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Ecco il DNA del libro/i)).not.toBeInTheDocument();
     expect(screen.getByText(/Stiamo ancora costruendo/i)).toBeInTheDocument();
   });
 });

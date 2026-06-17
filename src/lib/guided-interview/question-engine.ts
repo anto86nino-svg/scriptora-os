@@ -29,15 +29,42 @@ import {
   resolveExtractedFieldKey,
   type ResolveInterviewOptions,
 } from "./interview-continue";
+import {
+  countForgeUserAnswers,
+  FORGE_OPENING_QUESTION_ID,
+  getForgeOpeningGreeting,
+  isFirstForgeAssistantMessage,
+  isTechnicalPrematureContent,
+} from "./opening-experience";
+import {
+  filterPrematureTechnicalQuestion,
+  getWelcomeInterviewQuestion,
+  selectNextForgeQuestion,
+} from "./interview-stages";
+import { evaluateForgeReadiness, shouldBlockBlueprint } from "./forge-readiness";
 
 export { resolveActiveInterviewQuestion, getContinueFollowUpQuestion, resolveExtractedFieldKey };
+export {
+  getForgeOpeningGreeting,
+  getForgeDaypart,
+  isFirstForgeAssistantMessage,
+  countForgeUserAnswers,
+  FORGE_OPENING_QUESTION_ID,
+} from "./opening-experience";
+export {
+  selectNextForgeQuestion,
+  resolveInterviewStage,
+  getWelcomeInterviewQuestion,
+  OPENING_QUICK_CHOICES,
+} from "./interview-stages";
+export { evaluateForgeReadiness, shouldBlockBlueprint } from "./forge-readiness";
 export type { ResolveInterviewOptions };
 
 const GENERIC_PLACEHOLDER =
   "Parla liberamente: idea, note, voce, caos… Scriptora organizzerà il resto.";
 
-export const OPENING_ASSISTANT_MESSAGE =
-  "Se entrassimo in uno studio radiofonico e avessi un solo minuto per convincermi che questo libro merita di esistere, cosa mi racconteresti?";
+/** Scenic opening — use getForgeOpeningGreeting() for live copy. */
+export const OPENING_ASSISTANT_MESSAGE = getForgeOpeningGreeting();
 
 export const CRITICAL_FIELD_KEYS = [
   "readerTransformation",
@@ -479,6 +506,13 @@ export function getInitialInterviewState(
   partial?: Partial<GuidedInterviewState>,
 ): GuidedInterviewState {
   const chatFirst = partial?.chatFirst ?? !partial?.selectedGenre;
+  const hasExistingIdea =
+    Boolean(partial?.extracted?.promise?.trim()) ||
+    Boolean(partial?.extracted?.centralConflict?.trim());
+  const openingContent = getForgeOpeningGreeting({
+    hasExistingIdea,
+    language: partial?.extracted?.language,
+  });
   const base = {
     completed: false,
     currentStep: 0,
@@ -488,12 +522,12 @@ export function getInitialInterviewState(
           {
             id: "assistant-opening",
             role: "assistant" as const,
-            content: OPENING_ASSISTANT_MESSAGE,
+            content: openingContent,
             createdAt: Date.now(),
           },
         ]
       : [],
-    extracted: {},
+    extracted: partial?.extracted ?? {},
     chatFirst,
     ...partial,
   };
@@ -534,27 +568,29 @@ function buildFullQueue(state: GuidedInterviewState): InterviewQuestion[] {
   const chatFirst = state.chatFirst && !state.selectedGenre;
 
   if (phase === "understanding") {
+    const userAnswers = countForgeUserAnswers(state);
+
     if (!chatFirst) {
       for (const q of getQuestionsForGenre(state.selectedGenre)) push(q);
     } else {
-      push({
-        id: "chat-first-opening",
-        key: "readerTransformation",
-        question: OPENING_ASSISTANT_MESSAGE,
-        placeholder: GENERIC_PLACEHOLDER,
-      });
+      push(getWelcomeInterviewQuestion(state));
     }
 
-    if (state.selectedGenre && state.chatFirst) {
+    if (state.selectedGenre && state.chatFirst && userAnswers >= 2) {
       for (const q of getQuestionsForGenre(state.selectedGenre)) push(q);
     }
 
-    for (const q of CRITICAL_FIELD_QUESTIONS) push(q);
-    for (const field of CRITICAL_FIELD_KEYS) {
-      for (const q of FOLLOW_UP_BY_FIELD[field] ?? []) push(q);
+    if (userAnswers >= 2) {
+      for (const q of CRITICAL_FIELD_QUESTIONS) push(q);
+      for (const field of CRITICAL_FIELD_KEYS) {
+        for (const q of FOLLOW_UP_BY_FIELD[field] ?? []) push(q);
+      }
+      for (const q of INTERVIEW_DEPTH_QUESTIONS) push(q);
     }
-    for (const q of INTERVIEW_DEPTH_QUESTIONS) push(q);
-    for (const q of getForgePhaseQuestions(state, "understanding")) push(q);
+
+    if (userAnswers >= 3) {
+      for (const q of getForgePhaseQuestions(state, "understanding")) push(q);
+    }
     return queue;
   }
 
@@ -565,8 +601,32 @@ function buildFullQueue(state: GuidedInterviewState): InterviewQuestion[] {
 function findNextUnansweredQuestion(
   state: GuidedInterviewState,
 ): InterviewQuestion | null {
+  if (isFirstForgeAssistantMessage(state)) {
+    return null;
+  }
+
   const recent = state.forgeConvergence?.lastQuestionKeys ?? [];
+  const phase = resolveCurrentPhase(state);
+
+  if (phase === "understanding") {
+    const staged = selectNextForgeQuestion(state);
+    if (staged) {
+      const filtered = filterPrematureTechnicalQuestion(staged, state);
+      if (
+        filtered &&
+        !hasStrongSignal((state.extracted as Record<string, unknown>)?.[filtered.key]) &&
+        recent.filter((k) => k === filtered.key).length < 2
+      ) {
+        return filtered;
+      }
+    }
+  }
+
   const phaseQuestions = getForgePhaseQuestions(state).filter((q) => {
+    if (filterPrematureTechnicalQuestion(q, state) === null) return false;
+    if (isTechnicalPrematureContent(q.question) && countForgeUserAnswers(state) < 3) {
+      return false;
+    }
     if (hasStrongSignal((state.extracted as Record<string, unknown>)?.[q.key])) return false;
     if (recent.filter((k) => k === q.key).length >= 2) return false;
     return true;
@@ -597,8 +657,9 @@ export function getNextInterviewQuestion(
 ): NextQuestionResult {
   const evolution = evaluateForgeEvolution(state);
   const dnaLock = buildDnaLockFromInterviewState(state);
+  const forgeReady = evaluateForgeReadiness(state);
 
-  if (evolution.readyForBlueprint) {
+  if (evolution.readyForBlueprint && !shouldBlockBlueprint(state) && forgeReady.ready) {
     return {
       done: true,
       state: {
@@ -617,6 +678,13 @@ export function getNextInterviewQuestion(
     return {
       done: false,
       question: enrichInterviewQuestion(state, question) as InterviewQuestion,
+      state: { ...state, dnaLock },
+    };
+  }
+
+  if (countForgeUserAnswers(state) === 0) {
+    return {
+      done: false,
       state: { ...state, dnaLock },
     };
   }
@@ -680,7 +748,8 @@ export function applyInterviewAnswer(
       ? ({ id: activeQuestion.id, key: activeQuestion.key } as InterviewQuestion)
       : undefined) ??
     findNextUnansweredQuestion(state) ??
-    resolved.question;
+    resolved.question ??
+    (isFirstForgeAssistantMessage(state) ? getWelcomeInterviewQuestion(state) : undefined);
 
   if (!currentQuestion) return state;
 

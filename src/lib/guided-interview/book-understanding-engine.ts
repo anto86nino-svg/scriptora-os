@@ -288,8 +288,8 @@ function buildBlindSpotQuestion(spot: string, mode: EditorialBookMode): Intervie
     conflict: q(
       "blind-conflict",
       "centralConflict",
-      "In questo momento vedo bene il personaggio. Vedo meno chiaramente cosa potrebbe perdere se restasse immobile. Mi aiuti a capire?",
-      "Pensa a posta in gioco, conseguenze, rischio reale.",
+      "Se questo personaggio resta fermo, cosa perde davvero: una persona, una parte di sé, una possibilità, o la verità?",
+      "Pensa a una scena concreta dove la scelta diventa inevitabile.",
     ),
     protagonist: q(
       "blind-protagonist",
@@ -436,12 +436,18 @@ export function evaluateEditorialUnderstanding(state: GuidedInterviewState): Edi
     genreAwareReadyForUnderstanding(convergence, components, contradictionsResolved) && explainOk;
 
   const nextQuestions: InterviewQuestion[] = [];
+  const userAnswers = state.messages.filter((m) => m.role === "user").length;
+  const minAnswersForBlindSpots = 3;
+
   for (const c of contradictions.slice(0, 1)) {
     nextQuestions.push(buildContradictionQuestion(c));
   }
 
-  const spotsToAsk =
-    convergence.saturated || convergence.loopDetected
+  const shouldGateBlindSpots = state.chatFirst && userAnswers < minAnswersForBlindSpots;
+
+  const spotsToAsk = shouldGateBlindSpots
+    ? []
+    : convergence.saturated || convergence.loopDetected
       ? blindSpots.slice(0, 1)
       : blindSpots.slice(0, 3);
 
@@ -450,7 +456,7 @@ export function evaluateEditorialUnderstanding(state: GuidedInterviewState): Edi
     if (!nextQuestions.some((item) => item.id === question.id)) nextQuestions.push(question);
   }
 
-  if (nextQuestions.length === 0 && !readyForBlueprint && !convergence.saturated) {
+  if (nextQuestions.length === 0 && !readyForBlueprint && !convergence.saturated && !shouldGateBlindSpots) {
     const altKey = convergence.profile.blindSpotPriority.find((s) => !blindSpots.includes(s));
     if (altKey) {
       nextQuestions.push(buildBlindSpotQuestion(altKey, mode));

@@ -4,10 +4,11 @@ import {
   getInitialInterviewState,
   getInterviewProgress,
   getNextInterviewQuestion,
-  OPENING_ASSISTANT_MESSAGE,
   resolveActiveInterviewQuestion,
   resumeInterview,
 } from "@/lib/guided-interview/question-engine";
+import { FORGE_OPENING_QUESTION_ID } from "@/lib/guided-interview/opening-experience";
+import { evaluateForgeReadiness } from "@/lib/guided-interview/forge-readiness";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import { saveForgeDnaLock } from "@/lib/guided-interview/interview-state";
 import { finalizeForgeForBlueprint } from "@/lib/guided-interview/forge-evolution-engine";
@@ -79,7 +80,8 @@ export function useGuidedInterviewController({
     [state, rawNext, continueNonce],
   );
   const progress = useMemo(() => getInterviewProgress(state), [state]);
-  const ready = progress.dnaLock.readyForBlueprint;
+  const forgeReady = useMemo(() => evaluateForgeReadiness(state), [state]);
+  const ready = progress.dnaLock.readyForBlueprint && forgeReady.ready;
 
   useEffect(() => {
     if (!next.question || next.done) return;
@@ -90,8 +92,9 @@ export function useGuidedInterviewController({
       return;
     }
     if (
-      next.question.id === "chat-first-opening" &&
-      state.messages.some((m) => m.content === OPENING_ASSISTANT_MESSAGE)
+      (next.question.id === FORGE_OPENING_QUESTION_ID ||
+        next.question.id === "chat-first-opening") &&
+      state.messages.some((m) => m.role === "assistant")
     ) {
       lastQuestionIdRef.current = next.question.id;
       lastQuestionTextRef.current = next.question.question;
@@ -217,6 +220,7 @@ export function useGuidedInterviewController({
     next,
     rawNext,
     progress,
+    forgeReady,
     ready,
     confidencePct: Math.round(progress.confidence * 100),
     sendMessage,

@@ -128,11 +128,14 @@ export function getForgePhaseQuestions(
   const active = phase ?? resolveCurrentPhase(state);
 
   switch (active) {
-    case "understanding":
+    case "understanding": {
+      const userAnswers = state.messages.filter((m) => m.role === "user").length;
+      if (userAnswers < 3) return [];
       return [
         ...getEditorialDepthQuestions(state),
         ...getHumanHostExtraQuestions(state),
       ].slice(0, 3);
+    }
     case "configuration":
       return getProBookConfigQuestions(state);
     case "characters":

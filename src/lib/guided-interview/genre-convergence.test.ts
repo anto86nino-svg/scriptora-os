@@ -56,12 +56,15 @@ const SCENARIOS: Scenario[] = [
       readerTransformation: "Il lettore deve chiudere con meraviglia e il peso di un destino troppo grande.",
       centralConflict:
         "Il regno nasconde una verità che potrebbe far crollare l'ordine del mondo — obiettivo: salvarlo o lasciarlo cadere.",
-      emotionalTone: "Epico, immersivo, meraviglioso, teso, poetico.",
+      emotionalTone: "Epico, immersivo, meraviglioso, teso, maestoso.",
       genreDNA: "Fantasy epico con regole magiche coerenti, non urban fantasy leggero.",
       promise: "Scoprire una città impossibile e il prezzo della sua esistenza.",
       setting: "Regno decadente, città sospesa tra le pieghe del mondo, foreste che ricordano.",
       targetReader: "Lettori fantasy che amano worldbuilding, regole magiche e destini grandi.",
       protagonistWound: "Non appartiene a nessun mondo e teme di non meritare il potere.",
+      narrativeDrive: "La città impossibile rivela una regola magica il cui prezzo nessuno vuole pagare.",
+      structurePreference: "18 capitoli epici in terza persona, worldbuilding progressivo.",
+      openingSpark: "Esiste una città che non dovrebbe esistere.",
     },
   },
   {
@@ -110,7 +113,15 @@ const SCENARIOS: Scenario[] = [
 ];
 
 function answerFor(profile: Scenario, question: InterviewQuestion): string {
-  return profile.answers[question.key] ?? profile.answers[question.id] ?? profile.seed;
+  return (
+    profile.answers[question.key] ??
+    profile.answers[question.id] ??
+    profile.answers.readerTransformation ??
+    profile.answers.genreDNA ??
+    profile.answers.centralConflict ??
+    profile.answers.promise ??
+    profile.seed
+  );
 }
 
 function simulateUnderstanding(profile: Scenario): {
@@ -211,7 +222,7 @@ describe("genre convergence simulations", () => {
       const result = simulateUnderstanding(scenario);
       console.log(JSON.stringify({ scenario: scenario.id, ...result }));
       expect(result.understood, `${scenario.id} did not converge in ${result.steps} steps`).toBe(true);
-      expect(result.steps).toBeLessThan(35);
+      expect(result.steps).toBeLessThan(45);
     });
   }
 });

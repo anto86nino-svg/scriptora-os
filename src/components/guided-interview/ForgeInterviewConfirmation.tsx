@@ -1,6 +1,7 @@
 import type { BookDnaLock } from "@/lib/guided-interview/dna-lock";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import { buildFinalBookReview } from "@/lib/guided-interview/final-book-review";
+import { evaluateForgeReadiness } from "@/lib/guided-interview/forge-readiness";
 import { cn } from "@/lib/utils";
 
 export type ForgeInterviewConfirmationProps = {
@@ -34,12 +35,14 @@ export function ForgeInterviewConfirmation({
         Book Forge
       </p>
       <h2 className="mt-2 text-xl font-semibold leading-snug text-white">
-        {ready ? "Il libro è pronto" : "Stiamo ancora costruendo il libro insieme"}
+        {ready
+          ? "Ecco il DNA del libro che sto per costruire"
+          : "Stiamo ancora costruendo il libro insieme"}
       </h2>
       <p className="mt-1.5 text-sm leading-6 text-white/55">
         {ready
-          ? "Scriptora non ha compilato un modulo — ha compreso, configurato e bloccato il tuo libro. Se ti risuona, confermiamo."
-          : "Mi manca ancora qualche decisione vera prima di aprire il blueprint."}
+          ? "Tutto qui sotto è leggibile e modificabile prima di generare l'indice e il blueprint."
+          : forgeGapMessage(state)}
       </p>
 
       {review && review.fields.length > 0 ? (
@@ -59,14 +62,14 @@ export function ForgeInterviewConfirmation({
           disabled={!ready}
           className="rounded-2xl bg-violet-500 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35"
         >
-          Conferma e crea blueprint
+          Blocca DNA e procedi
         </button>
         <button
           type="button"
           onClick={onCorrect}
           className="rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3.5 text-sm font-semibold text-white/85"
         >
-          Modifica un elemento
+          Continua intervista
         </button>
       </div>
 
@@ -120,5 +123,15 @@ function ConfirmRow({
         {value}
       </dd>
     </div>
+  );
+}
+
+function forgeGapMessage(state?: GuidedInterviewState): string {
+  if (!state) {
+    return "Mi manca ancora qualche decisione vera prima di aprire il blueprint.";
+  }
+  return (
+    evaluateForgeReadiness(state).humanGapMessage ??
+    "Ci siamo quasi. Prima di bloccare il libro, mi manca ancora una cosa importante."
   );
 }

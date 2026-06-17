@@ -15,6 +15,7 @@ const GENERIC_PLACEHOLDER =
 
 /** Map depth-question keys to critical extracted fields. */
 export const DEPTH_KEY_TO_CRITICAL: Record<string, string> = {
+  openingSpark: "readerTransformation",
   depthReaderFit: "targetReader",
   depthCoreFear: "readerTransformation",
   depthPacingChoice: "genreDNA",
