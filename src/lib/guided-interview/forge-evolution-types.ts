@@ -11,6 +11,57 @@ export type ForgePhase =
 
 export type ForgeCharacterRole = "protagonist" | "antagonist" | "supporting";
 
+export type ForgeSceneRole = "opening" | "crisis" | "climax" | "closing";
+
+export type ForgeScene = {
+  id: string;
+  role: ForgeSceneRole;
+  title?: string;
+  beat?: string;
+  stakes?: string;
+  emotion?: string;
+};
+
+export type NarrativeArcBeat = {
+  id: string;
+  act: "setup" | "pressure" | "break" | "fallout" | "finale";
+  label: string;
+  change?: string;
+};
+
+export type StoryEndingVision = {
+  tone?: string;
+  protagonistFate?: string;
+  readerFeeling?: string;
+  irreversibleChoice?: string;
+};
+
+export type StoryRoomState = {
+  scenes: ForgeScene[];
+  arcBeats: NarrativeArcBeat[];
+  ending?: StoryEndingVision;
+};
+
+export type StoryRoomSection = "characters" | "scenes" | "arcs" | "ending";
+
+export type StoryRoomSectionStatus = {
+  id: StoryRoomSection;
+  label: string;
+  emoji: string;
+  complete: boolean;
+  summary: string;
+  missing: string[];
+};
+
+export type StoryRoomSnapshot = {
+  visible: boolean;
+  fiction: boolean;
+  sections: StoryRoomSectionStatus[];
+  completionPct: number;
+  activeSection: StoryRoomSection | null;
+  highlight?: string;
+};
+
 export type ForgeCharacter = {
   id: string;
   role: ForgeCharacterRole;
@@ -126,6 +177,8 @@ export type FinalBookReview = {
   conflict: string;
   transformation: string;
   characters: string;
+  scenes: string;
+  arcs: string;
   ending: string;
   chapters: string;
   subchapters: string;

@@ -6,6 +6,7 @@ import {
   getDnaLockConfirmPrompt,
   getDnaLockHeadline,
 } from "@/lib/guided-interview/co-author-engine";
+import { evaluateDnaLockPremium } from "@/lib/guided-interview/forge-orchestrator";
 import { cn } from "@/lib/utils";
 
 export type ForgeInterviewConfirmationProps = {
@@ -26,6 +27,7 @@ export function ForgeInterviewConfirmation({
   className,
 }: ForgeInterviewConfirmationProps) {
   const review = state ? buildFinalBookReview(state) : null;
+  const premium = state ? evaluateDnaLockPremium(state) : null;
   const ready = dnaLock.readyForBlueprint;
 
   return (
@@ -53,6 +55,32 @@ export function ForgeInterviewConfirmation({
         </dl>
       ) : (
         <LegacySummary dnaLock={dnaLock} extracted={extracted} />
+      )}
+
+      {premium && ready && premium.incoherences.length > 0 && (
+        <div className="mt-4 rounded-2xl border border-amber-400/25 bg-amber-500/10 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-200/90">
+            Controllo editoriale
+          </p>
+          <ul className="mt-2 space-y-1 text-xs leading-5 text-amber-50/90">
+            {premium.incoherences.slice(0, 3).map((item) => (
+              <li key={item}>• {item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {premium && premium.commercialNotes.length > 0 && (
+        <div className="mt-3 rounded-2xl border border-violet-400/20 bg-violet-500/8 p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-200/80">
+            Nota commerciale
+          </p>
+          <ul className="mt-2 space-y-1 text-xs leading-5 text-white/65">
+            {premium.commercialNotes.map((note) => (
+              <li key={note}>• {note}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="mt-5 flex flex-col gap-2.5">

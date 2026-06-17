@@ -1,4 +1,5 @@
 import type { GuidedInterviewState, InterviewQuestion } from "./types";
+import { enrichCoAuthorWithOrchestrator } from "./forge-orchestrator";
 import {
   type ForgeInterviewMemory,
   type ForgeSlotKey,
@@ -69,6 +70,12 @@ const GENRE_EXPERTS: Record<string, GenreExpertProfile> = {
     interpretationLens: "la raccolta sembra orbitare attorno a un'immagine che torna come ossessione",
     proposalStyle: "potremmo far dialogare frammenti brevi e versi più lenti",
   },
+  memoir: {
+    id: "memoir",
+    focus: ["esperienza", "significato", "trasformazione", "verità"],
+    interpretationLens: "il libro sembra voler trasformare un'esperienza vissuta in significato condivisibile",
+    proposalStyle: "potremmo costruire capitoli come tappe di una trasformazione reale, non come autobiografia piatta",
+  },
   romance: {
     id: "romance",
     focus: ["desiderio", "vulnerabilità", "scelta", "conseguenze"],
@@ -100,6 +107,7 @@ function resolveGenreExpert(memory: ForgeInterviewMemory): GenreExpertProfile {
   if (/fantasy|magia|regno/.test(bag)) return GENRE_EXPERTS.fantasy;
   if (/self-help|bloccato|metodo/.test(bag)) return GENRE_EXPERTS["self-help"];
   if (/poesia|poetry|verso/.test(bag)) return GENRE_EXPERTS.poetry;
+  if (/memoir|autobiograf|vissut|esperienza vera/.test(bag)) return GENRE_EXPERTS.memoir;
   if (/romance|amore/.test(bag)) return GENRE_EXPERTS.romance;
   return GENRE_EXPERTS.general;
 }
@@ -189,6 +197,18 @@ function buildProposal(
     return "Potremmo impostare un indice che segue l'escalation emotiva, non solo la cronologia.";
   }
 
+  if (intent.includes("story-scene") || intent.includes("scene")) {
+    return "Potremmo ancorare questa scena a un dettaglio concreto — un gesto, un oggetto, un silenzio — che il lettore non dimentica.";
+  }
+
+  if (intent.includes("story-arc") || intent.startsWith("arc")) {
+    return "Potremmo far pagare questo nodo dell'arco con una perdita visibile, non solo con una spiegazione.";
+  }
+
+  if (intent.includes("story-ending") || intent.startsWith("ending")) {
+    return "Potremmo rendere il finale moralmente costoso — una scelta che nessuno può annullare.";
+  }
+
   return expert.proposalStyle.charAt(0).toUpperCase() + expert.proposalStyle.slice(1) + ".";
 }
 
@@ -258,9 +278,10 @@ export function enrichQuestionWithCoAuthor(
   }
 
   const turn = composeCoAuthorTurn(state, question);
+  const formatted = formatCoAuthorMessage(turn);
   return {
     ...question,
-    question: formatCoAuthorMessage(turn),
+    question: enrichCoAuthorWithOrchestrator(state, formatted, question),
     helper: question.helper,
   };
 }

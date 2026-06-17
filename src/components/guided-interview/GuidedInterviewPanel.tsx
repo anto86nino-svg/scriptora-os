@@ -3,6 +3,7 @@ import { Mic, MicOff, Send } from "lucide-react";
 import { BookDnaConfirmationPanel } from "./BookDnaConfirmationPanel";
 import { ForgeInterviewConfirmation } from "./ForgeInterviewConfirmation";
 import { ForgeLiveMap } from "./ForgeLiveMap";
+import { StoryRoomPanel } from "./StoryRoomPanel";
 import { MobileInterviewProgress } from "./MobileInterviewProgress";
 import { useGuidedInterviewController } from "./useGuidedInterviewController";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
@@ -89,6 +90,10 @@ export function GuidedInterviewPanel({
     />
   ) : null;
 
+  const storyRoom = !showMobileConfirmation ? (
+    <StoryRoomPanel state={ctrl.state} compact={isMobile} />
+  ) : null;
+
   if (isMobile && unifiedScroll) {
     return (
       <MobileForgeScrollShell
@@ -96,6 +101,7 @@ export function GuidedInterviewPanel({
         header={
           <>
             {forgeHeader}
+            {storyRoom}
             {!showMobileConfirmation && (
               <MobileInterviewProgress
                 answeredCount={ctrl.progress.answeredCount}
@@ -120,6 +126,7 @@ export function GuidedInterviewPanel({
       )}
     >
       {!hideHeader && <DesktopHeader />}
+      {storyRoom}
       {!(isMobile && unifiedScroll) && liveMap}
 
       <div className="flex min-h-0 flex-1 flex-col">

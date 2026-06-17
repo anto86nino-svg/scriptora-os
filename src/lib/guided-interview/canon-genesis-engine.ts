@@ -65,6 +65,21 @@ export function buildCanonFromState(state: GuidedInterviewState): CanonMaster {
     }
   }
 
+  const storyRoom = state.storyRoom;
+  if (storyRoom) {
+    for (const scene of storyRoom.scenes) {
+      if (scene.beat) pushUnique(canon.story, `Scena ${scene.role}: ${scene.beat}`);
+    }
+    for (const beat of storyRoom.arcBeats) {
+      if (beat.change) pushUnique(canon.story, `Arco ${beat.label}: ${beat.change}`);
+    }
+    const ending = storyRoom.ending ?? {};
+    if (ending.tone) pushUnique(canon.ending, `Tono finale: ${ending.tone}`);
+    if (ending.protagonistFate) pushUnique(canon.ending, `Destino protagonista: ${ending.protagonistFate}`);
+    if (ending.readerFeeling) pushUnique(canon.ending, `Sensazione finale lettore: ${ending.readerFeeling}`);
+    if (ending.irreversibleChoice) pushUnique(canon.ending, `Scelta irreversibile: ${ending.irreversibleChoice}`);
+  }
+
   const future = state.storyFuture ?? {};
   if (future.finalStatus) pushUnique(canon.ending, `Stato finale protagonista: ${future.finalStatus}`);
   if (future.endingTone) pushUnique(canon.ending, `Tono finale: ${future.endingTone}`);

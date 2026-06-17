@@ -6,12 +6,20 @@ import { getHumanHostExtraQuestions } from "./human-host-interview";
 import { getProBookConfigQuestions, isConfigurationComplete } from "./pro-book-config-engine";
 import { getCharacterForgeQuestions, getCharactersCompletionReport, applyCharacterAnswer } from "./character-forge-engine";
 import {
+  applyStoryRoomAnswer,
+  getStoryRoomQuestionsForPhase,
+  isStoryRoomComplete,
+  syncStoryFutureFromRoom,
+} from "./story-room-engine";
+import {
   applyNarrativeDecision,
   getNarrativeDecisionQuestions,
   isNarrativeDecisionsComplete,
 } from "./narrative-decision-engine";
 import { buildCanonFromState, isCanonComplete, lockCanonMaster } from "./canon-genesis-engine";
+import { classifyAntagonistForce } from "./antagonist-intelligence";
 import { updateStoryFutureFromAnswer } from "./story-future-simulation";
+import { sanitizeDnaText } from "./dna-cleaner";
 import { applyTitleAnswer, getTitleIntelligenceQuestions, isTitleIntelligenceComplete } from "./title-intelligence-engine";
 import { applyCopyrightAnswer, getCopyrightQuestions, isCopyrightComplete } from "./copyright-engine";
 import { buildBookPromisesFromState, isRepetitionClear } from "./repetition-prevention";
@@ -49,6 +57,7 @@ export function evaluateForgeEvolution(state: GuidedInterviewState): ForgeEvolut
   const configurationComplete = isConfigurationComplete(state);
   const charReport = getCharactersCompletionReport(state);
   const charactersComplete = !charReport.required || charReport.complete;
+  const storyRoomComplete = isStoryRoomComplete(state);
   const decisionsComplete = isNarrativeDecisionsComplete(state);
   const canon = buildCanonFromState(state);
   const canonComplete = isCanonComplete({ ...state, canon });
@@ -61,6 +70,7 @@ export function evaluateForgeEvolution(state: GuidedInterviewState): ForgeEvolut
   if (!bookUnderstood) blockedReasons.push("Il libro non è ancora compreso abbastanza.");
   if (!configurationComplete) blockedReasons.push("Configurazione professionale incompleta.");
   if (!charactersComplete) blockedReasons.push("Protagonista non ancora vivo abbastanza.");
+  if (!storyRoomComplete) blockedReasons.push("Story Room incompleta: scene, archi o finale da definire.");
   if (!decisionsComplete) blockedReasons.push("Decisioni narrative fondamentali mancanti.");
   if (!canonComplete) blockedReasons.push("Canon Master incompleto.");
   if (!titleComplete) blockedReasons.push("Titolo e promessa commerciale non definitivi.");
@@ -92,7 +102,10 @@ export function evaluateForgeEvolution(state: GuidedInterviewState): ForgeEvolut
       configurationComplete,
       configurationComplete ? [] : ["config"],
     ),
-    phaseStatus("characters", charactersComplete, charReport.missing),
+    phaseStatus("characters", charactersComplete && storyRoomComplete, [
+      ...charReport.missing,
+      ...(storyRoomComplete ? [] : ["story-room"]),
+    ]),
     phaseStatus("decisions", decisionsComplete, decisionsComplete ? [] : ["decisions"]),
     phaseStatus("title", titleComplete, titleComplete ? [] : ["title"]),
     phaseStatus("copyright", copyrightComplete, copyrightComplete ? [] : ["copyright"]),
@@ -139,9 +152,15 @@ export function getForgePhaseQuestions(
     case "configuration":
       return getProBookConfigQuestions(state);
     case "characters":
-      return getCharacterForgeQuestions(state);
+      return [
+        ...getCharacterForgeQuestions(state),
+        ...getStoryRoomQuestionsForPhase(state, "characters"),
+      ].slice(0, 2);
     case "decisions":
-      return getNarrativeDecisionQuestions(state);
+      return [
+        ...getNarrativeDecisionQuestions(state),
+        ...getStoryRoomQuestionsForPhase(state, "decisions"),
+      ].slice(0, 2);
     case "title":
       return getTitleIntelligenceQuestions(state);
     case "copyright":
@@ -161,8 +180,24 @@ export function enrichStateAfterAnswer(
 ): GuidedInterviewState {
   let next: GuidedInterviewState = { ...state };
 
-  if (question.key.startsWith("character")) {
+  if (question.key === "antagonistForce") {
+    next.antagonistForce = classifyAntagonistForce(answer);
+    next.extracted = {
+      ...next.extracted,
+      antagonistForce: sanitizeDnaText(answer),
+    };
+  }
+
+  if (question.key.startsWith("character") || question.key.startsWith("antagonist")) {
     next.characters = applyCharacterAnswer(next, question.key, answer);
+  }
+
+  if (question.id.startsWith("story-") || question.key.startsWith("scene") || question.key.startsWith("arc") || question.key.startsWith("ending")) {
+    next.storyRoom = applyStoryRoomAnswer(next, question, answer);
+    next.storyFuture = {
+      ...(next.storyFuture ?? {}),
+      ...syncStoryFutureFromRoom(next.storyRoom),
+    };
   }
 
   if (question.id.startsWith("decision-")) {

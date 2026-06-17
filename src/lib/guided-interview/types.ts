@@ -8,6 +8,7 @@ import type {
   ForgePhase,
   NarrativeDecisionRecord,
   StoryFutureState,
+  StoryRoomState,
   TitleIntelligence,
 } from "./forge-evolution-types";
 
@@ -89,6 +90,7 @@ export interface ExtractedBookIntent {
   characterObsession?: string;
   characterSecret?: string;
   characterArc?: string;
+  antagonistForce?: string;
 
   /** Narrative decisions */
   narrativeDecision?: string;
@@ -123,6 +125,8 @@ export interface GuidedInterviewState {
   characters?: ForgeCharacter[];
   narrativeDecisions?: NarrativeDecisionRecord[];
   storyFuture?: StoryFutureState;
+  storyRoom?: StoryRoomState;
+  antagonistForce?: import("./antagonist-intelligence").AntagonistForceType;
   canon?: CanonMaster;
   bookPromises?: BookPromises;
   titleIntelligence?: TitleIntelligence;

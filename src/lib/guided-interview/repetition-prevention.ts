@@ -40,6 +40,20 @@ export function buildBookPromisesFromState(state: GuidedInterviewState): BookPro
     pushUnique(promises.plot, decision.answer);
   }
 
+  const storyRoom = state.storyRoom;
+  if (storyRoom) {
+    for (const scene of storyRoom.scenes) {
+      pushUnique(promises.scene, scene.beat);
+      pushUnique(promises.emotional, scene.emotion);
+    }
+    for (const beat of storyRoom.arcBeats) {
+      pushUnique(promises.plot, beat.change);
+      pushUnique(promises.character, beat.label);
+    }
+    if (storyRoom.ending?.tone) pushUnique(promises.emotional, storyRoom.ending.tone);
+    if (storyRoom.ending?.readerFeeling) pushUnique(promises.emotional, storyRoom.ending.readerFeeling);
+  }
+
   return promises;
 }
 

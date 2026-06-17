@@ -2,6 +2,7 @@ import type { GuidedInterviewState } from "./types";
 import type { FinalBookReview, FinalBookReviewField } from "./forge-evolution-types";
 import { deriveCopyrightConfig } from "./copyright-engine";
 import { deriveTitleIntelligence } from "./title-intelligence-engine";
+import { getStoryRoom } from "./story-room-engine";
 import { sanitizeDnaText } from "./dna-cleaner";
 
 function clean(value?: unknown): string {
@@ -21,10 +22,24 @@ export function buildFinalBookReview(state: GuidedInterviewState): FinalBookRevi
   const title = deriveTitleIntelligence(state);
   const copyright = deriveCopyrightConfig(state);
   const lead = state.characters?.find((c) => c.role === "protagonist");
+  const villain = state.characters?.find((c) => c.role === "antagonist");
+  const storyRoom = getStoryRoom(state);
   const endingFacts = state.canon?.ending.facts ?? [];
   const characterLine = lead?.name
-    ? `${lead.name}${lead.arc ? ` — ${lead.arc}` : ""}`
+    ? `${lead.name}${villain?.name ? ` vs ${villain.name}` : ""}${lead.arc ? ` — ${lead.arc}` : ""}`
     : pick(ex.protagonistWound, ex.centralConflict);
+  const sceneLine =
+    storyRoom.scenes
+      .map((scene) => scene.beat)
+      .filter(Boolean)
+      .slice(0, 2)
+      .join(" · ") || "—";
+  const arcLine =
+    storyRoom.arcBeats
+      .map((beat) => beat.change)
+      .filter(Boolean)
+      .slice(0, 2)
+      .join(" · ") || "—";
 
   const review: FinalBookReview = {
     title: pick(title.definitiveTitle, ex.bookTitle),
@@ -38,7 +53,9 @@ export function buildFinalBookReview(state: GuidedInterviewState): FinalBookRevi
     conflict: pick(ex.centralConflict),
     transformation: pick(ex.readerTransformation),
     characters: characterLine,
-    ending: endingFacts[0] ?? pick(state.storyFuture?.endingTone, ex.readerTransformation),
+    scenes: sceneLine,
+    arcs: arcLine,
+    ending: endingFacts[0] ?? pick(storyRoom.ending?.tone, storyRoom.ending?.readerFeeling, state.storyFuture?.endingTone, ex.readerTransformation),
     chapters: pick(ex.chapterCount),
     subchapters: pick(ex.subchaptersPreference),
     frontMatter: pick(ex.frontMatter),
@@ -64,6 +81,8 @@ export function buildFinalBookReview(state: GuidedInterviewState): FinalBookRevi
     { label: "Conflitto", value: review.conflict, key: "centralConflict" },
     { label: "Trasformazione", value: review.transformation, key: "readerTransformation" },
     { label: "Personaggi", value: review.characters },
+    { label: "Scene chiave", value: review.scenes },
+    { label: "Archi narrativi", value: review.arcs },
     { label: "Finale", value: review.ending },
     { label: "Capitoli", value: review.chapters, key: "chapterCount" },
     { label: "Sottocapitoli", value: review.subchapters, key: "subchaptersPreference" },
