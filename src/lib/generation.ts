@@ -31,6 +31,7 @@ import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
 import { buildHumanBestsellerModeV11Block } from "@/lib/human-bestseller-mode-v11";
 import { buildHumanBestsellerModeV12Block } from "@/lib/human-bestseller-mode-v12";
+import { runWritingEngineV13Audit } from "@/lib/writing-engine-v13";
 import { validateCanonChunkBeforeMerge } from "@/lib/writing-engine/canon-lock-v2";
 import { buildPremiumWritingBlock, runUltraHumanFinalPass } from "@/lib/premium-writing";
 import { buildPromptFromCanonicalConfig, sanitizeBookConfiguration } from "@/lib/book-config-engine";
@@ -335,6 +336,27 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
         ),
       }
     );
+
+    // V13 SHADOW MODE — observe only, never changes generated manuscript text.
+    try {
+      const v13Audit = runWritingEngineV13Audit(cleanedContent, {
+        language: String(usage?.metadata?.language || "italian"),
+        genre: String(usage?.metadata?.genre || ""),
+        bookTypeId: String(usage?.metadata?.bookTypeId || ""),
+        family: "unknown",
+      });
+
+      if (typeof console !== "undefined" && import.meta.env.DEV) {
+        console.debug("[SCRIPTORA V13 SHADOW]", {
+          score: v13Audit.score,
+          topRisks: v13Audit.signals.slice(0, 5),
+        });
+      }
+    } catch (err) {
+      if (typeof console !== "undefined" && import.meta.env.DEV) {
+        console.warn("[SCRIPTORA V13 SHADOW FAILED]", err);
+      }
+    }
 
     return cleanedContent;
   } catch (e: any) {
