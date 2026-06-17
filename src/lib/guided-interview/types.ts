@@ -131,6 +131,10 @@ export interface GuidedInterviewState {
 
   /** Genre convergence loop/saturation tracking */
   forgeConvergence?: import("./genre-convergence-engine").ForgeConvergenceTracking;
+
+  /** Structured interview memory — slots, stages, anti-loop */
+  forgeMemory?: import("./interview-memory").ForgeInterviewMemory;
+  lastMemoryDiff?: import("./interview-memory").ForgeMemoryDiff;
 }
 
 export interface NextQuestionResult {

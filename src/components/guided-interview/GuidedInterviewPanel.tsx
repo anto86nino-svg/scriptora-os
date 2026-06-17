@@ -9,6 +9,7 @@ import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import { getEditorialBlockedPrompt } from "@/lib/guided-interview/interview-ui-copy";
 import { getContinueCtaLabel } from "@/lib/guided-interview/contextual-interview";
 import { getInterviewProgressLabel } from "@/lib/guided-interview/interview-stages";
+import { getSavedSlotLabels } from "@/lib/guided-interview/interview-memory";
 import { countForgeUserAnswers } from "@/lib/guided-interview/opening-experience";
 import { MobileForgeScrollShell } from "@/mobile/MobileForgeScrollShell";
 import { cn } from "@/lib/utils";
@@ -219,6 +220,12 @@ function InterviewBody({
         </div>
       ))}
 
+      {ctrl.state.lastMemoryDiff && ctrl.state.lastMemoryDiff.newlyFilledSlots.length > 0 && (
+        <p className="text-[11px] font-medium text-emerald-300/85">
+          Ok, lo tengo fermo: {getSavedSlotLabels(ctrl.state.lastMemoryDiff).join(", ")}
+        </p>
+      )}
+
       {ctrl.isThinking && <ThinkingBubble />}
 
       {!ctrl.next.done && ctrl.next.question?.helper && (
@@ -299,6 +306,12 @@ function MobileInterviewOnlyBody({
       {lastUserReply && (
         <p className="relative mb-3 line-clamp-2 text-right text-[11px] leading-5 text-white/40">
           Tu: {lastUserReply}
+        </p>
+      )}
+
+      {ctrl.state.lastMemoryDiff && ctrl.state.lastMemoryDiff.newlyFilledSlots.length > 0 && (
+        <p className="relative mb-3 text-[11px] font-medium text-emerald-300/85">
+          Ok, lo tengo fermo: {getSavedSlotLabels(ctrl.state.lastMemoryDiff).join(", ")}
         </p>
       )}
 

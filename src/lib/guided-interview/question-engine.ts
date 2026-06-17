@@ -41,7 +41,16 @@ import {
   getWelcomeInterviewQuestion,
   selectNextForgeQuestion,
 } from "./interview-stages";
-import { evaluateForgeReadiness, shouldBlockBlueprint } from "./forge-readiness";
+import {
+  evaluateForgeReadiness,
+  shouldBlockBlueprint,
+} from "./forge-readiness";
+import {
+  createEmptyForgeMemory,
+  memoryRecapShown,
+  syncExtractedFromMemory,
+  updateForgeMemoryFromAnswer,
+} from "./interview-memory";
 
 export { resolveActiveInterviewQuestion, getContinueFollowUpQuestion, resolveExtractedFieldKey };
 export {
@@ -58,6 +67,12 @@ export {
   OPENING_QUICK_CHOICES,
 } from "./interview-stages";
 export { evaluateForgeReadiness, shouldBlockBlueprint } from "./forge-readiness";
+export {
+  getForgeMemory,
+  updateForgeMemoryFromAnswer,
+  buildForgeMemoryRecap,
+  getSavedSlotLabels,
+} from "./interview-memory";
 export type { ResolveInterviewOptions };
 
 const GENERIC_PLACEHOLDER =
@@ -533,6 +548,7 @@ export function getInitialInterviewState(
   };
   return {
     ...base,
+    forgeMemory: partial?.forgeMemory ?? createEmptyForgeMemory(),
     dnaLock: buildDnaLockFromInterviewState(base),
   };
 }
@@ -799,6 +815,19 @@ export function applyInterviewAnswer(
   nextState.confidence = calculateInterviewConfidence(nextState);
 
   const enriched = enrichStateAfterAnswer(nextState, currentQuestion, normalized);
+
+  const { memory, diff } = updateForgeMemoryFromAnswer(enriched, normalized, currentQuestion);
+  enriched.forgeMemory = memoryRecapShown(memory, countForgeUserAnswers(enriched));
+  enriched.lastMemoryDiff = diff;
+  enriched.extracted = syncExtractedFromMemory(enriched.forgeMemory, enriched.extracted);
+
+  if (memory.slotValues.genre) {
+    enriched.selectedGenre = String(memory.slotValues.genre);
+  }
+  if (memory.slotValues.bookType) {
+    enriched.selectedBookType = String(memory.slotValues.bookType);
+  }
+
   enriched.forgePhase = resolveCurrentPhase(enriched);
 
   const editorial = evaluateEditorialUnderstanding(enriched);

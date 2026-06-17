@@ -10,6 +10,7 @@ import { getInitialInterviewState, getNextInterviewQuestion } from "./question-e
 import { applyInterviewAnswer } from "./question-engine";
 import { selectNextForgeQuestion } from "./interview-stages";
 import { evaluateForgeReadiness } from "./forge-readiness";
+import { getForgeMemory } from "./interview-memory";
 import { getEditorialDepthQuestions } from "./book-understanding-engine";
 
 describe("opening experience", () => {
@@ -60,27 +61,26 @@ describe("interview stages", () => {
     state = applyInterviewAnswer(state, "non lo so");
     const q = selectNextForgeQuestion(state);
     expect(q).not.toBeNull();
-    expect(q!.question).toMatch(/strade|risuona|guid/i);
+    expect(q!.question).toMatch(/direzioni|vibra|strade|risuona|guid/i);
     expect((q!.quickSuggestions?.length ?? 0)).toBeGreaterThanOrEqual(3);
   });
 
-  it("dark romance produces different questions than self-help", () => {
+  it("dark romance produces different memory than self-help", () => {
     let dark = getInitialInterviewState({ chatFirst: true });
     dark = applyInterviewAnswer(
       dark,
-      "voglio scrivere una storia d'amore oscura tra una ragazza fragile e un uomo pericoloso",
+      "voglio scrivere una storia d'amore oscura tra una ragazza fragile e un uomo pericoloso in italiano",
     );
-    dark = applyInterviewAnswer(dark, "desiderio proibito in una città elegante e pericolosa");
-    const darkQ = selectNextForgeQuestion(dark);
-
     let help = getInitialInterviewState({ chatFirst: true });
-    help = applyInterviewAnswer(help, "voglio aiutare persone che si sentono bloccate");
-    help = applyInterviewAnswer(help, "metodo pratico per uscire dal blocco quotidiano");
-    const helpQ = selectNextForgeQuestion(help);
+    help = applyInterviewAnswer(help, "voglio aiutare persone che si sentono bloccate con un self-help in inglese");
 
-    expect(darkQ?.question).not.toBe(helpQ?.question);
-    expect(darkQ?.question ?? "").toMatch(/direzioni|desiderio|oscur|strade/i);
-    expect(helpQ?.question ?? "").toMatch(/direzioni|trasformazione|metodo|promessa/i);
+    expect(getForgeMemory(dark).slotValues.genre).not.toBe(getForgeMemory(help).slotValues.genre);
+    const darkQ = selectNextForgeQuestion(dark);
+    const helpQ = selectNextForgeQuestion(help);
+    expect(darkQ?.id).not.toBe("genre-direction");
+    expect(helpQ?.id).not.toBe("genre-direction");
+    expect(String(getForgeMemory(dark).slotValues.genre)).toMatch(/romance|dark/i);
+    expect(String(getForgeMemory(help).slotValues.genre)).toMatch(/self-help/i);
   });
 
   it("uncertain genre proposes multiple directions", () => {
