@@ -7923,3 +7923,29 @@ html[data-theme="classic-premium"],
 .scriptora-single-chapter-view .scriptora-manuscript-premium {
   min-height: min(70dvh, 640px);
 }
+
+/* Dashboard Block Notes dedicated fullscreen tool */
+.scriptora-notepad-tool-screen {
+  min-height: min(760px, calc(100dvh - 180px));
+  width: 100%;
+}
+
+.scriptora-notepad-tool-screen [role="dialog"] {
+  width: min(1100px, calc(100vw - 24px));
+  max-width: 1100px;
+  max-height: calc(100dvh - 48px);
+}
+
+@media (max-width: 767px) {
+  .scriptora-notepad-tool-screen {
+    min-height: calc(100dvh - 120px);
+  }
+
+  .scriptora-notepad-tool-screen [role="dialog"] {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+}

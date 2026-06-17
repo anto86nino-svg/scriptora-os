@@ -252,7 +252,19 @@ export function DashboardToolHost({
       );
 
     case "notepad":
-      return boundary(<NotepadDialog open onClose={onClose} />);
+      return (
+        <DedicatedToolScreen
+          open
+          title="Block Notes"
+          description="Appunti, idee e frammenti del libro attivo."
+          onClose={onClose}
+          maxWidthClass="max-w-5xl"
+        >
+          <div className="scriptora-notepad-tool-screen">
+            {boundary(<NotepadDialog open onClose={onClose} />)}
+          </div>
+        </DedicatedToolScreen>
+      );
 
     case "author-identity":
       return boundary(
