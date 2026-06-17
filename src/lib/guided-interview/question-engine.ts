@@ -41,9 +41,34 @@ function hasStrongSignal(value: unknown): boolean {
 
 const TONE_SUGGESTIONS: InterviewQuickSuggestion[] = [
   { label: "Psicologico e umano", value: "Psicologico e umano, vicino alle paure reali del lettore." },
-  { label: "Diretto e pratico", value: "Diretto e pratico, senza fronzoli, orientato all'azione." },
-  { label: "Più scientifico", value: "Più scientifico, basato su evidenze e chiarezza concettuale." },
-  { label: "Più narrativo", value: "Più narrativo, con esempi, storie e immagini forti." },
+  { label: "Diretto e concreto", value: "Diretto e concreto, senza fronzoli, con una direzione chiara." },
+  { label: "Intenso e immersivo", value: "Intenso e immersivo, con immagini forti e atmosfera riconoscibile." },
+  { label: "Teso e narrativo", value: "Teso e narrativo, con ritmo, svolte e pressione emotiva." },
+];
+
+const THRILLER_HORROR_TONE_SUGGESTIONS: InterviewQuickSuggestion[] = [
+  { label: "Claustrofobica", value: "Claustrofobica, come se il lettore non avesse vie d'uscita." },
+  { label: "Disturbante", value: "Disturbante, con una paura che resta addosso anche dopo la scena." },
+  { label: "Investigativa", value: "Investigativa, costruita su indizi, sospetti e verità nascoste." },
+  { label: "Gotica", value: "Gotica, oscura, elegante, carica di presagi e ombre." },
+  { label: "Realistica", value: "Realistica, umana, possibile, vicina alle paure quotidiane." },
+  { label: "Soprannaturale ambiguo", value: "Soprannaturale ambiguo, dove non è subito chiaro se il male sia reale o mentale." },
+];
+
+const ROMANCE_TONE_SUGGESTIONS: InterviewQuickSuggestion[] = [
+  { label: "Slow burn", value: "Slow burn, con desiderio trattenuto e tensione che cresce lentamente." },
+  { label: "Dolce", value: "Dolce, intimo, luminoso, emotivamente caldo." },
+  { label: "Proibito", value: "Proibito, con attrazione, rischio e conseguenze." },
+  { label: "Doloroso", value: "Doloroso, vulnerabile, con ferite emotive che non si aprono subito." },
+  { label: "Magnetico", value: "Magnetico, sensuale, pieno di sottotesto e silenzi." },
+];
+
+const POETRY_TONE_SUGGESTIONS: InterviewQuickSuggestion[] = [
+  { label: "Oscura", value: "Oscura, viscerale, attraversata da ombra e perdita." },
+  { label: "Malinconica", value: "Malinconica, intima, piena di memoria e nostalgia." },
+  { label: "Luminosa", value: "Luminosa, fragile, orientata a rinascita e speranza." },
+  { label: "Spirituale", value: "Spirituale, simbolica, vicina al mistero e al senso." },
+  { label: "Corporea", value: "Corporea, sensoriale, fisica, fatta di pelle, respiro e immagini." },
 ];
 
 const TARGET_SUGGESTIONS: InterviewQuickSuggestion[] = [
@@ -75,7 +100,7 @@ const CRITICAL_FIELD_QUESTIONS: InterviewQuestion[] = [
     question: "Che atmosfera immagini: claustrofobica, investigativa, disturbante, gotica, realistica?",
     helper: "Pensa alla sensazione dominante, non al genere in sé.",
     placeholder: GENERIC_PLACEHOLDER,
-    quickSuggestions: TONE_SUGGESTIONS,
+    quickSuggestions: THRILLER_HORROR_TONE_SUGGESTIONS,
   },
   {
     id: "crit-genreDNA",
@@ -189,7 +214,7 @@ const QUESTIONS_BY_GENRE: Record<InterviewGenre, InterviewQuestion[]> = {
       key: "emotionalTone",
       question: "Che atmosfera vuoi lasciare al lettore?",
       helper: "Oscura, malinconica, luminosa, intima, spirituale, viscerale.",
-      quickSuggestions: TONE_SUGGESTIONS,
+      quickSuggestions: POETRY_TONE_SUGGESTIONS,
       placeholder: GENERIC_PLACEHOLDER,
     },
     {
@@ -217,7 +242,7 @@ const QUESTIONS_BY_GENRE: Record<InterviewGenre, InterviewQuestion[]> = {
       id: "romance-tone",
       key: "emotionalTone",
       question: "Vuoi un romance più dolce, intenso, proibito o doloroso?",
-      quickSuggestions: TONE_SUGGESTIONS,
+      quickSuggestions: ROMANCE_TONE_SUGGESTIONS,
       placeholder: GENERIC_PLACEHOLDER,
     },
     {
@@ -238,7 +263,7 @@ const QUESTIONS_BY_GENRE: Record<InterviewGenre, InterviewQuestion[]> = {
       id: "dr-tone",
       key: "emotionalTone",
       question: "Più ossessione, potere, vulnerabilità o tensione psicologica?",
-      quickSuggestions: TONE_SUGGESTIONS,
+      quickSuggestions: ROMANCE_TONE_SUGGESTIONS,
       placeholder: GENERIC_PLACEHOLDER,
     },
   ],
@@ -266,7 +291,7 @@ const QUESTIONS_BY_GENRE: Record<InterviewGenre, InterviewQuestion[]> = {
       key: "emotionalTone",
       question: "Che tipo di paura vuoi lasciare nel lettore quando chiude il libro?",
       helper: "Psicologica, investigativa, paranoica, claustrofobica, disturbante.",
-      quickSuggestions: TONE_SUGGESTIONS,
+      quickSuggestions: THRILLER_HORROR_TONE_SUGGESTIONS,
       placeholder: GENERIC_PLACEHOLDER,
     },
   ],
