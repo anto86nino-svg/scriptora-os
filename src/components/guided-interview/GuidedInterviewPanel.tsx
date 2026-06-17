@@ -1,8 +1,8 @@
 import type { ReactNode, RefObject } from "react";
 import { useRef } from "react";
-import { Mic, MicOff, Send, Sparkles } from "lucide-react";
+import { Mic, MicOff, Send } from "lucide-react";
 import { BookDnaConfirmationPanel } from "./BookDnaConfirmationPanel";
-import { LiveDnaDiscovery } from "./LiveDnaDiscovery";
+import { ForgeLiveMap } from "./ForgeLiveMap";
 import { useGuidedInterviewController } from "./useGuidedInterviewController";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import { MobileForgeScrollShell } from "@/mobile/MobileForgeScrollShell";
@@ -20,16 +20,6 @@ type GuidedInterviewPanelProps = {
   onComplete?: (data: unknown) => void;
   onConfirmDna?: (state: GuidedInterviewState) => void;
   onContinueInterview?: () => void;
-};
-
-const FIELD_LABELS: Record<string, string> = {
-  readerTransformation: "Trasformazione",
-  centralConflict: "Conflitto",
-  emotionalTone: "Tono",
-  genreDNA: "DNA editoriale",
-  promise: "Promessa",
-  setting: "Contesto",
-  targetReader: "Lettore ideale",
 };
 
 export function GuidedInterviewPanel({
@@ -70,6 +60,20 @@ export function GuidedInterviewPanel({
     <InterviewInputFooter ctrl={ctrl} isMobile={isMobile} unifiedScroll />
   ) : null;
 
+  const liveMap = (
+    <ForgeLiveMap
+      state={ctrl.state}
+      dnaLock={ctrl.progress.dnaLock}
+      confidencePct={ctrl.confidencePct}
+      isThinking={ctrl.isThinking}
+      activeQuestionKey={ctrl.next.question?.key}
+      isMobile={isMobile}
+      onContinue={ctrl.handleContinueInterview}
+      onCorrect={() => ctrl.setInput("In realtà vorrei precisare che ")}
+      onDeepen={() => ctrl.setInput("Vorrei approfondire: ")}
+    />
+  );
+
   if (isMobile && unifiedScroll) {
     return (
       <MobileForgeScrollShell
@@ -77,8 +81,7 @@ export function GuidedInterviewPanel({
         header={
           <>
             {forgeHeader}
-            <ConfidenceStrip confidencePct={ctrl.confidencePct} progress={ctrl.progress} compact />
-            <LiveDnaDiscovery state={ctrl.state} isThinking={ctrl.isThinking} compact />
+            {liveMap}
           </>
         }
         footer={inputFooter}
@@ -95,15 +98,10 @@ export function GuidedInterviewPanel({
         isMobile ? "rounded-none" : "rounded-[28px] border border-white/10 backdrop-blur-xl",
       )}
     >
-      {!hideHeader && <DesktopHeader confidencePct={ctrl.confidencePct} progress={ctrl.progress} />}
-      {hideHeader && !unifiedScroll && (
-        <>
-          <ConfidenceStrip confidencePct={ctrl.confidencePct} progress={ctrl.progress} compact />
-          {isMobile && <LiveDnaDiscovery state={ctrl.state} isThinking={ctrl.isThinking} compact />}
-        </>
-      )}
+      {!hideHeader && <DesktopHeader />}
+      {!(isMobile && unifiedScroll) && liveMap}
 
-      <div className={cn("flex min-h-0 flex-1 flex-col", !isMobile && "lg:grid lg:grid-cols-[1fr_280px]")}>
+      <div className="flex min-h-0 flex-1 flex-col">
         <div
           ref={ctrl.internalScrollRef}
           className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4 pb-2 sm:px-5"
@@ -111,7 +109,6 @@ export function GuidedInterviewPanel({
         >
           {body}
         </div>
-        {!isMobile && <DesktopRecap extracted={ctrl.state.extracted} />}
       </div>
 
       {inputFooter}
@@ -203,28 +200,6 @@ function InterviewBody({
               {chip.label}
             </button>
           ))}
-        </div>
-      )}
-
-      {isMobile && (
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {Object.entries(FIELD_LABELS).map(([key, label]) => {
-            const val = (ctrl.state.extracted as Record<string, string | undefined>)?.[key];
-            const ok = val && val.trim().length >= 12;
-            return (
-              <span
-                key={key}
-                className={cn(
-                  "rounded-full px-2.5 py-1 text-[10px] font-medium",
-                  ok
-                    ? "border border-emerald-400/25 bg-emerald-500/10 text-emerald-100"
-                    : "border border-white/10 bg-white/[0.04] text-white/40",
-                )}
-              >
-                {label}
-              </span>
-            );
-          })}
         </div>
       )}
 
@@ -336,48 +311,9 @@ function InterviewInputFooter({
   );
 }
 
-function ConfidenceStrip({
-  confidencePct,
-  progress,
-  compact,
-}: {
-  confidencePct: number;
-  progress: Ctrl["progress"];
-  compact?: boolean;
-}) {
+function DesktopHeader() {
   return (
-    <div className={cn("shrink-0 border-b border-white/10 px-4", compact ? "py-2" : "pb-4 pt-2")}>
-      <div className="flex items-center justify-between text-[11px] text-white/55">
-        <span className="inline-flex items-center gap-1.5">
-          <Sparkles className="h-3.5 w-3.5 text-violet-300" />
-          Confidenza DNA
-        </span>
-        <span className="font-semibold tabular-nums text-violet-200">{confidencePct}%</span>
-      </div>
-      <div className={cn("overflow-hidden rounded-full bg-white/10", compact ? "mt-1.5 h-1.5" : "mt-4 h-2")}>
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400 transition-all duration-700"
-          style={{ width: `${Math.max(8, confidencePct)}%` }}
-        />
-      </div>
-      {!compact && (
-        <p className="mt-2 text-[10px] text-white/45">
-          {progress.answeredCount}/{progress.totalCritical} segnali critici · soglia blueprint 95%
-        </p>
-      )}
-    </div>
-  );
-}
-
-function DesktopHeader({
-  confidencePct,
-  progress,
-}: {
-  confidencePct: number;
-  progress: Ctrl["progress"];
-}) {
-  return (
-    <header className="shrink-0 border-b border-white/10 px-4 pb-4 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-5">
+    <header className="shrink-0 border-b border-white/10 px-4 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-5">
       <p className="text-[10px] uppercase tracking-[0.25em] text-violet-300/70">
         Book Forge · Scriptora
       </p>
@@ -387,36 +323,6 @@ function DesktopHeader({
       <p className="mt-1.5 text-sm text-white/60">
         Scriptora non chiede il genere — lo scopre. Parla liberamente.
       </p>
-      <ConfidenceStrip confidencePct={confidencePct} progress={progress} />
     </header>
-  );
-}
-
-function DesktopRecap({ extracted }: { extracted: GuidedInterviewState["extracted"] }) {
-  return (
-    <aside className="hidden min-h-0 border-l border-white/10 bg-black/20 p-4 lg:block">
-      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-200/80">
-        Recap live
-      </p>
-      <div className="mt-3 space-y-2">
-        {Object.entries(FIELD_LABELS).map(([key, label]) => {
-          const val = (extracted as Record<string, string | undefined>)?.[key];
-          return (
-            <div
-              key={key}
-              className={cn(
-                "rounded-xl border p-2.5 text-[11px]",
-                val && val.trim().length >= 12
-                  ? "border-emerald-400/20 bg-emerald-500/5 text-emerald-100"
-                  : "border-white/8 bg-white/[0.03] text-white/40",
-              )}
-            >
-              <p className="font-semibold">{label}</p>
-              <p className="mt-1 leading-5">{val?.trim() || "—"}</p>
-            </div>
-          );
-        })}
-      </div>
-    </aside>
   );
 }

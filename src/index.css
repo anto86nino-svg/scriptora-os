@@ -6787,6 +6787,34 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
   .scriptora-live-dna-discovery {
     animation: scriptora-dna-in 0.35s ease-out;
   }
+
+  .scriptora-forge-live-map {
+    animation: scriptora-forge-map-in 0.4s ease-out;
+  }
+
+  .scriptora-forge-map-node--confirmed {
+    animation: scriptora-forge-node-glow 1.2s ease-out;
+  }
+
+  .scriptora-forge-map-node--active {
+    box-shadow: 0 0 18px rgba(139, 92, 246, 0.22);
+  }
+
+  .scriptora-forge-map-node--locked {
+    box-shadow: 0 0 14px rgba(167, 139, 250, 0.28);
+  }
+
+  .scriptora-forge-direction-card {
+    animation: scriptora-forge-map-in 0.45s ease-out;
+  }
+
+  .scriptora-forge-live-map-track {
+    scrollbar-width: none;
+  }
+
+  .scriptora-forge-live-map-track::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @keyframes scriptora-nav-in {
@@ -6806,6 +6834,32 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes scriptora-forge-map-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scriptora-forge-node-glow {
+  0% {
+    box-shadow: 0 0 0 rgba(52, 211, 153, 0);
+    transform: scale(1);
+  }
+  40% {
+    box-shadow: 0 0 16px rgba(52, 211, 153, 0.35);
+    transform: scale(1.04);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(52, 211, 153, 0);
+    transform: scale(1);
   }
 }
 
