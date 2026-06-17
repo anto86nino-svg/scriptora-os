@@ -86,7 +86,7 @@ export default function CoverStudioPage() {
       primaryActionLabel="Salva cover nel progetto"
       onGenerate={() => setLastProjectId(project.id)}
       onClose={() => navigate("/dashboard")}
-      onOpenExport={() => navigate("/dashboard", { state: { openExport: true, projectId: project.id } })}
+      onOpenExport={() => navigate("/export-studio", { state: { projectId: project.id } })}
     />
   );
 }

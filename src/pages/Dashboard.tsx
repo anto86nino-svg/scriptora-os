@@ -47,6 +47,7 @@ import { DashboardHomePillars } from "@/components/one-flow/DashboardHomePillars
 import { DashboardPackagingRow } from "@/components/one-flow/DashboardPackagingRow";
 import { DashboardToolHost } from "@/components/one-flow/DashboardToolHost";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
+import { resetRouteScroll } from "@/lib/one-flow/dashboard-navigation";
 import type { ActiveDashboardTool } from "@/lib/one-flow/dashboard-active-tool";
 import { activeToolGuideRoute } from "@/lib/one-flow/dashboard-active-tool";
 import { OsHomeHero } from "@/components/os/OsHomeHero";
@@ -147,7 +148,6 @@ export default function Dashboard() {
   const [activeDashboardTool, setActiveDashboardTool] = useState<ActiveDashboardTool>(null);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [showSettingsHub, setShowSettingsHub] = useState(false);
-  const [authorIdentityPrefill, setAuthorIdentityPrefill] = useState<import("@/types/book").AuthorIdentity | null>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showAdvancedLaunchpad, setShowAdvancedLaunchpad] = useState(() => isAdvancedLaunchpadEnabled());
   const [projects, setProjects] = useState<BookProject[]>([]);
@@ -158,6 +158,16 @@ export default function Dashboard() {
   const closeAllDashboardTools = useCallback(() => {
     setActiveDashboardTool(null);
   }, []);
+
+  const navigateFromDashboard = useCallback((path: string, state?: Record<string, unknown>) => {
+    closeAllDashboardTools();
+    setShowMobileMoreMenu(false);
+    setShowProfileMenu(false);
+    setShowSettingsHub(false);
+    setShowAdvancedSettings(false);
+    resetRouteScroll();
+    navigate(path, state ? { state } : undefined);
+  }, [closeAllDashboardTools, navigate]);
 
   const openDashboardTool = useCallback((tool: ActiveDashboardTool) => {
     setShowSettingsHub(false);
@@ -313,7 +323,7 @@ export default function Dashboard() {
   const openCoverStudioPage = () => {
     const projectId = dashboardContextProject?.id || lastProject?.id || getLastProjectId();
     if (projectId) setLastProjectId(projectId);
-    navigate("/cover", { state: projectId ? { projectId } : undefined });
+    navigateFromDashboard("/cover", projectId ? { projectId } : undefined);
   };
 
   useEffect(() => {
@@ -334,7 +344,9 @@ export default function Dashboard() {
     if (state.openForge || state.openWizard || state.openNewBook) openNewBookGuarded();
     if (state.openProjects) openDashboardTool("projects");
     if (state.openCover) guardPlanFeature("cover_studio_template", openCoverStudioPage)();
-    if (state.openExport) guardPlanFeature("export_epub", () => openDashboardTool("export"))();
+    if (state.openExport) {
+      guardPlanFeature("export_epub", () => navigateFromDashboard("/export-studio", state.projectId ? { projectId: state.projectId } : undefined))();
+    }
     navigate(location.pathname, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
@@ -422,8 +434,7 @@ export default function Dashboard() {
   };
 
   const openAuthorIdentity = (prefill?: import("@/types/book").AuthorIdentity | null) => {
-    setAuthorIdentityPrefill(prefill || null);
-    openDashboardTool("author-identity");
+    navigateFromDashboard("/author-identity", prefill ? { prefill } : undefined);
   };
 
   const handleGenerateAuthorWithAi = () => {
@@ -628,34 +639,14 @@ typeof crypto.randomUUID === "function"
       hasCompletedBook: completedProjects.length > 0,
       closeAllTools: closeAllDashboardTools,
       openTool: (tool) => {
-        if (tool === "export") {
-          guardPlanFeature("export_epub", () => openDashboardTool("export"))();
-          return;
-        }
-        if (tool === "title-intelligence") {
-          guardPlanFeature("title_intelligence_base", () => openDashboardTool("title-intelligence"))();
-          return;
-        }
-        if (tool === "manuscript-lab") {
-          guardPlanFeature("chapter_improvement", () => openDashboardTool("manuscript-lab"))();
-          return;
-        }
-        if (tool === "character-studio") {
-          guardPlanFeature("book_engine_full", () => openDashboardTool("character-studio"))();
-          return;
-        }
-        if (tool === "author-identity") {
-          guardPlanFeature("book_engine_full", () => openDashboardTool("author-identity"))();
-          return;
-        }
         openDashboardTool(tool);
       },
       onNewBook: openNewBookGuarded,
       onContinue: lastProject ? () => { closeAllDashboardTools(); goApp({ projectId: lastProject.id }); } : undefined,
       onOpenCover: () => { closeAllDashboardTools(); guardPlanFeature("cover_studio_template", openCoverStudioPage)(); },
-      onNavigate: (path: string) => { closeAllDashboardTools(); navigate(path); },
+      onNavigate: (path: string) => navigateFromDashboard(path),
     }),
-    [lastProject, completedProjects.length, navigate, closeAllDashboardTools, openDashboardTool],
+    [lastProject, completedProjects.length, closeAllDashboardTools, openDashboardTool, navigateFromDashboard, openNewBookGuarded, goApp, openCoverStudioPage, guardPlanFeature],
   );
 
   const ideaPreviewProps = useMemo(() => ({
@@ -900,7 +891,7 @@ typeof crypto.randomUUID === "function"
               onCloseMoreMenu={() => setShowMobileMoreMenu(false)}
               onProfile={() => setShowProfileMenu(true)}
               onCoverStudio={() => guardPlanFeature("cover_studio_template", openCoverStudioPage)()}
-              onExportStudio={() => guardPlanFeature("export_epub", () => openDashboardTool("export"))()}
+              onExportStudio={() => guardPlanFeature("export_epub", () => navigateFromDashboard("/export-studio"))()}
               onAuthorIdentity={() => openAuthorIdentity()}
               onSignOut={async () => {
                 try {
@@ -924,7 +915,7 @@ typeof crypto.randomUUID === "function"
       <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-3 sm:px-6 sm:pb-16 sm:pt-6 lg:px-8">
         <DashboardHomePillars
           onNewBook={openNewBookGuarded}
-          onStudyOs={() => navigate("/study")}
+          onStudyOs={() => navigateFromDashboard("/study")}
         />
 
         <OsHomeHero
@@ -932,7 +923,7 @@ typeof crypto.randomUUID === "function"
           progressPercent={lastProjectProgress}
           onContinue={() => lastProject && goApp({ projectId: lastProject.id })}
           onGenerateNextChapter={() => lastProject && goApp({ projectId: lastProject.id, section: "chapters" })}
-          onExport={() => guardPlanFeature("export_epub", () => openDashboardTool("export"))()}
+          onExport={() => guardPlanFeature("export_epub", () => navigateFromDashboard("/export-studio"))()}
           onNewBook={openNewBookGuarded}
           onMyBooks={() => openDashboardTool("projects")}
         />
@@ -1045,17 +1036,10 @@ typeof crypto.randomUUID === "function"
         onClose={closeAllDashboardTools}
         projects={projects}
         draftProjects={draftProjects}
-        flowProjectId={flowProjectId}
-        lastProject={lastProject}
-        freeBookUsed={freeBookUsed}
-        authorIdentityPrefill={authorIdentityPrefill}
-        onClearAuthorPrefill={() => setAuthorIdentityPrefill(null)}
         onDeleteProject={handleDelete}
         onGoApp={goApp}
-        onOpenTool={openDashboardTool}
         onOpenNewBook={openNewBookGuarded}
-        onLimitReached={() => navigate("/pricing")}
-        onAuthorIdentityFromCharacter={() => openAuthorIdentity()}
+        onNavigate={navigateFromDashboard}
         ideaPreview={ideaPreviewProps}
         dashboardActionContext={dashboardActionContext}
       />

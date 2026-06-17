@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -34,10 +34,6 @@ import { usePlan } from "@/lib/plan";
 import { toast } from "sonner";
 import { MobileBookForge } from "@/mobile/MobileBookForge";
 import { MobileDeleteProjectDialog } from "@/mobile/MobileDeleteProjectDialog";
-
-const HomeExportDialog = lazy(() =>
-  import("@/components/HomeExportDialog").then((m) => ({ default: m.HomeExportDialog })),
-);
 
 function countWords(project?: BookProject | null): number {
   if (!project) return 0;
@@ -78,14 +74,13 @@ export default function MobileLiteDashboardPage() {
   const { plan: currentPlan } = usePlan();
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showExport, setShowExport] = useState(false);
   const [showBookForge, setShowBookForge] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<BookProject | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [authorIdentity, setAuthorIdentity] = useState<AuthorIdentity>(() => getSelectedAuthorIdentity());
 
   const freeBookUsed = currentPlan === "free" && projects.length > 0;
-  const mobileOverlayOpen = showBookForge || showExport || !!deleteTarget;
+  const mobileOverlayOpen = showBookForge || !!deleteTarget;
 
   const openMobileBookForge = useCallback(() => {
     if (freeBookUsed) {
@@ -94,7 +89,6 @@ export default function MobileLiteDashboardPage() {
       return;
     }
     setAuthorIdentity(getSelectedAuthorIdentity());
-    setShowExport(false);
     setDeleteTarget(null);
     setShowBookForge(true);
   }, [freeBookUsed, navigate]);
@@ -102,8 +96,8 @@ export default function MobileLiteDashboardPage() {
   const openExport = useCallback(() => {
     setShowBookForge(false);
     setDeleteTarget(null);
-    setShowExport(true);
-  }, []);
+    navigate("/export-studio");
+  }, [navigate]);
 
   useEffect(() => {
     const state = location.state as { openForge?: boolean; openWizard?: boolean; openNewBook?: boolean } | null;
@@ -391,7 +385,6 @@ export default function MobileLiteDashboardPage() {
                 type="button"
                 onClick={() => {
                   setShowBookForge(false);
-                  setShowExport(false);
                   setDeleteTarget(project);
                 }}
                 className="flex h-14 w-12 shrink-0 items-center justify-center rounded-2xl border border-red-400/20 bg-red-500/10 text-red-200"
@@ -434,17 +427,6 @@ export default function MobileLiteDashboardPage() {
           onStudioComplete={handleStudioComplete}
           onGenerateBlueprint={handleGenerateBlueprint}
         />
-      )}
-
-      {showExport && (
-        <Suspense fallback={<ScriptoraAliveTransition compact overlay tone="export" title="Sto aprendo Export..." steps={["Controllo libro...", "Preparo formati..."]} />}>
-          <HomeExportDialog
-            open
-            projects={projects}
-            initialProjectId={lastProject?.id}
-            onClose={() => setShowExport(false)}
-          />
-        </Suspense>
       )}
     </main>
   );

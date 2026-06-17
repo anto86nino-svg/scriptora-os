@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import type { FeatureKey } from "@/lib/subscription";
 import { isProjectComplete } from "@/lib/project-status";
 import type { ActiveDashboardTool } from "@/lib/one-flow/dashboard-active-tool";
+import { resetRouteScroll } from "@/lib/one-flow/dashboard-navigation";
 
 export type DashboardActionMode = "route" | "tool" | "callback";
 
@@ -33,6 +34,15 @@ export type DashboardActionContext = {
   onNavigate: (path: string) => void;
 };
 
+export const DASHBOARD_TOOL_ROUTES: Partial<Record<ActiveDashboardTool, string>> = {
+  export: "/export-studio",
+  notepad: "/notepad",
+  "character-studio": "/character-studio",
+  "title-intelligence": "/title-intelligence",
+  "manuscript-lab": "/manuscript-lab",
+  "author-identity": "/author-identity",
+};
+
 const VALID_ROUTES = new Set([
   "/study",
   "/kdp-launch",
@@ -44,6 +54,13 @@ const VALID_ROUTES = new Set([
   "/pricing",
   "/app",
   "/dashboard",
+  "/downloads",
+  "/export-studio",
+  "/notepad",
+  "/character-studio",
+  "/title-intelligence",
+  "/manuscript-lab",
+  "/author-identity",
 ]);
 
 export function isValidDashboardRoute(route?: string): boolean {
@@ -104,18 +121,26 @@ export function safeExecuteDashboardAction(action: DashboardHomeAction, ctx: Das
     switch (action.mode) {
       case "route":
         if (action.route && isValidDashboardRoute(action.route)) {
+          resetRouteScroll();
           ctx.onNavigate(action.route);
         } else {
           toast.error(action.fallbackMessage || "Destinazione non valida.");
         }
         break;
-      case "tool":
+      case "tool": {
+        const route = action.toolId ? DASHBOARD_TOOL_ROUTES[action.toolId] : undefined;
+        if (route) {
+          resetRouteScroll();
+          ctx.onNavigate(route);
+          break;
+        }
         if (action.toolId) {
           ctx.openTool(action.toolId);
         } else {
           toast.error(action.fallbackMessage || "Strumento non configurato.");
         }
         break;
+      }
       case "callback":
       default:
         action.onClick?.();
@@ -140,8 +165,8 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       enabled: true,
       feature: "title_intelligence_base",
       group: "optimization",
-      mode: "tool",
-      toolId: "title-intelligence",
+      mode: "route",
+      route: "/title-intelligence",
     },
     {
       id: "bestseller-radar",
@@ -174,6 +199,27 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       mode: "route",
     },
     {
+      id: "cover-studio",
+      label: "Cover Studio",
+      description: "Studio copertina del libro attivo",
+      enabled: true,
+      requiresActiveBook: true,
+      feature: "cover_studio_template",
+      route: "/cover",
+      group: "optimization",
+      mode: "route",
+    },
+    {
+      id: "export-studio",
+      label: "Export",
+      description: "EPUB, DOCX, PDF",
+      enabled: true,
+      feature: "export_epub",
+      route: "/export-studio",
+      group: "optimization",
+      mode: "route",
+    },
+    {
       id: "market-intel",
       label: "Market Intelligence",
       description: "Strumento decisionale mercato",
@@ -190,8 +236,8 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       requiresActiveBook: true,
       feature: "chapter_improvement",
       group: "writer",
-      mode: "tool",
-      toolId: "manuscript-lab",
+      mode: "route",
+      route: "/manuscript-lab",
     },
     {
       id: "character-studio",
@@ -200,8 +246,8 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       enabled: true,
       feature: "book_engine_full",
       group: "writer",
-      mode: "tool",
-      toolId: "character-studio",
+      mode: "route",
+      route: "/character-studio",
     },
     {
       id: "author-identity",
@@ -210,8 +256,8 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       enabled: true,
       feature: "book_engine_full",
       group: "system",
-      mode: "tool",
-      toolId: "author-identity",
+      mode: "route",
+      route: "/author-identity",
     },
     {
       id: "notepad",
@@ -219,8 +265,8 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       description: "Appunti e idee rapide",
       enabled: true,
       group: "system",
-      mode: "tool",
-      toolId: "notepad",
+      mode: "route",
+      route: "/notepad",
     },
     {
       id: "idea-preview",
@@ -259,8 +305,8 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       requiresActiveBook: true,
       feature: "export_epub",
       group: "optimization",
-      mode: "tool",
-      toolId: "export",
+      mode: "route",
+      route: "/export-studio",
     },
     {
       id: "pack-kdp",
@@ -281,8 +327,8 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       requiresActiveBook: true,
       feature: "title_intelligence_base",
       group: "optimization",
-      mode: "tool",
-      toolId: "title-intelligence",
+      mode: "route",
+      route: "/title-intelligence",
     },
     {
       id: "pack-keyword",

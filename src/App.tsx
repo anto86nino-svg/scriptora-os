@@ -2,6 +2,7 @@ import { Suspense, type ReactNode } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { ScrollToTop } from "@/components/routing/ScrollToTop";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -39,6 +40,12 @@ const StudyOsPage = lazyWithRetry(() => import("./pages/StudyOsPage.tsx"));
 const IdentityOsPage = lazyWithRetry(() => import("./pages/IdentityOsPage.tsx"));
 const UsagePage = lazyWithRetry(() => import("./pages/UsagePage.tsx"));
 const DiagnosticsPage = lazyWithRetry(() => import("./pages/DiagnosticsPage.tsx"));
+const NotepadPage = lazyWithRetry(() => import("./pages/NotepadPage.tsx"));
+const CharacterStudioPage = lazyWithRetry(() => import("./pages/CharacterStudioPage.tsx"));
+const TitleIntelligencePage = lazyWithRetry(() => import("./pages/TitleIntelligencePage.tsx"));
+const ManuscriptLabPage = lazyWithRetry(() => import("./pages/ManuscriptLabPage.tsx"));
+const ExportStudioPage = lazyWithRetry(() => import("./pages/ExportStudioPage.tsx"));
+const AuthorIdentityPage = lazyWithRetry(() => import("./pages/AuthorIdentityPage.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -56,6 +63,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <AuthProvider>
           <DominationProvider>
               <Toaster />
@@ -79,6 +87,12 @@ const App = () => (
                 <Route path="/usage" element={<ProtectedRoute><FeatureErrorBoundary featureName="Usage"><UsagePage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/kdp-launch" element={<ProtectedRoute requiredFeature="kdp_market_base"><FeatureErrorBoundary featureName="KDP Launch"><MobileDesktopOnlyRoute featureName="KDP Launch"><KdpLaunchPage /></MobileDesktopOnlyRoute></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/cover" element={<ProtectedRoute requiredFeature="cover_studio_template"><FeatureErrorBoundary featureName="Cover Studio"><CoverStudioPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/export-studio" element={<ProtectedRoute requiredFeature="export_epub"><FeatureErrorBoundary featureName="Export Studio"><ExportStudioPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/notepad" element={<ProtectedRoute><FeatureErrorBoundary featureName="Block Notes"><NotepadPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/character-studio" element={<ProtectedRoute requiredFeature="book_engine_full"><FeatureErrorBoundary featureName="Character Studio"><CharacterStudioPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/title-intelligence" element={<ProtectedRoute requiredFeature="title_intelligence_base"><FeatureErrorBoundary featureName="Title Intelligence"><TitleIntelligencePage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/manuscript-lab" element={<ProtectedRoute requiredFeature="chapter_improvement"><FeatureErrorBoundary featureName="Manuscript Lab"><ManuscriptLabPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/author-identity" element={<ProtectedRoute requiredFeature="book_engine_full"><FeatureErrorBoundary featureName="Author Identity"><AuthorIdentityPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/downloads" element={<ProtectedRoute><FeatureErrorBoundary featureName="Downloads"><DownloadsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/bestseller-radar" element={<ProtectedRoute requiredFeature="trending_niches_limited"><MobileDesktopOnlyRoute featureName="Bestseller Radar"><BestsellerRadarPage /></MobileDesktopOnlyRoute></ProtectedRoute>} />
                 <Route path="/keyword-gold" element={<ProtectedRoute requiredFeature="kdp_market_base"><MobileDesktopOnlyRoute featureName="Keyword Gold"><KeywordGoldPage /></MobileDesktopOnlyRoute></ProtectedRoute>} />

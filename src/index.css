@@ -7909,6 +7909,7 @@ html[data-theme="classic-premium"],
 }
 
 body.scriptora-dashboard-tool-open,
+body.scriptora-route-changing,
 body:has(.scriptora-dedicated-screen) {
   overflow: hidden;
 }
