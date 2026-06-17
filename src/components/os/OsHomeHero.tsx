@@ -60,12 +60,12 @@ export function OsHomeHero({
 
   return (
     <section className="mb-4 sm:mb-5">
-      <div className="overflow-hidden rounded-2xl border border-white/12 bg-gradient-to-br from-slate-950/80 via-slate-900/60 to-sky-950/30 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] sm:p-6">
+      <div className="scriptora-glass-panel scriptora-home-hero-impact overflow-hidden rounded-2xl p-4 sm:p-6">
         <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
           <div className="order-2 lg:order-1">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-200/80">Libro attivo</p>
-            <h2 className="mt-1 line-clamp-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">{title}</h2>
-            <p className="mt-1 line-clamp-2 text-sm text-white/60">{subtitle}</p>
+            <h2 className="scriptora-impact-title mt-1 line-clamp-2 text-2xl font-bold tracking-tight sm:text-4xl xl:text-5xl">{title}</h2>
+            <p className="scriptora-impact-subtitle mt-2 line-clamp-2 text-sm sm:text-base">{subtitle}</p>
 
             <div className="mt-4 grid grid-cols-3 gap-2 text-center sm:gap-3">
               <Stat label="Avanzamento" value={`${progressPercent}%`} />
@@ -75,7 +75,7 @@ export function OsHomeHero({
 
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-sky-400 to-emerald-300 transition-all duration-500"
+                className="h-full rounded-full bg-gradient-to-r from-[rgb(var(--scriptora-visual-primary))] to-[rgb(var(--scriptora-visual-accent))] transition-all duration-500"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -102,7 +102,7 @@ export function OsHomeHero({
             <button
               type="button"
               onClick={onMyBooks}
-              className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-white/55 hover:text-white/80"
+              className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-white/60 hover:text-white"
             >
               <BookOpen className="h-3.5 w-3.5" /> I miei libri <ChevronRight className="h-3 w-3" />
             </button>

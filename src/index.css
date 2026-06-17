@@ -7017,3 +7017,244 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
   }
 }
 
+
+/* ──────────────────────────────────────────────────────────────
+   Scriptora Visual Impact Foundation V1
+   Cinematic, theme-driven, non-minimal UI layer.
+   Uses existing data-theme / data-scriptora-bg appearance system.
+   ────────────────────────────────────────────────────────────── */
+
+:root {
+  --scriptora-visual-primary: 56 189 248;
+  --scriptora-visual-secondary: 167 139 250;
+  --scriptora-visual-accent: 52 211 153;
+  --scriptora-visual-warm: 251 191 36;
+  --scriptora-visual-danger: 244 63 94;
+  --scriptora-visual-panel: rgba(8, 13, 28, 0.72);
+  --scriptora-visual-panel-strong: rgba(4, 7, 16, 0.86);
+  --scriptora-visual-border: rgba(255, 255, 255, 0.14);
+  --scriptora-visual-border-strong: rgba(255, 255, 255, 0.24);
+  --scriptora-visual-glow: rgba(56, 189, 248, 0.28);
+  --scriptora-visual-glow-strong: rgba(56, 189, 248, 0.44);
+  --scriptora-visual-text-soft: rgba(255,255,255,0.66);
+  --scriptora-visual-text-muted: rgba(255,255,255,0.48);
+}
+
+/* Theme color calibration */
+html[data-theme="horror-crime"] {
+  --scriptora-visual-primary: 248 113 113;
+  --scriptora-visual-secondary: 168 85 247;
+  --scriptora-visual-accent: 251 191 36;
+  --scriptora-visual-glow: rgba(220, 38, 38, 0.30);
+  --scriptora-visual-glow-strong: rgba(239, 68, 68, 0.48);
+}
+
+html[data-theme="dark-romance"] {
+  --scriptora-visual-primary: 244 114 182;
+  --scriptora-visual-secondary: 251 191 36;
+  --scriptora-visual-accent: 190 24 93;
+  --scriptora-visual-glow: rgba(244, 114, 182, 0.30);
+  --scriptora-visual-glow-strong: rgba(251, 191, 36, 0.36);
+}
+
+html[data-theme="fantasy"] {
+  --scriptora-visual-primary: 167 139 250;
+  --scriptora-visual-secondary: 52 211 153;
+  --scriptora-visual-accent: 250 204 21;
+  --scriptora-visual-glow: rgba(167, 139, 250, 0.32);
+  --scriptora-visual-glow-strong: rgba(52, 211, 153, 0.34);
+}
+
+html[data-theme="scifi"] {
+  --scriptora-visual-primary: 34 211 238;
+  --scriptora-visual-secondary: 99 102 241;
+  --scriptora-visual-accent: 74 222 128;
+  --scriptora-visual-glow: rgba(34, 211, 238, 0.30);
+  --scriptora-visual-glow-strong: rgba(99, 102, 241, 0.42);
+}
+
+html[data-theme="classic-premium"] {
+  --scriptora-visual-primary: 251 191 36;
+  --scriptora-visual-secondary: 180 83 9;
+  --scriptora-visual-accent: 245 158 11;
+  --scriptora-visual-glow: rgba(251, 191, 36, 0.24);
+  --scriptora-visual-glow-strong: rgba(245, 158, 11, 0.34);
+}
+
+/* Cinematic background layer */
+.scriptora-cinematic-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.scriptora-cinematic-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 16% 12%, rgba(var(--scriptora-visual-primary), 0.18), transparent 28%),
+    radial-gradient(circle at 84% 18%, rgba(var(--scriptora-visual-secondary), 0.16), transparent 30%),
+    radial-gradient(circle at 52% 92%, rgba(var(--scriptora-visual-accent), 0.10), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,0.035), transparent 22%, rgba(0,0,0,0.16));
+  opacity: 0.95;
+}
+
+.scriptora-cinematic-shell::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at 50% 18%, black 0%, transparent 72%);
+  opacity: 0.20;
+}
+
+/* Premium panels */
+.scriptora-glass-panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--scriptora-visual-border);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.105), rgba(255,255,255,0.035)),
+    linear-gradient(180deg, var(--scriptora-visual-panel), rgba(2,6,23,0.58));
+  box-shadow:
+    0 24px 90px rgba(0,0,0,0.32),
+    0 0 0 1px rgba(255,255,255,0.035) inset,
+    0 0 60px var(--scriptora-visual-glow);
+  backdrop-filter: blur(22px);
+}
+
+.scriptora-glass-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent) top left / 100% 1px no-repeat,
+    radial-gradient(circle at 15% 0%, rgba(var(--scriptora-visual-primary),0.12), transparent 38%),
+    radial-gradient(circle at 92% 12%, rgba(var(--scriptora-visual-secondary),0.10), transparent 34%);
+}
+
+.scriptora-impact-title {
+  color: white;
+  letter-spacing: -0.045em;
+  text-shadow:
+    0 3px 24px rgba(0,0,0,0.55),
+    0 0 42px rgba(var(--scriptora-visual-primary), 0.18);
+}
+
+.scriptora-impact-subtitle {
+  color: var(--scriptora-visual-text-soft);
+  text-shadow: 0 2px 16px rgba(0,0,0,0.42);
+}
+
+/* Action tiles */
+.scriptora-action-tile {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--scriptora-visual-border);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.085), rgba(255,255,255,0.03)),
+    radial-gradient(circle at 12% 0%, rgba(var(--scriptora-visual-primary), 0.14), transparent 35%),
+    rgba(2,6,23,0.38);
+  box-shadow:
+    0 16px 46px rgba(0,0,0,0.22),
+    0 0 0 1px rgba(255,255,255,0.025) inset;
+  backdrop-filter: blur(18px);
+}
+
+.scriptora-action-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent) top left / 100% 1px no-repeat,
+    radial-gradient(circle at 80% 0%, rgba(var(--scriptora-visual-secondary),0.11), transparent 36%);
+  opacity: 0.8;
+}
+
+.scriptora-action-tile:hover {
+  border-color: rgba(var(--scriptora-visual-primary), 0.44);
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.12), rgba(255,255,255,0.045)),
+    radial-gradient(circle at 12% 0%, rgba(var(--scriptora-visual-primary), 0.22), transparent 36%),
+    rgba(2,6,23,0.46);
+  box-shadow:
+    0 22px 58px rgba(0,0,0,0.28),
+    0 0 46px var(--scriptora-visual-glow);
+}
+
+.scriptora-action-tile-primary {
+  border-color: rgba(var(--scriptora-visual-accent), 0.42);
+  background:
+    linear-gradient(145deg, rgba(var(--scriptora-visual-accent),0.20), rgba(255,255,255,0.045)),
+    radial-gradient(circle at 12% 0%, rgba(var(--scriptora-visual-primary), 0.22), transparent 38%),
+    rgba(2,6,23,0.48);
+}
+
+/* Buttons */
+.scriptora-cinematic-button {
+  border: 1px solid rgba(var(--scriptora-visual-primary), 0.35);
+  background:
+    linear-gradient(135deg, rgba(var(--scriptora-visual-primary), 0.92), rgba(var(--scriptora-visual-secondary), 0.82));
+  color: white;
+  box-shadow:
+    0 14px 40px rgba(0,0,0,0.30),
+    0 0 42px var(--scriptora-visual-glow);
+}
+
+.scriptora-cinematic-button:hover {
+  filter: brightness(1.08);
+  box-shadow:
+    0 18px 52px rgba(0,0,0,0.34),
+    0 0 58px var(--scriptora-visual-glow-strong);
+}
+
+/* Themed icons without replacing existing ios-icon classes */
+.scriptora-theme-icon {
+  background:
+    linear-gradient(145deg, rgba(var(--scriptora-visual-primary), 0.96), rgba(var(--scriptora-visual-secondary), 0.88)) !important;
+  box-shadow:
+    0 12px 28px rgba(0,0,0,0.24),
+    0 0 24px var(--scriptora-visual-glow);
+}
+
+/* Stronger desktop hero impact */
+@media (min-width: 768px) {
+  .scriptora-home-hero-impact {
+    border-radius: 34px;
+    min-height: 430px;
+  }
+
+  .scriptora-home-hero-impact .os-book-3d-scene {
+    transform: scale(1.16);
+    filter: drop-shadow(0 38px 70px rgba(0,0,0,0.42))
+            drop-shadow(0 0 40px var(--scriptora-visual-glow));
+  }
+
+  .scriptora-home-essential-grid {
+    gap: 14px;
+  }
+
+  .scriptora-home-essential-grid .scriptora-action-tile {
+    min-height: 148px;
+    border-radius: 26px;
+  }
+}
+
+@media (max-width: 767px) {
+  .scriptora-cinematic-shell::after {
+    opacity: 0.10;
+  }
+
+  .scriptora-home-essential-grid .scriptora-action-tile {
+    min-height: 116px;
+  }
+}

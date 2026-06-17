@@ -797,7 +797,7 @@ typeof crypto.randomUUID === "function"
   }
 
   return (
-    <div className="scriptora-ios-screen scriptora-app-surface scriptora-dashboard-mobile scriptora-page-scroll relative min-h-[100dvh] overflow-x-hidden safe-area-pt">
+    <div className="scriptora-ios-screen scriptora-app-surface scriptora-dashboard-mobile scriptora-page-scroll scriptora-cinematic-shell relative min-h-[100dvh] overflow-x-hidden safe-area-pt">
       <header className="sticky top-0 z-20 border-b border-white/10 bg-background/[0.55] backdrop-blur-2xl safe-area-pt">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
@@ -1004,13 +1004,13 @@ typeof crypto.randomUUID === "function"
           onMyBooks={() => setShowProjects(true)}
         />
 
-        <section className="mb-4 grid gap-2 sm:mb-6 sm:grid-cols-2 lg:grid-cols-6">
+        <section className="scriptora-home-essential-grid mb-4 grid gap-2 sm:mb-6 sm:grid-cols-2 lg:grid-cols-6">
           <button
             type="button"
             onClick={openNewBookGuarded}
-            className="group rounded-2xl border border-emerald-300/25 bg-emerald-300/10 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-200/50 hover:bg-emerald-300/15"
+            className="scriptora-action-tile scriptora-action-tile-primary group rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
           >
-            <span className="ios-icon ios-icon-green mb-3 h-9 w-9">
+            <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
               <Plus className="h-4 w-4" />
             </span>
             <p className="text-sm font-bold text-white">Book Forge</p>
@@ -1020,9 +1020,9 @@ typeof crypto.randomUUID === "function"
           <button
             type="button"
             onClick={() => guardPlanFeature("book_engine_full", () => setShowCoverStudio(true))()}
-            className="group rounded-2xl border border-sky-300/20 bg-white/[0.045] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-sky-200/45 hover:bg-white/[0.07]"
+            className="scriptora-action-tile group rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
           >
-            <span className="ios-icon ios-icon-blue mb-3 h-9 w-9">
+            <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
               <ImagePlus className="h-4 w-4" />
             </span>
             <p className="text-sm font-bold text-white">Cover Studio</p>
@@ -1032,9 +1032,9 @@ typeof crypto.randomUUID === "function"
           <button
             type="button"
             onClick={() => guardPlanFeature("export_epub", () => setShowExport(true))()}
-            className="group rounded-2xl border border-orange-300/20 bg-white/[0.045] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-orange-200/45 hover:bg-white/[0.07]"
+            className="scriptora-action-tile group rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
           >
-            <span className="ios-icon ios-icon-orange mb-3 h-9 w-9">
+            <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
               <FileDown className="h-4 w-4" />
             </span>
             <p className="text-sm font-bold text-white">Export</p>
@@ -1044,9 +1044,9 @@ typeof crypto.randomUUID === "function"
           <button
             type="button"
             onClick={() => guardPlanFeature("kdp_market_base", () => navigate("/kdp-launch"))()}
-            className="group rounded-2xl border border-violet-300/20 bg-white/[0.045] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-violet-200/45 hover:bg-white/[0.07]"
+            className="scriptora-action-tile group rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
           >
-            <span className="ios-icon ios-icon-violet mb-3 h-9 w-9">
+            <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
               <Rocket className="h-4 w-4" />
             </span>
             <p className="text-sm font-bold text-white">KDP / Market</p>
@@ -1056,9 +1056,9 @@ typeof crypto.randomUUID === "function"
           <button
             type="button"
             onClick={() => navigate("/study")}
-            className="group rounded-2xl border border-cyan-300/20 bg-white/[0.045] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-cyan-200/45 hover:bg-white/[0.07]"
+            className="scriptora-action-tile group rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
           >
-            <span className="ios-icon ios-icon-cyan mb-3 h-9 w-9">
+            <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
               <NotebookPen className="h-4 w-4" />
             </span>
             <p className="text-sm font-bold text-white">Study OS</p>
@@ -1071,9 +1071,9 @@ typeof crypto.randomUUID === "function"
               setAdvancedLaunchpadEnabled(!showAdvancedLaunchpad);
               setShowAdvancedLaunchpad(!showAdvancedLaunchpad);
             }}
-            className="group rounded-2xl border border-white/12 bg-white/[0.035] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.065]"
+            className="scriptora-action-tile group rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
           >
-            <span className="ios-icon ios-icon-slate mb-3 h-9 w-9">
+            <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
               <Settings className="h-4 w-4" />
             </span>
             <p className="text-sm font-bold text-white">
