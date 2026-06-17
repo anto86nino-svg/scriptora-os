@@ -5,6 +5,7 @@ import type {
   InterviewGenre,
   InterviewQuickSuggestion,
 } from "./types";
+import { FORGE_PRO_CONFIG_QUESTIONS, mapForgeAnswerToProConfigKey } from "./forge-pro-config";
 import { buildDnaLockFromInterviewState, type BookDnaLock } from "./dna-lock";
 import { sanitizeDnaText } from "./dna-cleaner";
 import {
@@ -532,6 +533,7 @@ function buildFullQueue(state: GuidedInterviewState): InterviewQuestion[] {
     for (const q of getQuestionsForGenre(state.selectedGenre)) push(q);
   }
 
+  for (const q of FORGE_PRO_CONFIG_QUESTIONS) push(q);
   for (const q of CRITICAL_FIELD_QUESTIONS) push(q);
   for (const field of CRITICAL_FIELD_KEYS) {
     for (const q of FOLLOW_UP_BY_FIELD[field] ?? []) push(q);
@@ -674,7 +676,7 @@ export function applyInterviewAnswer(
 
   if (!currentQuestion) return state;
 
-  const extractedKey = resolveExtractedFieldKey(currentQuestion.key);
+  const extractedKey = resolveExtractedFieldKey(mapForgeAnswerToProConfigKey(currentQuestion.key));
   let extracted = {
     ...state.extracted,
     [extractedKey]: normalized,

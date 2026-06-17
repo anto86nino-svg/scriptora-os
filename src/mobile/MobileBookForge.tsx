@@ -116,7 +116,10 @@ export function MobileBookForge({
           interviewState
             ? {
                 extracted: interviewState.extracted as Record<string, string | undefined>,
-                selectedGenre: interviewState.selectedGenre || interviewState.inferredProfile?.genre,
+                selectedGenre:
+                  interviewState.extracted?.genre ||
+                  interviewState.selectedGenre ||
+                  interviewState.inferredProfile?.genre,
                 dnaLock: interviewState.dnaLock,
               }
             : undefined

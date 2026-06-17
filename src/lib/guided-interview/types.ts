@@ -47,6 +47,22 @@ export interface ExtractedBookIntent {
   targetReader?: string;
   narrativeDrive?: string;
   genreDNA?: string;
+
+  /** Book Forge Pro configuration — collected conversationally, not through legacy screens */
+  language?: string;
+  marketplace?: string;
+  authorName?: string;
+  bookType?: string;
+  genre?: string;
+  subgenre?: string;
+  bookLength?: string;
+  chapterCount?: string;
+  chapterLength?: string;
+  subchaptersPreference?: string;
+  subchaptersPerChapter?: string;
+  structurePreference?: string;
+  commercialGoal?: string;
+  openingHook?: string;
 }
 
 export interface GuidedInterviewState {

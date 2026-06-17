@@ -1,4 +1,5 @@
 import type { GuidedInterviewState } from "./types";
+import { summarizeForgeProConfig } from "./forge-pro-config";
 import {
   assessDnaQuality,
   getBlockedDnaMessage,
@@ -98,8 +99,11 @@ export function buildDnaLockFromInterviewState(state: GuidedInterviewState): Boo
   const emotionalLock = emotionalTone || state.inferredProfile?.tone;
   const promiseLock = promise || readerTransformation;
 
+  const proConfigSummary = summarizeForgeProConfig(state);
+
   const whatBookIs = [
-    inferredBookType && `Tipo libro: ${inferredBookType}`,
+    ...proConfigSummary,
+    inferredBookType && `Tipo libro dedotto: ${inferredBookType}`,
     inferredSubgenre && `Genere dedotto: ${inferredSubgenre}`,
     readerTransformation && `Trasformazione/promessa lettore: ${readerTransformation}`,
     centralConflict && `Conflitto o problema centrale: ${centralConflict}`,
