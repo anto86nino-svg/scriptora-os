@@ -23,6 +23,31 @@ function weak(value?: unknown, minWords = 7): boolean {
   return words(value) < minWords;
 }
 
+function editorialWeak(value?: unknown): boolean {
+  const text = clean(value).toLowerCase();
+
+  if (words(text) < 10) return true;
+
+  const genericPatterns = [
+    "dark romance",
+    "thriller",
+    "fantasy",
+    "romanzo",
+    "storia d'amore",
+    "libro motivazionale",
+    "manuale",
+    "self help"
+  ];
+
+  const generic =
+    genericPatterns.some(p => text === p || text.startsWith(p));
+
+  const depthSignals =
+    /(perché|perche|ferita|desiderio|paura|conflitto|ossessione|trasformazione|segreto|rischio|conseguenza|posta in gioco)/.test(text);
+
+  return generic || !depthSignals;
+}
+
 function bag(state: GuidedInterviewState): string {
   const ex = state.extracted || {};
   return [
@@ -82,7 +107,7 @@ export function getHumanHostExtraQuestions(state: GuidedInterviewState): Intervi
   const ex = state.extracted || {};
   const result: InterviewQuestion[] = [];
 
-  if (weak(ex.centralConflict, 8)) {
+  if (weak(ex.centralConflict, 8) || editorialWeak(ex.centralConflict)) {
     result.push(
       hostQuestion(
         "missing-core",
@@ -93,7 +118,7 @@ export function getHumanHostExtraQuestions(state: GuidedInterviewState): Intervi
     );
   }
 
-  if (isFictionLike(state) && weak(ex.setting, 6)) {
+  if (isFictionLike(state) && (weak(ex.setting, 6) || editorialWeak(ex.setting))) {
     result.push(
       hostQuestion(
         "missing-world",
@@ -104,7 +129,7 @@ export function getHumanHostExtraQuestions(state: GuidedInterviewState): Intervi
     );
   }
 
-  if (isRomanceLike(state) && weak(ex.emotionalTone, 6)) {
+  if (isRomanceLike(state) && (weak(ex.emotionalTone, 6) || editorialWeak(ex.emotionalTone))) {
     result.push(
       hostQuestion(
         "missing-emotional-temperature",
@@ -115,7 +140,7 @@ export function getHumanHostExtraQuestions(state: GuidedInterviewState): Intervi
     );
   }
 
-  if (weak(ex.targetReader, 6)) {
+  if (weak(ex.targetReader, 6) || editorialWeak(ex.targetReader)) {
     result.push(
       hostQuestion(
         "missing-reader",
@@ -126,7 +151,7 @@ export function getHumanHostExtraQuestions(state: GuidedInterviewState): Intervi
     );
   }
 
-  if (weak(ex.promise, 7) && weak(ex.readerTransformation, 7)) {
+  if ((weak(ex.promise, 7) || editorialWeak(ex.promise)) && (weak(ex.readerTransformation, 7) || editorialWeak(ex.readerTransformation))) {
     result.push(
       hostQuestion(
         "missing-promise",
@@ -137,7 +162,7 @@ export function getHumanHostExtraQuestions(state: GuidedInterviewState): Intervi
     );
   }
 
-  if ((isFictionLike(state) || isNonfictionLike(state)) && weak(ex.genreDNA, 7)) {
+  if ((isFictionLike(state) || isNonfictionLike(state)) && (weak(ex.genreDNA, 7) || editorialWeak(ex.genreDNA))) {
     result.push(
       hostQuestion(
         "missing-genre-boundary",
