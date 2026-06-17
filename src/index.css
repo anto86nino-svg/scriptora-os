@@ -4941,6 +4941,31 @@ body,
   min-height: 0;
 }
 
+@media (max-width: 1023px) {
+  .scriptora-cover-studio-root {
+    z-index: 120;
+  }
+
+  .scriptora-cover-studio-workspace {
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .scriptora-cover-studio-preview {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .scriptora-cover-studio-mobile-tools {
+    flex-shrink: 0;
+  }
+
+  .cover-viewport-frame--mobile {
+    min-height: min(52dvh, 520px);
+  }
+}
+
 @media (max-width: 767px) {
   .scriptora-cover-studio-overlay {
     align-items: stretch !important;

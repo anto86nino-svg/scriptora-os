@@ -89,6 +89,9 @@ interface Props {
   spineWidthIn?: number;
   pageCount?: number;
   hasAuthorPhoto?: boolean;
+  /** Mobile: show only one tab panel (parent owns bottom nav) */
+  mobileTabFilter?: "style" | "text" | "images" | "layers" | "stickers" | "effects" | "print" | "readiness" | null;
+  hideHeader?: boolean;
 }
 
 const TEXT_PRESETS: { id: TextPositionPreset; label: string }[] = [
@@ -142,6 +145,8 @@ export function CoverStudioPro({
   spineWidthIn = 0.5,
   pageCount = 260,
   hasAuthorPhoto = false,
+  mobileTabFilter = null,
+  hideHeader = false,
 }: Props) {
   const [bgCategory, setBgCategory] = useState<CoverBackgroundCategory | "all">("all");
   const [stickerCategory, setStickerCategory] = useState("Tutti");
@@ -180,8 +185,12 @@ export function CoverStudioPro({
     patch((c) => ({ ...c, effects: { ...c.effects, [key]: value } }));
   };
 
+  const mobileSingleTab = mobileTabFilter ?? null;
+  const defaultTab = mobileSingleTab ?? "style";
+
   return (
     <div className="cover-studio-pro w-full min-w-0 max-w-full overflow-x-hidden">
+      {!hideHeader && (
       <div className="mb-3 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
@@ -194,8 +203,10 @@ export function CoverStudioPro({
             : "Digital cover builder — drag elements on preview, store-preview ready."}
         </p>
       </div>
+      )}
 
-      <Tabs defaultValue="style" className="w-full min-w-0">
+      <Tabs defaultValue={defaultTab} value={mobileSingleTab ?? undefined} className="w-full min-w-0">
+        {!mobileSingleTab && (
         <TabsList className="flex h-auto w-full flex-nowrap justify-start gap-0.5 overflow-x-auto bg-muted/40 p-1 [-webkit-overflow-scrolling:touch]">
           {(["style", "text", "images", "layers", "stickers", "effects", "print", "readiness"] as const).map((tab) => (
             <TabsTrigger key={tab} value={tab} className="shrink-0 px-2.5 py-1.5 text-[10px] sm:text-xs">
@@ -210,6 +221,7 @@ export function CoverStudioPro({
             </TabsTrigger>
           ))}
         </TabsList>
+        )}
 
         <TabsContent value="style" className="mt-3 space-y-4 text-xs">
           <div className="space-y-2">

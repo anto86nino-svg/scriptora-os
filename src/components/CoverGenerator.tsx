@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Download, ImagePlus, Settings2, Upload, Wand2, X } from "lucide-react";
+import { BookOpen, Download, ImagePlus, Settings2, Upload, Wand2, X, LayoutTemplate, Type, Image as ImageIcon, Layers, CheckCircle2 } from "lucide-react";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
 import { requireCreditsAsync } from "@/lib/billing";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
@@ -20,7 +20,8 @@ import { serializeCoverComposition, validateCoverComposition } from "@/lib/cover
 import { recommendBackgroundForGenre, drawBackgroundPreset, getBackgroundById } from "@/lib/cover-studio/cover-backgrounds";
 import { drawComposedFrontCover, drawPanelImageLayers } from "@/lib/cover-studio/cover-canvas-compose";
 import { drawComposedBackMatter, drawComposedSpine } from "@/lib/cover-studio/cover-back-matter-compose";
-import { drawPrintSafeGuides } from "@/lib/cover-studio/cover-view-modes";
+import { drawPrintSafeGuides, COVER_VIEW_MODES, type CoverViewMode } from "@/lib/cover-studio/cover-view-modes";
+import { useMobileForgeBodyLock } from "@/hooks/useMobileForgeViewport";
 import { drawWrapPremiumFinish, drawBackPanelBase } from "@/lib/cover-studio/cover-wrap-render";
 import { sanitizeCoverVisibleText } from "@/lib/cover-studio/cover-text-sanitize";
 import { runCinematicGenerateSequence } from "@/lib/cover-studio/cover-cinematic-generate";
@@ -309,6 +310,36 @@ export function CoverGenerator({
   const [coverSaved, setCoverSaved] = useState(() => Boolean(projectId && getProjectCoverDataUrl(projectId)));
   const [dataMode, setDataMode] = useState<"template" | "ai-assisted" | "upload">("template");
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const [isMobileStudio, setIsMobileStudio] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches,
+  );
+  const [mobileToolTab, setMobileToolTab] = useState<
+    "template" | "text" | "image" | "layout" | "readiness" | "export"
+  >("template");
+
+  useMobileForgeBodyLock(true);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const sync = () => setIsMobileStudio(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  const mobileStudioTabFilter =
+    mobileToolTab === "template"
+      ? "style"
+      : mobileToolTab === "text"
+        ? "text"
+        : mobileToolTab === "image"
+          ? "images"
+          : mobileToolTab === "layout"
+            ? "layers"
+            : mobileToolTab === "readiness"
+              ? "readiness"
+              : null;
+
   const [composition, setComposition] = useState<CoverComposition>(() => {
     const bg = recommendBackgroundForGenre(genre || "");
     const fallback = {
@@ -962,9 +993,9 @@ export function CoverGenerator({
   }
 
   return (
-    <div className="scriptora-modal-overlay scriptora-cover-studio-overlay fixed inset-0 z-[60] flex h-[100dvh] w-[100dvw] items-stretch justify-center overflow-hidden bg-black/92 p-0 backdrop-blur-md">
+    <div className="scriptora-cover-studio-root scriptora-mobile-enter scriptora-cover-studio-overlay fixed inset-0 z-[120] flex h-[100dvh] w-[100dvw] items-stretch justify-center overflow-hidden bg-[#07070b] p-0">
       <div className="scriptora-modal-panel scriptora-cover-studio-panel fixed inset-0 flex h-[100dvh] max-h-none w-[100dvw] max-w-none translate-x-0 translate-y-0 flex-col overflow-hidden rounded-none border-0 bg-card shadow-2xl">
-        <div className="scriptora-cover-studio-header flex shrink-0 items-center justify-between gap-2 border-b border-border/70 bg-background/96 px-3 py-2.5 backdrop-blur-xl sm:gap-3 sm:px-5 sm:py-3.5 lg:px-6 lg:py-4">
+        <div className="scriptora-cover-studio-header flex shrink-0 items-center justify-between gap-2 border-b border-border/70 bg-background/96 px-3 py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-xl sm:gap-3 sm:px-5 sm:py-3.5 lg:px-6 lg:py-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-primary sm:gap-2 sm:text-xs sm:tracking-[0.2em]">
               <BookOpen className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
@@ -1009,11 +1040,49 @@ export function CoverGenerator({
           </div>
         </div>
 
-        <div className="scriptora-cover-studio-workspace min-h-0 flex-1 overflow-y-auto bg-background lg:grid lg:grid-cols-[330px_minmax(0,1fr)_380px] lg:overflow-hidden xl:grid-cols-[360px_minmax(0,1fr)_430px]">
-          <div className="scriptora-cover-studio-preview order-1 flex min-h-[min(54dvh,620px)] flex-col border-b border-border/50 bg-black/25 px-3 py-3 sm:px-4 sm:py-4 lg:order-2 lg:relative lg:min-h-0 lg:items-center lg:justify-center lg:overflow-hidden lg:border-x lg:border-b-0 lg:border-border/50 lg:bg-gradient-to-br lg:from-black/45 lg:via-background/80 lg:to-primary/10 lg:p-6 xl:p-8">
+        <div className="scriptora-cover-studio-workspace flex min-h-0 flex-1 flex-col overflow-hidden lg:grid lg:grid-cols-[330px_minmax(0,1fr)_380px] lg:overflow-hidden xl:grid-cols-[360px_minmax(0,1fr)_430px]">
+          <div className="scriptora-cover-studio-preview order-1 flex min-h-0 flex-1 flex-col border-b border-border/50 bg-black/25 px-3 py-3 sm:px-4 sm:py-4 lg:order-2 lg:min-h-0 lg:items-center lg:justify-center lg:overflow-hidden lg:border-x lg:border-b-0 lg:border-border/50 lg:bg-gradient-to-br lg:from-black/45 lg:via-background/80 lg:to-primary/10 lg:p-6 xl:p-8">
             <div className="hidden w-full flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:absolute lg:left-8 lg:right-8 lg:top-6 lg:flex lg:w-auto lg:rounded-2xl lg:border lg:border-white/10 lg:bg-background/35 lg:px-4 lg:py-3 lg:backdrop-blur-xl">
               <span>{spec.label}</span>
               <span>{spec.width} x {spec.height}px - {spec.exportNote}</span>
+            </div>
+            <div className="mb-2 flex w-full shrink-0 flex-wrap items-center justify-center gap-1 lg:hidden">
+              {COVER_VIEW_MODES.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() =>
+                    setComposition((c) => ({ ...c, viewMode: m.id as CoverViewMode, updatedAt: new Date().toISOString() }))
+                  }
+                  className={`rounded-lg border px-2 py-1 text-[10px] font-semibold transition ${
+                    (composition.viewMode ?? "front") === m.id
+                      ? "border-primary bg-primary/20 text-primary"
+                      : "border-border/60 text-muted-foreground"
+                  }`}
+                >
+                  {italianUi ? m.labelIt : m.labelEn}
+                </button>
+              ))}
+            </div>
+            <div className="mb-2 flex w-full shrink-0 flex-wrap items-center justify-center gap-1 lg:hidden">
+              {(
+                [
+                  ["epub", "Ebook"],
+                  ["kdp", "KDP"],
+                  ["lulu", "Lulu"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setMode(value)}
+                  className={`rounded-lg border px-2.5 py-1 text-[10px] font-semibold ${
+                    mode === value ? "border-primary bg-primary/15 text-primary" : "border-border/60 text-muted-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
             <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 lg:h-full lg:w-full lg:gap-3 lg:pt-8">
               <div className="relative flex min-h-0 w-full flex-1 items-center justify-center lg:rounded-[2rem] lg:border lg:border-white/10 lg:bg-white/[0.035] lg:p-4 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_28px_80px_rgba(0,0,0,0.45)] xl:p-6">
@@ -1046,7 +1115,135 @@ export function CoverGenerator({
             </p>
           </div>
 
-          <aside className="scriptora-cover-studio-tools order-2 min-h-0 border-b border-border/60 bg-background/80 lg:order-1 lg:flex lg:flex-col lg:overflow-hidden lg:border-b-0">
+          {isMobileStudio && (
+            <div className="scriptora-cover-studio-mobile-tools order-2 flex min-h-0 shrink-0 flex-col border-t border-border/60 bg-background/95 lg:hidden">
+              <nav className="grid grid-cols-6 gap-0.5 border-b border-border/50 p-1.5 pb-[max(0.35rem,env(safe-area-inset-bottom,0px))]">
+                <MobileCoverTabButton
+                  active={mobileToolTab === "template"}
+                  label={italianUi ? "Template" : "Template"}
+                  icon={LayoutTemplate}
+                  onClick={() => setMobileToolTab("template")}
+                />
+                <MobileCoverTabButton
+                  active={mobileToolTab === "text"}
+                  label="Testo"
+                  icon={Type}
+                  onClick={() => setMobileToolTab("text")}
+                />
+                <MobileCoverTabButton
+                  active={mobileToolTab === "image"}
+                  label="Image"
+                  icon={ImageIcon}
+                  onClick={() => setMobileToolTab("image")}
+                />
+                <MobileCoverTabButton
+                  active={mobileToolTab === "layout"}
+                  label="Layout"
+                  icon={Layers}
+                  onClick={() => setMobileToolTab("layout")}
+                />
+                <MobileCoverTabButton
+                  active={mobileToolTab === "readiness"}
+                  label="Ready"
+                  icon={CheckCircle2}
+                  onClick={() => setMobileToolTab("readiness")}
+                />
+                <MobileCoverTabButton
+                  active={mobileToolTab === "export"}
+                  label="Export"
+                  icon={Download}
+                  onClick={() => setMobileToolTab("export")}
+                />
+              </nav>
+              <div className="scriptora-cover-studio-scroll max-h-[min(36dvh,320px)] min-h-0 overflow-y-auto overscroll-contain p-3">
+                {mobileToolTab === "export" ? (
+                  <div className="space-y-2">
+                    {showPrimaryAction && (
+                      <button
+                        type="button"
+                        onClick={handleUseForEpub}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground"
+                      >
+                        <ImagePlus className="h-4 w-4" />
+                        {primaryActionLabel}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleDownload}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold"
+                    >
+                      <Download className="h-4 w-4" />
+                      Scarica PNG
+                    </button>
+                    {projectId && (
+                      <button
+                        type="button"
+                        onClick={handleSaveToProject}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 py-3 text-sm font-semibold text-primary"
+                      >
+                        <ImagePlus className="h-4 w-4" />
+                        {italianUi ? "Salva progetto" : "Save project"}
+                      </button>
+                    )}
+                  </div>
+                ) : mobileStudioTabFilter ? (
+                  <CoverStudioPro
+                    hideHeader
+                    mobileTabFilter={mobileStudioTabFilter}
+                    pkg={studioPackage}
+                    italianUi={italianUi}
+                    composition={composition}
+                    onCompositionChange={setComposition}
+                    selectedLayerId={selectedLayerId}
+                    onSelectLayer={setSelectedLayerId}
+                    genre={coverGenreBrief || genre}
+                    selectedTemplateId={selectedTemplateId || studioPackage.recommendedTemplateId}
+                    onSelectVariant={(idx, id) => {
+                      setSelectedTemplate(idx);
+                      setSelectedTemplateId(id);
+                      setDataMode("template");
+                      setComposition((c) => ({ ...c, templateId: id, templateIndex: idx }));
+                    }}
+                    onSaveProject={projectId ? handleSaveToProject : undefined}
+                    onOpenExport={onOpenExport}
+                    saved={coverSaved}
+                    coverTitle={coverTitle}
+                    coverSubtitle={coverSubtitle}
+                    coverAuthor={coverAuthor}
+                    onTitleChange={setCoverTitle}
+                    onSubtitleChange={setCoverSubtitle}
+                    onAuthorChange={setCoverAuthor}
+                    backTagline={backTagline}
+                    backBlurb={bookDescription}
+                    backBio={coverAuthorBio}
+                    backQuote={backReviewQuote}
+                    onBackTaglineChange={setBackTagline}
+                    onBackBlurbChange={setBookDescription}
+                    onBackBioChange={setCoverAuthorBio}
+                    onBackQuoteChange={setBackReviewQuote}
+                    onUploadBackImage={handleBackImageUpload}
+                    onUploadFrontImage={handleUpload}
+                    onRemoveFrontImage={clearFrontImage}
+                    onRemoveBackImage={clearBackImage}
+                    hasFrontImage={Boolean(frontCoverImageUrl)}
+                    hasBackImage={Boolean(backCoverImageUrl)}
+                    imageFit={imageFit}
+                    onImageFitChange={(fit) => {
+                      setImageFit(fit);
+                      setComposition((c) => ({ ...c, imageFit: fit, updatedAt: new Date().toISOString() }));
+                    }}
+                    isPrintMode={spec.isPrint}
+                    spineWidthIn={spec.spineIn}
+                    pageCount={pageCount}
+                    hasAuthorPhoto={showAuthorPhoto && Boolean(authorPhoto)}
+                  />
+                ) : null}
+              </div>
+            </div>
+          )}
+
+          <aside className="scriptora-cover-studio-tools order-2 hidden min-h-0 border-b border-border/60 bg-background/80 lg:order-1 lg:flex lg:flex-col lg:overflow-hidden lg:border-b-0">
             <div className="scriptora-cover-studio-scroll scriptora-modal-body min-h-0 flex-1 space-y-5 overflow-visible bg-background/55 p-3 pb-4 sm:space-y-6 sm:p-5 lg:overflow-y-auto lg:overscroll-contain lg:bg-background/75 lg:p-5">
             <section className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
               <span className="font-semibold text-foreground">{creditModeLabel(devCreditMode)}</span>
@@ -1106,7 +1303,7 @@ export function CoverGenerator({
             </div>
           </aside>
 
-          <aside className="scriptora-cover-studio-properties order-3 min-h-0 bg-background/85 lg:flex lg:flex-col lg:overflow-hidden">
+          <aside className="scriptora-cover-studio-properties order-3 hidden min-h-0 bg-background/85 lg:flex lg:flex-col lg:overflow-hidden">
             <div className="scriptora-cover-studio-scroll scriptora-modal-body min-h-0 flex-1 space-y-5 overflow-visible bg-background/55 p-3 pb-4 sm:space-y-6 sm:p-5 lg:overflow-y-auto lg:overscroll-contain lg:bg-background/75 lg:p-5">
             <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
               <div className="space-y-1">
@@ -1413,6 +1610,31 @@ export function CoverGenerator({
         </div>
       </div>
     </div>
+  );
+}
+
+function MobileCoverTabButton({
+  active,
+  label,
+  icon: Icon,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  icon: typeof LayoutTemplate;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[9px] font-semibold transition ${
+        active ? "bg-primary/15 text-primary" : "text-muted-foreground"
+      }`}
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+    </button>
   );
 }
 

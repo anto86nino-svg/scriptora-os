@@ -72,6 +72,42 @@ export function HomeExportDialog({ open, projects, initialProjectId, onClose }: 
 
   if (!open) return null;
 
+  if (showCover && selectedProject) {
+    return (
+      <Suspense
+        fallback={
+          <ScriptoraAliveTransition
+            overlay
+            tone="cover"
+            title="Sto aprendo Cover Studio…"
+            steps={[
+              "Sto preparando genere, atmosfera e impatto visivo…",
+              "Sto caricando template e readiness…",
+            ]}
+          />
+        }
+      >
+        <CoverGenerator
+          title={selectedProject.config.title}
+          subtitle={selectedProject.config.subtitle}
+          authorName={selectedProject.config.authorName || selectedProject.config.author || selectedProject.config.writerName}
+          description={selectedProject.blueprint?.overview || selectedProject.config.subtitle}
+          authorBio={selectedProject.frontMatter?.aboutAuthor || selectedProject.config.authorIdentity?.biography}
+          onGenerate={(dataUrl) => {
+            setCoverDataUrls((current) => ({ ...current, [selectedProject.id]: dataUrl }));
+            setShowCover(false);
+            void performExport(selectedProject, dataUrl);
+          }}
+          projectId={selectedProject.id}
+          genre={selectedProject.config.genre || selectedProject.config.category}
+          language={selectedProject.config.language || selectedProject.config.titleLanguage}
+          onOpenExport={() => setShowCover(false)}
+          onClose={() => setShowCover(false)}
+        />
+      </Suspense>
+    );
+  }
+
   const exportableProjects = projects.filter(isProjectComplete);
   const selectedProject = projects.find(p => p.id === selectedId) || null;
 
@@ -425,38 +461,6 @@ export function HomeExportDialog({ open, projects, initialProjectId, onClose }: 
         }}
         onClose={() => setCoverGateOpen(false)}
       />
-      {showCover && selectedProject && (
-        <Suspense fallback={(
-          <ScriptoraAliveTransition
-            overlay
-            tone="cover"
-            title="Sto aprendo Cover Studio…"
-            steps={[
-              "Sto preparando genere, atmosfera e impatto visivo…",
-              "Sto caricando template e readiness…",
-              "Sto cercando una copertina che parli al lettore giusto…",
-            ]}
-          />
-        )}>
-          <CoverGenerator
-            title={selectedProject.config.title}
-            subtitle={selectedProject.config.subtitle}
-            authorName={selectedProject.config.authorName || selectedProject.config.author || selectedProject.config.writerName}
-            description={selectedProject.blueprint?.overview || selectedProject.config.subtitle}
-            authorBio={selectedProject.frontMatter?.aboutAuthor || selectedProject.config.authorIdentity?.biography}
-            onGenerate={(dataUrl) => {
-              setCoverDataUrls((current) => ({ ...current, [selectedProject.id]: dataUrl }));
-              setShowCover(false);
-              void performExport(selectedProject, dataUrl);
-            }}
-            projectId={selectedProject.id}
-            genre={selectedProject.config.genre || selectedProject.config.category}
-            language={selectedProject.config.language || selectedProject.config.titleLanguage}
-            onOpenExport={() => setShowCover(false)}
-            onClose={() => setShowCover(false)}
-          />
-        </Suspense>
-      )}
     </div>
   );
 }

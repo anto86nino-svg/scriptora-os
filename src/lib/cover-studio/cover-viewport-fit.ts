@@ -27,16 +27,25 @@ export type ViewportFitInput = {
 };
 
 const DESKTOP_MAX_VH = 0.88;
-const MOBILE_MAX_DVH = 0.48;
+const MOBILE_FRONT_MAX_DVH = 0.62;
+const MOBILE_WRAP_MAX_DVH = 0.52;
 
-export function getMaxViewportHeight(isMobile: boolean, containerHeight: number): number {
+export function getMaxViewportHeight(
+  isMobile: boolean,
+  containerHeight: number,
+  viewMode: CoverViewMode = "front",
+): number {
   if (typeof window !== "undefined" && isMobile) {
-    return Math.min(containerHeight, window.innerHeight * MOBILE_MAX_DVH);
+    const cap =
+      viewMode === "open-book" || viewMode === "paperback"
+        ? MOBILE_WRAP_MAX_DVH
+        : MOBILE_FRONT_MAX_DVH;
+    return Math.min(containerHeight, window.innerHeight * cap);
   }
   if (typeof window !== "undefined") {
     return Math.min(containerHeight, window.innerHeight * DESKTOP_MAX_VH);
   }
-  return containerHeight * (isMobile ? MOBILE_MAX_DVH : DESKTOP_MAX_VH);
+  return containerHeight * (isMobile ? MOBILE_FRONT_MAX_DVH : DESKTOP_MAX_VH);
 }
 
 /** Compute fit-to-container display size + panel-focus pan. */
@@ -57,7 +66,7 @@ export function computeViewportFit(input: ViewportFitInput): ViewportFitResult {
     return { displayWidth: 1, displayHeight: 1, userZoom: 1, panX: 0, panY: 0, baseScale: 1 };
   }
 
-  const maxH = getMaxViewportHeight(isMobile, containerHeight);
+  const maxH = getMaxViewportHeight(isMobile, containerHeight, viewMode);
   const maxW = containerWidth;
 
   let focusRect = { x: 0, y: 0, w: canvasWidth, h: canvasHeight };
@@ -70,13 +79,27 @@ export function computeViewportFit(input: ViewportFitInput): ViewportFitResult {
     }
   }
 
-  const aspect = focusRect.w / focusRect.h;
-  let displayHeight = maxH;
-  let displayWidth = displayHeight * aspect;
+  const focusAspect = focusRect.w / focusRect.h;
+  const wrapMode = viewMode === "open-book" || viewMode === "paperback";
 
-  if (displayWidth > maxW) {
+  let displayWidth: number;
+  let displayHeight: number;
+
+  if (wrapMode && spec.isPrint) {
+    const canvasAspect = canvasWidth / canvasHeight;
     displayWidth = maxW;
-    displayHeight = displayWidth / aspect;
+    displayHeight = displayWidth / canvasAspect;
+    if (displayHeight > maxH) {
+      displayHeight = maxH;
+      displayWidth = displayHeight * canvasAspect;
+    }
+  } else {
+    displayHeight = maxH;
+    displayWidth = displayHeight * focusAspect;
+    if (displayWidth > maxW) {
+      displayWidth = maxW;
+      displayHeight = displayWidth / focusAspect;
+    }
   }
 
   const baseScale = displayWidth / canvasWidth;
