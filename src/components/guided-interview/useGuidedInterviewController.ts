@@ -5,6 +5,7 @@ import {
   getInterviewProgress,
   getNextInterviewQuestion,
   OPENING_ASSISTANT_MESSAGE,
+  resolveActiveInterviewQuestion,
   resumeInterview,
 } from "@/lib/guided-interview/question-engine";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
@@ -45,8 +46,11 @@ export function useGuidedInterviewController({
   const [showDnaPanel, setShowDnaPanel] = useState(false);
   const [dnaConfirmationDismissed, setDnaConfirmationDismissed] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
+  const [continueNonce, setContinueNonce] = useState(0);
   const internalScrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const lastQuestionIdRef = useRef<string | null>(null);
+  const lastQuestionTextRef = useRef<string | null>(null);
 
   const speech = useSpeechDictation(language);
 
@@ -59,24 +63,41 @@ export function useGuidedInterviewController({
     );
     setShowDnaPanel(false);
     setDnaConfirmationDismissed(false);
+    setContinueNonce(0);
     lastQuestionIdRef.current = null;
+    lastQuestionTextRef.current = null;
   }, [selectedGenre, chatFirst]);
 
-  const next = useMemo(() => getNextInterviewQuestion(state), [state]);
+  const rawNext = useMemo(() => getNextInterviewQuestion(state), [state]);
+  const next = useMemo(
+    () =>
+      resolveActiveInterviewQuestion(state, rawNext, {
+        continueNonce,
+        avoidQuestionId: lastQuestionIdRef.current,
+      }),
+    [state, rawNext, continueNonce],
+  );
   const progress = useMemo(() => getInterviewProgress(state), [state]);
   const ready = progress.dnaLock.readyForBlueprint;
 
   useEffect(() => {
     if (!next.question || next.done) return;
-    if (lastQuestionIdRef.current === next.question.id) return;
+    if (
+      lastQuestionIdRef.current === next.question.id &&
+      lastQuestionTextRef.current === next.question.question
+    ) {
+      return;
+    }
     if (
       next.question.id === "chat-first-opening" &&
       state.messages.some((m) => m.content === OPENING_ASSISTANT_MESSAGE)
     ) {
       lastQuestionIdRef.current = next.question.id;
+      lastQuestionTextRef.current = next.question.question;
       return;
     }
     lastQuestionIdRef.current = next.question.id;
+    lastQuestionTextRef.current = next.question.question;
     setState((prev) => ({
       ...prev,
       messages: [
@@ -97,32 +118,40 @@ export function useGuidedInterviewController({
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   };
 
+  const focusInput = () => {
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      scrollToEnd();
+    });
+  };
+
   useEffect(() => {
     scrollToEnd();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.messages.length, showDnaPanel, isThinking]);
+  }, [state.messages.length, showDnaPanel, isThinking, next.question?.id]);
 
   useEffect(() => {
     if (!isMobile) return;
-    if (ready && !showDnaPanel) {
+    if (ready && !showDnaPanel && !dnaConfirmationDismissed) {
       setShowDnaPanel(true);
-      setDnaConfirmationDismissed(false);
     }
-  }, [ready, isMobile, showDnaPanel]);
+  }, [ready, isMobile, showDnaPanel, dnaConfirmationDismissed]);
 
   useEffect(() => {
-    if (next.done && ready) {
+    if (rawNext.done && ready) {
       onComplete?.(state);
       saveForgeDnaLock(state);
     }
-  }, [next.done, ready, onComplete, state]);
+  }, [rawNext.done, ready, onComplete, state]);
 
   const sendMessage = (text?: string) => {
     const payload = clean(text ?? input);
-    if (!payload || next.done) return;
+    if (!payload || isThinking) return;
+    if (next.done && ready) return;
+
     setIsThinking(true);
     window.setTimeout(() => {
-      const updated = applyInterviewAnswer(state, payload);
+      const updated = applyInterviewAnswer(state, payload, next.question ?? undefined);
       setState(updated);
       setInput("");
       setIsThinking(false);
@@ -131,9 +160,25 @@ export function useGuidedInterviewController({
   };
 
   const handleContinueInterview = () => {
+    if (ready) {
+      setShowDnaPanel(true);
+      setDnaConfirmationDismissed(false);
+      onContinueInterview?.();
+      return;
+    }
+
+    if (input.trim()) {
+      sendMessage(input);
+      return;
+    }
+
     setState((prev) => resumeInterview(prev));
     setShowDnaPanel(false);
     setDnaConfirmationDismissed(true);
+    setContinueNonce((n) => n + 1);
+    lastQuestionIdRef.current = null;
+    lastQuestionTextRef.current = null;
+    focusInput();
     onContinueInterview?.();
   };
 
@@ -157,11 +202,13 @@ export function useGuidedInterviewController({
     state,
     input,
     setInput,
+    inputRef,
     showDnaPanel,
     isThinking,
     internalScrollRef,
     speech,
     next,
+    rawNext,
     progress,
     ready,
     confidencePct: Math.round(progress.confidence * 100),
@@ -169,6 +216,7 @@ export function useGuidedInterviewController({
     handleContinueInterview,
     handleConfirmDna,
     toggleMic,
+    focusInput,
   };
 }
 

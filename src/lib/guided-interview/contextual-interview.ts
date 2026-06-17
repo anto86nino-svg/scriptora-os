@@ -494,6 +494,10 @@ export function getContextualQuickSuggestions(
   }
 
   if (questionKey === "promise" || questionKey === "depthFinalDirection") {
+    const direction = getDirectionFallbackSuggestions(state);
+    if (questionKey === "depthFinalDirection" && direction.length > 0) {
+      return direction;
+    }
     if (category === "gothic-dark") {
       return [
         chip("Segreti di famiglia", "Segreti di famiglia che emergono piano piano."),
@@ -666,4 +670,51 @@ export function suggestionsAvoidSelfHelpMismatch(
 ): InterviewQuickSuggestion[] {
   const signals = inferInterviewBookSignals(state);
   return avoidSelfHelpForNarrative(suggestions, signals.isNarrative);
+}
+
+export function getDirectionFallbackSuggestions(
+  state: GuidedInterviewState,
+): InterviewQuickSuggestion[] {
+  const signals = inferInterviewBookSignals(state);
+  const category = resolveCategory(signals);
+
+  if (category === "gothic-dark" || category === "thriller-horror") {
+    return [
+      chip("Storia oscura e gotica", "Una storia oscura, emotiva, gotica, piena di presagi e ombre."),
+      chip("Mistero e colpi di scena", "Un mistero con segreti, tensione e colpi di scena."),
+      chip("Horror psicologico", "Horror psicologico realistico, con minaccia vicina."),
+      chip("Non lo so ancora", "Non lo so ancora: aiutami a capirlo parlando."),
+    ];
+  }
+
+  if (category === "romance" || category === "dark-romance") {
+    return [
+      chip("Romance pieno di tensione", "Un romance pieno di tensione, desiderio e ferite emotive."),
+      chip("Slow burn", "Un slow burn intenso, lento, magnetico."),
+      chip("Dark romance", "Un dark romance proibito, adulto, rischioso."),
+      chip("Non lo so ancora", "Non lo so ancora: aiutami a capirlo parlando."),
+    ];
+  }
+
+  if (category === "self-help" || category === "business" || category === "study") {
+    return [
+      chip("Guida pratica", "Una guida pratica, concreta, orientata al risultato."),
+      chip("Percorso di trasformazione", "Un percorso di trasformazione reale per lettori concreti."),
+      chip("Manuale operativo", "Un manuale operativo, chiaro, passo dopo passo."),
+      chip("Non lo so ancora", "Non lo so ancora: aiutami a capirlo parlando."),
+    ];
+  }
+
+  return [
+    chip("Storia oscura e gotica", "Una storia oscura, emotiva, gotica."),
+    chip("Romance pieno di tensione", "Un romance pieno di tensione e attrazione."),
+    chip("Mistero e segreti", "Un mistero con segreti e colpi di scena."),
+    chip("Non lo so ancora", "Non lo so ancora: aiutami a capirlo parlando."),
+  ];
+}
+
+export function getContinueCtaLabel(ready: boolean, hasPendingInput: boolean): string {
+  if (ready) return "Apri il DNA del libro";
+  if (hasPendingInput) return "Rispondi a Scriptora";
+  return "Fammi un'altra domanda";
 }

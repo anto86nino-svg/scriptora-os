@@ -6,7 +6,7 @@ type MobileInterviewProgressProps = {
   className?: string;
 };
 
-/** Discrete progress — no percentages or technical labels. */
+/** Discrete progress — cinematic, no percentages. */
 export function MobileInterviewProgress({
   answeredCount,
   total,
@@ -15,11 +15,11 @@ export function MobileInterviewProgress({
   const ratio = total > 0 ? Math.min(1, answeredCount / total) : 0;
 
   return (
-    <div className={cn("px-4 pb-2 pt-0.5", className)} aria-hidden>
-      <div className="h-0.5 overflow-hidden rounded-full bg-white/[0.08]">
+    <div className={cn("scriptora-forge-progress px-4 pb-2.5 pt-1", className)} aria-hidden>
+      <div className="h-1 overflow-hidden rounded-full bg-white/[0.06] shadow-inner">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-violet-500/70 to-violet-300/50 transition-all duration-700 ease-out"
-          style={{ width: `${Math.max(4, ratio * 100)}%` }}
+          className="scriptora-forge-progress-fill h-full rounded-full transition-all duration-700 ease-out"
+          style={{ width: `${Math.max(6, ratio * 100)}%` }}
         />
       </div>
     </div>

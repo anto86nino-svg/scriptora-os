@@ -1,4 +1,4 @@
-import { useRef, type ReactNode, type WheelEvent } from "react";
+import { useRef, type ReactNode } from "react";
 import { Mic, MicOff, Send } from "lucide-react";
 import { BookDnaConfirmationPanel } from "./BookDnaConfirmationPanel";
 import { ForgeInterviewConfirmation } from "./ForgeInterviewConfirmation";
@@ -7,6 +7,7 @@ import { MobileInterviewProgress } from "./MobileInterviewProgress";
 import { useGuidedInterviewController } from "./useGuidedInterviewController";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import { getEditorialBlockedPrompt } from "@/lib/guided-interview/interview-ui-copy";
+import { getContinueCtaLabel } from "@/lib/guided-interview/contextual-interview";
 import { MobileForgeScrollShell } from "@/mobile/MobileForgeScrollShell";
 import { cn } from "@/lib/utils";
 
@@ -64,10 +65,9 @@ export function GuidedInterviewPanel({
     />
   );
 
-  const inputFooter =
-    !ctrl.next.done && !showMobileConfirmation ? (
-      <InterviewInputFooter ctrl={ctrl} isMobile={isMobile} unifiedScroll interviewOnly={interviewOnly} />
-    ) : null;
+  const inputFooter = !showMobileConfirmation ? (
+    <InterviewInputFooter ctrl={ctrl} isMobile={isMobile} unifiedScroll interviewOnly={interviewOnly} />
+  ) : null;
 
   const liveMap = !interviewOnly ? (
     <ForgeLiveMap
@@ -267,111 +267,83 @@ function MobileInterviewOnlyBody({
   ctrl: Ctrl;
   unifiedScroll: boolean;
 }) {
-  const assistantMessages = ctrl.state.messages.filter((m) => m.role === "assistant");
   const userMessages = ctrl.state.messages.filter((m) => m.role === "user");
   const currentQuestion =
     ctrl.next.question?.question ??
-    assistantMessages[assistantMessages.length - 1]?.content ??
     "Raccontami il libro che hai dentro.";
   const lastUserReply = userMessages[userMessages.length - 1]?.content;
   const empathicLine = ctrl.next.question?.helper;
-  const bodyScrollRef = useRef<HTMLDivElement | null>(null);
-
-  const findScrollableParent = (start: HTMLElement | null): HTMLElement | null => {
-    let node = start;
-    while (node) {
-      const style = window.getComputedStyle(node);
-      const canScrollY =
-        /(auto|scroll)/.test(style.overflowY) &&
-        node.scrollHeight > node.clientHeight + 1;
-
-      if (canScrollY) return node;
-      node = node.parentElement;
-    }
-    return null;
-  };
-
-  const relayWheelToInterviewBody = (event: WheelEvent<HTMLDivElement>) => {
-    if (Math.abs(event.deltaY) < 0.5) return;
-
-    const own = bodyScrollRef.current;
-    const target = event.target instanceof HTMLElement ? event.target : own;
-    const scrollTarget = findScrollableParent(target) ?? own;
-
-    if (!scrollTarget) return;
-
-    const canScroll = scrollTarget.scrollHeight > scrollTarget.clientHeight + 1;
-    if (!canScroll) return;
-
-    const before = scrollTarget.scrollTop;
-    scrollTarget.scrollTop += event.deltaY;
-
-    if (scrollTarget.scrollTop !== before) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-  };
+  const showNudge = ctrl.rawNext.done && !ctrl.ready;
+  const continueLabel = getContinueCtaLabel(ctrl.ready, !!ctrl.input.trim());
 
   return (
     <div
-      ref={bodyScrollRef}
-      onWheelCapture={relayWheelToInterviewBody}
       className={cn(
-        "min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y",
-        unifiedScroll ? "px-4 py-6 pb-28" : "px-4 py-4 pb-28",
+        "scriptora-forge-interview-stage relative mx-auto w-full max-w-lg",
+        unifiedScroll ? "px-4 py-4 pb-4" : "px-4 py-4",
       )}
-      style={{
-        WebkitOverflowScrolling: "touch",
-        touchAction: "pan-y",
-        overscrollBehaviorY: "contain",
-      }}
     >
-      <div className="mx-auto flex min-h-full w-full max-w-lg flex-col justify-center py-4">
-        {lastUserReply && (
-          <p className="mb-4 line-clamp-3 text-right text-xs leading-5 text-white/35">
-            Tu: {lastUserReply}
-          </p>
-        )}
+      <div className="scriptora-forge-question-glow pointer-events-none absolute inset-x-6 top-8 h-40 rounded-full bg-violet-500/20 blur-3xl" aria-hidden />
 
-        <div className="animate-in fade-in slide-in-from-bottom-2 rounded-[24px] border border-violet-400/15 bg-violet-500/10 px-5 py-5 duration-300">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-200/80">
-            Scriptora
-          </p>
-          <p className="mt-2 text-base font-medium leading-7 text-white sm:text-lg">
-            {currentQuestion}
-          </p>
-          {empathicLine && (
-            <p className="mt-3 text-sm leading-6 text-white/50">{empathicLine}</p>
-          )}
-        </div>
+      {lastUserReply && (
+        <p className="relative mb-3 line-clamp-2 text-right text-[11px] leading-5 text-white/40">
+          Tu: {lastUserReply}
+        </p>
+      )}
 
-        {ctrl.isThinking && (
-          <div className="mt-4">
-            <ThinkingBubble />
-          </div>
-        )}
-
-        {!ctrl.isThinking && (ctrl.next.question?.quickSuggestions?.length ?? 0) > 0 && (
-          <div className="mt-4">
-            <QuickSuggestionChips ctrl={ctrl} />
-          </div>
-        )}
-
-        {!ctrl.ready && ctrl.next.done && (
-          <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-            <p className="text-sm leading-6 text-amber-50/90">
-              {getEditorialBlockedPrompt(ctrl.progress.dnaLock)}
-            </p>
-            <button
-              type="button"
-              onClick={ctrl.handleContinueInterview}
-              className="mt-3 rounded-xl border border-white/15 px-4 py-2.5 text-xs font-semibold text-white"
-            >
-              Continua
-            </button>
-          </div>
+      <div className="scriptora-forge-question-card relative animate-in fade-in slide-in-from-bottom-2 duration-500">
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-200/90">
+          Scriptora
+        </p>
+        <p className="mt-2 text-[1.05rem] font-medium leading-7 text-white sm:text-lg">
+          {currentQuestion}
+        </p>
+        {empathicLine && (
+          <p className="mt-2.5 text-sm leading-6 text-violet-100/55">{empathicLine}</p>
         )}
       </div>
+
+      {ctrl.isThinking ? (
+        <div className="relative mt-4">
+          <UnderstandingPulse />
+        </div>
+      ) : (
+        (ctrl.next.question?.quickSuggestions?.length ?? 0) > 0 && (
+          <div className="relative mt-4">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
+              Scegli una direzione
+            </p>
+            <QuickSuggestionChips ctrl={ctrl} premium />
+          </div>
+        )
+      )}
+
+      {showNudge && !ctrl.isThinking && (
+        <div className="relative mt-4 rounded-2xl border border-amber-300/15 bg-amber-500/[0.08] px-4 py-3">
+          <p className="text-sm leading-6 text-amber-50/90">
+            {getEditorialBlockedPrompt(ctrl.progress.dnaLock)}
+          </p>
+          <button
+            type="button"
+            onClick={ctrl.handleContinueInterview}
+            className="scriptora-forge-continue-cta mt-3 w-full rounded-xl px-4 py-2.5 text-sm font-semibold text-white"
+          >
+            {continueLabel}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UnderstandingPulse() {
+  return (
+    <div className="scriptora-forge-understanding inline-flex items-center gap-2.5 rounded-2xl border border-violet-400/20 bg-violet-500/10 px-4 py-3 text-sm text-violet-100">
+      <span className="relative flex h-2 w-2">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-300/70 opacity-70" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-200" />
+      </span>
+      Scriptora sta capendo il libro…
     </div>
   );
 }
@@ -391,15 +363,20 @@ function ThinkingBubble() {
   );
 }
 
-function QuickSuggestionChips({ ctrl }: { ctrl: Ctrl }) {
+function QuickSuggestionChips({ ctrl, premium }: { ctrl: Ctrl; premium?: boolean }) {
   return (
-    <div className="flex flex-wrap gap-2 pt-1">
+    <div className="flex flex-wrap gap-2 pt-0.5">
       {ctrl.next.question!.quickSuggestions!.map((chip) => (
         <button
           key={chip.label}
           type="button"
           onClick={() => ctrl.sendMessage(chip.value)}
-          className="rounded-full border border-white/12 bg-white/[0.05] px-3 py-1.5 text-[11px] font-medium text-white/80 transition hover:border-violet-300/40 hover:bg-violet-500/15"
+          className={cn(
+            "text-left text-[11px] font-medium transition active:scale-[0.98]",
+            premium
+              ? "scriptora-forge-quick-chip rounded-2xl px-3.5 py-2.5 text-violet-50/90"
+              : "rounded-full border border-white/12 bg-white/[0.05] px-3 py-1.5 text-white/80 hover:border-violet-300/40 hover:bg-violet-500/15",
+          )}
         >
           {chip.label}
         </button>
@@ -422,10 +399,15 @@ function InterviewInputFooter({
   return (
     <div
       className={cn(
-        "shrink-0 border-t border-white/10 bg-[#07070b]/95 px-4 py-3 backdrop-blur-md",
+        "scriptora-forge-input-footer shrink-0 border-t border-white/10 px-4 py-3 backdrop-blur-md",
         unifiedScroll ? "pb-3" : "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
       )}
     >
+      {interviewOnly && (
+        <p className="mb-2 text-[10px] font-medium tracking-wide text-white/40">
+          Oppure raccontamelo con parole tue…
+        </p>
+      )}
       {ctrl.speech.error && (
         <p className="mb-2 text-[11px] text-amber-300">{ctrl.speech.error}</p>
       )}
@@ -451,6 +433,7 @@ function InterviewInputFooter({
           </button>
         )}
         <textarea
+          ref={ctrl.inputRef}
           value={ctrl.input}
           onChange={(e) => ctrl.setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -461,11 +444,11 @@ function InterviewInputFooter({
           }}
           placeholder={
             interviewOnly
-              ? "Rispondi come ti viene…"
+              ? "Scrivi la tua risposta…"
               : ctrl.next.question?.placeholder || "Scrivi liberamente…"
           }
           rows={isMobile ? 2 : 3}
-          className="max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none focus:border-violet-400/40"
+          className="scriptora-forge-input max-h-32 min-h-[44px] flex-1 resize-none rounded-2xl border border-white/12 bg-white/[0.06] px-4 py-3 text-sm text-white outline-none focus:border-violet-400/50 focus:ring-2 focus:ring-violet-500/20"
         />
         <button
           type="button"

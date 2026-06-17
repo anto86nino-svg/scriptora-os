@@ -13,6 +13,15 @@ import {
   mergeInferenceIntoExtracted,
 } from "./dna-inference";
 import { enrichInterviewQuestion } from "./contextual-interview";
+import {
+  getContinueFollowUpQuestion,
+  resolveActiveInterviewQuestion,
+  resolveExtractedFieldKey,
+  type ResolveInterviewOptions,
+} from "./interview-continue";
+
+export { resolveActiveInterviewQuestion, getContinueFollowUpQuestion, resolveExtractedFieldKey };
+export type { ResolveInterviewOptions };
 
 const GENERIC_PLACEHOLDER =
   "Parla liberamente: idea, note, voce, caos… Scriptora organizzerà il resto.";
@@ -649,15 +658,25 @@ function collectUserBlob(state: GuidedInterviewState, latest?: string): string {
 export function applyInterviewAnswer(
   state: GuidedInterviewState,
   answer: string,
+  activeQuestion?: Pick<InterviewQuestion, "id" | "key">,
 ): GuidedInterviewState {
   const normalized = clean(answer);
   if (!normalized) return state;
 
-  const currentQuestion = findNextUnansweredQuestion(state);
+  const baseNext = getNextInterviewQuestion(state);
+  const resolved = resolveActiveInterviewQuestion(state, baseNext);
+  const currentQuestion =
+    findNextUnansweredQuestion(state) ??
+    (activeQuestion
+      ? ({ id: activeQuestion.id, key: activeQuestion.key } as InterviewQuestion)
+      : resolved.question);
+
   if (!currentQuestion) return state;
 
+  const extractedKey = resolveExtractedFieldKey(currentQuestion.key);
   let extracted = {
     ...state.extracted,
+    [extractedKey]: normalized,
     [currentQuestion.key]: normalized,
   };
 
@@ -705,6 +724,10 @@ export function applyInterviewAnswer(
 }
 
 export function resumeInterview(state: GuidedInterviewState): GuidedInterviewState {
+  return resumeInterviewWithFollowUp(state);
+}
+
+function resumeInterviewWithFollowUp(state: GuidedInterviewState): GuidedInterviewState {
   return {
     ...state,
     completed: false,
