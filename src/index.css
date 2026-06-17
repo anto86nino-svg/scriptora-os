@@ -7258,3 +7258,81 @@ html[data-theme="classic-premium"] {
     min-height: 116px;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────
+   Scriptora Rounded Premium UI Calibration V1
+   Goal: modern cinematic cards, softer panels, no old squared UI.
+   ────────────────────────────────────────────────────────────── */
+
+:root {
+  --scriptora-radius-card: 30px;
+  --scriptora-radius-panel: 34px;
+  --scriptora-radius-hero: 38px;
+  --scriptora-radius-control: 18px;
+}
+
+/* Core premium cards */
+.scriptora-action-tile {
+  border-radius: var(--scriptora-radius-card) !important;
+}
+
+/* Main cinematic panels */
+.scriptora-glass-panel,
+.ios-panel {
+  border-radius: var(--scriptora-radius-panel);
+}
+
+/* Hero / large visual modules */
+.scriptora-home-hero-impact {
+  border-radius: var(--scriptora-radius-hero) !important;
+}
+
+/* Inner stats and mini cards should also feel modern */
+.scriptora-glass-panel .rounded-xl,
+.scriptora-action-tile .rounded-xl,
+.ios-panel .rounded-xl {
+  border-radius: 22px;
+}
+
+/* Buttons and toolbar controls: soft but still compact */
+.ios-toolbar-button,
+.scriptora-cinematic-button,
+button.rounded-xl,
+input.rounded-xl,
+textarea.rounded-xl,
+select.rounded-xl {
+  border-radius: var(--scriptora-radius-control);
+}
+
+/* Modals: premium app-shell feeling, not old rectangular dialog */
+.scriptora-modal-panel {
+  border-radius: 32px;
+}
+
+/* Mobile keeps softness but avoids wasting space */
+@media (max-width: 767px) {
+  :root {
+    --scriptora-radius-card: 24px;
+    --scriptora-radius-panel: 26px;
+    --scriptora-radius-hero: 28px;
+    --scriptora-radius-control: 16px;
+  }
+
+  .scriptora-modal-panel {
+    border-radius: 26px 26px 0 0;
+  }
+}
+
+/* Extra premium hover depth */
+.scriptora-action-tile:hover,
+.ios-panel:hover {
+  transform: translateY(-2px);
+}
+
+/* Avoid harsh square image/container edges inside premium cards */
+.scriptora-action-tile > *,
+.scriptora-glass-panel > *,
+.ios-panel > * {
+  min-width: 0;
+}
+
