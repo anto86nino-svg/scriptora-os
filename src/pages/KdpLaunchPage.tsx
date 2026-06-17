@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowRight, Loader2, Rocket, Sparkles, TrendingUp, Trophy, Wand2 } from "lucide-react";
+import { ArrowRight, BookOpen, ImagePlus, Loader2, Rocket, Sparkles, TrendingUp, Trophy, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,10 @@ import { useFeatureGate } from "@/components/PaywallGuard";
 import { computeMarketPremiumScores } from "@/lib/market-intelligence-premium";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { chargePremiumOperation } from "@/lib/billing/charge";
+import { ScriptoraLogoMark } from "@/components/brand/ScriptoraLogoMark";
+import { getProjectCoverDataUrl } from "@/lib/cover-session";
+import { getLastProjectId, loadProjects, setLastProjectId } from "@/services/storageService";
+import type { BookProject } from "@/types/book";
 
 type Step = "idea" | "market" | "title" | "packaging" | "predict" | "narrative-flow";
 
@@ -82,6 +86,123 @@ function GroundingBadge({ meta }: { meta: { groundingUsed?: boolean; groundingRe
   return <Badge variant="secondary" className="text-[10px]">Analisi base</Badge>;
 }
 
+
+function loadKdpPreviewProject(): BookProject | null {
+  try {
+    const projects = loadProjects();
+    const lastId = getLastProjectId();
+    return (
+      (lastId ? projects.find((project) => project.id === lastId) : null) ||
+      projects.find((project) => getProjectCoverDataUrl(project.id)?.startsWith("data:image")) ||
+      projects[0] ||
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
+function KdpPublishingPreview({
+  project,
+  coverDataUrl,
+  chosenTitle,
+  chosenSubtitle,
+  genre,
+  italianUi,
+  onOpenCover,
+}: {
+  project: BookProject | null;
+  coverDataUrl?: string | null;
+  chosenTitle?: string;
+  chosenSubtitle?: string;
+  genre: string;
+  italianUi: boolean;
+  onOpenCover: () => void;
+}) {
+  const title = chosenTitle || project?.config?.title || (italianUi ? "Titolo non ancora scelto" : "Title not selected yet");
+  const subtitle = chosenSubtitle || project?.config?.subtitle || (italianUi ? "Completa KDP Launch e crea la cover definitiva." : "Complete KDP Launch and create the final cover.");
+  const hasCover = Boolean(coverDataUrl?.startsWith("data:image"));
+
+  return (
+    <section className="scriptora-brand-card scriptora-kdp-publishing-preview overflow-hidden rounded-[2rem] border border-[#f2c400]/20 bg-[#050505]/80">
+      <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-center xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="min-w-0 space-y-4">
+          <div className="flex items-center gap-3">
+            <ScriptoraLogoMark size="sm" />
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#f2c400]/75">
+                {italianUi ? "Publishing Preview" : "Publishing Preview"}
+              </p>
+              <h2 className="truncate text-2xl font-black tracking-tight text-white sm:text-3xl">
+                {italianUi ? "Copertina e packaging devono vendere insieme." : "Cover and packaging must sell together."}
+              </h2>
+            </div>
+          </div>
+
+          <p className="max-w-2xl text-sm leading-6 text-white/60">
+            {italianUi
+              ? "Questa è la vetrina KDP del libro: titolo, promessa, categoria e copertina devono apparire come un prodotto editoriale unico. Niente mini finestre, niente zoom inutile."
+              : "This is the KDP shelf view: title, promise, category and cover must feel like one premium publishing product."}
+          </p>
+
+          <div className="grid gap-3 text-sm sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">{italianUi ? "Titolo" : "Title"}</p>
+              <p className="mt-1 line-clamp-2 font-black text-white">{title}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">{italianUi ? "Genere" : "Genre"}</p>
+              <p className="mt-1 line-clamp-2 font-black text-[#f2c400]">{genre || project?.config?.genre || "KDP"}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/40">Cover</p>
+              <p className="mt-1 line-clamp-2 font-black text-white">{hasCover ? (italianUi ? "Salvata" : "Saved") : (italianUi ? "Da creare" : "Missing")}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={onOpenCover} className="scriptora-brand-primary gap-2 rounded-2xl font-black">
+              <ImagePlus className="h-4 w-4" />
+              {hasCover ? (italianUi ? "Apri Cover Studio" : "Open Cover Studio") : (italianUi ? "Crea copertina" : "Create cover")}
+            </Button>
+            <Button variant="outline" className="gap-2 rounded-2xl border-[#f2c400]/25 text-[#f2c400]" onClick={onOpenCover}>
+              <BookOpen className="h-4 w-4" />
+              {italianUi ? "Vedi copertina intera" : "View full cover"}
+            </Button>
+          </div>
+        </div>
+
+        <div className="mx-auto w-full max-w-[340px] xl:max-w-[400px]">
+          <div className="relative rounded-[2rem] border border-[#f2c400]/20 bg-black/65 p-4 shadow-[0_30px_90px_rgba(0,0,0,0.45)]">
+            <div className="absolute inset-0 rounded-[2rem] bg-[radial-gradient(circle_at_50%_20%,rgba(242,196,0,0.18),transparent_60%)]" />
+            <div className="relative grid min-h-[420px] place-items-center overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0b0b0b] sm:min-h-[500px]">
+              {hasCover ? (
+                <img
+                  src={coverDataUrl || ""}
+                  alt={title}
+                  className="max-h-[70dvh] w-full object-contain p-2"
+                />
+              ) : (
+                <div className="flex h-full min-h-[420px] w-full flex-col items-center justify-center gap-4 p-8 text-center sm:min-h-[500px]">
+                  <ScriptoraLogoMark size="lg" />
+                  <div>
+                    <p className="text-xl font-black text-white">{title}</p>
+                    <p className="mt-2 text-sm leading-5 text-white/52">{subtitle}</p>
+                  </div>
+                  <p className="rounded-full border border-[#f2c400]/25 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-[#f2c400]">
+                    {italianUi ? "Cover mancante" : "Cover missing"}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
 export default function KdpLaunchPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -116,6 +237,12 @@ export default function KdpLaunchPage() {
   const [chosenSubtitle, setChosenSubtitle] = useState<string>("");
   const italianUi = language.toLowerCase().includes("ital");
   const devCreditMode = isDevMode();
+  const previewProject = useMemo(() => loadKdpPreviewProject(), []);
+  const previewCoverDataUrl = previewProject?.id ? getProjectCoverDataUrl(previewProject.id) : null;
+  const openCoverStudio = useCallback(() => {
+    if (previewProject?.id) setLastProjectId(previewProject.id);
+    navigate("/cover", { state: previewProject?.id ? { projectId: previewProject.id } : undefined });
+  }, [navigate, previewProject?.id]);
   const stepLabels: Record<Step, string> = italianUi
     ? { idea: "idea", market: "mercato", title: "titoli", packaging: "packaging", predict: "previsione", "narrative-flow": "flusso narrativo" }
     : { idea: "idea", market: "market", title: "title", packaging: "packaging", predict: "predict", "narrative-flow": "narrative flow" };
@@ -487,8 +614,8 @@ export default function KdpLaunchPage() {
   });
 
   return (
-    <div className="scriptora-feature-page bg-background">
-      <main className="scriptora-feature-scroll mx-auto max-w-5xl space-y-5 p-4 sm:space-y-6 sm:p-6">
+    <div className="scriptora-feature-page scriptora-brand-shell bg-[#050505]">
+      <main className="scriptora-feature-scroll mx-auto max-w-7xl space-y-5 p-4 sm:space-y-6 sm:p-6">
         <header className="flex items-center justify-between gap-2 min-w-0">
           <div className="min-w-0">
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2 break-words">
@@ -562,6 +689,16 @@ export default function KdpLaunchPage() {
           </div>
           <p className="mt-2 text-[11px] leading-4 text-emerald-50/64">{creditModeDisclosure(devCreditMode)}</p>
         </section>
+
+        <KdpPublishingPreview
+          project={previewProject}
+          coverDataUrl={previewCoverDataUrl}
+          chosenTitle={chosenTitle}
+          chosenSubtitle={chosenSubtitle}
+          genre={genre}
+          italianUi={italianUi}
+          onOpenCover={openCoverStudio}
+        />
 
         {/* STEP 1 — Idea */}
         <Card>
