@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Minus, Plus, RotateCcw, Maximize2 } from "lucide-react";
+import type { CoverTextHighlight } from "@/lib/cover-studio/cover-focus-types";
 import type { CoverComposition, CoverLayer } from "@/lib/cover-studio/cover-layers";
 import {
   getDraggableLayersForView,
@@ -32,6 +33,7 @@ type Props = {
   viewMode?: CoverViewMode;
   activePanel?: CoverPanel;
   onActivePanelChange?: (panel: CoverPanel) => void;
+  highlightLayerType?: CoverTextHighlight;
 };
 
 type DragState = {
@@ -58,6 +60,7 @@ export function CoverPreviewStage({
   viewMode = composition.viewMode ?? "front",
   activePanel = composition.activePanel ?? "front",
   onActivePanelChange,
+  highlightLayerType = null,
 }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
@@ -350,6 +353,7 @@ export function CoverPreviewStage({
               {draggableLayers.map((layer) => {
                 const hit = getLayerHitbox(layer);
                 const selected = selectedLayerId === layer.id;
+                const editingHighlight = highlightLayerType != null && layer.type === highlightLayerType;
                 const isText =
                   !layer.type.startsWith("sticker") &&
                   layer.type !== "badge" &&
@@ -366,6 +370,7 @@ export function CoverPreviewStage({
                     className={cn(
                       "cover-layer-hitbox pointer-events-auto absolute",
                       selected && "cover-layer-hitbox--selected",
+                      editingHighlight && "cover-layer-hitbox--editing",
                       draggingId === layer.id && "cover-layer-hitbox--dragging",
                       layer.locked && "cover-layer-hitbox--locked",
                     )}

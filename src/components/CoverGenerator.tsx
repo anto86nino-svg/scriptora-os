@@ -1,12 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Download, ImagePlus, Settings2, Upload, Wand2, X, LayoutTemplate, Type, Image as ImageIcon, Layers, CheckCircle2 } from "lucide-react";
+import { BookOpen, Download, ImagePlus, X } from "lucide-react";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
 import { requireCreditsAsync } from "@/lib/billing";
-import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { buildCoverStudioPackage, recommendTemplate, COVER_TEMPLATES } from "@/lib/cover-studio";
 import { getProjectCoverDataUrl, getProjectCoverComposition, saveProjectCoverFull } from "@/lib/cover-session";
 import { CoverStudioPro } from "@/components/cover/CoverStudioPro";
 import { CoverPreviewStage } from "@/components/cover/CoverPreviewStage";
+import { CoverFloatingPanel } from "@/components/cover/CoverFloatingPanel";
+import { CoverFocusToolbar } from "@/components/cover/CoverFocusToolbar";
+import { CoverFormatPanel } from "@/components/cover/CoverFormatPanel";
+import { CoverMarketplacePreview } from "@/components/cover/CoverMarketplacePreview";
+import { CoverFocusWorkspace } from "@/components/cover/CoverFocusWorkspace";
+import { assessCoverCommercialIntelligence } from "@/lib/cover-studio/cover-commercial-intelligence";
+import {
+  COVER_FOCUS_PANEL_LABELS,
+  mapFocusPanelToStudioTab,
+  type CoverFocusPanelId,
+  type CoverTextHighlight,
+} from "@/lib/cover-studio/cover-focus-types";
 import {
   migrateComposition,
   syncTextLayerContent,
@@ -313,9 +324,8 @@ export function CoverGenerator({
   const [isMobileStudio, setIsMobileStudio] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches,
   );
-  const [mobileToolTab, setMobileToolTab] = useState<
-    "template" | "text" | "image" | "layout" | "readiness" | "export"
-  >("template");
+  const [activeFocusPanel, setActiveFocusPanel] = useState<CoverFocusPanelId | null>(null);
+  const [highlightLayerType, setHighlightLayerType] = useState<CoverTextHighlight>(null);
 
   useMobileForgeBodyLock(true);
 
@@ -326,19 +336,6 @@ export function CoverGenerator({
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
   }, []);
-
-  const mobileStudioTabFilter =
-    mobileToolTab === "template"
-      ? "style"
-      : mobileToolTab === "text"
-        ? "text"
-        : mobileToolTab === "image"
-          ? "images"
-          : mobileToolTab === "layout"
-            ? "layers"
-            : mobileToolTab === "readiness"
-              ? "readiness"
-              : null;
 
   const [composition, setComposition] = useState<CoverComposition>(() => {
     const bg = recommendBackgroundForGenre(genre || "");
@@ -409,6 +406,37 @@ export function CoverGenerator({
       frontCoverImage,
     ],
   );
+
+  useEffect(() => {
+    if (!highlightLayerType) return;
+    const layer = composition.layers.find((l) => l.type === highlightLayerType);
+    if (layer) setSelectedLayerId(layer.id);
+  }, [highlightLayerType, composition.layers]);
+
+  const commercialIntel = useMemo(
+    () =>
+      assessCoverCommercialIntelligence(
+        composition,
+        studioPackage.score,
+        coverGenreBrief || genre,
+        italianUi,
+      ),
+    [composition, studioPackage.score, coverGenreBrief, genre, italianUi],
+  );
+
+  const focusStudioTab = activeFocusPanel ? mapFocusPanelToStudioTab(activeFocusPanel) : null;
+
+  const focusPanelTitle =
+    activeFocusPanel != null
+      ? italianUi
+        ? COVER_FOCUS_PANEL_LABELS[activeFocusPanel].it
+        : COVER_FOCUS_PANEL_LABELS[activeFocusPanel].en
+      : "";
+
+  const closeFocusPanel = () => {
+    setActiveFocusPanel(null);
+    setHighlightLayerType(null);
+  };
 
   useEffect(() => {
     if (!genre && !coverGenreBrief) return;
@@ -1001,8 +1029,8 @@ export function CoverGenerator({
               <BookOpen className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
               <span className="truncate">Cover Studio Pro</span>
             </div>
-            <h2 className="mt-0.5 line-clamp-1 text-sm font-semibold leading-snug text-foreground sm:text-base lg:text-lg">
-              Builder copertina digitale — concept cover avanzato
+            <h2 className="mt-0.5 line-clamp-1 text-sm font-semibold leading-snug text-foreground sm:text-base">
+              {italianUi ? "Studio creativo copertina" : "Cover creative studio"}
             </h2>
             <div className="mt-1 flex flex-wrap items-center gap-1 max-sm:hidden">
               <Badge variant="outline" className="px-1.5 py-0 text-[9px] sm:text-[10px]">{studioPackage.honestyLabel}</Badge>
@@ -1040,219 +1068,83 @@ export function CoverGenerator({
           </div>
         </div>
 
-        <div className="scriptora-cover-studio-workspace flex min-h-0 flex-1 flex-col overflow-hidden lg:grid lg:grid-cols-[330px_minmax(0,1fr)_380px] lg:overflow-hidden xl:grid-cols-[360px_minmax(0,1fr)_430px]">
-          <div className="scriptora-cover-studio-preview order-1 flex min-h-0 flex-1 flex-col border-b border-border/50 bg-black/25 px-3 py-3 sm:px-4 sm:py-4 lg:order-2 lg:min-h-0 lg:items-center lg:justify-center lg:overflow-hidden lg:border-x lg:border-b-0 lg:border-border/50 lg:bg-gradient-to-br lg:from-black/45 lg:via-background/80 lg:to-primary/10 lg:p-6 xl:p-8">
-            <div className="hidden w-full flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground lg:absolute lg:left-8 lg:right-8 lg:top-6 lg:flex lg:w-auto lg:rounded-2xl lg:border lg:border-white/10 lg:bg-background/35 lg:px-4 lg:py-3 lg:backdrop-blur-xl">
-              <span>{spec.label}</span>
-              <span>{spec.width} x {spec.height}px - {spec.exportNote}</span>
-            </div>
-            <div className="mb-2 flex w-full shrink-0 flex-wrap items-center justify-center gap-1 lg:hidden">
-              {COVER_VIEW_MODES.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() =>
-                    setComposition((c) => ({ ...c, viewMode: m.id as CoverViewMode, updatedAt: new Date().toISOString() }))
-                  }
-                  className={`rounded-lg border px-2 py-1 text-[10px] font-semibold transition ${
-                    (composition.viewMode ?? "front") === m.id
-                      ? "border-primary bg-primary/20 text-primary"
-                      : "border-border/60 text-muted-foreground"
-                  }`}
-                >
-                  {italianUi ? m.labelIt : m.labelEn}
-                </button>
-              ))}
-            </div>
-            <div className="mb-2 flex w-full shrink-0 flex-wrap items-center justify-center gap-1 lg:hidden">
-              {(
-                [
-                  ["epub", "Ebook"],
-                  ["kdp", "KDP"],
-                  ["lulu", "Lulu"],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setMode(value)}
-                  className={`rounded-lg border px-2.5 py-1 text-[10px] font-semibold ${
-                    mode === value ? "border-primary bg-primary/15 text-primary" : "border-border/60 text-muted-foreground"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 lg:h-full lg:w-full lg:gap-3 lg:pt-8">
-              <div className="relative flex min-h-0 w-full flex-1 items-center justify-center lg:rounded-[2rem] lg:border lg:border-white/10 lg:bg-white/[0.035] lg:p-4 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_28px_80px_rgba(0,0,0,0.45)] xl:p-6">
-                {cinematicStep && cinematicStep !== "done" && (
-                  <CoverCinematicOverlay stepId={cinematicStep} progress={cinematicProgress} italianUi={italianUi} />
-                )}
-                <CoverPreviewStage
-                  composition={composition}
-                  selectedLayerId={selectedLayerId}
-                  onSelectLayer={setSelectedLayerId}
-                  onCompositionChange={setComposition}
-                  canvasRef={canvasRef}
-                  italianUi={italianUi}
-                  spec={spec}
-                  viewMode={composition.viewMode ?? "front"}
-                  activePanel={composition.activePanel ?? "front"}
-                  onActivePanelChange={(panel) => setComposition((c) => ({ ...c, activePanel: panel }))}
-                  canvasClassName="rounded-lg shadow-xl ring-1 ring-white/10 lg:rounded-2xl"
-                />
-              </div>
-              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                <span>{italianUi ? "Potenza miniatura" : "Thumbnail power"}</span>
-                <Badge variant="outline" className="text-[10px] tabular-nums">
-                  {studioPackage.score.thumbnailReadability}/100
-                </Badge>
-              </div>
-            </div>
-            <p className="mt-1 text-center text-[10px] text-muted-foreground lg:hidden">
-              {spec.label} · {spec.width}×{spec.height}px
-            </p>
-          </div>
-
-          {isMobileStudio && (
-            <div className="scriptora-cover-studio-mobile-tools order-2 flex min-h-0 shrink-0 flex-col border-t border-border/60 bg-background/95 lg:hidden">
-              <nav className="grid grid-cols-6 gap-0.5 border-b border-border/50 p-1.5 pb-[max(0.35rem,env(safe-area-inset-bottom,0px))]">
-                <MobileCoverTabButton
-                  active={mobileToolTab === "template"}
-                  label={italianUi ? "Template" : "Template"}
-                  icon={LayoutTemplate}
-                  onClick={() => setMobileToolTab("template")}
-                />
-                <MobileCoverTabButton
-                  active={mobileToolTab === "text"}
-                  label="Testo"
-                  icon={Type}
-                  onClick={() => setMobileToolTab("text")}
-                />
-                <MobileCoverTabButton
-                  active={mobileToolTab === "image"}
-                  label="Image"
-                  icon={ImageIcon}
-                  onClick={() => setMobileToolTab("image")}
-                />
-                <MobileCoverTabButton
-                  active={mobileToolTab === "layout"}
-                  label="Layout"
-                  icon={Layers}
-                  onClick={() => setMobileToolTab("layout")}
-                />
-                <MobileCoverTabButton
-                  active={mobileToolTab === "readiness"}
-                  label="Ready"
-                  icon={CheckCircle2}
-                  onClick={() => setMobileToolTab("readiness")}
-                />
-                <MobileCoverTabButton
-                  active={mobileToolTab === "export"}
-                  label="Export"
-                  icon={Download}
-                  onClick={() => setMobileToolTab("export")}
-                />
-              </nav>
-              <div className="scriptora-cover-studio-scroll max-h-[min(36dvh,320px)] min-h-0 overflow-y-auto overscroll-contain p-3">
-                {mobileToolTab === "export" ? (
-                  <div className="space-y-2">
-                    {showPrimaryAction && (
-                      <button
-                        type="button"
-                        onClick={handleUseForEpub}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground"
-                      >
-                        <ImagePlus className="h-4 w-4" />
-                        {primaryActionLabel}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleDownload}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold"
-                    >
-                      <Download className="h-4 w-4" />
-                      Scarica PNG
-                    </button>
-                    {projectId && (
-                      <button
-                        type="button"
-                        onClick={handleSaveToProject}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 py-3 text-sm font-semibold text-primary"
-                      >
-                        <ImagePlus className="h-4 w-4" />
-                        {italianUi ? "Salva progetto" : "Save project"}
-                      </button>
-                    )}
-                  </div>
-                ) : mobileStudioTabFilter ? (
-                  <CoverStudioPro
-                    hideHeader
-                    mobileTabFilter={mobileStudioTabFilter}
-                    pkg={studioPackage}
-                    italianUi={italianUi}
-                    composition={composition}
-                    onCompositionChange={setComposition}
-                    selectedLayerId={selectedLayerId}
-                    onSelectLayer={setSelectedLayerId}
-                    genre={coverGenreBrief || genre}
-                    selectedTemplateId={selectedTemplateId || studioPackage.recommendedTemplateId}
-                    onSelectVariant={(idx, id) => {
-                      setSelectedTemplate(idx);
-                      setSelectedTemplateId(id);
-                      setDataMode("template");
-                      setComposition((c) => ({ ...c, templateId: id, templateIndex: idx }));
-                    }}
-                    onSaveProject={projectId ? handleSaveToProject : undefined}
-                    onOpenExport={onOpenExport}
-                    saved={coverSaved}
-                    coverTitle={coverTitle}
-                    coverSubtitle={coverSubtitle}
-                    coverAuthor={coverAuthor}
-                    onTitleChange={setCoverTitle}
-                    onSubtitleChange={setCoverSubtitle}
-                    onAuthorChange={setCoverAuthor}
-                    backTagline={backTagline}
-                    backBlurb={bookDescription}
-                    backBio={coverAuthorBio}
-                    backQuote={backReviewQuote}
-                    onBackTaglineChange={setBackTagline}
-                    onBackBlurbChange={setBookDescription}
-                    onBackBioChange={setCoverAuthorBio}
-                    onBackQuoteChange={setBackReviewQuote}
-                    onUploadBackImage={handleBackImageUpload}
-                    onUploadFrontImage={handleUpload}
-                    onRemoveFrontImage={clearFrontImage}
-                    onRemoveBackImage={clearBackImage}
-                    hasFrontImage={Boolean(frontCoverImageUrl)}
-                    hasBackImage={Boolean(backCoverImageUrl)}
-                    imageFit={imageFit}
-                    onImageFitChange={(fit) => {
-                      setImageFit(fit);
-                      setComposition((c) => ({ ...c, imageFit: fit, updatedAt: new Date().toISOString() }));
-                    }}
-                    isPrintMode={spec.isPrint}
-                    spineWidthIn={spec.spineIn}
-                    pageCount={pageCount}
-                    hasAuthorPhoto={showAuthorPhoto && Boolean(authorPhoto)}
-                  />
-                ) : null}
-              </div>
-            </div>
-          )}
-
-          <aside className="scriptora-cover-studio-tools order-2 hidden min-h-0 border-b border-border/60 bg-background/80 lg:order-1 lg:flex lg:flex-col lg:overflow-hidden lg:border-b-0">
-            <div className="scriptora-cover-studio-scroll scriptora-modal-body min-h-0 flex-1 space-y-5 overflow-visible bg-background/55 p-3 pb-4 sm:space-y-6 sm:p-5 lg:overflow-y-auto lg:overscroll-contain lg:bg-background/75 lg:p-5">
-            <section className="rounded-xl border border-border/60 bg-muted/20 px-3 py-2 text-[11px] text-muted-foreground">
-              <span className="font-semibold text-foreground">{creditModeLabel(devCreditMode)}</span>
-              {" · "}
-              {italianUi ? "Genera sfondo AI consuma crediti. Salvataggio cover gratuito." : "AI background uses credits. Saving cover is free."}
-              <p className="mt-1">{creditModeDisclosure(devCreditMode)}</p>
-            </section>
-
+        <CoverFocusWorkspace
+          composition={composition}
+          onCompositionChange={setComposition}
+          selectedLayerId={selectedLayerId}
+          onSelectLayer={setSelectedLayerId}
+          canvasRef={canvasRef}
+          italianUi={italianUi}
+          spec={spec}
+          cinematicStep={cinematicStep}
+          cinematicProgress={cinematicProgress}
+          highlightLayerType={highlightLayerType}
+          isMobileStudio={isMobileStudio}
+          activeFocusPanel={activeFocusPanel}
+          onToggleFocusPanel={(id) => setActiveFocusPanel((p) => (p === id ? null : id))}
+          focusPanelTitle={focusPanelTitle}
+          onCloseFocusPanel={closeFocusPanel}
+          focusStudioTab={focusStudioTab}
+          commercialIntel={commercialIntel}
+          mode={mode}
+          onModeChange={setMode}
+          showPrimaryAction={showPrimaryAction}
+          primaryActionLabel={primaryActionLabel}
+          onUseForEpub={handleUseForEpub}
+          onDownload={handleDownload}
+          onSaveToProject={projectId ? handleSaveToProject : undefined}
+          projectId={projectId}
+          formatPanel={
+            <CoverFormatPanel
+              italianUi={italianUi}
+              devCreditMode={devCreditMode}
+              mode={mode}
+              onModeChange={setMode}
+              trimId={trimId}
+              onTrimChange={setTrimId}
+              trimPresets={TRIM_PRESETS}
+              pageCount={pageCount}
+              onPageCountChange={setPageCount}
+              paperType={paperType}
+              onPaperTypeChange={setPaperType}
+              showGuides={showGuides}
+              onShowGuidesChange={setShowGuides}
+              customWidth={customWidth}
+              customHeight={customHeight}
+              customSpine={customSpine}
+              dpi={dpi}
+              onCustomWidthChange={setCustomWidth}
+              onCustomHeightChange={setCustomHeight}
+              onCustomSpineChange={setCustomSpine}
+              onDpiChange={setDpi}
+              coverGenreBrief={coverGenreBrief}
+              onCoverGenreBriefChange={setCoverGenreBrief}
+              onGenerateBackground={generateScriptoraBackground}
+              scriptoraArtDirection={scriptoraArtDirection}
+              showAuthorPhoto={showAuthorPhoto}
+              hasAuthorPhoto={Boolean(authorPhoto)}
+              onShowAuthorPhotoChange={setShowAuthorPhoto}
+              onUploadAuthorPhoto={() => authorPhotoInputRef.current?.click()}
+              onRemoveAuthorPhoto={() => {
+                setAuthorPhoto(null);
+                setShowAuthorPhoto(false);
+              }}
+            />
+          }
+          marketplacePanel={
+            <CoverMarketplacePreview
+              canvasRef={canvasRef}
+              title={coverTitle}
+              author={coverAuthor}
+              genre={coverGenreBrief || genre}
+              italianUi={italianUi}
+              refreshKey={composition.updatedAt}
+            />
+          }
+          studioProPanel={
             <CoverStudioPro
+              hideHeader
+              mobileTabFilter={focusStudioTab}
               pkg={studioPackage}
               italianUi={italianUi}
               composition={composition}
@@ -1299,446 +1191,18 @@ export function CoverGenerator({
               spineWidthIn={spec.spineIn}
               pageCount={pageCount}
               hasAuthorPhoto={showAuthorPhoto && Boolean(authorPhoto)}
+              onTextFieldFocus={setHighlightLayerType}
+              onTextFieldBlur={() => setHighlightLayerType(null)}
             />
-            </div>
-          </aside>
-
-          <aside className="scriptora-cover-studio-properties order-3 hidden min-h-0 bg-background/85 lg:flex lg:flex-col lg:overflow-hidden">
-            <div className="scriptora-cover-studio-scroll scriptora-modal-body min-h-0 flex-1 space-y-5 overflow-visible bg-background/55 p-3 pb-4 sm:space-y-6 sm:p-5 lg:overflow-y-auto lg:overscroll-contain lg:bg-background/75 lg:p-5">
-            <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Settings2 className="h-4 w-4 text-primary" />
-                  <span>{italianUi ? "Formato" : "Format"}</span>
-                </div>
-                <p className="text-xs leading-5 text-muted-foreground">
-                  {italianUi
-                    ? "EPUB, KDP, Lulu o custom — dimensioni stampa, pagine e bleed."
-                    : "EPUB, KDP, Lulu or custom — trim size, pages and bleed."}
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-2 lg:gap-3">
-                {[
-                  ["epub", "EPUB"],
-                  ["kdp", "Amazon KDP"],
-                  ["lulu", "Lulu"],
-                  ["custom", "Custom"],
-                ].map(([value, label]) => (
-                  <button
-                    key={value}
-                    onClick={() => setMode(value as CoverMode)}
-                    className={`rounded-xl border px-3 py-2 lg:py-3 text-xs lg:text-sm font-semibold transition-colors ${
-                      mode === value
-                        ? "border-primary bg-primary/15 text-primary shadow-[0_10px_30px_rgba(0,0,0,0.16)]"
-                        : "border-border/70 bg-surface/60 text-muted-foreground hover:text-foreground hover:bg-surface"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-
-              {(mode === "kdp" || mode === "lulu") && (
-                <div className="grid grid-cols-2 gap-2 lg:gap-3">
-                  <label className="space-y-1">
-                    <span className="text-xs font-medium text-muted-foreground">Trim size</span>
-                    <select
-                      value={trimId}
-                      onChange={(e) => setTrimId(e.target.value)}
-                      className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-2 lg:px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      {TRIM_PRESETS.map((trim) => (
-                        <option key={trim.id} value={trim.id}>{trim.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="space-y-1">
-                    <span className="text-xs font-medium text-muted-foreground">Pagine</span>
-                    <input
-                      type="number"
-                      min={24}
-                      max={828}
-                      value={pageCount}
-                      onChange={(e) => setPageCount(Number(e.target.value) || 24)}
-                      className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-2 lg:px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </label>
-                  <label className="space-y-1">
-                    <span className="text-xs font-medium text-muted-foreground">Carta</span>
-                    <select
-                      value={paperType}
-                      onChange={(e) => setPaperType(e.target.value as PaperType)}
-                      className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-2 lg:px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    >
-                      <option value="cream">Cream</option>
-                      <option value="white">White</option>
-                      <option value="color">Color</option>
-                    </select>
-                  </label>
-                  <label className="flex items-end gap-2 rounded-lg lg:rounded-xl border border-border/70 bg-surface/40 px-3 py-2 lg:py-2.5 text-xs text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      checked={showGuides}
-                      onChange={(e) => setShowGuides(e.target.checked)}
-                    />
-                    Guide taglio
-                  </label>
-                </div>
-              )}
-
-              {mode === "custom" && (
-                <div className="grid grid-cols-2 gap-2 lg:gap-3">
-                  <NumberField label="Larghezza in" value={customWidth} min={1} max={30} step={0.1} onChange={setCustomWidth} />
-                  <NumberField label="Altezza in" value={customHeight} min={1} max={30} step={0.1} onChange={setCustomHeight} />
-                  <NumberField label="Dorso in" value={customSpine} min={0} max={3} step={0.01} onChange={setCustomSpine} />
-                  <NumberField label="DPI" value={dpi} min={72} max={450} step={1} onChange={setDpi} />
-                </div>
-              )}
-
-            </section>
-
-            <details className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground list-none">
-                {italianUi ? "Impostazioni testo avanzate (compatibilità)" : "Advanced text settings (compatibility)"}
-              </summary>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {italianUi
-                  ? "Usa il tab Testo in Cover Studio Pro per titolo, sottotitolo e autore. Qui restano solo opzioni legacy font/scale."
-                  : "Use Cover Studio Pro Text tab for title, subtitle and author. Legacy font/scale only here."}
-              </p>
-              <div className="grid gap-3 pt-2 max-lg:grid-cols-1 lg:grid-cols-3">
-                <TextStyleControls
-                  label="Titolo"
-                  fontValue={titleFont}
-                  onFontChange={setTitleFont}
-                  colorValue={titleColor}
-                  onColorChange={setTitleColor}
-                  scale={titleScale}
-                  onScaleChange={setTitleScale}
-                />
-                <TextStyleControls
-                  label="Sottotitolo"
-                  fontValue={subtitleFont}
-                  onFontChange={setSubtitleFont}
-                  colorValue={subtitleColor}
-                  onColorChange={setSubtitleColor}
-                  scale={subtitleScale}
-                  onScaleChange={setSubtitleScale}
-                />
-                <TextStyleControls
-                  label="Autore"
-                  fontValue={authorFont}
-                  onFontChange={setAuthorFont}
-                  colorValue={authorColor}
-                  onColorChange={setAuthorColor}
-                  scale={authorScale}
-                  onScaleChange={setAuthorScale}
-                />
-              </div>
-            </details>
-
-            <details className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground list-none">
-                {italianUi ? "Retro copertina (avanzato)" : "Back matter (advanced)"}
-              </summary>
-              <label className="space-y-1 block">
-                <span className="text-xs font-medium text-muted-foreground">Headline retro</span>
-                <input
-                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  value={backTagline}
-                  onChange={(e) => setBackTagline(e.target.value)}
-                />
-              </label>
-              <label className="space-y-1 block">
-                <span className="text-xs font-medium text-muted-foreground">Descrizione libro</span>
-                <textarea
-                  rows={4}
-                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
-                  value={bookDescription}
-                  onChange={(e) => setBookDescription(e.target.value)}
-                  onBlur={(e) =>
-                    setBookDescription(sanitizeCoverVisibleText(e.target.value, bookDescription))
-                  }
-                />
-              </label>
-              <label className="space-y-1 block">
-                <span className="text-xs font-medium text-muted-foreground">Bio autore</span>
-                <textarea
-                  rows={3}
-                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary"
-                  value={coverAuthorBio}
-                  onChange={(e) => setCoverAuthorBio(e.target.value)}
-                  onBlur={(e) =>
-                    setCoverAuthorBio(sanitizeCoverVisibleText(e.target.value, coverAuthorBio))
-                  }
-                />
-              </label>
-            </details>
-
-            <section className="space-y-3 lg:rounded-2xl lg:border lg:border-border/70 lg:bg-card/55 lg:p-5 lg:shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-foreground">
-                  {italianUi ? "Sfondo AI" : "AI background"}
-                </p>
-                <p className="text-xs leading-5 text-muted-foreground">
-                  {italianUi
-                    ? "Scriptora genera solo lo sfondo procedurale. Carica fronte/retro dal tab Immagini in Cover Studio Pro."
-                    : "Scriptora generates procedural background only. Upload front/back from Images tab in Cover Studio Pro."}
-                </p>
-              </div>
-              <label className="space-y-1 block">
-                <span className="text-xs font-medium text-muted-foreground">Genere / atmosfera AI</span>
-                <input
-                  value={coverGenreBrief}
-                  onChange={(e) => setCoverGenreBrief(e.target.value)}
-                  placeholder="es. thriller psicologico, romance dark, business self-help..."
-                  className="w-full bg-surface border border-border rounded-lg lg:rounded-xl px-3 py-2 lg:py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-              </label>
-              <div className="grid grid-cols-1 gap-2 lg:gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <button
-                    type="button"
-                    onClick={generateScriptoraBackground}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/12 px-3 py-2 lg:py-3 text-xs lg:text-sm font-semibold text-primary hover:bg-primary/18 transition-colors"
-                  >
-                    <Wand2 className="h-4 w-4" />
-                    <span>{italianUi ? "Genera sfondo Scriptora" : "Generate Scriptora background"}</span>
-                  </button>
-                  <CreditCostBadge operation="cover_generation" prominent className="self-center" />
-                </div>
-              </div>
-              {scriptoraArtDirection && (
-                <div className="rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-[11px] leading-4 text-primary">
-                  Direzione AI: {scriptoraArtDirection.label}. Sfondo generato senza testo incorporato.
-                </div>
-              )}
-
-              {mode !== "epub" && (
-                <div className="rounded-xl lg:rounded-2xl border border-border/70 bg-surface/40 p-3 lg:p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs font-semibold text-foreground">Foto autore opzionale</p>
-                      <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
-                        Disponibile solo per KDP, Lulu e Custom: viene inserita rettangolare nel back matter.
-                      </p>
-                    </div>
-                    <label className="flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground">
-                      <input
-                        type="checkbox"
-                        checked={showAuthorPhoto && Boolean(authorPhoto)}
-                        disabled={!authorPhoto}
-                        onChange={(e) => setShowAuthorPhoto(e.target.checked)}
-                      />
-                      Mostra
-                    </label>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => authorPhotoInputRef.current?.click()}
-                      className="flex items-center justify-center gap-2 rounded-lg lg:rounded-xl border border-border/70 bg-background/45 px-3 py-2 lg:py-2.5 text-xs font-semibold text-foreground hover:bg-background/70 transition-colors"
-                    >
-                      <Upload className="h-3.5 w-3.5" />
-                      Carica foto
-                    </button>
-                    {authorPhoto ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAuthorPhoto(null);
-                          setShowAuthorPhoto(false);
-                        }}
-                        className="rounded-lg lg:rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 lg:py-2.5 text-xs font-semibold text-destructive hover:bg-destructive/15 transition-colors"
-                      >
-                        Rimuovi
-                      </button>
-                    ) : (
-                      <div className="rounded-lg lg:rounded-xl border border-dashed border-border/70 px-3 py-2 lg:py-2.5 text-center text-xs text-muted-foreground">
-                        Nessuna foto
-                      </div>
-                    )}
-                  </div>
-                  <input
-                    ref={authorPhotoInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => handleAuthorPhotoUpload(e.target.files?.[0])}
-                  />
-                </div>
-              )}
-            </section>
-            </div>
-
-            <footer className="scriptora-cover-studio-footer sticky bottom-0 z-20 shrink-0 border-t border-border/70 bg-background/98 px-3 py-4 backdrop-blur-xl sm:px-5 sm:py-5 lg:border lg:bg-card/90 lg:p-5">
-              <div className="hidden lg:block">
-                <p className="text-sm font-semibold text-foreground">EXPORT</p>
-                <p className="mt-1 text-xs text-muted-foreground">Scarica, salva o applica la cover al progetto corrente.</p>
-              </div>
-              <div className="mt-0 flex flex-col gap-2 lg:mt-3 lg:grid lg:grid-cols-3 lg:gap-3">
-                {showPrimaryAction && (
-                  <button
-                    onClick={handleUseForEpub}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 lg:py-3.5"
-                  >
-                    <ImagePlus className="h-4 w-4" />
-                    {primaryActionLabel}
-                  </button>
-                )}
-                <div className={`grid gap-2 ${showPrimaryAction || projectId ? "grid-cols-2" : "grid-cols-1"} lg:contents`}>
-                  <button
-                    onClick={handleDownload}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-surface/80 lg:py-3.5"
-                  >
-                    <Download className="h-4 w-4" />
-                    Scarica PNG
-                  </button>
-                  {projectId && (
-                    <button
-                      onClick={handleSaveToProject}
-                      className="flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-3 py-3 text-sm font-semibold text-primary transition-colors hover:bg-primary/15 lg:py-3.5"
-                    >
-                      <ImagePlus className="h-4 w-4" />
-                      {italianUi ? "Salva progetto" : "Save project"}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </footer>
-          </aside>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MobileCoverTabButton({
-  active,
-  label,
-  icon: Icon,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  icon: typeof LayoutTemplate;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-lg px-1 text-[9px] font-semibold transition ${
-        active ? "bg-primary/15 text-primary" : "text-muted-foreground"
-      }`}
-    >
-      <Icon className="h-4 w-4" />
-      {label}
-    </button>
-  );
-}
-
-function NumberField({
-  label,
-  value,
-  min,
-  max,
-  step,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <label className="space-y-1">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      <input
-        type="number"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value) || min)}
-        className="w-full bg-surface border border-border rounded-lg px-2 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-      />
-    </label>
-  );
-}
-
-function TextStyleControls({
-  label,
-  fontValue,
-  onFontChange,
-  colorValue,
-  onColorChange,
-  scale,
-  onScaleChange,
-}: {
-  label: string;
-  fontValue: string;
-  onFontChange: (value: string) => void;
-  colorValue: string;
-  onColorChange: (value: string) => void;
-  scale: number;
-  onScaleChange: (value: number) => void;
-}) {
-  return (
-    <div className="rounded-xl border border-border/70 bg-surface/35 p-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-foreground">{label}</p>
-        <span className="text-[10px] font-medium text-muted-foreground">{scale}%</span>
-      </div>
-      <label className="space-y-1 block">
-        <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Font</span>
-        <select
-          value={fontValue}
-          onChange={(e) => onFontChange(e.target.value)}
-          className="w-full rounded-lg border border-border bg-background/70 px-2 py-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-        >
-          {FONT_OPTIONS.map((font) => (
-            <option key={font} value={font}>{font}</option>
-          ))}
-        </select>
-      </label>
-      <label className="mt-2 space-y-1 block">
-        <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Grandezza</span>
-        <input
-          type="range"
-          min={70}
-          max={150}
-          step={5}
-          value={scale}
-          onChange={(e) => onScaleChange(Number(e.target.value))}
-          className="w-full accent-primary"
+          }
         />
-      </label>
-      <div className="mt-2 space-y-2">
-        <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">Colore</span>
-          <div className="flex min-w-0 items-center gap-2 overflow-x-auto pb-0.5">
-            <input
-              type="color"
-              value={colorValue}
-              onChange={(e) => onColorChange(e.target.value)}
-              className="h-8 w-10 shrink-0 rounded-lg border border-border bg-background p-1"
-              aria-label={`Colore ${label}`}
-            />
-            <div className="flex flex-nowrap gap-1.5">
-            {TEXT_COLOR_SWATCHES.slice(0, 8).map((color) => (
-              <button
-                key={`${label}-${color}`}
-                type="button"
-                onClick={() => onColorChange(color)}
-                className="h-5 w-5 rounded-full border border-white/20 shadow-sm transition-transform hover:scale-110"
-                style={{ backgroundColor: color }}
-                aria-label={`Usa colore ${color}`}
-              />
-            ))}
-          </div>
-        </div>
+        <input
+          ref={authorPhotoInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => handleAuthorPhotoUpload(e.target.files?.[0])}
+        />
       </div>
     </div>
   );

@@ -5101,6 +5101,156 @@ body,
   box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25);
 }
 
+.cover-layer-hitbox--editing {
+  border-color: rgba(250, 204, 21, 0.95) !important;
+  background: rgba(250, 204, 21, 0.14) !important;
+  box-shadow:
+    0 0 0 2px rgba(250, 204, 21, 0.35),
+    0 0 24px rgba(250, 204, 21, 0.25);
+  animation: cover-layer-editing-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes cover-layer-editing-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(250, 204, 21, 0.35),
+      0 0 18px rgba(250, 204, 21, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(250, 204, 21, 0.55),
+      0 0 32px rgba(250, 204, 21, 0.35);
+  }
+}
+
+/* Cover Focus Mode — cinematic creative workspace */
+.cover-focus-workspace {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(56, 189, 248, 0.06), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(139, 92, 246, 0.05), transparent 65%),
+    #07070b;
+}
+
+.glass-premium {
+  background: rgba(12, 12, 18, 0.78) !important;
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+}
+
+.cover-focus-canvas-frame {
+  min-height: min(72dvh, 820px);
+}
+
+.cover-focus-panel-backdrop {
+  animation: cover-focus-fade-in 0.18s ease-out;
+}
+
+.cover-focus-panel {
+  animation: cover-focus-panel-in 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cover-focus-panel--mobile {
+  animation: cover-focus-sheet-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes cover-focus-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cover-focus-panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes cover-focus-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1023px) {
+  .cover-focus-workspace .cover-focus-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .cover-focus-canvas-frame {
+    min-height: min(68dvh, 640px);
+    flex: 1 1 auto;
+  }
+
+  .scriptora-cover-studio-preview {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+  }
+
+  .cover-focus-toolbar {
+    position: fixed;
+    left: 0.5rem;
+    right: 0.5rem;
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    z-index: 125;
+  }
+}
+
+@media (min-width: 1024px) {
+  .cover-focus-canvas-frame {
+    min-height: min(78dvh, 900px);
+  }
+
+  .cover-focus-toolbar {
+    position: absolute;
+  }
+
+  .cover-preview-stage-root .cover-viewport-toolbar {
+    opacity: 0.85;
+    transition: opacity 0.15s ease;
+  }
+
+  .cover-focus-canvas-frame:hover .cover-viewport-toolbar {
+    opacity: 1;
+  }
+}
+
+.cover-focus-tool-btn:active {
+  transform: scale(0.97);
+}
+
+.cover-focus-panel-body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+.cover-focus-canvas-frame .cover-preview-stage-root > p:last-child {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .cover-focus-canvas-frame .cover-viewport-toolbar {
+    margin-bottom: 0.25rem;
+    padding: 0.25rem 0.5rem;
+  }
+}
+
+
 .cover-layer-hitbox--dragging {
   cursor: grabbing;
   border-color: rgba(167, 139, 250, 0.95);
@@ -7677,4 +7827,54 @@ html[data-theme="classic-premium"],
   .scriptora-kdp-publishing-preview img {
     max-height: 64dvh;
   }
+}
+
+/* Blueprint Theater — book command center */
+.blueprint-theater-root {
+  min-height: min(70dvh, 720px);
+}
+
+.blueprint-theater-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (min-width: 1024px) {
+  .blueprint-theater-grid {
+    display: grid;
+    align-items: start;
+  }
+}
+
+.blueprint-theater-index {
+  min-height: min(52dvh, 560px);
+}
+
+@media (max-width: 1023px) {
+  .blueprint-theater-col-identity {
+    order: 1;
+  }
+
+  .blueprint-theater-grid > .blueprint-theater-index {
+    order: 2;
+    min-height: min(48dvh, 520px);
+  }
+
+  .blueprint-theater-col-live {
+    order: 3;
+    min-height: 280px;
+  }
+
+  .blueprint-theater-index-scroll {
+    max-height: min(50dvh, 480px);
+  }
+}
+
+.blueprint-theater-writer-host .scriptora-manuscript-premium {
+  background: transparent;
+  box-shadow: none;
+}
+
+.scriptora-wizard-scroll .blueprint-theater-root {
+  min-height: min(62dvh, 680px);
 }

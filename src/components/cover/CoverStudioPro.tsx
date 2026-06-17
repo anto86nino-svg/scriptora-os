@@ -92,6 +92,8 @@ interface Props {
   /** Mobile: show only one tab panel (parent owns bottom nav) */
   mobileTabFilter?: "style" | "text" | "images" | "layers" | "stickers" | "effects" | "print" | "readiness" | null;
   hideHeader?: boolean;
+  onTextFieldFocus?: (field: "title" | "subtitle" | "author") => void;
+  onTextFieldBlur?: () => void;
 }
 
 const TEXT_PRESETS: { id: TextPositionPreset; label: string }[] = [
@@ -147,6 +149,8 @@ export function CoverStudioPro({
   hasAuthorPhoto = false,
   mobileTabFilter = null,
   hideHeader = false,
+  onTextFieldFocus,
+  onTextFieldBlur,
 }: Props) {
   const [bgCategory, setBgCategory] = useState<CoverBackgroundCategory | "all">("all");
   const [stickerCategory, setStickerCategory] = useState("Tutti");
@@ -341,6 +345,8 @@ export function CoverStudioPro({
                 className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm"
                 value={coverTitle}
                 onChange={(e) => onTitleChange(e.target.value)}
+                onFocus={() => onTextFieldFocus?.("title")}
+                onBlur={() => onTextFieldBlur?.()}
               />
             </label>
             <label className="block space-y-1 text-xs">
@@ -349,6 +355,8 @@ export function CoverStudioPro({
                 className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm"
                 value={coverSubtitle}
                 onChange={(e) => onSubtitleChange(e.target.value)}
+                onFocus={() => onTextFieldFocus?.("subtitle")}
+                onBlur={() => onTextFieldBlur?.()}
               />
             </label>
             <label className="block space-y-1 text-xs">
@@ -357,6 +365,8 @@ export function CoverStudioPro({
                 className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm"
                 value={coverAuthor}
                 onChange={(e) => onAuthorChange(e.target.value)}
+                onFocus={() => onTextFieldFocus?.("author")}
+                onBlur={() => onTextFieldBlur?.()}
               />
             </label>
           </div>
