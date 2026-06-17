@@ -385,14 +385,216 @@ export function BookCreationOsWizard({
   useEffect(() => {
     if (!open || forgeEntry !== "post-dna" || !interviewSeed) return;
     const ext = interviewSeed.extracted ?? {};
+
+    const normalizedForgeText = [
+      ext.bookType,
+      ext.genre,
+      ext.subgenre,
+      ext.structurePreference,
+      ext.genreDNA,
+      ext.commercialGoal,
+    ]
+      .map((v) => cleanStr(v).toLowerCase())
+      .filter(Boolean)
+      .join(" ");
+
+    const parseLanguage = (raw?: string): Language | null => {
+      const value = cleanStr(raw).toLowerCase();
+      if (!value) return null;
+      if (/ingles|english/.test(value)) return "English";
+      if (/spagn|spanish|español/.test(value)) return "Spanish";
+      if (/franc|french/.test(value)) return "French";
+      if (/tedesc|german|deutsch/.test(value)) return "German";
+      if (/ital|italian/.test(value)) return "Italian";
+      return null;
+    };
+
+    const parseBookLength = (raw?: string): "short" | "medium" | "long" | null => {
+      const value = cleanStr(raw).toLowerCase();
+      if (!value) return null;
+      if (/breve|short|snello/.test(value)) return "short";
+      if (/lungo|long|completo|kdp|amazon|profondo/.test(value)) return "long";
+      if (/medio|medium|standard/.test(value)) return "medium";
+      return null;
+    };
+
+    const parseChapterCount = (raw?: string): number | null => {
+      const value = cleanStr(raw).toLowerCase();
+      if (!value || /ottimizza|decidi|scegli tu/.test(value)) return null;
+      const match = value.match(/\b(\d{1,2})\b/);
+      if (!match) return null;
+      const parsed = Number(match[1]);
+      if (!Number.isFinite(parsed)) return null;
+      return Math.min(32, Math.max(6, parsed));
+    };
+
+    const parseSubchapterPreference = (raw?: string): { enabled: boolean; count: number } | null => {
+      const value = cleanStr(raw).toLowerCase();
+      if (!value) return null;
+      if (/\bno\b|senza|solo capitoli/.test(value)) return { enabled: false, count: 0 };
+      const explicit = value.match(/\b([1-5])\b/);
+      if (/s[iì]|sottocapitoli|leggeri|decidi|servono/.test(value)) {
+        return { enabled: true, count: explicit ? Number(explicit[1]) : 3 };
+      }
+      return null;
+    };
+
+    const applyForgeBookType = () => {
+      if (!normalizedForgeText) return;
+
+      if (/poesia|poet|versi|raccolta poetica/.test(normalizedForgeText)) {
+        setLevel1BookType("poetry" as any);
+        setBookTypeId("literary");
+        setGenre("literary" as Genre);
+        setCategory("Fiction");
+        setSubcategory("Poetry");
+        setSubgenre("raccolta poetica");
+        setSubchaptersEnabled(false);
+        setSubchaptersPerChapter(0);
+        setChapters((current) => Math.min(current || 8, 10));
+        return;
+      }
+
+      if (/manuale|guida pratica|tutorial|passo/.test(normalizedForgeText)) {
+        setLevel1BookType("manual" as any);
+        setBookTypeId("manual");
+        setGenre("nonfiction" as Genre);
+        setCategory("Nonfiction");
+        setSubcategory("Manual");
+        setSubgenre(cleanStr(ext.genre) || "manuale pratico");
+        setSubchaptersEnabled(true);
+        setSubchaptersPerChapter(3);
+        return;
+      }
+
+      if (/self[- ]?help|crescita|benessere|mindset|motivaz/.test(normalizedForgeText)) {
+        setLevel1BookType("self-help" as any);
+        setBookTypeId("self-help");
+        setGenre("self-help" as Genre);
+        setCategory("Nonfiction");
+        setSubcategory("Self-help");
+        setSubgenre(cleanStr(ext.genre) || "self-help pratico");
+        setSubchaptersEnabled(true);
+        setSubchaptersPerChapter(3);
+        return;
+      }
+
+      if (/business|startup|leadership|vendite|marketing|produttivit/.test(normalizedForgeText)) {
+        setLevel1BookType("business" as any);
+        setBookTypeId("business");
+        setGenre("nonfiction" as Genre);
+        setCategory("Nonfiction");
+        setSubcategory("Business");
+        setSubgenre(cleanStr(ext.genre) || "business pratico");
+        setSubchaptersEnabled(true);
+        setSubchaptersPerChapter(3);
+        return;
+      }
+
+      if (/studio|universit|educativ|didattic|esame|student/.test(normalizedForgeText)) {
+        setLevel1BookType("education" as any);
+        setBookTypeId("education");
+        setGenre("nonfiction" as Genre);
+        setCategory("Nonfiction");
+        setSubcategory("Education");
+        setSubgenre(cleanStr(ext.genre) || "libro educativo");
+        setSubchaptersEnabled(true);
+        setSubchaptersPerChapter(3);
+        return;
+      }
+
+      if (/thriller|horror|mistero|crime|gotic|psicologico|colpi di scena/.test(normalizedForgeText)) {
+        setLevel1BookType("romanzo");
+        setBookTypeId(/horror/.test(normalizedForgeText) ? "horror" : "thriller");
+        setGenre(/horror/.test(normalizedForgeText) ? ("horror" as Genre) : ("thriller" as Genre));
+        setCategory("Fiction");
+        setSubcategory(/horror/.test(normalizedForgeText) ? "Horror" : "Thriller");
+        setSubgenre(cleanStr(ext.genre) || cleanStr(ext.subgenre) || "thriller psicologico");
+        setSubchaptersEnabled(true);
+        setSubchaptersPerChapter(3);
+        return;
+      }
+
+      if (/dark romance|romance|amore|slow burn|passione|relazione/.test(normalizedForgeText)) {
+        setLevel1BookType("romanzo");
+        setBookTypeId("romance");
+        setGenre("romance" as Genre);
+        setCategory("Fiction");
+        setSubcategory("Romance");
+        setSubgenre(cleanStr(ext.genre) || cleanStr(ext.subgenre) || "dark romance");
+        setSubchaptersEnabled(true);
+        setSubchaptersPerChapter(3);
+        return;
+      }
+
+      if (/fantasy|magia|regno|epic|drago/.test(normalizedForgeText)) {
+        setLevel1BookType("romanzo");
+        setBookTypeId("fantasy");
+        setGenre("fantasy" as Genre);
+        setCategory("Fiction");
+        setSubcategory("Fantasy");
+        setSubgenre(cleanStr(ext.genre) || cleanStr(ext.subgenre) || "fantasy");
+        setSubchaptersEnabled(true);
+        setSubchaptersPerChapter(3);
+      }
+    };
+
+    const forgeLanguage = parseLanguage(ext.language);
+    if (forgeLanguage) {
+      setLanguage(forgeLanguage);
+      if (forgeLanguage === "Italian") setAmazonMarketplace("amazon.it");
+      if (forgeLanguage === "English") setAmazonMarketplace("amazon.com");
+      if (forgeLanguage === "Spanish") setAmazonMarketplace("amazon.es");
+      if (forgeLanguage === "French") setAmazonMarketplace("amazon.fr");
+      if (forgeLanguage === "German") setAmazonMarketplace("amazon.de");
+    }
+
+    const forgeAuthor = cleanStr(ext.authorName);
+    if (forgeAuthor && !/decidiamolo|decidere|dopo/i.test(forgeAuthor)) {
+      setAuthorName(forgeAuthor);
+    }
+
+    applyForgeBookType();
+
+    const forgeLength = parseBookLength(ext.bookLength);
+    if (forgeLength) {
+      setBookLength(isFree ? "short" : forgeLength);
+      setChapterLength(forgeLength);
+    }
+
+    const forgeChapters = parseChapterCount(ext.chapterCount);
+    if (forgeChapters) setChapters(forgeChapters);
+
+    const forgeSubchapters = parseSubchapterPreference(ext.subchaptersPreference);
+    if (forgeSubchapters) {
+      setSubchaptersEnabled(forgeSubchapters.enabled);
+      setSubchaptersPerChapter(forgeSubchapters.count);
+    }
+
+    if (cleanStr(ext.structurePreference)) {
+      setVoiceConsistency((prev) =>
+        `${prev}\n\nStruttura richiesta da Book Forge: ${cleanStr(ext.structurePreference)}`.trim(),
+      );
+    }
+
     setNarrativePromise(cleanStr(ext.promise) || cleanStr(ext.readerTransformation));
     setCoreConflict(cleanStr(ext.centralConflict));
     setSetting(cleanStr(ext.setting));
-    setVoiceConsistency(cleanStr(ext.emotionalTone));
+    setVoiceConsistency((prev) => cleanStr(ext.emotionalTone) || prev);
     setTargetReader(cleanStr(ext.targetReader));
-    setCommercialGoal(cleanStr(ext.promise));
+    setCommercialGoal(cleanStr(ext.commercialGoal) || cleanStr(ext.promise));
     setTone((prev) => cleanStr(ext.emotionalTone) || prev);
+    if (cleanStr(ext.openingHook)) setOpeningHook(cleanStr(ext.openingHook));
+
     const ideaBlob = [
+      ext.language && `Lingua richiesta: ${cleanStr(ext.language)}`,
+      ext.authorName && `Identità autore: ${cleanStr(ext.authorName)}`,
+      ext.bookType && `Tipo libro: ${cleanStr(ext.bookType)}`,
+      ext.genre && `Genere/nicchia: ${cleanStr(ext.genre)}`,
+      ext.bookLength && `Lunghezza: ${cleanStr(ext.bookLength)}`,
+      ext.chapterCount && `Capitoli: ${cleanStr(ext.chapterCount)}`,
+      ext.subchaptersPreference && `Sottocapitoli: ${cleanStr(ext.subchaptersPreference)}`,
+      ext.structurePreference && `Struttura: ${cleanStr(ext.structurePreference)}`,
       ext.readerTransformation,
       ext.centralConflict,
       ext.emotionalTone,
@@ -400,23 +602,27 @@ export function BookCreationOsWizard({
       ext.promise,
       ext.setting,
       ext.targetReader,
+      ext.commercialGoal,
     ]
       .map((v) => cleanStr(v))
       .filter(Boolean)
       .join("\n\n");
+
     if (ideaBlob) setIdea(ideaBlob);
     const seedTitle = cleanStr(ext.promise) || cleanStr(ext.readerTransformation);
     if (seedTitle) setTitle(seedTitle.slice(0, 96));
+
     applyInterviewGenreToWizard(interviewSeed.selectedGenre, {
       setBookTypeId,
       setGenre,
       setLevel1BookType,
     });
+
     setStep(initialStep);
     setDnaConfirmed(true);
     setUseGuidedInterview(false);
     setShowAdvancedForge(true);
-  }, [open, forgeEntry, interviewSeed, initialStep]);
+  }, [open, forgeEntry, interviewSeed, initialStep, isFree]);
 
   const [title, setTitle] = useState("");
   const [subtitle, setSubtitle] = useState("");
