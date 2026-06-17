@@ -26,6 +26,7 @@ const NotFound = lazyWithRetry(() => import("./pages/NotFound.tsx"));
 const AutoBestsellerRedirectPage = lazyWithRetry(() => import("./pages/AutoBestsellerRedirectPage.tsx"));
 const PricingPage = lazyWithRetry(() => import("./pages/PricingPage.tsx"));
 const KdpLaunchPage = lazyWithRetry(() => import("./pages/KdpLaunchPage.tsx"));
+const CoverStudioPage = lazyWithRetry(() => import("./pages/CoverStudioPage.tsx"));
 const DownloadsPage = lazyWithRetry(() => import("./pages/DownloadsPage.tsx"));
 const BestsellerRadarPage = lazyWithRetry(() => import("./pages/BestsellerRadarPage.tsx"));
 const KeywordGoldPage = lazyWithRetry(() => import("./pages/KeywordGoldPage.tsx"));
@@ -77,6 +78,7 @@ const App = () => (
                 <Route path="/auto-bestseller" element={<ProtectedRoute><FeatureErrorBoundary featureName="Book Forge"><AutoBestsellerRedirectPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/usage" element={<ProtectedRoute><FeatureErrorBoundary featureName="Usage"><UsagePage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/kdp-launch" element={<ProtectedRoute requiredFeature="kdp_market_base"><FeatureErrorBoundary featureName="KDP Launch"><MobileDesktopOnlyRoute featureName="KDP Launch"><KdpLaunchPage /></MobileDesktopOnlyRoute></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/cover" element={<ProtectedRoute requiredFeature="cover_studio_template"><FeatureErrorBoundary featureName="Cover Studio"><CoverStudioPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/downloads" element={<ProtectedRoute><FeatureErrorBoundary featureName="Downloads"><DownloadsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/bestseller-radar" element={<ProtectedRoute requiredFeature="trending_niches_limited"><MobileDesktopOnlyRoute featureName="Bestseller Radar"><BestsellerRadarPage /></MobileDesktopOnlyRoute></ProtectedRoute>} />
                 <Route path="/keyword-gold" element={<ProtectedRoute requiredFeature="kdp_market_base"><MobileDesktopOnlyRoute featureName="Keyword Gold"><KeywordGoldPage /></MobileDesktopOnlyRoute></ProtectedRoute>} />

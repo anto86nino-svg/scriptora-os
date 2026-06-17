@@ -3,9 +3,6 @@ import { lazy, Suspense, useState, useEffect } from "react";
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
-const CoverGenerator = lazy(() =>
-  import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })),
-);
 const HomeExportDialog = lazy(() =>
   import("@/components/HomeExportDialog").then((m) => ({ default: m.HomeExportDialog })),
 );
@@ -171,7 +168,6 @@ export default function Dashboard() {
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [showSettingsHub, setShowSettingsHub] = useState(false);
   const [showCharacterStudio, setShowCharacterStudio] = useState(false);
-  const [showCoverStudio, setShowCoverStudio] = useState(false);
   const [showManuscriptAnalyzer, setShowManuscriptAnalyzer] = useState(false);
   const [showNotepad, setShowNotepad] = useState(false);
   const [showAuthorIdentity, setShowAuthorIdentity] = useState(false);
@@ -264,7 +260,6 @@ export default function Dashboard() {
       showIdeaModal ? "idea" :
       showBookCreationWizard ? "newbook" :
       showAuthorIdentity ? "author" :
-      showCoverStudio ? "cover" :
       showCharacterStudio ? "character" :
       showManuscriptAnalyzer ? "manuscript" :
       showNotepad ? "notepad" :
@@ -285,7 +280,6 @@ export default function Dashboard() {
     showAuthorIdentity,
     showBetaDialog,
     showCharacterStudio,
-    showCoverStudio,
     showDevUnlock,
     showExport,
     showIdeaModal,
@@ -338,6 +332,12 @@ export default function Dashboard() {
     action();
   };
 
+  const openCoverStudioPage = () => {
+    const projectId = dashboardContextProject?.id || lastProject?.id || getLastProjectId();
+    if (projectId) setLastProjectId(projectId);
+    navigate("/cover", { state: projectId ? { projectId } : undefined });
+  };
+
   useEffect(() => {
     const state = location.state as {
       openWizard?: boolean;
@@ -355,7 +355,7 @@ export default function Dashboard() {
     }
     if (state.openForge || state.openWizard || state.openNewBook) openNewBookGuarded();
     if (state.openProjects) setShowProjects(true);
-    if (state.openCover) guardPlanFeature("book_engine_full", () => setShowCoverStudio(true))();
+    if (state.openCover) guardPlanFeature("cover_studio_template", openCoverStudioPage)();
     if (state.openExport) guardPlanFeature("export_epub", () => setShowExport(true))();
     navigate(location.pathname, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -752,7 +752,7 @@ typeof crypto.randomUUID === "function"
     { group: "bestseller", icon: TrendingUp, title: "Bestseller Radar", desc: t("radar_premium_desc"), iconBg: "ios-icon-green", action: () => navigate("/bestseller-radar"), feature: "trending_niches_limited" as const, tag: t("os_tag_signal") },
     { group: "bestseller", icon: BarChart3, title: "Keyword Gold", desc: t("keyword_premium_desc"), iconBg: "ios-icon-yellow", action: () => navigate("/keyword-gold"), feature: "kdp_market_base" as const, tag: t("os_tag_metadata") },
 
-    { group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: () => setShowCoverStudio(true), feature: "cover_studio_template" as const, tag: t("os_tag_cover") },
+    { group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: openCoverStudioPage, feature: "cover_studio_template" as const, tag: t("os_tag_cover") },
     { group: "publishing", icon: FileDown, title: t("export_studio_title"), desc: t("export_studio_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const, tag: t("os_tag_export") },
     { group: "publishing", icon: Library, title: t("library"), desc: t("library_premium_desc"), iconBg: "ios-icon-green", action: () => setShowLibrary(true), feature: "export_epub" as const, tag: t("os_tag_archive") },
 
@@ -975,7 +975,7 @@ typeof crypto.randomUUID === "function"
               onToggleMoreMenu={() => setShowMobileMoreMenu((open) => !open)}
               onCloseMoreMenu={() => setShowMobileMoreMenu(false)}
               onProfile={() => setShowProfileMenu(true)}
-              onCoverStudio={() => guardPlanFeature("book_engine_full", () => setShowCoverStudio(true))()}
+              onCoverStudio={() => guardPlanFeature("cover_studio_template", openCoverStudioPage)()}
               onExportStudio={() => guardPlanFeature("export_epub", () => setShowExport(true))()}
               onAuthorIdentity={() => openAuthorIdentity()}
               onSignOut={async () => {
@@ -1023,7 +1023,7 @@ typeof crypto.randomUUID === "function"
 
           <button
             type="button"
-            onClick={() => guardPlanFeature("book_engine_full", () => setShowCoverStudio(true))()}
+            onClick={() => guardPlanFeature("cover_studio_template", openCoverStudioPage)()}
             className="scriptora-action-tile group rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
           >
             <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
@@ -1111,7 +1111,7 @@ typeof crypto.randomUUID === "function"
           }
           onContinue={lastProject ? () => goApp({ projectId: lastProject.id }) : undefined}
           onMyBooks={() => setShowProjects(true)}
-          onCoverStudio={() => guardPlanFeature("book_engine_full", () => setShowCoverStudio(true))()}
+          onCoverStudio={() => guardPlanFeature("cover_studio_template", openCoverStudioPage)()}
           onExportStudio={() => guardPlanFeature("export_epub", () => setShowExport(true))()}
           onAuthorConfigure={() => openAuthorIdentity()}
           onAuthorGenerateAi={handleGenerateAuthorWithAi}

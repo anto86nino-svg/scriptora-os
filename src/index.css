@@ -7614,3 +7614,48 @@ html[data-theme="classic-premium"],
     border-color: rgba(242, 196, 0, 0.14);
   }
 }
+
+/* Cover Studio dedicated page mode */
+.scriptora-brand-shell .scriptora-cover-studio-overlay {
+  position: relative !important;
+  inset: auto !important;
+  z-index: 1 !important;
+  min-height: calc(100dvh - 12rem);
+  height: auto !important;
+  width: 100% !important;
+  background: transparent !important;
+}
+
+.scriptora-brand-shell .scriptora-cover-studio-panel {
+  position: relative !important;
+  inset: auto !important;
+  height: min(1100px, calc(100dvh - 10rem)) !important;
+  min-height: 760px;
+  width: 100% !important;
+  max-width: none !important;
+  border-radius: 2rem !important;
+  border: 1px solid rgba(242, 196, 0, 0.20) !important;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.07), rgba(242,196,0,0.03)),
+    rgba(5, 5, 5, 0.86) !important;
+  box-shadow: 0 28px 90px rgba(0,0,0,0.42) !important;
+}
+
+.scriptora-brand-shell .scriptora-cover-studio-header {
+  border-color: rgba(242, 196, 0, 0.18) !important;
+  background: rgba(5, 5, 5, 0.86) !important;
+}
+
+.scriptora-brand-shell .scriptora-cover-studio-preview {
+  background:
+    radial-gradient(circle at 50% 20%, rgba(242, 196, 0, 0.18), transparent 28rem),
+    linear-gradient(135deg, rgba(0,0,0,0.92), rgba(242,196,0,0.06)) !important;
+}
+
+@media (max-width: 767px) {
+  .scriptora-brand-shell .scriptora-cover-studio-panel {
+    min-height: calc(100dvh - 10rem);
+    height: auto !important;
+    border-radius: 1.5rem !important;
+  }
+}
