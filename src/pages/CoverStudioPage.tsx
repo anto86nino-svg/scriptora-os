@@ -4,16 +4,19 @@ import { ArrowLeft, ImagePlus } from "lucide-react";
 import { CoverGenerator } from "@/components/CoverGenerator";
 import { ScriptoraLogoMark } from "@/components/brand/ScriptoraLogoMark";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
-import { getLastProjectId, loadProjects, setLastProjectId } from "@/services/storageService";
+import { getLastProjectId, loadProjects, setLastProjectId } from "@/lib/storage";
 import type { BookProject } from "@/types/book";
 
 function loadBestProject(): BookProject | null {
   try {
-    const projects = loadProjects();
+    const loaded = loadProjects();
+    const projects = Array.isArray(loaded) ? loaded : [];
     const lastId = getLastProjectId();
     return (
       (lastId ? projects.find((project) => project.id === lastId) : null) ||
-      projects.find((project) => (project.chapters || []).some((chapter) => (chapter.content || "").trim().length > 50)) ||
+      projects.find((project) =>
+        (project.chapters || []).some((chapter) => (chapter.content || "").trim().length > 50),
+      ) ||
       projects[0] ||
       null
     );
@@ -37,8 +40,9 @@ export default function CoverStudioPage() {
   const subtitle = project?.config?.subtitle || "";
   const authorName = project?.config?.authorName || activeAuthor?.penName || "";
   const language = project?.config?.language || project?.config?.titleLanguage || "Italian";
+  const chapters = Array.isArray(project?.chapters) ? project.chapters : [];
 
-  if (!project) {
+  if (!project || chapters.length === 0) {
     return (
       <main className="scriptora-brand-shell flex min-h-[100dvh] flex-col items-center justify-center bg-[#050505] px-6 text-white safe-area-pt pb-safe">
         <ScriptoraLogoMark size="md" />
@@ -75,7 +79,7 @@ export default function CoverStudioPage() {
       authorName={authorName}
       description={project.blueprint?.overview || ""}
       authorBio={project.frontMatter?.aboutAuthor || activeAuthor?.biography || ""}
-      genre={project.config?.genre || project.config?.category}
+      genre={project.config?.genre || project.config?.category || ""}
       language={language}
       projectId={project.id}
       showPrimaryAction

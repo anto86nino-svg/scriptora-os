@@ -45,7 +45,6 @@ import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import type { ForgePreset } from "@/lib/scriptora-forge/forge-presets";
 import { DashboardHomePillars } from "@/components/one-flow/DashboardHomePillars";
 import { DashboardPackagingRow } from "@/components/one-flow/DashboardPackagingRow";
-import { DashboardAdvancedToolsPanel } from "@/components/one-flow/DashboardAdvancedToolsPanel";
 import { DashboardToolHost } from "@/components/one-flow/DashboardToolHost";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
 import type { ActiveDashboardTool } from "@/lib/one-flow/dashboard-active-tool";
@@ -176,6 +175,12 @@ export default function Dashboard() {
     if (import.meta.env.DEV && activeDashboardTool) {
       console.warn("[DASHBOARD_ACTIVE_TOOL]", activeDashboardTool);
     }
+  }, [activeDashboardTool]);
+
+  useEffect(() => {
+    if (!activeDashboardTool) return;
+    document.body.classList.add("scriptora-dashboard-tool-open");
+    return () => document.body.classList.remove("scriptora-dashboard-tool-open");
   }, [activeDashboardTool]);
 
   const [activeRun, setActiveRun] = useState<{ runId: string; title: string; startedAt: number } | null>(null);
@@ -607,7 +612,6 @@ typeof crypto.randomUUID === "function"
   const currentLangLabel = UI_LANGUAGES.find(l => l.value === currentLang)?.label || "English";
   const completedProjects = projects.filter(isProjectComplete);
   const draftProjects = projects.filter((p) => !isProjectComplete(p));
-  const planLabel = currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1);
   const lastProjectDoneChapters = lastProject?.chapters?.filter((chapter) => (chapter.content || "").trim().length > 50).length || 0;
   const lastProjectTargetChapters = lastProject?.config?.numberOfChapters || lastProject?.chapters?.length || 0;
   const lastProjectProgress = lastProject
@@ -621,6 +625,7 @@ typeof crypto.randomUUID === "function"
   const dashboardActionContext = useMemo<DashboardActionContext>(
     () => ({
       hasActiveBook: Boolean(lastProject),
+      hasCompletedBook: completedProjects.length > 0,
       closeAllTools: closeAllDashboardTools,
       openTool: (tool) => {
         if (tool === "export") {
@@ -650,7 +655,7 @@ typeof crypto.randomUUID === "function"
       onOpenCover: () => { closeAllDashboardTools(); guardPlanFeature("cover_studio_template", openCoverStudioPage)(); },
       onNavigate: (path: string) => { closeAllDashboardTools(); navigate(path); },
     }),
-    [lastProject, navigate, closeAllDashboardTools, openDashboardTool],
+    [lastProject, completedProjects.length, navigate, closeAllDashboardTools, openDashboardTool],
   );
 
   const ideaPreviewProps = useMemo(() => ({
@@ -979,7 +984,9 @@ typeof crypto.randomUUID === "function"
           </button>
         </div>
 
-        <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
+        {!activeDashboardTool && (
+          <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
+        )}
 
         {projects.length === 0 && !activeRun && (
           <section className="mb-6 rounded-2xl border border-sky-300/25 bg-gradient-to-br from-sky-400/10 via-transparent to-violet-400/10 p-6 shadow-[0_16px_40px_rgba(0,0,0,0.12)]">

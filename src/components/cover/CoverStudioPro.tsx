@@ -173,7 +173,7 @@ export function CoverStudioPro({
     [composition, pkg.score, genre, pkg.brief.genre, spineWidthIn, pageCount, italianUi],
   );
 
-  const selectedLayer = composition.layers.find((l) => l.id === selectedLayerId) ?? null;
+  const selectedLayer = (composition.layers || []).find((l) => l.id === selectedLayerId) ?? null;
   const backgrounds = useMemo(() => filterBackgrounds(bgCategory, genre), [bgCategory, genre]);
   const stickers = useMemo(() => filterStickers(stickerCategory), [stickerCategory]);
 
@@ -429,7 +429,7 @@ export function CoverStudioPro({
           </div>
 
           <LayerPicker
-            layers={composition.layers.filter((l) => l.type === "title" || l.type === "subtitle" || l.type === "author")}
+            layers={(composition.layers || []).filter((l) => l.type === "title" || l.type === "subtitle" || l.type === "author")}
             selectedId={selectedLayerId}
             onSelect={onSelectLayer}
             italianUi={italianUi}
@@ -571,7 +571,7 @@ export function CoverStudioPro({
           </div>
 
           <LayerPicker
-            layers={composition.layers.filter((l) => l.type === "sticker")}
+            layers={(composition.layers || []).filter((l) => l.type === "sticker")}
             selectedId={selectedLayerId}
             onSelect={onSelectLayer}
             italianUi={italianUi}

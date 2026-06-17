@@ -34,9 +34,9 @@ export class SafeDashboardToolBoundary extends Component<Props, State> {
       return (
         <div className="flex min-h-[40dvh] flex-col items-center justify-center rounded-2xl border border-destructive/25 bg-destructive/5 p-8 text-center">
           <AlertTriangle className="mb-3 h-8 w-8 text-destructive" />
-          <p className="text-sm font-semibold text-white">Impossibile aprire {this.props.toolLabel}</p>
+          <p className="text-sm font-semibold text-white">Questo strumento non è disponibile in questa versione</p>
           <p className="mt-2 max-w-sm text-xs text-white/55">
-            Si è verificato un errore. Torna alla Dashboard e riprova.
+            {this.props.toolLabel} ha riscontrato un errore. Puoi tornare alla Dashboard e riprovare.
           </p>
           <button
             type="button"

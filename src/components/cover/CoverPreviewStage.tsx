@@ -179,7 +179,7 @@ export function CoverPreviewStage({
     e.preventDefault();
     const pos = resolvePointer(e.clientX, e.clientY);
     if (!pos) return;
-    const layer = composition.layers.find((l) => l.id === drag.layerId);
+    const layer = (composition.layers || []).find((l) => l.id === drag.layerId);
     if (!layer) return;
 
     if (drag.mode === "move") {
@@ -194,7 +194,7 @@ export function CoverPreviewStage({
       onCompositionChange({
         ...composition,
         updatedAt: new Date().toISOString(),
-        layers: updateLayer(composition.layers, drag.layerId, { width: size, height: size }),
+        layers: updateLayer(composition.layers || [], drag.layerId, { width: size, height: size }),
       });
     }
   };

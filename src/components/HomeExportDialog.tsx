@@ -66,11 +66,15 @@ export function HomeExportDialog({ open, projects, initialProjectId, onClose }: 
 
   useEffect(() => {
     if (!open) return;
+    const safeProjects = Array.isArray(projects) ? projects : [];
     setCoverDataUrls((current) => ({ ...listProjectCoverUrls(), ...current }));
-    setSelectedId((current) => resolveInitialExportProjectId(projects, current, initialProjectId));
+    setSelectedId((current) => resolveInitialExportProjectId(safeProjects, current, initialProjectId));
   }, [initialProjectId, open, projects]);
 
   if (!open) return null;
+
+  const safeProjects = Array.isArray(projects) ? projects : [];
+  const selectedProject = safeProjects.find((p) => p.id === selectedId) || null;
 
   if (showCover && selectedProject) {
     return (
@@ -108,8 +112,7 @@ export function HomeExportDialog({ open, projects, initialProjectId, onClose }: 
     );
   }
 
-  const exportableProjects = projects.filter(isProjectComplete);
-  const selectedProject = projects.find(p => p.id === selectedId) || null;
+  const exportableProjects = safeProjects.filter(isProjectComplete);
 
   const filenameOf = (p: BookProject) =>
     (p.config.title || "book").replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_") || "book";

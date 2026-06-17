@@ -409,7 +409,7 @@ export function CoverGenerator({
 
   useEffect(() => {
     if (!highlightLayerType) return;
-    const layer = composition.layers.find((l) => l.type === highlightLayerType);
+    const layer = (composition.layers || []).find((l) => l.type === highlightLayerType);
     if (layer) setSelectedLayerId(layer.id);
   }, [highlightLayerType, composition.layers]);
 

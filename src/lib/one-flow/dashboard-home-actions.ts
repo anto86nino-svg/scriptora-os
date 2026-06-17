@@ -1,8 +1,9 @@
 import { toast } from "sonner";
 import type { FeatureKey } from "@/lib/subscription";
+import { isProjectComplete } from "@/lib/project-status";
 import type { ActiveDashboardTool } from "@/lib/one-flow/dashboard-active-tool";
 
-export type DashboardActionMode = "route" | "dialog" | "overlay" | "external";
+export type DashboardActionMode = "route" | "tool" | "callback";
 
 /** Centralized dashboard actions — only render when enabled + valid destination. */
 export type DashboardHomeAction = {
@@ -11,16 +12,19 @@ export type DashboardHomeAction = {
   description: string;
   enabled: boolean;
   requiresActiveBook?: boolean;
+  requiresCompletedBook?: boolean;
   feature?: FeatureKey;
   route?: string;
   toolId?: ActiveDashboardTool;
   group: "optimization" | "writer" | "system";
   mode: DashboardActionMode;
+  fallbackMessage?: string;
   onClick?: () => void;
 };
 
 export type DashboardActionContext = {
   hasActiveBook: boolean;
+  hasCompletedBook: boolean;
   closeAllTools: () => void;
   openTool: (tool: ActiveDashboardTool) => void;
   onNewBook: () => void;
@@ -48,30 +52,51 @@ export function isValidDashboardRoute(route?: string): boolean {
 
 function hasValidDestination(action: DashboardHomeAction): boolean {
   if (action.mode === "route") return isValidDashboardRoute(action.route);
-  if (action.mode === "dialog" || action.mode === "overlay") return Boolean(action.toolId);
+  if (action.mode === "tool") return Boolean(action.toolId);
   return typeof action.onClick === "function";
 }
 
-export function isDashboardActionRenderable(
+export function isDashboardActionAvailable(
   action: DashboardHomeAction,
   ctx: DashboardActionContext,
 ): boolean {
   if (!action.enabled) return false;
   if (!hasValidDestination(action)) return false;
   if (action.requiresActiveBook && !ctx.hasActiveBook) return false;
+  if (action.requiresCompletedBook && !ctx.hasCompletedBook) return false;
   return true;
 }
 
-export function executeDashboardAction(action: DashboardHomeAction, ctx: DashboardActionContext): void {
+export function isDashboardActionRenderable(
+  action: DashboardHomeAction,
+  ctx: DashboardActionContext,
+): boolean {
+  return isDashboardActionAvailable(action, ctx);
+}
+
+export function safeExecuteDashboardAction(action: DashboardHomeAction, ctx: DashboardActionContext): void {
   try {
     ctx.closeAllTools();
 
     if (!action?.enabled) return;
 
+    if (!hasValidDestination(action)) {
+      toast.error(action.fallbackMessage || "Strumento non disponibile.");
+      return;
+    }
+
     if (action.requiresActiveBook && !ctx.hasActiveBook) {
       toast.message("Crea o apri un libro prima", {
-        description: "Questo strumento lavora sul libro attivo.",
+        description: action.fallbackMessage || "Questo strumento lavora sul libro attivo.",
         action: { label: "I miei libri", onClick: () => ctx.openTool("projects") },
+      });
+      return;
+    }
+
+    if (action.requiresCompletedBook && !ctx.hasCompletedBook) {
+      toast.message("Libro non ancora completato", {
+        description: action.fallbackMessage || "Completa o apri un libro prima di usare questo strumento.",
+        action: { label: "Book Forge", onClick: ctx.onNewBook },
       });
       return;
     }
@@ -80,15 +105,18 @@ export function executeDashboardAction(action: DashboardHomeAction, ctx: Dashboa
       case "route":
         if (action.route && isValidDashboardRoute(action.route)) {
           ctx.onNavigate(action.route);
+        } else {
+          toast.error(action.fallbackMessage || "Destinazione non valida.");
         }
         break;
-      case "dialog":
-      case "overlay":
+      case "tool":
         if (action.toolId) {
           ctx.openTool(action.toolId);
+        } else {
+          toast.error(action.fallbackMessage || "Strumento non configurato.");
         }
         break;
-      case "external":
+      case "callback":
       default:
         action.onClick?.();
         break;
@@ -96,9 +124,12 @@ export function executeDashboardAction(action: DashboardHomeAction, ctx: Dashboa
   } catch (err) {
     console.error("[DASHBOARD_ACTION_ERROR]", action?.id, err);
     ctx.closeAllTools();
-    toast.error("Impossibile aprire lo strumento. Riprova.");
+    toast.error(action?.fallbackMessage || "Impossibile aprire lo strumento. Riprova.");
   }
 }
+
+/** @deprecated Use safeExecuteDashboardAction */
+export const executeDashboardAction = safeExecuteDashboardAction;
 
 export function buildDashboardAdvancedActions(ctx: DashboardActionContext): DashboardHomeAction[] {
   const actions: DashboardHomeAction[] = [
@@ -109,7 +140,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       enabled: true,
       feature: "title_intelligence_base",
       group: "optimization",
-      mode: "dialog",
+      mode: "tool",
       toolId: "title-intelligence",
     },
     {
@@ -159,7 +190,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       requiresActiveBook: true,
       feature: "chapter_improvement",
       group: "writer",
-      mode: "dialog",
+      mode: "tool",
       toolId: "manuscript-lab",
     },
     {
@@ -169,7 +200,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       enabled: true,
       feature: "book_engine_full",
       group: "writer",
-      mode: "dialog",
+      mode: "tool",
       toolId: "character-studio",
     },
     {
@@ -179,7 +210,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       enabled: true,
       feature: "book_engine_full",
       group: "system",
-      mode: "dialog",
+      mode: "tool",
       toolId: "author-identity",
     },
     {
@@ -188,7 +219,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       description: "Appunti e idee rapide",
       enabled: true,
       group: "system",
-      mode: "dialog",
+      mode: "tool",
       toolId: "notepad",
     },
     {
@@ -197,7 +228,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       description: "Esplora un'idea prima di Book Forge",
       enabled: true,
       group: "optimization",
-      mode: "dialog",
+      mode: "tool",
       toolId: "idea-preview",
     },
   ];
@@ -228,7 +259,7 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       requiresActiveBook: true,
       feature: "export_epub",
       group: "optimization",
-      mode: "dialog",
+      mode: "tool",
       toolId: "export",
     },
     {
@@ -250,7 +281,7 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       requiresActiveBook: true,
       feature: "title_intelligence_base",
       group: "optimization",
-      mode: "dialog",
+      mode: "tool",
       toolId: "title-intelligence",
     },
     {
@@ -276,4 +307,9 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       mode: "route",
     },
   ].filter((action) => isDashboardActionRenderable(action, ctx));
+}
+
+export function countExportableProjects(projects: unknown): number {
+  if (!Array.isArray(projects)) return 0;
+  return projects.filter(isProjectComplete).length;
 }

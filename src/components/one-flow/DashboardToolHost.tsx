@@ -13,6 +13,7 @@ import { DashboardAdvancedToolsPanel } from "@/components/one-flow/DashboardAdva
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 import type { ActiveDashboardTool } from "@/lib/one-flow/dashboard-active-tool";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
+import { countExportableProjects } from "@/lib/one-flow/dashboard-home-actions";
 import type { IdeaPreviewPanelProps } from "@/components/one-flow/DashboardIdeaPreviewPanel";
 
 const HomeExportDialog = lazy(() =>
@@ -101,9 +102,10 @@ export function DashboardToolHost({
 }: DashboardToolHostProps) {
   if (!activeTool || activeTool === "book-forge") return null;
 
+  const safeProjects = Array.isArray(projects) ? projects : [];
+  const safeDrafts = Array.isArray(draftProjects) ? draftProjects : [];
   const toolLabel = TOOL_LABELS[activeTool];
-  const exportableProjects = projects.filter(isProjectComplete);
-  const canExport = exportableProjects.length > 0;
+  const canExport = countExportableProjects(safeProjects) > 0;
 
   const boundary = (child: ReactNode) => (
     <SafeDashboardToolBoundary toolLabel={toolLabel} onClose={onClose}>
@@ -117,12 +119,12 @@ export function DashboardToolHost({
         <DedicatedToolScreen
           open
           title="I miei libri"
-          description={tt("my_projects_drafts", { count: draftProjects.length })}
+          description={tt("my_projects_drafts", { count: safeDrafts.length })}
           onClose={onClose}
           maxWidthClass="max-w-2xl"
         >
           {boundary(
-            draftProjects.length === 0 ? (
+            safeDrafts.length === 0 ? (
               <div className="space-y-4 py-6 text-center">
                 <p className="text-sm text-muted-foreground/70">{t("no_drafts_library_hint")}</p>
                 <button
@@ -136,7 +138,7 @@ export function DashboardToolHost({
               </div>
             ) : (
               <div className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.03]">
-                {draftProjects.map((p) => (
+                {safeDrafts.map((p) => (
                   <div
                     key={p.id}
                     className="group flex cursor-pointer items-center justify-between gap-3 px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
@@ -174,7 +176,7 @@ export function DashboardToolHost({
         >
           {boundary(
             <LibrarySection
-              projects={projects}
+              projects={safeProjects}
               onOpen={(id) => { onClose(); onGoApp({ projectId: id }); }}
               onDelete={onDeleteProject}
               onExport={() => onOpenTool("export")}
@@ -222,8 +224,8 @@ export function DashboardToolHost({
       return boundary(
         <HomeExportDialog
           open
-          projects={projects}
-          initialProjectId={flowProjectId || lastProject?.id}
+          projects={safeProjects}
+          initialProjectId={flowProjectId || lastProject?.id || undefined}
           onClose={onClose}
         />,
       );
@@ -257,19 +259,7 @@ export function DashboardToolHost({
       );
 
     case "notepad":
-      return (
-        <DedicatedToolScreen
-          open
-          title="Block Notes"
-          description="Appunti, idee e frammenti del libro attivo."
-          onClose={onClose}
-          maxWidthClass="max-w-5xl"
-        >
-          <div className="scriptora-notepad-tool-screen">
-            {boundary(<NotepadDialog open onClose={onClose} />)}
-          </div>
-        </DedicatedToolScreen>
-      );
+      return boundary(<NotepadDialog open onClose={onClose} />);
 
     case "author-identity":
       return boundary(

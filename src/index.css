@@ -7895,12 +7895,22 @@ html[data-theme="classic-premium"],
 
 /* Dedicated tool screens (Dashboard overlays, Cover, etc.) */
 .scriptora-dedicated-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
   isolation: isolate;
 }
 
 .scriptora-dedicated-screen-body {
+  min-height: 0;
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+}
+
+body.scriptora-dashboard-tool-open,
+body:has(.scriptora-dedicated-screen) {
+  overflow: hidden;
 }
 
 /* Chapter navigation anchors — offset for sticky writer header */

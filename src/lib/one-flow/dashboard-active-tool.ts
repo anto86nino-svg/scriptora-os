@@ -26,6 +26,7 @@ export function activeToolGuideRoute(tool: ActiveDashboardTool): string | null {
     notepad: "notepad",
     "title-intelligence": "title",
     "idea-preview": "idea",
+    "advanced-tools": "settings",
   };
   return map[tool];
 }
