@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo, useCallback, memo, type RefObject
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating, isGenerationFailureStatus } from "@/types/book";
 import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, AlertTriangle, Download, Zap, Headphones, Shield, Clock3, Scissors } from "lucide-react";
+import { BlueprintTheater } from "@/components/blueprint-theater/BlueprintTheater";
 import { BlueprintRecoveryCard } from "@/components/blueprint/BlueprintRecoveryCard";
 import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel";
 import { ChapterEditorialWorkbench } from "@/components/ChapterEditorialWorkbench";
@@ -66,6 +67,14 @@ interface EditorPanelProps {
   hideDesktopToolbar?: boolean;
   chapterToolRequest?: { mode: "analysis" | "patch"; nonce: number } | null;
   onSelectChapter?: (index: number) => void;
+  onCover?: () => void;
+  onKdp?: () => void;
+  onRadar?: () => void;
+  onKeywordGold?: () => void;
+  onTitleIntel?: () => void;
+  onExport?: () => void;
+  onMarket?: () => void;
+  coverDataUrl?: string | null;
 }
 
 export function EditorPanel({
@@ -87,6 +96,14 @@ export function EditorPanel({
   hideDesktopToolbar = false,
   chapterToolRequest = null,
   onSelectChapter,
+  onCover,
+  onKdp,
+  onRadar,
+  onKeywordGold,
+  onTitleIntel,
+  onExport,
+  onMarket,
+  coverDataUrl = null,
 }: EditorPanelProps) {
   const { blueprint, frontMatter, chapters, backMatter, config, phase } = project;
   const [mode, setMode] = useState<"edit" | "preview">("edit");
@@ -135,10 +152,20 @@ export function EditorPanel({
       <div className="scriptora-scroll-main scriptora-writer-scroll scrollbar-thin min-h-0 flex-1 overflow-y-auto overflow-x-clip">
         <div className={cn(
           "mx-auto min-h-0 w-full min-w-0 max-w-full px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+5rem)] sm:px-6 sm:py-6 md:pb-safe",
-          premiumWriter ? "max-w-[850px]" : mode === "preview" ? "max-w-2xl" : "max-w-4xl",
+          activeSection === "blueprint" && premiumWriter
+            ? "max-w-none px-3 sm:px-4"
+            : premiumWriter
+              ? "max-w-[850px]"
+              : mode === "preview"
+                ? "max-w-2xl"
+                : "max-w-4xl",
         )}>
           <div className={cn(
-            premiumWriter ? "scriptora-manuscript-premium rounded-2xl p-5 sm:p-10" : "ios-editor-paper p-4 sm:p-7",
+            activeSection === "blueprint" && premiumWriter
+              ? "p-0"
+              : premiumWriter
+                ? "scriptora-manuscript-premium rounded-2xl p-5 sm:p-10"
+                : "ios-editor-paper p-4 sm:p-7",
             mode === "preview" && !premiumWriter && "bg-white/[0.055]",
           )}>
           {mode === "preview" && hasContent && !premiumWriter ? (
@@ -171,6 +198,16 @@ export function EditorPanel({
                   onGenerateBlueprint={onGenerateBlueprint}
                   premiumWriter={premiumWriter}
                   onSelectChapter={onSelectChapter}
+                  onCover={onCover}
+                  onKdp={onKdp}
+                  onRadar={onRadar}
+                  onKeywordGold={onKeywordGold}
+                  onTitleIntel={onTitleIntel}
+                  onExport={onExport}
+                  onMarket={onMarket}
+                  coverDataUrl={coverDataUrl}
+                  isGeneratingSection={isGeneratingSection}
+                  chunkProgress={chunkProgress}
                 />
               )}
               {view.type === "front-matter" && (
@@ -336,6 +373,16 @@ function BlueprintView({
   onGenerateBlueprint,
   premiumWriter = false,
   onSelectChapter,
+  onCover,
+  onKdp,
+  onRadar,
+  onKeywordGold,
+  onTitleIntel,
+  onExport,
+  onMarket,
+  coverDataUrl = null,
+  isGeneratingSection,
+  chunkProgress,
 }: {
   project: BookProject;
   blueprint: BookProject["blueprint"];
@@ -350,6 +397,16 @@ function BlueprintView({
   onGenerateBlueprint?: () => void;
   premiumWriter?: boolean;
   onSelectChapter?: (index: number) => void;
+  onCover?: () => void;
+  onKdp?: () => void;
+  onRadar?: () => void;
+  onKeywordGold?: () => void;
+  onTitleIntel?: () => void;
+  onExport?: () => void;
+  onMarket?: () => void;
+  coverDataUrl?: string | null;
+  isGeneratingSection?: (key: string) => boolean;
+  chunkProgress?: Record<string, ChunkProgress>;
 }) {
   const hasBlueprintError = project.blueprintStatus === "error" && !blueprint;
   const readiness = useMemo(() => validateBookReadinessForBlueprint(project.config), [project.config]);
@@ -357,6 +414,61 @@ function BlueprintView({
     ...readiness.missingFields.map((field) => ({ field, type: "missing" as const })),
     ...readiness.weakFields.map((field) => ({ field, type: "weak" as const })),
   ];
+
+  if (premiumWriter && blueprint && isGeneratingSection) {
+    return (
+      <div className="blueprint-theater-writer-host -mx-2 space-y-4 sm:-mx-4">
+        {isGenerating && (
+          <BlueprintRecoveryCard isGenerating onRegenerate={() => {}} onCreateSafe={() => {}} />
+        )}
+        {hasBlueprintError && !isGenerating && onRegenerateBlueprint && onCreateSafeBlueprint && (
+          <BlueprintRecoveryCard
+            errorMessage={project.blueprintLastError}
+            validationErrors={project.blueprintValidationErrors}
+            onRegenerate={onRegenerateBlueprint}
+            onCreateSafe={onCreateSafeBlueprint}
+          />
+        )}
+        <BlueprintTheater
+          mode="writer"
+          title={project.config.title || t("untitled")}
+          subtitle={project.config.subtitle}
+          author={project.config.authorName || project.config.author}
+          genre={[project.config.genre, project.config.subcategory].filter(Boolean).join(" · ")}
+          coverUrl={coverDataUrl}
+          onCover={onCover}
+          onKdp={onKdp}
+          onRadar={onRadar}
+          onKeywordGold={onKeywordGold}
+          onTitleIntel={onTitleIntel}
+          onExport={onExport}
+          onMarket={onMarket}
+          project={project}
+          blueprint={blueprint}
+          isGenerating={isGeneratingSection}
+          chunkProgress={chunkProgress}
+          editable={Boolean(onUpdateOutlineTitle)}
+          onChapterTitleChange={onUpdateOutlineTitle}
+          onSelectChapter={onSelectChapter}
+          showApproveBanner={project.blueprintApproved === false && Boolean(onApproveBlueprint)}
+          onApproveBlueprint={onApproveBlueprint}
+          italianUi={(project.config.language || "").toLowerCase().includes("ital")}
+        />
+        {blueprint.overview && (
+          <details className="glass-premium rounded-2xl border border-white/10 p-4">
+            <summary className="cursor-pointer text-sm font-semibold text-white/80">Overview blueprint</summary>
+            <textarea
+              value={blueprint.overview}
+              onChange={(e) => onUpdateField?.("overview", e.target.value)}
+              readOnly={!onUpdateField}
+              rows={4}
+              className="mt-3 w-full resize-none rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white/75 focus:outline-none"
+            />
+          </details>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={cn("space-y-6", premiumWriter && "scriptora-blueprint-premium space-y-8")}>

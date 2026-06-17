@@ -80,7 +80,7 @@ export function OneFlowHome({
         onEdit={onAuthorEdit}
       />
 
-      <div className={`mb-3 grid gap-3 ${compact ? "lg:grid-cols-[minmax(0,1.55fr)_minmax(260px,0.85fr)]" : "lg:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.9fr)]"}`}>
+      <div className={`mb-3 grid gap-3 ${compact ? "hidden" : "lg:grid-cols-[minmax(0,1.55fr)_minmax(260px,0.85fr)]"}`}>
         <button
           type="button"
           onClick={onWriteBook}
@@ -183,7 +183,7 @@ export function OneFlowHome({
             {(onAutoBestsellerShortcut || onOpenBestseller) && (
               <ActionChip
                 icon={Rocket}
-                label="Auto Bestseller"
+                label="Anteprima idea"
                 onClick={onAutoBestsellerShortcut || onOpenBestseller!}
               />
             )}
@@ -204,7 +204,7 @@ export function OneFlowHome({
         {(onAutoBestsellerShortcut || onOpenBestseller) && (
           <ActionChip
             icon={Rocket}
-            label="Auto Bestseller"
+            label="Anteprima idea"
             onClick={onAutoBestsellerShortcut || onOpenBestseller!}
           />
         )}

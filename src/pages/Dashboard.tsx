@@ -68,6 +68,7 @@ import { PremiumOsGateway } from "@/components/premium/PremiumOsGateway";
 import { AuthorMomentumPanel } from "@/components/premium/AuthorMomentumPanel";
 import { OneFlowHome } from "@/components/one-flow/OneFlowHome";
 import type { ForgePreset } from "@/lib/scriptora-forge/forge-presets";
+import { ONE_FLOW_TOOL_ROLES } from "@/lib/one-flow/one-flow-tool-roles";
 import { OsHomeHero } from "@/components/os/OsHomeHero";
 import {
   MobileDashboardCreditPill,
@@ -739,18 +740,18 @@ typeof crypto.randomUUID === "function"
   ];
 
   const cards = [
-    { group: "writer", icon: BookOpen, title: t("writer_studio_title"), desc: t("writer_studio_desc"), iconBg: "ios-icon-violet", action: () => goApp(), tag: t("os_tag_write"), emphasis: true },
+    { group: "writer", icon: BookOpen, title: t("writer_studio_title"), desc: t("writer_studio_desc"), iconBg: "ios-icon-violet", action: () => goApp(), tag: t("os_tag_write") },
     { group: "writer", icon: Plus, title: freeBookUsed ? t("free_book_used") : t("story_architect_title"), desc: freeBookUsed ? t("upgrade_more_books") : t("story_architect_desc"), iconBg: freeBookUsed ? "ios-icon-slate" : "ios-icon-green", action: openNewBookGuarded, feature: "book_engine_full" as const, tag: t("os_tag_plan") },
     { group: "writer", icon: Wand2, title: t("manuscript_lab_title"), desc: t("manuscript_lab_desc"), iconBg: "ios-icon-teal", action: () => setShowManuscriptAnalyzer(true), feature: "chapter_improvement" as const, tag: t("os_tag_score") },
     { group: "writer", icon: Sparkles, title: t("rewrite_studio"), desc: t("rewrite_premium_desc"), iconBg: "ios-icon-pink", action: () => goApp(), feature: "chapter_rewrite" as const, tag: t("os_tag_rewrite") },
     { group: "writer", icon: Users, title: t("character_studio_title"), desc: t("character_studio_desc"), iconBg: "ios-icon-pink", action: () => setShowCharacterStudio(true), feature: "book_engine_full" as const, tag: t("os_tag_cast") },
     { group: "writer", icon: NotebookPen, title: t("block_notes"), desc: t("notepad_premium_desc"), iconBg: "ios-icon-yellow", action: () => setShowNotepad(true), tag: t("os_tag_notes") },
 
-    { group: "bestseller", icon: Flame, title: t("bestseller_engine_title"), desc: t("bestseller_engine_desc"), iconBg: "ios-icon-blue", action: () => setShowIdeaModal(true), emphasis: true, tag: t("os_tag_launch") },
-    { group: "bestseller", icon: Rocket, title: t("kdp_intelligence_title"), desc: t("kdp_intelligence_desc"), iconBg: "ios-icon-violet", action: () => navigate("/kdp-launch"), feature: "kdp_market_base" as const, tag: t("os_tag_market") },
-    { group: "bestseller", icon: Zap, title: t("title_intelligence"), desc: t("title_premium_desc"), iconBg: "ios-icon-teal", action: () => setShowTitleIntel(true), feature: "title_intelligence_base" as const, tag: t("os_tag_titles") },
-    { group: "bestseller", icon: TrendingUp, title: "Bestseller Radar", desc: t("radar_premium_desc"), iconBg: "ios-icon-green", action: () => navigate("/bestseller-radar"), feature: "trending_niches_limited" as const, tag: t("os_tag_signal") },
-    { group: "bestseller", icon: BarChart3, title: "Keyword Gold", desc: t("keyword_premium_desc"), iconBg: "ios-icon-yellow", action: () => navigate("/keyword-gold"), feature: "kdp_market_base" as const, tag: t("os_tag_metadata") },
+    { group: "bestseller", icon: Flame, title: "Anteprima idea", desc: ONE_FLOW_TOOL_ROLES.ideaPreview.it, iconBg: "ios-icon-blue", action: () => setShowIdeaModal(true), tag: t("os_tag_launch") },
+    { group: "bestseller", icon: Rocket, title: t("kdp_intelligence_title"), desc: ONE_FLOW_TOOL_ROLES.kdpLaunch.it, iconBg: "ios-icon-violet", action: () => navigate("/kdp-launch"), feature: "kdp_market_base" as const, tag: t("os_tag_market") },
+    { group: "bestseller", icon: Zap, title: t("title_intelligence"), desc: ONE_FLOW_TOOL_ROLES.titleIntelligence.it, iconBg: "ios-icon-teal", action: () => setShowTitleIntel(true), feature: "title_intelligence_base" as const, tag: t("os_tag_titles") },
+    { group: "bestseller", icon: TrendingUp, title: "Bestseller Radar", desc: ONE_FLOW_TOOL_ROLES.bestsellerRadar.it, iconBg: "ios-icon-green", action: () => navigate("/bestseller-radar"), feature: "trending_niches_limited" as const, tag: t("os_tag_signal") },
+    { group: "bestseller", icon: BarChart3, title: "Keyword Gold", desc: ONE_FLOW_TOOL_ROLES.keywordGold.it, iconBg: "ios-icon-yellow", action: () => navigate("/keyword-gold"), feature: "kdp_market_base" as const, tag: t("os_tag_metadata") },
 
     { group: "publishing", icon: ImagePlus, title: t("cover_studio"), desc: t("cover_studio_desc"), iconBg: "ios-icon-blue", action: openCoverStudioPage, feature: "cover_studio_template" as const, tag: t("os_tag_cover") },
     { group: "publishing", icon: FileDown, title: t("export_studio_title"), desc: t("export_studio_desc"), iconBg: "ios-icon-orange", action: () => setShowExport(true), feature: "export_epub" as const, tag: t("os_tag_export") },
@@ -763,7 +764,7 @@ typeof crypto.randomUUID === "function"
 
   const cardGroups = [
     { id: "writer", title: t("writer_os"), desc: t("writer_os_desc") },
-    { id: "bestseller", title: t("bestseller_os"), desc: t("bestseller_os_desc") },
+    { id: "bestseller", title: "Packaging & Mercato", desc: "Ottimizzazione titolo, keyword, cover e pubblicazione — non creazione libro." },
     { id: "publishing", title: t("publishing_os"), desc: t("publishing_os_desc") },
     { id: "system", title: t("system_os"), desc: t("system_os_desc") },
   ];
@@ -1008,7 +1009,7 @@ typeof crypto.randomUUID === "function"
           onMyBooks={() => setShowProjects(true)}
         />
 
-        <section className="scriptora-home-essential-grid mb-4 grid gap-2 sm:mb-6 sm:grid-cols-2 lg:grid-cols-6">
+        <section className="scriptora-home-essential-grid mb-4 grid gap-2 sm:mb-6 sm:grid-cols-2 lg:grid-cols-4">
           <button
             type="button"
             onClick={openNewBookGuarded}
@@ -1017,44 +1018,42 @@ typeof crypto.randomUUID === "function"
             <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
               <Plus className="h-4 w-4" />
             </span>
-            <p className="text-sm font-bold text-white">Book Forge</p>
-            <p className="mt-1 line-clamp-2 text-xs text-white/55">Crea un nuovo libro con intervista guidata.</p>
+            <p className="text-sm font-bold text-white">Nuovo Libro</p>
+            <p className="mt-1 line-clamp-2 text-xs text-white/55">{ONE_FLOW_TOOL_ROLES.forge.it}</p>
           </button>
 
           <button
             type="button"
-            onClick={() => guardPlanFeature("cover_studio_template", openCoverStudioPage)()}
+            onClick={() => (lastProject ? goApp({ projectId: lastProject.id }) : setShowProjects(true))}
             className="scriptora-action-tile group rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
           >
             <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
-              <ImagePlus className="h-4 w-4" />
+              <BookOpen className="h-4 w-4" />
             </span>
-            <p className="text-sm font-bold text-white">Cover Studio</p>
-            <p className="mt-1 line-clamp-2 text-xs text-white/55">Copertine e visual del libro.</p>
+            <p className="text-sm font-bold text-white">
+              {lastProject ? t("continue_action") : t("projects")}
+            </p>
+            <p className="mt-1 line-clamp-2 text-xs text-white/55">
+              {lastProject
+                ? lastProject.config.title || t("open_manuscript")
+                : "Apri i tuoi progetti e riprendi la scrittura."}
+            </p>
           </button>
 
           <button
             type="button"
-            onClick={() => guardPlanFeature("export_epub", () => setShowExport(true))()}
+            onClick={() => setShowProjects(true)}
             className="scriptora-action-tile group rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
           >
             <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
-              <FileDown className="h-4 w-4" />
+              <FolderOpen className="h-4 w-4" />
             </span>
-            <p className="text-sm font-bold text-white">Export</p>
-            <p className="mt-1 line-clamp-2 text-xs text-white/55">EPUB, DOCX, PDF e pacchetto finale.</p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => guardPlanFeature("kdp_market_base", () => navigate("/kdp-launch"))()}
-            className="scriptora-action-tile group rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
-          >
-            <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
-              <Rocket className="h-4 w-4" />
-            </span>
-            <p className="text-sm font-bold text-white">KDP / Market</p>
-            <p className="mt-1 line-clamp-2 text-xs text-white/55">Titoli, packaging e mercato Amazon.</p>
+            <p className="text-sm font-bold text-white">I miei libri</p>
+            <p className="mt-1 line-clamp-2 text-xs text-white/55">
+              {projects.length > 0
+                ? `${projects.length} ${projects.length === 1 ? "progetto" : "progetti"} in libreria`
+                : "Nessun libro ancora — inizia da Forge."}
+            </p>
           </button>
 
           <button
@@ -1066,28 +1065,66 @@ typeof crypto.randomUUID === "function"
               <NotebookPen className="h-4 w-4" />
             </span>
             <p className="text-sm font-bold text-white">Study OS</p>
-            <p className="mt-1 line-clamp-2 text-xs text-white/55">Riassunti, quiz, flashcard e orale.</p>
+            <p className="mt-1 line-clamp-2 text-xs text-white/55">Ecosistema studio separato — riassunti, quiz, flashcard.</p>
           </button>
+        </section>
 
+        {lastProject && (
+          <section className="mb-4 grid gap-2 sm:mb-6 sm:grid-cols-3">
+            <p className="col-span-full text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+              Packaging Center · {lastProject.config.title || t("untitled")}
+            </p>
+            <button
+              type="button"
+              onClick={() => guardPlanFeature("cover_studio_template", openCoverStudioPage)()}
+              className="scriptora-action-tile group rounded-xl p-3 text-left opacity-90 transition-all hover:-translate-y-0.5"
+            >
+              <span className="ios-icon scriptora-theme-icon mb-2 h-8 w-8">
+                <ImagePlus className="h-3.5 w-3.5" />
+              </span>
+              <p className="text-xs font-bold text-white">Cover Studio</p>
+              <p className="mt-0.5 line-clamp-2 text-[11px] text-white/50">Copertina del libro attivo.</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => guardPlanFeature("export_epub", () => setShowExport(true))()}
+              className="scriptora-action-tile group rounded-xl p-3 text-left opacity-90 transition-all hover:-translate-y-0.5"
+            >
+              <span className="ios-icon scriptora-theme-icon mb-2 h-8 w-8">
+                <FileDown className="h-3.5 w-3.5" />
+              </span>
+              <p className="text-xs font-bold text-white">Export</p>
+              <p className="mt-0.5 line-clamp-2 text-[11px] text-white/50">EPUB, DOCX, PDF.</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => guardPlanFeature("kdp_market_base", () => navigate("/kdp-launch"))()}
+              className="scriptora-action-tile group rounded-xl p-3 text-left opacity-90 transition-all hover:-translate-y-0.5"
+            >
+              <span className="ios-icon scriptora-theme-icon mb-2 h-8 w-8">
+                <Rocket className="h-3.5 w-3.5" />
+              </span>
+              <p className="text-xs font-bold text-white">KDP / Pubblicazione</p>
+              <p className="mt-0.5 line-clamp-2 text-[11px] text-white/50">{ONE_FLOW_TOOL_ROLES.kdpLaunch.it}</p>
+            </button>
+          </section>
+        )}
+
+        <div className="mb-4 flex justify-end sm:mb-6">
           <button
             type="button"
             onClick={() => {
               setAdvancedLaunchpadEnabled(!showAdvancedLaunchpad);
               setShowAdvancedLaunchpad(!showAdvancedLaunchpad);
             }}
-            className="scriptora-action-tile group rounded-2xl p-4 text-left transition-all hover:-translate-y-0.5"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white/70 transition-colors hover:bg-white/[0.10]"
           >
-            <span className="ios-icon scriptora-theme-icon mb-3 h-9 w-9">
-              <Settings className="h-4 w-4" />
-            </span>
-            <p className="text-sm font-bold text-white">
-              {showAdvancedLaunchpad ? "Nascondi strumenti" : "Strumenti avanzati"}
-            </p>
-            <p className="mt-1 line-clamp-2 text-xs text-white/55">
-              {showAdvancedLaunchpad ? "Torna alla Home essenziale." : "Mostra il launchpad completo."}
-            </p>
+            <Settings className="h-3.5 w-3.5" />
+            {showAdvancedLaunchpad ? "Nascondi strumenti avanzati" : "Strumenti avanzati"}
           </button>
-        </section>
+        </div>
 
         {/* ScriptoraForgePanel hidden: Book Forge is now the primary creation flow */}
 
@@ -1198,12 +1235,11 @@ typeof crypto.randomUUID === "function"
                 )}
                 <button
                   onClick={() => setShowIdeaModal(true)}
-                  className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-amber-200/70 bg-amber-50 px-3 text-xs font-bold text-slate-950 shadow-[0_16px_42px_rgba(251,191,36,0.28)] ring-1 ring-white/50 transition-all hover:-translate-y-0.5 hover:bg-white hover:shadow-[0_18px_48px_rgba(251,191,36,0.36)] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-12 sm:px-5 sm:text-sm"
+                  className="group inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-3 text-xs font-semibold text-white/82 shadow-[0_12px_32px_rgba(0,0,0,0.18)] transition-all hover:-translate-y-0.5 hover:border-amber-200/35 hover:bg-amber-300/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 sm:h-12 sm:px-4 sm:text-sm"
                 >
-                  <Flame className="h-4 w-4" />
-                  <span className="hidden sm:inline">{t("generate_bestseller_title")}</span>
-                  <span className="sm:hidden">Bestseller</span>
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                  <Flame className="h-4 w-4 text-amber-200" />
+                  <span className="hidden sm:inline">{ONE_FLOW_TOOL_ROLES.ideaPreview.it}</span>
+                  <span className="sm:hidden">Anteprima</span>
                 </button>
                 <button
                   type="button"
@@ -1641,7 +1677,13 @@ typeof crypto.randomUUID === "function"
           onClose={() => setShowExport(false)}
         />
       )}
-      {showTitleIntel && <TitleIntelligenceDialog open onClose={() => setShowTitleIntel(false)} />}
+      {showTitleIntel && (
+        <TitleIntelligenceDialog
+          open
+          onClose={() => setShowTitleIntel(false)}
+          onLaunchForge={openNewBookGuarded}
+        />
+      )}
       {showAdvancedSettings && <AdvancedAppearanceDialog open onClose={() => setShowAdvancedSettings(false)} />}
       {showSettingsHub && (
           <ScriptoraSettingsHub
@@ -1712,8 +1754,8 @@ typeof crypto.randomUUID === "function"
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-foreground">{t("generate_bestseller_title")}</h2>
-                  <p className="text-[11px] text-muted-foreground">{t("generate_bestseller_desc")}</p>
+                  <h2 className="text-sm font-bold text-foreground">Anteprima idea</h2>
+                  <p className="text-[11px] text-muted-foreground">{ONE_FLOW_TOOL_ROLES.ideaPreview.it}</p>
                 </div>
               </div>
               <button

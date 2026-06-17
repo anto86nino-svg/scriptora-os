@@ -60,6 +60,9 @@ const CoverGenerator = lazyWithRetry(() =>
 const PublishPanel = lazyWithRetry(() =>
   import("@/components/PublishPanel").then((m) => ({ default: m.PublishPanel })),
 );
+const TitleIntelligenceDialog = lazyWithRetry(() =>
+  import("@/components/TitleIntelligenceDialog").then((m) => ({ default: m.TitleIntelligenceDialog })),
+);
 const SettingsPanel = lazyWithRetry(() =>
   import("@/components/SettingsPanel").then((m) => ({ default: m.SettingsPanel })),
 );
@@ -166,6 +169,7 @@ const Index = () => {
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [showCover, setShowCover] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
+  const [showTitleIntel, setShowTitleIntel] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCoach, setShowCoach] = useState(false);
   const [showVoiceStudio, setShowVoiceStudio] = useState(false);
@@ -916,7 +920,7 @@ const Index = () => {
           </div>
         )}
 
-        {engine.project && (
+        {engine.project && activeSection !== "blueprint" && (
           <StoryProgressOs
             project={engine.project}
             activeSection={activeSection}
@@ -925,7 +929,7 @@ const Index = () => {
           />
         )}
 
-        {!isChapterView && (
+        {!isChapterView && activeSection !== "blueprint" && (
         <GuidedProjectFlow
           project={engine.project}
           activeSection={activeSection}
@@ -995,6 +999,14 @@ const Index = () => {
                   hideDesktopToolbar={isChapterView}
                   chapterToolRequest={chapterToolRequest}
                   onSelectChapter={(idx) => setActiveSection(`chapter-${idx}` as SectionId)}
+                  onCover={() => setShowCover(true)}
+                  onKdp={() => navigate("/kdp-launch")}
+                  onRadar={() => navigate("/bestseller-radar")}
+                  onKeywordGold={() => navigate("/keyword-gold")}
+                  onTitleIntel={() => setShowTitleIntel(true)}
+                  onExport={guardedExportEpub}
+                  onMarket={() => navigate("/mobile-market")}
+                  coverDataUrl={coverDataUrl ?? null}
                 />
                 </Suspense>
               </div>
@@ -1184,15 +1196,9 @@ const Index = () => {
         <PublishPanel
           project={engine.project}
           onClose={() => setShowPublish(false)}
-          onStartFresh={(config) => {
-            if (freeBookUsed) {
-              setUpgradeReason("books-limit");
-              toast.error(t("toast_free_book_used"));
-              return;
-            }
-            engine.startNewBook(config);
-            setActiveSection("blueprint");
-            setTimeout(refreshProjects, 500);
+          onStartFresh={() => {
+            setShowPublish(false);
+            navigate("/dashboard", { state: { openForge: true } });
           }}
           onGenerateFullBook={() => engine.generateFullBook((s) => setActiveSection(s as SectionId))}
           isBookGenerating={engine.isAnythingGenerating}
@@ -1206,6 +1212,23 @@ const Index = () => {
           onExportPdf={guardedExportPdf}
           onExportDocx={guardedExportDocx}
         />
+        </Suspense>
+      )}
+
+      {showTitleIntel && engine.project && (
+        <Suspense fallback={<PanelFallback />}>
+          <TitleIntelligenceDialog
+            open
+            onClose={() => setShowTitleIntel(false)}
+            initialTitle={engine.project.config.title}
+            initialGenre={engine.project.config.genre}
+            onSelect={(title, subtitle) => {
+              engine.updateConfig("title", title);
+              if (subtitle) engine.updateConfig("subtitle", subtitle);
+              setShowTitleIntel(false);
+              toast.success("Titolo aggiornato");
+            }}
+          />
         </Suspense>
       )}
 
