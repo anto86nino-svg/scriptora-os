@@ -22,6 +22,14 @@ function hasSignal(value?: unknown, minWords = 7): boolean {
   return wordCount(value) >= minWords;
 }
 
+function hasDepthSignal(value?: unknown): boolean {
+  const text = clean(value).toLowerCase();
+
+  if (wordCount(text) < 12) return false;
+
+  return /(perché|perche|ma |mentre|tuttavia|segreto|ferita|conflitto|desiderio|paura|trasformazione|ossessione|promessa|conseguenza)/.test(text);
+}
+
 function bag(state: GuidedInterviewState): string {
   const ex = state.extracted || {};
   return [
@@ -196,20 +204,20 @@ export function evaluateConceptReadiness(state: GuidedInterviewState): ConceptRe
   if (hasGenreSignal) strengths.push("genre");
   else missing.push("genre");
 
-  if (hasSignal(ex.centralConflict, isFictionLike(state) ? 10 : 8)) strengths.push("core");
+  if (hasDepthSignal(ex.centralConflict)) strengths.push("core");
   else missing.push("core");
 
-  if (hasSignal(ex.targetReader, 7)) strengths.push("reader");
+  if (hasDepthSignal(ex.targetReader)) strengths.push("reader");
   else missing.push("reader");
 
-  if (hasSignal(ex.promise, 8) || hasSignal(ex.readerTransformation, 8)) strengths.push("promise");
+  if (hasDepthSignal(ex.promise) || hasDepthSignal(ex.readerTransformation)) strengths.push("promise");
   else missing.push("promise");
 
-  if (hasSignal(ex.emotionalTone, 6)) strengths.push("tone");
+  if (hasDepthSignal(ex.emotionalTone)) strengths.push("tone");
   else missing.push("tone");
 
   if (isFictionLike(state)) {
-    if (hasSignal(ex.setting, 6)) strengths.push("world");
+    if (hasDepthSignal(ex.setting)) strengths.push("world");
     else missing.push("world");
   }
 

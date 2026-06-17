@@ -157,7 +157,7 @@ export function getHumanHostExtraQuestions(state: GuidedInterviewState): Intervi
 
   // Book Forge may take longer when the concept is weak.
   // Still keep each pass human: maximum three deep follow-ups at a time.
-  return result.slice(0, readiness.ready ? 0 : 3);
+  return result.slice(0, readiness.ready ? 0 : 5);
 }
 
 function hostLeadForKey(key?: string): string {

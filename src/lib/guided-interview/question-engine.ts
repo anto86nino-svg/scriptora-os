@@ -47,8 +47,20 @@ function clean(value: unknown): string {
   return sanitizeDnaText(value);
 }
 
+
 function hasStrongSignal(value: unknown): boolean {
-  return clean(value).length >= STRONG_ANSWER_MIN;
+  const text = clean(value).toLowerCase();
+
+  if (text.length < STRONG_ANSWER_MIN) return false;
+
+  const words = text.split(/\s+/).filter(Boolean);
+
+  if (words.length < 5) return false;
+
+  const depthSignals =
+    /(perché|perche|ma |mentre|tuttavia|conflitto|ferita|desiderio|paura|trasformazione|promessa|ossessione|segreto|conseguenza|cambiare|perdere|rischio)/.test(text);
+
+  return depthSignals || words.length >= 12;
 }
 
 const TONE_SUGGESTIONS: InterviewQuickSuggestion[] = [
