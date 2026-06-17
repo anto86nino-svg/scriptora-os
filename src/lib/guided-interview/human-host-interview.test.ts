@@ -23,7 +23,7 @@ describe("human host interview", () => {
 
     const questions = getHumanHostExtraQuestions(s);
     expect(questions.length).toBeGreaterThan(0);
-    expect(questions.length).toBeLessThanOrEqual(2);
+    expect(questions.length).toBeLessThanOrEqual(3);
     expect(questions.map((q) => q.key)).toContain("centralConflict");
     expect(questions[0].question).toMatch(/centro del libro|ferita|desiderio/i);
   });
@@ -38,6 +38,7 @@ describe("human host interview", () => {
         targetReader: "Lettrici dark romance adulte che amano potere, segreti, ossessione e payoff emotivo.",
         promise: "Una storia che resta addosso per desiderio, paura e redenzione.",
         genreDNA: "Dark romance adulto, non saggio, non romance dolce.",
+        structurePreference: "Romanzo slow burn in 18 capitoli con doppio POV, midpoint di tradimento e payoff emotivo finale.",
       } as any,
     });
 

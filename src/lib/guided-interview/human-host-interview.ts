@@ -1,4 +1,5 @@
 import type { GuidedInterviewState, InterviewQuestion } from "./types";
+import { evaluateConceptReadiness } from "./concept-readiness-gate";
 
 type HostExtraReason =
   | "missing-core"
@@ -147,8 +148,16 @@ export function getHumanHostExtraQuestions(state: GuidedInterviewState): Intervi
     );
   }
 
-  // Do not overwhelm the user: maximum two host follow-ups per pass.
-  return result.slice(0, 2);
+  const readiness = evaluateConceptReadiness(state);
+  for (const q of readiness.nextQuestions) {
+    if (!result.some((existing) => existing.key === q.key || existing.id === q.id)) {
+      result.push(q);
+    }
+  }
+
+  // Book Forge may take longer when the concept is weak.
+  // Still keep each pass human: maximum three deep follow-ups at a time.
+  return result.slice(0, readiness.ready ? 0 : 3);
 }
 
 function hostLeadForKey(key?: string): string {
