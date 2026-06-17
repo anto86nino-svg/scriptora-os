@@ -7,6 +7,7 @@ import { MobileInterviewProgress } from "./MobileInterviewProgress";
 import { useGuidedInterviewController } from "./useGuidedInterviewController";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import { getEditorialBlockedPrompt } from "@/lib/guided-interview/interview-ui-copy";
+import { getContinueCtaLabel } from "@/lib/guided-interview/contextual-interview";
 import { getInterviewProgressLabel } from "@/lib/guided-interview/interview-stages";
 import { countForgeUserAnswers } from "@/lib/guided-interview/opening-experience";
 import { MobileForgeScrollShell } from "@/mobile/MobileForgeScrollShell";
