@@ -6,6 +6,7 @@ import type {
   InterviewQuickSuggestion,
 } from "./types";
 import { FORGE_PRO_CONFIG_QUESTIONS, mapForgeAnswerToProConfigKey } from "./forge-pro-config";
+import { getHumanHostExtraQuestions, shapeHumanHostQuestion } from "./human-host-interview";
 import { buildDnaLockFromInterviewState, type BookDnaLock } from "./dna-lock";
 import { sanitizeDnaText } from "./dna-cleaner";
 import {
@@ -514,7 +515,7 @@ function buildFullQueue(state: GuidedInterviewState): InterviewQuestion[] {
   const push = (q: InterviewQuestion) => {
     if (seenIds.has(q.id)) return;
     seenIds.add(q.id);
-    queue.push(q);
+    queue.push(shapeHumanHostQuestion(q, state));
   };
 
   const chatFirst = state.chatFirst && !state.selectedGenre;
@@ -534,6 +535,7 @@ function buildFullQueue(state: GuidedInterviewState): InterviewQuestion[] {
   }
 
   for (const q of FORGE_PRO_CONFIG_QUESTIONS) push(q);
+  for (const q of getHumanHostExtraQuestions(state)) push(q);
   for (const q of CRITICAL_FIELD_QUESTIONS) push(q);
   for (const field of CRITICAL_FIELD_KEYS) {
     for (const q of FOLLOW_UP_BY_FIELD[field] ?? []) push(q);
