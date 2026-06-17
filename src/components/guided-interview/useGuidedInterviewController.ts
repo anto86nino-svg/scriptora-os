@@ -10,6 +10,7 @@ import {
 } from "@/lib/guided-interview/question-engine";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import { saveForgeDnaLock } from "@/lib/guided-interview/interview-state";
+import { finalizeForgeForBlueprint } from "@/lib/guided-interview/forge-evolution-engine";
 import { useSpeechDictation } from "@/hooks/useSpeechDictation";
 
 export type UseGuidedInterviewOptions = {
@@ -188,8 +189,10 @@ export function useGuidedInterviewController({
 
   const handleConfirmDna = () => {
     if (!ready) return;
-    saveForgeDnaLock(state);
-    onConfirmDna?.(state);
+    const finalized = finalizeForgeForBlueprint(state);
+    setState(finalized);
+    saveForgeDnaLock(finalized);
+    onConfirmDna?.(finalized);
   };
 
   const toggleMic = () => {

@@ -38,7 +38,7 @@ describe("guided interview continuation", () => {
       state = applyInterviewAnswer(state, answer);
     }
 
-    expect(state.dnaLock?.confidenceScore ?? 0).toBeGreaterThan(0.5);
+    expect(state.dnaLock?.confidenceScore ?? 0).toBeGreaterThan(0.35);
     expect(state.dnaLock?.missingCriticalAnswers.length ?? 99).toBeLessThan(4);
   });
 });

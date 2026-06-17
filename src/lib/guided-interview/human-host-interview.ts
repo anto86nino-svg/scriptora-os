@@ -1,5 +1,6 @@
 import type { GuidedInterviewState, InterviewQuestion } from "./types";
 import { evaluateConceptReadiness } from "./concept-readiness-gate";
+import { getEditorialDepthQuestions } from "./book-understanding-engine";
 
 type HostExtraReason =
   | "missing-core"
@@ -106,6 +107,13 @@ function hostQuestion(
 export function getHumanHostExtraQuestions(state: GuidedInterviewState): InterviewQuestion[] {
   const ex = state.extracted || {};
   const result: InterviewQuestion[] = [];
+  const readiness = evaluateConceptReadiness(state);
+
+  if (!readiness.ready) {
+    for (const q of getEditorialDepthQuestions(state)) {
+      if (!result.some((existing) => existing.id === q.id)) result.push(q);
+    }
+  }
 
   if (weak(ex.centralConflict, 8) || editorialWeak(ex.centralConflict)) {
     result.push(
@@ -173,7 +181,6 @@ export function getHumanHostExtraQuestions(state: GuidedInterviewState): Intervi
     );
   }
 
-  const readiness = evaluateConceptReadiness(state);
   for (const q of readiness.nextQuestions) {
     if (!result.some((existing) => existing.key === q.key || existing.id === q.id)) {
       result.push(q);

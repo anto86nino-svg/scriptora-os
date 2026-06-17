@@ -4,6 +4,7 @@ import {
   buildInitialDnaLock,
   getDnaLockReadinessMessage,
 } from "./dna-lock";
+import { evolutionReadySelfHelpState } from "./evolution-test-fixture";
 
 describe("guided interview DNA lock", () => {
   it("starts as not ready for blueprint", () => {
@@ -16,42 +17,13 @@ describe("guided interview DNA lock", () => {
     expect(lock.antiDriftRules).toEqual([]);
   });
 
-  it("derives book identity and anti-drift rules from interview answers", () => {
-    const userMessages = Array.from({ length: 10 }, (_, i) => ({
-      id: `u-${i}`,
-      role: "user" as const,
-      content: `Risposta utente ${i + 1} con abbastanza dettaglio per contare nell'intervista.`,
-      createdAt: i,
-    }));
-
-    const lock = buildDnaLockFromInterviewState({
-      completed: false,
-      currentStep: 10,
-      confidence: 0.96,
-      messages: userMessages,
-      selectedGenre: "self-help",
-      extracted: {
-        readerTransformation:
-          "Aiutare adulti stressati a ritrovare disciplina, calma e direzione quotidiana.",
-        centralConflict:
-          "Il lettore si sente bloccato tra troppe responsabilità e nessuna energia mentale.",
-        emotionalTone:
-          "Caldo, diretto, incoraggiante, pratico, senza diventare motivazionale vuoto.",
-        genreDNA:
-          "Self-help pratico con esercizi brevi, esempi concreti e tono umano.",
-        promise:
-          "Un metodo semplice per riprendere controllo delle giornate senza perfezionismo.",
-        setting:
-          "Vita quotidiana moderna, lavoro, famiglia, stanchezza, caos digitale.",
-        targetReader:
-          "Professionisti e creativi under pressure che procrastinano per perfezionismo.",
-      },
-    } as any);
+  it("derives book identity and anti-drift rules from a fully evolved interview", () => {
+    const lock = buildDnaLockFromInterviewState(evolutionReadySelfHelpState());
 
     expect(lock.readyForBlueprint).toBe(true);
     expect(lock.confidenceScore).toBeGreaterThanOrEqual(0.95);
     expect(lock.missingCriticalAnswers).toEqual([]);
-    expect(lock.whatBookIs.join(" ")).toContain("disciplina");
+    expect(lock.whatBookIs.join(" ")).toContain("controllo");
     expect(lock.antiDriftRules.join(" ")).toContain("Preserva sempre");
   });
 

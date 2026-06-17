@@ -169,6 +169,7 @@ function InterviewBody({
         <ForgeInterviewConfirmation
           dnaLock={ctrl.progress.dnaLock}
           extracted={ctrl.state.extracted}
+          state={ctrl.state}
           onConfirm={ctrl.handleConfirmDna}
           onCorrect={ctrl.handleContinueInterview}
         />

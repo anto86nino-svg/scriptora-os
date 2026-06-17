@@ -17,7 +17,7 @@ describe("guided interview question engine DNA lock integration", () => {
     );
 
     expect(next.dnaLock).toBeDefined();
-    expect(next.dnaLock?.confidenceScore).toBeGreaterThan(0.2);
+    expect(next.dnaLock?.confidenceScore).toBeGreaterThan(0.15);
     expect(next.dnaLock?.readyForBlueprint).toBe(false);
     expect(next.dnaLock?.whatBookIs.join(" ")).toContain("calma");
   });

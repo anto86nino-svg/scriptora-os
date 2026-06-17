@@ -5,8 +5,8 @@ import type {
   InterviewGenre,
   InterviewQuickSuggestion,
 } from "./types";
-import { FORGE_PRO_CONFIG_QUESTIONS, mapForgeAnswerToProConfigKey } from "./forge-pro-config";
-import { getHumanHostExtraQuestions, shapeHumanHostQuestion } from "./human-host-interview";
+import { mapForgeAnswerToProConfigKey } from "./forge-pro-config";
+import { shapeHumanHostQuestion } from "./human-host-interview";
 import { buildDnaLockFromInterviewState, type BookDnaLock } from "./dna-lock";
 import { sanitizeDnaText } from "./dna-cleaner";
 import {
@@ -15,6 +15,14 @@ import {
   mergeInferenceIntoExtracted,
 } from "./dna-inference";
 import { enrichInterviewQuestion } from "./contextual-interview";
+import { calculateEditorialConfidenceV2, evaluateEditorialUnderstanding, scoreEditorialTextQuality } from "./book-understanding-engine";
+import { updateConvergenceTracking } from "./genre-convergence-engine";
+import {
+  evaluateForgeEvolution,
+  enrichStateAfterAnswer,
+  getForgePhaseQuestions,
+  resolveCurrentPhase,
+} from "./forge-evolution-engine";
 import {
   getContinueFollowUpQuestion,
   resolveActiveInterviewQuestion,
@@ -29,9 +37,7 @@ const GENERIC_PLACEHOLDER =
   "Parla liberamente: idea, note, voce, caos… Scriptora organizzerà il resto.";
 
 export const OPENING_ASSISTANT_MESSAGE =
-  "Raccontami il libro che hai dentro.";
-
-const STRONG_ANSWER_MIN = 12;
+  "Se entrassimo in uno studio radiofonico e avessi un solo minuto per convincermi che questo libro merita di esistere, cosa mi racconteresti?";
 
 export const CRITICAL_FIELD_KEYS = [
   "readerTransformation",
@@ -49,18 +55,9 @@ function clean(value: unknown): string {
 
 
 function hasStrongSignal(value: unknown): boolean {
-  const text = clean(value).toLowerCase();
-
-  if (text.length < STRONG_ANSWER_MIN) return false;
-
-  const words = text.split(/\s+/).filter(Boolean);
-
-  if (words.length < 5) return false;
-
-  const depthSignals =
-    /(perché|perche|ma |mentre|tuttavia|conflitto|ferita|desiderio|paura|trasformazione|promessa|ossessione|segreto|conseguenza|cambiare|perdere|rischio)/.test(text);
-
-  return depthSignals || words.length >= 12;
+  const text = clean(value);
+  if (text.length < 4) return false;
+  return scoreEditorialTextQuality(text) >= 0.52;
 }
 
 const TONE_SUGGESTIONS: InterviewQuickSuggestion[] = [
@@ -514,12 +511,15 @@ function getQuestionsForGenre(genre?: string): InterviewQuestion[] {
 }
 
 function getWeakFields(state: GuidedInterviewState): string[] {
-  return CRITICAL_FIELD_KEYS.filter(
+  const weak = CRITICAL_FIELD_KEYS.filter(
     (field) => !hasStrongSignal((state.extracted as Record<string, unknown>)?.[field]),
   );
+  const recent = state.forgeConvergence?.lastQuestionKeys ?? [];
+  const rotated = weak.filter((field) => recent.filter((k) => k === field).length < 2);
+  return rotated.length ? rotated : weak;
 }
 
-/** Full static queue — chat-first skips genre presets until inferred. */
+/** Phase-aware queue — understanding first, then config, characters, decisions, title, copyright. */
 function buildFullQueue(state: GuidedInterviewState): InterviewQuestion[] {
   const queue: InterviewQuestion[] = [];
   const seenIds = new Set<string>();
@@ -530,43 +530,57 @@ function buildFullQueue(state: GuidedInterviewState): InterviewQuestion[] {
     queue.push(shapeHumanHostQuestion(q, state));
   };
 
+  const phase = resolveCurrentPhase(state);
   const chatFirst = state.chatFirst && !state.selectedGenre;
-  if (!chatFirst) {
-    for (const q of getQuestionsForGenre(state.selectedGenre)) push(q);
-  } else {
-    push({
-      id: "chat-first-opening",
-      key: "readerTransformation",
-      question: OPENING_ASSISTANT_MESSAGE,
-      placeholder: GENERIC_PLACEHOLDER,
-    });
+
+  if (phase === "understanding") {
+    if (!chatFirst) {
+      for (const q of getQuestionsForGenre(state.selectedGenre)) push(q);
+    } else {
+      push({
+        id: "chat-first-opening",
+        key: "readerTransformation",
+        question: OPENING_ASSISTANT_MESSAGE,
+        placeholder: GENERIC_PLACEHOLDER,
+      });
+    }
+
+    if (state.selectedGenre && state.chatFirst) {
+      for (const q of getQuestionsForGenre(state.selectedGenre)) push(q);
+    }
+
+    for (const q of CRITICAL_FIELD_QUESTIONS) push(q);
+    for (const field of CRITICAL_FIELD_KEYS) {
+      for (const q of FOLLOW_UP_BY_FIELD[field] ?? []) push(q);
+    }
+    for (const q of INTERVIEW_DEPTH_QUESTIONS) push(q);
+    for (const q of getForgePhaseQuestions(state, "understanding")) push(q);
+    return queue;
   }
 
-  if (state.selectedGenre && state.chatFirst) {
-    for (const q of getQuestionsForGenre(state.selectedGenre)) push(q);
-  }
-
-  for (const q of FORGE_PRO_CONFIG_QUESTIONS) push(q);
-  for (const q of getHumanHostExtraQuestions(state)) push(q);
-  for (const q of CRITICAL_FIELD_QUESTIONS) push(q);
-  for (const field of CRITICAL_FIELD_KEYS) {
-    for (const q of FOLLOW_UP_BY_FIELD[field] ?? []) push(q);
-  }
-
-  for (const q of INTERVIEW_DEPTH_QUESTIONS) push(q);
-
+  for (const q of getForgePhaseQuestions(state, phase)) push(q);
   return queue;
 }
 
 function findNextUnansweredQuestion(
   state: GuidedInterviewState,
 ): InterviewQuestion | null {
+  const recent = state.forgeConvergence?.lastQuestionKeys ?? [];
+  const phaseQuestions = getForgePhaseQuestions(state).filter((q) => {
+    if (hasStrongSignal((state.extracted as Record<string, unknown>)?.[q.key])) return false;
+    if (recent.filter((k) => k === q.key).length >= 2) return false;
+    return true;
+  });
+  if (phaseQuestions.length > 0) {
+    return phaseQuestions[0];
+  }
+
   const queue = buildFullQueue(state);
   for (let i = state.currentStep; i < queue.length; i += 1) {
     const q = queue[i];
-    if (!hasStrongSignal((state.extracted as Record<string, unknown>)?.[q.key])) {
-      return q;
-    }
+    if (hasStrongSignal((state.extracted as Record<string, unknown>)?.[q.key])) continue;
+    if (recent.filter((k) => k === q.key).length >= 2) continue;
+    return q;
   }
   return null;
 }
@@ -581,18 +595,10 @@ export function buildQuestionQueue(state: GuidedInterviewState): InterviewQuesti
 export function getNextInterviewQuestion(
   state: GuidedInterviewState,
 ): NextQuestionResult {
+  const evolution = evaluateForgeEvolution(state);
   const dnaLock = buildDnaLockFromInterviewState(state);
-  const question = findNextUnansweredQuestion(state);
 
-  if (question) {
-    return {
-      done: false,
-      question: enrichInterviewQuestion(state, question) as InterviewQuestion,
-      state: { ...state, dnaLock },
-    };
-  }
-
-  if (dnaLock.readyForBlueprint) {
+  if (evolution.readyForBlueprint) {
     return {
       done: true,
       state: {
@@ -600,7 +606,18 @@ export function getNextInterviewQuestion(
         completed: true,
         confidence: dnaLock.confidenceScore,
         dnaLock,
+        forgePhase: "review",
       },
+    };
+  }
+
+  const question = findNextUnansweredQuestion(state);
+
+  if (question) {
+    return {
+      done: false,
+      question: enrichInterviewQuestion(state, question) as InterviewQuestion,
+      state: { ...state, dnaLock },
     };
   }
 
@@ -636,31 +653,8 @@ export function getNextInterviewQuestion(
   };
 }
 
-function calculateInterviewConfidence(
-  extracted: Record<string, unknown>,
-): number {
-  let score = 0.12;
-  let strongCount = 0;
-
-  for (const field of CRITICAL_FIELD_KEYS) {
-    const v = clean(extracted[field]);
-    if (v.length >= STRONG_ANSWER_MIN) {
-      strongCount += 1;
-      score += 0.1;
-    } else if (v.length >= 4) {
-      score += 0.03;
-    }
-  }
-
-  const longAnswers = Object.values(extracted).filter(
-    (v) => typeof v === "string" && clean(v).length > 140,
-  ).length;
-  score += longAnswers * 0.025;
-
-  if (strongCount >= CRITICAL_FIELD_KEYS.length) score += 0.1;
-  if (strongCount >= CRITICAL_FIELD_KEYS.length - 1) score += 0.06;
-
-  return Math.min(0.97, score);
+function calculateInterviewConfidence(state: GuidedInterviewState): number {
+  return calculateEditorialConfidenceV2(state);
 }
 
 function collectUserBlob(state: GuidedInterviewState, latest?: string): string {
@@ -714,7 +708,6 @@ export function applyInterviewAnswer(
     ...state,
     currentStep: state.currentStep + 1,
     completed: false,
-    confidence: calculateInterviewConfidence(extracted as Record<string, unknown>),
     extracted,
     selectedGenre,
     selectedBookType,
@@ -734,9 +727,21 @@ export function applyInterviewAnswer(
     ],
   };
 
+  nextState.confidence = calculateInterviewConfidence(nextState);
+
+  const enriched = enrichStateAfterAnswer(nextState, currentQuestion, normalized);
+  enriched.forgePhase = resolveCurrentPhase(enriched);
+
+  const editorial = evaluateEditorialUnderstanding(enriched);
+  enriched.forgeConvergence = updateConvergenceTracking(
+    enriched.forgeConvergence,
+    currentQuestion.key,
+    editorial.blindSpots,
+  );
+
   return {
-    ...nextState,
-    dnaLock: buildDnaLockFromInterviewState(nextState),
+    ...enriched,
+    dnaLock: buildDnaLockFromInterviewState(enriched),
   };
 }
 

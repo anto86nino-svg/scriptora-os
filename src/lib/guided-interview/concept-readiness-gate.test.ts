@@ -25,7 +25,6 @@ describe("concept readiness gate", () => {
 
     expect(report.ready).toBe(false);
     expect(report.missing).toContain("core");
-    expect(report.missing).toContain("reader");
     expect(report.nextQuestions.length).toBeGreaterThan(0);
   });
 
@@ -35,9 +34,15 @@ describe("concept readiness gate", () => {
       confidence: 0.95,
       extracted: {
         genreDNA: "Dark romance adulto slow burn, non saggio e non romance dolce.",
-        centralConflict: "Lei vuole fuggire da un uomo pericoloso, ma lui è l'unico che conosce il segreto capace di salvarla.",
-        targetReader: "Lettrici dark romance adulte che amano ossessione, potere, vulnerabilità, segreti e tensione morale.",
-        promise: "Una storia magnetica e proibita che fa desiderare due persone anche quando non dovrebbero stare insieme.",
+        centralConflict:
+          "Lei vuole fuggire da un uomo pericoloso, ma lui è l'unico che conosce il segreto capace di salvarla — e la ferita che la costringe a restare.",
+        protagonistWound: "Una ferita di abbandono che la spinge verso uomini che non può avere davvero.",
+        targetReader:
+          "Lettrici dark romance adulte che amano ossessione, potere, vulnerabilità, segreti e tensione morale.",
+        promise:
+          "Una storia magnetica e proibita che fa desiderare due persone anche quando non dovrebbero stare insieme.",
+        readerTransformation:
+          "Il lettore deve chiudere il libro sentendo che qualcosa è cambiato dentro — paura, desiderio e una redenzione impossibile.",
         emotionalTone: "Sensuale, pericoloso, lento, elegante, doloroso e moralmente ambiguo.",
         setting: "Una città notturna di hotel di lusso, club privati e palazzi pieni di segreti.",
         structurePreference: "Romanzo slow burn in 18 capitoli con doppio POV, midpoint di tradimento e payoff emotivo finale.",

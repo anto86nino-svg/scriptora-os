@@ -60,6 +60,19 @@ import {
   TITLE_FORGE_PHASES,
   WIZARD_TITLE_FREE_REGENS,
 } from "@/lib/book-creation-os/title-generator";
+import type { ForgeInterviewSeed } from "@/lib/guided-interview/forge-blueprint-handoff";
+import {
+  buildForgeGuidedBriefExtras,
+  buildForgeInterviewSeed,
+  mapForgeCharactersToBookCharacters,
+  resolveForgeCommercialHook,
+  resolveForgeCommercialPromise,
+  resolveForgeSubtitle,
+  resolveForgeTitle,
+  validateForgeHandoffForBlueprint,
+} from "@/lib/guided-interview/forge-blueprint-handoff";
+import { saveForgeDnaLock, loadForgeDnaLock } from "@/lib/guided-interview/interview-state";
+import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 
 interface BookCreationOsWizardProps {
   open: boolean;
@@ -81,10 +94,7 @@ interface BookCreationOsWizardProps {
   /** Skip interview — open directly at blueprint after mobile Book Forge DNA */
   forgeEntry?: "full" | "post-dna";
   initialStep?: number;
-  interviewSeed?: {
-    extracted?: Record<string, string | undefined>;
-    selectedGenre?: string;
-  };
+  interviewSeed?: ForgeInterviewSeed;
   /** Render inside Mobile Book Forge shell — single page scroll, no modal overlay. */
   embeddedInMobileForge?: boolean;
   mobileForgeHeader?: ReactNode;
@@ -609,8 +619,16 @@ export function BookCreationOsWizard({
       .join("\n\n");
 
     if (ideaBlob) setIdea(ideaBlob);
-    const seedTitle = cleanStr(ext.promise) || cleanStr(ext.readerTransformation);
-    if (seedTitle) setTitle(seedTitle.slice(0, 96));
+
+    const handoff = interviewSeed as ForgeInterviewSeed;
+    const forgeTitle = resolveForgeTitle(handoff);
+    const forgeSubtitle = resolveForgeSubtitle(handoff);
+    if (forgeTitle) {
+      setTitle(forgeTitle);
+    }
+    if (forgeSubtitle) {
+      setSubtitle(forgeSubtitle);
+    }
 
     applyInterviewGenreToWizard(interviewSeed.selectedGenre, {
       setBookTypeId,
@@ -643,6 +661,7 @@ export function BookCreationOsWizard({
   const [subchaptersPerChapter, setSubchaptersPerChapter] = useState(DEFAULT_SUBCHAPTERS_PER_CHAPTER);
   const [matterOptions, setMatterOptions] = useState(DEFAULT_MATTER_OPTIONS);
   const [characters, setCharacters] = useState<BookCharacter[]>([emptyCharacter()]);
+  const [forgeHandoff, setForgeHandoff] = useState<ForgeInterviewSeed | null>(null);
   const [styleProfile, setStyleProfile] = useState<WritingStyleProfile>(DEFAULT_STYLE_PROFILE);
   const [tone, setTone] = useState("editoriale, chiaro, coinvolgente");
   const [targetReader, setTargetReader] = useState("");
@@ -654,6 +673,61 @@ export function BookCreationOsWizard({
   const [mainTwists, setMainTwists] = useState("");
   const [commercialGoal, setCommercialGoal] = useState("");
   const [voiceConsistency, setVoiceConsistency] = useState("Mantieni stessa voce, stesso punto di vista, stessi comportamenti e stessa promessa emotiva in ogni capitolo.");
+
+  const applyForgeHandoffSeed = useCallback((seed: ForgeInterviewSeed) => {
+    setForgeHandoff(seed);
+
+    const forgeTitle = resolveForgeTitle(seed);
+    const forgeSubtitle = resolveForgeSubtitle(seed);
+    const forgeHook = resolveForgeCommercialHook(seed);
+    const forgePromise = resolveForgeCommercialPromise(seed);
+
+    if (forgeTitle) setTitle(forgeTitle);
+    if (forgeSubtitle) setSubtitle(forgeSubtitle);
+    if (forgeHook) setOpeningHook(forgeHook);
+    if (forgePromise) {
+      setNarrativePromise(forgePromise);
+      setCommercialGoal(forgePromise);
+    }
+
+    const mapped = mapForgeCharactersToBookCharacters(seed.characters);
+    if (mapped.length) setCharacters(mapped);
+
+    const { canonBrief, characterBibleText } = buildForgeGuidedBriefExtras(seed);
+    if (canonBrief || characterBibleText) {
+      setIdea((prev) => {
+        const extras = [characterBibleText, canonBrief].filter(Boolean).join("\n\n");
+        if (!extras) return prev;
+        if (prev.includes("BLUEPRINT CANON BRIEF")) return prev;
+        return prev.trim() ? `${prev.trim()}\n\n${extras}` : extras;
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!open || !interviewSeed) return;
+    const seed = interviewSeed as ForgeInterviewSeed;
+    if (!seed.canon && !seed.characters?.length && !seed.titleIntelligence) return;
+    applyForgeHandoffSeed(seed);
+  }, [open, interviewSeed, applyForgeHandoffSeed]);
+
+  useEffect(() => {
+    if (!open || forgeHandoff) return;
+    const saved = loadForgeDnaLock();
+    if (!saved?.canon && !saved?.characters?.length && !saved?.titleIntelligence) return;
+    if (dnaConfirmed || forgeEntry === "post-dna") {
+      applyForgeHandoffSeed(buildForgeInterviewSeed(saved as GuidedInterviewState));
+    }
+  }, [open, forgeHandoff, dnaConfirmed, forgeEntry, applyForgeHandoffSeed]);
+
+  const handleForgeDnaConfirm = useCallback((state: GuidedInterviewState) => {
+    const seed = buildForgeInterviewSeed(state);
+    applyForgeHandoffSeed(seed);
+    saveForgeDnaLock(state);
+    setDnaConfirmed(true);
+    setShowAdvancedForge(true);
+  }, [applyForgeHandoffSeed]);
+
   const [blueprintPreview, setBlueprintPreview] = useState<BookBlueprint | null>(null);
   const [generatingBlueprint, setGeneratingBlueprint] = useState(false);
   const [blueprintError, setBlueprintError] = useState<string | null>(null);
@@ -789,7 +863,19 @@ export function BookCreationOsWizard({
       voice: identityDraft.voice || "",
       language,
     });
+    const handoffExtras = forgeHandoff ? buildForgeGuidedBriefExtras(forgeHandoff) : null;
+    const forgedCharacters = forgeHandoff
+      ? mapForgeCharactersToBookCharacters(forgeHandoff.characters)
+      : [];
+    const resolvedCharacters =
+      forgedCharacters.length > 0
+        ? forgedCharacters
+        : characters.filter((c) => String(c.name || "").trim());
+
     const guidedBrief = [
+      handoffExtras?.characterBibleText &&
+        `FORGE CHARACTER & CANON LOCK:\n${handoffExtras.characterBibleText}`,
+      handoffExtras?.canonBrief,
       idea.trim() && `Idea del libro:\n${idea.trim()}`,
       coreConflict.trim() && `Conflitto principale:\n${coreConflict.trim()}`,
       narrativePromise.trim() && `Promessa narrativa/editoriale:\n${narrativePromise.trim()}`,
@@ -800,9 +886,14 @@ export function BookCreationOsWizard({
       voiceConsistency.trim() && `Voice consistency:\n${voiceConsistency.trim()}`,
     ].filter(Boolean).join("\n\n");
 
+    const resolvedTitle =
+      (forgeHandoff && resolveForgeTitle(forgeHandoff)) || title.trim() || "Romanzo senza titolo";
+    const resolvedSubtitle =
+      (forgeHandoff && resolveForgeSubtitle(forgeHandoff)) || subtitle.trim();
+
     const raw = normalizeBookConfig(applyAuthorIdentityToConfig({
-      title: title.trim() || "Romanzo senza titolo",
-      subtitle: subtitle.trim(),
+      title: resolvedTitle,
+      subtitle: resolvedSubtitle,
       idea: guidedBrief || idea.trim(),
       language,
       titleLanguage: language,
@@ -825,7 +916,8 @@ export function BookCreationOsWizard({
       subchaptersPerChapter: subchaptersEnabled ? subchaptersPerChapter : 0,
       matterOptions,
       styleProfile,
-      characters: characters.filter((c) => String(c.name || "").trim()),
+      characters: resolvedCharacters,
+      characterBibleText: handoffExtras?.characterBibleText || undefined,
       configStatus: "validated",
     }, mergedIdentity) as BookConfig);
     const { config: sanitized } = sanitizeBookConfiguration(raw);
@@ -835,6 +927,7 @@ export function BookCreationOsWizard({
     bookTypeId, genre, category, subcategory, subgenre, tone, targetReader, referenceAuthors, chapterLength,
     bookLength, isFree, chapters, subchaptersEnabled, subchaptersPerChapter, matterOptions, characters,
     coreConflict, narrativePromise, setting, openingHook, mainTwists, commercialGoal, voiceConsistency,
+    forgeHandoff,
   ]);
 
   useEffect(() => {
@@ -1440,6 +1533,16 @@ export function BookCreationOsWizard({
         return;
       }
 
+      if (forgeHandoff) {
+        const forgeCheck = validateForgeHandoffForBlueprint(forgeHandoff);
+        if (!forgeCheck.ready) {
+          toast.error(
+            `Forge incompleto per il blueprint. Manca: ${forgeCheck.missing.join(", ")}. Torna all'intervista e conferma di nuovo.`,
+          );
+          return;
+        }
+      }
+
       const preflight = runBlueprintPreflight(buildConfig(), identityDraft);
       setPreflightResult(preflight);
       if (!preflight.ready) {
@@ -1647,10 +1750,7 @@ export function BookCreationOsWizard({
                   setTargetReader,
                   setShowAdvancedForge,
                 })}
-                onConfirmDna={() => {
-                  setDnaConfirmed(true);
-                  setShowAdvancedForge(true);
-                }}
+                onConfirmDna={handleForgeDnaConfirm}
                 onContinueInterview={() => {
                   setDnaConfirmed(false);
                   setShowAdvancedForge(false);
@@ -1810,10 +1910,7 @@ export function BookCreationOsWizard({
                         setTargetReader,
                         setShowAdvancedForge,
                       })}
-                      onConfirmDna={() => {
-                        setDnaConfirmed(true);
-                        setShowAdvancedForge(true);
-                      }}
+                      onConfirmDna={handleForgeDnaConfirm}
                       onContinueInterview={() => {
                         setDnaConfirmed(false);
                         setShowAdvancedForge(false);

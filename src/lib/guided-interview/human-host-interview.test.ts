@@ -23,20 +23,22 @@ describe("human host interview", () => {
 
     const questions = getHumanHostExtraQuestions(s);
     expect(questions.length).toBeGreaterThan(0);
-    expect(questions.length).toBeLessThanOrEqual(3);
+    expect(questions.length).toBeLessThanOrEqual(5);
     expect(questions.map((q) => q.key)).toContain("centralConflict");
-    expect(questions[0].question).toMatch(/centro del libro|ferita|desiderio/i);
+    expect(questions[0].question).toMatch(/centro del libro|ferita|desiderio|perdere|immobile/i);
   });
 
   it("does not ask endless extra questions when core DNA is already strong", () => {
     const s = state({
       selectedGenre: "dark-romance",
       extracted: {
-        centralConflict: "Lei vuole liberarsi da un uomo pericoloso, ma lui è l'unico che conosce il segreto che può salvarla.",
+        centralConflict: "Lei vuole liberarsi da un uomo pericoloso, ma lui è l'unico che conosce il segreto che può salvarla — e la ferita che la costringe a restare.",
+        protagonistWound: "Una ferita di abbandono che la spinge verso uomini che non può avere davvero.",
         setting: "Una città notturna, elegante e violenta, piena di hotel, club privati e palazzi antichi.",
         emotionalTone: "Slow burn tossico, magnetico, doloroso e pieno di tensione morale.",
         targetReader: "Lettrici dark romance adulte che amano potere, segreti, ossessione e payoff emotivo.",
-        promise: "Una storia che resta addosso per desiderio, paura e redenzione.",
+        promise: "Una storia che resta addosso per desiderio, paura e redenzione impossibile.",
+        readerTransformation: "Il lettore deve chiudere il libro sentendo che qualcosa è cambiato dentro — paura, desiderio e redenzione.",
         genreDNA: "Dark romance adulto, non saggio, non romance dolce.",
         structurePreference: "Romanzo slow burn in 18 capitoli con doppio POV, midpoint di tradimento e payoff emotivo finale.",
       } as any,

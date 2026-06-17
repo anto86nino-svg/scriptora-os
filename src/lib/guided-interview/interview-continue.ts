@@ -1,5 +1,7 @@
 import type { GuidedInterviewState, InterviewQuestion, NextQuestionResult } from "./types";
-import { buildDnaLockFromInterviewState, MIN_INTERVIEW_ANSWERS_FOR_BLUEPRINT } from "./dna-lock";
+import { buildDnaLockFromInterviewState } from "./dna-lock";
+import { scoreEditorialTextQuality } from "./book-understanding-engine";
+import { evaluateForgeEvolution } from "./forge-evolution-engine";
 import { getEditorialBlockedPrompt } from "./interview-ui-copy";
 import {
   enrichInterviewQuestion,
@@ -36,9 +38,6 @@ export function getContinueFollowUpQuestion(
   const dnaLock = buildDnaLockFromInterviewState(state);
   const nonce = options?.continueNonce ?? 0;
   const weak = getWeakCriticalFields(state);
-  const userCount = state.messages.filter(
-    (m) => m.role === "user" && sanitizeDnaText(m.content).length >= 2,
-  ).length;
 
   const candidates: InterviewQuestion[] = [];
 
@@ -55,15 +54,14 @@ export function getContinueFollowUpQuestion(
     );
   }
 
-  if (userCount < MIN_INTERVIEW_ANSWERS_FOR_BLUEPRINT) {
+  const editorial = evaluateForgeEvolution(state);
+
+  for (const q of editorial.nextQuestions.slice(0, 2)) {
     candidates.push(
       enrichInterviewQuestion(state, {
-        id: `continue-depth-${state.currentStep}-${nonce}`,
-        key: "depthFinalDirection",
-        question: "Raccontami un dettaglio in più che non vuoi perdere nel libro.",
-        helper: "Più parli con me, più la direzione diventa nitida — senza moduli o schede.",
-        placeholder: GENERIC_PLACEHOLDER,
-        quickSuggestions: getDirectionFallbackSuggestions(state),
+        ...q,
+        id: `continue-${q.id}-${state.currentStep}-${nonce}`,
+        placeholder: q.placeholder ?? GENERIC_PLACEHOLDER,
       }) as InterviewQuestion,
     );
   }
@@ -106,7 +104,6 @@ export function getContinueFollowUpQuestion(
 }
 
 function getWeakCriticalFields(state: GuidedInterviewState): string[] {
-  const STRONG_MIN = 12;
   const keys = [
     "readerTransformation",
     "centralConflict",
@@ -116,7 +113,10 @@ function getWeakCriticalFields(state: GuidedInterviewState): string[] {
     "setting",
     "targetReader",
   ] as const;
-  return keys.filter((k) => sanitizeDnaText((state.extracted as Record<string, unknown>)?.[k]).length < STRONG_MIN);
+  return keys.filter((k) => {
+    const text = sanitizeDnaText((state.extracted as Record<string, unknown>)?.[k]);
+    return text.length < 4 || scoreEditorialTextQuality(text) < 0.52;
+  });
 }
 
 /** Never leave interview in a dead-end: always surface a question until blueprint-ready. */

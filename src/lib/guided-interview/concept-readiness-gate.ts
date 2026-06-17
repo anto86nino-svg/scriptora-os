@@ -1,4 +1,5 @@
 import type { GuidedInterviewState, InterviewQuestion } from "./types";
+import { evaluateEditorialUnderstanding } from "./book-understanding-engine";
 
 export interface ConceptReadinessReport {
   ready: boolean;
@@ -10,24 +11,6 @@ export interface ConceptReadinessReport {
 
 function clean(value?: unknown): string {
   return String(value || "").replace(/\s+/g, " ").trim();
-}
-
-function wordCount(value?: unknown): number {
-  const text = clean(value);
-  if (!text) return 0;
-  return text.split(/\s+/).filter(Boolean).length;
-}
-
-function hasSignal(value?: unknown, minWords = 7): boolean {
-  return wordCount(value) >= minWords;
-}
-
-function hasDepthSignal(value?: unknown): boolean {
-  const text = clean(value).toLowerCase();
-
-  if (wordCount(text) < 12) return false;
-
-  return /(perché|perche|ma |mentre|tuttavia|segreto|ferita|conflitto|desiderio|paura|trasformazione|ossessione|promessa|conseguenza)/.test(text);
 }
 
 function bag(state: GuidedInterviewState): string {
@@ -60,15 +43,10 @@ function isRomanceLike(state: GuidedInterviewState): boolean {
   return /romance|dark romance|slow burn|amore|desiderio|relazione|ossessione|proibito|possessiv/.test(bag(state));
 }
 
-function isNonfictionLike(state: GuidedInterviewState): boolean {
-  return /self-help|business|manuale|guida|saggio|nonfiction|non-fiction|studio|education|didattic|filosofia|divulgativo/.test(bag(state));
-}
-
 function hasGenreDriftRisk(state: GuidedInterviewState): boolean {
   const text = bag(state);
   const saysFiction = isFictionLike(state);
 
-  // "non saggio" / "not essay" is an anti-drift boundary, not a drift signal.
   const antiEssayBoundary =
     /non (deve diventare |e |è |essere )?(un )?(saggio|manuale|filosofia|lezione|teoria)|not (an? )?(essay|manual)|no essay|non-fiction vietata/.test(text);
 
@@ -96,7 +74,7 @@ function q(
 function buildMissingQuestion(field: string, state: GuidedInterviewState): InterviewQuestion {
   const romance = isRomanceLike(state);
   const fiction = isFictionLike(state);
-  const nonfiction = isNonfictionLike(state);
+  const nonfiction = /self-help|business|manuale|guida|saggio|nonfiction/.test(bag(state));
 
   switch (field) {
     case "genre":
@@ -108,6 +86,9 @@ function buildMissingQuestion(field: string, state: GuidedInterviewState): Inter
       );
 
     case "core":
+    case "conflict":
+    case "protagonist":
+    case "wound":
       return q(
         "concept-gate-core",
         "centralConflict" as InterviewQuestion["key"],
@@ -115,7 +96,7 @@ function buildMissingQuestion(field: string, state: GuidedInterviewState): Inter
           ? "Qual è il motore inevitabile della storia? Voglio il conflitto che costringe i personaggi a muoversi."
           : "Qual è il problema centrale che questo libro deve risolvere o illuminare meglio di tutti gli altri?",
         fiction
-          ? "Esempio: lei vuole liberarsi da lui, ma lui è l’unico che può salvarla dal segreto che la distrugge."
+          ? "Esempio: lei vuole liberarsi da lui, ma lui è l'unico che può salvarla dal segreto che la distrugge."
           : "Esempio: il lettore non riesce a cambiare perché confonde motivazione, identità e abitudini.",
       );
 
@@ -123,17 +104,19 @@ function buildMissingQuestion(field: string, state: GuidedInterviewState): Inter
       return q(
         "concept-gate-reader",
         "targetReader" as InterviewQuestion["key"],
-        "Chi deve sentirsi colpito da questo libro al punto da pensare: ‘è stato scritto per me’?",
+        "Chi deve sentirsi colpito da questo libro al punto da pensare: 'è stato scritto per me'?",
         romance
           ? "Esempio: lettrici dark romance adulte che amano ossessione, potere, vulnerabilità e confini morali."
           : "Esempio: autori indie, studenti, imprenditori, persone bloccate emotivamente, fan di thriller psicologici.",
       );
 
     case "promise":
+    case "transformation":
+    case "ending":
       return q(
         "concept-gate-promise",
         "promise" as InterviewQuestion["key"],
-        "Qual è la promessa precisa del libro? Non il tema: l’esperienza che il lettore compra.",
+        "Qual è la promessa precisa del libro? Non il tema: l'esperienza che il lettore compra.",
         romance
           ? "Esempio: una storia tossica, elegante e irresistibile che fa desiderare due persone anche quando non dovrebbero stare insieme."
           : nonfiction
@@ -142,6 +125,7 @@ function buildMissingQuestion(field: string, state: GuidedInterviewState): Inter
       );
 
     case "tone":
+    case "atmosphere":
       return q(
         "concept-gate-tone",
         "emotionalTone" as InterviewQuestion["key"],
@@ -157,7 +141,7 @@ function buildMissingQuestion(field: string, state: GuidedInterviewState): Inter
         "setting" as InterviewQuestion["key"],
         "Dove vive questo libro? Voglio un luogo o un contesto che non sembri generico.",
         fiction
-          ? "Esempio: club privati e hotel di lusso, provincia gotica, accademia d’élite, regno in rovina, città piena di segreti."
+          ? "Esempio: club privati e hotel di lusso, provincia gotica, accademia d'élite, regno in rovina, città piena di segreti."
           : "Esempio: vita quotidiana del lettore, scuola, business reale, studio personale, ambiente professionale.",
       );
 
@@ -181,6 +165,14 @@ function buildMissingQuestion(field: string, state: GuidedInterviewState): Inter
           : "Esempio: non deve diventare manuale freddo, non deve diventare romanzo, non deve diventare teoria astratta.",
       );
 
+    case "method":
+      return q(
+        "concept-gate-method",
+        "genreDNA" as InterviewQuestion["key"],
+        "Che metodo o percorso concreto porterà il lettore dal punto A al punto B?",
+        "Esempio: framework in 5 step, esercizi settimanali, checklist operative, casi studio reali.",
+      );
+
     default:
       return q(
         "concept-gate-final",
@@ -191,58 +183,46 @@ function buildMissingQuestion(field: string, state: GuidedInterviewState): Inter
   }
 }
 
+const BLIND_SPOT_TO_CONCEPT: Record<string, string> = {
+  conflict: "core",
+  protagonist: "core",
+  wound: "core",
+  reader: "reader",
+  promise: "promise",
+  tone: "tone",
+  atmosphere: "world",
+  genre: "genre",
+  transformation: "promise",
+  ending: "promise",
+  method: "method",
+};
+
 export function evaluateConceptReadiness(state: GuidedInterviewState): ConceptReadinessReport {
-  const ex = state.extracted || {};
-  const missing: string[] = [];
-  const strengths: string[] = [];
+  const editorial = evaluateEditorialUnderstanding(state);
+  const missing = editorial.blindSpots.map((spot) => BLIND_SPOT_TO_CONCEPT[spot] ?? spot);
 
-  const genreSignal = clean(state.selectedGenre || state.inferredProfile?.genre || ex.genre || ex.subgenre || ex.genreDNA);
-  const hasGenreSignal =
-    genreSignal.length >= 3 ||
-    /romance|dark|thriller|horror|fantasy|poetry|poesia|self-help|business|manual|manuale|education|studio|fiction|romanzo|saggio/i.test(genreSignal);
-
-  if (hasGenreSignal) strengths.push("genre");
-  else missing.push("genre");
-
-  if (hasDepthSignal(ex.centralConflict)) strengths.push("core");
-  else missing.push("core");
-
-  if (hasDepthSignal(ex.targetReader)) strengths.push("reader");
-  else missing.push("reader");
-
-  if (hasDepthSignal(ex.promise) || hasDepthSignal(ex.readerTransformation)) strengths.push("promise");
-  else missing.push("promise");
-
-  if (hasDepthSignal(ex.emotionalTone)) strengths.push("tone");
-  else missing.push("tone");
-
-  if (isFictionLike(state)) {
-    if (hasDepthSignal(ex.setting)) strengths.push("world");
-    else missing.push("world");
+  if (hasGenreDriftRisk(state) && !missing.includes("boundary")) {
+    missing.push("boundary");
   }
 
-  if (hasSignal(ex.structurePreference, 5) || hasSignal(ex.bookLength, 2) || hasSignal(ex.chapters, 1)) {
-    strengths.push("structure");
-  } else {
-    missing.push("structure");
-  }
-
-  if (hasGenreDriftRisk(state)) missing.push("boundary");
-
-  const total = strengths.length + missing.length || 1;
-  const rawScore = Math.round((strengths.length / total) * 100);
-  const confidence = Math.round(Math.min(100, Math.max(rawScore, (state.confidence || 0) * 100)));
-  const requiredScore = isFictionLike(state) ? 86 : 82;
+  const strengths = Object.entries(editorial.components)
+    .filter(([, component]) => !component.weak)
+    .map(([key]) => key);
 
   const uniqueMissing = Array.from(new Set(missing));
-  const ready = confidence >= requiredScore && uniqueMissing.length === 0;
+  const ready = editorial.readyForBlueprint && !hasGenreDriftRisk(state);
+
+  const nextQuestions =
+    editorial.nextQuestions.length > 0
+      ? editorial.nextQuestions.slice(0, 3)
+      : uniqueMissing.slice(0, 3).map((field) => buildMissingQuestion(field, state));
 
   return {
     ready,
-    score: confidence,
+    score: Math.round(editorial.overallConfidence * 100),
     missing: uniqueMissing,
     strengths,
-    nextQuestions: uniqueMissing.slice(0, 3).map((field) => buildMissingQuestion(field, state)),
+    nextQuestions,
   };
 }
 

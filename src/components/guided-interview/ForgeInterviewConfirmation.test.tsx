@@ -30,7 +30,7 @@ describe("ForgeInterviewConfirmation", () => {
       />,
     );
 
-    expect(screen.getByText(/Ho capito il cuore del libro/i)).toBeInTheDocument();
+    expect(screen.getByText(/Il libro è pronto/i)).toBeInTheDocument();
     expect(screen.getByText(/Thriller psicologico/i)).toBeInTheDocument();
     expect(screen.queryByText(/95%/)).not.toBeInTheDocument();
     expect(screen.queryByText(/emotionalTone/i)).not.toBeInTheDocument();
@@ -67,7 +67,7 @@ describe("ForgeInterviewConfirmation", () => {
       />,
     );
 
-    expect(screen.queryByText(/^Ho capito il cuore del libro$/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/Sto ancora chiarendo/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Il libro è pronto/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Stiamo ancora costruendo/i)).toBeInTheDocument();
   });
 });

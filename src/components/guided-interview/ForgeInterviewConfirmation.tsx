@@ -1,36 +1,27 @@
 import type { BookDnaLock } from "@/lib/guided-interview/dna-lock";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
+import { buildFinalBookReview } from "@/lib/guided-interview/final-book-review";
 import { cn } from "@/lib/utils";
 
 export type ForgeInterviewConfirmationProps = {
   dnaLock: BookDnaLock;
   extracted: GuidedInterviewState["extracted"];
+  state?: GuidedInterviewState;
   onConfirm: () => void;
   onCorrect: () => void;
   className?: string;
 };
 
-function pick(...values: Array<string | undefined>): string {
-  for (const v of values) {
-    const t = v?.trim();
-    if (t && t.length >= 2) return t;
-  }
-  return "—";
-}
-
 export function ForgeInterviewConfirmation({
   dnaLock,
   extracted,
+  state,
   onConfirm,
   onCorrect,
   className,
 }: ForgeInterviewConfirmationProps) {
-  const bookType = pick(dnaLock.inferredBookType);
-  const genre = pick(dnaLock.inferredSubgenre, dnaLock.inferredGenre);
-  const promise = pick(dnaLock.promiseLock, extracted.promise, extracted.readerTransformation);
-  const tone = pick(dnaLock.tone, dnaLock.emotionalLock, extracted.emotionalTone);
-  const audience = pick(dnaLock.targetReader, extracted.targetReader);
-  const notThis = dnaLock.whatBookIsNot[0] ?? "Non deve perdere il cuore che hai descritto.";
+  const review = state ? buildFinalBookReview(state) : null;
+  const ready = dnaLock.readyForBlueprint;
 
   return (
     <section
@@ -43,28 +34,29 @@ export function ForgeInterviewConfirmation({
         Book Forge
       </p>
       <h2 className="mt-2 text-xl font-semibold leading-snug text-white">
-        {dnaLock.readyForBlueprint ? "Ho capito il cuore del libro" : "Sto ancora chiarendo il cuore del libro"}
+        {ready ? "Il libro è pronto" : "Stiamo ancora costruendo il libro insieme"}
       </h2>
       <p className="mt-1.5 text-sm leading-6 text-white/55">
-        {dnaLock.readyForBlueprint
-          ? "Mi sembra che tu voglia scrivere qualcosa di preciso. Se ti risuona, confermiamo e apriamo il blueprint."
-          : "Ho una direzione iniziale, ma mi manca ancora qualche risposta reale prima di aprire il blueprint."}
+        {ready
+          ? "Scriptora non ha compilato un modulo — ha compreso, configurato e bloccato il tuo libro. Se ti risuona, confermiamo."
+          : "Mi manca ancora qualche decisione vera prima di aprire il blueprint."}
       </p>
 
-      <dl className="mt-5 space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-        <ConfirmRow label="Tipo libro" value={bookType} />
-        <ConfirmRow label="Genere / filone" value={genre} />
-        <ConfirmRow label="Promessa narrativa" value={promise} />
-        <ConfirmRow label="Tono" value={tone} />
-        <ConfirmRow label="Pubblico" value={audience} />
-        <ConfirmRow label="Cosa non deve diventare" value={notThis} muted />
-      </dl>
+      {review && review.fields.length > 0 ? (
+        <dl className="mt-5 space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          {review.fields.map((field) => (
+            <ConfirmRow key={field.label} label={field.label} value={field.value} />
+          ))}
+        </dl>
+      ) : (
+        <LegacySummary dnaLock={dnaLock} extracted={extracted} />
+      )}
 
       <div className="mt-5 flex flex-col gap-2.5">
         <button
           type="button"
           onClick={onConfirm}
-          disabled={!dnaLock.readyForBlueprint}
+          disabled={!ready}
           className="rounded-2xl bg-violet-500 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35"
         >
           Conferma e crea blueprint
@@ -74,16 +66,41 @@ export function ForgeInterviewConfirmation({
           onClick={onCorrect}
           className="rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3.5 text-sm font-semibold text-white/85"
         >
-          Correggi questa direzione
+          Modifica un elemento
         </button>
       </div>
 
-      {!dnaLock.readyForBlueprint && (
+      {!ready && (
         <p className="mt-3 text-center text-xs leading-5 text-white/45">
-          Ancora un dettaglio in più — correggi o continua a parlarmi del libro.
+          Continua l'intervista — ogni risposta rende il libro più vivo e definitivo.
         </p>
       )}
     </section>
+  );
+}
+
+function LegacySummary({
+  dnaLock,
+  extracted,
+}: {
+  dnaLock: BookDnaLock;
+  extracted: GuidedInterviewState["extracted"];
+}) {
+  const pick = (...values: Array<string | undefined>) => {
+    for (const v of values) {
+      const t = v?.trim();
+      if (t && t.length >= 2) return t;
+    }
+    return "—";
+  };
+
+  return (
+    <dl className="mt-5 space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <ConfirmRow label="Tipo libro" value={pick(dnaLock.inferredBookType)} />
+      <ConfirmRow label="Genere" value={pick(dnaLock.inferredSubgenre, dnaLock.inferredGenre)} />
+      <ConfirmRow label="Promessa" value={pick(dnaLock.promiseLock, extracted.promise)} />
+      <ConfirmRow label="Pubblico" value={pick(dnaLock.targetReader, extracted.targetReader)} />
+    </dl>
   );
 }
 

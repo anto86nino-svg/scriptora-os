@@ -6,6 +6,7 @@ import { GuidedInterviewPanel } from "@/components/guided-interview/GuidedInterv
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import { saveForgeDnaLock } from "@/lib/guided-interview/interview-state";
+import { buildForgeInterviewSeed } from "@/lib/guided-interview/forge-blueprint-handoff";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/services/storageService";
 
@@ -114,14 +115,7 @@ export function MobileBookForge({
         initialStep={6}
         interviewSeed={
           interviewState
-            ? {
-                extracted: interviewState.extracted as Record<string, string | undefined>,
-                selectedGenre:
-                  interviewState.extracted?.genre ||
-                  interviewState.selectedGenre ||
-                  interviewState.inferredProfile?.genre,
-                dnaLock: interviewState.dnaLock,
-              }
+            ? buildForgeInterviewSeed(interviewState)
             : undefined
         }
         onClose={onClose}

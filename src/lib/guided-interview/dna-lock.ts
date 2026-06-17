@@ -1,5 +1,7 @@
 import type { GuidedInterviewState } from "./types";
 import { summarizeForgeProConfig } from "./forge-pro-config";
+import { evaluateEditorialUnderstanding } from "./book-understanding-engine";
+import { evaluateForgeEvolution } from "./forge-evolution-engine";
 import {
   assessDnaQuality,
   getBlockedDnaMessage,
@@ -37,7 +39,6 @@ export type BookDnaLock = {
 };
 
 export const CONFIDENCE_BLUEPRINT_THRESHOLD = 0.95;
-export const MIN_INTERVIEW_ANSWERS_FOR_BLUEPRINT = 10;
 
 const CRITICAL_FIELDS = [
   "readerTransformation",
@@ -83,10 +84,8 @@ export function buildDnaLockFromInterviewState(state: GuidedInterviewState): Boo
   const promise = clean(extracted.promise);
   const setting = clean(extracted.setting);
   const targetReader = clean(extracted.targetReader);
-  const userAnswerCount = Array.isArray(state.messages)
-    ? state.messages.filter((m) => m.role === "user" && clean(m.content).length >= 2).length
-    : 0;
-  const hasMinimumInterviewDepth = userAnswerCount >= MIN_INTERVIEW_ANSWERS_FOR_BLUEPRINT;
+  const editorial = evaluateEditorialUnderstanding(state);
+  const evolution = evaluateForgeEvolution(state);
 
   const missingCriticalAnswers = CRITICAL_FIELDS.filter(
     (field) => !hasMeaning(extracted[field]),
@@ -151,10 +150,17 @@ export function buildDnaLockFromInterviewState(state: GuidedInterviewState): Boo
 
   const baseConfidence = typeof state.confidence === "number" ? state.confidence : 0.1;
   const inferenceBoost = state.inferredProfile?.confidence ?? 0;
-  const completenessBonus = (CRITICAL_FIELDS.length - missingCriticalAnswers.length) * 0.035;
+  const completenessBonus = (CRITICAL_FIELDS.length - missingCriticalAnswers.length) * 0.02;
+  const blended = Math.max(
+    0.1,
+    editorial.overallConfidence * 0.72 +
+      baseConfidence * 0.12 +
+      completenessBonus +
+      inferenceBoost * 0.1,
+  );
   const confidenceScore = Math.min(
     0.99,
-    Math.max(0.1, baseConfidence + completenessBonus + inferenceBoost * 0.15),
+    editorial.readyForBlueprint ? Math.max(0.95, blended) : blended,
   );
 
   const dnaQuality = assessDnaQuality(extracted, {
@@ -162,17 +168,24 @@ export function buildDnaLockFromInterviewState(state: GuidedInterviewState): Boo
     confidence: confidenceScore,
   });
 
+  const dnaQualityPass =
+    dnaQuality.pass ||
+    (evolution.repetitionClear &&
+      !dnaQuality.isDirty &&
+      !dnaQuality.isAmbiguous &&
+      missingCriticalAnswers.length === 0);
+
   const readyForBlueprint =
-    hasMinimumInterviewDepth &&
+    evolution.readyForBlueprint &&
+    editorial.canExplainBook &&
+    editorial.contradictions.length === 0 &&
     confidenceScore >= CONFIDENCE_BLUEPRINT_THRESHOLD &&
     missingCriticalAnswers.length === 0 &&
-    dnaQuality.pass;
+    dnaQualityPass;
 
   const blockedMessage = readyForBlueprint
     ? undefined
-    : !hasMinimumInterviewDepth
-      ? undefined
-      : getBlockedDnaMessage(dnaQuality);
+    : getBlockedDnaMessage(dnaQuality);
 
   return {
     coreTopic: promise || readerTransformation || centralConflict || undefined,

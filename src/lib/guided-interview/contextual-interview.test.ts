@@ -77,7 +77,7 @@ describe("contextual interview suggestion engine", () => {
     expect(labels.some((l) => /poetic|sensibil|immagini|dolore|rinascita|voce/i.test(l))).toBe(true);
   });
 
-  it("blocks blueprint before 10 user answers even with strong extracted fields", () => {
+  it("blocks blueprint when book understanding is incomplete, not by answer count", () => {
     const lock = buildDnaLockFromInterviewState({
       completed: false,
       currentStep: 7,
@@ -85,17 +85,17 @@ describe("contextual interview suggestion engine", () => {
       messages: Array.from({ length: 5 }, (_, i) => ({
         id: `u-${i}`,
         role: "user" as const,
-        content: `Risposta dettagliata numero ${i + 1} con abbastanza testo per contare.`,
+        content: `Risposta breve numero ${i + 1}.`,
         createdAt: i,
       })),
       extracted: {
-        readerTransformation: "Lasciare una paura sottile e una bellezza oscura addosso al lettore.",
-        centralConflict: "Un segreto di famiglia che rompe l'equilibrio di una villa decadente.",
-        emotionalTone: "Gotico, elegante, claustrofobico, pieno di presagi e ombre.",
-        genreDNA: "Narrativa gotica lenta, immersiva, letteraria e inquietante.",
-        promise: "Scoprire piano piano una verità sepolta nel passato.",
-        setting: "Villa decadente, pioggia, nebbia, silenzi e memoria.",
-        targetReader: "Lettori dark gothic amanti di segreti e atmosfere raffinate.",
+        readerTransformation: "Una paura sottile.",
+        centralConflict: "Un segreto di famiglia.",
+        emotionalTone: "Gotico e oscuro.",
+        genreDNA: "Gotico",
+        promise: "Scoprire una verità.",
+        setting: "Villa decadente.",
+        targetReader: "Lettori gotici.",
       },
     } as any);
 

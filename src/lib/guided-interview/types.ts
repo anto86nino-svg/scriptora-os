@@ -1,5 +1,15 @@
 import type { BookDnaLock } from "./dna-lock";
 import type { InferredBookProfile } from "./dna-inference";
+import type {
+  BookPromises,
+  CanonMaster,
+  CopyrightConfig,
+  ForgeCharacter,
+  ForgePhase,
+  NarrativeDecisionRecord,
+  StoryFutureState,
+  TitleIntelligence,
+} from "./forge-evolution-types";
 
 export type InterviewRole = "assistant" | "user";
 
@@ -63,6 +73,29 @@ export interface ExtractedBookIntent {
   structurePreference?: string;
   commercialGoal?: string;
   openingHook?: string;
+
+  /** Title & matter */
+  bookTitle?: string;
+  bookSubtitle?: string;
+  frontMatter?: string;
+  backMatter?: string;
+
+  /** Character forge (serialized per slot) */
+  characterName?: string;
+  characterWound?: string;
+  characterFear?: string;
+  characterDesire?: string;
+  characterContradiction?: string;
+  characterObsession?: string;
+  characterSecret?: string;
+  characterArc?: string;
+
+  /** Narrative decisions */
+  narrativeDecision?: string;
+
+  /** Copyright */
+  copyrightMode?: string;
+  copyrightCustom?: string;
 }
 
 export interface GuidedInterviewState {
@@ -84,6 +117,20 @@ export interface GuidedInterviewState {
   selectedLength?: string;
   wantsSubchapters?: boolean;
   dnaLock?: BookDnaLock;
+
+  /** Forge Final Evolution */
+  forgePhase?: ForgePhase;
+  characters?: ForgeCharacter[];
+  narrativeDecisions?: NarrativeDecisionRecord[];
+  storyFuture?: StoryFutureState;
+  canon?: CanonMaster;
+  bookPromises?: BookPromises;
+  titleIntelligence?: TitleIntelligence;
+  copyright?: CopyrightConfig;
+  canonLocked?: boolean;
+
+  /** Genre convergence loop/saturation tracking */
+  forgeConvergence?: import("./genre-convergence-engine").ForgeConvergenceTracking;
 }
 
 export interface NextQuestionResult {

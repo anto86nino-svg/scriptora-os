@@ -7,6 +7,7 @@ import {
 } from "./question-engine";
 import { getContinueFollowUpQuestion } from "./interview-continue";
 import { buildDnaLockFromInterviewState } from "./dna-lock";
+import { evolutionReadyGothicState } from "./evolution-test-fixture";
 
 function stateWithFullExtracted(userMessageCount: number) {
   const messages = Array.from({ length: userMessageCount }, (_, i) => ({
@@ -18,15 +19,21 @@ function stateWithFullExtracted(userMessageCount: number) {
 
   return {
     ...getInitialInterviewState({ chatFirst: true }),
+    selectedGenre: "horror" as const,
     currentStep: 12,
     confidence: 0.96,
     messages,
     extracted: {
-      readerTransformation: "Lasciare una paura sottile e una bellezza oscura addosso al lettore.",
-      centralConflict: "Un segreto di famiglia che rompe l'equilibrio di una villa decadente.",
+      readerTransformation:
+        "Il lettore deve chiudere il libro con una paura sottile addosso e la sensazione che qualcosa sia cambiato dentro — redenzione impossibile.",
+      centralConflict:
+        "Un segreto di famiglia che rompe l'equilibrio di una villa decadente e costringe tutti a scegliere cosa perdere se la verità esplode.",
+      protagonistWound:
+        "La protagonista porta una ferita di abbandono che la spinge verso verità che teme di scoprire e non può più ignorare.",
+      narrativeDrive: "La paura di perdere la famiglia e la verità sepolta che cambia chi credeva di conoscersi.",
       emotionalTone: "Gotico, elegante, claustrofobico, pieno di presagi e ombre.",
       genreDNA: "Narrativa gotica lenta, immersiva, letteraria e inquietante.",
-      promise: "Scoprire piano piano una verità sepolta nel passato.",
+      promise: "Scoprire piano piano una verità sepolta nel passato che cambia chi credeva di conoscersi.",
       setting: "Villa decadente, pioggia, nebbia, silenzi e memoria.",
       targetReader: "Lettori dark gothic amanti di segreti e atmosfere raffinate.",
       depthReaderFit: "Lettori dark gothic amanti di segreti e atmosfere raffinate.",
@@ -39,15 +46,28 @@ function stateWithFullExtracted(userMessageCount: number) {
 }
 
 describe("interview continue flow", () => {
-  it("surfaces a follow-up question when engine is done but DNA is not ready", () => {
-    const state = stateWithFullExtracted(5);
-    const raw = getNextInterviewQuestion(state);
-    expect(raw.done).toBe(true);
+  it("surfaces a follow-up question when blueprint is not ready", () => {
+    const state = {
+      ...getInitialInterviewState({ chatFirst: true }),
+      selectedGenre: "horror" as const,
+      currentStep: 4,
+      confidence: 0.4,
+      messages: [{ id: "u-0", role: "user" as const, content: "Voglio un libro gotico.", createdAt: 0 }],
+      extracted: {
+        genreDNA: "Gotico",
+        emotionalTone: "Oscuro.",
+      },
+    };
+    const lock = buildDnaLockFromInterviewState(state);
+    expect(lock.readyForBlueprint).toBe(false);
 
-    const active = resolveActiveInterviewQuestion(state, raw, { continueNonce: 1 });
+    const active = resolveActiveInterviewQuestion(
+      state,
+      { done: true, state: { ...state, dnaLock: lock }, question: null },
+      { continueNonce: 1 },
+    );
     expect(active.done).toBe(false);
     expect(active.question?.question.length).toBeGreaterThan(12);
-    expect(active.question?.quickSuggestions?.length ?? 0).toBeGreaterThan(0);
   });
 
   it("continue follow-up changes when avoidQuestionId is set", () => {
@@ -72,8 +92,8 @@ describe("interview continue flow", () => {
     expect(updated.messages.filter((m) => m.role === "user").length).toBe(6);
   });
 
-  it("opens blueprint path only when DNA is truly ready", () => {
-    const state = stateWithFullExtracted(10);
+  it("opens blueprint path only when evolution is truly ready", () => {
+    const state = evolutionReadyGothicState();
     const lock = buildDnaLockFromInterviewState(state);
     expect(lock.readyForBlueprint).toBe(true);
     const raw = getNextInterviewQuestion(state);
