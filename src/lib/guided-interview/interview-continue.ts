@@ -3,10 +3,8 @@ import { buildDnaLockFromInterviewState } from "./dna-lock";
 import { scoreEditorialTextQuality } from "./book-understanding-engine";
 import { evaluateForgeEvolution } from "./forge-evolution-engine";
 import { getEditorialBlockedPrompt } from "./interview-ui-copy";
-import {
-  enrichInterviewQuestion,
-  getDirectionFallbackSuggestions,
-} from "./contextual-interview";
+import { enrichInterviewQuestion, getDirectionFallbackSuggestions } from "./contextual-interview";
+import { enrichQuestionWithCoAuthor } from "./co-author-engine";
 import { getAdaptiveQuestion } from "./dna-inference";
 import { sanitizeDnaText } from "./dna-cleaner";
 
@@ -101,7 +99,7 @@ export function getContinueFollowUpQuestion(
       placeholder: GENERIC_PLACEHOLDER,
     }) as InterviewQuestion;
 
-  return picked;
+  return enrichQuestionWithCoAuthor(state, picked);
 }
 
 function getWeakCriticalFields(state: GuidedInterviewState): string[] {

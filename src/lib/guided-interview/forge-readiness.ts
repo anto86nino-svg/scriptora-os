@@ -30,6 +30,9 @@ const SLOT_LABELS: Record<string, string> = {
   audience: "lettore ideale",
   promise: "promessa",
   protagonist: "protagonista",
+  antagonist: "antagonista",
+  narrativeArc: "arco narrativo",
+  indexOutline: "indice",
   centralConflict: "conflitto",
   endingDirection: "finale",
   chapterCount: "struttura",
@@ -63,8 +66,16 @@ export function evaluateForgeReadiness(state: GuidedInterviewState): ForgeReadin
 
   const narrativeReady =
     isSlotFilled(memory, "protagonist") &&
+    isSlotFilled(memory, "antagonist") &&
     isSlotFilled(memory, "centralConflict") &&
+    (isSlotFilled(memory, "narrativeArc") || isSlotFilled(memory, "endingDirection")) &&
     isSlotFilled(memory, "endingDirection");
+
+  const architectReady =
+    hasTitle &&
+    (mode !== "fiction" ||
+      !isSlotFilled(memory, "chapterCount") ||
+      isSlotFilled(memory, "indexOutline"));
 
   const nonfictionReady =
     isSlotFilled(memory, "problem") &&
@@ -90,6 +101,7 @@ export function evaluateForgeReadiness(state: GuidedInterviewState): ForgeReadin
   const ready =
     baseReady &&
     modeReady &&
+    architectReady &&
     contradictions.length === 0 &&
     missingCritical.length === 0;
 

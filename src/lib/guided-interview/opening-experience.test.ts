@@ -101,21 +101,25 @@ describe("forge readiness", () => {
   });
 
   it("readiness improves when critical fields are present", () => {
+    const before = evaluateForgeReadiness(getInitialInterviewState({ chatFirst: true }));
     let state = getInitialInterviewState({ chatFirst: true });
     const answers = [
       "Dark romance psicologico tra due persone ferite in una città gotica.",
       "Il lettore deve sentire ossessione elegante e pericolo morale.",
       "Lettrici adulte che amano tensione, vulnerabilità e confini.",
       "Tono sensuale, oscuro, lento, magnetico.",
+      "Protagonista: lei fragile, cerca fuga. Antagonista: lui magnetico, pericoloso, ossessionato.",
       "Conflitto: lei vuole fuggire, lui è l'unica ancora e la minaccia.",
       "Finale devastante ma giusto — nessuno resta uguale.",
       "18 capitoli, prima persona, slow burn.",
+      "Indice: incontro, tensione, caduta, conseguenza — escalation emotiva lenta.",
     ];
     for (const answer of answers) {
       const next = getNextInterviewQuestion(state);
       state = applyInterviewAnswer(state, answer, next.question ?? undefined);
     }
     const report = evaluateForgeReadiness(state);
-    expect(report.missingCritical.length).toBeLessThan(4);
+    expect(report.missingCritical.length).toBeLessThan(before.missingCritical.length);
+    expect(before.missingCritical.length).toBeGreaterThan(4);
   });
 });

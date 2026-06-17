@@ -2,6 +2,10 @@ import type { BookDnaLock } from "@/lib/guided-interview/dna-lock";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import { buildFinalBookReview } from "@/lib/guided-interview/final-book-review";
 import { evaluateForgeReadiness } from "@/lib/guided-interview/forge-readiness";
+import {
+  getDnaLockConfirmPrompt,
+  getDnaLockHeadline,
+} from "@/lib/guided-interview/co-author-engine";
 import { cn } from "@/lib/utils";
 
 export type ForgeInterviewConfirmationProps = {
@@ -35,14 +39,10 @@ export function ForgeInterviewConfirmation({
         Book Forge
       </p>
       <h2 className="mt-2 text-xl font-semibold leading-snug text-white">
-        {ready
-          ? "Ecco il DNA del libro che sto per costruire"
-          : "Stiamo ancora costruendo il libro insieme"}
+        {getDnaLockHeadline(ready)}
       </h2>
       <p className="mt-1.5 text-sm leading-6 text-white/55">
-        {ready
-          ? "Tutto qui sotto è leggibile e modificabile prima di generare l'indice e il blueprint."
-          : forgeGapMessage(state)}
+        {ready ? getDnaLockConfirmPrompt() : forgeGapMessage(state)}
       </p>
 
       {review && review.fields.length > 0 ? (
@@ -62,7 +62,7 @@ export function ForgeInterviewConfirmation({
           disabled={!ready}
           className="rounded-2xl bg-violet-500 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35"
         >
-          Blocca DNA e procedi
+          Blocca DNA — è questo il libro
         </button>
         <button
           type="button"

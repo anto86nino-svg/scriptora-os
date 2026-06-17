@@ -15,6 +15,7 @@ import {
   mergeInferenceIntoExtracted,
 } from "./dna-inference";
 import { enrichInterviewQuestion } from "./contextual-interview";
+import { enrichQuestionWithCoAuthor } from "./co-author-engine";
 import { calculateEditorialConfidenceV2, evaluateEditorialUnderstanding, scoreEditorialTextQuality } from "./book-understanding-engine";
 import { updateConvergenceTracking } from "./genre-convergence-engine";
 import {
@@ -693,7 +694,10 @@ export function getNextInterviewQuestion(
   if (question) {
     return {
       done: false,
-      question: enrichInterviewQuestion(state, question) as InterviewQuestion,
+      question: enrichQuestionWithCoAuthor(
+        state,
+        enrichInterviewQuestion(state, question) as InterviewQuestion,
+      ),
       state: { ...state, dnaLock },
     };
   }
@@ -721,7 +725,10 @@ export function getNextInterviewQuestion(
       } satisfies InterviewQuestion);
     return {
       done: false,
-      question: enrichInterviewQuestion(state, fallback) as InterviewQuestion,
+      question: enrichQuestionWithCoAuthor(
+        state,
+        enrichInterviewQuestion(state, fallback) as InterviewQuestion,
+      ),
       state: { ...state, dnaLock },
     };
   }

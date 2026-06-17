@@ -57,7 +57,10 @@ export type ForgeSlotKey =
   | "mustHaveScenes"
   | "method"
   | "problem"
-  | "outcome";
+  | "outcome"
+  | "narrativeArc"
+  | "indexOutline"
+  | "antiDriftRules";
 
 export type ForgeSlotValues = Partial<Record<ForgeSlotKey, string | number | boolean | string[]>>;
 
@@ -129,6 +132,7 @@ const CRITICAL_TO_SLOT: Record<string, ForgeSlotKey> = {
   genre: "genre",
   promise: "promise",
   protagonistWound: "protagonist",
+  characterWound: "antagonist",
   narrativeDrive: "endingDirection",
   structurePreference: "pov",
   bookTitle: "title",
@@ -158,6 +162,9 @@ const SLOT_TO_EXTRACTED: Partial<Record<ForgeSlotKey, string>> = {
   method: "genreDNA",
   problem: "centralConflict",
   outcome: "readerTransformation",
+  narrativeArc: "narrativeDrive",
+  indexOutline: "structurePreference",
+  antiDriftRules: "genreDNA",
 };
 
 const QUESTION_INTENT_ALIASES: Record<string, string[]> = {
@@ -166,7 +173,8 @@ const QUESTION_INTENT_ALIASES: Record<string, string[]> = {
   tone: ["tone", "stage-genre", "emotional-tone"],
   audience: ["audience", "target-reader", "stage-audience"],
   promise: ["promise", "stage-promise"],
-  protagonist: ["protagonist", "stage-character", "characters"],
+  protagonist: ["protagonist", "stage-character", "characters-protagonist"],
+  antagonist: ["antagonist", "characters-antagonist", "characterWound"],
   centralConflict: ["conflict", "plot", "stage-plot", "stage-genre-thriller"],
   structure: ["structure", "stage-structure", "chapter-count"],
   title: ["title", "stage-title"],
@@ -211,10 +219,13 @@ function hydrateMemoryFromState(
   syncSlot(memory, "audience", ex.targetReader);
   syncSlot(memory, "promise", ex.promise);
   syncSlot(memory, "protagonist", ex.protagonistWound);
+  syncSlot(memory, "antagonist", ex.antagonistWound || ex.antagonist);
   syncSlot(memory, "centralConflict", ex.centralConflict);
   syncSlot(memory, "setting", ex.setting);
-  syncSlot(memory, "endingDirection", ex.narrativeDrive);
+  syncSlot(memory, "narrativeArc", ex.narrativeArc);
+  syncSlot(memory, "endingDirection", ex.narrativeDrive || ex.endingDirection);
   syncSlot(memory, "chapterCount", ex.chapterCount);
+  syncSlot(memory, "indexOutline", ex.indexOutline);
   syncSlot(memory, "title", ex.bookTitle);
   syncSlot(memory, "subtitle", ex.bookSubtitle);
   syncSlot(memory, "method", ex.genreDNA);
@@ -226,6 +237,20 @@ function hydrateMemoryFromState(
     syncSlot(memory, "chapterCount", memory.slotValues.chapterCount || ex.chapterCount);
   }
 
+  const antagonistChar = state.characters?.find(
+    (c) => c.role === "antagonist" || c.role === "love_interest",
+  );
+  if (antagonistChar && !isSlotFilled(memory, "antagonist")) {
+    const label = [antagonistChar.name, antagonistChar.wound, antagonistChar.obsession]
+      .filter(Boolean)
+      .join(" — ");
+    syncSlot(memory, "antagonist", label);
+  }
+
+  memory.usefulAnswerCount = Math.max(
+    memory.usefulAnswerCount,
+    state.messages.filter((m) => m.role === "user").length,
+  );
   memory.currentStage = resolveMemoryStage(memory);
   return memory;
 }
@@ -307,6 +332,8 @@ function questionKeyToSlot(questionKey: string): ForgeSlotKey | null {
     audience: "audience",
     promise: "promise",
     protagonist: "protagonist",
+    antagonist: "antagonist",
+    characterWound: "antagonist",
     centralConflict: "centralConflict",
     structure: "chapterCount",
     title: "title",
@@ -368,7 +395,7 @@ function parseTone(text: string): string | undefined {
   return undefined;
 }
 
-function detectBookMode(memory: ForgeInterviewMemory): "fiction" | "nonfiction" | "poetry" {
+export function detectBookMode(memory: ForgeInterviewMemory): "fiction" | "nonfiction" | "poetry" {
   const bag = [
     memory.slotValues.bookType,
     memory.slotValues.genre,
@@ -398,8 +425,15 @@ export function getCriticalMissingSlots(memory: ForgeInterviewMemory): ForgeSlot
 
   if (mode === "fiction") {
     if (!isSlotFilled(memory, "protagonist")) missing.push("protagonist");
+    if (!isSlotFilled(memory, "antagonist")) missing.push("antagonist");
     if (!isSlotFilled(memory, "centralConflict")) missing.push("centralConflict");
+    if (!isSlotFilled(memory, "narrativeArc") && !isSlotFilled(memory, "endingDirection")) {
+      missing.push("narrativeArc");
+    }
     if (!isSlotFilled(memory, "endingDirection")) missing.push("endingDirection");
+    if (!isSlotFilled(memory, "indexOutline") && isSlotFilled(memory, "chapterCount")) {
+      missing.push("indexOutline");
+    }
   }
 
   if (mode === "nonfiction") {
@@ -423,6 +457,7 @@ export function getNextBestMissingSlot(memory: ForgeInterviewMemory): ForgeSlotK
     characters: "protagonist",
     plot: "centralConflict",
     structure: "chapterCount",
+    index: "indexOutline",
     title: "title",
   };
 
@@ -447,9 +482,11 @@ export function resolveMemoryStage(memory: ForgeInterviewMemory): ForgeMemorySta
   const mode = detectBookMode(memory);
   if (mode === "fiction") {
     if (!isSlotFilled(memory, "protagonist")) return "characters";
+    if (!isSlotFilled(memory, "antagonist")) return "characters";
     if (!isSlotFilled(memory, "centralConflict") || !isSlotFilled(memory, "endingDirection")) {
       return "plot";
     }
+    if (!isSlotFilled(memory, "narrativeArc")) return "plot";
   }
   if (mode === "nonfiction") {
     if (!isSlotFilled(memory, "problem") || !isSlotFilled(memory, "method")) return "promise";
@@ -457,6 +494,7 @@ export function resolveMemoryStage(memory: ForgeInterviewMemory): ForgeMemorySta
   }
 
   if (!isSlotFilled(memory, "chapterCount") && !isSlotFilled(memory, "pov")) return "structure";
+  if (!isSlotFilled(memory, "indexOutline") && detectBookMode(memory) === "fiction") return "index";
   if (!isSlotFilled(memory, "title")) return "title";
   return "dna-lock";
 }
@@ -578,6 +616,7 @@ function slotFromQuestionKey(key: string): ForgeSlotKey | null {
     targetReader: "audience",
     promise: "promise",
     protagonistWound: "protagonist",
+    characterWound: "antagonist",
     centralConflict: "centralConflict",
     narrativeDrive: "endingDirection",
     structurePreference: "pov",
@@ -715,7 +754,7 @@ function presetQuestionForSlot(
           stage: "language",
           intent: "confirm-language",
           key: "language",
-          text: "Prima di costruire l'indice: in che lingua vuoi scrivere il libro?",
+          text: "Prima di costruire l'indice: confermiamo la lingua definitiva del libro?",
           quickChoices: LANGUAGE_PRESETS,
           shouldAsk: (m) => !isSlotFilled(m, "language"),
         },
@@ -729,7 +768,7 @@ function presetQuestionForSlot(
           stage: "book-type",
           intent: "confirm-book-type",
           key: "bookType",
-          text: "Che tipo di libro stiamo costruendo?",
+          text: "Quale identità editoriale senti più vicina — poi la stringiamo insieme?",
           quickChoices: BOOK_TYPE_PRESETS,
           shouldAsk: (m) => !isSlotFilled(m, "bookType"),
         },
@@ -743,7 +782,7 @@ function presetQuestionForSlot(
           stage: "genre",
           intent: "confirm-genre",
           key: "genreDNA",
-          text: "Da quello che mi hai raccontato, vedo tre strade possibili. Scegli quella più vicina, poi la regoliamo.",
+          text: "Tra queste direzioni, quale ti convince di più — o quale ti fa più paura?",
           quickChoices: GENRE_DIRECTION_PRESETS,
           shouldAsk: (m) => !isSlotFilled(m, "genre"),
         },
@@ -757,7 +796,7 @@ function presetQuestionForSlot(
           stage: "tone",
           intent: "confirm-tone",
           key: "emotionalTone",
-          text: "Che temperatura emotiva deve avere il libro?",
+          text: "Il lettore deve uscire ferito, elettrizzato o trasformato — quale effetto deve dominare?",
           quickChoices: TONE_PRESETS,
           shouldAsk: (m) => !isSlotFilled(m, "tone"),
         },
@@ -771,7 +810,7 @@ function presetQuestionForSlot(
           stage: "audience",
           intent: "confirm-audience",
           key: "targetReader",
-          text: "Chi deve sentirsi chiamato in causa da questo libro?",
+          text: "Chi deve sentirsi chiamato in causa — come se il libro fosse scritto solo per lui?",
           quickChoices: [
             { label: "Emozione forte", value: "Lettori che cercano emozione forte e vulnerabilità." },
             { label: "Trasformazione", value: "Persone che vogliono cambiare davvero." },
@@ -790,7 +829,7 @@ function presetQuestionForSlot(
           stage: "promise",
           intent: "confirm-promise",
           key: "promise",
-          text: "Quale promessa non deve tradire questo libro?",
+          text: "Quale promessa non possiamo tradire — nemmeno nel finale?",
           quickChoices: [
             { label: "Ferire bene", value: "Un'esperienza che ferisce ma resta giusta." },
             { label: "Guarire", value: "Un percorso di guarigione concreto." },
@@ -804,18 +843,37 @@ function presetQuestionForSlot(
     case "protagonist":
       return buildQuestionFromDef(
         {
-          id: "characters-preset",
+          id: "characters-protagonist",
           slotTarget: "protagonist",
           stage: "characters",
           intent: "confirm-protagonist",
           key: "protagonistWound",
-          text: "Chi è la persona che non può restare uguale alla fine?",
+          text: "Il protagonista combatte fino alla fine — o cede e cambia tutto con una scelta irreversibile?",
           quickChoices: [
-            { label: "Protagonista ferito", value: "Un protagonista ferito con una bugia interiore." },
-            { label: "Love interest", value: "Un love interest magnetico e pericoloso." },
-            { label: "Antagonista", value: "Un antagonista che crede di avere ragione." },
+            { label: "Combatte", value: "Combatte fino alla fine, anche se costa tutto." },
+            { label: "Cede e cambia", value: "Cede a una scelta che non può più rimangiare." },
+            { label: "Si spezza", value: "Si spezza prima di riuscire a salvarsi." },
           ],
           shouldAsk: (m) => !isSlotFilled(m, "protagonist"),
+        },
+        memory,
+      );
+    case "antagonist":
+      return buildQuestionFromDef(
+        {
+          id: "characters-antagonist",
+          slotTarget: "antagonist",
+          stage: "characters",
+          intent: "confirm-antagonist",
+          key: "characterWound",
+          text: "La forza contraria si innamora, si ossessiona o distrugge — cosa fa davvero?",
+          quickChoices: [
+            { label: "Si ossessiona", value: "Si ossessiona — magnetico e pericoloso." },
+            { label: "Distrugge", value: "Distrugge ciò che tocca, senza redenzione facile." },
+            { label: "Seduce e tradisce", value: "Seduce prima, tradisce dopo." },
+            { label: "Crede di avere ragione", value: "Crede di avere ragione fino alla fine." },
+          ],
+          shouldAsk: (m) => !isSlotFilled(m, "antagonist"),
         },
         memory,
       );
@@ -827,7 +885,7 @@ function presetQuestionForSlot(
           stage: "plot",
           intent: "confirm-conflict",
           key: "centralConflict",
-          text: "Qual è il conflitto che costringe la storia a muoversi?",
+          text: "Il conflitto centrale esplode subito — o cresce fino a diventare insopportabile?",
           quickChoices: UNCERTAINTY_PRESETS,
           shouldAsk: (m) => !isSlotFilled(m, "centralConflict"),
         },
@@ -841,13 +899,32 @@ function presetQuestionForSlot(
           stage: "plot",
           intent: "confirm-ending",
           key: "narrativeDrive",
-          text: "Il finale deve spezzare il cuore, liberare, o lasciare una crepa aperta?",
+          text: "Il finale deve spezzare il cuore, liberare — o lasciare il lettore sconvolto?",
           quickChoices: [
-            { label: "Finale che spezza", value: "Finale devastante ma giusto." },
-            { label: "Finale liberatorio", value: "Finale liberatorio, anche se costa." },
-            { label: "Crepa aperta", value: "Finale ambiguo con una crepa aperta." },
+            { label: "Spezza il cuore", value: "Finale devastante ma giusto." },
+            { label: "Libera", value: "Finale liberatorio, anche se costa." },
+            { label: "Sconvolge", value: "Finale che lascia una crepa aperta." },
+            { label: "Redenzione", value: "Redenzione meritata, non regalata." },
           ],
           shouldAsk: (m) => !isSlotFilled(m, "endingDirection"),
+        },
+        memory,
+      );
+    case "narrativeArc":
+      return buildQuestionFromDef(
+        {
+          id: "plot-arc",
+          slotTarget: "narrativeArc",
+          stage: "plot",
+          intent: "confirm-arc",
+          key: "narrativeDrive",
+          text: "L'arco narrativo va verso redenzione, tragedia o trasformazione lenta?",
+          quickChoices: [
+            { label: "Tragedia", value: "Arco tragico — nessuno esce uguale." },
+            { label: "Redenzione", value: "Arco di redenzione costata." },
+            { label: "Trasformazione lenta", value: "Trasformazione lenta, quasi impercettibile." },
+          ],
+          shouldAsk: (m) => !isSlotFilled(m, "narrativeArc"),
         },
         memory,
       );
@@ -859,13 +936,30 @@ function presetQuestionForSlot(
           stage: "structure",
           intent: "confirm-structure",
           key: "structurePreference",
-          text: "Parliamo di forma: lunghezza, capitoli e POV.",
+          text: "Quanti capitoli e che POV senti più giusti per questa storia?",
           quickChoices: [...LENGTH_PRESETS.slice(0, 3), ...STRUCTURE_PRESETS.slice(0, 3)],
           shouldAsk: (m) => !isSlotFilled(m, "chapterCount") && !isSlotFilled(m, "pov"),
         },
         memory,
       );
-    case "title":
+    case "indexOutline":
+      return buildQuestionFromDef(
+        {
+          id: "architect-index",
+          slotTarget: "indexOutline",
+          stage: "index",
+          intent: "confirm-index",
+          key: "structurePreference",
+          text: "Per l'indice: preferisci escalation continua, atti netti o capitoli che chiudono mini-arci?",
+          quickChoices: [
+            { label: "Escalation continua", value: "Indice a escalation continua, capitolo dopo capitolo." },
+            { label: "Atti netti", value: "Tre atti netti con midpoint devastante." },
+            { label: "Mini-arci", value: "Capitoli che chiudono mini-arci emotivi." },
+          ],
+          shouldAsk: (m) => !isSlotFilled(m, "indexOutline"),
+        },
+        memory,
+      );
       return buildQuestionFromDef(
         {
           id: "title-preset",
@@ -923,7 +1017,7 @@ export const FORGE_QUESTION_BANK: ForgeQuestionDef[] = [
     stage: "spark",
     intent: "capture-idea",
     key: "openingSpark",
-    text: "Raccontami il libro come lo racconteresti a un amico — anche se è ancora confuso.",
+    text: "Quale scena vedi già davanti a te — quella da cui tutto parte?",
     quickChoices: [
       { label: "Un'immagine forte", value: "Parto da un'immagine forte che non riesco a togliermi dalla testa." },
       { label: "Un personaggio", value: "Parto da un personaggio che non può restare uguale." },
@@ -967,27 +1061,7 @@ export function selectNextMemoryQuestion(state: GuidedInterviewState): Interview
     return withRecap(state, memory, buildQuestionFromDef(def, memory));
   }
 
-  for (const stage of FORGE_STAGE_ORDER) {
-    const slotForStage: Partial<Record<ForgeMemoryStage, ForgeSlotKey>> = {
-      language: "language",
-      "book-type": "bookType",
-      genre: "genre",
-      tone: "tone",
-      audience: "audience",
-      promise: "promise",
-      characters: "protagonist",
-      plot: "centralConflict",
-      structure: "chapterCount",
-      title: "title",
-    };
-    const slot = slotForStage[stage];
-    if (!slot || isSlotFilled(memory, slot)) continue;
-
-    const mode = detectBookMode(memory);
-    if (stage === "characters" && mode !== "fiction") continue;
-    if (stage === "plot" && mode !== "fiction") continue;
-    if (stage === "promise" && mode === "nonfiction" && isSlotFilled(memory, "method")) continue;
-
+  for (const slot of getCriticalMissingSlots(memory)) {
     const question = presetQuestionForSlot(slot, memory);
     if (!question) continue;
     if (isQuestionAlreadyAnswered(question.id, memory)) continue;

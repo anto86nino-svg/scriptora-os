@@ -101,6 +101,11 @@ export function evolutionReadyGothicState(): GuidedInterviewState {
       protagonistWound:
         "La protagonista porta una ferita di abbandono che la spinge verso verità che teme di scoprire e non può più ignorare.",
       narrativeDrive: "Indagini notturne e lettere nascoste spingono verso un abisso familiare inevitabile.",
+      endingDirection: "Nessuno esce pulito — solo più consapevole della verità sepolta.",
+      antagonistWound:
+        "Il fratello silenzioso protegge il segreto con metodi sempre più spietati.",
+      indexOutline:
+        "1. Ritorno alla villa 2. Lettere nascoste 3. Tradimento di famiglia 4. Rivelazione finale",
       emotionalTone: "Gotico, elegante, claustrofobico, inquietante, presagio e ombre.",
       genreDNA: "Narrativa gotica lenta, immersiva, letteraria e inquietante.",
       promise: "Una discesa lenta verso una rivelazione che nessuno è pronto ad accettare.",
@@ -134,6 +139,14 @@ export function evolutionReadyGothicState(): GuidedInterviewState {
         obsession: "La villa e ciò che nasconde",
         secret: "Ha sentito il grido la notte del delitto",
         arc: "Da figlia obediente a donna che sceglie la verità",
+      },
+      {
+        id: "antagonist-1",
+        role: "antagonist",
+        name: "Marco",
+        wound: "Colpa per il segreto che ha giurato di custodire",
+        obsession: "Tenere chiusa la villa e la verità a ogni costo",
+        arc: "Da protettore a minaccia morale della famiglia",
       },
     ],
     narrativeDecisions: [
