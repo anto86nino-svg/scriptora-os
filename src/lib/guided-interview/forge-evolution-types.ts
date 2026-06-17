@@ -73,6 +73,12 @@ export type ForgeCharacter = {
   obsession?: string;
   secret?: string;
   arc?: string;
+  emotionalTriggers?: string;
+  dominantFlaw?: string;
+  blindSpot?: string;
+  vulnerability?: string;
+  recurringBehavior?: string;
+  personalLanguage?: string;
 };
 
 export type NarrativeDecisionRecord = {

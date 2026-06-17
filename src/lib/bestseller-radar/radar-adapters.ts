@@ -4,6 +4,8 @@ import type { TitleDominationResult } from "@/lib/kdp/money-engine";
 import { loadKdpLaunchSession } from "@/lib/kdp/kdp-launch-session";
 import { getProjectCoverDataUrl } from "@/lib/cover-session";
 
+/** Unified cross-module context: see `getRadarContext` in `@/lib/intelligence-layer`. */
+
 const TITLE_DOMINATION_KEY = "kdp-title-domination-state";
 
 export type RadarKdpContext = {

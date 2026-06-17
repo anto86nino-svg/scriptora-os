@@ -1,12 +1,15 @@
 import type { BookCharacter } from "@/types/book";
 import type { BookDnaLock } from "./dna-lock";
 import type {
+  BookPromises,
   CanonMaster,
   ForgeCharacter,
   NarrativeDecisionRecord,
   StoryFutureState,
+  StoryRoomState,
   TitleIntelligence,
 } from "./forge-evolution-types";
+import type { AntagonistForceType } from "./antagonist-intelligence";
 import type { GuidedInterviewState } from "./types";
 import { buildFinalBookReview } from "./final-book-review";
 import { deriveTitleIntelligence } from "./title-intelligence-engine";
@@ -27,6 +30,9 @@ export type ForgeInterviewSeed = {
   titleIntelligence?: TitleIntelligence;
   narrativeDecisions?: NarrativeDecisionRecord[];
   storyFuture?: StoryFutureState;
+  storyRoom?: StoryRoomState;
+  antagonistForce?: AntagonistForceType;
+  bookPromises?: BookPromises;
 };
 
 export type ForgeBlueprintReadiness = {
@@ -40,6 +46,32 @@ const ROLE_LABELS: Record<ForgeCharacter["role"], string> = {
   supporting: "Personaggio di supporto",
 };
 
+function inferDeepPsychology(character: ForgeCharacter): ForgeCharacter {
+  return {
+    ...character,
+    emotionalTriggers:
+      character.emotionalTriggers ||
+      (character.obsession ? `Si attiva quando: ${character.obsession}` : undefined),
+    dominantFlaw:
+      character.dominantFlaw ||
+      (character.contradiction ? `Difetto dominante: ${character.contradiction}` : undefined),
+    blindSpot:
+      character.blindSpot ||
+      (character.secret ? `Punto cieco: ${character.secret}` : undefined),
+    vulnerability: character.vulnerability || character.fear,
+    recurringBehavior:
+      character.recurringBehavior ||
+      (character.obsession ? `Comportamento ricorrente: ${character.obsession}` : undefined),
+    personalLanguage: character.personalLanguage,
+  };
+}
+
+export function enrichForgeCharactersForWriter(
+  characters?: ForgeCharacter[],
+): ForgeCharacter[] {
+  return (characters ?? []).map(inferDeepPsychology);
+}
+
 export function buildForgeInterviewSeed(state: GuidedInterviewState): ForgeInterviewSeed {
   const title = deriveTitleIntelligence(state);
   return {
@@ -52,10 +84,13 @@ export function buildForgeInterviewSeed(state: GuidedInterviewState): ForgeInter
     dnaLock: state.dnaLock,
     canon: state.canon,
     canonLocked: state.canonLocked,
-    characters: state.characters,
+    characters: enrichForgeCharactersForWriter(state.characters),
     titleIntelligence: state.titleIntelligence ?? title,
     narrativeDecisions: state.narrativeDecisions,
     storyFuture: state.storyFuture,
+    storyRoom: state.storyRoom,
+    antagonistForce: state.antagonistForce,
+    bookPromises: state.bookPromises,
   };
 }
 
@@ -88,12 +123,18 @@ export function resolveForgeCommercialPromise(seed: ForgeInterviewSeed): string 
 }
 
 export function mapForgeCharacterToBookCharacter(character: ForgeCharacter): BookCharacter {
+  const deep = character;
   const name = clean(character.name);
   const traits = [
-    character.contradiction && `Contraddizione: ${character.contradiction}`,
-    character.obsession && `Ossessione: ${character.obsession}`,
-    character.fear && `Paura: ${character.fear}`,
-    character.arc && `Arco: ${character.arc}`,
+    deep.contradiction && `Contraddizione: ${deep.contradiction}`,
+    deep.obsession && `Ossessione: ${deep.obsession}`,
+    deep.fear && `Paura: ${deep.fear}`,
+    deep.arc && `Arco: ${deep.arc}`,
+    deep.emotionalTriggers && `Trigger: ${deep.emotionalTriggers}`,
+    deep.dominantFlaw && `Difetto: ${deep.dominantFlaw}`,
+    deep.blindSpot && `Punto cieco: ${deep.blindSpot}`,
+    deep.recurringBehavior && `Comportamento: ${deep.recurringBehavior}`,
+    deep.personalLanguage && `Linguaggio: ${deep.personalLanguage}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -101,14 +142,20 @@ export function mapForgeCharacterToBookCharacter(character: ForgeCharacter): Boo
   return {
     name,
     role: ROLE_LABELS[character.role] || character.role,
-    wound: clean(character.wound),
-    secret: clean(character.secret),
-    externalDesire: clean(character.desire),
-    personality: traits || clean(character.fear),
-    internalNeed: clean(character.fear),
-    relationships: character.obsession ? `Ossessione: ${character.obsession}` : undefined,
-    strictRules: character.arc
-      ? `Arco narrativo bloccato: ${character.arc}. Non rinominare ${name || "questo personaggio"}.`
+    wound: clean(deep.wound),
+    secret: clean(deep.secret),
+    externalDesire: clean(deep.desire),
+    personality: traits || clean(deep.fear),
+    internalNeed: clean(deep.fear),
+    vulnerability: clean(deep.vulnerability || deep.fear),
+    emotionalTriggers: clean(deep.emotionalTriggers),
+    dominantFlaw: clean(deep.dominantFlaw || deep.contradiction),
+    blindSpot: clean(deep.blindSpot || deep.secret),
+    recurringBehavior: clean(deep.recurringBehavior || deep.obsession),
+    personalLanguage: clean(deep.personalLanguage),
+    relationships: deep.obsession ? `Ossessione: ${deep.obsession}` : undefined,
+    strictRules: deep.arc
+      ? `Arco narrativo bloccato: ${deep.arc}. Non rinominare ${name || "questo personaggio"}.`
       : name
         ? `Non rinominare ${name}.`
         : undefined,
@@ -155,6 +202,12 @@ export function buildCharacterTruthBlock(
     if (character.obsession) lines.push(`Ossessione: ${character.obsession}`);
     if (character.secret) lines.push(`Segreto: ${character.secret}`);
     if (character.arc) lines.push(`Arco: ${character.arc}`);
+    if (character.emotionalTriggers) lines.push(`Trigger emotivi: ${character.emotionalTriggers}`);
+    if (character.dominantFlaw) lines.push(`Difetto dominante: ${character.dominantFlaw}`);
+    if (character.blindSpot) lines.push(`Punto cieco: ${character.blindSpot}`);
+    if (character.vulnerability) lines.push(`Vulnerabilità: ${character.vulnerability}`);
+    if (character.recurringBehavior) lines.push(`Comportamento ricorrente: ${character.recurringBehavior}`);
+    if (character.personalLanguage) lines.push(`Linguaggio personale: ${character.personalLanguage}`);
     lines.push(`REGOLA: Se il canon dice ${name}, non usare altri nomi per questo ruolo.`);
   }
 

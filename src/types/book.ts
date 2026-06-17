@@ -257,6 +257,12 @@ export interface BookCharacter {
   secret?: string;
   relationships?: string;
   strictRules?: string;
+  emotionalTriggers?: string;
+  dominantFlaw?: string;
+  blindSpot?: string;
+  vulnerability?: string;
+  recurringBehavior?: string;
+  personalLanguage?: string;
 }
 
 export interface AuthorIdentity {
@@ -349,6 +355,12 @@ export interface BookConfig {
   editorialMapId?: string;
   kdpSeriesName?: string;
   kdpRoadmapPosition?: number;
+  /** Post-Forge: layered canon brief for Writer Engine */
+  forgeCanonBrief?: string;
+  /** Post-Forge: scenes, arcs, ending architecture */
+  forgeStoryArchitecture?: string;
+  /** Post-Forge: anti-drift rules from DNA Lock */
+  forgeAntiDriftRules?: string[];
 }
 
 /**

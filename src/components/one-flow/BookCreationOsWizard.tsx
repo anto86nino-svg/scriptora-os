@@ -72,6 +72,7 @@ import {
   resolveForgeTitle,
   validateForgeHandoffForBlueprint,
 } from "@/lib/guided-interview/forge-blueprint-handoff";
+import { enrichBookConfigFromForgeSeed } from "@/lib/guided-interview/forge-writer-bridge";
 import { saveForgeDnaLock, loadForgeDnaLock } from "@/lib/guided-interview/interview-state";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 
@@ -944,7 +945,22 @@ export function BookCreationOsWizard({
       configStatus: "validated",
     }, mergedIdentity) as BookConfig);
     const { config: sanitized } = sanitizeBookConfiguration(raw);
-    return sanitized;
+    if (!forgeHandoff) return sanitized;
+
+    const enriched = enrichBookConfigFromForgeSeed(sanitized, forgeHandoff);
+    const wizardExtras = [
+      coreConflict.trim() && `Conflitto principale:\n${coreConflict.trim()}`,
+      narrativePromise.trim() && `Promessa narrativa/editoriale:\n${narrativePromise.trim()}`,
+      setting.trim() && `Ambientazione:\n${setting.trim()}`,
+      openingHook.trim() && `Hook iniziale:\n${openingHook.trim()}`,
+      mainTwists.trim() && `Twist principali:\n${mainTwists.trim()}`,
+      commercialGoal.trim() && `Obiettivo commerciale:\n${commercialGoal.trim()}`,
+      voiceConsistency.trim() && `Voice consistency:\n${voiceConsistency.trim()}`,
+    ].filter(Boolean).join("\n\n");
+    if (wizardExtras) {
+      enriched.idea = [enriched.idea, wizardExtras].filter(Boolean).join("\n\n");
+    }
+    return enriched;
   }, [
     styleProfile, identityDraft, authorName, title, subtitle, idea, language, amazonMarketplace,
     bookTypeId, genre, category, subcategory, subgenre, tone, targetReader, referenceAuthors, chapterLength,

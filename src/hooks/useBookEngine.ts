@@ -29,6 +29,10 @@ import { initialPhaseAfterBlueprint, phaseAfterAllChapters } from "@/lib/matter-
 import { scaffoldMatterForApprovedBlueprint } from "@/lib/matter-scaffold";
 import { refreshProjectLongBookMemory } from "@/lib/long-book-memory";
 import { isMemoryConsistencyV25Enabled, refreshProjectMemoryConsistencyV25 } from "@/lib/memory-consistency-v25";
+import {
+  consultIntelligenceLayer,
+  getWriterEngineContext,
+} from "@/lib/intelligence-layer";
 
 function refreshProjectNarrativeMemory(project: BookProject): BookProject {
   return isMemoryConsistencyV25Enabled()
@@ -822,6 +826,14 @@ typeof crypto.randomUUID === "function"
         index,
       );
 
+      const writerIntel = getWriterEngineContext(latestP, { chapterIndex: index });
+      if (writerIntel.canonWarnings.length) {
+        addMessage(
+          "assistant",
+          `📋 Canon check (non bloccante): ${writerIntel.canonWarnings.slice(0, 3).join(" · ")}`,
+        );
+      }
+
       const chapter = await runGenerateChapterChunked(
         latestP.config, latestP.blueprint!, index, prevChapters, chapterOverride,
         (progress) => {
@@ -924,6 +936,32 @@ typeof crypto.randomUUID === "function"
           })
         : formatChapterDisplayTitle(index, chapter.title, { config: p.config });
       addMessage("assistant", `${finalTitle} complete! ✅ (${finalWords} words)`);
+
+      const postForgeIntel = consultIntelligenceLayer({
+        project: latestAfterSave || latestP,
+        chapterIndex: index,
+        chapterText: latestAfterSave?.chapters?.[index]?.content || chapter.content,
+      });
+      const report = postForgeIntel.manuscriptReport;
+      const editorialHints = report
+        ? [
+            ...report.narrativeDirectorNotes.slice(0, 2),
+            ...report.editorialSuggestions.slice(0, 2),
+          ].filter(Boolean)
+        : [];
+      if (editorialHints.length) {
+        addMessage(
+          "assistant",
+          `📝 Revisione editoriale (suggerimenti, non modifiche automatiche): ${editorialHints.join(" · ")}`,
+        );
+      }
+      if (report?.commercialNotes.length) {
+        addMessage(
+          "assistant",
+          `💡 Consulenza commerciale: ${report.commercialNotes.join(" · ")}`,
+        );
+      }
+
       if (countProjectWordsHard(getLatestProject()) >= maxProjectWordsAfterGeneration) {
         const msg = `Limite piano raggiunto: il libro è arrivato a ${planLimitLabel(maxProjectWordsAfterGeneration)}.`;
         addMessage("assistant", `🔒 ${msg}`);

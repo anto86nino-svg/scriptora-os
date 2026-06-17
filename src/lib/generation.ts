@@ -34,6 +34,7 @@ import { buildHumanBestsellerModeV12Block } from "@/lib/human-bestseller-mode-v1
 import { runWritingEngineV13Audit } from "@/lib/writing-engine-v13";
 import { validateCanonChunkBeforeMerge } from "@/lib/writing-engine/canon-lock-v2";
 import { buildPremiumWritingBlock, runUltraHumanFinalPass } from "@/lib/premium-writing";
+import { buildForgeWriterContextBlock } from "@/lib/guided-interview/forge-writer-bridge";
 import { buildPromptFromCanonicalConfig, sanitizeBookConfiguration } from "@/lib/book-config-engine";
 import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/billing/billingHeaders";
 import {
@@ -792,6 +793,12 @@ CHARACTER LOCK:
    External desire: ${c.externalDesire || "not specified"}
    Internal need: ${c.internalNeed || "not specified"}
    Secret: ${c.secret || "not specified"}
+   Emotional triggers: ${c.emotionalTriggers || "not specified"}
+   Dominant flaw: ${c.dominantFlaw || "not specified"}
+   Blind spot: ${c.blindSpot || "not specified"}
+   Vulnerability: ${c.vulnerability || "not specified"}
+   Recurring behavior: ${c.recurringBehavior || "not specified"}
+   Personal language: ${c.personalLanguage || "not specified"}
    Relationships: ${c.relationships || "not specified"}
    Strict rules: ${c.strictRules || "Never rename this character. Never change their role, age, wound, desire, secret, or relationship continuity."}`;
   }).join("\\n\\n");
@@ -809,6 +816,8 @@ MANDATORY RULES:
 - Never invent a new main character to solve a scene.
 - New minor characters are allowed only when necessary, and must not steal the emotional role of the canonical cast.
 - Every scene must respect the characters' established psychology and relationship tension.
+- Before writing any reaction, ask: "Is this response coherent with this character's wound, fear, desire, contradiction, and recurring behavior?"
+- Never make every character react the same way.
 `;
 }
 
@@ -1257,6 +1266,7 @@ export async function generateChapterChunked(
   const systemBase = getSystemPrompt(config, genreLock);
   const scriptoraWritingBrain = buildScriptoraWritingBrain(config);
   const characterLock = buildCharacterLock(config);
+  const forgeWriterBlock = buildForgeWriterContextBlock(config);
   const humanNarrativeRealismV4 = buildHumanNarrativeRealismV4Block(config, chapterIndex);
   const humanBestsellerModeV11 = buildHumanBestsellerModeV11Block(config, { chapterIndex, mode: "generation" });
   const humanBestsellerModeV12 = buildHumanBestsellerModeV12Block(config, {
@@ -1345,6 +1355,8 @@ PHASE: ${phase} — ${phaseInstruction}
 ${scriptoraWritingBrain}
 
 ${characterLock}
+
+${forgeWriterBlock ? `${forgeWriterBlock}\n` : ""}
 
 ${humanNarrativeRealismV4}
 
@@ -2152,6 +2164,7 @@ export async function rewriteChapter(
   const lengthInstruction = getChapterLengthInstruction(config, chapterIndex, config.numberOfChapters);
   const levelInstruction = getRewriteLevelInstruction(level);
   const characterLock = buildCharacterLock(config);
+  const forgeWriterBlock = buildForgeWriterContextBlock(config);
   const humanNarrativeRealismV4 = buildHumanNarrativeRealismV4Block(config, chapterIndex);
   const humanBestsellerModeV11 = buildHumanBestsellerModeV11Block(config, { chapterIndex, mode: "rewrite" });
   const humanBestsellerModeV12 = buildHumanBestsellerModeV12Block(config, {
@@ -2186,6 +2199,8 @@ ${chapter.content.substring(0, 2500)}...
 ${contextMemory}
 
 ${characterLock}
+
+${forgeWriterBlock ? `${forgeWriterBlock}\n` : ""}
 
 ${humanNarrativeRealismV4}
 
