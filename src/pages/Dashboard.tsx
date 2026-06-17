@@ -1,37 +1,15 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { lazy, Suspense, useState, useEffect, useMemo } from "react";
+import { lazy, Suspense, useState, useEffect, useMemo, useCallback } from "react";
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
-const HomeExportDialog = lazy(() =>
-  import("@/components/HomeExportDialog").then((m) => ({ default: m.HomeExportDialog })),
-);
-const TitleIntelligenceDialog = lazy(() =>
-  import("@/components/TitleIntelligenceDialog").then((m) => ({ default: m.TitleIntelligenceDialog })),
-);
-const AdvancedAppearanceDialog = lazy(() =>
-  import("@/components/AdvancedAppearanceDialog").then((m) => ({ default: m.AdvancedAppearanceDialog })),
-);
-const CharacterStudioDialog = lazy(() =>
-  import("@/components/CharacterStudioDialog").then((m) => ({ default: m.CharacterStudioDialog })),
-);
-const ManuscriptAnalyzerDialog = lazy(() =>
-  import("@/components/ManuscriptAnalyzerDialog").then((m) => ({ default: m.ManuscriptAnalyzerDialog })),
-);
-const NotepadDialog = lazy(() =>
-  import("@/components/NotepadDialog").then((m) => ({ default: m.NotepadDialog })),
-);
-const AuthorIdentityDialog = lazy(() =>
-  import("@/components/AuthorIdentityDialog").then((m) => ({ default: m.AuthorIdentityDialog })),
-);
 import { FocusMusicControl } from "@/components/FocusMusicControl";
 import { InProgressSection } from "@/components/Home/InProgressSection";
-import { LibrarySection } from "@/components/Home/LibrarySection";
 import { PaywallGuard } from "@/components/PaywallGuard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  BookOpen, Plus, FolderOpen, Trash2, Rocket, Zap,
+  BookOpen, Plus, FolderOpen, Rocket, Zap,
   FileDown, ArrowRight, Clock, Globe, Flame, Loader2, Sparkles, Wand2,
   Library, Home as HomeIcon, X, BarChart3,
   TrendingUp, LogOut, CreditCard, Download as DownloadIcon, Settings, Users,
@@ -65,12 +43,13 @@ import { GlobalCreditBar } from "@/components/billing/GlobalCreditBar";
 import { AuthSessionButton } from "@/components/auth/AuthSessionButton";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import type { ForgePreset } from "@/lib/scriptora-forge/forge-presets";
-import { ONE_FLOW_TOOL_ROLES } from "@/lib/one-flow/one-flow-tool-roles";
 import { DashboardHomePillars } from "@/components/one-flow/DashboardHomePillars";
 import { DashboardPackagingRow } from "@/components/one-flow/DashboardPackagingRow";
 import { DashboardAdvancedToolsPanel } from "@/components/one-flow/DashboardAdvancedToolsPanel";
-import { DedicatedToolScreen } from "@/components/one-flow/DedicatedToolScreen";
+import { DashboardToolHost } from "@/components/one-flow/DashboardToolHost";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
+import type { ActiveDashboardTool } from "@/lib/one-flow/dashboard-active-tool";
+import { activeToolGuideRoute } from "@/lib/one-flow/dashboard-active-tool";
 import { OsHomeHero } from "@/components/os/OsHomeHero";
 import {
   MobileDashboardCreditPill,
@@ -82,8 +61,10 @@ import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransi
 const ScriptoraSettingsHub = lazy(() =>
   import("@/components/settings/ScriptoraSettingsHub").then((m) => ({ default: m.ScriptoraSettingsHub })),
 );
+const AdvancedAppearanceDialog = lazy(() =>
+  import("@/components/AdvancedAppearanceDialog").then((m) => ({ default: m.AdvancedAppearanceDialog })),
+);
 import { MobileBookForge } from "@/mobile/MobileBookForge";
-import { getBookTypeLabel } from "@/components/BookTypeBadge";
 import {
   ProfileMenuDialog,
   isAdvancedLaunchpadEnabled,
@@ -102,7 +83,6 @@ interface DetectedIntent {
   suggestedSubtitles: string[];
   bestTitleIndex: number;
 }
-
 
 function isNarrativeGenreForCharacters(genre?: string): boolean {
   const g = String(genre || "").toLowerCase();
@@ -165,19 +145,10 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const devOn = useDevMode();
-  const [showProjects, setShowProjects] = useState(false);
-  const [showExport, setShowExport] = useState(false);
-  const [showTitleIntel, setShowTitleIntel] = useState(false);
+  const [activeDashboardTool, setActiveDashboardTool] = useState<ActiveDashboardTool>(null);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [showSettingsHub, setShowSettingsHub] = useState(false);
-  const [showCharacterStudio, setShowCharacterStudio] = useState(false);
-  const [showManuscriptAnalyzer, setShowManuscriptAnalyzer] = useState(false);
-  const [showNotepad, setShowNotepad] = useState(false);
-  const [showAuthorIdentity, setShowAuthorIdentity] = useState(false);
   const [authorIdentityPrefill, setAuthorIdentityPrefill] = useState<import("@/types/book").AuthorIdentity | null>(null);
-  const [showLibrary, setShowLibrary] = useState(false);
-  const [showIdeaModal, setShowIdeaModal] = useState(false);
-  const [showBookCreationWizard, setShowBookCreationWizard] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showAdvancedLaunchpad, setShowAdvancedLaunchpad] = useState(() => isAdvancedLaunchpadEnabled());
   const [projects, setProjects] = useState<BookProject[]>([]);
@@ -185,6 +156,28 @@ export default function Dashboard() {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   const currentLang = useUILanguage();
+  const closeAllDashboardTools = useCallback(() => {
+    setActiveDashboardTool(null);
+  }, []);
+
+  const openDashboardTool = useCallback((tool: ActiveDashboardTool) => {
+    setShowSettingsHub(false);
+    setShowAdvancedSettings(false);
+    setActiveDashboardTool(null);
+    requestAnimationFrame(() => setActiveDashboardTool(tool));
+  }, []);
+
+  const openSettingsHub = useCallback(() => {
+    closeAllDashboardTools();
+    setShowSettingsHub(true);
+  }, [closeAllDashboardTools]);
+
+  useEffect(() => {
+    if (import.meta.env.DEV && activeDashboardTool) {
+      console.warn("[DASHBOARD_ACTIVE_TOOL]", activeDashboardTool);
+    }
+  }, [activeDashboardTool]);
+
   const [activeRun, setActiveRun] = useState<{ runId: string; title: string; startedAt: number } | null>(null);
 
   // One-click idea state
@@ -259,16 +252,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     const route =
-      showIdeaModal ? "idea" :
-      showBookCreationWizard ? "newbook" :
-      showAuthorIdentity ? "author" :
-      showCharacterStudio ? "character" :
-      showManuscriptAnalyzer ? "manuscript" :
-      showNotepad ? "notepad" :
-      showTitleIntel ? "title" :
-      showExport ? "export" :
+      activeDashboardTool ? activeToolGuideRoute(activeDashboardTool) :
       showAdvancedSettings ? "settings" :
-      showLibrary || showProjects ? "library" :
       showBetaDialog ? "beta" :
       showDevUnlock ? "usage" :
       null;
@@ -277,21 +262,7 @@ export default function Dashboard() {
     return () => {
       window.dispatchEvent(new CustomEvent("scriptora-guide-context", { detail: { route: null } }));
     };
-  }, [
-    showAdvancedSettings,
-    showAuthorIdentity,
-    showBetaDialog,
-    showCharacterStudio,
-    showDevUnlock,
-    showExport,
-    showIdeaModal,
-    showLibrary,
-    showManuscriptAnalyzer,
-    showBookCreationWizard,
-    showNotepad,
-    showProjects,
-    showTitleIntel,
-  ]);
+  }, [activeDashboardTool, showAdvancedSettings, showBetaDialog, showDevUnlock]);
 
   // Reset intent if user edits the idea after detection
   useEffect(() => {
@@ -316,7 +287,7 @@ export default function Dashboard() {
 
     // Single creation flow: every "new book" entrypoint opens Scriptora Forge.
     // The legacy wizard remains available only inside Forge after DNA confirmation.
-    setShowBookCreationWizard(true);
+    openDashboardTool("book-forge");
   };
 
   useEffect(() => {
@@ -356,9 +327,9 @@ export default function Dashboard() {
       setLastProjectId(state.projectId);
     }
     if (state.openForge || state.openWizard || state.openNewBook) openNewBookGuarded();
-    if (state.openProjects) setShowProjects(true);
+    if (state.openProjects) openDashboardTool("projects");
     if (state.openCover) guardPlanFeature("cover_studio_template", openCoverStudioPage)();
-    if (state.openExport) guardPlanFeature("export_epub", () => setShowExport(true))();
+    if (state.openExport) guardPlanFeature("export_epub", () => openDashboardTool("export"))();
     navigate(location.pathname, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
@@ -447,7 +418,7 @@ export default function Dashboard() {
 
   const openAuthorIdentity = (prefill?: import("@/types/book").AuthorIdentity | null) => {
     setAuthorIdentityPrefill(prefill || null);
-    setShowAuthorIdentity(true);
+    openDashboardTool("author-identity");
   };
 
   const handleGenerateAuthorWithAi = () => {
@@ -479,13 +450,13 @@ typeof crypto.randomUUID === "function"
 
   useEffect(() => {
     const openFromCharacterStudio = () => {
-      setShowCharacterStudio(false);
+      closeAllDashboardTools();
       openNewBookGuarded();
     };
 
     window.addEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
     return () => window.removeEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
-  }, []);
+  }, [closeAllDashboardTools]);
 
   const mergeCharacterStudioIntoConfig = (config: BookConfig): BookConfig => {
     let finalConfig: BookConfig = config;
@@ -524,7 +495,7 @@ typeof crypto.randomUUID === "function"
     const finalConfig = mergeCharacterStudioIntoConfig(config);
     setSelectedAuthorIdentityId(activeAuthor.id);
     sessionStorage.setItem("scriptora-new-book", JSON.stringify({ mode: "legacy", config: finalConfig }));
-    setShowBookCreationWizard(false);
+    closeAllDashboardTools();
     navigate("/app");
   };
 
@@ -535,7 +506,7 @@ typeof crypto.randomUUID === "function"
       ...payload,
       config: finalConfig,
     }));
-    setShowBookCreationWizard(false);
+    closeAllDashboardTools();
     navigate("/app");
   };
 
@@ -627,7 +598,7 @@ typeof crypto.randomUUID === "function"
         authorName: activeAuthor.penName,
       }),
     );
-    setShowIdeaModal(false);
+    closeAllDashboardTools();
     openNewBookGuarded();
   };
 
@@ -650,31 +621,82 @@ typeof crypto.randomUUID === "function"
   const dashboardActionContext = useMemo<DashboardActionContext>(
     () => ({
       hasActiveBook: Boolean(lastProject),
+      closeAllTools: closeAllDashboardTools,
+      openTool: (tool) => {
+        if (tool === "export") {
+          guardPlanFeature("export_epub", () => openDashboardTool("export"))();
+          return;
+        }
+        if (tool === "title-intelligence") {
+          guardPlanFeature("title_intelligence_base", () => openDashboardTool("title-intelligence"))();
+          return;
+        }
+        if (tool === "manuscript-lab") {
+          guardPlanFeature("chapter_improvement", () => openDashboardTool("manuscript-lab"))();
+          return;
+        }
+        if (tool === "character-studio") {
+          guardPlanFeature("book_engine_full", () => openDashboardTool("character-studio"))();
+          return;
+        }
+        if (tool === "author-identity") {
+          guardPlanFeature("book_engine_full", () => openDashboardTool("author-identity"))();
+          return;
+        }
+        openDashboardTool(tool);
+      },
       onNewBook: openNewBookGuarded,
-      onContinue: lastProject ? () => goApp({ projectId: lastProject.id }) : undefined,
-      onOpenProjects: () => setShowProjects(true),
-      onOpenLibrary: () => setShowLibrary(true),
-      onOpenExport: () => guardPlanFeature("export_epub", () => setShowExport(true))(),
-      onOpenCover: () => guardPlanFeature("cover_studio_template", openCoverStudioPage)(),
-      onOpenTitleIntel: () => guardPlanFeature("title_intelligence_base", () => setShowTitleIntel(true))(),
-      onOpenIdeaPreview: () => setShowIdeaModal(true),
-      onOpenManuscriptLab: () => guardPlanFeature("chapter_improvement", () => setShowManuscriptAnalyzer(true))(),
-      onOpenCharacterStudio: () => guardPlanFeature("book_engine_full", () => setShowCharacterStudio(true))(),
-      onOpenAuthorIdentity: () => openAuthorIdentity(),
-      onOpenNotepad: () => setShowNotepad(true),
-      onNavigate: (path: string) => navigate(path),
+      onContinue: lastProject ? () => { closeAllDashboardTools(); goApp({ projectId: lastProject.id }); } : undefined,
+      onOpenCover: () => { closeAllDashboardTools(); guardPlanFeature("cover_studio_template", openCoverStudioPage)(); },
+      onNavigate: (path: string) => { closeAllDashboardTools(); navigate(path); },
     }),
-    [lastProject, navigate],
+    [lastProject, navigate, closeAllDashboardTools, openDashboardTool],
   );
 
-  if (showBookCreationWizard) {
+  const ideaPreviewProps = useMemo(() => ({
+    idea,
+    setIdea,
+    briefTitle,
+    setBriefTitle,
+    briefSubtitle,
+    setBriefSubtitle,
+    bookLang,
+    setBookLang,
+    titleLang,
+    setTitleLang,
+    bookLength,
+    setBookLength,
+    customTotalWords,
+    setCustomTotalWords,
+    oneClickChapters,
+    setOneClickChapters,
+    oneClickSubchaptersEnabled,
+    setOneClickSubchaptersEnabled,
+    oneClickSubchaptersPerChapter,
+    setOneClickSubchaptersPerChapter,
+    intent,
+    detecting,
+    launching,
+    currentPlan,
+    heroValid,
+    onDetectIntent: () => { void detectIntent(); },
+    onLaunchOneClick: () => { void launchOneClick(); },
+    onOpenAdvancedForge: () => { closeAllDashboardTools(); openNewBookGuarded(); },
+    onClose: closeAllDashboardTools,
+  }), [
+    idea, briefTitle, briefSubtitle, bookLang, titleLang, bookLength, customTotalWords,
+    oneClickChapters, oneClickSubchaptersEnabled, oneClickSubchaptersPerChapter,
+    intent, detecting, launching, currentPlan, heroValid, closeAllDashboardTools,
+  ]);
+
+  if (activeDashboardTool === "book-forge") {
     return (
       <div className="scriptora-page-scroll min-h-[100dvh] bg-background">
         <div className="sticky top-0 z-50 border-b border-white/10 bg-background/85 backdrop-blur-2xl">
           <div className="mx-auto flex h-14 max-w-7xl items-center px-4 sm:px-6 lg:px-8">
             <button
               type="button"
-              onClick={() => setShowBookCreationWizard(false)}
+              onClick={closeAllDashboardTools}
               className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-white/[0.12]"
             >
               ← Torna alla Home
@@ -683,7 +705,7 @@ typeof crypto.randomUUID === "function"
         </div>
 
         <MobileBookForge
-          onClose={() => setShowBookCreationWizard(false)}
+          onClose={closeAllDashboardTools}
           authorIdentity={activeAuthor}
           onStudioComplete={handleStudioComplete}
           onGenerateBlueprint={handleStudioGenerateBlueprint}
@@ -775,7 +797,7 @@ typeof crypto.randomUUID === "function"
             <div className="md:hidden">
               <MobileDashboardCreditPill />
             </div>
-            <ScriptoraSettingsButton onClick={() => setShowSettingsHub(true)} />
+            <ScriptoraSettingsButton onClick={openSettingsHub} />
             <button
               onClick={() => navigate("/usage")}
               className="ios-toolbar-button hidden px-3 text-xs font-medium md:flex"
@@ -838,7 +860,7 @@ typeof crypto.randomUUID === "function"
             </div>
             <button
               type="button"
-              onClick={() => setShowAuthorIdentity(true)}
+              onClick={() => openAuthorIdentity()}
               className="hidden md:inline-flex ios-toolbar-button h-8 w-8 text-sky-200"
               title={t("author_identity")}
             >
@@ -873,7 +895,7 @@ typeof crypto.randomUUID === "function"
               onCloseMoreMenu={() => setShowMobileMoreMenu(false)}
               onProfile={() => setShowProfileMenu(true)}
               onCoverStudio={() => guardPlanFeature("cover_studio_template", openCoverStudioPage)()}
-              onExportStudio={() => guardPlanFeature("export_epub", () => setShowExport(true))()}
+              onExportStudio={() => guardPlanFeature("export_epub", () => openDashboardTool("export"))()}
               onAuthorIdentity={() => openAuthorIdentity()}
               onSignOut={async () => {
                 try {
@@ -905,15 +927,15 @@ typeof crypto.randomUUID === "function"
           progressPercent={lastProjectProgress}
           onContinue={() => lastProject && goApp({ projectId: lastProject.id })}
           onGenerateNextChapter={() => lastProject && goApp({ projectId: lastProject.id, section: "chapters" })}
-          onExport={() => guardPlanFeature("export_epub", () => setShowExport(true))()}
+          onExport={() => guardPlanFeature("export_epub", () => openDashboardTool("export"))()}
           onNewBook={openNewBookGuarded}
-          onMyBooks={() => setShowProjects(true)}
+          onMyBooks={() => openDashboardTool("projects")}
         />
 
         <section className="mb-4 flex flex-wrap gap-2 sm:mb-6">
           <button
             type="button"
-            onClick={() => setShowProjects(true)}
+            onClick={() => openDashboardTool("projects")}
             className="scriptora-action-tile inline-flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-left transition-all hover:-translate-y-0.5"
           >
             <FolderOpen className="h-4 w-4 text-white/75" />
@@ -925,7 +947,7 @@ typeof crypto.randomUUID === "function"
           {lastProject && (
             <button
               type="button"
-              onClick={() => setShowLibrary(true)}
+              onClick={() => openDashboardTool("library")}
               className="scriptora-action-tile inline-flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-left transition-all hover:-translate-y-0.5"
             >
               <Library className="h-4 w-4 text-white/75" />
@@ -1014,69 +1036,48 @@ typeof crypto.randomUUID === "function"
 
       </div>
 
-      {(showExport || showTitleIntel || showAdvancedSettings || showSettingsHub || showCharacterStudio || showManuscriptAnalyzer || showNotepad || showAuthorIdentity) && (
+      <DashboardToolHost
+        activeTool={activeDashboardTool}
+        onClose={closeAllDashboardTools}
+        projects={projects}
+        draftProjects={draftProjects}
+        flowProjectId={flowProjectId}
+        lastProject={lastProject}
+        freeBookUsed={freeBookUsed}
+        authorIdentityPrefill={authorIdentityPrefill}
+        onClearAuthorPrefill={() => setAuthorIdentityPrefill(null)}
+        onDeleteProject={handleDelete}
+        onGoApp={goApp}
+        onOpenTool={openDashboardTool}
+        onOpenNewBook={openNewBookGuarded}
+        onLimitReached={() => navigate("/pricing")}
+        onAuthorIdentityFromCharacter={() => openAuthorIdentity()}
+        ideaPreview={ideaPreviewProps}
+      />
+
+      {(showAdvancedSettings || showSettingsHub) && (
       <Suspense fallback={(
         <ScriptoraAliveTransition
           compact
           overlay
           tone="export"
-          title="Sto aprendo lo strumento…"
+          title="Sto aprendo le impostazioni…"
           steps={["Caricamento pannello…", "Quasi pronto…"]}
         />
       )}>
-      {showExport && (
-        <HomeExportDialog
-          open
-          projects={projects}
-          initialProjectId={flowProjectId || lastProject?.id}
-          onClose={() => setShowExport(false)}
-        />
-      )}
-      {showTitleIntel && (
-        <TitleIntelligenceDialog
-          open
-          onClose={() => setShowTitleIntel(false)}
-          onLaunchForge={openNewBookGuarded}
-        />
-      )}
       {showAdvancedSettings && <AdvancedAppearanceDialog open onClose={() => setShowAdvancedSettings(false)} />}
       {showSettingsHub && (
           <ScriptoraSettingsHub
             open={showSettingsHub}
             onClose={() => setShowSettingsHub(false)}
-            onOpenAppearance={() => setShowAdvancedSettings(true)}
+            onOpenAppearance={() => { closeAllDashboardTools(); setShowAdvancedSettings(true); }}
             onOpenAuthorIdentity={() => openAuthorIdentity()}
             onOpenUsage={() => navigate("/usage?focus=purchase")}
           />
       )}
-      {showCharacterStudio && (
-      <CharacterStudioDialog
-        open
-        onClose={() => setShowCharacterStudio(false)}
-        onAuthorIdentity={() => openAuthorIdentity()}
-      />
-      )}
-      {showManuscriptAnalyzer && (
-      <ManuscriptAnalyzerDialog
-        open
-        onClose={() => setShowManuscriptAnalyzer(false)}
-        canCreateProject={!freeBookUsed}
-        onLimitReached={() => navigate("/pricing")}
-      />
-      )}
-      {showNotepad && <NotepadDialog open onClose={() => setShowNotepad(false)} />}
-      {showAuthorIdentity && (
-      <AuthorIdentityDialog
-        open
-        onClose={() => {
-          setShowAuthorIdentity(false);
-          setAuthorIdentityPrefill(null);
-        }}
-        prefillDraft={authorIdentityPrefill}
-      />
-      )}
       </Suspense>
       )}
+
       <ProfileMenuDialog
         open={showProfileMenu}
         onClose={() => setShowProfileMenu(false)}
@@ -1086,353 +1087,11 @@ typeof crypto.randomUUID === "function"
           setShowAdvancedLaunchpad(enabled);
         }}
         onOpenStudio={() => goApp()}
-        onAuthorIdentity={() => setShowAuthorIdentity(true)}
-        onAppearance={() => setShowAdvancedSettings(true)}
+        onAuthorIdentity={() => openAuthorIdentity()}
+        onAppearance={() => { closeAllDashboardTools(); setShowAdvancedSettings(true); }}
         onCredits={() => navigate("/usage?focus=purchase")}
         onPricing={() => navigate("/pricing")}
       />
-
-      {/* Idea modal — advanced launchpad generation flow */}
-      {showIdeaModal && (
-        <div
-          className="scriptora-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-2xl"
-          onClick={() => !launching && !detecting && setShowIdeaModal(false)}
-        >
-          <div
-            className="scriptora-modal-panel ios-panel relative flex w-full max-w-xl flex-col overflow-hidden p-0"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
-            <div className="flex shrink-0 items-center justify-between px-6 pb-4 pt-6">
-              <div className="flex items-center gap-2">
-                <div className="ios-icon ios-icon-blue flex h-10 w-10 items-center justify-center rounded-[16px]">
-                  <Sparkles className="h-4 w-4" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-foreground">Anteprima idea</h2>
-                  <p className="text-[11px] text-muted-foreground">{ONE_FLOW_TOOL_ROLES.ideaPreview.it}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => !launching && !detecting && setShowIdeaModal(false)}
-                disabled={launching || detecting}
-                className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-                aria-label={t("close")}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="scriptora-modal-body min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6">
-            <label htmlFor="idea-modal" className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
-              <Sparkles className="h-3 w-3 text-primary" /> {t("your_book_idea")}
-            </label>
-            <textarea
-              id="idea-modal"
-              value={idea}
-              onChange={(e) => setIdea(e.target.value)}
-              placeholder={t("book_idea_placeholder")}
-              rows={3}
-              autoFocus
-              disabled={launching}
-              className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.07] px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-            />
-
-            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.05] p-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Titolo e sottotitolo reali
-                </p>
-                <span className="text-[10px] text-muted-foreground">Scrivili tu o usa quelli generati dal rilevamento.</span>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <input
-                  value={briefTitle}
-                  onChange={(e) => setBriefTitle(e.target.value)}
-                  placeholder="Titolo del libro"
-                  disabled={launching || detecting}
-                  className="h-9 rounded-lg border border-white/10 bg-white/[0.07] px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                />
-                <input
-                  value={briefSubtitle}
-                  onChange={(e) => setBriefSubtitle(e.target.value)}
-                  placeholder="Sottotitolo / tagline"
-                  disabled={launching || detecting}
-                  className="h-9 rounded-lg border border-white/10 bg-white/[0.07] px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                />
-              </div>
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                <span className="mr-1 text-[10px] font-semibold uppercase text-muted-foreground">Lingua titolo</span>
-                {BOOK_LANGUAGES.map(l => (
-                  <button
-                    key={`title-${l.value}`}
-                    type="button"
-                    onClick={() => setTitleLang(l.value)}
-                    disabled={launching || detecting}
-                    className={`rounded-lg px-2 py-1 text-[10px] font-medium transition-colors disabled:opacity-50 ${
-                      titleLang === l.value
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-white/[0.07] text-secondary-foreground hover:bg-white/[0.12]"
-                    }`}
-                  >
-                    {l.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              <span className="mr-1 flex items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground">
-                <Globe className="h-3 w-3" /> {t("book_language_label")}
-              </span>
-              {BOOK_LANGUAGES.map(l => (
-                <button
-                  key={l.value}
-                  type="button"
-                  onClick={() => setBookLang(l.value)}
-                  disabled={launching || detecting}
-                  className={`rounded-lg px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 ${
-                    bookLang === l.value
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-white/[0.07] text-secondary-foreground hover:bg-white/[0.12]"
-                  }`}
-                >
-                  {l.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.05] p-3">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Lunghezza libro
-              </p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {(Object.entries(BOOK_LENGTH_CONFIG) as [BookLength, typeof BOOK_LENGTH_CONFIG[BookLength]][]).map(([key, value]) => {
-                  const locked = currentPlan === "free" && key !== "short";
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      disabled={launching || detecting || locked}
-                      onClick={() => setBookLength(key)}
-                      className={`rounded-lg border px-2.5 py-2 text-left text-[11px] transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
-                        (currentPlan === "free" ? "short" : bookLength) === key
-                          ? "border-primary bg-primary/15 text-primary"
-                          : "border-white/10 bg-white/[0.06] text-foreground hover:bg-white/[0.1]"
-                      }`}
-                      title={locked ? "Disponibile con Pro/Premium" : undefined}
-                    >
-                      <span className="block font-semibold">{value.label}</span>
-                      <span className="mt-0.5 block text-[10px] text-muted-foreground">
-                        {key === "custom" ? "Custom" : `~${(value.totalWords / 1000).toFixed(0)}k parole`}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {currentPlan === "free" && (
-                <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
-                  Il piano Free resta su libro breve. Gli altri piani possono scegliere lunghezze maggiori.
-                </p>
-              )}
-              {bookLength === "custom" && currentPlan !== "free" && (
-                <div className="mt-3 grid gap-2 sm:grid-cols-[1fr,120px]">
-                  <input
-                    type="range"
-                    min={5000}
-                    max={200000}
-                    step={1000}
-                    value={customTotalWords}
-                    onChange={(e) => setCustomTotalWords(Number(e.target.value) || 30000)}
-                    disabled={launching || detecting}
-                    className="w-full accent-primary"
-                  />
-                  <input
-                    type="number"
-                    min={1000}
-                    step={500}
-                    value={customTotalWords}
-                    onChange={(e) => setCustomTotalWords(Math.max(1000, Number(e.target.value) || 30000))}
-                    disabled={launching || detecting}
-                    className="h-8 rounded-lg border border-white/10 bg-white/[0.07] px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.05] p-3">
-              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Struttura reale del libro
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-[10px] text-muted-foreground uppercase tracking-wider">N° capitoli</label>
-                  <input
-                    type="number"
-                    min={3}
-                    max={50}
-                    value={oneClickChapters}
-                    onChange={(e) => setOneClickChapters(Math.max(3, Math.min(50, Number(e.target.value) || 10)))}
-                    disabled={launching || detecting}
-                    className="h-9 w-full rounded-lg border border-white/10 bg-white/[0.07] px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <label className="flex h-9 items-center gap-2 text-xs text-foreground/80">
-                    <input
-                      type="checkbox"
-                      checked={oneClickSubchaptersEnabled}
-                      onChange={(e) => setOneClickSubchaptersEnabled(e.target.checked)}
-                      disabled={launching || detecting}
-                      className="rounded border-border accent-primary"
-                    />
-                    Attiva sottocapitoli
-                  </label>
-                </div>
-              </div>
-              {oneClickSubchaptersEnabled && (
-                <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_110px] sm:items-center">
-                  <p className="text-[11px] leading-4 text-muted-foreground">
-                    Ogni capitolo avrà sottosezioni scritte davvero e coerenti con il blueprint.
-                  </p>
-                  <input
-                    type="number"
-                    min={1}
-                    max={8}
-                    value={oneClickSubchaptersPerChapter}
-                    onChange={(e) => setOneClickSubchaptersPerChapter(Math.max(1, Math.min(8, Number(e.target.value) || DEFAULT_SUBCHAPTERS_PER_CHAPTER)))}
-                    disabled={launching || detecting}
-                    className="h-9 rounded-lg border border-white/10 bg-white/[0.07] px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
-                  />
-                </div>
-              )}
-            </div>
-
-            {intent && (
-              <div className="ios-glass-soft mt-3 space-y-2 rounded-lg p-3 text-xs">
-                <div className="flex flex-wrap gap-2">
-                  <span className="rounded-md bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-primary">
-                    {intent.genre}
-                  </span>
-                  {intent.subcategory && (
-                    <span className="px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-[10px]">
-                      {intent.subcategory}
-                    </span>
-                  )}
-                  <span className="px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-[10px] capitalize">
-                    {intent.level}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-[10px]">
-                    {intent.numberOfChapters} {t("chapters").toLowerCase()}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-[10px] font-semibold uppercase text-muted-foreground">{t("suggested_title")}</p>
-                  <p className="text-sm font-semibold text-foreground mt-0.5">
-                    {intent.suggestedTitles?.[intent.bestTitleIndex] || intent.suggestedTitles?.[0]}
-                  </p>
-                  <p className="text-xs text-muted-foreground italic mt-0.5">
-                    {intent.suggestedSubtitles?.[intent.bestTitleIndex] || intent.suggestedSubtitles?.[0]}
-                  </p>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  <span className="font-semibold">{t("promise")}:</span> {intent.readerPromise}
-                </p>
-              </div>
-            )}
-
-            <div className="flex flex-col sm:flex-row gap-2 mt-4">
-              <div className="flex flex-1 flex-col gap-1.5">
-                <button
-                  onClick={launchOneClick}
-                  disabled={!heroValid || launching || detecting}
-                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-white text-sm font-semibold text-slate-950 shadow-lg shadow-black/20 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {launching || detecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Flame className="h-4 w-4" />}
-                  {launching ? t("launching") : detecting ? t("detecting") : t("generate_full_book")}
-                </button>
-                <CreditCostBadge operation="auto_bestseller" prominent />
-              </div>
-              {!intent ? (
-                <div className="flex flex-col gap-1.5">
-                  <button
-                    onClick={() => void detectIntent()}
-                    disabled={!heroValid || detecting || launching}
-                    className="ios-toolbar-button h-11 px-4 text-sm font-medium disabled:opacity-50"
-                  >
-                    <Wand2 className="h-3.5 w-3.5" /> {t("preview_action")}
-                  </button>
-                  <CreditCostBadge operation="market_intelligence" />
-                </div>
-              ) : (
-                <button
-                  onClick={() => { setShowIdeaModal(false); openNewBookGuarded(); }}
-                  disabled={launching}
-                  className="ios-toolbar-button h-11 px-4 text-sm font-medium disabled:opacity-50"
-                >
-                  {t("advanced")} <ArrowRight className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-            {!heroValid && (
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                {t("min_idea_chars")}
-              </p>
-            )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <DedicatedToolScreen
-        open={showProjects}
-        title="I miei libri"
-        description={tt("my_projects_drafts", { count: draftProjects.length })}
-        onClose={() => setShowProjects(false)}
-        maxWidthClass="max-w-2xl"
-      >
-        {draftProjects.length === 0 ? (
-          <p className="py-6 text-sm text-muted-foreground/70">{t("no_drafts_library_hint")}</p>
-        ) : (
-          <div className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.03]">
-            {draftProjects.map((p) => (
-              <div
-                key={p.id}
-                className="group flex cursor-pointer items-center justify-between gap-3 px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
-                onClick={() => { setShowProjects(false); goApp({ projectId: p.id }); }}
-              >
-                <div className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{p.config.title || t("untitled")}</span>
-                  <span className="text-[10px] text-muted-foreground/70">
-                    {getBookTypeLabel(p.config) || p.config.genre} · {p.chapters?.length || 0} ch · {isProjectComplete(p) ? "complete" : p.phase}
-                  </span>
-                </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
-                  className="rounded-md p-1 text-muted-foreground opacity-70 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </DedicatedToolScreen>
-
-      <DedicatedToolScreen
-        open={showLibrary}
-        title={t("library")}
-        description="Libri completati e pronti per export o pubblicazione."
-        onClose={() => setShowLibrary(false)}
-        maxWidthClass="max-w-2xl"
-      >
-        <LibrarySection
-          projects={projects}
-          onOpen={(id) => { setShowLibrary(false); goApp({ projectId: id }); }}
-          onDelete={handleDelete}
-          onExport={() => { setShowLibrary(false); setShowExport(true); }}
-        />
-      </DedicatedToolScreen>
 
       <DevModeUnlockDialog open={showDevUnlock} onOpenChange={setShowDevUnlock} onUnlocked={() => navigate("/usage")} />
       <BetaActivationDialog open={showBetaDialog} onOpenChange={setShowBetaDialog} />
