@@ -14,9 +14,9 @@ export default function WriterOsPage() {
         <LaunchCard
           icon={Sparkles}
           title="Inizia il tuo libro"
-          desc="Wizard Book Architect — percorso principale unificato."
+          desc="Scriptora Forge — intervista viva, DNA del libro, blueprint e scrittura."
           primary
-          onClick={() => navigate("/dashboard", { state: { openWizard: true } })}
+          onClick={() => navigate("/dashboard", { state: { openForge: true } })}
         />
         <LaunchCard
           icon={PenLine}

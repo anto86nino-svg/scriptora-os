@@ -83,7 +83,7 @@ import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransi
 const ScriptoraSettingsHub = lazy(() =>
   import("@/components/settings/ScriptoraSettingsHub").then((m) => ({ default: m.ScriptoraSettingsHub })),
 );
-import { BookCreationOsWizard } from "@/components/one-flow/BookCreationOsWizard";
+import { MobileBookForge } from "@/mobile/MobileBookForge";
 import { getBookTypeLabel } from "@/components/BookTypeBadge";
 import {
   ProfileMenuDialog,
@@ -318,6 +318,9 @@ export default function Dashboard() {
       navigate("/pricing");
       return;
     }
+
+    // Single creation flow: every "new book" entrypoint opens Scriptora Forge.
+    // The legacy wizard remains available only inside Forge after DNA confirmation.
     setShowBookCreationWizard(true);
   };
 
@@ -340,6 +343,7 @@ export default function Dashboard() {
     const state = location.state as {
       openWizard?: boolean;
       openNewBook?: boolean;
+      openForge?: boolean;
       openProjects?: boolean;
       openCover?: boolean;
       openExport?: boolean;
@@ -350,7 +354,7 @@ export default function Dashboard() {
       setFlowProjectId(state.projectId);
       setLastProjectId(state.projectId);
     }
-    if (state.openWizard || state.openNewBook) openNewBookGuarded();
+    if (state.openForge || state.openWizard || state.openNewBook) openNewBookGuarded();
     if (state.openProjects) setShowProjects(true);
     if (state.openCover) guardPlanFeature("book_engine_full", () => setShowCoverStudio(true))();
     if (state.openExport) guardPlanFeature("export_epub", () => setShowExport(true))();
@@ -781,18 +785,11 @@ typeof crypto.randomUUID === "function"
           </div>
         </div>
 
-        <BookCreationOsWizard
-          open={true}
+        <MobileBookForge
           onClose={() => setShowBookCreationWizard(false)}
           authorIdentity={activeAuthor}
-          onAuthorIdentity={() => openAuthorIdentity()}
-          onManualStudio={handleNewBook}
           onStudioComplete={handleStudioComplete}
           onGenerateBlueprint={handleStudioGenerateBlueprint}
-          onDetectIntent={async (ideaText, lang) => {
-            setBookLang(lang);
-            return detectIntent(ideaText);
-          }}
         />
       </div>
     );

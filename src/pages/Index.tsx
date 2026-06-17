@@ -315,7 +315,7 @@ const Index = () => {
       toast.error(t("toast_free_book_used"));
       return;
     }
-    navigate("/dashboard", { state: { openWizard: true } });
+    navigate("/dashboard", { state: { openForge: true } });
   };
 
   useEffect(() => {
