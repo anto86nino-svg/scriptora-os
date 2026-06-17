@@ -12,6 +12,7 @@ import {
   inferBookProfileFromText,
   mergeInferenceIntoExtracted,
 } from "./dna-inference";
+import { enrichInterviewQuestion } from "./contextual-interview";
 
 const GENERIC_PLACEHOLDER =
   "Parla liberamente: idea, note, voce, caos… Scriptora organizzerà il resto.";
@@ -559,7 +560,11 @@ export function getNextInterviewQuestion(
   const question = findNextUnansweredQuestion(state);
 
   if (question) {
-    return { done: false, question, state: { ...state, dnaLock } };
+    return {
+      done: false,
+      question: enrichInterviewQuestion(state, question) as InterviewQuestion,
+      state: { ...state, dnaLock },
+    };
   }
 
   if (dnaLock.readyForBlueprint) {
@@ -577,10 +582,7 @@ export function getNextInterviewQuestion(
   const weak = getWeakFields(state);
   if (weak.length > 0) {
     const field = weak[0];
-    const adaptive = getAdaptiveQuestion(
-      (state.selectedGenre || state.inferredProfile?.genre) as InterviewGenre | undefined,
-      field,
-    );
+    const adaptive = getAdaptiveQuestion(state, field);
     const fallback =
       CRITICAL_FIELD_QUESTIONS.find((q) => q.key === field) ??
       ({
@@ -591,7 +593,11 @@ export function getNextInterviewQuestion(
         quickSuggestions: adaptive.quickSuggestions,
         placeholder: GENERIC_PLACEHOLDER,
       } satisfies InterviewQuestion);
-    return { done: false, question: fallback, state: { ...state, dnaLock } };
+    return {
+      done: false,
+      question: enrichInterviewQuestion(state, fallback) as InterviewQuestion,
+      state: { ...state, dnaLock },
+    };
   }
 
   return {

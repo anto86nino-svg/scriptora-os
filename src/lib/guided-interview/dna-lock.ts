@@ -164,6 +164,12 @@ export function buildDnaLockFromInterviewState(state: GuidedInterviewState): Boo
     missingCriticalAnswers.length === 0 &&
     dnaQuality.pass;
 
+  const blockedMessage = readyForBlueprint
+    ? undefined
+    : !hasMinimumInterviewDepth
+      ? undefined
+      : getBlockedDnaMessage(dnaQuality);
+
   return {
     coreTopic: promise || readerTransformation || centralConflict || undefined,
     primaryIntent: readerTransformation || promise || undefined,
@@ -184,7 +190,7 @@ export function buildDnaLockFromInterviewState(state: GuidedInterviewState): Boo
     missingCriticalAnswers,
     readyForBlueprint,
     dnaQuality,
-    blockedMessage: readyForBlueprint ? undefined : getBlockedDnaMessage(dnaQuality),
+    blockedMessage,
   };
 }
 

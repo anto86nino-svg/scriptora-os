@@ -47,7 +47,7 @@ export function ForgeInterviewConfirmation({
       </h2>
       <p className="mt-1.5 text-sm leading-6 text-white/55">
         {dnaLock.readyForBlueprint
-          ? "Ecco la direzione che sto vedendo. Se ti risuona, confermiamo e apriamo il blueprint."
+          ? "Mi sembra che tu voglia scrivere qualcosa di preciso. Se ti risuona, confermiamo e apriamo il blueprint."
           : "Ho una direzione iniziale, ma mi manca ancora qualche risposta reale prima di aprire il blueprint."}
       </p>
 

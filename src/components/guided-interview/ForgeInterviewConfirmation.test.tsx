@@ -50,4 +50,24 @@ describe("ForgeInterviewConfirmation", () => {
     fireEvent.click(screen.getByRole("button", { name: /Conferma e crea blueprint/i }));
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
+
+  it("does not show ready title when blueprint is not ready", () => {
+    const blockedLock: BookDnaLock = {
+      ...readyLock,
+      readyForBlueprint: false,
+      confidenceScore: 0.6,
+    };
+
+    render(
+      <ForgeInterviewConfirmation
+        dnaLock={blockedLock}
+        extracted={{}}
+        onConfirm={() => undefined}
+        onCorrect={() => undefined}
+      />,
+    );
+
+    expect(screen.queryByText(/^Ho capito il cuore del libro$/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Sto ancora chiarendo/i)).toBeInTheDocument();
+  });
 });

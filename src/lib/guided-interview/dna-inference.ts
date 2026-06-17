@@ -1,6 +1,7 @@
-import type { ExtractedBookIntent, InterviewGenre } from "./types";
+import type { ExtractedBookIntent, GuidedInterviewState, InterviewGenre } from "./types";
 import { sanitizeDnaText } from "./dna-cleaner";
 import { humanizeMissingField } from "./interview-ui-copy";
+import { getContextualQuestionCopy } from "./contextual-interview";
 
 export type InferredBookProfile = {
   bookType?: string;
@@ -183,10 +184,10 @@ export function mergeInferenceIntoExtracted(
 }
 
 export function getAdaptiveQuestion(
-  genre: InterviewGenre | undefined,
+  state: GuidedInterviewState,
   weakField: string,
 ): { question: string; helper?: string; quickSuggestions?: { label: string; value: string }[] } {
-  const g = genre ?? "general";
+  const g = (state.selectedGenre || state.inferredProfile?.genre || "general") as InterviewGenre;
 
   const byGenreField: Record<string, Partial<Record<InterviewGenre, string>>> = {
     emotionalTone: {
@@ -222,10 +223,12 @@ export function getAdaptiveQuestion(
     },
   };
 
+  const contextual = getContextualQuestionCopy(weakField, state);
   const question =
+    contextual.question ??
     byGenreField[weakField]?.[g] ??
     byGenreField[weakField]?.general ??
     humanizeMissingField(weakField);
 
-  return { question };
+  return { question, helper: contextual.helper };
 }

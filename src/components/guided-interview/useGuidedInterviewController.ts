@@ -65,10 +65,6 @@ export function useGuidedInterviewController({
   const next = useMemo(() => getNextInterviewQuestion(state), [state]);
   const progress = useMemo(() => getInterviewProgress(state), [state]);
   const ready = progress.dnaLock.readyForBlueprint;
-  const discoveryReady =
-    progress.dnaLock.readyForBlueprint &&
-    progress.dnaLock.missingCriticalAnswers.length === 0 &&
-    progress.dnaLock.dnaQuality.pass;
 
   useEffect(() => {
     if (!next.question || next.done) return;
@@ -111,12 +107,8 @@ export function useGuidedInterviewController({
     if (ready && !showDnaPanel) {
       setShowDnaPanel(true);
       setDnaConfirmationDismissed(false);
-      return;
     }
-    if (discoveryReady && !showDnaPanel && !dnaConfirmationDismissed) {
-      setShowDnaPanel(true);
-    }
-  }, [ready, discoveryReady, isMobile, showDnaPanel, dnaConfirmationDismissed]);
+  }, [ready, isMobile, showDnaPanel]);
 
   useEffect(() => {
     if (next.done && ready) {

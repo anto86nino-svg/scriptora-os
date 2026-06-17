@@ -17,11 +17,18 @@ describe("guided interview DNA lock", () => {
   });
 
   it("derives book identity and anti-drift rules from interview answers", () => {
+    const userMessages = Array.from({ length: 10 }, (_, i) => ({
+      id: `u-${i}`,
+      role: "user" as const,
+      content: `Risposta utente ${i + 1} con abbastanza dettaglio per contare nell'intervista.`,
+      createdAt: i,
+    }));
+
     const lock = buildDnaLockFromInterviewState({
       completed: false,
-      currentStep: 3,
-      confidence: 0.74,
-      messages: [],
+      currentStep: 10,
+      confidence: 0.96,
+      messages: userMessages,
       selectedGenre: "self-help",
       extracted: {
         readerTransformation:
