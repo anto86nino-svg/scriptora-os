@@ -770,6 +770,7 @@ typeof crypto.randomUUID === "function"
   ];
 
 
+
   if (showBookCreationWizard) {
     return (
       <div className="scriptora-page-scroll min-h-[100dvh] bg-background">
@@ -1003,8 +1004,9 @@ typeof crypto.randomUUID === "function"
           onMyBooks={() => setShowProjects(true)}
         />
 
-        <ScriptoraForgePanel onSelectPreset={openForgePreset} />
+        {showAdvancedLaunchpad && <ScriptoraForgePanel onSelectPreset={openForgePreset} />}
 
+        {showAdvancedLaunchpad && (
         <OneFlowHome
           compact
           authorIdentity={activeAuthor}
@@ -1038,6 +1040,7 @@ typeof crypto.randomUUID === "function"
           onAdvancedTools={() => setAdvancedLaunchpadEnabled(true)}
           showAdvancedLaunchpad={showAdvancedLaunchpad}
         />
+        )}
 
         {showAdvancedLaunchpad && (
           <div className="mb-4 sm:mb-6">
@@ -1403,7 +1406,7 @@ typeof crypto.randomUUID === "function"
           </div>
 
           <div className="space-y-7">
-            {cardGroups.map((group) => {
+            {showAdvancedLaunchpad && cardGroups.map((group) => {
               const groupCards = cards.filter((card) => card.group === group.id);
               return (
                 <div key={group.id}>
