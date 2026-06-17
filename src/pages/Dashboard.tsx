@@ -968,19 +968,16 @@ typeof crypto.randomUUID === "function"
           <button
             type="button"
             onClick={() => {
-              setAdvancedLaunchpadEnabled(!showAdvancedLaunchpad);
-              setShowAdvancedLaunchpad(!showAdvancedLaunchpad);
+              setAdvancedLaunchpadEnabled(true);
+              setShowAdvancedLaunchpad(true);
+              openDashboardTool("advanced-tools");
             }}
             className="inline-flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white/70 transition-colors hover:bg-white/[0.10]"
           >
             <Settings className="h-3.5 w-3.5" />
-            {showAdvancedLaunchpad ? "Nascondi strumenti avanzati" : "Strumenti avanzati"}
+            Strumenti avanzati
           </button>
         </div>
-
-        {showAdvancedLaunchpad && (
-          <DashboardAdvancedToolsPanel context={dashboardActionContext} />
-        )}
 
         <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
 
@@ -1053,6 +1050,7 @@ typeof crypto.randomUUID === "function"
         onLimitReached={() => navigate("/pricing")}
         onAuthorIdentityFromCharacter={() => openAuthorIdentity()}
         ideaPreview={ideaPreviewProps}
+        dashboardActionContext={dashboardActionContext}
       />
 
       {(showAdvancedSettings || showSettingsHub) && (

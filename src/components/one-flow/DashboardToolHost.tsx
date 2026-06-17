@@ -9,8 +9,10 @@ import { LibrarySection } from "@/components/Home/LibrarySection";
 import { DedicatedToolScreen } from "@/components/one-flow/DedicatedToolScreen";
 import { SafeDashboardToolBoundary } from "@/components/one-flow/SafeDashboardToolBoundary";
 import { DashboardIdeaPreviewPanel } from "@/components/one-flow/DashboardIdeaPreviewPanel";
+import { DashboardAdvancedToolsPanel } from "@/components/one-flow/DashboardAdvancedToolsPanel";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 import type { ActiveDashboardTool } from "@/lib/one-flow/dashboard-active-tool";
+import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
 import type { IdeaPreviewPanelProps } from "@/components/one-flow/DashboardIdeaPreviewPanel";
 
 const HomeExportDialog = lazy(() =>
@@ -43,6 +45,7 @@ const TOOL_LABELS: Record<Exclude<ActiveDashboardTool, null>, string> = {
   "idea-preview": "Anteprima idea",
   "manuscript-lab": "Manuscript Lab",
   "book-forge": "Book Forge",
+  "advanced-tools": "Strumenti avanzati",
 };
 
 function ToolLoading() {
@@ -74,6 +77,7 @@ export type DashboardToolHostProps = {
   onLimitReached: () => void;
   onAuthorIdentityFromCharacter: () => void;
   ideaPreview: IdeaPreviewPanelProps;
+  dashboardActionContext: DashboardActionContext;
 };
 
 export function DashboardToolHost({
@@ -93,6 +97,7 @@ export function DashboardToolHost({
   onLimitReached,
   onAuthorIdentityFromCharacter,
   ideaPreview,
+  dashboardActionContext,
 }: DashboardToolHostProps) {
   if (!activeTool || activeTool === "book-forge") return null;
 
@@ -288,6 +293,19 @@ export function DashboardToolHost({
           maxWidthClass="max-w-xl"
         >
           {boundary(<DashboardIdeaPreviewPanel {...ideaPreview} onClose={onClose} />)}
+        </DedicatedToolScreen>
+      );
+
+    case "advanced-tools":
+      return (
+        <DedicatedToolScreen
+          open
+          title="Strumenti avanzati"
+          description="Ottimizzazione, mercato, scrittura e sistema. Ogni strumento apre una destinazione protetta."
+          onClose={onClose}
+          maxWidthClass="max-w-6xl"
+        >
+          {boundary(<DashboardAdvancedToolsPanel context={dashboardActionContext} />)}
         </DedicatedToolScreen>
       );
 

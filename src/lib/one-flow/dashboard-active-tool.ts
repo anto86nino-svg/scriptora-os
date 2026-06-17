@@ -10,7 +10,8 @@ export type ActiveDashboardTool =
   | "title-intelligence"
   | "idea-preview"
   | "manuscript-lab"
-  | "book-forge";
+  | "book-forge"
+  | "advanced-tools";
 
 export function activeToolGuideRoute(tool: ActiveDashboardTool): string | null {
   if (!tool) return null;
