@@ -1,3 +1,5 @@
+import type { BookProject } from "@/types/book";
+
 export const SCRIPTORA_LOGO_SRC = "/brand/scriptora-logo.png";
 export const SCRIPTORA_BRAND_NAME = "Scriptora OS";
 export const SCRIPTORA_BRAND_YELLOW = "#f2c400";
@@ -45,3 +47,41 @@ export function appendScriptoraFreeWatermarkToText(
   if (clean.includes(mark)) return clean;
   return `${clean}\n\n— ${mark}`;
 }
+
+export function applyScriptoraFreeWatermarkToProject(
+  project: BookProject,
+  plan?: string | null,
+  language?: string | null,
+): BookProject {
+  if (!shouldApplyScriptoraFreeWatermark(plan)) return project;
+
+  const exportLanguage =
+    language ||
+    project.config?.language ||
+    (project.config as any)?.bookLanguage ||
+    (project.config as any)?.uiLanguage ||
+    "it";
+
+  return {
+    ...project,
+    chapters: (project.chapters || []).map((chapter) => ({
+      ...chapter,
+      content: appendScriptoraFreeWatermarkToText(
+        chapter.content || "",
+        plan,
+        exportLanguage,
+      ),
+      subchapters: Array.isArray((chapter as any).subchapters)
+        ? (chapter as any).subchapters.map((subchapter: any) => ({
+            ...subchapter,
+            content: appendScriptoraFreeWatermarkToText(
+              subchapter.content || "",
+              plan,
+              exportLanguage,
+            ),
+          }))
+        : (chapter as any).subchapters,
+    })),
+  };
+}
+

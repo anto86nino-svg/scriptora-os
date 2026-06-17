@@ -45,6 +45,8 @@ import type { RewriteLevel } from "@/lib/generation-types";
 import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 import { UpgradeModal } from "@/components/UpgradeModal";
+import { usePlan } from "@/lib/plan";
+import { applyScriptoraFreeWatermarkToProject } from "@/lib/brand/scriptoraBrand";
 
 const VoiceStudioDialog = lazy(() =>
   import("@/components/VoiceStudioDialog").then((m) => ({ default: m.VoiceStudioDialog })),
@@ -484,10 +486,15 @@ const Index = () => {
 
   const handleExport = async (coverOverride?: string) => {
     if (!engine.project) return;
-    const exportProject: BookProject = {
+    let exportProject: BookProject = {
       ...engine.project,
       config: applyAuthorIdentityToConfig({ ...engine.project.config }),
     };
+    exportProject = applyScriptoraFreeWatermarkToProject(
+      exportProject,
+      plan,
+      exportProject.config?.language,
+    );
     const blockers = getExportBlockers(exportProject);
     if (blockers.length > 0) {
       toast.error(blockers.map((issue) => issue.message).join(" · "));
@@ -517,10 +524,15 @@ const Index = () => {
 
   const handleExportDocx = async () => {
     if (!engine.project) return;
-    const exportProject: BookProject = {
+    let exportProject: BookProject = {
       ...engine.project,
       config: applyAuthorIdentityToConfig({ ...engine.project.config }),
     };
+    exportProject = applyScriptoraFreeWatermarkToProject(
+      exportProject,
+      plan,
+      exportProject.config?.language,
+    );
     const blockers = getExportBlockers(exportProject);
     if (blockers.length > 0) {
       toast.error(blockers.map((issue) => issue.message).join(" · "));
@@ -545,10 +557,15 @@ const Index = () => {
 
   const handleExportPdf = async () => {
     if (!engine.project) return;
-    const exportProject: BookProject = {
+    let exportProject: BookProject = {
       ...engine.project,
       config: applyAuthorIdentityToConfig({ ...engine.project.config }),
     };
+    exportProject = applyScriptoraFreeWatermarkToProject(
+      exportProject,
+      plan,
+      exportProject.config?.language,
+    );
     const blockers = getExportBlockers(exportProject);
     if (blockers.length > 0) {
       toast.error(blockers.map((issue) => issue.message).join(" · "));
