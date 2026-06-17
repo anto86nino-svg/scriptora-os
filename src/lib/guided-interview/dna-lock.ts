@@ -36,6 +36,7 @@ export type BookDnaLock = {
 };
 
 export const CONFIDENCE_BLUEPRINT_THRESHOLD = 0.95;
+export const MIN_INTERVIEW_ANSWERS_FOR_BLUEPRINT = 10;
 
 const CRITICAL_FIELDS = [
   "readerTransformation",
@@ -81,6 +82,10 @@ export function buildDnaLockFromInterviewState(state: GuidedInterviewState): Boo
   const promise = clean(extracted.promise);
   const setting = clean(extracted.setting);
   const targetReader = clean(extracted.targetReader);
+  const userAnswerCount = Array.isArray(state.messages)
+    ? state.messages.filter((m) => m.role === "user" && clean(m.content).length >= 2).length
+    : 0;
+  const hasMinimumInterviewDepth = userAnswerCount >= MIN_INTERVIEW_ANSWERS_FOR_BLUEPRINT;
 
   const missingCriticalAnswers = CRITICAL_FIELDS.filter(
     (field) => !hasMeaning(extracted[field]),
@@ -154,6 +159,7 @@ export function buildDnaLockFromInterviewState(state: GuidedInterviewState): Boo
   });
 
   const readyForBlueprint =
+    hasMinimumInterviewDepth &&
     confidenceScore >= CONFIDENCE_BLUEPRINT_THRESHOLD &&
     missingCriticalAnswers.length === 0 &&
     dnaQuality.pass;

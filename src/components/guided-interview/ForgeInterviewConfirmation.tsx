@@ -43,10 +43,12 @@ export function ForgeInterviewConfirmation({
         Book Forge
       </p>
       <h2 className="mt-2 text-xl font-semibold leading-snug text-white">
-        Ho capito il cuore del libro
+        {dnaLock.readyForBlueprint ? "Ho capito il cuore del libro" : "Sto ancora chiarendo il cuore del libro"}
       </h2>
       <p className="mt-1.5 text-sm leading-6 text-white/55">
-        Ecco la direzione che sto vedendo. Se ti risuona, confermiamo e apriamo il blueprint.
+        {dnaLock.readyForBlueprint
+          ? "Ecco la direzione che sto vedendo. Se ti risuona, confermiamo e apriamo il blueprint."
+          : "Ho una direzione iniziale, ma mi manca ancora qualche risposta reale prima di aprire il blueprint."}
       </p>
 
       <dl className="mt-5 space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">

@@ -78,6 +78,74 @@ const TARGET_SUGGESTIONS: InterviewQuickSuggestion[] = [
   { label: "Persone bloccate", value: "Persone bloccate che sanno cosa fare ma non riescono a iniziare." },
 ];
 
+const INTERVIEW_DEPTH_QUESTIONS: InterviewQuestion[] = [
+  {
+    id: "depth-reader-fit",
+    key: "depthReaderFit",
+    question: "Chi deve sentirsi colpito da questo libro più di tutti?",
+    helper: "Scegli o descrivi il lettore che vuoi conquistare davvero.",
+    placeholder: GENERIC_PLACEHOLDER,
+    quickSuggestions: [
+      { label: "Tensione psicologica", value: "Lettori che amano tensione psicologica, ambiguità e paura umana." },
+      { label: "Colpi di scena", value: "Lettori che cercano colpi di scena, mistero e ritmo alto." },
+      { label: "Emozione forte", value: "Lettori che vogliono personaggi feriti, scelte difficili e conseguenze emotive." },
+      { label: "Commerciale", value: "Lettori che vogliono una storia leggibile, forte, chiara e molto coinvolgente." },
+    ],
+  },
+  {
+    id: "depth-core-fear",
+    key: "depthCoreFear",
+    question: "Quale paura precisa deve restare addosso al lettore?",
+    helper: "Una paura concreta: non essere creduto, essere osservato, impazzire, scoprire una verità.",
+    placeholder: GENERIC_PLACEHOLDER,
+    quickSuggestions: [
+      { label: "Non essere creduto", value: "La paura di vedere la verità prima degli altri e non essere creduto." },
+      { label: "Essere osservato", value: "La paura di essere osservato o seguito senza riuscire a provarlo." },
+      { label: "Impazzire", value: "La paura di non distinguere più realtà, memoria e ossessione." },
+      { label: "Verità vicina", value: "La paura che la minaccia venga da qualcuno di vicino." },
+    ],
+  },
+  {
+    id: "depth-pacing-choice",
+    key: "depthPacingChoice",
+    question: "Che ritmo deve avere il libro?",
+    helper: "Questa scelta aiuta Scriptora a non sbagliare struttura e capitoli.",
+    placeholder: GENERIC_PLACEHOLDER,
+    quickSuggestions: [
+      { label: "Lento e inquietante", value: "Lento e inquietante, con tensione che cresce scena dopo scena." },
+      { label: "Cinematografico", value: "Medio e cinematografico, con alternanza tra mistero, dialoghi e rivelazioni." },
+      { label: "Compulsivo", value: "Rapido e compulsivo, con capitoli brevi e molti open loop." },
+      { label: "Elegante e oscuro", value: "Elegante e oscuro, atmosferico ma sempre leggibile." },
+    ],
+  },
+  {
+    id: "depth-do-not-become",
+    key: "depthDoNotBecome",
+    question: "Cosa non deve assolutamente diventare questo libro?",
+    helper: "Questa è una regola anti-drift: impedisce a Scriptora di portarlo nella direzione sbagliata.",
+    placeholder: GENERIC_PLACEHOLDER,
+    quickSuggestions: [
+      { label: "Non fantasy", value: "Non deve diventare troppo fantasy o soprannaturale se la paura deve restare umana." },
+      { label: "Non lento", value: "Non deve diventare troppo lento, contemplativo o pieno di spiegazioni." },
+      { label: "Non romance", value: "Non deve spostarsi sul romance se il cuore è thriller/horror." },
+      { label: "Non generico", value: "Non deve diventare una storia generica senza identità forte." },
+    ],
+  },
+  {
+    id: "depth-final-direction",
+    key: "depthFinalDirection",
+    question: "Quale direzione senti più vicina al libro che vuoi davvero?",
+    helper: "Scegli la più vicina. Se nessuna va bene, scrivimi la tua versione.",
+    placeholder: GENERIC_PLACEHOLDER,
+    quickSuggestions: [
+      { label: "Thriller psicologico", value: "Thriller psicologico: paura mentale, ambiguità, verità instabile." },
+      { label: "Horror umano", value: "Horror umano: male vicino, realistico, disturbante, emotivo." },
+      { label: "Suspense investigativa", value: "Suspense investigativa: indizi, sospetti, rivelazioni, ritmo." },
+      { label: "Gotico moderno", value: "Gotico moderno: atmosfera oscura, segreti, luoghi carichi di memoria." },
+    ],
+  },
+];
+
 const CRITICAL_FIELD_QUESTIONS: InterviewQuestion[] = [
   {
     id: "crit-readerTransformation",
@@ -458,6 +526,8 @@ function buildFullQueue(state: GuidedInterviewState): InterviewQuestion[] {
   for (const field of CRITICAL_FIELD_KEYS) {
     for (const q of FOLLOW_UP_BY_FIELD[field] ?? []) push(q);
   }
+
+  for (const q of INTERVIEW_DEPTH_QUESTIONS) push(q);
 
   return queue;
 }

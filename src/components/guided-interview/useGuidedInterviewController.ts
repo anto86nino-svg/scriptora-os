@@ -65,7 +65,10 @@ export function useGuidedInterviewController({
   const next = useMemo(() => getNextInterviewQuestion(state), [state]);
   const progress = useMemo(() => getInterviewProgress(state), [state]);
   const ready = progress.dnaLock.readyForBlueprint;
-  const discoveryReady = progress.dnaLock.confidenceScore >= 0.72;
+  const discoveryReady =
+    progress.dnaLock.readyForBlueprint &&
+    progress.dnaLock.missingCriticalAnswers.length === 0 &&
+    progress.dnaLock.dnaQuality.pass;
 
   useEffect(() => {
     if (!next.question || next.done) return;

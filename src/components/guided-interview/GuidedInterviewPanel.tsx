@@ -1,5 +1,4 @@
-import type { ReactNode, RefObject } from "react";
-import { useRef } from "react";
+import { useRef, type ReactNode, type WheelEvent } from "react";
 import { Mic, MicOff, Send } from "lucide-react";
 import { BookDnaConfirmationPanel } from "./BookDnaConfirmationPanel";
 import { ForgeInterviewConfirmation } from "./ForgeInterviewConfirmation";
@@ -276,10 +275,58 @@ function MobileInterviewOnlyBody({
     "Raccontami il libro che hai dentro.";
   const lastUserReply = userMessages[userMessages.length - 1]?.content;
   const empathicLine = ctrl.next.question?.helper;
+  const bodyScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const findScrollableParent = (start: HTMLElement | null): HTMLElement | null => {
+    let node = start;
+    while (node) {
+      const style = window.getComputedStyle(node);
+      const canScrollY =
+        /(auto|scroll)/.test(style.overflowY) &&
+        node.scrollHeight > node.clientHeight + 1;
+
+      if (canScrollY) return node;
+      node = node.parentElement;
+    }
+    return null;
+  };
+
+  const relayWheelToInterviewBody = (event: WheelEvent<HTMLDivElement>) => {
+    if (Math.abs(event.deltaY) < 0.5) return;
+
+    const own = bodyScrollRef.current;
+    const target = event.target instanceof HTMLElement ? event.target : own;
+    const scrollTarget = findScrollableParent(target) ?? own;
+
+    if (!scrollTarget) return;
+
+    const canScroll = scrollTarget.scrollHeight > scrollTarget.clientHeight + 1;
+    if (!canScroll) return;
+
+    const before = scrollTarget.scrollTop;
+    scrollTarget.scrollTop += event.deltaY;
+
+    if (scrollTarget.scrollTop !== before) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
 
   return (
-    <div className={cn("flex min-h-[min(70dvh,520px)] flex-col justify-center", unifiedScroll ? "px-4 py-6 pb-10" : "px-4 py-4")}>
-      <div className="mx-auto w-full max-w-lg">
+    <div
+      ref={bodyScrollRef}
+      onWheelCapture={relayWheelToInterviewBody}
+      className={cn(
+        "min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y",
+        unifiedScroll ? "px-4 py-6 pb-28" : "px-4 py-4 pb-28",
+      )}
+      style={{
+        WebkitOverflowScrolling: "touch",
+        touchAction: "pan-y",
+        overscrollBehaviorY: "contain",
+      }}
+    >
+      <div className="mx-auto flex min-h-full w-full max-w-lg flex-col justify-center py-4">
         {lastUserReply && (
           <p className="mb-4 line-clamp-3 text-right text-xs leading-5 text-white/35">
             Tu: {lastUserReply}
