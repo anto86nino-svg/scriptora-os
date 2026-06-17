@@ -1004,6 +1004,87 @@ typeof crypto.randomUUID === "function"
           onMyBooks={() => setShowProjects(true)}
         />
 
+        <section className="mb-4 grid gap-2 sm:mb-6 sm:grid-cols-2 lg:grid-cols-6">
+          <button
+            type="button"
+            onClick={openNewBookGuarded}
+            className="group rounded-2xl border border-emerald-300/25 bg-emerald-300/10 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-emerald-200/50 hover:bg-emerald-300/15"
+          >
+            <span className="ios-icon ios-icon-green mb-3 h-9 w-9">
+              <Plus className="h-4 w-4" />
+            </span>
+            <p className="text-sm font-bold text-white">Book Forge</p>
+            <p className="mt-1 line-clamp-2 text-xs text-white/55">Crea un nuovo libro con intervista guidata.</p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => guardPlanFeature("book_engine_full", () => setShowCoverStudio(true))()}
+            className="group rounded-2xl border border-sky-300/20 bg-white/[0.045] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-sky-200/45 hover:bg-white/[0.07]"
+          >
+            <span className="ios-icon ios-icon-blue mb-3 h-9 w-9">
+              <ImagePlus className="h-4 w-4" />
+            </span>
+            <p className="text-sm font-bold text-white">Cover Studio</p>
+            <p className="mt-1 line-clamp-2 text-xs text-white/55">Copertine e visual del libro.</p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => guardPlanFeature("export_epub", () => setShowExport(true))()}
+            className="group rounded-2xl border border-orange-300/20 bg-white/[0.045] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-orange-200/45 hover:bg-white/[0.07]"
+          >
+            <span className="ios-icon ios-icon-orange mb-3 h-9 w-9">
+              <FileDown className="h-4 w-4" />
+            </span>
+            <p className="text-sm font-bold text-white">Export</p>
+            <p className="mt-1 line-clamp-2 text-xs text-white/55">EPUB, DOCX, PDF e pacchetto finale.</p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => guardPlanFeature("kdp_market_base", () => navigate("/kdp-launch"))()}
+            className="group rounded-2xl border border-violet-300/20 bg-white/[0.045] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-violet-200/45 hover:bg-white/[0.07]"
+          >
+            <span className="ios-icon ios-icon-violet mb-3 h-9 w-9">
+              <Rocket className="h-4 w-4" />
+            </span>
+            <p className="text-sm font-bold text-white">KDP / Market</p>
+            <p className="mt-1 line-clamp-2 text-xs text-white/55">Titoli, packaging e mercato Amazon.</p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/study")}
+            className="group rounded-2xl border border-cyan-300/20 bg-white/[0.045] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-cyan-200/45 hover:bg-white/[0.07]"
+          >
+            <span className="ios-icon ios-icon-cyan mb-3 h-9 w-9">
+              <NotebookPen className="h-4 w-4" />
+            </span>
+            <p className="text-sm font-bold text-white">Study OS</p>
+            <p className="mt-1 line-clamp-2 text-xs text-white/55">Riassunti, quiz, flashcard e orale.</p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAdvancedLaunchpadEnabled(!showAdvancedLaunchpad);
+              setShowAdvancedLaunchpad(!showAdvancedLaunchpad);
+            }}
+            className="group rounded-2xl border border-white/12 bg-white/[0.035] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.065]"
+          >
+            <span className="ios-icon ios-icon-slate mb-3 h-9 w-9">
+              <Settings className="h-4 w-4" />
+            </span>
+            <p className="text-sm font-bold text-white">
+              {showAdvancedLaunchpad ? "Nascondi strumenti" : "Strumenti avanzati"}
+            </p>
+            <p className="mt-1 line-clamp-2 text-xs text-white/55">
+              {showAdvancedLaunchpad ? "Torna alla Home essenziale." : "Mostra il launchpad completo."}
+            </p>
+          </button>
+        </section>
+
         {showAdvancedLaunchpad && <ScriptoraForgePanel onSelectPreset={openForgePreset} />}
 
         {showAdvancedLaunchpad && (
