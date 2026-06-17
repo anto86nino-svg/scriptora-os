@@ -666,10 +666,11 @@ export function applyInterviewAnswer(
   const baseNext = getNextInterviewQuestion(state);
   const resolved = resolveActiveInterviewQuestion(state, baseNext);
   const currentQuestion =
-    findNextUnansweredQuestion(state) ??
     (activeQuestion
       ? ({ id: activeQuestion.id, key: activeQuestion.key } as InterviewQuestion)
-      : resolved.question);
+      : undefined) ??
+    findNextUnansweredQuestion(state) ??
+    resolved.question;
 
   if (!currentQuestion) return state;
 

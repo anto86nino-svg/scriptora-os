@@ -172,12 +172,16 @@ export function useGuidedInterviewController({
       return;
     }
 
+    const questionToAvoid = next.question;
+    if (questionToAvoid) {
+      lastQuestionIdRef.current = questionToAvoid.id;
+      lastQuestionTextRef.current = questionToAvoid.question;
+    }
+
     setState((prev) => resumeInterview(prev));
     setShowDnaPanel(false);
     setDnaConfirmationDismissed(true);
     setContinueNonce((n) => n + 1);
-    lastQuestionIdRef.current = null;
-    lastQuestionTextRef.current = null;
     focusInput();
     onContinueInterview?.();
   };
