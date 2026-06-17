@@ -1680,39 +1680,6 @@ typeof crypto.randomUUID === "function"
       )}
       </Suspense>
       )}
-      {showCoverStudio && (
-        <Suspense fallback={(
-          <ScriptoraAliveTransition
-            overlay
-            tone="cover"
-            title="Sto aprendo Cover Studio…"
-            steps={[
-              "Sto preparando genere, atmosfera e impatto visivo…",
-              "Sto caricando template e readiness…",
-              "Sto cercando una copertina che parli al lettore giusto…",
-            ]}
-          />
-        )}>
-          <CoverGenerator
-            title={dashboardContextProject?.config.title || t("untitled")}
-            subtitle={dashboardContextProject?.config.subtitle || ""}
-            authorName={dashboardContextProject?.config.authorName || activeAuthor.penName}
-            description={dashboardContextProject?.blueprint?.overview || ""}
-            authorBio={dashboardContextProject?.frontMatter?.aboutAuthor || activeAuthor.biography}
-            genre={dashboardContextProject?.config.genre || dashboardContextProject?.config.category}
-            language={dashboardContextProject?.config.language || dashboardContextProject?.config.titleLanguage}
-            projectId={dashboardContextProject?.id}
-            showPrimaryAction={Boolean(dashboardContextProject)}
-            primaryActionLabel="Salva cover nel progetto"
-            onGenerate={() => setShowCoverStudio(false)}
-            onClose={() => setShowCoverStudio(false)}
-            onOpenExport={() => {
-              setShowCoverStudio(false);
-              setShowExport(true);
-            }}
-          />
-        </Suspense>
-      )}
       <ProfileMenuDialog
         open={showProfileMenu}
         onClose={() => setShowProfileMenu(false)}
