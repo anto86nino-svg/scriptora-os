@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { NavigationTree } from "@/components/NavigationTree";
@@ -37,6 +37,10 @@ import { MobileWriterBar } from "@/components/writer/MobileWriterBar";
 import { WriterOverflowMenu } from "@/components/writer/WriterOverflowMenu";
 import { MobileBookNavigator } from "@/mobile/MobileBookNavigator";
 import { StoryProgressOs } from "@/mobile/StoryProgressOs";
+import { MobileAICoachScreen } from "@/mobile/MobileAICoachScreen";
+import { MobileVoiceStudioScreen } from "@/mobile/MobileVoiceStudioScreen";
+import { restoreWriterScrollPosition, saveWriterScrollPosition } from "@/mobile/clearProjectSession";
+import { openMobileMarketFromWriter } from "@/mobile/mobileMarketContext";
 import type { RewriteLevel } from "@/lib/generation-types";
 import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
@@ -226,12 +230,84 @@ const Index = () => {
     [engine.project, projects],
   );
 
+  const [isMobileLayout, setIsMobileLayout] = useState(
+    () => typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const sync = () => setIsMobileLayout(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  const openMobileNavExclusive = useCallback(() => {
+    if (engine.project?.id) saveWriterScrollPosition(engine.project.id, window.scrollY);
+    setShowCoach(false);
+    setWriterMenuOpen(false);
+    setShowVoiceStudio(false);
+    setShowSettings(false);
+    setMobileNavOpen(true);
+  }, [engine.project?.id]);
+
+  const openMobileCoachExclusive = useCallback(() => {
+    if (engine.project?.id) saveWriterScrollPosition(engine.project.id, window.scrollY);
+    setMobileNavOpen(false);
+    setWriterMenuOpen(false);
+    setShowVoiceStudio(false);
+    setShowSettings(false);
+    setShowCoach(true);
+  }, [engine.project?.id]);
+
+  const closeMobileCoach = useCallback(() => {
+    setShowCoach(false);
+    if (engine.project?.id) restoreWriterScrollPosition(engine.project.id);
+  }, [engine.project?.id]);
+
+  const openMobileWriterMenu = useCallback(() => {
+    if (engine.project?.id) saveWriterScrollPosition(engine.project.id, window.scrollY);
+    setMobileNavOpen(false);
+    setShowCoach(false);
+    setShowVoiceStudio(false);
+    setShowSettings(false);
+    setWriterMenuOpen(true);
+  }, [engine.project?.id]);
+
+  const openMobileSettingsExclusive = useCallback(() => {
+    if (engine.project?.id) saveWriterScrollPosition(engine.project.id, window.scrollY);
+    setMobileNavOpen(false);
+    setShowCoach(false);
+    setWriterMenuOpen(false);
+    setShowVoiceStudio(false);
+    setShowSettings(true);
+  }, [engine.project?.id]);
+
+  const closeMobileSettings = useCallback(() => {
+    setShowSettings(false);
+    if (engine.project?.id) restoreWriterScrollPosition(engine.project.id);
+  }, [engine.project?.id]);
+
+  const mobileOverlayActive =
+    isMobileLayout &&
+    (mobileNavOpen || showCoach || writerMenuOpen || showVoiceStudio || showSettings);
+
   const openVoiceStudioForChapter = (chapterIndex: number) => {
+    if (isMobileLayout) {
+      if (engine.project?.id) saveWriterScrollPosition(engine.project.id, window.scrollY);
+      setMobileNavOpen(false);
+      setShowCoach(false);
+      setWriterMenuOpen(false);
+      setShowSettings(false);
+    }
     setVoiceStudioChapterIndex(chapterIndex);
     setShowVoiceStudio(true);
   };
 
-  const closeVoiceStudio = () => setShowVoiceStudio(false);
+  const closeVoiceStudio = () => {
+    setShowVoiceStudio(false);
+    if (isMobileLayout && engine.project?.id) restoreWriterScrollPosition(engine.project.id);
+  };
 
   const openNewBookGuarded = () => {
     if (freeBookUsed) {
@@ -552,7 +628,7 @@ const Index = () => {
           />
           </Suspense>
         </div>
-        {showVoiceStudio && (
+        {showVoiceStudio && !isMobileLayout && (
           <Suspense fallback={<VoiceStudioFallback />}>
             <VoiceStudioDialog
               open={showVoiceStudio}
@@ -567,6 +643,20 @@ const Index = () => {
               }}
             />
           </Suspense>
+        )}
+        {isMobileLayout && showVoiceStudio && (
+          <MobileVoiceStudioScreen
+            open={showVoiceStudio}
+            onClose={closeVoiceStudio}
+            projects={voiceProjectList}
+            initialProjectId={engine.project?.id}
+            initialChapterIndex={voiceStudioChapterIndex}
+            autoPlayOnOpen
+            onOpenChapterInEditor={(_projectId, chapterIdx) => {
+              closeVoiceStudio();
+              setActiveSection(`chapter-${chapterIdx}` as SectionId);
+            }}
+          />
         )}
         <LazyMollyBrainPanel
           project={engine.project}
@@ -588,12 +678,14 @@ const Index = () => {
       <button
         onClick={() => {
           if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
-            setMobileNavOpen(true);
+            openMobileNavExclusive();
           } else {
             setSidebarOpen(!sidebarOpen);
           }
         }}
         className={`scriptora-writer-menu-btn fixed left-2 top-[calc(env(safe-area-inset-top,0px)+0.5rem)] z-50 flex items-center justify-center rounded-[10px] border border-white/10 bg-background/90 p-0 text-foreground shadow-md backdrop-blur-md lg:hidden ${
+          mobileOverlayActive ? "hidden" : ""
+        } ${
           guidedFlowEnabled && !!engine.project?.blueprint && !sidebarOpen ? "scriptora-guide-pulse" : ""
         }`}
         title={sidebarOpen ? t("hide_sidebar") : t("show_sidebar")}
@@ -604,7 +696,10 @@ const Index = () => {
       {engine.project && (
         <MobileBookNavigator
           open={mobileNavOpen}
-          onClose={() => setMobileNavOpen(false)}
+          onClose={() => {
+            setMobileNavOpen(false);
+            if (engine.project?.id) restoreWriterScrollPosition(engine.project.id);
+          }}
           project={engine.project}
           activeSection={activeSection}
           generatingSet={engine.generatingSet}
@@ -760,7 +855,7 @@ const Index = () => {
       <div
         className={`scriptora-writer-main flex min-h-[100dvh] min-w-0 flex-1 flex-col overflow-x-clip overflow-y-visible pb-[calc(env(safe-area-inset-bottom)+7.5rem)] transition-all duration-300 md:pb-[calc(env(safe-area-inset-bottom)+1.5rem)] lg:pb-0 ${
           sidebarOpen ? "p-2 md:p-3" : "p-2 md:px-4 md:py-3"
-        }`}
+        } ${mobileOverlayActive ? "scriptora-writer-overlay-hidden max-lg:invisible max-lg:pointer-events-none" : ""}`}
       >
         {engine.project && (
           <div className="relative sticky top-0 z-30 shrink-0">
@@ -771,16 +866,35 @@ const Index = () => {
               isGenerating={writerHeaderContext.isGenerating}
               focusMode={focusMode}
               onFocusMode={() => setFocusMode(true)}
-              onMenuToggle={() => setWriterMenuOpen((v) => !v)}
+              onMenuToggle={() => (isMobileLayout ? openMobileWriterMenu() : setWriterMenuOpen((v) => !v))}
               className="rounded-xl border border-white/[0.08] max-lg:ml-11"
             />
             <WriterOverflowMenu
               open={writerMenuOpen}
-              onClose={() => setWriterMenuOpen(false)}
+              onClose={() => {
+                setWriterMenuOpen(false);
+                if (isMobileLayout && engine.project?.id) restoreWriterScrollPosition(engine.project.id);
+              }}
+              fullscreen={isMobileLayout}
               onExport={guardedExportEpub}
               onVoice={() => activeChapterIndex != null && openVoiceStudioForChapter(activeChapterIndex)}
-              onSettings={() => setShowSettings(true)}
-              onCoach={() => setShowCoach(true)}
+              onSettings={() => (isMobileLayout ? openMobileSettingsExclusive() : setShowSettings(true))}
+              onCoach={() => (isMobileLayout ? openMobileCoachExclusive() : setShowCoach(true))}
+              onMarket={
+                engine.project?.id
+                  ? () => {
+                      setWriterMenuOpen(false);
+                      if (engine.project?.id) {
+                        openMobileMarketFromWriter(
+                          engine.project.id,
+                          window.scrollY,
+                          activeSection,
+                        );
+                        navigate("/mobile-market");
+                      }
+                    }
+                  : undefined
+              }
             />
           </div>
         )}
@@ -803,7 +917,7 @@ const Index = () => {
           onEnabledChange={setGuidedFlowEnabled}
           onOpenSidebar={() => {
             if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
-              setMobileNavOpen(true);
+              openMobileNavExclusive();
             } else {
               setSidebarOpen(true);
             }
@@ -867,7 +981,7 @@ const Index = () => {
                 />
                 </Suspense>
               </div>
-              {showCoach && (
+              {showCoach && !isMobileLayout && (
                 <Suspense fallback={<PanelFallback />}>
                 <AICoachPanel project={engine.project} activeSection={activeSection} onClose={() => setShowCoach(false)}
                   onApplyRewrite={(chapterIdx, subIdx, text) => {
@@ -876,7 +990,7 @@ const Index = () => {
                   }} />
                 </Suspense>
               )}
-              {showVoiceStudio && (
+              {showVoiceStudio && !isMobileLayout && (
                 <Suspense fallback={<VoiceStudioFallback />}>
                   <VoiceStudioDialog
                     open={showVoiceStudio}
@@ -965,15 +1079,42 @@ const Index = () => {
       )}
       </div>
 
-      {engine.project && isChapterView && (
+      {engine.project && isChapterView && !mobileOverlayActive && (
         <MobileWriterBar
-          onOpenIndex={() => setMobileNavOpen(true)}
+          onOpenIndex={openMobileNavExclusive}
           onListen={activeChapterGenerated && activeChapterIndex != null ? () => openVoiceStudioForChapter(activeChapterIndex) : undefined}
           onPatch={activeChapterGenerated ? () => triggerChapterTool("patch") : undefined}
           onAnalysis={activeChapterGenerated ? () => triggerChapterTool("analysis") : undefined}
-          onMore={() => setWriterMenuOpen(true)}
+          onMore={openMobileWriterMenu}
           listenDisabled={!activeChapterGenerated}
           toolsDisabled={!activeChapterGenerated}
+        />
+      )}
+
+      {isMobileLayout && showVoiceStudio && (
+        <MobileVoiceStudioScreen
+          open={showVoiceStudio}
+          onClose={closeVoiceStudio}
+          projects={voiceProjectList}
+          initialProjectId={engine.project?.id}
+          initialChapterIndex={voiceStudioChapterIndex}
+          autoPlayOnOpen
+          onOpenChapterInEditor={(_projectId, chapterIdx) => {
+            closeVoiceStudio();
+            setActiveSection(`chapter-${chapterIdx}` as SectionId);
+          }}
+        />
+      )}
+
+      {isMobileLayout && showCoach && engine.project && (
+        <MobileAICoachScreen
+          project={engine.project}
+          activeSection={activeSection}
+          onClose={closeMobileCoach}
+          onApplyRewrite={(chapterIdx, subIdx, text) => {
+            if (subIdx !== null) engine.updateSubchapterContent(chapterIdx, subIdx, text);
+            else engine.updateChapterContent(chapterIdx, text);
+          }}
         />
       )}
 
@@ -1057,7 +1198,8 @@ const Index = () => {
       )}>
       <SettingsPanel
         open
-        onClose={() => setShowSettings(false)}
+        variant={isMobileLayout ? "mobile" : "dialog"}
+        onClose={() => (isMobileLayout ? closeMobileSettings() : setShowSettings(false))}
         settings={writingSettings}
         onUpdateSettings={handleUpdateSettings}
         onLanguageChange={handleLanguageChange}
@@ -1097,7 +1239,7 @@ const Index = () => {
         }}
       />
       </Suspense>
-      {engine.project && (
+      {engine.project && !mobileOverlayActive && (
         <LazyMollyBrainPanel
           project={engine.project}
           activeSection={activeSection}

@@ -17,7 +17,7 @@ const GENERIC_PLACEHOLDER =
   "Parla liberamente: idea, note, voce, caos… Scriptora organizzerà il resto.";
 
 export const OPENING_ASSISTANT_MESSAGE =
-  "Raccontami il cuore del libro che vuoi scrivere.";
+  "Raccontami il libro che hai dentro.";
 
 const STRONG_ANSWER_MIN = 12;
 

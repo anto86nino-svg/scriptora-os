@@ -9,6 +9,7 @@ import {
   createProjectId,
 } from "@/lib/storage";
 import { withNormalizedPhase, isProjectComplete } from "@/lib/project-status";
+import { purgeExpiredTrash, loadTrashEntries } from "@/lib/project-trash";
 import { isDevMode } from "@/lib/dev-mode";
 import { getDevPlanOverride } from "@/lib/dev-plan-override";
 
@@ -145,10 +146,17 @@ function loadLocalScoped(): BookProject[] {
   return loadLocal().filter((p) => scopeOf(p) === uid);
 }
 
+function withoutTrashed(projects: BookProject[]): BookProject[] {
+  const trashedIds = new Set(loadTrashEntries().map((e) => e.project.id));
+  if (trashedIds.size === 0) return projects;
+  return projects.filter((p) => !trashedIds.has(p.id));
+}
+
 export async function loadProjects(
   onRemoteUpdate?: (projects: BookProject[]) => void
 ): Promise<BookProject[]> {
-  const local = loadLocalScoped().map(withNormalizedPhase);
+  purgeExpiredTrash();
+  const local = withoutTrashed(loadLocalScoped().map(withNormalizedPhase));
 
   const refresh = async (): Promise<BookProject[]> => {
     try {
@@ -164,7 +172,7 @@ export async function loadProjects(
       if (error || !data || data.length === 0) return local;
 
       const raw = data.map((row: any) => row.data as BookProject);
-      const projects = raw.map(withNormalizedPhase);
+      const projects = withoutTrashed(raw.map(withNormalizedPhase));
 
       // Persist auto-promoted phases (batch, fully async — never block).
       const toPersist = projects.filter((p, i) => raw[i].phase !== p.phase);

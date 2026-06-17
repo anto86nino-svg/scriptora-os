@@ -91,7 +91,7 @@ export function BookDnaConfirmationPanel({
               {discovery ? "Genre discovery" : "DNA in costruzione"}
             </p>
             <h3 className="mt-1 text-xl font-semibold">
-              {discovery ? "Credo di aver capito il tuo libro" : "Sto scoprendo il tuo libro"}
+              {discovery ? "Credo di aver capito il cuore del tuo libro" : "Sto scoprendo il tuo libro"}
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
               {ready

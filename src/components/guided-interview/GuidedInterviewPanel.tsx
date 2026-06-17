@@ -155,7 +155,7 @@ function InterviewBody({
             Intervista libera
           </p>
           <p className="mt-2">
-            Puoi scrivere un&apos;idea confusa, note sparse o dettare a voce. Scriptora inferisce genere, tono e promessa man mano.
+            Raccontami il libro che hai dentro — anche confuso, a pezzi, o dettato a voce. Scriptora inferisce genere, tono e promessa man mano.
           </p>
         </div>
       )}

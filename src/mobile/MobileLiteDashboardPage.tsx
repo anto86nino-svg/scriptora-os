@@ -2,13 +2,16 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
+  BarChart3,
   BookOpen,
   Download,
   FileText,
   GraduationCap,
   Library,
   Loader2,
+  Plus,
   Sparkles,
+  Trash2,
   UserRound,
   WalletCards,
 } from "lucide-react";
@@ -21,6 +24,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { getProjectCoverDataUrl } from "@/lib/cover-session";
 import { isProjectComplete } from "@/lib/project-status";
 import { getLastProjectId, loadProjects, setLastProjectId } from "@/services/storageService";
+import { softDeleteProjectAsync, recoverProjectFromTrash } from "@/lib/project-trash";
+import { openMobileMarketFromDashboard } from "@/mobile/mobileMarketContext";
 import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity } from "@/lib/author-identity";
 import { normalizeBookConfig } from "@/lib/book-config-studio/defaults";
 import { buildBookTypeLock as buildGenreLock } from "@/lib/book-type-engine";
@@ -28,6 +33,7 @@ import { runGenerateBlueprint } from "@/lib/generation-runtime";
 import { usePlan } from "@/lib/plan";
 import { toast } from "sonner";
 import { MobileBookForge } from "@/mobile/MobileBookForge";
+import { MobileDeleteProjectDialog } from "@/mobile/MobileDeleteProjectDialog";
 
 const HomeExportDialog = lazy(() =>
   import("@/components/HomeExportDialog").then((m) => ({ default: m.HomeExportDialog })),
@@ -69,14 +75,17 @@ export default function MobileLiteDashboardPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
-  const { currentPlan } = usePlan();
+  const { plan: currentPlan } = usePlan();
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [showExport, setShowExport] = useState(false);
   const [showBookForge, setShowBookForge] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<BookProject | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [authorIdentity, setAuthorIdentity] = useState<AuthorIdentity>(() => getSelectedAuthorIdentity());
 
   const freeBookUsed = currentPlan === "free" && projects.length > 0;
+  const mobileOverlayOpen = showBookForge || showExport || !!deleteTarget;
 
   const openMobileBookForge = useCallback(() => {
     if (freeBookUsed) {
@@ -85,8 +94,16 @@ export default function MobileLiteDashboardPage() {
       return;
     }
     setAuthorIdentity(getSelectedAuthorIdentity());
+    setShowExport(false);
+    setDeleteTarget(null);
     setShowBookForge(true);
   }, [freeBookUsed, navigate]);
+
+  const openExport = useCallback(() => {
+    setShowBookForge(false);
+    setDeleteTarget(null);
+    setShowExport(true);
+  }, []);
 
   useEffect(() => {
     const state = location.state as { openForge?: boolean; openWizard?: boolean; openNewBook?: boolean } | null;
@@ -164,6 +181,53 @@ export default function MobileLiteDashboardPage() {
     navigate("/app");
   };
 
+  const startNewBook = () => {
+    sessionStorage.removeItem("scriptora-open-project");
+    openMobileBookForge();
+  };
+
+  const confirmDeleteProject = async (archived = false) => {
+    if (!deleteTarget) return;
+    const projectId = deleteTarget.id;
+    const projectTitle = deleteTarget.config.title || "Senza titolo";
+    setDeleteBusy(true);
+    try {
+      await softDeleteProjectAsync(deleteTarget, { archived });
+      if (getLastProjectId() === projectId) {
+        const remaining = projects.filter((p) => p.id !== projectId);
+        setLastProjectId(remaining[0]?.id || "");
+      }
+      setProjects((prev) => prev.filter((p) => p.id !== projectId));
+      setDeleteTarget(null);
+      toast.success(
+        archived ? "Libro archiviato — recuperabile per 7 giorni" : "Libro eliminato — recuperabile per 7 giorni",
+        {
+          duration: 8000,
+          action: {
+            label: "Annulla",
+            onClick: () => {
+              void recoverProjectFromTrash(projectId).then((ok) => {
+                if (ok) {
+                  toast.success(`«${projectTitle}» è tornato.`);
+                  loadProjects(setProjects).then(setProjects).catch(() => {});
+                }
+              });
+            },
+          },
+        },
+      );
+    } catch {
+      toast.error("Operazione non riuscita — riprova.");
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
+  const openMarketForProject = (project: BookProject) => {
+    openMobileMarketFromDashboard(project.id);
+    navigate("/mobile-market");
+  };
+
   const displayName =
     (user?.user_metadata as any)?.full_name ||
     (user?.user_metadata as any)?.name ||
@@ -227,9 +291,30 @@ export default function MobileLiteDashboardPage() {
           {lastProject ? "Continua a scrivere" : "Apri Book Forge"}
           <ArrowRight className="h-5 w-5" />
         </button>
+
+        {lastProject && (
+          <button
+            type="button"
+            onClick={startNewBook}
+            className="mt-2 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/[0.06] px-5 text-sm font-semibold text-white"
+          >
+            <Plus className="h-4 w-4" />
+            Nuovo libro
+          </button>
+        )}
       </section>
 
       <section className="mt-4 grid gap-3">
+        <MobileLiteAction
+          icon={BarChart3}
+          title="Market OS"
+          description="KDP, trend di mercato e Title Domination in un unico schermo essenziale."
+          onClick={() => {
+            const target = lastProject || projects[0];
+            if (target) openMarketForProject(target);
+          }}
+          disabled={projects.length === 0}
+        />
         <MobileLiteAction
           icon={Sparkles}
           title="Book Forge"
@@ -246,7 +331,7 @@ export default function MobileLiteDashboardPage() {
           icon={Download}
           title="Export essenziale"
           description="EPUB, DOCX e PDF quando il libro e pronto."
-          onClick={() => setShowExport(true)}
+          onClick={openExport}
           disabled={projects.length === 0}
         />
       </section>
@@ -289,19 +374,32 @@ export default function MobileLiteDashboardPage() {
         </div>
         <div className="mt-3 space-y-2">
           {projects.slice(0, 4).map((project) => (
-            <button
-              key={project.id}
-              type="button"
-              onClick={() => openProject(project)}
-              className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.05] px-3 text-left"
-            >
-              <FileText className="h-4 w-4 shrink-0 text-sky-200" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-white">{project.config.title || "Senza titolo"}</span>
-                <span className="block truncate text-[11px] text-white/48">{project.config.genre} | {projectProgress(project)}%</span>
-              </span>
-              <ArrowRight className="h-4 w-4 text-white/40" />
-            </button>
+            <div key={project.id} className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => openProject(project)}
+                className="flex min-h-14 min-w-0 flex-1 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.05] px-3 text-left"
+              >
+                <FileText className="h-4 w-4 shrink-0 text-sky-200" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-white">{project.config.title || "Senza titolo"}</span>
+                  <span className="block truncate text-[11px] text-white/48">{project.config.genre} | {projectProgress(project)}%</span>
+                </span>
+                <ArrowRight className="h-4 w-4 text-white/40" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowBookForge(false);
+                  setShowExport(false);
+                  setDeleteTarget(project);
+                }}
+                className="flex h-14 w-12 shrink-0 items-center justify-center rounded-2xl border border-red-400/20 bg-red-500/10 text-red-200"
+                aria-label={`Elimina ${project.config.title || "progetto"}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
           ))}
           {!loading && projects.length === 0 && (
             <div className="rounded-2xl border border-dashed border-white/12 p-4 text-sm leading-6 text-white/58">
@@ -311,12 +409,23 @@ export default function MobileLiteDashboardPage() {
         </div>
       </section>
 
+      {!mobileOverlayOpen && (
       <nav className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] z-40 grid grid-cols-4 gap-2 rounded-3xl border border-white/10 bg-slate-950/96 p-2 shadow-xl">
         <LiteDockButton icon={BookOpen} label="Writer" onClick={() => openProject(lastProject)} />
         <LiteDockButton icon={Sparkles} label="Forge" onClick={openMobileBookForge} />
         <LiteDockButton icon={GraduationCap} label="Study" onClick={() => navigate("/study")} />
-        <LiteDockButton icon={Library} label="Export" onClick={() => setShowExport(true)} disabled={projects.length === 0} />
+        <LiteDockButton icon={Library} label="Export" onClick={openExport} disabled={projects.length === 0} />
       </nav>
+      )}
+
+      <MobileDeleteProjectDialog
+        open={!!deleteTarget}
+        projectTitle={deleteTarget?.config.title || "Senza titolo"}
+        onCancel={() => setDeleteTarget(null)}
+        onDelete={() => confirmDeleteProject(false)}
+        onArchive={() => confirmDeleteProject(true)}
+        busy={deleteBusy}
+      />
 
       {showBookForge && (
         <MobileBookForge

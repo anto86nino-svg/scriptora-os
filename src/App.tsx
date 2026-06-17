@@ -18,6 +18,7 @@ import { useMobileLiteMode } from "@/hooks/use-mobile-lite-mode";
 const Home = lazyWithRetry(() => import("./pages/Home.tsx"));
 const Dashboard = lazyWithRetry(() => import("./pages/Dashboard.tsx"));
 const MobileLiteDashboardPage = lazyWithRetry(() => import("./mobile/MobileLiteDashboardPage.tsx"));
+const MobileMarketHubPage = lazyWithRetry(() => import("./mobile/MobileMarketHubPage.tsx"));
 const MobileDesktopStudioNotice = lazyWithRetry(() => import("./mobile/MobileDesktopStudioNotice.tsx"));
 const Index = lazyWithRetry(() => import("./pages/Index.tsx"));
 const AuthPage = lazyWithRetry(() => import("./pages/Auth.tsx"));
@@ -71,6 +72,7 @@ const App = () => (
                 <Route path="/identity" element={<ProtectedRoute><FeatureErrorBoundary featureName="Identity OS"><IdentityOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/study" element={<ProtectedRoute><FeatureErrorBoundary featureName="Study OS"><StudyOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/study-session" element={<ProtectedRoute><FeatureErrorBoundary featureName="Study OS"><StudySessionPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/mobile-market" element={<ProtectedRoute><FeatureErrorBoundary featureName="Market OS"><MobileMarketHubPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/app" element={<ProtectedRoute><FeatureErrorBoundary featureName="Writer Studio"><Index /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/auto-bestseller" element={<ProtectedRoute><FeatureErrorBoundary featureName="Book Forge"><AutoBestsellerRedirectPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/usage" element={<ProtectedRoute><FeatureErrorBoundary featureName="Usage"><UsagePage /></FeatureErrorBoundary></ProtectedRoute>} />

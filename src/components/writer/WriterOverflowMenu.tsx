@@ -1,5 +1,6 @@
-import { Download, Headphones, Settings, Sparkles, Upload } from "lucide-react";
+import { BarChart3, Download, Headphones, Settings, Sparkles, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { MobileFullscreenShell } from "@/mobile/MobileFullscreenShell";
 
 export type WriterOverflowMenuProps = {
   open: boolean;
@@ -8,7 +9,10 @@ export type WriterOverflowMenuProps = {
   onVoice?: () => void;
   onSettings?: () => void;
   onCoach?: () => void;
+  onMarket?: () => void;
   className?: string;
+  /** Mobile: one-screen fullscreen instead of popover */
+  fullscreen?: boolean;
 };
 
 export function WriterOverflowMenu({
@@ -18,9 +22,25 @@ export function WriterOverflowMenu({
   onVoice,
   onSettings,
   onCoach,
+  onMarket,
   className,
+  fullscreen,
 }: WriterOverflowMenuProps) {
   if (!open) return null;
+
+  if (fullscreen) {
+    return (
+      <MobileFullscreenShell title="Strumenti Writer" subtitle="Export · Voice · Coach · Settings" onClose={onClose}>
+        <div className="space-y-2 px-4 py-4">
+          {onExport && <FullscreenMenuItem icon={Upload} label="Export" onClick={() => { onExport(); onClose(); }} />}
+          {onVoice && <FullscreenMenuItem icon={Headphones} label="Voice Studio" onClick={() => { onVoice(); onClose(); }} />}
+          {onCoach && <FullscreenMenuItem icon={Sparkles} label="AI Coach" onClick={() => { onCoach(); onClose(); }} />}
+          {onMarket && <FullscreenMenuItem icon={BarChart3} label="Market OS" onClick={() => { onMarket(); onClose(); }} />}
+          {onSettings && <FullscreenMenuItem icon={Settings} label="Impostazioni" onClick={() => { onSettings(); onClose(); }} />}
+        </div>
+      </MobileFullscreenShell>
+    );
+  }
 
   return (
     <>
@@ -34,10 +54,32 @@ export function WriterOverflowMenu({
         {onExport && <MenuItem icon={Upload} label="Export" onClick={() => { onExport(); onClose(); }} />}
         {onVoice && <MenuItem icon={Headphones} label="Voice Studio" onClick={() => { onVoice(); onClose(); }} />}
         {onCoach && <MenuItem icon={Sparkles} label="AI Coach" onClick={() => { onCoach(); onClose(); }} />}
+        {onMarket && <MenuItem icon={BarChart3} label="Market OS" onClick={() => { onMarket(); onClose(); }} />}
         {onSettings && <MenuItem icon={Settings} label="Impostazioni" onClick={() => { onSettings(); onClose(); }} />}
         <MenuItem icon={Download} label="Credits & piano" onClick={onClose} disabled />
       </div>
     </>
+  );
+}
+
+function FullscreenMenuItem({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: typeof Settings;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-14 w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.05] px-4 text-left text-base font-semibold text-white"
+    >
+      <Icon className="h-5 w-5 shrink-0 text-white/55" />
+      {label}
+    </button>
   );
 }
 

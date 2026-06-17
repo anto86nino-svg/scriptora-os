@@ -70,6 +70,8 @@ interface VoiceStudioDialogProps {
   initialProjectId?: string;
   initialChapterIndex?: number;
   autoPlayOnOpen?: boolean;
+  /** Mobile: render inside MobileFullscreenShell — no Dialog chrome */
+  embedded?: boolean;
 }
 
 export function VoiceStudioDialog({
@@ -81,6 +83,7 @@ export function VoiceStudioDialog({
   initialProjectId,
   initialChapterIndex,
   autoPlayOnOpen = false,
+  embedded = false,
 }: VoiceStudioDialogProps) {
   const [query, setQuery] = useState("");
   const [projectId, setProjectId] = useState<string>("");
@@ -1283,13 +1286,19 @@ export function VoiceStudioDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, autoPlayOnOpen]);
 
-  return (
-    <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
-      <DialogContent className={`flex w-[calc(100vw-0.75rem)] flex-col overflow-hidden border-white/15 bg-slate-950/94 p-3 text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-5 ${
-          immersiveMode
-            ? "h-[96dvh] max-h-[96dvh] max-w-[96vw]"
-            : "max-h-[88dvh] max-w-3xl sm:max-h-[90dvh]"
-        }`}>
+  if (!open) return null;
+
+  const contentClassName = embedded
+    ? "flex h-full min-h-0 flex-col overflow-hidden p-2 text-white sm:p-3"
+    : `flex w-[calc(100vw-0.75rem)] flex-col overflow-hidden border-white/15 bg-slate-950/94 p-3 text-white shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-5 ${
+        immersiveMode
+          ? "h-[96dvh] max-h-[96dvh] max-w-[96vw]"
+          : "max-h-[88dvh] max-w-3xl sm:max-h-[90dvh]"
+      }`;
+
+  const studioBody = (
+    <>
+        {!embedded && (
         <DialogHeader className={isMinimalImmersion && sessionActive ? "sr-only" : ""}>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <BookOpen className="h-5 w-5 text-sky-300" />
@@ -1299,6 +1308,7 @@ export function VoiceStudioDialog({
             Professional manuscript listening — hear pacing, dialogue, and emotional beats like a reader.
           </DialogDescription>
         </DialogHeader>
+        )}
 
         <div className={`relative min-h-0 flex-1 overflow-y-auto rounded-2xl border border-white/10 bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1f2937] p-3 sm:p-4 ${
           immersiveMode ? "flex flex-col" : ""
@@ -1749,6 +1759,17 @@ export function VoiceStudioDialog({
           )}
         </div>
 
+    </>
+  );
+
+  if (embedded) {
+    return <div className={`scriptora-mobile-enter ${contentClassName}`}>{studioBody}</div>;
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => (next ? undefined : onClose())}>
+      <DialogContent className={contentClassName}>
+        {studioBody}
       </DialogContent>
     </Dialog>
   );

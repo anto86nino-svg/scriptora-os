@@ -14,6 +14,8 @@ interface AICoachPanelProps {
   activeSection: SectionId | null;
   onClose: () => void;
   onApplyRewrite?: (chapterIndex: number, subIndex: number | null, text: string) => void;
+  /** Fullscreen mobile shell — hides duplicate chrome */
+  variant?: "sidebar" | "mobile";
 }
 
 interface PassResult {
@@ -38,7 +40,8 @@ const UI_LANG_MAP: Record<string, string> = {
   en: "English", it: "Italian", es: "Spanish", fr: "French", de: "German",
 };
 
-export function AICoachPanel({ project, activeSection, onClose, onApplyRewrite }: AICoachPanelProps) {
+export function AICoachPanel({ project, activeSection, onClose, onApplyRewrite, variant = "sidebar" }: AICoachPanelProps) {
+  const isMobile = variant === "mobile";
   const [tab, setTab] = useState<"live" | "deep">("live");
   const [result, setResult] = useState<MultiPassResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -222,8 +225,14 @@ Respond in ${bookLang}. Return ONLY valid JSON.`,
   const progressPercent = loading ? (currentPass / maxPasses) * 100 : result ? 100 : 0;
 
   return (
-    <div className="w-80 border-l border-border bg-card/50 flex flex-col h-full shrink-0">
-      {/* Header */}
+    <div
+      className={
+        isMobile
+          ? "flex h-full min-h-0 w-full flex-col bg-transparent"
+          : "flex h-full w-80 shrink-0 flex-col border-l border-border bg-card/50"
+      }
+    >
+      {!isMobile && (
       <div className="h-10 border-b border-border/50 flex items-center justify-between px-3">
         <div className="flex items-center gap-1.5">
           <Sparkles className="h-3.5 w-3.5 text-primary" />
@@ -233,6 +242,7 @@ Respond in ${bookLang}. Return ONLY valid JSON.`,
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
+      )}
 
       {/* Tabs */}
       <div className="flex border-b border-border/40 bg-card/30 shrink-0">

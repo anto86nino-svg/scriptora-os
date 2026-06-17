@@ -6805,3 +6805,40 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
     min-height: 4.25rem;
   }
 }
+
+/* Mobile fullscreen OS shell — one screen at a time */
+.scriptora-mobile-fullscreen-shell {
+  isolation: isolate;
+  overscroll-behavior: contain;
+}
+
+.scriptora-mobile-fullscreen-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+@media (max-width: 1023px) {
+  .scriptora-writer-main.scriptora-writer-overlay-hidden {
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+@keyframes scriptora-mobile-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.scriptora-mobile-enter {
+  animation: scriptora-mobile-enter 0.28s ease-out both;
+}
+
+.scriptora-mobile-fullscreen-shell {
+  animation: scriptora-mobile-enter 0.22s ease-out both;
+}
