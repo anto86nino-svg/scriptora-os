@@ -69,6 +69,7 @@ import { ONE_FLOW_TOOL_ROLES } from "@/lib/one-flow/one-flow-tool-roles";
 import { DashboardHomePillars } from "@/components/one-flow/DashboardHomePillars";
 import { DashboardPackagingRow } from "@/components/one-flow/DashboardPackagingRow";
 import { DashboardAdvancedToolsPanel } from "@/components/one-flow/DashboardAdvancedToolsPanel";
+import { DedicatedToolScreen } from "@/components/one-flow/DedicatedToolScreen";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
 import { OsHomeHero } from "@/components/os/OsHomeHero";
 import {
@@ -652,6 +653,7 @@ typeof crypto.randomUUID === "function"
       onNewBook: openNewBookGuarded,
       onContinue: lastProject ? () => goApp({ projectId: lastProject.id }) : undefined,
       onOpenProjects: () => setShowProjects(true),
+      onOpenLibrary: () => setShowLibrary(true),
       onOpenExport: () => guardPlanFeature("export_epub", () => setShowExport(true))(),
       onOpenCover: () => guardPlanFeature("cover_studio_template", openCoverStudioPage)(),
       onOpenTitleIntel: () => guardPlanFeature("title_intelligence_base", () => setShowTitleIntel(true))(),
@@ -979,48 +981,6 @@ typeof crypto.randomUUID === "function"
             </div>
           </section>
         )}
-
-        {showProjects && (() => {
-          const drafts = draftProjects;
-          return (
-            <div className="ios-panel mb-6 p-3">
-              <div className="mb-2 flex items-center justify-between gap-3 px-1">
-                <p className="text-[10px] font-semibold uppercase text-muted-foreground">
-                  {tt("my_projects_drafts", { count: drafts.length })}
-                </p>
-                <button
-                  onClick={() => setShowProjects(false)}
-                  className="rounded-md px-2 py-1 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-                >
-                  {t("close")}
-                </button>
-              </div>
-              {drafts.length === 0 && (
-                <p className="px-2 py-3 text-xs text-muted-foreground/70">
-                  {t("no_drafts_library_hint")}
-                </p>
-              )}
-              <div className="divide-y divide-white/10">
-                {drafts.map(p => (
-                  <div key={p.id}
-                    className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
-                    onClick={() => goApp({ projectId: p.id })}>
-                    <div className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">{p.config.title || t("untitled")}</span>
-                      <span className="text-[10px] text-muted-foreground/70">
-                        {getBookTypeLabel(p.config) || p.config.genre} · {p.chapters?.length || 0} ch · {isProjectComplete(p) ? "complete" : p.phase}
-                      </span>
-                    </div>
-                    <button onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
-                      className="rounded-md p-1 text-muted-foreground opacity-70 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
 
         {!devOn && currentPlan === "free" && (
           <div className="ios-panel mb-4 flex items-center gap-3 p-4">
@@ -1424,40 +1384,55 @@ typeof crypto.randomUUID === "function"
         </div>
       )}
 
-      {/* Library modal — opens via the Biblioteca card */}
-      {showLibrary && (
-        <div
-          className="scriptora-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-2xl"
-          onClick={() => setShowLibrary(false)}
-        >
-          <div
-            className="scriptora-modal-panel ios-panel relative flex w-full max-w-2xl flex-col overflow-hidden p-0"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex shrink-0 items-center justify-between px-6 pb-4 pt-6">
-              <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-                <Library className="h-4 w-4 text-emerald-500" />
-                {t("library")}
-              </h2>
-              <button
-                onClick={() => setShowLibrary(false)}
-                className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label={t("close")}
+      <DedicatedToolScreen
+        open={showProjects}
+        title="I miei libri"
+        description={tt("my_projects_drafts", { count: draftProjects.length })}
+        onClose={() => setShowProjects(false)}
+        maxWidthClass="max-w-2xl"
+      >
+        {draftProjects.length === 0 ? (
+          <p className="py-6 text-sm text-muted-foreground/70">{t("no_drafts_library_hint")}</p>
+        ) : (
+          <div className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.03]">
+            {draftProjects.map((p) => (
+              <div
+                key={p.id}
+                className="group flex cursor-pointer items-center justify-between gap-3 px-4 py-3 text-sm text-muted-foreground transition-colors hover:bg-white/[0.07] hover:text-foreground"
+                onClick={() => { setShowProjects(false); goApp({ projectId: p.id }); }}
               >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="scriptora-modal-body min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 pb-6">
-            <LibrarySection
-              projects={projects}
-              onOpen={(id) => { setShowLibrary(false); goApp({ projectId: id }); }}
-              onDelete={handleDelete}
-              onExport={() => { setShowLibrary(false); setShowExport(true); }}
-            />
-            </div>
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">{p.config.title || t("untitled")}</span>
+                  <span className="text-[10px] text-muted-foreground/70">
+                    {getBookTypeLabel(p.config) || p.config.genre} · {p.chapters?.length || 0} ch · {isProjectComplete(p) ? "complete" : p.phase}
+                  </span>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                  className="rounded-md p-1 text-muted-foreground opacity-70 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
           </div>
-        </div>
-      )}
+        )}
+      </DedicatedToolScreen>
+
+      <DedicatedToolScreen
+        open={showLibrary}
+        title={t("library")}
+        description="Libri completati e pronti per export o pubblicazione."
+        onClose={() => setShowLibrary(false)}
+        maxWidthClass="max-w-2xl"
+      >
+        <LibrarySection
+          projects={projects}
+          onOpen={(id) => { setShowLibrary(false); goApp({ projectId: id }); }}
+          onDelete={handleDelete}
+          onExport={() => { setShowLibrary(false); setShowExport(true); }}
+        />
+      </DedicatedToolScreen>
 
       <DevModeUnlockDialog open={showDevUnlock} onOpenChange={setShowDevUnlock} onUnlocked={() => navigate("/usage")} />
       <BetaActivationDialog open={showBetaDialog} onOpenChange={setShowBetaDialog} />

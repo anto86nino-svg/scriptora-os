@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
+import { chapterAnchorId, getChapterIndexFromSection } from "@/lib/writer/chapter-navigation";
 import { buildEditorialChapterPreview } from "@/lib/project-generation-readiness";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { resolveChapterGenerationOperation } from "@/lib/billing";
@@ -107,6 +108,11 @@ export function EditorPanel({
 }: EditorPanelProps) {
   const { blueprint, frontMatter, chapters, backMatter, config, phase } = project;
   const [mode, setMode] = useState<"edit" | "preview">("edit");
+
+  const selectedChapterIndex = useMemo(
+    () => getChapterIndexFromSection(activeSection),
+    [activeSection],
+  );
 
   const ws = writingSettings || { fontFamily: "'Times New Roman', Times, serif", fontSize: 16, lineSpacing: 2 };
 
@@ -198,6 +204,7 @@ export function EditorPanel({
                   onGenerateBlueprint={onGenerateBlueprint}
                   premiumWriter={premiumWriter}
                   onSelectChapter={onSelectChapter}
+                  selectedChapterIndex={selectedChapterIndex}
                   onCover={onCover}
                   onKdp={onKdp}
                   onRadar={onRadar}
@@ -373,6 +380,7 @@ function BlueprintView({
   onGenerateBlueprint,
   premiumWriter = false,
   onSelectChapter,
+  selectedChapterIndex = null,
   onCover,
   onKdp,
   onRadar,
@@ -397,6 +405,7 @@ function BlueprintView({
   onGenerateBlueprint?: () => void;
   premiumWriter?: boolean;
   onSelectChapter?: (index: number) => void;
+  selectedChapterIndex?: number | null;
   onCover?: () => void;
   onKdp?: () => void;
   onRadar?: () => void;
@@ -450,6 +459,7 @@ function BlueprintView({
           editable={Boolean(onUpdateOutlineTitle)}
           onChapterTitleChange={onUpdateOutlineTitle}
           onSelectChapter={onSelectChapter}
+          selectedChapterIndex={selectedChapterIndex}
           showApproveBanner={project.blueprintApproved === false && Boolean(onApproveBlueprint)}
           onApproveBlueprint={onApproveBlueprint}
           italianUi={(project.config.language || "").toLowerCase().includes("ital")}
@@ -924,7 +934,10 @@ function ChapterView({
   }, [chapterToolRequest?.nonce, chapterToolRequest?.mode]);
 
   return (
-    <div className={cn("min-w-0 w-full max-w-full", premiumWriter ? "space-y-6" : "space-y-8")}>
+    <div
+      id={chapterAnchorId(chapterIndex)}
+      className={cn("scriptora-chapter-anchor min-w-0 w-full max-w-full", premiumWriter ? "space-y-6" : "space-y-8")}
+    >
       <div className={cn(
         "scriptora-chapter-header flex min-w-0 w-full max-w-full flex-col gap-3",
         !premiumWriter && "sm:flex-row sm:items-start sm:justify-between sm:gap-4",
@@ -1135,8 +1148,18 @@ function ChapterView({
               ))}
             </ul>
           </div>
-          <div className="scriptora-chapter-empty-cta rounded-lg border border-dashed border-border/50 bg-muted/5 text-center">
-            <p className="text-sm text-muted-foreground/50">Click {t("generate")} to write this chapter</p>
+          <div className="scriptora-chapter-empty-cta rounded-lg border border-dashed border-border/50 bg-muted/5 p-6 text-center">
+            <p className="text-sm font-medium text-muted-foreground/70">Capitolo non scritto</p>
+            <p className="mt-1 text-xs text-muted-foreground/50">Genera il contenuto per questo capitolo dal blueprint.</p>
+            <button
+              type="button"
+              onClick={onGenerate}
+              disabled={isGenerating || !project.blueprint}
+              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40"
+            >
+              <Sparkles className="h-4 w-4" />
+              Genera questo capitolo
+            </button>
           </div>
         </div>
       )}

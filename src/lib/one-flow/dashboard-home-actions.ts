@@ -1,6 +1,9 @@
+import { toast } from "sonner";
 import type { FeatureKey } from "@/lib/subscription";
 
-/** Centralized dashboard actions — only render when enabled + handler/route valid. */
+export type DashboardActionMode = "route" | "dialog" | "overlay" | "external";
+
+/** Centralized dashboard actions — only render when enabled + valid destination. */
 export type DashboardHomeAction = {
   id: string;
   label: string;
@@ -10,6 +13,9 @@ export type DashboardHomeAction = {
   feature?: FeatureKey;
   route?: string;
   group: "optimization" | "writer" | "system";
+  mode: DashboardActionMode;
+  openDialog?: () => void;
+  openOverlay?: () => void;
   onClick?: () => void;
 };
 
@@ -18,6 +24,7 @@ export type DashboardActionContext = {
   onNewBook: () => void;
   onContinue?: () => void;
   onOpenProjects: () => void;
+  onOpenLibrary: () => void;
   onOpenExport: () => void;
   onOpenCover: () => void;
   onOpenTitleIntel: () => void;
@@ -38,10 +45,19 @@ const VALID_ROUTES = new Set([
   "/cover",
   "/usage",
   "/pricing",
+  "/app",
+  "/dashboard",
 ]);
 
 export function isValidDashboardRoute(route?: string): boolean {
   return Boolean(route && VALID_ROUTES.has(route));
+}
+
+function hasValidDestination(action: DashboardHomeAction): boolean {
+  if (action.mode === "route") return isValidDashboardRoute(action.route);
+  if (action.mode === "dialog") return typeof action.openDialog === "function";
+  if (action.mode === "overlay") return typeof action.openOverlay === "function";
+  return typeof action.onClick === "function";
 }
 
 export function isDashboardActionRenderable(
@@ -49,9 +65,37 @@ export function isDashboardActionRenderable(
   ctx: DashboardActionContext,
 ): boolean {
   if (!action.enabled) return false;
-  if (!action.onClick && !isValidDashboardRoute(action.route)) return false;
+  if (!hasValidDestination(action)) return false;
   if (action.requiresActiveBook && !ctx.hasActiveBook) return false;
   return true;
+}
+
+export function executeDashboardAction(action: DashboardHomeAction, ctx: DashboardActionContext): void {
+  if (action.requiresActiveBook && !ctx.hasActiveBook) {
+    toast.message("Crea o apri un libro prima", {
+      description: "Questo strumento lavora sul libro attivo.",
+      action: { label: "Book Forge", onClick: ctx.onNewBook },
+    });
+    return;
+  }
+
+  switch (action.mode) {
+    case "route":
+      if (action.route && isValidDashboardRoute(action.route)) {
+        ctx.onNavigate(action.route);
+      }
+      break;
+    case "dialog":
+      action.openDialog?.();
+      break;
+    case "overlay":
+      action.openOverlay?.();
+      break;
+    case "external":
+    default:
+      action.onClick?.();
+      break;
+  }
 }
 
 export function buildDashboardAdvancedActions(ctx: DashboardActionContext): DashboardHomeAction[] {
@@ -61,10 +105,10 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       label: "Title Intelligence",
       description: "Ottimizza titolo e sottotitolo del libro attivo",
       enabled: true,
-      requiresActiveBook: false,
       feature: "title_intelligence_base",
       group: "optimization",
-      onClick: ctx.onOpenTitleIntel,
+      mode: "dialog",
+      openDialog: ctx.onOpenTitleIntel,
     },
     {
       id: "bestseller-radar",
@@ -74,7 +118,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       feature: "trending_niches_limited",
       route: "/bestseller-radar",
       group: "optimization",
-      onClick: () => ctx.onNavigate("/bestseller-radar"),
+      mode: "route",
     },
     {
       id: "keyword-gold",
@@ -84,7 +128,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       feature: "kdp_market_base",
       route: "/keyword-gold",
       group: "optimization",
-      onClick: () => ctx.onNavigate("/keyword-gold"),
+      mode: "route",
     },
     {
       id: "kdp-launch",
@@ -94,7 +138,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       feature: "kdp_market_base",
       route: "/kdp-launch",
       group: "optimization",
-      onClick: () => ctx.onNavigate("/kdp-launch"),
+      mode: "route",
     },
     {
       id: "market-intel",
@@ -103,7 +147,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       enabled: true,
       route: "/mobile-market",
       group: "optimization",
-      onClick: () => ctx.onNavigate("/mobile-market"),
+      mode: "route",
     },
     {
       id: "manuscript-lab",
@@ -113,7 +157,8 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       requiresActiveBook: true,
       feature: "chapter_improvement",
       group: "writer",
-      onClick: ctx.hasActiveBook ? ctx.onOpenManuscriptLab : ctx.onNewBook,
+      mode: "dialog",
+      openDialog: ctx.onOpenManuscriptLab,
     },
     {
       id: "character-studio",
@@ -122,7 +167,8 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       enabled: true,
       feature: "book_engine_full",
       group: "writer",
-      onClick: ctx.onOpenCharacterStudio,
+      mode: "dialog",
+      openDialog: ctx.onOpenCharacterStudio,
     },
     {
       id: "author-identity",
@@ -131,7 +177,8 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       enabled: true,
       feature: "book_engine_full",
       group: "system",
-      onClick: ctx.onOpenAuthorIdentity,
+      mode: "dialog",
+      openDialog: ctx.onOpenAuthorIdentity,
     },
     {
       id: "notepad",
@@ -139,7 +186,8 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       description: "Appunti e idee rapide",
       enabled: true,
       group: "system",
-      onClick: ctx.onOpenNotepad,
+      mode: "dialog",
+      openDialog: ctx.onOpenNotepad,
     },
     {
       id: "idea-preview",
@@ -147,7 +195,8 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       description: "Esplora un'idea prima di Book Forge",
       enabled: true,
       group: "optimization",
-      onClick: ctx.onOpenIdeaPreview,
+      mode: "dialog",
+      openDialog: ctx.onOpenIdeaPreview,
     },
   ];
 
@@ -166,7 +215,8 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       requiresActiveBook: true,
       feature: "cover_studio_template",
       group: "optimization",
-      onClick: ctx.onOpenCover,
+      mode: "route",
+      route: "/cover",
     },
     {
       id: "pack-export",
@@ -176,7 +226,8 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       requiresActiveBook: true,
       feature: "export_epub",
       group: "optimization",
-      onClick: ctx.onOpenExport,
+      mode: "dialog",
+      openDialog: ctx.onOpenExport,
     },
     {
       id: "pack-kdp",
@@ -187,7 +238,7 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       feature: "kdp_market_base",
       route: "/kdp-launch",
       group: "optimization",
-      onClick: () => ctx.onNavigate("/kdp-launch"),
+      mode: "route",
     },
     {
       id: "pack-title",
@@ -197,7 +248,8 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       requiresActiveBook: true,
       feature: "title_intelligence_base",
       group: "optimization",
-      onClick: ctx.onOpenTitleIntel,
+      mode: "dialog",
+      openDialog: ctx.onOpenTitleIntel,
     },
     {
       id: "pack-keyword",
@@ -208,7 +260,7 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       feature: "kdp_market_base",
       route: "/keyword-gold",
       group: "optimization",
-      onClick: () => ctx.onNavigate("/keyword-gold"),
+      mode: "route",
     },
     {
       id: "pack-radar",
@@ -219,7 +271,41 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       feature: "trending_niches_limited",
       route: "/bestseller-radar",
       group: "optimization",
-      onClick: () => ctx.onNavigate("/bestseller-radar"),
+      mode: "route",
     },
   ].filter((action) => isDashboardActionRenderable(action, ctx));
+}
+
+/** Primary dashboard destinations (pillars + library). */
+export function buildDashboardPrimaryActions(ctx: DashboardActionContext) {
+  return {
+    forge: {
+      id: "book-forge",
+      label: "Book Forge",
+      mode: "overlay" as const,
+      openOverlay: ctx.onNewBook,
+    },
+    study: {
+      id: "study-os",
+      label: "Study OS",
+      mode: "route" as const,
+      route: "/study",
+    },
+    myBooks: {
+      id: "my-books",
+      label: "I miei libri",
+      mode: "overlay" as const,
+      openOverlay: ctx.onOpenProjects,
+    },
+    library: {
+      id: "library",
+      label: "Libreria",
+      mode: "overlay" as const,
+      openOverlay: ctx.onOpenLibrary,
+      requiresActiveBook: false,
+    },
+    continue: ctx.hasActiveBook && ctx.onContinue
+      ? { id: "continue", mode: "external" as const, onClick: ctx.onContinue }
+      : null,
+  };
 }

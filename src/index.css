@@ -7892,3 +7892,34 @@ html[data-theme="classic-premium"],
 .scriptora-wizard-scroll .blueprint-theater-root {
   min-height: min(62dvh, 680px);
 }
+
+/* Dedicated tool screens (Dashboard overlays, Cover, etc.) */
+.scriptora-dedicated-screen {
+  isolation: isolate;
+}
+
+.scriptora-dedicated-screen-body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Chapter navigation anchors — offset for sticky writer header */
+.scriptora-chapter-anchor {
+  scroll-margin-top: 96px;
+}
+
+@media (max-width: 767px) {
+  .scriptora-chapter-anchor {
+    scroll-margin-top: 84px;
+  }
+}
+
+/* Mobile: single chapter view — hide cascade, focus one chapter */
+.scriptora-single-chapter-view .scriptora-scroll-main {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.scriptora-single-chapter-view .scriptora-manuscript-premium {
+  min-height: min(70dvh, 640px);
+}

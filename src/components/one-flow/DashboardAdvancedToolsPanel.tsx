@@ -2,6 +2,7 @@ import { ArrowRight } from "lucide-react";
 import { PaywallGuard } from "@/components/PaywallGuard";
 import {
   buildDashboardAdvancedActions,
+  executeDashboardAction,
   type DashboardActionContext,
   type DashboardHomeAction,
 } from "@/lib/one-flow/dashboard-home-actions";
@@ -30,7 +31,7 @@ export function DashboardAdvancedToolsPanel({ context }: Props) {
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">Strumenti avanzati</p>
         <p className="mt-1 text-sm text-white/62">
-          Solo strumenti verificati — nessun percorso parallelo di creazione libro.
+          Ogni strumento apre una schermata dedicata — la Dashboard resta compatta.
         </p>
       </div>
 
@@ -45,7 +46,7 @@ export function DashboardAdvancedToolsPanel({ context }: Props) {
                   <button
                     key={action.id}
                     type="button"
-                    onClick={action.onClick}
+                    onClick={() => executeDashboardAction(action, context)}
                     className="group flex min-h-[108px] w-full flex-col items-start justify-between rounded-2xl border border-white/12 bg-slate-950/35 p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-white/22 hover:bg-white/[0.08]"
                   >
                     <span className="text-sm font-bold text-white">{action.label}</span>

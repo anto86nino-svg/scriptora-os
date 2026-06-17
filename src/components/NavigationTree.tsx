@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BookProject, SectionId, GenerationStatus, isGenerationCompleteStatus, isGenerationFailureStatus } from "@/types/book";
 import { ChevronRight, ChevronDown, FileText, Layers, Archive, ScrollText, Loader2, CheckCircle2, AlertCircle, Circle, Sparkles, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import { getChapterIndexFromSection } from "@/lib/writer/chapter-navigation";
 import { BookTypeBadge } from "@/components/BookTypeBadge";
 import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 
@@ -37,13 +38,18 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
   const toggleChapter = (i: number) => {
-    setExpandedChapters(prev => {
-      const next = new Set(prev);
-      if (next.has(i)) next.delete(i);
-      else next.add(i);
-      return next;
+    setExpandedChapters((prev) => {
+      if (prev.has(i)) return new Set();
+      return new Set([i]);
     });
   };
+
+  useEffect(() => {
+    const idx = getChapterIndexFromSection(activeSection);
+    if (idx !== null) {
+      setExpandedChapters(new Set([idx]));
+    }
+  }, [activeSection]);
 
   const toggleSelected = (i: number) => {
     setSelected(prev => {
@@ -171,7 +177,10 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
                     status={chStatus}
                     words={chGenerated ? countWords(chapters[i].content) : 0}
                     subCount={chGenerated ? chapters[i].subchapters.length : 0}
-                    onClick={() => onSelectSection(`chapter-${i}`)}
+                    onClick={() => {
+                      setExpandedChapters(new Set([i]));
+                      onSelectSection(`chapter-${i}`);
+                    }}
                   />
                 ) : (
                 <div className={cn("flex items-center rounded-lg", isSelected && "bg-primary/10")}>
@@ -201,7 +210,10 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
                     label={chapterTitle}
                     active={isActive(`chapter-${i}`)}
                     status={chStatus}
-                    onClick={() => selectMode ? toggleSelected(i) : onSelectSection(`chapter-${i}`)}
+                    onClick={() => selectMode ? toggleSelected(i) : (() => {
+                      setExpandedChapters(new Set([i]));
+                      onSelectSection(`chapter-${i}`);
+                    })()}
                     className={(!selectMode && !(hasSubs || config.subchaptersEnabled)) ? "pl-6" : ""}
                   />
                 </div>

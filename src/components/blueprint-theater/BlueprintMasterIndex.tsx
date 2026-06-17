@@ -25,6 +25,7 @@ type Props = {
   onSubchapterTitleChange?: (chapterIndex: number, subIndex: number, title: string) => void;
   onReorderChapter?: (index: number, direction: "up" | "down") => void;
   onSelectChapter?: (index: number) => void;
+  selectedChapterIndex?: number | null;
   italianUi?: boolean;
 };
 
@@ -48,6 +49,7 @@ export function BlueprintMasterIndex({
   onSubchapterTitleChange,
   onReorderChapter,
   onSelectChapter,
+  selectedChapterIndex = null,
   italianUi = true,
 }: Props) {
   return (
@@ -76,6 +78,7 @@ export function BlueprintMasterIndex({
                 key={`ch-${index}`}
                 className={cn(
                   "rounded-2xl border transition-colors",
+                  selectedChapterIndex === index && "ring-1 ring-violet-300/40",
                   chapter.status === "generating"
                     ? "border-amber-300/30 bg-amber-400/[0.06]"
                     : chapter.status === "done"
@@ -131,13 +134,15 @@ export function BlueprintMasterIndex({
                         )}
                       </div>
                       {hasSubs && (
-                        <button
-                          type="button"
-                          onClick={() => onToggleExpand(index)}
-                          className="shrink-0 rounded-lg border border-white/10 px-2 py-1 text-[10px] text-white/55"
-                        >
-                          {expanded ? "−" : "+"} {chapter.subchapters!.length}
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onToggleExpand(index);
+                            }}
+                            className="shrink-0 rounded-lg border border-white/10 px-2 py-1 text-[10px] text-white/55"
+                          >
+                            {expanded ? "−" : "+"} {chapter.subchapters!.length}
+                          </button>
                       )}
                     </div>
                     {chapter.summary && (

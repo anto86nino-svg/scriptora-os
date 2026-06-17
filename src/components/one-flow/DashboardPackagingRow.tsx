@@ -2,6 +2,7 @@ import { ArrowRight } from "lucide-react";
 import { PaywallGuard } from "@/components/PaywallGuard";
 import {
   buildDashboardPackagingActions,
+  executeDashboardAction,
   type DashboardActionContext,
 } from "@/lib/one-flow/dashboard-home-actions";
 import { t } from "@/lib/i18n";
@@ -26,7 +27,7 @@ export function DashboardPackagingRow({ projectTitle, context }: Props) {
             <button
               key={action.id}
               type="button"
-              onClick={action.onClick}
+              onClick={() => executeDashboardAction(action, context)}
               className="scriptora-action-tile group rounded-xl p-3 text-left opacity-95 transition-all hover:-translate-y-0.5"
             >
               <p className="text-xs font-bold text-white">{action.label}</p>

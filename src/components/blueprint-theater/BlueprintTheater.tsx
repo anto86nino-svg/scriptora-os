@@ -51,6 +51,7 @@ type Props = {
   isGenerating?: (key: string) => boolean;
   chunkProgress?: Record<string, ChunkProgress>;
   onSelectChapter?: (index: number) => void;
+  selectedChapterIndex?: number | null;
   onApproveBlueprint?: () => void;
   showApproveBanner?: boolean;
   keywords?: string[];
@@ -89,12 +90,25 @@ export function BlueprintTheater({
   isGenerating,
   chunkProgress,
   onSelectChapter,
+  selectedChapterIndex = null,
   onApproveBlueprint,
   showApproveBanner = false,
   keywords,
   categories,
 }: Props) {
   const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({});
+
+  const handleSelectChapter = (index: number) => {
+    setExpandedChapters({});
+    onSelectChapter?.(index);
+  };
+
+  const handleToggleExpand = (index: number) => {
+    setExpandedChapters((prev) => {
+      if (prev[index]) return {};
+      return { [index]: true };
+    });
+  };
 
   const pipeline: ChapterPipelineItem[] = useMemo(() => {
     if (mode === "writer" && project && isGenerating) {
@@ -199,11 +213,12 @@ export function BlueprintTheater({
           editable={editable}
           reorderable={reorderable}
           expandedChapters={expandedChapters}
-          onToggleExpand={(index) => setExpandedChapters((prev) => ({ ...prev, [index]: !prev[index] }))}
+          onToggleExpand={handleToggleExpand}
           onChapterTitleChange={onChapterTitleChange}
           onSubchapterTitleChange={onSubchapterTitleChange}
           onReorderChapter={onReorderChapter}
-          onSelectChapter={onSelectChapter}
+          onSelectChapter={handleSelectChapter}
+          selectedChapterIndex={selectedChapterIndex}
           italianUi={italianUi}
         />
 

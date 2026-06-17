@@ -25,11 +25,13 @@ import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options"
 import { applyAuthorIdentityToConfig } from "@/lib/author-identity";
 import { BookProject, SectionId } from "@/types/book";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import { scrollToChapterAnchor, getChapterIndexFromSection } from "@/lib/writer/chapter-navigation";
 import { WritingSettings, loadSettings, saveSettings } from "@/lib/settings";
 import { t, tt, UILanguage, useUILanguage } from "@/lib/i18n";
 import { usePlan, useQuota } from "@/lib/plan";
 import { fillMissingGenreFromInference } from "@/lib/book-creation-os/genre-inference";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { BookOpen, Plus, Trash2, FolderOpen, Settings, Sparkles, Minimize2, Menu, X, ArrowLeft } from "lucide-react";
 import { WriterCleanHeader } from "@/components/writer/WriterCleanHeader";
 import { WriterToolsPanel } from "@/components/writer/WriterToolsPanel";
@@ -247,6 +249,27 @@ const Index = () => {
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
   }, []);
+
+  const handleSelectSection = useCallback((section: SectionId) => {
+    setActiveSection(section);
+    setSidebarOpen(false);
+    setMobileNavOpen(false);
+
+    const chapterIdx = getChapterIndexFromSection(section);
+    if (chapterIdx !== null) {
+      if (isMobileLayout) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        requestAnimationFrame(() => {
+          scrollToChapterAnchor(chapterIdx, { behavior: "smooth", resetWindow: false });
+        });
+      }
+    }
+  }, [isMobileLayout]);
+
+  const handleSelectChapter = useCallback((index: number) => {
+    handleSelectSection(`chapter-${index}` as SectionId);
+  }, [handleSelectSection]);
 
   const openMobileNavExclusive = useCallback(() => {
     if (engine.project?.id) saveWriterScrollPosition(engine.project.id, window.scrollY);
@@ -660,7 +683,7 @@ const Index = () => {
               autoPlayOnOpen
               onOpenChapterInEditor={(_projectId, chapterIdx) => {
                 closeVoiceStudio();
-                setActiveSection(`chapter-${chapterIdx}` as SectionId);
+                handleSelectChapter(chapterIdx);
               }}
             />
           </Suspense>
@@ -675,7 +698,7 @@ const Index = () => {
             autoPlayOnOpen
             onOpenChapterInEditor={(_projectId, chapterIdx) => {
               closeVoiceStudio();
-              setActiveSection(`chapter-${chapterIdx}` as SectionId);
+              handleSelectChapter(chapterIdx);
             }}
           />
         )}
@@ -725,10 +748,7 @@ const Index = () => {
           activeSection={activeSection}
           generatingSet={engine.generatingSet}
           chunkProgress={engine.chunkProgress}
-          onSelectSection={(s) => {
-            setActiveSection(s);
-            setMobileNavOpen(false);
-          }}
+          onSelectSection={handleSelectSection}
         />
       )}
 
@@ -843,7 +863,7 @@ const Index = () => {
         <NavigationTree
           project={engine.project}
           activeSection={activeSection}
-          onSelectSection={(s) => { setActiveSection(s); setSidebarOpen(false); }}
+          onSelectSection={handleSelectSection}
           generatingSet={engine.generatingSet}
           onGenerateChaptersParallel={engine.generateChaptersParallel}
           variant="premium"
@@ -878,6 +898,17 @@ const Index = () => {
           sidebarOpen ? "p-2 md:p-3" : "p-2 md:px-4 md:py-3"
         } ${mobileOverlayActive ? "scriptora-writer-overlay-hidden max-lg:invisible max-lg:pointer-events-none" : ""}`}
       >
+        {engine.project && isChapterView && isMobileLayout && (
+          <button
+            type="button"
+            onClick={openMobileNavExclusive}
+            className="mb-2 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white/75 transition-colors hover:bg-white/[0.10] max-lg:ml-11"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Torna all&apos;indice
+          </button>
+        )}
+
         {engine.project && (
           <div className="relative sticky top-0 z-30 shrink-0">
             <WriterCleanHeader
@@ -943,10 +974,7 @@ const Index = () => {
               setSidebarOpen(true);
             }
           }}
-          onSelectSection={(section) => {
-            setActiveSection(section);
-            setSidebarOpen(false);
-          }}
+          onSelectSection={handleSelectSection}
           syncStatus={syncStatus}
           authorPenName={engine.project?.config.authorName || engine.project?.config.author}
           progressPercent={
@@ -957,7 +985,10 @@ const Index = () => {
         />
         )}
 
-        <div className="scriptora-writer-editor-card flex min-h-[320px] min-w-0 flex-1 flex-col overflow-x-clip max-md:overflow-y-visible md:min-h-0 md:overflow-hidden max-md:rounded-xl max-md:border-x-0 lg:border-0 lg:bg-transparent lg:shadow-none">
+        <div className={cn(
+          "scriptora-writer-editor-card flex min-h-[320px] min-w-0 flex-1 flex-col overflow-x-clip max-md:overflow-y-visible md:min-h-0 md:overflow-hidden max-md:rounded-xl max-md:border-x-0 lg:border-0 lg:bg-transparent lg:shadow-none",
+          isChapterView && isMobileLayout && "scriptora-single-chapter-view",
+        )}>
           {engine.project ? (
             <>
               <div className="min-h-0 min-w-0 flex-1">
@@ -998,7 +1029,7 @@ const Index = () => {
                   premiumWriter
                   hideDesktopToolbar={isChapterView}
                   chapterToolRequest={chapterToolRequest}
-                  onSelectChapter={(idx) => setActiveSection(`chapter-${idx}` as SectionId)}
+                  onSelectChapter={handleSelectChapter}
                   onCover={() => setShowCover(true)}
                   onKdp={() => navigate("/kdp-launch")}
                   onRadar={() => navigate("/bestseller-radar")}
@@ -1030,7 +1061,7 @@ const Index = () => {
                     autoPlayOnOpen
                     onOpenChapterInEditor={(_projectId, chapterIdx) => {
                       closeVoiceStudio();
-                      setActiveSection(`chapter-${chapterIdx}` as SectionId);
+                      handleSelectChapter(chapterIdx);
                     }}
                   />
                 </Suspense>
@@ -1130,7 +1161,7 @@ const Index = () => {
           autoPlayOnOpen
           onOpenChapterInEditor={(_projectId, chapterIdx) => {
             closeVoiceStudio();
-            setActiveSection(`chapter-${chapterIdx}` as SectionId);
+            handleSelectChapter(chapterIdx);
           }}
         />
       )}
@@ -1274,7 +1305,7 @@ const Index = () => {
             const target = projects.find(p => p.id === projectId);
             if (target) engine.loadProject(target);
           }
-          setActiveSection(`chapter-${chapterIndex}` as SectionId);
+          handleSelectChapter(chapterIndex);
           setSidebarOpen(false);
         }}
       />
