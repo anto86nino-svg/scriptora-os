@@ -907,7 +907,7 @@ function buildQuestionFromDef(def: ForgeQuestionDef, memory: ForgeInterviewMemor
   };
 }
 
-function presetQuestionForSlot(
+export function presetQuestionForSlot(
   slot: ForgeSlotKey,
   memory: ForgeInterviewMemory,
 ): InterviewQuestion | null {

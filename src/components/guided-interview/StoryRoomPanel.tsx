@@ -9,11 +9,27 @@ export type StoryRoomPanelProps = {
   className?: string;
   compact?: boolean;
   progressPct?: number;
+  progressLabel?: string;
+  blueprintReady?: boolean;
 };
 
-export function StoryRoomPanel({ state, className, compact = false, progressPct }: StoryRoomPanelProps) {
+export function StoryRoomPanel({
+  state,
+  className,
+  compact = false,
+  progressPct,
+  progressLabel,
+  blueprintReady = false,
+}: StoryRoomPanelProps) {
   const snapshot = useMemo(() => buildStoryRoomSnapshot(state), [state]);
   const visiblePct = typeof progressPct === "number" ? progressPct : snapshot.completionPct;
+  const label =
+    progressLabel ??
+    (blueprintReady || visiblePct >= 100
+      ? "100% · pronto per blueprint"
+      : `${visiblePct}% · suggerimenti narrativi`);
+  const badgeLabel =
+    blueprintReady || visiblePct >= 100 ? "Pronto" : `${visiblePct}%`;
   const [expanded, setExpanded] = useState(!compact);
 
   if (!snapshot.visible) return null;
@@ -32,11 +48,11 @@ export function StoryRoomPanel({ state, className, compact = false, progressPct 
             Story Room
           </p>
           <p className="truncate text-[11px] text-white/50">
-            {expanded ? snapshot.highlight : `${visiblePct}% · suggerimenti narrativi`}
+            {expanded ? snapshot.highlight : label}
           </p>
         </div>
         <span className="shrink-0 rounded-full border border-indigo-400/25 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-indigo-100">
-          {visiblePct}%
+          {badgeLabel}
         </span>
         {compact && (
           <button

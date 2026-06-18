@@ -19,6 +19,16 @@ import {
   type ForgeAutoAnswerToneBias,
   type ForgeSuggestedAnswer,
 } from "@/lib/guided-interview/auto-answer-engine";
+import {
+  BLUEPRINT_READY_ASSISTANT_MESSAGE,
+  getBlueprintGateStatus,
+} from "@/lib/guided-interview/blueprint-ready-gate";
+import { buildExpressForgeConfiguration } from "@/lib/guided-interview/express-forge-config";
+import type { ExpressForgeInput } from "@/lib/guided-interview/express-forge-types";
+import {
+  applyBlueprintScenarioToState,
+  type BlueprintScenario,
+} from "@/lib/guided-interview/blueprint-scenarios";
 
 import type { ForgeHostContext } from "@/lib/guided-interview/forge-host-engine";
 
@@ -47,6 +57,7 @@ export function useGuidedInterviewController({
   genderHint,
   chatFirst = true,
   isMobile = false,
+  interviewOnly = false,
   onComplete,
   onConfirmDna,
   onContinueInterview,
@@ -71,10 +82,13 @@ export function useGuidedInterviewController({
   const [autoAnswerError, setAutoAnswerError] = useState<string | null>(null);
   const [autoAnswerToneBias, setAutoAnswerToneBias] = useState<ForgeAutoAnswerToneBias>(null);
   const [continueNonce, setContinueNonce] = useState(0);
+  const [showExpressPanel, setShowExpressPanel] = useState(false);
+  const [expressPreparing, setExpressPreparing] = useState(false);
   const internalScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const lastQuestionIdRef = useRef<string | null>(null);
   const lastQuestionTextRef = useRef<string | null>(null);
+  const blueprintMessageInjectedRef = useRef(false);
 
   const speech = useSpeechDictation(language);
 
@@ -114,10 +128,33 @@ export function useGuidedInterviewController({
   }, [next.question?.id]);
   const progress = useMemo(() => getInterviewProgress(state), [state]);
   const forgeReady = useMemo(() => evaluateForgeReadiness(state), [state]);
-  const ready = progress.dnaLock.readyForBlueprint && forgeReady.ready;
+  const blueprintGate = useMemo(() => getBlueprintGateStatus(state), [state]);
+  const blueprintReadyUi =
+    blueprintGate.isBlueprintReady && blueprintGate.shouldStopQuestions;
+  const ready =
+    (progress.dnaLock.readyForBlueprint && forgeReady.ready) ||
+    (blueprintGate.isBlueprintReady && blueprintGate.canShowConfirmation);
+
+  useEffect(() => {
+    if (!blueprintReadyUi || blueprintMessageInjectedRef.current) return;
+    blueprintMessageInjectedRef.current = true;
+    setState((prev) => ({
+      ...prev,
+      messages: [
+        ...prev.messages,
+        {
+          id: `assistant-blueprint-ready-${Date.now()}`,
+          role: "assistant",
+          content: BLUEPRINT_READY_ASSISTANT_MESSAGE,
+          createdAt: Date.now(),
+        },
+      ],
+    }));
+  }, [blueprintReadyUi]);
 
   useEffect(() => {
     if (!next.question || next.done) return;
+    if (blueprintReadyUi && !next.question.id.startsWith("blueprint-gap-")) return;
     if (
       lastQuestionIdRef.current === next.question.id &&
       lastQuestionTextRef.current === next.question.question
@@ -168,6 +205,13 @@ export function useGuidedInterviewController({
   }, [state.messages.length, showDnaPanel, isThinking, next.question?.id]);
 
   useEffect(() => {
+    if (!isMobile && !interviewOnly) return;
+    if (blueprintReadyUi && !showDnaPanel && !dnaConfirmationDismissed) {
+      setShowDnaPanel(true);
+    }
+  }, [blueprintReadyUi, isMobile, interviewOnly, showDnaPanel, dnaConfirmationDismissed]);
+
+  useEffect(() => {
     if (!isMobile) return;
     if (ready && !showDnaPanel && !dnaConfirmationDismissed) {
       setShowDnaPanel(true);
@@ -203,7 +247,7 @@ export function useGuidedInterviewController({
     const question =
       next.question ??
       (isFirstForgeAssistantMessage(state) ? getWelcomeInterviewQuestion(state) : null);
-    if (!question || autoAnswerLoading || isThinking || next.done) return;
+    if (!question || autoAnswerLoading || isThinking || next.done || blueprintReadyUi) return;
 
     const variantIndex = regenerate ? autoAnswerVariantCount + 1 : 0;
     setAutoAnswerLoading(true);
@@ -234,7 +278,7 @@ export function useGuidedInterviewController({
   };
 
   const handleContinueInterview = () => {
-    if (ready) {
+    if (ready || blueprintReadyUi) {
       setShowDnaPanel(true);
       setDnaConfirmationDismissed(false);
       onContinueInterview?.();
@@ -252,7 +296,7 @@ export function useGuidedInterviewController({
       lastQuestionTextRef.current = questionToAvoid.question;
     }
 
-    setState((prev) => resumeInterview(prev));
+    setState((prev) => ({ ...resumeInterview(prev), forgeRefineMode: true }));
     setShowDnaPanel(false);
     setDnaConfirmationDismissed(true);
     setContinueNonce((n) => n + 1);
@@ -260,8 +304,35 @@ export function useGuidedInterviewController({
     onContinueInterview?.();
   };
 
+  const handleEnableRefine = () => {
+    setState((prev) => ({ ...prev, forgeRefineMode: true }));
+    setShowDnaPanel(false);
+    setDnaConfirmationDismissed(true);
+    setContinueNonce((n) => n + 1);
+    focusInput();
+  };
+
+  const handleApplyExpress = (input: ExpressForgeInput) => {
+    setExpressPreparing(true);
+    window.setTimeout(() => {
+      const result = buildExpressForgeConfiguration(input, state);
+      setState(result.state);
+      setShowExpressPanel(false);
+      setShowDnaPanel(true);
+      setDnaConfirmationDismissed(false);
+      setExpressPreparing(false);
+      blueprintMessageInjectedRef.current = false;
+    }, 420);
+  };
+
+  const handleSelectBlueprintScenario = (scenario: BlueprintScenario) => {
+    setState((prev) => applyBlueprintScenarioToState(prev, scenario));
+    setShowDnaPanel(true);
+    setDnaConfirmationDismissed(false);
+  };
+
   const handleConfirmDna = () => {
-    if (!ready) return;
+    if (!ready && !blueprintGate.canShowConfirmation) return;
     const finalized = finalizeForgeForBlueprint(state);
     setState(finalized);
     saveForgeDnaLock(finalized);
@@ -291,10 +362,18 @@ export function useGuidedInterviewController({
     rawNext,
     progress,
     forgeReady,
+    blueprintGate,
+    blueprintReadyUi,
     ready,
     confidencePct: progress.stagePercent,
+    showExpressPanel,
+    setShowExpressPanel,
+    expressPreparing,
     sendMessage,
     handleContinueInterview,
+    handleEnableRefine,
+    handleApplyExpress,
+    handleSelectBlueprintScenario,
     handleConfirmDna,
     toggleMic,
     focusInput,

@@ -19,6 +19,8 @@ import { FORGE_AUTO_ANSWER_TONE_CHIPS } from "@/lib/guided-interview/auto-answer
 import type { ForgeSuggestedAnswer } from "@/lib/guided-interview/auto-answer-engine";
 import { FORGE_GENRE_OPENING_QUESTION_ID } from "@/lib/guided-interview/forge-genre-catalog";
 import { ForgeGenreFamilyPicker } from "./ForgeGenreFamilyPicker";
+import { StudioExpressPanel } from "./StudioExpressPanel";
+import { BlueprintScenariosPanel } from "./BlueprintScenariosPanel";
 
 type GuidedInterviewPanelProps = {
   selectedGenre?: string;
@@ -73,7 +75,8 @@ export function GuidedInterviewPanel({
 
   const showMobileConfirmation = interviewOnly && ctrl.showDnaPanel;
   const earlyInterview = countForgeUserAnswers(ctrl.state) < 3;
-  const canShowDnaUi = ctrl.forgeReady.canShowConfirmation && !earlyInterview;
+  const canShowDnaUi =
+    (ctrl.forgeReady.canShowConfirmation && !earlyInterview) || ctrl.blueprintReadyUi;
 
   const body = (
     <InterviewBody
@@ -105,7 +108,13 @@ export function GuidedInterviewPanel({
   ) : null;
 
   const storyRoom = !showMobileConfirmation ? (
-    <StoryRoomPanel state={ctrl.state} compact={isMobile} progressPct={ctrl.confidencePct} />
+    <StoryRoomPanel
+      state={ctrl.state}
+      compact={isMobile}
+      progressPct={ctrl.confidencePct}
+      progressLabel={ctrl.blueprintGate.progressLabel}
+      blueprintReady={ctrl.blueprintReadyUi}
+    />
   ) : null;
 
   if (isMobile && unifiedScroll) {
@@ -196,13 +205,23 @@ function InterviewBody({
 
   if (showMobileConfirmation) {
     return (
-      <div className="px-4 py-5 pb-8">
+      <div className="space-y-4 px-4 py-5 pb-8">
+        {ctrl.state.blueprintScenarios && ctrl.state.blueprintScenarios.length > 0 && (
+          <BlueprintScenariosPanel
+            scenarios={ctrl.state.blueprintScenarios}
+            selectedId={ctrl.state.selectedBlueprintScenarioId}
+            onSelect={ctrl.handleSelectBlueprintScenario}
+            compact
+          />
+        )}
         <ForgeInterviewConfirmation
           dnaLock={ctrl.progress.dnaLock}
           extracted={ctrl.state.extracted}
           state={ctrl.state}
+          blueprintReady={ctrl.blueprintReadyUi}
           onConfirm={ctrl.handleConfirmDna}
-          onCorrect={ctrl.handleContinueInterview}
+          onCorrect={() => ctrl.setInput("Vorrei correggere: ")}
+          onRefine={ctrl.handleEnableRefine}
         />
       </div>
     );
@@ -216,7 +235,43 @@ function InterviewBody({
 
   return (
     <div className={cn("space-y-3", unifiedScroll ? "px-4 py-4 pb-8" : "")}>
-      {ctrl.state.messages.length <= 1 && (
+      {!ctrl.blueprintReadyUi && !ctrl.showExpressPanel && countForgeUserAnswers(ctrl.state) < 2 && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => ctrl.setShowExpressPanel(true)}
+            className="rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1.5 text-[11px] font-semibold text-violet-100"
+          >
+            Studio Express · Vai veloce
+          </button>
+        </div>
+      )}
+
+      {ctrl.showExpressPanel && (
+        <StudioExpressPanel
+          compact={isMobile}
+          preparing={ctrl.expressPreparing}
+          onSubmit={ctrl.handleApplyExpress}
+          onClose={() => ctrl.setShowExpressPanel(false)}
+        />
+      )}
+
+      {ctrl.expressPreparing && (
+        <p className="text-center text-sm text-white/55">Scriptora sta preparando 3 direzioni…</p>
+      )}
+
+      {ctrl.state.blueprintScenarios &&
+        ctrl.state.blueprintScenarios.length > 0 &&
+        ctrl.showDnaPanel && (
+          <BlueprintScenariosPanel
+            scenarios={ctrl.state.blueprintScenarios}
+            selectedId={ctrl.state.selectedBlueprintScenarioId}
+            onSelect={ctrl.handleSelectBlueprintScenario}
+            compact={isMobile}
+          />
+        )}
+
+      {ctrl.state.messages.length <= 1 && !ctrl.showExpressPanel && (
         <div className="rounded-[22px] border border-violet-400/20 bg-violet-500/10 p-4 text-sm leading-6 text-white/75">
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-200">
             Intervista libera
@@ -460,6 +515,33 @@ function InterviewInputFooter({
 }) {
   const hasOptions = ctrl.autoAnswerOptions.length === 3;
   const busy = ctrl.isThinking || ctrl.autoAnswerLoading;
+  const blueprintReady = ctrl.blueprintReadyUi;
+
+  if (blueprintReady && !ctrl.state.forgeRefineMode) {
+    return (
+      <div
+        className={cn(
+          "scriptora-forge-input-footer shrink-0 border-t border-white/10 px-4 py-3 backdrop-blur-md",
+          unifiedScroll ? "pb-3" : "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+        )}
+      >
+        <button
+          type="button"
+          onClick={ctrl.handleConfirmDna}
+          className="flex min-h-11 w-full items-center justify-center rounded-2xl bg-violet-500 px-4 py-3 text-sm font-semibold text-white"
+        >
+          Conferma e genera blueprint
+        </button>
+        <button
+          type="button"
+          onClick={ctrl.handleEnableRefine}
+          className="mt-2 w-full rounded-2xl border border-white/10 px-4 py-2.5 text-xs font-medium text-white/45"
+        >
+          Continua a rifinire
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -580,7 +662,7 @@ function InterviewInputFooter({
           <Send className="h-4 w-4" />
         </button>
       </div>
-      {!hasOptions && (
+      {!hasOptions && !blueprintReady && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <button
             type="button"

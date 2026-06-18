@@ -12,6 +12,8 @@ import {
   evaluateGenreConvergence,
   hasCoreQuartetStrong,
 } from "./genre-convergence-engine";
+import { getForgeMemory } from "./interview-memory";
+import { isStoryRoomBlueprintReady } from "./story-room-state-machine";
 
 function state(partial: Partial<GuidedInterviewState>): GuidedInterviewState {
   return {
@@ -183,7 +185,18 @@ function simulateUnderstanding(profile: Scenario): {
       };
     }
     const next = getNextInterviewQuestion(s);
-    if (next.done || !next.question) break;
+    if (next.done || !next.question) {
+      if (
+        next.done &&
+        isStoryRoomBlueprintReady(getForgeMemory(s)) &&
+        !editorial.readyForBlueprint &&
+        !s.forgeRefineMode
+      ) {
+        s = { ...s, forgeRefineMode: true };
+        continue;
+      }
+      break;
+    }
     s = applyInterviewAnswer(s, answerFor(profile, next.question), next.question);
     steps += 1;
   }

@@ -7,6 +7,7 @@ import { enrichInterviewQuestion, getDirectionFallbackSuggestions } from "./cont
 import { enrichQuestionWithCoAuthor } from "./co-author-engine";
 import { getAdaptiveQuestion } from "./dna-inference";
 import { sanitizeDnaText } from "./dna-cleaner";
+import { getBlueprintGateStatus } from "./blueprint-ready-gate";
 
 const GENERIC_PLACEHOLDER =
   "Oppure raccontamelo con parole tue…";
@@ -124,6 +125,21 @@ export function resolveActiveInterviewQuestion(
   base: NextQuestionResult,
   options?: ResolveInterviewOptions,
 ): NextQuestionResult {
+  const gate = getBlueprintGateStatus(state);
+
+  if (gate.shouldStopQuestions) {
+    if (base.question?.id?.startsWith("blueprint-gap-")) return base;
+    return {
+      done: true,
+      question: undefined,
+      state: {
+        ...base.state,
+        completed: gate.currentStageId === "blueprintReady",
+        dnaLock: base.state.dnaLock ?? buildDnaLockFromInterviewState(state),
+      },
+    };
+  }
+
   if (!base.done || base.state.dnaLock?.readyForBlueprint) return base;
 
   const followUp = getContinueFollowUpQuestion(state, options);

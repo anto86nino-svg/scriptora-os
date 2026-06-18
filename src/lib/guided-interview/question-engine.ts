@@ -47,6 +47,11 @@ import {
   shouldBlockBlueprint,
 } from "./forge-readiness";
 import {
+  getBlueprintGateStatus,
+  getSingleTargetedMissingQuestion,
+  shouldBlockNarrativeQuestions,
+} from "./blueprint-ready-gate";
+import {
   createEmptyForgeMemory,
   getForgeMemory,
   getMemoryStageProgress,
@@ -642,6 +647,10 @@ function buildFullQueue(state: GuidedInterviewState): InterviewQuestion[] {
 function findNextUnansweredQuestion(
   state: GuidedInterviewState,
 ): InterviewQuestion | null {
+  if (shouldBlockNarrativeQuestions(state)) {
+    return getSingleTargetedMissingQuestion(state);
+  }
+
   const memory = getForgeMemory(state);
 
   if (!isGenreSlotLocked(memory) && !isQuestionAlreadyAnswered(FORGE_GENRE_OPENING_QUESTION_ID, memory)) {
@@ -706,6 +715,31 @@ export function getNextInterviewQuestion(
   const evolution = evaluateForgeEvolution(state);
   const dnaLock = buildDnaLockFromInterviewState(state);
   const forgeReady = evaluateForgeReadiness(state);
+  const blueprintGate = getBlueprintGateStatus(state);
+
+  if (blueprintGate.isBlueprintReady && blueprintGate.shouldStopQuestions) {
+    const targeted = getSingleTargetedMissingQuestion(state);
+    if (targeted) {
+      return {
+        done: false,
+        question: enrichQuestionWithCoAuthor(
+          state,
+          enrichInterviewQuestion(state, targeted) as InterviewQuestion,
+        ),
+        state: { ...state, dnaLock, forgePhase: "review" },
+      };
+    }
+    return {
+      done: true,
+      state: {
+        ...state,
+        completed: blueprintGate.missingCritical.length === 0,
+        confidence: Math.max(dnaLock.confidenceScore, blueprintGate.stagePercent / 100),
+        dnaLock,
+        forgePhase: "review",
+      },
+    };
+  }
 
   if (evolution.readyForBlueprint && !shouldBlockBlueprint(state) && forgeReady.ready) {
     return {
@@ -737,6 +771,19 @@ export function getNextInterviewQuestion(
     return {
       done: false,
       state: { ...state, dnaLock },
+    };
+  }
+
+  if (shouldBlockNarrativeQuestions(state)) {
+    return {
+      done: true,
+      state: {
+        ...state,
+        completed: blueprintGate.missingCritical.length === 0,
+        confidence: Math.max(dnaLock.confidenceScore, blueprintGate.stagePercent / 100),
+        dnaLock,
+        forgePhase: "review",
+      },
     };
   }
 

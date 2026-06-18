@@ -139,6 +139,15 @@ export interface GuidedInterviewState {
   /** Structured interview memory — slots, stages, anti-loop */
   forgeMemory?: import("./interview-memory").ForgeInterviewMemory;
   lastMemoryDiff?: import("./interview-memory").ForgeMemoryDiff;
+
+  /** Story Room: explicit refine after blueprint-ready gate */
+  forgeRefineMode?: boolean;
+  /** interview = full Story Room; express = Studio Express shortcut */
+  forgeMode?: "interview" | "express";
+  expressConfig?: import("./express-forge-types").ExpressForgeInput;
+  blueprintScenarios?: import("./blueprint-scenarios").BlueprintScenario[];
+  selectedBlueprintScenarioId?: string;
+  slotProvenance?: Record<string, import("./express-forge-types").ForgeFieldProvenance>;
 }
 
 export interface NextQuestionResult {

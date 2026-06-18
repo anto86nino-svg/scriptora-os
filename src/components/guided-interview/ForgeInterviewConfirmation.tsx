@@ -15,8 +15,10 @@ export type ForgeInterviewConfirmationProps = {
   dnaLock: BookDnaLock;
   extracted: GuidedInterviewState["extracted"];
   state?: GuidedInterviewState;
+  blueprintReady?: boolean;
   onConfirm: () => void;
   onCorrect: () => void;
+  onRefine?: () => void;
   className?: string;
 };
 
@@ -24,15 +26,20 @@ export function ForgeInterviewConfirmation({
   dnaLock,
   extracted,
   state,
+  blueprintReady = false,
   onConfirm,
   onCorrect,
+  onRefine,
   className,
 }: ForgeInterviewConfirmationProps) {
   const review = state ? buildFinalBookReview(state) : null;
   const premium = state ? evaluateDnaLockPremium(state) : null;
   const displayIncoherences = premium ? mergeAdviceMessages(premium.incoherences, 3) : [];
   const displayCommercialNotes = premium ? mergeAdviceMessages(premium.commercialNotes, 3) : [];
-  const ready = dnaLock.readyForBlueprint;
+  const ready = dnaLock.readyForBlueprint || blueprintReady;
+  const autoFilledCount = state?.slotProvenance
+    ? Object.values(state.slotProvenance).filter((p) => p.source === "auto" || p.source === "inferred").length
+    : 0;
 
   return (
     <section
@@ -42,14 +49,26 @@ export function ForgeInterviewConfirmation({
       )}
     >
       <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300/80">
-        Book Forge
+        {blueprintReady ? "Pronto per blueprint" : "Book Forge"}
       </p>
       <h2 className="mt-2 text-xl font-semibold leading-snug text-white">
-        {getDnaLockHeadline(ready)}
+        {blueprintReady
+          ? "Il libro è pronto per il blueprint"
+          : getDnaLockHeadline(ready)}
       </h2>
       <p className="mt-1.5 text-sm leading-6 text-white/55">
-        {ready ? getDnaLockConfirmPrompt() : forgeGapMessage(state)}
+        {blueprintReady
+          ? "Perfetto. Ho abbastanza materiale per costruire il blueprint. Conferma la sintesi o correggi una parte."
+          : ready
+            ? getDnaLockConfirmPrompt()
+            : forgeGapMessage(state)}
       </p>
+
+      {autoFilledCount > 0 && (
+        <p className="mt-3 rounded-xl border border-sky-400/20 bg-sky-500/8 px-3 py-2 text-xs text-sky-100/90">
+          Ho completato automaticamente alcune parti ({autoFilledCount}). Puoi correggerle ora o partire.
+        </p>
+      )}
 
       {review && review.fields.length > 0 ? (
         <dl className="mt-5 space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
@@ -91,21 +110,30 @@ export function ForgeInterviewConfirmation({
         <button
           type="button"
           onClick={onConfirm}
-          disabled={!ready}
+          disabled={!ready && !blueprintReady}
           className="rounded-2xl bg-violet-500 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-violet-400 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35"
         >
-          Blocca DNA — è questo il libro
+          {blueprintReady ? "Conferma e genera blueprint" : "Blocca DNA — è questo il libro"}
         </button>
         <button
           type="button"
           onClick={onCorrect}
           className="rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3.5 text-sm font-semibold text-white/85"
         >
-          Continua intervista
+          Correggi una parte
         </button>
+        {onRefine && (
+          <button
+            type="button"
+            onClick={onRefine}
+            className="rounded-2xl border border-white/8 px-4 py-2.5 text-xs font-medium text-white/45"
+          >
+            Continua a rifinire
+          </button>
+        )}
       </div>
 
-      {!ready && (
+      {!ready && !blueprintReady && (
         <p className="mt-3 text-center text-xs leading-5 text-white/45">
           Continua l'intervista — ogni risposta rende il libro più vivo e definitivo.
         </p>
