@@ -42,6 +42,22 @@ import {
   resolveSlotConfirmationAnswer,
   selectNextSlotConfirmationQuestion,
 } from "./slot-deduction-engine";
+import {
+  advanceStoryRoomStage,
+  buildStoryRoomProgressLabel,
+  evaluateStageCompletion,
+  getProvisionalAdvanceMessage,
+  getStoryRoomMachine,
+  getStoryRoomProgressPercent,
+  isSlotOnCurrentStage,
+  isStoryRoomBlueprintReady,
+  markStoryRoomQuestionAsked,
+  normalizeSlotFromAnswer,
+  shouldForceStageAdvance,
+  slotsForCurrentStage,
+  STORY_ROOM_STAGE_DEFS,
+  wasStoryRoomQuestionAsked,
+} from "./story-room-state-machine";
 
 export type ForgeMemoryStage =
   | "welcome"
@@ -110,6 +126,7 @@ export type ForgeInterviewMemory = {
   usefulAnswerCount: number;
   lastRecapAtAnswer?: number;
   pendingSlotConfirmations?: Partial<Record<ForgeSlotKey, string>>;
+  storyRoomMachine?: import("./story-room-state-machine").StoryRoomMachineState;
 };
 
 export type ForgeMemoryDiff = {
@@ -244,6 +261,7 @@ export function createEmptyForgeMemory(): ForgeInterviewMemory {
     confirmedPresets: [],
     usefulAnswerCount: 0,
     pendingSlotConfirmations: {},
+    storyRoomMachine: undefined,
   };
 }
 
@@ -307,8 +325,7 @@ function hydrateMemoryFromState(
     memory.usefulAnswerCount,
     state.messages.filter((m) => m.role === "user").length,
   );
-  memory.currentStage = resolveMemoryStage(memory);
-  return memory;
+  return advanceStoryRoomStage(memory);
 }
 
 function syncSlot(memory: ForgeInterviewMemory, key: ForgeSlotKey, value: unknown): void {
@@ -361,12 +378,18 @@ export function markQuestionAsked(
     memory.lastQuestionKey && questionIntent(memory.lastQuestionKey) === intent
       ? memory.repeatedQuestionCount + 1
       : 0;
+  const machinePatch = markStoryRoomQuestionAsked(memory, questionKey);
+  const machine = getStoryRoomMachine(memory);
 
   return {
     ...memory,
     askedQuestionKeys: [...memory.askedQuestionKeys, questionKey].slice(-24),
     lastQuestionKey: questionKey,
     repeatedQuestionCount: repeated,
+    storyRoomMachine: {
+      ...machine,
+      ...machinePatch,
+    },
   };
 }
 
@@ -572,58 +595,23 @@ export function getNextBestMissingSlot(memory: ForgeInterviewMemory): ForgeSlotK
 }
 
 export function resolveMemoryStage(memory: ForgeInterviewMemory): ForgeMemoryStage {
-  if (!isGenreSlotLocked(memory)) {
-    return memory.usefulAnswerCount > 0 ? "genre" : "welcome";
-  }
-  if (!isSlotFilled(memory, "rawIdea")) {
-    return memory.usefulAnswerCount > 1 ? "spark" : "genre";
-  }
-  if (!isSlotFilled(memory, "bookType") && !isSlotFilled(memory, "genre")) return "book-type";
-  if (!isSlotFilled(memory, "genre")) return "genre";
-
-  const mode = detectBookMode(memory);
-  const romance = isRomanceMode(memory);
-  const narrativeFiction = isNarrativeFictionBook(memory);
-  const coreReady = !narrativeFiction || hasNarrativeCore(memory);
-
-  if (mode === "fiction") {
-    if (!isSlotFilled(memory, "protagonist")) return "characters";
-    if (romance && !isSlotFilled(memory, "loveInterest")) return "characters";
-    if (!isSlotFilled(memory, "antagonist")) return "characters";
-    if (!isSlotFilled(memory, "promise")) return "promise";
-    if (!isSlotFilled(memory, "stakes")) return "plot";
-    if (!isSlotFilled(memory, "centralConflict")) return "plot";
-    if (!isSlotFilled(memory, "endingDirection") || !isSlotFilled(memory, "narrativeArc")) {
-      return "plot";
-    }
-  }
-
-  if (!coreReady) {
-    return mode === "fiction" ? "characters" : "promise";
-  }
-
-  if (!isSlotFilled(memory, "tone")) return "tone";
-  if (!isSlotFilled(memory, "audience")) return "audience";
-  if (!isSlotFilled(memory, "promise") && mode !== "fiction") return "promise";
-
-  if (mode === "nonfiction") {
-    if (!isSlotFilled(memory, "problem") || !isSlotFilled(memory, "method")) return "promise";
-    if (!isSlotFilled(memory, "outcome")) return "audience";
-  }
-
-  if (!isSlotFilled(memory, "language")) return "language";
-  if (!isSlotFilled(memory, "authorName")) return "language";
-  if (!isSlotFilled(memory, "chapterCount") && !isSlotFilled(memory, "pov")) return "structure";
-  if (!isSlotFilled(memory, "subchaptersEnabled") && isSlotFilled(memory, "chapterCount")) {
-    return "structure";
-  }
-  if (!isSlotFilled(memory, "marketplace")) return "structure";
-  if (!isSlotFilled(memory, "frontMatter") || !isSlotFilled(memory, "backMatter")) {
-    return "title";
-  }
-  if (!isSlotFilled(memory, "indexOutline") && narrativeFiction) return "index";
-  if (!isSlotFilled(memory, "title")) return "title";
-  return "dna-lock";
+  const machine = getStoryRoomMachine(memory);
+  const stageMap: Partial<Record<string, ForgeMemoryStage>> = {
+    idea: "spark",
+    language: "language",
+    genre: "genre",
+    tone: "tone",
+    audience: "audience",
+    promise: "promise",
+    characters: "characters",
+    stakes: "plot",
+    structure: "structure",
+    title: "title",
+    frontMatter: "title",
+    ending: "plot",
+    blueprintReady: "dna-lock",
+  };
+  return stageMap[machine.currentStageId] ?? "welcome";
 }
 
 function applySlot(
@@ -633,7 +621,10 @@ function applySlot(
   diff: ForgeMemoryDiff,
 ): void {
   if (value === undefined || value === null) return;
-  const text = typeof value === "string" ? value.trim() : value;
+  let text: string | number | boolean | string[] = value;
+  if (typeof value === "string") {
+    text = normalizeSlotFromAnswer(memory, key, value);
+  }
   if (typeof text === "string" && text.length < 2) return;
 
   const wasFilled = isSlotFilled(memory, key);
@@ -727,9 +718,16 @@ export function updateForgeMemoryFromAnswer(
       if (parsedGenre.bookType) applySlot(memory, "bookType", parsedGenre.bookType, diff);
       if (parsedGenre.subgenre) applySlot(memory, "subgenre", parsedGenre.subgenre, diff);
     } else {
-      const mappedSlot = CRITICAL_TO_SLOT[fieldKey] ?? slotFromQuestionKey(activeQuestion.key);
+      const mappedSlot =
+        questionKeyToSlot(activeQuestion.id) ??
+        CRITICAL_TO_SLOT[fieldKey] ??
+        slotFromQuestionKey(activeQuestion.key);
       if (mappedSlot) applySlot(memory, mappedSlot, userAnswer, diff);
     }
+  } else if (!uncertain && activeQuestion?.id) {
+    const mappedSlot =
+      questionKeyToSlot(activeQuestion.id) ?? slotFromQuestionKey(activeQuestion.key ?? "");
+    if (mappedSlot) applySlot(memory, mappedSlot, userAnswer, diff);
   } else if (!uncertain && !targetSlot && userAnswer.length >= 12 && !isSlotFilled(memory, "rawIdea")) {
     applySlot(memory, "rawIdea", userAnswer, diff);
   }
@@ -748,6 +746,7 @@ export function updateForgeMemoryFromAnswer(
   }
 
   const previousStage = memory.currentStage;
+  memory = advanceStoryRoomStage(memory, { lastAnswer: userAnswer });
   memory.currentStage = resolveMemoryStage(memory);
   if (previousStage !== memory.currentStage && !memory.completedStages.includes(previousStage)) {
     memory.completedStages.push(previousStage);
@@ -775,6 +774,8 @@ function slotFromQuestionKey(key: string): ForgeSlotKey | null {
     promise: "promise",
     protagonistWound: "protagonist",
     characterWound: "antagonist",
+    loveInterest: "loveInterest",
+    stakes: "stakes",
     centralConflict: "centralConflict",
     narrativeDrive: "endingDirection",
     structurePreference: "pov",
@@ -864,29 +865,26 @@ export function memoryRecapShown(memory: ForgeInterviewMemory, answerCount: numb
 }
 
 export function getMemoryProgressLabel(memory: ForgeInterviewMemory): string {
-  const labels: Partial<Record<ForgeMemoryStage, string>> = {
-    welcome: "Idea",
-    spark: "Idea",
-    language: "Lingua",
-    "book-type": "Genere",
-    genre: "Genere",
-    tone: "Tono",
-    audience: "Pubblico",
-    promise: "Promessa",
-    characters: "Personaggi",
-    plot: "Trama",
-    structure: "Struttura",
-    title: "Titolo",
-    "dna-lock": "DNA Lock",
-    index: "Indice",
+  return `Stiamo costruendo: ${buildStoryRoomProgressLabel(memory)}`;
+}
+
+export function getMemoryStageProgress(memory: ForgeInterviewMemory): {
+  percent: number;
+  completedStages: number;
+  totalStages: number;
+} {
+  const percent = getStoryRoomProgressPercent(memory);
+  const stages = STORY_ROOM_STAGE_DEFS.filter((s) => s.id !== "blueprintReady");
+  const machine = getStoryRoomMachine(memory);
+  const completed = new Set([
+    ...machine.completedStageIds,
+    ...evaluateStageCompletion(memory),
+  ]);
+  return {
+    percent,
+    completedStages: completed.size,
+    totalStages: stages.length,
   };
-  const idx = FORGE_STAGE_ORDER.indexOf(memory.currentStage);
-  const trail = FORGE_STAGE_ORDER.slice(0, Math.max(idx + 1, 2))
-    .map((s) => labels[s])
-    .filter(Boolean)
-    .filter((v, i, arr) => arr.indexOf(v) === i)
-    .join(" → ");
-  return trail || "Idea → Lingua → Genere";
 }
 
 function buildQuestionFromDef(def: ForgeQuestionDef, memory: ForgeInterviewMemory): InterviewQuestion {
@@ -1056,7 +1054,7 @@ function presetQuestionForSlot(
           slotTarget: "loveInterest",
           stage: "characters",
           intent: "confirm-attraction",
-          key: "protagonistWound",
+          key: "loveInterest",
           text: "Cosa li attrae l'uno verso l'altro — anche quando sarebbe più saggio allontanarsi?",
           quickChoices: [
             { label: "Magnetismo pericoloso", value: "Un magnetismo pericoloso che non riescono a ignorare." },
@@ -1109,7 +1107,7 @@ function presetQuestionForSlot(
           slotTarget: "stakes",
           stage: "plot",
           intent: "confirm-stakes",
-          key: "centralConflict",
+          key: "stakes",
           text: isRomanceMode(memory)
             ? "Cosa rischia emotivamente se si avvicina troppo — identità, sicurezza, amore, controllo?"
             : "Cosa c'è in gioco se il protagonista sbaglia — o se non sceglie?",
@@ -1328,12 +1326,20 @@ export function selectNextMemoryQuestion(state: GuidedInterviewState): Interview
   const memory = getForgeMemory(state);
   const lastAnswer = state.messages.filter((m) => m.role === "user").pop()?.content ?? "";
 
+  if (isStoryRoomBlueprintReady(memory)) return null;
   if (countForgeUserAnswers(state) === 0) return null;
+
+  if (!isGenreSlotLocked(memory)) {
+    const genreQ = getGenreSelectionQuestion();
+    if (!wasStoryRoomQuestionAsked(memory, genreQ.id)) {
+      return genreQ;
+    }
+  }
 
   if (isGenreSlotLocked(memory)) {
     if (!isSlotFilled(memory, "language") && !memory.pendingSlotConfirmations?.language) {
       const langQ = presetQuestionForSlot("language", memory);
-      if (langQ && !isQuestionAlreadyAnswered(langQ.id, memory)) {
+      if (langQ && !wasStoryRoomQuestionAsked(memory, langQ.id) && isSlotOnCurrentStage(memory, "language")) {
         return withRecap(state, memory, langQ);
       }
     }
@@ -1342,25 +1348,17 @@ export function selectNextMemoryQuestion(state: GuidedInterviewState): Interview
     if (confirmQ) {
       const slot = confirmQ.id.replace("confirm-deduced-", "") as ForgeSlotKey;
       if (slot !== "authorName" || isSlotFilled(memory, "language")) {
-        return withRecap(state, memory, confirmQ);
+        if (!wasStoryRoomQuestionAsked(memory, confirmQ.id)) {
+          return withRecap(state, memory, confirmQ);
+        }
       }
     }
-
-    for (const earlySlot of ["authorName"] as ForgeSlotKey[]) {
-      if (isSlotFilled(memory, earlySlot)) continue;
-      if (memory.pendingSlotConfirmations?.[earlySlot]) continue;
-      const earlyQ = presetQuestionForSlot(earlySlot, memory);
-      if (earlyQ && !isQuestionAlreadyAnswered(earlyQ.id, memory)) {
-        return withRecap(state, memory, earlyQ);
-      }
-    }
-
-    const adaptive = selectAdaptiveGenreQuestion(memory);
-    if (adaptive) return withRecap(state, memory, adaptive);
   }
 
+  const stageSlots = slotsForCurrentStage(memory);
+
   if (isUncertainUserAnswer(lastAnswer)) {
-    const slot = getNextBestMissingSlot(memory);
+    const slot = stageSlots[0] ?? getNextBestMissingSlot(memory);
     if (slot) {
       const presetQ = presetQuestionForSlot(slot, memory);
       if (presetQ) {
@@ -1372,34 +1370,61 @@ export function selectNextMemoryQuestion(state: GuidedInterviewState): Interview
     }
   }
 
-  if (memory.repeatedQuestionCount > 1) {
-    const forcedSlot = getNextBestMissingSlot(memory);
+  for (const slot of stageSlots) {
+    if (isSlotFilled(memory, slot)) continue;
+    const question = presetQuestionForSlot(slot, memory);
+    if (!question) continue;
+    if (wasStoryRoomQuestionAsked(memory, question.id)) continue;
+    if (isQuestionAlreadyAnswered(question.id, memory)) continue;
+    return withRecap(state, memory, question);
+  }
+
+  if (shouldForceStageAdvance(memory)) {
+    const forcedSlot = slotsForCurrentStage(memory)[0] ?? getNextBestMissingSlot(memory);
     if (forcedSlot) {
       const forced = presetQuestionForSlot(forcedSlot, memory);
-      if (forced) return withRecap(state, memory, forced);
+      if (forced && !wasStoryRoomQuestionAsked(memory, forced.id)) {
+        return withRecap(state, memory, {
+          ...forced,
+          helper: getProvisionalAdvanceMessage(),
+        });
+      }
     }
+  }
+
+  const adaptive = selectAdaptiveGenreQuestion(memory);
+  if (
+    adaptive &&
+    !wasStoryRoomQuestionAsked(memory, adaptive.id) &&
+    getStoryRoomMachine(memory).currentStageId === "characters"
+  ) {
+    return withRecap(state, memory, adaptive);
   }
 
   for (const def of FORGE_QUESTION_BANK) {
     if (!def.shouldAsk(memory)) continue;
+    if (wasStoryRoomQuestionAsked(memory, def.id)) continue;
     if (isQuestionAlreadyAnswered(def.id, memory)) continue;
-    if (isSimilarQuestionRecentlyAsked(def.id, memory)) continue;
     return withRecap(state, memory, buildQuestionFromDef(def, memory));
   }
 
   for (const slot of getCriticalMissingSlots(memory)) {
     if (isDeferredAdminSlot(memory, slot)) continue;
+    if (!isSlotOnCurrentStage(memory, slot) && !isSlotFilled(memory, slot)) {
+      const machine = getStoryRoomMachine(memory);
+      if (machine.currentStageId !== "blueprintReady") continue;
+    }
     const question = presetQuestionForSlot(slot, memory);
     if (!question) continue;
+    if (wasStoryRoomQuestionAsked(memory, question.id)) continue;
     if (isQuestionAlreadyAnswered(question.id, memory)) continue;
-    if (isSimilarQuestionRecentlyAsked(question.id, memory)) continue;
     return withRecap(state, memory, question);
   }
 
   const fallbackSlot = getNextBestMissingSlot(memory);
   if (fallbackSlot) {
     const fallback = presetQuestionForSlot(fallbackSlot, memory);
-    if (fallback && !isSimilarQuestionRecentlyAsked(fallback.id, memory)) {
+    if (fallback && !wasStoryRoomQuestionAsked(memory, fallback.id)) {
       return withRecap(state, memory, fallback);
     }
   }

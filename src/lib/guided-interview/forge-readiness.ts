@@ -7,6 +7,7 @@ import {
   getForgeMemory,
   isSlotFilled,
 } from "./interview-memory";
+import { isStoryRoomBlueprintReady } from "./story-room-state-machine";
 import { selectNextForgeQuestion } from "./interview-stages";
 
 export interface ForgeReadinessReport {
@@ -111,6 +112,7 @@ export function evaluateForgeReadiness(state: GuidedInterviewState): ForgeReadin
     missingCritical.length === 0;
 
   const canShowConfirmation =
+    isStoryRoomBlueprintReady(memory) ||
     ready ||
     (missingCritical.length <= 1 && userAnswers >= 6 && hasLanguage && hasGenre);
 

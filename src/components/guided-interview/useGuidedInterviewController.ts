@@ -292,7 +292,7 @@ export function useGuidedInterviewController({
     progress,
     forgeReady,
     ready,
-    confidencePct: Math.round(progress.confidence * 100),
+    confidencePct: progress.stagePercent,
     sendMessage,
     handleContinueInterview,
     handleConfirmDna,

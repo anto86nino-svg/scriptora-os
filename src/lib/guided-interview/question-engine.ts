@@ -49,6 +49,7 @@ import {
 import {
   createEmptyForgeMemory,
   getForgeMemory,
+  getMemoryStageProgress,
   isQuestionAlreadyAnswered,
   memoryRecapShown,
   syncExtractedFromMemory,
@@ -896,15 +897,18 @@ export function getInterviewProgress(state: GuidedInterviewState): {
   dnaLock: BookDnaLock;
   answeredCount: number;
   totalCritical: number;
+  stagePercent: number;
 } {
+  const memory = getForgeMemory(state);
+  const stageProgress = getMemoryStageProgress(memory);
   const dnaLock = buildDnaLockFromInterviewState(state);
-  const answeredCount = CRITICAL_FIELD_KEYS.filter((k) =>
-    hasStrongSignal((state.extracted as Record<string, unknown>)?.[k]),
-  ).length;
+  const stageRatio = stageProgress.percent / 100;
+  const confidence = Math.min(0.99, Math.max(stageRatio, dnaLock.confidenceScore * 0.35 + stageRatio * 0.65));
   return {
-    confidence: dnaLock.confidenceScore,
+    confidence,
     dnaLock,
-    answeredCount,
-    totalCritical: CRITICAL_FIELD_KEYS.length,
+    answeredCount: stageProgress.completedStages,
+    totalCritical: stageProgress.totalStages,
+    stagePercent: stageProgress.percent,
   };
 }

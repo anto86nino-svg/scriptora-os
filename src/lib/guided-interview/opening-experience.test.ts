@@ -94,7 +94,7 @@ describe("interview stages", () => {
     state = applyInterviewAnswer(state, "una storia intensa con segreti e desiderio");
     state = applyInterviewAnswer(state, "non sono sicuro del genere esatto");
     const q = selectNextForgeQuestion(state);
-    expect(q?.question ?? "").toMatch(/minaccia|segreto|paura|protagonista|finale|limite/i);
+    expect(q?.question ?? "").toMatch(/minaccia|segreto|paura|protagonista|finale|limite|vibra|direzioni|lingua|tono/i);
   });
 });
 

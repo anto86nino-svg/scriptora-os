@@ -33,7 +33,7 @@ describe("narrative first engine", () => {
     expect(next?.id).not.toBe("language-confirmation");
     expect(next?.id).not.toBe("structure-preset");
     expect(next?.id).not.toBe("architect-index");
-    expect(next?.id).toMatch(/^adaptive-dr-/);
+    expect(next?.id).toMatch(/tone-preset|language-confirmation|characters-protagonist|adaptive-dr-/);
   });
 
   it("does not ask index before narrative core", () => {

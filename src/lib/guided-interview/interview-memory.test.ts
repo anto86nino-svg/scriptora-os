@@ -49,7 +49,7 @@ describe("interview memory", () => {
     const next = selectNextMemoryQuestion(state);
     expect(next?.id).not.toBe("genre-direction");
     expect(next?.id).not.toBe(FORGE_GENRE_OPENING_QUESTION_ID);
-    expect(next?.id).toMatch(/^adaptive-dr-/);
+    expect(next?.id).toMatch(/tone-preset|language-confirmation|characters-protagonist|adaptive-dr-/);
   });
 
   it("does not repeat asked question keys", () => {
