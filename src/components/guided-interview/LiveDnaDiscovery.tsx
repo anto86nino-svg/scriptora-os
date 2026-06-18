@@ -1,5 +1,6 @@
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import { cn } from "@/lib/utils";
+import { safeDisplayText } from "@/lib/safe-display-text";
 import { Check, Circle, Loader2 } from "lucide-react";
 
 export type DnaDiscoverySignal = {
@@ -111,7 +112,7 @@ export function LiveDnaDiscovery({
                 <span className="font-medium">{signal.label}</span>
                 {status === "done" && value && (
                   <p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-white/50">
-                    {value}
+                    {safeDisplayText(value)}
                   </p>
                 )}
                 {status === "active" && isThinking && (

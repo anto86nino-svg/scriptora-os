@@ -9,6 +9,7 @@ import {
 import { evaluateDnaLockPremium } from "@/lib/guided-interview/forge-orchestrator";
 import { mergeAdviceMessages } from "@/lib/guided-interview/editorial-advice-render";
 import { cn } from "@/lib/utils";
+import { safeDisplayText } from "@/lib/safe-display-text";
 
 export type ForgeInterviewConfirmationProps = {
   dnaLock: BookDnaLock;
@@ -66,8 +67,8 @@ export function ForgeInterviewConfirmation({
             Controllo editoriale
           </p>
           <ul className="mt-2 space-y-1 text-xs leading-5 text-amber-50/90">
-            {displayIncoherences.map((item) => (
-              <li key={item}>• {item}</li>
+            {displayIncoherences.map((item, index) => (
+              <li key={`${safeDisplayText(item)}-${index}`}>• {safeDisplayText(item)}</li>
             ))}
           </ul>
         </div>
@@ -79,8 +80,8 @@ export function ForgeInterviewConfirmation({
             Nota commerciale
           </p>
           <ul className="mt-2 space-y-1 text-xs leading-5 text-white/65">
-            {displayCommercialNotes.map((note) => (
-              <li key={note}>• {note}</li>
+            {displayCommercialNotes.map((note, index) => (
+              <li key={`${safeDisplayText(note)}-${index}`}>• {safeDisplayText(note)}</li>
             ))}
           </ul>
         </div>
@@ -144,14 +145,15 @@ function ConfirmRow({
   muted,
 }: {
   label: string;
-  value: string;
+  value: unknown;
   muted?: boolean;
 }) {
+  const display = safeDisplayText(value);
   return (
     <div>
       <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">{label}</dt>
       <dd className={cn("mt-0.5 text-sm leading-6", muted ? "text-white/60" : "text-white/90")}>
-        {value}
+        {display}
       </dd>
     </div>
   );

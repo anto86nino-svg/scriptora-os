@@ -1,5 +1,5 @@
 import { useRef, type ReactNode } from "react";
-import { Mic, MicOff, Send } from "lucide-react";
+import { Mic, MicOff, Send, Sparkles, RefreshCw, Loader2 } from "lucide-react";
 import { BookDnaConfirmationPanel } from "./BookDnaConfirmationPanel";
 import { ForgeInterviewConfirmation } from "./ForgeInterviewConfirmation";
 import { ForgeLiveMap } from "./ForgeLiveMap";
@@ -14,6 +14,8 @@ import { getSavedSlotLabels } from "@/lib/guided-interview/interview-memory";
 import { countForgeUserAnswers } from "@/lib/guided-interview/opening-experience";
 import { MobileForgeScrollShell } from "@/mobile/MobileForgeScrollShell";
 import { cn } from "@/lib/utils";
+import { safeDisplayText, safeQuickSuggestionLabel, safeQuickSuggestionValue } from "@/lib/safe-display-text";
+import { FORGE_AUTO_ANSWER_TONE_CHIPS } from "@/lib/guided-interview/auto-answer-engine";
 
 type GuidedInterviewPanelProps = {
   selectedGenre?: string;
@@ -223,7 +225,7 @@ function InterviewBody({
               : "ml-auto rounded-tr-md bg-white/10 text-white/90",
           )}
         >
-          {msg.content}
+          {safeDisplayText(msg.content)}
         </div>
       ))}
 
@@ -312,7 +314,7 @@ function MobileInterviewOnlyBody({
 
       {lastUserReply && (
         <p className="relative mb-3 line-clamp-2 text-right text-[11px] leading-5 text-white/40">
-          Tu: {lastUserReply}
+          Tu: {safeDisplayText(lastUserReply)}
         </p>
       )}
 
@@ -327,10 +329,10 @@ function MobileInterviewOnlyBody({
           Scriptora
         </p>
         <p className="mt-2 text-[1.05rem] font-medium leading-7 text-white sm:text-lg">
-          {currentQuestion}
+          {safeDisplayText(currentQuestion)}
         </p>
         {empathicLine && (
-          <p className="mt-2.5 text-sm leading-6 text-violet-100/55">{empathicLine}</p>
+          <p className="mt-2.5 text-sm leading-6 text-violet-100/55">{safeDisplayText(empathicLine)}</p>
         )}
       </div>
 
@@ -397,21 +399,26 @@ function ThinkingBubble() {
 function QuickSuggestionChips({ ctrl, premium }: { ctrl: Ctrl; premium?: boolean }) {
   return (
     <div className="flex flex-wrap gap-2 pt-0.5">
-      {ctrl.next.question!.quickSuggestions!.map((chip) => (
-        <button
-          key={chip.label}
-          type="button"
-          onClick={() => ctrl.sendMessage(chip.value)}
-          className={cn(
-            "text-left text-[11px] font-medium transition active:scale-[0.98]",
-            premium
-              ? "scriptora-forge-quick-chip rounded-2xl px-3.5 py-2.5 text-violet-50/90"
-              : "rounded-full border border-white/12 bg-white/[0.05] px-3 py-1.5 text-white/80 hover:border-violet-300/40 hover:bg-violet-500/15",
-          )}
-        >
-          {chip.label}
-        </button>
-      ))}
+      {ctrl.next.question!.quickSuggestions!.map((chip, index) => {
+        const label = safeQuickSuggestionLabel(chip);
+        const value = safeQuickSuggestionValue(chip);
+        if (!label) return null;
+        return (
+          <button
+            key={`${label}-${index}`}
+            type="button"
+            onClick={() => ctrl.sendMessage(value)}
+            className={cn(
+              "text-left text-[11px] font-medium transition active:scale-[0.98]",
+              premium
+                ? "scriptora-forge-quick-chip rounded-2xl px-3.5 py-2.5 text-violet-50/90"
+                : "rounded-full border border-white/12 bg-white/[0.05] px-3 py-1.5 text-white/80 hover:border-violet-300/40 hover:bg-violet-500/15",
+            )}
+          >
+            {label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -427,6 +434,9 @@ function InterviewInputFooter({
   unifiedScroll?: boolean;
   interviewOnly?: boolean;
 }) {
+  const hasDraft = Boolean(ctrl.autoAnswerDraft?.trim());
+  const busy = ctrl.isThinking || ctrl.autoAnswerLoading;
+
   return (
     <div
       className={cn(
@@ -447,6 +457,33 @@ function InterviewInputFooter({
           🎙️ Scriptora ti sta ascoltando…
         </p>
       )}
+      {hasDraft && (
+        <p className="mb-2 text-[10px] leading-5 text-violet-200/70">
+          Modifica prima di continuare — poi conferma con invio.
+        </p>
+      )}
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        {FORGE_AUTO_ANSWER_TONE_CHIPS.map((chip) => (
+          <button
+            key={chip.id ?? "none"}
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              ctrl.setAutoAnswerToneBias(
+                ctrl.autoAnswerToneBias === chip.id ? null : chip.id,
+              )
+            }
+            className={cn(
+              "rounded-full border px-2.5 py-1 text-[10px] font-medium transition disabled:opacity-40",
+              ctrl.autoAnswerToneBias === chip.id
+                ? "border-violet-300/50 bg-violet-500/20 text-violet-100"
+                : "border-white/10 bg-white/[0.04] text-white/55 hover:border-white/20",
+            )}
+          >
+            {chip.label}
+          </button>
+        ))}
+      </div>
       <div className="flex items-end gap-2">
         {ctrl.speech.supported && (
           <button
@@ -484,12 +521,49 @@ function InterviewInputFooter({
         <button
           type="button"
           onClick={() => ctrl.sendMessage()}
-          disabled={!ctrl.input.trim() || ctrl.isThinking}
+          disabled={!ctrl.input.trim() || busy}
           className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-violet-500 text-white disabled:opacity-40"
-          aria-label="Invia"
+          aria-label="Conferma"
+          title="Usa questa risposta"
         >
           <Send className="h-4 w-4" />
         </button>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {!hasDraft ? (
+          <button
+            type="button"
+            onClick={() => ctrl.generateAutoAnswer(false)}
+            disabled={busy || ctrl.next.done}
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-violet-300/35 bg-violet-500/15 px-3 py-2 text-[11px] font-semibold text-violet-100 transition hover:bg-violet-500/25 disabled:opacity-40"
+          >
+            {ctrl.autoAnswerLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            Scrivi per me
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => ctrl.generateAutoAnswer(true)}
+            disabled={busy}
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-white/12 bg-white/[0.05] px-3 py-2 text-[11px] font-semibold text-white/80 transition hover:bg-white/10 disabled:opacity-40"
+          >
+            {ctrl.autoAnswerLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
+            Rigenera
+          </button>
+        )}
+        {hasDraft && (
+          <span className="text-[10px] text-white/40">
+            Variante {ctrl.autoAnswerVariantCount + 1}
+          </span>
+        )}
       </div>
     </div>
   );

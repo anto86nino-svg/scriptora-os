@@ -7,12 +7,17 @@ import {
   resolveActiveInterviewQuestion,
   resumeInterview,
 } from "@/lib/guided-interview/question-engine";
-import { FORGE_OPENING_QUESTION_ID } from "@/lib/guided-interview/opening-experience";
+import { FORGE_OPENING_QUESTION_ID, isFirstForgeAssistantMessage } from "@/lib/guided-interview/opening-experience";
+import { getWelcomeInterviewQuestion } from "@/lib/guided-interview/interview-stages";
 import { evaluateForgeReadiness } from "@/lib/guided-interview/forge-readiness";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import { saveForgeDnaLock } from "@/lib/guided-interview/interview-state";
 import { finalizeForgeForBlueprint } from "@/lib/guided-interview/forge-evolution-engine";
 import { useSpeechDictation } from "@/hooks/useSpeechDictation";
+import {
+  generateForgeAutoAnswer,
+  type ForgeAutoAnswerToneBias,
+} from "@/lib/guided-interview/auto-answer-engine";
 
 export type UseGuidedInterviewOptions = {
   selectedGenre?: string;
@@ -48,6 +53,11 @@ export function useGuidedInterviewController({
   const [showDnaPanel, setShowDnaPanel] = useState(false);
   const [dnaConfirmationDismissed, setDnaConfirmationDismissed] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
+  const [autoAnswerLoading, setAutoAnswerLoading] = useState(false);
+  const [autoAnswerDraft, setAutoAnswerDraft] = useState<string | null>(null);
+  const [autoAnswerVariantCount, setAutoAnswerVariantCount] = useState(0);
+  const [autoAnswerError, setAutoAnswerError] = useState<string | null>(null);
+  const [autoAnswerToneBias, setAutoAnswerToneBias] = useState<ForgeAutoAnswerToneBias>(null);
   const [continueNonce, setContinueNonce] = useState(0);
   const internalScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -66,6 +76,10 @@ export function useGuidedInterviewController({
     setShowDnaPanel(false);
     setDnaConfirmationDismissed(false);
     setContinueNonce(0);
+    setAutoAnswerDraft(null);
+    setAutoAnswerVariantCount(0);
+    setAutoAnswerError(null);
+    setAutoAnswerToneBias(null);
     lastQuestionIdRef.current = null;
     lastQuestionTextRef.current = null;
   }, [selectedGenre, chatFirst]);
@@ -79,6 +93,12 @@ export function useGuidedInterviewController({
       }),
     [state, rawNext, continueNonce],
   );
+
+  useEffect(() => {
+    setAutoAnswerDraft(null);
+    setAutoAnswerVariantCount(0);
+    setAutoAnswerError(null);
+  }, [next.question?.id]);
   const progress = useMemo(() => getInterviewProgress(state), [state]);
   const forgeReady = useMemo(() => evaluateForgeReadiness(state), [state]);
   const ready = progress.dnaLock.readyForBlueprint && forgeReady.ready;
@@ -118,7 +138,7 @@ export function useGuidedInterviewController({
 
   const scrollToEnd = () => {
     const el = scrollContainerRef?.current ?? internalScrollRef.current;
-    if (!el) return;
+    if (!el || typeof el.scrollTo !== "function") return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   };
 
@@ -158,9 +178,41 @@ export function useGuidedInterviewController({
       const updated = applyInterviewAnswer(state, payload, next.question ?? undefined);
       setState(updated);
       setInput("");
+      setAutoAnswerDraft(null);
+      setAutoAnswerVariantCount(0);
+      setAutoAnswerError(null);
       setIsThinking(false);
       if (speech.isListening) speech.stop();
     }, 480);
+  };
+
+  const generateAutoAnswer = async (regenerate = false) => {
+    const question =
+      next.question ??
+      (isFirstForgeAssistantMessage(state) ? getWelcomeInterviewQuestion(state) : null);
+    if (!question || autoAnswerLoading || isThinking || next.done) return;
+
+    const variantIndex = regenerate ? autoAnswerVariantCount + 1 : 0;
+    setAutoAnswerLoading(true);
+    setAutoAnswerError(null);
+
+    try {
+      const result = await generateForgeAutoAnswer({
+        state,
+        question,
+        language,
+        variantIndex,
+        toneBias: autoAnswerToneBias,
+      });
+      setInput(result.answer);
+      setAutoAnswerDraft(result.answer);
+      setAutoAnswerVariantCount(variantIndex);
+      focusInput();
+    } catch {
+      setAutoAnswerError(null);
+    } finally {
+      setAutoAnswerLoading(false);
+    }
   };
 
   const handleContinueInterview = () => {
@@ -228,6 +280,13 @@ export function useGuidedInterviewController({
     handleConfirmDna,
     toggleMic,
     focusInput,
+    autoAnswerLoading,
+    autoAnswerDraft,
+    autoAnswerVariantCount,
+    autoAnswerError,
+    autoAnswerToneBias,
+    setAutoAnswerToneBias,
+    generateAutoAnswer,
   };
 }
 

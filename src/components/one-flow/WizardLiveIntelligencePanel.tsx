@@ -3,6 +3,7 @@ import { Sparkles, Zap, CheckCircle2, AlertCircle, Info } from "lucide-react";
 import { computeLiveIntelligence } from "@/lib/book-creation-os/live-intelligence";
 import type { BookObjective, WritingStyleProfile } from "@/lib/book-creation-os/objectives";
 import type { BookCharacter } from "@/types/book";
+import { safeDisplayText } from "@/lib/safe-display-text";
 
 interface WizardLiveIntelligencePanelProps {
   step: number;
@@ -62,7 +63,7 @@ export function WizardLiveIntelligencePanel({
               <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 opacity-90" />
               <span>
                 <span className="block font-semibold">{item.label}</span>
-                <span className="opacity-80">{item.value}</span>
+                <span className="opacity-80">{safeDisplayText(item.value)}</span>
               </span>
             </div>
           );
@@ -80,7 +81,7 @@ export function WizardLiveIntelligencePanel({
                   <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span>
                     <span className="block font-medium">{item.label}</span>
-                    <span className="opacity-85">{item.value}</span>
+                    <span className="opacity-85">{safeDisplayText(item.value)}</span>
                   </span>
                 </div>
               </div>

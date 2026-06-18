@@ -4,6 +4,7 @@ import { isDnaTooDirtyToShow } from "@/lib/guided-interview/dna-cleaner";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import { AlertTriangle, CheckCircle2, Fingerprint, Loader2, LockKeyhole, Pencil, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { safeDisplayText } from "@/lib/safe-display-text";
 
 type BookDnaConfirmationPanelProps = {
   dnaLock?: BookDnaLock;
@@ -134,8 +135,8 @@ export function BookDnaConfirmationPanel({
         </div>
         {!ready && dnaLock.dnaQuality?.issues?.length > 0 && (
           <ul className="mt-2 space-y-1 text-xs text-amber-200/90">
-            {dnaLock.dnaQuality.issues.map((issue) => (
-              <li key={issue}>• {issue}</li>
+            {dnaLock.dnaQuality.issues.map((issue, index) => (
+              <li key={`${safeDisplayText(issue)}-${index}`}>• {safeDisplayText(issue)}</li>
             ))}
           </ul>
         )}
@@ -151,8 +152,8 @@ export function BookDnaConfirmationPanel({
           {dnaLock.whatBookIs.length > 0 ? (
             <ul className="space-y-2 text-sm leading-6 text-slate-300">
               {dnaLock.whatBookIs.map((item, index) => (
-                <li key={`${item}-${index}`} className="rounded-xl bg-black/20 p-3">
-                  {item}
+                <li key={`${safeDisplayText(item)}-${index}`} className="rounded-xl bg-black/20 p-3">
+                  {safeDisplayText(item)}
                 </li>
               ))}
             </ul>
@@ -165,8 +166,8 @@ export function BookDnaConfirmationPanel({
           <h4 className="mb-3 text-sm font-semibold text-rose-200">Cosa NON è</h4>
           <ul className="space-y-2 text-sm leading-6 text-slate-300">
             {dnaLock.whatBookIsNot.map((item, index) => (
-              <li key={`${item}-${index}`} className="rounded-xl bg-black/20 p-3">
-                {item}
+              <li key={`${safeDisplayText(item)}-${index}`} className="rounded-xl bg-black/20 p-3">
+                {safeDisplayText(item)}
               </li>
             ))}
           </ul>
@@ -176,8 +177,8 @@ export function BookDnaConfirmationPanel({
           <h4 className="mb-3 text-sm font-semibold text-violet-200">Regole anti-drift</h4>
           <ul className="space-y-2 text-sm leading-6 text-slate-300">
             {dnaLock.antiDriftRules.map((item, index) => (
-              <li key={`${item}-${index}`} className="rounded-xl bg-black/20 p-3">
-                {item}
+              <li key={`${safeDisplayText(item)}-${index}`} className="rounded-xl bg-black/20 p-3">
+                {safeDisplayText(item)}
               </li>
             ))}
           </ul>
@@ -193,7 +194,7 @@ export function BookDnaConfirmationPanel({
                 key={field}
                 className="rounded-full border border-amber-300/20 bg-black/20 px-3 py-1 text-xs text-amber-100"
               >
-                {field}
+                {safeDisplayText(field)}
               </span>
             ))}
           </div>
@@ -227,7 +228,7 @@ function DnaCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-black/25 p-3">
       <p className="text-[10px] uppercase tracking-[0.14em] text-white/45">{label}</p>
-      <p className="mt-1 line-clamp-2 text-xs font-semibold text-white">{value}</p>
+      <p className="mt-1 line-clamp-2 text-xs font-semibold text-white">{safeDisplayText(value)}</p>
     </div>
   );
 }
