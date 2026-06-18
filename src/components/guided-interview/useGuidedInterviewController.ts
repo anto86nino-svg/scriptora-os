@@ -26,9 +26,14 @@ import {
 import { buildExpressForgeConfiguration } from "@/lib/guided-interview/express-forge-config";
 import type { ExpressForgeInput } from "@/lib/guided-interview/express-forge-types";
 import {
-  applyBlueprintScenarioToState,
-  type BlueprintScenario,
-} from "@/lib/guided-interview/blueprint-scenarios";
+  applyExpressScenarioToState,
+  buildCompleteExpressBookPackage,
+  type ExpressBookScenario,
+} from "@/lib/guided-interview/express-book-package";
+import {
+  applyBlueprintReadySummaryToState,
+  type BlueprintEditorialField,
+} from "@/lib/guided-interview/blueprint-ready-summary";
 
 import type { ForgeHostContext } from "@/lib/guided-interview/forge-host-engine";
 
@@ -318,25 +323,81 @@ export function useGuidedInterviewController({
       const result = buildExpressForgeConfiguration(input, state);
       setState(result.state);
       setShowExpressPanel(false);
-      setShowDnaPanel(true);
+      setShowDnaPanel(false);
       setDnaConfirmationDismissed(false);
       setExpressPreparing(false);
       blueprintMessageInjectedRef.current = false;
     }, 420);
   };
 
-  const handleSelectBlueprintScenario = (scenario: BlueprintScenario) => {
-    setState((prev) => applyBlueprintScenarioToState(prev, scenario));
+  const handleSelectBlueprintScenario = (scenario: ExpressBookScenario) => {
+    setState((prev) => applyExpressScenarioToState(prev, scenario));
     setShowDnaPanel(true);
     setDnaConfirmationDismissed(false);
+    setShowExpressPanel(false);
+  };
+
+  const handleModifyBlueprintScenario = (
+    scenario: ExpressBookScenario,
+    tone: "darker" | "commercial" | "poetic",
+  ) => {
+    const base = state.expressConfig;
+    if (!base) return;
+    const variant =
+      tone === "commercial" ? "commercial" : tone === "darker" ? "bold" : "safe";
+    const toneMap = { darker: "oscuro", commercial: "commerciale", poetic: "poetico" } as const;
+    const rebuilt = {
+      ...buildCompleteExpressBookPackage(
+        { ...base, tone: toneMap[tone], ideaSeed: base.ideaSeed || base.protagonistSeed || "" },
+        variant,
+      ),
+      id: scenario.id,
+    };
+    setState((prev) => ({
+      ...prev,
+      blueprintScenarios: (prev.blueprintScenarios ?? []).map((s) =>
+        s.id === scenario.id ? rebuilt : s,
+      ),
+    }));
   };
 
   const handleConfirmDna = () => {
     if (!ready && !blueprintGate.canShowConfirmation) return;
-    const finalized = finalizeForgeForBlueprint(state);
+    const normalized = applyBlueprintReadySummaryToState(state);
+    const finalized = finalizeForgeForBlueprint(normalized);
     setState(finalized);
     saveForgeDnaLock(finalized);
     onConfirmDna?.(finalized);
+  };
+
+  const handleApplyGeneratedField = (field: BlueprintEditorialField, value: string) => {
+    setState((prev) => {
+      const extracted = { ...prev.extracted };
+      const titleIntelligence = { ...prev.titleIntelligence };
+      if (field === "openingHook") {
+        extracted.openingHook = value;
+        titleIntelligence.commercialHook = value;
+      }
+      if (field === "bookSubtitle") {
+        extracted.bookSubtitle = value;
+        titleIntelligence.subtitle = value;
+      }
+      if (field === "promise") extracted.promise = value;
+      if (field === "centralConflict") extracted.centralConflict = value;
+      if (field === "readerTransformation") extracted.readerTransformation = value;
+      if (field === "bookTitle") extracted.bookTitle = value;
+      if (field === "endingDirection") extracted.narrativeDrive = value;
+      return applyBlueprintReadySummaryToState({ ...prev, extracted, titleIntelligence });
+    });
+  };
+
+  const handleCorrectField = (_field: BlueprintEditorialField, prompt: string) => {
+    setShowDnaPanel(false);
+    setDnaConfirmationDismissed(true);
+    setState((prev) => ({ ...prev, forgeRefineMode: true }));
+    setInput(prompt);
+    setContinueNonce((n) => n + 1);
+    focusInput();
   };
 
   const toggleMic = () => {
@@ -374,7 +435,10 @@ export function useGuidedInterviewController({
     handleEnableRefine,
     handleApplyExpress,
     handleSelectBlueprintScenario,
+    handleModifyBlueprintScenario,
     handleConfirmDna,
+    handleApplyGeneratedField,
+    handleCorrectField,
     toggleMic,
     focusInput,
     autoAnswerLoading,

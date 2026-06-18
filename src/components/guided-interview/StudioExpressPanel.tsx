@@ -33,7 +33,7 @@ const TONES = [
 const LENGTHS: ExpressForgeInput["length"][] = ["breve", "medio", "lungo", "pro"];
 const CONTROL_LEVELS: { id: ExpressControlLevel; label: string }[] = [
   { id: "auto", label: "Fai tu, voglio partire subito" },
-  { id: "scenarios", label: "Fammi scegliere tra 3 scenari" },
+  { id: "scenarios", label: "Fammi scegliere tra 3 libri possibili" },
   { id: "minimal", label: "Chiedimi solo se manca qualcosa di critico" },
 ];
 
@@ -56,12 +56,12 @@ export function StudioExpressPanel({
   const [language, setLanguage] = useState("Italiano");
   const [titleMode, setTitleMode] = useState<ExpressTitleMode>("suggest");
   const [title, setTitle] = useState("");
-  const [protagonistSeed, setProtagonistSeed] = useState("");
+  const [ideaSeed, setIdeaSeed] = useState("");
   const [tone, setTone] = useState("oscuro");
   const [length, setLength] = useState<ExpressForgeInput["length"]>("medio");
   const [controlLevel, setControlLevel] = useState<ExpressControlLevel>("scenarios");
 
-  const canSubmit = protagonistSeed.trim().length >= 2;
+  const canSubmit = ideaSeed.trim().length >= 4;
 
   const handleSubmit = () => {
     if (!canSubmit || preparing) return;
@@ -70,7 +70,7 @@ export function StudioExpressPanel({
       language,
       titleMode,
       title: title.trim() || undefined,
-      protagonistSeed: protagonistSeed.trim(),
+      ideaSeed: ideaSeed.trim(),
       tone,
       length,
       controlLevel,
@@ -92,7 +92,7 @@ export function StudioExpressPanel({
             Studio Express
           </p>
           <p className="mt-1 text-sm leading-6 text-white/70">
-            Poche scelte essenziali. Scriptora completa il resto e ti porta subito al blueprint.
+            Poche scelte essenziali. Scriptora costruisce il libro completo e ti propone 3 versioni forti.
           </p>
         </div>
         <button
@@ -100,7 +100,7 @@ export function StudioExpressPanel({
           onClick={onClose}
           className="shrink-0 text-xs text-white/45 hover:text-white/70"
         >
-          Chiudi
+          Voglio costruirlo con calma
         </button>
       </div>
 
@@ -167,12 +167,16 @@ export function StudioExpressPanel({
           )}
         </Field>
 
-        <Field label="Chi o cosa è al centro del libro?" className={compact ? "" : "sm:col-span-2"}>
-          <input
-            value={protagonistSeed}
-            onChange={(e) => setProtagonistSeed(e.target.value)}
-            placeholder="Es. una chef in fuga dal passato"
-            className="w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white"
+        <Field
+          label="Idea breve / protagonista / atmosfera"
+          className={compact ? "" : "sm:col-span-2"}
+        >
+          <textarea
+            value={ideaSeed}
+            onChange={(e) => setIdeaSeed(e.target.value)}
+            placeholder="Es. una restauratrice torna nella villa dove sua sorella è morta in un incendio doloso…"
+            rows={3}
+            className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm leading-6 text-white"
           />
         </Field>
 
@@ -204,7 +208,7 @@ export function StudioExpressPanel({
           </select>
         </Field>
 
-        <Field label="Livello di controllo" className={compact ? "" : "sm:col-span-2"}>
+        <Field label="Quanto vuoi guidare Scriptora?" className={compact ? "" : "sm:col-span-2"}>
           <div className="grid gap-2">
             {CONTROL_LEVELS.map((level) => (
               <button
@@ -233,14 +237,7 @@ export function StudioExpressPanel({
           className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-violet-500 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40"
         >
           {preparing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-          Prepara blueprint
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-2xl border border-white/12 px-4 py-3 text-sm font-medium text-white/70"
-        >
-          Voglio costruirlo con calma
+          Prepara 3 libri possibili
         </button>
       </div>
     </section>

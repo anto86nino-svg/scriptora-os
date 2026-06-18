@@ -211,6 +211,7 @@ function InterviewBody({
             scenarios={ctrl.state.blueprintScenarios}
             selectedId={ctrl.state.selectedBlueprintScenarioId}
             onSelect={ctrl.handleSelectBlueprintScenario}
+            onModify={ctrl.handleModifyBlueprintScenario}
             compact
           />
         )}
@@ -222,6 +223,8 @@ function InterviewBody({
           onConfirm={ctrl.handleConfirmDna}
           onCorrect={() => ctrl.setInput("Vorrei correggere: ")}
           onRefine={ctrl.handleEnableRefine}
+          onCorrectField={ctrl.handleCorrectField}
+          onApplyGeneratedField={ctrl.handleApplyGeneratedField}
         />
       </div>
     );
@@ -235,14 +238,15 @@ function InterviewBody({
 
   return (
     <div className={cn("space-y-3", unifiedScroll ? "px-4 py-4 pb-8" : "")}>
-      {!ctrl.blueprintReadyUi && !ctrl.showExpressPanel && countForgeUserAnswers(ctrl.state) < 2 && (
-        <div className="flex justify-end">
+      {!ctrl.blueprintReadyUi && !ctrl.showExpressPanel && (
+        <div className="flex items-center justify-between gap-2 rounded-2xl border border-violet-400/20 bg-violet-500/8 px-3 py-2">
+          <p className="text-xs text-white/60">Vuoi partire subito con pochi input?</p>
           <button
             type="button"
             onClick={() => ctrl.setShowExpressPanel(true)}
-            className="rounded-full border border-violet-300/30 bg-violet-500/10 px-3 py-1.5 text-[11px] font-semibold text-violet-100"
+            className="shrink-0 rounded-full border border-violet-300/35 bg-violet-500/20 px-3 py-1.5 text-[11px] font-semibold text-violet-100"
           >
-            Studio Express · Vai veloce
+            Studio Express · crea il libro in pochi click
           </button>
         </div>
       )}
@@ -257,16 +261,18 @@ function InterviewBody({
       )}
 
       {ctrl.expressPreparing && (
-        <p className="text-center text-sm text-white/55">Scriptora sta preparando 3 direzioni…</p>
+        <p className="text-center text-sm text-white/55">Scriptora sta preparando 3 libri possibili…</p>
       )}
 
       {ctrl.state.blueprintScenarios &&
         ctrl.state.blueprintScenarios.length > 0 &&
-        ctrl.showDnaPanel && (
+        ctrl.state.forgeMode === "express" &&
+        !ctrl.showDnaPanel && (
           <BlueprintScenariosPanel
             scenarios={ctrl.state.blueprintScenarios}
             selectedId={ctrl.state.selectedBlueprintScenarioId}
             onSelect={ctrl.handleSelectBlueprintScenario}
+            onModify={ctrl.handleModifyBlueprintScenario}
             compact={isMobile}
           />
         )}
@@ -374,6 +380,10 @@ function MobileInterviewOnlyBody({
   const empathicLine = ctrl.next.question?.helper;
   const showNudge = ctrl.rawNext.done && !ctrl.ready;
   const continueLabel = getContinueCtaLabel(ctrl.ready, !!ctrl.input.trim());
+  const expressScenarioPhase =
+    ctrl.state.forgeMode === "express" &&
+    (ctrl.state.blueprintScenarios?.length ?? 0) > 0 &&
+    !ctrl.showDnaPanel;
 
   return (
     <div
@@ -384,65 +394,111 @@ function MobileInterviewOnlyBody({
     >
       <div className="scriptora-forge-question-glow pointer-events-none absolute inset-x-6 top-8 h-40 rounded-full bg-violet-500/20 blur-3xl" aria-hidden />
 
-      {lastUserReply && (
-        <p className="relative mb-3 line-clamp-2 text-right text-[11px] leading-5 text-white/40">
-          Tu: {safeDisplayText(lastUserReply)}
-        </p>
-      )}
-
-      {ctrl.state.lastMemoryDiff && ctrl.state.lastMemoryDiff.newlyFilledSlots.length > 0 && (
-        <p className="relative mb-3 text-[11px] font-medium text-emerald-300/85">
-          Ok, lo tengo fermo: {getSavedSlotLabels(ctrl.state.lastMemoryDiff).join(", ")}
-        </p>
-      )}
-
-      <div className="scriptora-forge-question-card relative animate-in fade-in slide-in-from-bottom-2 duration-500">
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-200/90">
-          Scriptora
-        </p>
-        <p className="mt-2 text-[1.05rem] font-medium leading-7 text-white sm:text-lg">
-          {safeDisplayText(currentQuestion)}
-        </p>
-        {empathicLine && (
-          <p className="mt-2.5 text-sm leading-6 text-violet-100/55">{safeDisplayText(empathicLine)}</p>
-        )}
-      </div>
-
-      {ctrl.isThinking ? (
-        <div className="relative mt-4">
-          <UnderstandingPulse />
-        </div>
-      ) : ctrl.next.question?.id === FORGE_GENRE_OPENING_QUESTION_ID ? (
-        <div className="relative mt-4">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
-            Scegli famiglia e genere
-          </p>
-          <ForgeGenreFamilyPicker onSelect={(value) => ctrl.sendMessage(value)} />
-        </div>
-      ) : (
-        (ctrl.next.question?.quickSuggestions?.length ?? 0) > 0 && (
-          <div className="relative mt-4">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
-              Scegli una direzione
-            </p>
-            <QuickSuggestionChips ctrl={ctrl} premium />
-          </div>
-        )
-      )}
-
-      {showNudge && !ctrl.isThinking && (
-        <div className="relative mt-4 rounded-2xl border border-amber-300/15 bg-amber-500/[0.08] px-4 py-3">
-          <p className="text-sm leading-6 text-amber-50/90">
-            {getEditorialBlockedPrompt(ctrl.progress.dnaLock)}
-          </p>
+      {!ctrl.blueprintReadyUi && !ctrl.showExpressPanel && !expressScenarioPhase && (
+        <div className="relative mb-4 flex flex-col gap-2 rounded-2xl border border-violet-400/20 bg-violet-500/8 px-3 py-3">
+          <p className="text-xs leading-5 text-white/60">Vuoi partire subito con pochi input?</p>
           <button
             type="button"
-            onClick={ctrl.handleContinueInterview}
-            className="scriptora-forge-continue-cta mt-3 w-full rounded-xl px-4 py-2.5 text-sm font-semibold text-white"
+            onClick={() => ctrl.setShowExpressPanel(true)}
+            className="w-full rounded-xl border border-violet-300/35 bg-violet-500/20 px-3 py-2.5 text-xs font-semibold text-violet-100"
           >
-            {continueLabel}
+            Studio Express · crea il libro in pochi click
           </button>
         </div>
+      )}
+
+      {ctrl.showExpressPanel && (
+        <div className="relative mb-4">
+          <StudioExpressPanel
+            compact
+            preparing={ctrl.expressPreparing}
+            onSubmit={ctrl.handleApplyExpress}
+            onClose={() => ctrl.setShowExpressPanel(false)}
+          />
+        </div>
+      )}
+
+      {ctrl.expressPreparing && (
+        <p className="relative mb-4 text-center text-sm text-white/55">
+          Scriptora sta preparando 3 libri possibili…
+        </p>
+      )}
+
+      {expressScenarioPhase && (
+        <div className="relative mb-4">
+          <BlueprintScenariosPanel
+            scenarios={ctrl.state.blueprintScenarios!}
+            selectedId={ctrl.state.selectedBlueprintScenarioId}
+            onSelect={ctrl.handleSelectBlueprintScenario}
+            onModify={ctrl.handleModifyBlueprintScenario}
+            compact
+          />
+        </div>
+      )}
+
+      {!expressScenarioPhase && !ctrl.showExpressPanel && (
+        <>
+          {lastUserReply && (
+            <p className="relative mb-3 line-clamp-2 text-right text-[11px] leading-5 text-white/40">
+              Tu: {safeDisplayText(lastUserReply)}
+            </p>
+          )}
+
+          {ctrl.state.lastMemoryDiff && ctrl.state.lastMemoryDiff.newlyFilledSlots.length > 0 && (
+            <p className="relative mb-3 text-[11px] font-medium text-emerald-300/85">
+              Ok, lo tengo fermo: {getSavedSlotLabels(ctrl.state.lastMemoryDiff).join(", ")}
+            </p>
+          )}
+
+          <div className="scriptora-forge-question-card relative animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-200/90">
+              Scriptora
+            </p>
+            <p className="mt-2 text-[1.05rem] font-medium leading-7 text-white sm:text-lg">
+              {safeDisplayText(currentQuestion)}
+            </p>
+            {empathicLine && (
+              <p className="mt-2.5 text-sm leading-6 text-violet-100/55">{safeDisplayText(empathicLine)}</p>
+            )}
+          </div>
+
+          {ctrl.isThinking ? (
+            <div className="relative mt-4">
+              <UnderstandingPulse />
+            </div>
+          ) : ctrl.next.question?.id === FORGE_GENRE_OPENING_QUESTION_ID ? (
+            <div className="relative mt-4">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
+                Scegli famiglia e genere
+              </p>
+              <ForgeGenreFamilyPicker onSelect={(value) => ctrl.sendMessage(value)} />
+            </div>
+          ) : (
+            (ctrl.next.question?.quickSuggestions?.length ?? 0) > 0 && (
+              <div className="relative mt-4">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
+                  Scegli una direzione
+                </p>
+                <QuickSuggestionChips ctrl={ctrl} premium />
+              </div>
+            )
+          )}
+
+          {showNudge && !ctrl.isThinking && (
+            <div className="relative mt-4 rounded-2xl border border-amber-300/15 bg-amber-500/[0.08] px-4 py-3">
+              <p className="text-sm leading-6 text-amber-50/90">
+                {getEditorialBlockedPrompt(ctrl.progress.dnaLock)}
+              </p>
+              <button
+                type="button"
+                onClick={ctrl.handleContinueInterview}
+                className="scriptora-forge-continue-cta mt-3 w-full rounded-xl px-4 py-2.5 text-sm font-semibold text-white"
+              >
+                {continueLabel}
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -516,6 +572,14 @@ function InterviewInputFooter({
   const hasOptions = ctrl.autoAnswerOptions.length === 3;
   const busy = ctrl.isThinking || ctrl.autoAnswerLoading;
   const blueprintReady = ctrl.blueprintReadyUi;
+  const expressScenarioPhase =
+    ctrl.state.forgeMode === "express" &&
+    (ctrl.state.blueprintScenarios?.length ?? 0) > 0 &&
+    !ctrl.showDnaPanel;
+
+  if (ctrl.showExpressPanel || ctrl.expressPreparing || expressScenarioPhase) {
+    return null;
+  }
 
   if (blueprintReady && !ctrl.state.forgeRefineMode) {
     return (
