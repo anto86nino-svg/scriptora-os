@@ -1,5 +1,5 @@
 import type { GuidedInterviewState, InterviewQuestion } from "./types";
-import { getForgeOpeningGreeting, FORGE_OPENING_QUESTION_ID } from "./opening-experience";
+import { FORGE_OPENING_QUESTION_ID } from "./opening-experience";
 import {
   getForgeMemory,
   getMemoryProgressLabel,
@@ -7,39 +7,28 @@ import {
   selectNextMemoryQuestion,
 } from "./interview-memory";
 import { countForgeUserAnswers, isFirstForgeAssistantMessage, isTechnicalPrematureContent } from "./opening-experience";
+import {
+  getGenreSelectionQuestion,
+} from "./forge-genre-catalog";
 
 export type InterviewStage = import("./interview-memory").ForgeMemoryStage;
 
 import type { InterviewQuickSuggestion } from "./types";
 
-export const OPENING_QUICK_CHOICES: InterviewQuickSuggestion[] = [
-  { label: "Ho solo un'idea confusa", value: "Ho solo un'idea confusa, ancora sfocata." },
-  { label: "Partiamo da un personaggio", value: "Voglio partire da un personaggio che non riesco a togliermi dalla testa." },
-  { label: "Partiamo da una scena", value: "Voglio partire da una scena precisa che vedo già davanti a me." },
-  { label: "Partiamo da un titolo", value: "Ho già un titolo o un'immagine-titolo da cui partire." },
-  { label: "Guidami tu", value: "Non lo so ancora — guidami tu con domande semplici." },
-];
-
 const GENERIC_PLACEHOLDER =
   "Parla liberamente: idea, note, voce, caos… Scriptora organizzerà il resto.";
+
+export { getGenreSelectionQuestion };
+
+/** @deprecated Idea-first opening chips — genre-first flow uses getGenreSelectionQuestion */
+export const OPENING_QUICK_CHOICES: InterviewQuickSuggestion[] = [];
 
 export function resolveInterviewStage(state: GuidedInterviewState): InterviewStage {
   return resolveMemoryStage(getForgeMemory(state));
 }
 
 export function getWelcomeInterviewQuestion(state?: GuidedInterviewState): InterviewQuestion {
-  const hasIdea =
-    Boolean(state?.extracted?.promise?.trim()) ||
-    Boolean(state?.extracted?.centralConflict?.trim()) ||
-    Boolean(state?.forgeMemory?.slotValues.rawIdea);
-
-  return {
-    id: FORGE_OPENING_QUESTION_ID,
-    key: "openingSpark",
-    question: getForgeOpeningGreeting({ hasExistingIdea: hasIdea }),
-    placeholder: GENERIC_PLACEHOLDER,
-    quickSuggestions: OPENING_QUICK_CHOICES,
-  };
+  return getGenreSelectionQuestion();
 }
 
 export function selectNextForgeQuestion(state: GuidedInterviewState): InterviewQuestion | null {

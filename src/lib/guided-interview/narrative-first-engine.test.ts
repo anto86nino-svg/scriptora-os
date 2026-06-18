@@ -7,13 +7,12 @@ import {
   isRomanceMode,
 } from "./narrative-first-engine";
 
+const DARK_ROMANCE_CHIP = "Romanzo · Dark Romance · dark-romance · Narrativa";
+
 describe("narrative first engine", () => {
   it("defers admin slots until narrative core exists in romance fiction", () => {
     let state = getInitialInterviewState({ chatFirst: true });
-    state = applyInterviewAnswer(
-      state,
-      "voglio scrivere un dark romance in italiano su una ragazza fragile e un uomo pericoloso",
-    );
+    state = applyInterviewAnswer(state, DARK_ROMANCE_CHIP);
     const memory = getForgeMemory(state);
 
     expect(isRomanceMode(memory)).toBe(true);
@@ -25,17 +24,16 @@ describe("narrative first engine", () => {
 
   it("prioritizes protagonist over tone after romance recognition", () => {
     let state = getInitialInterviewState({ chatFirst: true });
+    state = applyInterviewAnswer(state, DARK_ROMANCE_CHIP);
     state = applyInterviewAnswer(
       state,
-      "voglio scrivere un dark romance in italiano su una ragagia fragile e un uomo pericoloso",
+      "voglio scrivere in italiano su una ragazza fragile e un uomo pericoloso",
     );
     const next = selectNextMemoryQuestion(state);
     expect(next?.id).not.toBe("language-confirmation");
     expect(next?.id).not.toBe("structure-preset");
     expect(next?.id).not.toBe("architect-index");
-    expect(["characters-protagonist", "characters-attraction", "characters-antagonist", "promise-preset"]).toContain(
-      next?.id,
-    );
+    expect(next?.id).toMatch(/^adaptive-dr-/);
   });
 
   it("does not ask index before narrative core", () => {

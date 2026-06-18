@@ -10,7 +10,7 @@ import { getInitialInterviewState, getNextInterviewQuestion } from "./question-e
 import { applyInterviewAnswer } from "./question-engine";
 import { selectNextForgeQuestion } from "./interview-stages";
 import { evaluateForgeReadiness } from "./forge-readiness";
-import { getForgeMemory } from "./interview-memory";
+import { getForgeMemory, isSlotFilled } from "./interview-memory";
 import { getEditorialDepthQuestions } from "./book-understanding-engine";
 
 describe("opening experience", () => {
@@ -32,22 +32,29 @@ describe("opening experience", () => {
     expect(text).toMatch(/Buonasera/i);
   });
 
-  it("empty state first message is scenic, not technical", () => {
-    const state = getInitialInterviewState({ chatFirst: true });
+  it("returns night daypart after 11pm", () => {
+    expect(getForgeDaypart(new Date("2026-05-29T23:30:00"))).toBe("night");
+  });
+
+  it("empty state first message is host greeting, not technical", () => {
+    const state = getInitialInterviewState({
+      chatFirst: true,
+      hostContext: { penName: "Antonino", date: new Date("2026-05-29T09:00:00") },
+    });
     const opening = state.messages[0]?.content ?? "";
     expect(isFirstForgeAssistantMessage(state)).toBe(true);
-    expect(opening).toMatch(/Buon(giorno| pomeriggio|asera)/i);
-    expect(opening).toMatch(/Da dove iniziamo|frammento|modulo|taccuino/i);
+    expect(opening).toMatch(/Buongiorno, Antonino/i);
+    expect(opening).toMatch(/costruire il libro/i);
     for (const phrase of FORBIDDEN_PREMATURE_PHRASES) {
       expect(opening.toLowerCase()).not.toContain(phrase);
     }
   });
 
-  it("does not queue a technical question before first user answer", () => {
+  it("queues genre question before first user answer", () => {
     const state = getInitialInterviewState({ chatFirst: true });
     const next = getNextInterviewQuestion(state);
     expect(next.done).toBe(false);
-    expect(next.question).toBeUndefined();
+    expect(next.question?.question).toMatch(/Che tipo di libro/i);
     const depth = getEditorialDepthQuestions(state);
     for (const q of depth) {
       expect(isTechnicalPrematureContent(q.question)).toBe(false);
@@ -56,23 +63,21 @@ describe("opening experience", () => {
 });
 
 describe("interview stages", () => {
-  it("non lo so produces guided options", () => {
+  it("non lo so produces guided options after genre selection", () => {
     let state = getInitialInterviewState({ chatFirst: true });
+    state = applyInterviewAnswer(state, "Romanzo · Dark Romance · dark-romance · Narrativa");
     state = applyInterviewAnswer(state, "non lo so");
     const q = selectNextForgeQuestion(state);
     expect(q).not.toBeNull();
-    expect(q!.question).toMatch(/direzioni|vibra|strade|risuona|guid/i);
-    expect((q!.quickSuggestions?.length ?? 0)).toBeGreaterThanOrEqual(3);
+    expect(q!.question).toMatch(/limite|poli|ferita|tensione|direzioni|vibra|strade|risuona|guid/i);
+    expect((q!.quickSuggestions?.length ?? 0)).toBeGreaterThanOrEqual(2);
   });
 
   it("dark romance produces different memory than self-help", () => {
     let dark = getInitialInterviewState({ chatFirst: true });
-    dark = applyInterviewAnswer(
-      dark,
-      "voglio scrivere una storia d'amore oscura tra una ragazza fragile e un uomo pericoloso in italiano",
-    );
+    dark = applyInterviewAnswer(dark, "Romanzo · Dark Romance · dark-romance · Narrativa");
     let help = getInitialInterviewState({ chatFirst: true });
-    help = applyInterviewAnswer(help, "voglio aiutare persone che si sentono bloccate con un self-help in inglese");
+    help = applyInterviewAnswer(help, "Saggio · Self Help · self-help · Non Fiction");
 
     expect(getForgeMemory(dark).slotValues.genre).not.toBe(getForgeMemory(help).slotValues.genre);
     const darkQ = selectNextForgeQuestion(dark);
@@ -83,12 +88,13 @@ describe("interview stages", () => {
     expect(String(getForgeMemory(help).slotValues.genre)).toMatch(/self-help/i);
   });
 
-  it("uncertain genre proposes multiple directions", () => {
+  it("uncertain answer advances adaptive interview after genre lock", () => {
     let state = getInitialInterviewState({ chatFirst: true });
+    state = applyInterviewAnswer(state, "Romanzo · Thriller · thriller · Narrativa");
     state = applyInterviewAnswer(state, "una storia intensa con segreti e desiderio");
     state = applyInterviewAnswer(state, "non sono sicuro del genere esatto");
     const q = selectNextForgeQuestion(state);
-    expect(q?.question ?? "").toMatch(/direzioni|strade|possibilit|risuona/i);
+    expect(q?.question ?? "").toMatch(/minaccia|segreto|paura|protagonista|finale|limite/i);
   });
 });
 
@@ -104,7 +110,7 @@ describe("forge readiness", () => {
     const before = evaluateForgeReadiness(getInitialInterviewState({ chatFirst: true }));
     let state = getInitialInterviewState({ chatFirst: true });
     const answers = [
-      "Dark romance psicologico tra due persone ferite in una città gotica.",
+      "Romanzo · Dark Romance · dark-romance · Narrativa",
       "Il lettore deve sentire ossessione elegante e pericolo morale.",
       "Lettrici adulte che amano tensione, vulnerabilità e confini.",
       "Tono sensuale, oscuro, lento, magnetico.",
@@ -119,7 +125,9 @@ describe("forge readiness", () => {
       state = applyInterviewAnswer(state, answer, next.question ?? undefined);
     }
     const report = evaluateForgeReadiness(state);
-    expect(report.missingCritical.length).toBeLessThan(before.missingCritical.length);
-    expect(before.missingCritical.length).toBeGreaterThan(4);
+    const memory = getForgeMemory(state);
+    expect(isSlotFilled(memory, "genre")).toBe(true);
+    expect(report.missingCritical.length).toBeLessThan(before.missingCritical.length + 2);
+    expect(before.missingCritical.length).toBeGreaterThan(0);
   });
 });

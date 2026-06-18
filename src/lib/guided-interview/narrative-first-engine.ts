@@ -38,9 +38,11 @@ export function detectNarrativeBookMode(
 /** Admin / PM slots — deferred until narrative core exists in fiction. */
 export const FORGE_ADMIN_SLOTS: ForgeSlotKey[] = [
   "language",
+  "authorName",
   "chapterCount",
-  "indexOutline",
   "subchaptersEnabled",
+  "marketplace",
+  "indexOutline",
   "frontMatter",
   "backMatter",
   "pov",

@@ -9,7 +9,7 @@ import {
   getInitialInterviewState,
   getNextInterviewQuestion,
 } from "@/lib/guided-interview/question-engine";
-import { generateLocalForgeAutoAnswer } from "@/lib/guided-interview/auto-answer-engine";
+import { generateThreeForgeAnswers } from "@/lib/guided-interview/auto-answer-engine";
 
 vi.mock("@/hooks/useSpeechDictation", () => ({
   useSpeechDictation: () => ({
@@ -26,7 +26,7 @@ vi.mock("@/lib/guided-interview/auto-answer-engine", async (importOriginal) => {
   return {
     ...actual,
     generateForgeAutoAnswer: vi.fn(async (input) => ({
-      answer: actual.generateLocalForgeAutoAnswer(input),
+      answers: actual.generateThreeForgeAnswers(input),
       source: "local" as const,
     })),
   };
@@ -71,7 +71,7 @@ describe("safeDisplayText regression", () => {
 });
 
 describe("GuidedInterviewPanel auto-answer", () => {
-  it("renders quick suggestion chips with {label,value} without crashing", () => {
+  it("renders Genera 3 risposte without crashing", () => {
     render(
       <GuidedInterviewPanel
         variant="mobile"
@@ -81,10 +81,10 @@ describe("GuidedInterviewPanel auto-answer", () => {
       />,
     );
 
-    expect(screen.getByText(/Scrivi per me/i)).toBeInTheDocument();
+    expect(screen.getByText(/Genera 3 risposte/i)).toBeInTheDocument();
   });
 
-  it("inserts generated draft into textarea without auto-submit", async () => {
+  it("shows 3 selectable cards after generation", async () => {
     render(
       <GuidedInterviewPanel
         variant="mobile"
@@ -94,17 +94,45 @@ describe("GuidedInterviewPanel auto-answer", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Scrivi per me/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Genera 3 risposte/i }));
 
     await waitFor(() => {
-      const textarea = screen.getByPlaceholderText(/Scrivi la tua risposta/i) as HTMLTextAreaElement;
-      expect(textarea.value.length).toBeGreaterThan(20);
+      expect(screen.getAllByText(/Usa questa risposta/i)).toHaveLength(3);
+      expect(screen.getByText("Safe")).toBeInTheDocument();
+      expect(screen.getByText("Commercial")).toBeInTheDocument();
+      expect(screen.getByText("Bold")).toBeInTheDocument();
+    });
+  });
+
+  it("selecting a card advances interview without filling textarea", async () => {
+    render(
+      <GuidedInterviewPanel
+        variant="mobile"
+        chatFirst
+        unifiedScroll
+        language="Italian"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Genera 3 risposte/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Usa questa risposta/i)).toHaveLength(3);
+    });
+
+    const textarea = screen.getByPlaceholderText(/Scrivi la tua risposta/i) as HTMLTextAreaElement;
+    expect(textarea.value).toBe("");
+
+    fireEvent.click(screen.getAllByRole("button", { name: /Usa questa risposta/i })[0]);
+
+    await waitFor(() => {
+      expect(screen.queryAllByText(/Usa questa risposta/i)).toHaveLength(0);
     });
   });
 });
 
 describe("auto-answer confirm advances interview", () => {
-  it("confirming generated answer updates interview state", () => {
+  it("confirming a suggested answer updates interview state", () => {
     let state = getInitialInterviewState({ chatFirst: true });
     const next = getNextInterviewQuestion(state);
     const question = next.question ?? {
@@ -113,17 +141,18 @@ describe("auto-answer confirm advances interview", () => {
       question: "Da dove iniziamo?",
     };
 
-    const draft = generateLocalForgeAutoAnswer({
+    const options = generateThreeForgeAnswers({
       state,
       question,
       language: "Italian",
     });
+    const selected = options[0].text;
 
     const beforeCount = state.messages.filter((m) => m.role === "user").length;
-    state = applyInterviewAnswer(state, draft, question);
+    state = applyInterviewAnswer(state, selected, question);
     const afterCount = state.messages.filter((m) => m.role === "user").length;
 
     expect(afterCount).toBe(beforeCount + 1);
-    expect(state.messages.some((m) => m.role === "user" && m.content === draft)).toBe(true);
+    expect(state.messages.some((m) => m.role === "user" && m.content === selected)).toBe(true);
   });
 });

@@ -4,7 +4,11 @@ import { DEPTH_KEY_TO_CRITICAL } from "./interview-continue";
 import { countForgeUserAnswers } from "./opening-experience";
 import {
   BOOK_TYPE_PRESETS,
-  GENRE_DIRECTION_PRESETS,
+  CHAPTER_BREATHING_PRESETS,
+  BACK_MATTER_PRESETS,
+  FRONT_MATTER_PRESETS,
+  MARKETPLACE_PRESETS,
+  SUBCHAPTER_PRESETS,
   LANGUAGE_PRESETS,
   LENGTH_PRESETS,
   STRUCTURE_PRESETS,
@@ -20,6 +24,24 @@ import {
   isRomanceMode,
   pickNextNarrativeSlot,
 } from "./narrative-first-engine";
+import { selectAdaptiveGenreQuestion } from "./adaptive-genre-interview";
+import {
+  FORGE_GENRE_OPENING_QUESTION_ID,
+  isGenreSlotLocked,
+  resolveGenreCatalogFromAnswer,
+  getGenreSelectionQuestion,
+} from "./forge-genre-catalog";
+import {
+  isSlotProgressionLocked,
+  sortSlotsByProgression,
+} from "./progression-lock-engine";
+import {
+  clearPendingSlotConfirmation,
+  collectDeducedSlots,
+  queueDeducedSlotConfirmations,
+  resolveSlotConfirmationAnswer,
+  selectNextSlotConfirmationQuestion,
+} from "./slot-deduction-engine";
 
 export type ForgeMemoryStage =
   | "welcome"
@@ -40,6 +62,7 @@ export type ForgeMemoryStage =
 export type ForgeSlotKey =
   | "rawIdea"
   | "language"
+  | "authorName"
   | "bookType"
   | "genre"
   | "subgenre"
@@ -55,6 +78,7 @@ export type ForgeSlotKey =
   | "endingDirection"
   | "chapterCount"
   | "subchaptersEnabled"
+  | "marketplace"
   | "pov"
   | "tense"
   | "title"
@@ -85,6 +109,7 @@ export type ForgeInterviewMemory = {
   confirmedPresets: string[];
   usefulAnswerCount: number;
   lastRecapAtAnswer?: number;
+  pendingSlotConfirmations?: Partial<Record<ForgeSlotKey, string>>;
 };
 
 export type ForgeMemoryDiff = {
@@ -145,6 +170,11 @@ const CRITICAL_TO_SLOT: Record<string, ForgeSlotKey> = {
   structurePreference: "pov",
   bookTitle: "title",
   language: "language",
+  authorName: "authorName",
+  marketplace: "marketplace",
+  frontMatter: "frontMatter",
+  backMatter: "backMatter",
+  subchaptersPreference: "subchaptersEnabled",
   bookType: "bookType",
   setting: "setting",
 };
@@ -152,9 +182,14 @@ const CRITICAL_TO_SLOT: Record<string, ForgeSlotKey> = {
 const SLOT_TO_EXTRACTED: Partial<Record<ForgeSlotKey, string>> = {
   rawIdea: "readerTransformation",
   language: "language",
+  authorName: "authorName",
   bookType: "bookType",
   genre: "genre",
   subgenre: "subgenre",
+  marketplace: "marketplace",
+  frontMatter: "frontMatter",
+  backMatter: "backMatter",
+  subchaptersEnabled: "subchaptersPreference",
   tone: "emotionalTone",
   audience: "targetReader",
   promise: "promise",
@@ -176,7 +211,12 @@ const SLOT_TO_EXTRACTED: Partial<Record<ForgeSlotKey, string>> = {
 };
 
 const QUESTION_INTENT_ALIASES: Record<string, string[]> = {
-  language: ["language", "language-confirmation", "confirm-language"],
+  language: ["language", "language-confirmation", "confirm-language", "author-identity"],
+  authorName: ["author", "author-identity", "author-identity-preset", "confirm-author"],
+  marketplace: ["marketplace", "marketplace-preset", "cfg-marketplace"],
+  frontMatter: ["front-matter", "frontMatter", "cfg-front-matter"],
+  backMatter: ["back-matter", "backMatter", "cfg-back-matter"],
+  subchaptersEnabled: ["subchapters", "subchapters-preset"],
   genre: ["genre", "genre-confirmation", "stage-direction", "genre-direction", "book-type"],
   tone: ["tone", "stage-genre", "emotional-tone"],
   audience: ["audience", "target-reader", "stage-audience"],
@@ -203,6 +243,7 @@ export function createEmptyForgeMemory(): ForgeInterviewMemory {
     suggestedPresets: [],
     confirmedPresets: [],
     usefulAnswerCount: 0,
+    pendingSlotConfirmations: {},
   };
 }
 
@@ -222,6 +263,7 @@ function hydrateMemoryFromState(
 
   syncSlot(memory, "rawIdea", ex.readerTransformation || firstUserMessage(state));
   syncSlot(memory, "language", ex.language);
+  syncSlot(memory, "authorName", ex.authorName);
   syncSlot(memory, "bookType", ex.bookType || state.selectedBookType);
   syncSlot(memory, "genre", ex.genre || state.selectedGenre || ex.genreDNA);
   syncSlot(memory, "subgenre", ex.subgenre || state.inferredProfile?.subgenre);
@@ -235,9 +277,13 @@ function hydrateMemoryFromState(
   syncSlot(memory, "narrativeArc", ex.narrativeArc);
   syncSlot(memory, "endingDirection", ex.narrativeDrive || ex.endingDirection);
   syncSlot(memory, "chapterCount", ex.chapterCount);
+  syncSlot(memory, "subchaptersEnabled", ex.subchaptersPreference);
   syncSlot(memory, "indexOutline", ex.indexOutline);
   syncSlot(memory, "title", ex.bookTitle);
   syncSlot(memory, "subtitle", ex.bookSubtitle);
+  syncSlot(memory, "marketplace", ex.marketplace);
+  syncSlot(memory, "frontMatter", ex.frontMatter);
+  syncSlot(memory, "backMatter", ex.backMatter);
   syncSlot(memory, "method", ex.genreDNA);
   syncSlot(memory, "problem", ex.centralConflict);
   syncSlot(memory, "outcome", ex.readerTransformation);
@@ -337,6 +383,8 @@ function questionKeyToSlot(questionKey: string): ForgeSlotKey | null {
   const intent = questionIntent(questionKey);
   const map: Record<string, ForgeSlotKey> = {
     language: "language",
+    authorName: "authorName",
+    marketplace: "marketplace",
     genre: "genre",
     tone: "tone",
     audience: "audience",
@@ -429,8 +477,13 @@ export function getCriticalMissingSlots(memory: ForgeInterviewMemory): ForgeSlot
   const narrativeFiction = isNarrativeFictionBook(memory);
   const coreReady = !narrativeFiction || hasNarrativeCore(memory);
 
-  if (!isSlotFilled(memory, "rawIdea")) missing.push("rawIdea");
-  if (!isSlotFilled(memory, "genre") && !isSlotFilled(memory, "bookType")) missing.push("genre");
+  if (!isGenreSlotLocked(memory)) {
+    if (!isSlotFilled(memory, "genre") && !isSlotFilled(memory, "bookType")) {
+      missing.push("genre");
+    }
+  } else if (!isSlotFilled(memory, "rawIdea")) {
+    missing.push("rawIdea");
+  }
 
   if (mode === "fiction") {
     if (!isSlotFilled(memory, "protagonist")) missing.push("protagonist");
@@ -452,11 +505,18 @@ export function getCriticalMissingSlots(memory: ForgeInterviewMemory): ForgeSlot
   }
 
   if (!isSlotFilled(memory, "language")) missing.push("language");
+  if (!isSlotFilled(memory, "authorName")) missing.push("authorName");
   if (!isSlotFilled(memory, "tone")) missing.push("tone");
   if (!isSlotFilled(memory, "audience")) missing.push("audience");
   if (!isSlotFilled(memory, "chapterCount") && !isSlotFilled(memory, "pov")) {
     missing.push("chapterCount");
   }
+  if (isSlotFilled(memory, "chapterCount") && !isSlotFilled(memory, "subchaptersEnabled")) {
+    missing.push("subchaptersEnabled");
+  }
+  if (!isSlotFilled(memory, "marketplace")) missing.push("marketplace");
+  if (!isSlotFilled(memory, "frontMatter")) missing.push("frontMatter");
+  if (!isSlotFilled(memory, "backMatter")) missing.push("backMatter");
   if (!isSlotFilled(memory, "title")) missing.push("title");
 
   if (mode === "fiction") {
@@ -477,8 +537,12 @@ export function getCriticalMissingSlots(memory: ForgeInterviewMemory): ForgeSlot
 
 export function getNextBestMissingSlot(memory: ForgeInterviewMemory): ForgeSlotKey | null {
   const missing = getCriticalMissingSlots(memory);
+  const sorted = sortSlotsByProgression(
+    memory,
+    missing.filter((slot) => !isSlotProgressionLocked(memory, slot)),
+  );
   if (isNarrativeFictionBook(memory)) {
-    return pickNextNarrativeSlot(memory, missing);
+    return pickNextNarrativeSlot(memory, sorted) ?? sorted[0] ?? null;
   }
 
   const stageSlot: Partial<Record<ForgeMemoryStage, ForgeSlotKey>> = {
@@ -495,16 +559,24 @@ export function getNextBestMissingSlot(memory: ForgeInterviewMemory): ForgeSlotK
     title: "title",
   };
 
+  const earlyAdmin: ForgeSlotKey[] = ["language", "authorName"];
+  for (const slot of earlyAdmin) {
+    if (sorted.includes(slot)) return slot;
+  }
+
   for (const stage of FORGE_STAGE_ORDER) {
     const slot = stageSlot[stage];
-    if (slot && missing.includes(slot)) return slot;
+    if (slot && sorted.includes(slot)) return slot;
   }
-  return missing[0] ?? null;
+  return sorted[0] ?? null;
 }
 
 export function resolveMemoryStage(memory: ForgeInterviewMemory): ForgeMemoryStage {
+  if (!isGenreSlotLocked(memory)) {
+    return memory.usefulAnswerCount > 0 ? "genre" : "welcome";
+  }
   if (!isSlotFilled(memory, "rawIdea")) {
-    return memory.usefulAnswerCount > 0 ? "spark" : "welcome";
+    return memory.usefulAnswerCount > 1 ? "spark" : "genre";
   }
   if (!isSlotFilled(memory, "bookType") && !isSlotFilled(memory, "genre")) return "book-type";
   if (!isSlotFilled(memory, "genre")) return "genre";
@@ -540,7 +612,15 @@ export function resolveMemoryStage(memory: ForgeInterviewMemory): ForgeMemorySta
   }
 
   if (!isSlotFilled(memory, "language")) return "language";
+  if (!isSlotFilled(memory, "authorName")) return "language";
   if (!isSlotFilled(memory, "chapterCount") && !isSlotFilled(memory, "pov")) return "structure";
+  if (!isSlotFilled(memory, "subchaptersEnabled") && isSlotFilled(memory, "chapterCount")) {
+    return "structure";
+  }
+  if (!isSlotFilled(memory, "marketplace")) return "structure";
+  if (!isSlotFilled(memory, "frontMatter") || !isSlotFilled(memory, "backMatter")) {
+    return "title";
+  }
   if (!isSlotFilled(memory, "indexOutline") && narrativeFiction) return "index";
   if (!isSlotFilled(memory, "title")) return "title";
   return "dna-lock";
@@ -570,7 +650,7 @@ export function updateForgeMemoryFromAnswer(
   userAnswer: string,
   activeQuestion?: Pick<InterviewQuestion, "id" | "key">,
 ): { memory: ForgeInterviewMemory; diff: ForgeMemoryDiff } {
-  const memory = getForgeMemory(state);
+  let memory = getForgeMemory(state);
   const diff: ForgeMemoryDiff = {
     newlyFilledSlots: [],
     updatedSlots: [],
@@ -591,6 +671,20 @@ export function updateForgeMemoryFromAnswer(
     Object.assign(memory, markQuestionAsked(activeQuestion.id, memory));
   }
 
+  const confirmation = resolveSlotConfirmationAnswer(
+    activeQuestion ?? { id: "", key: "" },
+    userAnswer,
+    memory,
+  );
+  if (confirmation) {
+    if (confirmation.reject) {
+      memory = clearPendingSlotConfirmation(memory, confirmation.slot);
+    } else if (confirmation.value) {
+      applySlot(memory, confirmation.slot, confirmation.value, diff);
+      memory = clearPendingSlotConfirmation(memory, confirmation.slot);
+    }
+  }
+
   const parsedLanguage = parseLanguage(userAnswer);
   const parsedGenre = parseGenre(userAnswer);
   const parsedChapters = parseChapterCount(userAnswer);
@@ -598,12 +692,24 @@ export function updateForgeMemoryFromAnswer(
   const parsedTone = parseTone(userAnswer);
 
   if (parsedLanguage) applySlot(memory, "language", parsedLanguage, diff);
-  if (parsedGenre.genre) applySlot(memory, "genre", parsedGenre.genre, diff);
-  if (parsedGenre.bookType) applySlot(memory, "bookType", parsedGenre.bookType, diff);
-  if (parsedGenre.subgenre) applySlot(memory, "subgenre", parsedGenre.subgenre, diff);
+  const catalogEntry = resolveGenreCatalogFromAnswer(userAnswer);
+  if (catalogEntry) {
+    applySlot(memory, "bookType", catalogEntry.bookType, diff);
+    applySlot(memory, "genre", catalogEntry.subgenre ?? catalogEntry.label, diff);
+    applySlot(memory, "subgenre", catalogEntry.subgenre ?? catalogEntry.label, diff);
+  } else {
+    if (parsedGenre.genre) applySlot(memory, "genre", parsedGenre.genre, diff);
+    if (parsedGenre.bookType) applySlot(memory, "bookType", parsedGenre.bookType, diff);
+    if (parsedGenre.subgenre) applySlot(memory, "subgenre", parsedGenre.subgenre, diff);
+  }
   if (parsedChapters) applySlot(memory, "chapterCount", String(parsedChapters), diff);
   if (parsedPov) applySlot(memory, "pov", parsedPov, diff);
   if (parsedTone) applySlot(memory, "tone", parsedTone, diff);
+
+  if (!confirmation) {
+    const deduced = collectDeducedSlots(state, userAnswer, activeQuestion);
+    memory = queueDeducedSlotConfirmations(memory, deduced);
+  }
 
   const inference = inferBookProfileFromText(
     [...state.messages.filter((m) => m.role === "user").map((m) => m.content), userAnswer].join("\n"),
@@ -656,6 +762,11 @@ function slotFromQuestionKey(key: string): ForgeSlotKey | null {
     openingSpark: "rawIdea",
     readerTransformation: "rawIdea",
     language: "language",
+    authorName: "authorName",
+    marketplace: "marketplace",
+    frontMatter: "frontMatter",
+    backMatter: "backMatter",
+    subchaptersPreference: "subchaptersEnabled",
     bookType: "bookType",
     genre: "genre",
     genreDNA: "genre",
@@ -721,6 +832,10 @@ export function buildForgeMemoryRecap(memory: ForgeInterviewMemory): string | nu
 function humanSlotLabel(slot: ForgeSlotKey): string {
   const labels: Partial<Record<ForgeSlotKey, string>> = {
     language: "la lingua",
+    authorName: "il nome autore",
+    marketplace: "il marketplace",
+    frontMatter: "il front matter",
+    backMatter: "il back matter",
     genre: "il genere",
     tone: "il tono",
     audience: "il lettore ideale",
@@ -802,10 +917,36 @@ function presetQuestionForSlot(
           intent: "confirm-language",
           key: "language",
           text: hasNarrativeCore(memory)
-            ? "Confermiamo la lingua definitiva del libro?"
-            : "Annoto la lingua — la confermeremo quando avremo il cuore della storia.",
+            ? "In che lingua vuoi che viva questo libro?"
+            : "Prima decisione tecnica: in che lingua scriviamo?",
           quickChoices: LANGUAGE_PRESETS,
           shouldAsk: (m) => !isSlotFilled(m, "language"),
+        },
+        memory,
+      );
+    case "authorName":
+      return buildQuestionFromDef(
+        {
+          id: "author-identity-preset",
+          slotTarget: "authorName",
+          stage: "language",
+          intent: "confirm-author",
+          key: "authorName",
+          text: "Con quale nome deve firmare questo libro sul mercato?",
+          helper: "Pen name, pseudonimo o identità editoriale — quella che vedrà il lettore.",
+          quickChoices: memory.slotValues.authorName
+            ? [
+                {
+                  label: `Sì, ${String(memory.slotValues.authorName)}`,
+                  value: String(memory.slotValues.authorName),
+                },
+                { label: "Decidiamo dopo", value: "Titolo provvisorio autore — decidiamo dopo." },
+              ]
+            : [
+                { label: "Uso il mio pen name", value: "Uso il pen name configurato nel profilo." },
+                { label: "Decidiamo dopo", value: "Decidiamo il nome autore più avanti." },
+              ],
+          shouldAsk: (m) => !isSlotFilled(m, "authorName"),
         },
         memory,
       );
@@ -824,19 +965,10 @@ function presetQuestionForSlot(
         memory,
       );
     case "genre":
-      return buildQuestionFromDef(
-        {
-          id: "genre-direction",
-          slotTarget: "genre",
-          stage: "genre",
-          intent: "confirm-genre",
-          key: "genreDNA",
-          text: "Tra queste direzioni, quale ti convince di più — o quale ti fa più paura?",
-          quickChoices: GENRE_DIRECTION_PRESETS,
-          shouldAsk: (m) => !isSlotFilled(m, "genre"),
-        },
-        memory,
-      );
+      if (!isSlotFilled(memory, "genre")) {
+        return getGenreSelectionQuestion();
+      }
+      return null;
     case "tone":
       return buildQuestionFromDef(
         {
@@ -1036,12 +1168,70 @@ function presetQuestionForSlot(
           stage: "structure",
           intent: "confirm-structure",
           key: "structurePreference",
-          text: "Quanti capitoli e che POV senti più giusti per questa storia?",
-          quickChoices: [...LENGTH_PRESETS.slice(0, 3), ...STRUCTURE_PRESETS.slice(0, 3)],
+          text: "Che respiro vuoi dare al libro?",
+          quickChoices: CHAPTER_BREATHING_PRESETS,
           shouldAsk: (m) =>
             hasNarrativeCore(m) &&
             !isSlotFilled(m, "chapterCount") &&
             !isSlotFilled(m, "pov"),
+        },
+        memory,
+      );
+    case "subchaptersEnabled":
+      return buildQuestionFromDef(
+        {
+          id: "subchapters-preset",
+          slotTarget: "subchaptersEnabled",
+          stage: "structure",
+          intent: "confirm-subchapters",
+          key: "subchaptersPreference",
+          text: "Dentro ogni capitolo vuoi sottocapitoli — o flusso continuo?",
+          quickChoices: SUBCHAPTER_PRESETS,
+          shouldAsk: (m) =>
+            isSlotFilled(m, "chapterCount") && !isSlotFilled(m, "subchaptersEnabled"),
+        },
+        memory,
+      );
+    case "marketplace":
+      return buildQuestionFromDef(
+        {
+          id: "marketplace-preset",
+          slotTarget: "marketplace",
+          stage: "structure",
+          intent: "confirm-marketplace",
+          key: "marketplace",
+          text: "Dove immagini questo libro vivere davvero?",
+          helper: "Il marketplace influenza titolo, hook e struttura commerciale.",
+          quickChoices: MARKETPLACE_PRESETS,
+          shouldAsk: (m) => !isSlotFilled(m, "marketplace"),
+        },
+        memory,
+      );
+    case "frontMatter":
+      return buildQuestionFromDef(
+        {
+          id: "front-matter-preset",
+          slotTarget: "frontMatter",
+          stage: "title",
+          intent: "confirm-front-matter",
+          key: "frontMatter",
+          text: "Prima del capitolo uno — prefazione, dedica o partiamo subito?",
+          quickChoices: FRONT_MATTER_PRESETS,
+          shouldAsk: (m) => !isSlotFilled(m, "frontMatter"),
+        },
+        memory,
+      );
+    case "backMatter":
+      return buildQuestionFromDef(
+        {
+          id: "back-matter-preset",
+          slotTarget: "backMatter",
+          stage: "title",
+          intent: "confirm-back-matter",
+          key: "backMatter",
+          text: "Dopo l'ultima pagina — ringraziamenti, note, appendice?",
+          quickChoices: BACK_MATTER_PRESETS,
+          shouldAsk: (m) => !isSlotFilled(m, "backMatter"),
         },
         memory,
       );
@@ -1139,6 +1329,35 @@ export function selectNextMemoryQuestion(state: GuidedInterviewState): Interview
   const lastAnswer = state.messages.filter((m) => m.role === "user").pop()?.content ?? "";
 
   if (countForgeUserAnswers(state) === 0) return null;
+
+  if (isGenreSlotLocked(memory)) {
+    if (!isSlotFilled(memory, "language") && !memory.pendingSlotConfirmations?.language) {
+      const langQ = presetQuestionForSlot("language", memory);
+      if (langQ && !isQuestionAlreadyAnswered(langQ.id, memory)) {
+        return withRecap(state, memory, langQ);
+      }
+    }
+
+    const confirmQ = selectNextSlotConfirmationQuestion(memory);
+    if (confirmQ) {
+      const slot = confirmQ.id.replace("confirm-deduced-", "") as ForgeSlotKey;
+      if (slot !== "authorName" || isSlotFilled(memory, "language")) {
+        return withRecap(state, memory, confirmQ);
+      }
+    }
+
+    for (const earlySlot of ["authorName"] as ForgeSlotKey[]) {
+      if (isSlotFilled(memory, earlySlot)) continue;
+      if (memory.pendingSlotConfirmations?.[earlySlot]) continue;
+      const earlyQ = presetQuestionForSlot(earlySlot, memory);
+      if (earlyQ && !isQuestionAlreadyAnswered(earlyQ.id, memory)) {
+        return withRecap(state, memory, earlyQ);
+      }
+    }
+
+    const adaptive = selectAdaptiveGenreQuestion(memory);
+    if (adaptive) return withRecap(state, memory, adaptive);
+  }
 
   if (isUncertainUserAnswer(lastAnswer)) {
     const slot = getNextBestMissingSlot(memory);

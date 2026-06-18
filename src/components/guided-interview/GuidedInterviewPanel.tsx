@@ -16,10 +16,16 @@ import { MobileForgeScrollShell } from "@/mobile/MobileForgeScrollShell";
 import { cn } from "@/lib/utils";
 import { safeDisplayText, safeQuickSuggestionLabel, safeQuickSuggestionValue } from "@/lib/safe-display-text";
 import { FORGE_AUTO_ANSWER_TONE_CHIPS } from "@/lib/guided-interview/auto-answer-engine";
+import type { ForgeSuggestedAnswer } from "@/lib/guided-interview/auto-answer-engine";
+import { FORGE_GENRE_OPENING_QUESTION_ID } from "@/lib/guided-interview/forge-genre-catalog";
+import { ForgeGenreFamilyPicker } from "./ForgeGenreFamilyPicker";
 
 type GuidedInterviewPanelProps = {
   selectedGenre?: string;
   language?: string;
+  penName?: string;
+  authorName?: string;
+  genderHint?: "m" | "f" | "neutral";
   variant?: "desktop" | "mobile";
   chatFirst?: boolean;
   hideHeader?: boolean;
@@ -34,6 +40,9 @@ type GuidedInterviewPanelProps = {
 export function GuidedInterviewPanel({
   selectedGenre,
   language = "Italian",
+  penName,
+  authorName,
+  genderHint,
   variant = "desktop",
   chatFirst = true,
   hideHeader = false,
@@ -50,6 +59,9 @@ export function GuidedInterviewPanel({
   const ctrl = useGuidedInterviewController({
     selectedGenre,
     language,
+    penName,
+    authorName,
+    genderHint,
     chatFirst,
     isMobile,
     interviewOnly,
@@ -241,8 +253,13 @@ function InterviewBody({
         <p className="text-xs leading-5 text-white/45">{ctrl.next.question.helper}</p>
       )}
 
-      {!ctrl.next.done && (ctrl.next.question?.quickSuggestions?.length ?? 0) > 0 && (
+      {!ctrl.next.done && (ctrl.next.question?.quickSuggestions?.length ?? 0) > 0 &&
+        ctrl.next.question?.id !== FORGE_GENRE_OPENING_QUESTION_ID && (
         <QuickSuggestionChips ctrl={ctrl} />
+      )}
+
+      {!ctrl.next.done && ctrl.next.question?.id === FORGE_GENRE_OPENING_QUESTION_ID && (
+        <ForgeGenreFamilyPicker onSelect={(value) => ctrl.sendMessage(value)} />
       )}
 
       {ctrl.ready && !ctrl.showDnaPanel && !unifiedScroll && (
@@ -340,6 +357,13 @@ function MobileInterviewOnlyBody({
         <div className="relative mt-4">
           <UnderstandingPulse />
         </div>
+      ) : ctrl.next.question?.id === FORGE_GENRE_OPENING_QUESTION_ID ? (
+        <div className="relative mt-4">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">
+            Scegli famiglia e genere
+          </p>
+          <ForgeGenreFamilyPicker onSelect={(value) => ctrl.sendMessage(value)} />
+        </div>
       ) : (
         (ctrl.next.question?.quickSuggestions?.length ?? 0) > 0 && (
           <div className="relative mt-4">
@@ -434,7 +458,7 @@ function InterviewInputFooter({
   unifiedScroll?: boolean;
   interviewOnly?: boolean;
 }) {
-  const hasDraft = Boolean(ctrl.autoAnswerDraft?.trim());
+  const hasOptions = ctrl.autoAnswerOptions.length === 3;
   const busy = ctrl.isThinking || ctrl.autoAnswerLoading;
 
   return (
@@ -444,7 +468,7 @@ function InterviewInputFooter({
         unifiedScroll ? "pb-3" : "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
       )}
     >
-      {interviewOnly && (
+      {interviewOnly && !hasOptions && (
         <p className="mb-2 text-[10px] font-medium tracking-wide text-white/40">
           Oppure raccontamelo con parole tue…
         </p>
@@ -457,10 +481,37 @@ function InterviewInputFooter({
           🎙️ Scriptora ti sta ascoltando…
         </p>
       )}
-      {hasDraft && (
-        <p className="mb-2 text-[10px] leading-5 text-violet-200/70">
-          Modifica prima di continuare — poi conferma con invio.
-        </p>
+      {hasOptions && (
+        <div className="mb-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-200/80">
+              Scegli una direzione
+            </p>
+            <button
+              type="button"
+              onClick={() => ctrl.generateAutoAnswer(true)}
+              disabled={busy}
+              className="inline-flex items-center gap-1 rounded-lg border border-white/12 px-2 py-1 text-[10px] font-semibold text-white/70 hover:bg-white/10 disabled:opacity-40"
+            >
+              {ctrl.autoAnswerLoading ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3 w-3" />
+              )}
+              Rigenera
+            </button>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {ctrl.autoAnswerOptions.map((option) => (
+              <SuggestedAnswerCard
+                key={option.id}
+                option={option}
+                disabled={busy}
+                onSelect={() => ctrl.handleSelectSuggestedAnswer(option)}
+              />
+            ))}
+          </div>
+        </div>
       )}
       <div className="mb-2 flex flex-wrap gap-1.5">
         {FORGE_AUTO_ANSWER_TONE_CHIPS.map((chip) => (
@@ -524,13 +575,13 @@ function InterviewInputFooter({
           disabled={!ctrl.input.trim() || busy}
           className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-violet-500 text-white disabled:opacity-40"
           aria-label="Conferma"
-          title="Usa questa risposta"
+          title="Invia risposta manuale"
         >
           <Send className="h-4 w-4" />
         </button>
       </div>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        {!hasDraft ? (
+      {!hasOptions && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => ctrl.generateAutoAnswer(false)}
@@ -542,30 +593,57 @@ function InterviewInputFooter({
             ) : (
               <Sparkles className="h-3.5 w-3.5" />
             )}
-            Scrivi per me
+            Genera 3 risposte
           </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => ctrl.generateAutoAnswer(true)}
-            disabled={busy}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-xl border border-white/12 bg-white/[0.05] px-3 py-2 text-[11px] font-semibold text-white/80 transition hover:bg-white/10 disabled:opacity-40"
-          >
-            {ctrl.autoAnswerLoading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <RefreshCw className="h-3.5 w-3.5" />
-            )}
-            Rigenera
-          </button>
-        )}
-        {hasDraft && (
-          <span className="text-[10px] text-white/40">
-            Variante {ctrl.autoAnswerVariantCount + 1}
-          </span>
-        )}
-      </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+const STRATEGY_LABELS: Record<ForgeSuggestedAnswer["strategy"], string> = {
+  safe: "Safe",
+  commercial: "Commercial",
+  bold: "Bold",
+};
+
+const STRATEGY_STYLES: Record<ForgeSuggestedAnswer["strategy"], string> = {
+  safe: "border-emerald-400/25 bg-emerald-500/10",
+  commercial: "border-sky-400/25 bg-sky-500/10",
+  bold: "border-amber-400/30 bg-amber-500/10",
+};
+
+function SuggestedAnswerCard({
+  option,
+  disabled,
+  onSelect,
+}: {
+  option: ForgeSuggestedAnswer;
+  disabled?: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <article
+      className={cn(
+        "flex min-h-[120px] flex-col rounded-2xl border p-3",
+        STRATEGY_STYLES[option.strategy],
+      )}
+    >
+      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/70">
+        {STRATEGY_LABELS[option.strategy]}
+      </p>
+      <p className="mt-2 flex-1 text-[11px] leading-5 text-white/85 line-clamp-5">
+        {option.text}
+      </p>
+      <button
+        type="button"
+        onClick={onSelect}
+        disabled={disabled}
+        className="mt-3 w-full rounded-xl bg-violet-500 px-3 py-2 text-[11px] font-semibold text-white transition hover:bg-violet-400 disabled:opacity-40"
+      >
+        Usa questa risposta
+      </button>
+    </article>
   );
 }
 

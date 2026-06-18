@@ -29,15 +29,22 @@ import { initialPhaseAfterBlueprint, phaseAfterAllChapters } from "@/lib/matter-
 import { scaffoldMatterForApprovedBlueprint } from "@/lib/matter-scaffold";
 import { refreshProjectLongBookMemory } from "@/lib/long-book-memory";
 import { isMemoryConsistencyV25Enabled, refreshProjectMemoryConsistencyV25 } from "@/lib/memory-consistency-v25";
+import { refreshProjectMemoryGraph } from "@/lib/memory-graph/graph-updater";
+import { RecoveryEngine, CHECKPOINT_PERCENTS } from "@/lib/recovery-engine";
 import {
   consultIntelligenceLayer,
   getWriterEngineContext,
 } from "@/lib/intelligence-layer";
 
 function refreshProjectNarrativeMemory(project: BookProject): BookProject {
-  return isMemoryConsistencyV25Enabled()
+  const withLongMemory = isMemoryConsistencyV25Enabled()
     ? refreshProjectMemoryConsistencyV25(project)
     : refreshProjectLongBookMemory(project);
+  try {
+    return refreshProjectMemoryGraph(withLongMemory);
+  } catch {
+    return withLongMemory;
+  }
 }
 import { BlueprintValidationError, buildFallbackBlueprintFromConfig } from "@/lib/blueprint-recovery";
 import { toast } from "sonner";
@@ -129,16 +136,15 @@ function stripGeneratedHeading(text: string): string {
     .trim();
 }
 
-function recoveredStatusForContent(content: string): GenerationStatus {
-  const words = countWordsSafe(content);
-  if (words >= 120) return "completed_with_warning";
-  if (words >= 35) return "recovered_partial";
-  return "failed_empty";
+function hasRecoverableChapterContent(content: unknown): boolean {
+  return RecoveryEngine.hasRecoverableContent(content);
 }
 
-function hasRecoverableChapterContent(content: unknown): boolean {
-  return recoveredStatusForContent(String(content || "")) !== "failed_empty";
+function recoveredStatusForContent(content: string): GenerationStatus {
+  return RecoveryEngine.classifyPartialSuccess(content).status;
 }
+
+const chapterCheckpointSaved = new Map<string, Set<number>>();
 
 async function getActivePlanForEngine() {
   return isDevMode() ? getDevPlanOverride() : await fetchPlan();
@@ -441,6 +447,7 @@ typeof crypto.randomUUID === "function"
     }
 
     addGenerating("blueprint");
+    RecoveryEngine.snapshotBeforePhase(p, "blueprint");
     updateAndSave(pr => ({
       ...pr,
       blueprintStatus: "generating" as GenerationStatus,
@@ -531,6 +538,7 @@ typeof crypto.randomUUID === "function"
     }
 
     addGenerating("blueprint");
+    RecoveryEngine.snapshotBeforePhase(p, "blueprint");
     updateAndSave(pr => ({
       ...pr,
       blueprintStatus: "generating" as GenerationStatus,
@@ -794,6 +802,8 @@ typeof crypto.randomUUID === "function"
     }
 
     addGenerating(genKey);
+    RecoveryEngine.snapshotBeforePhase(p, "writer");
+    chapterCheckpointSaved.set(genKey, new Set());
     const targetProjectId = p.id;
     const generationId = startChapterGeneration(targetProjectId, index, "chapter");
     updateAndSave(proj => {
@@ -847,6 +857,19 @@ typeof crypto.randomUUID === "function"
           lastProgressRenderAt.current.set(key, now);
 
           setChunkProgress(prev => ({ ...prev, [key]: progress }));
+          const targetWords = Math.max(1, progress.targetWords || progress.currentWords || 1);
+          const percent = Math.min(100, Math.round((progress.currentWords / targetWords) * 100));
+          const savedPercents = chapterCheckpointSaved.get(key) ?? new Set<number>();
+          for (const checkpoint of CHECKPOINT_PERCENTS) {
+            if (percent >= checkpoint && !savedPercents.has(checkpoint)) {
+              savedPercents.add(checkpoint);
+              chapterCheckpointSaved.set(key, savedPercents);
+              const checkpointProject = getLatestProject();
+              if (checkpointProject) {
+                RecoveryEngine.chapterCheckpoint(checkpointProject, index, checkpoint, progress.content);
+              }
+            }
+          }
           // Heavier work (setProject + IDB save) throttled more aggressively.
           const lastSave = lastSaveAt.current.get(key) ?? 0;
           if (now - lastSave < SAVE_THROTTLE_MS) return;
@@ -877,6 +900,7 @@ typeof crypto.randomUUID === "function"
             taskType: "generate_chapter_chunk",
           },
           longBookMemory: latestP.longBookMemory,
+          writerIntelBlock: writerIntel.consolidatedBlock,
         },
       );
 
@@ -973,6 +997,7 @@ typeof crypto.randomUUID === "function"
         return;
       }
       let recoveredStatus: GenerationStatus | null = null;
+      let recoveredContentForMessage = "";
       updateAndSave(proj => {
         if (proj.id !== targetProjectId) return proj;
         const chapters = [...proj.chapters];
@@ -980,6 +1005,7 @@ typeof crypto.randomUUID === "function"
         const recoveredContent = stripGeneratedHeading(existing?.content || "");
         if (existing && hasRecoverableChapterContent(recoveredContent)) {
           recoveredStatus = recoveredStatusForContent(recoveredContent);
+          recoveredContentForMessage = recoveredContent;
           chapters[index] = {
             ...existing,
             content: recoveredContent,
@@ -995,8 +1021,9 @@ typeof crypto.randomUUID === "function"
       const err = classifyError(e);
       scriptoraLog.error("chapter", formatUserMessage(err), { chapterIndex: index + 1, raw: e?.message, recoveredStatus });
       if (recoveredStatus) {
-        addMessage("assistant", `⚠️ Capitolo ${index + 1} scritto e salvato, ma con warning finale: ${formatUserMessage(err)}`);
-        toast.warning(`Capitolo ${index + 1} salvato con warning non bloccante.`);
+        const partial = RecoveryEngine.classifyPartialSuccess(recoveredContentForMessage);
+        addMessage("assistant", `⚠️ ${partial.body} (${formatUserMessage(err)})`);
+        toast.warning(partial.title);
       } else {
         addMessage("assistant", `❌ Capitolo ${index + 1}: ${formatUserMessage(err)}`);
         toast.error(formatToastMessage(err));
@@ -1185,6 +1212,7 @@ typeof crypto.randomUUID === "function"
     if (generatingSet.has(genKey)) return;
 
     addGenerating(genKey);
+    RecoveryEngine.snapshotBeforeDiagnostics(p);
     try {
       addMessage("assistant", `Evaluating Chapter ${index + 1} quality... 🔍`);
       const rating = await runEvaluateChapterQuality(p.config, p.chapters[index], index, { projectId: p.id });
@@ -1236,6 +1264,7 @@ typeof crypto.randomUUID === "function"
     }
 
     addGenerating(genKey);
+    RecoveryEngine.snapshotBeforeRewrite(p);
     rewriteLocks.current.add(index);
     const targetProjectId = p.id;
     const generationId = startChapterGeneration(targetProjectId, index, "rewrite");
@@ -1262,6 +1291,10 @@ typeof crypto.randomUUID === "function"
 
       addMessage("assistant", `${levelLabels[level]} on Chapter ${index + 1}... ✨`);
       const latestP = getLatestProject() || p;
+      const writerIntel = getWriterEngineContext(latestP, {
+        chapterIndex: index,
+        chapterText: latestP.chapters[index]?.content,
+      });
       const idempotencyKey = await chargeRewriteChapter(
         { projectId: latestP.id, chapterIndex: index + 1, source: "rewrite_chapter", level },
         index,
@@ -1274,6 +1307,10 @@ typeof crypto.randomUUID === "function"
           creditOperation: "rewrite_chapter",
           idempotencyKey,
           taskType: "rewrite_chapter",
+          metadata: {
+            writerIntelBlock: writerIntel.consolidatedBlock,
+            longBookMemory: latestP.longBookMemory,
+          },
         }
       );
       if (!isCurrentChapterGeneration(targetProjectId, index, generationId)) {
@@ -1294,7 +1331,7 @@ typeof crypto.randomUUID === "function"
           lastGenerationId: generationId,
           rewriteAttemptCount: chapters[index]?.rewriteAttemptCount || 1,
         };
-        return { ...proj, chapters };
+        return refreshProjectNarrativeMemory({ ...proj, chapters });
       });
       addMessage("assistant", `Chapter ${index + 1} — ${levelLabels[level]} complete! Re-evaluate to measure improvement.`);
     } catch (e: any) {
@@ -1728,6 +1765,42 @@ typeof crypto.randomUUID === "function"
     await generateChaptersParallel(all);
   }, [project, generateChaptersParallel]);
 
+  const recoverProject = useCallback(async () => {
+    const p = getLatestProject() || project;
+    if (!p) return null;
+    const result = RecoveryEngine.recoverProject(p);
+    if (!result.restoredProject) {
+      toast.error("Recupero non riuscito. Il progetto è comunque salvato localmente.");
+      return null;
+    }
+    updateAndSave(() => result.restoredProject!);
+    addMessage("assistant", `✅ ${result.analysis.message}`);
+    toast.success("Progetto recuperato. Puoi continuare da dove eri rimasto.");
+    return result.restoredProject;
+  }, [project, addMessage, updateAndSave]);
+
+  const continueChapterFromCheckpoint = useCallback(async (index: number) => {
+    const p = getLatestProject() || project;
+    if (!p) return;
+    const checkpoint = RecoveryEngine.bestChapterCheckpoint(p.id, index);
+    if (checkpoint?.content?.trim()) {
+      updateAndSave(proj => {
+        const chapters = [...proj.chapters];
+        while (chapters.length <= index) {
+          chapters.push({ title: resolveProjectChapterTitle(proj, chapters.length), content: "", subchapters: [], status: "idle" });
+        }
+        chapters[index] = {
+          ...chapters[index],
+          content: checkpoint.content,
+          status: "recovered_partial",
+        };
+        return { ...proj, chapters };
+      });
+      addMessage("assistant", `↩️ Riprendo il capitolo ${index + 1} dal checkpoint ${checkpoint.percent}%.`);
+    }
+    await generateSingleChapter(index);
+  }, [project, addMessage, updateAndSave, generateSingleChapter]);
+
   const cancelGeneration = useCallback((key?: string) => {
     if (key) {
       const ctrl = abortControllers.current.get(key);
@@ -1757,5 +1830,6 @@ typeof crypto.randomUUID === "function"
     loadProject, handleUserMessage, isGeneratingSection, cancelGeneration,
     generateFullBook,
     generateChaptersParallel, generateAllChaptersParallel,
+    recoverProject, continueChapterFromCheckpoint,
   };
 }

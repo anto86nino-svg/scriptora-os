@@ -81,6 +81,8 @@ export function MobileBookForge({
         variant="mobile"
         chatFirst
         unifiedScroll
+        penName={authorIdentity.penName}
+        authorName={authorIdentity.name}
         forgeHeader={<ForgeTopHeader onClose={onClose} />}
         language={authorIdentity.language || "Italian"}
         onComplete={(data) => {

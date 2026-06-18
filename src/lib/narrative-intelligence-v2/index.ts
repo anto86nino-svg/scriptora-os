@@ -77,6 +77,7 @@ export function refreshProjectLongBookMemoryV2(project: BookProject): BookProjec
   return refreshProjectNarrativeIntelligenceV2(project);
 }
 
+/** @deprecated Not wired into generation — use buildWriterMemorySource via Intelligence Layer instead. */
 export function buildNarrativeIntelligencePromptBlock(
   memory: LongBookMemorySnapshot,
   config?: BookConfig,

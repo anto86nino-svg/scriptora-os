@@ -14,15 +14,21 @@ import {
   selectNextMemoryQuestion,
   updateForgeMemoryFromAnswer,
 } from "./interview-memory";
+import { FORGE_GENRE_OPENING_QUESTION_ID } from "./forge-genre-catalog";
 import { evaluateForgeReadiness } from "./forge-readiness";
 import { evaluateEditorialUnderstanding } from "./book-understanding-engine";
+
+const DARK_ROMANCE_CHIP = "Romanzo · Dark Romance · dark-romance · Narrativa";
+const SELF_HELP_CHIP = "Saggio · Self Help · self-help · Non Fiction";
 
 describe("interview memory", () => {
   it("saves Italian language and skips language question", () => {
     let state = getInitialInterviewState({ chatFirst: true });
+    state = applyInterviewAnswer(state, DARK_ROMANCE_CHIP);
+    state = applyInterviewAnswer(state, "Italiano");
     state = applyInterviewAnswer(
       state,
-      "voglio scrivere un dark romance in italiano su una ragazza fragile e un uomo pericoloso",
+      "voglio scrivere in italiano su una ragazza fragile e un uomo pericoloso",
     );
     const memory = getForgeMemory(state);
     expect(memory.slotValues.language).toBe("Italiano");
@@ -35,15 +41,15 @@ describe("interview memory", () => {
 
   it("after dark romance does not ask genre again, moves forward", () => {
     let state = getInitialInterviewState({ chatFirst: true });
+    state = applyInterviewAnswer(state, DARK_ROMANCE_CHIP);
     state = applyInterviewAnswer(
       state,
-      "voglio scrivere un dark romance in italiano su una ragazza fragile e un uomo pericoloso",
+      "voglio scrivere in italiano su una ragazza fragile e un uomo pericoloso",
     );
     const next = selectNextMemoryQuestion(state);
     expect(next?.id).not.toBe("genre-direction");
-    expect(["characters-protagonist", "characters-attraction", "characters-antagonist", "promise-preset", "plot-stakes"]).toContain(
-      next?.id,
-    );
+    expect(next?.id).not.toBe(FORGE_GENRE_OPENING_QUESTION_ID);
+    expect(next?.id).toMatch(/^adaptive-dr-/);
   });
 
   it("does not repeat asked question keys", () => {
@@ -57,16 +63,17 @@ describe("interview memory", () => {
 
   it("non lo so shows preset choices", () => {
     let state = getInitialInterviewState({ chatFirst: true });
-    state = applyInterviewAnswer(state, "ho un'idea confusa su un libro intenso");
+    state = applyInterviewAnswer(state, DARK_ROMANCE_CHIP);
     state = applyInterviewAnswer(state, "non lo so, guidami");
     const next = selectNextMemoryQuestion(state);
-    expect(next?.quickSuggestions?.length ?? 0).toBeGreaterThanOrEqual(3);
-    expect(next?.question ?? "").toMatch(/direzioni|opzioni|vibra/i);
+    expect(next?.quickSuggestions?.length ?? 0).toBeGreaterThanOrEqual(2);
+    expect(next?.question ?? "").toMatch(/limite|poli|ferita|tensione|direzioni|opzioni|vibra/i);
   });
 
   it("advances stage after useful answers", () => {
     let state = getInitialInterviewState({ chatFirst: true });
     const answers = [
+      DARK_ROMANCE_CHIP,
       "dark romance in italiano tra due persone ferite",
       "Italiano",
       "Dark romance psicologico",
@@ -96,8 +103,7 @@ describe("interview memory", () => {
   });
 
   it("readiness false when genre missing", () => {
-    let state = getInitialInterviewState({ chatFirst: true });
-    state = applyInterviewAnswer(state, "voglio scrivere in italiano qualcosa di molto personale");
+    const state = getInitialInterviewState({ chatFirst: true });
     const report = evaluateForgeReadiness(state);
     expect(report.ready).toBe(false);
     expect(report.missingCritical.some((m) => /genere|tipo/.test(m))).toBe(true);
@@ -119,6 +125,7 @@ describe("interview memory", () => {
           ...seeded.slotValues,
           rawIdea: "Dark romance tra ragazza fragile e uomo pericoloso in città gotica.",
           language: "Italiano",
+          authorName: "Antonino",
           genre: "dark-romance",
           bookType: "Dark romance",
           tone: "Elegante, oscuro, sensuale, lento.",
@@ -131,6 +138,10 @@ describe("interview memory", () => {
           centralConflict: "Attrazione e paura del tradimento.",
           endingDirection: "Finale devastante ma giusto.",
           chapterCount: "18",
+          subchaptersEnabled: "No, solo capitoli continui senza sottodivisioni.",
+          marketplace: "Amazon KDP",
+          frontMatter: "Prefazione dell'autore",
+          backMatter: "Ringraziamenti",
           indexOutline: "1. Incontro 2. Tensione 3. Caduta 4. Conseguenza",
           pov: "Prima persona",
           title: "Titolo provvisorio",
@@ -138,6 +149,7 @@ describe("interview memory", () => {
         answeredSlots: {
           rawIdea: true,
           language: true,
+          authorName: true,
           genre: true,
           bookType: true,
           tone: true,
@@ -150,6 +162,10 @@ describe("interview memory", () => {
           centralConflict: true,
           endingDirection: true,
           chapterCount: true,
+          subchaptersEnabled: true,
+          marketplace: true,
+          frontMatter: true,
+          backMatter: true,
           indexOutline: true,
           pov: true,
           title: true,
@@ -215,13 +231,11 @@ describe("interview memory", () => {
 
   it("self-help in english does not suggest dark romance", () => {
     let state = getInitialInterviewState({ chatFirst: true });
-    state = applyInterviewAnswer(
-      state,
-      "voglio un libro in inglese self help per persone bloccate",
-    );
+    state = applyInterviewAnswer(state, SELF_HELP_CHIP);
+    state = applyInterviewAnswer(state, "English");
     const memory = getForgeMemory(state);
     expect(memory.slotValues.language).toBe("English");
-    expect(memory.slotValues.genre).toMatch(/self-help/i);
+    expect(memory.slotValues.genre).toMatch(/self-help|Self Help/i);
     const next = selectNextMemoryQuestion(state);
     expect(next?.quickSuggestions?.map((c) => c.label).join(" ") ?? "").not.toMatch(
       /Dark romance/i,

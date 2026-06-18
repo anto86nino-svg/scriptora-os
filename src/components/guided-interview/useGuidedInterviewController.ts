@@ -17,11 +17,17 @@ import { useSpeechDictation } from "@/hooks/useSpeechDictation";
 import {
   generateForgeAutoAnswer,
   type ForgeAutoAnswerToneBias,
+  type ForgeSuggestedAnswer,
 } from "@/lib/guided-interview/auto-answer-engine";
+
+import type { ForgeHostContext } from "@/lib/guided-interview/forge-host-engine";
 
 export type UseGuidedInterviewOptions = {
   selectedGenre?: string;
   language?: string;
+  penName?: string;
+  authorName?: string;
+  genderHint?: "m" | "f" | "neutral";
   chatFirst?: boolean;
   isMobile?: boolean;
   /** Mobile Book Forge: hide DNA engine UI until final confirmation. */
@@ -36,6 +42,9 @@ export type UseGuidedInterviewOptions = {
 export function useGuidedInterviewController({
   selectedGenre,
   language = "Italian",
+  penName,
+  authorName,
+  genderHint,
   chatFirst = true,
   isMobile = false,
   onComplete,
@@ -43,10 +52,13 @@ export function useGuidedInterviewController({
   onContinueInterview,
   scrollContainerRef,
 }: UseGuidedInterviewOptions) {
+  const hostContext: ForgeHostContext = { penName, authorName, genderHint };
+
   const [state, setState] = useState(() =>
     getInitialInterviewState({
       selectedGenre,
       chatFirst: chatFirst && !selectedGenre,
+      hostContext,
     }),
   );
   const [input, setInput] = useState("");
@@ -54,7 +66,7 @@ export function useGuidedInterviewController({
   const [dnaConfirmationDismissed, setDnaConfirmationDismissed] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [autoAnswerLoading, setAutoAnswerLoading] = useState(false);
-  const [autoAnswerDraft, setAutoAnswerDraft] = useState<string | null>(null);
+  const [autoAnswerOptions, setAutoAnswerOptions] = useState<ForgeSuggestedAnswer[]>([]);
   const [autoAnswerVariantCount, setAutoAnswerVariantCount] = useState(0);
   const [autoAnswerError, setAutoAnswerError] = useState<string | null>(null);
   const [autoAnswerToneBias, setAutoAnswerToneBias] = useState<ForgeAutoAnswerToneBias>(null);
@@ -71,18 +83,19 @@ export function useGuidedInterviewController({
       getInitialInterviewState({
         selectedGenre,
         chatFirst: chatFirst && !selectedGenre,
+        hostContext,
       }),
     );
     setShowDnaPanel(false);
     setDnaConfirmationDismissed(false);
     setContinueNonce(0);
-    setAutoAnswerDraft(null);
+    setAutoAnswerOptions([]);
     setAutoAnswerVariantCount(0);
     setAutoAnswerError(null);
     setAutoAnswerToneBias(null);
     lastQuestionIdRef.current = null;
     lastQuestionTextRef.current = null;
-  }, [selectedGenre, chatFirst]);
+  }, [selectedGenre, chatFirst, penName, authorName, genderHint]);
 
   const rawNext = useMemo(() => getNextInterviewQuestion(state), [state]);
   const next = useMemo(
@@ -95,7 +108,7 @@ export function useGuidedInterviewController({
   );
 
   useEffect(() => {
-    setAutoAnswerDraft(null);
+    setAutoAnswerOptions([]);
     setAutoAnswerVariantCount(0);
     setAutoAnswerError(null);
   }, [next.question?.id]);
@@ -178,7 +191,7 @@ export function useGuidedInterviewController({
       const updated = applyInterviewAnswer(state, payload, next.question ?? undefined);
       setState(updated);
       setInput("");
-      setAutoAnswerDraft(null);
+      setAutoAnswerOptions([]);
       setAutoAnswerVariantCount(0);
       setAutoAnswerError(null);
       setIsThinking(false);
@@ -204,15 +217,20 @@ export function useGuidedInterviewController({
         variantIndex,
         toneBias: autoAnswerToneBias,
       });
-      setInput(result.answer);
-      setAutoAnswerDraft(result.answer);
+      setAutoAnswerOptions(result.answers);
       setAutoAnswerVariantCount(variantIndex);
-      focusInput();
+      scrollToEnd();
     } catch {
       setAutoAnswerError(null);
     } finally {
       setAutoAnswerLoading(false);
     }
+  };
+
+  const handleSelectSuggestedAnswer = (selected: ForgeSuggestedAnswer) => {
+    if (!selected.text.trim() || isThinking || autoAnswerLoading) return;
+    setAutoAnswerOptions([]);
+    sendMessage(selected.text);
   };
 
   const handleContinueInterview = () => {
@@ -281,12 +299,13 @@ export function useGuidedInterviewController({
     toggleMic,
     focusInput,
     autoAnswerLoading,
-    autoAnswerDraft,
+    autoAnswerOptions,
     autoAnswerVariantCount,
     autoAnswerError,
     autoAnswerToneBias,
     setAutoAnswerToneBias,
     generateAutoAnswer,
+    handleSelectSuggestedAnswer,
   };
 }
 

@@ -52,6 +52,38 @@ export const TONE_PRESETS: InterviewQuickSuggestion[] = [
   { label: "Intenso", value: "Intenso, magnetico, immersivo." },
 ];
 
+export const CHAPTER_BREATHING_PRESETS: InterviewQuickSuggestion[] = [
+  { label: "Compatto: 10–12 capitoli", value: "12 capitoli, struttura compatta e intensa." },
+  { label: "Standard bestseller: 16–20 capitoli", value: "18 capitoli, struttura standard bestseller." },
+  { label: "Ampio e immersivo: 24+ capitoli", value: "24 capitoli, respiro ampio e immersivo." },
+];
+
+export const MARKETPLACE_PRESETS: InterviewQuickSuggestion[] = [
+  { label: "Amazon KDP", value: "Amazon KDP" },
+  { label: "Libreria / editore", value: "Libreria tradizionale o editore" },
+  { label: "Audio / podcast", value: "Audiolibro o adattamento audio" },
+  { label: "Studio / università", value: "Studio personale o università" },
+];
+
+export const FRONT_MATTER_PRESETS: InterviewQuickSuggestion[] = [
+  { label: "Prefazione", value: "Prefazione dell'autore" },
+  { label: "Dedica", value: "Dedica" },
+  { label: "Minimo essenziale", value: "Solo il minimo essenziale." },
+  { label: "Niente front matter", value: "Niente front matter aggiuntivo." },
+];
+
+export const BACK_MATTER_PRESETS: InterviewQuickSuggestion[] = [
+  { label: "Ringraziamenti", value: "Ringraziamenti" },
+  { label: "Note e appendice", value: "Note e appendice" },
+  { label: "Invito al lettore", value: "Invito al lettore / prossimo libro" },
+  { label: "Niente extra", value: "Niente back matter aggiuntivo." },
+];
+
+export const SUBCHAPTER_PRESETS: InterviewQuickSuggestion[] = [
+  { label: "Sì, sottocapitoli", value: "Sì, con sottocapitoli per ogni sezione importante." },
+  { label: "No, capitoli continui", value: "No, solo capitoli continui senza sottodivisioni." },
+];
+
 export const STRUCTURE_PRESETS: InterviewQuickSuggestion[] = [
   { label: "Capitoli senza sottocapitoli", value: "Capitoli senza sottocapitoli, flusso continuo." },
   { label: "Capitoli + sottocapitoli", value: "Capitoli con sottocapitoli dove serve." },

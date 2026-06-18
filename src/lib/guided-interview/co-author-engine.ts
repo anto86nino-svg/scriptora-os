@@ -1,5 +1,10 @@
 import type { GuidedInterviewState, InterviewQuestion } from "./types";
 import {
+  FORGE_GENRE_OPENING_QUESTION_ID,
+  FORGE_HOST_GREETING_MESSAGE_ID,
+} from "./forge-genre-catalog";
+import { isSlotConfirmationQuestion } from "./slot-deduction-engine";
+import {
   type ForgeInterviewMemory,
   type ForgeSlotKey,
   detectBookMode,
@@ -297,15 +302,20 @@ export function enrichQuestionWithCoAuthor(
   state: GuidedInterviewState,
   question: InterviewQuestion,
 ): InterviewQuestion {
-  if (question.id === "welcome-opening" || question.id === "assistant-opening") {
+  if (
+    question.id === "welcome-opening" ||
+    question.id === "assistant-opening" ||
+    question.id === FORGE_HOST_GREETING_MESSAGE_ID ||
+    question.id === FORGE_GENRE_OPENING_QUESTION_ID ||
+    question.id.startsWith("adaptive-") ||
+    isSlotConfirmationQuestion(question.id)
+  ) {
     return question;
   }
 
-  const turn = composeCoAuthorTurn(state, question);
-  const formatted = formatCoAuthorMessage(turn);
+  // Interviewer-only: questions stay clean; Co-Author serves auto-answer cards only.
   return {
     ...question,
-    question: enrichCoAuthorWithOrchestrator(state, formatted, question, turn.editorNote),
     helper: question.helper,
   };
 }

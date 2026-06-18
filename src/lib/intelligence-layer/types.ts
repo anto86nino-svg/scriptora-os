@@ -113,6 +113,8 @@ export type WriterEngineContext = {
   consolidatedBlock: string;
   canonWarnings: string[];
   context: UnifiedBookContext;
+  memoryGraph?: import("@/lib/memory-graph/types").MemoryGraphSnapshot;
+  memoryMode?: import("@/lib/memory-graph/types").MemoryGraphMode;
 };
 
 export type CoverStudioContext = {

@@ -26,6 +26,8 @@ import { buildEditorialChapterPreview } from "@/lib/project-generation-readiness
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { resolveChapterGenerationOperation } from "@/lib/billing";
 import { validateBookReadinessForBlueprint } from "@/lib/book-config-engine/blueprint-readiness";
+import { RecoveryProjectBanner } from "@/components/recovery/RecoveryProjectBanner";
+import { isGenerationCompleteStatus } from "@/types/book";
 
 interface EditorPanelProps {
   project: BookProject;
@@ -76,6 +78,8 @@ interface EditorPanelProps {
   onExport?: () => void;
   onMarket?: () => void;
   coverDataUrl?: string | null;
+  onRecoverProject?: () => void;
+  onContinueChapterFromCheckpoint?: (chapterIndex: number) => void;
 }
 
 export function EditorPanel({
@@ -105,9 +109,14 @@ export function EditorPanel({
   onExport,
   onMarket,
   coverDataUrl = null,
+  onRecoverProject,
+  onContinueChapterFromCheckpoint,
 }: EditorPanelProps) {
   const { blueprint, frontMatter, chapters, backMatter, config, phase } = project;
   const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const showProjectRecovery =
+    Boolean(onRecoverProject) &&
+    (!blueprint || project.blueprintStatus === "error" || project.memoryGraph?.mode === "degraded");
 
   const selectedChapterIndex = useMemo(
     () => getChapterIndexFromSection(activeSection),
@@ -189,6 +198,11 @@ export function EditorPanel({
                 <EditorialMasteryBadge genre={config.genre} subcategory={config.subcategory} size="md" />
               </div>
               )}
+              {showProjectRecovery && (
+                <div className="mb-4">
+                  <RecoveryProjectBanner onRecover={onRecoverProject} />
+                </div>
+              )}
               {view.type === "blueprint" && (
                 <BlueprintView
                   project={project}
@@ -248,6 +262,8 @@ export function EditorPanel({
                   premiumWriter={premiumWriter}
                   hideDesktopToolbar={hideDesktopToolbar}
                   chapterToolRequest={chapterToolRequest}
+                  onRecoverProject={onRecoverProject}
+                  onContinueChapter={() => onContinueChapterFromCheckpoint?.(view.chapterIndex)}
                 />
               )}
               {view.type === "subchapter" && (() => {
@@ -835,6 +851,8 @@ function ChapterView({
   premiumWriter = false,
   hideDesktopToolbar = false,
   chapterToolRequest = null,
+  onRecoverProject,
+  onContinueChapter,
 }: {
   project: BookProject; chapterIndex: number;
   outline: { title: string; summary: string }; chapter: Chapter | undefined;
@@ -855,6 +873,8 @@ function ChapterView({
   premiumWriter?: boolean;
   hideDesktopToolbar?: boolean;
   chapterToolRequest?: { mode: "analysis" | "patch"; nonce: number } | null;
+  onRecoverProject?: () => void;
+  onContinueChapter?: () => void;
 }) {
   const isGenerated = chapter && chapter.content.length > 0;
   const { plan } = usePlan();
@@ -1126,8 +1146,17 @@ function ChapterView({
       )}
       {isEvaluating && <LoadingBanner text={`${t("evaluate")}...`} />}
 
-      {/* Error retry state */}
-      {!isGenerating && isGenerationFailureStatus(chapter?.status) && (
+      {/* Error / partial recovery state */}
+      {!isGenerating && chapter?.status === "recovered_partial" && (
+        <RecoveryProjectBanner
+          showContinueChapter
+          onContinueChapter={onContinueChapter}
+          onRecover={onRecoverProject}
+          className="animate-fade-in"
+        />
+      )}
+
+      {!isGenerating && isGenerationFailureStatus(chapter?.status) && chapter?.status !== "failed_empty" && (
         <div className="flex items-center gap-3 px-5 py-3 rounded-lg bg-destructive/5 border border-destructive/20 animate-fade-in">
           <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
           <span className="text-sm text-destructive font-medium flex-1">{t("generation_failed")}</span>
@@ -1135,6 +1164,26 @@ function ChapterView({
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors">
             <RefreshCw className="h-3 w-3" /> {t("retry")}
           </button>
+        </div>
+      )}
+
+      {!isGenerating && chapter?.status === "failed_empty" && (
+        <div className="space-y-3 animate-fade-in">
+          <RecoveryProjectBanner onRecover={onRecoverProject} onContinueChapter={onContinueChapter} showContinueChapter={Boolean(onContinueChapter)} />
+          <div className="flex items-center gap-3 px-5 py-3 rounded-lg bg-destructive/5 border border-destructive/20">
+            <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+            <span className="text-sm text-destructive font-medium flex-1">{t("generation_failed")}</span>
+            <button onClick={onGenerate}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors">
+              <RefreshCw className="h-3 w-3" /> {t("retry")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!isGenerating && isGenerationCompleteStatus(chapter?.status) && chapter?.status !== "completed" && chapter?.content && (
+        <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-amber-900 dark:text-amber-100 animate-fade-in">
+          Contenuto recuperato. Alcune parti richiedono completamento.
         </div>
       )}
 

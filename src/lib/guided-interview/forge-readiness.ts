@@ -24,6 +24,7 @@ export interface ForgeReadinessReport {
 const SLOT_LABELS: Record<string, string> = {
   rawIdea: "idea grezza",
   language: "lingua",
+  authorName: "nome autore",
   genre: "genere",
   bookType: "tipo libro",
   tone: "tono",
@@ -36,6 +37,10 @@ const SLOT_LABELS: Record<string, string> = {
   centralConflict: "conflitto",
   endingDirection: "finale",
   chapterCount: "struttura",
+  subchaptersEnabled: "sottocapitoli",
+  marketplace: "marketplace",
+  frontMatter: "front matter",
+  backMatter: "back matter",
   title: "titolo",
   method: "metodo",
   problem: "problema centrale",

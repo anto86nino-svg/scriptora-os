@@ -7,9 +7,11 @@ function depthProfile(c: BookCharacter): string {
   const contradiction = c.personality?.includes(",")
     ? c.personality
     : [c.personality, c.internalNeed].filter(Boolean).join(" — need: ");
-  const behavior = c.strictRules || c.relationships || "preserve established mannerisms";
+  const voice = c.personalLanguage || "preserve established speech rhythm";
+  const triggers = c.emotionalTriggers || "preserve stress responses";
+  const behavior = c.recurringBehavior || c.strictRules || c.relationships || "preserve established mannerisms";
 
-  return `${name} | wound/fear: ${fear} | desire: ${desire} | contradiction: ${contradiction} | behavior lock: ${behavior}`;
+  return `${name} | wound/fear: ${fear} | desire: ${desire} | contradiction: ${contradiction} | voice: ${voice} | triggers: ${triggers} | behavior: ${behavior}`;
 }
 
 export function buildCharacterDepthLockBlock(config: BookConfig): string {

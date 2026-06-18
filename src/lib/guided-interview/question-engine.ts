@@ -48,10 +48,24 @@ import {
 } from "./forge-readiness";
 import {
   createEmptyForgeMemory,
+  getForgeMemory,
+  isQuestionAlreadyAnswered,
   memoryRecapShown,
   syncExtractedFromMemory,
   updateForgeMemoryFromAnswer,
 } from "./interview-memory";
+import { buildForgeHostIntro, type ForgeHostContext } from "./forge-host-engine";
+import {
+  FORGE_GENRE_OPENING_QUESTION_ID,
+  FORGE_HOST_GREETING_MESSAGE_ID,
+  isGenreSlotLocked,
+  getGenreSelectionQuestion,
+} from "./forge-genre-catalog";
+import { seedAuthorIdentityConfirmation } from "./slot-deduction-engine";
+
+export type InitialInterviewOptions = Partial<GuidedInterviewState> & {
+  hostContext?: ForgeHostContext;
+};
 
 export { resolveActiveInterviewQuestion, getContinueFollowUpQuestion, resolveExtractedFieldKey };
 export {
@@ -519,16 +533,22 @@ const QUESTIONS_BY_GENRE: Record<InterviewGenre, InterviewQuestion[]> = {
 };
 
 export function getInitialInterviewState(
-  partial?: Partial<GuidedInterviewState>,
+  partial?: InitialInterviewOptions,
 ): GuidedInterviewState {
   const chatFirst = partial?.chatFirst ?? !partial?.selectedGenre;
-  const hasExistingIdea =
-    Boolean(partial?.extracted?.promise?.trim()) ||
-    Boolean(partial?.extracted?.centralConflict?.trim());
-  const openingContent = getForgeOpeningGreeting({
-    hasExistingIdea,
-    language: partial?.extracted?.language,
-  });
+  const hostContext: ForgeHostContext = {
+    penName: partial?.hostContext?.penName ?? partial?.extracted?.authorName,
+    authorName: partial?.hostContext?.authorName,
+    genderHint: partial?.hostContext?.genderHint,
+    isResuming: partial?.hostContext?.isResuming,
+    date: partial?.hostContext?.date,
+  };
+  const openingContent = buildForgeHostIntro(hostContext, partial as GuidedInterviewState);
+  const seededMemory = seedAuthorIdentityConfirmation(
+    partial?.forgeMemory ?? createEmptyForgeMemory(),
+    hostContext.penName,
+    hostContext.authorName,
+  );
   const base = {
     completed: false,
     currentStep: 0,
@@ -536,20 +556,23 @@ export function getInitialInterviewState(
     messages: chatFirst
       ? [
           {
-            id: "assistant-opening",
+            id: FORGE_HOST_GREETING_MESSAGE_ID,
             role: "assistant" as const,
             content: openingContent,
             createdAt: Date.now(),
           },
         ]
       : [],
-    extracted: partial?.extracted ?? {},
+    extracted: {
+      ...(partial?.extracted ?? {}),
+      ...(hostContext.penName ? { authorName: hostContext.penName } : {}),
+    },
     chatFirst,
     ...partial,
   };
   return {
     ...base,
-    forgeMemory: partial?.forgeMemory ?? createEmptyForgeMemory(),
+    forgeMemory: partial?.forgeMemory ?? seededMemory,
     dnaLock: buildDnaLockFromInterviewState(base),
   };
 }
@@ -618,6 +641,13 @@ function buildFullQueue(state: GuidedInterviewState): InterviewQuestion[] {
 function findNextUnansweredQuestion(
   state: GuidedInterviewState,
 ): InterviewQuestion | null {
+  const memory = getForgeMemory(state);
+
+  if (!isGenreSlotLocked(memory) && !isQuestionAlreadyAnswered(FORGE_GENRE_OPENING_QUESTION_ID, memory)) {
+    const genreQ = filterPrematureTechnicalQuestion(getGenreSelectionQuestion(), state);
+    if (genreQ) return genreQ;
+  }
+
   if (isFirstForgeAssistantMessage(state)) {
     return null;
   }

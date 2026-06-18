@@ -44,7 +44,11 @@ export function buildStoryArchitectureBrief(
   if (room.scenes.length > 0) {
     lines.push("Scene chiave:");
     for (const scene of room.scenes) {
-      if (scene.beat) lines.push(`- ${scene.role}: ${scene.beat}`);
+      if (!scene.beat && !scene.stakes) continue;
+      const line = scene.stakes
+        ? `${scene.role}: ${scene.beat || "—"} (posta in gioco: ${scene.stakes})`
+        : `${scene.role}: ${scene.beat}`;
+      lines.push(`- ${line}`);
     }
   }
   if (room.arcBeats.length > 0) {
@@ -75,6 +79,54 @@ export function buildStoryArchitectureBrief(
   return lines.length > 1 ? lines.join("\n") : "";
 }
 
+export function buildForgeExtendedHandoffLines(seed: ForgeInterviewSeed): string[] {
+  const ex = (seed.extracted ?? {}) as Record<string, string | undefined>;
+  const lines: string[] = [];
+
+  const subgenre = clean(ex.subgenre || seed.dnaLock?.inferredSubgenre);
+  if (subgenre) lines.push(`Sottogenere: ${subgenre}`);
+
+  const atmosphere = [ex.setting, ex.emotionalTone].map(clean).filter(Boolean);
+  if (atmosphere.length) lines.push(`Atmosfera: ${atmosphere.join(" — ")}`);
+
+  const stakes = clean(ex.stakes || ex.readerTransformation);
+  const conflict = clean(ex.centralConflict);
+  if (stakes && stakes !== conflict) lines.push(`Posta in gioco: ${stakes}`);
+  if (conflict) lines.push(`Conflitto centrale: ${conflict}`);
+
+  const structure = clean(ex.structurePreference);
+  if (structure) lines.push(`Struttura narrativa (Forge): ${structure}`);
+
+  if (seed.dnaLock?.whatBookIs?.length) {
+    lines.push(
+      `COS'È IL LIBRO:\n${seed.dnaLock.whatBookIs.map((w) => `- ${w}`).join("\n")}`,
+    );
+  }
+
+  const promises = seed.bookPromises;
+  if (promises) {
+    const buckets = [
+      ...promises.emotional.map((p) => `Emotiva: ${p}`),
+      ...promises.relationship.map((p) => `Relazione: ${p}`),
+      ...promises.plot.map((p) => `Trama: ${p}`),
+      ...promises.character.map((p) => `Personaggio: ${p}`),
+      ...promises.scene.map((p) => `Scena: ${p}`),
+    ].filter(Boolean);
+    if (buckets.length) {
+      lines.push(`PROMESSE NARRATIVE (FORGE):\n${buckets.map((p) => `- ${p}`).join("\n")}`);
+    }
+  }
+
+  const relationshipFacts = seed.canon?.relationships?.facts ?? [];
+  if (relationshipFacts.length) {
+    lines.push(
+      `RELAZIONI CANON:\n${relationshipFacts.map((f) => `- ${f}`).join("\n")}`,
+    );
+  }
+
+  return lines;
+}
+
 export function buildForgeWriterHandoff(seed: ForgeInterviewSeed): ForgeWriterHandoff {
   const enrichedSeed: ForgeInterviewSeed = {
     ...seed,
@@ -82,15 +134,18 @@ export function buildForgeWriterHandoff(seed: ForgeInterviewSeed): ForgeWriterHa
   };
   const extras = buildForgeGuidedBriefExtras(enrichedSeed);
   const storyArchitecture = buildStoryArchitectureBrief(enrichedSeed);
+  const extendedLines = buildForgeExtendedHandoffLines(enrichedSeed);
   const antiDriftRules = [
     ...(seed.dnaLock?.antiDriftRules ?? []),
     ...(seed.dnaLock?.forbiddenPatterns ?? []),
     ...(seed.dnaLock?.whatBookIsNot ?? []),
   ].filter(Boolean);
 
+  const canonBrief = [extras.canonBrief, extendedLines.join("\n")].filter(Boolean).join("\n\n");
+
   const guidedBrief = [
     extras.characterBibleText && `FORGE CHARACTER & CANON LOCK:\n${extras.characterBibleText}`,
-    extras.canonBrief,
+    canonBrief,
     storyArchitecture,
     antiDriftRules.length > 0 &&
       `ANTI-DRIFT RULES:\n${antiDriftRules.map((r) => `- ${r}`).join("\n")}`,
@@ -100,7 +155,7 @@ export function buildForgeWriterHandoff(seed: ForgeInterviewSeed): ForgeWriterHa
 
   return {
     characterBibleText: extras.characterBibleText,
-    canonBrief: extras.canonBrief,
+    canonBrief,
     storyArchitecture,
     antiDriftRules,
     guidedBrief,
@@ -118,6 +173,8 @@ export function enrichBookConfigFromForgeSeed(
 
   return {
     ...config,
+    subgenre:
+      clean(seed.extracted?.subgenre || seed.dnaLock?.inferredSubgenre) || config.subgenre,
     characters: forgedCharacters.length > 0 ? forgedCharacters : config.characters,
     characterBibleText: handoff.characterBibleText || config.characterBibleText,
     forgeCanonBrief: handoff.canonBrief || config.forgeCanonBrief,
@@ -131,6 +188,16 @@ export function enrichBookConfigFromForgeSeed(
 
 export function buildForgeWriterContextBlock(config: BookConfig): string {
   const parts: string[] = [];
+
+  if (config.subgenre?.trim()) {
+    parts.push(`SUBGENRE / SOTTOGENERE: ${config.subgenre.trim()}`);
+  }
+  if (config.subcategory?.trim() && config.subcategory !== config.subgenre) {
+    parts.push(`CATEGORIA EDITORIALE: ${config.subcategory.trim()}`);
+  }
+  if (config.targetReader?.trim()) {
+    parts.push(`LETTOR IDEALE: ${config.targetReader.trim()}`);
+  }
 
   if (config.characterBibleText?.trim()) {
     parts.push(config.characterBibleText.trim());

@@ -1,6 +1,6 @@
 import type { GuidedInterviewState } from "./types";
 
-export type ForgeDaypart = "morning" | "afternoon" | "evening";
+export type ForgeDaypart = "morning" | "afternoon" | "evening" | "night";
 
 export type ForgeAuthorLabel =
   | "scrittore"
@@ -72,7 +72,8 @@ export function getForgeDaypart(date: Date = new Date()): ForgeDaypart {
   const hour = date.getHours();
   if (hour >= 5 && hour < 12) return "morning";
   if (hour >= 12 && hour < 18) return "afternoon";
-  return "evening";
+  if (hour >= 18 && hour < 23) return "evening";
+  return "night";
 }
 
 function daypartGreeting(daypart: ForgeDaypart, seed: number): string {
@@ -92,7 +93,7 @@ export function isTechnicalPrematureContent(text: string): boolean {
 }
 
 export function countForgeUserAnswers(state: GuidedInterviewState): number {
-  return state.messages.filter((m) => m.role === "user").length;
+  return (state.messages ?? []).filter((m) => m.role === "user").length;
 }
 
 export function isFirstForgeAssistantMessage(state: GuidedInterviewState): boolean {

@@ -26,6 +26,7 @@ import type {
   WriterEngineContext,
 } from "./types";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
+import { runPreChapterMemoryCheck } from "@/lib/memory-graph/graph-recovery";
 
 /**
  * Central read-only orchestration entry.
@@ -72,22 +73,41 @@ export function getWriterEngineContext(
     includeSignals: Boolean(options?.chapterText),
   });
 
-  const canonWarnings =
+  const memoryCheck =
     options?.chapterIndex != null
-      ? verifyCanonBeforeChapter({
+      ? runPreChapterMemoryCheck({
           project,
           chapterIndex: options.chapterIndex,
           draftText: options?.chapterText,
         })
+      : null;
+
+  const canonWarnings =
+    options?.chapterIndex != null
+      ? [
+          ...verifyCanonBeforeChapter({
+            project,
+            chapterIndex: options.chapterIndex,
+            draftText: options?.chapterText,
+          }),
+          ...(memoryCheck?.warnings ?? []),
+        ]
       : intel.context.canon.warnings;
 
-  const consolidatedBlock =
-    buildForgeWriterContextBlock(project.config) || intel.context.writerContextBlock || "";
+  const memoryBlock = memoryCheck?.writerContextBlock?.trim() || "";
+  const consolidatedBlock = [
+    buildForgeWriterContextBlock(project.config) || intel.context.writerContextBlock || "",
+    memoryBlock,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   return {
     consolidatedBlock,
     canonWarnings,
     context: intel.context,
+    memoryGraph: memoryCheck?.snapshot,
+    memoryMode: memoryCheck?.mode,
   };
 }
 

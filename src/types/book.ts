@@ -405,6 +405,8 @@ export interface BookProject {
   configStatus?: BookConfigStatus;
   /** Cross-chapter narrative memory snapshot — refreshed after each chapter */
   longBookMemory?: import("@/lib/long-book-memory/types").LongBookMemorySnapshot;
+  /** Unified narrative memory graph — characters, promises, mysteries, story debt */
+  memoryGraph?: import("@/lib/memory-graph/types").MemoryGraphSnapshot;
   createdAt: string;
   updatedAt: string;
 }

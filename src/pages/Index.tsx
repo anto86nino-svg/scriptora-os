@@ -23,6 +23,7 @@ import { computeProjectProgressPercent } from "@/lib/project-progress";
 import { BookTypeBadge } from "@/components/BookTypeBadge";
 import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 import { applyAuthorIdentityToConfig } from "@/lib/author-identity";
+import { RecoveryEngine } from "@/lib/recovery-engine";
 import { BookProject, SectionId } from "@/types/book";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { scrollToChapterAnchor, getChapterIndexFromSection } from "@/lib/writer/chapter-navigation";
@@ -396,6 +397,7 @@ const Index = () => {
       return;
     }
     if (!engine.project) return;
+    RecoveryEngine.snapshotBeforeExport(engine.project);
     if (!isProjectComplete(engine.project)) {
       toast.error("Completa tutto il libro prima di esportare.");
       return;
@@ -668,6 +670,8 @@ const Index = () => {
             onUpdateBackMatterField={engine.updateBackMatterField}
             onNarrateChapter={openVoiceStudioForChapter}
             onPersistChapterEditorialAnalysis={engine.updateChapterEditorialAnalysis}
+            onRecoverProject={() => void engine.recoverProject?.()}
+            onContinueChapterFromCheckpoint={(index) => void engine.continueChapterFromCheckpoint?.(index)}
             premiumWriter
           />
           </Suspense>
@@ -1038,6 +1042,8 @@ const Index = () => {
                   onExport={guardedExportEpub}
                   onMarket={() => navigate("/mobile-market")}
                   coverDataUrl={coverDataUrl ?? null}
+                  onRecoverProject={() => void engine.recoverProject?.()}
+                  onContinueChapterFromCheckpoint={(index) => void engine.continueChapterFromCheckpoint?.(index)}
                 />
                 </Suspense>
               </div>

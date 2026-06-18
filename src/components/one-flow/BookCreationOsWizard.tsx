@@ -1795,6 +1795,8 @@ export function BookCreationOsWizard({
               <GuidedInterviewPanel
                 selectedGenre={mapForgeGenreToInterviewGenre(forgePresetId, bookTypeId)}
                 language={language}
+                penName={identityDraft.penName || authorName}
+                authorName={identityDraft.name}
                 variant="mobile"
                 onComplete={handleInterviewCompleteFactory({
                   setNarrativePromise,
@@ -1955,6 +1957,8 @@ export function BookCreationOsWizard({
                         bookTypeId
                       )}
                       language={language}
+                      penName={identityDraft.penName || authorName}
+                      authorName={identityDraft.name}
                       variant={isMobileViewport ? "mobile" : "desktop"}
                       onComplete={handleInterviewCompleteFactory({
                         setNarrativePromise,

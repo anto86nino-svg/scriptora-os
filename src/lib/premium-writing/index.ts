@@ -16,7 +16,8 @@ import { buildEditorialSelectionBlock } from "./editorial-selection-engine";
 import { buildGlobalNovelBrainBlock } from "./global-novel-brain";
 import { buildReaderSimulationBlock } from "./reader-simulation-engine";
 import { buildHumanNarrativeRealismV3Block } from "@/lib/human-narrative-realism-v3";
-import { buildMemoryConsistencyV25Block } from "@/lib/memory-consistency-v25";
+import { buildMemoryConsistencyV25Block, isMemoryConsistencyV25Enabled } from "@/lib/memory-consistency-v25";
+import { buildLongBookMemory, buildLongBookMemoryPromptBlock } from "@/lib/long-book-memory";
 import { buildGreatnessEngineBlock } from "@/lib/greatness-engine";
 import {
   buildCrossGenreProtectionBlock,
@@ -32,6 +33,81 @@ export interface PremiumWritingContext {
   outlineSummary?: string;
   blueprint?: BookBlueprint | null;
   longBookMemory?: LongBookMemorySnapshot;
+  /** When set, V2.5 / long-book memory blocks are omitted from premium (already in unified source). */
+  writerMemorySource?: string;
+}
+
+function compactPromptBlock(text: string, maxChars: number): string {
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.length <= maxChars) return trimmed;
+  return `${trimmed.slice(0, maxChars)}\n[...canon lock continues — full rules still apply]`;
+}
+
+/** Single writer memory block: Intelligence Layer + V2.5 or long-book fallback. */
+export function buildWriterMemorySource(
+  ctx: PremiumWritingContext & { intelligenceBlock?: string },
+): string {
+  const family = resolveBookTypeDefinition(
+    ctx.config.genre,
+    ctx.config.subcategory,
+    ctx.config.subgenre,
+    ctx.config.bookTypeId,
+  ).family;
+  const narrativeOnly = family === "narrative" || family === "poetry";
+  const parts: string[] = [];
+
+  if (ctx.intelligenceBlock?.trim()) {
+    parts.push(ctx.intelligenceBlock.trim());
+  }
+
+  if (narrativeOnly) {
+    const v25 = isMemoryConsistencyV25Enabled() ? buildMemoryConsistencyV25Block(ctx) : "";
+    if (v25.trim()) {
+      parts.push(v25.trim());
+    } else if (ctx.blueprint) {
+      const memory = buildLongBookMemory({
+        config: ctx.config,
+        blueprint: ctx.blueprint,
+        chapters: ctx.previousChapters,
+      });
+      const longBlock = buildLongBookMemoryPromptBlock(memory, ctx.chapterIndex);
+      if (longBlock.trim()) parts.push(longBlock.trim());
+    }
+  }
+
+  if (!parts.length) return "";
+  return `WRITER MEMORY SOURCE (SINGLE CANON — do not contradict):\n\n${parts.join("\n\n")}`;
+}
+
+/** Compact canon for continuation chunks — same operative law, fewer tokens. */
+export function buildContinuationCanonBlock(input: {
+  writerMemorySource?: string;
+  characterLock?: string;
+  narrativeContinuity?: string;
+}): string {
+  const parts = [
+    input.writerMemorySource?.trim()
+      ? compactPromptBlock(input.writerMemorySource, 2800)
+      : "",
+    input.characterLock?.trim()
+      ? compactPromptBlock(input.characterLock, 2200)
+      : "",
+    input.narrativeContinuity?.trim()
+      ? compactPromptBlock(input.narrativeContinuity, 1200)
+      : "",
+  ].filter(Boolean);
+
+  if (!parts.length) return "";
+  return `CONTINUATION MEMORY BLOCK (same canon as chunk 1 — mandatory):\n\n${parts.join("\n\n")}`;
+}
+
+export function extractCompactNarrativeContinuity(contextMemory: string): string {
+  if (!contextMemory.trim()) return "";
+  const lastScene =
+    contextMemory.match(/LAST SCENE STATE[\s\S]*?(?=\n\n[A-Z][A-Z ]+:|$)/)?.[0]?.trim() || "";
+  const arc = contextMemory.match(/Arc position:[^\n]+/)?.[0]?.trim() || "";
+  const themes = contextMemory.match(/Core themes:[^\n]+/)?.[0]?.trim() || "";
+  return [arc, themes, lastScene].filter(Boolean).join("\n\n");
 }
 
 /** Ultra Human Manuscript Engine V2 — editorial injection block for generation prompts */
@@ -44,10 +120,12 @@ export function buildPremiumWritingBlock(ctx: PremiumWritingContext): string {
   ).family;
   const narrativeOnly = family === "narrative" || family === "poetry";
   const instructionalFamily = family === "nonfiction" || family === "educational" || family === "manual";
+  const skipInlineMemory = Boolean(ctx.writerMemorySource?.trim());
 
   const blocks = [
+    ctx.writerMemorySource?.trim() || "",
     buildHumanNarrativeRealismV3Block(ctx),
-    narrativeOnly ? buildMemoryConsistencyV25Block(ctx) : "",
+    narrativeOnly && !skipInlineMemory ? buildMemoryConsistencyV25Block(ctx) : "",
     (narrativeOnly || instructionalFamily) ? buildCrossGenreProtectionBlock(ctx.config) : "",
     buildOverOptimizationGuardBlock(),
     buildGreatnessEngineBlock(ctx),

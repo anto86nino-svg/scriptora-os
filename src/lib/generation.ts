@@ -33,7 +33,7 @@ import { buildHumanBestsellerModeV11Block } from "@/lib/human-bestseller-mode-v1
 import { buildHumanBestsellerModeV12Block } from "@/lib/human-bestseller-mode-v12";
 import { runWritingEngineV13Audit } from "@/lib/writing-engine-v13";
 import { validateCanonChunkBeforeMerge } from "@/lib/writing-engine/canon-lock-v2";
-import { buildPremiumWritingBlock, runUltraHumanFinalPass } from "@/lib/premium-writing";
+import { buildPremiumWritingBlock, runUltraHumanFinalPass, buildWriterMemorySource, buildContinuationCanonBlock, extractCompactNarrativeContinuity } from "@/lib/premium-writing";
 import { buildForgeWriterContextBlock } from "@/lib/guided-interview/forge-writer-bridge";
 import { buildPromptFromCanonicalConfig, sanitizeBookConfiguration } from "@/lib/book-config-engine";
 import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/billing/billingHeaders";
@@ -601,7 +601,13 @@ function extractKeyIdeas(content: string): string[] {
   return [...new Set([...first, ...last])].slice(0, 4);
 }
 
-function buildContextMemory(config: BookConfig, blueprint: BookBlueprint, previousChapters: Chapter[], chapterIndex: number): string {
+function buildContextMemory(
+  config: BookConfig,
+  blueprint: BookBlueprint,
+  previousChapters: Chapter[],
+  chapterIndex: number,
+  opts?: { skipLongBookMemory?: boolean },
+): string {
   if (previousChapters.length === 0) return "This is the FIRST chapter — establish the tone, introduce the core premise, and hook the reader immediately.";
 
   const summaries = previousChapters.map((c, i) => {
@@ -657,6 +663,7 @@ BOOK ARCHITECTURE:
 ${buildBlueprintIntegrityRuntimeBlock(config, blueprint, { chapterIndex })}
 
 ${(() => {
+    if (opts?.skipLongBookMemory) return "";
     const family = resolveBookTypeDefinition(config.genre, config.subcategory, config.subgenre, config.bookTypeId).family;
     if (family !== "narrative" && family !== "poetry") return "";
     const memory = buildLongBookMemory({ config, blueprint, chapters: previousChapters });
@@ -1230,7 +1237,12 @@ export async function generateChapterChunked(
   chapterLengthOverride?: string,
   onChunkProgress?: (progress: ChunkProgress) => void,
   genreLock?: GenreLock,
-  opts?: { adaptive?: { plan: import("@/lib/plan").PlanTier }; usage?: AIUsageContext; longBookMemory?: import("@/lib/long-book-memory/types").LongBookMemorySnapshot },
+  opts?: {
+    adaptive?: { plan: import("@/lib/plan").PlanTier };
+    usage?: AIUsageContext;
+    longBookMemory?: import("@/lib/long-book-memory/types").LongBookMemorySnapshot;
+    writerIntelBlock?: string;
+  },
 ): Promise<Chapter> {
   config = withSanitizedConfig(config);
   const runtimeProject: BookProject = {
@@ -1262,11 +1274,28 @@ export async function generateChapterChunked(
     }),
   };
   const targetWords = getChapterTargetWords(config, chapterIndex, config.numberOfChapters, chapterLengthOverride);
-  const contextMemory = buildContextMemory(config, blueprint, previousChapters, chapterIndex);
+  const longBookMemory = opts?.longBookMemory ?? runtimeProject.longBookMemory;
+  const intelligenceBlock = opts?.writerIntelBlock?.trim() || "";
+  const writerMemorySource = buildWriterMemorySource({
+    config,
+    previousChapters,
+    chapterIndex,
+    blueprint,
+    longBookMemory,
+    intelligenceBlock,
+  });
+  const contextMemory = buildContextMemory(config, blueprint, previousChapters, chapterIndex, {
+    skipLongBookMemory: Boolean(writerMemorySource.trim()),
+  });
   const systemBase = getSystemPrompt(config, genreLock);
   const scriptoraWritingBrain = buildScriptoraWritingBrain(config);
   const characterLock = buildCharacterLock(config);
-  const forgeWriterBlock = buildForgeWriterContextBlock(config);
+  const forgeWriterBlock = intelligenceBlock ? "" : buildForgeWriterContextBlock(config);
+  const continuationCanonBlock = buildContinuationCanonBlock({
+    writerMemorySource,
+    characterLock,
+    narrativeContinuity: extractCompactNarrativeContinuity(contextMemory),
+  });
   const humanNarrativeRealismV4 = buildHumanNarrativeRealismV4Block(config, chapterIndex);
   const humanBestsellerModeV11 = buildHumanBestsellerModeV11Block(config, { chapterIndex, mode: "generation" });
   const humanBestsellerModeV12 = buildHumanBestsellerModeV12Block(config, {
@@ -1286,14 +1315,6 @@ export async function generateChapterChunked(
     previousChapters,
     chapterIndex,
     outlineSummary: outline.summary,
-  });
-  const premiumWritingBlock = buildPremiumWritingBlock({
-    config,
-    previousChapters,
-    chapterIndex,
-    outlineSummary: outline.summary,
-    blueprint,
-    longBookMemory: opts?.longBookMemory ?? runtimeProject.longBookMemory,
   });
   const bookTypeEngineBlock = buildBookTypeEngineBlock(config);
 
@@ -1336,6 +1357,15 @@ export async function generateChapterChunked(
     const isFirstChunk = chunkIndex === 0;
     const lastTextSegment = accumulatedContent.slice(-1200);
     const adaptiveSuffix = getAdaptivePromptSuffix(chunkSize);
+    const chunkPremiumBlock = buildPremiumWritingBlock({
+      config,
+      previousChapters,
+      chapterIndex,
+      outlineSummary: outline.summary,
+      blueprint,
+      longBookMemory,
+      writerMemorySource: isFirstChunk ? writerMemorySource : "",
+    });
 
     const chunkPrompt = isFirstChunk
       ? `Write the OPENING of Chapter ${chapterIndex + 1} of "${config.title}".
@@ -1366,7 +1396,7 @@ ${humanBestsellerModeV12}
 
 ${humanizerBlock}
 
-${premiumWritingBlock}
+${chunkPremiumBlock}
 
 ${bookTypeEngineBlock}
 
@@ -1398,6 +1428,8 @@ CURRENT PROGRESS: ${currentWords} / ${targetWords} words written
 REMAINING: ~${remainingWords} words needed
 PHASE: ${phase} — ${phaseInstruction}
 
+${continuationCanonBlock ? `${continuationCanonBlock}\n\n` : ""}
+
 ${humanizerBlock}
 
 ${humanNarrativeRealismV4}
@@ -1406,7 +1438,7 @@ ${humanBestsellerModeV11}
 
 ${humanBestsellerModeV12}
 
-${premiumWritingBlock}
+${chunkPremiumBlock}
 
 ${bookTypeEngineBlock}
 
@@ -2160,11 +2192,23 @@ export async function rewriteChapter(
 - Required Improvements: ${aiRating.improvements}`
     : "";
 
-  const contextMemory = buildContextMemory(config, blueprint, previousChapters, chapterIndex);
+  const intelligenceBlock = String(usage?.metadata?.writerIntelBlock || "").trim();
+  const longBookMemory = usage?.metadata?.longBookMemory as import("@/lib/long-book-memory/types").LongBookMemorySnapshot | undefined;
+  const writerMemorySource = buildWriterMemorySource({
+    config,
+    previousChapters,
+    chapterIndex,
+    blueprint,
+    longBookMemory,
+    intelligenceBlock,
+  });
+  const contextMemory = buildContextMemory(config, blueprint, previousChapters, chapterIndex, {
+    skipLongBookMemory: Boolean(writerMemorySource.trim()),
+  });
   const lengthInstruction = getChapterLengthInstruction(config, chapterIndex, config.numberOfChapters);
   const levelInstruction = getRewriteLevelInstruction(level);
   const characterLock = buildCharacterLock(config);
-  const forgeWriterBlock = buildForgeWriterContextBlock(config);
+  const forgeWriterBlock = intelligenceBlock ? "" : buildForgeWriterContextBlock(config);
   const humanNarrativeRealismV4 = buildHumanNarrativeRealismV4Block(config, chapterIndex);
   const humanBestsellerModeV11 = buildHumanBestsellerModeV11Block(config, { chapterIndex, mode: "rewrite" });
   const humanBestsellerModeV12 = buildHumanBestsellerModeV12Block(config, {
@@ -2184,6 +2228,9 @@ export async function rewriteChapter(
     previousChapters,
     chapterIndex,
     outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary,
+    blueprint,
+    longBookMemory,
+    writerMemorySource,
   });
 
   const prompt = `${level.toUpperCase()} REWRITE — Chapter ${chapterIndex + 1}: "${chapter.title}"
@@ -2210,7 +2257,7 @@ ${humanBestsellerModeV12}
 
 ${humanizerBlock}
 
-${premiumWritingBlock}
+${chunkPremiumBlock}
 
 ${bookTypeEngineBlock}
 
