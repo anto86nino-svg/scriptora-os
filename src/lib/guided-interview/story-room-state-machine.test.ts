@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { applyInterviewAnswer, getInitialInterviewState, getInterviewProgress } from "./question-engine";
-import { getForgeMemory, updateForgeMemoryFromAnswer } from "./interview-memory";
 import {
   advanceStoryRoomStage,
   buildStoryRoomProgressTrail,
+  evaluateStageCompletion,
   getStoryRoomMachine,
   getStoryRoomProgressPercent,
+  hasStoryRoomSlotValue,
   wasStoryRoomQuestionAsked,
 } from "./story-room-state-machine";
+import { updateForgeMemoryFromAnswer, getForgeMemory, createEmptyForgeMemory } from "./interview-memory";
+import type { ForgeInterviewMemory } from "./interview-memory";
 import { FORGE_GENRE_OPENING_QUESTION_ID } from "./forge-genre-catalog";
 
 function answer(state: ReturnType<typeof getInitialInterviewState>, text: string, q?: { id: string; key: string }) {
@@ -126,8 +129,12 @@ describe("story-room-state-machine", () => {
       key: "protagonistWound",
     });
     const trail = buildStoryRoomProgressTrail(getForgeMemory(state));
+    const machine = getStoryRoomMachine(getForgeMemory(state));
     expect(trail.percent).toBeGreaterThan(40);
-    expect(trail.currentStageId).toBe("characters");
+    expect(machine.completedStageIds).toContain("promise");
+    expect(["characters", "stakes", "structure", "title", "frontMatter", "ending"]).toContain(
+      trail.currentStageId,
+    );
   });
 
   it("enters blueprintReady when minimum stages complete", () => {
@@ -167,5 +174,137 @@ describe("story-room-state-machine", () => {
       { id: FORGE_GENRE_OPENING_QUESTION_ID, key: "genre" },
     );
     expect(getStoryRoomMachine(memory).completedStageIds.length).toBeGreaterThan(0);
+  });
+
+  function memoryWithSlots(extra: Record<string, unknown>): ForgeInterviewMemory {
+    const memory = createEmptyForgeMemory();
+    memory.slotValues = { ...memory.slotValues, ...extra } as ForgeInterviewMemory["slotValues"];
+    return advanceStoryRoomStage(memory);
+  }
+
+  it("targetAudience alias completes audience stage", () => {
+    const memory = memoryWithSlots({
+      rawIdea: "Dark romance tra due anime spezzate",
+      language: "Italiano",
+      genre: "dark-romance",
+      targetAudience: "Lettori adulti che amano tensione romantica",
+    });
+    expect(hasStoryRoomSlotValue(memory, "audience")).toBe(true);
+    expect(evaluateStageCompletion(memory)).toContain("audience");
+  });
+
+  it("marketPromise alias completes promise stage", () => {
+    const memory = memoryWithSlots({
+      rawIdea: "Storia intensa",
+      language: "Italiano",
+      genre: "dark-romance",
+      tone: "Dark",
+      targetAudience: "Adulti",
+      marketPromise: "Desiderio proibito che costa l'anima",
+    });
+    expect(hasStoryRoomSlotValue(memory, "promise")).toBe(true);
+    expect(evaluateStageCompletion(memory)).toContain("promise");
+  });
+
+  it("protagonist + loveInterest completes characters stage", () => {
+    const memory = memoryWithSlots({
+      rawIdea: "Romance",
+      language: "Italiano",
+      genre: "dark-romance",
+      bookType: "Romanzo",
+      protagonist: "Elena ferita e determinata",
+      loveInterest: "Marco magnetico e pericoloso",
+    });
+    expect(hasStoryRoomSlotValue(memory, "characters")).toBe(true);
+    expect(evaluateStageCompletion(memory)).toContain("characters");
+  });
+
+  it("specific emotionalPoles alone completes characters stage", () => {
+    const memory = memoryWithSlots({
+      rawIdea: "Romance",
+      language: "Italiano",
+      genre: "dark-romance",
+      emotionalPoles: "Desiderio vs controllo — ferita vs maschera perfetta",
+    });
+    expect(hasStoryRoomSlotValue(memory, "characters")).toBe(true);
+  });
+
+  it("centralConflict alias completes stakes stage", () => {
+    const memory = memoryWithSlots({
+      rawIdea: "Thriller",
+      language: "Italiano",
+      genre: "thriller",
+      centralConflict: "Un segreto di famiglia che non può restare sepolto",
+    });
+    expect(hasStoryRoomSlotValue(memory, "stakes")).toBe(true);
+    expect(evaluateStageCompletion(memory)).toContain("stakes");
+  });
+
+  it("titleStrategy.workingTitle nested value completes title stage", () => {
+    const memory = memoryWithSlots({
+      rawIdea: "Romanzo",
+      language: "Italiano",
+      genre: "romance",
+      titleStrategy: { workingTitle: "Ombre sul mare" },
+    });
+    expect(hasStoryRoomSlotValue(memory, "title")).toBe(true);
+    expect(evaluateStageCompletion(memory)).toContain("title");
+  });
+
+  it("frontMatter.mode nested value completes frontMatter stage", () => {
+    const memory = memoryWithSlots({
+      rawIdea: "Romanzo",
+      language: "Italiano",
+      genre: "romance",
+      frontMatter: { mode: "Dedica breve prima del capitolo uno" },
+    });
+    expect(hasStoryRoomSlotValue(memory, "frontMatter")).toBe(true);
+    expect(evaluateStageCompletion(memory)).toContain("frontMatter");
+  });
+
+  it("endingDirection completes ending stage", () => {
+    const memory = memoryWithSlots({
+      rawIdea: "Romanzo",
+      language: "Italiano",
+      genre: "romance",
+      endingDirection: "Finale devastante ma giusto — nessuno resta uguale",
+    });
+    expect(hasStoryRoomSlotValue(memory, "ending")).toBe(true);
+    expect(evaluateStageCompletion(memory)).toContain("ending");
+  });
+
+  it("language + genre + tone + audience + promise exceeds 25% progress", () => {
+    const memory = memoryWithSlots({
+      rawIdea: "Dark romance gotico",
+      language: "Italiano",
+      genre: "dark-romance",
+      emotionalTone: "Cupio, sensuale e pericoloso",
+      targetAudience: "Lettori adulti",
+      readerPromise: "Desiderio proibito con confini morali",
+    });
+    expect(getStoryRoomProgressPercent(memory)).toBeGreaterThan(25);
+  });
+
+  it("dark romance through promise does not stay at 25%", () => {
+    let state = getInitialInterviewState({ chatFirst: true });
+    state = answer(state, "Romanzo · Dark Romance · dark-romance · Narrativa", {
+      id: FORGE_GENRE_OPENING_QUESTION_ID,
+      key: "genre",
+    });
+    state = answer(state, "Italiano", { id: "language-confirmation", key: "language" });
+    state = answer(state, "Tono dark, sensuale e ossessivo", { id: "tone-preset", key: "emotionalTone" });
+    state = answer(state, "Lettori adulti che amano tensione romantica", {
+      id: "audience-preset",
+      key: "targetReader",
+    });
+    state = answer(state, "Desiderio proibito che distrugge entrambi", {
+      id: "promise-preset",
+      key: "promise",
+    });
+    const pct = getInterviewProgress(state).stagePercent;
+    expect(pct).toBeGreaterThan(25);
+    expect(evaluateStageCompletion(getForgeMemory(state))).toEqual(
+      expect.arrayContaining(["genre", "language", "tone", "audience", "promise"]),
+    );
   });
 });

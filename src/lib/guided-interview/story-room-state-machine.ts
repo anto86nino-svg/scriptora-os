@@ -18,6 +18,20 @@ export type StoryRoomStageId =
   | "ending"
   | "blueprintReady";
 
+export type StoryRoomSlotGroup =
+  | "idea"
+  | "language"
+  | "genre"
+  | "tone"
+  | "audience"
+  | "promise"
+  | "characters"
+  | "stakes"
+  | "structure"
+  | "title"
+  | "frontMatter"
+  | "ending";
+
 export type StoryRoomMachineState = {
   currentStageId: StoryRoomStageId;
   completedStageIds: StoryRoomStageId[];
@@ -85,15 +99,217 @@ export const STORY_ROOM_STAGE_DEFS: StoryRoomStageDef[] = [
   { id: "blueprintReady", label: "Blueprint", requiredSlots: [], maxQuestions: 0, appliesTo: "all" },
 ];
 
+const SLOT_ALIAS_GROUPS: Record<StoryRoomSlotGroup, string[]> = {
+  idea: ["rawIdea", "concept", "premise", "whatBookIs"],
+  language: ["language"],
+  genre: ["genre", "genreDNA", "subgenre", "bookType"],
+  tone: ["tone", "emotionalTone", "atmosphere", "darknessLevel"],
+  audience: ["audience", "targetAudience", "idealReader", "readerProfile", "targetReader"],
+  promise: ["promise", "marketPromise", "readerPromise", "emotionalPromise", "bookPromise"],
+  characters: [
+    "protagonist",
+    "mainCharacter",
+    "heroine",
+    "hero",
+    "loveInterest",
+    "antagonist",
+    "antagonistOrLoveInterest",
+    "emotionalPoles",
+  ],
+  stakes: ["stakes", "emotionalStakes", "primaryLoss", "centralConflict", "wound", "desire"],
+  structure: ["chapterCount", "chaptersCount", "structure", "structurePreference", "subchaptersEnabled", "pov"],
+  title: ["title", "workingTitle", "titleStrategy"],
+  frontMatter: ["frontMatter", "dedication", "preface"],
+  ending: ["endingDirection", "ending", "finalEmotion", "finaleType", "narrativeDrive"],
+};
+
+const CANONICAL_SLOT_FALLBACK: Partial<Record<StoryRoomSlotGroup, ForgeSlotKey[]>> = {
+  idea: ["rawIdea"],
+  language: ["language"],
+  genre: ["genre", "bookType", "subgenre"],
+  tone: ["tone"],
+  audience: ["audience"],
+  promise: ["promise"],
+  characters: ["protagonist", "loveInterest", "antagonist"],
+  stakes: ["stakes", "centralConflict"],
+  structure: ["chapterCount", "pov"],
+  title: ["title", "subtitle"],
+  frontMatter: ["frontMatter", "backMatter"],
+  ending: ["endingDirection", "narrativeArc"],
+};
+
 const PROVISIONAL_CONFIRMATION =
   "Perfetto, lo fissiamo come direzione provvisoria. Se serve lo rifiniamo prima del blueprint.";
 
+const MIN_TEXT = 3;
+const MIN_SPECIFIC = 12;
+
+function slotBag(memory: ForgeInterviewMemory): Record<string, unknown> {
+  return memory.slotValues as Record<string, unknown>;
+}
+
+export function hasMeaningfulSlotText(value: unknown, min = MIN_TEXT): boolean {
+  if (value === undefined || value === null) return false;
+  if (typeof value === "string") return value.trim().length >= min;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (typeof value === "boolean") return true;
+  if (Array.isArray(value)) {
+    return value.some((entry) => hasMeaningfulSlotText(entry, min));
+  }
+  if (typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).some((entry) =>
+      hasMeaningfulSlotText(entry, min),
+    );
+  }
+  return false;
+}
+
+function bagValue(bag: Record<string, unknown>, key: string): unknown {
+  return bag[key];
+}
+
+function nestedValue(bag: Record<string, unknown>, parentKey: string, childKey: string): unknown {
+  const parent = bag[parentKey];
+  if (!parent || typeof parent !== "object" || Array.isArray(parent)) return undefined;
+  return (parent as Record<string, unknown>)[childKey];
+}
+
+function anyAliasInBag(bag: Record<string, unknown>, aliases: string[], min = MIN_TEXT): boolean {
+  for (const key of aliases) {
+    if (hasMeaningfulSlotText(bagValue(bag, key), min)) return true;
+  }
+  return false;
+}
+
+function anyCanonicalFilled(memory: ForgeInterviewMemory, keys: ForgeSlotKey[]): boolean {
+  return keys.some((key) => isSlotFilled(memory, key));
+}
+
+function isSpecificEmotionalPoles(value: unknown): boolean {
+  if (typeof value === "string") return value.trim().length >= MIN_SPECIFIC;
+  if (Array.isArray(value)) {
+    const meaningful = value.filter((entry) => String(entry).trim().length >= 4);
+    return meaningful.length >= 2 || meaningful.join(" ").length >= MIN_SPECIFIC;
+  }
+  if (value && typeof value === "object") {
+    return hasMeaningfulSlotText(value, MIN_SPECIFIC);
+  }
+  return false;
+}
+
+function hasProtagonistLead(bag: Record<string, unknown>, memory: ForgeInterviewMemory): boolean {
+  return (
+    anyAliasInBag(bag, ["protagonist", "mainCharacter", "heroine", "hero"]) ||
+    anyCanonicalFilled(memory, ["protagonist"])
+  );
+}
+
+function hasCharacterCounterpart(bag: Record<string, unknown>, memory: ForgeInterviewMemory): boolean {
+  if (
+    anyAliasInBag(bag, ["loveInterest", "antagonist", "antagonistOrLoveInterest"]) ||
+    anyCanonicalFilled(memory, ["loveInterest", "antagonist"])
+  ) {
+    return true;
+  }
+  return isSpecificEmotionalPoles(bagValue(bag, "emotionalPoles"));
+}
+
+/** Central slot resolver — aliases, nested values, canonical forge keys. */
+export function hasStoryRoomSlotValue(
+  memory: ForgeInterviewMemory,
+  slotKey: StoryRoomSlotGroup,
+): boolean {
+  const bag = slotBag(memory);
+
+  switch (slotKey) {
+    case "idea":
+      return (
+        anyAliasInBag(bag, SLOT_ALIAS_GROUPS.idea) ||
+        anyCanonicalFilled(memory, ["rawIdea"]) ||
+        memory.usefulAnswerCount >= 1
+      );
+
+    case "language":
+      return anyAliasInBag(bag, SLOT_ALIAS_GROUPS.language) || anyCanonicalFilled(memory, ["language"]);
+
+    case "genre":
+      return (
+        isGenreSlotLocked(memory) ||
+        anyAliasInBag(bag, SLOT_ALIAS_GROUPS.genre) ||
+        anyCanonicalFilled(memory, ["genre", "bookType", "subgenre"])
+      );
+
+    case "tone":
+      return anyAliasInBag(bag, SLOT_ALIAS_GROUPS.tone) || anyCanonicalFilled(memory, ["tone"]);
+
+    case "audience":
+      return anyAliasInBag(bag, SLOT_ALIAS_GROUPS.audience) || anyCanonicalFilled(memory, ["audience"]);
+
+    case "promise":
+      if (anyAliasInBag(bag, SLOT_ALIAS_GROUPS.promise) || anyCanonicalFilled(memory, ["promise"])) {
+        return true;
+      }
+      return hasMeaningfulSlotText(nestedValue(bag, "marketPromise", "uniqueAngle"), MIN_TEXT);
+
+    case "characters":
+      if (isSpecificEmotionalPoles(bagValue(bag, "emotionalPoles"))) return true;
+      if (hasProtagonistLead(bag, memory) && hasCharacterCounterpart(bag, memory)) return true;
+      if (isRomanceMode(memory)) {
+        return (
+          (hasProtagonistLead(bag, memory) && hasMeaningfulSlotText(bagValue(bag, "loveInterest"))) ||
+          anyCanonicalFilled(memory, ["protagonist", "loveInterest"])
+        );
+      }
+      return hasProtagonistLead(bag, memory) && hasCharacterCounterpart(bag, memory);
+
+    case "stakes":
+      if (anyAliasInBag(bag, SLOT_ALIAS_GROUPS.stakes) || anyCanonicalFilled(memory, ["stakes", "centralConflict"])) {
+        return true;
+      }
+      return hasMeaningfulSlotText(nestedValue(bag, "stakes", "primaryLoss"), MIN_TEXT);
+
+    case "structure":
+      return (
+        anyAliasInBag(bag, SLOT_ALIAS_GROUPS.structure) ||
+        anyCanonicalFilled(memory, ["chapterCount", "pov", "subchaptersEnabled"])
+      );
+
+    case "title":
+      if (anyAliasInBag(bag, SLOT_ALIAS_GROUPS.title) || anyCanonicalFilled(memory, ["title", "subtitle"])) {
+        return true;
+      }
+      return hasMeaningfulSlotText(nestedValue(bag, "titleStrategy", "workingTitle"), MIN_TEXT);
+
+    case "frontMatter":
+      if (anyAliasInBag(bag, SLOT_ALIAS_GROUPS.frontMatter) || anyCanonicalFilled(memory, ["frontMatter"])) {
+        return true;
+      }
+      return hasMeaningfulSlotText(nestedValue(bag, "frontMatter", "mode"), MIN_TEXT);
+
+    case "ending":
+      return (
+        anyAliasInBag(bag, SLOT_ALIAS_GROUPS.ending) ||
+        anyCanonicalFilled(memory, ["endingDirection", "narrativeArc"])
+      );
+
+    default:
+      return false;
+  }
+}
+
 function detectBookMode(memory: ForgeInterviewMemory): "fiction" | "nonfiction" | "poetry" {
-  const bag = [memory.slotValues.bookType, memory.slotValues.genre, memory.slotValues.rawIdea]
+  const bag = slotBag(memory);
+  const parts = [
+    bag.bookType,
+    bag.genre,
+    bag.genreDNA,
+    bag.rawIdea,
+    bag.concept,
+  ]
     .filter(Boolean)
     .join(" ");
-  if (/poesia|poetry|verso|lyric/i.test(bag)) return "poetry";
-  if (/self-help|saggio|manuale|guida|business|studio|universitar/i.test(bag)) return "nonfiction";
+  if (/poesia|poetry|verso|lyric/i.test(parts)) return "poetry";
+  if (/self-help|saggio|manuale|guida|business|studio|universitar/i.test(parts)) return "nonfiction";
   return "fiction";
 }
 
@@ -123,34 +339,19 @@ function applicableStages(memory: ForgeInterviewMemory): StoryRoomStageDef[] {
   });
 }
 
-function romanceAdjustedRequired(stage: StoryRoomStageDef, memory: ForgeInterviewMemory): ForgeSlotKey[] {
-  if (stage.id !== "characters") return stage.requiredSlots;
-  if (isRomanceMode(memory)) {
-    return ["protagonist", "loveInterest", "antagonist"];
-  }
-  return stage.requiredSlots;
-}
-
 export function isStageRequirementMet(
   stage: StoryRoomStageDef,
   memory: ForgeInterviewMemory,
 ): boolean {
-  if (stage.id === "genre") {
-    return isGenreSlotLocked(memory) || isSlotFilled(memory, "genre");
-  }
-  if (stage.id === "structure") {
-    return isSlotFilled(memory, "chapterCount") || isSlotFilled(memory, "pov");
-  }
-  if (stage.id === "idea") {
-    return isSlotFilled(memory, "rawIdea") || memory.usefulAnswerCount >= 1;
-  }
-  const required = romanceAdjustedRequired(stage, memory);
-  return required.every((slot) => isSlotFilled(memory, slot));
+  if (stage.id === "blueprintReady") return false;
+  return hasStoryRoomSlotValue(memory, stage.id as StoryRoomSlotGroup);
 }
 
-export function evaluateStageCompletion(
-  memory: ForgeInterviewMemory,
-): StoryRoomStageId[] {
+export function getCompletedStagesFromSlots(memory: ForgeInterviewMemory): StoryRoomStageId[] {
+  return evaluateStageCompletion(memory);
+}
+
+export function evaluateStageCompletion(memory: ForgeInterviewMemory): StoryRoomStageId[] {
   const completed: StoryRoomStageId[] = [];
   for (const stage of applicableStages(memory)) {
     if (stage.id === "blueprintReady") continue;
@@ -159,6 +360,46 @@ export function evaluateStageCompletion(
     }
   }
   return completed;
+}
+
+export function getStageMissingHints(
+  stage: StoryRoomStageDef,
+  memory: ForgeInterviewMemory,
+): string[] {
+  if (isStageRequirementMet(stage, memory)) return [];
+  const group = stage.id as StoryRoomSlotGroup;
+  const aliases = SLOT_ALIAS_GROUPS[group] ?? [];
+  const canonical = CANONICAL_SLOT_FALLBACK[group] ?? stage.requiredSlots;
+  return [...aliases, ...canonical].slice(0, 6);
+}
+
+export function getStoryRoomProgressDebugInfo(memory: ForgeInterviewMemory): {
+  percent: number;
+  completedStageIds: StoryRoomStageId[];
+  currentStageId: StoryRoomStageId;
+  missingByStage: Record<string, string[]>;
+} {
+  const machine = getStoryRoomMachine(memory);
+  const completedStageIds = [...new Set([
+    ...machine.completedStageIds,
+    ...evaluateStageCompletion(memory),
+  ])];
+  const currentStageId = resolveCurrentStoryRoomStage(memory);
+  const missingByStage: Record<string, string[]> = {};
+
+  for (const stage of applicableStages(memory)) {
+    if (stage.id === "blueprintReady") continue;
+    if (!completedStageIds.includes(stage.id)) {
+      missingByStage[stage.id] = getStageMissingHints(stage, memory);
+    }
+  }
+
+  return {
+    percent: getStoryRoomProgressPercent(memory),
+    completedStageIds,
+    currentStageId,
+    missingByStage,
+  };
 }
 
 export function resolveCurrentStoryRoomStage(memory: ForgeInterviewMemory): StoryRoomStageId {
@@ -171,6 +412,13 @@ export function resolveCurrentStoryRoomStage(memory: ForgeInterviewMemory): Stor
   }
 
   return "blueprintReady";
+}
+
+function canonicalSlotsForStage(stage: StoryRoomStageDef, memory: ForgeInterviewMemory): ForgeSlotKey[] {
+  if (stage.id === "characters" && isRomanceMode(memory)) {
+    return ["protagonist", "loveInterest", "antagonist"];
+  }
+  return [...stage.requiredSlots, ...(stage.optionalSlots ?? [])];
 }
 
 export function advanceStoryRoomStage(
@@ -192,7 +440,7 @@ export function advanceStoryRoomStage(
     questionCount >= currentDef.maxQuestions &&
     !isStageRequirementMet(currentDef, memory)
   ) {
-    for (const slot of romanceAdjustedRequired(currentDef, memory)) {
+    for (const slot of canonicalSlotsForStage(currentDef, memory)) {
       if (!isSlotFilled(memory, slot)) {
         memory.slotValues[slot] = opts.lastAnswer.trim();
         memory.answeredSlots[slot] = true;
@@ -209,7 +457,7 @@ export function advanceStoryRoomStage(
   const completedSlotKeys = [...machine.completedSlotKeys];
   for (const stage of stages) {
     if (!mergedCompleted.includes(stage.id)) continue;
-    for (const slot of [...stage.requiredSlots, ...(stage.optionalSlots ?? [])]) {
+    for (const slot of canonicalSlotsForStage(stage, memory)) {
       if (isSlotFilled(memory, slot) && !completedSlotKeys.includes(slot)) {
         completedSlotKeys.push(slot);
       }
@@ -275,13 +523,40 @@ type ForgeInterviewMachinePatch = Pick<
   "askedQuestionIds" | "questionCountByStage"
 >;
 
+function stageGroupForQuestionSlot(slot: ForgeSlotKey | null): StoryRoomSlotGroup | null {
+  if (!slot) return null;
+  const map: Partial<Record<ForgeSlotKey, StoryRoomSlotGroup>> = {
+    rawIdea: "idea",
+    language: "language",
+    genre: "genre",
+    bookType: "genre",
+    subgenre: "genre",
+    tone: "tone",
+    audience: "audience",
+    promise: "promise",
+    protagonist: "characters",
+    loveInterest: "characters",
+    antagonist: "characters",
+    stakes: "stakes",
+    centralConflict: "stakes",
+    chapterCount: "structure",
+    pov: "structure",
+    title: "title",
+    frontMatter: "frontMatter",
+    endingDirection: "ending",
+    narrativeArc: "ending",
+  };
+  return map[slot] ?? null;
+}
+
 export function wasStoryRoomQuestionAsked(
   memory: ForgeInterviewMemory,
   questionId: string,
 ): boolean {
   const machine = getStoryRoomMachine(memory);
   const slot = questionKeyToSlotForMachine(questionId);
-  if (slot && !isSlotFilled(memory, slot)) return false;
+  const group = stageGroupForQuestionSlot(slot);
+  if (group && !hasStoryRoomSlotValue(memory, group)) return false;
   return machine.askedQuestionIds.includes(questionId);
 }
 
@@ -374,25 +649,39 @@ export function buildStoryRoomProgressLabel(memory: ForgeInterviewMemory): strin
   return parts.join(" → ");
 }
 
+function missingCanonicalSlotsForStage(stage: StoryRoomStageDef, memory: ForgeInterviewMemory): ForgeSlotKey[] {
+  const slots = canonicalSlotsForStage(stage, memory);
+  if (stage.id === "characters") {
+    const bag = slotBag(memory);
+    const missing: ForgeSlotKey[] = [];
+    if (!hasProtagonistLead(bag, memory)) missing.push("protagonist");
+    if (isRomanceMode(memory) && !hasMeaningfulSlotText(bag.loveInterest) && !isSlotFilled(memory, "loveInterest")) {
+      missing.push("loveInterest");
+    } else if (!hasCharacterCounterpart(bag, memory)) {
+      missing.push("antagonist");
+    }
+    return missing;
+  }
+  if (stage.id === "stakes") {
+    if (hasStoryRoomSlotValue(memory, "stakes")) return [];
+    return slots.filter((slot) => !isSlotFilled(memory, slot)).slice(0, 2);
+  }
+  return slots.filter((slot) => !isSlotFilled(memory, slot));
+}
+
 export function slotsForCurrentStage(memory: ForgeInterviewMemory): ForgeSlotKey[] {
   const machine = getStoryRoomMachine(memory);
   const stage = STORY_ROOM_STAGE_DEFS.find((s) => s.id === machine.currentStageId);
   if (!stage || stage.id === "blueprintReady") return [];
-
-  const required = romanceAdjustedRequired(stage, memory);
-  const missing = required.filter((slot) => !isSlotFilled(memory, slot));
-  if (missing.length > 0) return missing;
-
-  const optional = (stage.optionalSlots ?? []).filter((slot) => !isSlotFilled(memory, slot));
-  return optional;
+  if (hasStoryRoomSlotValue(memory, stage.id as StoryRoomSlotGroup)) return [];
+  return missingCanonicalSlotsForStage(stage, memory);
 }
 
 export function isSlotOnCurrentStage(memory: ForgeInterviewMemory, slot: ForgeSlotKey): boolean {
   const machine = getStoryRoomMachine(memory);
   const stage = STORY_ROOM_STAGE_DEFS.find((s) => s.id === machine.currentStageId);
   if (!stage) return true;
-  const all = [...romanceAdjustedRequired(stage, memory), ...(stage.optionalSlots ?? [])];
-  return all.includes(slot);
+  return canonicalSlotsForStage(stage, memory).includes(slot);
 }
 
 export function getProvisionalAdvanceMessage(): string {
@@ -404,7 +693,6 @@ export function isStoryRoomBlueprintReady(memory: ForgeInterviewMemory): boolean
   return trail.blueprintReady;
 }
 
-/** Normalize slot writes from chat / auto-answer into structured memory. */
 export function normalizeSlotFromAnswer(
   memory: ForgeInterviewMemory,
   slot: ForgeSlotKey,
