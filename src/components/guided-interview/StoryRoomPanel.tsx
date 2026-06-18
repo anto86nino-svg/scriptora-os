@@ -8,10 +8,12 @@ export type StoryRoomPanelProps = {
   state: GuidedInterviewState;
   className?: string;
   compact?: boolean;
+  progressPct?: number;
 };
 
-export function StoryRoomPanel({ state, className, compact = false }: StoryRoomPanelProps) {
+export function StoryRoomPanel({ state, className, compact = false, progressPct }: StoryRoomPanelProps) {
   const snapshot = useMemo(() => buildStoryRoomSnapshot(state), [state]);
+  const visiblePct = typeof progressPct === "number" ? progressPct : snapshot.completionPct;
   const [expanded, setExpanded] = useState(!compact);
 
   if (!snapshot.visible) return null;
@@ -30,11 +32,11 @@ export function StoryRoomPanel({ state, className, compact = false }: StoryRoomP
             Story Room
           </p>
           <p className="truncate text-[11px] text-white/50">
-            {expanded ? snapshot.highlight : `${snapshot.completionPct}% · suggerimenti narrativi`}
+            {expanded ? snapshot.highlight : `${visiblePct}% · suggerimenti narrativi`}
           </p>
         </div>
         <span className="shrink-0 rounded-full border border-indigo-400/25 bg-indigo-500/10 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-indigo-100">
-          {snapshot.completionPct}%
+          {visiblePct}%
         </span>
         {compact && (
           <button

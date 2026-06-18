@@ -49,6 +49,7 @@ import {
   getProvisionalAdvanceMessage,
   getStoryRoomMachine,
   getStoryRoomProgressPercent,
+  getStoryRoomProgressDebugInfo,
   isSlotOnCurrentStage,
   isStoryRoomBlueprintReady,
   markStoryRoomQuestionAsked,
@@ -880,6 +881,11 @@ export function getMemoryStageProgress(memory: ForgeInterviewMemory): {
     ...machine.completedStageIds,
     ...evaluateStageCompletion(memory),
   ]);
+
+  if (import.meta.env.DEV) {
+    console.debug("[StoryRoomStageProgress]", getStoryRoomProgressDebugInfo(memory));
+  }
+
   return {
     percent,
     completedStages: completed.size,

@@ -105,7 +105,7 @@ export function GuidedInterviewPanel({
   ) : null;
 
   const storyRoom = !showMobileConfirmation ? (
-    <StoryRoomPanel state={ctrl.state} compact={isMobile} />
+    <StoryRoomPanel state={ctrl.state} compact={isMobile} progressPct={ctrl.confidencePct} />
   ) : null;
 
   if (isMobile && unifiedScroll) {
