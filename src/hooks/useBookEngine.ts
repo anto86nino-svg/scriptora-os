@@ -60,6 +60,7 @@ import { normalizeProjectChapterTitles, resolveChapterTitle, formatChapterDispla
 import { ensureBookTitleMetadata } from "@/lib/title-shadow";
 import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
 import { normalizeBookConfig, normalizeBookProject } from "@/lib/book-config-studio/defaults";
+import { normalizeProjectChapters, normalizeChapterForGeneration } from "@/lib/manuscript/chapter-normalization";
 import type { BookBlueprint } from "@/types/book";
 import { getActiveSubchaptersPerChapter, getBookStructureTruth, getMissingActiveSubchapterRefs } from "@/lib/book-structure-truth";
 import {
@@ -396,12 +397,20 @@ typeof crypto.randomUUID === "function"
 
     const genreLock = buildGenreLock(safeConfig);
     const now = new Date().toISOString();
+    const chapterStubs = blueprint.chapterOutlines.map((outline, index) =>
+      normalizeChapterForGeneration(
+        { title: outline.title, content: "", status: "idle" },
+        index,
+        safeConfig,
+        { title: outline.title, summary: outline.summary },
+      ),
+    );
     const newProject: BookProject = normalizeBookProject({
       id: createProjectId(),
       config: safeConfig,
       blueprint,
       frontMatter: null,
-      chapters: [],
+      chapters: chapterStubs,
       backMatter: null,
       phase: initialPhaseAfterBlueprint(safeConfig),
       genreLock,
@@ -777,7 +786,7 @@ typeof crypto.randomUUID === "function"
   }, [project, addMessage, updateAndSave, generateFrontMatterSection, generateBackMatterSection]);
 
   const generateSingleChapter = useCallback(async (index: number) => {
-    const p = getLatestProject() || project;
+    let p = normalizeProjectChapters(getLatestProject() || project);
     if (!p?.blueprint) return;
     const genKey = `chapter-${index}`;
     if (generatingSet.has(genKey)) return;
@@ -808,7 +817,8 @@ typeof crypto.randomUUID === "function"
     const generationId = startChapterGeneration(targetProjectId, index, "chapter");
     updateAndSave(proj => {
       if (proj.id !== targetProjectId) return proj;
-      const chapters = [...proj.chapters];
+      const normalized = normalizeProjectChapters(proj);
+      const chapters = [...normalized.chapters];
       while (chapters.length <= index) {
         chapters.push({ title: resolveProjectChapterTitle(proj, chapters.length), content: "", subchapters: [], status: "idle" });
       }
@@ -816,6 +826,7 @@ typeof crypto.randomUUID === "function"
         ...chapters[index],
         title: resolveProjectChapterTitle(proj, index, chapters[index]?.title),
         status: "generating",
+        subchapters: safeSubchapters(chapters[index]),
         lastGenerationId: generationId,
         rewriteInProgress: false,
         rewriteAttemptCount: 0,
@@ -825,8 +836,10 @@ typeof crypto.randomUUID === "function"
 
     try {
       addMessage("assistant", `Writing Chapter ${index + 1}... ✍️`);
-      const latestP = getLatestProject() || p;
-      const prevChapters = latestP.chapters.filter((_, i) => i < index && latestP.chapters[i]?.content?.length > 0);
+      const latestP = normalizeProjectChapters(getLatestProject() || p);
+      const prevChapters = latestP.chapters
+        .slice(0, index)
+        .filter((ch) => ch?.content?.length > 0);
       const chapterOverride = latestP.chapters[index]?.lengthOverride;
       const activePlanForChapter = await getActivePlanForEngine();
       const creditOperation = resolveChapterGenerationOperation(latestP.config);
@@ -932,7 +945,7 @@ typeof crypto.randomUUID === "function"
           ...chapter,
           title: resolveProjectChapterTitle(proj, index, chapter.title),
           content: trimTextToWordLimit(chapter.content, remaining),
-          subchapters: remaining < countWordsSafe(chapter.content) ? [] : chapter.subchapters,
+          subchapters: remaining < countWordsSafe(chapter.content) ? [] : safeSubchapters(chapter),
         };
 
         if (remaining <= 0 || countWordsSafe(finalChapter.content) >= remaining) {
@@ -941,6 +954,7 @@ typeof crypto.randomUUID === "function"
 
         chapters[index] = {
           ...finalChapter,
+          subchapters: safeSubchapters(finalChapter),
           status: "completed" as GenerationStatus,
           lengthOverride: proj.chapters[index]?.lengthOverride,
           lastGenerationId: generationId,
@@ -1066,7 +1080,7 @@ typeof crypto.randomUUID === "function"
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
         const ch = { ...chapters[chapterIndex] };
-        const subs = [...ch.subchapters];
+        const subs = [...safeSubchapters(ch)];
         while (subs.length <= subIndex) subs.push({ title: "", content: "" });
         subs[subIndex] = sub;
         ch.subchapters = subs;
@@ -1486,7 +1500,7 @@ typeof crypto.randomUUID === "function"
     updateAndSave(p => {
       const chapters = [...p.chapters];
       const ch = { ...chapters[chapterIndex] };
-      const subs = [...ch.subchapters];
+      const subs = [...safeSubchapters(ch)];
       subs[subIndex] = { ...subs[subIndex], title };
       ch.subchapters = subs;
       chapters[chapterIndex] = ch;
@@ -1498,7 +1512,7 @@ typeof crypto.randomUUID === "function"
     updateAndSave(p => {
       const chapters = [...p.chapters];
       const ch = { ...chapters[chapterIndex] };
-      const subs = [...ch.subchapters];
+      const subs = [...safeSubchapters(ch)];
       subs[subIndex] = { ...subs[subIndex], content };
       ch.subchapters = subs;
       chapters[chapterIndex] = ch;

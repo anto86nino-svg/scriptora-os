@@ -52,6 +52,9 @@ describe("buildCompleteExpressBookPackage", () => {
     expect(pkg.stakes).toBeTruthy();
     expect(pkg.chapterCount).toBeGreaterThan(0);
     expect(pkg.chapterBlueprintSeeds.length).toBe(pkg.chapterCount);
+    expect(pkg.chapterBlueprintSeeds[0]!.subchapters).toEqual([]);
+    expect(pkg.chapterBlueprintSeeds[0]!.id).toBeTruthy();
+    expect(pkg.chapterBlueprintSeeds[0]!.expectedSetting).toBeTruthy();
     expect(pkg.characters.length).toBeGreaterThanOrEqual(2);
     expect(pkg.characters[0]?.name?.length).toBeGreaterThan(1);
     expect(pkg.frontMatter).toBeTruthy();

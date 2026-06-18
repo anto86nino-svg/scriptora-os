@@ -74,6 +74,8 @@ export interface ExtractedBookIntent {
   structurePreference?: string;
   commercialGoal?: string;
   openingHook?: string;
+  /** Studio Express — sinossi editoriale completa (spoiler) */
+  editorialSynopsis?: string;
 
   /** Title & matter */
   bookTitle?: string;
@@ -145,7 +147,7 @@ export interface GuidedInterviewState {
   /** interview = full Story Room; express = Studio Express shortcut */
   forgeMode?: "interview" | "express";
   expressConfig?: import("./express-forge-types").ExpressForgeInput;
-  blueprintScenarios?: import("./blueprint-scenarios").BlueprintScenario[];
+  blueprintScenarios?: import("./express-book-package").ExpressBookScenario[];
   selectedBlueprintScenarioId?: string;
   slotProvenance?: Record<string, import("./express-forge-types").ForgeFieldProvenance>;
 }

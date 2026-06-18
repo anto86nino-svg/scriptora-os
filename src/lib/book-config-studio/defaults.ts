@@ -3,6 +3,7 @@ import { resolveBookTypeDefinition } from "@/lib/book-type-engine";
 import { DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { DEFAULT_STYLE_PROFILE, type WritingStyleProfile } from "@/lib/book-creation-os/objectives";
 import type { BookMatterOptions } from "@/types/book";
+import { normalizeProjectChapters } from "@/lib/manuscript/chapter-normalization";
 
 const VALID_LANGUAGES: Language[] = ["English", "Italian", "Spanish", "French", "German"];
 
@@ -112,10 +113,10 @@ export function normalizeBookConfig(input: Partial<BookConfig> | BookConfig): Bo
 }
 
 export function normalizeBookProject(project: BookProject): BookProject {
-  return {
+  return normalizeProjectChapters({
     ...project,
     config: normalizeBookConfig(project.config),
     blueprintApproved: project.blueprintApproved ?? Boolean(project.blueprint && project.phase !== "blueprint"),
     configStatus: project.configStatus || (project.blueprintApproved ? "approved" : "draft"),
-  };
+  });
 }

@@ -7,6 +7,13 @@ import { buildGenreSystemBlock, buildGenreBlueprintBlock, buildGenreEditorialBlo
 import { buildBookTypeEngineBlock, buildBookTypeLock, resolveBookTypeDefinition } from "@/lib/book-type-engine";
 import { runManuscriptQualityV3 } from "@/lib/manuscript-quality-v3";
 import { finalManuscriptGuard } from "@/lib/final-manuscript-guard";
+import { sanitizeGeneratedChapterContent } from "@/lib/manuscript/manuscript-integrity-guard";
+import { safeSubchapters } from "@/lib/manuscript/chapter-normalization";
+import {
+  buildChapterWritingPlan,
+  buildChapterWritingPlanPromptBlock,
+  type ChapterWritingPlan,
+} from "@/lib/writing-director/chapter-writing-director";
 import { buildLongBookMemory, buildLongBookMemoryPromptBlock } from "@/lib/long-book-memory";
 import {
   applyMatterOptionsToBackMatter,
@@ -617,7 +624,7 @@ function buildContextMemory(
   const summaries = previousChapters.map((c, i) => {
     const wordCount = c.content.split(/\s+/).length;
     const keyIdeas = extractKeyIdeas(c.content);
-    const subTitles = c.subchapters.map(s => s.title).join(", ");
+    const subTitles = safeSubchapters(c).map((s) => s.title).join(", ");
     return `Ch ${i + 1} "${c.title}" (${wordCount} words):
   Opening: ${c.content.substring(0, 150)}...
   Key ideas: ${keyIdeas.join(" | ")}
@@ -1136,7 +1143,13 @@ function priorTextFromChapters(chapters: Array<Pick<Chapter, "content">> = []): 
 
 function applyFinalManuscriptGuardToText(
   text: string,
-  context: { config: BookConfig; previousChapters?: Array<Pick<Chapter, "content">>; chapterIndex?: number },
+  context: {
+    config: BookConfig;
+    previousChapters?: Array<Pick<Chapter, "content">>;
+    chapterIndex?: number;
+    chapterTitle?: string;
+    writingPlan?: ChapterWritingPlan;
+  },
 ): string {
   const cleaned = runManuscriptQualityV3(text, {
     language: context.config.language ?? "Italian",
@@ -1145,12 +1158,27 @@ function applyFinalManuscriptGuardToText(
     chapterIndex: context.chapterIndex,
   }).text;
 
-  if (!cleaned.trim() || countWords(cleaned) < 3) {
+  const integrity = sanitizeGeneratedChapterContent(cleaned, {
+    language: context.config.language ?? "Italian",
+    chapterTitle: context.chapterTitle,
+    chapterNumber: context.chapterIndex,
+    bookSetting: context.config.idea?.slice(0, 400) || context.config.subgenre,
+    expectedSetting: context.config.subgenre || context.config.subcategory,
+    genre: context.config.genre,
+    chapterLength: context.config.chapterLength,
+    writingPlan: context.writingPlan,
+  });
+
+  const guarded = finalManuscriptGuard(integrity.content, {
+    language: context.config.language ?? "Italian",
+  });
+
+  if (!guarded.trim() || countWords(guarded) < 3) {
     const label = context.chapterIndex != null ? `Capitolo ${context.chapterIndex + 1}` : "Output";
     throw new Error(`${label}: output finale non valido dopo la pulizia del manoscritto.`);
   }
 
-  return cleaned;
+  return guarded;
 }
 
 function applyUltraHumanAndFinalGuardToText(
@@ -1323,6 +1351,8 @@ export async function generateChapterChunked(
     outlineSummary: outline.summary,
   });
   const bookTypeEngineBlock = buildBookTypeEngineBlock(config);
+  const chapterWritingPlan = buildChapterWritingPlan(config, blueprint, chapterIndex, previousChapters);
+  const chapterDirectorBlock = buildChapterWritingPlanPromptBlock(chapterWritingPlan);
 
   let accumulatedContent = "";
   let chapterTitle = outline.title;
@@ -1406,6 +1436,8 @@ ${humanBestsellerModeV12}
 
 ${humanizerBlock}
 
+${chapterDirectorBlock}
+
 ${chunkPremiumBlock}
 
 ${bookTypeEngineBlock}
@@ -1441,6 +1473,8 @@ PHASE: ${phase} — ${phaseInstruction}
 ${continuationCanonBlock ? `${continuationCanonBlock}\n\n` : ""}
 
 ${humanizerBlock}
+
+${chapterDirectorBlock}
 
 ${humanNarrativeRealismV4}
 
@@ -1760,7 +1794,13 @@ Write in ${config.language}.${adaptiveSuffix}`;
 
   return {
     ...finalChapter,
-    content: applyFinalManuscriptGuardToText(finalChapter.content, { config, previousChapters, chapterIndex }),
+    content: applyFinalManuscriptGuardToText(finalChapter.content, {
+      config,
+      previousChapters,
+      chapterIndex,
+      chapterTitle: finalChapter.title,
+      writingPlan: chapterWritingPlan,
+    }),
   };
 }
 
@@ -1969,9 +2009,9 @@ export async function generateSubchapter(
   };
   const subOutline = (outline as any).subchapters?.[subchapterIndex];
   const contextMemory = buildContextMemory(config, blueprint, previousChapters, chapterIndex);
-  const existingSubs = chapter.subchapters.map((s, i) =>
-    `Subchapter ${i + 1} "${s.title}": ${s.content.substring(0, 200)}...`
-  ).join("\n");
+  const existingSubs = safeSubchapters(chapter)
+    .map((s, i) => `Subchapter ${i + 1} "${s.title}": ${s.content.substring(0, 200)}...`)
+    .join("\n");
 
   const bookTotal = getBookTotalWords(config);
   const subchapterCount = getSubchaptersPerChapter(config) || 3;
@@ -2340,7 +2380,7 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
         ...chapter,
         ...parsed,
         content: rewrittenContent,
-        subchapters: Array.isArray(parsed?.subchapters) ? parsed.subchapters : chapter.subchapters,
+        subchapters: Array.isArray(parsed?.subchapters) ? parsed.subchapters : safeSubchapters(chapter),
       },
       { config, previousChapters, chapterIndex, outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary },
     );

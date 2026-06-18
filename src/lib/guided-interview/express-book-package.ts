@@ -23,19 +23,28 @@ import {
 } from "./story-room-state-machine";
 import { buildCanonFromState, lockCanonMaster } from "./canon-genesis-engine";
 import { buildDnaLockFromInterviewState } from "./dna-lock";
-import {
-  buildForgeInterviewSeed,
+import { buildForgeInterviewSeed,
   validateForgeHandoffForBlueprint,
 } from "./forge-blueprint-handoff";
 import { applyBlueprintReadySummaryToState } from "./blueprint-ready-summary";
 import { isMetadataOnly } from "./blueprint-ready-summary";
+import { validateBookReadinessForBlueprint } from "@/lib/book-config-engine/blueprint-readiness";
+import { enrichBookConfigFromForgeSeed } from "./forge-writer-bridge";
+import type { BookConfig } from "@/types/book";
 
 export type ExpressScenarioVariant = "safe" | "commercial" | "bold";
 
 export type ChapterBlueprintSeed = {
+  id: string;
   chapter: number;
   title: string;
+  summary: string;
   purpose: string;
+  goal: string;
+  conflict: string;
+  hook: string;
+  expectedSetting: string;
+  subchapters: [];
 };
 
 export type ExpressKeyScene = {
@@ -286,7 +295,7 @@ function buildCharacters(
   return [protagonist, antagonist];
 }
 
-function buildChapterSeeds(count: number, genre: string, variant: ExpressScenarioVariant): ChapterBlueprintSeed[] {
+function buildChapterSeeds(count: number, genre: string, variant: ExpressScenarioVariant, setting: string): ChapterBlueprintSeed[] {
   const romanceArc = [
     "Arrivo e attrazione pericolosa",
     "Confini che cedono",
@@ -306,18 +315,30 @@ function buildChapterSeeds(count: number, genre: string, variant: ExpressScenari
       ? romanceArc
       : Array.from({ length: count }, (_, i) => `Atto ${i + 1} — escalation narrativa`);
 
-  return Array.from({ length: count }, (_, i) => ({
-    chapter: i + 1,
-    title: labels[i % labels.length] ?? `Capitolo ${i + 1}`,
-    purpose:
+  return Array.from({ length: count }, (_, i) => {
+    const title = labels[i % labels.length] ?? `Capitolo ${i + 1}`;
+    const purpose =
       variant === "commercial" && i === 0
         ? "Hook immediato, tono, promessa e conflitto visibile entro poche pagine"
         : i === Math.floor(count / 2)
           ? "Midpoint che ribalta ciò che il protagonista credeva vero"
           : i === count - 1
             ? "Payoff emotivo e chiusura coerente con la promessa"
-            : `Sviluppa tensione, personaggi e posta in gioco nel capitolo ${i + 1}`,
-  }));
+            : `Sviluppa tensione, personaggi e posta in gioco nel capitolo ${i + 1}`;
+    const summary = purpose;
+    return {
+      id: `express-ch-${i + 1}`,
+      chapter: i + 1,
+      title,
+      summary,
+      purpose,
+      goal: purpose,
+      conflict: i === 0 ? "Primo attrito tra desiderio e pericolo" : "Escalation del conflitto centrale",
+      hook: i === 0 ? "Apertura che aggancia subito tono e posta in gioco" : `Svolta nel capitolo ${i + 1}`,
+      expectedSetting: setting,
+      subchapters: [] as [],
+    };
+  });
 }
 
 function buildKeyScenes(pkg: Partial<CompleteExpressBookPackage>): ExpressKeyScene[] {
@@ -412,7 +433,7 @@ export function buildCompleteExpressBookPackage(
   };
 
   const characters = buildCharacters(lead, counterpart, partial, input.genre);
-  const chapterBlueprintSeeds = buildChapterSeeds(chapterCount, input.genre, variant);
+  const chapterBlueprintSeeds = buildChapterSeeds(chapterCount, input.genre, variant, setting);
   const keyScenes = buildKeyScenes(partial);
 
   const storyRoom: StoryRoomState = {
@@ -756,6 +777,53 @@ export function validateExpressPackageReadiness(state: GuidedInterviewState): {
     missing: getCriticalMissingSlots(memory).map(String),
     handoffMissing: handoff.missing,
     criticalSlots: getCriticalMissingSlots(memory).map(String),
+  };
+}
+
+export function ensureExpressWriterReadiness(
+  state: GuidedInterviewState,
+  baseConfig?: Partial<BookConfig>,
+): {
+  state: GuidedInterviewState;
+  ready: boolean;
+  blockingIssues: string[];
+  warnings: string[];
+} {
+  let next = ensureExpressBookPackageCompleteness(state);
+  next = applyBlueprintReadySummaryToState(next);
+  const seed = buildForgeInterviewSeed(next);
+  const handoff = validateForgeHandoffForBlueprint(seed);
+  const config = enrichBookConfigFromForgeSeed(
+    {
+      title: next.extracted?.bookTitle ?? "Romanzo",
+      subtitle: next.extracted?.bookSubtitle ?? "",
+      language: next.extracted?.language ?? "Italian",
+      genre: next.selectedGenre ?? next.extracted?.genre ?? "fiction",
+      subcategory: next.extracted?.subgenre ?? next.selectedGenre ?? "",
+      subgenre: next.extracted?.subgenre ?? "",
+      idea: next.extracted?.editorialSynopsis ?? next.extracted?.promise ?? "",
+      targetReader: next.extracted?.targetReader ?? "",
+      tone: next.extracted?.emotionalTone ?? next.selectedTone ?? "",
+      numberOfChapters: Number(next.extracted?.chapterCount ?? next.selectedLength ?? 12) || 12,
+      subchaptersEnabled: next.extracted?.subchaptersPreference === "true",
+      subchaptersPerChapter: 0,
+      authorStyle: "Autorevole ma umano",
+      configStatus: "validated",
+      ...baseConfig,
+    } as BookConfig,
+    seed,
+  );
+  const report = validateBookReadinessForBlueprint(config);
+  const packageSeeds = next.forgeMemory?.slotValues?.indexOutline;
+  const warnings: string[] = [];
+  if (!packageSeeds && !next.extracted?.structurePreference) {
+    warnings.push("Struttura capitoli inferita — verrà normalizzata al blueprint.");
+  }
+  return {
+    state: next,
+    ready: handoff.ready && report.blockingIssues.length === 0,
+    blockingIssues: [...handoff.missing, ...report.blockingIssues, ...report.missingFields],
+    warnings,
   };
 }
 

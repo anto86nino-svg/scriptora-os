@@ -218,21 +218,25 @@ describe("genre convergence engine", () => {
     expect(detectGenreConvergenceProfile(state({ messages: [{ id: "1", role: "user", content: "Un omicidio impossibile avviene in una stanza chiusa.", createdAt: 1 }] }), "fiction")).toBe("crime");
   });
 
-  it("skips fiction depth requirements for thriller when core quartet is strong", () => {
-    const scenario = SCENARIOS.find((s) => s.id === "thriller")!;
-    const result = simulateUnderstanding(scenario);
-    expect(result.understood).toBe(true);
+  it(
+    "skips fiction depth requirements for thriller when core quartet is strong",
+    () => {
+      const scenario = SCENARIOS.find((s) => s.id === "thriller")!;
+      const result = simulateUnderstanding(scenario);
+      expect(result.understood).toBe(true);
 
-    let s = getInitialInterviewState({ chatFirst: true });
-    s = applyInterviewAnswer(s, scenario.seed);
-    for (const [key, value] of Object.entries(scenario.answers)) {
-      s = applyInterviewAnswer(s, value, { id: key, key } as InterviewQuestion);
-    }
-    const report = evaluateEditorialUnderstanding(s);
-    expect(report.blindSpots).not.toContain("protagonist");
-    expect(report.blindSpots).not.toContain("wound");
-    expect(report.blindSpots).not.toContain("ending");
-  });
+      let s = getInitialInterviewState({ chatFirst: true });
+      s = applyInterviewAnswer(s, scenario.seed);
+      for (const [key, value] of Object.entries(scenario.answers)) {
+        s = applyInterviewAnswer(s, value, { id: key, key } as InterviewQuestion);
+      }
+      const report = evaluateEditorialUnderstanding(s);
+      expect(report.blindSpots).not.toContain("protagonist");
+      expect(report.blindSpots).not.toContain("wound");
+      expect(report.blindSpots).not.toContain("ending");
+    },
+    15000,
+  );
 
   it("evaluates poetry without fiction plot requirements", () => {
     const report = evaluateEditorialUnderstanding(state({

@@ -170,6 +170,9 @@ export function enrichBookConfigFromForgeSeed(
   const forgedCharacters = mapForgeCharactersToBookCharacters(
     enrichForgeCharactersForWriter(seed.characters),
   );
+  const editorialSynopsis = clean(seed.extracted?.editorialSynopsis);
+  const ideaFromSynopsis =
+    editorialSynopsis && editorialSynopsis.length >= 80 ? editorialSynopsis : "";
 
   return {
     ...config,
@@ -182,7 +185,7 @@ export function enrichBookConfigFromForgeSeed(
     forgeAntiDriftRules: handoff.antiDriftRules.length
       ? handoff.antiDriftRules
       : config.forgeAntiDriftRules,
-    idea: handoff.guidedBrief || config.idea,
+    idea: ideaFromSynopsis || handoff.guidedBrief || config.idea,
   };
 }
 

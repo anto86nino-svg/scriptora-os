@@ -1,45 +1,34 @@
 import { describe, expect, it } from "vitest";
 import { buildExpressForgeConfiguration } from "./express-forge-config";
-import { getForgeMemory } from "./interview-memory";
+import { applyExpressScenarioToState, ensureExpressWriterReadiness, validateExpressPackageReadiness } from "./express-book-package";
 import { isStoryRoomBlueprintReady } from "./story-room-state-machine";
-import { getNextInterviewQuestion } from "./question-engine";
-import { getInitialInterviewState } from "./question-engine";
+import { getNextInterviewQuestion, getInitialInterviewState } from "./question-engine";
+import { isMetadataOnly } from "./blueprint-ready-summary";
+
+const expressInput = {
+  genre: "dark romance",
+  language: "Italiano",
+  titleMode: "suggest" as const,
+  ideaSeed: "una restauratrice torna nella villa dove sua sorella è morta in un incendio doloso",
+  tone: "oscuro",
+  length: "medio" as const,
+  controlLevel: "scenarios" as const,
+};
 
 describe("express-forge-config", () => {
-  it("Studio Express dark romance auto-fills core fields", () => {
-    const result = buildExpressForgeConfiguration({
-      genre: "dark romance",
-      language: "Italiano",
-      titleMode: "suggest",
-      protagonistSeed: "una chef in fuga dal passato",
-      tone: "oscuro",
-      length: "medio",
-      controlLevel: "scenarios",
-    });
-
-    const memory = result.memory;
-    expect(memory.slotValues.audience).toBeTruthy();
-    expect(memory.slotValues.promise).toBeTruthy();
-    expect(memory.slotValues.centralConflict).toBeTruthy();
-    expect(memory.slotValues.stakes).toBeTruthy();
-    expect(memory.slotValues.chapterCount).toBeTruthy();
-    expect(result.autoFilledFields).toContain("audience");
-    expect(result.autoFilledFields).toContain("promise");
-    expect(result.autoFilledFields).toContain("centralConflict");
-    expect(result.autoFilledFields).toContain("stakes");
+  it("Studio Express dark romance auto-fills core fields in packages", () => {
+    const result = buildExpressForgeConfiguration(expressInput);
+    const pkg = result.packages[1]!;
+    expect(pkg.targetAudience).toBeTruthy();
+    expect(pkg.marketPromise).toBeTruthy();
+    expect(pkg.centralConflict).toBeTruthy();
+    expect(pkg.stakes).toBeTruthy();
+    expect(pkg.chapterCount).toBeGreaterThan(0);
+    expect(isMetadataOnly(pkg.marketPromise)).toBe(false);
   });
 
-  it("Studio Express produces 3 blueprint scenarios", () => {
-    const result = buildExpressForgeConfiguration({
-      genre: "dark romance",
-      language: "Italiano",
-      titleMode: "suggest",
-      protagonistSeed: "Elena, chef tormentata",
-      tone: "oscuro",
-      length: "medio",
-      controlLevel: "scenarios",
-    });
-
+  it("Studio Express produces 3 complete book scenarios", () => {
+    const result = buildExpressForgeConfiguration(expressInput);
     expect(result.candidateBlueprintScenarios).toHaveLength(3);
     expect(result.candidateBlueprintScenarios.map((s) => s.variant)).toEqual([
       "safe",
@@ -47,58 +36,67 @@ describe("express-forge-config", () => {
       "bold",
     ]);
     expect(result.state.blueprintScenarios).toHaveLength(3);
+    expect(result.state.blueprintScenarios![0]!.editorialSynopsis.length).toBeGreaterThan(100);
   });
 
-  it("express state reaches blueprint-ready gate", () => {
-    const result = buildExpressForgeConfiguration({
-      genre: "dark romance",
-      language: "Italiano",
-      titleMode: "suggest",
-      protagonistSeed: "protagonista segnato dal passato",
-      tone: "emozionale",
-      length: "breve",
-      controlLevel: "auto",
-    });
-
-    expect(isStoryRoomBlueprintReady(result.memory)).toBe(true);
-    const next = getNextInterviewQuestion(result.state);
-    expect(next.done).toBe(true);
+  it("selected scenario reaches blueprint-ready and handoff complete", () => {
+    const result = buildExpressForgeConfiguration(expressInput);
+    const applied = applyExpressScenarioToState(result.state, result.packages[0]!);
+    expect(isStoryRoomBlueprintReady(applied.forgeMemory!)).toBe(true);
+    const readiness = validateExpressPackageReadiness(applied);
+    expect(readiness.ready).toBe(true);
+    expect(getNextInterviewQuestion(applied).done).toBe(true);
   });
 
-  it("marks user fields with user source and auto fields with auto source", () => {
+  it("marks user idea as user source in provenance", () => {
     const result = buildExpressForgeConfiguration({
+      ...expressInput,
       genre: "thriller",
-      language: "Inglese",
       titleMode: "provided",
       title: "Midnight Signal",
-      protagonistSeed: "detective in burnout",
+      ideaSeed: "detective in burnout",
       tone: "psicologico",
       length: "lungo",
-      controlLevel: "minimal",
+      controlLevel: "auto",
     });
-
     expect(result.provenance.genre?.source).toBe("user");
-    expect(result.provenance.promise?.source).toBe("auto");
-    expect(result.provenance.title?.source).toBe("user");
+    expect(result.provenance.rawIdea?.source).toBe("user");
   });
 
-  it("minimal input user can reach blueprint without long interview", () => {
+  it("minimal input user can reach complete express package", () => {
     const base = getInitialInterviewState({ chatFirst: true });
     const result = buildExpressForgeConfiguration(
       {
         genre: "fantasy",
         language: "Auto",
         titleMode: "suggest",
-        protagonistSeed: "guerriera esiliata",
+        ideaSeed: "guerriera esiliata che cerca redenzione",
         tone: "epico",
         length: "medio",
         controlLevel: "auto",
       },
       base,
     );
+    const applied = applyExpressScenarioToState(result.state, result.packages[0]!);
+    const readiness = validateExpressPackageReadiness(applied);
+    expect(readiness.handoffMissing.length).toBe(0);
+    expect(applied.characters?.length).toBeGreaterThan(0);
+    expect(applied.extracted?.setting).toBeTruthy();
+  });
 
-    expect(result.missingCriticalFields.length).toBeLessThanOrEqual(2);
-    expect(getForgeMemory(result.state).slotValues.genre).toBe("fantasy");
-    expect(getNextInterviewQuestion(result.state).done).toBe(true);
+  it("ensureExpressWriterReadiness passes for fantasy minimal idea", () => {
+    const result = buildExpressForgeConfiguration({
+      genre: "fantasy",
+      language: "Italiano",
+      titleMode: "suggest",
+      ideaSeed: "guerriera esiliata che cerca redenzione",
+      tone: "epico",
+      length: "medio",
+      controlLevel: "auto",
+    });
+    const applied = applyExpressScenarioToState(result.state, result.packages[0]!);
+    const writerReady = ensureExpressWriterReadiness(applied);
+    expect(writerReady.ready).toBe(true);
+    expect(writerReady.blockingIssues).toEqual([]);
   });
 });

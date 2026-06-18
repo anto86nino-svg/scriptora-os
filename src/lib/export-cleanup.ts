@@ -476,6 +476,8 @@ export function cleanMarkdownInline(value: unknown): string {
     .trim();
 }
 
+import { sanitizeGeneratedChapterContent } from "@/lib/manuscript/manuscript-integrity-guard";
+
 export function stripChapterEcho(content: unknown, title?: string, language?: string, chapterNumber?: number): string {
   let text = cleanExportText(content);
   const cleanTitle = cleanMarkdownInline(title || "");
@@ -503,7 +505,12 @@ export function stripChapterEcho(content: unknown, title?: string, language?: st
     else break;
   }
 
-  return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  const result = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  return sanitizeGeneratedChapterContent(result, {
+    language,
+    chapterTitle: cleanTitle,
+    chapterNumber: chapterNumber != null ? chapterNumber - 1 : undefined,
+  }).content;
 }
 
 export function parseExportBlocks(value: unknown): ExportBlock[] {
