@@ -901,6 +901,7 @@ typeof crypto.randomUUID === "function"
           },
           longBookMemory: latestP.longBookMemory,
           writerIntelBlock: writerIntel.consolidatedBlock,
+          memoryGraph: latestP.memoryGraph,
         },
       );
 
@@ -1310,6 +1311,7 @@ typeof crypto.randomUUID === "function"
           metadata: {
             writerIntelBlock: writerIntel.consolidatedBlock,
             longBookMemory: latestP.longBookMemory,
+            memoryGraph: latestP.memoryGraph,
           },
         }
       );

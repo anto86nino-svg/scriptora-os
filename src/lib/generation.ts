@@ -34,6 +34,10 @@ import { buildHumanBestsellerModeV12Block } from "@/lib/human-bestseller-mode-v1
 import { runWritingEngineV13Audit } from "@/lib/writing-engine-v13";
 import { validateCanonChunkBeforeMerge } from "@/lib/writing-engine/canon-lock-v2";
 import { buildPremiumWritingBlock, runUltraHumanFinalPass, buildWriterMemorySource, buildContinuationCanonBlock, extractCompactNarrativeContinuity } from "@/lib/premium-writing";
+import {
+  runEditorialPassSupreme,
+  buildStoryConstitutionRetryInstruction,
+} from "@/lib/story-constitution-engine";
 import { buildForgeWriterContextBlock } from "@/lib/guided-interview/forge-writer-bridge";
 import { buildPromptFromCanonicalConfig, sanitizeBookConfiguration } from "@/lib/book-config-engine";
 import { getBillingSimulationHeaders, withBillingSimulationBody } from "@/lib/billing/billingHeaders";
@@ -1242,6 +1246,7 @@ export async function generateChapterChunked(
     usage?: AIUsageContext;
     longBookMemory?: import("@/lib/long-book-memory/types").LongBookMemorySnapshot;
     writerIntelBlock?: string;
+    memoryGraph?: import("@/lib/memory-graph/types").MemoryGraphSnapshot;
   },
 ): Promise<Chapter> {
   config = withSanitizedConfig(config);
@@ -1296,6 +1301,7 @@ export async function generateChapterChunked(
     characterLock,
     narrativeContinuity: extractCompactNarrativeContinuity(contextMemory),
   });
+  const priorText = previousChapters.map((c) => c.content).join("\n");
   const humanNarrativeRealismV4 = buildHumanNarrativeRealismV4Block(config, chapterIndex);
   const humanBestsellerModeV11 = buildHumanBestsellerModeV11Block(config, { chapterIndex, mode: "generation" });
   const humanBestsellerModeV12 = buildHumanBestsellerModeV12Block(config, {
@@ -1365,6 +1371,10 @@ export async function generateChapterChunked(
       blueprint,
       longBookMemory,
       writerMemorySource: isFirstChunk ? writerMemorySource : "",
+      storyConstitution: {
+        memoryGraph: opts?.memoryGraph ?? null,
+        priorText,
+      },
     });
 
     const chunkPrompt = isFirstChunk
@@ -1670,7 +1680,6 @@ Write in ${config.language}.${adaptiveSuffix}`;
     }
   }
 
-  const priorText = previousChapters.map((c) => c.content).join("\n");
   const ultraPass = runUltraHumanFinalPass(accumulatedContent, {
     language: config.language ?? "Italian",
     priorText,
@@ -1684,11 +1693,23 @@ Write in ${config.language}.${adaptiveSuffix}`;
     chapterIndex,
   }).text;
 
-  if (!ultraPass.quality.passed && ultraPass.quality.composite < 58 && ultraPass.retryInstruction) {
+  const supremePass = runEditorialPassSupreme(accumulatedContent, {
+    config,
+    blueprint,
+    previousChapters,
+    chapterIndex,
+    outlineSummary: outline.summary,
+    memoryGraph: opts?.memoryGraph ?? null,
+    priorText,
+  });
+  accumulatedContent = supremePass.text;
+  const constitutionRetry = buildStoryConstitutionRetryInstruction(supremePass.analysis);
+
+  if (!ultraPass.quality.passed && ultraPass.quality.composite < 58 && (ultraPass.retryInstruction || constitutionRetry)) {
     try {
       const retryText = await callAIReduced(
         getSystemPrompt(config, genreLock) + " Surgical quality retry — preserve author voice and genre. Fix only the listed issues.",
-        `Improve this chapter text surgically. Scores: repetition=${ultraPass.quality.emotionalRepetition}, dialogue=${ultraPass.quality.dialogueHumanity}, progression=${ultraPass.quality.sceneProgression}.\n${ultraPass.retryInstruction}\n\nTEXT (last segment):\n${accumulatedContent.slice(-4000)}`,
+        `Improve this chapter text surgically. Scores: repetition=${ultraPass.quality.emotionalRepetition}, dialogue=${ultraPass.quality.dialogueHumanity}, progression=${ultraPass.quality.sceneProgression}.\n${ultraPass.retryInstruction}\n${constitutionRetry}\n\nTEXT (last segment):\n${accumulatedContent.slice(-4000)}`,
         withUsage(opts?.usage, {
           taskType: "generate_chapter_quality_retry",
           metadata: {
@@ -1711,6 +1732,15 @@ Write in ${config.language}.${adaptiveSuffix}`;
           priorText,
           config,
           chapterIndex,
+        }).text;
+        accumulatedContent = runEditorialPassSupreme(accumulatedContent, {
+          config,
+          blueprint,
+          previousChapters,
+          chapterIndex,
+          outlineSummary: outline.summary,
+          memoryGraph: opts?.memoryGraph ?? null,
+          priorText,
         }).text;
       }
     } catch {
@@ -2194,6 +2224,8 @@ export async function rewriteChapter(
 
   const intelligenceBlock = String(usage?.metadata?.writerIntelBlock || "").trim();
   const longBookMemory = usage?.metadata?.longBookMemory as import("@/lib/long-book-memory/types").LongBookMemorySnapshot | undefined;
+  const memoryGraph = (usage?.metadata?.memoryGraph as import("@/lib/memory-graph/types").MemoryGraphSnapshot | undefined) ?? null;
+  const priorText = previousChapters.map((c) => c.content).join("\n");
   const writerMemorySource = buildWriterMemorySource({
     config,
     previousChapters,
@@ -2231,6 +2263,10 @@ export async function rewriteChapter(
     blueprint,
     longBookMemory,
     writerMemorySource,
+    storyConstitution: {
+      memoryGraph,
+      priorText,
+    },
   });
 
   const prompt = `${level.toUpperCase()} REWRITE — Chapter ${chapterIndex + 1}: "${chapter.title}"
@@ -2257,7 +2293,7 @@ ${humanBestsellerModeV12}
 
 ${humanizerBlock}
 
-${chunkPremiumBlock}
+${premiumWritingBlock}
 
 ${bookTypeEngineBlock}
 
@@ -2285,7 +2321,18 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
   try {
     const parsed = JSON.parse(result.replace(/```json\n?|```/g, "").trim());
     const rewrittenContent = applyUltraHumanAndFinalGuardToText(
-      stringifyField(parsed?.content).trim() || chapter.content,
+      runEditorialPassSupreme(
+        stringifyField(parsed?.content).trim() || chapter.content,
+        {
+          config,
+          blueprint,
+          previousChapters,
+          chapterIndex,
+          outlineSummary: blueprint.chapterOutlines?.[chapterIndex]?.summary,
+          memoryGraph,
+          priorText,
+        },
+      ).text,
       { config, previousChapters, chapterIndex },
     );
     const rewrittenChapter = humanizeChapter(

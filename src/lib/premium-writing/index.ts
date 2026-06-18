@@ -19,6 +19,8 @@ import { buildHumanNarrativeRealismV3Block } from "@/lib/human-narrative-realism
 import { buildMemoryConsistencyV25Block, isMemoryConsistencyV25Enabled } from "@/lib/memory-consistency-v25";
 import { buildLongBookMemory, buildLongBookMemoryPromptBlock } from "@/lib/long-book-memory";
 import { buildGreatnessEngineBlock } from "@/lib/greatness-engine";
+import { buildStoryConstitutionPromptBlock } from "@/lib/story-constitution-engine";
+import type { StoryConstitutionContext } from "@/lib/story-constitution-engine/types";
 import {
   buildCrossGenreProtectionBlock,
   buildOverOptimizationGuardBlock,
@@ -35,6 +37,8 @@ export interface PremiumWritingContext {
   longBookMemory?: LongBookMemorySnapshot;
   /** When set, V2.5 / long-book memory blocks are omitted from premium (already in unified source). */
   writerMemorySource?: string;
+  /** Story Constitution Engine — invisible governance context */
+  storyConstitution?: Omit<StoryConstitutionContext, "config" | "previousChapters" | "chapterIndex">;
 }
 
 function compactPromptBlock(text: string, maxChars: number): string {
@@ -122,7 +126,18 @@ export function buildPremiumWritingBlock(ctx: PremiumWritingContext): string {
   const instructionalFamily = family === "nonfiction" || family === "educational" || family === "manual";
   const skipInlineMemory = Boolean(ctx.writerMemorySource?.trim());
 
+  const constitutionBlock = buildStoryConstitutionPromptBlock({
+    config: ctx.config,
+    previousChapters: ctx.previousChapters,
+    chapterIndex: ctx.chapterIndex,
+    blueprint: ctx.blueprint,
+    outlineSummary: ctx.outlineSummary,
+    memoryGraph: ctx.storyConstitution?.memoryGraph,
+    priorText: ctx.storyConstitution?.priorText,
+  });
+
   const blocks = [
+    constitutionBlock,
     ctx.writerMemorySource?.trim() || "",
     buildHumanNarrativeRealismV3Block(ctx),
     narrativeOnly && !skipInlineMemory ? buildMemoryConsistencyV25Block(ctx) : "",
