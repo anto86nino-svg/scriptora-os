@@ -856,12 +856,12 @@ typeof crypto.randomUUID === "function"
         .filter((ch) => ch?.content?.length > 0);
       const chapterOverride = latestP.chapters[index]?.lengthOverride;
       const activePlanForChapter = await getActivePlanForEngine();
-      const creditOperation = resolveChapterGenerationOperation(latestP.config);
-      const idempotencyKey = await chargeChapterGeneration(
-        latestP.config,
-        { projectId: latestP.id, chapterIndex: index + 1, source: "generate_chapter" },
-        index,
-      );
+
+      // TEMP DIAGNOSTIC BYPASS:
+      // durante i test owner non blocchiamo la scrittura sul wallet crediti Scriptora.
+      // DeepSeek viene comunque chiamato dal backend; questo bypassa solo il gate interno app.
+      const creditOperation = undefined;
+      const idempotencyKey = undefined;
 
       const writerIntel = getWriterEngineContext(latestP, { chapterIndex: index });
       if (writerIntel.canonWarnings.length) {
@@ -1149,13 +1149,11 @@ typeof crypto.randomUUID === "function"
       addMessage("assistant", `Regenerating Chapter ${index + 1}... 🔄`);
       const latestP = getLatestProject() || p;
       const prevChapters = latestP.chapters.slice(0, index);
-      const creditOperation = resolveChapterGenerationOperation(latestP.config);
-      const idempotencyKey = await chargeChapterGeneration(
-        latestP.config,
-        { projectId: latestP.id, chapterIndex: index + 1, source: "regenerate_chapter" },
-        index,
-        buildCreditIdempotencyKey("regenerate", latestP.id, index + 1),
-      );
+      // TEMP DIAGNOSTIC BYPASS:
+      // durante i test owner non blocchiamo la rigenerazione sul wallet crediti Scriptora.
+      // DeepSeek viene comunque chiamato dal backend; questo bypassa solo il gate interno app.
+      const creditOperation = undefined;
+      const idempotencyKey = undefined;
       const chapter = await runGenerateChapter(latestP.config, latestP.blueprint!, index, prevChapters, latestP.chapters[index]?.lengthOverride, latestP.genreLock, {
         projectId: latestP.id,
         creditOperation,
