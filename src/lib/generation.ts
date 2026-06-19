@@ -1068,6 +1068,70 @@ ${narrativeMode ? `FICTION / ROMANCE / MEMOIR EXTRA RULES:
 `;
 }
 
+export function buildScriptoraOmegaDirective(
+  config: BookConfig,
+  opts: { chapterIndex?: number; mode?: "generation" | "subchapter" | "rewrite" } = {},
+): string {
+  const genre = String(config.genre || "").toLowerCase();
+  const subgenre = String(config.subgenre || config.subcategory || "").toLowerCase();
+  const genreSignal = `${genre} ${subgenre}`;
+  const isRomance = genreSignal.includes("romance");
+  const isDarkRomance = genreSignal.includes("dark") && genreSignal.includes("romance");
+  const isThriller = ["thriller", "crime", "noir", "mystery"].some((key) => genreSignal.includes(key));
+  const isFantasy = ["fantasy", "romantasy", "sci-fi", "science fiction"].some((key) => genreSignal.includes(key));
+  const isSelfHelp = ["self-help", "self help", "personal development"].some((key) => genreSignal.includes(key));
+  const isBusiness = ["business", "entrepreneur", "marketing", "leadership"].some((key) => genreSignal.includes(key));
+  const isPoetry = ["poetry", "poesia"].some((key) => genreSignal.includes(key));
+  const chapterLabel = typeof opts.chapterIndex === "number" ? `Chapter ${opts.chapterIndex + 1}` : "Current section";
+  const modeLabel = opts.mode === "rewrite"
+    ? "rewrite quality pass"
+    : opts.mode === "subchapter"
+      ? "subchapter generation"
+      : "chapter generation";
+
+  return `
+SCRIPTORA OMEGA DIRECTIVE — FINAL EDITORIAL QUALITY GATE (${modeLabel})
+Treat this as the active editorial brain for ${chapterLabel}. It is a silent writing standard, never visible in the manuscript.
+
+TRUTH HIERARCHY:
+- Book Configuration, Author Identity, Blueprint, Book Type Engine, Character Studio, Canon Memory, Long Book Memory, Genre Brain, Narrative Intelligence, Human Bestseller Mode, Market Intelligence and Editorial Intelligence are all binding.
+- No sentence may contradict title, language, genre, blueprint, character facts, timeline, locations, secrets, objects, prior events or established emotional state.
+- If a detail is missing, bridge it with context that preserves canon. Do not invent a shortcut that creates a contradiction.
+
+BLUEPRINT AND STRUCTURE:
+- The blueprint is law: every chapter, subchapter, scene, emotional arc and objective must exist in the manuscript when requested.
+- Do not summarize, merge, skip, flatten or replace planned beats.
+- Every scene needs a concrete objective, obstacle, conflict and change. If nothing changes, rewrite the scene mentally before output.
+
+CHARACTER AND CANON LOCK:
+- Each character must preserve wound, desire, fear, contradiction, voice, language, habits, relationships and memory of lived events.
+- Before every reaction, verify age, timeline, place, knowledge, secrets and objects.
+- Characters must behave like real people under pressure, not like plot devices explaining the theme.
+
+ANTI-REPETITION OMEGA:
+- Do not repeat metaphors, images, physical tics, sentence structures, emotional labels or equivalent dialogue from prior text.
+- If a formula was already used, create a new concrete behavior, image or pressure point.
+- Give this section its own identity while remaining part of the same book.
+
+GENRE ABSOLUTE MODE:
+${isRomance ? "- Romance: tension, desire, vulnerability, emotional conflict, restraint and earned intimacy must drive the scene." : ""}
+${isDarkRomance ? "- Dark romance: attraction, danger, obsession, moral conflict and consent clarity must coexist without cartoon melodrama." : ""}
+${isThriller ? "- Thriller/suspense: increase risk, pressure, consequence, clues and dread. Every scene should leave a live question." : ""}
+${isFantasy ? "- Fantasy/speculative: maintain wonder, immersion, world-rule coherence, cost and consequence." : ""}
+${isSelfHelp ? "- Self-help: deliver transformation, clarity, applicability and concrete action, not motivational fog." : ""}
+${isBusiness ? "- Business: write with authority, evidence, examples and practical value." : ""}
+${isPoetry ? "- Poetry: protect original imagery, musicality, emotional depth and compression." : ""}
+
+PAGE-TURN AND HUMAN BESTSELLER MODE:
+- Build forward pull with mystery, tension, promise, consequence, revelation or open emotion.
+- Show through action, detail, environment, subtext and dialogue. Reduce explanation and emotional labels.
+- The prose must feel authored by a high-end human writer: concrete details, psychological contradiction, natural imperfection, varied rhythm.
+
+SUPREME QUALITY CHECK BEFORE OUTPUT:
+- Blueprint respected; canon respected; memory active; characters coherent; no obvious repetition; rhythm varied; conflict present; emotional progression real; genre rules active; no narrative shortcut.
+- Deliver professional manuscript prose, not a draft.`;
+}
+
 function buildHumanNarrativeRealismV4Block(config: BookConfig, chapterIndex?: number): string {
   const genre = String(config.genre || "").toLowerCase();
   const subgenre = String(config.subgenre || config.subcategory || "").toLowerCase();
@@ -1556,6 +1620,7 @@ export async function generateChapterChunked(
     mode: "generation",
     previousChapters,
   });
+  const scriptoraOmegaDirective = buildScriptoraOmegaDirective(config, { chapterIndex, mode: "generation" });
   const genreDirective = buildPromptByGenre({
     genre: genreLock?.genre || config.genre,
     subcategory: genreLock?.subcategory || (config as any).subcategory,
@@ -1661,6 +1726,8 @@ ${humanBestsellerModeV11}
 
 ${humanBestsellerModeV12}
 
+${scriptoraOmegaDirective}
+
 ${humanizerBlock}
 
 ${chapterDirectorBlock}
@@ -1708,6 +1775,8 @@ ${humanNarrativeRealismV4}
 ${humanBestsellerModeV11}
 
 ${humanBestsellerModeV12}
+
+${scriptoraOmegaDirective}
 
 ${chunkPremiumBlock}
 
@@ -2294,6 +2363,7 @@ export async function generateSubchapter(
     chapterIndex,
     outlineSummary: subOutline?.summary || outline.summary,
   });
+  const scriptoraOmegaDirective = buildScriptoraOmegaDirective(config, { chapterIndex, mode: "subchapter" });
 
   const prompt = `Write Subchapter ${subchapterIndex + 1} of ${subchapterCount} for Chapter ${chapterIndex + 1} "${chapter.title}" in "${config.title}".
 ${subOutline ? `Subchapter plan: "${subOutline.title}" — ${subOutline.summary}` : `Write the ${subchapterIndex + 1}th subchapter.`}
@@ -2312,6 +2382,8 @@ ${buildBlueprintIntegrityRuntimeBlock(config, blueprint, { chapterIndex, subchap
 ${humanizerBlock}
 
 ${premiumWritingBlock}
+
+${scriptoraOmegaDirective}
 
 BESTSELLER QUALITY — same standard as main chapters. HONOR the genre directive above.
 This must be a real written section with scene/argument progression, not a heading preview.
@@ -2544,6 +2616,7 @@ export async function rewriteChapter(
     mode: "rewrite",
     previousChapters,
   });
+  const scriptoraOmegaDirective = buildScriptoraOmegaDirective(config, { chapterIndex, mode: "rewrite" });
   const bookTypeEngineBlock = buildBookTypeEngineBlock(config);
   const humanizerBlock = buildHumanizerPromptBlock({
     config,
@@ -2586,6 +2659,8 @@ ${humanNarrativeRealismV4}
 ${humanBestsellerModeV11}
 
 ${humanBestsellerModeV12}
+
+${scriptoraOmegaDirective}
 
 ${humanizerBlock}
 
