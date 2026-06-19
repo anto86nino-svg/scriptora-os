@@ -1749,43 +1749,49 @@ typeof crypto.randomUUID === "function"
     }
   }, [project, addMessage, generateFrontMatterSection, generateBackMatterSection, generateSingleChapter, generateSingleSubchapter, updateAndSave]);
 
-  // === PARALLEL CHAPTER GENERATION (max 3 in flight) ===
-  // Permette di generare più capitoli contemporaneamente mentre l'utente
-  // continua a scrivere/chattare con Molly. Usa un semaforo a 3 slot.
-  const PARALLEL_LIMIT = 3;
+  // === QUEUED CHAPTER GENERATION ===
+  // Prima era parallela (max 3 worker). Questo rompeva timer, progress e manoscritto live,
+  // perché più capitoli aggiornavano lo stesso stato UI nello stesso momento.
+  // Ora la generazione multipla passa in coda sequenziale: più lenta, ma coerente e stabile.
   const generateChaptersParallel = useCallback(async (indices: number[]) => {
     const p = getLatestProject() || project;
     if (!p?.blueprint) {
       toast.error("Genera prima il blueprint");
       return;
     }
-    const queue = indices.filter((i) => {
-      const ch = p.chapters[i];
-      return !(ch?.content && ch.content.length > 200) && !generatingSet.has(`chapter-${i}`);
-    });
+
+    const queue = Array.from(new Set(indices))
+      .sort((a, b) => a - b)
+      .filter((i) => {
+        const latest = getLatestProject() || project;
+        const ch = latest?.chapters[i];
+        return !(ch?.content && ch.content.length > 200) && !generatingSet.has(`chapter-${i}`);
+      });
+
     if (queue.length === 0) {
       toast.info("Nessun capitolo da generare");
       return;
     }
-    addMessage("assistant", `🚀 Avvio ${queue.length} capitoli in parallelo (max ${PARALLEL_LIMIT} alla volta)...`);
-    toast.success(`Generazione parallela avviata su ${queue.length} capitoli`);
 
-    let cursor = 0;
-    const runOne = async (): Promise<void> => {
-      while (cursor < queue.length) {
-        const idx = queue[cursor++];
-        try {
-          await generateSingleChapter(idx);
-        } catch (e: any) {
-          const err = classifyError(e);
-          scriptoraLog.error("parallel-chapter", formatUserMessage(err), { chapterIndex: idx, raw: e?.message });
-        }
+    addMessage("assistant", `🚀 Avvio generazione in coda di ${queue.length} capitoli...`);
+    toast.success(`Generazione in coda avviata su ${queue.length} capitoli`);
+
+    let completed = 0;
+
+    for (const idx of queue) {
+      try {
+        addMessage("assistant", `✍️ Generazione capitolo ${idx + 1} di ${queue.length}...`);
+        await generateSingleChapter(idx);
+        completed += 1;
+      } catch (e: any) {
+        const err = classifyError(e);
+        scriptoraLog.error("queued-chapter", formatUserMessage(err), { chapterIndex: idx, raw: e?.message });
+        addMessage("assistant", `⚠️ Capitolo ${idx + 1} non completato: ${formatUserMessage(err)}`);
       }
-    };
-    const workers = Array.from({ length: Math.min(PARALLEL_LIMIT, queue.length) }, () => runOne());
-    await Promise.all(workers);
-    addMessage("assistant", `✅ Generazione parallela completata.`);
-    toast.success("Tutti i capitoli selezionati sono stati generati");
+    }
+
+    addMessage("assistant", `✅ Generazione in coda completata: ${completed}/${queue.length} capitoli.`);
+    toast.success(`Generazione completata: ${completed}/${queue.length} capitoli`);
   }, [project, generatingSet, addMessage, generateSingleChapter]);
 
   const generateAllChaptersParallel = useCallback(async () => {
