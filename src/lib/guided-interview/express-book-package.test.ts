@@ -138,6 +138,17 @@ describe("buildCompleteExpressBookPackage", () => {
     expect(bold.whyItSells.toLowerCase()).toMatch(/distintiva|ambigua|memorabile|twist/);
     expect(bold.finalEmotion.toLowerCase()).toMatch(/catharsis|eco|crepa/);
   });
+
+  it("does not leak technical protagonist role labels into scenario copy", () => {
+    const scenarios = buildExpressBookScenarios(expressInput);
+
+    for (const scenario of scenarios) {
+      expect(scenario.protagonist).not.toMatch(/protagonista segnato|protagonista segnata/i);
+      expect(scenario.hook).not.toMatch(/protagonista segnato|protagonista segnata/i);
+      expect(scenario.editorialSynopsis).not.toMatch(/protagonista segnato|protagonista segnata/i);
+      expect(scenario.centralConflict).not.toMatch(/protagonista segnato|protagonista segnata/i);
+    }
+  });
 });
 
 describe("express end-to-end readiness", () => {

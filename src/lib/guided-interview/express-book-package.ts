@@ -946,7 +946,7 @@ export function buildCompleteExpressBookPackage(
       ? "Lettrici 25–45 che cercano dark romance intenso, slow burn e payoff emotivo"
       : `Lettori di ${input.genre} attratti da tono ${input.tone} e storia ad alta posta in gioco`,
     marketPromise,
-    protagonist: `${lead.name} — ${lead.role}`,
+    protagonist: lead.name,
     antagonistOrLoveInterest: `${counterpart.name} — ${counterpart.role}`,
     secondaryCharacters: ["Sorella (memoria/assenza)", "Comunità locale che custodisce silenzi"],
     setting,
@@ -990,10 +990,35 @@ export function buildCompleteExpressBookPackage(
 }
 
 
+
+function cleanExpressPersonName(value?: string): string {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+—\s+protagonista\s+segnat[oa]\s+dal\s+passato/gi, "")
+    .replace(/\s+—\s+protagonista\b.*$/gi, "")
+    .replace(/\s+—\s+personaggio\b.*$/gi, "")
+    .replace(/\s+—\s+$/g, "")
+    .trim();
+}
+
+function cleanExpressScenarioPeople(scenario: ExpressBookScenario): ExpressBookScenario {
+  if (isNonfictionExpressGenre(scenario.genre)) return scenario;
+
+  const protagonist = cleanExpressPersonName(scenario.protagonist);
+  const loveInterest = cleanExpressPersonName(scenario.antagonistOrLoveInterest);
+
+  return {
+    ...scenario,
+    protagonist: protagonist || scenario.protagonist,
+    antagonistOrLoveInterest: loveInterest || scenario.antagonistOrLoveInterest,
+  };
+}
+
+
 function strengthenScenarioDivergence(
   scenario: ExpressBookScenario,
 ): ExpressBookScenario {
-  const protagonist = scenario.protagonist || "protagonista";
+  const protagonist = cleanExpressPersonName(scenario.protagonist) || "la protagonista";
   const setting = scenario.setting || "un luogo pieno di segreti";
 
   if (isNonfictionExpressGenre(scenario.genre)) {
@@ -1115,7 +1140,7 @@ function scenarioBodySignature(scenario: ExpressBookScenario): string {
 function enforceExpressScenarioDivergence(
   scenarios: ExpressBookScenario[],
 ): ExpressBookScenario[] {
-  const next = scenarios.map(strengthenScenarioDivergence);
+  const next = scenarios.map((scenario) => cleanExpressScenarioPeople(strengthenScenarioDivergence(scenario)));
   const signatures = next.map(scenarioBodySignature);
 
   if (new Set(signatures).size === next.length) return next;
