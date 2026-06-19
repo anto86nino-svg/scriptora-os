@@ -10,6 +10,7 @@ export type ExpressForgeInput = {
   language: string;
   titleMode: ExpressTitleMode;
   title?: string;
+  subtitle?: string;
   /** Idea breve, protagonista, atmosfera — input principale Express */
   ideaSeed: string;
   /** @deprecated use ideaSeed */

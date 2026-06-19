@@ -217,8 +217,7 @@ function parseSetting(seed: string, genre: string): string {
 }
 
 function buildTitle(input: ExpressForgeInput, variant: ExpressScenarioVariant): string {
-  if (input.titleMode === "provided" && input.title?.trim()) return input.title.trim();
-  if (input.titleMode === "provisional" && input.title?.trim()) return input.title.trim();
+  if (input.title?.trim()) return input.title.trim();
   const seed = ideaCore(input);
   if (/villa|incendio|restauratrice/i.test(seed)) {
     return variant === "bold" ? "Cenere tra le Dita" : "La Villa delle Ceneri";
@@ -388,8 +387,7 @@ function parseNonfictionSeed(seed: string): {
 }
 
 function buildNonfictionTitle(input: ExpressForgeInput, variant: ExpressScenarioVariant, theme: string): string {
-  if (input.titleMode === "provided" && input.title?.trim()) return input.title.trim();
-  if (input.titleMode === "provisional" && input.title?.trim()) return input.title.trim();
+  if (input.title?.trim()) return input.title.trim();
   const short = theme.split(/\s+/).slice(0, 4).join(" ");
   if (variant === "bold") return `Oltre il blocco: ${short}`;
   if (variant === "commercial") return `30 giorni per ${short.toLowerCase()}`;
@@ -401,6 +399,7 @@ function buildNonfictionSubtitle(
   variant: ExpressScenarioVariant,
   transformationPromise: string,
 ): string {
+  if (input.subtitle?.trim()) return input.subtitle.trim();
   const snippet = transformationPromise.slice(0, 72).replace(/\s+\S*$/, "");
   if (variant === "bold") return `${snippet} — un metodo profondo per cambiare identità e abitudini`;
   if (variant === "commercial") return `${snippet} — passi chiari, esercizi e risultati misurabili`;
@@ -714,13 +713,14 @@ function buildPoetryExpressPackage(
   const language = normalizeLanguage(input.language);
   const theme = seed.split(/[.!?…]/)[0]?.trim() || seed;
   const title =
-    input.titleMode !== "suggest" && input.title?.trim()
+    input.title?.trim()
       ? input.title.trim()
       : variant === "bold"
         ? `Cenere e luce: ${theme.slice(0, 30)}`
         : theme.slice(0, 40) || "Raccolta poetica";
-  const subtitle =
-    variant === "bold"
+  const subtitle = input.subtitle?.trim()
+    ? input.subtitle.trim()
+    : variant === "bold"
       ? "Voci che restano quando il resto svanisce"
       : `Una raccolta ${input.tone} su ${theme.toLowerCase()}`;
   const editorialSynopsis = `${seed} Una raccolta poetica ${input.tone} organizzata in sezioni che attraversano ${theme.toLowerCase()} — immagini, silenzi e riprese di voce che restano dopo l'ultimo verso.`;
@@ -860,7 +860,9 @@ export function buildCompleteExpressBookPackage(
   const hook = isDarkRomance(input.genre)
     ? `Tornare nella villa dove sua sorella è morta non era mai stato sicuro — ma scoprire che ${counterpart.name} la desidera è la forma più pericolosa di colpa.`
     : `${lead.name} credeva di controllare la storia. ${setting.split(",")[0]} le dimostra il contrario.`;
-  const subtitle = isDarkRomance(input.genre)
+  const subtitle = input.subtitle?.trim()
+    ? input.subtitle.trim()
+    : isDarkRomance(input.genre)
     ? variant === "bold"
       ? "Quando il desiderio brucia più forte della verità"
       : "Quando la verità è più pericolosa del fuoco"

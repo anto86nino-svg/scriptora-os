@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Loader2, Zap } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Loader2, Sparkles, Zap } from "lucide-react";
 import type {
   ExpressControlLevel,
   ExpressForgeInput,
@@ -12,6 +12,12 @@ import {
   getExpressPanelIntro,
   getExpressTones,
 } from "@/lib/guided-interview/express-genre-config";
+import {
+  applyBestTitleOption,
+  buildExpressTitleGeneratorInput,
+  generateTitleSubtitleOptions,
+  type TitleSubtitleOption,
+} from "@/lib/guided-interview/book-foundation-lock";
 import { cn } from "@/lib/utils";
 
 const GENRES = [
@@ -54,6 +60,10 @@ export function StudioExpressPanel({
   const [language, setLanguage] = useState("Italiano");
   const [titleMode, setTitleMode] = useState<ExpressTitleMode>("suggest");
   const [title, setTitle] = useState("");
+  const [subtitle, setSubtitle] = useState("");
+  const [titleCandidates, setTitleCandidates] = useState<TitleSubtitleOption[]>([]);
+  const [recommendedIndex, setRecommendedIndex] = useState<number | null>(null);
+  const [manualLocked, setManualLocked] = useState(false);
   const [ideaSeed, setIdeaSeed] = useState("");
   const [tone, setTone] = useState("oscuro");
   const [length, setLength] = useState<ExpressForgeInput["length"]>("medio");
@@ -70,15 +80,122 @@ export function StudioExpressPanel({
     setTone((current) => (available.includes(current) ? current : defaultTone));
   }, [genre]);
 
+  const titleGenInput = useMemo(
+    () =>
+      buildExpressTitleGeneratorInput({
+        genre,
+        language,
+        tone,
+        length,
+        ideaSeed,
+        titleMode,
+        title,
+        subtitle,
+      }),
+    [genre, language, tone, length, ideaSeed, titleMode, title, subtitle],
+  );
+
+  const recommendedOption = useMemo(() => {
+    if (!titleCandidates.length) return null;
+    return applyBestTitleOption(titleCandidates);
+  }, [titleCandidates]);
+
+  const applyOption = useCallback((option: TitleSubtitleOption, lockManual = false) => {
+    setTitle(option.title);
+    setSubtitle(option.subtitle);
+    if (lockManual) setManualLocked(false);
+  }, []);
+
+  const generateTitles = useCallback(
+    (opts?: { applyBest?: boolean; overwriteManual?: boolean }) => {
+      if (manualLocked && !opts?.overwriteManual) return false;
+      const options = generateTitleSubtitleOptions(titleGenInput);
+      setTitleCandidates(options);
+      const best = applyBestTitleOption(options);
+      const bestIdx = options.findIndex(
+        (o) => o.title === best.title && o.subtitle === best.subtitle,
+      );
+      setRecommendedIndex(bestIdx >= 0 ? bestIdx : 0);
+      if (opts?.applyBest) {
+        applyOption(best);
+      }
+      return true;
+    },
+    [applyOption, manualLocked, titleGenInput],
+  );
+
+  const handleTitleModeChange = (mode: ExpressTitleMode) => {
+    setTitleMode(mode);
+    if (mode === "suggest") {
+      generateTitles({ applyBest: true, overwriteManual: !manualLocked });
+    }
+  };
+
+  const handleGenerateClick = () => {
+    if (manualLocked) {
+      const ok = window.confirm(
+        "Hai già scritto titolo o sottotitolo. Sostituirli con nuove proposte?",
+      );
+      if (!ok) return;
+      setManualLocked(false);
+    }
+    generateTitles({ applyBest: false, overwriteManual: true });
+  };
+
+  const handleUseBest = () => {
+    if (!recommendedOption) {
+      generateTitles({ applyBest: true, overwriteManual: manualLocked ? false : true });
+      return;
+    }
+    if (manualLocked) {
+      const ok = window.confirm("Sostituire titolo e sottotitolo con la proposta consigliata?");
+      if (!ok) return;
+      setManualLocked(false);
+    }
+    applyOption(recommendedOption);
+  };
+
+  const handleUseOption = (option: TitleSubtitleOption, index: number) => {
+    if (manualLocked) {
+      const ok = window.confirm("Sostituire titolo e sottotitolo con questa proposta?");
+      if (!ok) return;
+      setManualLocked(false);
+    }
+    applyOption(option);
+    setRecommendedIndex(index);
+  };
+
+  const handleModifyOption = (option: TitleSubtitleOption) => {
+    setTitleMode("provided");
+    setTitle(option.title);
+    setSubtitle(option.subtitle);
+    setManualLocked(true);
+  };
+
+  const handleWriteMyOwn = () => {
+    setTitleMode("provided");
+    setManualLocked(true);
+  };
+
+  const titleIncomplete = !title.trim() || !subtitle.trim();
   const canSubmit = ideaSeed.trim().length >= 4;
 
   const handleSubmit = () => {
     if (!canSubmit || preparing) return;
+    let finalTitle = title.trim();
+    let finalSubtitle = subtitle.trim();
+    if (titleMode === "suggest" && (!finalTitle || !finalSubtitle)) {
+      const options = generateTitleSubtitleOptions(titleGenInput);
+      const best = applyBestTitleOption(options);
+      finalTitle = best.title;
+      finalSubtitle = best.subtitle;
+    }
     onSubmit({
       genre,
       language,
       titleMode,
-      title: title.trim() || undefined,
+      title: finalTitle || undefined,
+      subtitle: finalSubtitle || undefined,
       ideaSeed: ideaSeed.trim(),
       tone,
       length,
@@ -152,7 +269,7 @@ export function StudioExpressPanel({
               <button
                 key={mode}
                 type="button"
-                onClick={() => setTitleMode(mode)}
+                onClick={() => handleTitleModeChange(mode)}
                 className={cn(
                   "rounded-full border px-3 py-1 text-[11px] font-medium",
                   titleMode === mode
@@ -164,13 +281,116 @@ export function StudioExpressPanel({
               </button>
             ))}
           </div>
-          {titleMode !== "suggest" && (
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Titolo del libro"
-              className="mt-2 w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white"
+
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <TitleAction
+              label="Genera titolo e sottotitolo"
+              primary
+              onClick={handleGenerateClick}
+              ariaLabel="Genera titolo e sottotitolo — principale"
             />
+            <TitleAction
+              label="Rigenera 3 opzioni"
+              onClick={handleGenerateClick}
+              disabled={titleCandidates.length === 0}
+            />
+            <TitleAction label="Usa il migliore" onClick={handleUseBest} />
+            <TitleAction label="Scrivo io" onClick={handleWriteMyOwn} />
+          </div>
+
+          {titleIncomplete && (
+            <p className="mt-2 rounded-lg border border-amber-400/25 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-100/90">
+              Titolo o sottotitolo mancante —{" "}
+              <button
+                type="button"
+                onClick={handleGenerateClick}
+                className="font-semibold underline underline-offset-2"
+              >
+                Genera titolo e sottotitolo
+              </button>
+            </p>
+          )}
+
+          {(titleMode === "provided" || titleMode === "provisional") && (
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <input
+                value={title}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  setManualLocked(true);
+                }}
+                placeholder="Titolo del libro"
+                className="w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white"
+              />
+              <input
+                value={subtitle}
+                onChange={(e) => {
+                  setSubtitle(e.target.value);
+                  setManualLocked(true);
+                }}
+                placeholder="Sottotitolo commerciale"
+                className="w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white"
+              />
+            </div>
+          )}
+
+          {titleMode === "suggest" && (title.trim() || subtitle.trim()) && (
+            <div className="mt-2 rounded-xl border border-violet-300/20 bg-violet-500/10 px-3 py-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-violet-200/70">
+                Scelta attuale
+              </p>
+              <p className="mt-1 text-sm font-semibold text-white">{title || "—"}</p>
+              <p className="text-xs italic text-white/55">{subtitle || "—"}</p>
+            </div>
+          )}
+
+          {titleCandidates.length > 0 && (
+            <div className="mt-3 grid gap-2">
+              {titleCandidates.map((opt, i) => (
+                <article
+                  key={`title-opt-${i}`}
+                  className={cn(
+                    "rounded-xl border p-3",
+                    recommendedIndex === i
+                      ? "border-emerald-300/35 bg-emerald-500/10"
+                      : "border-white/10 bg-white/[0.04]",
+                  )}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    {recommendedIndex === i && (
+                      <span className="rounded-full border border-emerald-300/40 bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-100">
+                        Consigliato
+                      </span>
+                    )}
+                    <span className="text-[10px] text-white/40">{opt.genreFit}</span>
+                  </div>
+                  <p className="mt-1 text-sm font-semibold text-white">{opt.title}</p>
+                  <p className="mt-0.5 text-xs italic text-white/55">{opt.subtitle}</p>
+                  <p className="mt-1 text-[10px] text-white/45">{opt.commercialReason}</p>
+                  <dl className="mt-2 grid gap-0.5 text-[10px] text-white/40 sm:grid-cols-2">
+                    <div>
+                      <dt className="inline">Tono: </dt>
+                      <dd className="inline text-white/55">{opt.toneFit}</dd>
+                    </div>
+                    <div>
+                      <dt className="inline">Rischio: </dt>
+                      <dd className="inline text-white/55">{opt.risk}</dd>
+                    </div>
+                  </dl>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <TitleAction
+                      label="Usa questo"
+                      onClick={() => handleUseOption(opt, i)}
+                    />
+                    <TitleAction label="Modifica" onClick={() => handleModifyOption(opt)} />
+                    <TitleAction
+                      label="Rigenera simili"
+                      onClick={handleGenerateClick}
+                    />
+                  </div>
+                </article>
+              ))}
+            </div>
           )}
         </Field>
 
@@ -245,6 +465,38 @@ export function StudioExpressPanel({
         </button>
       </div>
     </section>
+  );
+}
+
+function TitleAction({
+  label,
+  onClick,
+  primary = false,
+  disabled = false,
+  ariaLabel,
+}: {
+  label: string;
+  onClick: () => void;
+  primary?: boolean;
+  disabled?: boolean;
+  ariaLabel?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel ?? label}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[10px] font-medium disabled:opacity-35",
+        primary
+          ? "border-violet-300/40 bg-violet-500/25 text-violet-50"
+          : "border-white/12 bg-white/[0.05] text-white/70",
+      )}
+    >
+      {primary && <Sparkles className="h-3 w-3" />}
+      {label}
+    </button>
   );
 }
 

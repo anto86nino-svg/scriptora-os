@@ -50,7 +50,10 @@ export function getBlueprintGateStatus(
     isStoryRoomBlueprintReady(memory) ||
     machine.currentStageId === "blueprintReady";
 
-  const foundationComplete = isBookFoundationComplete(state);
+  const foundationComplete =
+    !storyRoomReady && !state.bookFoundation
+      ? false
+      : isBookFoundationComplete(state);
   const foundationLocked = isBookFoundationLocked(state);
   const needsFoundationLock = storyRoomReady && !foundationLocked;
 

@@ -739,6 +739,24 @@ export function foundationInputFromState(state: GuidedInterviewState): Foundatio
   };
 }
 
+export function buildExpressTitleGeneratorInput(
+  fields: Pick<
+    ExpressForgeInput,
+    "genre" | "language" | "tone" | "length" | "ideaSeed" | "titleMode" | "title"
+  > & { subtitle?: string },
+): FoundationGeneratorInput {
+  return {
+    genre: fields.genre,
+    language: fields.language,
+    tone: fields.tone,
+    lengthPreset: normalizeLengthPreset(fields.length),
+    ideaSeed: clean(fields.ideaSeed) || "libro in lavorazione",
+    bookType: resolveExpressBookType(fields.genre),
+    titleMode: fields.titleMode,
+    title: clean(fields.title) || undefined,
+  };
+}
+
 export function buildBookFoundationFromExpressScenario(
   scenario: CompleteExpressBookPackage,
   expressInput?: ExpressForgeInput,

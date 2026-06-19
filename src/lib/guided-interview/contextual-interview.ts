@@ -1,5 +1,6 @@
 import type { GuidedInterviewState, InterviewGenre, InterviewQuickSuggestion } from "./types";
 import { sanitizeDnaText } from "./dna-cleaner";
+import { buildCharacterAwareQuestionPrompt } from "./character-foundation-studio";
 
 export type InterviewBookCategory =
   | "gothic-dark"
@@ -655,9 +656,20 @@ export function enrichInterviewQuestion(
 ): typeof question {
   const copy = getContextualQuestionCopy(question.key, state);
   const suggestions = getContextualQuickSuggestions(question.key, state);
+  const foundation = state.bookFoundation;
+  const cast = foundation?.foundationCharacters ?? [];
+  const genre = foundation?.genre ?? state.selectedGenre ?? state.extracted?.genre ?? "fiction";
+  const enrichedQuestion =
+    cast.length > 0
+      ? buildCharacterAwareQuestionPrompt(
+          copy.question ?? question.question,
+          cast,
+          String(genre),
+        )
+      : copy.question ?? question.question;
   return {
     ...question,
-    question: copy.question ?? question.question,
+    question: enrichedQuestion,
     helper: copy.helper ?? question.helper,
     quickSuggestions:
       suggestions.length > 0 ? suggestions : question.quickSuggestions,

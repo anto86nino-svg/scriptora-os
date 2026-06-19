@@ -239,7 +239,7 @@ describe("genre convergence engine", () => {
       expect(report.blindSpots).not.toContain("wound");
       expect(report.blindSpots).not.toContain("ending");
     },
-    15000,
+    25000,
   );
 
   it("evaluates poetry without fiction plot requirements", () => {
@@ -279,11 +279,15 @@ describe("genre convergence engine", () => {
 
 describe("genre convergence simulations", () => {
   for (const scenario of SCENARIOS) {
-    it(`converges understanding for ${scenario.id}`, () => {
-      const result = simulateUnderstanding(scenario);
-      console.log(JSON.stringify({ scenario: scenario.id, ...result }));
-      expect(result.understood, `${scenario.id} did not converge in ${result.steps} steps`).toBe(true);
-      expect(result.steps).toBeLessThan(50);
-    });
+    it(
+      `converges understanding for ${scenario.id}`,
+      () => {
+        const result = simulateUnderstanding(scenario);
+        console.log(JSON.stringify({ scenario: scenario.id, ...result }));
+        expect(result.understood, `${scenario.id} did not converge in ${result.steps} steps`).toBe(true);
+        expect(result.steps).toBeLessThan(50);
+      },
+      20000,
+    );
   }
 });

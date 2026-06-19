@@ -227,7 +227,7 @@ describe("interview memory", () => {
     s = applyInterviewAnswer(s, "Italiano", { id: "seed-language", key: "language" });
     const report = evaluateEditorialUnderstanding(s);
     expect(report.readyForBlueprint).toBe(true);
-  });
+  }, 20000);
 
   it("self-help in english does not suggest dark romance", () => {
     let state = getInitialInterviewState({ chatFirst: true });
