@@ -43,7 +43,7 @@ export function BlueprintLiveGenerationPanel({
         <div className="flex items-center gap-2">
           <Zap className="h-4 w-4 text-cyan-300" />
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-200/80">
-            {italianUi ? "Generazione live" : "Live generation"}
+            {italianUi ? "Forgia del Blueprint" : "Blueprint forge"}
           </p>
         </div>
       </header>
@@ -53,7 +53,7 @@ export function BlueprintLiveGenerationPanel({
           <div className="flex items-end justify-between gap-2">
             <div>
               <p className="text-[10px] uppercase tracking-wider text-white/45">
-                {italianUi ? "Libro completato" : "Book complete"}
+                {italianUi ? "Blueprint preparato" : "Blueprint prepared"}
               </p>
               <p className="text-3xl font-bold tabular-nums text-white">{stats.bookPercent}%</p>
             </div>
@@ -77,7 +77,7 @@ export function BlueprintLiveGenerationPanel({
               </p>
             </div>
             <div className="rounded-xl bg-black/25 px-3 py-2">
-              <p className="text-white/45">{italianUi ? "Parole" : "Words"}</p>
+              <p className="text-white/45">{italianUi ? "Parole manoscritto" : "Manuscript words"}</p>
               <p className="font-bold tabular-nums text-white">{stats.wordsGenerated.toLocaleString()}</p>
             </div>
           </div>
@@ -102,7 +102,7 @@ export function BlueprintLiveGenerationPanel({
               <StatusIcon status={item.status} />
               <span className="min-w-0 flex-1 truncate font-medium">{item.label}</span>
               <span className="shrink-0 text-[10px] uppercase tracking-wide opacity-70">
-                {statusLabel(item.status, italianUi)}
+                {statusLabel(item.status, italianUi, item.label)}
               </span>
             </div>
           ))}
@@ -112,7 +112,7 @@ export function BlueprintLiveGenerationPanel({
           <div className="mt-4 space-y-2">
             <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
               <Sparkles className="h-3 w-3 text-violet-300" />
-              {italianUi ? "Feedback narrativo" : "Narrative feed"}
+              {italianUi ? "Feedback editoriale" : "Editorial feed"}
             </p>
             {narrativeEvents.map((event, i) => (
               <p

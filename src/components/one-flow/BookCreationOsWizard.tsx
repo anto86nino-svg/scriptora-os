@@ -347,7 +347,7 @@ const BLUEPRINT_FORGE_COPY = [
   "Allineo capitoli, tono e direzione editoriale…",
   "Creo una traiettoria leggibile per ogni capitolo…",
   "Ultimo controllo prima del blueprint…",
-  "Non chiudere: Scriptora sta ancora lavorando.",
+  "Non chiudere: Scriptora sta preparando architettura, indice e piano capitoli.",
 ] as const;
 
 function formatForgeTime(seconds: number): string {
@@ -1756,7 +1756,7 @@ export function BookCreationOsWizard({
             <p className="text-sm font-semibold text-white">
                 {postDnaForge
                   ? step === 7
-                    ? "Il tuo libro prende forma"
+                    ? "La struttura del libro prende forma"
                     : "Forgia la struttura"
                   : forgePresetId
                     ? `Preset: ${forgePresetLabel || "Libro rapido"}`

@@ -24,8 +24,8 @@ export type BlueprintTheaterLiveStats = {
 const NARRATIVE_HINTS = [
   "Protagonista introdotto",
   "Conflitto stabilito",
-  "Hook completato",
-  "Tensione aumentata",
+  "Hook impostato",
+  "Tensione progettata",
   "Arco narrativo avanzato",
   "Promessa editoriale rafforzata",
 ] as const;
@@ -155,7 +155,7 @@ export function deriveNarrativeEvents(
   const generating = pipeline.find((p) => p.status === "generating");
   if (generating) {
     if (generating.kind === "chapter") events.push(`Scrittura: ${generating.label}`);
-    else events.push(`${generating.label} in corso`);
+    else events.push(`${generating.label} in pianificazione`);
   }
 
   const doneCount = pipeline.filter((p) => p.status === "done" && p.kind === "chapter").length;
