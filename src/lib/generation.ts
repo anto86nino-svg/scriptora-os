@@ -1384,9 +1384,15 @@ export async function generateChapterChunked(
     // Adaptive chunk size selection
     const chunkSize = selectChunkSize(consecutiveFailures);
     const sizeConfig = CHUNK_SIZES[chunkSize];
-    const chunkTarget = phase === "CLOSURE"
+
+    let chunkTarget = phase === "CLOSURE"
       ? Math.min(remainingWords + 100, sizeConfig.max)
       : Math.min(Math.max(sizeConfig.min, remainingWords), sizeConfig.max);
+
+    // Primo chunk rapido per attivare il live stream
+    if (chunkIndex === 0) {
+      chunkTarget = Math.min(chunkTarget, 400);
+    }
 
     if (DEV_DEBUG_STREAM) console.log(`[Scriptora] Chunk ${chunkIndex + 1}: size=${chunkSize} (${sizeConfig.label}), failures=${consecutiveFailures}`);
 

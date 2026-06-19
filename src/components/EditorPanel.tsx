@@ -1650,6 +1650,19 @@ const GenerationProgress = memo(function GenerationProgress({
     : Math.min(22, 6 + elapsedSeconds * 1.2);
   const copy = CHAPTER_FORGE_COPY[activeStep] || CHAPTER_FORGE_COPY[CHAPTER_FORGE_COPY.length - 1];
   const slow = elapsedSeconds >= 90;
+
+  const dynamicStatusMessage =
+    liveContent
+      ? statusMessage
+      : elapsedSeconds < 15
+        ? "Preparazione memoria narrativa..."
+        : elapsedSeconds < 30
+          ? "Analisi blueprint e continuità..."
+          : elapsedSeconds < 60
+            ? "Costruzione apertura narrativa..."
+            : elapsedSeconds < 120
+              ? "Generazione del primo segmento del capitolo..."
+              : "Il modello sta elaborando il primo blocco di scrittura...";
   const liveContent = (chunkProgress?.content?.trim() || fallbackContent?.trim() || "");
   const streamLines = getCompactLiveStreamLines(liveContent);
 
@@ -1749,7 +1762,7 @@ const GenerationProgress = memo(function GenerationProgress({
             ))
           ) : (
             <div className="scriptora-chapter-live-stream-placeholder">
-              <p>{statusMessage}</p>
+              <p>{dynamicStatusMessage}</p>
             </div>
           )}
           {liveContent && <span className="scriptora-generation-caret" aria-hidden="true" />}
