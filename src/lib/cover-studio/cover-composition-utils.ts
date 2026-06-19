@@ -199,7 +199,9 @@ export function getDraggableLayersForView(
     if (l.visible === false || l.locked) return false;
     if (!isDraggableLayer(l)) return false;
     const panel = getLayerPanel(l.type, l);
-    if (viewMode === "front" || viewMode === "thumbnail") return panel === "front";
+    if (viewMode === "front" || viewMode === "thumbnail" || viewMode === "mockup-3d") return panel === "front";
+    if (viewMode === "back") return panel === "back";
+    if (viewMode === "spine") return panel === "spine";
     if (viewMode === "open-book" || viewMode === "paperback") return panel === activePanel;
     return panel === "front";
   });

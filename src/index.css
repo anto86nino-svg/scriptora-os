@@ -5027,6 +5027,18 @@ body,
   max-width: 100%;
 }
 
+.cover-preview-stage-root[data-cover-view-layout="wrap"] .cover-studio-pro-stage,
+.cover-preview-stage-root[data-cover-view-layout="open-book"] .cover-studio-pro-stage {
+  max-width: none;
+}
+
+.cover-preview-stage-root[data-cover-view-layout="mockup-3d"] .scriptora-cover-studio-canvas {
+  box-shadow:
+    28px 28px 56px rgba(0, 0, 0, 0.42),
+    -8px 0 18px rgba(255, 255, 255, 0.08),
+    inset -18px 0 24px rgba(0, 0, 0, 0.22);
+}
+
 .cover-viewport-frame {
   width: 100%;
   height: 100%;
@@ -5038,9 +5050,32 @@ body,
   max-height: none;
 }
 
+.cover-viewport-frame--front.cover-viewport-frame--desktop {
+  min-height: min(76dvh, 760px);
+}
+
+.cover-viewport-frame--wrap.cover-viewport-frame--desktop {
+  min-height: min(82dvh, 820px);
+  width: min(96vw, 1400px);
+}
+
+.cover-viewport-frame--open-book.cover-viewport-frame--desktop {
+  min-height: min(74dvh, 720px);
+  width: min(92vw, 1120px);
+}
+
 .cover-viewport-frame--mobile {
   min-height: min(42dvh, 430px);
   max-height: none;
+}
+
+.cover-viewport-frame--wrap.cover-viewport-frame--mobile {
+  min-height: min(56dvh, 520px);
+  overflow-x: auto;
+}
+
+.cover-viewport-frame--open-book.cover-viewport-frame--mobile {
+  min-height: min(50dvh, 480px);
 }
 
 .cover-viewport-toolbar {
@@ -5142,6 +5177,20 @@ body,
   min-height: min(85dvh, 920px);
 }
 
+.cover-focus-workspace--front .cover-focus-canvas-frame {
+  min-height: min(86dvh, 920px);
+}
+
+.cover-focus-workspace--wrap .cover-focus-canvas-frame {
+  min-height: min(90dvh, 980px);
+  width: min(100%, 1480px);
+}
+
+.cover-focus-workspace--open-book .cover-focus-canvas-frame {
+  min-height: min(82dvh, 860px);
+  width: min(100%, 1180px);
+}
+
 .cover-focus-panel-backdrop {
   animation: cover-focus-fade-in 0.18s ease-out;
 }
@@ -5194,6 +5243,15 @@ body,
   .cover-focus-canvas-frame {
     min-height: min(78dvh, 720px);
     flex: 1 1 auto;
+  }
+
+  .cover-focus-workspace--wrap .cover-focus-canvas-frame {
+    min-height: min(66dvh, 620px);
+    border-radius: 1rem;
+  }
+
+  .cover-focus-workspace--open-book .cover-focus-canvas-frame {
+    min-height: min(62dvh, 580px);
   }
 
   .scriptora-cover-studio-preview {
@@ -5356,6 +5414,11 @@ body,
 
   .cover-studio-pro-stage {
     max-width: 100%;
+  }
+
+  .cover-preview-stage-root[data-cover-view-layout="wrap"] .cover-studio-pro-stage,
+  .cover-preview-stage-root[data-cover-view-layout="open-book"] .cover-studio-pro-stage {
+    max-width: none;
   }
 }
 

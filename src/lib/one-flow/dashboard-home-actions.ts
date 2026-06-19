@@ -3,6 +3,7 @@ import type { FeatureKey } from "@/lib/subscription";
 import { isProjectComplete } from "@/lib/project-status";
 import type { ActiveDashboardTool } from "@/lib/one-flow/dashboard-active-tool";
 import { resetRouteScroll } from "@/lib/one-flow/dashboard-navigation";
+import type { BookProject } from "@/types/book";
 import {
   returnStateForOrigin,
   type DashboardReturnContext,
@@ -30,6 +31,7 @@ export type DashboardHomeAction = {
 export type DashboardActionContext = {
   hasActiveBook: boolean;
   hasCompletedBook: boolean;
+  activeProject?: BookProject | null;
   closeAllTools: () => void;
   openTool: (tool: ActiveDashboardTool) => void;
   onNewBook: () => void;

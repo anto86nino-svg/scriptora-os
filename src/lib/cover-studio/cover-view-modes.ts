@@ -1,6 +1,6 @@
 import type { CoverLayer } from "./cover-layers";
 
-export type CoverViewMode = "front" | "open-book" | "paperback" | "thumbnail";
+export type CoverViewMode = "front" | "back" | "spine" | "paperback" | "open-book" | "mockup-3d" | "thumbnail";
 
 export type CoverPanel = "front" | "back" | "spine";
 
@@ -15,9 +15,12 @@ export type CoverSpecRects = {
 };
 
 export const COVER_VIEW_MODES: { id: CoverViewMode; labelIt: string; labelEn: string }[] = [
-  { id: "front", labelIt: "Front Cover", labelEn: "Front Cover" },
+  { id: "front", labelIt: "Front", labelEn: "Front" },
+  { id: "back", labelIt: "Retro", labelEn: "Back" },
+  { id: "spine", labelIt: "Dorso", labelEn: "Spine" },
+  { id: "paperback", labelIt: "Full KDP Wrap", labelEn: "Full KDP Wrap" },
   { id: "open-book", labelIt: "Open Book", labelEn: "Open Book" },
-  { id: "paperback", labelIt: "Paperback Preview", labelEn: "Paperback Preview" },
+  { id: "mockup-3d", labelIt: "3D Mockup", labelEn: "3D Mockup" },
   { id: "thumbnail", labelIt: "Thumbnail Amazon", labelEn: "Amazon Thumbnail" },
 ];
 
@@ -53,10 +56,11 @@ export function getViewClipStyle(
   const { width, height, frontRect, backRect, spineRect } = spec;
   if (!frontRect) return null;
 
-  if (mode === "front") {
-    const cx = ((frontRect.x + frontRect.w / 2) / width) * 100;
-    const cy = ((frontRect.y + frontRect.h / 2) / height) * 100;
-    const scale = Math.max(width / frontRect.w, height / frontRect.h);
+  if (mode === "front" || mode === "back" || mode === "spine" || mode === "mockup-3d") {
+    const panel = mode === "back" ? backRect ?? frontRect : mode === "spine" ? spineRect ?? frontRect : frontRect;
+    const cx = ((panel.x + panel.w / 2) / width) * 100;
+    const cy = ((panel.y + panel.h / 2) / height) * 100;
+    const scale = Math.max(width / panel.w, height / panel.h);
     return {
       objectFit: "contain",
       objectPosition: `${cx}% ${cy}%`,
@@ -118,8 +122,12 @@ export function pointerToPanelPercent(
   const canvasY = (relY / drawH) * spec.height;
 
   let target = getPanelRect(spec, panel);
-  if (viewMode === "front" || viewMode === "thumbnail") {
+  if (viewMode === "front" || viewMode === "thumbnail" || viewMode === "mockup-3d") {
     target = spec.frontRect;
+  } else if (viewMode === "back") {
+    target = getPanelRect(spec, "back");
+  } else if (viewMode === "spine") {
+    target = getPanelRect(spec, "spine");
   }
 
   const x = ((canvasX - target.x) / target.w) * 100;

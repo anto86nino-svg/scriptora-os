@@ -12,6 +12,7 @@ type Props = {
   children: ReactNode;
   className?: string;
   maxWidthClass?: string;
+  panelId?: string;
 };
 
 /** Fullscreen dedicated surface — never lengthens the Dashboard scroll. */
@@ -24,6 +25,7 @@ export function DedicatedToolScreen({
   children,
   className,
   maxWidthClass = "max-w-3xl",
+  panelId,
 }: Props) {
   useEffect(() => {
     if (!open) return;
@@ -34,7 +36,11 @@ export function DedicatedToolScreen({
   if (!open) return null;
 
   return (
-    <div className="scriptora-dedicated-screen fixed inset-0 z-[90] flex flex-col bg-background/95 backdrop-blur-2xl safe-area-pt pb-safe">
+    <div
+      className="scriptora-dedicated-screen fixed inset-0 z-[90] flex flex-col bg-background/95 backdrop-blur-2xl safe-area-pt pb-safe"
+      data-dashboard-tool-panel={panelId}
+      tabIndex={-1}
+    >
       <header className="shrink-0 border-b border-white/10 bg-background/90 px-4 py-3 sm:px-6">
         <div className={cn("mx-auto flex w-full items-center justify-between gap-3", maxWidthClass)}>
           <button

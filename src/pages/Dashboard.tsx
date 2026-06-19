@@ -47,6 +47,10 @@ import { DashboardPackagingRow } from "@/components/one-flow/DashboardPackagingR
 import { DashboardToolHost } from "@/components/one-flow/DashboardToolHost";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
 import { resetRouteScroll } from "@/lib/one-flow/dashboard-navigation";
+import {
+  focusDashboardToolPanelWhenReady,
+  scrollElementIntoViewWithOffset,
+} from "@/lib/one-flow/dashboard-panel-scroll";
 import type { ActiveDashboardTool } from "@/lib/one-flow/dashboard-active-tool";
 import { activeToolGuideRoute } from "@/lib/one-flow/dashboard-active-tool";
 import { OsHomeHero } from "@/components/os/OsHomeHero";
@@ -425,17 +429,21 @@ export default function Dashboard() {
       setAdvancedLaunchpadEnabled(true);
       setShowAdvancedLaunchpad(true);
       openDashboardTool("advanced-tools");
-      requestAnimationFrame(() => {
-        advancedToolsAnchorRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
-      });
+      focusDashboardToolPanelWhenReady("advanced-tools");
       return;
     }
     if (panel === "packaging") {
       requestAnimationFrame(() => {
-        packagingAnchorRef.current?.scrollIntoView({ block: "start", behavior: "auto" });
+        scrollElementIntoViewWithOffset(packagingAnchorRef.current, { behavior: "smooth" });
       });
     }
   }, [location.search, openDashboardTool]);
+
+  useEffect(() => {
+    if (activeDashboardTool === "advanced-tools") {
+      focusDashboardToolPanelWhenReady("advanced-tools");
+    }
+  }, [activeDashboardTool]);
 
   const deleteHomeProject = async (projectId: string, title?: string) => {
     const name = title || t("this_project");
@@ -670,18 +678,19 @@ typeof crypto.randomUUID === "function"
 
   const dashboardActionContext = useMemo<DashboardActionContext>(
     () => ({
-      hasActiveBook: Boolean(lastProject),
+      hasActiveBook: Boolean(dashboardContextProject),
       hasCompletedBook: completedProjects.length > 0,
+      activeProject: dashboardContextProject,
       closeAllTools: closeAllDashboardTools,
       openTool: (tool) => {
         openDashboardTool(tool);
       },
       onNewBook: openNewBookGuarded,
-      onContinue: lastProject ? () => { closeAllDashboardTools(); goApp({ projectId: lastProject.id }); } : undefined,
+      onContinue: dashboardContextProject ? () => { closeAllDashboardTools(); goApp({ projectId: dashboardContextProject.id }); } : undefined,
       onOpenCover: () => { closeAllDashboardTools(); guardPlanFeature("cover_studio_template", openCoverStudioPage)(); },
       onNavigate: navigateFromDashboard,
     }),
-    [lastProject, completedProjects.length, closeAllDashboardTools, openDashboardTool, navigateFromDashboard, openNewBookGuarded, goApp, openCoverStudioPage],
+    [dashboardContextProject, completedProjects.length, closeAllDashboardTools, openDashboardTool, navigateFromDashboard, openNewBookGuarded, goApp, openCoverStudioPage],
   );
 
   const ideaPreviewProps = useMemo(() => ({

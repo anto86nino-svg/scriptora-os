@@ -137,8 +137,12 @@ export function CoverPreviewStage({
     if (!stage) return null;
     if (effectiveSpec.isPrint) {
       const panel =
-        viewMode === "front" || viewMode === "thumbnail"
+        viewMode === "front" || viewMode === "thumbnail" || viewMode === "mockup-3d"
           ? "front"
+          : viewMode === "back"
+            ? "back"
+            : viewMode === "spine"
+              ? "spine"
           : viewMode === "open-book" || viewMode === "paperback"
             ? activePanel
             : "front";
@@ -216,12 +220,24 @@ export function CoverPreviewStage({
   };
 
   const mappedPanel =
-    viewMode === "front" || viewMode === "thumbnail"
+    viewMode === "front" || viewMode === "thumbnail" || viewMode === "mockup-3d"
       ? effectiveSpec.frontRect
+      : viewMode === "back"
+        ? getPanelRect(effectiveSpec, "back")
+        : viewMode === "spine"
+          ? getPanelRect(effectiveSpec, "spine")
       : getPanelRect(effectiveSpec, activePanel);
   const usePanelMapping =
     effectiveSpec.isPrint &&
-    (viewMode === "open-book" || viewMode === "paperback" || viewMode === "front" || viewMode === "thumbnail");
+    (
+      viewMode === "open-book" ||
+      viewMode === "paperback" ||
+      viewMode === "front" ||
+      viewMode === "back" ||
+      viewMode === "spine" ||
+      viewMode === "mockup-3d" ||
+      viewMode === "thumbnail"
+    );
   const hitboxScale = usePanelMapping
     ? {
         leftPct: (mappedPanel.x / effectiveSpec.width) * 100,
@@ -233,9 +249,17 @@ export function CoverPreviewStage({
 
   const showPanelNav =
     effectiveSpec.isPrint && (viewMode === "open-book" || viewMode === "paperback");
+  const showMobileWrapFallback = isMobile && fit.layoutKind === "wrap" && containerSize.w < 760;
+  const stageTransform =
+    fit.layoutKind === "mockup-3d"
+      ? `translate(${fit.panX}px, ${fit.panY}px) perspective(1200px) rotateY(-13deg) rotateX(2deg)`
+      : `translate(${fit.panX}px, ${fit.panY}px)`;
 
   return (
-    <div className="cover-preview-stage-root relative flex h-full min-h-0 w-full max-w-full min-w-0 flex-col">
+    <div
+      className="cover-preview-stage-root relative flex h-full min-h-0 w-full max-w-full min-w-0 flex-col"
+      data-cover-view-layout={fit.layoutKind}
+    >
       <div className="cover-viewport-toolbar sticky top-0 z-30 mb-2 flex w-full shrink-0 flex-wrap items-center justify-center gap-1.5 rounded-lg border border-border/50 bg-background/92 px-2 py-1.5 backdrop-blur-md">
         {showPanelNav &&
           (["front", "spine", "back"] as CoverPanel[]).map((panel) => (
@@ -282,20 +306,31 @@ export function CoverPreviewStage({
 
       <div
         ref={viewportRef}
-        className={cn(
-          "cover-viewport-frame relative mx-auto flex min-h-0 w-full flex-1 flex-col",
-          fit.userZoom > 1.02 ? "overflow-auto" : "overflow-hidden",
-          isMobile ? "cover-viewport-frame--mobile" : "cover-viewport-frame--desktop",
-        )}
+          className={cn(
+            "cover-viewport-frame relative mx-auto flex min-h-0 w-full flex-1 flex-col",
+            fit.userZoom > 1.02 ? "overflow-auto" : "overflow-hidden",
+            isMobile ? "cover-viewport-frame--mobile" : "cover-viewport-frame--desktop",
+            fit.layoutKind === "wrap" && "cover-viewport-frame--wrap",
+            fit.layoutKind === "open-book" && "cover-viewport-frame--open-book",
+            fit.layoutKind === "mockup-3d" && "cover-viewport-frame--mockup",
+            fit.layoutKind === "front" && "cover-viewport-frame--front",
+          )}
       >
-        <div ref={measureRef} className="flex h-full w-full min-h-[52dvh] flex-1 items-center justify-center p-1 lg:min-h-[68dvh]">
+        {showMobileWrapFallback && (
+          <div className="mb-2 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-center text-[11px] font-medium leading-4 text-amber-100">
+            {italianUi
+              ? "KDP full cover e' panoramico: ruota il dispositivo o apri da desktop per editing completo."
+              : "KDP full cover is panoramic: rotate the device or open desktop for full editing."}
+          </div>
+        )}
+        <div ref={measureRef} className="cover-viewport-measure flex h-full w-full min-h-[52dvh] flex-1 items-center justify-center p-1 lg:min-h-[68dvh]">
         <div
           ref={stageRef}
           className="cover-studio-pro-stage relative touch-none select-none shrink-0"
           style={{
             width: fit.displayWidth,
             height: fit.displayHeight,
-            transform: `translate(${fit.panX}px, ${fit.panY}px)`,
+            transform: stageTransform,
             transition: draggingId ? "none" : "transform 0.28s ease-out, width 0.2s ease, height 0.2s ease",
           }}
           onPointerMove={onPointerMove}

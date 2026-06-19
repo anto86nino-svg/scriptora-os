@@ -75,8 +75,18 @@ export function CoverFocusWorkspace({
   onSaveToProject,
   projectId,
 }: Props) {
+  const activeViewMode = composition.viewMode ?? "front";
+  const wrapWorkspace = spec.isPrint && activeViewMode === "paperback";
+  const openBookWorkspace = spec.isPrint && activeViewMode === "open-book";
+
   return (
-    <div className="scriptora-cover-studio-workspace cover-focus-workspace relative flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div
+      className={`scriptora-cover-studio-workspace cover-focus-workspace relative flex min-h-0 flex-1 flex-col overflow-hidden ${
+        wrapWorkspace ? "cover-focus-workspace--wrap" : openBookWorkspace ? "cover-focus-workspace--open-book" : "cover-focus-workspace--front"
+      }`}
+      data-cover-mode={mode}
+      data-cover-view={activeViewMode}
+    >
       <div className="cover-focus-stage relative flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="cover-focus-spec-chip pointer-events-none absolute left-4 top-3 z-20 hidden items-center gap-2 rounded-full border border-white/10 bg-background/50 px-3 py-1.5 text-[10px] text-muted-foreground backdrop-blur-xl lg:flex">
           <span className="font-medium text-foreground">{spec.label}</span>
@@ -148,7 +158,7 @@ export function CoverFocusWorkspace({
               canvasRef={canvasRef}
               italianUi={italianUi}
               spec={spec}
-              viewMode={composition.viewMode ?? "front"}
+              viewMode={activeViewMode}
               activePanel={composition.activePanel ?? "front"}
               onActivePanelChange={(panel) => onCompositionChange({ ...composition, activePanel: panel })}
               highlightLayerType={highlightLayerType}

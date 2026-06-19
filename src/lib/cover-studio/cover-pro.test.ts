@@ -35,6 +35,13 @@ describe("cover-studio pro assets", () => {
 });
 
 describe("cover composition utils", () => {
+  it("exposes professional cover view modes", async () => {
+    const { COVER_VIEW_MODES } = await import("./cover-view-modes");
+    expect(COVER_VIEW_MODES.map((mode) => mode.id)).toEqual(
+      expect.arrayContaining(["front", "back", "spine", "paperback", "open-book", "mockup-3d"]),
+    );
+  });
+
   it("clamps pointer percent inside cover bounds", async () => {
     const { pointerToCoverPercent } = await import("./cover-composition-utils");
     const rect = { left: 0, top: 0, width: 200, height: 400 } as DOMRect;
@@ -77,6 +84,92 @@ describe("cover composition utils", () => {
     });
     expect(fit.displayWidth).toBeLessThanOrEqual(400);
     expect(fit.displayHeight).toBeLessThanOrEqual(500);
+  });
+
+  it("keeps front cover large without using full-wrap constraints", async () => {
+    const { computeViewportFit } = await import("./cover-viewport-fit");
+    const spec = {
+      isPrint: true,
+      width: 3700,
+      height: 2700,
+      bleedPx: 38,
+      frontRect: { x: 1900, y: 38, w: 1800, h: 2700 },
+      backRect: { x: 38, y: 38, w: 1800, h: 2700 },
+      spineRect: { x: 1838, y: 38, w: 62, h: 2700 },
+    };
+    const fit = computeViewportFit({
+      containerWidth: 1200,
+      containerHeight: 700,
+      canvasWidth: spec.width,
+      canvasHeight: spec.height,
+      viewMode: "front",
+      spec,
+      userZoom: 1,
+      isMobile: false,
+    });
+
+    expect(fit.layoutKind).toBe("front");
+    expect(fit.displayWidth).toBeLessThanOrEqual(520);
+    expect(fit.displayHeight).toBeGreaterThan(600);
+  });
+
+  it("uses a panoramic canvas for full KDP wrap instead of front-cover sizing", async () => {
+    const { computeViewportFit } = await import("./cover-viewport-fit");
+    const spec = {
+      isPrint: true,
+      width: 3700,
+      height: 2700,
+      bleedPx: 38,
+      frontRect: { x: 1900, y: 38, w: 1800, h: 2700 },
+      backRect: { x: 38, y: 38, w: 1800, h: 2700 },
+      spineRect: { x: 1838, y: 38, w: 62, h: 2700 },
+    };
+    const front = computeViewportFit({
+      containerWidth: 1200,
+      containerHeight: 700,
+      canvasWidth: spec.width,
+      canvasHeight: spec.height,
+      viewMode: "front",
+      spec,
+      userZoom: 1,
+      isMobile: false,
+    });
+    const wrap = computeViewportFit({
+      containerWidth: 1200,
+      containerHeight: 700,
+      canvasWidth: spec.width,
+      canvasHeight: spec.height,
+      viewMode: "paperback",
+      spec,
+      userZoom: 1,
+      isMobile: false,
+    });
+
+    expect(wrap.layoutKind).toBe("wrap");
+    expect(wrap.displayWidth).toBeGreaterThan(front.displayWidth * 1.8);
+    expect(wrap.displayWidth / wrap.displayHeight).toBeGreaterThan(1.25);
+  });
+
+  it("marks narrow mobile KDP wrap as landscape workspace", async () => {
+    const { getCoverViewportLayoutProfile } = await import("./cover-viewport-fit");
+    const profile = getCoverViewportLayoutProfile({
+      containerWidth: 390,
+      containerHeight: 620,
+      viewMode: "paperback",
+      isMobile: true,
+      spec: {
+        isPrint: true,
+        width: 3700,
+        height: 2700,
+        bleedPx: 38,
+        frontRect: { x: 1900, y: 38, w: 1800, h: 2700 },
+        backRect: { x: 38, y: 38, w: 1800, h: 2700 },
+        spineRect: { x: 1838, y: 38, w: 62, h: 2700 },
+      },
+    });
+
+    expect(profile.kind).toBe("wrap");
+    expect(profile.mobileFallback).toBe("landscape-workspace");
   });
 
   it("assesses print compatibility", async () => {

@@ -473,6 +473,22 @@ export function CoverGenerator({
   );
 
   useEffect(() => {
+    setComposition((c) => {
+      const currentView = c.viewMode ?? "front";
+      const nextView: CoverViewMode =
+        mode === "epub"
+          ? currentView === "paperback" || currentView === "back" || currentView === "spine"
+            ? "front"
+            : currentView
+          : currentView === "front" || currentView === "thumbnail"
+            ? "paperback"
+            : currentView;
+      if (nextView === currentView) return c;
+      return { ...c, viewMode: nextView, activePanel: nextView === "back" ? "back" : nextView === "spine" ? "spine" : c.activePanel, updatedAt: new Date().toISOString() };
+    });
+  }, [mode]);
+
+  useEffect(() => {
     setComposition((c) => ({
       ...c,
       layers: syncTextLayerContent(c.layers, coverTitle, coverSubtitle, coverAuthor),

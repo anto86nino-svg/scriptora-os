@@ -152,6 +152,7 @@ export function DashboardToolHost({
           description="Ogni strumento apre una pagina dedicata — la Dashboard resta compatta."
           onClose={onClose}
           maxWidthClass="max-w-6xl"
+          panelId="advanced-tools"
         >
           <SafeDashboardToolBoundary toolLabel={toolLabel} onClose={onClose}>
             <DashboardAdvancedToolsPanel context={dashboardActionContext} />
