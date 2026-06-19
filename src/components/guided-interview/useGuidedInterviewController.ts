@@ -416,11 +416,39 @@ export function useGuidedInterviewController({
   };
 
   const handleSelectBlueprintScenario = (scenario: ExpressBookScenario) => {
-    setState((prev) => applyExpressScenarioToState(prev, scenario));
+    setState((prev) => {
+      const applied = applyExpressScenarioToState(prev, scenario);
+      const completedFoundation = autoCompleteMissingFoundationFields(applied);
+      const withFoundation =
+        completedFoundation.missingFields.length === 0
+          ? confirmBookFoundationLock(applied, completedFoundation)
+          : applyBookFoundationToForgeMemory(applied, completedFoundation);
+
+      return applyBlueprintReadySummaryToState({
+        ...withFoundation,
+        forgeMode: "express",
+        selectedBlueprintScenarioId: scenario.id,
+        selectedGenre: scenario.genre ?? withFoundation.selectedGenre,
+        selectedTone: scenario.tone ?? withFoundation.selectedTone,
+        blueprintScenarios: prev.blueprintScenarios,
+      });
+    });
+
+    setShowExpressPanel(false);
+    setDnaConfirmationDismissed(false);
+    blueprintMessageInjectedRef.current = false;
+
+    window.requestAnimationFrame(() => {
+      if (scrollContainerRef?.current && typeof scrollContainerRef.current.scrollTo === "function") {
+        scrollContainerRef.current.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior: "smooth",
+        });
+      }
+    });
+
     setShowFoundationPanel(true);
     setShowDnaPanel(false);
-    setDnaConfirmationDismissed(false);
-    setShowExpressPanel(false);
   };
 
   const handleUpdateFoundation = (foundation: BookFoundationLock) => {
