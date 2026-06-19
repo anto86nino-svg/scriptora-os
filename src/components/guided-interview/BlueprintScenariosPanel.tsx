@@ -1,4 +1,5 @@
 import type { ExpressBookScenario } from "@/lib/guided-interview/express-book-package";
+import { isNonfictionExpressGenre } from "@/lib/guided-interview/express-genre-config";
 import { cn } from "@/lib/utils";
 
 export type BlueprintScenariosPanelProps = {
@@ -35,7 +36,7 @@ export function BlueprintScenariosPanel({
           Scriptora ha preparato 3 libri possibili
         </p>
         <p className="mt-1 text-sm text-white/60">
-          Scegli il concept più vicino al tuo cuore. Ogni versione è un libro completo — personaggi, conflitto, struttura e finale.
+          Scegli il concept più vicino al tuo cuore. Ogni versione è un libro completo — struttura, promessa e percorso fino al finale.
         </p>
       </div>
 
@@ -66,13 +67,30 @@ export function BlueprintScenariosPanel({
             </div>
 
             <dl className="mt-3 space-y-1.5 text-[11px] leading-5 text-white/55">
-              <Row label="Protagonisti" value={scenario.protagonist} />
-              <Row label="Ambientazione" value={scenario.setting} />
-              <Row label="Conflitto" value={scenario.centralConflict} />
-              <Row label="Ferita" value={scenario.emotionalWound} />
-              <Row label="Posta in gioco" value={scenario.stakes} />
-              <Row label="Struttura" value={`${scenario.chapterCount} capitoli`} />
-              <Row label="Finale" value={scenario.finalEmotion} />
+              {isNonfictionExpressGenre(scenario.genre) ? (
+                <>
+                  <Row label="Problema lettore" value={scenario.readerProblem ?? scenario.centralConflict} />
+                  <Row label="Promessa" value={scenario.transformationPromise ?? scenario.marketPromise} />
+                  <Row label="Metodo" value={scenario.methodFramework ?? scenario.structurePreference} />
+                  <Row label="Pubblico" value={scenario.idealReader ?? scenario.targetAudience} />
+                  <Row
+                    label="Esercizi"
+                    value={(scenario.exercises ?? []).slice(0, 2).join(" · ") || "Esercizi progressivi per capitolo"}
+                  />
+                  <Row label="Struttura" value={`${scenario.chapterCount} capitoli`} />
+                  <Row label="Payoff" value={scenario.finalEmotion} />
+                </>
+              ) : (
+                <>
+                  <Row label="Protagonisti" value={scenario.protagonist} />
+                  <Row label="Ambientazione" value={scenario.setting} />
+                  <Row label="Conflitto" value={scenario.centralConflict} />
+                  <Row label="Ferita" value={scenario.emotionalWound} />
+                  <Row label="Posta in gioco" value={scenario.stakes} />
+                  <Row label="Struttura" value={`${scenario.chapterCount} capitoli`} />
+                  <Row label="Finale" value={scenario.finalEmotion} />
+                </>
+              )}
             </dl>
 
             <p className="mt-2 text-[10px] text-emerald-300/80">{scenario.whyItSells}</p>
@@ -93,9 +111,19 @@ export function BlueprintScenariosPanel({
               <div className="flex flex-wrap gap-1.5">
                 {onModify && (
                   <>
-                    <MiniBtn label="Più oscuro" onClick={() => onModify(scenario, "darker")} />
-                    <MiniBtn label="Più commerciale" onClick={() => onModify(scenario, "commercial")} />
-                    <MiniBtn label="Più poetico" onClick={() => onModify(scenario, "poetic")} />
+                    {isNonfictionExpressGenre(scenario.genre) ? (
+                      <>
+                        <MiniBtn label="Più pratico" onClick={() => onModify(scenario, "commercial")} />
+                        <MiniBtn label="Più trasformativo" onClick={() => onModify(scenario, "darker")} />
+                        <MiniBtn label="Più profondo" onClick={() => onModify(scenario, "poetic")} />
+                      </>
+                    ) : (
+                      <>
+                        <MiniBtn label="Più oscuro" onClick={() => onModify(scenario, "darker")} />
+                        <MiniBtn label="Più commerciale" onClick={() => onModify(scenario, "commercial")} />
+                        <MiniBtn label="Più poetico" onClick={() => onModify(scenario, "poetic")} />
+                      </>
+                    )}
                   </>
                 )}
                 {onEdit && <MiniBtn label="Modifica dettagli" onClick={() => onEdit(scenario)} />}

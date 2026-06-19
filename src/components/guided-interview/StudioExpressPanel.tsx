@@ -1,10 +1,17 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Loader2, Zap } from "lucide-react";
 import type {
   ExpressControlLevel,
   ExpressForgeInput,
   ExpressTitleMode,
 } from "@/lib/guided-interview/express-forge-types";
+import {
+  getExpressDefaultTone,
+  getExpressIdeaFieldConfig,
+  getExpressLengthOptions,
+  getExpressPanelIntro,
+  getExpressTones,
+} from "@/lib/guided-interview/express-genre-config";
 import { cn } from "@/lib/utils";
 
 const GENRES = [
@@ -14,23 +21,14 @@ const GENRES = [
   "horror",
   "fantasy",
   "self-help",
+  "business",
   "manuale",
+  "saggio",
   "poesia",
   "altro",
 ];
 
 const LANGUAGES = ["Italiano", "Inglese", "Spagnolo", "Francese", "Tedesco", "Auto"];
-const TONES = [
-  "oscuro",
-  "emozionale",
-  "commerciale",
-  "poetico",
-  "diretto",
-  "psicologico",
-  "epico",
-  "didattico",
-];
-const LENGTHS: ExpressForgeInput["length"][] = ["breve", "medio", "lungo", "pro"];
 const CONTROL_LEVELS: { id: ExpressControlLevel; label: string }[] = [
   { id: "auto", label: "Fai tu, voglio partire subito" },
   { id: "scenarios", label: "Fammi scegliere tra 3 libri possibili" },
@@ -60,6 +58,17 @@ export function StudioExpressPanel({
   const [tone, setTone] = useState("oscuro");
   const [length, setLength] = useState<ExpressForgeInput["length"]>("medio");
   const [controlLevel, setControlLevel] = useState<ExpressControlLevel>("scenarios");
+
+  const ideaField = getExpressIdeaFieldConfig(genre);
+  const tones = getExpressTones(genre);
+  const lengthOptions = getExpressLengthOptions(genre);
+  const panelIntro = getExpressPanelIntro(genre);
+
+  useEffect(() => {
+    const available = getExpressTones(genre);
+    const defaultTone = getExpressDefaultTone(genre);
+    setTone((current) => (available.includes(current) ? current : defaultTone));
+  }, [genre]);
 
   const canSubmit = ideaSeed.trim().length >= 4;
 
@@ -91,9 +100,7 @@ export function StudioExpressPanel({
             <Zap className="h-3.5 w-3.5" />
             Studio Express
           </p>
-          <p className="mt-1 text-sm leading-6 text-white/70">
-            Poche scelte essenziali. Scriptora costruisce il libro completo e ti propone 3 versioni forti.
-          </p>
+          <p className="mt-1 text-sm leading-6 text-white/70">{panelIntro}</p>
         </div>
         <button
           type="button"
@@ -167,14 +174,11 @@ export function StudioExpressPanel({
           )}
         </Field>
 
-        <Field
-          label="Idea breve / protagonista / atmosfera"
-          className={compact ? "" : "sm:col-span-2"}
-        >
+        <Field label={ideaField.label} className={compact ? "" : "sm:col-span-2"}>
           <textarea
             value={ideaSeed}
             onChange={(e) => setIdeaSeed(e.target.value)}
-            placeholder="Es. una restauratrice torna nella villa dove sua sorella è morta in un incendio doloso…"
+            placeholder={ideaField.placeholder}
             rows={3}
             className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm leading-6 text-white"
           />
@@ -186,7 +190,7 @@ export function StudioExpressPanel({
             onChange={(e) => setTone(e.target.value)}
             className="w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white"
           >
-            {TONES.map((t) => (
+            {tones.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
@@ -200,9 +204,9 @@ export function StudioExpressPanel({
             onChange={(e) => setLength(e.target.value as ExpressForgeInput["length"])}
             className="w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white"
           >
-            {LENGTHS.map((l) => (
-              <option key={l} value={l}>
-                {l}
+            {lengthOptions.map((l) => (
+              <option key={l.value} value={l.value}>
+                {l.label}
               </option>
             ))}
           </select>

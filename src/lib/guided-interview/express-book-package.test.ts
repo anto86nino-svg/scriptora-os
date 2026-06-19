@@ -31,6 +31,55 @@ const expressInput = {
   controlLevel: "scenarios" as const,
 };
 
+const selfHelpInput = {
+  genre: "self-help",
+  language: "Italiano",
+  titleMode: "suggest" as const,
+  ideaSeed:
+    "aiutare persone bloccate dalla paura del fallimento a ricostruire fiducia, disciplina e direzione in 30 giorni",
+  tone: "pratico",
+  length: "medio" as const,
+  controlLevel: "scenarios" as const,
+};
+
+describe("buildCompleteExpressBookPackage — self-help", () => {
+  it("does not produce fiction synopsis or restauratrice template", () => {
+    const pkg = buildCompleteExpressBookPackage(selfHelpInput, "commercial");
+    expect(pkg.editorialSynopsis).not.toContain("restauratrice");
+    expect(pkg.editorialSynopsis).not.toContain("villa");
+    expect(pkg.protagonist.toLowerCase()).not.toContain("elena");
+  });
+
+  it("includes nonfiction package fields", () => {
+    const commercial = buildCompleteExpressBookPackage(selfHelpInput, "commercial");
+    expect(commercial.readerProblem).toBeTruthy();
+    expect(commercial.transformationPromise).toBeTruthy();
+    expect(commercial.methodFramework).toBeTruthy();
+    expect(commercial.exercises?.length).toBeGreaterThan(3);
+    expect(commercial.reflectionPrompts?.length).toBeGreaterThan(2);
+    expect(commercial.idealReader).toBeTruthy();
+    expect(commercial.subtitle.length).toBeGreaterThan(10);
+    expect(commercial.chapterBlueprintSeeds[0]?.title).toMatch(/problema|lettore/i);
+  });
+
+  it("uses Practical / Transformative / Deep scenario labels", () => {
+    const scenarios = buildExpressBookScenarios(selfHelpInput);
+    expect(scenarios.map((s) => s.label)).toEqual([
+      "Libro A — Practical",
+      "Libro B — Transformative",
+      "Libro C — Deep / Premium",
+    ]);
+  });
+
+  it("applyExpressScenarioToState sets nonfiction book type", () => {
+    const pkg = buildCompleteExpressBookPackage(selfHelpInput, "commercial");
+    const next = applyExpressScenarioToState(getInitialInterviewState({ chatFirst: true }), pkg);
+    expect(next.selectedBookType).not.toBe("Romanzo");
+    expect(next.extracted?.readerTransformation).toBeTruthy();
+    expect(next.extracted?.centralConflict).toBe(pkg.readerProblem);
+  });
+});
+
 describe("buildCompleteExpressBookPackage", () => {
   it("produces editorial synopsis not metadata", () => {
     const pkg = buildCompleteExpressBookPackage(expressInput, "commercial");

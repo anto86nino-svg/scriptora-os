@@ -9,7 +9,16 @@ import type {
   StoryFutureState,
   TitleIntelligence,
 } from "./forge-evolution-types";
-import type { ExpressForgeInput, ForgeFieldProvenance } from "./express-forge-types";
+import type { ExpressForgeInput } from "./express-forge-types";
+import {
+  getExpressVariantMeta,
+  isNonfictionExpressGenre,
+  isPoetryExpressGenre,
+  resolveExpressBookType,
+  type ExpressScenarioVariant,
+} from "./express-genre-config";
+
+export type { ExpressScenarioVariant } from "./express-genre-config";
 import {
   createEmptyForgeMemory,
   getCriticalMissingSlots,
@@ -31,8 +40,6 @@ import { isMetadataOnly } from "./blueprint-ready-summary";
 import { validateBookReadinessForBlueprint } from "@/lib/book-config-engine/blueprint-readiness";
 import { enrichBookConfigFromForgeSeed } from "./forge-writer-bridge";
 import type { BookConfig } from "@/types/book";
-
-export type ExpressScenarioVariant = "safe" | "commercial" | "bold";
 
 export type ChapterBlueprintSeed = {
   id: string;
@@ -95,6 +102,18 @@ export type CompleteExpressBookPackage = {
   commercialPitch: string;
   editorialRisks: string[];
   whyItSells: string;
+  /** Nonfiction: problema concreto del lettore */
+  readerProblem?: string;
+  /** Nonfiction: promessa di trasformazione */
+  transformationPromise?: string;
+  /** Nonfiction: metodo o framework operativo */
+  methodFramework?: string;
+  /** Nonfiction: esercizi pratici */
+  exercises?: string[];
+  /** Nonfiction: domande di riflessione */
+  reflectionPrompts?: string[];
+  /** Nonfiction: pubblico ideale */
+  idealReader?: string;
   characters: ForgeCharacter[];
   storyRoom: StoryRoomState;
   storyFuture: StoryFutureState;
@@ -111,7 +130,10 @@ const GENRE_META: Record<string, { subgenre: string; normalizedGenre: string }> 
   horror: { subgenre: "supernatural horror", normalizedGenre: "horror" },
   fantasy: { subgenre: "epic fantasy", normalizedGenre: "fantasy" },
   "self-help": { subgenre: "personal growth", normalizedGenre: "self-help" },
+  business: { subgenre: "business growth", normalizedGenre: "business" },
   manuale: { subgenre: "practical guide", normalizedGenre: "manual" },
+  saggio: { subgenre: "essay", normalizedGenre: "essay" },
+  educational: { subgenre: "educational", normalizedGenre: "educational" },
   poesia: { subgenre: "lyric poetry", normalizedGenre: "poetry" },
 };
 
@@ -120,30 +142,6 @@ const LENGTH_CHAPTERS: Record<ExpressForgeInput["length"], number> = {
   medio: 12,
   lungo: 18,
   pro: 24,
-};
-
-const VARIANT_META: Record<
-  ExpressScenarioVariant,
-  { label: string; pitch: string; risk: string; intensity: number }
-> = {
-  safe: {
-    label: "Libro A — Safe",
-    pitch: "Solido, coerente, payoff chiaro",
-    risk: "Meno memorabile ma più stabile sul mercato.",
-    intensity: 0.85,
-  },
-  commercial: {
-    label: "Libro B — Commercial",
-    pitch: "Hook forte, ritmo alto, promessa vendibile",
-    risk: "Più commerciale, meno sperimentale.",
-    intensity: 1,
-  },
-  bold: {
-    label: "Libro C — Bold",
-    pitch: "Intenso, memorabile, atmosfera forte",
-    risk: "Più rischioso ma più distintivo.",
-    intensity: 1.2,
-  },
 };
 
 function normalizeLanguage(language: string): string {
@@ -366,11 +364,465 @@ function buildKeyScenes(pkg: Partial<CompleteExpressBookPackage>): ExpressKeySce
   ];
 }
 
+function parseNonfictionSeed(seed: string): {
+  readerProblem: string;
+  transformationPromise: string;
+  theme: string;
+} {
+  const trimmed = seed.trim();
+  const theme = trimmed.split(/[.!?…]/)[0]?.trim() || trimmed;
+  const readerProblem =
+    /bloccat|paura|fallimento|ansia|procrastin|insicurezz|stress|burnout/i.test(trimmed)
+      ? theme
+      : `Il lettore si sente bloccato da un pattern ricorrente: ${theme}`;
+  const transformationPromise =
+    /ricostruir|trasform|30 giorni|fiducia|disciplina|direzione|liber/i.test(trimmed)
+      ? trimmed
+      : `Un percorso concreto per uscire dal blocco e costruire ${theme.toLowerCase()} con passi misurabili.`;
+  return { readerProblem, transformationPromise, theme };
+}
+
+function buildNonfictionTitle(input: ExpressForgeInput, variant: ExpressScenarioVariant, theme: string): string {
+  if (input.titleMode === "provided" && input.title?.trim()) return input.title.trim();
+  if (input.titleMode === "provisional" && input.title?.trim()) return input.title.trim();
+  const short = theme.split(/\s+/).slice(0, 4).join(" ");
+  if (variant === "bold") return `Oltre il blocco: ${short}`;
+  if (variant === "commercial") return `30 giorni per ${short.toLowerCase()}`;
+  return `Guida pratica: ${short}`;
+}
+
+function buildNonfictionSubtitle(
+  input: ExpressForgeInput,
+  variant: ExpressScenarioVariant,
+  transformationPromise: string,
+): string {
+  const snippet = transformationPromise.slice(0, 72).replace(/\s+\S*$/, "");
+  if (variant === "bold") return `${snippet} — un metodo profondo per cambiare identità e abitudini`;
+  if (variant === "commercial") return `${snippet} — passi chiari, esercizi e risultati misurabili`;
+  return `${snippet} — strumenti semplici per iniziare subito`;
+}
+
+function buildNonfictionEditorialSynopsis(
+  input: ExpressForgeInput,
+  variant: ExpressScenarioVariant,
+  readerProblem: string,
+  transformationPromise: string,
+  methodFramework: string,
+): string {
+  const tone = input.tone;
+  const extra =
+    variant === "bold"
+      ? " Ogni capitolo approfondisce identità, resistenze interne e integrazione — non solo tattiche."
+      : variant === "commercial"
+        ? " Ritmo sostenuto, esempi concreti e payoff visibili capitolo dopo capitolo."
+        : " Linguaggio chiaro, esercizi immediati e progressione accessibile anche a chi parte da zero.";
+  return `Questo ${input.genre} ${tone} parte da un problema reale: ${readerProblem}. La promessa è ${transformationPromise} Il metodo — ${methodFramework} — guida il lettore attraverso diagnosi, pratica e integrazione, con esercizi e domande di riflessione che trasformano insight in azione.${extra}`;
+}
+
+function buildNonfictionChapterSeeds(
+  count: number,
+  variant: ExpressScenarioVariant,
+  methodFramework: string,
+): ChapterBlueprintSeed[] {
+  const arc = [
+    "Il problema che il lettore riconosce",
+    "Perché restare bloccati costa caro",
+    "Il framework — fondamenti",
+    "Miti da smontare",
+    "Strumento pratico 1",
+    "Micro-abitudine quotidiana",
+    "Svolta — applicazione reale",
+    "Resistenza interna e auto-sabotaggio",
+    "Strumento pratico 2",
+    "Accountability e misura dei progressi",
+    "Integrazione nel contesto di vita",
+    "Piano 30 giorni e chiusura",
+    "Appendice — checklist e risorse",
+    "Caso studio guidato",
+    "Domande frequenti e troubleshooting",
+    "Manutenzione a lungo termine",
+    "Comunità e supporto",
+    "Revisione del metodo",
+    "Prossimi passi e continuità",
+    "Epilogo — la nuova normalità",
+    "Workbook — esercizi avanzati",
+    "Diario di bordo",
+    "Metriche e celebrazione",
+    "Lettera al lettore del futuro",
+  ];
+  return Array.from({ length: count }, (_, i) => {
+    const title = arc[i] ?? `Capitolo ${i + 1} — progressione del metodo`;
+    const purpose =
+      i === 0
+        ? "Hook empatico: il lettore si riconosce nel problema entro poche pagine"
+        : i === Math.floor(count / 2)
+          ? "Midpoint: il framework diventa operativo con esercizio centrale"
+          : i === count - 1
+            ? "Payoff: piano d'azione, celebrazione e prossimi passi concreti"
+            : `Avanza il metodo (${methodFramework}) nel capitolo ${i + 1}`;
+    return {
+      id: `express-nf-ch-${i + 1}`,
+      chapter: i + 1,
+      title,
+      summary: purpose,
+      purpose,
+      goal: purpose,
+      conflict: i === 0 ? "Negazione del problema vs desiderio di cambiare" : "Resistenza interna vs applicazione pratica",
+      hook: i === 0 ? "Apertura che nomina il blocco e promette una via d'uscita" : `Esercizio o insight nel capitolo ${i + 1}`,
+      expectedSetting: "Contesto quotidiano del lettore — lavoro, relazioni, abitudini",
+      subchapters: [] as [],
+    };
+  });
+}
+
+function buildNonfictionExercises(seed: string, variant: ExpressScenarioVariant): string[] {
+  const base = [
+    "Diario della verità: annota 3 situazioni recenti in cui il blocco si è manifestato",
+    "Audit settimanale delle scelte evitate per paura del fallimento",
+    "Riscrittura del dialogo interno: da giudizio a coaching",
+    "Micro-azione da 10 minuti da completare entro 24 ore",
+    "Mappa delle persone o contesti che amplificano o riducono il blocco",
+    "Checklist serale: 3 prove concrete di progresso, per quanto piccole",
+  ];
+  if (variant === "bold") {
+    base.push("Lettera al sé del passato: cosa avresti voluto sapere prima del blocco");
+    base.push("Rituale di chiusura identitaria: cosa smetti di credere su te stesso");
+  }
+  if (/30 giorni|disciplina|fiducia/i.test(seed)) {
+    base.unshift("Calendario 30 giorni: un'azione misurabile al giorno");
+  }
+  return base;
+}
+
+function buildNonfictionReflectionPrompts(variant: ExpressScenarioVariant): string[] {
+  const prompts = [
+    "Cosa stai evitando di ammettere sul costo del blocco?",
+    "Quale piccola vittoria potresti ottenere entro domani?",
+    "Chi beneficerebbe se tu cambiassi questo pattern?",
+    "Quale credenza limitante suona più vera della realtà?",
+  ];
+  if (variant !== "safe") {
+    prompts.push("Quale versione di te emerge se il problema non fosse più un'identità?");
+  }
+  return prompts;
+}
+
+function buildNonfictionCharacters(
+  idealReader: string,
+  readerProblem: string,
+  transformationPromise: string,
+): ForgeCharacter[] {
+  return [
+    {
+      id: "express-reader-archetype",
+      role: "protagonist",
+      name: "Lettore ideale",
+      wound: readerProblem,
+      fear: "Fallire di nuovo e confermare la narrativa limitante",
+      desire: transformationPromise.slice(0, 120),
+      contradiction: "Vuole cambiare ma teme di perdere ciò che lo protegge",
+      obsession: "Trovare una via praticabile fuori dal blocco",
+      secret: "Sa già cosa dovrebbe fare — ma non si fida abbastanza",
+      arc: "Da consapevolezza del problema a azione sostenuta e identità rinnovata",
+      vulnerability: idealReader,
+      dominantFlaw: "Confonde prudenza e paralisi",
+    },
+    {
+      id: "express-inner-obstacle",
+      role: "antagonist",
+      name: "Ostacolo interno",
+      wound: "Paura del fallimento radicata in esperienze passate",
+      fear: "Esporsi e risultare inadeguato",
+      desire: "Mantenere il controllo evitando il rischio",
+      contradiction: "Protegge ma imprigiona",
+      obsession: "Evitare il disagio a ogni costo",
+      secret: "Il blocco è servito come scudo — ora non serve più",
+      arc: "Da voce critica dominante a segnale da ascoltare e integrare",
+    },
+  ];
+}
+
+function buildNonfictionExpressPackage(
+  input: ExpressForgeInput,
+  variant: ExpressScenarioVariant,
+): CompleteExpressBookPackage {
+  const meta = getExpressVariantMeta(input.genre, variant);
+  const genreMeta = GENRE_META[input.genre.toLowerCase()] ?? {
+    subgenre: input.genre,
+    normalizedGenre: input.genre,
+  };
+  const seed = ideaCore(input);
+  const { readerProblem, transformationPromise, theme } = parseNonfictionSeed(seed);
+  const chapterCount = LENGTH_CHAPTERS[input.length];
+  const language = normalizeLanguage(input.language);
+  const methodFramework =
+    variant === "bold"
+      ? "Metodo ARC: Awareness → Reframe → Commitment → Integration"
+      : variant === "commercial"
+        ? "Framework 4D: Diagnosi, Decostruzione, Disciplina, Direzione"
+        : "Percorso 3P: Problema, Pratica, Progresso misurabile";
+  const idealReader =
+    /business|manuale|manual/i.test(input.genre)
+      ? "Professionisti e imprenditori che vogliono risultati concreti senza teoria vuota"
+      : "Adulti 25–50 che cercano chiarezza, strumenti pratici e un percorso sostenibile";
+  const exercises = buildNonfictionExercises(seed, variant);
+  const reflectionPrompts = buildNonfictionReflectionPrompts(variant);
+  const title = buildNonfictionTitle(input, variant, theme);
+  const subtitle = buildNonfictionSubtitle(input, variant, transformationPromise);
+  const editorialSynopsis = buildNonfictionEditorialSynopsis(
+    input,
+    variant,
+    readerProblem,
+    transformationPromise,
+    methodFramework,
+  );
+  const hook =
+    variant === "commercial"
+      ? `Se ${readerProblem.toLowerCase()}, questo metodo ti guida passo passo — senza motivazione vuota.`
+      : `Non è un altro libro di teoria: è un percorso per ${transformationPromise.slice(0, 80).toLowerCase()}…`;
+  const marketPromise = `${transformationPromise} Con tono ${input.tone}, esercizi applicabili e capitoli progressivi che trasformano insight in abitudini.`;
+  const centralConflict = `${readerProblem} vs la versione di sé che il lettore vuole diventare`;
+  const emotionalWound = readerProblem;
+  const desire = transformationPromise;
+  const fear = "Investire tempo ed energia senza ottenere cambiamento reale";
+  const stakes = "Identità, autostima, relazioni e risultati concreti nella vita quotidiana";
+  const endingDirection =
+    variant === "bold"
+      ? "Il lettore chiude con identità rinnovata, piano d'azione e senso profondo di agency"
+      : "Il lettore chiude con strumenti, chiarezza e primi risultati misurabili";
+  const finalEmotion =
+    variant === "bold" ? "Empowerment profondo e senso di direzione" : "Speranza pratica e momentum";
+  const midpoint = "Il framework diventa operativo: il lettore applica il primo ciclo completo del metodo";
+  const climax = "Integrazione: il lettore supera la resistenza interna con accountability e celebrazione";
+  const chapterBlueprintSeeds = buildNonfictionChapterSeeds(chapterCount, variant, methodFramework);
+  const partial = { hook, midpoint, climax, endingDirection, finalEmotion };
+  const keyScenes = buildKeyScenes(partial).map((s, i) =>
+    i === 0
+      ? { ...s, beat: hook, stakes: "Il lettore riconosce il proprio blocco e accetta la promessa" }
+      : i === 3
+        ? { ...s, beat: endingDirection, stakes: finalEmotion }
+        : s,
+  );
+  const characters = buildNonfictionCharacters(idealReader, readerProblem, transformationPromise);
+  const storyRoom: StoryRoomState = {
+    scenes: keyScenes.map((s, i) => ({
+      id: `express-nf-scene-${i}`,
+      role: s.role,
+      beat: s.beat,
+      stakes: s.stakes,
+    })),
+    arcBeats: [
+      { id: "arc-1", act: "setup", label: "Diagnosi", change: "Il lettore riconosce il problema e la promessa" },
+      { id: "arc-2", act: "pressure", label: "Pratica", change: "Esercizi e framework aumentano agency" },
+      { id: "arc-3", act: "break", label: "Resistenza", change: midpoint },
+      { id: "arc-4", act: "finale", label: "Integrazione", change: endingDirection },
+    ],
+    ending: {
+      tone: input.tone,
+      protagonistFate: endingDirection,
+      readerFeeling: finalEmotion,
+      irreversibleChoice: climax,
+    },
+  };
+  const storyFuture: StoryFutureState = {
+    endingTone: input.tone,
+    lastPageFeeling: finalEmotion,
+    hopeOrDread: "hope",
+  };
+  const bookPromises: BookPromises = {
+    emotional: [transformationPromise],
+    relationship: [],
+    plot: [methodFramework, ...exercises.slice(0, 2)],
+    character: [`Trasformazione del lettore: ${readerProblem} → ${finalEmotion}`],
+    scene: reflectionPrompts,
+  };
+
+  return {
+    id: `express-${variant}`,
+    variant,
+    label: meta.label,
+    title,
+    subtitle,
+    hook,
+    logline: `${readerProblem.slice(0, 100)} → ${transformationPromise.slice(0, 80)}…`,
+    editorialSynopsis,
+    genre: genreMeta.normalizedGenre,
+    subgenre: genreMeta.subgenre,
+    language,
+    targetAudience: idealReader,
+    marketPromise,
+    protagonist: idealReader,
+    antagonistOrLoveInterest: "Ostacoli interni: paura, procrastinazione, narrativa limitante",
+    secondaryCharacters: ["Mentor implicito (voce autoriale)", "Comunità o accountability partner"],
+    setting: "Contesto quotidiano del lettore — lavoro, relazioni, abitudini",
+    atmosphere: `${input.tone}, chiaro, empatico, orientato all'azione`,
+    centralConflict,
+    emotionalWound,
+    desire,
+    fear,
+    stakes,
+    moralBoundary: "Niente promesse miracle, niente colpe al lettore, niente consigli medici o legali non qualificati",
+    antiDriftRules: [
+      `Mantieni il genere ${genreMeta.subgenre} e il tono ${input.tone}`,
+      "Ogni capitolo deve avanzare metodo, esercizio o integrazione",
+      "Non trasformare il self-help in narrativa fiction",
+      "Il finale deve pagare la promessa di trasformazione del setup",
+    ],
+    structurePreference: `${chapterCount} capitoli · ${input.length === "breve" ? "guida rapida" : input.length === "pro" ? "programma con esercizi" : "metodo progressivo"}`,
+    chapterCount,
+    subchaptersEnabled: input.length === "pro" || input.length === "lungo",
+    chapterBlueprintSeeds,
+    keyScenes,
+    midpoint,
+    climax,
+    endingDirection,
+    finalEmotion,
+    frontMatter: "Prefazione — perché questo metodo · Come usare il libro · Nota dell'autore",
+    backMatter: "Workbook sintetico · Risorse consigliate · Ringraziamenti · Prossimi passi",
+    authorName: "Da definire",
+    copyright: `© ${new Date().getFullYear()} — titolare da confermare`,
+    commercialPitch: meta.pitch,
+    editorialRisks: [meta.risk],
+    whyItSells: `${meta.pitch} — promessa chiara, problema riconoscibile, esercizi concreti`,
+    readerProblem,
+    transformationPromise,
+    methodFramework,
+    exercises,
+    reflectionPrompts,
+    idealReader,
+    characters,
+    storyRoom,
+    storyFuture,
+    bookPromises,
+    blueprintReadiness: "complete",
+  };
+}
+
+function buildPoetryExpressPackage(
+  input: ExpressForgeInput,
+  variant: ExpressScenarioVariant,
+): CompleteExpressBookPackage {
+  const meta = getExpressVariantMeta(input.genre, variant);
+  const genreMeta = GENRE_META.poesia;
+  const seed = ideaCore(input);
+  const chapterCount = LENGTH_CHAPTERS[input.length];
+  const language = normalizeLanguage(input.language);
+  const theme = seed.split(/[.!?…]/)[0]?.trim() || seed;
+  const title =
+    input.titleMode !== "suggest" && input.title?.trim()
+      ? input.title.trim()
+      : variant === "bold"
+        ? `Cenere e luce: ${theme.slice(0, 30)}`
+        : theme.slice(0, 40) || "Raccolta poetica";
+  const subtitle =
+    variant === "bold"
+      ? "Voci che restano quando il resto svanisce"
+      : `Una raccolta ${input.tone} su ${theme.toLowerCase()}`;
+  const editorialSynopsis = `${seed} Una raccolta poetica ${input.tone} organizzata in sezioni che attraversano ${theme.toLowerCase()} — immagini, silenzi e riprese di voce che restano dopo l'ultimo verso.`;
+  const hook = `Versi su ${theme.toLowerCase()} — voce ${input.tone}, immagini nette, eco lunga.`;
+  const marketPromise = editorialSynopsis.slice(0, 200);
+  const partial = {
+    hook,
+    midpoint: "Svolta tematica al centro della raccolta",
+    climax: "Sezione più intensa — immagine-sintesi",
+    endingDirection: "Chiusura che restituisce luce o crepa aperta coerente con il tema",
+    finalEmotion: variant === "bold" ? "Scossa lirica e silenzio" : "Malinconia luminosa",
+  };
+  const chapterBlueprintSeeds = buildNonfictionChapterSeeds(chapterCount, variant, "Arco poetico").map((c, i) => ({
+    ...c,
+    id: `express-po-ch-${i + 1}`,
+    title: `Sezione ${i + 1} — ${["Origine", "Corpo", "Frattura", "Ritorno", "Eco"][i % 5]}`,
+    expectedSetting: "Spazio lirico — città, corpo, memoria",
+  }));
+  const characters = buildNonfictionCharacters(
+    "Lettori di poesia contemporanea",
+    theme,
+    "Attraversare il tema con nuove immagini",
+  );
+  const keyScenes = buildKeyScenes(partial);
+  const storyRoom: StoryRoomState = {
+    scenes: keyScenes.map((s, i) => ({ id: `express-po-scene-${i}`, role: s.role, beat: s.beat, stakes: s.stakes })),
+    arcBeats: [
+      { id: "arc-1", act: "setup", label: "Apertura", change: "Voce e tema" },
+      { id: "arc-2", act: "pressure", label: "Intensità", change: partial.midpoint },
+      { id: "arc-4", act: "finale", label: "Chiusura", change: partial.endingDirection },
+    ],
+    ending: {
+      tone: input.tone,
+      protagonistFate: partial.endingDirection,
+      readerFeeling: partial.finalEmotion,
+      irreversibleChoice: partial.climax,
+    },
+  };
+
+  return {
+    id: `express-${variant}`,
+    variant,
+    label: meta.label,
+    title,
+    subtitle,
+    hook,
+    logline: seed.slice(0, 120),
+    editorialSynopsis,
+    genre: genreMeta.normalizedGenre,
+    subgenre: genreMeta.subgenre,
+    language,
+    targetAudience: "Lettori di poesia contemporanea e lirica accessibile",
+    marketPromise,
+    protagonist: `Voce poetica — ${input.tone}`,
+    antagonistOrLoveInterest: "Silenzio, distanza, assenza",
+    secondaryCharacters: [],
+    setting: "Spazi lirici — città, corpo, memoria",
+    atmosphere: `${input.tone}, visivo, sensoriale`,
+    centralConflict: `${theme} vs ciò che resta indicibile`,
+    emotionalWound: theme,
+    desire: "Dare forma al tema attraverso immagini",
+    fear: "Ripetizione e cliché lirici",
+    stakes: "Autenticità della voce e impatto dell'immagine",
+    moralBoundary: "Niente pastiche gratuiti, niente pathos forzato",
+    antiDriftRules: [`Mantieni tono ${input.tone} e coerenza tematica`],
+    structurePreference: `${chapterCount} sezioni`,
+    chapterCount,
+    subchaptersEnabled: false,
+    chapterBlueprintSeeds,
+    keyScenes,
+    midpoint: partial.midpoint,
+    climax: partial.climax,
+    endingDirection: partial.endingDirection,
+    finalEmotion: partial.finalEmotion,
+    frontMatter: "Nota sulla raccolta · Dedica",
+    backMatter: "Ringraziamenti · Note sui testi",
+    authorName: "Da definire",
+    copyright: `© ${new Date().getFullYear()} — titolare da confermare`,
+    commercialPitch: meta.pitch,
+    editorialRisks: [meta.risk],
+    whyItSells: meta.pitch,
+    characters,
+    storyRoom,
+    storyFuture: { endingTone: input.tone, lastPageFeeling: partial.finalEmotion, hopeOrDread: "hope" },
+    bookPromises: {
+      emotional: [marketPromise],
+      relationship: [],
+      plot: [theme],
+      character: [`Voce ${input.tone}`],
+      scene: keyScenes.map((s) => s.beat),
+    },
+    blueprintReadiness: "complete",
+  };
+}
+
 export function buildCompleteExpressBookPackage(
   input: ExpressForgeInput,
   variant: ExpressScenarioVariant = "commercial",
 ): CompleteExpressBookPackage {
-  const meta = VARIANT_META[variant];
+  if (isNonfictionExpressGenre(input.genre)) {
+    return buildNonfictionExpressPackage(input, variant);
+  }
+  if (isPoetryExpressGenre(input.genre)) {
+    return buildPoetryExpressPackage(input, variant);
+  }
+
+  const meta = getExpressVariantMeta(input.genre, variant);
   const genreMeta = GENRE_META[input.genre.toLowerCase()] ?? {
     subgenre: input.genre,
     normalizedGenre: input.genre,
@@ -537,19 +989,20 @@ export function buildExpressBookScenarios(input: ExpressForgeInput): ExpressBook
 }
 
 function fillMemoryFromPackage(memory: ForgeInterviewMemory, pkg: CompleteExpressBookPackage): void {
+  const bookType = resolveExpressBookType(pkg.genre);
   const slots: Array<[keyof ForgeInterviewMemory["slotValues"], string | number | boolean]> = [
     ["rawIdea", pkg.editorialSynopsis],
     ["language", pkg.language],
     ["genre", pkg.genre],
     ["subgenre", pkg.subgenre],
-    ["bookType", "Romanzo"],
+    ["bookType", bookType],
     ["tone", pkg.atmosphere],
     ["audience", pkg.targetAudience],
-    ["promise", pkg.marketPromise],
-    ["protagonist", pkg.protagonist],
+    ["promise", pkg.transformationPromise ?? pkg.marketPromise],
+    ["protagonist", pkg.idealReader ?? pkg.protagonist],
     ["antagonist", pkg.antagonistOrLoveInterest],
     ["loveInterest", pkg.antagonistOrLoveInterest],
-    ["centralConflict", pkg.centralConflict],
+    ["centralConflict", pkg.readerProblem ?? pkg.centralConflict],
     ["stakes", pkg.stakes],
     ["setting", pkg.setting],
     ["endingDirection", pkg.endingDirection],
@@ -561,11 +1014,11 @@ function fillMemoryFromPackage(memory: ForgeInterviewMemory, pkg: CompleteExpres
     ["backMatter", pkg.backMatter],
     ["authorName", pkg.authorName],
     ["marketplace", "Amazon KDP"],
-    ["pov", "Terza persona limitata"],
+    ["pov", isNonfictionExpressGenre(pkg.genre) ? "Seconda persona / guida diretta" : "Terza persona limitata"],
     ["indexOutline", pkg.chapterBlueprintSeeds.map((c) => `${c.chapter}. ${c.title}`).join(" · ")],
     ["antiDriftRules", pkg.antiDriftRules.join(" · ")],
     ["forbiddenElements", "Deus ex machina, toni incoerenti, finali gratuiti"],
-    ["narrativeArc", pkg.midpoint],
+    ["narrativeArc", pkg.methodFramework ?? pkg.midpoint],
   ];
   for (const [key, value] of slots) {
     memory.slotValues[key] = value;
@@ -615,7 +1068,7 @@ export function applyExpressScenarioToState(
     titleIntelligence,
     selectedGenre: scenario.genre,
     selectedTone: scenario.atmosphere,
-    selectedBookType: "Romanzo",
+    selectedBookType: resolveExpressBookType(scenario.genre),
     extracted: {
       ...state.extracted,
       genre: scenario.genre,
@@ -624,14 +1077,14 @@ export function applyExpressScenarioToState(
       bookTitle: scenario.title,
       bookSubtitle: scenario.subtitle,
       openingHook: scenario.hook,
-      promise: scenario.marketPromise,
-      centralConflict: scenario.centralConflict,
+      promise: scenario.transformationPromise ?? scenario.marketPromise,
+      centralConflict: scenario.readerProblem ?? scenario.centralConflict,
       protagonistWound: scenario.emotionalWound,
       antagonist: scenario.antagonistOrLoveInterest,
-      targetReader: scenario.targetAudience,
+      targetReader: scenario.idealReader ?? scenario.targetAudience,
       emotionalTone: scenario.atmosphere,
       setting: scenario.setting,
-      readerTransformation: scenario.finalEmotion,
+      readerTransformation: scenario.transformationPromise ?? scenario.finalEmotion,
       narrativeDrive: scenario.endingDirection,
       chapterCount: String(scenario.chapterCount),
       subchaptersPreference: String(scenario.subchaptersEnabled),
