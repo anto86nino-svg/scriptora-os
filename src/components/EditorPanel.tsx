@@ -1652,17 +1652,15 @@ const GenerationProgress = memo(function GenerationProgress({
   const slow = elapsedSeconds >= 90;
 
   const dynamicStatusMessage =
-    liveContent
-      ? statusMessage
-      : elapsedSeconds < 15
-        ? "Preparazione memoria narrativa..."
-        : elapsedSeconds < 30
-          ? "Analisi blueprint e continuità..."
-          : elapsedSeconds < 60
-            ? "Costruzione apertura narrativa..."
-            : elapsedSeconds < 120
-              ? "Generazione del primo segmento del capitolo..."
-              : "Il modello sta elaborando il primo blocco di scrittura...";
+    elapsedSeconds < 15
+      ? "Preparazione memoria narrativa..."
+      : elapsedSeconds < 30
+        ? "Analisi blueprint e continuità..."
+        : elapsedSeconds < 60
+          ? "Costruzione apertura narrativa..."
+          : elapsedSeconds < 120
+            ? "Generazione del primo segmento del capitolo..."
+            : "Il modello sta elaborando il primo blocco di scrittura...";
   const liveContent = (chunkProgress?.content?.trim() || fallbackContent?.trim() || "");
   const streamLines = getCompactLiveStreamLines(liveContent);
 
