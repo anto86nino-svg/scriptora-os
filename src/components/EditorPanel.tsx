@@ -1141,6 +1141,7 @@ function ChapterView({
           outline={outline}
           onCancel={onCancel}
           chunkProgress={chunkProgress}
+          fallbackContent={chapter?.status === "generating" ? chapter?.content : ""}
           liveAnchorRef={liveAnchorRef}
         />
       )}
@@ -1619,6 +1620,7 @@ const GenerationProgress = memo(function GenerationProgress({
   outline,
   onCancel,
   chunkProgress,
+  fallbackContent = "",
   liveAnchorRef,
 }: {
   project: BookProject;
@@ -1626,6 +1628,7 @@ const GenerationProgress = memo(function GenerationProgress({
   outline?: { title: string; summary: string };
   onCancel?: () => void;
   chunkProgress?: ChunkProgress;
+  fallbackContent?: string;
   liveAnchorRef?: RefObject<HTMLDivElement | null>;
 }) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -1647,7 +1650,7 @@ const GenerationProgress = memo(function GenerationProgress({
     : Math.min(22, 6 + elapsedSeconds * 1.2);
   const copy = CHAPTER_FORGE_COPY[activeStep] || CHAPTER_FORGE_COPY[CHAPTER_FORGE_COPY.length - 1];
   const slow = elapsedSeconds >= 90;
-  const liveContent = chunkProgress?.content?.trim() ?? "";
+  const liveContent = (chunkProgress?.content?.trim() || fallbackContent?.trim() || "");
   const streamLines = getCompactLiveStreamLines(liveContent);
   const chapterTitle = resolveChapterTitle(outline?.title || "", chapterIndex, {
     config: project.config,
@@ -1770,7 +1773,8 @@ const GenerationProgress = memo(function GenerationProgress({
   prev.chunkProgress?.phase === next.chunkProgress?.phase &&
   prev.chunkProgress?.chunkSize === next.chunkProgress?.chunkSize &&
   prev.chunkProgress?.chunkIndex === next.chunkProgress?.chunkIndex &&
-  prev.chunkProgress?.content === next.chunkProgress?.content,
+  prev.chunkProgress?.content === next.chunkProgress?.content &&
+  prev.fallbackContent === next.fallbackContent,
 );
 
 function LoadingBanner({ text }: { text: string }) {
