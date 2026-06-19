@@ -50,6 +50,14 @@ export interface CanonBrainV3Report {
   promptBlock: string;
 }
 
+export interface CanonBrainV3ChunkValidationResult {
+  passed: boolean;
+  reason?: string;
+  issues: CanonBrainV3Issue[];
+  unauthorizedEntities: string[];
+  report: CanonBrainV3Report;
+}
+
 function clean(value: unknown): string {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
@@ -300,6 +308,148 @@ ${issueLines.length ? issueLines.join("\n") : "- No blocking canon issue detecte
 
 export function buildCanonBrainV3PromptBlock(project: BookProject): string {
   return buildCanonBrainV3Report(project).promptBlock;
+}
+
+const ENTITY_STOP_WORDS = new Set([
+  "Chapter",
+  "Capitolo",
+  "Scriptora",
+  "English",
+  "Italian",
+  "Spanish",
+  "French",
+  "German",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+  "Lunedi",
+  "Martedi",
+  "Mercoledi",
+  "Giovedi",
+  "Venerdi",
+  "Sabato",
+  "Domenica",
+]);
+
+function normalizeEntity(value: string): string {
+  return clean(value)
+    .replace(/[.,;:!?()[\]{}"“”«»]+$/g, "")
+    .replace(/^[.,;:!?()[\]{}"“”«»]+/g, "");
+}
+
+function entityFrequency(text: string): Map<string, number> {
+  const counts = new Map<string, number>();
+  const matches = clean(text).match(/\b[A-ZÀ-ÖØ-Þ][\p{L}'’-]{2,}(?:\s+[A-ZÀ-ÖØ-Þ][\p{L}'’-]{2,}){0,3}\b/gu) || [];
+  for (const entity of matches.map(normalizeEntity).filter(Boolean)) {
+    counts.set(entity, (counts.get(entity) || 0) + 1);
+  }
+  return counts;
+}
+
+function buildAllowedCanonCorpus(project: BookProject, database: CanonDatabaseV3): string {
+  return clean([
+    project.config.title,
+    project.config.subtitle,
+    project.config.genre,
+    project.config.subcategory,
+    project.blueprint?.overview,
+    project.blueprint?.emotionalArc,
+    ...(project.blueprint?.themes || []),
+    ...(project.blueprint?.chapterOutlines || []).flatMap((outline) => [
+      outline.title,
+      outline.summary,
+      ...(outline.canonNotes || []),
+    ]),
+    ...(project.chapters || []).flatMap((chapter) => [chapter.title, chapter.content]),
+    ...database.characters.map((character) => character.canonicalName),
+    ...database.locations,
+    ...database.importantObjects,
+    ...database.storyPromises,
+    ...database.immutableRules,
+  ].join(" ")).toLowerCase();
+}
+
+function buildAllowedEntitySet(database: CanonDatabaseV3): Set<string> {
+  const allowed = new Set<string>();
+  const add = (value: string) => {
+    const normalized = normalizeEntity(value).toLowerCase();
+    if (!normalized) return;
+    allowed.add(normalized);
+    for (const part of normalized.split(/\s+/).filter((token) => token.length >= 3)) {
+      allowed.add(part);
+    }
+  };
+
+  for (const character of database.characters) add(character.canonicalName);
+  for (const location of database.locations) add(location);
+  for (const object of database.importantObjects) add(object);
+  for (const promise of database.storyPromises) add(promise);
+  return allowed;
+}
+
+function detectUnauthorizedChunkEntities(project: BookProject, database: CanonDatabaseV3, chunkText: string): string[] {
+  const allowedEntities = buildAllowedEntitySet(database);
+  const canonCorpus = buildAllowedCanonCorpus(project, database);
+  const counts = entityFrequency(chunkText);
+
+  return [...counts.entries()]
+    .filter(([entity, count]) => {
+      if (ENTITY_STOP_WORDS.has(entity)) return false;
+      const key = entity.toLowerCase();
+      if (allowedEntities.has(key)) return false;
+      if (canonCorpus.includes(key)) return false;
+      const looksLikeFullName = /\s/.test(entity);
+      const repeatedSingleName = !looksLikeFullName && count >= 2;
+      return looksLikeFullName || repeatedSingleName;
+    })
+    .map(([entity]) => entity)
+    .slice(0, 8);
+}
+
+export function validateCanonBrainV3ChunkBeforeMerge(
+  project: BookProject,
+  chunkText: string,
+): CanonBrainV3ChunkValidationResult {
+  const report = buildCanonBrainV3Report(project);
+  const issues = [...report.issues];
+  const unauthorizedEntities = detectUnauthorizedChunkEntities(project, report.database, chunkText);
+
+  if (unauthorizedEntities.length) {
+    issues.push({
+      id: `unauthorized-entities-${unauthorizedEntities.join("-").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      severity: "CRITICAL",
+      category: "isolation",
+      message: "Il chunk contiene entita nominate non presenti nel canon del progetto attivo.",
+      evidence: unauthorizedEntities,
+      fix: "Rigenera il chunk usando solo personaggi, luoghi, oggetti e promesse narrative del Canon Brain V3.",
+    });
+  }
+
+  const blocking = issues.filter((issue) => issue.severity === "CRITICAL" && issue.category === "isolation");
+
+  return {
+    passed: blocking.length === 0,
+    reason: blocking.length ? blocking.map((issue) => `${issue.id}: ${issue.evidence.join(", ")}`).join(" | ") : undefined,
+    issues,
+    unauthorizedEntities,
+    report,
+  };
 }
 
 export function detectProjectMemoryBleed(activeProject: BookProject, otherProjects: BookProject[]): CanonBrainV3Issue[] {

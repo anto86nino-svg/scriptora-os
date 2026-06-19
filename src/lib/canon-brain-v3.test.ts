@@ -4,6 +4,7 @@ import {
   buildCanonBrainV3PromptBlock,
   buildCanonBrainV3Report,
   detectProjectMemoryBleed,
+  validateCanonBrainV3ChunkBeforeMerge,
 } from "./canon-brain-v3";
 
 function project(overrides: Partial<BookProject> = {}): BookProject {
@@ -128,5 +129,26 @@ describe("Canon Brain V3", () => {
     expect(block).toContain("Use ONLY this project's blueprint");
     expect(block).toContain("AUTHORIZED CHARACTER LOCKS");
     expect(block).not.toContain("Marco");
+  });
+
+  it("blocca un chunk con personaggi nominati fuori dal canon prima del merge", () => {
+    const result = validateCanonBrainV3ChunkBeforeMerge(
+      project(),
+      "Nora guardo la chiave. Marco entro dalla porta. Marco conosceva gia la Cattedrale.",
+    );
+
+    expect(result.passed).toBe(false);
+    expect(result.unauthorizedEntities).toContain("Marco");
+    expect(result.reason).toContain("Marco");
+  });
+
+  it("consente nomi canonici e luoghi gia presenti nel blueprint", () => {
+    const result = validateCanonBrainV3ChunkBeforeMerge(
+      project(),
+      "Nora nascose la chiave nella Cattedrale di Vetro. Elia rimase immobile, calmo, troppo calmo.",
+    );
+
+    expect(result.passed).toBe(true);
+    expect(result.unauthorizedEntities).toEqual([]);
   });
 });

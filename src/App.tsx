@@ -26,6 +26,7 @@ const AuthPage = lazyWithRetry(() => import("./pages/Auth.tsx"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound.tsx"));
 const AutoBestsellerRedirectPage = lazyWithRetry(() => import("./pages/AutoBestsellerRedirectPage.tsx"));
 const PricingPage = lazyWithRetry(() => import("./pages/PricingPage.tsx"));
+const LegalPage = lazyWithRetry(() => import("./pages/LegalPage.tsx"));
 const KdpLaunchPage = lazyWithRetry(() => import("./pages/KdpLaunchPage.tsx"));
 const CoverStudioPage = lazyWithRetry(() => import("./pages/CoverStudioPage.tsx"));
 const DownloadsPage = lazyWithRetry(() => import("./pages/DownloadsPage.tsx"));
@@ -74,6 +75,7 @@ const App = () => (
                 <Route path="/" element={<Home />} />
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/legal" element={<LegalPage />} />
                 <Route path="/dashboard" element={<ProtectedRoute><FeatureErrorBoundary featureName="Dashboard"><DashboardRoute /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/writer" element={<ProtectedRoute><FeatureErrorBoundary featureName="Writer OS"><WriterOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/bestseller" element={<ProtectedRoute><FeatureErrorBoundary featureName="Bestseller OS"><MobileDesktopOnlyRoute featureName="Bestseller OS"><BestsellerOsPage /></MobileDesktopOnlyRoute></FeatureErrorBoundary></ProtectedRoute>} />

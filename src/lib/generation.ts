@@ -72,7 +72,10 @@ import {
   buildEditorialToolsMaxLevelProtocol,
   PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS,
 } from "@/lib/editorial-tools-protocol";
-import { buildCanonBrainV3PromptBlock } from "@/lib/canon-brain-v3";
+import {
+  buildCanonBrainV3PromptBlock,
+  validateCanonBrainV3ChunkBeforeMerge,
+} from "@/lib/canon-brain-v3";
 
 /**
  * Verbose streaming logs are off by default — they intasavano la console
@@ -1926,26 +1929,95 @@ Write in ${config.language}.${adaptiveSuffix}`;
       }
     }
 
-    const canonChunkCheck = validateCanonChunkBeforeMerge(chunkText, {
-      config,
-      chapterIndex,
-      previousChapters,
-      accumulatedContent,
-    });
+    const validateChunkForMerge = (candidateText: string): { reject: boolean; reason?: string } => {
+      const v2Check = validateCanonChunkBeforeMerge(candidateText, {
+        config,
+        chapterIndex,
+        previousChapters,
+        accumulatedContent,
+      });
+      const v3Project: BookProject = {
+        ...runtimeProject,
+        chapters: [
+          ...previousChapters,
+          ...(accumulatedContent.trim()
+            ? [{ title: chapterTitle, content: accumulatedContent, subchapters: [] }]
+            : []),
+        ],
+      };
+      const v3Check = validateCanonBrainV3ChunkBeforeMerge(v3Project, candidateText);
+      const reasons = [
+        v2Check.reject ? `Canon Lock V2: ${v2Check.reason || "canon_drift"}` : "",
+        !v3Check.passed ? `Canon Brain V3: ${v3Check.reason || "project_isolation"}` : "",
+      ].filter(Boolean);
+      return {
+        reject: reasons.length > 0,
+        reason: reasons.join(" | "),
+      };
+    };
+
+    let canonChunkCheck = validateChunkForMerge(chunkText);
     if (canonChunkCheck.reject) {
       console.warn(`[Scriptora] Chunk ${chunkIndex + 1} canon drift (${canonChunkCheck.reason}) — regenerating`);
-      try {
-        chunkText = await callAI(
-          systemPrompt + " CRITICAL: Previous output violated story canon (wrong character names or facts). Use ONLY established character names and facts.",
-          chunkPrompt + "\n\nCANON VIOLATION FIX: Rewrite this chunk with correct canonical names, setting and relationships. No rename drift.",
-          withUsage(opts?.usage, {
-            taskType: "generate_chapter_canon_fix",
-            metadata: { chapterIndex: chapterIndex + 1, chunkIndex, reason: canonChunkCheck.reason },
-          }),
-        );
-        chunkText = chunkText.replace(/^```[a-z]*\n?/g, "").replace(/\n?```$/g, "").trim();
-      } catch {
-        // keep original if regen fails; postprocess StoryBibleLock will still run
+      onChunkProgress?.({
+        chunkIndex,
+        totalChunks: Math.max(1, Math.ceil(targetWords / 1400)),
+        currentWords: countWords(accumulatedContent),
+        targetWords,
+        phase,
+        content: accumulatedContent,
+        chunkSize,
+        statusMessage: "Canon Brain sta rigenerando un blocco non coerente...",
+      });
+
+      for (let canonAttempt = 1; canonAttempt <= 2 && canonChunkCheck.reject; canonAttempt++) {
+        try {
+          chunkText = await callAI(
+            `${systemPrompt} CRITICAL CANON BRAIN V3 ENFORCEMENT: the previous output was rejected before merge. Use ONLY the active project's canon, character locks, places, objects, timeline and relationship state.`,
+            `${chunkPrompt}
+
+CANON BRAIN V3 ENFORCEMENT RETRY ${canonAttempt}/2:
+The previous chunk was BLOCKED before merge.
+Reason: ${canonChunkCheck.reason}
+
+Rewrite ONLY this chunk.
+Do not import new named characters, locations, timelines, objects or relationships unless they are present in the active blueprint/canon above.
+Do not summarize. Do not apologize. Return only clean chapter prose.`,
+            withUsage(opts?.usage, {
+              taskType: "generate_chapter_canon_fix",
+              metadata: {
+                chapterIndex: chapterIndex + 1,
+                chunkIndex: chunkIndex + 1,
+                canonAttempt,
+                reason: canonChunkCheck.reason,
+              },
+            }),
+          );
+          chunkText = chunkText.replace(/^```[a-z]*\n?/g, "").replace(/\n?```$/g, "").trim();
+          if (isFirstChunk) {
+            const lines = chunkText.split("\n");
+            if (lines[0] && lines[0].startsWith("#")) {
+              chapterTitle = resolveChapterTitle(lines[0].replace(/^#+\s*/, "").trim(), chapterIndex, {
+                config,
+                summary: outline.summary,
+                totalChapters: config.numberOfChapters,
+              });
+              chunkText = lines.slice(1).join("\n").trim();
+            }
+          }
+          canonChunkCheck = validateChunkForMerge(chunkText);
+        } catch (canonError: any) {
+          canonChunkCheck = {
+            reject: true,
+            reason: canonError?.message || canonChunkCheck.reason || "canon_fix_failed",
+          };
+        }
+      }
+
+      if (canonChunkCheck.reject) {
+        const reason = canonChunkCheck.reason || "canon_drift";
+        lastChunkError = `Canon Brain V3 ha bloccato il chunk ${chunkIndex + 1}: ${reason}`;
+        throw new Error(lastChunkError);
       }
     }
 

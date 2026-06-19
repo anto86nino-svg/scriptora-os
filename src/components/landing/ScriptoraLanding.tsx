@@ -176,10 +176,10 @@ const landingCopy: Record<UILanguage, {
     navPricing: "Planes",
     enter: "Entrar",
     languageLabel: "Idioma de interfaz",
-    kicker: "Donde las ideas fragiles se vuelven libros",
-    heroTitle: "No es un chatbot. Es un Author OS.",
-    heroText: "Un sistema privado de escritura que recuerda el hilo: voz, capitulos, mercado, portada y export avanzando como un solo libro.",
-    primary: "Entrar en Scriptora OS",
+    kicker: "Author Studio + Study OS",
+    heroTitle: "Escribe libros. Estudia mejor. Un solo OS.",
+    heroText: "Scriptora no es otro chat de escritura. Es un estudio editorial completo para autores y un motor de estudio guiado para estudiantes de cualquier area.",
+    primary: "Empezar gratis",
     secondary: "Ver el sistema",
     proofSigned: "Tu workspace te espera",
     proofGuest: "Login real. Workspace real.",
@@ -211,8 +211,8 @@ const landingCopy: Record<UILanguage, {
     testimonialsLabel: "Historias de autores",
     testimonialsTitle: "Creado para autores que se niegan a perder el hilo.",
     testimonialsText: "Notas breves de quienes usan Scriptora como cabina creativa: voz, estructura y preparacion editorial en un solo lugar.",
-    finalTitle: "Tu libro ya esta llamando. Dale un sistema.",
-    finalText: "Entra al workspace donde las ideas dejan de dispersarse y se convierten en manuscritos, portadas, metadata y libros terminados.",
+    finalTitle: "Abre tu estudio editorial.",
+    finalText: "Escribe tu libro o prepara tus examenes: misma cuenta, misma plataforma premium.",
   },
   fr: {
     navHow: "Fonctionnement",
@@ -220,10 +220,10 @@ const landingCopy: Record<UILanguage, {
     navPricing: "Offres",
     enter: "Entrer",
     languageLabel: "Langue interface",
-    kicker: "La ou les idees fragiles deviennent livres",
-    heroTitle: "Pas un chatbot. Un Author OS.",
-    heroText: "Un systeme prive d'ecriture qui garde le fil: voix, chapitres, marche, couverture et export avancent comme un seul livre.",
-    primary: "Entrer dans Scriptora OS",
+    kicker: "Author Studio + Study OS",
+    heroTitle: "Ecrivez des livres. Etudiez mieux. Un seul OS.",
+    heroText: "Scriptora n'est pas un autre chat d'ecriture. C'est un studio editorial complet pour auteurs et un moteur d'etude guide pour tous les domaines.",
+    primary: "Commencer gratuitement",
     secondary: "Voir le systeme",
     proofSigned: "Votre workspace vous attend",
     proofGuest: "Login reel. Workspace reel.",
@@ -255,8 +255,8 @@ const landingCopy: Record<UILanguage, {
     testimonialsLabel: "Histoires d'auteurs",
     testimonialsTitle: "Cree pour les auteurs qui refusent de perdre le fil.",
     testimonialsText: "Notes courtes de celles et ceux qui utilisent Scriptora comme cockpit creatif: voix, structure et preparation editoriale au meme endroit.",
-    finalTitle: "Votre livre appelle deja. Donnez-lui un systeme.",
-    finalText: "Entrez dans le workspace ou les idees cessent de se disperser et deviennent manuscrits, couvertures, metadata et livres finis.",
+    finalTitle: "Ouvrez votre studio editorial.",
+    finalText: "Ecrivez votre livre ou preparez vos examens : meme compte, meme plateforme premium.",
   },
   de: {
     navHow: "So funktioniert es",
@@ -264,10 +264,10 @@ const landingCopy: Record<UILanguage, {
     navPricing: "Tarife",
     enter: "Starten",
     languageLabel: "Oberflachensprache",
-    kicker: "Wo fragile Ideen zu Buchern werden",
-    heroTitle: "Kein Chatbot. Ein Author OS.",
-    heroText: "Ein privates Schreibsystem, das den Faden halt: Stimme, Kapitel, Markt, Cover und Export bewegen sich wie ein Buch.",
-    primary: "Scriptora OS starten",
+    kicker: "Author Studio + Study OS",
+    heroTitle: "Bucher schreiben. Besser lernen. Ein OS.",
+    heroText: "Scriptora ist kein weiterer Schreibchat. Es ist ein komplettes Redaktionsstudio fur Autoren und ein gefuhrtes Lernsystem fur jedes Fach.",
+    primary: "Kostenlos starten",
     secondary: "System ansehen",
     proofSigned: "Dein Workspace wartet",
     proofGuest: "Echter Login. Echter Workspace.",
@@ -299,8 +299,8 @@ const landingCopy: Record<UILanguage, {
     testimonialsLabel: "Autorenstimmen",
     testimonialsTitle: "Gebaut fur Autoren, die den Faden nicht verlieren wollen.",
     testimonialsText: "Kurze Notizen von Menschen, die Scriptora als kreatives Cockpit nutzen: Stimme, Struktur und Publishing-Vorbereitung an einem Ort.",
-    finalTitle: "Dein Buch ruft bereits. Gib ihm ein System.",
-    finalText: "Betritt den Workspace, in dem Ideen aufhoren zu driften und zu Manuskripten, Covern, Metadaten und fertigen Buchern werden.",
+    finalTitle: "Offne dein redaktionelles Studio.",
+    finalText: "Schreibe dein Buch oder bereite Prufungen vor: derselbe Account, dieselbe Premium-Plattform.",
   },
 };
 
@@ -774,6 +774,9 @@ export function ScriptoraLanding({
           <a href="/auth">{lang === "it" ? "Accedi" : "Sign in"}</a>
           <a href="/pricing">{copy.navPricing}</a>
           <a href="/install">{lang === "it" ? "Installa app" : "Install app"}</a>
+          <a href="/legal#privacy">Privacy</a>
+          <a href="/legal#terms">{lang === "it" ? "Termini" : "Terms"}</a>
+          <a href="/legal#credits">{lang === "it" ? "Crediti" : "Credits"}</a>
         </div>
       </footer>
     </main>
