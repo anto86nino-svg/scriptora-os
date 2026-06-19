@@ -59,6 +59,14 @@ export function getOrCreateKdpSessionId(): string {
   }
 }
 
+export function getActiveKdpSessionId(): string | null {
+  try {
+    return localStorage.getItem(ACTIVE_SESSION_KEY) || null;
+  } catch {
+    return null;
+  }
+}
+
 export function createEmptyKdpSession(sessionId?: string): KdpLaunchSession {
   const id = sessionId || getOrCreateKdpSessionId();
   return {
@@ -93,6 +101,11 @@ export function loadKdpLaunchSession(sessionId?: string): KdpLaunchSession | nul
   } catch {
     return null;
   }
+}
+
+export function loadActiveKdpLaunchSession(): KdpLaunchSession | null {
+  const id = getActiveKdpSessionId();
+  return id ? loadKdpLaunchSession(id) : null;
 }
 
 function normalizeStaleRunning(session: KdpLaunchSession): KdpLaunchSession {

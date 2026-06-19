@@ -21,7 +21,6 @@ import {
   type EditorialAdviceItem,
 } from "./editorial-advice-render";
 import { hasNarrativeCore, isNarrativeFictionBook } from "./narrative-first-engine";
-import { getForgeMemory } from "./interview-memory";
 
 export type OrchestratorBrainId =
   | "character"

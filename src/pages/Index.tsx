@@ -48,7 +48,6 @@ import type { RewriteLevel } from "@/lib/generation-types";
 import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 import { UpgradeModal } from "@/components/UpgradeModal";
-import { usePlan } from "@/lib/plan";
 import { applyScriptoraFreeWatermarkToProject } from "@/lib/brand/scriptoraBrand";
 
 const VoiceStudioDialog = lazy(() =>

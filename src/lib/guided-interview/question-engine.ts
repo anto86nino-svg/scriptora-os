@@ -52,9 +52,11 @@ import {
   shouldBlockNarrativeQuestions,
 } from "./blueprint-ready-gate";
 import {
+  buildForgeMemoryRecap,
   createEmptyForgeMemory,
   getForgeMemory,
   getMemoryStageProgress,
+  getSavedSlotLabels,
   isQuestionAlreadyAnswered,
   memoryRecapShown,
   syncExtractedFromMemory,
@@ -93,7 +95,7 @@ export {
   updateForgeMemoryFromAnswer,
   buildForgeMemoryRecap,
   getSavedSlotLabels,
-} from "./interview-memory";
+};
 export type { ResolveInterviewOptions };
 
 const GENERIC_PLACEHOLDER =
