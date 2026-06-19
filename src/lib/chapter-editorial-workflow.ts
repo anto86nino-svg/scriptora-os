@@ -8,6 +8,7 @@ import { computePremiumEditorialScores } from "@/lib/editorial-intelligence-prem
 import {
   buildEditorialToolsMaxLevelProtocol,
   PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS,
+  runEditorialTruthGate,
 } from "@/lib/editorial-tools-protocol";
 
 export type AnalysisStatus = "idle" | "running" | "done" | "error";
@@ -103,14 +104,24 @@ export function runLocalChapterEditorialAnalysis(
     ? premium.surgicalSuggestions
     : ranked.slice(0, 3).map((w) => w.suggestion).filter(Boolean);
 
-  const noSubstantialImprovement = premium.composite >= 88 && allIssues.length === 0;
+  const truthGate = runEditorialTruthGate({
+    scoreOutOf10: Math.round((premium.composite / 10) * 10) / 10,
+    evidence: [
+      ...buildStrengths(premium, editorial),
+      ...allIssues.slice(0, 2),
+    ],
+    criticalIssues: allIssues.filter((issue) => /^CRITICAL/i.test(issue)),
+    highIssues: allIssues.filter((issue) => /^HIGH/i.test(issue)),
+    moderateIssues: allIssues.filter((issue) => /^MEDIUM/i.test(issue)),
+  });
+  const noSubstantialImprovement = truthGate.canClaimPremium && allIssues.length === 0;
   const primaryIssue = noSubstantialImprovement
     ? PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS
     : allIssues[0] || "Nessun problema critico rilevato nel testo disponibile. La diagnosi resta limitata: blueprint/canon estesi non sono stati forniti al fallback locale.";
 
   const snapshot: ChapterEditorialSnapshot = {
     compositeScore: premium.composite,
-    scoreOutOf10: Math.round((premium.composite / 10) * 10) / 10,
+    scoreOutOf10: truthGate.normalizedScore,
     emotionalRealism: scores.emotionalRealismScore,
     dialogueHumanity: scores.dialogueHumanityScore,
     pacingBalance: scores.pacingBalanceScore,
@@ -129,7 +140,7 @@ export function runLocalChapterEditorialAnalysis(
     analyzedAt: Date.now(),
   };
 
-  const rewriteNecessary = snapshot.scoreOutOf10 < 8.5 || snapshot.issues.some((issue) => /CRITICAL|HIGH/i.test(issue));
+  const rewriteNecessary = truthGate.rewriteNecessary || snapshot.scoreOutOf10 < 8.5 || snapshot.issues.some((issue) => /CRITICAL|HIGH/i.test(issue));
   const aiRating: AIQualityRating = {
     score: scoreToFive(premium.composite),
     explanation: noSubstantialImprovement

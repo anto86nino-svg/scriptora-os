@@ -72,6 +72,7 @@ import {
   buildEditorialToolsMaxLevelProtocol,
   PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS,
 } from "@/lib/editorial-tools-protocol";
+import { buildCanonBrainV3PromptBlock } from "@/lib/canon-brain-v3";
 
 /**
  * Verbose streaming logs are off by default — they intasavano la console
@@ -1607,6 +1608,7 @@ export async function generateChapterChunked(
   const contextMemory = buildContextMemory(config, blueprint, previousChapters, chapterIndex, {
     skipLongBookMemory: Boolean(writerMemorySource.trim()),
   });
+  const canonBrainV3Block = buildCanonBrainV3PromptBlock(runtimeProject);
   const systemBase = getSystemPrompt(config, genreLock);
   const scriptoraWritingBrain = buildScriptoraWritingBrain(config);
   const characterLock = buildCharacterLock(config);
@@ -1714,6 +1716,8 @@ ${genreDirective}
 
 ${contextMemory}
 
+${canonBrainV3Block}
+
 TARGET: Write approximately ${chunkTarget} words for this segment.
 TOTAL CHAPTER TARGET: ${targetWords} words (you will write more chunks after this).
 PHASE: ${phase} — ${phaseInstruction}
@@ -1769,6 +1773,8 @@ REMAINING: ~${remainingWords} words needed
 PHASE: ${phase} — ${phaseInstruction}
 
 ${continuationCanonBlock ? `${continuationCanonBlock}\n\n` : ""}
+
+${canonBrainV3Block}
 
 ${humanizerBlock}
 

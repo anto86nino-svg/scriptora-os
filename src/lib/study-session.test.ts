@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   analyzeStudyMaterial,
   classifyStudyMaterial,
+  getStudyImportCapabilities,
   readStudyFileDetailed,
   readStudyFiles,
 } from "@/lib/study-session";
@@ -37,6 +38,21 @@ describe("Study OS material analysis", () => {
 });
 
 describe("Study OS file ingestion", () => {
+  it("espone capability import senza fingere OCR", () => {
+    const withoutOcr = getStudyImportCapabilities(false);
+    const withOcr = getStudyImportCapabilities(true);
+
+    expect(withoutOcr.find((item) => item.id === "epub")?.status).toBe("READY");
+    expect(withoutOcr.find((item) => item.id === "image")?.status).toBe("UNAVAILABLE");
+    expect(withoutOcr.find((item) => item.id === "image")?.evidence).toContain("non simula OCR");
+    expect(withOcr.find((item) => item.id === "image")?.status).toBe("READY");
+  });
+
+  it("usa il nome del file senza estensione anche per PDF ed EPUB", () => {
+    expect(analyzeStudyMaterial(studyText("Diritto", "Articolo, comma, legge e costituzione."), "diritto-costituzionale.pdf").title).toBe("diritto costituzionale");
+    expect(analyzeStudyMaterial(studyText("Storia", "Guerra, rivoluzione, monarchia e conseguenze."), "rivoluzione-francese.epub").title).toBe("rivoluzione francese");
+  });
+
   it("reads and merges multiple text files with source headings", async () => {
     const first = new File([studyText("Prima dispensa", "Storia, cause, conseguenze e periodo storico.")], "prima.txt", { type: "text/plain" });
     const second = new File([studyText("Seconda dispensa", "Diritto, articolo, comma, norma e sentenza.")], "seconda.md", { type: "text/markdown" });

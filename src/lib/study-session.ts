@@ -179,6 +179,13 @@ export interface StudyFileReadResult {
   empty: boolean;
 }
 
+export interface StudyImportCapability {
+  id: StudyFileReadResult["sourceType"];
+  label: string;
+  status: "READY" | "FALLBACK" | "UNAVAILABLE";
+  evidence: string;
+}
+
 const STOP_WORDS = new Set([
   // IT
   "che","per","con","una","uno","del","della","delle",
@@ -757,9 +764,27 @@ function buildTrueFalseQuiz(concepts: string[]): QuizQuestion[] {
   }));
 }
 
+export function getStudyImportCapabilities(ocrAvailable = typeof (globalThis as any).TextDetector === "function"): StudyImportCapability[] {
+  return [
+    { id: "pdf", label: "PDF", status: "READY", evidence: "pdfjs legge PDF con testo selezionabile." },
+    { id: "docx", label: "DOCX", status: "READY", evidence: "JSZip estrae word/document.xml." },
+    { id: "txt", label: "TXT", status: "READY", evidence: "Lettura testuale nativa." },
+    { id: "md", label: "MD", status: "READY", evidence: "Markdown trattato come testo strutturato." },
+    { id: "epub", label: "EPUB", status: "READY", evidence: "JSZip estrae capitoli HTML/XHTML reali." },
+    {
+      id: "image",
+      label: "Immagini/OCR",
+      status: ocrAvailable ? "READY" : "UNAVAILABLE",
+      evidence: ocrAvailable
+        ? "Browser TextDetector disponibile: OCR reale attivabile."
+        : "TextDetector non disponibile: Scriptora non simula OCR.",
+    },
+  ];
+}
+
 function detectSubject(text: string, sourceName: string): string {
   const keys = keywords(text, 5);
-  const base = sourceName.replace(/\.(txt|md|markdown|docx)$/i, "").replace(/[_-]+/g, " ").trim();
+  const base = sourceName.replace(/\.(txt|md|markdown|docx|pdf|epub)$/i, "").replace(/[_-]+/g, " ").trim();
   if (base && base.length > 3) return base;
   return keys.length ? keys.map((k) => k[0].toUpperCase() + k.slice(1)).join(", ") : "Materiale di studio";
 }
