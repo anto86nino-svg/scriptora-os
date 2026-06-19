@@ -122,6 +122,22 @@ describe("buildCompleteExpressBookPackage", () => {
       expect(s.blueprintReadiness).toBe("complete");
     }
   });
+
+  it("keeps Safe, Commercial and Bold scenarios editorially distinct", () => {
+    const scenarios = buildExpressBookScenarios(expressInput);
+    const [safe, commercial, bold] = scenarios;
+
+    expect(new Set(scenarios.map((s) => s.hook)).size).toBe(3);
+    expect(new Set(scenarios.map((s) => s.editorialSynopsis)).size).toBe(3);
+    expect(new Set(scenarios.map((s) => s.centralConflict)).size).toBe(3);
+    expect(new Set(scenarios.map((s) => s.emotionalWound)).size).toBe(3);
+    expect(new Set(scenarios.map((s) => s.editorialRisks[0])).size).toBe(3);
+
+    expect(safe.whyItSells.toLowerCase()).toMatch(/stabile|slow burn|payoff/);
+    expect(commercial.whyItSells.toLowerCase()).toMatch(/commerciale|trope|cliffhanger|binge/);
+    expect(bold.whyItSells.toLowerCase()).toMatch(/distintiva|ambigua|memorabile|twist/);
+    expect(bold.finalEmotion.toLowerCase()).toMatch(/catharsis|eco|crepa/);
+  });
 });
 
 describe("express end-to-end readiness", () => {

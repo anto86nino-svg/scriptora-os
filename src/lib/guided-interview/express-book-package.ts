@@ -989,9 +989,155 @@ export function buildCompleteExpressBookPackage(
   };
 }
 
+
+function strengthenScenarioDivergence(
+  scenario: ExpressBookScenario,
+): ExpressBookScenario {
+  const protagonist = scenario.protagonist || "protagonista";
+  const setting = scenario.setting || "un luogo pieno di segreti";
+
+  if (isNonfictionExpressGenre(scenario.genre)) {
+    if (scenario.variant === "safe") {
+      return {
+        ...scenario,
+        hook: scenario.hook || "Un percorso chiaro e progressivo per ottenere una trasformazione concreta.",
+        editorialSynopsis:
+          "Una versione stabile e accessibile del libro: promessa chiara, passaggi ordinati, esempi concreti e progressione pensata per non perdere mai il lettore. L’obiettivo è rendere il cambiamento comprensibile, applicabile e credibile.",
+        marketPromise:
+          "Un libro pratico, leggibile e facile da posizionare per chi cerca chiarezza e risultati concreti.",
+        editorialRisks: ["Meno sorprendente, ma più stabile e comprensibile."],
+      };
+    }
+
+    if (scenario.variant === "commercial") {
+      return {
+        ...scenario,
+        hook:
+          "Un metodo diretto, vendibile e orientato al risultato, costruito per dare valore già dalle prime pagine.",
+        editorialSynopsis:
+          "Una versione più commerciale: promessa immediata, framework forte, esercizi brevi, esempi riconoscibili e capitoli pensati per creare momentum. Ogni sezione deve far percepire al lettore un avanzamento pratico e misurabile.",
+        marketPromise:
+          "Posizionamento più forte: beneficio chiaro, struttura ad alta conversione e promessa leggibile dallo scaffale digitale.",
+        editorialRisks: ["Più vendibile e diretta, meno contemplativa."],
+      };
+    }
+
+    return {
+      ...scenario,
+      hook:
+        "Una versione più profonda e distintiva: non solo risolvere un problema, ma cambiare il modo in cui il lettore interpreta se stesso.",
+      editorialSynopsis:
+        "Una versione più audace e autoriale: meno manuale neutro, più viaggio trasformativo. Usa idee forti, domande scomode, passaggi memorabili e una voce più riconoscibile per lasciare un’impronta più profonda.",
+      marketPromise:
+        "Identità più memorabile, adatta a lettori che cercano una voce forte e non un manuale qualunque.",
+      editorialRisks: ["Più rischioso e meno neutro, ma più riconoscibile."],
+    };
+  }
+
+  if (scenario.variant === "safe") {
+    return {
+      ...scenario,
+      editorialSynopsis:
+        `La versione più stabile del romanzo: ${protagonist} entra in una storia di desiderio, segreti e ferite antiche, ma il percorso resta emotivamente chiaro. Il mistero cresce gradualmente, la tensione non tradisce la promessa romantica e il finale offre un payoff intenso ma leggibile.`,
+      centralConflict:
+        `${protagonist} vuole scoprire la verità, ma ogni risposta la avvicina alla persona che potrebbe ferirla di più.`,
+      emotionalWound:
+        "Una ferita passata che rende difficile fidarsi, amare e lasciare andare il controllo.",
+      stakes:
+        scenario.stakes || "Verità, cuore, memoria e possibilità di ricominciare senza tradire il passato.",
+      finalEmotion:
+        "Soddisfazione emotiva, verità rivelata e chiusura romantica intensa.",
+      whyItSells:
+        "Versione stabile: trope chiari, promessa leggibile, tensione slow burn e payoff emotivo forte.",
+      editorialRisks: ["Meno memorabile, ma più stabile sul mercato."],
+    };
+  }
+
+  if (scenario.variant === "commercial") {
+    return {
+      ...scenario,
+      hook:
+        `Costretta a restare vicino all’uomo che dovrebbe temere, ${protagonist} scopre che ogni risposta pretende un prezzo — e ogni bacio può diventare una trappola.`,
+      editorialSynopsis:
+        `La versione più vendibile e bingeable: forced proximity, protezione pericolosa, desiderio negato, segreti rivelati a strati e cliffhanger di capitolo. Il lettore resta agganciato perché ogni scena promette una scoperta, una minaccia o un passo in più verso un amore sbagliato ma irresistibile.`,
+      centralConflict:
+        `${protagonist} deve fidarsi dell’uomo più pericoloso della storia per sopravvivere, ma ogni prova di protezione aumenta anche il suo potere su di lei.`,
+      emotionalWound:
+        "Paura di desiderare proprio ciò che potrebbe distruggerla, unita al bisogno di sentirsi finalmente scelta.",
+      stakes:
+        "Desiderio, controllo, verità, reputazione e sopravvivenza emotiva.",
+      finalEmotion:
+        "Payoff romantico ad alta tensione, con rivelazione forte e finale emotivamente appagante.",
+      whyItSells:
+        "Versione commerciale: trope forti, hook immediato, cliffhanger, protezione/possesso e alta bingeability.",
+      editorialRisks: ["Più commerciale, meno sperimentale."],
+    };
+  }
+
+  return {
+    ...scenario,
+    hook:
+      "Il vero pericolo non è scoprire cosa è successo: è capire che l’uomo che la risveglia potrebbe essere parte della ferita che l’ha distrutta.",
+    editorialSynopsis:
+      `La versione più audace e memorabile: il romance diventa una zona morale instabile. La figura maschile non è solo protettiva e pericolosa: potrebbe essere colpevole, complice o legata in modo proibito alla ferita originaria. Il mistero non serve solo a risolvere un trauma, ma a costringere i personaggi a scegliere tra verità, desiderio e rovina.`,
+    centralConflict:
+      `${protagonist} deve decidere se la persona che la fa sentire viva è anche quella che ha contribuito a distruggere la sua famiglia.`,
+    emotionalWound:
+      "Una colpa che si trasforma in ossessione: amare potrebbe significare tradire i morti.",
+    stakes:
+      "Identità, memoria, desiderio, giustizia e possibilità di amare qualcuno senza assolverlo.",
+    finalEmotion:
+      "Catharsis intensa, crepa aperta, eco lunga.",
+    whyItSells:
+      "Versione distintiva: moralità ambigua, twist più forte, identità più memorabile e finale che resta addosso.",
+    editorialRisks: ["Più rischioso, ma molto più riconoscibile."],
+  };
+}
+
+function scenarioBodySignature(scenario: ExpressBookScenario): string {
+  return [
+    scenario.hook,
+    scenario.editorialSynopsis,
+    scenario.centralConflict,
+    scenario.emotionalWound,
+    scenario.stakes,
+    scenario.finalEmotion,
+    scenario.whyItSells,
+    scenario.editorialRisks?.[0],
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function enforceExpressScenarioDivergence(
+  scenarios: ExpressBookScenario[],
+): ExpressBookScenario[] {
+  const next = scenarios.map(strengthenScenarioDivergence);
+  const signatures = next.map(scenarioBodySignature);
+
+  if (new Set(signatures).size === next.length) return next;
+
+  return next.map((scenario, index) => ({
+    ...scenario,
+    hook: `${scenario.hook} ${
+      index === 0
+        ? "Versione stabile."
+        : index === 1
+          ? "Versione più vendibile."
+          : "Versione più rischiosa."
+    }`,
+  }));
+}
+
+
 export function buildExpressBookScenarios(input: ExpressForgeInput): ExpressBookScenario[] {
-  return (["safe", "commercial", "bold"] as ExpressScenarioVariant[]).map((variant) =>
-    buildCompleteExpressBookPackage(input, variant),
+  return enforceExpressScenarioDivergence(
+    (["safe", "commercial", "bold"] as ExpressScenarioVariant[]).map((variant) =>
+      buildCompleteExpressBookPackage(input, variant),
+    ),
   );
 }
 
