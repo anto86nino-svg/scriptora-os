@@ -179,6 +179,7 @@ export function DominationProvider({ children }: { children: ReactNode }) {
       }
 
       const allReverted = passes.length > 0 && passes.every((p: any) => p?.revertedForVoice);
+      const allSkipped = passes.length > 0 && passes.every((p: any) => p?.rewriteSkipped);
       const lastPass = passes[passes.length - 1];
 
       upsertJob({
@@ -199,6 +200,8 @@ export function DominationProvider({ children }: { children: ReactNode }) {
           iterationsRun: passes.length,
           reachedThreshold: finalScore >= threshold,
           allReverted,
+          allSkipped,
+          skipReason: lastPass?.skipReason,
           voice: lastPass?.voice,
           revertReason: lastPass?.revertReason,
           voiceProfileUsed: lastPass?.voiceProfileUsed,
@@ -207,7 +210,9 @@ export function DominationProvider({ children }: { children: ReactNode }) {
           tier: tierInfo.tier,
         },
       });
-      if (allReverted) {
+      if (allSkipped) {
+        toast.success(lastPass?.skipReason || "Capitolo gia' in fascia professionale: nessuna riscrittura necessaria.");
+      } else if (allReverted) {
         toast.warning(`🛡️ Voice Guard [${lastPass?.voiceProfileUsed || genreKey}]: riscrittura scartata — voce autoriale preservata`);
       } else {
         const conf = lastPass?.rewriteConfidence;

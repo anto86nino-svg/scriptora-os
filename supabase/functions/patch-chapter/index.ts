@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { logAIUsage, estimateTokens } from "../_shared/ai-tracking.ts";
+import {
+  buildEditorialToolsMaxLevelProtocol,
+  PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS,
+} from "../_shared/editorial-tools-protocol.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,10 +59,12 @@ async function patchBatch(
   ctx: { genre: string; tone: string; language: string; chapterTitle: string; maxPatchesInBatch: number; blueprintIntegrityBlock?: string }
 ) {
   const numbered = batch.map((p) => `[¶${p.idx}]\n${p.text}`).join("\n\n");
+  const editorialProtocol = buildEditorialToolsMaxLevelProtocol(ctx.language);
 
   const system = `Sei un editor narrativo bestseller. Lavori in ${ctx.language}.
 REGOLA D'ORO: NON riscrivere. INTERVIENI solo dove serve.
 Se un paragrafo è già forte, NON toccarlo. Mantieni voce, struttura, ritmo.
+${editorialProtocol}
 Output SOLO JSON valido.`;
 
   const user = `Genere: ${ctx.genre} | Tono: ${ctx.tone} | Capitolo: "${ctx.chapterTitle}"
@@ -74,6 +80,8 @@ Per ognuno:
 - "weak" 🔴 = ridondanza/debolezza reale
 
 Genera patch SOLO per i più critici (max ${ctx.maxPatchesInBatch} patch in questo batch). Lunghezza ±20%, stessa voce.
+Se nessuna patch migliora davvero il testo, restituisci "patches": [] e usa questa frase nelle ragioni dei segmenti strong: "${PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS}"
+NON reinventare scene, trama, personaggi, POV o timeline. Correggi solo ripetizioni, continuity, logica, nomi, POV, ritmo locale.
 
 Restituisci JSON in ${ctx.language}:
 {
@@ -91,7 +99,8 @@ async function evaluateChapter(
   patchedText: string,
   ctx: { genre: string; tone: string; language: string; chapterTitle: string }
 ) {
-  const system = `Sei un editor bestseller. Output SOLO JSON. Lingua: ${ctx.language}.`;
+  const system = `Sei un editor bestseller severo. Output SOLO JSON. Lingua: ${ctx.language}.
+${buildEditorialToolsMaxLevelProtocol(ctx.language)}`;
   const preview = patchedText.length > 6000 ? patchedText.substring(0, 6000) + "\n[…]" : patchedText;
   const user = `Genere: ${ctx.genre} | Tono: ${ctx.tone} | Capitolo: "${ctx.chapterTitle}"
 
@@ -103,10 +112,22 @@ Restituisci JSON in ${ctx.language}:
   "score": <1-10 realistico>,
   "strengths": ["<2-4 punti di forza>"],
   "improvements": ["<2-4 cose migliorate>"],
-  "commercialLevel": "<una frase>"
+  "commercialLevel": "<una frase>",
+  "patchApplicate": ["<cosa è stato corretto, oppure frase premium/no-op>"],
+  "impatto": "<impatto editoriale reale>",
+  "rischio": "LOW" | "MEDIUM" | "HIGH",
+  "confermaIntegritaNarrativa": "<conferma che trama/personaggi/canon non sono stati reinventati>"
 }`;
   const raw = await callDeepSeek(apiKey, system, user, true, 0.3, 800);
   return JSON.parse(raw.replace(/```json\n?|```/g, "").trim());
+}
+
+function patchLooksSurgical(original: string, patched: string): boolean {
+  const before = String(original || "").trim();
+  const after = String(patched || "").trim();
+  if (!before || !after || before === after) return false;
+  const ratio = after.length / Math.max(before.length, 1);
+  return ratio >= 0.72 && ratio <= 1.28;
 }
 
 serve(async (req) => {
@@ -162,7 +183,9 @@ serve(async (req) => {
 
     // Build patched text
     const patchMap = new Map<number, string>();
-    cappedPatches.forEach((p: any) => {
+    const surgicalPatches = cappedPatches.filter((p: any) => patchLooksSurgical(p.original, p.patched));
+
+    surgicalPatches.forEach((p: any) => {
       if (typeof p.idx === "number" && typeof p.patched === "string") {
         patchMap.set(p.idx, p.patched.trim());
       }
@@ -178,16 +201,26 @@ serve(async (req) => {
     }
 
     const originalLen = chapterText.length;
-    const changedChars = cappedPatches.reduce(
+    const changedChars = surgicalPatches.reduce(
       (sum: number, p: any) => sum + Math.abs((p.patched?.length || 0) - (p.original?.length || 0)) + (p.original?.length || 0),
       0
     );
     const modificationPercent = Math.min(100, Math.round((changedChars / Math.max(originalLen, 1)) * 100));
+    if (surgicalPatches.length === 0) {
+      evaluation = {
+        ...(evaluation || {}),
+        improvements: [PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS],
+        patchApplicate: [PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS],
+        impatto: "Nessuna modifica applicata: non sono stati rilevati interventi chirurgici abbastanza motivati.",
+        rischio: "LOW",
+        confermaIntegritaNarrativa: "Testo originale preservato; nessun cambio di trama, personaggi o canon.",
+      };
+    }
 
     return new Response(
       JSON.stringify({
         segments,
-        patches: cappedPatches,
+        patches: surgicalPatches,
         evaluation,
         patchedText,
         originalText: chapterText,

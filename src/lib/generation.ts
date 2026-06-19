@@ -68,6 +68,10 @@ import {
   assertProjectReadyForGeneration,
   sanitizeEditorialSummary,
 } from "@/lib/project-generation-readiness";
+import {
+  buildEditorialToolsMaxLevelProtocol,
+  PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS,
+} from "@/lib/editorial-tools-protocol";
 
 /**
  * Verbose streaming logs are off by default — they intasavano la console
@@ -2502,7 +2506,10 @@ export { isFrontMatterEnabled, isBackMatterEnabled } from "@/lib/matter-options"
 export async function evaluateChapterQuality(
   config: BookConfig, chapter: Chapter, chapterIndex: number, usage?: AIUsageContext
 ): Promise<AIQualityRating> {
+  const editorialProtocol = buildEditorialToolsMaxLevelProtocol(config.language);
   const prompt = `You are a professional book editor and literary critic. Evaluate this chapter with BRUTAL HONESTY.
+
+${editorialProtocol}
 
 Book: "${config.title}"
 Genre: ${config.genre}
@@ -2521,12 +2528,13 @@ Rate this chapter on a scale of 1-5 stars using STRICT BESTSELLER STANDARDS:
 Return JSON:
 {
   "score": <number 1-5>,
-  "explanation": "<2-3 sentences explaining the score honestly>",
-  "missing": "<what is missing or weak in this chapter>",
-  "improvements": "<specific actionable improvements to reach 5 stars>"
+  "explanation": "<2-3 sentences explaining the score honestly; include concrete evidence>",
+  "missing": "<what is missing or weak in this chapter; if nothing significant, use the exact premium message>",
+  "improvements": "<specific actionable improvements to reach 5 stars; if no material gain, use the exact premium message>"
 }
 
 Be HONEST. Most AI-generated content is 2-3 stars. Only truly exceptional writing deserves 4-5.
+If the chapter is already professionally premium, say exactly: "${PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS}"
 Language: Respond in ${config.language}.
 Return ONLY valid JSON.`;
 
@@ -2638,6 +2646,7 @@ export async function rewriteChapter(
     },
   });
 
+  const rewriteProtocol = buildEditorialToolsMaxLevelProtocol(config.language);
   const prompt = `${level.toUpperCase()} REWRITE — Chapter ${chapterIndex + 1}: "${chapter.title}"
 
 ${levelInstruction}
@@ -2662,6 +2671,8 @@ ${humanBestsellerModeV12}
 
 ${scriptoraOmegaDirective}
 
+${rewriteProtocol}
+
 ${humanizerBlock}
 
 ${premiumWritingBlock}
@@ -2677,6 +2688,9 @@ EVOLUTION RULES:
 - Produce NEW PROSE — zero repeated sentences from original
 - Maintain continuity with previous chapters
 - The rewrite must be MEASURABLY BETTER than the original
+- Before rewriting, silently run Analysis. If the expected quality gain is below 5%, keep the original content and return it unchanged.
+- Never rewrite strong passages for the sake of novelty.
+- Never import new plot, new characters, or a different narrative line.
 
 Return JSON: { "title": "...", "content": "...", "subchapters": [...] }
 ALL in ${config.language}. Return ONLY valid JSON.`;

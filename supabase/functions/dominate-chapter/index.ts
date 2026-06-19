@@ -43,6 +43,8 @@ interface PassResult {
   revertReason?: string;
   voiceProfileUsed?: string;
   rewriteConfidence?: number;
+  rewriteSkipped?: boolean;
+  skipReason?: string;
 }
 
 // =====================================================================
@@ -126,6 +128,12 @@ function computeRewriteConfidence(voice: VoiceScores, profile: VoiceGuardProfile
 }
 
 import { logAIUsage, estimateTokens } from "../_shared/ai-tracking.ts";
+import {
+  buildEditorialToolsMaxLevelProtocol,
+  MINIMUM_REWRITE_GAIN_PERCENT,
+  MINIMUM_REWRITE_GAIN_SCORE_DELTA,
+  PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS,
+} from "../_shared/editorial-tools-protocol.ts";
 
 let __trackCtx: { projectId?: string | null; userId?: string | null } = {};
 
@@ -201,7 +209,9 @@ serve(async (req) => {
     const currentText: string = chapterText;
 
     // PHASE 1 — ANALYSIS
-    const analysisSystem = `You are a senior international editor. Brutally honest. Output ONLY JSON. Speak entirely in ${language}.`;
+    const editorialProtocol = buildEditorialToolsMaxLevelProtocol(language);
+    const analysisSystem = `You are a senior international editor. Brutally honest. Output ONLY JSON. Speak entirely in ${language}.
+${editorialProtocol}`;
     const analysisUser = `Genre: ${genre} | Tone: ${tone}
 Chapter title: "${chapterTitle}"
 
@@ -214,11 +224,57 @@ Return JSON:
 {
   "scores": { "impact": 1-10, "clarity": 1-10, "rhythm": 1-10, "originality": 1-10, "redundancy": 1-10 (higher = less redundant) },
   "finalScore": 1-10 (realistic, no inflation),
+  "executiveSummary": "<real editorial state, no flattery>",
+  "criticalProblems": [{ "severity": "CRITICAL"|"HIGH", "evidence": "<quote or location>", "problem": "<issue>", "fix": "<required fix>" }],
+  "moderateProblems": [{ "severity": "MEDIUM"|"LOW", "evidence": "<quote or location>", "problem": "<issue>", "fix": "<surgical fix>" }],
+  "strengths": [{ "evidence": "<quote or location>", "whyItWorks": "<proof>" }],
+  "bestsellerScore": 1-10,
+  "marketScore": 1-10,
+  "emotionalImpactScore": 1-10,
+  "characterConsistencyScore": 1-10,
+  "rewriteDecision": "none" | "rewrite",
+  "expectedGainPercent": <0-100>,
   "diagnosis": ["max 7 short surgical points in ${language}: redundancies, weak parts, what to cut, where it loses force"]
 }`;
     // Analysis: always fast model (cheap, structured JSON)
     const analysisRaw = await callDeepSeek(DEEPSEEK_API_KEY, analysisSystem, analysisUser, true, 0.5, 2000, "dominate_analysis", "deepseek-chat");
     const analysis = JSON.parse(analysisRaw.replace(/```json\n?|```/g, "").trim());
+    const expectedGainPercent = Number(analysis.expectedGainPercent ?? 100);
+    const rewriteDecision = String(analysis.rewriteDecision || "rewrite").toLowerCase();
+    const noMaterialRewrite =
+      rewriteDecision === "none" ||
+      (Number.isFinite(expectedGainPercent) && expectedGainPercent < MINIMUM_REWRITE_GAIN_PERCENT);
+
+    if (noMaterialRewrite) {
+      const skipReason = PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS;
+      const pass: PassResult = {
+        iteration,
+        scoresBefore: analysis.scores,
+        finalScoreBefore: analysis.finalScore,
+        diagnosis: Array.isArray(analysis.diagnosis) ? analysis.diagnosis : [skipReason],
+        scoresAfter: analysis.scores,
+        finalScoreAfter: analysis.finalScore,
+        improvedText: currentText,
+        improvementSummary: skipReason,
+        rewriteConfidence: 1,
+        rewriteSkipped: true,
+        skipReason,
+      };
+
+      return new Response(
+        JSON.stringify({
+          pass,
+          finalText: currentText,
+          finalScore: analysis.finalScore,
+          finalScores: analysis.scores,
+          reachedThreshold: analysis.finalScore >= threshold,
+          rewriteSkipped: true,
+          skipReason,
+          rewriteConfidence: 1,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     // PHASE 2+3 — TARGETED REWRITE WITH VOICE-PRESERVATION CONSTRAINTS
     const masteryAmplifier = masteryMode ? `
@@ -234,6 +290,7 @@ EDITORIAL MASTERY AMPLIFIER — DOMINATE MODE (active):
 - The output must read as the SAME author at the top of their craft, never as a different writer.` : "";
 
     const rewriteSystem = `You are a bestseller-level author and senior editor. Write in ${language}. Never use AI clichés. Aggressive, surgical, memorable prose.
+${editorialProtocol}
 
 VOICE PRESERVATION LAW (non-negotiable):
 - The output must read as the SAME author, only more precise. NEVER as a different writer rewriting the chapter.
@@ -262,6 +319,7 @@ ORIGINAL CHAPTER:
 ${currentText}
 
 YOUR TASK — TARGETED REWRITE:
+- Rewrite only if it creates a material editorial gain of at least ${MINIMUM_REWRITE_GAIN_PERCENT}%.
 - Eliminate ONLY redundancies that don't carry stylistic intent
 - Cut weak/slow paragraphs WITHOUT erasing tonal fingerprints
 - Every paragraph must serve a purpose
@@ -338,6 +396,9 @@ Return JSON:
     let revertReason: string | undefined;
     let rewriteConfidence = 0.5;
 
+    const qualityDelta = (evaluation.finalScore || 0) - (analysis.finalScore || 0);
+    const insufficientGain = qualityDelta < MINIMUM_REWRITE_GAIN_SCORE_DELTA;
+
     if (voice) {
       // Per-priority adaptive thresholds (small relaxations on non-critical axes)
       let { minVoicePreserved, minEmotionalIntensity, minMetaphorPreservation, minAntiGeneric } = guardProfile;
@@ -378,7 +439,6 @@ Return JSON:
       }
 
       // Confidence: 0-1, lower if reverted, weighted by priority
-      const qualityDelta = (evaluation.finalScore || 0) - (analysis.finalScore || 0);
       rewriteConfidence = revertedForVoice
         ? Math.min(0.3, computeRewriteConfidence(voice, guardProfile, qualityDelta))
         : computeRewriteConfidence(voice, guardProfile, qualityDelta);
@@ -386,6 +446,14 @@ Return JSON:
       // No voice data → low confidence by default
       rewriteConfidence = 0.4;
     }
+
+    if (!revertedForVoice && insufficientGain) {
+      finalText = currentText;
+      revertedForVoice = true;
+      revertReason = `expected gain below ${MINIMUM_REWRITE_GAIN_PERCENT}% (${qualityDelta.toFixed(1)}/10)`;
+      rewriteConfidence = Math.min(rewriteConfidence, 0.35);
+    }
+    const revertedForInsufficientGain = Boolean(revertReason?.startsWith("expected gain below"));
 
     const pass: PassResult = {
       iteration,
@@ -396,7 +464,9 @@ Return JSON:
       finalScoreAfter: revertedForVoice ? analysis.finalScore : evaluation.finalScore,
       improvedText: finalText,
       improvementSummary: revertedForVoice
-        ? `⚠️ Riscrittura scartata dal Voice Guard [${resolvedKey} / ${guardProfile.priority}] — ${revertReason}. Originale preservato.`
+        ? (revertedForInsufficientGain
+          ? `⚠️ ${PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS} Originale preservato.`
+          : `⚠️ Riscrittura scartata dal Voice Guard [${resolvedKey} / ${guardProfile.priority}] — ${revertReason}. Originale preservato.`)
         : evaluation.improvementSummary,
       voice: voice || undefined,
       revertedForVoice,

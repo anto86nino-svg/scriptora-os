@@ -5,6 +5,10 @@ import {
   rankEditorialIssues,
 } from "@/lib/EditorialIntelligence";
 import { computePremiumEditorialScores } from "@/lib/editorial-intelligence-premium";
+import {
+  buildEditorialToolsMaxLevelProtocol,
+  PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS,
+} from "@/lib/editorial-tools-protocol";
 
 export type AnalysisStatus = "idle" | "running" | "done" | "error";
 export type PatchStatus = "idle" | "running" | "preview" | "applying" | "done" | "error";
@@ -38,8 +42,38 @@ function buildStrengths(
   if (premium.emotionalRealism >= 68) out.push("Emozioni mostrate con resistenza, non solo dichiarate.");
   if (premium.bingeability >= 70) out.push("Chiusura che spinge alla pagina successiva.");
   if (editorial.subtextScore >= 65) out.push("Sottotesto presente nelle scene chiave.");
-  if (!out.length) out.push("Base narrativa solida — margini di affinamento mirato.");
+  if (!out.length && premium.composite >= 85 && editorial.warnings.length === 0) {
+    out.push(PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS);
+  }
   return out.slice(0, 4);
+}
+
+function detectProtocolIssues(content: string): string[] {
+  const issues: string[] = [];
+  const paragraphs = content.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const seen = new Map<string, number>();
+  paragraphs.forEach((paragraph, index) => {
+    const normalized = paragraph
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 220);
+    if (normalized.length < 80) return;
+    const previous = seen.get(normalized);
+    if (previous != null) {
+      issues.push(`HIGH — possibile scena/paragrafo duplicato tra ¶${previous + 1} e ¶${index + 1}: "${paragraph.slice(0, 120)}..."`);
+    } else {
+      seen.set(normalized, index);
+    }
+  });
+
+  const corruption = content.match(/(?:^|[\s«"“])(?:a|mpre|sapesse|stesse)\s*(?:,|\.)/i);
+  if (corruption) {
+    issues.push(`MEDIUM — possibile contaminazione/refuso nel manoscritto: "${corruption[0].trim()}"`);
+  }
+
+  return issues.slice(0, 4);
 }
 
 export function runLocalChapterEditorialAnalysis(
@@ -63,12 +97,16 @@ export function runLocalChapterEditorialAnalysis(
   });
 
   const issues = ranked.slice(0, 5).map((w) => w.message);
+  const protocolIssues = detectProtocolIssues(trimmed);
+  const allIssues = [...protocolIssues, ...issues].slice(0, 6);
   const suggestions = premium.surgicalSuggestions.length
     ? premium.surgicalSuggestions
     : ranked.slice(0, 3).map((w) => w.suggestion).filter(Boolean);
 
-  const primaryIssue = issues[0]
-    || "Nessun problema critico rilevato — puoi comunque raffinare ritmo e sottotesto.";
+  const noSubstantialImprovement = premium.composite >= 88 && allIssues.length === 0;
+  const primaryIssue = noSubstantialImprovement
+    ? PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS
+    : allIssues[0] || "Nessun problema critico rilevato nel testo disponibile. La diagnosi resta limitata: blueprint/canon estesi non sono stati forniti al fallback locale.";
 
   const snapshot: ChapterEditorialSnapshot = {
     compositeScore: premium.composite,
@@ -81,17 +119,24 @@ export function runLocalChapterEditorialAnalysis(
     commercialReadability: premium.commercialReadability,
     bingeability: premium.bingeability,
     strengths: buildStrengths(premium, editorial),
-    issues,
-    suggestions,
+    issues: allIssues,
+    suggestions: noSubstantialImprovement
+      ? []
+      : suggestions.length
+        ? suggestions
+        : [`Protocollo editoriale attivo: ${buildEditorialToolsMaxLevelProtocol(config.language).split("\n")[0]}`],
     primaryIssue,
     analyzedAt: Date.now(),
   };
 
+  const rewriteNecessary = snapshot.scoreOutOf10 < 8.5 || snapshot.issues.some((issue) => /CRITICAL|HIGH/i.test(issue));
   const aiRating: AIQualityRating = {
     score: scoreToFive(premium.composite),
-    explanation: `Analisi editoriale Scriptora: ${snapshot.scoreOutOf10}/10 (${premium.confidence} confidence).`,
-    missing: issues.slice(0, 2).join(" · ") || "Nessuna lacuna critica.",
-    improvements: suggestions.slice(0, 2).join(" · ") || "Raffina hook e conseguenze di scena.",
+    explanation: noSubstantialImprovement
+      ? `Analisi editoriale Scriptora: ${snapshot.scoreOutOf10}/10. ${PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS}`
+      : `Analisi editoriale Scriptora: ${snapshot.scoreOutOf10}/10 (${premium.confidence} confidence). Rewrite necessario? ${rewriteNecessary ? "SI" : "NO"}.`,
+    missing: snapshot.issues.slice(0, 2).join(" · ") || "Nessuna lacuna critica rilevata nel testo disponibile.",
+    improvements: snapshot.suggestions.slice(0, 2).join(" · ") || PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS,
   };
 
   return { snapshot, aiRating };

@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { callDeepSeekTracked } from "../_shared/ai-tracking.ts";
 import { guardCreditOperation } from "../_shared/credit-guard.ts";
+import {
+  buildEditorialToolsMaxLevelProtocol,
+  PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS,
+} from "../_shared/editorial-tools-protocol.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +16,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { chapterTitle, chapterText, genre, tone, language, projectId = null } = body;
+    const { chapterTitle, chapterText, genre, tone, language, blueprintIntegrityBlock = "", projectId = null } = body;
     const credit = await guardCreditOperation(req, "chapter_diagnostic", {
       metadata: { projectId, source: "analyze-chapter" },
       idempotencyKey: typeof body?.idempotencyKey === "string" ? body.idempotencyKey : null,
@@ -36,9 +40,12 @@ serve(async (req) => {
       .map((p) => `[¶${p.idx}] ${p.text.substring(0, 600)}${p.text.length > 600 ? "…" : ""}`)
       .join("\n\n");
 
+    const editorialProtocol = buildEditorialToolsMaxLevelProtocol(language);
     const systemPrompt = `You are a Big-5 publishing house senior editor + literary craft coach.
 You DO NOT flatter. You give brutal, honest, surgical feedback.
 You speak ENTIRELY in ${language}. Every word of your output must be in ${language}.
+
+${editorialProtocol}
 
 Your job: score the chapter on 5 real dimensions (1-10), identify the WEAKEST paragraphs by index,
 explain WHAT is wrong, and run an EDITORIAL MASTERY DIAGNOSTIC covering AI patterns, show-vs-tell,
@@ -48,6 +55,8 @@ Return ONLY valid JSON. No prose outside JSON.`;
 
     const userPrompt = `Genre: ${genre} | Tone: ${tone}
 Chapter title: "${chapterTitle}"
+
+${blueprintIntegrityBlock ? `BLUEPRINT / CANON CONTEXT:\n${blueprintIntegrityBlock}\n` : "BLUEPRINT / CANON CONTEXT: not provided. Do not invent blueprint/canon violations; limit continuity findings to the text itself.\n"}
 
 Paragraphs (numbered):
 ${numbered}
@@ -63,6 +72,21 @@ Return EXACTLY this JSON shape (every text value in ${language}):
   },
   "finalScore": <1-10, weighted realistic average>,
   "verdict": "<one sharp sentence — what level this chapter is at>",
+  "executiveSummary": "<3-5 lines: real editorial state, no flattery>",
+  "criticalProblems": [
+    { "severity": "CRITICAL", "evidence": "<exact quote or ¶N>", "problem": "<what breaks>", "fix": "<what must change>" }
+  ],
+  "moderateProblems": [
+    { "severity": "HIGH"|"MEDIUM"|"LOW", "evidence": "<exact quote or ¶N>", "problem": "<real issue>", "fix": "<surgical correction>" }
+  ],
+  "strengths": [
+    { "evidence": "<exact quote or ¶N>", "whyItWorks": "<why this is actually strong>" }
+  ],
+  "bestsellerScore": <1-10>,
+  "marketScore": <1-10>,
+  "emotionalImpactScore": <1-10>,
+  "characterConsistencyScore": <1-10>,
+  "rewriteNecessary": "SI" | "NO",
   "keyIssues": [
     "<max 5 short, concrete issues — no fluff>"
   ],
@@ -102,9 +126,12 @@ Return EXACTLY this JSON shape (every text value in ${language}):
 
 Rules:
 - Be CRITICAL. If chapter is mediocre, score 5-6. If it's good, 7. Reserve 9+ for truly bestseller-level work.
+- 10 = publishable bestseller quality with no meaningful editorial intervention; 9 = light editing; 8 = medium editing; 7 = important editing; 6 or less = substantial revision.
 - weakParagraphs must reference ACTUAL [¶N] indices from the input.
 - Identify at least 1 weakParagraph unless the chapter scores ≥9 on every dimension.
 - editorialMastery arrays: max 5 items each; only report REAL findings (do not invent).
+- Every CRITICAL/HIGH/MEDIUM finding must include evidence: exact quote or paragraph index.
+- If the chapter is already premium and no meaningful change is advised, use this exact sentence in verdict and improvements/advice where applicable: "${PROFESSIONAL_PREMIUM_NO_SIGNIFICANT_IMPROVEMENTS}"
 - aiPatterns target generic AI phrases ("in today's fast-paced world", "let's dive in", "game-changer", "buckle up", empty triadic lists).
 - showVsTell flags emotions stated rather than dramatized ("she was sad", "he felt anxious").
 - All output text in ${language}.`;

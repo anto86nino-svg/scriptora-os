@@ -307,6 +307,10 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
           genre: project.config.genre,
           tone: project.config.tone,
           language: project.config.language,
+          blueprintIntegrityBlock: buildBlueprintIntegrityRuntimeBlock(project.config, project.blueprint, {
+            chapterIndex,
+            compact: true,
+          }),
           projectId: project.id,
           userId: getCurrentUserId(),
           idempotencyKey: diagnosticKey,

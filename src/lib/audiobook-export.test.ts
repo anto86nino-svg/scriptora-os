@@ -75,6 +75,18 @@ describe("sanitizeAudiobookText", () => {
     expect(clean).toContain("Marco cammina");
     expect(clean).not.toContain("Genre Coach");
   });
+
+  it("ripulisce marker streaming e placeholder prima del TTS", () => {
+    const clean = sanitizeAudiobookText(
+      'La porta si aprì.__DELTA__{"content":"Non va letto."} undefined null __RESULT__{"success":true}',
+    );
+
+    expect(clean).toContain("La porta si aprì.");
+    expect(clean).not.toContain("__DELTA__");
+    expect(clean).not.toContain("__RESULT__");
+    expect(clean).not.toContain("undefined");
+    expect(clean).not.toContain("null");
+  });
 });
 
 describe("estimateAudiobookDuration", () => {

@@ -96,6 +96,9 @@ export function sanitizeAudiobookText(text: string): string {
   }
 
   clean = clean
+    .replace(/__DELTA__\s*\{[^}]*\}/g, " ")
+    .replace(/__RESULT__\s*\{[\s\S]*$/g, " ")
+    .replace(/\b(?:undefined|null)\b/gi, " ")
     .replace(/```[\s\S]*?```/g, " ")
     .replace(/#{1,6}\s+/g, "")
     .replace(/\*\*(.*?)\*\*/g, "$1")
@@ -105,6 +108,8 @@ export function sanitizeAudiobookText(text: string): string {
     .replace(/\[(?:tap|click|select|genera|export|voice|scriptora|scriptora)[^\]]*\]/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/[•▪►▶◆★☆]/g, " ")
+    .replace(/[ \t]+([,.!?;:])/g, "$1")
+    .replace(/([.!?…])(?=\S)/g, "$1 ")
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
