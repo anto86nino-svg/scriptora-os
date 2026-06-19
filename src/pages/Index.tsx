@@ -644,7 +644,7 @@ const Index = () => {
             onGenerateNext={engine.generateNext}
             onGenerateFrontMatter={engine.generateFrontMatterSection}
             onGenerateBackMatter={engine.generateBackMatterSection}
-            onGenerateChapter={(...args) => engine.generateSingleChapter(...args, { onChunkProgress: () => {} })}
+            onGenerateChapter={(...args) => engine.generateSingleChapter(...args)}
             onRegenerateChapter={engine.regenerateChapter}
             onRewriteChapter={engine.rewriteChapterWithDepth}
             onEvaluateChapter={engine.evaluateChapter}
@@ -1003,7 +1003,7 @@ const Index = () => {
                   onGenerateNext={engine.generateNext}
                   onGenerateFrontMatter={engine.generateFrontMatterSection}
                   onGenerateBackMatter={engine.generateBackMatterSection}
-                  onGenerateChapter={(...args) => engine.generateSingleChapter(...args, { onChunkProgress: () => {} })}
+                  onGenerateChapter={(...args) => engine.generateSingleChapter(...args)}
                   onRegenerateChapter={engine.regenerateChapter}
                   onRewriteChapter={engine.rewriteChapterWithDepth}
                   onEvaluateChapter={engine.evaluateChapter}
@@ -1133,7 +1133,7 @@ const Index = () => {
           isGenerated={activeChapterGenerated}
           isGenerating={activeChapterIndex != null && engine.isGeneratingSection(`chapter-${activeChapterIndex}`)}
           isEvaluating={activeChapterIndex != null && engine.isGeneratingSection(`eval-${activeChapterIndex}`)}
-          onGenerate={activeChapterIndex != null ? () => engine.generateSingleChapter(activeChapterIndex, { onChunkProgress: () => {} }) : undefined}
+          onGenerate={activeChapterIndex != null ? () => engine.generateSingleChapter(activeChapterIndex) : undefined}
           onListen={activeChapterIndex != null ? () => openVoiceStudioForChapter(activeChapterIndex) : undefined}
           onAnalysis={() => triggerChapterTool("analysis")}
           onPatch={() => triggerChapterTool("patch")}
