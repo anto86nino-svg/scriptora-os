@@ -1389,9 +1389,10 @@ export async function generateChapterChunked(
       ? Math.min(remainingWords + 100, sizeConfig.max)
       : Math.min(Math.max(sizeConfig.min, remainingWords), sizeConfig.max);
 
-    // Primo chunk rapido per attivare il live stream
+    // Primo chunk ultra-rapido per attivare subito il manoscritto live.
+    // Deve essere una scintilla narrativa, non un blocco completo.
     if (chunkIndex === 0) {
-      chunkTarget = Math.min(chunkTarget, 400);
+      chunkTarget = Math.min(chunkTarget, 220);
     }
 
     if (DEV_DEBUG_STREAM) console.log(`[Scriptora] Chunk ${chunkIndex + 1}: size=${chunkSize} (${sizeConfig.label}), failures=${consecutiveFailures}`);
