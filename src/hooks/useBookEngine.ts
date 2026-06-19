@@ -26,6 +26,7 @@ import {
   runEvaluateChapterQuality,
 } from "@/lib/generation-runtime";
 import { initialPhaseAfterBlueprint, phaseAfterAllChapters } from "@/lib/matter-options";
+import { safeSubchapters } from "@/lib/manuscript/chapter-normalization";
 import { scaffoldMatterForApprovedBlueprint } from "@/lib/matter-scaffold";
 import { refreshProjectLongBookMemory } from "@/lib/long-book-memory";
 import { isMemoryConsistencyV25Enabled, refreshProjectMemoryConsistencyV25 } from "@/lib/memory-consistency-v25";
