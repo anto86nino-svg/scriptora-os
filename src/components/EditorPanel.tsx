@@ -1641,32 +1641,45 @@ const GenerationProgress = memo(function GenerationProgress({
 
   const currentWords = chunkProgress?.currentWords ?? 0;
   const targetWords = Math.max(chunkProgress?.targetWords ?? 1, 1);
-  const realPct = chunkProgress
-    ? Math.min(Math.round((currentWords / targetWords) * 100), 99)
-    : Math.min(22, 6 + Math.floor(elapsedSeconds * 1.2));
-  const activeStep = resolveChapterForgeStep(chunkProgress, realPct, elapsedSeconds);
-  const visualProgress = chunkProgress
-    ? Math.max(8, Math.min(98, realPct))
-    : Math.min(22, 6 + elapsedSeconds * 1.2);
-  const copy = CHAPTER_FORGE_COPY[activeStep] || CHAPTER_FORGE_COPY[CHAPTER_FORGE_COPY.length - 1];
-  const slow = elapsedSeconds >= 90;
-
-  const dynamicStatusMessage =
-    elapsedSeconds < 15
-      ? "Preparazione memoria narrativa..."
-      : elapsedSeconds < 30
-        ? "Analisi blueprint e continuità..."
-        : elapsedSeconds < 60
-          ? "Costruzione apertura narrativa..."
-          : elapsedSeconds < 120
-            ? "Generazione del primo segmento del capitolo..."
-            : "Il modello sta elaborando il primo blocco di scrittura...";
   const liveContent = (chunkProgress?.content?.trim() || fallbackContent?.trim() || "");
-  const streamLines = getCompactLiveStreamLines(liveContent);
+  const hasLiveContent = liveContent.length > 0;
 
   const statusMessage =
     chunkProgress?.statusMessage ||
     "Preparazione apertura narrativa...";
+
+  const realPct = chunkProgress
+    ? Math.min(Math.round((currentWords / targetWords) * 100), 99)
+    : Math.min(22, 6 + Math.floor(elapsedSeconds * 1.2));
+
+  // Prima del primo testo live, il 22% è solo avvio motore.
+  // Non deve sembrare una rifinitura finale né progresso reale del manoscritto.
+  const activeStep = hasLiveContent
+    ? resolveChapterForgeStep(chunkProgress, realPct, elapsedSeconds)
+    : 0;
+
+  const visualProgress = chunkProgress
+    ? Math.max(8, Math.min(98, realPct))
+    : hasLiveContent
+      ? Math.min(45, 22 + elapsedSeconds * 0.35)
+      : Math.min(22, 6 + elapsedSeconds * 1.2);
+
+  const copy = CHAPTER_FORGE_COPY[activeStep] || CHAPTER_FORGE_COPY[0];
+  const slow = elapsedSeconds >= 90;
+
+  const dynamicStatusMessage = hasLiveContent
+    ? (statusMessage || "Scrittura manoscritto in corso...")
+    : elapsedSeconds < 15
+      ? "Preparazione memoria narrativa..."
+      : elapsedSeconds < 30
+        ? "Analisi blueprint e continuità..."
+        : elapsedSeconds < 60
+          ? "Avvio del primo segmento narrativo..."
+          : elapsedSeconds < 120
+            ? "Il modello sta preparando l'apertura del capitolo..."
+            : "Nessun testo ricevuto ancora: Scriptora sta attendendo il primo blocco dal modello...";
+
+  const streamLines = getCompactLiveStreamLines(liveContent);
   const chapterTitle = resolveChapterTitle(outline?.title || "", chapterIndex, {
     config: project.config,
     summary: outline?.summary,
