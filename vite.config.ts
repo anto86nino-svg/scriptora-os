@@ -49,6 +49,14 @@ export default defineConfig(({ mode }) => ({
             if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
             if (id.includes("@tanstack")) return "vendor-query";
             if (id.includes("lucide-react")) return "vendor-icons";
+            if (id.includes("sonner")) return "vendor-sonner";
+            if (id.includes("react-hook-form") || id.includes("@hookform")) return "vendor-forms";
+            if (id.includes("cmdk")) return "vendor-cmdk";
+            if (id.includes("embla-carousel")) return "vendor-embla";
+            if (id.includes("vaul")) return "vendor-vaul";
+            if (id.includes("next-themes")) return "vendor-themes";
+            if (id.includes("react-day-picker")) return "vendor-day-picker";
+            if (id.includes("input-otp")) return "vendor-otp";
             // Do NOT manually chunk react/react-dom/scheduler/react-router — forced splits
             // create circular imports and a black screen in production.
             if (id.includes("zod")) return "vendor-zod";
@@ -56,8 +64,17 @@ export default defineConfig(({ mode }) => ({
             return "vendor-misc";
           }
 
-          if (id.includes("/src/lib/generation.ts") || id.includes("/src/lib/generation-runtime")) {
+          if (id.includes("/src/lib/generation.ts")) {
             return "engine-generation";
+          }
+          if (
+            id.includes("/src/components/guided-interview/") ||
+            id.includes("/src/lib/guided-interview/")
+          ) {
+            return "forge-guided-interview";
+          }
+          if (id.includes("/src/mobile/MobileBookForge")) {
+            return "ui-mobile-book-forge";
           }
           if (id.includes("/src/lib/epub.ts")) return "export-epub";
           if (id.includes("/src/lib/docx-export")) return "export-docx";

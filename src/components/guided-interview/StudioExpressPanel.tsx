@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Loader2, Sparkles, Zap } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Check, Loader2, Sparkles, Zap } from "lucide-react";
 import type {
   ExpressControlLevel,
   ExpressForgeInput,
@@ -18,6 +18,8 @@ import {
   generateTitleSubtitleOptions,
   type TitleSubtitleOption,
 } from "@/lib/guided-interview/book-foundation-lock";
+import { regenerateSimilarTitleOptions } from "./studio-express-title-helpers";
+import { expressSubmitAllowed } from "./studio-express-ui";
 import { cn } from "@/lib/utils";
 
 const GENRES = [
@@ -40,6 +42,15 @@ const CONTROL_LEVELS: { id: ExpressControlLevel; label: string }[] = [
   { id: "scenarios", label: "Fammi scegliere tra 3 libri possibili" },
   { id: "minimal", label: "Chiedimi solo se manca qualcosa di critico" },
 ];
+
+const AUTO_PROMISES = [
+  "Titolo",
+  "Sottotitolo",
+  "Hook",
+  "Personaggi",
+  "Struttura",
+  "Fondamenta del libro",
+] as const;
 
 export type StudioExpressPanelProps = {
   onSubmit: (input: ExpressForgeInput) => void;
@@ -69,6 +80,10 @@ export function StudioExpressPanel({
   const [length, setLength] = useState<ExpressForgeInput["length"]>("medio");
   const [controlLevel, setControlLevel] = useState<ExpressControlLevel>("scenarios");
 
+  const titleEditRef = useRef<HTMLInputElement>(null);
+  const manualEditRef = useRef<HTMLDivElement>(null);
+
+  const isAutoMode = controlLevel === "auto";
   const ideaField = getExpressIdeaFieldConfig(genre);
   const tones = getExpressTones(genre);
   const lengthOptions = getExpressLengthOptions(genre);
@@ -142,6 +157,17 @@ export function StudioExpressPanel({
     generateTitles({ applyBest: false, overwriteManual: true });
   };
 
+  const handleRegenerateSimilar = (anchor: TitleSubtitleOption) => {
+    if (manualLocked) {
+      const ok = window.confirm("Sostituire le proposte con varianti simili?");
+      if (!ok) return;
+      setManualLocked(false);
+    }
+    const similar = regenerateSimilarTitleOptions(titleGenInput, anchor);
+    setTitleCandidates(similar);
+    setRecommendedIndex(0);
+  };
+
   const handleUseBest = () => {
     if (!recommendedOption) {
       generateTitles({ applyBest: true, overwriteManual: manualLocked ? false : true });
@@ -165,26 +191,35 @@ export function StudioExpressPanel({
     setRecommendedIndex(index);
   };
 
+  const focusManualEdit = () => {
+    window.requestAnimationFrame(() => {
+      manualEditRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      titleEditRef.current?.focus();
+    });
+  };
+
   const handleModifyOption = (option: TitleSubtitleOption) => {
     setTitleMode("provided");
     setTitle(option.title);
     setSubtitle(option.subtitle);
     setManualLocked(true);
+    focusManualEdit();
   };
 
   const handleWriteMyOwn = () => {
     setTitleMode("provided");
     setManualLocked(true);
+    focusManualEdit();
   };
 
   const titleIncomplete = !title.trim() || !subtitle.trim();
-  const canSubmit = ideaSeed.trim().length >= 4;
+  const canSubmit = expressSubmitAllowed(controlLevel, ideaSeed);
 
-  const handleSubmit = () => {
-    if (!canSubmit || preparing) return;
+  const submitExpress = (level: ExpressControlLevel = controlLevel) => {
+    if (!expressSubmitAllowed(level, ideaSeed) || preparing) return;
     let finalTitle = title.trim();
     let finalSubtitle = subtitle.trim();
-    if (titleMode === "suggest" && (!finalTitle || !finalSubtitle)) {
+    if (level !== "auto" && titleMode === "suggest" && (!finalTitle || !finalSubtitle)) {
       const options = generateTitleSubtitleOptions(titleGenInput);
       const best = applyBestTitleOption(options);
       finalTitle = best.title;
@@ -193,14 +228,21 @@ export function StudioExpressPanel({
     onSubmit({
       genre,
       language,
-      titleMode,
+      titleMode: level === "auto" ? "suggest" : titleMode,
       title: finalTitle || undefined,
       subtitle: finalSubtitle || undefined,
       ideaSeed: ideaSeed.trim(),
       tone,
       length,
-      controlLevel,
+      controlLevel: level,
     });
+  };
+
+  const handleSubmit = () => submitExpress();
+
+  const handleCreateAll = () => {
+    setControlLevel("auto");
+    submitExpress("auto");
   };
 
   return (
@@ -217,7 +259,11 @@ export function StudioExpressPanel({
             <Zap className="h-3.5 w-3.5" />
             Studio Express
           </p>
-          <p className="mt-1 text-sm leading-6 text-white/70">{panelIntro}</p>
+          <p className="mt-1 text-sm leading-6 text-white/70">
+            {isAutoMode
+              ? "Scegli genere e lingua — Scriptora costruisce il resto."
+              : panelIntro}
+          </p>
         </div>
         <button
           type="button"
@@ -227,6 +273,20 @@ export function StudioExpressPanel({
           Voglio costruirlo con calma
         </button>
       </div>
+
+      <button
+        type="button"
+        onClick={handleCreateAll}
+        disabled={preparing}
+        className="mt-4 flex w-full min-h-12 items-center justify-center gap-2 rounded-2xl border border-amber-300/45 bg-gradient-to-r from-amber-500/35 via-violet-500/35 to-violet-600/35 px-4 py-3 text-sm font-bold tracking-wide text-white shadow-lg shadow-violet-900/25 disabled:opacity-40"
+      >
+        {preparing ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : (
+          <Sparkles className="h-5 w-5 text-amber-200" />
+        )}
+        ✨ CREA TUTTO TU
+      </button>
 
       <div className={cn("mt-4 grid gap-3", compact ? "grid-cols-1" : "sm:grid-cols-2")}>
         <Field label="Genere">
@@ -257,213 +317,245 @@ export function StudioExpressPanel({
           </select>
         </Field>
 
-        <Field label="Titolo" className={compact ? "" : "sm:col-span-2"}>
-          <div className="flex flex-wrap gap-2">
-            {(
-              [
-                ["provided", "Ho un titolo"],
-                ["provisional", "Titolo provvisorio"],
-                ["suggest", "Proponi tu"],
-              ] as const
-            ).map(([mode, label]) => (
-              <button
-                key={mode}
-                type="button"
-                onClick={() => handleTitleModeChange(mode)}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-[11px] font-medium",
-                  titleMode === mode
-                    ? "border-violet-300/50 bg-violet-500/20 text-violet-100"
-                    : "border-white/10 bg-white/[0.04] text-white/55",
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <TitleAction
-              label="Genera titolo e sottotitolo"
-              primary
-              onClick={handleGenerateClick}
-              ariaLabel="Genera titolo e sottotitolo — principale"
-            />
-            <TitleAction
-              label="Rigenera 3 opzioni"
-              onClick={handleGenerateClick}
-              disabled={titleCandidates.length === 0}
-            />
-            <TitleAction label="Usa il migliore" onClick={handleUseBest} />
-            <TitleAction label="Scrivo io" onClick={handleWriteMyOwn} />
-          </div>
-
-          {titleIncomplete && (
-            <p className="mt-2 rounded-lg border border-amber-400/25 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-100/90">
-              Titolo o sottotitolo mancante —{" "}
-              <button
-                type="button"
-                onClick={handleGenerateClick}
-                className="font-semibold underline underline-offset-2"
-              >
-                Genera titolo e sottotitolo
-              </button>
+        {isAutoMode ? (
+          <div className={cn("rounded-xl border border-emerald-400/25 bg-emerald-500/10 p-3", compact ? "" : "sm:col-span-2")}>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-200/90">
+              Scriptora creerà automaticamente
             </p>
-          )}
-
-          {(titleMode === "provided" || titleMode === "provisional") && (
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              <input
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  setManualLocked(true);
-                }}
-                placeholder="Titolo del libro"
-                className="w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white"
-              />
-              <input
-                value={subtitle}
-                onChange={(e) => {
-                  setSubtitle(e.target.value);
-                  setManualLocked(true);
-                }}
-                placeholder="Sottotitolo commerciale"
-                className="w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white"
-              />
-            </div>
-          )}
-
-          {titleMode === "suggest" && (title.trim() || subtitle.trim()) && (
-            <div className="mt-2 rounded-xl border border-violet-300/20 bg-violet-500/10 px-3 py-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-violet-200/70">
-                Scelta attuale
-              </p>
-              <p className="mt-1 text-sm font-semibold text-white">{title || "—"}</p>
-              <p className="text-xs italic text-white/55">{subtitle || "—"}</p>
-            </div>
-          )}
-
-          {titleCandidates.length > 0 && (
-            <div className="mt-3 grid gap-2">
-              {titleCandidates.map((opt, i) => (
-                <article
-                  key={`title-opt-${i}`}
+            <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+              {AUTO_PROMISES.map((item) => (
+                <li key={item} className="flex items-center gap-1.5 text-xs text-emerald-50/90">
+                  <Check className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <Field label="Titolo" className={compact ? "" : "sm:col-span-2"}>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["provided", "Ho un titolo"],
+                  ["provisional", "Titolo provvisorio"],
+                  ["suggest", "Proponi tu"],
+                ] as const
+              ).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => handleTitleModeChange(mode)}
                   className={cn(
-                    "rounded-xl border p-3",
-                    recommendedIndex === i
-                      ? "border-emerald-300/35 bg-emerald-500/10"
-                      : "border-white/10 bg-white/[0.04]",
+                    "rounded-full border px-3 py-1 text-[11px] font-medium",
+                    titleMode === mode
+                      ? "border-violet-300/50 bg-violet-500/20 text-violet-100"
+                      : "border-white/10 bg-white/[0.04] text-white/55",
                   )}
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    {recommendedIndex === i && (
-                      <span className="rounded-full border border-emerald-300/40 bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-100">
-                        Consigliato
-                      </span>
-                    )}
-                    <span className="text-[10px] text-white/40">{opt.genreFit}</span>
-                  </div>
-                  <p className="mt-1 text-sm font-semibold text-white">{opt.title}</p>
-                  <p className="mt-0.5 text-xs italic text-white/55">{opt.subtitle}</p>
-                  <p className="mt-1 text-[10px] text-white/45">{opt.commercialReason}</p>
-                  <dl className="mt-2 grid gap-0.5 text-[10px] text-white/40 sm:grid-cols-2">
-                    <div>
-                      <dt className="inline">Tono: </dt>
-                      <dd className="inline text-white/55">{opt.toneFit}</dd>
-                    </div>
-                    <div>
-                      <dt className="inline">Rischio: </dt>
-                      <dd className="inline text-white/55">{opt.risk}</dd>
-                    </div>
-                  </dl>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    <TitleAction
-                      label="Usa questo"
-                      onClick={() => handleUseOption(opt, i)}
-                    />
-                    <TitleAction label="Modifica" onClick={() => handleModifyOption(opt)} />
-                    <TitleAction
-                      label="Rigenera simili"
-                      onClick={handleGenerateClick}
-                    />
-                  </div>
-                </article>
+                  {label}
+                </button>
               ))}
             </div>
-          )}
-        </Field>
 
-        <Field label={ideaField.label} className={compact ? "" : "sm:col-span-2"}>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <TitleAction
+                label="Genera titolo e sottotitolo"
+                primary
+                onClick={handleGenerateClick}
+                ariaLabel="Genera titolo e sottotitolo — principale"
+              />
+              <TitleAction
+                label="Rigenera 3 opzioni"
+                onClick={handleGenerateClick}
+                disabled={titleCandidates.length === 0}
+              />
+              <TitleAction label="Usa il migliore" onClick={handleUseBest} />
+              <TitleAction label="Scrivo io" onClick={handleWriteMyOwn} />
+            </div>
+
+            {titleIncomplete && (
+              <p className="mt-2 rounded-lg border border-amber-400/25 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-100/90">
+                Titolo o sottotitolo mancante —{" "}
+                <button
+                  type="button"
+                  onClick={handleGenerateClick}
+                  className="font-semibold underline underline-offset-2"
+                >
+                  Genera titolo e sottotitolo
+                </button>
+              </p>
+            )}
+
+            {(titleMode === "provided" || titleMode === "provisional") && (
+              <div ref={manualEditRef} className="mt-2 grid gap-2 sm:grid-cols-2">
+                <input
+                  ref={titleEditRef}
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    setManualLocked(true);
+                  }}
+                  placeholder="Titolo del libro"
+                  className="w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white"
+                />
+                <input
+                  value={subtitle}
+                  onChange={(e) => {
+                    setSubtitle(e.target.value);
+                    setManualLocked(true);
+                  }}
+                  placeholder="Sottotitolo commerciale"
+                  className="w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white"
+                />
+              </div>
+            )}
+
+            {titleMode === "suggest" && (title.trim() || subtitle.trim()) && (
+              <div className="mt-2 rounded-xl border border-violet-300/20 bg-violet-500/10 px-3 py-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-violet-200/70">
+                  Scelta attuale
+                </p>
+                <p className="mt-1 text-sm font-semibold text-white">{title || "—"}</p>
+                <p className="text-xs italic text-white/55">{subtitle || "—"}</p>
+              </div>
+            )}
+
+            {titleCandidates.length > 0 && (
+              <div className="mt-3 grid gap-2">
+                {titleCandidates.map((opt, i) => (
+                  <article
+                    key={`title-opt-${opt.title}-${i}`}
+                    className={cn(
+                      "rounded-xl border p-3",
+                      recommendedIndex === i
+                        ? "border-emerald-300/35 bg-emerald-500/10"
+                        : "border-white/10 bg-white/[0.04]",
+                    )}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      {recommendedIndex === i && (
+                        <span className="rounded-full border border-emerald-300/40 bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-100">
+                          Consigliato
+                        </span>
+                      )}
+                      <span className="text-[10px] text-white/40">{opt.genreFit}</span>
+                    </div>
+                    <p className="mt-1 text-sm font-semibold text-white">{opt.title}</p>
+                    <p className="mt-0.5 text-xs italic text-white/55">{opt.subtitle}</p>
+                    <p className="mt-1 text-[10px] text-white/45">{opt.commercialReason}</p>
+                    <dl className="mt-2 grid gap-0.5 text-[10px] text-white/40 sm:grid-cols-2">
+                      <div>
+                        <dt className="inline">Tono: </dt>
+                        <dd className="inline text-white/55">{opt.toneFit}</dd>
+                      </div>
+                      <div>
+                        <dt className="inline">Rischio: </dt>
+                        <dd className="inline text-white/55">{opt.risk}</dd>
+                      </div>
+                    </dl>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <TitleAction
+                        label="Usa questo"
+                        onClick={() => handleUseOption(opt, i)}
+                      />
+                      <TitleAction label="Modifica" onClick={() => handleModifyOption(opt)} />
+                      <TitleAction
+                        label="Rigenera simili"
+                        onClick={() => handleRegenerateSimilar(opt)}
+                      />
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </Field>
+        )}
+
+        <Field
+          label={isAutoMode ? `${ideaField.label} (opzionale)` : ideaField.label}
+          className={compact ? "" : "sm:col-span-2"}
+        >
           <textarea
             value={ideaSeed}
             onChange={(e) => setIdeaSeed(e.target.value)}
-            placeholder={ideaField.placeholder}
-            rows={3}
+            placeholder={
+              isAutoMode
+                ? "Opzionale — più dettagli = libro più preciso"
+                : ideaField.placeholder
+            }
+            rows={isAutoMode ? 2 : 3}
             className="w-full resize-none rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm leading-6 text-white"
           />
         </Field>
 
-        <Field label="Tono">
-          <select
-            value={tone}
-            onChange={(e) => setTone(e.target.value)}
-            className="w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white"
-          >
-            {tones.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Lunghezza">
-          <select
-            value={length}
-            onChange={(e) => setLength(e.target.value as ExpressForgeInput["length"])}
-            className="w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white"
-          >
-            {lengthOptions.map((l) => (
-              <option key={l.value} value={l.value}>
-                {l.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Quanto vuoi guidare Scriptora?" className={compact ? "" : "sm:col-span-2"}>
-          <div className="grid gap-2">
-            {CONTROL_LEVELS.map((level) => (
-              <button
-                key={level.id}
-                type="button"
-                onClick={() => setControlLevel(level.id)}
-                className={cn(
-                  "rounded-xl border px-3 py-2 text-left text-xs font-medium",
-                  controlLevel === level.id
-                    ? "border-violet-300/45 bg-violet-500/15 text-violet-100"
-                    : "border-white/10 bg-white/[0.04] text-white/60",
-                )}
+        {!isAutoMode && (
+          <>
+            <Field label="Tono">
+              <select
+                value={tone}
+                onChange={(e) => setTone(e.target.value)}
+                className="w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white"
               >
-                {level.label}
-              </button>
-            ))}
-          </div>
-        </Field>
+                {tones.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Lunghezza">
+              <select
+                value={length}
+                onChange={(e) => setLength(e.target.value as ExpressForgeInput["length"])}
+                className="w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white"
+              >
+                {lengthOptions.map((l) => (
+                  <option key={l.value} value={l.value}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </>
+        )}
+
+        {!isAutoMode && (
+          <Field label="Quanto vuoi guidare Scriptora?" className={compact ? "" : "sm:col-span-2"}>
+            <div className="grid gap-2">
+              {CONTROL_LEVELS.map((level) => (
+                <button
+                  key={level.id}
+                  type="button"
+                  onClick={() => setControlLevel(level.id)}
+                  className={cn(
+                    "rounded-xl border px-3 py-2 text-left text-xs font-medium",
+                    controlLevel === level.id
+                      ? "border-violet-300/45 bg-violet-500/15 text-violet-100"
+                      : "border-white/10 bg-white/[0.04] text-white/60",
+                  )}
+                >
+                  {level.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+        )}
       </div>
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={!canSubmit || preparing}
-          className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-violet-500 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40"
-        >
-          {preparing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-          Prepara 3 libri possibili
-        </button>
-      </div>
+      {!isAutoMode && (
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!canSubmit || preparing}
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-violet-500 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40"
+          >
+            {preparing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+            Prepara 3 libri possibili
+          </button>
+        </div>
+      )}
     </section>
   );
 }

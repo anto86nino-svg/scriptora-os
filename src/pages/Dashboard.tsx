@@ -18,9 +18,8 @@ import {
 import { BOOK_LENGTH_CONFIG, BookConfig, BookLength, BookProject, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { normalizeBookConfig } from "@/lib/book-config-studio/defaults";
 import type { StudioLaunchPayload } from "@/lib/book-config-studio/types";
-import { buildBookTypeLock as buildGenreLock } from "@/lib/book-type-engine";
-import { runGenerateBlueprint } from "@/lib/generation-runtime";
 import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import {
   AUTHOR_IDENTITY_CHANGED_EVENT,
   applyAuthorIdentityToConfig,
@@ -57,6 +56,11 @@ import {
 } from "@/components/mobile/MobileDashboardChrome";
 import { ScriptoraSettingsButton } from "@/components/settings/ScriptoraSettingsButton";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
+import {
+  ProfileMenuDialog,
+  isAdvancedLaunchpadEnabled,
+  setAdvancedLaunchpadEnabled,
+} from "@/components/one-flow/ProfileMenuDialog";
 
 const ScriptoraSettingsHub = lazy(() =>
   import("@/components/settings/ScriptoraSettingsHub").then((m) => ({ default: m.ScriptoraSettingsHub })),
@@ -64,12 +68,9 @@ const ScriptoraSettingsHub = lazy(() =>
 const AdvancedAppearanceDialog = lazy(() =>
   import("@/components/AdvancedAppearanceDialog").then((m) => ({ default: m.AdvancedAppearanceDialog })),
 );
-import { MobileBookForge } from "@/mobile/MobileBookForge";
-import {
-  ProfileMenuDialog,
-  isAdvancedLaunchpadEnabled,
-  setAdvancedLaunchpadEnabled,
-} from "@/components/one-flow/ProfileMenuDialog";
+const MobileBookForge = lazyWithRetry(() =>
+  import("@/mobile/MobileBookForge").then((m) => ({ default: m.MobileBookForge })),
+);
 
 interface DetectedIntent {
   genre: string;
@@ -558,6 +559,10 @@ typeof crypto.randomUUID === "function"
 
   const handleStudioGenerateBlueprint = async (config: BookConfig) => {
     const finalConfig = mergeCharacterStudioIntoConfig(config);
+    const [{ buildBookTypeLock: buildGenreLock }, { runGenerateBlueprint }] = await Promise.all([
+      import("@/lib/book-type-engine"),
+      import("@/lib/generation-runtime"),
+    ]);
     const genreLock = buildGenreLock(finalConfig);
     const { blueprint } = await runGenerateBlueprint(finalConfig, genreLock);
     return blueprint;
@@ -730,12 +735,24 @@ typeof crypto.randomUUID === "function"
           </div>
         </div>
 
-        <MobileBookForge
-          onClose={closeAllDashboardTools}
-          authorIdentity={activeAuthor}
-          onStudioComplete={handleStudioComplete}
-          onGenerateBlueprint={handleStudioGenerateBlueprint}
-        />
+        <Suspense
+          fallback={
+            <ScriptoraAliveTransition
+              compact
+              overlay
+              tone="forge"
+              title="Apro Book Forge…"
+              steps={["Caricamento studio", "Preparo interfaccia"]}
+            />
+          }
+        >
+          <MobileBookForge
+            onClose={closeAllDashboardTools}
+            authorIdentity={activeAuthor}
+            onStudioComplete={handleStudioComplete}
+            onGenerateBlueprint={handleStudioGenerateBlueprint}
+          />
+        </Suspense>
       </div>
     );
   }

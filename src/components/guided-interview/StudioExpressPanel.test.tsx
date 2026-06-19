@@ -5,10 +5,13 @@ import {
   applyExpressScenarioToState,
   buildCompleteExpressBookPackage,
 } from "@/lib/guided-interview/express-book-package";
+import { buildExpressForgeConfiguration } from "@/lib/guided-interview/express-forge-config";
 import {
   buildExpressTitleGeneratorInput,
   generateTitleSubtitleOptions,
 } from "@/lib/guided-interview/book-foundation-lock";
+import { regenerateSimilarTitleOptions } from "./studio-express-title-helpers";
+import { expressSubmitAllowed, pickExpressAutoScenario } from "./studio-express-ui";
 import { getInitialInterviewState } from "@/lib/guided-interview/question-engine";
 
 const darkRomanceIdea =
@@ -205,5 +208,87 @@ describe("StudioExpressPanel title click-first", () => {
     const state = applyExpressScenarioToState(getInitialInterviewState({ chatFirst: true }), pkg);
     expect(state.bookFoundation?.title).toBe("La Selva che Ricorda");
     expect(state.bookFoundation?.subtitle).toContain("magia");
+  });
+});
+
+describe("StudioExpressPanel one-click auto", () => {
+  it("shows dominant CREA TUTTO TU CTA", () => {
+    render(<StudioExpressPanel onSubmit={() => {}} onClose={() => {}} />);
+    expect(screen.getByRole("button", { name: /CREA TUTTO TU/i })).toBeTruthy();
+  });
+
+  it("CREA TUTTO TU submits with auto control and empty idea", () => {
+    const onSubmit = vi.fn();
+    render(<StudioExpressPanel onSubmit={onSubmit} onClose={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /CREA TUTTO TU/i }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    const payload = onSubmit.mock.calls[0]![0];
+    expect(payload.controlLevel).toBe("auto");
+    expect(payload.ideaSeed).toBe("");
+    expect(payload.genre).toBe("dark romance");
+  });
+
+  it("expressSubmitAllowed permits auto without idea", () => {
+    expect(expressSubmitAllowed("auto", "")).toBe(true);
+    expect(expressSubmitAllowed("scenarios", "")).toBe(false);
+    expect(expressSubmitAllowed("scenarios", "idea valida qui")).toBe(true);
+  });
+
+  it("auto mode hides manual title section and shows auto promise", () => {
+    render(<StudioExpressPanel onSubmit={() => {}} onClose={() => {}} />);
+    fireEvent.click(screen.getByText("Fai tu, voglio partire subito"));
+    expect(screen.getByText(/Scriptora creerà automaticamente/i)).toBeTruthy();
+    expect(screen.getByText(/^Hook$/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Genera titolo e sottotitolo — principale/i })).toBeNull();
+    expect(screen.queryByText(/Titolo o sottotitolo mancante/i)).toBeNull();
+  });
+
+  it("Modifica opens manual edit with prefilled title", () => {
+    render(<StudioExpressPanel onSubmit={() => {}} onClose={() => {}} />);
+    fillIdea(darkRomanceIdea);
+    clickPrimaryGenerate();
+    fireEvent.click(screen.getAllByRole("button", { name: /^Modifica$/i })[0]!);
+    const titleInput = screen.getByPlaceholderText("Titolo del libro") as HTMLInputElement;
+    expect(titleInput.value.length).toBeGreaterThan(2);
+    expect(screen.getByPlaceholderText("Sottotitolo commerciale")).toBeTruthy();
+  });
+
+  it("rigenera simili produces 3 distinct coherent titles", () => {
+    const input = buildExpressTitleGeneratorInput({
+      genre: "dark romance",
+      language: "Italiano",
+      tone: "oscuro",
+      length: "medio",
+      ideaSeed: darkRomanceIdea,
+      titleMode: "suggest",
+    });
+    const anchor = generateTitleSubtitleOptions(input)[0]!;
+    const similar = regenerateSimilarTitleOptions(input, anchor);
+    expect(similar).toHaveLength(3);
+    const titles = new Set(similar.map((o) => o.title));
+    expect(titles.size).toBe(3);
+    expect(similar.every((o) => o.title !== anchor.title)).toBe(true);
+    expect(similar.every((o) => o.subtitle.length > 10)).toBe(true);
+  });
+});
+
+describe("StudioExpressPanel express auto handoff", () => {
+  it("auto packages populate foundation for dark romance without idea", () => {
+    const result = buildExpressForgeConfiguration({
+      genre: "dark romance",
+      language: "Italiano",
+      titleMode: "suggest",
+      ideaSeed: "",
+      tone: "oscuro",
+      length: "medio",
+      controlLevel: "auto",
+    });
+    const scenario = pickExpressAutoScenario(result.packages);
+    expect(scenario).toBeTruthy();
+    const staged = applyExpressScenarioToState(result.state, scenario!);
+    expect(staged.bookFoundation?.title?.length).toBeGreaterThan(2);
+    expect(staged.bookFoundation?.subtitle?.length).toBeGreaterThan(10);
+    expect(staged.bookFoundation?.commercialHook?.length).toBeGreaterThan(20);
+    expect((staged.bookFoundation?.characters?.length ?? 0) > 0).toBe(true);
   });
 });

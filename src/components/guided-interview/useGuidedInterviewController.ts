@@ -42,6 +42,7 @@ import {
   applyBlueprintReadySummaryToState,
   type BlueprintEditorialField,
 } from "@/lib/guided-interview/blueprint-ready-summary";
+import { pickExpressAutoScenario } from "./studio-express-ui";
 
 import type { ForgeHostContext } from "@/lib/guided-interview/forge-host-engine";
 
@@ -392,6 +393,19 @@ export function useGuidedInterviewController({
     setExpressPreparing(true);
     window.setTimeout(() => {
       const result = buildExpressForgeConfiguration(input, state);
+      if (input.controlLevel === "auto") {
+        const scenario = pickExpressAutoScenario(result.packages);
+        if (scenario) {
+          setState(applyExpressScenarioToState(result.state, scenario));
+          setShowExpressPanel(false);
+          setShowFoundationPanel(true);
+          setShowDnaPanel(false);
+          setDnaConfirmationDismissed(false);
+          setExpressPreparing(false);
+          blueprintMessageInjectedRef.current = false;
+          return;
+        }
+      }
       setState(result.state);
       setShowExpressPanel(false);
       setShowDnaPanel(false);

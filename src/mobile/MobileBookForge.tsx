@@ -1,16 +1,21 @@
-import { lazy, Suspense, useCallback, useState } from "react";
+import { Suspense, useCallback, useState } from "react";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import type { AuthorIdentity, BookBlueprint, BookConfig, Language } from "@/types/book";
 import type { StudioLaunchPayload } from "@/lib/book-config-studio/types";
-import { GuidedInterviewPanel } from "@/components/guided-interview/GuidedInterviewPanel";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
 import { saveForgeDnaLock } from "@/lib/guided-interview/interview-state";
 import { buildForgeInterviewSeed } from "@/lib/guided-interview/forge-blueprint-handoff";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/services/storageService";
 
-const BookCreationOsWizard = lazy(() =>
+const GuidedInterviewPanel = lazyWithRetry(() =>
+  import("@/components/guided-interview/GuidedInterviewPanel").then((m) => ({
+    default: m.GuidedInterviewPanel,
+  })),
+);
+const BookCreationOsWizard = lazyWithRetry(() =>
   import("@/components/one-flow/BookCreationOsWizard").then((m) => ({
     default: m.BookCreationOsWizard,
   })),
@@ -77,23 +82,35 @@ export function MobileBookForge({
 
   if (phase === "interview") {
     return (
-      <GuidedInterviewPanel
-        variant="mobile"
-        chatFirst
-        unifiedScroll
-        penName={authorIdentity.penName}
-        authorName={authorIdentity.name}
-        forgeHeader={<ForgeTopHeader onClose={onClose} />}
-        language={authorIdentity.language || "Italian"}
-        onComplete={(data) => {
-          setInterviewState(data as GuidedInterviewState);
-        }}
-        onConfirmDna={(state) => {
-          setInterviewState(state);
-          saveForgeDnaLock(state);
-          setPhase("blueprint");
-        }}
-      />
+      <Suspense
+        fallback={
+          <ScriptoraAliveTransition
+            compact
+            overlay
+            tone="forge"
+            title="Apro intervista guidata…"
+            steps={["Caricamento studio", "Preparo domande"]}
+          />
+        }
+      >
+        <GuidedInterviewPanel
+          variant="mobile"
+          chatFirst
+          unifiedScroll
+          penName={authorIdentity.penName}
+          authorName={authorIdentity.name}
+          forgeHeader={<ForgeTopHeader onClose={onClose} />}
+          language={authorIdentity.language || "Italian"}
+          onComplete={(data) => {
+            setInterviewState(data as GuidedInterviewState);
+          }}
+          onConfirmDna={(state) => {
+            setInterviewState(state);
+            saveForgeDnaLock(state);
+            setPhase("blueprint");
+          }}
+        />
+      </Suspense>
     );
   }
 
