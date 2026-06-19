@@ -307,8 +307,15 @@ typeof crypto.randomUUID === "function"
   };
 
   const isCurrentChapterGeneration = (projectId: string, index: number, generationId: string) => {
-    const latest = projectRef.current;
-    return latest?.id === projectId && chapterGenerationIds.current.get(chapterGenerationKey(projectId, index)) === generationId;
+    const latest = getLatestProject();
+    if (latest?.id !== projectId) return false;
+
+    const runtimeGenerationId = chapterGenerationIds.current.get(chapterGenerationKey(projectId, index));
+    if (runtimeGenerationId === generationId) return true;
+
+    // Se l'utente clicca l'indice o il componente si rimonta, la ref runtime può perdersi.
+    // Il capitolo però conserva lastGenerationId: è la fonte stabile del job in corso.
+    return latest.chapters?.[index]?.lastGenerationId === generationId;
   };
 
   const clearChapterGenerationIfCurrent = (projectId: string, index: number, generationId: string) => {
