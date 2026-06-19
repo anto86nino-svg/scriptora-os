@@ -42,6 +42,10 @@ function resultPayload(payload: Record<string, unknown>): Uint8Array {
   return new TextEncoder().encode(`\n__RESULT__${JSON.stringify(payload)}`);
 }
 
+function deltaPayload(content: string): Uint8Array {
+  return new TextEncoder().encode(`\n__DELTA__${JSON.stringify({ content })}`);
+}
+
 function publicErrorMessage(status: number): string {
   if (status === 429) return "Rate limited. Please wait a moment and try again.";
   if (status === 402 || status === 401) return "DeepSeek API key invalid or credits exhausted. Check your API key.";
@@ -130,8 +134,9 @@ serve(async (req) => {
       return jsonResponse({ error: publicErrorMessage(response.status) }, response.status === 401 ? 402 : response.status);
     }
 
-    // Read SSE stream from DeepSeek and accumulate full content,
-    // while writing keepalive whitespace to the client to prevent idle timeout.
+    // Read SSE stream from DeepSeek and accumulate full content.
+    // Also forward textual deltas to the client so the Writer can render live prose,
+    // while preserving the final __RESULT__ payload for backward compatibility.
     if (!response.body) return jsonResponse({ error: "AI provider returned an empty stream." }, 502);
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -172,11 +177,15 @@ serve(async (req) => {
               try {
                 const json = JSON.parse(data);
                 const delta = json.choices?.[0]?.delta?.content || "";
-                if (delta) accumulated += delta;
+                if (delta) {
+                  accumulated += delta;
+                  if (!safeEnqueue(deltaPayload(delta))) break;
+                }
               } catch {
                 // ignore partial JSON
               }
             }
+            if (closed) break;
 
             // Send a keepalive byte every 10s to keep the connection active
             if (Date.now() - lastFlush > 10_000) {

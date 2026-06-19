@@ -198,15 +198,64 @@ function blueprintDebug(event: string, payload?: Record<string, unknown>) {
 const BLUEPRINT_NETWORK_USER_MESSAGE =
   "Scriptora non riesce a raggiungere il motore Blueprint in questo momento. Riprova tra pochi secondi.";
 
+const GENERATION_DELTA_MARKER = "__DELTA__";
+const GENERATION_RESULT_MARKER = "__RESULT__";
+
+function findCompleteJsonPayloadEnd(source: string, startIndex: number): number | null {
+  let index = startIndex;
+  while (index < source.length && /\s/.test(source[index])) index += 1;
+  if (index >= source.length) return null;
+
+  const opening = source[index];
+  const closing = opening === "{" ? "}" : opening === "[" ? "]" : "";
+  if (!closing) return null;
+
+  let depth = 0;
+  let inString = false;
+  let escaping = false;
+
+  for (let i = index; i < source.length; i += 1) {
+    const char = source[i];
+
+    if (inString) {
+      if (escaping) {
+        escaping = false;
+      } else if (char === "\\") {
+        escaping = true;
+      } else if (char === "\"") {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === "\"") {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{" || char === "[") {
+      depth += 1;
+    } else if (char === "}" || char === "]") {
+      depth -= 1;
+      if (depth === 0) return i + 1;
+    }
+  }
+
+  return null;
+}
+
 function parseGenerationResultPayload(
   body: string,
   contentType: string,
   taskType?: string,
 ): { content: string } {
   const trimmed = body.trim();
-  const marker = body.lastIndexOf("__RESULT__");
+  const lineMarker = body.lastIndexOf(`\n${GENERATION_RESULT_MARKER}`);
+  const marker = lineMarker >= 0
+    ? lineMarker + 1
+    : body.lastIndexOf(GENERATION_RESULT_MARKER);
   const payloadText = marker >= 0
-    ? body.slice(marker + "__RESULT__".length).trim()
+    ? body.slice(marker + GENERATION_RESULT_MARKER.length).trim()
     : trimmed;
 
   const expectsJson = marker >= 0
@@ -264,11 +313,76 @@ function parseGenerationResultPayload(
   throw new Error("La risposta AI e' incompleta o vuota. Riprova la generazione.");
 }
 
-async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: number = 300000, usage?: AIUsageContext): Promise<string> {
+async function callAIOnce(
+  systemPrompt: string,
+  userPrompt: string,
+  timeoutMs: number = 300000,
+  usage?: AIUsageContext,
+  onPartial?: (partialText: string, fullPartialText: string) => void,
+): Promise<string> {
   const controller = new AbortController();
   // Use a watchdog: reset whenever we receive bytes (DeepSeek can be slow but
   // streaming → we only abort on TRUE silence).
   let lastByteAt = Date.now();
+  let partialMarkerBuffer = "";
+  let partialAccumulated = "";
+  let loggedFirstDelta = false;
+  let loggedResultMarker = false;
+  const logStreamDiagnostics = import.meta.env.DEV || DEV_DEBUG_STREAM;
+
+  const consumePartialMarkers = () => {
+    if (!onPartial) return;
+
+    while (partialMarkerBuffer.length > 0) {
+      const resultIndex = partialMarkerBuffer.indexOf(GENERATION_RESULT_MARKER);
+      const deltaIndex = partialMarkerBuffer.indexOf(GENERATION_DELTA_MARKER);
+
+      if (resultIndex >= 0 && (deltaIndex < 0 || resultIndex < deltaIndex)) {
+        if (logStreamDiagnostics && !loggedResultMarker) {
+          console.debug("[Scriptora] __RESULT__ received", {
+            taskType: usage?.taskType,
+            partialChars: partialAccumulated.length,
+          });
+          loggedResultMarker = true;
+        }
+        partialMarkerBuffer = "";
+        return;
+      }
+
+      if (deltaIndex < 0) {
+        const keep = Math.max(GENERATION_DELTA_MARKER.length, GENERATION_RESULT_MARKER.length);
+        if (partialMarkerBuffer.length > keep) {
+          partialMarkerBuffer = partialMarkerBuffer.slice(-keep);
+        }
+        return;
+      }
+
+      if (deltaIndex > 0) partialMarkerBuffer = partialMarkerBuffer.slice(deltaIndex);
+
+      const payloadStart = GENERATION_DELTA_MARKER.length;
+      const payloadEnd = findCompleteJsonPayloadEnd(partialMarkerBuffer, payloadStart);
+      if (payloadEnd == null) return;
+
+      const payloadText = partialMarkerBuffer.slice(payloadStart, payloadEnd).trim();
+      const parsed = safeParseJson<{ content?: unknown }>(payloadText);
+      const delta = typeof parsed?.content === "string" ? parsed.content : "";
+
+      if (delta) {
+        partialAccumulated += delta;
+        if (logStreamDiagnostics && !loggedFirstDelta) {
+          console.debug("[Scriptora] first __DELTA__ received", {
+            taskType: usage?.taskType,
+            deltaChars: delta.length,
+          });
+          loggedFirstDelta = true;
+        }
+        onPartial(delta, partialAccumulated);
+      }
+
+      partialMarkerBuffer = partialMarkerBuffer.slice(payloadEnd);
+    }
+  };
+
   const watchdog = setInterval(() => {
     if (Date.now() - lastByteAt > timeoutMs) {
       scriptoraLog.warn("generation", `No bytes received for ${timeoutMs}ms — aborting stream`, { taskType: usage?.taskType });
@@ -332,11 +446,24 @@ async function callAIOnce(systemPrompt: string, userPrompt: string, timeoutMs: n
       const { done, value } = await reader.read();
       if (done) break;
       lastByteAt = Date.now(); // reset watchdog on each byte
-      buffer += decoder.decode(value, { stream: true });
+      const chunk = decoder.decode(value, { stream: true });
+      buffer += chunk;
+      if (onPartial) {
+        partialMarkerBuffer += chunk;
+        consumePartialMarkers();
+      }
     }
     clearInterval(watchdog);
+    if (onPartial) consumePartialMarkers();
 
     const parsed = parseGenerationResultPayload(buffer, contentType, usage?.taskType);
+    if (onPartial && logStreamDiagnostics && !loggedResultMarker) {
+      console.debug("[Scriptora] __RESULT__ parsed", {
+        taskType: usage?.taskType,
+        partialChars: partialAccumulated.length,
+        resultChars: parsed.content.length,
+      });
+    }
     logGenerationEnd("GENERATION", "callAIOnce", { chars: parsed.content.length, taskType: usage?.taskType });
     notifyUsageChanged();
 
@@ -1517,6 +1644,35 @@ Write in ${config.language}.${adaptiveSuffix}`;
     const systemPrompt = `${systemBase} You are writing ${isFirstChunk ? "the opening of" : "a continuation for"} chapter ${chapterIndex + 1} of ${config.numberOfChapters}. Phase: ${phase}. Chunk size: ${chunkSize}.`;
 
     let chunkText: string | null = null;
+    const createChunkPartialReporter = () => {
+      let lastPartialProgressAt = 0;
+      let lastPartialChars = 0;
+
+      return (_delta: string, partialAccumulated: string) => {
+        const partialChars = partialAccumulated.length;
+        const now = Date.now();
+        if (now - lastPartialProgressAt < 350 && partialChars - lastPartialChars < 100) return;
+
+        const base = accumulatedContent.trim();
+        const partial = partialAccumulated.trim();
+        const preview = base ? `${base}\n\n${partial}` : partial;
+        if (!preview.trim()) return;
+
+        lastPartialProgressAt = now;
+        lastPartialChars = partialChars;
+
+        onChunkProgress?.({
+          chunkIndex,
+          totalChunks: Math.max(1, Math.ceil(targetWords / 1400)),
+          currentWords: countWords(preview),
+          targetWords,
+          phase,
+          content: preview,
+          chunkSize,
+          statusMessage: "Scrittura live del capitolo...",
+        });
+      };
+    };
 
     try {
       chunkText = await withRetry(
@@ -1528,6 +1684,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
             taskType: "generate_chapter_chunk",
             metadata: { chapterIndex: chapterIndex + 1, chunkIndex: chunkIndex + 1, phase, chunkSize },
           }),
+          createChunkPartialReporter(),
         ),
         {
           maxAttempts: 2,
