@@ -198,8 +198,26 @@ function blueprintDebug(event: string, payload?: Record<string, unknown>) {
 const BLUEPRINT_NETWORK_USER_MESSAGE =
   "Scriptora non riesce a raggiungere il motore Blueprint in questo momento. Riprova tra pochi secondi.";
 
-const GENERATION_DELTA_MARKER = "__DELTA__";
-const GENERATION_RESULT_MARKER = "__RESULT__";
+export const GENERATION_DELTA_MARKER = "__DELTA__";
+export const GENERATION_RESULT_MARKER = "__RESULT__";
+
+function streamAuditEnabled(usage?: AIUsageContext): boolean {
+  return import.meta.env.DEV
+    || DEV_DEBUG_STREAM
+    || usage?.metadata?.debugStream === true
+    || usage?.metadata?.streamDebug === true;
+}
+
+function streamAuditLog(event: string, details: Record<string, unknown> = {}, usage?: AIUsageContext) {
+  if (!streamAuditEnabled(usage)) return;
+  console.debug("[Scriptora stream audit]", {
+    ts: new Date().toISOString(),
+    event,
+    taskType: usage?.taskType,
+    projectId: usage?.projectId,
+    ...details,
+  });
+}
 
 function findCompleteJsonPayloadEnd(source: string, startIndex: number): number | null {
   let index = startIndex;
@@ -242,6 +260,66 @@ function findCompleteJsonPayloadEnd(source: string, startIndex: number): number 
   }
 
   return null;
+}
+
+export interface GenerationDeltaParseState {
+  markerBuffer: string;
+  partialAccumulated: string;
+  resultMarkerSeen: boolean;
+}
+
+export function createGenerationDeltaParseState(): GenerationDeltaParseState {
+  return {
+    markerBuffer: "",
+    partialAccumulated: "",
+    resultMarkerSeen: false,
+  };
+}
+
+export function consumeGenerationDeltaMarkers(
+  state: GenerationDeltaParseState,
+  chunk: string,
+  onDelta: (delta: string, fullPartialText: string) => void,
+  onResultMarker?: (fullPartialText: string) => void,
+): void {
+  if (chunk) state.markerBuffer += chunk;
+
+  while (state.markerBuffer.length > 0) {
+    const resultIndex = state.markerBuffer.indexOf(GENERATION_RESULT_MARKER);
+    const deltaIndex = state.markerBuffer.indexOf(GENERATION_DELTA_MARKER);
+
+    if (resultIndex >= 0 && (deltaIndex < 0 || resultIndex < deltaIndex)) {
+      state.resultMarkerSeen = true;
+      onResultMarker?.(state.partialAccumulated);
+      state.markerBuffer = "";
+      return;
+    }
+
+    if (deltaIndex < 0) {
+      const keep = Math.max(GENERATION_DELTA_MARKER.length, GENERATION_RESULT_MARKER.length);
+      if (state.markerBuffer.length > keep) {
+        state.markerBuffer = state.markerBuffer.slice(-keep);
+      }
+      return;
+    }
+
+    if (deltaIndex > 0) state.markerBuffer = state.markerBuffer.slice(deltaIndex);
+
+    const payloadStart = GENERATION_DELTA_MARKER.length;
+    const payloadEnd = findCompleteJsonPayloadEnd(state.markerBuffer, payloadStart);
+    if (payloadEnd == null) return;
+
+    const payloadText = state.markerBuffer.slice(payloadStart, payloadEnd).trim();
+    const parsed = safeParseJson<{ content?: unknown }>(payloadText);
+    const delta = typeof parsed?.content === "string" ? parsed.content : "";
+
+    if (delta) {
+      state.partialAccumulated += delta;
+      onDelta(delta, state.partialAccumulated);
+    }
+
+    state.markerBuffer = state.markerBuffer.slice(payloadEnd);
+  }
 }
 
 function parseGenerationResultPayload(
@@ -324,63 +402,34 @@ async function callAIOnce(
   // Use a watchdog: reset whenever we receive bytes (DeepSeek can be slow but
   // streaming → we only abort on TRUE silence).
   let lastByteAt = Date.now();
-  let partialMarkerBuffer = "";
-  let partialAccumulated = "";
+  const partialState = createGenerationDeltaParseState();
   let loggedFirstDelta = false;
   let loggedResultMarker = false;
-  const logStreamDiagnostics = import.meta.env.DEV || DEV_DEBUG_STREAM;
+  const logStreamDiagnostics = streamAuditEnabled(usage);
 
-  const consumePartialMarkers = () => {
+  const consumePartialMarkers = (chunk = "") => {
     if (!onPartial) return;
-
-    while (partialMarkerBuffer.length > 0) {
-      const resultIndex = partialMarkerBuffer.indexOf(GENERATION_RESULT_MARKER);
-      const deltaIndex = partialMarkerBuffer.indexOf(GENERATION_DELTA_MARKER);
-
-      if (resultIndex >= 0 && (deltaIndex < 0 || resultIndex < deltaIndex)) {
-        if (logStreamDiagnostics && !loggedResultMarker) {
-          console.debug("[Scriptora] __RESULT__ received", {
-            taskType: usage?.taskType,
-            partialChars: partialAccumulated.length,
-          });
-          loggedResultMarker = true;
-        }
-        partialMarkerBuffer = "";
-        return;
-      }
-
-      if (deltaIndex < 0) {
-        const keep = Math.max(GENERATION_DELTA_MARKER.length, GENERATION_RESULT_MARKER.length);
-        if (partialMarkerBuffer.length > keep) {
-          partialMarkerBuffer = partialMarkerBuffer.slice(-keep);
-        }
-        return;
-      }
-
-      if (deltaIndex > 0) partialMarkerBuffer = partialMarkerBuffer.slice(deltaIndex);
-
-      const payloadStart = GENERATION_DELTA_MARKER.length;
-      const payloadEnd = findCompleteJsonPayloadEnd(partialMarkerBuffer, payloadStart);
-      if (payloadEnd == null) return;
-
-      const payloadText = partialMarkerBuffer.slice(payloadStart, payloadEnd).trim();
-      const parsed = safeParseJson<{ content?: unknown }>(payloadText);
-      const delta = typeof parsed?.content === "string" ? parsed.content : "";
-
-      if (delta) {
-        partialAccumulated += delta;
+    consumeGenerationDeltaMarkers(
+      partialState,
+      chunk,
+      (delta, fullPartialText) => {
         if (logStreamDiagnostics && !loggedFirstDelta) {
-          console.debug("[Scriptora] first __DELTA__ received", {
-            taskType: usage?.taskType,
+          streamAuditLog("frontend_first_delta", {
             deltaChars: delta.length,
-          });
+          }, usage);
           loggedFirstDelta = true;
         }
-        onPartial(delta, partialAccumulated);
-      }
-
-      partialMarkerBuffer = partialMarkerBuffer.slice(payloadEnd);
-    }
+        onPartial(delta, fullPartialText);
+      },
+      (fullPartialText) => {
+        if (logStreamDiagnostics && !loggedResultMarker) {
+          streamAuditLog("frontend_result_marker_received", {
+            partialChars: fullPartialText.length,
+          }, usage);
+          loggedResultMarker = true;
+        }
+      },
+    );
   };
 
   const watchdog = setInterval(() => {
@@ -395,6 +444,7 @@ async function callAIOnce(
     if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
       throw new Error("Missing Supabase configuration for AI generation.");
     }
+    streamAuditLog("frontend_fetch_start", { timeoutMs }, usage);
     const currentUsage = usagePayload(usage);
     const { data: sessionData } = await supabase.auth.getSession().catch(() => ({ data: { session: null } } as any));
     const bearer = sessionData?.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -418,6 +468,7 @@ async function callAIOnce(
     });
 
     const contentType = res.headers.get("content-type") || "";
+    streamAuditLog("frontend_response", { status: res.status, ok: res.ok, contentType }, usage);
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -448,21 +499,17 @@ async function callAIOnce(
       lastByteAt = Date.now(); // reset watchdog on each byte
       const chunk = decoder.decode(value, { stream: true });
       buffer += chunk;
-      if (onPartial) {
-        partialMarkerBuffer += chunk;
-        consumePartialMarkers();
-      }
+      if (onPartial) consumePartialMarkers(chunk);
     }
     clearInterval(watchdog);
     if (onPartial) consumePartialMarkers();
 
     const parsed = parseGenerationResultPayload(buffer, contentType, usage?.taskType);
     if (onPartial && logStreamDiagnostics && !loggedResultMarker) {
-      console.debug("[Scriptora] __RESULT__ parsed", {
-        taskType: usage?.taskType,
-        partialChars: partialAccumulated.length,
+      streamAuditLog("frontend_result_parsed", {
+        partialChars: partialState.partialAccumulated.length,
         resultChars: parsed.content.length,
-      });
+      }, usage);
     }
     logGenerationEnd("GENERATION", "callAIOnce", { chars: parsed.content.length, taskType: usage?.taskType });
     notifyUsageChanged();
@@ -1138,6 +1185,51 @@ function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+export function buildChapterLivePreview(accumulatedContent: string, partialAccumulated: string): string {
+  const base = String(accumulatedContent || "").trim();
+  const partial = String(partialAccumulated || "").trim();
+  if (!base) return partial;
+  if (!partial) return base;
+  return `${base}\n\n${partial}`;
+}
+
+const CHAPTER_PARTIAL_PROGRESS_MIN_MS = 350;
+const CHAPTER_PARTIAL_PROGRESS_MIN_CHARS = 100;
+
+export interface ChapterPartialProgressThrottleState {
+  lastPartialProgressAt: number;
+  lastPartialChars: number;
+  hasReportedPartialProgress: boolean;
+}
+
+export function createChapterPartialProgressThrottleState(): ChapterPartialProgressThrottleState {
+  return {
+    lastPartialProgressAt: 0,
+    lastPartialChars: 0,
+    hasReportedPartialProgress: false,
+  };
+}
+
+export function shouldEmitChapterPartialProgress(
+  state: ChapterPartialProgressThrottleState,
+  partialChars: number,
+  now: number,
+): boolean {
+  const isFirstPartialProgress = !state.hasReportedPartialProgress;
+  if (
+    !isFirstPartialProgress
+    && now - state.lastPartialProgressAt < CHAPTER_PARTIAL_PROGRESS_MIN_MS
+    && partialChars - state.lastPartialChars < CHAPTER_PARTIAL_PROGRESS_MIN_CHARS
+  ) {
+    return false;
+  }
+
+  state.hasReportedPartialProgress = true;
+  state.lastPartialProgressAt = now;
+  state.lastPartialChars = partialChars;
+  return true;
+}
+
 function checkOverlap(existingText: string, newChunk: string): number {
   const existingSentences = existingText.split(/[.!?]+/).filter(s => s.trim().length > 20).slice(-10);
   const newSentences = newChunk.split(/[.!?]+/).filter(s => s.trim().length > 20);
@@ -1643,23 +1735,25 @@ Write in ${config.language}.${adaptiveSuffix}`;
 
     const systemPrompt = `${systemBase} You are writing ${isFirstChunk ? "the opening of" : "a continuation for"} chapter ${chapterIndex + 1} of ${config.numberOfChapters}. Phase: ${phase}. Chunk size: ${chunkSize}.`;
 
+    const chunkUsage = withUsage(opts?.usage, {
+      taskType: "generate_chapter_chunk",
+      metadata: {
+        chapterIndex: chapterIndex + 1,
+        chunkIndex: chunkIndex + 1,
+        phase,
+        chunkSize,
+      },
+    });
     let chunkText: string | null = null;
     const createChunkPartialReporter = () => {
-      let lastPartialProgressAt = 0;
-      let lastPartialChars = 0;
+      const throttle = createChapterPartialProgressThrottleState();
 
       return (_delta: string, partialAccumulated: string) => {
         const partialChars = partialAccumulated.length;
         const now = Date.now();
-        if (now - lastPartialProgressAt < 350 && partialChars - lastPartialChars < 100) return;
-
-        const base = accumulatedContent.trim();
-        const partial = partialAccumulated.trim();
-        const preview = base ? `${base}\n\n${partial}` : partial;
+        const preview = buildChapterLivePreview(accumulatedContent, partialAccumulated);
         if (!preview.trim()) return;
-
-        lastPartialProgressAt = now;
-        lastPartialChars = partialChars;
+        if (!shouldEmitChapterPartialProgress(throttle, partialChars, now)) return;
 
         onChunkProgress?.({
           chunkIndex,
@@ -1680,10 +1774,7 @@ Write in ${config.language}.${adaptiveSuffix}`;
           systemPrompt,
           chunkPrompt,
           sizeConfig.timeout,
-          withUsage(opts?.usage, {
-            taskType: "generate_chapter_chunk",
-            metadata: { chapterIndex: chapterIndex + 1, chunkIndex: chunkIndex + 1, phase, chunkSize },
-          }),
+          chunkUsage,
           createChunkPartialReporter(),
         ),
         {

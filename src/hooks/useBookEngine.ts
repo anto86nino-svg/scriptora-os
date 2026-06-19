@@ -262,6 +262,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   // multiple chapters generate in parallel and emit hundreds of token events.
   const lastProgressRenderAt = useRef<Map<string, number>>(new Map());
   const lastSaveAt = useRef<Map<string, number>>(new Map());
+  const liveUiUpdateLogged = useRef<Set<string>>(new Set());
   const chapterGenerationIds = useRef<Map<string, string>>(new Map());
   const rewriteLocks = useRef<Set<number>>(new Set());
   const PROGRESS_RENDER_MS = 150; // ~6fps for streaming text — perceptually smooth
@@ -881,14 +882,31 @@ typeof crypto.randomUUID === "function"
       const chapter = await runGenerateChapterChunked(
         latestP.config, latestP.blueprint!, index, prevChapters, chapterOverride,
         (progress) => {
-          if (!isCurrentChapterGeneration(targetProjectId, index, generationId)) return;
-          // Throttle: skip UI/state churn when tokens arrive faster than ~6fps.
-          // Always allow phase-change events through so UI feels responsive.
           const key = `chapter-${index}`;
+          const hasLiveContent = Boolean(progress.content?.trim());
+          const firstLiveProgress = hasLiveContent && !liveUiUpdateLogged.current.has(key);
+
+          if (!isCurrentChapterGeneration(targetProjectId, index, generationId)) {
+            return;
+          }
+
+          // Throttle: skip UI/state churn when tokens arrive faster than ~6fps.
+          // The first non-empty live preview must render immediately.
           const now = performance.now();
           const lastRender = lastProgressRenderAt.current.get(key) ?? 0;
-          if (now - lastRender < PROGRESS_RENDER_MS) return;
+          if (!firstLiveProgress && now - lastRender < PROGRESS_RENDER_MS) return;
           lastProgressRenderAt.current.set(key, now);
+
+          if (firstLiveProgress) {
+            liveUiUpdateLogged.current.add(key);
+            if (import.meta.env.DEV) {
+              console.debug("[Scriptora] first live chapter preview rendered", {
+                chapterIndex: index + 1,
+                chars: progress.content.length,
+                words: progress.currentWords,
+              });
+            }
+          }
 
           setChunkProgress(prev => ({ ...prev, [key]: progress }));
           const targetWords = Math.max(1, progress.targetWords || progress.currentWords || 1);
@@ -906,7 +924,7 @@ typeof crypto.randomUUID === "function"
           }
           // Heavier work (setProject + IDB save) throttled more aggressively.
           const lastSave = lastSaveAt.current.get(key) ?? 0;
-          if (now - lastSave < SAVE_THROTTLE_MS) return;
+          if (!firstLiveProgress && now - lastSave < SAVE_THROTTLE_MS) return;
           lastSaveAt.current.set(key, now);
           updateAndSave(proj => {
             if (proj.id !== targetProjectId) return proj;
@@ -1068,6 +1086,7 @@ typeof crypto.randomUUID === "function"
       clearChapterGenerationIfCurrent(targetProjectId, index, generationId);
       removeGenerating(genKey);
       setChunkProgress(prev => { const next = { ...prev }; delete next[genKey]; return next; });
+      liveUiUpdateLogged.current.delete(`chapter-${index}`);
       lastProgressRenderAt.current.delete(`chapter-${index}`);
       lastSaveAt.current.delete(`chapter-${index}`);
     }
