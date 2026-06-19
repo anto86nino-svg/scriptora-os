@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildExpressForgeConfiguration } from "./express-forge-config";
 import { applyExpressScenarioToState, ensureExpressWriterReadiness, validateExpressPackageReadiness } from "./express-book-package";
+import { confirmBookFoundationLock } from "./book-foundation-lock";
 import { isStoryRoomBlueprintReady } from "./story-room-state-machine";
 import { getNextInterviewQuestion, getInitialInterviewState } from "./question-engine";
 import { isMetadataOnly } from "./blueprint-ready-summary";
@@ -39,9 +40,11 @@ describe("express-forge-config", () => {
     expect(result.state.blueprintScenarios![0]!.editorialSynopsis.length).toBeGreaterThan(100);
   });
 
-  it("selected scenario reaches blueprint-ready and handoff complete", () => {
+  it("selected scenario reaches foundation lock then blueprint-ready handoff", () => {
     const result = buildExpressForgeConfiguration(expressInput);
-    const applied = applyExpressScenarioToState(result.state, result.packages[0]!);
+    let applied = applyExpressScenarioToState(result.state, result.packages[0]!);
+    expect(applied.forgeMemory?.storyRoomMachine?.currentStageId).toBe("bookFoundationLock");
+    applied = confirmBookFoundationLock(applied, applied.bookFoundation);
     expect(isStoryRoomBlueprintReady(applied.forgeMemory!)).toBe(true);
     const readiness = validateExpressPackageReadiness(applied);
     expect(readiness.ready).toBe(true);
@@ -77,7 +80,8 @@ describe("express-forge-config", () => {
       },
       base,
     );
-    const applied = applyExpressScenarioToState(result.state, result.packages[0]!);
+    const staged = applyExpressScenarioToState(result.state, result.packages[0]!);
+    const applied = confirmBookFoundationLock(staged, staged.bookFoundation);
     const readiness = validateExpressPackageReadiness(applied);
     expect(readiness.handoffMissing.length).toBe(0);
     expect(applied.characters?.length).toBeGreaterThan(0);
@@ -94,7 +98,8 @@ describe("express-forge-config", () => {
       length: "medio",
       controlLevel: "auto",
     });
-    const applied = applyExpressScenarioToState(result.state, result.packages[0]!);
+    const staged = applyExpressScenarioToState(result.state, result.packages[0]!);
+    const applied = confirmBookFoundationLock(staged, staged.bookFoundation);
     const writerReady = ensureExpressWriterReadiness(applied);
     expect(writerReady.ready).toBe(true);
     expect(writerReady.blockingIssues).toEqual([]);

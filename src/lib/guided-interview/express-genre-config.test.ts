@@ -38,7 +38,7 @@ describe("express-genre-config", () => {
   it("uses nonfiction length labels", () => {
     const options = getExpressLengthOptions("self-help");
     expect(options.find((o) => o.value === "breve")?.label).toContain("guida rapida");
-    expect(options.find((o) => o.value === "pro")?.label).toContain("esercizi");
+    expect(options.find((o) => o.value === "epico")?.label).toContain("esercizi");
   });
 
   it("uses Practical / Transformative / Deep scenario labels for nonfiction", () => {

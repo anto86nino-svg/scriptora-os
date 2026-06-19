@@ -150,6 +150,9 @@ export interface GuidedInterviewState {
   blueprintScenarios?: import("./express-book-package").ExpressBookScenario[];
   selectedBlueprintScenarioId?: string;
   slotProvenance?: Record<string, import("./express-forge-types").ForgeFieldProvenance>;
+  /** Book Foundation Lock — pilastri obbligatori pre-blueprint */
+  bookFoundation?: import("./book-foundation-lock").BookFoundationLock;
+  bookFoundationLocked?: boolean;
 }
 
 export interface NextQuestionResult {

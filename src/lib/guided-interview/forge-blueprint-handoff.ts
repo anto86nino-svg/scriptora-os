@@ -14,6 +14,8 @@ import type { GuidedInterviewState } from "./types";
 import { buildFinalBookReview } from "./final-book-review";
 import { deriveTitleIntelligence } from "./title-intelligence-engine";
 import { sanitizeDnaText } from "./dna-cleaner";
+import { isMetadataOnly } from "./blueprint-ready-summary";
+import { validateFoundationFieldsFromSeed } from "./book-foundation-lock";
 
 function clean(value?: unknown): string {
   return sanitizeDnaText(value);
@@ -252,23 +254,46 @@ export function buildForgeEndingLine(seed: ForgeInterviewSeed): string {
   return "";
 }
 
+function parseChapterCountValue(value?: string): number {
+  const match = String(value || "").match(/(\d+)/);
+  return match ? Number(match[1]) : 0;
+}
+
 export function validateForgeHandoffForBlueprint(seed: ForgeInterviewSeed): ForgeBlueprintReadiness {
   const missing: string[] = [];
   const ex = seed.extracted ?? {};
+  const state = seed as GuidedInterviewState;
   const fiction = (seed.characters?.length ?? 0) > 0;
+  const foundationMissing = validateFoundationFieldsFromSeed({
+    extracted: ex,
+    characters: seed.characters,
+    titleIntelligence: seed.titleIntelligence,
+    bookFoundationLocked: state.bookFoundationLocked,
+    selectedGenre: seed.selectedGenre,
+  });
+  const hook = resolveForgeCommercialHook(seed);
 
   if (!seed.canon || !seed.canon.story.facts.length) missing.push("canon");
+  if (foundationMissing.length > 0) {
+    missing.push(...foundationMissing);
+  }
   if (fiction && !mapForgeCharactersToBookCharacters(seed.characters).length) {
     missing.push("characters");
   }
   if (!resolveForgeTitle(seed)) missing.push("titolo");
   if (!resolveForgeSubtitle(seed)) missing.push("sottotitolo");
-  if (!resolveForgeCommercialHook(seed)) missing.push("hook");
+  if (!hook || hook.length < 20 || isMetadataOnly(hook)) missing.push("hook");
   if (!resolveForgeCommercialPromise(seed)) missing.push("promessa");
+  if (!clean(ex.language)) missing.push("language");
+  if (!Number(parseChapterCountValue(ex.chapterCount)) && !foundationMissing.includes("chapterCount")) {
+    missing.push("chapterCount");
+  }
   if (!buildForgeEndingLine(seed) && fiction) missing.push("ending");
-  if (!clean(ex.centralConflict)) missing.push("conflitto");
+  if (!clean(ex.centralConflict) && !ex.readerTransformation) {
+    missing.push("conflitto");
+  }
 
-  return { ready: missing.length === 0, missing };
+  return { ready: missing.length === 0, missing: [...new Set(missing)] };
 }
 
 export function buildForgeGuidedBriefExtras(seed: ForgeInterviewSeed): {

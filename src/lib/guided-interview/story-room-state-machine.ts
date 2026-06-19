@@ -16,6 +16,7 @@ export type StoryRoomStageId =
   | "title"
   | "frontMatter"
   | "ending"
+  | "bookFoundationLock"
   | "blueprintReady";
 
 export type StoryRoomSlotGroup =
@@ -95,6 +96,14 @@ export const STORY_ROOM_STAGE_DEFS: StoryRoomStageDef[] = [
     optionalSlots: ["narrativeArc"],
     maxQuestions: 3,
     appliesTo: "fiction",
+  },
+  {
+    id: "bookFoundationLock",
+    label: "Fondamenta",
+    requiredSlots: ["title", "subtitle", "chapterCount"],
+    optionalSlots: ["protagonist", "antagonist", "promise"],
+    maxQuestions: 0,
+    appliesTo: "all",
   },
   { id: "blueprintReady", label: "Blueprint", requiredSlots: [], maxQuestions: 0, appliesTo: "all" },
 ];
@@ -343,7 +352,7 @@ export function isStageRequirementMet(
   stage: StoryRoomStageDef,
   memory: ForgeInterviewMemory,
 ): boolean {
-  if (stage.id === "blueprintReady") return false;
+  if (stage.id === "blueprintReady" || stage.id === "bookFoundationLock") return false;
   return hasStoryRoomSlotValue(memory, stage.id as StoryRoomSlotGroup);
 }
 
@@ -354,7 +363,7 @@ export function getCompletedStagesFromSlots(memory: ForgeInterviewMemory): Story
 export function evaluateStageCompletion(memory: ForgeInterviewMemory): StoryRoomStageId[] {
   const completed: StoryRoomStageId[] = [];
   for (const stage of applicableStages(memory)) {
-    if (stage.id === "blueprintReady") continue;
+    if (stage.id === "blueprintReady" || stage.id === "bookFoundationLock") continue;
     if (isStageRequirementMet(stage, memory)) {
       completed.push(stage.id);
     }
@@ -405,13 +414,15 @@ export function getStoryRoomProgressDebugInfo(memory: ForgeInterviewMemory): {
 export function resolveCurrentStoryRoomStage(memory: ForgeInterviewMemory): StoryRoomStageId {
   const stages = applicableStages(memory);
   const completed = new Set(evaluateStageCompletion(memory));
+  const machine = getStoryRoomMachine(memory);
 
   for (const stage of stages) {
-    if (stage.id === "blueprintReady") continue;
+    if (stage.id === "blueprintReady" || stage.id === "bookFoundationLock") continue;
     if (!completed.has(stage.id)) return stage.id;
   }
 
-  return "blueprintReady";
+  if (machine.currentStageId === "blueprintReady") return "blueprintReady";
+  return "bookFoundationLock";
 }
 
 function canonicalSlotsForStage(stage: StoryRoomStageDef, memory: ForgeInterviewMemory): ForgeSlotKey[] {
@@ -465,13 +476,23 @@ export function advanceStoryRoomStage(
   }
 
   const currentStageId = opts?.forceStageId ?? resolveCurrentStoryRoomStage(memory);
-  const allDone = mergedCompleted.length >= stages.filter((s) => s.id !== "blueprintReady").length;
+  const actionableStages = stages.filter(
+    (s) => s.id !== "blueprintReady" && s.id !== "bookFoundationLock",
+  );
+  const allDone = mergedCompleted.length >= actionableStages.length;
+  const nextStageId = opts?.forceStageId
+    ? opts.forceStageId
+    : allDone && machine.currentStageId !== "blueprintReady"
+      ? "bookFoundationLock"
+      : allDone
+        ? "blueprintReady"
+        : currentStageId;
 
   return {
     ...memory,
     storyRoomMachine: {
       ...machine,
-      currentStageId: allDone ? "blueprintReady" : currentStageId,
+      currentStageId: nextStageId,
       completedStageIds: mergedCompleted,
       completedSlotKeys,
     },
@@ -494,6 +515,7 @@ function mapStageIdToForgeMemoryStage(id: StoryRoomStageId): ForgeInterviewMemor
     title: "title",
     frontMatter: "title",
     ending: "plot",
+    bookFoundationLock: "dna-lock",
     blueprintReady: "dna-lock",
   };
   return map[id] ?? null;
@@ -594,7 +616,9 @@ export function shouldForceStageAdvance(memory: ForgeInterviewMemory): boolean {
 }
 
 export function getStoryRoomProgressPercent(memory: ForgeInterviewMemory): number {
-  const stages = applicableStages(memory).filter((s) => s.id !== "blueprintReady");
+  const stages = applicableStages(memory).filter(
+    (s) => s.id !== "blueprintReady" && s.id !== "bookFoundationLock",
+  );
   if (!stages.length) return 0;
   const machine = getStoryRoomMachine(memory);
   const completed = new Set([
@@ -615,7 +639,9 @@ export type StoryRoomProgressTrail = {
 };
 
 export function buildStoryRoomProgressTrail(memory: ForgeInterviewMemory): StoryRoomProgressTrail {
-  const stages = applicableStages(memory).filter((s) => s.id !== "blueprintReady");
+  const stages = applicableStages(memory).filter(
+    (s) => s.id !== "blueprintReady" && s.id !== "bookFoundationLock",
+  );
   const machine = getStoryRoomMachine(memory);
   const completedIds = new Set([
     ...machine.completedStageIds,
@@ -635,7 +661,7 @@ export function buildStoryRoomProgressTrail(memory: ForgeInterviewMemory): Story
     upcoming,
     percent: getStoryRoomProgressPercent(memory),
     currentStageId,
-    blueprintReady: currentStageId === "blueprintReady" || completedIds.size >= stages.length,
+    blueprintReady: currentStageId === "blueprintReady",
   };
 }
 

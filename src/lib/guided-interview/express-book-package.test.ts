@@ -6,6 +6,7 @@ import {
   ensureExpressBookPackageCompleteness,
   validateExpressPackageReadiness,
 } from "./express-book-package";
+import { confirmBookFoundationLock } from "./book-foundation-lock";
 import { buildExpressForgeConfiguration } from "./express-forge-config";
 import { finalizeForgeForBlueprint } from "./forge-evolution-engine";
 import {
@@ -73,7 +74,8 @@ describe("buildCompleteExpressBookPackage — self-help", () => {
 
   it("applyExpressScenarioToState sets nonfiction book type", () => {
     const pkg = buildCompleteExpressBookPackage(selfHelpInput, "commercial");
-    const next = applyExpressScenarioToState(getInitialInterviewState({ chatFirst: true }), pkg);
+    let next = applyExpressScenarioToState(getInitialInterviewState({ chatFirst: true }), pkg);
+    next = confirmBookFoundationLock(next, next.bookFoundation);
     expect(next.selectedBookType).not.toBe("Romanzo");
     expect(next.extracted?.readerTransformation).toBeTruthy();
     expect(next.extracted?.centralConflict).toBe(pkg.readerProblem);
@@ -127,6 +129,7 @@ describe("express end-to-end readiness", () => {
     const { packages, state } = buildExpressForgeConfiguration(expressInput);
     const selected = packages[1]!;
     let next = applyExpressScenarioToState(state, selected);
+    next = confirmBookFoundationLock(next, next.bookFoundation);
     next = applyBlueprintReadySummaryToState(next);
     next = finalizeForgeForBlueprint(next);
 
@@ -142,7 +145,8 @@ describe("express end-to-end readiness", () => {
 
   it("validateExpressPackageReadiness reports complete package", () => {
     const { packages, state } = buildExpressForgeConfiguration(expressInput);
-    const applied = applyExpressScenarioToState(state, packages[0]!);
+    let applied = applyExpressScenarioToState(state, packages[0]!);
+    applied = confirmBookFoundationLock(applied, applied.bookFoundation);
     const readiness = validateExpressPackageReadiness(applied);
     expect(readiness.handoffMissing).toEqual([]);
     expect(readiness.ready).toBe(true);
@@ -150,7 +154,8 @@ describe("express end-to-end readiness", () => {
 
   it("enriched book config passes blueprint readiness for narrative", () => {
     const { packages, state } = buildExpressForgeConfiguration(expressInput);
-    const applied = applyExpressScenarioToState(state, packages[0]!);
+    let applied = applyExpressScenarioToState(state, packages[0]!);
+    applied = confirmBookFoundationLock(applied, applied.bookFoundation);
     const seed = buildForgeInterviewSeed(finalizeForgeForBlueprint(applied));
     const config = enrichBookConfigFromForgeSeed(
       {

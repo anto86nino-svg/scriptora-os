@@ -23,6 +23,12 @@ import {
   BLUEPRINT_READY_ASSISTANT_MESSAGE,
   getBlueprintGateStatus,
 } from "@/lib/guided-interview/blueprint-ready-gate";
+import {
+  applyBookFoundationToForgeMemory,
+  buildBookFoundationLock,
+  confirmBookFoundationLock,
+  type BookFoundationLock,
+} from "@/lib/guided-interview/book-foundation-lock";
 import { buildExpressForgeConfiguration } from "@/lib/guided-interview/express-forge-config";
 import type { ExpressForgeInput } from "@/lib/guided-interview/express-forge-types";
 import {
@@ -89,6 +95,7 @@ export function useGuidedInterviewController({
   const [continueNonce, setContinueNonce] = useState(0);
   const [showExpressPanel, setShowExpressPanel] = useState(false);
   const [expressPreparing, setExpressPreparing] = useState(false);
+  const [showFoundationPanel, setShowFoundationPanel] = useState(false);
   const internalScrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const lastQuestionIdRef = useRef<string | null>(null);
@@ -134,28 +141,52 @@ export function useGuidedInterviewController({
   const progress = useMemo(() => getInterviewProgress(state), [state]);
   const forgeReady = useMemo(() => evaluateForgeReadiness(state), [state]);
   const blueprintGate = useMemo(() => getBlueprintGateStatus(state), [state]);
+  const bookFoundation = useMemo(
+    () => state.bookFoundation ?? buildBookFoundationLock(state),
+    [state],
+  );
   const blueprintReadyUi =
     blueprintGate.isBlueprintReady && blueprintGate.shouldStopQuestions;
+  const foundationReadyUi =
+    blueprintGate.needsFoundationLock && blueprintGate.shouldStopQuestions;
   const ready =
-    (progress.dnaLock.readyForBlueprint && forgeReady.ready) ||
+    (progress.dnaLock.readyForBlueprint && forgeReady.ready && blueprintGate.isBlueprintReady) ||
     (blueprintGate.isBlueprintReady && blueprintGate.canShowConfirmation);
 
   useEffect(() => {
-    if (!blueprintReadyUi || blueprintMessageInjectedRef.current) return;
-    blueprintMessageInjectedRef.current = true;
-    setState((prev) => ({
-      ...prev,
-      messages: [
-        ...prev.messages,
-        {
-          id: `assistant-blueprint-ready-${Date.now()}`,
-          role: "assistant",
-          content: BLUEPRINT_READY_ASSISTANT_MESSAGE,
-          createdAt: Date.now(),
-        },
-      ],
-    }));
-  }, [blueprintReadyUi]);
+    if (blueprintReadyUi) {
+      if (blueprintMessageInjectedRef.current) return;
+      blueprintMessageInjectedRef.current = true;
+      setState((prev) => ({
+        ...prev,
+        messages: [
+          ...prev.messages,
+          {
+            id: `assistant-blueprint-ready-${Date.now()}`,
+            role: "assistant",
+            content: BLUEPRINT_READY_ASSISTANT_MESSAGE,
+            createdAt: Date.now(),
+          },
+        ],
+      }));
+      return;
+    }
+    if (foundationReadyUi && !blueprintMessageInjectedRef.current) {
+      blueprintMessageInjectedRef.current = true;
+      setState((prev) => ({
+        ...prev,
+        messages: [
+          ...prev.messages,
+          {
+            id: `assistant-foundation-ready-${Date.now()}`,
+            role: "assistant",
+            content: blueprintGate.assistantMessage,
+            createdAt: Date.now(),
+          },
+        ],
+      }));
+    }
+  }, [blueprintReadyUi, foundationReadyUi, blueprintGate.assistantMessage]);
 
   useEffect(() => {
     if (!next.question || next.done) return;
@@ -207,14 +238,25 @@ export function useGuidedInterviewController({
   useEffect(() => {
     scrollToEnd();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.messages.length, showDnaPanel, isThinking, next.question?.id]);
+  }, [state.messages.length, showDnaPanel, showFoundationPanel, isThinking, next.question?.id]);
 
   useEffect(() => {
     if (!isMobile && !interviewOnly) return;
-    if (blueprintReadyUi && !showDnaPanel && !dnaConfirmationDismissed) {
+    if (foundationReadyUi && !showFoundationPanel && !dnaConfirmationDismissed) {
+      setShowFoundationPanel(true);
+    }
+    if (blueprintReadyUi && !showDnaPanel && !dnaConfirmationDismissed && !showFoundationPanel) {
       setShowDnaPanel(true);
     }
-  }, [blueprintReadyUi, isMobile, interviewOnly, showDnaPanel, dnaConfirmationDismissed]);
+  }, [
+    blueprintReadyUi,
+    foundationReadyUi,
+    isMobile,
+    interviewOnly,
+    showDnaPanel,
+    showFoundationPanel,
+    dnaConfirmationDismissed,
+  ]);
 
   useEffect(() => {
     if (!isMobile) return;
@@ -283,6 +325,12 @@ export function useGuidedInterviewController({
   };
 
   const handleContinueInterview = () => {
+    if (foundationReadyUi) {
+      setShowFoundationPanel(true);
+      setDnaConfirmationDismissed(false);
+      onContinueInterview?.();
+      return;
+    }
     if (ready || blueprintReadyUi) {
       setShowDnaPanel(true);
       setDnaConfirmationDismissed(false);
@@ -332,9 +380,24 @@ export function useGuidedInterviewController({
 
   const handleSelectBlueprintScenario = (scenario: ExpressBookScenario) => {
     setState((prev) => applyExpressScenarioToState(prev, scenario));
-    setShowDnaPanel(true);
+    setShowFoundationPanel(true);
+    setShowDnaPanel(false);
     setDnaConfirmationDismissed(false);
     setShowExpressPanel(false);
+  };
+
+  const handleUpdateFoundation = (foundation: BookFoundationLock) => {
+    setState((prev) => applyBookFoundationToForgeMemory(prev, foundation));
+  };
+
+  const handleConfirmFoundation = () => {
+    setState((prev) => {
+      const next = confirmBookFoundationLock(prev, prev.bookFoundation ?? buildBookFoundationLock(prev));
+      return applyBlueprintReadySummaryToState(next);
+    });
+    setShowFoundationPanel(false);
+    setShowDnaPanel(true);
+    setDnaConfirmationDismissed(false);
   };
 
   const handleModifyBlueprintScenario = (
@@ -362,6 +425,7 @@ export function useGuidedInterviewController({
   };
 
   const handleConfirmDna = () => {
+    if (!blueprintGate.isBlueprintReady) return;
     if (!ready && !blueprintGate.canShowConfirmation) return;
     const normalized = applyBlueprintReadySummaryToState(state);
     const finalized = finalizeForgeForBlueprint(normalized);
@@ -430,12 +494,18 @@ export function useGuidedInterviewController({
     showExpressPanel,
     setShowExpressPanel,
     expressPreparing,
+    showFoundationPanel,
+    setShowFoundationPanel,
+    bookFoundation,
+    foundationReadyUi,
     sendMessage,
     handleContinueInterview,
     handleEnableRefine,
     handleApplyExpress,
     handleSelectBlueprintScenario,
     handleModifyBlueprintScenario,
+    handleUpdateFoundation,
+    handleConfirmFoundation,
     handleConfirmDna,
     handleApplyGeneratedField,
     handleCorrectField,

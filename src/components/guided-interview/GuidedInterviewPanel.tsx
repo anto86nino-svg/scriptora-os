@@ -21,6 +21,7 @@ import { FORGE_GENRE_OPENING_QUESTION_ID } from "@/lib/guided-interview/forge-ge
 import { ForgeGenreFamilyPicker } from "./ForgeGenreFamilyPicker";
 import { StudioExpressPanel } from "./StudioExpressPanel";
 import { BlueprintScenariosPanel } from "./BlueprintScenariosPanel";
+import { BookFoundationLockPanel } from "./BookFoundationLockPanel";
 
 type GuidedInterviewPanelProps = {
   selectedGenre?: string;
@@ -199,6 +200,7 @@ function InterviewBody({
   const showDnaInline =
     !interviewOnly &&
     canShowDnaUi &&
+    ctrl.blueprintReadyUi &&
     (unifiedScroll ||
       ctrl.showDnaPanel ||
       (!isMobile && ctrl.progress.dnaLock.confidenceScore > 0.55));
@@ -215,17 +217,28 @@ function InterviewBody({
             compact
           />
         )}
-        <ForgeInterviewConfirmation
-          dnaLock={ctrl.progress.dnaLock}
-          extracted={ctrl.state.extracted}
-          state={ctrl.state}
-          blueprintReady={ctrl.blueprintReadyUi}
-          onConfirm={ctrl.handleConfirmDna}
-          onCorrect={() => ctrl.setInput("Vorrei correggere: ")}
-          onRefine={ctrl.handleEnableRefine}
-          onCorrectField={ctrl.handleCorrectField}
-          onApplyGeneratedField={ctrl.handleApplyGeneratedField}
-        />
+        {ctrl.showFoundationPanel && (
+          <BookFoundationLockPanel
+            state={ctrl.state}
+            foundation={ctrl.bookFoundation}
+            onUpdate={ctrl.handleUpdateFoundation}
+            onConfirm={ctrl.handleConfirmFoundation}
+            compact
+          />
+        )}
+        {ctrl.showDnaPanel && ctrl.blueprintReadyUi && (
+          <ForgeInterviewConfirmation
+            dnaLock={ctrl.progress.dnaLock}
+            extracted={ctrl.state.extracted}
+            state={ctrl.state}
+            blueprintReady={ctrl.blueprintReadyUi}
+            onConfirm={ctrl.handleConfirmDna}
+            onCorrect={() => ctrl.setInput("Vorrei correggere: ")}
+            onRefine={ctrl.handleEnableRefine}
+            onCorrectField={ctrl.handleCorrectField}
+            onApplyGeneratedField={ctrl.handleApplyGeneratedField}
+          />
+        )}
       </div>
     );
   }
@@ -267,7 +280,8 @@ function InterviewBody({
       {ctrl.state.blueprintScenarios &&
         ctrl.state.blueprintScenarios.length > 0 &&
         ctrl.state.forgeMode === "express" &&
-        !ctrl.showDnaPanel && (
+        !ctrl.showDnaPanel &&
+        !ctrl.showFoundationPanel && (
           <BlueprintScenariosPanel
             scenarios={ctrl.state.blueprintScenarios}
             selectedId={ctrl.state.selectedBlueprintScenarioId}
@@ -276,6 +290,16 @@ function InterviewBody({
             compact={isMobile}
           />
         )}
+
+      {(ctrl.showFoundationPanel || ctrl.foundationReadyUi) && (
+        <BookFoundationLockPanel
+          state={ctrl.state}
+          foundation={ctrl.bookFoundation}
+          onUpdate={ctrl.handleUpdateFoundation}
+          onConfirm={ctrl.handleConfirmFoundation}
+          compact={isMobile}
+        />
+      )}
 
       {ctrl.state.messages.length <= 1 && !ctrl.showExpressPanel && (
         <div className="rounded-[22px] border border-violet-400/20 bg-violet-500/10 p-4 text-sm leading-6 text-white/75">

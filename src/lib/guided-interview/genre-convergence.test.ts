@@ -13,7 +13,7 @@ import {
   hasCoreQuartetStrong,
 } from "./genre-convergence-engine";
 import { getForgeMemory } from "./interview-memory";
-import { isStoryRoomBlueprintReady } from "./story-room-state-machine";
+import { getStoryRoomMachine, isStoryRoomBlueprintReady } from "./story-room-state-machine";
 
 function state(partial: Partial<GuidedInterviewState>): GuidedInterviewState {
   return {
@@ -186,9 +186,13 @@ function simulateUnderstanding(profile: Scenario): {
     }
     const next = getNextInterviewQuestion(s);
     if (next.done || !next.question) {
+      const machine = getStoryRoomMachine(getForgeMemory(s));
+      const storyRoomComplete =
+        isStoryRoomBlueprintReady(getForgeMemory(s)) ||
+        machine.currentStageId === "bookFoundationLock";
       if (
         next.done &&
-        isStoryRoomBlueprintReady(getForgeMemory(s)) &&
+        storyRoomComplete &&
         !editorial.readyForBlueprint &&
         !s.forgeRefineMode
       ) {

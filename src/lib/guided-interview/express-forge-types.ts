@@ -15,7 +15,7 @@ export type ExpressForgeInput = {
   /** @deprecated use ideaSeed */
   protagonistSeed?: string;
   tone: string;
-  length: "breve" | "medio" | "lungo" | "pro";
+  length: "breve" | "medio" | "lungo" | "epico" | "pro";
   controlLevel: ExpressControlLevel;
 };
 

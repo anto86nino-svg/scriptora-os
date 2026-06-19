@@ -17,6 +17,13 @@ import {
   resolveExpressBookType,
   type ExpressScenarioVariant,
 } from "./express-genre-config";
+import {
+  autoFillBookFoundationIfNeeded,
+  buildBookFoundationFromExpressScenario,
+  confirmBookFoundationLock,
+  normalizeLengthPreset,
+  resolveLengthPresetConfig,
+} from "./book-foundation-lock";
 
 export type { ExpressScenarioVariant } from "./express-genre-config";
 import {
@@ -137,12 +144,10 @@ const GENRE_META: Record<string, { subgenre: string; normalizedGenre: string }> 
   poesia: { subgenre: "lyric poetry", normalizedGenre: "poetry" },
 };
 
-const LENGTH_CHAPTERS: Record<ExpressForgeInput["length"], number> = {
-  breve: 8,
-  medio: 12,
-  lungo: 18,
-  pro: 24,
-};
+function chapterCountForInput(input: ExpressForgeInput): number {
+  const preset = normalizeLengthPreset(input.length);
+  return resolveLengthPresetConfig(preset, input.genre).chapterCount;
+}
 
 function normalizeLanguage(language: string): string {
   const map: Record<string, string> = {
@@ -553,7 +558,7 @@ function buildNonfictionExpressPackage(
   };
   const seed = ideaCore(input);
   const { readerProblem, transformationPromise, theme } = parseNonfictionSeed(seed);
-  const chapterCount = LENGTH_CHAPTERS[input.length];
+  const chapterCount = chapterCountForInput(input);
   const language = normalizeLanguage(input.language);
   const methodFramework =
     variant === "bold"
@@ -668,9 +673,9 @@ function buildNonfictionExpressPackage(
       "Non trasformare il self-help in narrativa fiction",
       "Il finale deve pagare la promessa di trasformazione del setup",
     ],
-    structurePreference: `${chapterCount} capitoli · ${input.length === "breve" ? "guida rapida" : input.length === "pro" ? "programma con esercizi" : "metodo progressivo"}`,
+    structurePreference: `${chapterCount} capitoli · ${input.length === "breve" ? "guida rapida" : input.length === "epico" || input.length === "pro" ? "programma con esercizi" : "metodo progressivo"}`,
     chapterCount,
-    subchaptersEnabled: input.length === "pro" || input.length === "lungo",
+    subchaptersEnabled: input.length === "epico" || input.length === "pro" || input.length === "lungo",
     chapterBlueprintSeeds,
     keyScenes,
     midpoint,
@@ -705,7 +710,7 @@ function buildPoetryExpressPackage(
   const meta = getExpressVariantMeta(input.genre, variant);
   const genreMeta = GENRE_META.poesia;
   const seed = ideaCore(input);
-  const chapterCount = LENGTH_CHAPTERS[input.length];
+  const chapterCount = chapterCountForInput(input);
   const language = normalizeLanguage(input.language);
   const theme = seed.split(/[.!?…]/)[0]?.trim() || seed;
   const title =
@@ -831,7 +836,7 @@ export function buildCompleteExpressBookPackage(
   const lead = parseProtagonistLabel(seed);
   const counterpart = parseCounterpart(input.genre, variant);
   const setting = parseSetting(seed, input.genre);
-  const chapterCount = LENGTH_CHAPTERS[input.length];
+  const chapterCount = chapterCountForInput(input);
   const language = normalizeLanguage(input.language);
 
   const emotionalWound = isDarkRomance(input.genre)
@@ -958,7 +963,7 @@ export function buildCompleteExpressBookPackage(
     ],
     structurePreference: `${chapterCount} capitoli · ${input.length === "breve" ? "ritmo compatto" : "ritmo sostenuto"}`,
     chapterCount,
-    subchaptersEnabled: input.length === "pro" || input.length === "lungo",
+    subchaptersEnabled: input.length === "epico" || input.length === "pro" || input.length === "lungo",
     chapterBlueprintSeeds,
     keyScenes,
     midpoint,
@@ -1042,8 +1047,11 @@ export function applyExpressScenarioToState(
     if (before === advanced.storyRoomMachine?.currentStageId) break;
   }
   if (advanced.storyRoomMachine) {
-    advanced.storyRoomMachine.currentStageId = "blueprintReady";
-    advanced.storyRoomMachine.completedStageIds = STORY_ROOM_STAGE_DEFS.map((s) => s.id) as StoryRoomStageId[];
+    advanced.storyRoomMachine.currentStageId = "bookFoundationLock";
+    const completed = STORY_ROOM_STAGE_DEFS.map((s) => s.id).filter(
+      (id) => id !== "blueprintReady",
+    ) as StoryRoomStageId[];
+    advanced.storyRoomMachine.completedStageIds = completed;
   }
 
   const titleIntelligence: TitleIntelligence = {
@@ -1108,6 +1116,18 @@ export function applyExpressScenarioToState(
   };
 
   next = ensureExpressBookPackageCompleteness(next);
+
+  const foundation = buildBookFoundationFromExpressScenario(scenario, state.expressConfig);
+  next = {
+    ...next,
+    bookFoundation: foundation,
+    bookFoundationLocked: false,
+  };
+
+  if (state.expressConfig?.controlLevel === "auto") {
+    next = autoFillBookFoundationIfNeeded(next);
+  }
+
   next = applyBlueprintReadySummaryToState(next);
   next = {
     ...next,

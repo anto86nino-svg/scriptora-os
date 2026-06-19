@@ -162,8 +162,9 @@ describe("story-room-state-machine", () => {
     }
     memory = advanceStoryRoomStage(memory);
     const trail = buildStoryRoomProgressTrail(memory);
-    expect(trail.blueprintReady).toBe(true);
-    expect(trail.percent).toBeGreaterThanOrEqual(90);
+    expect(trail.currentStageId).toBe("bookFoundationLock");
+    expect(trail.blueprintReady).toBe(false);
+    expect(trail.percent).toBeGreaterThanOrEqual(80);
   });
 
   it("updateForgeMemoryFromAnswer advances machine", () => {

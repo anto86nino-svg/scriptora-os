@@ -94,17 +94,17 @@ export type ExpressLengthOption = {
 export function getExpressLengthOptions(genre: string): ExpressLengthOption[] {
   if (isNonfictionExpressGenre(genre)) {
     return [
-      { value: "breve", label: "breve — guida rapida" },
-      { value: "medio", label: "medio — libro pratico completo" },
-      { value: "lungo", label: "lungo — metodo approfondito" },
-      { value: "pro", label: "pro — programma completo con esercizi" },
+      { value: "breve", label: "breve — guida rapida (8–12 cap.)" },
+      { value: "medio", label: "medio — libro pratico completo (16–24 cap.)" },
+      { value: "lungo", label: "lungo — metodo approfondito (30–45 cap.)" },
+      { value: "epico", label: "epico — programma completo con esercizi (60+ cap.)" },
     ];
   }
   return [
-    { value: "breve", label: "breve" },
-    { value: "medio", label: "medio" },
-    { value: "lungo", label: "lungo" },
-    { value: "pro", label: "pro" },
+    { value: "breve", label: "breve — 8–12 capitoli" },
+    { value: "medio", label: "medio — 16–24 capitoli" },
+    { value: "lungo", label: "lungo — 30–45 capitoli" },
+    { value: "epico", label: "epico — 60+ capitoli" },
   ];
 }
 

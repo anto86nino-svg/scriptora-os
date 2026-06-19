@@ -12,6 +12,12 @@ import {
   isStoryRoomBlueprintReady,
   slotsForCurrentStage,
 } from "./story-room-state-machine";
+import {
+  BOOK_FOUNDATION_ASSISTANT_MESSAGE,
+  BOOK_FOUNDATION_MISSING_MESSAGE,
+  isBookFoundationLocked,
+  isBookFoundationComplete,
+} from "./book-foundation-lock";
 
 export const BLUEPRINT_READY_ASSISTANT_MESSAGE =
   "Perfetto. Ho abbastanza materiale per costruire il blueprint. Ti mostro la sintesi finale: puoi confermare, correggere una parte o generare il blueprint.";
@@ -20,6 +26,8 @@ export type BlueprintGateStatus = {
   isBlueprintReady: boolean;
   shouldStopQuestions: boolean;
   canShowConfirmation: boolean;
+  needsFoundationLock: boolean;
+  foundationComplete: boolean;
   progressLabel: string;
   stagePercent: number;
   currentStageId: string;
@@ -37,28 +45,45 @@ export function getBlueprintGateStatus(
   const forgeReady = evaluateForgeReadiness(state);
   const missingSlots = getCriticalMissingSlots(memory);
 
-  const isBlueprintReady =
+  const storyRoomReady =
     stageProgress.percent >= 100 ||
     isStoryRoomBlueprintReady(memory) ||
     machine.currentStageId === "blueprintReady";
 
-  const allowRefine = opts?.allowRefine ?? Boolean(state.forgeRefineMode);
-  const shouldStopQuestions = isBlueprintReady && !allowRefine;
+  const foundationComplete = isBookFoundationComplete(state);
+  const foundationLocked = isBookFoundationLocked(state);
+  const needsFoundationLock = storyRoomReady && !foundationLocked;
 
-  const progressLabel =
-    stageProgress.percent >= 100 || isBlueprintReady
-      ? "100% · pronto per blueprint"
-      : `${stageProgress.percent}%`;
+  const isBlueprintReady = storyRoomReady && foundationLocked;
+
+  const allowRefine = opts?.allowRefine ?? Boolean(state.forgeRefineMode);
+  const shouldStopQuestions = (storyRoomReady || isBlueprintReady) && !allowRefine;
+
+  const progressLabel = isBlueprintReady
+    ? "100% · pronto per blueprint"
+    : needsFoundationLock
+      ? "Fondamenta · conferma titolo, personaggi e hook"
+      : stageProgress.percent >= 100 || storyRoomReady
+        ? `${stageProgress.percent}% · fondamenta`
+        : `${stageProgress.percent}%`;
+
+  const assistantMessage = needsFoundationLock
+    ? foundationComplete
+      ? BOOK_FOUNDATION_ASSISTANT_MESSAGE
+      : BOOK_FOUNDATION_MISSING_MESSAGE
+    : BLUEPRINT_READY_ASSISTANT_MESSAGE;
 
   return {
     isBlueprintReady,
     shouldStopQuestions,
     canShowConfirmation: isBlueprintReady && (forgeReady.canShowConfirmation || missingSlots.length <= 1),
+    needsFoundationLock,
+    foundationComplete,
     progressLabel,
     stagePercent: stageProgress.percent,
     currentStageId: machine.currentStageId,
     missingCritical: missingSlots.slice(0, 3),
-    assistantMessage: BLUEPRINT_READY_ASSISTANT_MESSAGE,
+    assistantMessage,
   };
 }
 

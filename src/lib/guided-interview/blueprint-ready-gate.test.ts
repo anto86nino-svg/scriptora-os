@@ -51,6 +51,7 @@ function stateAtBlueprintReady(extra?: Partial<GuidedInterviewState>): GuidedInt
   return {
     ...getInitialInterviewState({ chatFirst: true }),
     currentStep: 12,
+    bookFoundationLocked: true,
     messages: [
       { id: "u1", role: "user", content: "Dark romance in italiano", createdAt: 1 },
       { id: "u2", role: "user", content: "Protagonista Elena", createdAt: 2 },
@@ -68,7 +69,19 @@ function stateAtBlueprintReady(extra?: Partial<GuidedInterviewState>): GuidedInt
       antagonist: "Marco",
       chapterCount: "20",
       frontMatter: "Dedica breve",
-      narrativeDrive: "Finale devastante",
+      bookSubtitle: "Sottotitolo commerciale forte per il mercato",
+      openingHook: "Quando Elena sceglie la verità, il desiderio diventa la trappola più elegante.",
+    },
+    characters: [
+      { id: "p1", role: "protagonist", name: "Elena", wound: "Ferita", desire: "Verità" },
+      { id: "a1", role: "antagonist", name: "Marco", wound: "Colpa", desire: "Controllo" },
+    ],
+    titleIntelligence: {
+      definitiveTitle: "Titolo provvisorio",
+      subtitle: "Sottotitolo commerciale forte per il mercato",
+      commercialHook: "Quando Elena sceglie la verità, il desiderio diventa la trappola più elegante.",
+      commercialPromise: "Desiderio proibido",
+      approved: true,
     },
     ...extra,
   };
@@ -105,10 +118,10 @@ describe("blueprint-ready-gate", () => {
     expect(shouldBlockNarrativeQuestions(refine)).toBe(false);
   });
 
-  it("isStoryRoomBlueprintReady on built memory", () => {
+  it("isStoryRoomBlueprintReady on built memory at foundation stage", () => {
     const memory = buildBlueprintReadyMemory();
     expect(isStoryRoomBlueprintReady(memory)).toBe(true);
     const trail = buildStoryRoomProgressTrail(memory);
-    expect(trail.percent).toBeGreaterThanOrEqual(90);
+    expect(trail.percent).toBeGreaterThanOrEqual(80);
   });
 });

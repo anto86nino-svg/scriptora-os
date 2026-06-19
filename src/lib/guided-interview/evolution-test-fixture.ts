@@ -76,6 +76,17 @@ export function evolutionReadySelfHelpState(): GuidedInterviewState {
       year: "2026",
     },
     storyFuture: { transformationPace: "gradual", endingTone: "hopeful" },
+    characters: [
+      {
+        id: "reader-1",
+        role: "protagonist",
+        name: "Lettore ideale",
+        wound: "Blocco e procrastinazione da perfezionismo",
+        desire: "Ritrovare controllo delle giornate",
+        arc: "Da caos a micro-passi sostenibili",
+      },
+    ],
+    bookFoundationLocked: true,
   } as GuidedInterviewState;
 }
 
@@ -181,5 +192,6 @@ export function evolutionReadyGothicState(): GuidedInterviewState {
     },
     copyright: { mode: "standard", holder: "Livia Emerson", year: "2026" },
     storyFuture: { finalStatus: "alive", endingTone: "unsettling", betrayalArc: true },
+    bookFoundationLocked: true,
   } as GuidedInterviewState;
 }
