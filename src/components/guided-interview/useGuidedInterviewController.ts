@@ -25,8 +25,10 @@ import {
 } from "@/lib/guided-interview/blueprint-ready-gate";
 import {
   applyBookFoundationToForgeMemory,
+  autoCompleteMissingFoundationFields,
   buildBookFoundationLock,
   confirmBookFoundationLock,
+  shouldShowFoundationFlow,
   type BookFoundationLock,
 } from "@/lib/guided-interview/book-foundation-lock";
 import { buildExpressForgeConfiguration } from "@/lib/guided-interview/express-forge-config";
@@ -101,6 +103,7 @@ export function useGuidedInterviewController({
   const lastQuestionIdRef = useRef<string | null>(null);
   const lastQuestionTextRef = useRef<string | null>(null);
   const blueprintMessageInjectedRef = useRef(false);
+  const autoFoundationAttemptedRef = useRef(false);
 
   const speech = useSpeechDictation(language);
 
@@ -121,6 +124,7 @@ export function useGuidedInterviewController({
     setAutoAnswerToneBias(null);
     lastQuestionIdRef.current = null;
     lastQuestionTextRef.current = null;
+    autoFoundationAttemptedRef.current = false;
   }, [selectedGenre, chatFirst, penName, authorName, genderHint]);
 
   const rawNext = useMemo(() => getNextInterviewQuestion(state), [state]);
@@ -149,6 +153,9 @@ export function useGuidedInterviewController({
     blueprintGate.isBlueprintReady && blueprintGate.shouldStopQuestions;
   const foundationReadyUi =
     blueprintGate.needsFoundationLock && blueprintGate.shouldStopQuestions;
+  const earlyFoundationFlow =
+    shouldShowFoundationFlow(state) && !state.bookFoundationLocked && state.forgeMode !== "express";
+  const pauseInterviewForFoundation = earlyFoundationFlow && !state.bookFoundationLocked;
   const ready =
     (progress.dnaLock.readyForBlueprint && forgeReady.ready && blueprintGate.isBlueprintReady) ||
     (blueprintGate.isBlueprintReady && blueprintGate.canShowConfirmation);
@@ -242,7 +249,7 @@ export function useGuidedInterviewController({
 
   useEffect(() => {
     if (!isMobile && !interviewOnly) return;
-    if (foundationReadyUi && !showFoundationPanel && !dnaConfirmationDismissed) {
+    if ((foundationReadyUi || earlyFoundationFlow) && !showFoundationPanel && !dnaConfirmationDismissed) {
       setShowFoundationPanel(true);
     }
     if (blueprintReadyUi && !showDnaPanel && !dnaConfirmationDismissed && !showFoundationPanel) {
@@ -251,12 +258,27 @@ export function useGuidedInterviewController({
   }, [
     blueprintReadyUi,
     foundationReadyUi,
+    earlyFoundationFlow,
     isMobile,
     interviewOnly,
     showDnaPanel,
     showFoundationPanel,
     dnaConfirmationDismissed,
   ]);
+
+  useEffect(() => {
+    if (!earlyFoundationFlow || state.bookFoundationLocked) return;
+    if (state.expressConfig?.controlLevel !== "auto") return;
+    if (autoFoundationAttemptedRef.current) return;
+    autoFoundationAttemptedRef.current = true;
+    setState((prev) => {
+      const completed = autoCompleteMissingFoundationFields(prev);
+      if (completed.missingFields.length === 0) {
+        return confirmBookFoundationLock(prev, completed);
+      }
+      return applyBookFoundationToForgeMemory(prev, completed);
+    });
+  }, [earlyFoundationFlow, state.bookFoundationLocked, state.expressConfig?.controlLevel]);
 
   useEffect(() => {
     if (!isMobile) return;
@@ -276,6 +298,7 @@ export function useGuidedInterviewController({
     const payload = clean(text ?? input);
     if (!payload || isThinking) return;
     if (next.done && ready) return;
+    if (pauseInterviewForFoundation) return;
 
     setIsThinking(true);
     window.setTimeout(() => {
@@ -494,10 +517,12 @@ export function useGuidedInterviewController({
     showExpressPanel,
     setShowExpressPanel,
     expressPreparing,
-    showFoundationPanel,
+    showFoundationPanel: showFoundationPanel || earlyFoundationFlow,
     setShowFoundationPanel,
     bookFoundation,
     foundationReadyUi,
+    pauseInterviewForFoundation,
+    earlyFoundationFlow,
     sendMessage,
     handleContinueInterview,
     handleEnableRefine,

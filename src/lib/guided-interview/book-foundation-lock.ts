@@ -10,6 +10,12 @@ import {
 import { isMetadataOnly } from "./blueprint-ready-summary";
 import { getForgeMemory } from "./interview-memory";
 import { advanceStoryRoomStage } from "./story-room-state-machine";
+import {
+  type FoundationCharacter,
+  forgeCastToFoundation,
+  foundationCastToForge,
+  forgeCharacterToFoundation,
+} from "./character-foundation-studio";
 
 export type BookLengthPreset = "breve" | "medio" | "lungo" | "epico";
 
@@ -22,6 +28,8 @@ export type LengthPresetConfig = {
   pacing: string;
   structureDepth: string;
   subchaptersDefault: boolean;
+  castSizeDefault: number;
+  moduleDepthDefault: string;
   description: string;
 };
 
@@ -35,6 +43,8 @@ export const LENGTH_PRESET_CONFIGS: Record<BookLengthPreset, LengthPresetConfig>
     pacing: "compatto",
     structureDepth: "essenziale",
     subchaptersDefault: false,
+    castSizeDefault: 3,
+    moduleDepthDefault: "essenziale",
     description: "Guida breve, novella, poesia, manuale pratico",
   },
   medio: {
@@ -46,6 +56,8 @@ export const LENGTH_PRESET_CONFIGS: Record<BookLengthPreset, LengthPresetConfig>
     pacing: "sostenuto",
     structureDepth: "completa",
     subchaptersDefault: false,
+    castSizeDefault: 4,
+    moduleDepthDefault: "completa",
     description: "Romanzo standard, self-help completo, saggio divulgativo",
   },
   lungo: {
@@ -57,6 +69,8 @@ export const LENGTH_PRESET_CONFIGS: Record<BookLengthPreset, LengthPresetConfig>
     pacing: "ampio",
     structureDepth: "profonda",
     subchaptersDefault: true,
+    castSizeDefault: 6,
+    moduleDepthDefault: "profonda",
     description: "Fantasy, thriller, romance complesso",
   },
   epico: {
@@ -68,6 +82,8 @@ export const LENGTH_PRESET_CONFIGS: Record<BookLengthPreset, LengthPresetConfig>
     pacing: "saga",
     structureDepth: "massima",
     subchaptersDefault: true,
+    castSizeDefault: 10,
+    moduleDepthDefault: "massima",
     description: "Saghe, fantasy epico, manuali completi, programmi avanzati",
   },
 };
@@ -79,6 +95,7 @@ export type TitleSubtitleOption = {
   toneFit: string;
   genreFit: string;
   risk: string;
+  source?: "auto" | "user";
 };
 
 export type CommercialHookOption = {
@@ -98,7 +115,28 @@ export type NonfictionFoundationSubjects = {
   caseStudyTypes?: string[];
   transformationArc?: string;
   transformationPromise?: string;
+  exerciseStyle?: string;
 };
+
+export type FoundationFieldProvenance = {
+  source: "auto" | "user";
+  locked?: boolean;
+};
+
+export type ChapterStructureSeed = {
+  chapter: number;
+  title: string;
+  purpose: string;
+};
+
+export type MissingFieldAction = {
+  field: string;
+  label: string;
+  cta: string;
+  action: "characters" | "titles" | "hook" | "structure" | "nonfiction" | "complete";
+};
+
+export type BookFoundationFlowStep = "setup" | "characters" | "titleHook" | "lock";
 
 export type BookFoundationLock = {
   bookType: string;
@@ -108,6 +146,7 @@ export type BookFoundationLock = {
   lengthPreset: BookLengthPreset;
   chapterCount: number;
   subchaptersEnabled: boolean;
+  tone: string;
   title: string;
   subtitle: string;
   titleCandidates?: TitleSubtitleOption[];
@@ -117,11 +156,15 @@ export type BookFoundationLock = {
   targetAudience: string;
   marketPromise: string;
   characters: ForgeCharacter[];
+  foundationCharacters?: FoundationCharacter[];
   nonfictionSubjects?: NonfictionFoundationSubjects;
+  chapterStructure?: ChapterStructureSeed[];
   structurePreset: string;
+  fieldProvenance?: Record<string, FoundationFieldProvenance>;
   confidence: number;
   missingFields: string[];
   locked: boolean;
+  flowStep?: BookFoundationFlowStep;
 };
 
 export type FoundationGeneratorInput = {
@@ -723,12 +766,18 @@ export function buildBookFoundationFromExpressScenario(
     lengthPreset,
     chapterCount: scenario.chapterCount || lengthConfig.chapterCount,
     subchaptersEnabled: scenario.subchaptersEnabled ?? lengthConfig.subchaptersDefault,
+    tone: expressInput?.tone || scenario.atmosphere,
     title: scenario.title,
     subtitle: scenario.subtitle,
     commercialHook: scenario.hook,
     targetAudience: scenario.idealReader ?? scenario.targetAudience,
     marketPromise: scenario.transformationPromise ?? scenario.marketPromise,
     characters: scenario.characters?.length ? scenario.characters : generateGenreAwareCharacters(genInput),
+    foundationCharacters: forgeCastToFoundation(
+      scenario.characters?.length ? scenario.characters : generateGenreAwareCharacters(genInput),
+      "auto",
+    ),
+    chapterStructure: generateChapterStructure(genInput, scenario.chapterCount || lengthConfig.chapterCount),
     titleCandidates: generateTitleSubtitleOptions(genInput),
     hookCandidates: generateCommercialHookOptions(genInput),
     structurePreset: scenario.structurePreference || `${lengthPreset} · ${lengthConfig.pacing}`,
@@ -758,10 +807,25 @@ export function buildBookFoundationFromExpressScenario(
 
 export function buildBookFoundationLock(state: GuidedInterviewState): BookFoundationLock {
   const input = foundationInputFromState(state);
+  const ex = state.extracted ?? {};
+
+  if (state.bookFoundation) {
+    const merged: BookFoundationLock = {
+      ...state.bookFoundation,
+      title: clean(ex.bookTitle) || state.bookFoundation.title,
+      subtitle: clean(ex.bookSubtitle) || state.bookFoundation.subtitle,
+      commercialHook: clean(ex.openingHook) || state.bookFoundation.commercialHook,
+      targetAudience: clean(ex.targetReader) || state.bookFoundation.targetAudience,
+      locked: Boolean(state.bookFoundationLocked),
+    };
+    merged.missingFields = validateBookFoundationFields(merged);
+    merged.confidence = Math.max(0.35, 1 - merged.missingFields.length * 0.07);
+    return merged;
+  }
+
   const lengthConfig = resolveLengthPresetConfig(input.lengthPreset, input.genre);
   const memory =
     state.forgeMemory && Array.isArray(state.messages) ? getForgeMemory(state) : null;
-  const ex = state.extracted ?? {};
 
   let characters = state.characters?.length ? [...state.characters] : generateGenreAwareCharacters(input);
   if (!characters.some((c) => clean(c.name).length >= 2)) {
@@ -805,6 +869,7 @@ export function buildBookFoundationLock(state: GuidedInterviewState): BookFounda
     chapterCount: chapterCount > 0 ? chapterCount : lengthConfig.chapterCount,
     subchaptersEnabled:
       ex.subchaptersPreference === "true" || Boolean(state.wantsSubchapters) || lengthConfig.subchaptersDefault,
+    tone: clean(state.selectedTone || ex.emotionalTone || state.expressConfig?.tone) || input.tone,
     title,
     subtitle,
     titleCandidates,
@@ -813,35 +878,18 @@ export function buildBookFoundationLock(state: GuidedInterviewState): BookFounda
     targetAudience: clean(ex.targetReader) || (memory ? clean(memory.slotValues.audience) : "") || "",
     marketPromise: clean(ex.promise) || clean(ex.readerTransformation) || "",
     characters,
+    foundationCharacters: forgeCastToFoundation(characters, "auto"),
+    chapterStructure: generateChapterStructure(input, chapterCount > 0 ? chapterCount : lengthConfig.chapterCount),
     structurePreset: clean(ex.structurePreference) || `${input.lengthPreset} · ${lengthConfig.pacing}`,
+    fieldProvenance: undefined,
     confidence: 0.5,
     missingFields: [],
     locked: Boolean(state.bookFoundationLocked),
+    flowStep: undefined,
   };
 
   if (isNonfictionExpressGenre(input.genre)) {
     foundation.nonfictionSubjects = generateNonfictionSubjects(input);
-    if (state.bookFoundation?.nonfictionSubjects) {
-      foundation.nonfictionSubjects = {
-        ...foundation.nonfictionSubjects,
-        ...state.bookFoundation.nonfictionSubjects,
-      };
-    }
-  } else if (state.bookFoundation?.nonfictionSubjects) {
-    foundation.nonfictionSubjects = state.bookFoundation.nonfictionSubjects;
-  }
-
-  if (state.bookFoundation) {
-    return {
-      ...foundation,
-      ...state.bookFoundation,
-      characters: state.bookFoundation.characters?.length
-        ? state.bookFoundation.characters
-        : foundation.characters,
-      missingFields: validateBookFoundationFields({ ...foundation, ...state.bookFoundation }),
-      confidence: state.bookFoundation.confidence ?? foundation.confidence,
-      locked: Boolean(state.bookFoundationLocked),
-    };
   }
 
   foundation.missingFields = validateBookFoundationFields(foundation);
@@ -888,7 +936,6 @@ export function validateBookFoundationFields(foundation: BookFoundationLock): st
     if (!clean(nf?.idealReader) && !clean(foundation.targetAudience)) missing.push("idealReader");
     if (!clean(nf?.readerProblem)) missing.push("readerProblem");
     if (!clean(nf?.methodFramework) && !clean(nf?.transformationPromise)) missing.push("methodFramework");
-    if (!hasProtagonist(foundation.characters)) missing.push("protagonist");
   } else if (isPoetryExpressGenre(genre)) {
     if (!hasNamedCharacter(foundation.characters)) missing.push("voice");
   } else if (isRomance(genre) || isDarkRomance(genre)) {
@@ -969,6 +1016,9 @@ export function validateBookFoundationLock(state: GuidedInterviewState): {
 }
 
 export function isBookFoundationComplete(state: GuidedInterviewState): boolean {
+  if (state.bookFoundation) {
+    return validateBookFoundationFields(state.bookFoundation).length === 0;
+  }
   const { missingFields } = validateBookFoundationLock(state);
   return missingFields.length === 0;
 }
@@ -982,7 +1032,7 @@ export function generateFoundationSuggestions(
 ): BookFoundationLock {
   const input = foundationInputFromState(state);
   const lengthConfig = resolveLengthPresetConfig(input.lengthPreset, input.genre);
-  const characters = generateGenreAwareCharacters(input);
+  const characters = generateFoundationCast(input);
   const titleCandidates = generateTitleSubtitleOptions(input);
   const hookCandidates = generateCommercialHookOptions(input);
   const selectedTitle = titleCandidates[1] ?? titleCandidates[0]!;
@@ -995,6 +1045,7 @@ export function generateFoundationSuggestions(
     lengthPreset: input.lengthPreset,
     chapterCount: lengthConfig.chapterCount,
     subchaptersEnabled: lengthConfig.subchaptersDefault,
+    tone: input.tone,
     title: clean(input.title) || selectedTitle.title,
     subtitle: selectedTitle.subtitle,
     titleCandidates,
@@ -1006,10 +1057,12 @@ export function generateFoundationSuggestions(
     marketPromise: isNonfictionExpressGenre(input.genre)
       ? generateNonfictionSubjects(input).transformationPromise!
       : hookCandidates[0]!.hook,
-    characters,
+    characters: foundationCastToForge(characters),
+    foundationCharacters: characters,
     nonfictionSubjects: isNonfictionExpressGenre(input.genre)
       ? generateNonfictionSubjects(input)
       : undefined,
+    chapterStructure: generateChapterStructure(input, lengthConfig.chapterCount),
     structurePreset: `${input.lengthPreset} · ${lengthConfig.pacing}`,
     confidence: 0.9,
     missingFields: [],
@@ -1068,6 +1121,7 @@ export function applyBookFoundationToForgeMemory(
     selectedGenre: foundation.genre,
     selectedBookType: foundation.bookType,
     selectedLength: foundation.lengthPreset,
+    selectedTone: foundation.tone || state.selectedTone,
     wantsSubchapters: foundation.subchaptersEnabled,
     extracted: ex,
     titleIntelligence,
@@ -1105,7 +1159,13 @@ export function confirmBookFoundationLock(
   state: GuidedInterviewState,
   foundation?: BookFoundationLock,
 ): GuidedInterviewState {
-  const base = foundation ?? buildBookFoundationLock(state);
+  const autoMode =
+    state.expressConfig?.controlLevel === "auto" ||
+    state.forgeMode === "express";
+  let base = foundation ?? buildBookFoundationLock(state);
+  if (autoMode) {
+    base = autoCompleteMissingFoundationFields(state, base);
+  }
   const missing = validateBookFoundationFields(base);
   if (missing.length > 0) {
     return {
@@ -1133,16 +1193,21 @@ export function autoFillBookFoundationIfNeeded(state: GuidedInterviewState): Gui
   const current = buildBookFoundationLock(state);
   if (current.missingFields.length === 0) return state;
 
-  const suggested = generateFoundationSuggestions(state);
-  const merged: BookFoundationLock = {
-    ...suggested,
-    title: clean(current.title) || suggested.title,
-    subtitle: clean(current.subtitle) || suggested.subtitle,
-    commercialHook: clean(current.commercialHook) || suggested.commercialHook,
-    characters: current.characters.length ? current.characters : suggested.characters,
-    missingFields: [],
-  };
-  merged.missingFields = validateBookFoundationFields(merged);
+  const merged = autoCompleteMissingFoundationFields(state, {
+    ...current,
+    title: clean(current.title) ? current.title : "",
+    subtitle: clean(current.subtitle) ? current.subtitle : "",
+    commercialHook: clean(current.commercialHook) ? current.commercialHook : "",
+    characters: current.characters.filter((c) => clean(c.name).length >= 2).length
+      ? current.characters
+      : [],
+    fieldProvenance: {
+      ...current.fieldProvenance,
+      ...(clean(current.title) ? { title: { source: "user" as const, locked: true } } : {}),
+      ...(clean(current.subtitle) ? { subtitle: { source: "user" as const, locked: true } } : {}),
+      ...(clean(current.commercialHook) ? { commercialHook: { source: "user" as const, locked: true } } : {}),
+    },
+  });
 
   if (autoMode && merged.missingFields.length === 0) {
     return applyBookFoundationToForgeMemory(state, { ...merged, locked: true });
@@ -1155,3 +1220,269 @@ export const BOOK_FOUNDATION_ASSISTANT_MESSAGE =
 
 export const BOOK_FOUNDATION_MISSING_MESSAGE =
   "Prima blocchiamo le fondamenta del libro.";
+
+const MISSING_FIELD_ACTION_MAP: Record<string, MissingFieldAction> = {
+  genre: { field: "genre", label: "Genere mancante", cta: "Completa setup", action: "complete" },
+  language: { field: "language", label: "Lingua mancante", cta: "Imposta lingua", action: "complete" },
+  lengthPreset: { field: "lengthPreset", label: "Lunghezza mancante", cta: "Scegli preset", action: "structure" },
+  chapterCount: { field: "chapterCount", label: "Capitoli mancanti", cta: "Genera struttura", action: "structure" },
+  title: { field: "title", label: "Titolo mancante", cta: "Genera 3 titoli", action: "titles" },
+  subtitle: { field: "subtitle", label: "Sottotitolo mancante", cta: "Genera sottotitolo", action: "titles" },
+  commercialHook: { field: "commercialHook", label: "Hook mancante", cta: "Genera hook", action: "hook" },
+  idealReader: { field: "idealReader", label: "Lettore ideale mancante", cta: "Genera lettore ideale", action: "nonfiction" },
+  readerProblem: { field: "readerProblem", label: "Problema lettore mancante", cta: "Genera problema", action: "nonfiction" },
+  methodFramework: { field: "methodFramework", label: "Metodo mancante", cta: "Genera metodo", action: "nonfiction" },
+  protagonist: { field: "protagonist", label: "Protagonista mancante", cta: "Genera cast", action: "characters" },
+  loveInterest: { field: "loveInterest", label: "Love interest mancante", cta: "Genera cast", action: "characters" },
+  threat: { field: "threat", label: "Minaccia mancante", cta: "Genera cast", action: "characters" },
+  allyOrAntagonist: { field: "allyOrAntagonist", label: "Alleato/antagonista mancante", cta: "Genera cast", action: "characters" },
+  characters: { field: "characters", label: "Personaggi mancanti", cta: "Genera cast", action: "characters" },
+  voice: { field: "voice", label: "Voce poetica mancante", cta: "Genera voce", action: "characters" },
+};
+
+export function getMissingFieldActions(missingFields: string[]): MissingFieldAction[] {
+  return missingFields.map(
+    (field) =>
+      MISSING_FIELD_ACTION_MAP[field] ?? {
+        field,
+        label: `${field} mancante`,
+        cta: "Genera automaticamente",
+        action: "complete" as const,
+      },
+  );
+}
+
+export function generateFoundationCast(input: FoundationGeneratorInput): FoundationCharacter[] {
+  const base = generateGenreAwareCharacters(input);
+  let cast = forgeCastToFoundation(base, "auto");
+
+  if (input.lengthPreset === "epico" && !isNonfictionExpressGenre(input.genre)) {
+    const extras: FoundationCharacter[] = [
+      {
+        id: "fc-ally-2",
+        name: "Lyra",
+        role: "alleato",
+        roleIndex: cast.length + 1,
+        importance: "secondario",
+        innerWound: "Lealtà divisa tra fazione e amicizia",
+        desire: "Proteggere il protagonista senza tradire il proprio ordine",
+        arcDirection: "Da alleato cauto a compagno indispensabile",
+        source: "auto",
+        locked: false,
+      },
+      {
+        id: "fc-rival-1",
+        name: "Darian",
+        role: "rivale",
+        roleIndex: cast.length + 2,
+        importance: "secondario",
+        innerWound: "Ambizione non riconosciuta",
+        desire: "Dimostrare di meritare il destino del protagonista",
+        conflictWithProtagonist: "Specchia ciò che il protagonista potrebbe diventare se cede alla paura",
+        source: "auto",
+        locked: false,
+      },
+      {
+        id: "fc-traitor",
+        name: "Mira",
+        role: "traditore",
+        roleIndex: cast.length + 3,
+        importance: "secondario",
+        secret: "Già legata alla forza oscura prima dell'inizio",
+        arcDirection: "Tradimento che alza la posta in gioco al midpoint",
+        source: "auto",
+        locked: false,
+      },
+    ];
+    cast = [...cast, ...extras];
+  }
+
+  return cast.map((c, i) => ({ ...c, roleIndex: i + 1 }));
+}
+
+export function generateChapterStructure(
+  input: FoundationGeneratorInput,
+  chapterCount?: number,
+): ChapterStructureSeed[] {
+  const config = resolveLengthPresetConfig(input.lengthPreset, input.genre);
+  const count = chapterCount ?? config.chapterCount;
+  const acts = input.lengthPreset === "breve" ? 3 : input.lengthPreset === "epico" ? 5 : 4;
+  const perAct = Math.max(2, Math.floor(count / acts));
+  const seeds: ChapterStructureSeed[] = [];
+
+  for (let i = 1; i <= count; i++) {
+    const act = Math.min(acts, Math.ceil(i / perAct));
+    let purpose = "Sviluppo e tensione";
+    if (i === 1) purpose = "Setup, promessa e innesco";
+    else if (i === Math.floor(count * 0.25)) purpose = "Primo punto di svolta";
+    else if (i === Math.floor(count * 0.5)) purpose = "Midpoint — posta in gioco raddoppia";
+    else if (i === Math.floor(count * 0.75)) purpose = "Crisi / dark moment";
+    else if (i === count) purpose = "Climax e risoluzione";
+    else if (act === acts) purpose = "Escalation verso il finale";
+
+    seeds.push({
+      chapter: i,
+      title: `Capitolo ${i}`,
+      purpose: `${purpose} · atto ${act} · ${config.pacing}`,
+    });
+  }
+  return seeds;
+}
+
+export function applyBestTitleOption(options: TitleSubtitleOption[]): TitleSubtitleOption {
+  return options.find((o) => o.risk && !/comune|generico|meno/i.test(o.risk)) ?? options[0]!;
+}
+
+function isFieldLocked(foundation: BookFoundationLock, field: string): boolean {
+  return Boolean(foundation.fieldProvenance?.[field]?.locked);
+}
+
+function markField(
+  provenance: Record<string, FoundationFieldProvenance>,
+  field: string,
+  source: "auto" | "user",
+  locked = false,
+): Record<string, FoundationFieldProvenance> {
+  return { ...provenance, [field]: { source, locked } };
+}
+
+export function autoCompleteMissingFoundationFields(
+  state: GuidedInterviewState,
+  foundation?: BookFoundationLock,
+): BookFoundationLock {
+  const input = foundationInputFromState(state);
+  const base = foundation ?? buildBookFoundationLock(state);
+  const missing = validateBookFoundationFields(base);
+  if (missing.length === 0) return base;
+
+  let next: BookFoundationLock = { ...base };
+  let provenance = { ...base.fieldProvenance };
+
+  const lengthConfig = resolveLengthPresetConfig(
+    next.lengthPreset || input.lengthPreset,
+    next.genre || input.genre,
+  );
+
+  if (missing.includes("lengthPreset") && !isFieldLocked(next, "lengthPreset")) {
+    next.lengthPreset = input.lengthPreset;
+    provenance = markField(provenance, "lengthPreset", "auto");
+  }
+
+  if (missing.includes("chapterCount") && !isFieldLocked(next, "chapterCount")) {
+    next.chapterCount = lengthConfig.chapterCount;
+    next.chapterStructure = generateChapterStructure(input, next.chapterCount);
+    next.structurePreset = `${next.lengthPreset} · ${lengthConfig.pacing}`;
+    provenance = markField(provenance, "chapterCount", "auto");
+    provenance = markField(provenance, "structurePreset", "auto");
+  }
+
+  const needsCharacters =
+    missing.some((f) =>
+      ["protagonist", "loveInterest", "threat", "allyOrAntagonist", "characters", "voice"].includes(f),
+    );
+  if (needsCharacters && !isFieldLocked(next, "characters")) {
+    const cast = generateFoundationCast(input);
+    const unlocked = (next.foundationCharacters ?? []).filter((c) => c.locked);
+    const mergedCast =
+      unlocked.length > 0
+        ? [
+            ...unlocked,
+            ...cast.filter((c) => !unlocked.some((u) => u.role === c.role)),
+          ]
+        : cast;
+    next.foundationCharacters = mergedCast;
+    next.characters = foundationCastToForge(mergedCast);
+    provenance = markField(provenance, "characters", "auto");
+  }
+
+  if (
+    (missing.includes("idealReader") || missing.includes("readerProblem") || missing.includes("methodFramework")) &&
+    !isFieldLocked(next, "nonfictionSubjects")
+  ) {
+    next.nonfictionSubjects = generateNonfictionSubjects(input);
+    provenance = markField(provenance, "nonfictionSubjects", "auto");
+    if (!clean(next.targetAudience)) {
+      next.targetAudience = next.nonfictionSubjects.idealReader ?? "";
+    }
+  }
+
+  const titleOptions = next.titleCandidates?.length
+    ? next.titleCandidates
+    : generateTitleSubtitleOptions(input);
+  next.titleCandidates = titleOptions;
+
+  if (missing.includes("title") && !isFieldLocked(next, "title") && !clean(next.title)) {
+    const best = applyBestTitleOption(titleOptions);
+    next.title = best.title;
+    provenance = markField(provenance, "title", "auto");
+  }
+
+  if (missing.includes("subtitle") && !isFieldLocked(next, "subtitle") && !clean(next.subtitle)) {
+    const best = applyBestTitleOption(titleOptions);
+    next.subtitle = best.subtitle;
+    provenance = markField(provenance, "subtitle", "auto");
+  }
+
+  const hookOptions = next.hookCandidates?.length
+    ? next.hookCandidates
+    : generateCommercialHookOptions(input);
+  next.hookCandidates = hookOptions;
+
+  if (missing.includes("commercialHook") && !isFieldLocked(next, "commercialHook")) {
+    next.commercialHook = hookOptions[1]?.hook || hookOptions[0]?.hook || "";
+    provenance = markField(provenance, "commercialHook", "auto");
+  }
+
+  if (!next.chapterStructure?.length && !isFieldLocked(next, "structurePreset")) {
+    next.chapterStructure = generateChapterStructure(input, next.chapterCount);
+    next.structurePreset = next.structurePreset || `${next.lengthPreset} · ${lengthConfig.pacing}`;
+    provenance = markField(provenance, "structurePreset", "auto");
+  }
+
+  if (!clean(next.language) && !isFieldLocked(next, "language")) {
+    next.language = input.language;
+    provenance = markField(provenance, "language", "auto");
+  }
+
+  if (!clean(next.tone) && !isFieldLocked(next, "tone")) {
+    next.tone = input.tone;
+    provenance = markField(provenance, "tone", "auto");
+  }
+
+  next.fieldProvenance = provenance;
+  next.missingFields = validateBookFoundationFields(next);
+  next.confidence = Math.max(0.4, 1 - next.missingFields.length * 0.07);
+  return next;
+}
+
+export function shouldShowFoundationFlow(state: GuidedInterviewState): boolean {
+  if (state.bookFoundationLocked) return false;
+  if (state.forgeMode === "express" && state.bookFoundation) return true;
+  const genre = clean(state.selectedGenre || state.extracted?.genre);
+  return Boolean(genre);
+}
+
+export function resolveFoundationFlowStep(foundation: BookFoundationLock): BookFoundationFlowStep {
+  if (foundation.flowStep) return foundation.flowStep;
+  if (!clean(foundation.language) || !foundation.lengthPreset) return "setup";
+  const charMissing = foundation.missingFields.some((f) =>
+    ["protagonist", "loveInterest", "threat", "allyOrAntagonist", "characters", "idealReader", "readerProblem", "methodFramework"].includes(f),
+  );
+  if (charMissing) return "characters";
+  const titleMissing = foundation.missingFields.some((f) =>
+    ["title", "subtitle", "commercialHook"].includes(f),
+  );
+  if (titleMissing) return "titleHook";
+  return "lock";
+}
+
+export function advanceFoundationFlowStep(
+  foundation: BookFoundationLock,
+  step?: BookFoundationFlowStep,
+): BookFoundationLock {
+  const current = step ?? resolveFoundationFlowStep(foundation);
+  const order: BookFoundationFlowStep[] = ["setup", "characters", "titleHook", "lock"];
+  const idx = order.indexOf(current);
+  const nextStep = order[Math.min(idx + 1, order.length - 1)]!;
+  return { ...foundation, flowStep: nextStep };
+}

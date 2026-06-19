@@ -21,7 +21,7 @@ import { FORGE_GENRE_OPENING_QUESTION_ID } from "@/lib/guided-interview/forge-ge
 import { ForgeGenreFamilyPicker } from "./ForgeGenreFamilyPicker";
 import { StudioExpressPanel } from "./StudioExpressPanel";
 import { BlueprintScenariosPanel } from "./BlueprintScenariosPanel";
-import { BookFoundationLockPanel } from "./BookFoundationLockPanel";
+import { BookFoundationFlowPanel } from "./BookFoundationFlowPanel";
 
 type GuidedInterviewPanelProps = {
   selectedGenre?: string;
@@ -218,7 +218,7 @@ function InterviewBody({
           />
         )}
         {ctrl.showFoundationPanel && (
-          <BookFoundationLockPanel
+          <BookFoundationFlowPanel
             state={ctrl.state}
             foundation={ctrl.bookFoundation}
             onUpdate={ctrl.handleUpdateFoundation}
@@ -292,7 +292,7 @@ function InterviewBody({
         )}
 
       {(ctrl.showFoundationPanel || ctrl.foundationReadyUi) && (
-        <BookFoundationLockPanel
+        <BookFoundationFlowPanel
           state={ctrl.state}
           foundation={ctrl.bookFoundation}
           onUpdate={ctrl.handleUpdateFoundation}
