@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, GraduationCap, Loader2, Upload, Wand2 } from "lucide-react";
+import { ArrowLeft, Camera, GraduationCap, Loader2, Upload, Wand2 } from "lucide-react";
 import { toast } from "sonner";
-import { analyzeStudyMaterial, readStudyFile, type StudySessionResult } from "@/lib/study-session";
+import { analyzeStudyMaterial, readStudyFiles, type StudySessionResult } from "@/lib/study-session";
 import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
 import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { generateStudySessionWithAI } from "@/lib/study-ai";
@@ -12,10 +12,12 @@ import { t } from "@/lib/i18n";
 import {
   getStudyLearningMetrics,
   getStudyProject,
+  listStudyProjects,
   recordStudyQuizAttempt,
   saveStudyProject,
   addStudyProjectBadges,
 } from "@/lib/study-project-storage";
+import { saveStudyCertificate } from "@/lib/study-certificate-storage";
 import { achievementById, evaluateStudyAchievements } from "@/lib/study-achievements";
 import { downloadStudyCertificate } from "@/lib/study-certificate";
 import { getSelectedAuthorIdentity } from "@/lib/author-identity";
@@ -25,6 +27,11 @@ import { StudyOralPanel } from "@/components/study/StudyOralPanel";
 import { StudyVocabularyPanel } from "@/components/study/StudyVocabularyPanel";
 import { StudyFlashcardsPanel } from "@/components/study/StudyFlashcardsPanel";
 import { StudyQuizPanel } from "@/components/study/StudyQuizPanel";
+import { StudyMaterialsPanel } from "@/components/study/StudyMaterialsPanel";
+import { StudyMapPanel } from "@/components/study/StudyMapPanel";
+import { StudyProgressPanel } from "@/components/study/StudyProgressPanel";
+import { StudyCertificatesPanel } from "@/components/study/StudyCertificatesPanel";
+import { StudyCoachPanel } from "@/components/study/StudyCoachPanel";
 import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
 import type { BookProject } from "@/types/book";
 import {
@@ -32,6 +39,7 @@ import {
   computeStudySourceHash,
   createEmptyStudySession,
   detectStudySourceType,
+  getCurrentStudySessionId,
   getFreshStudyResult,
   getStudySession,
   setCurrentStudySessionId,
@@ -40,7 +48,7 @@ import {
   type StudySourceType,
 } from "@/lib/study-os/session-store";
 
-type StudySection = "summary" | "questions" | "vocabulary" | "flashcards" | "quiz";
+type StudySection = "materials" | "summary" | "quiz" | "flashcards" | "maps" | "exam" | "progress" | "certificates" | "coach";
 
 const STUDY_OUTCOMES = [
   { icon: "✨", title: "Riassunto Soft", desc: "Facile e veloce" },
@@ -49,15 +57,21 @@ const STUDY_OUTCOMES = [
   { icon: "📝", title: "Quiz intelligenti", desc: "Verifica attiva" },
   { icon: "🎤", title: "Simulazione interrogazione", desc: "Risposte aperte valutate" },
   { icon: "🧪", title: "Verifica finale", desc: "Modalità esame" },
+  { icon: "🗺️", title: "Mappe ed esercizi", desc: "Relazioni, cause ed esempi" },
+  { icon: "🏅", title: "Attestati", desc: "Storico e download" },
   { icon: "🎯", title: "Piano studio automatico", desc: "Percorso guidato" },
 ] as const;
 
 const TAB_CONFIG: { id: StudySection; label: string; icon: string }[] = [
+  { id: "materials", label: "Materiali", icon: "📎" },
   { id: "summary", label: "Riassunti", icon: "📘" },
-  { id: "questions", label: "Interrogazione", icon: "🎤" },
-  { id: "vocabulary", label: "Parole", icon: "📚" },
-  { id: "flashcards", label: "Flashcard", icon: "🃏" },
   { id: "quiz", label: "Quiz", icon: "📝" },
+  { id: "flashcards", label: "Flashcard", icon: "🃏" },
+  { id: "maps", label: "Mappe", icon: "🗺️" },
+  { id: "exam", label: "Esame", icon: "🎓" },
+  { id: "progress", label: "Progressi", icon: "📈" },
+  { id: "certificates", label: "Attestati", icon: "🏅" },
+  { id: "coach", label: "Coach", icon: "🎯" },
 ];
 
 function normalizeStudyResultForUI(value: any): StudySessionResult {
@@ -69,6 +83,8 @@ function normalizeStudyResultForUI(value: any): StudySessionResult {
     words: Number(result.words || result.totalWords || 0),
     detectedSubject: String(result.detectedSubject || "Materiale di studio"),
     difficulty: result.difficulty === "soft" || result.difficulty === "pro" ? result.difficulty : "medium",
+    classification: result.classification,
+    summaries: result.summaries,
     lightSummary: String(result.lightSummary || ""),
     mediumSummary: String(result.mediumSummary || ""),
     proSummary: String(result.proSummary || ""),
@@ -93,6 +109,9 @@ function normalizeStudyResultForUI(value: any): StudySessionResult {
           commonMistake: item?.commonMistake,
         }))
       : [],
+    trueFalse: Array.isArray(result.trueFalse) ? result.trueFalse : [],
+    exercises: Array.isArray(result.exercises) ? result.exercises : [],
+    conceptMap: result.conceptMap,
   };
 }
 
@@ -137,6 +156,7 @@ export default function StudySessionPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const uxSaved = useMemo(loadStudyUxState, []);
   const initialSession = useMemo(() => createEmptyStudySession({ language: "Italian" }), []);
 
@@ -150,12 +170,16 @@ export default function StudySessionPage() {
   const [workStartedAt, setWorkStartedAt] = useState<number | undefined>();
   const [studyGenerationStatus, setStudyGenerationStatus] = useState("");
   const [aiMode, setAiMode] = useState<"idle" | "deepseek" | "local">("idle");
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const studyNoticeTimersRef = useRef<number[]>([]);
   const studyFallbackReasonRef = useRef<string | null>(null);
 
-  const [activeSection, setActiveSection] = useState<StudySection>(
-    (uxSaved.activeSection as StudySection) || DEFAULT_STUDY_UX.activeSection
-  );
+  const initialActiveSection = useMemo<StudySection>(() => {
+    const saved = uxSaved.activeSection;
+    if (saved === "questions" || saved === "vocabulary") return "quiz";
+    return (TAB_CONFIG.some((tab) => tab.id === saved) ? saved : DEFAULT_STUDY_UX.activeSection) as StudySection;
+  }, [uxSaved.activeSection]);
+  const [activeSection, setActiveSection] = useState<StudySection>(initialActiveSection);
   const [studyLanguage, setStudyLanguage] = useState<
     "Italian" | "English" | "Spanish" | "French" | "German"
   >("Italian");
@@ -207,6 +231,7 @@ export default function StudySessionPage() {
     setStudySession(next.session);
     setRawText(next.session.sourceText);
     setSourceName(next.session.sourceName || name);
+    setImportWarnings([]);
     if (next.sourceChanged) {
       setResult(null);
       setProjectId(undefined);
@@ -252,6 +277,7 @@ export default function StudySessionPage() {
     setStaleNotice("");
     setAiMode("idle");
     setStudyGenerationStatus("");
+    setImportWarnings([]);
     setCurrentStudySessionId(null);
     resetSessionState();
     toast.success("Nuova sessione pulita");
@@ -277,7 +303,23 @@ export default function StudySessionPage() {
       navigate(location.pathname, { replace: true, state: null });
       return;
     }
-    if (!state?.projectId) return;
+    if (!state?.projectId) {
+      const currentId = getCurrentStudySessionId();
+      if (!currentId) return;
+      const session = getStudySession(currentId);
+      if (!session) return;
+      const fresh = getFreshStudyResult(session);
+      const linkedProject = listStudyProjects().find((project) => project.sourceHash === session.sourceHash);
+      setStudySession(session);
+      setCurrentStudySessionId(session.id);
+      setProjectId(linkedProject?.id);
+      setRawText(session.sourceText);
+      setSourceName(session.sourceName || "sessione-studio.txt");
+      setResult(fresh);
+      setStaleNotice(fresh ? "" : "Risultati da rigenerare per il materiale di questa sessione.");
+      resetSessionState();
+      return;
+    }
     const project = getStudyProject(state.projectId);
     if (!project) {
       toast.error("Progetto Study non trovato");
@@ -306,13 +348,16 @@ export default function StudySessionPage() {
   }, [location.state]);
 
   const handleExamComplete = useCallback(
-    (report: { score: number; mode: "practice" | "exam"; total: number; correct: number }) => {
+    (report: { score: number; mode: "practice" | "exam"; total: number; correct: number; grade10?: number; grade30?: number; judgement?: string }) => {
       if (!projectId) return;
       const updated = recordStudyQuizAttempt(projectId, {
         score: report.score,
         mode: report.mode,
         totalQuestions: report.total,
         correctCount: report.correct,
+        grade10: report.grade10,
+        grade30: report.grade30,
+        judgement: report.judgement,
       });
       if (!updated) return;
 
@@ -335,19 +380,27 @@ export default function StudySessionPage() {
         const studentName = identity.penName || identity.realName || identity.name || "Studente Scriptora";
         const level =
           report.score >= 90 ? "Advanced" : report.score >= 75 ? "Proficient" : report.score >= 55 ? "Developing" : "Beginner";
+        const certificateInput = {
+          studentName,
+          subject: updated.result.detectedSubject || updated.title,
+          date: new Date().toLocaleDateString(),
+          score: report.score,
+          level,
+          grade10: report.grade10,
+          grade30: report.grade30,
+          judgement: report.judgement,
+          sourceProjectId: projectId,
+          badges: badges.map((id) => achievementById(id)?.label || id),
+        };
+        if (report.mode === "exam") {
+          saveStudyCertificate(certificateInput);
+        }
         toast.success("Verifica completata", {
           description: `Punteggio ${report.score}/100 — scarica il certificato`,
           action: {
             label: "Certificato PDF",
             onClick: () => {
-              void downloadStudyCertificate({
-                studentName,
-                subject: updated.result.detectedSubject || updated.title,
-                date: new Date().toLocaleDateString(),
-                score: report.score,
-                level,
-                badges: badges.map((id) => achievementById(id)?.label || id),
-              });
+              void downloadStudyCertificate(certificateInput);
             },
           },
         });
@@ -520,32 +573,37 @@ export default function StudySessionPage() {
     }
   }
 
-  const handleFile = async (file?: File) => {
-    if (!file) return;
+  const handleFiles = async (fileList?: FileList | File[] | null) => {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
     setReading(true);
     setWorkStartedAt(Date.now());
     try {
-      const text = await readStudyFile(file);
-      const sourceType = detectStudySourceType(file.name);
+      const readResult = await readStudyFiles(files);
+      const text = readResult.text;
+      const sourceType = readResult.sourceType === "pdf" || readResult.sourceType === "docx" || readResult.sourceType === "txt"
+        ? readResult.sourceType
+        : "file";
       const fileSession = updateStudySessionSource(createEmptyStudySession({ language: studyLanguage }), {
         sourceText: text,
-        sourceName: file.name,
+        sourceName: readResult.fileName,
         sourceType,
       }).session;
       setStudySession(fileSession);
       setCurrentStudySessionId(null);
       setRawText(text);
-      setSourceName(file.name);
+      setSourceName(readResult.fileName);
       setResult(null);
       setProjectId(undefined);
       setStaleNotice("");
+      setImportWarnings(readResult.warnings);
       resetSessionState();
       setAiMode("deepseek");
 
       try {
-        const next = await generateStudyResultWithRuntimeGuard(text, file.name);
+        const next = await generateStudyResultWithRuntimeGuard(text, readResult.fileName);
         const normalized = normalizeStudyResultForUI(next);
-        commitStudyResult(normalized, text, file.name, fileSession, sourceType, undefined);
+        commitStudyResult(normalized, text, readResult.fileName, fileSession, sourceType, undefined);
         setActiveSection("quiz");
         saveStudyUxState({ activeSection: "quiz" });
         if (studyFallbackReasonRef.current) {
@@ -553,14 +611,14 @@ export default function StudySessionPage() {
             description: studyFallbackReasonRef.current,
           });
         } else {
-          toast.success("Pipeline Study completata", { description: `${file.name} — quiz e verifica pronti.` });
+          toast.success("Pipeline Study completata", { description: `${readResult.fileName} — quiz e verifica pronti.` });
         }
       } catch (error) {
         console.warn("[StudySession] DeepSeek file fallback locale", error);
         try {
-          const local = analyzeStudyMaterial(text, file.name);
+          const local = analyzeStudyMaterial(text, readResult.fileName);
           const normalized = normalizeStudyResultForUI(local);
-          commitStudyResult(normalized, text, file.name, fileSession, sourceType, undefined);
+          commitStudyResult(normalized, text, readResult.fileName, fileSession, sourceType, undefined);
           setActiveSection("quiz");
           saveStudyUxState({ activeSection: "quiz" });
           setAiMode("local");
@@ -570,7 +628,7 @@ export default function StudySessionPage() {
         } catch (fallbackError) {
           console.error("[StudySession] local file fallback failed", fallbackError);
           toast.error("Sessione Studio non creata", {
-            description: fallbackError instanceof Error ? fallbackError.message : file.name,
+            description: fallbackError instanceof Error ? fallbackError.message : readResult.fileName,
           });
         }
       }
@@ -580,6 +638,7 @@ export default function StudySessionPage() {
       setReading(false);
       setStudyGenerationStatus("");
       if (fileInputRef.current) fileInputRef.current.value = "";
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
     }
   };
 
@@ -587,8 +646,11 @@ export default function StudySessionPage() {
   const safeDifficultWords = safeResult?.difficultWords || [];
   const safeFlashcards = safeResult?.flashcards || [];
   const safeQuiz = safeResult?.quiz || [];
+  const safeTrueFalse = safeResult?.trueFalse || [];
   const safeOpenQuestions = safeResult?.openQuestions || [];
   const safeKeyConcepts = safeResult?.keyConcepts || [];
+  const safeExercises = safeResult?.exercises || [];
+  const safeCombinedQuiz = useMemo(() => [...safeQuiz, ...safeTrueFalse], [safeQuiz, safeTrueFalse]);
 
   return (
     <div className="scriptora-ios-screen scriptora-app-surface scriptora-page-scroll scriptora-study-session min-h-[100dvh] overflow-x-clip px-3 py-4 pb-safe sm:px-6 sm:py-5">
@@ -639,13 +701,30 @@ export default function StudySessionPage() {
               {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
               Carica file
             </button>
+            <button
+              type="button"
+              onClick={() => cameraInputRef.current?.click()}
+              className="ios-toolbar-button h-11 justify-center px-4 text-sm font-semibold text-emerald-100"
+            >
+              <Camera className="h-4 w-4" />
+              Scatta foto
+            </button>
           </div>
           <input
             ref={fileInputRef}
             type="file"
-            accept=".txt,.md,.markdown,.docx,.pdf,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            multiple
+            accept=".txt,.md,.markdown,.docx,.pdf,.epub,.png,.jpg,.jpeg,.webp,text/plain,text/markdown,application/pdf,application/epub+zip,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/webp"
             className="hidden"
-            onChange={(event) => void handleFile(event.target.files?.[0])}
+            onChange={(event) => void handleFiles(event.target.files)}
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(event) => void handleFiles(event.target.files)}
           />
         </header>
 
@@ -685,6 +764,13 @@ export default function StudySessionPage() {
             {staleNotice && (
               <div className="mt-3 rounded-2xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100">
                 {staleNotice}
+              </div>
+            )}
+            {importWarnings.length > 0 && (
+              <div className="mt-3 rounded-2xl border border-sky-300/25 bg-sky-300/10 px-3 py-2 text-xs leading-5 text-sky-100">
+                {importWarnings.map((warning) => (
+                  <p key={warning}>{warning}</p>
+                ))}
               </div>
             )}
 
@@ -787,42 +873,22 @@ export default function StudySessionPage() {
                   </div>
                 </div>
 
+                {activeSection === "materials" && (
+                  <StudyMaterialsPanel
+                    result={safeResult}
+                    sourceName={sourceName}
+                    rawText={rawText}
+                    importWarnings={importWarnings}
+                  />
+                )}
+
                 {activeSection === "summary" && (
                   <StudySummaryPanel
                     lightSummary={safeResult.lightSummary}
                     mediumSummary={safeResult.mediumSummary}
                     proSummary={safeResult.proSummary}
                     studyNotesPro={safeResult.studyNotesPro}
-                  />
-                )}
-
-                {activeSection === "questions" && (
-                  <StudyOralPanel
-                    questions={safeOpenQuestions}
-                    openAnswers={openAnswers}
-                    openEvaluations={openEvaluations}
-                    evaluatingIndex={evaluatingOpenAnswer}
-                    currentIndex={uxSaved.currentOralIndex}
-                    onAnswerChange={(index, value) => {
-                      setOpenAnswers((prev) => {
-                        const next = { ...prev, [index]: value };
-                        saveStudyUxState({ openAnswers: next });
-                        return next;
-                      });
-                    }}
-                    onEvaluate={evaluateOpenAnswer}
-                  />
-                )}
-
-                {activeSection === "vocabulary" && (
-                  <StudyVocabularyPanel
-                    words={safeDifficultWords}
-                    difficulty={safeResult.difficulty}
-                    easierMap={uxSaved.vocabularyEasier}
-                    quiz={safeQuiz}
-                    quizAnswers={quizAnswers}
-                    openEvaluations={openEvaluations}
-                    flashcardConfidence={flashcardConfidence}
+                    summaries={safeResult.summaries}
                   />
                 )}
 
@@ -837,23 +903,91 @@ export default function StudySessionPage() {
                 )}
 
                 {activeSection === "quiz" && (
+                  <div className="space-y-4">
+                    <StudyQuizPanel
+                      quiz={safeCombinedQuiz}
+                      keyConcepts={safeKeyConcepts}
+                      openQuestions={safeOpenQuestions}
+                      flashcardConfidence={flashcardConfidence}
+                      openEvaluations={openEvaluations}
+                      initialAnswers={quizAnswers}
+                      initialIndex={currentQuizIndex}
+                      initialMode={quizMode}
+                      initialOrder={quizOrder}
+                      onStateChange={(state) => {
+                        setQuizAnswers(state.quizAnswers);
+                        setCurrentQuizIndex(state.currentQuizIndex);
+                        setQuizMode(state.quizMode);
+                        setQuizOrder(state.quizOrder);
+                      }}
+                      onExamComplete={handleExamComplete}
+                    />
+                    <StudyOralPanel
+                      questions={safeOpenQuestions}
+                      openAnswers={openAnswers}
+                      openEvaluations={openEvaluations}
+                      evaluatingIndex={evaluatingOpenAnswer}
+                      currentIndex={uxSaved.currentOralIndex}
+                      onAnswerChange={(index, value) => {
+                        setOpenAnswers((prev) => {
+                          const next = { ...prev, [index]: value };
+                          saveStudyUxState({ openAnswers: next });
+                          return next;
+                        });
+                      }}
+                      onEvaluate={evaluateOpenAnswer}
+                    />
+                    <StudyVocabularyPanel
+                      words={safeDifficultWords}
+                      difficulty={safeResult.difficulty}
+                      easierMap={uxSaved.vocabularyEasier}
+                      quiz={safeCombinedQuiz}
+                      quizAnswers={quizAnswers}
+                      openEvaluations={openEvaluations}
+                      flashcardConfidence={flashcardConfidence}
+                    />
+                  </div>
+                )}
+
+                {activeSection === "maps" && (
+                  <StudyMapPanel conceptMap={safeResult.conceptMap} exercises={safeExercises} />
+                )}
+
+                {activeSection === "exam" && (
                   <StudyQuizPanel
-                    quiz={safeQuiz}
+                    quiz={safeCombinedQuiz}
                     keyConcepts={safeKeyConcepts}
                     openQuestions={safeOpenQuestions}
                     flashcardConfidence={flashcardConfidence}
                     openEvaluations={openEvaluations}
-                    initialAnswers={quizAnswers}
-                    initialIndex={currentQuizIndex}
-                    initialMode={quizMode}
-                    initialOrder={quizOrder}
-                    onStateChange={(state) => {
-                      setQuizAnswers(state.quizAnswers);
-                      setCurrentQuizIndex(state.currentQuizIndex);
-                      setQuizMode(state.quizMode);
-                      setQuizOrder(state.quizOrder);
-                    }}
+                    initialAnswers={{}}
+                    initialIndex={0}
+                    initialMode="exam"
+                    initialOrder={[]}
                     onExamComplete={handleExamComplete}
+                  />
+                )}
+
+                {activeSection === "progress" && (
+                  <StudyProgressPanel
+                    result={safeResult}
+                    projectId={projectId}
+                    quizAnswers={quizAnswers}
+                    openEvaluations={openEvaluations}
+                    flashcardConfidence={flashcardConfidence}
+                  />
+                )}
+
+                {activeSection === "certificates" && (
+                  <StudyCertificatesPanel />
+                )}
+
+                {activeSection === "coach" && (
+                  <StudyCoachPanel
+                    result={safeResult}
+                    quizAnswers={quizAnswers}
+                    openEvaluations={openEvaluations}
+                    flashcardConfidence={flashcardConfidence}
                   />
                 )}
               </>

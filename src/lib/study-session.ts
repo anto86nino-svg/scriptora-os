@@ -10,6 +10,43 @@ async function loadPdfJs() {
   return pdfjsLib;
 }
 
+async function readBlobArrayBuffer(blob: Blob): Promise<ArrayBuffer> {
+  const withArrayBuffer = blob as Blob & { arrayBuffer?: () => Promise<ArrayBuffer> };
+  if (typeof withArrayBuffer.arrayBuffer === "function") {
+    return withArrayBuffer.arrayBuffer();
+  }
+  if (typeof FileReader !== "undefined") {
+    return await new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error || new Error("File non leggibile."));
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.readAsArrayBuffer(blob);
+    });
+  }
+  try {
+    return await new Response(blob).arrayBuffer();
+  } catch {
+    throw new Error("File non leggibile.");
+  }
+}
+
+async function readBlobText(blob: Blob): Promise<string> {
+  const withText = blob as Blob & { text?: () => Promise<string> };
+  if (typeof withText.text === "function") {
+    return withText.text();
+  }
+  try {
+    return await new Response(blob).text();
+  } catch {
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error || new Error("File non leggibile."));
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.readAsText(blob);
+    });
+  }
+}
+
 export type StudyDifficulty = "soft" | "medium" | "pro";
 
 export interface DifficultWord {
@@ -42,12 +79,84 @@ export interface OpenStudyQuestion {
   answerGuide: string;
 }
 
+export type StudyMaterialType =
+  | "history"
+  | "philosophy"
+  | "literature"
+  | "math"
+  | "physics"
+  | "chemistry"
+  | "medicine"
+  | "law"
+  | "economics"
+  | "computer-science"
+  | "foreign-language"
+  | "scientific-article"
+  | "technical-manual"
+  | "mixed-notes"
+  | "general";
+
+export type StudySummaryMode =
+  | "brief"
+  | "complete"
+  | "university"
+  | "oral"
+  | "ultraSimple"
+  | "quickReview"
+  | "chronological"
+  | "causeEffect"
+  | "bulletPoints"
+  | "oralExam";
+
+export interface StudyMaterialClassification {
+  type: StudyMaterialType;
+  label: string;
+  confidence: number;
+  language: string;
+  difficultyScore: number;
+  estimatedStudyMinutes: number;
+  signals: string[];
+  strategy: string[];
+}
+
+export interface StudyExercise {
+  id: string;
+  type: "guided" | "free" | "correction" | "application" | "reasoning";
+  prompt: string;
+  solution?: string;
+  explanation: string;
+  difficulty: "easy" | "medium" | "hard";
+}
+
+export interface StudyConceptMapNode {
+  id: string;
+  label: string;
+  detail: string;
+  level: number;
+}
+
+export interface StudyConceptMapRelation {
+  from: string;
+  to: string;
+  label: string;
+  type: "hierarchy" | "cause-effect" | "prerequisite" | "contrast" | "example";
+}
+
+export interface StudyConceptMap {
+  title: string;
+  nodes: StudyConceptMapNode[];
+  relations: StudyConceptMapRelation[];
+  exportText: string;
+}
+
 export interface StudySessionResult {
   title: string;
   sourceName: string;
   words: number;
   detectedSubject: string;
   difficulty: StudyDifficulty;
+  classification?: StudyMaterialClassification;
+  summaries?: Record<StudySummaryMode, string>;
   lightSummary: string;
   mediumSummary: string;
   proSummary: string;
@@ -56,7 +165,18 @@ export interface StudySessionResult {
   difficultWords: DifficultWord[];
   flashcards: Flashcard[];
   quiz: QuizQuestion[];
+  trueFalse?: QuizQuestion[];
+  exercises?: StudyExercise[];
+  conceptMap?: StudyConceptMap;
   keyConcepts: string[];
+}
+
+export interface StudyFileReadResult {
+  fileName: string;
+  sourceType: "pdf" | "docx" | "txt" | "md" | "epub" | "image";
+  text: string;
+  warnings: string[];
+  empty: boolean;
 }
 
 const STOP_WORDS = new Set([
@@ -136,8 +256,158 @@ function cleanText(value: string): string {
   }
 
   return text
+    .split(/\n\s*\n/)
+    .map((page) => page.replace(/[ \t]+/g, " ").trim())
+    .filter((page) => countStudyWords(page) > 0)
+    .join("\n\n")
     .replace(/\n{4,}/g, "\n\n")
     .trim();
+}
+
+function detectStudyLanguage(text: string): string {
+  const lower = text.toLowerCase();
+  const hits = {
+    Italian: (lower.match(/\b(il|lo|la|gli|che|della|perché|quindi|sono|questo)\b/g) || []).length,
+    English: (lower.match(/\b(the|and|that|because|therefore|this|with|between)\b/g) || []).length,
+    Spanish: (lower.match(/\b(el|la|los|las|que|porque|entonces|este|con)\b/g) || []).length,
+    French: (lower.match(/\b(le|la|les|des|que|parce|donc|avec|dans)\b/g) || []).length,
+    German: (lower.match(/\b(der|die|das|und|weil|dass|mit|nicht|eine)\b/g) || []).length,
+  };
+  return Object.entries(hits).sort((a, b) => b[1] - a[1])[0]?.[0] || "Italian";
+}
+
+function scorePatterns(text: string, patterns: RegExp[]): number {
+  return patterns.reduce((sum, pattern) => sum + (text.match(pattern)?.length || 0), 0);
+}
+
+const MATERIAL_DEFS: Array<{
+  type: StudyMaterialType;
+  label: string;
+  patterns: RegExp[];
+  strategy: string[];
+}> = [
+  {
+    type: "history",
+    label: "Storia",
+    patterns: [/\b(secolo|guerra|rivoluzione|impero|periodo|anno|date|fonti|cause|conseguenze|trattato|monarchia|repubblica)\b/gi, /\b\d{3,4}\b/g],
+    strategy: ["timeline", "cause e conseguenze", "personaggi/eventi", "date importanti"],
+  },
+  {
+    type: "philosophy",
+    label: "Filosofia",
+    patterns: [/\b(filosofo|tesi|argomento|dialettica|etica|metafisica|epistemologia|kant|platone|aristotele|hegel|nietzsche)\b/gi],
+    strategy: ["concetti", "autori", "tesi", "argomentazioni e confronti"],
+  },
+  {
+    type: "literature",
+    label: "Letteratura",
+    patterns: [/\b(romanzo|poesia|autore|narratore|stile|metafora|similitudine|tema|contesto|figure retoriche|analisi del testo)\b/gi],
+    strategy: ["tema", "stile", "contesto", "figure retoriche", "analisi del testo"],
+  },
+  {
+    type: "math",
+    label: "Matematica",
+    patterns: [/\b(teorema|equazione|funzione|derivata|integrale|matrice|geometria|algebra|probabilità|dimostrazione)\b/gi, /[=<>±√∑∫π]/g],
+    strategy: ["formule", "passaggi", "esercizi", "esempi guidati"],
+  },
+  {
+    type: "physics",
+    label: "Fisica",
+    patterns: [/\b(forza|energia|massa|velocità|accelerazione|campo|onda|corrente|tensione|newton|joule|quantistica)\b/gi],
+    strategy: ["formule", "leggi", "causa-effetto", "applicazioni numeriche"],
+  },
+  {
+    type: "chemistry",
+    label: "Chimica",
+    patterns: [/\b(molecola|atomo|reazione|legame|acido|base|ossidazione|riduzione|soluzione|ph|tavola periodica)\b/gi, /\b[A-Z][a-z]?\d*\b/g],
+    strategy: ["definizioni", "reazioni", "processi", "applicazioni"],
+  },
+  {
+    type: "medicine",
+    label: "Medicina/Biologia",
+    patterns: [/\b(cellula|tessuto|organo|apparato|diagnosi|terapia|patologia|sintomo|enzima|dna|proteina|metabolismo)\b/gi],
+    strategy: ["processi", "apparati", "meccanismi", "termini tecnici"],
+  },
+  {
+    type: "law",
+    label: "Diritto",
+    patterns: [/\b(articolo|comma|codice|norma|legge|diritto|obbligazione|contratto|reato|sentenza|giurisprudenza|costituzione)\b/gi],
+    strategy: ["norme", "principi", "casi", "definizioni operative"],
+  },
+  {
+    type: "economics",
+    label: "Economia",
+    patterns: [/\b(mercato|domanda|offerta|inflazione|pil|costo|ricavo|profitto|bilancio|capitale|moneta|prezzo)\b/gi],
+    strategy: ["concetti", "modelli", "grafici mentali", "casi applicativi"],
+  },
+  {
+    type: "computer-science",
+    label: "Informatica",
+    patterns: [/\b(algoritmo|software|hardware|database|rete|api|codice|funzione|variabile|classe|server|protocollo)\b/gi, /```|[{};<>]/g],
+    strategy: ["definizioni", "flussi", "esempi guidati", "debug concettuale"],
+  },
+  {
+    type: "foreign-language",
+    label: "Lingua straniera",
+    patterns: [/\b(grammar|vocabulary|pronunciation|verb|tense|translation|listening|reading|speaking|writing)\b/gi],
+    strategy: ["vocabolario", "regole", "frasi modello", "produzione attiva"],
+  },
+  {
+    type: "scientific-article",
+    label: "Articolo scientifico",
+    patterns: [/\b(abstract|method|methods|results|discussion|conclusion|doi|peer reviewed|campione|studio|risultati)\b/gi],
+    strategy: ["domanda di ricerca", "metodo", "risultati", "limiti"],
+  },
+  {
+    type: "technical-manual",
+    label: "Manuale tecnico",
+    patterns: [/\b(procedura|installazione|configurazione|passaggio|step|manuale|requisiti|errore|parametro)\b/gi],
+    strategy: ["procedura", "prerequisiti", "errori comuni", "applicazioni"],
+  },
+  {
+    type: "mixed-notes",
+    label: "Appunti misti",
+    patterns: [/^[-•*]\s+/gm, /\b(appunti|nota|prof|slide|lezione|ricordare|importante)\b/gi],
+    strategy: ["riordino", "gerarchia", "concetti mancanti", "domande probabili"],
+  },
+];
+
+export function classifyStudyMaterial(text: string, sourceName = ""): StudyMaterialClassification {
+  const clean = cleanText(text);
+  const lower = clean.toLowerCase();
+  const words = countStudyWords(clean);
+  const scored = MATERIAL_DEFS.map((def) => {
+    const score = scorePatterns(lower, def.patterns);
+    return { ...def, score };
+  }).sort((a, b) => b.score - a.score);
+
+  const top = scored[0];
+  const second = scored[1];
+  const type = top && top.score > 0 ? top.type : "general";
+  const label = top && top.score > 0 ? top.label : "Materiale generale";
+  const longSentences = sentences(clean).filter((s) => countStudyWords(s) > 28).length;
+  const formulaSignals = scorePatterns(clean, [/[=<>±√∑∫π]/g]);
+  const difficultyScore = Math.max(
+    1,
+    Math.min(10, Math.round((words > 4500 ? 3 : words > 1800 ? 2 : 1) + longSentences * 0.08 + formulaSignals * 0.2 + (top?.score || 0) * 0.12)),
+  );
+  const estimatedStudyMinutes = Math.max(8, Math.round(words / 160 + difficultyScore * 3));
+  const confidence = top?.score
+    ? Math.max(45, Math.min(98, Math.round(55 + top.score * 6 - (second?.score || 0) * 2)))
+    : 40;
+
+  return {
+    type,
+    label,
+    confidence,
+    language: detectStudyLanguage(clean || sourceName),
+    difficultyScore,
+    estimatedStudyMinutes,
+    signals: (top?.score ? [`${top.label}: ${top.score} segnali`] : ["Classificazione generica"]).concat(
+      second?.score ? [`Alternativa: ${second.label}`] : [],
+    ),
+    strategy: top?.score ? top.strategy : ["concetti chiave", "riassunto progressivo", "quiz di comprensione"],
+  };
 }
 
 
@@ -321,6 +591,172 @@ function buildOpenQuestions(
   }));
 }
 
+function formatLines(title: string, lines: string[]): string {
+  return [title, ...lines.map((line) => `• ${line}`)].join("\n");
+}
+
+function buildChronology(lines: string[], classification: StudyMaterialClassification): string {
+  const chronological = lines
+    .filter((line) => /\b(prima|poi|dopo|successivamente|infine|inizialmente|\d{3,4})\b/i.test(line))
+    .slice(0, 10);
+  const source = chronological.length ? chronological : lines.slice(0, 8);
+  const title = classification.type === "history" ? "Riassunto cronologico / timeline" : "Sequenza logica del materiale";
+  return formatLines(title, source.map((line, index) => `${index + 1}. ${line}`));
+}
+
+function buildCauseEffect(lines: string[], classification: StudyMaterialClassification): string {
+  const causeLines = lines
+    .filter((line) => /\b(perché|causa|conseguenza|quindi|provoca|porta a|effetto|risultato|dunque)\b/i.test(line))
+    .slice(0, 10);
+  const source = causeLines.length ? causeLines : lines.slice(0, 8);
+  return [
+    classification.type === "history" ? "Cause → Eventi → Conseguenze" : "Catena causa-effetto",
+    ...source.map((line) => `• ${line.replace(/\s+/g, " ")}`),
+  ].join("\n");
+}
+
+function simplifyLine(line: string): string {
+  const clean = line.replace(/\s+/g, " ").trim();
+  const words = clean.split(/\s+/);
+  if (words.length <= 18) return clean;
+  return `${words.slice(0, 18).join(" ")}.`;
+}
+
+function buildSummaries(
+  title: string,
+  clean: string,
+  classification: StudyMaterialClassification,
+): Record<StudySummaryMode, string> {
+  const light = pickSentences(clean, 8);
+  const medium = pickSentences(clean, 16);
+  const pro = pickSentences(clean, 28);
+  const concepts = keywords(clean, 12).map((k) => k[0].toUpperCase() + k.slice(1));
+  const strategyLine = `Strategia: ${classification.strategy.join(" · ")}.`;
+
+  return {
+    brief: formatLines("Riassunto breve", light.slice(0, 6)),
+    complete: formatLines("Riassunto completo", medium.length ? medium : light),
+    university: [
+      "Riassunto universitario",
+      `Tesi/tema centrale: ${title}.`,
+      strategyLine,
+      ...pro.slice(0, 18).map((line) => `• ${line}`),
+      "• Per un esame: collega definizioni, esempi e implicazioni invece di ripetere frasi isolate.",
+    ].join("\n"),
+    oral: [
+      "Riassunto per interrogazione",
+      `Apertura: il materiale parla di ${title}.`,
+      ...medium.slice(0, 10).map((line) => `• Spiega: ${line}`),
+      "• Chiudi sempre con un esempio o una conseguenza.",
+    ].join("\n"),
+    ultraSimple: formatLines("Riassunto ultra semplice", (light.length ? light : medium).slice(0, 8).map(simplifyLine)),
+    quickReview: [
+      "Ripasso veloce",
+      ...concepts.slice(0, 8).map((concept) => `• ${concept}: definizione + esempio + collegamento.`),
+      "• Se hai 5 minuti: ripeti a voce i primi 5 concetti senza guardare.",
+    ].join("\n"),
+    chronological: buildChronology([...light, ...medium], classification),
+    causeEffect: buildCauseEffect([...medium, ...pro], classification),
+    bulletPoints: formatLines("Riassunto a punti", [...concepts.slice(0, 8), ...light.slice(0, 6)]),
+    oralExam: [
+      "Riassunto per esame orale",
+      `1. Presenta l'argomento: ${title}.`,
+      `2. Metodo di risposta consigliato: ${classification.strategy.join(", ")}.`,
+      ...pro.slice(0, 12).map((line, index) => `${index + 3}. ${line}`),
+      "Conclusione: collega almeno due concetti e prepara un esempio concreto.",
+    ].join("\n"),
+  };
+}
+
+function relationLabelFor(classification: StudyMaterialClassification, index: number): StudyConceptMapRelation["type"] {
+  if (classification.type === "history" || classification.type === "physics" || classification.type === "chemistry" || classification.type === "medicine") {
+    return index % 2 === 0 ? "cause-effect" : "prerequisite";
+  }
+  if (classification.type === "philosophy" || classification.type === "law") return index % 2 === 0 ? "contrast" : "hierarchy";
+  return index % 3 === 0 ? "example" : "hierarchy";
+}
+
+function buildConceptMap(title: string, concepts: string[], proLines: string[], classification: StudyMaterialClassification): StudyConceptMap {
+  const safeConcepts = concepts.length ? concepts.slice(0, 9) : [title];
+  const nodes: StudyConceptMapNode[] = [
+    { id: "root", label: title, detail: classification.label, level: 0 },
+    ...safeConcepts.map((concept, index) => ({
+      id: `concept-${index}`,
+      label: concept,
+      detail: proLines[index] || `Concetto da collegare a ${title}.`,
+      level: index < 3 ? 1 : 2,
+    })),
+  ];
+
+  const relations: StudyConceptMapRelation[] = safeConcepts.map((_, index) => ({
+    from: index < 3 ? "root" : `concept-${Math.max(0, index - 3)}`,
+    to: `concept-${index}`,
+    label: index < 3 ? "include" : index % 2 === 0 ? "dipende da" : "si collega a",
+    type: relationLabelFor(classification, index),
+  }));
+
+  const exportText = [
+    `MAPPA CONCETTUALE — ${title}`,
+    "",
+    ...nodes.map((node) => `${"  ".repeat(node.level)}- ${node.label}: ${node.detail}`),
+    "",
+    "Relazioni",
+    ...relations.map((rel) => `- ${nodes.find((n) => n.id === rel.from)?.label || rel.from} -> ${nodes.find((n) => n.id === rel.to)?.label || rel.to}: ${rel.label} (${rel.type})`),
+  ].join("\n");
+
+  return { title, nodes, relations, exportText };
+}
+
+function buildExercises(concepts: string[], classification: StudyMaterialClassification): StudyExercise[] {
+  const primary = concepts.slice(0, 6);
+  const base = primary.length ? primary : [classification.label];
+  return [
+    {
+      id: "guided-1",
+      type: "guided",
+      prompt: `Spiega ${base[0]} seguendo: definizione → perché è importante → esempio.`,
+      solution: `Una risposta forte definisce ${base[0]}, lo collega a ${classification.label} e chiude con un esempio concreto.`,
+      explanation: "Esercizio guidato per costruire una risposta da interrogazione.",
+      difficulty: "easy",
+    },
+    {
+      id: "application-1",
+      type: "application",
+      prompt: `Applica ${base[1] || base[0]} a un caso reale o a un esempio inventato coerente col materiale.`,
+      solution: "L'esempio deve usare solo concetti presenti nel materiale e mostrare causa, effetto o conseguenza.",
+      explanation: "Verifica se sai usare il concetto, non solo ripeterlo.",
+      difficulty: "medium",
+    },
+    {
+      id: "reasoning-1",
+      type: "reasoning",
+      prompt: `Confronta ${base[0]} con ${base[2] || base[1] || "un secondo concetto"}: cosa hanno in comune e cosa cambia?`,
+      solution: "Risposta attesa: almeno una somiglianza, una differenza e un collegamento al tema centrale.",
+      explanation: "Allena il ragionamento comparativo.",
+      difficulty: "hard",
+    },
+    {
+      id: "free-1",
+      type: "free",
+      prompt: `Scrivi una risposta libera di 8-10 righe sul tema centrale: ${classification.label}.`,
+      explanation: "Usa questa traccia per simulare una domanda aperta da verifica.",
+      difficulty: "medium",
+    },
+  ];
+}
+
+function buildTrueFalseQuiz(concepts: string[]): QuizQuestion[] {
+  return concepts.slice(0, 6).map((concept, index) => ({
+    question: `Vero o falso: "${concept}" è un concetto da collegare al tema centrale del materiale.`,
+    options: ["Vero", "Falso", "Non determinabile", "Solo se appare nel titolo"],
+    answer: 0,
+    explanation: `"${concept}" è stato rilevato tra i concetti chiave; va definito e collegato, non memorizzato isolatamente.`,
+    difficulty: index < 2 ? "easy" : "medium",
+    memoryTrick: "Vero se puoi collegarlo al tema centrale con un esempio.",
+    commonMistake: "Trattare il concetto come parola da imparare a memoria senza contesto.",
+  }));
+}
+
 function detectSubject(text: string, sourceName: string): string {
   const keys = keywords(text, 5);
   const base = sourceName.replace(/\.(txt|md|markdown|docx)$/i, "").replace(/[_-]+/g, " ").trim();
@@ -340,6 +776,7 @@ function explainWord(word: string): DifficultWord {
 
 export function analyzeStudyMaterial(text: string, sourceName = "materiale-studio.txt"): StudySessionResult {
   const clean = cleanText(text);
+  const classification = classifyStudyMaterial(clean, sourceName);
   const narrativeMode = detectNarrative(clean);
   const words = countStudyWords(clean);
   const title = detectSubject(clean, sourceName);
@@ -351,6 +788,7 @@ export function analyzeStudyMaterial(text: string, sourceName = "materiale-studi
   const light = pickSentences(clean, 8);
   const medium = pickSentences(clean, 16);
   const pro = pickSentences(clean, 28);
+  const summaries = buildSummaries(title, clean, classification);
 
   const professionalTerms = extractProfessionalTerms(clean, 10);
   const difficultWords = (professionalTerms.length ? professionalTerms : keywords(clean, 8).filter((word) => word.length >= 7))
@@ -378,21 +816,27 @@ export function analyzeStudyMaterial(text: string, sourceName = "materiale-studi
     title,
     sourceName,
     words,
-    detectedSubject: keyConcepts.slice(0, 4).join(" · ") || title,
-    difficulty: words > 4500 ? "pro" : words > 1500 ? "medium" : "soft",
-    lightSummary: paragraph("Riassunto leggero", light.length ? light : ["Il testo è breve: parti dai concetti principali e riscrivili con parole tue."]),
-    mediumSummary: paragraph("Riassunto medio", medium.length ? medium : light),
-    proSummary: paragraph("Riassunto Pro", pro.length ? pro : medium),
+    detectedSubject: classification.label || keyConcepts.slice(0, 4).join(" · ") || title,
+    difficulty: classification.difficultyScore >= 8 || words > 4500 ? "pro" : classification.difficultyScore >= 5 || words > 1500 ? "medium" : "soft",
+    classification,
+    summaries,
+    lightSummary: summaries.brief || paragraph("Riassunto leggero", light.length ? light : ["Il testo è breve: parti dai concetti principali e riscrivili con parole tue."]),
+    mediumSummary: summaries.complete || paragraph("Riassunto medio", medium.length ? medium : light),
+    proSummary: summaries.university || paragraph("Riassunto Pro", pro.length ? pro : medium),
+    studyNotesPro: buildStudyNotesPro(title, keyConcepts, pro.length ? pro : medium),
     difficultWords,
     flashcards,
     openQuestions: buildOpenQuestions(title, keyConcepts, narrativeMode),
     quiz,
+    trueFalse: buildTrueFalseQuiz(keyConcepts),
+    exercises: buildExercises(keyConcepts, classification),
+    conceptMap: buildConceptMap(title, keyConcepts, pro.length ? pro : medium, classification),
     keyConcepts,
   };
 }
 
 async function readDocx(file: File): Promise<string> {
-  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const zip = await JSZip.loadAsync(await readBlobArrayBuffer(file));
   const xml = await zip.file("word/document.xml")?.async("text");
   if (!xml) throw new Error("DOCX non leggibile.");
 
@@ -406,11 +850,57 @@ async function readDocx(file: File): Promise<string> {
   return paragraphs.map((p) => p.trim()).filter(Boolean).join("\n\n");
 }
 
+async function readEpub(file: File): Promise<string> {
+  const zip = await JSZip.loadAsync(await readBlobArrayBuffer(file));
+  const entries = Object.values(zip.files)
+    .filter((entry) => !entry.dir && /\.(xhtml|html|htm|xml)$/i.test(entry.name) && !/container\.xml|opf$/i.test(entry.name))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  if (!entries.length) throw new Error("EPUB non leggibile: capitoli HTML non trovati.");
+
+  const chunks: string[] = [];
+  for (const entry of entries.slice(0, 80)) {
+    const raw = await entry.async("text");
+    const doc = new DOMParser().parseFromString(raw, "text/html");
+    const text = (doc.body?.textContent || raw)
+      .replace(/\s+/g, " ")
+      .replace(/^\s+|\s+$/g, "");
+    if (countStudyWords(text) >= 20) chunks.push(text);
+  }
+
+  const fullText = chunks.join("\n\n").trim();
+  if (!fullText) throw new Error("EPUB letto ma senza testo studiabile.");
+  return fullText;
+}
+
+async function readImageWithBrowserOcr(file: File): Promise<string> {
+  const TextDetectorCtor = (globalThis as any).TextDetector;
+  if (typeof TextDetectorCtor !== "function") {
+    throw new Error("OCR non disponibile in questo browser. L'immagine non è stata letta: carica un PDF con testo selezionabile o incolla gli appunti.");
+  }
+
+  const bitmap = await createImageBitmap(file);
+  try {
+    const detector = new TextDetectorCtor();
+    const detections = await detector.detect(bitmap);
+    const text = (Array.isArray(detections) ? detections : [])
+      .map((item: any) => String(item?.rawValue || item?.text || "").trim())
+      .filter(Boolean)
+      .join("\n");
+    if (!text.trim()) {
+      throw new Error("OCR disponibile ma nessun testo riconosciuto nell'immagine.");
+    }
+    return text;
+  } finally {
+    bitmap.close?.();
+  }
+}
+
 
 async function readPdf(file: File): Promise<string> {
   try {
     const pdfjsLib = await loadPdfJs();
-    const arrayBuffer = await file.arrayBuffer();
+    const arrayBuffer = await readBlobArrayBuffer(file);
 
     const pdf = await pdfjsLib.getDocument({
       data: arrayBuffer,
@@ -454,12 +944,78 @@ async function readPdf(file: File): Promise<string> {
 }
 
 export async function readStudyFile(file: File): Promise<string> {
+  return (await readStudyFileDetailed(file)).text;
+}
+
+export async function readStudyFileDetailed(file: File): Promise<StudyFileReadResult> {
   const name = file.name.toLowerCase();
+  const warnings: string[] = [];
+  let text = "";
+  let sourceType: StudyFileReadResult["sourceType"] = "txt";
 
-  if (name.endsWith(".docx")) return readDocx(file);
-  if (name.endsWith(".txt") || name.endsWith(".md") || name.endsWith(".markdown")) return file.text();
+  if (name.endsWith(".docx")) {
+    sourceType = "docx";
+    text = await readDocx(file);
+  } else if (name.endsWith(".txt")) {
+    sourceType = "txt";
+    text = await readBlobText(file);
+  } else if (name.endsWith(".md") || name.endsWith(".markdown")) {
+    sourceType = "md";
+    text = await readBlobText(file);
+  } else if (name.endsWith(".pdf")) {
+    sourceType = "pdf";
+    text = await readPdf(file);
+  } else if (name.endsWith(".epub")) {
+    sourceType = "epub";
+    text = await readEpub(file);
+  } else if (/\.(png|jpe?g|webp)$/i.test(name) || file.type.startsWith("image/")) {
+    sourceType = "image";
+    text = await readImageWithBrowserOcr(file);
+    warnings.push("Testo estratto via OCR browser: verifica eventuali errori di riconoscimento.");
+  } else {
+    throw new Error("Formato non supportato. Usa PDF, EPUB, TXT, MD, Markdown, DOCX o immagini JPG/PNG/WebP con OCR disponibile.");
+  }
 
-  if (name.endsWith(".pdf")) return readPdf(file);
+  const clean = cleanText(text);
+  const empty = countStudyWords(clean) === 0;
+  if (empty) throw new Error(`${file.name}: file vuoto o senza testo studiabile.`);
 
-  throw new Error("Formato non supportato. Usa TXT, MD, Markdown o DOCX.");
+  return {
+    fileName: file.name,
+    sourceType,
+    text: clean,
+    warnings,
+    empty,
+  };
+}
+
+export async function readStudyFiles(files: File[]): Promise<StudyFileReadResult> {
+  if (!files.length) throw new Error("Nessun file selezionato.");
+  const results: StudyFileReadResult[] = [];
+  const errors: string[] = [];
+
+  for (const file of files) {
+    try {
+      results.push(await readStudyFileDetailed(file));
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : `${file.name}: errore lettura.`);
+    }
+  }
+
+  const readable = results.filter((result) => countStudyWords(result.text) > 0);
+  if (!readable.length) {
+    throw new Error(errors.join(" ") || "Nessun testo leggibile nei file selezionati.");
+  }
+
+  const combined = readable
+    .map((result, index) => `=== MATERIALE ${index + 1}: ${result.fileName} ===\n\n${result.text}`)
+    .join("\n\n");
+
+  return {
+    fileName: readable.length === 1 ? readable[0].fileName : `${readable.length} materiali uniti`,
+    sourceType: readable.length === 1 ? readable[0].sourceType : "txt",
+    text: combined,
+    warnings: [...readable.flatMap((result) => result.warnings), ...errors],
+    empty: false,
+  };
 }

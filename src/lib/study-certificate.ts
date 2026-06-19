@@ -4,6 +4,10 @@ export interface StudyCertificateInput {
   date: string;
   score: number;
   level: string;
+  grade10?: number;
+  grade30?: number;
+  judgement?: string;
+  sourceProjectId?: string;
   badges: string[];
 }
 
@@ -40,10 +44,18 @@ export async function generateStudyCertificatePdf(input: StudyCertificateInput):
   doc.text(`ha completato con successo lo studio di: ${input.subject}`, w / 2, 214, { align: "center" });
   doc.text(`Data: ${input.date}`, w / 2, 236, { align: "center" });
   doc.text(`Punteggio: ${input.score}/100 · Livello: ${input.level}`, w / 2, 258, { align: "center" });
+  if (input.grade10 || input.grade30 || input.judgement) {
+    doc.text(
+      `Valutazione: ${input.grade10 ?? "-"} /10 · ${input.grade30 ?? "-"} /30 · ${input.judgement || "Giudizio non disponibile"}`,
+      w / 2,
+      280,
+      { align: "center" },
+    );
+  }
 
   if (input.badges.length) {
     doc.setFontSize(12);
-    doc.text(`Badge: ${input.badges.join(" · ")}`, w / 2, 282, { align: "center" });
+    doc.text(`Badge: ${input.badges.join(" · ")}`, w / 2, input.grade10 || input.grade30 || input.judgement ? 304 : 282, { align: "center" });
   }
 
   doc.setFontSize(10);

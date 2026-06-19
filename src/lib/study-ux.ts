@@ -7,7 +7,18 @@ export type FlashcardConfidence = "unknown" | "almost" | "known";
 export type UserPerformanceLevel = "struggling" | "balanced" | "advanced";
 
 export interface StudyUxState {
-  activeSection: "summary" | "questions" | "vocabulary" | "flashcards" | "quiz";
+  activeSection:
+    | "materials"
+    | "summary"
+    | "questions"
+    | "vocabulary"
+    | "flashcards"
+    | "quiz"
+    | "maps"
+    | "exam"
+    | "progress"
+    | "certificates"
+    | "coach";
   quizAnswers: Record<number, number>;
   currentQuizIndex: number;
   quizOrder: number[];
@@ -280,12 +291,18 @@ function buildMemoryTrick(question: string, answer: string): string {
 
 export interface QuizPerformanceReport {
   score: number;
+  grade10: number;
+  grade30: number;
+  judgement: string;
   confidence: "High" | "Medium" | "Low";
   strongAreas: string[];
   weakAreas: string[];
+  errors: string[];
+  strengths: string[];
   likelyOralQuestions: string[];
   suggestedNextStep: string;
   estimatedOral: "Low" | "Medium" | "High";
+  reviewMinutes: number;
 }
 
 export function buildQuizPerformanceReport(
@@ -299,10 +316,24 @@ export function buildQuizPerformanceReport(
   const wrongIndices = quiz.map((q, i) => (answers[i] !== undefined && answers[i] !== q.answer ? i : -1)).filter((i) => i >= 0);
 
   const score = total ? Math.round((correctIndices.length / total) * 100) : 0;
+  const grade10 = Math.round((score / 10) * 10) / 10;
+  const grade30 = Math.round((score / 100) * 30);
+  const judgement =
+    score >= 90 ? "Eccellente"
+      : score >= 75 ? "Buono"
+        : score >= 60 ? "Sufficiente"
+          : score >= 45 ? "Fragile"
+            : "Da recuperare";
   const confidence: QuizPerformanceReport["confidence"] = score >= 75 ? "High" : score >= 50 ? "Medium" : "Low";
 
   const strongAreas = correctIndices.slice(0, 4).map((i) => sanitizeStudyText(quiz[i].question).slice(0, 80));
   const weakAreas = wrongIndices.slice(0, 4).map((i) => sanitizeStudyText(quiz[i].question).slice(0, 80));
+  const errors = wrongIndices.slice(0, 6).map((i) => {
+    const q = quiz[i];
+    const selected = answers[i];
+    return `${sanitizeStudyText(q.question).slice(0, 90)} — risposta data: ${q.options[selected] || "non valida"}; corretta: ${q.options[q.answer] || "non disponibile"}`;
+  });
+  const strengths = strongAreas.length ? strongAreas : keyConcepts.slice(0, 3).map(sanitizeStudyText);
 
   const likelyOralQuestions = [
     ...openQuestions.slice(0, 2).map((q) => sanitizeStudyText(q.question)),
@@ -318,8 +349,23 @@ export function buildQuizPerformanceReport(
 
   const estimatedOral: QuizPerformanceReport["estimatedOral"] =
     score >= 75 ? "High" : score >= 50 ? "Medium" : "Low";
+  const reviewMinutes = Math.max(8, wrongIndices.length * 8 + (score < 60 ? 18 : score < 75 ? 10 : 5));
 
-  return { score, confidence, strongAreas, weakAreas, likelyOralQuestions, suggestedNextStep, estimatedOral };
+  return {
+    score,
+    grade10,
+    grade30,
+    judgement,
+    confidence,
+    strongAreas,
+    weakAreas,
+    errors,
+    strengths,
+    likelyOralQuestions,
+    suggestedNextStep,
+    estimatedOral,
+    reviewMinutes,
+  };
 }
 
 export interface StudyCoachMetrics {
@@ -393,6 +439,105 @@ export function computeStudyCoachMetrics(
     avoid,
     coachMessage,
   };
+}
+
+export interface StudyCoachPlan {
+  title: string;
+  days: Array<{ day: string; focus: string; tasks: string[]; minutes: number }>;
+}
+
+export function buildStudyCoachPlans(input: {
+  result: StudySessionResult;
+  quizAnswers?: Record<number, number>;
+  openEvaluations?: Record<number, { score?: number }>;
+  flashcardConfidence?: Record<number, FlashcardConfidence>;
+}): StudyCoachPlan[] {
+  const result = input.result;
+  const performance = computeUserPerformanceLevel({
+    quiz: result.quiz || [],
+    quizAnswers: input.quizAnswers || {},
+    openEvaluations: input.openEvaluations || {},
+    flashcardConfidence: input.flashcardConfidence || {},
+  });
+  const metrics = computeStudyCoachMetrics(result, performance);
+  const weakConcepts = (result.keyConcepts || []).slice(0, 5);
+  const classification = result.classification;
+  const baseMinutes = Math.max(20, Math.min(80, Math.round(metrics.estimatedMinutes / 3)));
+  const strategy = classification?.strategy?.length ? classification.strategy : ["riassunto", "quiz", "ripasso orale"];
+
+  return [
+    {
+      title: "Piano 3 giorni",
+      days: [
+        {
+          day: "Giorno 1",
+          focus: "Comprensione",
+          tasks: [
+            "Leggi il riassunto completo e sottolinea i concetti non chiari.",
+            `Lavora su: ${weakConcepts.slice(0, 2).join(", ") || result.detectedSubject}.`,
+            `Metodo: ${strategy[0] || "riassunto progressivo"}.`,
+          ],
+          minutes: baseMinutes,
+        },
+        {
+          day: "Giorno 2",
+          focus: "Memoria attiva",
+          tasks: [
+            "Completa flashcard e vero/falso senza guardare il testo.",
+            "Riscrivi a parole tue 5 definizioni o passaggi chiave.",
+            `Metodo: ${strategy[1] || "domande attive"}.`,
+          ],
+          minutes: baseMinutes,
+        },
+        {
+          day: "Giorno 3",
+          focus: "Verifica",
+          tasks: [
+            "Fai la simulazione esame.",
+            "Correggi gli errori e ripeti a voce le domande orali probabili.",
+            "Scarica attestato solo se la verifica supera il 60%.",
+          ],
+          minutes: baseMinutes,
+        },
+      ],
+    },
+    {
+      title: "Piano 7 giorni",
+      days: Array.from({ length: 7 }, (_, index) => ({
+        day: `Giorno ${index + 1}`,
+        focus: index < 2 ? "Base" : index < 5 ? "Consolidamento" : "Simulazione",
+        tasks: index < 2
+          ? ["Riassunto breve + ultra semplice.", "Lista dei concetti chiave.", `Focus materia: ${classification?.label || result.detectedSubject}.`]
+          : index < 5
+            ? ["Quiz adattivo.", "Flashcard cloze/definizione.", "Un esercizio guidato o applicativo."]
+            : ["Esame completo.", "Ripasso errori.", "Interrogazione orale da 3 minuti."],
+        minutes: Math.max(18, Math.round(metrics.estimatedMinutes / 7) + (index > 4 ? 12 : 0)),
+      })),
+    },
+    {
+      title: "Piano esame",
+      days: [
+        {
+          day: "Blocco 1",
+          focus: "Mappa",
+          tasks: ["Apri la mappa concettuale.", "Spiega ogni nodo senza leggere.", "Collega almeno 3 relazioni causa-effetto o gerarchiche."],
+          minutes: 25,
+        },
+        {
+          day: "Blocco 2",
+          focus: "Domande",
+          tasks: ["Completa quiz + vero/falso.", "Raccogli gli errori.", "Trasforma ogni errore in una flashcard."],
+          minutes: 35,
+        },
+        {
+          day: "Blocco 3",
+          focus: "Orale",
+          tasks: ["Rispondi alle domande aperte.", "Chiedi valutazione.", "Ripeti solo punti deboli e termini tecnici."],
+          minutes: 30,
+        },
+      ],
+    },
+  ];
 }
 
 /** @deprecated use computeStudyCoachMetrics */

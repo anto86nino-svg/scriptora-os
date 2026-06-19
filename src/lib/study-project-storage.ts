@@ -12,6 +12,9 @@ export interface StudyQuizAttempt {
   completedAt: string;
   totalQuestions: number;
   correctCount: number;
+  grade10?: number;
+  grade30?: number;
+  judgement?: string;
 }
 
 export interface StudyProjectRecord {
@@ -138,6 +141,7 @@ export function getStudyLearningMetrics() {
   const projects = listStudyProjects();
   const attempts = projects.flatMap((p) => p.quizAttempts);
   const sessions = projects.length;
+  const completedSessions = projects.filter((p) => p.quizAttempts.length > 0).length;
   const avgScore = attempts.length
     ? Math.round(attempts.reduce((s, a) => s + a.score, 0) / attempts.length)
     : 0;
@@ -146,12 +150,55 @@ export function getStudyLearningMetrics() {
   const level =
     avgScore >= 90 ? "Advanced" : avgScore >= 75 ? "Proficient" : avgScore >= 55 ? "Developing" : "Beginner";
 
+  const minutesStudied = projects.reduce((sum, project) => {
+    const classified = project.result.classification?.estimatedStudyMinutes;
+    return sum + (classified || Math.max(10, Math.round((project.result.words || 0) / 180)));
+  }, 0);
+  const weakPoints = attempts
+    .filter((attempt) => attempt.score < 70)
+    .flatMap((attempt) => projects.find((project) => project.quizAttempts.includes(attempt))?.result.keyConcepts?.slice(0, 3) || [])
+    .filter(Boolean)
+    .slice(0, 12);
+  const strongPoints = attempts
+    .filter((attempt) => attempt.score >= 75)
+    .flatMap((attempt) => projects.find((project) => project.quizAttempts.includes(attempt))?.result.keyConcepts?.slice(0, 3) || [])
+    .filter(Boolean)
+    .slice(0, 12);
+  const recentAttempts = attempts
+    .slice()
+    .sort((a, b) => b.completedAt.localeCompare(a.completedAt));
+  const recentAsc = recentAttempts.slice(0, 5).reverse();
+  const trend = recentAsc.length >= 2
+    ? recentAsc[recentAsc.length - 1].score - recentAsc[0].score
+    : 0;
+  const streakDays = Array.from(new Set(
+    projects
+      .map((project) => project.updatedAt.slice(0, 10))
+      .concat(attempts.map((attempt) => attempt.completedAt.slice(0, 10))),
+  )).sort((a, b) => b.localeCompare(a));
+  let streak = 0;
+  const today = new Date();
+  for (let i = 0; i < 30; i += 1) {
+    const day = new Date(today);
+    day.setDate(today.getDate() - i);
+    const iso = day.toISOString().slice(0, 10);
+    if (streakDays.includes(iso)) streak += 1;
+    else if (i > 0) break;
+  }
+
   return {
     sessions,
+    completedSessions,
     avgScore,
     level,
     subjects,
     badges,
+    minutesStudied,
+    hoursStudied: Math.round((minutesStudied / 60) * 10) / 10,
+    weakPoints: Array.from(new Set(weakPoints)).slice(0, 6),
+    strongPoints: Array.from(new Set(strongPoints)).slice(0, 6),
+    streak,
+    trend,
     attempts: attempts.slice(0, 12),
     projects: projects.slice(0, 8),
   };

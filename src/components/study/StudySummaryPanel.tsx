@@ -1,11 +1,26 @@
 import { compressLightSummary, parseStudyNotesPro, sanitizeStudyText, type StudyNotesSection } from "@/lib/study-ux";
+import type { StudySummaryMode } from "@/lib/study-session";
 
 interface StudySummaryPanelProps {
   lightSummary: string;
   mediumSummary: string;
   proSummary: string;
   studyNotesPro: string;
+  summaries?: Partial<Record<StudySummaryMode, string>>;
 }
+
+const SUMMARY_MODE_LABELS: Array<{ key: StudySummaryMode; title: string; badge: string }> = [
+  { key: "brief", title: "Breve", badge: "Sintesi rapida" },
+  { key: "complete", title: "Completo", badge: "Studio base" },
+  { key: "university", title: "Universitario", badge: "Approfondito" },
+  { key: "oral", title: "Interrogazione", badge: "Risposta a voce" },
+  { key: "ultraSimple", title: "Ultra semplice", badge: "Spiegato facile" },
+  { key: "quickReview", title: "Ripasso veloce", badge: "5 minuti" },
+  { key: "chronological", title: "Cronologico", badge: "Sequenza" },
+  { key: "causeEffect", title: "Causa-effetto", badge: "Relazioni" },
+  { key: "bulletPoints", title: "Punti elenco", badge: "Checklist" },
+  { key: "oralExam", title: "Esame orale", badge: "Metodo professore" },
+];
 
 function SummaryCard({ title, text, badge }: { title: string; text: string; badge?: string }) {
   return (
@@ -134,18 +149,32 @@ export function StudySummaryPanel({
   mediumSummary,
   proSummary,
   studyNotesPro,
+  summaries,
 }: StudySummaryPanelProps) {
   const lightCompressed = compressLightSummary(lightSummary);
   const notesSections = parseStudyNotesPro(studyNotesPro);
+  const modeCards = SUMMARY_MODE_LABELS
+    .map((mode) => ({ ...mode, text: summaries?.[mode.key] || "" }))
+    .filter((mode) => mode.text.trim().length > 0);
 
   return (
     <div className="space-y-4">
-      <SummaryCard title="📘 Riassunto leggero" text={lightCompressed} badge="~150 parole · ripasso veloce" />
-      <SummaryCard title="📗 Riassunto medio" text={sanitizeStudyText(mediumSummary)} badge="Spiegazione scuola" />
-      <SummaryCard title="📕 Riassunto Pro" text={sanitizeStudyText(proSummary)} badge="Comprensione profonda" />
+      {modeCards.length >= 4 ? (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {modeCards.map((mode) => (
+            <SummaryCard key={mode.key} title={mode.title} text={sanitizeStudyText(mode.text)} badge={mode.badge} />
+          ))}
+        </div>
+      ) : (
+        <>
+          <SummaryCard title="Riassunto leggero" text={lightCompressed} badge="~150 parole · ripasso veloce" />
+          <SummaryCard title="Riassunto medio" text={sanitizeStudyText(mediumSummary)} badge="Spiegazione scuola" />
+          <SummaryCard title="Riassunto Pro" text={sanitizeStudyText(proSummary)} badge="Comprensione profonda" />
+        </>
+      )}
 
       <div className="study-card-enter rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
-        <h3 className="font-semibold">📝 Scheda Studio Pro</h3>
+        <h3 className="font-semibold">Scheda Studio Pro</h3>
         <p className="mt-1 text-xs text-muted-foreground">Dashboard di apprendimento — scansione rapida, zero markdown.</p>
 
         {notesSections.length > 0 ? (

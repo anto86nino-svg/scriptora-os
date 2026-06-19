@@ -96,11 +96,39 @@ function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudyS
     .filter(Boolean)
     .slice(0, 16);
 
+  const trueFalse = normalizeArray<any>(parsed?.trueFalse).slice(0, 8).map((item) => {
+    const options = normalizeArray<string>(item?.options).map((option) => String(option || "").trim()).filter(Boolean).slice(0, 4);
+    return {
+      question: normalizeString(item?.question, "Domanda vero/falso"),
+      options: options.length >= 2 ? options : ["Vero", "Falso", "Non determinabile", "Solo in parte"],
+      answer: Math.max(0, Math.min(3, Number.isFinite(Number(item?.answer)) ? Number(item.answer) : 0)),
+      explanation: normalizeString(item?.explanation, "Rileggi il concetto nel riassunto."),
+      difficulty: item?.difficulty === "easy" || item?.difficulty === "medium" || item?.difficulty === "hard" ? item.difficulty : "easy",
+    };
+  });
+
+  const exercises = normalizeArray<any>(parsed?.exercises).slice(0, 8).map((item, index) => ({
+    id: normalizeString(item?.id, `ai-exercise-${index}`),
+    type: ["guided", "free", "correction", "application", "reasoning"].includes(item?.type) ? item.type : "guided",
+    prompt: normalizeString(item?.prompt, "Esercizio sul materiale"),
+    solution: normalizeString(item?.solution, ""),
+    explanation: normalizeString(item?.explanation, "Esercizio generato dal materiale."),
+    difficulty: item?.difficulty === "easy" || item?.difficulty === "medium" || item?.difficulty === "hard" ? item.difficulty : "medium",
+  }));
+
+  const summaries = parsed?.summaries && typeof parsed.summaries === "object"
+    ? { ...fallback.summaries, ...parsed.summaries }
+    : fallback.summaries;
+
   return {
     ...fallback,
     title: normalizeString(parsed?.title, fallback.title),
     detectedSubject: normalizeString(parsed?.detectedSubject, fallback.detectedSubject),
     difficulty,
+    classification: parsed?.classification && typeof parsed.classification === "object"
+      ? { ...fallback.classification, ...parsed.classification }
+      : fallback.classification,
+    summaries,
     lightSummary: normalizeString(parsed?.lightSummary, fallback.lightSummary),
     mediumSummary: normalizeString(parsed?.mediumSummary, fallback.mediumSummary),
     proSummary: normalizeString(parsed?.proSummary, fallback.proSummary),
@@ -109,6 +137,9 @@ function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudyS
     difficultWords: difficultWords.length ? difficultWords : fallback.difficultWords,
     flashcards: flashcards.length ? flashcards : fallback.flashcards,
     quiz: quiz.length ? quiz : fallback.quiz,
+    trueFalse: trueFalse.length ? trueFalse : fallback.trueFalse,
+    exercises: exercises.length ? exercises : fallback.exercises,
+    conceptMap: parsed?.conceptMap && typeof parsed.conceptMap === "object" ? parsed.conceptMap : fallback.conceptMap,
     keyConcepts: keyConcepts.length ? keyConcepts : fallback.keyConcepts,
   };
 }
@@ -243,6 +274,8 @@ QUALITY RULES:
 - Difficult words: explain simple meaning, technical meaning, and give concrete example.
 - Flashcards: useful for active recall, not generic.
 - Quiz: create challenging multiple-choice questions with PLAUSIBLE distractors (no joke answers). Include answer index 0-3, explanation, difficulty (easy|medium|hard), memoryTrick, and commonMistake for each question.
+- Exercises: guided, free, application and reasoning tasks with solution/explanation when appropriate.
+- Concept map: nodes and relationships grounded in the material.
 - Do not invent facts not present in the material.
 - If the material is sampled because too long, still cover all detected major areas and do not say "chapters omitted" unless truly necessary.
 - Prefer clarity over elegance. The student must be able to study from this output.`;
@@ -257,6 +290,28 @@ Return this JSON shape exactly:
   "title": "string",
   "detectedSubject": "string",
   "difficulty": "soft | medium | pro",
+  "classification": {
+    "type": "history | philosophy | literature | math | physics | chemistry | medicine | law | economics | computer-science | foreign-language | scientific-article | technical-manual | mixed-notes | general",
+    "label": "string",
+    "confidence": 0,
+    "language": "string",
+    "difficultyScore": 0,
+    "estimatedStudyMinutes": 0,
+    "signals": ["string"],
+    "strategy": ["string"]
+  },
+  "summaries": {
+    "brief": "string",
+    "complete": "string",
+    "university": "string",
+    "oral": "string",
+    "ultraSimple": "string",
+    "quickReview": "string",
+    "chronological": "string",
+    "causeEffect": "string",
+    "bulletPoints": "string",
+    "oralExam": "string"
+  },
   "lightSummary": "string",
   "mediumSummary": "string",
   "proSummary": "string",
@@ -292,6 +347,31 @@ Return this JSON shape exactly:
       "commonMistake": "string"
     }
   ],
+  "trueFalse": [
+    {
+      "question": "string",
+      "options": ["Vero", "Falso", "Non determinabile", "Solo in parte"],
+      "answer": 0,
+      "explanation": "string",
+      "difficulty": "easy | medium | hard"
+    }
+  ],
+  "exercises": [
+    {
+      "id": "string",
+      "type": "guided | free | correction | application | reasoning",
+      "prompt": "string",
+      "solution": "string",
+      "explanation": "string",
+      "difficulty": "easy | medium | hard"
+    }
+  ],
+  "conceptMap": {
+    "title": "string",
+    "nodes": [{"id": "string", "label": "string", "detail": "string", "level": 0}],
+    "relations": [{"from": "string", "to": "string", "label": "string", "type": "hierarchy | cause-effect | prerequisite | contrast | example"}],
+    "exportText": "string"
+  },
   "keyConcepts": ["string"]
 }
 
@@ -308,6 +388,10 @@ Mix question types:
 - "what does the author mean by..." questions
 FLASHCARD REQUIREMENTS:
 Mix types: definition, cause-effect, comparison, true/false, application, oral-exam style. Break long answers into smaller chunks.
+SUMMARY REQUIREMENTS:
+The 10 summary modes must be genuinely different in structure and purpose. Do not copy the same text into every mode.
+MAP/EXERCISE REQUIREMENTS:
+Use only concepts present in the material. If a relationship is inferred, keep it conservative and label it as a study relation, not a new fact.
 
 MATERIAL:
 ${material}`;

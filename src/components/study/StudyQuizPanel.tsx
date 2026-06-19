@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Clock, GraduationCap, Lightbulb, Loader2, MessageCircle, RotateCcw, Trophy } from "lucide-react";
 import { explainStudyQuizError, type StudyErrorTutorResult } from "@/lib/study-ai";
 import type { OpenStudyQuestion, QuizQuestion } from "@/lib/study-session";
@@ -30,7 +30,15 @@ interface StudyQuizPanelProps {
     quizMode: "practice" | "exam";
     quizOrder: number[];
   }) => void;
-  onExamComplete?: (report: { score: number; mode: "practice" | "exam"; total: number; correct: number }) => void;
+  onExamComplete?: (report: {
+    score: number;
+    mode: "practice" | "exam";
+    total: number;
+    correct: number;
+    grade10?: number;
+    grade30?: number;
+    judgement?: string;
+  }) => void;
 }
 
 const EXAM_TIME_OPTIONS = [
@@ -66,10 +74,11 @@ export function StudyQuizPanel({
   const [examTimeLimitSec, setExamTimeLimitSec] = useState<number | null>(null);
   const [examStartedAt, setExamStartedAt] = useState<number | null>(null);
   const [examElapsed, setExamElapsed] = useState(0);
-  const [showExamSetup, setShowExamSetup] = useState(false);
+  const [showExamSetup, setShowExamSetup] = useState(initialMode === "exam");
   const [showFeedback, setShowFeedback] = useState(false);
   const [tutorLoading, setTutorLoading] = useState(false);
   const [tutorResult, setTutorResult] = useState<StudyErrorTutorResult | null>(null);
+  const completionKeyRef = useRef("");
 
   const performance = useMemo<UserPerformanceLevel>(
     () => computeUserPerformanceLevel({
@@ -102,13 +111,21 @@ export function StudyQuizPanel({
 
   useEffect(() => {
     if (isComplete && report) {
+      const completionKey = `${quizMode}:${report.score}:${Object.entries(quizAnswers).sort().map(([idx, ans]) => `${idx}:${ans}`).join("|")}`;
+      if (completionKeyRef.current === completionKey) return;
+      completionKeyRef.current = completionKey;
       onExamComplete?.({
         score: report.score,
         mode: quizMode,
         total: quiz.length,
         correct: Object.entries(quizAnswers).filter(([idx, ans]) => quiz[Number(idx)]?.answer === ans).length,
+        grade10: report.grade10,
+        grade30: report.grade30,
+        judgement: report.judgement,
       });
+      return;
     }
+    completionKeyRef.current = "";
   }, [isComplete, report, quizMode, quiz, quizAnswers, onExamComplete]);
 
   useEffect(() => {
@@ -183,6 +200,7 @@ export function StudyQuizPanel({
 
   const adaptiveLabel =
     performance === "struggling" ? "Modalità supporto" : performance === "advanced" ? "Sfida avanzata" : "Ritmo bilanciato";
+  const quizInteractionReady = quizMode !== "exam" || Boolean(examStartedAt);
 
   return (
     <div className="study-card-enter rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
@@ -254,6 +272,12 @@ export function StudyQuizPanel({
           <div className="mt-2 flex flex-wrap gap-4">
             <p className="text-2xl font-bold text-emerald-100">Score: {report.score}/100</p>
             <p className="text-sm text-emerald-100/90">
+              Voto: <span className="font-bold">{report.grade10}/10 · {report.grade30}/30</span>
+            </p>
+            <p className="text-sm text-emerald-100/90">
+              Giudizio: <span className="font-bold">{report.judgement}</span>
+            </p>
+            <p className="text-sm text-emerald-100/90">
               Confidenza: <span className="font-bold">{report.confidence}</span>
             </p>
           </div>
@@ -288,10 +312,13 @@ export function StudyQuizPanel({
           <p className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-emerald-100">
             <span className="font-semibold">Prossimo passo: </span>{report.suggestedNextStep}
           </p>
+          <p className="mt-2 text-xs text-emerald-100/80">
+            Tempo di ripasso consigliato: {report.reviewMinutes} minuti.
+          </p>
         </div>
       )}
 
-      {q && (
+      {q && quizInteractionReady && (
         <div className="mt-4 rounded-3xl border border-white/10 bg-background/45 p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-semibold text-muted-foreground">
