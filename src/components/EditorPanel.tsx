@@ -1652,6 +1652,10 @@ const GenerationProgress = memo(function GenerationProgress({
   const slow = elapsedSeconds >= 90;
   const liveContent = (chunkProgress?.content?.trim() || fallbackContent?.trim() || "");
   const streamLines = getCompactLiveStreamLines(liveContent);
+
+  const statusMessage =
+    chunkProgress?.statusMessage ||
+    "Preparazione apertura narrativa...";
   const chapterTitle = resolveChapterTitle(outline?.title || "", chapterIndex, {
     config: project.config,
     summary: outline?.summary,
@@ -1744,7 +1748,9 @@ const GenerationProgress = memo(function GenerationProgress({
               <p key={`${index}-${line.slice(0, 12)}`}>{line}</p>
             ))
           ) : (
-            <p className="scriptora-chapter-live-stream-placeholder">Le prime righe appariranno qui…</p>
+            <div className="scriptora-chapter-live-stream-placeholder">
+              <p>{statusMessage}</p>
+            </div>
           )}
           {liveContent && <span className="scriptora-generation-caret" aria-hidden="true" />}
         </div>

@@ -13,4 +13,5 @@ export interface ChunkProgress {
   phase: ChunkProgressPhase;
   content: string;
   chunkSize?: ChunkProgressSize;
+  statusMessage?: string;
 }

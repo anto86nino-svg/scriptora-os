@@ -837,6 +837,19 @@ typeof crypto.randomUUID === "function"
 
     try {
       addMessage("assistant", `Writing Chapter ${index + 1}... ✍️`);
+      setChunkProgress(prev => ({
+        ...prev,
+        [`chapter-${index}`]: {
+          chunkIndex: 0,
+          totalChunks: 1,
+          currentWords: 0,
+          targetWords: 1,
+          phase: "OPENING",
+          content: "",
+          statusMessage: "Preparazione memoria narrativa..."
+        }
+      }));
+
       const latestP = normalizeProjectChapters(getLatestProject() || p);
       const prevChapters = latestP.chapters
         .slice(0, index)
