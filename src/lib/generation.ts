@@ -1382,17 +1382,18 @@ export async function generateChapterChunked(
     }
 
     // Adaptive chunk size selection
-    const chunkSize = selectChunkSize(consecutiveFailures);
+    // Il primo blocco deve essere ultra-leggero: serve ad accendere subito il manoscritto live.
+    // Se parte come LARGE, la UI resta muta troppo a lungo prima del primo onChunkProgress.
+    const chunkSize = chunkIndex === 0 ? "MICRO" : selectChunkSize(consecutiveFailures);
     const sizeConfig = CHUNK_SIZES[chunkSize];
 
     let chunkTarget = phase === "CLOSURE"
       ? Math.min(remainingWords + 100, sizeConfig.max)
       : Math.min(Math.max(sizeConfig.min, remainingWords), sizeConfig.max);
 
-    // Primo chunk ultra-rapido per attivare subito il manoscritto live.
-    // Deve essere una scintilla narrativa, non un blocco completo.
+    // Primo chunk: scintilla narrativa breve, non blocco completo.
     if (chunkIndex === 0) {
-      chunkTarget = Math.min(chunkTarget, 220);
+      chunkTarget = Math.min(chunkTarget, 160);
     }
 
     if (DEV_DEBUG_STREAM) console.log(`[Scriptora] Chunk ${chunkIndex + 1}: size=${chunkSize} (${sizeConfig.label}), failures=${consecutiveFailures}`);
