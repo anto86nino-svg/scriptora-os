@@ -131,15 +131,17 @@ describe("Canon Brain V3", () => {
     expect(block).not.toContain("Marco");
   });
 
-  it("blocca un chunk con personaggi nominati fuori dal canon prima del merge", () => {
+  it("segnala entita non sincronizzate senza bloccare il merge", () => {
     const result = validateCanonBrainV3ChunkBeforeMerge(
       project(),
       "Nora guardo la chiave. Marco entro dalla porta. Marco conosceva gia la Cattedrale.",
     );
 
-    expect(result.passed).toBe(false);
+    expect(result.passed).toBe(true);
     expect(result.unauthorizedEntities).toContain("Marco");
-    expect(result.reason).toContain("Marco");
+    expect(result.warningEntities).toContain("Marco");
+    expect(result.reason).toBeUndefined();
+    expect(result.issues.some((issue) => issue.evidence.includes("Marco") && issue.severity === "MEDIUM")).toBe(true);
   });
 
   it("consente nomi canonici e luoghi gia presenti nel blueprint", () => {

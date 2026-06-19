@@ -55,6 +55,7 @@ export interface CanonBrainV3ChunkValidationResult {
   reason?: string;
   issues: CanonBrainV3Issue[];
   unauthorizedEntities: string[];
+  warningEntities: string[];
   report: CanonBrainV3Report;
 }
 
@@ -433,11 +434,11 @@ export function validateCanonBrainV3ChunkBeforeMerge(
   if (unauthorizedEntities.length) {
     issues.push({
       id: `unauthorized-entities-${unauthorizedEntities.join("-").toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-      severity: "CRITICAL",
+      severity: "MEDIUM",
       category: "isolation",
-      message: "Il chunk contiene entita nominate non presenti nel canon del progetto attivo.",
+      message: "Il chunk contiene entita nominate non ancora presenti nel canon sincronizzato del progetto attivo.",
       evidence: unauthorizedEntities,
-      fix: "Rigenera il chunk usando solo personaggi, luoghi, oggetti e promesse narrative del Canon Brain V3.",
+      fix: "Verifica se sono nuove comparse legittime o dettagli da aggiungere al canon; non bloccare il merge senza prova di contaminazione.",
     });
   }
 
@@ -448,6 +449,7 @@ export function validateCanonBrainV3ChunkBeforeMerge(
     reason: blocking.length ? blocking.map((issue) => `${issue.id}: ${issue.evidence.join(", ")}`).join(" | ") : undefined,
     issues,
     unauthorizedEntities,
+    warningEntities: unauthorizedEntities,
     report,
   };
 }
