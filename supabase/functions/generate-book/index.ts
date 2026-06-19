@@ -5,6 +5,20 @@ import { getOperationCost } from "../_shared/credit-policy.ts";
 
 function resolveCreditOperation(taskType: string, metadata: Record<string, unknown>): string | null {
   const explicit = metadata?.creditOperation;
+
+  // Diagnostic / owner-safe bypass:
+  // i chunk reali dei capitoli usano DeepSeek provider credits, ma non devono essere bloccati
+  // dal wallet Scriptora durante il debug della scrittura.
+  if (
+    taskType === "generate_chapter_chunk" ||
+    taskType === "generate_chapter_fallback" ||
+    taskType === "generate_chapter_canon_fix" ||
+    taskType === "generate_chapter_overlap_fix" ||
+    taskType === "generate_chapter_quality_retry"
+  ) {
+    return null;
+  }
+
   if (typeof explicit === "string" && explicit.trim()) return explicit;
   if (taskType.startsWith("generate_chapter")) return "generate_chapter_medium";
   if (taskType === "rewrite_chapter") return "rewrite_chapter";
