@@ -17,7 +17,7 @@ interface RunRow {
 }
 
 interface Props {
-  /** Bumped from outside to force refresh (e.g. after returning from /auto-bestseller). */
+  /** Bumped from outside to force refresh after returning from Book Forge. */
   refreshKey?: number;
 }
 
@@ -106,7 +106,7 @@ export function InProgressSection({ refreshKey = 0 }: Props) {
           return (
             <button
               key={r.id}
-              onClick={() => navigate("/auto-bestseller")}
+              onClick={() => navigate("/dashboard", { state: { openForge: true } })}
               className="group flex w-full items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-left transition-colors hover:border-primary/60 hover:bg-primary/10"
             >
               <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />

@@ -80,15 +80,6 @@ export const ROUTE_TRANSITION_COPY: Record<string, RouteTransitionConfig> = {
       "Sto preparando il percorso finale verso la pubblicazione…",
     ],
   },
-  "/auto-bestseller": {
-    tone: "radar",
-    title: "Sto preparando Auto Bestseller…",
-    steps: [
-      "Sto leggendo idea, genere e posizionamento…",
-      "Sto costruendo blueprint commerciale…",
-      "Sto cercando la direzione più vendibile…",
-    ],
-  },
   "/cover": {
     tone: "cover",
     title: "Sto aprendo Cover Studio…",
@@ -175,7 +166,6 @@ export const ROUTE_TRANSITION_COPY: Record<string, RouteTransitionConfig> = {
 const ROUTE_MATCH_ORDER = [
   "/study-session",
   "/bestseller-radar",
-  "/auto-bestseller",
   "/kdp-launch",
   "/keyword-gold",
   "/study",

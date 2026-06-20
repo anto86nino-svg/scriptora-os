@@ -302,7 +302,7 @@ export function ScriptoraStepGuide({ docked = false }: { docked?: boolean }) {
     const path = location.pathname;
     if (path === "/dashboard") return "dashboard";
     if (path === "/app") return "writer";
-    if (path === "/auto-bestseller") return "bestseller";
+    if (path === "/bestseller") return "radar";
     if (path === "/kdp-launch") return "kdp";
     if (path === "/keyword-gold") return "keyword";
     if (path === "/bestseller-radar") return "radar";

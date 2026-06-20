@@ -24,7 +24,6 @@ const MobileDesktopStudioNotice = lazyWithRetry(() => import("./mobile/MobileDes
 const Index = lazyWithRetry(() => import("./pages/Index.tsx"));
 const AuthPage = lazyWithRetry(() => import("./pages/Auth.tsx"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound.tsx"));
-const AutoBestsellerRedirectPage = lazyWithRetry(() => import("./pages/AutoBestsellerRedirectPage.tsx"));
 const PricingPage = lazyWithRetry(() => import("./pages/PricingPage.tsx"));
 const LegalPage = lazyWithRetry(() => import("./pages/LegalPage.tsx"));
 const KdpLaunchPage = lazyWithRetry(() => import("./pages/KdpLaunchPage.tsx"));
@@ -82,7 +81,6 @@ const App = () => (
                 <Route path="/study-session" element={<ProtectedRoute><FeatureErrorBoundary featureName="Study OS"><StudySessionPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/mobile-market" element={<ProtectedRoute><FeatureErrorBoundary featureName="Market OS"><MobileMarketHubPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/app" element={<ProtectedRoute><FeatureErrorBoundary featureName="Writer Studio"><Index /></FeatureErrorBoundary></ProtectedRoute>} />
-                <Route path="/auto-bestseller" element={<ProtectedRoute><FeatureErrorBoundary featureName="Book Forge"><AutoBestsellerRedirectPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/usage" element={<ProtectedRoute><FeatureErrorBoundary featureName="Usage"><UsagePage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/kdp-launch" element={<ProtectedRoute requiredFeature="kdp_market_base"><FeatureErrorBoundary featureName="KDP Launch"><MobileDesktopOnlyRoute featureName="KDP Launch"><KdpLaunchPage /></MobileDesktopOnlyRoute></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/cover" element={<ProtectedRoute requiredFeature="cover_studio_template"><FeatureErrorBoundary featureName="Cover Studio"><CoverStudioPage /></FeatureErrorBoundary></ProtectedRoute>} />

@@ -8,8 +8,7 @@ export default function GlobalCuriosity({ docked = false }: { docked?: boolean }
   const location = useLocation();
 
   const isWriting =
-    location.pathname.includes("/app") ||
-    location.pathname.includes("/auto-bestseller");
+    location.pathname.includes("/app");
 
   if (!isWriting) return null;
 
