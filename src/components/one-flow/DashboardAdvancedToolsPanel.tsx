@@ -23,6 +23,7 @@ import {
   buildAdvancedToolsAudit,
   type AdvancedAuditScore,
   type AdvancedAuditSeverity,
+  type AdvancedAuditStep,
   type AdvancedAuditWarning,
   type AdvancedRepairPlanItem,
 } from "@/lib/advanced-tools-audit";
@@ -54,6 +55,12 @@ const SEVERITY_STYLE: Record<AdvancedAuditSeverity, string> = {
   HIGH: "border-orange-300/35 bg-orange-500/10 text-orange-100",
   MEDIUM: "border-amber-300/35 bg-amber-500/10 text-amber-100",
   LOW: "border-sky-300/30 bg-sky-500/10 text-sky-100",
+};
+
+const AUDIT_STEP_STYLE: Record<AdvancedAuditStep["status"], string> = {
+  PASS: "border-emerald-300/30 bg-emerald-500/10 text-emerald-100",
+  WARNING: "border-amber-300/30 bg-amber-500/10 text-amber-100",
+  FAIL: "border-red-300/35 bg-red-500/10 text-red-100",
 };
 
 function statusClass(score: AdvancedAuditScore): string {
@@ -175,6 +182,23 @@ function DashboardAdvancedToolsPanelInner({ context }: Props) {
                 </div>
               );
             })}
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">Blueprint vs manoscritto</p>
+                <h3 className="text-sm font-bold text-white">Audit strutturale capitoli</h3>
+              </div>
+              <p className="text-[11px] text-white/50">
+                {audit.manuscriptAudit.blueprintCoverage.coveragePercent}% blueprint coverage
+              </p>
+            </div>
+            <div className="mt-3 grid grid-cols-1 gap-2 xl:grid-cols-5">
+              {audit.manuscriptAudit.steps.map((step) => (
+                <ManuscriptAuditStepCard key={step.id} step={step} />
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -304,6 +328,36 @@ function DashboardAdvancedToolsPanelInner({ context }: Props) {
 }
 
 export const DashboardAdvancedToolsPanel = memo(DashboardAdvancedToolsPanelInner);
+
+function ManuscriptAuditStepCard({ step }: { step: AdvancedAuditStep }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/38">STEP {step.step}</p>
+          <p className="mt-1 text-xs font-bold leading-4 text-white">{step.title}</p>
+        </div>
+        <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-black ${AUDIT_STEP_STYLE[step.status]}`}>
+          {step.status}
+        </span>
+      </div>
+      {typeof step.score === "number" && (
+        <p className="mt-2 text-lg font-black tabular-nums text-white">
+          {step.score}
+          <span className="text-xs text-white/40">%</span>
+        </p>
+      )}
+      <p className="mt-1 line-clamp-3 text-[11px] leading-4 text-white/58">{step.evidence}</p>
+      {step.details.length > 0 && (
+        <ul className="mt-2 space-y-1 text-[10px] leading-4 text-white/48">
+          {step.details.slice(0, 2).map((detail) => (
+            <li key={detail} className="line-clamp-2">{detail}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 function ChapterEvidencePanel({
   title,
