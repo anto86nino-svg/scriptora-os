@@ -8,6 +8,7 @@ import {
   returnStateForOrigin,
   type DashboardReturnContext,
 } from "@/lib/one-flow/dashboard-return-context";
+import { getCanonicalToolRoutes, getToolRoute } from "@/lib/one-flow/tool-registry";
 
 export type DashboardActionMode = "route" | "tool" | "callback";
 
@@ -41,32 +42,17 @@ export type DashboardActionContext = {
 };
 
 export const DASHBOARD_TOOL_ROUTES: Partial<Record<ActiveDashboardTool, string>> = {
-  export: "/export-studio",
-  notepad: "/notepad",
-  "character-studio": "/character-studio",
-  "title-intelligence": "/title-intelligence",
-  "manuscript-lab": "/manuscript-lab",
-  "author-identity": "/author-identity",
+  export: getToolRoute("export"),
+  notepad: getToolRoute("notepad"),
+  "character-studio": getToolRoute("character"),
+  "title-intelligence": getToolRoute("title"),
+  "manuscript-lab": getToolRoute("manuscript"),
+  "author-identity": getToolRoute("identity"),
 };
 
 const VALID_ROUTES = new Set([
-  "/study",
-  "/kdp-launch",
-  "/bestseller-radar",
-  "/keyword-gold",
-  "/mobile-market",
-  "/cover",
-  "/usage",
-  "/pricing",
-  "/app",
+  ...getCanonicalToolRoutes(),
   "/dashboard",
-  "/downloads",
-  "/export-studio",
-  "/notepad",
-  "/character-studio",
-  "/title-intelligence",
-  "/manuscript-lab",
-  "/author-identity",
 ]);
 
 export function isValidDashboardRoute(route?: string): boolean {
@@ -176,7 +162,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       feature: "title_intelligence_base",
       group: "optimization",
       mode: "route",
-      route: "/title-intelligence",
+      route: getToolRoute("title"),
     },
     {
       id: "bestseller-radar",
@@ -184,7 +170,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       description: "Ricerca mercato e nicchie",
       enabled: true,
       feature: "trending_niches_limited",
-      route: "/bestseller-radar",
+      route: getToolRoute("radar"),
       group: "optimization",
       mode: "route",
     },
@@ -194,7 +180,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       description: "Ottimizza keyword Amazon",
       enabled: true,
       feature: "kdp_market_base",
-      route: "/keyword-gold",
+      route: getToolRoute("keyword"),
       group: "optimization",
       mode: "route",
     },
@@ -204,7 +190,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       description: "Pubblicazione e packaging KDP",
       enabled: true,
       feature: "kdp_market_base",
-      route: "/kdp-launch",
+      route: getToolRoute("kdp"),
       group: "optimization",
       mode: "route",
     },
@@ -215,7 +201,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       enabled: true,
       requiresActiveBook: true,
       feature: "cover_studio_template",
-      route: "/cover",
+      route: getToolRoute("cover"),
       group: "optimization",
       mode: "route",
     },
@@ -225,7 +211,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       description: "EPUB, DOCX, PDF",
       enabled: true,
       feature: "export_epub",
-      route: "/export-studio",
+      route: getToolRoute("export"),
       group: "optimization",
       mode: "route",
     },
@@ -234,7 +220,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       label: "Market Intelligence",
       description: "Strumento decisionale mercato",
       enabled: true,
-      route: "/mobile-market",
+      route: getToolRoute("market-mobile"),
       group: "optimization",
       mode: "route",
     },
@@ -247,7 +233,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       feature: "chapter_improvement",
       group: "writer",
       mode: "route",
-      route: "/manuscript-lab",
+      route: getToolRoute("manuscript"),
     },
     {
       id: "character-studio",
@@ -257,7 +243,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       feature: "book_engine_full",
       group: "writer",
       mode: "route",
-      route: "/character-studio",
+      route: getToolRoute("character"),
     },
     {
       id: "author-identity",
@@ -267,7 +253,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       feature: "book_engine_full",
       group: "system",
       mode: "route",
-      route: "/author-identity",
+      route: getToolRoute("identity"),
     },
     {
       id: "notepad",
@@ -276,7 +262,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       enabled: true,
       group: "system",
       mode: "route",
-      route: "/notepad",
+      route: getToolRoute("notepad"),
     },
     {
       id: "idea-preview",
@@ -305,7 +291,7 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       feature: "cover_studio_template",
       group: "optimization",
       mode: "route",
-      route: "/cover",
+      route: getToolRoute("cover"),
     },
     {
       id: "pack-export",
@@ -316,7 +302,7 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       feature: "export_epub",
       group: "optimization",
       mode: "route",
-      route: "/export-studio",
+      route: getToolRoute("export"),
     },
     {
       id: "pack-kdp",
@@ -325,7 +311,7 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       enabled: true,
       requiresActiveBook: true,
       feature: "kdp_market_base",
-      route: "/kdp-launch",
+      route: getToolRoute("kdp"),
       group: "optimization",
       mode: "route",
     },
@@ -338,7 +324,7 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       feature: "title_intelligence_base",
       group: "optimization",
       mode: "route",
-      route: "/title-intelligence",
+      route: getToolRoute("title"),
     },
     {
       id: "pack-keyword",
@@ -347,7 +333,7 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       enabled: true,
       requiresActiveBook: true,
       feature: "kdp_market_base",
-      route: "/keyword-gold",
+      route: getToolRoute("keyword"),
       group: "optimization",
       mode: "route",
     },
@@ -358,7 +344,7 @@ export function buildDashboardPackagingActions(ctx: DashboardActionContext): Das
       enabled: true,
       requiresActiveBook: true,
       feature: "trending_niches_limited",
-      route: "/bestseller-radar",
+      route: getToolRoute("radar"),
       group: "optimization",
       mode: "route",
     },

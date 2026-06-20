@@ -8,6 +8,7 @@ import {
   getProjectHumanStatus,
   type ProjectLibraryFilter,
 } from "@/lib/project-continuity";
+import { getToolRoute } from "@/lib/one-flow/tool-registry";
 
 interface ProjectLibraryPanelProps {
   projects: BookProject[];
@@ -169,7 +170,7 @@ export function ProjectLibraryPanel({
                         return;
                       }
                       if (status === "publishing_ready" || status === "manuscript_ready") {
-                        onNavigate("/publishing", { projectId: project.id });
+                        onNavigate(getToolRoute("publishing"), { projectId: project.id });
                         return;
                       }
                       onOpen(project.id);

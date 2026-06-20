@@ -1,7 +1,7 @@
 import { Suspense, type ReactNode } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ScrollToTop } from "@/components/routing/ScrollToTop";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -34,8 +34,6 @@ const BestsellerRadarPage = lazyWithRetry(() => import("./pages/BestsellerRadarP
 const KeywordGoldPage = lazyWithRetry(() => import("./pages/KeywordGoldPage.tsx"));
 const InstallPage = lazyWithRetry(() => import("./pages/InstallPage.tsx"));
 const StudySessionPage = lazyWithRetry(() => import("./pages/StudySessionPage.tsx"));
-const WriterOsPage = lazyWithRetry(() => import("./pages/WriterOsPage.tsx"));
-const BestsellerOsPage = lazyWithRetry(() => import("./pages/BestsellerOsPage.tsx"));
 const PublishingOsPage = lazyWithRetry(() => import("./pages/PublishingOsPage.tsx"));
 const StudyOsPage = lazyWithRetry(() => import("./pages/StudyOsPage.tsx"));
 const IdentityOsPage = lazyWithRetry(() => import("./pages/IdentityOsPage.tsx"));
@@ -46,7 +44,6 @@ const CharacterStudioPage = lazyWithRetry(() => import("./pages/CharacterStudioP
 const TitleIntelligencePage = lazyWithRetry(() => import("./pages/TitleIntelligencePage.tsx"));
 const ManuscriptLabPage = lazyWithRetry(() => import("./pages/ManuscriptLabPage.tsx"));
 const ExportStudioPage = lazyWithRetry(() => import("./pages/ExportStudioPage.tsx"));
-const AuthorIdentityPage = lazyWithRetry(() => import("./pages/AuthorIdentityPage.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -77,8 +74,8 @@ const App = () => (
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/legal" element={<LegalPage />} />
                 <Route path="/dashboard" element={<ProtectedRoute><FeatureErrorBoundary featureName="Dashboard"><DashboardRoute /></FeatureErrorBoundary></ProtectedRoute>} />
-                <Route path="/writer" element={<ProtectedRoute><FeatureErrorBoundary featureName="Writer OS"><WriterOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
-                <Route path="/bestseller" element={<ProtectedRoute><FeatureErrorBoundary featureName="Bestseller OS"><MobileDesktopOnlyRoute featureName="Bestseller OS"><BestsellerOsPage /></MobileDesktopOnlyRoute></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/writer" element={<ProtectedRoute><FeatureErrorBoundary featureName="Writer"><Navigate to="/app" replace /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/bestseller" element={<ProtectedRoute requiredFeature="trending_niches_limited"><FeatureErrorBoundary featureName="Bestseller Radar"><MobileDesktopOnlyRoute featureName="Bestseller Radar"><BestsellerRadarPage /></MobileDesktopOnlyRoute></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/publishing" element={<ProtectedRoute><FeatureErrorBoundary featureName="Publishing OS"><MobileDesktopOnlyRoute featureName="Publishing OS"><PublishingOsPage /></MobileDesktopOnlyRoute></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/identity" element={<ProtectedRoute><FeatureErrorBoundary featureName="Identity OS"><IdentityOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/study" element={<ProtectedRoute><FeatureErrorBoundary featureName="Study OS"><StudyOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
@@ -94,7 +91,7 @@ const App = () => (
                 <Route path="/character-studio" element={<ProtectedRoute requiredFeature="book_engine_full"><FeatureErrorBoundary featureName="Character Studio"><CharacterStudioPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/title-intelligence" element={<ProtectedRoute requiredFeature="title_intelligence_base"><FeatureErrorBoundary featureName="Title Intelligence"><TitleIntelligencePage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/manuscript-lab" element={<ProtectedRoute requiredFeature="chapter_improvement"><FeatureErrorBoundary featureName="Manuscript Lab"><ManuscriptLabPage /></FeatureErrorBoundary></ProtectedRoute>} />
-                <Route path="/author-identity" element={<ProtectedRoute requiredFeature="book_engine_full"><FeatureErrorBoundary featureName="Author Identity"><AuthorIdentityPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/author-identity" element={<ProtectedRoute requiredFeature="book_engine_full"><FeatureErrorBoundary featureName="Author Identity"><IdentityOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/downloads" element={<ProtectedRoute><FeatureErrorBoundary featureName="Downloads"><DownloadsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/bestseller-radar" element={<ProtectedRoute requiredFeature="trending_niches_limited"><MobileDesktopOnlyRoute featureName="Bestseller Radar"><BestsellerRadarPage /></MobileDesktopOnlyRoute></ProtectedRoute>} />
                 <Route path="/keyword-gold" element={<ProtectedRoute requiredFeature="kdp_market_base"><MobileDesktopOnlyRoute featureName="Keyword Gold"><KeywordGoldPage /></MobileDesktopOnlyRoute></ProtectedRoute>} />

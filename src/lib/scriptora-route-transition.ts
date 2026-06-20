@@ -62,6 +62,24 @@ export const ROUTE_TRANSITION_COPY: Record<string, RouteTransitionConfig> = {
       "Sto cercando dove il libro può diventare più vendibile…",
     ],
   },
+  "/bestseller": {
+    tone: "radar",
+    title: "Sto accendendo Bestseller Radar…",
+    steps: [
+      "Sto leggendo hook, titolo e promessa…",
+      "Sto preparando score, rischi e leve commerciali…",
+      "Sto aprendo il radar commerciale del libro…",
+    ],
+  },
+  "/publishing": {
+    tone: "export",
+    title: "Sto aprendo Publishing Center…",
+    steps: [
+      "Sto leggendo readiness, cover e metadata…",
+      "Sto collegando export, KDP e checklist…",
+      "Sto preparando il percorso finale verso la pubblicazione…",
+    ],
+  },
   "/auto-bestseller": {
     tone: "radar",
     title: "Sto preparando Auto Bestseller…",

@@ -7,9 +7,9 @@ import {
   Download,
   FileText,
   GraduationCap,
-  Library,
   Loader2,
   Plus,
+  Rocket,
   Sparkles,
   Trash2,
   UserRound,
@@ -34,6 +34,7 @@ import { usePlan } from "@/lib/plan";
 import { toast } from "sonner";
 import { MobileBookForge } from "@/mobile/MobileBookForge";
 import { MobileDeleteProjectDialog } from "@/mobile/MobileDeleteProjectDialog";
+import { getToolRoute } from "@/lib/one-flow/tool-registry";
 
 function countWords(project?: BookProject | null): number {
   if (!project) return 0;
@@ -92,12 +93,6 @@ export default function MobileLiteDashboardPage() {
     setDeleteTarget(null);
     setShowBookForge(true);
   }, [freeBookUsed, navigate]);
-
-  const openExport = useCallback(() => {
-    setShowBookForge(false);
-    setDeleteTarget(null);
-    navigate("/export-studio");
-  }, [navigate]);
 
   useEffect(() => {
     const state = location.state as { openForge?: boolean; openWizard?: boolean; openNewBook?: boolean } | null;
@@ -174,6 +169,15 @@ export default function MobileLiteDashboardPage() {
     }
     navigate("/app");
   };
+
+  const openExport = useCallback(() => {
+    setShowBookForge(false);
+    setDeleteTarget(null);
+    if (lastProject?.id) setLastProjectId(lastProject.id);
+    navigate(getToolRoute("publishing"), {
+      state: lastProject?.id ? { projectId: lastProject.id } : undefined,
+    });
+  }, [lastProject, navigate]);
 
   const startNewBook = () => {
     sessionStorage.removeItem("scriptora-open-project");
@@ -336,8 +340,8 @@ export default function MobileLiteDashboardPage() {
         />
         <MobileLiteAction
           icon={Download}
-          title="Export essenziale"
-          description="EPUB, DOCX e PDF quando il libro e pronto."
+          title="Publishing Center"
+          description="Readiness, cover, export e KDP nello stesso percorso."
           onClick={openExport}
           disabled={projects.length === 0}
         />
@@ -420,7 +424,7 @@ export default function MobileLiteDashboardPage() {
         <LiteDockButton icon={BookOpen} label="Writer" onClick={() => openProject(lastProject)} />
         <LiteDockButton icon={Sparkles} label="Forge" onClick={openMobileBookForge} />
         <LiteDockButton icon={GraduationCap} label="Study" onClick={() => navigate("/study")} />
-        <LiteDockButton icon={Library} label="Export" onClick={openExport} disabled={projects.length === 0} />
+        <LiteDockButton icon={Rocket} label="Pubblica" onClick={openExport} disabled={projects.length === 0} />
       </nav>
       )}
 

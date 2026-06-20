@@ -1,6 +1,7 @@
 import { CharacterStudioDialog } from "@/components/CharacterStudioDialog";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { useDashboardReturn } from "@/hooks/useDashboardReturn";
+import { getToolRoute } from "@/lib/one-flow/tool-registry";
 
 export default function CharacterStudioPage() {
   const { goBackToDashboard, navigateWithReturn } = useDashboardReturn();
@@ -10,7 +11,7 @@ export default function CharacterStudioPage() {
       <CharacterStudioDialog
         open
         onClose={goBackToDashboard}
-        onAuthorIdentity={() => navigateWithReturn("/author-identity")}
+        onAuthorIdentity={() => navigateWithReturn(getToolRoute("identity"))}
       />
     </FeatureErrorBoundary>
   );

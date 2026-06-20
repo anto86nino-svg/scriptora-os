@@ -9,6 +9,7 @@ import type { ActiveDashboardTool } from "@/lib/one-flow/dashboard-active-tool";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
 import type { IdeaPreviewPanelProps } from "@/components/one-flow/DashboardIdeaPreviewPanel";
 import { ProjectLibraryPanel } from "@/components/projects/ProjectLibraryPanel";
+import { getToolRoute } from "@/lib/one-flow/tool-registry";
 
 const TOOL_LABELS: Record<Exclude<ActiveDashboardTool, null>, string> = {
   projects: "I miei libri",
@@ -89,7 +90,7 @@ export function DashboardToolHost({
               projects={safeProjects}
               onOpen={(id) => { onClose(); onGoApp({ projectId: id }); }}
               onDelete={onDeleteProject}
-              onExport={() => { onClose(); onNavigate("/export-studio"); }}
+              onExport={() => { onClose(); onNavigate(getToolRoute("publishing")); }}
             />
           </SafeDashboardToolBoundary>
         </DedicatedToolScreen>

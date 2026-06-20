@@ -4,10 +4,11 @@ import { BarChart3, BookOpen, Loader2, Rocket, Sparkles, Target } from "lucide-r
 import type { BookProject } from "@/types/book";
 import { MobileFullscreenShell } from "./MobileFullscreenShell";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
-import { loadProjects } from "@/services/storageService";
+import { loadProjects, saveProjectAsync, setLastProjectId } from "@/services/storageService";
 import { dominateTitles } from "@/lib/kdp/money-engine";
 import { usePlan } from "@/lib/plan";
 import { cn } from "@/lib/utils";
+import { getToolRoute } from "@/lib/one-flow/tool-registry";
 import {
   clearMobileMarketContext,
   readMobileMarketContext,
@@ -24,6 +25,12 @@ const BestsellerRadarCommercialPanel = lazy(() =>
 );
 
 type Tab = "market" | "kdp" | "title";
+type MobileTitleSuggestion = {
+  title: string;
+  subtitle?: string;
+  score?: number | string;
+  reason?: string;
+};
 
 export default function MobileMarketHubPage() {
   const navigate = useNavigate();
@@ -36,6 +43,7 @@ export default function MobileMarketHubPage() {
   const [loading, setLoading] = useState(true);
   const [titleBusy, setTitleBusy] = useState(false);
   const [titleResult, setTitleResult] = useState<string | null>(null);
+  const [titleSuggestion, setTitleSuggestion] = useState<MobileTitleSuggestion | null>(null);
 
   useEffect(() => {
     loadProjects(setProjects)
@@ -78,6 +86,7 @@ export default function MobileMarketHubPage() {
     if (!activeProject) return;
     setTitleBusy(true);
     setTitleResult(null);
+    setTitleSuggestion(null);
     try {
       const res = await dominateTitles(
         {
@@ -96,6 +105,12 @@ export default function MobileMarketHubPage() {
       );
       const best = res.winner || res.titleCandidates?.[0];
       const score = res.winner?.finalScore ?? res.titleCandidates?.[0]?.kdpScore;
+      setTitleSuggestion(best ? {
+        title: best.title,
+        subtitle: best.subtitle,
+        score: score ?? "—",
+        reason: res.winner?.reason,
+      } : null);
       setTitleResult(
         best
           ? `${best.title}${best.subtitle ? `\n${best.subtitle}` : ""}\nScore: ${score ?? "—"}/100${res.winner?.reason ? `\n\n${res.winner.reason}` : ""}`
@@ -106,6 +121,32 @@ export default function MobileMarketHubPage() {
     } finally {
       setTitleBusy(false);
     }
+  };
+
+  const applyTitleSuggestion = async () => {
+    if (!activeProject || !titleSuggestion?.title?.trim()) return;
+    const now = new Date().toISOString();
+    const updatedProject: BookProject = {
+      ...activeProject,
+      updatedAt: now,
+      config: {
+        ...activeProject.config,
+        title: titleSuggestion.title.trim(),
+        subtitle: titleSuggestion.subtitle?.trim() || activeProject.config.subtitle,
+      },
+    };
+    setLastProjectId(updatedProject.id);
+    setProjects((items) => items.map((project) => project.id === updatedProject.id ? updatedProject : project));
+    await saveProjectAsync(updatedProject);
+    setTitleResult(`Titolo applicato al progetto.\n\n${updatedProject.config.title}${updatedProject.config.subtitle ? `\n${updatedProject.config.subtitle}` : ""}`);
+    setTitleSuggestion(null);
+  };
+
+  const openPublishingCenter = () => {
+    if (activeProject?.id) setLastProjectId(activeProject.id);
+    navigate(getToolRoute("publishing"), {
+      state: activeProject?.id ? { projectId: activeProject.id } : undefined,
+    });
   };
 
   const bookLabel = activeProject?.config.title || "Il tuo libro";
@@ -156,20 +197,20 @@ export default function MobileMarketHubPage() {
       ) : tab === "kdp" ? (
         <div className="scriptora-mobile-enter space-y-4 px-4 py-5">
           <p className="text-sm leading-6 text-white/65">
-            KDP essenziale per <span className="font-semibold text-white">{bookLabel}</span> — categorie e keyword
-            allineate al genere <span className="text-violet-200">{genreLabel}</span>.
+            KDP completo per <span className="font-semibold text-white">{bookLabel}</span> vive nel Publishing Center:
+            readiness, metadata, cover, export e checklist devono restare nello stesso cockpit.
           </p>
-          <ul className="space-y-2 text-sm text-white/55">
-            <li className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5">
-              Categorie Amazon consigliate per {genreLabel}
-            </li>
-            <li className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5">
-              Keyword ad alta intenzione per il posizionamento del libro
-            </li>
-            <li className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5">
-              Panorama competitor nel segmento {activeProject?.config.subcategory || genreLabel}
-            </li>
-          </ul>
+          <div className="rounded-2xl border border-amber-300/25 bg-amber-400/10 p-4 text-sm leading-6 text-amber-50/82">
+            Questa sezione e' desktop-only: su mobile non mostriamo una checklist dimostrativa per non creare una pubblicazione parziale o non salvata.
+          </div>
+          <button
+            type="button"
+            onClick={openPublishingCenter}
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-violet-500 px-4 text-sm font-bold text-white"
+          >
+            <Rocket className="h-4 w-4" />
+            Apri Publishing Center
+          </button>
         </div>
       ) : (
         <div className="scriptora-mobile-enter space-y-4 px-4 py-5">
@@ -187,9 +228,21 @@ export default function MobileMarketHubPage() {
             Genera titoli per questo libro
           </button>
           {titleResult && (
-            <pre className="whitespace-pre-wrap rounded-2xl border border-violet-400/25 bg-violet-500/10 p-4 text-sm leading-6 text-violet-100">
-              {titleResult}
-            </pre>
+            <div className="space-y-3">
+              <pre className="whitespace-pre-wrap rounded-2xl border border-violet-400/25 bg-violet-500/10 p-4 text-sm leading-6 text-violet-100">
+                {titleResult}
+              </pre>
+              {titleSuggestion && (
+                <button
+                  type="button"
+                  onClick={applyTitleSuggestion}
+                  className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 text-sm font-black text-slate-950"
+                >
+                  <Target className="h-4 w-4" />
+                  Applica titolo al progetto
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
