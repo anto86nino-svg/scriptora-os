@@ -49,6 +49,7 @@ import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import { applyScriptoraFreeWatermarkToProject } from "@/lib/brand/scriptoraBrand";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 const VoiceStudioDialog = lazy(() =>
   import("@/components/VoiceStudioDialog").then((m) => ({ default: m.VoiceStudioDialog })),
@@ -542,7 +543,9 @@ const Index = () => {
       toast.success(t("export_saved"), { description: `${filename}.epub` });
     } catch (e) {
       toast.error(e instanceof ExportBlockedError ? t("export_blocked_title") : t("export_failed"), {
-        description: e instanceof Error ? e.message : undefined,
+        description: e instanceof ExportBlockedError
+          ? getUserFriendlyError(e, { area: "upload", fallback: t("complete_all_items") })
+          : getUserFriendlyError(e, { area: "upload", fallback: "Export non completato. Controlla manoscritto e formato, poi riprova." }),
       });
     } finally {
       setIsExporting(false);
@@ -575,7 +578,9 @@ const Index = () => {
       toast.success(t("export_saved"), { description: `${filename}.docx` });
     } catch (e) {
       toast.error(e instanceof ExportBlockedError ? t("export_blocked_title") : t("export_failed"), {
-        description: e instanceof Error ? e.message : undefined,
+        description: e instanceof ExportBlockedError
+          ? getUserFriendlyError(e, { area: "upload", fallback: t("complete_all_items") })
+          : getUserFriendlyError(e, { area: "upload", fallback: "DOCX non completato. Controlla il manoscritto e riprova." }),
       });
     } finally {
       setIsExporting(false);
@@ -608,7 +613,9 @@ const Index = () => {
       toast.success(t("export_saved"), { description: `${filename}.pdf` });
     } catch (e) {
       toast.error(e instanceof ExportBlockedError ? t("export_blocked_title") : t("export_failed"), {
-        description: e instanceof Error ? e.message : undefined,
+        description: e instanceof ExportBlockedError
+          ? getUserFriendlyError(e, { area: "upload", fallback: t("complete_all_items") })
+          : getUserFriendlyError(e, { area: "upload", fallback: "PDF non completato. Controlla il manoscritto e riprova." }),
       });
     } finally {
       setIsExporting(false);

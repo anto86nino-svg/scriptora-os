@@ -108,6 +108,30 @@ export function summarizeProjectLibrary(projects: BookProject[]): ProjectLibrary
   return summary;
 }
 
+function updatedAtMs(project: BookProject): number {
+  const parsed = Date.parse(project.updatedAt || project.createdAt || "");
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function selectContinuityProject(
+  projects: BookProject[],
+  opts: { lastProjectId?: string | null; flowProjectId?: string | null } = {},
+): BookProject | null {
+  if (!Array.isArray(projects) || projects.length === 0) return null;
+
+  const flowProject = opts.flowProjectId
+    ? projects.find((project) => project.id === opts.flowProjectId)
+    : null;
+  if (flowProject) return flowProject;
+
+  const lastProject = opts.lastProjectId
+    ? projects.find((project) => project.id === opts.lastProjectId)
+    : null;
+  if (lastProject) return lastProject;
+
+  return [...projects].sort((a, b) => updatedAtMs(b) - updatedAtMs(a))[0] || projects[0] || null;
+}
+
 export function filterProjectsByLibraryTab(projects: BookProject[], filter: ProjectLibraryFilter): BookProject[] {
   if (filter === "all") return projects;
   return projects.filter((project) => getProjectContinuityStatus(project) === filter);

@@ -73,6 +73,7 @@ import { DashboardContinueCard } from "@/components/projects/DashboardContinueCa
 import {
   buildBlueprintPreviewProject,
   canGenerateBlueprintPreview,
+  selectContinuityProject,
   summarizeProjectLibrary,
 } from "@/lib/project-continuity";
 import { getUserFriendlyError } from "@/lib/user-friendly-error";
@@ -440,6 +441,19 @@ export default function Dashboard() {
   }, [location.search, location.pathname, navigate, refreshPlan]);
 
   const lastId = getLastProjectId();
+  const dashboardContextProject = useMemo(
+    () => selectContinuityProject(projects, { lastProjectId: lastId, flowProjectId }),
+    [projects, lastId, flowProjectId],
+  );
+  useEffect(() => {
+    if (!dashboardContextProject?.id) return;
+    const currentLastId = getLastProjectId();
+    const currentLastProjectStillVisible = currentLastId
+      ? projects.some((project) => project.id === currentLastId)
+      : false;
+    if (!currentLastProjectStillVisible) setLastProjectId(dashboardContextProject.id);
+  }, [dashboardContextProject?.id, projects]);
+
   // Only surface "continue last" when the project still belongs to the active
   // environment (DEV vs USER). Cross-scope ids are silently ignored.
   const openForgePreset = (preset: ForgePreset) => {
@@ -490,15 +504,11 @@ export default function Dashboard() {
     openNewBookGuarded(handoff);
   };
 
-  const lastProject = lastId ? projects.find(p => p.id === lastId) : null;
-  const flowProject = flowProjectId ? projects.find((p) => p.id === flowProjectId) : null;
-  const dashboardContextProject = flowProject || lastProject;
-
   const openCoverStudioPage = useCallback(() => {
-    const projectId = dashboardContextProject?.id || lastProject?.id || getLastProjectId();
+    const projectId = dashboardContextProject?.id || getLastProjectId();
     if (projectId) setLastProjectId(projectId);
     navigateFromDashboard("/cover", projectId ? { projectId } : undefined);
-  }, [dashboardContextProject?.id, lastProject?.id, navigateFromDashboard]);
+  }, [dashboardContextProject?.id, navigateFromDashboard]);
 
   const advancedToolsAnchorRef = useRef<HTMLDivElement | null>(null);
   const packagingAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -829,13 +839,13 @@ typeof crypto.randomUUID === "function"
   const completedProjects = projects.filter(isProjectComplete);
   const draftProjects = projects.filter((p) => !isProjectComplete(p));
   const projectSummary = summarizeProjectLibrary(projects);
-  const lastProjectDoneChapters = lastProject?.chapters?.filter((chapter) => (chapter.content || "").trim().length > 50).length || 0;
-  const lastProjectTargetChapters = lastProject?.config?.numberOfChapters || lastProject?.chapters?.length || 0;
-  const lastProjectProgress = lastProject
-    ? lastProject.phase === "complete"
+  const activeProjectDoneChapters = dashboardContextProject?.chapters?.filter((chapter) => (chapter.content || "").trim().length > 50).length || 0;
+  const activeProjectTargetChapters = dashboardContextProject?.config?.numberOfChapters || dashboardContextProject?.chapters?.length || 0;
+  const activeProjectProgress = dashboardContextProject
+    ? dashboardContextProject.phase === "complete"
       ? 100
-      : lastProjectTargetChapters > 0
-        ? Math.min(100, Math.round((lastProjectDoneChapters / lastProjectTargetChapters) * 100))
+      : activeProjectTargetChapters > 0
+        ? Math.min(100, Math.round((activeProjectDoneChapters / activeProjectTargetChapters) * 100))
         : 0
     : 0;
 
@@ -1139,10 +1149,10 @@ typeof crypto.randomUUID === "function"
         />
 
         <OsHomeHero
-          lastProject={lastProject}
-          progressPercent={lastProjectProgress}
-          onContinue={() => lastProject && goApp({ projectId: lastProject.id })}
-          onGenerateNextChapter={() => lastProject && goApp({ projectId: lastProject.id, section: "chapters" })}
+          lastProject={dashboardContextProject}
+          progressPercent={activeProjectProgress}
+          onContinue={() => dashboardContextProject && goApp({ projectId: dashboardContextProject.id })}
+          onGenerateNextChapter={() => dashboardContextProject && goApp({ projectId: dashboardContextProject.id, section: "chapters" })}
           onExport={() => guardPlanFeature("export_epub", () => navigateFromDashboard("/export-studio"))()}
           onNewBook={openNewBookGuarded}
           onMyBooks={() => openDashboardTool("projects")}
@@ -1167,7 +1177,7 @@ typeof crypto.randomUUID === "function"
               {projects.length > 0 ? `${projects.length} progetti` : "Biblioteca vuota"}
             </span>
           </button>
-          {lastProject && (
+          {dashboardContextProject && (
             <button
               type="button"
               onClick={() => openDashboardTool("library")}
@@ -1180,10 +1190,10 @@ typeof crypto.randomUUID === "function"
           )}
         </section>
 
-        {lastProject && (
+        {dashboardContextProject && (
           <div ref={packagingAnchorRef}>
             <DashboardPackagingRow
-              projectTitle={lastProject.config.title}
+              projectTitle={dashboardContextProject.config.title}
               context={dashboardActionContext}
             />
           </div>

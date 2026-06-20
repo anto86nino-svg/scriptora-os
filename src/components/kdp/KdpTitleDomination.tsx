@@ -21,6 +21,7 @@ import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
 import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { fetchPlan, type PlanTier } from "@/lib/plan";
 import { useFeatureGate } from "@/components/PaywallGuard";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 interface Props {
   /** Optional callback when user wants to push title into a project. */
@@ -136,7 +137,9 @@ export function KdpTitleDomination({ onUseTitle, defaults }: Props) {
       if (!r?.titleCandidates?.length) toast.warning("Nessun candidato generato — riprova con un'idea più specifica");
       else toast.success(r.fallbackReason ? `${r.titleCandidates.length} titoli base generati` : `${r.titleCandidates.length} titoli generati`);
     } catch (e: any) {
-      const msg = e?.message || "Errore sconosciuto";
+      const msg = getUserFriendlyError(e, {
+        fallback: "Title Domination non completato. I dati inseriti restano salvati e puoi riprovare.",
+      });
       setError(msg);
       toast.error(msg);
       setStage(result ? "done" : "idle");

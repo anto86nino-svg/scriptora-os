@@ -9,6 +9,7 @@ import { getDeviceId } from "@/lib/device-fingerprint";
 import { getCurrentUserId } from "@/services/storageService";
 import { fetchPlan } from "@/lib/plan";
 import { toast } from "sonner";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 interface Props {
   open: boolean;
@@ -47,7 +48,9 @@ export function BetaActivationDialog({ open, onOpenChange, onActivated }: Props)
       onOpenChange(false);
       onActivated?.();
     } catch (e: any) {
-      setErr(e?.message || "Invalid code");
+      setErr(getUserFriendlyError(e, {
+        fallback: "Codice non valido o non attivabile. Controlla il codice e riprova.",
+      }));
     } finally {
       setLoading(false);
     }

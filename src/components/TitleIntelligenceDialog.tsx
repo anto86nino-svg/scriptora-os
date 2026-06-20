@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useFeatureGate } from "@/components/PaywallGuard";
 import { getCurrentUserId } from "@/services/storageService";
 import { AUTHOR_IDENTITY_CHANGED_EVENT, getSelectedAuthorIdentity } from "@/lib/author-identity";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 import { saveForgeBrief, forgeBriefToTitlePayload } from "@/lib/one-flow/forge-brief-prefill";
 
@@ -83,7 +84,10 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
       setTargetAudience(r.targetAudience);
       toast.success(bookTitle ? "Nuova variante generata" : "Concept generato");
     } catch (e: any) {
-      toast.error(e?.message || "Generazione fallita");
+      toast.error(getUserFriendlyError(e, {
+        area: "blueprint",
+        fallback: "Generazione titolo non completata. Controlla i dati e riprova.",
+      }));
     } finally {
       setAutoFilling(false);
     }
@@ -109,7 +113,10 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
     try {
       await generate({ bookTitle, bookGenre, targetAudience, bookPromise, tone, language, genreProfile: buildGenrePayload() } as any);
     } catch (e: any) {
-      toast.error(e?.message || "Generazione fallita");
+      toast.error(getUserFriendlyError(e, {
+        area: "blueprint",
+        fallback: "Generazione titoli non completata. Controlla promessa e target, poi riprova.",
+      }));
     }
   });
 
@@ -154,7 +161,10 @@ export function TitleIntelligenceDialog({ open, onClose, initialTitle, initialGe
       await regenerate();
       toast.success("Nuove varianti generate");
     } catch (e: any) {
-      toast.error(e?.message || "Rigenerazione fallita");
+      toast.error(getUserFriendlyError(e, {
+        area: "blueprint",
+        fallback: "Rigenerazione non completata. Puoi riprovare senza perdere le varianti attuali.",
+      }));
     }
   };
 

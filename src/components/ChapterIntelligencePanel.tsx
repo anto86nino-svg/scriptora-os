@@ -26,6 +26,7 @@ import {
   popChapterRevision,
   pushChapterRevision,
 } from "@/lib/chapter-revisions";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 
 function countWordsForChapterLock(value: unknown): number {
@@ -322,7 +323,12 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
       setResult(data as AnalysisResult);
     } catch (e: any) {
       console.error("Analysis failed:", e);
-      toast.error(e instanceof InsufficientCreditsError ? e.message : (e.message || "Analisi fallita"));
+      toast.error(e instanceof InsufficientCreditsError
+        ? e.message
+        : getUserFriendlyError(e, {
+          area: "manuscript",
+          fallback: "Analisi non completata. Il capitolo resta intatto: riprova tra poco.",
+        }));
     } finally {
       setAnalyzing(false);
     }
@@ -372,7 +378,10 @@ export function ChapterIntelligencePanel({ project, chapterIndex, onClose, onApp
       toast.success(`¶${weak.idx + 1} ${fixMode === "power" ? "upgraded ⚡" : "fixed"}`);
     } catch (e: any) {
       console.error("Fix failed:", e);
-      toast.error(e.message || "Fix failed");
+      toast.error(getUserFriendlyError(e, {
+        area: "manuscript",
+        fallback: "Fix non applicato. Il testo originale resta invariato.",
+      }));
     } finally {
       setFixing(null);
     }

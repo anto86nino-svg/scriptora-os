@@ -11,7 +11,11 @@ export class AppErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false };
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, message: error.message, stack: error.stack };
+    return {
+      hasError: true,
+      message: import.meta.env.DEV ? error.message : undefined,
+      stack: import.meta.env.DEV ? error.stack : undefined,
+    };
   }
 
   componentDidCatch(error: Error, info: unknown) {

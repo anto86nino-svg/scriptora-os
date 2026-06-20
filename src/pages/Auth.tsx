@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { requestAppEntryLoading } from "@/lib/app-entry-loading";
 import { t, tt, useUILanguage } from "@/lib/i18n";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 const AUTH_DEBUG_PREFIX = "[auth-debug]";
 
@@ -337,7 +338,9 @@ export default function AuthPage() {
       } else if (error.message.toLowerCase().includes("not confirmed")) {
         toast.error(t("confirm_email_first"));
       } else {
-        toast.error(error.message);
+        toast.error(getUserFriendlyError(error, {
+          fallback: "Accesso non riuscito. Controlla i dati e riprova.",
+        }));
       }
       return;
     }
@@ -367,7 +370,9 @@ export default function AuthPage() {
         toast.error(t("email_already_registered"));
         setTab("signin");
       } else {
-        toast.error(error.message);
+        toast.error(getUserFriendlyError(error, {
+          fallback: "Registrazione non completata. Controlla i dati e riprova.",
+        }));
       }
       return;
     }
@@ -386,7 +391,11 @@ export default function AuthPage() {
     logAuthDebug("signInWithOAuth result", { error: summarizeAuthError(error) });
     if (error) {
       setBusy(false);
-      toast.error(tt("google_access_failed", { message: error.message }));
+      toast.error(tt("google_access_failed", {
+        message: getUserFriendlyError(error, {
+          fallback: "Accesso Google non completato. Riprova tra poco.",
+        }),
+      }));
       return;
     }
     // Il browser farà redirect verso Google e poi tornerà su /auth per completare la sessione.

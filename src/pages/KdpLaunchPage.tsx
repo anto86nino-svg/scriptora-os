@@ -664,7 +664,9 @@ export default function KdpLaunchPage() {
       setStep("market");
       syncKdpProjectSeed({ marketOverride: m });
     } catch (e: any) {
-      toast.error(e?.message || "Analisi fallita");
+      toast.error(getUserFriendlyError(e, {
+        fallback: italianUi ? "Analisi mercato non completata. La sessione resta salvata: riprova tra poco." : "Market analysis was not completed. Your session is saved; retry shortly.",
+      }));
     } finally { setLoading(false); }
   });
 
@@ -686,7 +688,9 @@ export default function KdpLaunchPage() {
       setStep("title");
       if (top) syncKdpProjectSeed({ title: top.title, subtitle: top.subtitle });
     } catch (e: any) {
-      toast.error(e?.message || "Generazione titoli fallita");
+      toast.error(getUserFriendlyError(e, {
+        fallback: italianUi ? "Generazione titoli non completata. Mantengo i dati attuali e puoi riprovare." : "Title generation was not completed. Current data is preserved.",
+      }));
     } finally { setLoading(false); }
   });
 
@@ -704,7 +708,9 @@ export default function KdpLaunchPage() {
       syncKdpProjectSeed({ packagingOverride: p });
       if (previewProject?.id) toast.success(italianUi ? "Packaging KDP collegato al progetto attivo" : "KDP package linked to active project");
     } catch (e: any) {
-      toast.error(e?.message || "Packaging fallito");
+      toast.error(getUserFriendlyError(e, {
+        fallback: italianUi ? "Packaging KDP non completato. Titolo e mercato restano salvati." : "KDP packaging was not completed. Title and market data are preserved.",
+      }));
     } finally { setLoading(false); }
   });
 
@@ -720,7 +726,9 @@ export default function KdpLaunchPage() {
       setStep("narrative-flow");
       toast.success(italianUi ? "Previsione completata — passo al flusso narrativo" : "Prediction done — moving to narrative flow");
     } catch (e: any) {
-      toast.error(e?.message || "Predizione fallita");
+      toast.error(getUserFriendlyError(e, {
+        fallback: italianUi ? "Previsione non completata. Puoi rilanciarla senza perdere il packaging." : "Prediction was not completed. You can rerun it without losing packaging.",
+      }));
     } finally { setLoading(false); }
   });
 

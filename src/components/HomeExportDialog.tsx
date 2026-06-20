@@ -18,6 +18,7 @@ import { InsufficientCreditsError } from "@/lib/billing";
 import { ExportBlockedError, getExportBlockers } from "@/lib/export-readiness";
 import { applyAuthorIdentityToConfig } from "@/lib/author-identity";
 import { listProjectCoverUrls } from "@/lib/cover-session";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 const CoverGenerator = lazy(() =>
   import("@/components/CoverGenerator").then((m) => ({ default: m.CoverGenerator })),
@@ -202,7 +203,9 @@ export function HomeExportDialog({ open, projects, initialProjectId, onClose }: 
       console.error("Export failed:", e);
       toast({
         title: e instanceof ExportBlockedError ? "Export bloccato" : "Esportazione fallita",
-        description: e instanceof Error ? e.message : "Errore sconosciuto",
+        description: e instanceof ExportBlockedError
+          ? getUserFriendlyError(e, { area: "upload", fallback: "Completa i requisiti di export e riprova." })
+          : getUserFriendlyError(e, { area: "upload", fallback: "Export non completato. Controlla manoscritto, cover e formato, poi riprova." }),
         variant: "destructive",
       });
     } finally {

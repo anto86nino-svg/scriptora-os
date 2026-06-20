@@ -10,6 +10,7 @@ import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { isProjectComplete } from "@/lib/project-status";
 import { isBackMatterEnabled, isFrontMatterEnabled } from "@/lib/matter-options";
 import { BookTypeBadge } from "@/components/BookTypeBadge";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 interface PublishPanelProps {
   project: BookProject | null;
@@ -273,7 +274,9 @@ export function PublishPanel({
       if (onSaveProject) await onSaveProject();
       toast.success("💾 Progetto salvato! Pronto per esportazione.");
     } catch (e: any) {
-      toast.error(`Errore salvataggio: ${e.message}`);
+      toast.error(getUserFriendlyError(e, {
+        fallback: "Salvataggio non completato. Il progetto resta disponibile in locale: riprova tra poco.",
+      }));
     } finally {
       setIsSaving(false);
     }
@@ -287,7 +290,10 @@ export function PublishPanel({
       toast.success("✅ Libro completo! Apri l'anteprima per modificare.");
       setShowPreview(true);
     } catch (e: any) {
-      toast.error(`Generazione interrotta: ${e.message}`);
+      toast.error(getUserFriendlyError(e, {
+        area: "manuscript",
+        fallback: "Generazione interrotta. Il testo già creato resta salvato: puoi riprendere o rilanciare.",
+      }));
     }
   };
 

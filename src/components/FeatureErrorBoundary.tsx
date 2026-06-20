@@ -20,7 +20,7 @@ export class FeatureErrorBoundary extends Component<Props, State> {
   state: State = { hasError: false };
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, message: error.message };
+    return { hasError: true, message: import.meta.env.DEV ? error.message : undefined };
   }
 
   componentDidCatch(error: Error, info: unknown) {

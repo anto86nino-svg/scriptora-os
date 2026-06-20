@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useDomination } from "@/contexts/DominationContext";
 import type { BookProject } from "@/types/book";
 import { getCurrentUserId } from "@/services/storageService";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 interface AutoFixRule {
   triggers: string[];
@@ -82,7 +83,10 @@ export function GenreCoachPanel({
       setReport(data as CoachReport);
       setOpen(true);
     } catch (e: any) {
-      toast.error(e?.message || "Analisi fallita");
+      toast.error(getUserFriendlyError(e, {
+        area: "manuscript",
+        fallback: "Analisi genere non completata. Il capitolo resta invariato e puoi riprovare.",
+      }));
     } finally {
       setLoading(false);
     }

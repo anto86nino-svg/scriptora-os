@@ -24,6 +24,7 @@ import {
 import { getLastProjectId, loadProjects } from "@/lib/storage";
 import { saveProjectAsync } from "@/services/storageService";
 import type { BookProject } from "@/types/book";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 function copyText(value: string, label = "Copiato") {
   navigator.clipboard?.writeText(value).then(
@@ -105,7 +106,9 @@ export default function KeywordGoldPage() {
       }
       toast.success(out.fallbackReason ? "Analisi base generata" : "Keyword Gold generato");
     } catch (e: any) {
-      toast.error(e?.message || "Keyword Gold fallito");
+      toast.error(getUserFriendlyError(e, {
+        fallback: "Keyword Gold non completato. Titolo e metadati correnti restano invariati.",
+      }));
     } finally {
       setLoading(false);
     }

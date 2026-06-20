@@ -21,6 +21,7 @@ import {
 } from "@/lib/book-forge/project-handoff";
 import { saveRadarSnapshot } from "@/lib/bestseller-radar/radar-storage";
 import type { BestsellerRadarScore } from "@/lib/bestseller-radar/types";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 const KDP_PREFILL_KEY = "scriptora-kdp-prefill";
 
@@ -332,7 +333,9 @@ export default function BestsellerRadarPage() {
                         void saveProjectAsync(applyProjectHandoffSeed(activeProject, seed));
                       }
                     } catch (err) {
-                      setError(err instanceof Error ? err.message : "Errore durante l'analisi");
+                      setError(getUserFriendlyError(err, {
+                        fallback: "Analisi radar non completata. Controlla keyword e genere, poi riprova.",
+                      }));
                       setLiveResults(null);
                       setLiveScore(null);
                       setLiveSummary("");

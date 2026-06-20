@@ -6,6 +6,7 @@ import {
   canGenerateBlueprintPreview,
   filterProjectsByLibraryTab,
   getProjectHumanStatus,
+  selectContinuityProject,
   summarizeProjectLibrary,
 } from "./project-continuity";
 
@@ -76,5 +77,20 @@ describe("project continuity", () => {
     expect(preview.id).toBe("project-blueprint-preview-1");
     expect((preview as any).scriptoraProjectMeta.blueprintPreview).toBe(true);
     expect((preview as any).writingUnlockStatus).toBe("locked");
+  });
+
+  it("selects a real active project even when the saved last id is missing", () => {
+    const older = {
+      ...buildBlueprintPreviewProject({ config: config("Vecchio"), blueprint: blueprint(), projectId: "older" }),
+      updatedAt: "2026-01-01T08:00:00.000Z",
+    };
+    const newer = {
+      ...buildBlueprintPreviewProject({ config: config("Recente"), blueprint: blueprint(), projectId: "newer" }),
+      updatedAt: "2026-01-02T08:00:00.000Z",
+    };
+
+    expect(selectContinuityProject([older, newer], { lastProjectId: "deleted" })?.id).toBe("newer");
+    expect(selectContinuityProject([older, newer], { lastProjectId: "older" })?.id).toBe("older");
+    expect(selectContinuityProject([older, newer], { flowProjectId: "newer", lastProjectId: "older" })?.id).toBe("newer");
   });
 });

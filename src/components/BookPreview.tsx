@@ -10,6 +10,7 @@ import { UpgradeModal } from "@/components/UpgradeModal";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { toast } from "sonner";
 import { t } from "@/lib/i18n";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 interface BookPreviewProps {
   project: BookProject;
@@ -56,7 +57,12 @@ export function BookPreview({
       downloadEpub(blob, filename);
       toast.success(t("export_saved"), { description: `${filename}.epub` });
     } catch (e) {
-      toast.error(t("export_failed"), { description: e instanceof Error ? e.message : undefined });
+      toast.error(t("export_failed"), {
+        description: getUserFriendlyError(e, {
+          area: "upload",
+          fallback: "EPUB non completato. Controlla manoscritto e cover, poi riprova.",
+        }),
+      });
     } finally {
       setIsExporting(false);
     }

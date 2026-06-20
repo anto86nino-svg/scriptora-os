@@ -20,6 +20,7 @@ import {
 } from "@/lib/bestseller-radar";
 import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
 import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 const KDP_PREFILL_KEY = "scriptora-kdp-prefill";
 
@@ -78,7 +79,9 @@ export function BestsellerRadarCommercialPanel({ projects, initialProjectId }: P
       setResult(res);
       setStatus("done");
     } catch (e) {
-      setError(e instanceof Error ? e.message : (italian ? "Impossibile calcolare il radar" : "Cannot compute radar"));
+      setError(getUserFriendlyError(e, {
+        fallback: italian ? "Impossibile calcolare il radar su questo progetto. Controlla titolo, genere e manoscritto." : "Cannot compute radar for this project. Check title, genre and manuscript.",
+      }));
       setStatus("error");
     }
   }

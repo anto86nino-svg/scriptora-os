@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import { LiveCoachTab } from "@/components/LiveCoachTab";
 import { toast } from "sonner";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 interface AICoachPanelProps {
   project: BookProject;
@@ -205,7 +206,10 @@ Respond in ${bookLang}. Return ONLY valid JSON.`,
       }
     } catch (e: any) {
       console.error("AI Coach multi-pass error:", e);
-      toast.error(e?.message || "AI Coach non disponibile — riprova tra poco.");
+      toast.error(getUserFriendlyError(e, {
+        area: "manuscript",
+        fallback: "AI Coach non disponibile ora. Il testo originale resta invariato: riprova tra poco.",
+      }));
     } finally {
       setLoading(false);
       setCurrentPass(0);

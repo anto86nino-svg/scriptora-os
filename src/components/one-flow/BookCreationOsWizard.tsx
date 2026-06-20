@@ -28,6 +28,7 @@ import { STUDIO_STEPS, AMAZON_MARKETPLACES, STUDIO_GENRES, STUDIO_LANGUAGES } fr
 import { DEFAULT_MATTER_OPTIONS, normalizeBookConfig } from "@/lib/book-config-studio/defaults";
 import { validateBookConfigStudio } from "@/lib/book-config-studio/validation";
 import type { StudioLaunchPayload } from "@/lib/book-config-studio/types";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 import { STUDIO_DRAFT_STORAGE_KEY } from "@/lib/book-config-studio/types";
 import {
   getVisibleBookTypesForLevel1,
@@ -87,7 +88,6 @@ import {
   buildProjectHandoffSeed,
   saveProjectHandoffSeed,
 } from "@/lib/book-forge/project-handoff";
-import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 interface BookCreationOsWizardProps {
   open: boolean;
@@ -1860,7 +1860,10 @@ export function BookCreationOsWizard({
       onManualStudio?.(config);
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Avvio non riuscito");
+      toast.error(getUserFriendlyError(e, {
+        area: "blueprint",
+        fallback: "Avvio Writer non completato. Il blueprint resta salvato: riprova tra poco.",
+      }));
     } finally {
       setLaunching(false);
     }
@@ -2399,7 +2402,10 @@ export function BookCreationOsWizard({
                       setCharacters((list) => [...list.filter((c) => c.name?.trim()), generated]);
                       toast.success("Personaggio generato.");
                     } catch (e) {
-                      toast.error(e instanceof Error ? e.message : "Errore generazione");
+                      toast.error(getUserFriendlyError(e, {
+                        area: "blueprint",
+                        fallback: "Personaggio non generato. Le schede esistenti restano salvate.",
+                      }));
                     } finally {
                       setGeneratingCharacter(false);
                     }
