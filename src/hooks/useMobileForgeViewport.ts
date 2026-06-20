@@ -25,7 +25,13 @@ export function useMobileForgeBodyLock(active: boolean) {
       body.style.position = prevBodyPosition;
       body.style.width = prevBodyWidth;
       body.style.top = "";
-      window.scrollTo(0, scrollY);
+      const isJsdom = typeof navigator !== "undefined" && navigator.userAgent.toLowerCase().includes("jsdom");
+      if (import.meta.env.MODE === "test" || isJsdom) return;
+      try {
+        window.scrollTo(0, scrollY);
+      } catch {
+        // jsdom exposes scrollTo but does not implement it.
+      }
     };
   }, [active]);
 }

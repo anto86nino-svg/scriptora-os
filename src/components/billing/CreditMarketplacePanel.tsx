@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Bell, Sparkles } from "lucide-react";
 import { formatCredits } from "@/lib/credit-economy";
-import { GENERAL_CREDIT_PACKS, STUDENT_CREDIT_PACKS } from "@/lib/billing/pricingCatalog";
+import { GENERAL_CREDIT_PACKS } from "@/lib/billing/pricingCatalog";
 import { toast } from "sonner";
 
 const WISHLIST_KEY = "scriptora-marketplace-notify";
@@ -41,8 +41,8 @@ export function CreditMarketplacePanel({ compact = false, checkoutLive = false, 
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
           {checkoutLive
-            ? "I crediti valgono per libri, KDP, cover, export e Study OS."
-            : "Anche con il piano Free puoi acquistare crediti e usare funzioni premium."}
+            ? "I crediti valgono per libri, capitoli, KDP, cover, export e audit autore."
+            : "Anche con il piano Free puoi acquistare crediti extra per operazioni autore intensive."}
         </p>
       </div>
 
@@ -56,19 +56,9 @@ export function CreditMarketplacePanel({ compact = false, checkoutLive = false, 
         ))}
       </div>
 
-      <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Pack studenti</p>
-        <div className={`grid gap-2 ${compact ? "grid-cols-1" : "sm:grid-cols-2"}`}>
-          {STUDENT_CREDIT_PACKS.map((pack) => (
-            <div key={pack.id} className="rounded-lg border border-border/50 bg-background/30 px-3 py-2.5 text-sm">
-              <span className="font-medium">{pack.name}</span>
-              <span className="mx-1 text-muted-foreground">·</span>
-              <span className="tabular-nums font-semibold">{formatCredits(pack.credits)}</span>
-              <span className="text-xs text-muted-foreground"> · {pack.priceLabel}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <p className="rounded-xl border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-xs leading-5 text-emerald-50/85">
+        Study OS Pro è separato dai crediti: 20 €/mese con limiti equi anti-abuso.
+      </p>
 
       {!checkoutLive && (
         <button

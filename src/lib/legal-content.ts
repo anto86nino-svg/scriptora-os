@@ -150,7 +150,7 @@ SCRIPTORA — Credits Policy
 Ultimo aggiornamento: ${LEGAL_UPDATED}
 
 1. Cosa sono i crediti
-I crediti sono l'unità operativa usata da SCRIPTORA per bilanciare costi AI, generazione testo, analisi, Study OS, cover, packaging, export avanzati e strumenti commerciali.
+I crediti sono l'unità operativa usata da SCRIPTORA per bilanciare costi AI delle funzioni autore: generazione testo, analisi, cover, packaging, export avanzati e strumenti commerciali. Study OS Pro è presentato come abbonamento separato con limiti equi di utilizzo, salvo eventuali estensioni dichiarate prima dell'acquisto.
 
 2. Trasparenza costo
 Quando una funzione consuma crediti, l'app deve mostrare o stimare il costo prima dell'azione quando tecnicamente possibile. I costi possono variare in base a lunghezza, modello AI, retry, immagini, export e complessità.

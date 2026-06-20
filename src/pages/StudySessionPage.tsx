@@ -47,6 +47,7 @@ import {
   type StudySessionRecord,
   type StudySourceType,
 } from "@/lib/study-os/session-store";
+import { STUDY_USAGE_LIMITS, formatStudyLimitMessage } from "@/lib/study-os/study-limits";
 
 type StudySection = "materials" | "summary" | "quiz" | "flashcards" | "maps" | "exam" | "progress" | "certificates" | "coach";
 
@@ -141,7 +142,18 @@ function describeStudyFallback(error: unknown): string {
   if (/failed to fetch|network|motore ai|raggiungibile|cors/i.test(message)) {
     return "Il motore AI non è raggiungibile: ho preparato una sessione locale.";
   }
-  return message ? message.slice(0, 120) : "Fallback locale attivato.";
+  if (/timeout|abort|tempo/i.test(message)) {
+    return "Il motore AI sta impiegando troppo tempo: ho preparato una sessione locale.";
+  }
+  return "Ho preparato una sessione locale utilizzabile. Puoi rigenerarla quando vuoi.";
+}
+
+function humanStudyErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error || "");
+  if (/ocr|immagine|scansione|pdf|docx|epub|formato|testo/i.test(message)) {
+    return message.slice(0, 180);
+  }
+  return "Non sono riuscito a completare l'operazione al primo tentativo. I dati della sessione restano salvati: puoi riprovare con un testo piu' breve o caricare un file diverso.";
 }
 
 function mapStoredSourceType(type: string): StudySourceType {
@@ -530,7 +542,7 @@ export default function StudySessionPage() {
       } catch (fallbackError) {
         console.error("[StudySession] local fallback failed", fallbackError);
         toast.error("Sessione Studio non creata", {
-          description: fallbackError instanceof Error ? fallbackError.message : "Riprova con un testo diverso o più breve.",
+          description: humanStudyErrorMessage(fallbackError),
         });
       }
     } finally {
@@ -566,7 +578,7 @@ export default function StudySessionPage() {
       toast.success(`Risposta valutata: ${evaluation.score}/100`);
     } catch (error) {
       toast.error("Valutazione non riuscita", {
-        description: error instanceof Error ? error.message.slice(0, 120) : "Riprova tra poco.",
+        description: "La risposta è salvata. Riprova tra poco o continua con la correzione manuale guidata.",
       });
     } finally {
       setEvaluatingOpenAnswer(null);
@@ -628,12 +640,12 @@ export default function StudySessionPage() {
         } catch (fallbackError) {
           console.error("[StudySession] local file fallback failed", fallbackError);
           toast.error("Sessione Studio non creata", {
-            description: fallbackError instanceof Error ? fallbackError.message : readResult.fileName,
+            description: humanStudyErrorMessage(fallbackError),
           });
         }
       }
     } catch (error) {
-      toast.error("File non leggibile", { description: error instanceof Error ? error.message : "Formato non supportato." });
+      toast.error("File non leggibile", { description: humanStudyErrorMessage(error) });
     } finally {
       setReading(false);
       setStudyGenerationStatus("");
@@ -673,15 +685,15 @@ export default function StudySessionPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-200/80">Scriptora Study OS</p>
                   <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-200">
-                    Beta Study Mode
+                    Study OS Pro · 20 €/mese
                   </span>
                 </div>
                 <h1 className="text-2xl font-semibold text-foreground sm:text-3xl">Carica il tuo materiale</h1>
               </div>
             </div>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              PDF, libro, dispensa, appunti, capitoli o testi copiati — Scriptora crea riassunti, quiz e simulazioni in pochi secondi.
-              Alcune azioni Study consumano crediti; in beta le funzioni base restano accessibili con il saldo del tuo account.
+              PDF, EPUB, DOCX, appunti, foto con OCR reale se supportato o testo copiato: Scriptora crea riassunti, quiz, flashcard e simulazioni guidate.
+              Study OS Pro usa un abbonamento semplice con limiti equi anti-abuso, non un sistema a crediti complicato.
             </p>
           </div>
 
@@ -773,6 +785,13 @@ export default function StudySessionPage() {
                 ))}
               </div>
             )}
+
+            <div className="mt-3 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-xs leading-5 text-emerald-50/85">
+              Limiti Study OS Pro: {STUDY_USAGE_LIMITS.monthlySessions} sessioni/mese,
+              {" "}{STUDY_USAGE_LIMITS.weeklyMaterials} materiali/settimana,
+              {" "}{STUDY_USAGE_LIMITS.monthlyAiOperations} elaborazioni AI/mese.
+              {" "}{formatStudyLimitMessage("it", 9, "soft")}
+            </div>
 
             <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
               <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.15em] text-emerald-200/80">

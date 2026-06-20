@@ -882,7 +882,10 @@ export function getMemoryStageProgress(memory: ForgeInterviewMemory): {
     ...evaluateStageCompletion(memory),
   ]);
 
-  if (import.meta.env.DEV) {
+  const debugProgress = import.meta.env.DEV
+    && typeof localStorage !== "undefined"
+    && localStorage.getItem("scriptora-debug-storyroom-progress") === "1";
+  if (debugProgress) {
     console.debug("[StoryRoomStageProgress]", getStoryRoomProgressDebugInfo(memory));
   }
 

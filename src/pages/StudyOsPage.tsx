@@ -4,6 +4,7 @@ import { GraduationCap, Play, Trash2 } from "lucide-react";
 import { OsShell } from "@/components/os/OsShell";
 import { LearningDashboard } from "@/components/study/LearningDashboard";
 import { deleteStudyProject, listStudyProjects, type StudyProjectRecord } from "@/lib/study-project-storage";
+import { STUDY_OS_PRO_PLAN, STUDY_USAGE_LIMITS } from "@/lib/study-os/study-limits";
 import {
   deleteStudySession,
   listStudySessions,
@@ -32,8 +33,8 @@ export default function StudyOsPage() {
   return (
     <OsShell
       title="Study OS"
-      subtitle="Apprendimento enterprise con materiali persistenti"
-      badge="🎓 Study Pro"
+      subtitle="Riassunti, quiz, flashcard e interrogazioni con abbonamento semplice"
+      badge="Study OS Pro · 20 €/mese"
       actions={
         <button
           type="button"
@@ -44,6 +45,25 @@ export default function StudyOsPage() {
         </button>
       }
     >
+      <section className="mb-6 rounded-3xl border border-emerald-300/20 bg-gradient-to-br from-emerald-300/12 via-white/[0.04] to-transparent p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-200/75">
+              {STUDY_OS_PRO_PLAN.name}
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-white">20 €/mese, tutto Study incluso</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/62">
+              Carichi materiali, generi riassunti, quiz, flashcard, mappe, interrogazioni e attestati. I limiti sono chiari e servono a proteggere qualità e costi, senza trasformare lo studio in una contabilità a crediti.
+            </p>
+          </div>
+          <div className="grid gap-2 text-sm sm:grid-cols-3 lg:min-w-[460px]">
+            <StudyLimitPill label="Sessioni/mese" value={STUDY_USAGE_LIMITS.monthlySessions} />
+            <StudyLimitPill label="Materiali/settimana" value={STUDY_USAGE_LIMITS.weeklyMaterials} />
+            <StudyLimitPill label="Upload max" value={`${STUDY_USAGE_LIMITS.maxUploadMb} MB`} />
+          </div>
+        </div>
+      </section>
+
       <LearningDashboard />
 
       <div className="mt-6">
@@ -117,5 +137,14 @@ export default function StudyOsPage() {
         )}
       </div>
     </OsShell>
+  );
+}
+
+function StudyLimitPill({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-3 py-2">
+      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-100/55">{label}</p>
+      <p className="mt-1 text-lg font-black tabular-nums text-emerald-100">{value}</p>
+    </div>
   );
 }

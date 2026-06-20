@@ -21,12 +21,17 @@ import {
   Wand2,
   Zap,
 } from "lucide-react";
-import { paymentsConfig } from "@/config/payments";
 import { setUILanguage, UI_LANGUAGES, useUILanguage, type UILanguage } from "@/lib/i18n";
 import { ProductFlowPreview } from "@/components/landing/ProductFlowPreview";
 import { PublicHomeWow } from "@/components/landing/PublicHomeWow";
 import { PublicDualPath } from "@/components/landing/PublicDualPath";
 import { PublicTestimonials } from "@/components/landing/PublicTestimonials";
+import {
+  AUTHOR_SUBSCRIPTION_PLANS,
+  STUDENT_SUBSCRIPTION_PLANS,
+  type SubscriptionPlanDefinition,
+} from "@/lib/billing/pricingCatalog";
+import { STUDY_USAGE_LIMITS } from "@/lib/study-os/study-limits";
 
 interface ScriptoraLandingProps {
   mounted: boolean;
@@ -436,19 +441,26 @@ const landingPlans: Record<string, Record<UILanguage, {
     fr: { name: "Gratuit", period: "a vie", description: "Entrez dans l'OS et lancez le premier vrai signal livre.", features: ["1 livre actif", "Jusqu'a 10 000 mots", "Creation livre essentielle", "Generation limitee"] },
     de: { name: "Kostenlos", period: "dauerhaft", description: "Betritt das OS und starte das erste echte Buchsignal.", features: ["1 aktives Buch", "Bis 10.000 Worter", "Essenzielle Bucherstellung", "Begrenzte Kapitelgenerierung"] },
   },
-  pro_monthly: {
-    en: { name: "Pro", period: "/month", description: "For authors who want continuity, revision and export in one serious room.", features: ["10 books per month", "Up to 80,000 words", "Full Book Engine", "EPUB, PDF, DOCX export"] },
-    it: { name: "Pro", period: "/mese", description: "Per autori che vogliono continuità, revisione ed export in una stanza seria.", features: ["10 libri al mese", "Fino a 80.000 parole", "Book Engine completo", "Export EPUB, PDF, DOCX"] },
-    es: { name: "Pro", period: "/mes", description: "Para autores que quieren continuidad, revision y export en una sala seria.", features: ["10 libros al mes", "Hasta 80.000 palabras", "Book Engine completo", "Export EPUB, PDF, DOCX"] },
-    fr: { name: "Pro", period: "/mois", description: "Pour auteurs qui veulent continuite, revision et export dans une piece serieuse.", features: ["10 livres par mois", "Jusqu'a 80 000 mots", "Book Engine complet", "Export EPUB, PDF, DOCX"] },
-    de: { name: "Pro", period: "/Monat", description: "Fur Autoren, die Kontinuitat, Revision und Export in einem ernsten Raum wollen.", features: ["10 Bucher pro Monat", "Bis 80.000 Worter", "Voller Book Engine", "EPUB, PDF, DOCX Export"] },
+  pro_author: {
+    en: { name: "Author Pro", period: "/month", description: "For independent authors who want chapters, KDP, cover and export with a realistic credit budget.", features: ["6,000 credits/month", "KDP, cover and export", "Extra credits available", "No full-book promise beyond budget"] },
+    it: { name: "Author Pro", period: "/mese", description: "Per autori indipendenti che vogliono capitoli, KDP, cover ed export con budget crediti realistico.", features: ["6.000 crediti/mese", "KDP, cover ed export", "Crediti extra acquistabili", "Nessuna promessa libro oltre budget"] },
+    es: { name: "Author Pro", period: "/mes", description: "Para autores independientes con capitulos, KDP, portada y export dentro de un presupuesto realista.", features: ["6.000 creditos/mes", "KDP, portada y export", "Creditos extra disponibles", "Sin promesas fuera del presupuesto"] },
+    fr: { name: "Author Pro", period: "/mois", description: "Pour auteurs independants avec chapitres, KDP, couverture et export dans un budget realiste.", features: ["6 000 credits/mois", "KDP, couverture et export", "Credits extra disponibles", "Pas de promesse hors budget"] },
+    de: { name: "Author Pro", period: "/Monat", description: "Fur unabhangige Autoren mit Kapiteln, KDP, Cover und Export in realistischem Credit-Budget.", features: ["6.000 Credits/Monat", "KDP, Cover und Export", "Extra Credits kaufbar", "Keine Buchversprechen uber Budget"] },
   },
-  premium_monthly: {
-    en: { name: "Premium", period: "/month", description: "For authors and publishers who want the full creative and market layer.", features: ["Unlimited books with fair use", "Up to 200,000 words", "Advanced KDP analysis", "Priority support"] },
-    it: { name: "Premium", period: "/mese", description: "Per autori ed editori che vogliono il livello creativo e mercato completo.", features: ["Libri illimitati con fair use", "Fino a 200.000 parole", "Analisi KDP avanzata", "Supporto prioritario"] },
-    es: { name: "Premium", period: "/mes", description: "Para autores y editores que quieren la capa creativa y mercado completa.", features: ["Libros ilimitados con fair use", "Hasta 200.000 palabras", "Analisis KDP avanzado", "Soporte prioritario"] },
-    fr: { name: "Premium", period: "/mois", description: "Pour auteurs et editeurs qui veulent la couche creative et marche complete.", features: ["Livres illimites avec fair use", "Jusqu'a 200 000 mots", "Analyse KDP avancee", "Support prioritaire"] },
-    de: { name: "Premium", period: "/Monat", description: "Fur Autoren und Verlage mit voller Kreativ- und Marktebene.", features: ["Unbegrenzte Bucher mit Fair Use", "Bis 200.000 Worter", "Erweiterte KDP Analyse", "Priorisierter Support"] },
+  studio: {
+    en: { name: "Studio", period: "/month", description: "For authors building catalogues and series with stronger credit capacity.", features: ["20,000 credits/month", "Series and catalogue work", "Cover, KDP and Radar", "Extra credits as natural scale-up"] },
+    it: { name: "Studio", period: "/mese", description: "Per autori che costruiscono cataloghi e serie con capacità crediti più ampia.", features: ["20.000 crediti/mese", "Serie e cataloghi", "Cover, KDP e Radar", "Crediti extra per scalare"] },
+    es: { name: "Studio", period: "/mes", description: "Para autores con catalogos y series que necesitan mas capacidad de creditos.", features: ["20.000 creditos/mes", "Series y catalogos", "Portada, KDP y Radar", "Creditos extra para escalar"] },
+    fr: { name: "Studio", period: "/mois", description: "Pour auteurs avec catalogues et series qui demandent plus de credits.", features: ["20 000 credits/mois", "Series et catalogues", "Couverture, KDP et Radar", "Credits extra pour scaler"] },
+    de: { name: "Studio", period: "/Monat", description: "Fur Autoren mit Katalogen und Serien mit hoherer Credit-Kapazitat.", features: ["20.000 Credits/Monat", "Serien und Kataloge", "Cover, KDP und Radar", "Extra Credits zum Skalieren"] },
+  },
+  study_os_pro: {
+    en: { name: "Study OS Pro", period: "/month", description: "One simple study subscription: summaries, quizzes, flashcards and oral practice with fair limits.", features: ["€20/month", "Usage included with fair limits", "PDF, DOCX, EPUB, notes", "Local fallback if AI is slow"] },
+    it: { name: "Study OS Pro", period: "/mese", description: "Un abbonamento studio semplice: riassunti, quiz, flashcard e interrogazione con limiti equi.", features: ["20 €/mese", "Uso incluso con limiti equi", "PDF, DOCX, EPUB, appunti", "Fallback locale se l'AI è lenta"] },
+    es: { name: "Study OS Pro", period: "/mes", description: "Una suscripcion de estudio simple: resumenes, quizzes, flashcards y practica oral con limites justos.", features: ["20 €/mes", "Uso incluido con limites justos", "PDF, DOCX, EPUB, apuntes", "Fallback local si la IA tarda"] },
+    fr: { name: "Study OS Pro", period: "/mois", description: "Un abonnement etude simple: resumes, quiz, flashcards et oral avec limites equitables.", features: ["20 €/mois", "Usage inclus avec limites", "PDF, DOCX, EPUB, notes", "Fallback local si l'IA tarde"] },
+    de: { name: "Study OS Pro", period: "/Monat", description: "Ein einfaches Lernabo: Zusammenfassungen, Quizze, Flashcards und mundliche Ubung mit fairen Limits.", features: ["20 €/Monat", "Nutzung mit fairen Limits", "PDF, DOCX, EPUB, Notizen", "Lokaler Fallback bei langsamer KI"] },
   },
 };
 
@@ -489,9 +501,12 @@ export function ScriptoraLanding({
   useEffect(() => {
     document.title = "Scriptora OS — Build Books That Sell";
   }, []);
-  const primaryPlans = paymentsConfig.plans.filter((plan) =>
-    ["free", "pro_monthly", "premium_monthly"].includes(plan.id),
-  );
+  const primaryPlans: SubscriptionPlanDefinition[] = [
+    AUTHOR_SUBSCRIPTION_PLANS.find((plan) => plan.id === "free"),
+    AUTHOR_SUBSCRIPTION_PLANS.find((plan) => plan.id === "pro_author"),
+    AUTHOR_SUBSCRIPTION_PLANS.find((plan) => plan.id === "studio"),
+    STUDENT_SUBSCRIPTION_PLANS.find((plan) => plan.id === "study_os_pro"),
+  ].filter((plan): plan is SubscriptionPlanDefinition => Boolean(plan));
 
   return (
     <main className="scriptora-landing min-h-[100dvh] overflow-x-hidden bg-[#02030a] text-white">
@@ -597,6 +612,38 @@ export function ScriptoraLanding({
       </section>
 
       <PublicDualPath lang={lang} onEnter={onEnter} />
+
+      <section className="scriptora-landing-section">
+        <div className="rounded-[2rem] border border-emerald-300/20 bg-gradient-to-br from-emerald-300/12 via-white/[0.035] to-transparent p-6 sm:p-8">
+          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+            <div>
+              <div className="scriptora-landing-section-label text-emerald-200">
+                {lang === "it" ? "Study OS · 20 €/mese" : "Study OS · €20/month"}
+              </div>
+              <h2 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl">
+                {lang === "it" ? "Studia senza contare crediti." : "Study without counting credits."}
+              </h2>
+              <p className="mt-4 max-w-xl text-sm leading-6 text-white/62">
+                {lang === "it"
+                  ? "Upload materiali, riassunti, quiz, flashcard, interrogazioni guidate, attestati e piano studio. Uso incluso con limiti equi anti-abuso, rinnovo mensile chiaro."
+                  : "Upload materials, summaries, quizzes, flashcards, guided oral practice, certificates and study plans. Usage included with fair anti-abuse limits and clear monthly renewal."}
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                [lang === "it" ? "Sessioni/mese" : "Sessions/month", String(STUDY_USAGE_LIMITS.monthlySessions)],
+                [lang === "it" ? "Materiali/settimana" : "Materials/week", String(STUDY_USAGE_LIMITS.weeklyMaterials)],
+                [lang === "it" ? "Upload massimo" : "Max upload", `${STUDY_USAGE_LIMITS.maxUploadMb} MB`],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-2xl border border-emerald-300/18 bg-emerald-300/10 px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-100/55">{label}</p>
+                  <p className="mt-1 text-2xl font-black tabular-nums text-emerald-100">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="scriptora-landing-section scriptora-landing-section--tight">
         <ProductFlowPreview lang={lang} />
@@ -711,20 +758,20 @@ export function ScriptoraLanding({
           {primaryPlans.map((plan) => {
             const planText = landingPlans[plan.id]?.[lang] ?? landingPlans[plan.id]?.en;
             return (
-              <article key={plan.id} className={`scriptora-pricing-card ${plan.highlight || plan.premium ? "is-highlight" : ""}`}>
+              <article key={plan.id} className={`scriptora-pricing-card ${plan.badge ? "is-highlight" : ""}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3>{planText?.name ?? plan.name}</h3>
                     <p>{planText?.description ?? plan.description}</p>
                   </div>
-                  {(plan.highlight || plan.premium) && <Crown className="h-4 w-4 text-fuchsia-200" />}
+                  {plan.badge && <Crown className="h-4 w-4 text-fuchsia-200" />}
                 </div>
                 <div className="mt-6">
-                  <strong>{plan.price}</strong>
+                  <strong>{plan.priceLabel}</strong>
                   <span>{planText?.period ?? plan.period}</span>
                 </div>
                 <ul>
-                  {(planText?.features ?? plan.features.slice(0, 4).map((feature) => feature.label)).map((feature) => (
+                  {(planText?.features ?? plan.features.slice(0, 4)).map((feature) => (
                     <li key={feature}>
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       {feature}

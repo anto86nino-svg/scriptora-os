@@ -283,7 +283,9 @@ describe("genre convergence simulations", () => {
       `converges understanding for ${scenario.id}`,
       () => {
         const result = simulateUnderstanding(scenario);
-        console.log(JSON.stringify({ scenario: scenario.id, ...result }));
+        if (process.env.SCRIPTORA_DEBUG_GENRE_CONVERGENCE === "1") {
+          console.log(JSON.stringify({ scenario: scenario.id, ...result }));
+        }
         expect(result.understood, `${scenario.id} did not converge in ${result.steps} steps`).toBe(true);
         expect(result.steps).toBeLessThan(50);
       },

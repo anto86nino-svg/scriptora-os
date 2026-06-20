@@ -9,7 +9,8 @@ export type CreditPlanId =
   | "student_free"
   | "student_basic"
   | "student_plus"
-  | "student_pro_exam";
+  | "student_pro_exam"
+  | "study_os_pro";
 
 export type CreditOperationId =
   | "generate_chapter_short"

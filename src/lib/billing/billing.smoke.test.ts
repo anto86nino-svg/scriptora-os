@@ -38,13 +38,13 @@ describe("billing hardening smoke", () => {
     expect(PLAN_CREDIT_ALLOCATION.free).toBe(300);
     expect(PLAN_CREDIT_ALLOCATION.pro_author).toBe(6_000);
     expect(PLAN_CREDIT_ALLOCATION.studio).toBe(20_000);
-    expect(PLAN_CREDIT_ALLOCATION.student_plus).toBe(4_000);
+    expect(PLAN_CREDIT_ALLOCATION.study_os_pro).toBe(0);
   });
 
   it("maps subscription tiers to credit plans", () => {
     expect(mapSubscriptionPlanToCreditPlan("pro")).toBe("pro_author");
     expect(mapSubscriptionPlanToCreditPlan("premium")).toBe("studio");
-    expect(mapSubscriptionPlanToCreditPlan("student_plus")).toBe("student_plus");
+    expect(mapSubscriptionPlanToCreditPlan("study")).toBe("study_os_pro");
   });
 
   it("builds stable idempotency keys", () => {

@@ -15,17 +15,19 @@ describe("scriptora-quality-audit", () => {
 
   it("logs reproducible audit snapshot for CI", () => {
     const report = scriptoraQualityAudit();
-    // eslint-disable-next-line no-console
-    console.info(
-      "[Scriptora Quality Audit]",
-      JSON.stringify({
-        overall: report.overallScore,
-        grade: report.grade,
-        trust: report.trust.destroyerScore,
-        blockers: report.blockers,
-        dimensions: report.dimensions.map((d) => ({ id: d.id, score: d.score })),
-      }),
-    );
+    if (process.env.SCRIPTORA_AUDIT_LOG === "1") {
+      // eslint-disable-next-line no-console
+      console.info(
+        "[Scriptora Quality Audit]",
+        JSON.stringify({
+          overall: report.overallScore,
+          grade: report.grade,
+          trust: report.trust.destroyerScore,
+          blockers: report.blockers,
+          dimensions: report.dimensions.map((d) => ({ id: d.id, score: d.score })),
+        }),
+      );
+    }
     expect(report.dimensions.length).toBeGreaterThan(0);
   });
 });

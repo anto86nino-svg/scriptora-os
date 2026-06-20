@@ -11,6 +11,7 @@ export const PLAN_CREDIT_ALLOCATION: Record<CreditPlanId, number> = {
   student_basic: 1_500,
   student_plus: 4_000,
   student_pro_exam: 10_000,
+  study_os_pro: 0,
 };
 
 /** Maps canonical/display operation keys to runtime billing keys used in the app. */
@@ -83,17 +84,18 @@ const PLAN_DISCOUNT_RULES: Record<CreditPlanId, { author: number; study: number 
   student_basic: { author: 0, study: 5 },
   student_plus: { author: 0, study: 10 },
   student_pro_exam: { author: 0, study: 20 },
+  study_os_pro: { author: 0, study: 100 },
 };
 
 export const CREDIT_PACKS_DEV = [
-  { id: "mini", label: "Mini", credits: 1_000, priceLabel: "€4,99" },
-  { id: "creator", label: "Creator", credits: 2_300, priceLabel: "€9,99" },
-  { id: "author", label: "Author", credits: 5_200, priceLabel: "€19,99" },
-  { id: "studio_pack", label: "Studio Pack", credits: 15_000, priceLabel: "€49,99" },
-  { id: "publisher_pack", label: "Publisher Pack", credits: 35_000, priceLabel: "€99,99" },
+  { id: "micro", label: "Micro", credits: 500, priceLabel: "€2" },
+  { id: "mini", label: "Mini", credits: 1_000, priceLabel: "€3" },
+  { id: "author", label: "Author", credits: 3_000, priceLabel: "€7" },
+  { id: "studio_pack", label: "Studio Pack", credits: 10_000, priceLabel: "€19" },
+  { id: "publisher_pack", label: "Publisher Pack", credits: 30_000, priceLabel: "€49" },
 ] as const;
 
-export const DEV_PURCHASE_AMOUNTS = [400, 1_000, 2_300, 5_200, 15_000] as const;
+export const DEV_PURCHASE_AMOUNTS = [500, 1_000, 3_000, 10_000, 30_000] as const;
 
 export type OperationCostOptions = {
   bookLength?: BookLength;
@@ -172,7 +174,16 @@ export function getOperationCost(
 
 export function mapSubscriptionPlanToCreditPlan(plan: string): CreditPlanId {
   const p = String(plan || "free").toLowerCase();
-  if (p === "student_free" || p === "student_basic" || p === "student_plus" || p === "student_pro_exam") {
+  if (
+    p === "student_free"
+    || p === "student_basic"
+    || p === "student_plus"
+    || p === "student_pro_exam"
+    || p === "study_os_pro"
+    || p === "study"
+    || p === "study_pro"
+  ) {
+    if (p === "study" || p === "study_pro") return "study_os_pro";
     return p as CreditPlanId;
   }
   if (p === "starter") return "starter";

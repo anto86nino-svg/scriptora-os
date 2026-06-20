@@ -16,7 +16,6 @@ import {
   AUTHOR_SUBSCRIPTION_PLANS,
   GENERAL_CREDIT_PACKS,
   STUDENT_COST_EXAMPLES,
-  STUDENT_CREDIT_PACKS,
   STUDENT_PACKS_MESSAGE,
   STUDENT_SUBSCRIPTION_PLANS,
   TRANSPARENCY_BULLETS,
@@ -31,6 +30,7 @@ import { creditSimulationBadge } from "@/lib/billing/devMode";
 import { canDevSimulateCreditPurchase } from "@/lib/billing";
 import { isPaymentsLive } from "@/config/payments";
 import { BetaAccessNotice } from "@/components/ui/BetaAccessNotice";
+import { STUDY_EXTENSION_STATUS, STUDY_USAGE_LIMITS, formatStudyLimitMessage } from "@/lib/study-os/study-limits";
 
 type PricingTab = "authors" | "students";
 
@@ -97,7 +97,7 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
         <BetaAccessNotice
           compact
           title="Beta privata"
-          message="I prezzi sono definitivi per la roadmap commerciale. Il checkout reale non è ancora attivo: puoi usare Scriptora con crediti e accesso anticipato."
+          message="I piani sono pronti per il checkout reale. In questa beta nessun pagamento viene elaborato: crediti autore e Study OS Pro restano predisposti per l'attivazione Stripe/Lemon."
         />
       )}
       <section className="text-center">
@@ -108,8 +108,8 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
           Scegli come creare con Scriptora.
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Puoi iniziare gratis, passare a un piano mensile o acquistare crediti quando ti servono.
-          I crediti funzionano in tutta Scriptora: libri, KDP, cover, export e Study OS.
+          Puoi iniziare gratis, passare a un piano autore con crediti mensili, oppure scegliere Study OS Pro a 20 €/mese.
+          I crediti extra restano dedicati alle operazioni autore più intensive: capitoli, KDP, cover, export e audit.
         </p>
         {simulationBadge && (
           <p className="mt-3 text-xs font-semibold text-amber-400">{simulationBadge}</p>
@@ -180,12 +180,7 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
           packs={GENERAL_CREDIT_PACKS}
           onPurchase={handleCreditPack}
         />
-        <CreditPackSection
-          title="Pacchetti studenti"
-          message={STUDENT_PACKS_MESSAGE}
-          packs={STUDENT_CREDIT_PACKS}
-          onPurchase={handleCreditPack}
-        />
+        <StudyLimitsSection />
       </section>
 
       <section className="rounded-2xl border border-border bg-card/60 p-6 sm:p-8">
@@ -272,7 +267,7 @@ function PlanCard({
           <span className="text-xs text-muted-foreground">{plan.period}</span>
         </div>
         <p className="mt-1 text-sm font-semibold text-primary tabular-nums">
-          {formatCredits(plan.monthlyCredits)} crediti/mese
+          {plan.includedUsageLabel || `${formatCredits(plan.monthlyCredits)} crediti/mese`}
         </p>
       </div>
       <ul className="mb-6 flex-1 space-y-2">
@@ -295,6 +290,36 @@ function PlanCard({
         {plan.priceNumeric === 0 ? "Inizia gratis" : "Scegli piano"}
       </button>
     </article>
+  );
+}
+
+function StudyLimitsSection() {
+  return (
+    <div className="rounded-2xl border border-emerald-300/30 bg-emerald-300/5 p-5 sm:p-6">
+      <h2 className="text-lg font-bold text-emerald-100">Study OS Pro · limiti equi</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{STUDENT_PACKS_MESSAGE}</p>
+      <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+        <LimitItem label="Sessioni mensili" value={STUDY_USAGE_LIMITS.monthlySessions} />
+        <LimitItem label="Materiali/settimana" value={STUDY_USAGE_LIMITS.weeklyMaterials} />
+        <LimitItem label="Elaborazioni AI/mese" value={STUDY_USAGE_LIMITS.monthlyAiOperations} />
+        <LimitItem label="Upload massimo" value={`${STUDY_USAGE_LIMITS.maxUploadMb} MB`} />
+      </dl>
+      <p className="mt-4 rounded-xl border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-xs leading-5 text-emerald-50/85">
+        {formatStudyLimitMessage("it", 9, "hard")}
+      </p>
+      <p className="mt-3 text-xs text-muted-foreground">
+        {STUDY_EXTENSION_STATUS.message}
+      </p>
+    </div>
+  );
+}
+
+function LimitItem({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="rounded-xl border border-emerald-300/15 bg-background/45 px-3 py-2.5">
+      <dt className="text-[11px] uppercase tracking-[0.12em] text-emerald-100/60">{label}</dt>
+      <dd className="mt-1 text-lg font-black tabular-nums text-emerald-100">{value}</dd>
+    </div>
   );
 }
 

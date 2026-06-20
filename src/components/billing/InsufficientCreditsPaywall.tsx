@@ -51,7 +51,7 @@ export function InsufficientCreditsPaywall() {
           Saldo disponibile: <span className="font-semibold tabular-nums text-foreground">{formatCredits(detail.balance)}</span>
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
-          Puoi ricaricare crediti dal wallet o consultare i pacchetti in prezzi. In beta privata il checkout può non essere ancora attivo.
+          Puoi ricaricare crediti autore dal wallet o consultare i pacchetti in prezzi. In beta privata il checkout può non essere ancora attivo.
         </p>
 
         <div className="mt-4">

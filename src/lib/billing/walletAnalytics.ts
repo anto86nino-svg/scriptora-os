@@ -27,6 +27,7 @@ export const PLAN_DISPLAY_LABELS: Record<CreditPlanId, string> = {
   student_basic: "Student Basic",
   student_plus: "Student Plus",
   student_pro_exam: "Student Pro Exam",
+  study_os_pro: "Study OS Pro",
 };
 
 export const OPERATION_DISPLAY_LABELS: Record<string, string> = {

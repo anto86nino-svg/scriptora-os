@@ -233,8 +233,8 @@ export default function MobileLiteDashboardPage() {
       <header className="sticky top-0 z-30 -mx-4 border-b border-white/10 bg-background/98 px-4 pb-3 pt-[calc(env(safe-area-inset-top,0px)+0.5rem)]">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#f2c400]/75">Scriptora Mobile Lite</p>
-            <h1 className="truncate text-xl font-semibold text-white">Pure Creator Experience</h1>
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#f2c400]/75">Scriptora Mobile</p>
+            <h1 className="truncate text-xl font-semibold text-white">Studio portatile</h1>
           </div>
           <GlobalCreditBar variant="mobilePill" />
         </div>
@@ -296,6 +296,19 @@ export default function MobileLiteDashboardPage() {
             Nuovo libro
           </button>
         )}
+      </section>
+
+      <section className="mt-4 rounded-[28px] border border-[#f2c400]/20 bg-gradient-to-br from-[#f2c400]/12 via-white/[0.04] to-emerald-400/10 p-4">
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#f2c400]/75">Esperienza completa</p>
+        <h2 className="mt-2 text-lg font-black text-white">Inizia dal telefono, domina da desktop.</h2>
+        <p className="mt-2 text-sm leading-6 text-white/62">
+          Sul telefono puoi iniziare, studiare e riprendere il lavoro. Da desktop, Scriptora apre Cover Studio, Publishing Cockpit, KDP Launch e l'intero arsenale editoriale.
+        </p>
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[11px] font-semibold text-white/72">
+          <span className="rounded-2xl border border-white/10 bg-white/[0.05] px-2 py-2">Book Forge</span>
+          <span className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-2 py-2">Study OS</span>
+          <span className="rounded-2xl border border-[#f2c400]/20 bg-[#f2c400]/10 px-2 py-2">Publishing</span>
+        </div>
       </section>
 
       <section className="mt-4 grid gap-3">
