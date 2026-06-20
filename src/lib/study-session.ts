@@ -901,10 +901,15 @@ async function readEpub(file: File): Promise<string> {
 async function readImageWithBrowserOcr(file: File): Promise<string> {
   const TextDetectorCtor = (globalThis as any).TextDetector;
   if (typeof TextDetectorCtor !== "function") {
-    throw new Error("OCR non disponibile in questo browser. L'immagine non è stata letta: carica un PDF con testo selezionabile o incolla gli appunti.");
+    throw new Error("OCR_BROWSER_UNAVAILABLE");
   }
 
-  const bitmap = await createImageBitmap(file);
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error("IMAGE_DECODE_UNAVAILABLE");
+  }
   try {
     const detector = new TextDetectorCtor();
     const detections = await detector.detect(bitmap);
@@ -913,7 +918,7 @@ async function readImageWithBrowserOcr(file: File): Promise<string> {
       .filter(Boolean)
       .join("\n");
     if (!text.trim()) {
-      throw new Error("OCR disponibile ma nessun testo riconosciuto nell'immagine.");
+      throw new Error("OCR_EMPTY_RESULT");
     }
     return text;
   } finally {
@@ -993,17 +998,22 @@ export async function readStudyFileDetailed(file: File): Promise<StudyFileReadRe
   } else if (name.endsWith(".epub")) {
     sourceType = "epub";
     text = await readEpub(file);
-  } else if (/\.(png|jpe?g|webp)$/i.test(name) || file.type.startsWith("image/")) {
+  } else if (/\.(png|jpe?g|webp|heic|heif)$/i.test(name) || file.type.startsWith("image/")) {
     sourceType = "image";
-    text = await readImageWithBrowserOcr(file);
-    warnings.push("Testo estratto via OCR browser: verifica eventuali errori di riconoscimento.");
+    try {
+      text = await readImageWithBrowserOcr(file);
+      warnings.push("Testo estratto via OCR browser: verifica eventuali errori di riconoscimento.");
+    } catch {
+      text = "";
+      warnings.push("Immagine acquisita. Estrazione testo non disponibile in locale: incolla o trascrivi il testo nel riquadro per creare riassunti e quiz.");
+    }
   } else {
-    throw new Error("Formato non supportato. Usa PDF, EPUB, TXT, MD, Markdown, DOCX o immagini JPG/PNG/WebP con OCR disponibile.");
+    throw new Error("Formato non supportato. Usa PDF, EPUB, TXT, MD, Markdown, DOCX o immagini JPG/PNG/WebP/HEIC.");
   }
 
   const clean = cleanText(text);
   const empty = countStudyWords(clean) === 0;
-  if (empty) throw new Error(`${file.name}: file vuoto o senza testo studiabile.`);
+  if (empty && sourceType !== "image") throw new Error(`${file.name}: file vuoto o senza testo studiabile.`);
 
   return {
     fileName: file.name,
@@ -1029,6 +1039,16 @@ export async function readStudyFiles(files: File[]): Promise<StudyFileReadResult
 
   const readable = results.filter((result) => countStudyWords(result.text) > 0);
   if (!readable.length) {
+    const acceptedImages = results.filter((result) => result.sourceType === "image");
+    if (acceptedImages.length) {
+      return {
+        fileName: acceptedImages.length === 1 ? acceptedImages[0].fileName : `${acceptedImages.length} immagini acquisite`,
+        sourceType: "image",
+        text: "",
+        warnings: [...acceptedImages.flatMap((result) => result.warnings), ...errors],
+        empty: true,
+      };
+    }
     throw new Error(errors.join(" ") || "Nessun testo leggibile nei file selezionati.");
   }
 

@@ -323,7 +323,8 @@ export default function Dashboard() {
     () => canGenerateBlueprintPreview(currentPlan, projects),
     [currentPlan, projects],
   );
-  const freeBookUsed = currentPlan === "free" && !blueprintGate.allowed;
+  const devBypassLimits = devOn;
+  const freeBookUsed = currentPlan === "free" && !devBypassLimits && !blueprintGate.allowed;
   const [bookForgeHandoff, setBookForgeHandoff] = useState<BookForgeHandoff | null>(null);
 
   useEffect(() => {
@@ -667,7 +668,7 @@ typeof crypto.randomUUID === "function"
   const handleStudioGenerateBlueprint = async (config: BookConfig) => {
     const finalConfig = mergeCharacterStudioIntoConfig(config);
     const gate = canGenerateBlueprintPreview(currentPlan, projects);
-    if (!gate.allowed) {
+    if (!devBypassLimits && !gate.allowed) {
       trackScriptoraEvent({
         eventName: "free_blueprint_limit_blocked",
         tool: "book-forge",

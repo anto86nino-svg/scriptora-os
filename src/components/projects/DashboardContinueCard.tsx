@@ -24,10 +24,10 @@ export function DashboardContinueCard({
   const projectLabel = summary.total === 1 ? "progetto salvato" : "progetti salvati";
 
   return (
-    <section className="mb-5 rounded-2xl border border-white/10 bg-white/[0.045] p-4 shadow-[0_18px_48px_rgba(0,0,0,0.18)] backdrop-blur-xl sm:p-5">
+    <section className="mb-5 rounded-2xl border border-amber-300/18 bg-[linear-gradient(135deg,rgba(251,191,36,0.10),rgba(255,255,255,0.035)_42%,rgba(14,165,233,0.06))] p-4 shadow-[0_18px_48px_rgba(0,0,0,0.18)] backdrop-blur-xl sm:p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky-200/80">Continua</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200/85">Continua</p>
           <h2 className="mt-1 text-xl font-bold text-white">
             Hai {summary.total} {projectLabel}, {summary.blueprintReady + summary.writingLocked + summary.writingUnlocked} Blueprint pronti e {summary.writingInProgress} manoscritti in corso.
           </h2>
@@ -45,7 +45,7 @@ export function DashboardContinueCard({
               onClick={() => onContinue(lastProject.id)}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950 transition hover:opacity-90"
             >
-              <PenLine className="h-4 w-4 text-sky-600" />
+              <PenLine className="h-4 w-4 text-amber-600" />
               Riprendi ultimo
             </button>
           )}
@@ -65,7 +65,7 @@ export function DashboardContinueCard({
         <button
           type="button"
           onClick={() => onContinue(lastProject.id)}
-          className="mt-4 flex w-full items-center justify-between gap-3 rounded-xl border border-sky-300/20 bg-sky-400/10 px-3 py-3 text-left transition hover:bg-sky-400/15"
+          className="mt-4 flex w-full items-center justify-between gap-3 rounded-xl border border-amber-300/25 bg-amber-300/10 px-3 py-3 text-left transition hover:bg-amber-300/15"
         >
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-white">{lastProject.config.title || "Progetto senza titolo"}</p>
@@ -73,7 +73,7 @@ export function DashboardContinueCard({
               {getProjectHumanStatus(lastProject)} · {formatProjectUpdatedAt(lastProject.updatedAt)}
             </p>
           </div>
-          <ArrowRight className="h-4 w-4 shrink-0 text-sky-200" />
+          <ArrowRight className="h-4 w-4 shrink-0 text-amber-200" />
         </button>
       )}
     </section>

@@ -77,9 +77,26 @@ describe("Study OS file ingestion", () => {
     expect(result.text).toContain("Storia rivoluzione");
   });
 
-  it("does not fake OCR when browser OCR is unavailable", async () => {
+  it("accepts common images and creates a manual fallback when OCR is unavailable", async () => {
     const file = new File([new Uint8Array([1, 2, 3])], "foto.png", { type: "image/png" });
 
-    await expect(readStudyFileDetailed(file)).rejects.toThrow(/OCR non disponibile/);
+    const result = await readStudyFileDetailed(file);
+
+    expect(result.sourceType).toBe("image");
+    expect(result.empty).toBe(true);
+    expect(result.text).toBe("");
+    expect(result.warnings.join(" ")).toMatch(/Immagine acquisita|Estrazione testo non disponibile/i);
+  });
+
+  it("accepts camera HEIC/HEIF images without reporting unsupported format", async () => {
+    const heic = new File([new Uint8Array([1, 2, 3])], "pagina.heic", { type: "image/heic" });
+    const heif = new File([new Uint8Array([1, 2, 3])], "pagina.heif", { type: "image/heif" });
+
+    const combined = await readStudyFiles([heic, heif]);
+
+    expect(combined.sourceType).toBe("image");
+    expect(combined.empty).toBe(true);
+    expect(combined.fileName).toBe("2 immagini acquisite");
+    expect(combined.warnings.join(" ")).not.toMatch(/Formato non supportato/i);
   });
 });

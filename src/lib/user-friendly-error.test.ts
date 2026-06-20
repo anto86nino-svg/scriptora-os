@@ -8,6 +8,12 @@ describe("user friendly errors", () => {
     expect(message).toMatch(/versione rapida|riprovare|salvato/i);
   });
 
+  it("hides provider-specific rate and credit messages", () => {
+    const message = getUserFriendlyError(new Error("DeepSeek credits exhausted: rate limited"), { area: "blueprint" });
+    expect(message).not.toMatch(/deepseek|credits exhausted|rate limited/i);
+    expect(message).toMatch(/Blueprint non completato|salvato/i);
+  });
+
   it("keeps safe human upload messages", () => {
     const message = getUserFriendlyError("Formato non supportato. Usa PDF o DOCX.", { area: "upload" });
     expect(message).toMatch(/Formato non supportato/);

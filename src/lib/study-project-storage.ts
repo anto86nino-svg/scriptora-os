@@ -4,7 +4,7 @@ import { computeStudySourceHash } from "@/lib/study-os/session-store";
 const STORAGE_KEY = "scriptora-study-projects-v1";
 const CHANGE_EVENT = "scriptora-study-projects-change";
 
-export type StudySourceType = "pdf" | "epub" | "docx" | "notes" | "text";
+export type StudySourceType = "pdf" | "epub" | "docx" | "notes" | "text" | "image";
 
 export interface StudyQuizAttempt {
   score: number;
@@ -38,6 +38,7 @@ function detectSourceType(name: string): StudySourceType {
   if (lower.endsWith(".pdf")) return "pdf";
   if (lower.endsWith(".epub")) return "epub";
   if (lower.endsWith(".docx") || lower.endsWith(".doc")) return "docx";
+  if (/\.(png|jpe?g|webp|heic|heif)$/i.test(lower)) return "image";
   if (lower.includes("appunt")) return "notes";
   return "text";
 }

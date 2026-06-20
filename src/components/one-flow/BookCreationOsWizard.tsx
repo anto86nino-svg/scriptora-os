@@ -87,6 +87,7 @@ import {
   buildProjectHandoffSeed,
   saveProjectHandoffSeed,
 } from "@/lib/book-forge/project-handoff";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 interface BookCreationOsWizardProps {
   open: boolean;
@@ -1611,7 +1612,10 @@ export function BookCreationOsWizard({
         } catch { /* local proposals still shown */ }
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Crediti insufficienti o rigenerazione non disponibile.");
+      toast.error(getUserFriendlyError(e, {
+        area: "blueprint",
+        fallback: "Non sono riuscito a completare la rigenerazione titolo. I dati del libro restano salvati: puoi riprovare tra poco.",
+      }));
     } finally {
       setGeneratingTitles(false);
     }

@@ -25,7 +25,17 @@ function expectedPassword(): string {
   }
 }
 
+function envForcesDevMode(): boolean {
+  try {
+    const value = String(import.meta.env?.VITE_SCRIPTORA_DEV_MODE || "").toLowerCase();
+    return value === "1" || value === "true" || value === "yes";
+  } catch {
+    return false;
+  }
+}
+
 export function isDevMode(): boolean {
+  if (envForcesDevMode()) return true;
   try {
     return sessionStorage.getItem(KEY) === "1";
   } catch {

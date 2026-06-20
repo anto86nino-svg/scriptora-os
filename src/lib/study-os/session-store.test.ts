@@ -60,6 +60,21 @@ describe("Study session isolation", () => {
     expect(getFreshStudyResult(changed.session)).toBeNull();
   });
 
+  it("keeps image source type for camera/photo sessions", () => {
+    const session = createEmptyStudySession({
+      sourceName: "pagina-libro.heic",
+      sourceText: "",
+      sourceType: "image",
+    });
+
+    expect(session.sourceType).toBe("image");
+    expect(updateStudySessionSource(session, {
+      sourceName: "pagina-libro.heic",
+      sourceText: "",
+      sourceType: "image",
+    }).session.sourceType).toBe("image");
+  });
+
   it("does not render a result envelope tied to another source hash", () => {
     const sessionA = attachStudyResult(
       createEmptyStudySession({ sourceText: "Materiale A", sourceName: "a.txt" }),

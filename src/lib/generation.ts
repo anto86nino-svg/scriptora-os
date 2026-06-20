@@ -2271,7 +2271,22 @@ Return a JSON object with:
     withUsage(usage, { taskType: "generate_blueprint" }),
   );
 
-  const rawPrimary = await attempt(prompt);
+  let rawPrimary = "";
+  try {
+    rawPrimary = await attempt(prompt);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error || "");
+    if (/credit|402|wallet|unauthorized/i.test(message)) throw error;
+    console.warn("Blueprint AI call failed before JSON response — using safe config fallback", {
+      reason: message.slice(0, 180),
+      title: config.title,
+      genre: config.genre,
+    });
+    return {
+      blueprint: buildFallbackBlueprintFromConfig(config),
+      source: "config_fallback",
+    };
+  }
   const primary = resolveBlueprintFromAiResponse(rawPrimary, config);
   if (primary.ok) {
     return { blueprint: primary.blueprint, source: primary.source };

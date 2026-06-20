@@ -13,7 +13,7 @@ export interface UserFriendlyErrorInput {
 }
 
 const TECHNICAL_ERROR_PATTERN =
-  /\b(provider|api|network|failed|failure|undefined|null|stack|trace|json|500|502|503|504|cors|supabase|stripe|lemon|ip non raggiunto|generation failed|cannot read properties)\b/i;
+  /\b(provider|api|network|failed|failure|undefined|null|stack|trace|json|500|502|503|504|cors|supabase|stripe|lemon|deepseek|openrouter|rate limited|credits exhausted|ip non raggiunto|generation failed|cannot read properties)\b/i;
 
 const DEFAULT_MESSAGES: Record<UserFriendlyErrorArea, string> = {
   study: "Ho preparato una versione rapida utilizzabile. Puoi rigenerarla quando vuoi.",

@@ -42,6 +42,7 @@ import {
   getCurrentStudySessionId,
   getFreshStudyResult,
   getStudySession,
+  saveStudySession,
   setCurrentStudySessionId,
   updateStudySessionSource,
   type StudySessionRecord,
@@ -146,7 +147,7 @@ function describeStudyFallback(error: unknown): string {
 
 function humanStudyErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error || "");
-  if (/ocr|immagine|scansione|pdf|docx|epub|formato|testo/i.test(message)) {
+  if (/immagine acquisita|scansione|pdf|docx|epub|formato|testo/i.test(message)) {
     return message.slice(0, 180);
   }
   return getUserFriendlyError(error, {
@@ -159,6 +160,7 @@ function mapStoredSourceType(type: string): StudySourceType {
   if (type === "notes") return "manual";
   if (type === "text") return "txt";
   if (type === "epub") return "file";
+  if (type === "image") return "image";
   if (type === "pdf" || type === "docx") return type;
   return "file";
 }
@@ -167,6 +169,7 @@ export default function StudySessionPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const uxSaved = useMemo(loadStudyUxState, []);
   const initialSession = useMemo(() => createEmptyStudySession({ language: "Italian" }), []);
@@ -597,7 +600,7 @@ export default function StudySessionPage() {
       const readResult = await readStudyFiles(files);
       trackScriptoraEvent({ eventName: "study_material_uploaded", tool: "study", success: true });
       const text = readResult.text;
-      const sourceType = readResult.sourceType === "pdf" || readResult.sourceType === "docx" || readResult.sourceType === "txt"
+      const sourceType = readResult.sourceType === "pdf" || readResult.sourceType === "docx" || readResult.sourceType === "txt" || readResult.sourceType === "image"
         ? readResult.sourceType
         : "file";
       const fileSession = updateStudySessionSource(createEmptyStudySession({ language: studyLanguage }), {
@@ -615,6 +618,27 @@ export default function StudySessionPage() {
       setImportWarnings(readResult.warnings);
       resetSessionState();
       setAiMode("deepseek");
+
+      if (readResult.empty || text.trim().split(/\s+/).filter(Boolean).length < 12) {
+        const storedManualSession = saveStudySession(fileSession);
+        setStudySession(storedManualSession);
+        setCurrentStudySessionId(storedManualSession.id);
+        setActiveSection("materials");
+        saveStudyUxState({ activeSection: "materials" });
+        setAiMode("idle");
+        trackScriptoraEvent({
+          eventName: "study_fallback_local_used",
+          tool: "study",
+          success: true,
+          errorCategory: readResult.sourceType === "image" ? "ocr_unavailable" : "short_text",
+        });
+        toast.message(readResult.sourceType === "image" ? "Immagine acquisita" : "Materiale acquisito", {
+          description: readResult.sourceType === "image"
+            ? "Estrazione testo non disponibile in locale: trascrivi o incolla il testo della pagina nel riquadro e poi genera lo studio."
+            : "Serve un testo un po' piu' lungo prima di creare riassunti, quiz e interrogazione.",
+        });
+        return;
+      }
 
       try {
         const next = await generateStudyResultWithRuntimeGuard(text, readResult.fileName);
@@ -657,6 +681,7 @@ export default function StudySessionPage() {
       setReading(false);
       setStudyGenerationStatus("");
       if (fileInputRef.current) fileInputRef.current.value = "";
+      if (imageInputRef.current) imageInputRef.current.value = "";
       if (cameraInputRef.current) cameraInputRef.current.value = "";
     }
   };
@@ -722,25 +747,41 @@ export default function StudySessionPage() {
             </button>
             <button
               type="button"
+              onClick={() => imageInputRef.current?.click()}
+              className="ios-toolbar-button h-11 justify-center px-4 text-sm font-semibold text-emerald-100"
+            >
+              <Upload className="h-4 w-4" />
+              Carica immagine
+            </button>
+            <button
+              type="button"
               onClick={() => cameraInputRef.current?.click()}
               className="ios-toolbar-button h-11 justify-center px-4 text-sm font-semibold text-emerald-100"
             >
               <Camera className="h-4 w-4" />
-              Scatta foto
+              Scatta foto pagina
             </button>
           </div>
           <input
             ref={fileInputRef}
             type="file"
             multiple
-            accept=".txt,.md,.markdown,.docx,.pdf,.epub,.png,.jpg,.jpeg,.webp,text/plain,text/markdown,application/pdf,application/epub+zip,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/webp"
+            accept=".txt,.md,.markdown,.docx,.pdf,.epub,.png,.jpg,.jpeg,.webp,.heic,.heif,text/plain,text/markdown,application/pdf,application/epub+zip,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/webp,image/heic,image/heif"
+            className="hidden"
+            onChange={(event) => void handleFiles(event.target.files)}
+          />
+          <input
+            ref={imageInputRef}
+            type="file"
+            multiple
+            accept=".png,.jpg,.jpeg,.webp,.heic,.heif,image/png,image/jpeg,image/webp,image/heic,image/heif"
             className="hidden"
             onChange={(event) => void handleFiles(event.target.files)}
           />
           <input
             ref={cameraInputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             capture="environment"
             className="hidden"
             onChange={(event) => void handleFiles(event.target.files)}

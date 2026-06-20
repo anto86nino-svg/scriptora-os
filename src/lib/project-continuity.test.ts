@@ -64,4 +64,17 @@ describe("project continuity", () => {
     expect(getProjectHumanStatus(preview)).toBe("Scrittura da sbloccare");
     expect(filterProjectsByLibraryTab([preview, writing], "writing_locked")).toEqual([preview]);
   });
+
+  it("keeps the same project id when a Blueprint Preview is handed to Writer", () => {
+    const preview = buildBlueprintPreviewProject({
+      config: config("Continuita"),
+      blueprint: blueprint(),
+      projectId: "project-blueprint-preview-1",
+      planId: "free",
+    });
+
+    expect(preview.id).toBe("project-blueprint-preview-1");
+    expect((preview as any).scriptoraProjectMeta.blueprintPreview).toBe(true);
+    expect((preview as any).writingUnlockStatus).toBe("locked");
+  });
 });

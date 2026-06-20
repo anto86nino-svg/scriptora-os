@@ -1,6 +1,6 @@
 import type { StudySessionResult } from "@/lib/study-session";
 
-export type StudySourceType = "paste" | "file" | "pdf" | "docx" | "txt" | "manual";
+export type StudySourceType = "paste" | "file" | "pdf" | "docx" | "txt" | "manual" | "image";
 export type StudySessionStatus = "draft" | "analyzing" | "ready" | "error";
 
 export interface StudyResultEnvelope {
@@ -70,6 +70,7 @@ export function detectStudySourceType(sourceName = "", explicit?: StudySourceTyp
   if (lower.endsWith(".pdf")) return "pdf";
   if (lower.endsWith(".docx") || lower.endsWith(".doc")) return "docx";
   if (lower.endsWith(".txt") || lower.endsWith(".md") || lower.endsWith(".markdown")) return "txt";
+  if (/\.(png|jpe?g|webp|heic|heif)$/i.test(lower)) return "image";
   if (sourceName) return "file";
   return "paste";
 }
