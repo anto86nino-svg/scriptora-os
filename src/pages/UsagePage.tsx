@@ -29,6 +29,7 @@ import { CreditPurchasePanel } from "@/components/billing/CreditPurchasePanel";
 import { DevCreditQuickBuy } from "@/components/billing/DevCreditQuickBuy";
 import { GlobalCreditBar } from "@/components/billing/GlobalCreditBar";
 import { AuthSessionButton } from "@/components/auth/AuthSessionButton";
+import { DevUsageAnalyticsPanel } from "@/components/analytics/DevUsageAnalyticsPanel";
 
 export default function UsagePage() {
   const navigate = useNavigate();
@@ -87,6 +88,8 @@ export default function UsagePage() {
             <div className="mt-1">Build di sviluppo — il saldo può essere simulato.</div>
           </section>
         )}
+
+        {(devMode || import.meta.env.DEV) && <DevUsageAnalyticsPanel />}
 
         {lowCreditHint && (
           <section className="rounded-lg border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100/90 flex items-center gap-2">

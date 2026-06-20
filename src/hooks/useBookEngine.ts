@@ -400,6 +400,7 @@ typeof crypto.randomUUID === "function"
     config: BookConfig,
     blueprint: BookBlueprint,
     source: BookProject["blueprintSource"] = "ai",
+    projectId?: string,
   ): Promise<BookProject | null> => {
     const safeConfig = await prepareNewBookConfig({ ...config, configStatus: "approved" });
     if (!safeConfig) return null;
@@ -415,7 +416,7 @@ typeof crypto.randomUUID === "function"
       ),
     );
     const newProject: BookProject = normalizeBookProject({
-      id: createProjectId(),
+      id: projectId || createProjectId(),
       config: safeConfig,
       blueprint,
       frontMatter: null,
@@ -430,6 +431,15 @@ typeof crypto.randomUUID === "function"
       configStatus: "approved",
       createdAt: now,
       updatedAt: now,
+      ...(projectId ? {
+        scriptoraProjectMeta: {
+          sourceTool: "book-forge",
+          status: "writing_unlocked",
+          blueprintPreview: false,
+          updatedAt: now,
+        },
+        writingUnlockStatus: "unlocked",
+      } as any : {}),
     });
 
     setProject(newProject);

@@ -17,6 +17,10 @@ export interface StudyUsageLimits {
   monthlyOralExamRuns: number;
   maxUploadMb: number;
   maxWordsPerMaterial: number;
+  softInternalAiBudgetEur: number;
+  hardInternalAiBudgetEur: number;
+  minimumTargetMarginPercent: number;
+  desiredMinimumProfitEur: number;
   softLimitPercent: number;
   hardLimitPercent: number;
 }
@@ -39,7 +43,7 @@ export const STUDY_OS_PRO_PLAN: StudyOsPlan = {
     "Immagini con OCR reale quando il browser lo supporta",
     "Riassunti, quiz, flashcard, mappe e interrogazioni",
     "Sessioni salvate, attestati e piano studio",
-    "Fallback locale quando l'AI non risponde",
+    "Modalità rapida locale se serve completare l'elaborazione",
   ],
 };
 
@@ -51,6 +55,10 @@ export const STUDY_USAGE_LIMITS: StudyUsageLimits = {
   monthlyOralExamRuns: 80,
   maxUploadMb: 60,
   maxWordsPerMaterial: 90_000,
+  softInternalAiBudgetEur: 3.5,
+  hardInternalAiBudgetEur: 4.5,
+  minimumTargetMarginPercent: 75,
+  desiredMinimumProfitEur: 15,
   softLimitPercent: 80,
   hardLimitPercent: 100,
 };

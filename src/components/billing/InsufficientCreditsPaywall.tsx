@@ -5,6 +5,7 @@ import type { InsufficientCreditsDetail } from "@/lib/billing/creditUx";
 import { getPurchaseCtaLabel } from "@/lib/billing/creditUx";
 import { formatCredits } from "@/lib/credit-economy";
 import { DevCreditQuickBuy } from "@/components/billing/DevCreditQuickBuy";
+import { PAY_PER_PROJECT_TIERS } from "@/lib/pay-per-project";
 
 export function InsufficientCreditsPaywall() {
   const navigate = useNavigate();
@@ -51,8 +52,12 @@ export function InsufficientCreditsPaywall() {
           Saldo disponibile: <span className="font-semibold tabular-nums text-foreground">{formatCredits(detail.balance)}</span>
         </p>
         <p className="mt-2 text-xs text-muted-foreground">
-          Puoi ricaricare crediti autore dal wallet o consultare i pacchetti in prezzi. In beta privata il checkout può non essere ancora attivo.
+          Puoi ricaricare crediti autore, passare a un piano più conveniente o sbloccare solo questo libro una volta. In beta privata il checkout può non essere ancora attivo.
         </p>
+
+        <div className="mt-3 rounded-xl border border-sky-300/20 bg-sky-300/10 px-3 py-2 text-xs leading-5 text-sky-50/85">
+          Pay-per-project da {PAY_PER_PROJECT_TIERS[0].priceLabel}: valido per un projectId specifico, non per uso ricorrente.
+        </div>
 
         <div className="mt-4">
           <DevCreditQuickBuy variant="panel" onPurchased={() => setOpen(false)} />

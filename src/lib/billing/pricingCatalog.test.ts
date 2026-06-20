@@ -10,7 +10,17 @@ describe("Scriptora pricing catalog", () => {
   it("keeps Free as a real trial without full-book promises", () => {
     const free = AUTHOR_SUBSCRIPTION_PLANS.find((plan) => plan.id === "free");
     expect(free?.monthlyCredits).toBe(300);
+    expect(`${free?.promise} ${free?.features.join(" ")}`).toMatch(/3 Blueprint Preview/i);
     expect(`${free?.promise} ${free?.features.join(" ")}`).not.toMatch(/libro completo|full book|20 libri/i);
+  });
+
+  it("uses the definitive author credit allocations", () => {
+    const byId = Object.fromEntries(AUTHOR_SUBSCRIPTION_PLANS.map((plan) => [plan.id, plan]));
+    expect(byId.starter.monthlyCredits).toBe(3_000);
+    expect(byId.pro_author.monthlyCredits).toBe(8_000);
+    expect(byId.studio.monthlyCredits).toBe(25_000);
+    expect(byId.publisher.monthlyCredits).toBe(60_000);
+    expect(byId.pro_author.badge).toBe("recommended");
   });
 
   it("exposes Study OS Pro as the single student base plan at 20 euro per month", () => {
@@ -29,6 +39,8 @@ describe("Scriptora pricing catalog", () => {
     }
     const credits = GENERAL_CREDIT_PACKS.map((pack) => pack.credits);
     expect(credits).toEqual([...credits].sort((a, b) => a - b));
+    expect(GENERAL_CREDIT_PACKS.at(-1)?.credits).toBe(25_000);
+    expect(GENERAL_CREDIT_PACKS.at(-1)?.priceLabel).toBe("€39");
   });
 
   it("states the author credits and Study subscription separation", () => {

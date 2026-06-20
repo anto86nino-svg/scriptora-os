@@ -38,6 +38,7 @@ import { chargePremiumOperation } from "@/lib/billing/charge";
 import { ScriptoraLogoMark } from "@/components/brand/ScriptoraLogoMark";
 import { useDashboardReturn } from "@/hooks/useDashboardReturn";
 import { getLastProjectId, loadProjects, setLastProjectId } from "@/lib/storage";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
 import { saveProjectAsync } from "@/services/storageService";
 import { getProjectCoverDataUrl } from "@/lib/cover-session";
 import type { BookProject } from "@/types/book";
@@ -554,7 +555,12 @@ export default function KdpLaunchPage() {
       persistSession(false);
       toast.success(italianUi ? "Flusso narrativo creato" : "Narrative flow created");
     } catch (e: any) {
-      const msg = e?.message || (italianUi ? "Generazione flusso narrativo fallita" : "Narrative flow generation failed");
+      const msg = getUserFriendlyError(e, {
+        area: "generic",
+        fallback: italianUi
+          ? "Non sono riuscito a completare il flusso al primo tentativo. La sessione resta salvata e puoi riprovare."
+          : "I could not complete the flow on the first try. Your session is saved and you can retry.",
+      });
       setNarrativeError(msg);
       setNarrativeStatus("error");
       persistSession(true);

@@ -28,8 +28,8 @@ export const PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
 export const PLAN_PRICING: Record<PlanTier, { price: string; period: string }> = {
   free:    { price: "€0",     period: "/forever" },
   beta:    { price: "Free",   period: "/beta access" },
-  pro:     { price: "€29,99", period: "/mese" },
-  premium: { price: "€59,99", period: "/mese" },
+  pro:     { price: "€19,99", period: "/mese" },
+  premium: { price: "€49,99", period: "/mese" },
 };
 
 /** Legacy checkout URLs — sourced from payments config env vars. */

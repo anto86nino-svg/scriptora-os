@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getCurrentUserId } from "@/services/storageService";
+import { devOnlyDiagnostic } from "@/lib/user-friendly-error";
 
 import {
   SCRIPTORA_CHARACTER_BIBLE_KEY,
@@ -666,7 +667,8 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       setIdea(generated);
       saveIdeaToHistory(generated);
       toast.success("Idea romanzo generata da Scriptora con variante nuova.");
-    } catch {
+    } catch (error) {
+      devOnlyDiagnostic("character-studio-idea-fallback", error);
       const generated = buildLocalNovelIdea({
         genre,
         subcategory,
@@ -679,7 +681,9 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       });
       setIdea(generated);
       saveIdeaToHistory(generated);
-      toast.warning("AI non disponibile: Scriptora ha creato un’idea locale di sicurezza.");
+      toast.message("Idea pronta", {
+        description: "Ho preparato una versione rapida utilizzabile. Puoi rigenerarla quando vuoi.",
+      });
     } finally {
       setIdeaLoading(false);
     }
@@ -724,7 +728,8 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       setIdea(developed);
       saveIdeaToHistory(developed);
       toast.success("La tua storia è stata elaborata mantenendo il nucleo originale.");
-    } catch {
+    } catch (error) {
+      devOnlyDiagnostic("character-studio-story-fallback", error);
       const developed = buildLocalUserStoryDevelopment({
         idea: userStory,
         genre,
@@ -737,7 +742,9 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       });
       setIdea(developed);
       saveIdeaToHistory(developed);
-      toast.warning("AI non disponibile: Scriptora ha elaborato localmente la tua storia.");
+      toast.message("Storia elaborata", {
+        description: "Ho preparato una versione rapida mantenendo il nucleo originale.",
+      });
     } finally {
       setIdeaLoading(false);
     }
@@ -805,6 +812,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       setCharacterBible(applyManualNamesToBible(finalText, manualCharacterNames));
       toast.success("Personaggi generati. Ora salvali e collegali a Nuovo Libro.");
     } catch (e) {
+      devOnlyDiagnostic("character-studio-bible-fallback", e);
       const finalText = fallbackCharacterBible({
         idea,
         genre,
@@ -817,7 +825,9 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         manualCharacterNames,
       });
       setCharacterBible(applyManualNamesToBible(finalText, manualCharacterNames));
-      toast.warning("AI non disponibile: ho creato una Character Bible locale di sicurezza.");
+      toast.message("Character Bible pronta", {
+        description: "Ho preparato una versione rapida utilizzabile. Puoi salvarla e collegarla al libro.",
+      });
     } finally {
       setLoading(false);
     }

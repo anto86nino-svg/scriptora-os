@@ -48,6 +48,8 @@ import {
   type StudySourceType,
 } from "@/lib/study-os/session-store";
 import { STUDY_USAGE_LIMITS, formatStudyLimitMessage } from "@/lib/study-os/study-limits";
+import { devOnlyDiagnostic, getUserFriendlyError } from "@/lib/user-friendly-error";
+import { trackScriptoraEvent } from "@/lib/usage-analytics";
 
 type StudySection = "materials" | "summary" | "quiz" | "flashcards" | "maps" | "exam" | "progress" | "certificates" | "coach";
 
@@ -138,14 +140,8 @@ function persistStudySession(
 }
 
 function describeStudyFallback(error: unknown): string {
-  const message = error instanceof Error ? error.message : "";
-  if (/failed to fetch|network|motore ai|raggiungibile|cors/i.test(message)) {
-    return "Il motore AI non è raggiungibile: ho preparato una sessione locale.";
-  }
-  if (/timeout|abort|tempo/i.test(message)) {
-    return "Il motore AI sta impiegando troppo tempo: ho preparato una sessione locale.";
-  }
-  return "Ho preparato una sessione locale utilizzabile. Puoi rigenerarla quando vuoi.";
+  devOnlyDiagnostic("study-fallback", error);
+  return "Ho preparato una versione rapida dell'analisi. Puoi rigenerarla quando vuoi.";
 }
 
 function humanStudyErrorMessage(error: unknown): string {
@@ -153,7 +149,10 @@ function humanStudyErrorMessage(error: unknown): string {
   if (/ocr|immagine|scansione|pdf|docx|epub|formato|testo/i.test(message)) {
     return message.slice(0, 180);
   }
-  return "Non sono riuscito a completare l'operazione al primo tentativo. I dati della sessione restano salvati: puoi riprovare con un testo piu' breve o caricare un file diverso.";
+  return getUserFriendlyError(error, {
+    area: "study",
+    fallback: "Non sono riuscito a completare l'operazione al primo tentativo. I dati della sessione restano salvati: puoi riprovare con un testo piu' breve o caricare un file diverso.",
+  });
 }
 
 function mapStoredSourceType(type: string): StudySourceType {
@@ -472,7 +471,7 @@ export default function StudySessionPage() {
           30_000,
         ),
         window.setTimeout(
-          () => setStudyGenerationStatus("Sto preparando una versione locale se l'AI non risponde."),
+          () => setStudyGenerationStatus("Sto preparando una versione rapida per completare la sessione."),
           90_000,
         ),
       ];
@@ -485,9 +484,10 @@ export default function StudySessionPage() {
       });
       const safeLocalFallback = new Promise<StudySessionResult>((resolve) => {
         fallbackTimer = window.setTimeout(() => {
-          studyFallbackReasonRef.current = "L'AI non ha risposto in tempo, ho creato una sessione locale sicura.";
+          studyFallbackReasonRef.current = "Ho preparato una versione rapida dell'analisi. Puoi rigenerarla quando vuoi.";
           setStudyGenerationStatus(studyFallbackReasonRef.current);
           setAiMode("local");
+          trackScriptoraEvent({ eventName: "study_fallback_local_used", tool: "study", success: true, errorCategory: "timeout" });
           resolve(normalizeStudyResultForUI(analyzeStudyMaterial(text, name)));
         }, 120_000);
       });
@@ -519,7 +519,7 @@ export default function StudySessionPage() {
       setActiveSection("quiz");
       saveStudyUxState({ activeSection: "quiz" });
       if (studyFallbackReasonRef.current) {
-        toast.warning("Sessione locale pronta", {
+        toast.message("Sessione Studio pronta", {
           description: studyFallbackReasonRef.current,
         });
       } else {
@@ -527,8 +527,10 @@ export default function StudySessionPage() {
           description: "Riassunti, flashcard e quiz pronti — inizia la verifica.",
         });
       }
+      trackScriptoraEvent({ eventName: "study_summary_generated", tool: "study", success: true, projectId });
+      trackScriptoraEvent({ eventName: "study_quiz_generated", tool: "study", success: true, projectId });
     } catch (error) {
-      console.warn("[StudySession] DeepSeek fallback locale", error);
+      devOnlyDiagnostic("study-ai-fallback", error);
       try {
         const local = analyzeStudyMaterial(rawText, sourceName);
         const normalized = normalizeStudyResultForUI(local);
@@ -536,7 +538,8 @@ export default function StudySessionPage() {
         setActiveSection("quiz");
         saveStudyUxState({ activeSection: "quiz" });
         setAiMode("local");
-        toast.warning("AI non disponibile: uso analisi locale", {
+        trackScriptoraEvent({ eventName: "study_fallback_local_used", tool: "study", success: true, errorCategory: "provider" });
+        toast.message("Sessione Studio pronta", {
           description: describeStudyFallback(error),
         });
       } catch (fallbackError) {
@@ -592,6 +595,7 @@ export default function StudySessionPage() {
     setWorkStartedAt(Date.now());
     try {
       const readResult = await readStudyFiles(files);
+      trackScriptoraEvent({ eventName: "study_material_uploaded", tool: "study", success: true });
       const text = readResult.text;
       const sourceType = readResult.sourceType === "pdf" || readResult.sourceType === "docx" || readResult.sourceType === "txt"
         ? readResult.sourceType
@@ -619,14 +623,16 @@ export default function StudySessionPage() {
         setActiveSection("quiz");
         saveStudyUxState({ activeSection: "quiz" });
         if (studyFallbackReasonRef.current) {
-          toast.warning("Sessione locale pronta", {
+          toast.message("Sessione Studio pronta", {
             description: studyFallbackReasonRef.current,
           });
         } else {
           toast.success("Pipeline Study completata", { description: `${readResult.fileName} — quiz e verifica pronti.` });
         }
+        trackScriptoraEvent({ eventName: "study_summary_generated", tool: "study", success: true });
+        trackScriptoraEvent({ eventName: "study_quiz_generated", tool: "study", success: true });
       } catch (error) {
-        console.warn("[StudySession] DeepSeek file fallback locale", error);
+        devOnlyDiagnostic("study-file-ai-fallback", error);
         try {
           const local = analyzeStudyMaterial(text, readResult.fileName);
           const normalized = normalizeStudyResultForUI(local);
@@ -634,7 +640,8 @@ export default function StudySessionPage() {
           setActiveSection("quiz");
           saveStudyUxState({ activeSection: "quiz" });
           setAiMode("local");
-          toast.warning("AI non disponibile: analisi locale attivata", {
+          trackScriptoraEvent({ eventName: "study_fallback_local_used", tool: "study", success: true, errorCategory: "provider" });
+          toast.message("Sessione Studio pronta", {
             description: describeStudyFallback(error),
           });
         } catch (fallbackError) {

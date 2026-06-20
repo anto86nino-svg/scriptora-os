@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import JSZip from "jszip";
 import {
   AlertTriangle,
   ArrowRight,
@@ -29,6 +28,9 @@ import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { cn } from "@/lib/utils";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 import { toast } from "sonner";
+import { readStudyFiles } from "@/lib/study-session";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
+import { trackScriptoraEvent } from "@/lib/usage-analytics";
 
 interface ManuscriptAnalyzerDialogProps {
   open: boolean;
@@ -371,26 +373,9 @@ function analyzeManuscript(text: string, title: string, sourceName: string): Man
   };
 }
 
-async function readDocx(file: File): Promise<string> {
-  const zip = await JSZip.loadAsync(await file.arrayBuffer());
-  const xml = await zip.file("word/document.xml")?.async("text");
-  if (!xml) throw new Error(t("manuscript_file_error"));
-
-  const doc = new DOMParser().parseFromString(xml, "application/xml");
-  const paragraphs = Array.from(doc.getElementsByTagName("w:p")).map((paragraph) => {
-    return Array.from(paragraph.getElementsByTagName("w:t"))
-      .map(node => node.textContent || "")
-      .join("");
-  });
-
-  return paragraphs.map(p => p.trim()).filter(Boolean).join("\n\n");
-}
-
 async function readManuscriptFile(file: File): Promise<string> {
-  const name = file.name.toLowerCase();
-  if (name.endsWith(".docx")) return readDocx(file);
-  if (name.endsWith(".txt") || name.endsWith(".md") || name.endsWith(".markdown")) return file.text();
-  throw new Error(t("manuscript_unsupported_file"));
+  const result = await readStudyFiles([file]);
+  return result.text;
 }
 
 function categoryForGenre(genre: Genre): { category: string; subcategory: string } {
@@ -596,9 +581,10 @@ export function ManuscriptAnalyzerDialog({
       setBookLanguage(detectedLanguage);
       setGenre(detectedGenre);
       await runAnalysis(text, detectedTitle, file.name, { manageLoading: false });
+      trackScriptoraEvent({ eventName: "publishing_readiness_viewed", tool: "manuscript-lab", success: true });
     } catch (err) {
       setAnalysis(null);
-      setError(err instanceof Error ? err.message : t("manuscript_file_error"));
+      setError(getUserFriendlyError(err, { area: "upload", fallback: t("manuscript_file_error") }));
     } finally {
       setReading(false);
     }
@@ -621,11 +607,12 @@ export function ManuscriptAnalyzerDialog({
         sessionStorage.setItem("scriptora-open-section", "chapter-0");
       } catch { /* noop */ }
       window.dispatchEvent(new Event("scriptora-projects-change"));
+      trackScriptoraEvent({ eventName: "blueprint_saved", tool: "manuscript-lab", projectId: project.id, success: true });
       toast.success(t("manuscript_project_created"));
       onClose();
       navigate("/app");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("manuscript_project_create_error"));
+      toast.error(getUserFriendlyError(err, { area: "manuscript", fallback: t("manuscript_project_create_error") }));
     } finally {
       setSaving(false);
     }
@@ -664,7 +651,7 @@ export function ManuscriptAnalyzerDialog({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".txt,.md,.markdown,.docx,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".txt,.md,.markdown,.docx,.pdf,.epub,.png,.jpg,.jpeg,.webp,text/plain,text/markdown,application/pdf,application/epub+zip,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/webp"
               className="hidden"
               onChange={(event) => {
                 const file = event.target.files?.[0];

@@ -31,7 +31,7 @@ export function StudyMetricsCard({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/80">Il tuo coach di studio</p>
         <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-100">
-          {aiMode === "local" ? "Analisi locale" : "Scriptora AI"}
+          {aiMode === "local" ? "Versione rapida" : "Scriptora AI"}
         </span>
       </div>
       <h2 className="mt-1 text-xl font-semibold text-foreground">{sanitizeStudyText(result.title)}</h2>

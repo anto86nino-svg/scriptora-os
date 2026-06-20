@@ -451,7 +451,7 @@ const Index = () => {
         try {
           const payload = JSON.parse(newBookJson);
           if (payload?.mode === "studio-approved" && payload.config && payload.blueprint) {
-            void engine.createProjectWithApprovedBlueprint(payload.config, payload.blueprint, payload.blueprintSource || "ai");
+            void engine.createProjectWithApprovedBlueprint(payload.config, payload.blueprint, payload.blueprintSource || "ai", payload.projectId);
             setActiveSection("blueprint");
           } else if (payload?.mode === "studio-draft" && payload.config) {
             void engine.createProjectDraft(payload.config);

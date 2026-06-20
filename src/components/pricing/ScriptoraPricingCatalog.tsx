@@ -31,6 +31,7 @@ import { canDevSimulateCreditPurchase } from "@/lib/billing";
 import { isPaymentsLive } from "@/config/payments";
 import { BetaAccessNotice } from "@/components/ui/BetaAccessNotice";
 import { STUDY_EXTENSION_STATUS, STUDY_USAGE_LIMITS, formatStudyLimitMessage } from "@/lib/study-os/study-limits";
+import { PAY_PER_PROJECT_TIERS } from "@/lib/pay-per-project";
 
 type PricingTab = "authors" | "students";
 
@@ -181,6 +182,25 @@ export function ScriptoraPricingCatalog({ showBackLink = true }: ScriptoraPricin
           onPurchase={handleCreditPack}
         />
         <StudyLimitsSection />
+      </section>
+
+      <section className="rounded-2xl border border-sky-300/20 bg-sky-300/10 p-6 sm:p-8">
+        <div className="mb-5">
+          <h2 className="text-lg font-bold text-sky-100">Pay-per-project</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Dopo il Blueprint puoi usare crediti, passare a un piano autore o sbloccare quel singolo projectId una volta.
+            In beta il checkout reale resta disattivato se Stripe/Lemon non sono configurati.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {PAY_PER_PROJECT_TIERS.map((tier) => (
+            <article key={tier.id} className="rounded-xl border border-white/10 bg-background/45 p-4">
+              <p className="text-sm font-bold">{tier.name}</p>
+              <p className="mt-2 text-2xl font-black tabular-nums text-sky-100">{tier.priceLabel}</p>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">{tier.description}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-card/60 p-6 sm:p-8">

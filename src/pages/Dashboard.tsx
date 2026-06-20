@@ -69,6 +69,14 @@ import {
   buildBookForgeHandoff,
   type BookForgeHandoff,
 } from "@/lib/book-forge/book-forge-handoff";
+import { DashboardContinueCard } from "@/components/projects/DashboardContinueCard";
+import {
+  buildBlueprintPreviewProject,
+  canGenerateBlueprintPreview,
+  summarizeProjectLibrary,
+} from "@/lib/project-continuity";
+import { getUserFriendlyError } from "@/lib/user-friendly-error";
+import { trackScriptoraEvent } from "@/lib/usage-analytics";
 
 const ScriptoraSettingsHub = lazy(() =>
   import("@/components/settings/ScriptoraSettingsHub").then((m) => ({ default: m.ScriptoraSettingsHub })),
@@ -170,6 +178,7 @@ export default function Dashboard() {
   const [showAdvancedLaunchpad, setShowAdvancedLaunchpad] = useState(() => isAdvancedLaunchpadEnabled());
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [flowProjectId, setFlowProjectId] = useState<string | null>(null);
+  const [blueprintPreviewProjectId, setBlueprintPreviewProjectId] = useState<string | null>(null);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   const currentLang = useUILanguage();
@@ -200,9 +209,12 @@ export default function Dashboard() {
   }, [closeAllDashboardTools]);
 
   useEffect(() => {
-    if (import.meta.env.DEV && activeDashboardTool) {
-      console.warn("[DASHBOARD_ACTIVE_TOOL]", activeDashboardTool);
-    }
+    if (!activeDashboardTool) return;
+    trackScriptoraEvent({
+      eventName: activeDashboardTool === "book-forge" ? "book_forge_opened" : "home_cta_clicked",
+      tool: activeDashboardTool,
+      success: true,
+    });
   }, [activeDashboardTool]);
 
   useEffect(() => {
@@ -307,7 +319,11 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idea]);
 
-  const freeBookUsed = currentPlan === "free" && projects.length > 0;
+  const blueprintGate = useMemo(
+    () => canGenerateBlueprintPreview(currentPlan, projects),
+    [currentPlan, projects],
+  );
+  const freeBookUsed = currentPlan === "free" && !blueprintGate.allowed;
   const [bookForgeHandoff, setBookForgeHandoff] = useState<BookForgeHandoff | null>(null);
 
   useEffect(() => {
@@ -318,7 +334,15 @@ export default function Dashboard() {
 
   const openNewBookGuarded = (handoff?: BookForgeHandoff | null | unknown) => {
     if (freeBookUsed) {
-      toast.error(t("toast_free_book_used"));
+      toast.error("Limite Blueprint Free raggiunto", {
+        description: blueprintGate.message || "Passa a un piano autore o sblocca un singolo progetto.",
+      });
+      trackScriptoraEvent({
+        eventName: "free_blueprint_limit_blocked",
+        tool: "book-forge",
+        planId: currentPlan,
+        success: false,
+      });
       navigate("/pricing");
       return;
     }
@@ -621,8 +645,19 @@ typeof crypto.randomUUID === "function"
   const handleStudioComplete = (payload: StudioLaunchPayload) => {
     const finalConfig = mergeCharacterStudioIntoConfig(payload.config);
     setSelectedAuthorIdentityId(activeAuthor.id);
+    const continuityProjectId =
+      payload.projectId ||
+      blueprintPreviewProjectId ||
+      (() => {
+        try {
+          return sessionStorage.getItem("scriptora-last-blueprint-preview-project-id") || undefined;
+        } catch {
+          return undefined;
+        }
+      })();
     sessionStorage.setItem("scriptora-new-book", JSON.stringify({
       ...payload,
+      projectId: continuityProjectId,
       config: finalConfig,
     }));
     closeAllDashboardTools();
@@ -631,12 +666,56 @@ typeof crypto.randomUUID === "function"
 
   const handleStudioGenerateBlueprint = async (config: BookConfig) => {
     const finalConfig = mergeCharacterStudioIntoConfig(config);
+    const gate = canGenerateBlueprintPreview(currentPlan, projects);
+    if (!gate.allowed) {
+      trackScriptoraEvent({
+        eventName: "free_blueprint_limit_blocked",
+        tool: "book-forge",
+        planId: currentPlan,
+        success: false,
+      });
+      throw new Error(gate.message);
+    }
+    trackScriptoraEvent({
+      eventName: "blueprint_generation_requested",
+      tool: "book-forge",
+      planId: currentPlan,
+      success: true,
+    });
     const [{ buildBookTypeLock: buildGenreLock }, { runGenerateBlueprint }] = await Promise.all([
       import("@/lib/book-type-engine"),
       import("@/lib/generation-runtime"),
     ]);
     const genreLock = buildGenreLock(finalConfig);
     const { blueprint } = await runGenerateBlueprint(finalConfig, genreLock);
+    const previewProject = buildBlueprintPreviewProject({
+      config: finalConfig,
+      blueprint,
+      sourceTool: "book-forge",
+      planId: currentPlan,
+    });
+    await saveProjectAsync(previewProject);
+    setProjects((prev) => [previewProject, ...prev.filter((project) => project.id !== previewProject.id)]);
+    setFlowProjectId(previewProject.id);
+    setBlueprintPreviewProjectId(previewProject.id);
+    try {
+      sessionStorage.setItem("scriptora-last-blueprint-preview-project-id", previewProject.id);
+    } catch { /* noop */ }
+    window.dispatchEvent(new Event("scriptora-projects-change"));
+    trackScriptoraEvent({
+      eventName: "blueprint_generated",
+      tool: "book-forge",
+      projectId: previewProject.id,
+      planId: currentPlan,
+      success: true,
+    });
+    trackScriptoraEvent({
+      eventName: "blueprint_saved",
+      tool: "book-forge",
+      projectId: previewProject.id,
+      planId: currentPlan,
+      success: true,
+    });
     return blueprint;
   };
 
@@ -678,7 +757,7 @@ typeof crypto.randomUUID === "function"
       if (!briefSubtitle.trim()) setBriefSubtitle(detected.suggestedSubtitles?.[best] || detected.suggestedSubtitles?.[0] || "");
       return detected;
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("detection_failed"));
+      toast.error(getUserFriendlyError(e, { area: "blueprint", fallback: t("detection_failed") }));
       return null;
     } finally {
       setDetecting(false);
@@ -748,6 +827,7 @@ typeof crypto.randomUUID === "function"
   const currentLangLabel = UI_LANGUAGES.find(l => l.value === currentLang)?.label || "English";
   const completedProjects = projects.filter(isProjectComplete);
   const draftProjects = projects.filter((p) => !isProjectComplete(p));
+  const projectSummary = summarizeProjectLibrary(projects);
   const lastProjectDoneChapters = lastProject?.chapters?.filter((chapter) => (chapter.content || "").trim().length > 50).length || 0;
   const lastProjectTargetChapters = lastProject?.config?.numberOfChapters || lastProject?.chapters?.length || 0;
   const lastProjectProgress = lastProject
@@ -1067,6 +1147,13 @@ typeof crypto.randomUUID === "function"
           onMyBooks={() => openDashboardTool("projects")}
         />
 
+        <DashboardContinueCard
+          projects={projects}
+          lastProject={dashboardContextProject}
+          onContinue={(projectId) => goApp({ projectId })}
+          onOpenProjects={() => openDashboardTool("projects")}
+        />
+
         <section className="mb-4 flex flex-wrap gap-2 sm:mb-6">
           <button
             type="button"
@@ -1087,7 +1174,7 @@ typeof crypto.randomUUID === "function"
             >
               <Library className="h-4 w-4 text-white/75" />
               <span className="text-sm font-semibold text-white">Libreria</span>
-              <span className="text-xs text-white/45">{completedProjects.length} completati</span>
+              <span className="text-xs text-white/45">{completedProjects.length || projectSummary.publishingReady} completati</span>
             </button>
           )}
         </section>

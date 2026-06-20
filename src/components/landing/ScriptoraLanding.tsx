@@ -32,6 +32,7 @@ import {
   type SubscriptionPlanDefinition,
 } from "@/lib/billing/pricingCatalog";
 import { STUDY_USAGE_LIMITS } from "@/lib/study-os/study-limits";
+import { PAY_PER_PROJECT_TIERS } from "@/lib/pay-per-project";
 
 interface ScriptoraLandingProps {
   mounted: boolean;
@@ -435,32 +436,32 @@ const landingPlans: Record<string, Record<UILanguage, {
   features: string[];
 }>> = {
   free: {
-    en: { name: "Free", period: "forever", description: "Step inside the OS and start the first real book signal.", features: ["1 active book", "Up to 10,000 words", "Core book creation", "Limited chapter generation"] },
-    it: { name: "Gratis", period: "per sempre", description: "Entra nell'OS e avvia il primo vero segnale libro.", features: ["1 libro attivo", "Fino a 10.000 parole", "Creazione libro essenziale", "Generazione capitoli limitata"] },
-    es: { name: "Gratis", period: "para siempre", description: "Entra al OS y activa la primera senal real de libro.", features: ["1 libro activo", "Hasta 10.000 palabras", "Creacion libro esencial", "Generacion limitada"] },
-    fr: { name: "Gratuit", period: "a vie", description: "Entrez dans l'OS et lancez le premier vrai signal livre.", features: ["1 livre actif", "Jusqu'a 10 000 mots", "Creation livre essentielle", "Generation limitee"] },
-    de: { name: "Kostenlos", period: "dauerhaft", description: "Betritt das OS und starte das erste echte Buchsignal.", features: ["1 aktives Buch", "Bis 10.000 Worter", "Essenzielle Bucherstellung", "Begrenzte Kapitelgenerierung"] },
+    en: { name: "Free", period: "forever", description: "Test Scriptora with idea, title and first structure.", features: ["300 credits/month", "3 Blueprint Previews", "10 title generations/month", "Writing unlocks separately"] },
+    it: { name: "Gratis", period: "per sempre", description: "Prova Scriptora con idea, titolo e prima struttura.", features: ["300 crediti/mese", "3 Blueprint Preview", "10 generazioni titolo/mese", "Scrittura da sbloccare"] },
+    es: { name: "Gratis", period: "para siempre", description: "Prueba Scriptora con idea, titulo y primera estructura.", features: ["300 creditos/mes", "3 Blueprint Preview", "10 titulos/mes", "Escritura se desbloquea aparte"] },
+    fr: { name: "Gratuit", period: "a vie", description: "Testez Scriptora avec idee, titre et premiere structure.", features: ["300 credits/mois", "3 Blueprint Preview", "10 titres/mois", "Ecriture a debloquer"] },
+    de: { name: "Kostenlos", period: "dauerhaft", description: "Teste Scriptora mit Idee, Titel und erster Struktur.", features: ["300 Credits/Monat", "3 Blueprint Previews", "10 Titel/Monat", "Schreiben separat freischalten"] },
   },
   pro_author: {
-    en: { name: "Author Pro", period: "/month", description: "For independent authors who want chapters, KDP, cover and export with a realistic credit budget.", features: ["6,000 credits/month", "KDP, cover and export", "Extra credits available", "No full-book promise beyond budget"] },
-    it: { name: "Author Pro", period: "/mese", description: "Per autori indipendenti che vogliono capitoli, KDP, cover ed export con budget crediti realistico.", features: ["6.000 crediti/mese", "KDP, cover ed export", "Crediti extra acquistabili", "Nessuna promessa libro oltre budget"] },
-    es: { name: "Author Pro", period: "/mes", description: "Para autores independientes con capitulos, KDP, portada y export dentro de un presupuesto realista.", features: ["6.000 creditos/mes", "KDP, portada y export", "Creditos extra disponibles", "Sin promesas fuera del presupuesto"] },
-    fr: { name: "Author Pro", period: "/mois", description: "Pour auteurs independants avec chapitres, KDP, couverture et export dans un budget realiste.", features: ["6 000 credits/mois", "KDP, couverture et export", "Credits extra disponibles", "Pas de promesse hors budget"] },
-    de: { name: "Author Pro", period: "/Monat", description: "Fur unabhangige Autoren mit Kapiteln, KDP, Cover und Export in realistischem Credit-Budget.", features: ["6.000 Credits/Monat", "KDP, Cover und Export", "Extra Credits kaufbar", "Keine Buchversprechen uber Budget"] },
+    en: { name: "Author Pro", period: "/month", description: "Main plan for independent authors building books with export and editorial tools.", features: ["8,000 credits/month", "30 Blueprints/month", "KDP, cover and export", "3-5 medium books as a realistic range"] },
+    it: { name: "Author Pro", period: "/mese", description: "Piano principale per autori indipendenti con export e strumenti editoriali.", features: ["8.000 crediti/mese", "30 Blueprint/mese", "KDP, cover ed export", "3-5 libri medi come range realistico"] },
+    es: { name: "Author Pro", period: "/mes", description: "Plan principal para autores independientes con export y herramientas editoriales.", features: ["8.000 creditos/mes", "30 Blueprints/mes", "KDP, portada y export", "3-5 libros medios como rango realista"] },
+    fr: { name: "Author Pro", period: "/mois", description: "Plan principal pour auteurs independants avec export et outils editoriaux.", features: ["8 000 credits/mois", "30 Blueprints/mois", "KDP, couverture et export", "3-5 livres moyens en plage realiste"] },
+    de: { name: "Author Pro", period: "/Monat", description: "Hauptplan fur unabhangige Autoren mit Export und redaktionellen Tools.", features: ["8.000 Credits/Monat", "30 Blueprints/Monat", "KDP, Cover und Export", "3-5 mittlere Bucher als realistischer Rahmen"] },
   },
   studio: {
-    en: { name: "Studio", period: "/month", description: "For authors building catalogues and series with stronger credit capacity.", features: ["20,000 credits/month", "Series and catalogue work", "Cover, KDP and Radar", "Extra credits as natural scale-up"] },
-    it: { name: "Studio", period: "/mese", description: "Per autori che costruiscono cataloghi e serie con capacità crediti più ampia.", features: ["20.000 crediti/mese", "Serie e cataloghi", "Cover, KDP e Radar", "Crediti extra per scalare"] },
-    es: { name: "Studio", period: "/mes", description: "Para autores con catalogos y series que necesitan mas capacidad de creditos.", features: ["20.000 creditos/mes", "Series y catalogos", "Portada, KDP y Radar", "Creditos extra para escalar"] },
-    fr: { name: "Studio", period: "/mois", description: "Pour auteurs avec catalogues et series qui demandent plus de credits.", features: ["20 000 credits/mois", "Series et catalogues", "Couverture, KDP et Radar", "Credits extra pour scaler"] },
-    de: { name: "Studio", period: "/Monat", description: "Fur Autoren mit Katalogen und Serien mit hoherer Credit-Kapazitat.", features: ["20.000 Credits/Monat", "Serien und Kataloge", "Cover, KDP und Radar", "Extra Credits zum Skalieren"] },
+    en: { name: "Studio", period: "/month", description: "Serious production for long books, covers, audits, KDP and multiple projects.", features: ["25,000 credits/month", "100 Blueprints/month", "Cover, KDP and Radar", "Long books and catalogues"] },
+    it: { name: "Studio", period: "/mese", description: "Produzione seria per libri lunghi, cover, audit, KDP e più progetti.", features: ["25.000 crediti/mese", "100 Blueprint/mese", "Cover, KDP e Radar", "Libri lunghi e cataloghi"] },
+    es: { name: "Studio", period: "/mes", description: "Produccion seria para libros largos, portada, auditoria, KDP y varios proyectos.", features: ["25.000 creditos/mes", "100 Blueprints/mes", "Portada, KDP y Radar", "Libros largos y catalogos"] },
+    fr: { name: "Studio", period: "/mois", description: "Production serieuse pour livres longs, couverture, audit, KDP et projets multiples.", features: ["25 000 credits/mois", "100 Blueprints/mois", "Couverture, KDP et Radar", "Livres longs et catalogues"] },
+    de: { name: "Studio", period: "/Monat", description: "Ernsthafte Produktion fur lange Bucher, Cover, Audit, KDP und mehrere Projekte.", features: ["25.000 Credits/Monat", "100 Blueprints/Monat", "Cover, KDP und Radar", "Lange Bucher und Kataloge"] },
   },
   study_os_pro: {
-    en: { name: "Study OS Pro", period: "/month", description: "One simple study subscription: summaries, quizzes, flashcards and oral practice with fair limits.", features: ["€20/month", "Usage included with fair limits", "PDF, DOCX, EPUB, notes", "Local fallback if AI is slow"] },
-    it: { name: "Study OS Pro", period: "/mese", description: "Un abbonamento studio semplice: riassunti, quiz, flashcard e interrogazione con limiti equi.", features: ["20 €/mese", "Uso incluso con limiti equi", "PDF, DOCX, EPUB, appunti", "Fallback locale se l'AI è lenta"] },
-    es: { name: "Study OS Pro", period: "/mes", description: "Una suscripcion de estudio simple: resumenes, quizzes, flashcards y practica oral con limites justos.", features: ["20 €/mes", "Uso incluido con limites justos", "PDF, DOCX, EPUB, apuntes", "Fallback local si la IA tarda"] },
-    fr: { name: "Study OS Pro", period: "/mois", description: "Un abonnement etude simple: resumes, quiz, flashcards et oral avec limites equitables.", features: ["20 €/mois", "Usage inclus avec limites", "PDF, DOCX, EPUB, notes", "Fallback local si l'IA tarde"] },
-    de: { name: "Study OS Pro", period: "/Monat", description: "Ein einfaches Lernabo: Zusammenfassungen, Quizze, Flashcards und mundliche Ubung mit fairen Limits.", features: ["20 €/Monat", "Nutzung mit fairen Limits", "PDF, DOCX, EPUB, Notizen", "Lokaler Fallback bei langsamer KI"] },
+    en: { name: "Study OS Pro", period: "/month", description: "One simple study subscription: summaries, quizzes, flashcards and oral practice with fair limits.", features: ["€20/month", "Usage included with fair limits", "PDF, DOCX, EPUB, notes", "Fast local mode when needed"] },
+    it: { name: "Study OS Pro", period: "/mese", description: "Un abbonamento studio semplice: riassunti, quiz, flashcard e interrogazione con limiti equi.", features: ["20 €/mese", "Uso incluso con limiti equi", "PDF, DOCX, EPUB, appunti", "Modalità rapida se serve"] },
+    es: { name: "Study OS Pro", period: "/mes", description: "Una suscripcion de estudio simple: resumenes, quizzes, flashcards y practica oral con limites justos.", features: ["20 €/mes", "Uso incluido con limites justos", "PDF, DOCX, EPUB, apuntes", "Modo rapido si hace falta"] },
+    fr: { name: "Study OS Pro", period: "/mois", description: "Un abonnement etude simple: resumes, quiz, flashcards et oral avec limites equitables.", features: ["20 €/mois", "Usage inclus avec limites", "PDF, DOCX, EPUB, notes", "Mode rapide si necessaire"] },
+    de: { name: "Study OS Pro", period: "/Monat", description: "Ein einfaches Lernabo: Zusammenfassungen, Quizze, Flashcards und mundliche Ubung mit fairen Limits.", features: ["20 €/Monat", "Nutzung mit fairen Limits", "PDF, DOCX, EPUB, Notizen", "Schneller Modus bei Bedarf"] },
   },
 };
 
@@ -612,6 +613,39 @@ export function ScriptoraLanding({
       </section>
 
       <PublicDualPath lang={lang} onEnter={onEnter} />
+
+      <section className="scriptora-landing-section">
+        <div className="rounded-[2rem] border border-sky-300/20 bg-gradient-to-br from-sky-300/12 via-white/[0.035] to-transparent p-6 sm:p-8">
+          <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+            <div>
+              <div className="scriptora-landing-section-label text-sky-200">
+                {lang === "it" ? "Monetizzazione chiara" : "Clear monetization"}
+              </div>
+              <h2 className="mt-3 text-3xl font-black tracking-tight text-white sm:text-4xl">
+                {lang === "it" ? "Abbonati, ricarica crediti o sblocca un solo libro." : "Subscribe, top up credits or unlock one book."}
+              </h2>
+              <p className="mt-4 max-w-xl text-sm leading-6 text-white/62">
+                {lang === "it"
+                  ? "Il Blueprint resta consultabile. Dopo il Blueprint scegli: usa crediti, sblocca quel projectId una volta, oppure passa al piano più conveniente se pubblichi spesso."
+                  : "Your Blueprint remains saved. After the Blueprint choose credits, a one-time project unlock, or the best plan if you publish often."}
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                [lang === "it" ? "Piani autore" : "Author plans", "€9,99 → €99,99"],
+                [lang === "it" ? "Crediti extra" : "Extra credits", "500 → 25.000"],
+                [lang === "it" ? "Singolo libro" : "Single book", PAY_PER_PROJECT_TIERS[0].priceLabel],
+                ["Study OS Pro", "20 €/mese"],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-2xl border border-sky-300/18 bg-sky-300/10 px-4 py-3">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-100/55">{label}</p>
+                  <p className="mt-1 text-2xl font-black tabular-nums text-sky-100">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section className="scriptora-landing-section">
         <div className="rounded-[2rem] border border-emerald-300/20 bg-gradient-to-br from-emerald-300/12 via-white/[0.035] to-transparent p-6 sm:p-8">

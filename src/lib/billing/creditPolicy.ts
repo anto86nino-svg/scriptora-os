@@ -3,10 +3,10 @@ import type { CreditOperationId, CreditPlanId, OperationCostQuote } from "./type
 
 export const PLAN_CREDIT_ALLOCATION: Record<CreditPlanId, number> = {
   free: 300,
-  starter: 2_000,
-  pro_author: 6_000,
-  studio: 20_000,
-  publisher: 50_000,
+  starter: 3_000,
+  pro_author: 8_000,
+  studio: 25_000,
+  publisher: 60_000,
   student_free: 300,
   student_basic: 1_500,
   student_plus: 4_000,
@@ -92,10 +92,10 @@ export const CREDIT_PACKS_DEV = [
   { id: "mini", label: "Mini", credits: 1_000, priceLabel: "€3" },
   { id: "author", label: "Author", credits: 3_000, priceLabel: "€7" },
   { id: "studio_pack", label: "Studio Pack", credits: 10_000, priceLabel: "€19" },
-  { id: "publisher_pack", label: "Publisher Pack", credits: 30_000, priceLabel: "€49" },
+  { id: "publisher_pack", label: "Publisher Pack", credits: 25_000, priceLabel: "€39" },
 ] as const;
 
-export const DEV_PURCHASE_AMOUNTS = [500, 1_000, 3_000, 10_000, 30_000] as const;
+export const DEV_PURCHASE_AMOUNTS = [500, 1_000, 3_000, 10_000, 25_000] as const;
 
 export type OperationCostOptions = {
   bookLength?: BookLength;

@@ -36,8 +36,10 @@ describe("billing hardening smoke", () => {
 
   it("allocates monthly credits per commercial model", () => {
     expect(PLAN_CREDIT_ALLOCATION.free).toBe(300);
-    expect(PLAN_CREDIT_ALLOCATION.pro_author).toBe(6_000);
-    expect(PLAN_CREDIT_ALLOCATION.studio).toBe(20_000);
+    expect(PLAN_CREDIT_ALLOCATION.starter).toBe(3_000);
+    expect(PLAN_CREDIT_ALLOCATION.pro_author).toBe(8_000);
+    expect(PLAN_CREDIT_ALLOCATION.studio).toBe(25_000);
+    expect(PLAN_CREDIT_ALLOCATION.publisher).toBe(60_000);
     expect(PLAN_CREDIT_ALLOCATION.study_os_pro).toBe(0);
   });
 

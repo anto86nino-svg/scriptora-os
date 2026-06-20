@@ -11,6 +11,7 @@ describe("Study OS Pro commercial limits", () => {
     expect(STUDY_OS_PRO_PLAN.priceEurMonthly).toBe(20);
     expect(STUDY_OS_PRO_PLAN.id).toBe("study_os_pro");
     expect(STUDY_OS_PRO_PLAN.included.join(" ")).not.toMatch(/crediti|credits/i);
+    expect(STUDY_OS_PRO_PLAN.included.join(" ")).not.toMatch(/AI non disponibile|uso analisi locale/i);
   });
 
   it("defines non-zero fair-use limits", () => {
@@ -18,6 +19,10 @@ describe("Study OS Pro commercial limits", () => {
     expect(STUDY_USAGE_LIMITS.weeklyMaterials).toBeGreaterThan(0);
     expect(STUDY_USAGE_LIMITS.monthlyAiOperations).toBeGreaterThan(0);
     expect(STUDY_USAGE_LIMITS.maxUploadMb).toBeGreaterThan(0);
+    expect(STUDY_USAGE_LIMITS.softInternalAiBudgetEur).toBe(3.5);
+    expect(STUDY_USAGE_LIMITS.hardInternalAiBudgetEur).toBe(4.5);
+    expect(STUDY_USAGE_LIMITS.minimumTargetMarginPercent).toBe(75);
+    expect(STUDY_USAGE_LIMITS.desiredMinimumProfitEur).toBe(15);
   });
 
   it("shows human localized limit messages with renewal days", () => {

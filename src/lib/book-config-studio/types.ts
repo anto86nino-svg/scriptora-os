@@ -20,6 +20,7 @@ export interface StudioLaunchPayload {
   config: BookConfig;
   blueprint?: BookBlueprint | null;
   blueprintApproved?: boolean;
+  projectId?: string;
   mode: "studio-draft" | "studio-approved" | "legacy";
 }
 
