@@ -39,6 +39,10 @@ import { ScriptoraLogoMark } from "@/components/brand/ScriptoraLogoMark";
 import { useDashboardReturn } from "@/hooks/useDashboardReturn";
 import { getLastProjectId, loadProjects, setLastProjectId } from "@/services/storageService";
 import type { BookProject } from "@/types/book";
+import {
+  buildBookForgeHandoff,
+  openBookForgeWithHandoff,
+} from "@/lib/book-forge/book-forge-handoff";
 
 type Step = "idea" | "market" | "title" | "packaging" | "predict" | "narrative-flow";
 
@@ -516,10 +520,36 @@ export default function KdpLaunchPage() {
     }
   }, [chosenSubtitle, chosenTitle, genre, idea, italianUi, language, market, narrativeFlow, persistSession]);
 
+  const buildKdpBookForgeHandoff = useCallback((titleOverride?: string, subtitleOverride?: string) => {
+    const selectedTitle = titleOverride || chosenTitle;
+    const selectedSubtitle = subtitleOverride || chosenSubtitle;
+    return buildBookForgeHandoff("kdp-launch", {
+      title: selectedTitle,
+      subtitle: selectedSubtitle,
+      idea,
+      genre,
+      category: genre,
+      subcategory: market?.subNiche || genre,
+      niche: market?.subNiche || packaging?.categories?.[0],
+      language,
+      marketplace: "amazon.it",
+      targetReader: narrativeFlow?.targetReader,
+      promise: narrativeFlow?.centralPromise || selectedSubtitle || market?.recommendedAngle,
+      transformation: narrativeFlow?.centralPromise || market?.recommendedAngle,
+      structureMode: narrativeFlow?.chapterProgression?.length ? "chapter progression from KDP Launch" : undefined,
+      plot: narrativeFlow?.chapterProgression?.join("\n"),
+      conflict: narrativeFlow?.initialHook,
+      commercialAngle: narrativeFlow?.positioningAngle || market?.recommendedAngle,
+      tone: narrativeFlow?.commercialTone,
+      keywords: packaging?.backendKeywords,
+      comparableBooks: market?.competitionLevel ? [`Competition: ${market.competitionLevel}`] : undefined,
+    });
+  }, [chosenSubtitle, chosenTitle, genre, idea, language, market, narrativeFlow, packaging]);
+
   const goToBlueprint = useCallback(() => {
     saveNarrativeToProject();
-    navigate("/dashboard", { state: { openNewBook: true, fromKdpLaunch: true } });
-  }, [navigate, saveNarrativeToProject]);
+    openBookForgeWithHandoff(navigate, buildKdpBookForgeHandoff());
+  }, [buildKdpBookForgeHandoff, navigate, saveNarrativeToProject]);
 
   useEffect(() => {
     try {
@@ -1009,7 +1039,23 @@ export default function KdpLaunchPage() {
             onUseTitle={(t, s) => {
               setChosenTitle(t);
               setChosenSubtitle(s);
-              if (step === "idea" || step === "market") setStep("title");
+              openBookForgeWithHandoff(
+                navigate,
+                buildBookForgeHandoff("title-domination", {
+                  title: t,
+                  subtitle: s,
+                  idea,
+                  genre,
+                  category: genre,
+                  subcategory: market?.subNiche || genre,
+                  niche: market?.subNiche || genre,
+                  language,
+                  marketplace: "amazon.it",
+                  promise: s || market?.recommendedAngle,
+                  commercialAngle: market?.recommendedAngle,
+                  comparableBooks: market?.competitionLevel ? [`Competition: ${market.competitionLevel}`] : undefined,
+                }),
+              );
             }}
           />
         </section>

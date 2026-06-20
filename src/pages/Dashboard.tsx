@@ -15,7 +15,7 @@ import {
   TrendingUp, LogOut, CreditCard, Download as DownloadIcon, Settings, Users,
   CheckCircle2, NotebookPen, Fingerprint, ImagePlus
 } from "lucide-react";
-import { BOOK_LENGTH_CONFIG, BookConfig, BookLength, BookProject, DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
+import { BookConfig, BookLength, BookProject, DEFAULT_SUBCHAPTERS_PER_CHAPTER, Genre, Language } from "@/types/book";
 import { normalizeBookConfig } from "@/lib/book-config-studio/defaults";
 import type { StudioLaunchPayload } from "@/lib/book-config-studio/types";
 import { t, tt, getUILanguage, setUILanguage, UI_LANGUAGES, UILanguage, useUILanguage } from "@/lib/i18n";
@@ -65,6 +65,10 @@ import {
   isAdvancedLaunchpadEnabled,
   setAdvancedLaunchpadEnabled,
 } from "@/components/one-flow/ProfileMenuDialog";
+import {
+  buildBookForgeHandoff,
+  type BookForgeHandoff,
+} from "@/lib/book-forge/book-forge-handoff";
 
 const ScriptoraSettingsHub = lazy(() =>
   import("@/components/settings/ScriptoraSettingsHub").then((m) => ({ default: m.ScriptoraSettingsHub })),
@@ -92,6 +96,15 @@ interface DetectedIntent {
 function isNarrativeGenreForCharacters(genre?: string): boolean {
   const g = String(genre || "").toLowerCase();
   return ["romance", "dark-romance", "thriller", "fantasy", "fiction", "memoir", "historical", "horror", "sci-fi"].some(x => g.includes(x));
+}
+
+function isBookForgeHandoff(value: unknown): value is BookForgeHandoff {
+  return Boolean(
+    value &&
+    typeof value === "object" &&
+    "prefill" in value &&
+    "recommendedStartStep" in value,
+  );
 }
 
 
@@ -237,6 +250,10 @@ export default function Dashboard() {
     { value: "French", label: "🇫🇷 Français" },
     { value: "German", label: "🇩🇪 Deutsch" },
   ];
+  const toBookLanguage = (value?: string): Language => {
+    const found = BOOK_LANGUAGES.find((lang) => lang.value === value);
+    return (found?.value || "English") as Language;
+  };
 
   useEffect(() => {
     // Optimistic load: shows local projects immediately, refreshes from server
@@ -291,6 +308,7 @@ export default function Dashboard() {
   }, [idea]);
 
   const freeBookUsed = currentPlan === "free" && projects.length > 0;
+  const [bookForgeHandoff, setBookForgeHandoff] = useState<BookForgeHandoff | null>(null);
 
   useEffect(() => {
     if (currentPlan === "free" && bookLength !== "short") {
@@ -298,10 +316,17 @@ export default function Dashboard() {
     }
   }, [bookLength, currentPlan]);
 
-  const openNewBookGuarded = () => {
+  const openNewBookGuarded = (handoff?: BookForgeHandoff | null | unknown) => {
     if (freeBookUsed) {
       toast.error(t("toast_free_book_used"));
       navigate("/pricing");
+      return;
+    }
+
+    const resolvedHandoff = isBookForgeHandoff(handoff) ? handoff : null;
+    setBookForgeHandoff(resolvedHandoff);
+    if (resolvedHandoff?.recommendedStartStep === "writer") {
+      navigate("/app");
       return;
     }
 
@@ -333,6 +358,7 @@ export default function Dashboard() {
       openProjects?: boolean;
       openCover?: boolean;
       openExport?: boolean;
+      bookForgeHandoff?: BookForgeHandoff;
       projectId?: string;
     } | null;
     if (!state) return;
@@ -340,7 +366,7 @@ export default function Dashboard() {
       setFlowProjectId(state.projectId);
       setLastProjectId(state.projectId);
     }
-    if (state.openForge || state.openWizard || state.openNewBook) openNewBookGuarded();
+    if (state.openForge || state.openWizard || state.openNewBook) openNewBookGuarded(state.bookForgeHandoff || null);
     if (state.openProjects) openDashboardTool("projects");
     if (state.openCover) guardPlanFeature("cover_studio_template", openCoverStudioPage)();
     if (state.openExport) {
@@ -392,13 +418,51 @@ export default function Dashboard() {
   // Only surface "continue last" when the project still belongs to the active
   // environment (DEV vs USER). Cross-scope ids are silently ignored.
   const openForgePreset = (preset: ForgePreset) => {
-    try {
-      sessionStorage.setItem("scriptora-forge-selected-preset", JSON.stringify(preset));
-      toast.success(`${preset.label}: preset preparato.`);
-    } catch {
-      toast.message(`${preset.label}: preset selezionato.`);
-    }
-    openNewBookGuarded();
+    const presetGenreById: Partial<Record<ForgePreset["id"], Genre>> = {
+      poetry: "poetry",
+      novel: "romance",
+      manual: "manual",
+      essay: "philosophy",
+      history: "education",
+      philosophy: "philosophy",
+      math: "education",
+      physics: "education",
+      songs: "poetry",
+      children: "children",
+      self_help: "self-help",
+      business: "business",
+    };
+    const categoryByFamily: Record<ForgePreset["family"], string> = {
+      creative: preset.id === "poetry" || preset.id === "songs" ? "Poetry" : "Fiction",
+      nonfiction: "Non-Fiction",
+      academic: "Education",
+      music: "Poetry",
+      children: "Children",
+    };
+
+    const handoff = buildBookForgeHandoff("preset-forge", {
+      bookType: preset.id,
+      bookTypeId: preset.id,
+      genre: presetGenreById[preset.id] || "education",
+      category: categoryByFamily[preset.family],
+      subcategory: preset.label,
+      subgenre: preset.subtitle,
+      niche: preset.label,
+      language: preset.defaultLanguage,
+      chapterCount: preset.defaultChapters,
+      numberOfChapters: preset.defaultChapters,
+      bookLength: preset.defaultChapters <= 8 ? "short" : "medium",
+      structureMode: preset.structureMode,
+      subchaptersEnabled: preset.structureMode !== "poems" && preset.structureMode !== "songs",
+      subchaptersPerChapter: preset.structureMode === "lessons" || preset.structureMode === "chapters" ? 3 : 0,
+      tone: preset.tone,
+      promise: preset.promise,
+      commercialAngle: preset.blueprintHint,
+      idea: preset.blueprintHint,
+    });
+
+    toast.success(`${preset.label}: preset preparato in Book Forge.`);
+    openNewBookGuarded(handoff);
   };
 
   const lastProject = lastId ? projects.find(p => p.id === lastId) : null;
@@ -621,6 +685,53 @@ typeof crypto.randomUUID === "function"
     }
   };
 
+  const buildIdeaBookForgeHandoff = (detected?: DetectedIntent | null): BookForgeHandoff | null => {
+    const sourceIdea = idea.trim();
+    const safeBookLength = currentPlan === "free" ? "short" : bookLength;
+    const best = Math.max(0, Math.min(2, Number(detected?.bestTitleIndex || 0)));
+    const resolvedTitle = briefTitle.trim() || detected?.suggestedTitles?.[best] || detected?.suggestedTitles?.[0] || "";
+    const resolvedSubtitle = briefSubtitle.trim() || detected?.suggestedSubtitles?.[best] || detected?.suggestedSubtitles?.[0] || "";
+    const resolvedChapters = Math.max(3, Math.min(50, Number(oneClickChapters || detected?.numberOfChapters) || 10));
+    const resolvedGenre = detected?.genre as Genre | undefined;
+
+    if (!sourceIdea && !resolvedTitle && !resolvedSubtitle && !resolvedGenre) return null;
+
+    return buildBookForgeHandoff("book-idea-tools", {
+      title: resolvedTitle,
+      subtitle: resolvedSubtitle,
+      idea: sourceIdea,
+      plot: sourceIdea,
+      genre: resolvedGenre,
+      category: resolvedGenre
+        ? isNarrativeGenreForCharacters(resolvedGenre) ? "Fiction" : "Non-Fiction"
+        : undefined,
+      subcategory: detected?.subcategory,
+      niche: detected?.subcategory,
+      language: toBookLanguage(bookLang),
+      titleLanguage: toBookLanguage(titleLang || bookLang),
+      chapterCount: resolvedChapters,
+      numberOfChapters: resolvedChapters,
+      bookLength: safeBookLength,
+      customTotalWords: safeBookLength === "custom" ? customTotalWords : undefined,
+      subchaptersEnabled: oneClickSubchaptersEnabled,
+      subchaptersPerChapter: oneClickSubchaptersEnabled
+        ? Math.max(1, Math.min(8, Number(oneClickSubchaptersPerChapter) || DEFAULT_SUBCHAPTERS_PER_CHAPTER))
+        : undefined,
+      targetReader: detected?.targetAudience,
+      promise: detected?.readerPromise,
+      transformation: detected?.readerPromise,
+      tone: detected?.tone,
+      authorIdentityId: activeAuthor.id,
+      authorIdentity: activeAuthor,
+      authorName: activeAuthor.penName,
+    });
+  };
+
+  const openBookForgeFromIdeaPreview = () => {
+    closeAllDashboardTools();
+    openNewBookGuarded(buildIdeaBookForgeHandoff(intent));
+  };
+
   const launchOneClick = async () => {
     if (idea.trim().length < 6) return;
     setLaunching(true);
@@ -628,37 +739,8 @@ typeof crypto.randomUUID === "function"
     if (!i) i = await detectIntent();
     if (!i) { setLaunching(false); return; }
 
-    const best = Math.max(0, Math.min(2, i.bestTitleIndex || 0));
-    const safeBookLength = currentPlan === "free" ? "short" : bookLength;
-    sessionStorage.setItem(
-      "scriptora-forge-brief",
-      JSON.stringify({
-        idea: idea.trim(),
-        genre: i.genre,
-        subcategory: i.subcategory,
-        targetAudience: i.targetAudience,
-        tone: i.tone,
-        language: bookLang,
-        titleLanguage: titleLang || bookLang,
-        numberOfChapters: Math.max(3, Math.min(50, Number(oneClickChapters || i.numberOfChapters) || 10)),
-        subchaptersEnabled: oneClickSubchaptersEnabled,
-        subchaptersPerChapter: oneClickSubchaptersEnabled
-          ? Math.max(1, Math.min(8, Number(oneClickSubchaptersPerChapter) || DEFAULT_SUBCHAPTERS_PER_CHAPTER))
-          : undefined,
-        bookLength: safeBookLength,
-        customTotalWords: safeBookLength === "custom" ? customTotalWords : undefined,
-        totalWordTarget: safeBookLength === "custom" ? customTotalWords : BOOK_LENGTH_CONFIG[safeBookLength].totalWords,
-        level: i.level,
-        readerPromise: i.readerPromise,
-        prefilledTitle: briefTitle.trim() || i.suggestedTitles?.[best],
-        prefilledSubtitle: briefSubtitle.trim() || i.suggestedSubtitles?.[best],
-        authorIdentityId: activeAuthor.id,
-        authorIdentity: activeAuthor,
-        authorName: activeAuthor.penName,
-      }),
-    );
     closeAllDashboardTools();
-    openNewBookGuarded();
+    openNewBookGuarded(buildIdeaBookForgeHandoff(i));
   };
 
   const heroValid = idea.trim().length >= 6;
@@ -721,7 +803,7 @@ typeof crypto.randomUUID === "function"
     heroValid,
     onDetectIntent: () => { void detectIntent(); },
     onLaunchOneClick: () => { void launchOneClick(); },
-    onOpenAdvancedForge: () => { closeAllDashboardTools(); openNewBookGuarded(); },
+    onOpenAdvancedForge: openBookForgeFromIdeaPreview,
     onClose: closeAllDashboardTools,
   }), [
     idea, briefTitle, briefSubtitle, bookLang, titleLang, bookLength, customTotalWords,
@@ -760,6 +842,7 @@ typeof crypto.randomUUID === "function"
             authorIdentity={activeAuthor}
             onStudioComplete={handleStudioComplete}
             onGenerateBlueprint={handleStudioGenerateBlueprint}
+            bookForgeHandoff={bookForgeHandoff}
           />
         </Suspense>
       </div>

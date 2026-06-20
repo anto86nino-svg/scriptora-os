@@ -75,6 +75,14 @@ import {
 import { enrichBookConfigFromForgeSeed } from "@/lib/guided-interview/forge-writer-bridge";
 import { saveForgeDnaLock, loadForgeDnaLock } from "@/lib/guided-interview/interview-state";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
+import {
+  bookForgeStartStepToStudioStep,
+  isFictionHandoff,
+  isManualHandoff,
+  isPoetryHandoff,
+  mergeHandoffIntoBookConfig,
+  type BookForgeHandoff,
+} from "@/lib/book-forge/book-forge-handoff";
 
 interface BookCreationOsWizardProps {
   open: boolean;
@@ -97,6 +105,7 @@ interface BookCreationOsWizardProps {
   forgeEntry?: "full" | "post-dna";
   initialStep?: number;
   interviewSeed?: ForgeInterviewSeed;
+  bookForgeHandoff?: BookForgeHandoff | null;
   /** Render inside Mobile Book Forge shell — single page scroll, no modal overlay. */
   embeddedInMobileForge?: boolean;
   mobileForgeHeader?: ReactNode;
@@ -177,6 +186,32 @@ function handleInterviewCompleteFactory({
 
 function cleanStr(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function parseHandoffLanguage(raw: unknown): Language | null {
+  const value = cleanStr(raw).toLowerCase();
+  if (!value) return null;
+  if (/ingles|english/.test(value)) return "English";
+  if (/spagn|spanish|español/.test(value)) return "Spanish";
+  if (/franc|french/.test(value)) return "French";
+  if (/tedesc|german|deutsch/.test(value)) return "German";
+  if (/ital|italian/.test(value)) return "Italian";
+  return null;
+}
+
+function normalizeHandoffGenre(raw: unknown): Genre | null {
+  const value = cleanStr(raw).toLowerCase();
+  if (!value) return null;
+  if (/dark.?romance/.test(value)) return "dark-romance";
+  if (/romance/.test(value)) return "romance";
+  if (/thriller|crime|suspense/.test(value)) return "thriller";
+  if (/fantasy/.test(value)) return "fantasy";
+  if (/horror/.test(value)) return "horror";
+  if (/self.?help|crescita|mindset/.test(value)) return "self-help";
+  if (/business|marketing|leadership/.test(value)) return "business";
+  if (/poetry|poesia/.test(value)) return "poetry";
+  if (/manual|manuale|guide|guida/.test(value)) return "manual";
+  return null;
 }
 
 function applyInterviewGenreToWizard(
@@ -368,14 +403,18 @@ export function BookCreationOsWizard({
   forgeEntry = "full",
   initialStep = 0,
   interviewSeed,
+  bookForgeHandoff,
   embeddedInMobileForge = false,
   mobileForgeHeader,
 }: BookCreationOsWizardProps) {
   useMobileForgeBodyLock(embeddedInMobileForge && open);
   const { plan } = usePlan();
   const isFree = plan === "free";
-  const [step, setStep] = useState(forgeEntry === "post-dna" ? initialStep : 0);
-  const [showAdvancedForge, setShowAdvancedForge] = useState(forgeEntry === "post-dna");
+  const resolvedInitialStep = bookForgeHandoff
+    ? bookForgeStartStepToStudioStep(bookForgeHandoff.recommendedStartStep)
+    : initialStep;
+  const [step, setStep] = useState(forgeEntry === "post-dna" || bookForgeHandoff ? resolvedInitialStep : 0);
+  const [showAdvancedForge, setShowAdvancedForge] = useState(forgeEntry === "post-dna" || Boolean(bookForgeHandoff));
   const [isMobileViewport, setIsMobileViewport] = useState(
     () => typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches,
   );
@@ -388,8 +427,8 @@ export function BookCreationOsWizard({
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  const [useGuidedInterview, setUseGuidedInterview] = useState(forgeEntry !== "post-dna");
-  const [dnaConfirmed, setDnaConfirmed] = useState(forgeEntry === "post-dna");
+  const [useGuidedInterview, setUseGuidedInterview] = useState(forgeEntry !== "post-dna" && !bookForgeHandoff);
+  const [dnaConfirmed, setDnaConfirmed] = useState(forgeEntry === "post-dna" || Boolean(bookForgeHandoff));
 
   const mobileInterviewMode = forgeEntry !== "post-dna" && isMobileViewport && step === 0 && useGuidedInterview;
   const postDnaForge = forgeEntry === "post-dna";
@@ -707,7 +746,89 @@ export function BookCreationOsWizard({
   }, []);
 
   useEffect(() => {
+    if (!open || !bookForgeHandoff) return;
+    const p = bookForgeHandoff.prefill;
+
+    setUseGuidedInterview(false);
+    setDnaConfirmed(true);
+    setShowAdvancedForge(true);
+    setStep(bookForgeStartStepToStudioStep(bookForgeHandoff.recommendedStartStep));
+
+    if (cleanStr(p.title)) setTitle(cleanStr(p.title));
+    if (cleanStr(p.subtitle || p.promise)) setSubtitle(cleanStr(p.subtitle || p.promise));
+    if (cleanStr(p.authorName || p.author || p.writerName)) setAuthorName(cleanStr(p.authorName || p.author || p.writerName));
+    const handoffLanguage = parseHandoffLanguage(p.language);
+    if (handoffLanguage) setLanguage(handoffLanguage);
+    if (cleanStr(p.amazonMarketplace || p.marketplace)) setAmazonMarketplace(cleanStr(p.amazonMarketplace || p.marketplace));
+    if (cleanStr(p.category)) setCategory(cleanStr(p.category));
+    if (cleanStr(p.subcategory || p.niche)) setSubcategory(cleanStr(p.subcategory || p.niche));
+    if (cleanStr(p.subgenre || p.niche)) setSubgenre(cleanStr(p.subgenre || p.niche));
+    if (cleanStr(p.bookTypeId || p.bookType)) {
+      const nextBookType = cleanStr(p.bookTypeId || p.bookType);
+      setBookTypeId(nextBookType);
+      setLevel1BookType(resolveLevel1FromBookTypeId(nextBookType));
+    }
+    const nextGenre = normalizeHandoffGenre(p.genre || p.bookType || p.bookTypeId);
+    if (nextGenre) setGenre(nextGenre);
+
+    if (isPoetryHandoff(p)) {
+      setForgePresetId("poetry");
+      setBookTypeId("literary");
+      setLevel1BookType("poesia");
+      setGenre("poetry" as Genre);
+      setCategory(p.category || "Poetry");
+      setSubcategory(p.subcategory || "Poetry Collection");
+      setSubchaptersEnabled(false);
+      setSubchaptersPerChapter(0);
+      setCharacters([]);
+    } else if (isManualHandoff(p)) {
+      setForgePresetId("manual");
+      setBookTypeId("manual");
+      setLevel1BookType("manuale");
+      setGenre("manual");
+      setCategory(p.category || "Manuali");
+      setSubcategory(p.subcategory || p.niche || "Manuale pratico");
+      setSubchaptersEnabled(true);
+      setSubchaptersPerChapter(Number(p.subchaptersPerChapter || 3));
+      setCharacters([]);
+    }
+
+    if (cleanStr(p.targetReader)) setTargetReader(cleanStr(p.targetReader));
+    if (cleanStr(p.tone || p.style)) setTone(cleanStr(p.tone || p.style));
+    if (cleanStr(p.promise || p.transformation)) {
+      setNarrativePromise(cleanStr(p.promise || p.transformation));
+      setCommercialGoal(cleanStr(p.commercialAngle || p.promise || p.transformation));
+    }
+    if (cleanStr(p.conflict)) setCoreConflict(cleanStr(p.conflict));
+    if (Array.isArray(p.characters) && p.characters.some((character) => cleanStr(character?.name))) {
+      setCharacters(p.characters.filter((character) => cleanStr(character?.name)));
+    }
+    if (Number(p.numberOfChapters || p.chapterCount) > 0) setChapters(Number(p.numberOfChapters || p.chapterCount));
+    if (p.bookLength === "short" || p.bookLength === "medium" || p.bookLength === "long") {
+      setBookLength(isFree ? "short" : p.bookLength);
+      setChapterLength(p.bookLength);
+    }
+    if (p.subchaptersEnabled != null) setSubchaptersEnabled(Boolean(p.subchaptersEnabled));
+    if (Number(p.subchaptersPerChapter) > 0) setSubchaptersPerChapter(Number(p.subchaptersPerChapter));
+    if (p.authorIdentity) setIdentityDraft(p.authorIdentity);
+    if (p.blueprint?.chapterOutlines?.length) setBlueprintPreview(p.blueprint);
+
+    const ideaParts = [
+      cleanStr(p.idea),
+      cleanStr(p.plot) && `Trama: ${cleanStr(p.plot)}`,
+      cleanStr(p.conflict) && `Conflitto: ${cleanStr(p.conflict)}`,
+      cleanStr(p.transformation) && `Trasformazione: ${cleanStr(p.transformation)}`,
+      cleanStr(p.commercialAngle) && `Angolo commerciale: ${cleanStr(p.commercialAngle)}`,
+      p.keywords?.length ? `Keyword: ${p.keywords.join(", ")}` : "",
+      p.comparableBooks?.length ? `Comparable: ${p.comparableBooks.join(", ")}` : "",
+      `Handoff da ${bookForgeHandoff.source}: ${bookForgeHandoff.lockReason}`,
+    ].filter(Boolean).join("\n\n");
+    if (ideaParts) setIdea(ideaParts);
+  }, [open, bookForgeHandoff, isFree]);
+
+  useEffect(() => {
     if (!open) return;
+    if (bookForgeHandoff) return;
     const brief = consumeForgeBrief();
     if (!brief) return;
     if (brief.prefilledTitle) setTitle(brief.prefilledTitle);
@@ -726,23 +847,25 @@ export function BookCreationOsWizard({
     }
     if (brief.targetAudience) setTargetReader(brief.targetAudience);
     if (brief.tone) setTone(brief.tone);
-  }, [open]);
+  }, [open, bookForgeHandoff]);
 
   useEffect(() => {
     if (!open || !interviewSeed) return;
+    if (bookForgeHandoff) return;
     const seed = interviewSeed as ForgeInterviewSeed;
     if (!seed.canon && !seed.characters?.length && !seed.titleIntelligence) return;
     applyForgeHandoffSeed(seed);
-  }, [open, interviewSeed, applyForgeHandoffSeed]);
+  }, [open, interviewSeed, applyForgeHandoffSeed, bookForgeHandoff]);
 
   useEffect(() => {
     if (!open || forgeHandoff) return;
+    if (bookForgeHandoff) return;
     const saved = loadForgeDnaLock();
     if (!saved?.canon && !saved?.characters?.length && !saved?.titleIntelligence) return;
     if (dnaConfirmed || forgeEntry === "post-dna") {
       applyForgeHandoffSeed(buildForgeInterviewSeed(saved as GuidedInterviewState));
     }
-  }, [open, forgeHandoff, dnaConfirmed, forgeEntry, applyForgeHandoffSeed]);
+  }, [open, forgeHandoff, dnaConfirmed, forgeEntry, applyForgeHandoffSeed, bookForgeHandoff]);
 
   const handleForgeDnaConfirm = useCallback((state: GuidedInterviewState) => {
     const seed = buildForgeInterviewSeed(state);
@@ -778,6 +901,12 @@ export function BookCreationOsWizard({
     () => inferGenreFromText(title, idea),
     [title, idea],
   );
+  const shouldUseCharacterForge = useMemo(() => {
+    if (bookForgeHandoff) return isFictionHandoff(bookForgeHandoff.prefill);
+    if (level1BookType === "poesia" || level1BookType === "manuale" || level1BookType === "educazione") return false;
+    if (["self-help", "business", "manual", "education", "poetry"].includes(String(bookTypeId))) return false;
+    return true;
+  }, [bookForgeHandoff, level1BookType, bookTypeId]);
 
   useEffect(() => {
     if (coherenceDismissed) return;
@@ -945,9 +1074,12 @@ export function BookCreationOsWizard({
       configStatus: "validated",
     }, mergedIdentity) as BookConfig);
     const { config: sanitized } = sanitizeBookConfiguration(raw);
-    if (!forgeHandoff) return sanitized;
+    const handoffMerged = bookForgeHandoff
+      ? mergeHandoffIntoBookConfig(sanitized, bookForgeHandoff)
+      : sanitized;
+    if (!forgeHandoff) return handoffMerged;
 
-    const enriched = enrichBookConfigFromForgeSeed(sanitized, forgeHandoff);
+    const enriched = enrichBookConfigFromForgeSeed(handoffMerged, forgeHandoff);
     const wizardExtras = [
       coreConflict.trim() && `Conflitto principale:\n${coreConflict.trim()}`,
       narrativePromise.trim() && `Promessa narrativa/editoriale:\n${narrativePromise.trim()}`,
@@ -967,6 +1099,7 @@ export function BookCreationOsWizard({
     bookLength, isFree, chapters, subchaptersEnabled, subchaptersPerChapter, matterOptions, characters,
     coreConflict, narrativePromise, setting, openingHook, mainTwists, commercialGoal, voiceConsistency,
     forgeHandoff,
+    bookForgeHandoff,
   ]);
 
   useEffect(() => {
@@ -993,6 +1126,7 @@ export function BookCreationOsWizard({
 
   useEffect(() => {
     if (!open) return;
+    if (bookForgeHandoff) return;
     try {
       const raw = sessionStorage.getItem(STUDIO_DRAFT_STORAGE_KEY);
       if (!raw) return;
@@ -1031,10 +1165,11 @@ export function BookCreationOsWizard({
       if (draft.commercialGoal) setCommercialGoal(draft.commercialGoal);
       if (draft.voiceConsistency) setVoiceConsistency(draft.voiceConsistency);
     } catch { /* noop */ }
-  }, [open]);
+  }, [open, bookForgeHandoff]);
 
   useEffect(() => {
     if (!open) return;
+    if (bookForgeHandoff) return;
 
     const applyForgePresetFromSession = () => {
       try {
@@ -1261,7 +1396,7 @@ export function BookCreationOsWizard({
     };
 
     applyForgePresetFromSession();
-  }, [open, isFree]);
+  }, [open, isFree, bookForgeHandoff]);
 
   useEffect(() => {
     if (open) persistDraft();
@@ -1552,6 +1687,10 @@ export function BookCreationOsWizard({
     }
     if (step === 2 && chapters < 1) {
       toast.error("Imposta il numero di capitoli per la struttura del libro.");
+      return;
+    }
+    if (step === 2 && !shouldUseCharacterForge) {
+      setStep(4);
       return;
     }
     if (step === 5 && validationIssues.length) {
@@ -2202,7 +2341,16 @@ export function BookCreationOsWizard({
             </div>
           )}
 
-          {step === 3 && (
+          {step === 3 && !shouldUseCharacterForge && (
+            <div className="space-y-3">
+              <h2 className="text-xl font-semibold text-white">Struttura editoriale</h2>
+              <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/10 p-4 text-sm leading-6 text-emerald-50">
+                Questo percorso non richiede personaggi da romanzo. Book Forge userà promessa, struttura, tono e lettore per costruire il blueprint.
+              </div>
+            </div>
+          )}
+
+          {step === 3 && shouldUseCharacterForge && (
             <div className="space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-xl font-semibold text-white">Personaggi</h2>
@@ -2423,6 +2571,10 @@ export function BookCreationOsWizard({
             onClick={() => {
               if (postDnaForge && step === 6) {
                 onClose();
+                return;
+              }
+              if (step === 4 && !shouldUseCharacterForge) {
+                setStep(2);
                 return;
               }
               setStep((s) => Math.max(postDnaForge ? 6 : 0, s - 1));

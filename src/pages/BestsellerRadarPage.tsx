@@ -10,6 +10,10 @@ import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
 import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { loadProjects } from "@/services/storageService";
 import { useDashboardReturn } from "@/hooks/useDashboardReturn";
+import {
+  buildBookForgeHandoff,
+  openBookForgeWithHandoff,
+} from "@/lib/book-forge/book-forge-handoff";
 
 const KDP_PREFILL_KEY = "scriptora-kdp-prefill";
 
@@ -285,6 +289,28 @@ export default function BestsellerRadarPage() {
               <p className="text-sm leading-6 text-muted-foreground">
                 Punteggio stimato editoriale — pattern di mercato e segnali pubblici. Non è rank Amazon reale.
               </p>
+              {searched && (
+                <Button
+                  className="mt-2 gap-2"
+                  onClick={() => openBookForgeWithHandoff(
+                    navigate,
+                    buildBookForgeHandoff("bestseller-radar", {
+                      genre,
+                      category: genre,
+                      subcategory: keyword.trim() || genre,
+                      niche: keyword.trim() || genre,
+                      marketplace: "amazon.it",
+                      language: "Italian",
+                      keywords: [keyword.trim() || genre, ...results.slice(0, 3).map((item) => item.category)].filter(Boolean),
+                      comparableBooks: results.slice(0, 5).map((item) => item.title),
+                      commercialAngle: liveSummary || previewIntel?.recommendation || previewIntel?.opportunity,
+                    }),
+                  )}
+                >
+                  <Rocket className="h-4 w-4" />
+                  Crea in Book Forge
+                </Button>
+              )}
             </div>
           </div>
         </section>

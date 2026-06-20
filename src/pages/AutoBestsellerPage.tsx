@@ -32,6 +32,10 @@ import {
   getArchitectPageCopy,
   normalizeArchitectLang,
 } from "@/lib/auto-bestseller-architect/localized-copy";
+import {
+  buildBookForgeHandoff,
+  openBookForgeWithHandoff,
+} from "@/lib/book-forge/book-forge-handoff";
 
 const ACTIVE_RUN_KEY = "scriptora-active-run";
 
@@ -203,9 +207,20 @@ export default function AutoBestsellerPage() {
     });
 
     persistAutoBestsellerHandoff(pack);
-    sessionStorage.setItem("scriptora-new-book", JSON.stringify(config));
     toast.success(pageCopy.openingWriterRoom);
-    navigate("/app");
+    openBookForgeWithHandoff(
+      navigate,
+      buildBookForgeHandoff("auto-bestseller", {
+        ...config,
+        title: config.title,
+        subtitle: config.subtitle,
+        niche: lastInput.subcategory || config.subcategory,
+        promise: selected.subtitle || config.subtitle,
+        commercialAngle: architectResult.marketPositioning?.commercialPositioning,
+        structureMode: config.subchaptersEnabled ? "capitoli con sottocapitoli" : "capitoli lineari",
+        transformation: lastInput.readerPromise,
+      }),
+    );
   }, [architectResult, lastInput, navigate, pageCopy, selectedTitleIndex]);
 
   const handleGenerateBatch = useCallback(async (baseInput: AutoBestsellerInput) => {

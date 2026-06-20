@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import type { AuthorIdentity, BookBlueprint, BookConfig, Language } from "@/types/book";
 import type { StudioLaunchPayload } from "@/lib/book-config-studio/types";
@@ -9,6 +9,10 @@ import { saveForgeDnaLock } from "@/lib/guided-interview/interview-state";
 import { buildForgeInterviewSeed } from "@/lib/guided-interview/forge-blueprint-handoff";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/services/storageService";
+import {
+  bookForgeStartStepToStudioStep,
+  type BookForgeHandoff,
+} from "@/lib/book-forge/book-forge-handoff";
 
 const GuidedInterviewPanel = lazyWithRetry(() =>
   import("@/components/guided-interview/GuidedInterviewPanel").then((m) => ({
@@ -26,6 +30,7 @@ export type MobileBookForgeProps = {
   authorIdentity: AuthorIdentity;
   onStudioComplete: (payload: StudioLaunchPayload) => void;
   onGenerateBlueprint: (config: BookConfig) => Promise<BookBlueprint>;
+  bookForgeHandoff?: BookForgeHandoff | null;
 };
 
 type Phase = "interview" | "blueprint";
@@ -56,9 +61,17 @@ export function MobileBookForge({
   authorIdentity,
   onStudioComplete,
   onGenerateBlueprint,
+  bookForgeHandoff,
 }: MobileBookForgeProps) {
-  const [phase, setPhase] = useState<Phase>("interview");
+  const shouldSkipInterview = Boolean(
+    bookForgeHandoff && bookForgeHandoff.recommendedStartStep !== "book-foundation",
+  );
+  const [phase, setPhase] = useState<Phase>(shouldSkipInterview ? "blueprint" : "interview");
   const [interviewState, setInterviewState] = useState<GuidedInterviewState | null>(null);
+
+  useEffect(() => {
+    setPhase(shouldSkipInterview ? "blueprint" : "interview");
+  }, [shouldSkipInterview, bookForgeHandoff?.id]);
 
   const handleDetectIntent = useCallback(async (idea: string, language: Language) => {
     try {
@@ -130,8 +143,9 @@ export function MobileBookForge({
         open
         embeddedInMobileForge
         mobileForgeHeader={<ForgeTopHeader onClose={onClose} />}
-        forgeEntry="post-dna"
-        initialStep={6}
+        forgeEntry={bookForgeHandoff ? "full" : "post-dna"}
+        initialStep={bookForgeHandoff ? bookForgeStartStepToStudioStep(bookForgeHandoff.recommendedStartStep) : 6}
+        bookForgeHandoff={bookForgeHandoff}
         interviewSeed={
           interviewState
             ? buildForgeInterviewSeed(interviewState)

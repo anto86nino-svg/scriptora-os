@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Copy, KeyRound, Loader2, Search, Sparkles } from "lucide-react";
+import { ArrowLeft, Copy, KeyRound, Loader2, Rocket, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +12,10 @@ import { fetchPlan, type PlanTier } from "@/lib/plan";
 import { keywordGold, type KeywordGoldResult } from "@/lib/kdp/money-engine";
 import { useFeatureGate } from "@/components/PaywallGuard";
 import { useDashboardReturn } from "@/hooks/useDashboardReturn";
+import {
+  buildBookForgeHandoff,
+  openBookForgeWithHandoff,
+} from "@/lib/book-forge/book-forge-handoff";
 
 function copyText(value: string, label = "Copiato") {
   navigator.clipboard?.writeText(value).then(
@@ -211,6 +215,29 @@ export default function KeywordGoldPage() {
                 <p><span className="text-muted-foreground">Promessa commerciale:</span><br />{result.positioning?.commercialPromise}</p>
                 <p><span className="text-muted-foreground">Angolo più forte:</span><br />{result.positioning?.strongestAngle}</p>
                 <p><span className="text-muted-foreground">Rischio saturazione:</span><br />{result.positioning?.saturationWarning}</p>
+                <Button
+                  className="gap-2"
+                  onClick={() => openBookForgeWithHandoff(
+                    navigate,
+                    buildBookForgeHandoff("keyword-gold", {
+                      title: result.title || title,
+                      subtitle: result.subtitle || subtitle,
+                      genre,
+                      category: genre,
+                      subcategory: result.kdpBrowseCategories?.[0]?.path || genre,
+                      niche: result.goldKeywords?.[0]?.keyword || genre,
+                      language,
+                      marketplace,
+                      targetReader: result.positioning?.mainAudience,
+                      promise: result.positioning?.commercialPromise,
+                      commercialAngle: result.positioning?.strongestAngle,
+                      keywords: result.backendKeywords,
+                    }),
+                  )}
+                >
+                  <Rocket className="h-4 w-4" />
+                  Continua in Book Forge
+                </Button>
               </CardContent>
             </Card>
 
