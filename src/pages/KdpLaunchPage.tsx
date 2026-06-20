@@ -37,12 +37,19 @@ import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import { chargePremiumOperation } from "@/lib/billing/charge";
 import { ScriptoraLogoMark } from "@/components/brand/ScriptoraLogoMark";
 import { useDashboardReturn } from "@/hooks/useDashboardReturn";
-import { getLastProjectId, loadProjects, setLastProjectId } from "@/services/storageService";
+import { getLastProjectId, loadProjects, setLastProjectId } from "@/lib/storage";
+import { saveProjectAsync } from "@/services/storageService";
+import { getProjectCoverDataUrl } from "@/lib/cover-session";
 import type { BookProject } from "@/types/book";
 import {
   buildBookForgeHandoff,
   openBookForgeWithHandoff,
 } from "@/lib/book-forge/book-forge-handoff";
+import {
+  applyProjectHandoffSeed,
+  buildProjectHandoffSeed,
+  saveProjectHandoffSeed,
+} from "@/lib/book-forge/project-handoff";
 
 type Step = "idea" | "market" | "title" | "packaging" | "predict" | "narrative-flow";
 
@@ -355,6 +362,7 @@ export default function KdpLaunchPage() {
     };
     return {
       sessionId: sessionIdRef.current,
+      projectId: previewProject?.id,
       currentStep: currentStepMap[step],
       config: { idea, genre, language, chosenTitle, chosenSubtitle },
       analysis: market,
@@ -367,7 +375,58 @@ export default function KdpLaunchPage() {
       updatedAt: new Date().toISOString(),
       dirty: sessionDirty,
     };
-  }, [chosenSubtitle, chosenTitle, genre, idea, language, market, narrativeError, narrativeFlow, narrativeStatus, packaging, prediction, sessionDirty, step, titles]);
+  }, [chosenSubtitle, chosenTitle, genre, idea, language, market, narrativeError, narrativeFlow, narrativeStatus, packaging, prediction, previewProject?.id, sessionDirty, step, titles]);
+
+  const syncKdpProjectSeed = useCallback((overrides?: {
+    title?: string;
+    subtitle?: string;
+    marketOverride?: MarketAnalysis | null;
+    packagingOverride?: KDPPackaging | null;
+  }) => {
+    const selectedTitle = overrides?.title || chosenTitle || previewProject?.config?.title || "";
+    const selectedSubtitle = overrides?.subtitle || chosenSubtitle || previewProject?.config?.subtitle || "";
+    const activeMarket = overrides?.marketOverride ?? market;
+    const activePackaging = overrides?.packagingOverride ?? packaging;
+    const seed = saveProjectHandoffSeed(buildProjectHandoffSeed("kdp-launch", {
+      projectId: previewProject?.id,
+      title: selectedTitle,
+      subtitle: selectedSubtitle,
+      idea: idea || previewProject?.config?.idea,
+      genre: genre || previewProject?.config?.genre,
+      category: previewProject?.config?.category || genre,
+      subcategory: activeMarket?.subNiche || previewProject?.config?.subcategory || genre,
+      niche: activeMarket?.subNiche || activePackaging?.categories?.[0] || previewProject?.config?.subcategory,
+      language: language || previewProject?.config?.language,
+      marketplace: previewProject?.config?.amazonMarketplace || "amazon.it",
+      targetReader: narrativeFlow?.targetReader || previewProject?.config?.targetReader,
+      promise: narrativeFlow?.centralPromise || selectedSubtitle || activeMarket?.recommendedAngle,
+      transformation: narrativeFlow?.centralPromise || activeMarket?.recommendedAngle,
+      commercialAngle: narrativeFlow?.positioningAngle || activeMarket?.recommendedAngle,
+      tone: narrativeFlow?.commercialTone,
+      backendKeywords: activePackaging?.backendKeywords,
+      keywords: activePackaging?.backendKeywords,
+      kdpCategories: activePackaging?.categories,
+      comparableBooks: activeMarket?.competitionLevel ? [`Competition: ${activeMarket.competitionLevel}`] : undefined,
+      coverSaved: Boolean(previewCoverDataUrl?.startsWith("data:image")),
+    }));
+
+    if (previewProject?.id) {
+      void saveProjectAsync(applyProjectHandoffSeed(previewProject, seed));
+    }
+
+    return seed;
+  }, [
+    chosenSubtitle,
+    chosenTitle,
+    genre,
+    idea,
+    language,
+    market,
+    narrativeFlow,
+    packaging,
+    previewCoverDataUrl,
+    previewProject,
+  ]);
 
   const applySessionSnapshot = useCallback((session: KdpLaunchSession) => {
     const stepMap: Record<KdpLaunchSession["currentStep"], Step> = {
@@ -414,7 +473,15 @@ export default function KdpLaunchPage() {
     if (isKdpSessionRecoverable(saved)) {
       setPendingRecovery(saved);
       setShowRecovery(true);
+      return;
     }
+    if (!previewProject) return;
+    if (!idea.trim() && previewProject.config.idea) setIdea(previewProject.config.idea);
+    if (!chosenTitle.trim() && previewProject.config.title) setChosenTitle(previewProject.config.title);
+    if (!chosenSubtitle.trim() && previewProject.config.subtitle) setChosenSubtitle(previewProject.config.subtitle);
+    if (previewProject.config.genre) setGenre(previewProject.config.subcategory || previewProject.config.genre);
+    if (previewProject.config.language) setLanguage(previewProject.config.language);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -521,19 +588,22 @@ export default function KdpLaunchPage() {
   }, [chosenSubtitle, chosenTitle, genre, idea, italianUi, language, market, narrativeFlow, persistSession]);
 
   const buildKdpBookForgeHandoff = useCallback((titleOverride?: string, subtitleOverride?: string) => {
-    const selectedTitle = titleOverride || chosenTitle;
-    const selectedSubtitle = subtitleOverride || chosenSubtitle;
+    const selectedTitle = titleOverride || chosenTitle || previewProject?.config?.title || "";
+    const selectedSubtitle = subtitleOverride || chosenSubtitle || previewProject?.config?.subtitle || "";
+    const selectedGenre = genre || previewProject?.config?.genre || "Self-help";
+    const selectedLanguage = language || previewProject?.config?.language || "Italian";
+    syncKdpProjectSeed({ title: selectedTitle, subtitle: selectedSubtitle });
     return buildBookForgeHandoff("kdp-launch", {
       title: selectedTitle,
       subtitle: selectedSubtitle,
-      idea,
-      genre,
-      category: genre,
-      subcategory: market?.subNiche || genre,
+      idea: idea || previewProject?.config?.idea,
+      genre: selectedGenre,
+      category: previewProject?.config?.category || selectedGenre,
+      subcategory: market?.subNiche || previewProject?.config?.subcategory || selectedGenre,
       niche: market?.subNiche || packaging?.categories?.[0],
-      language,
-      marketplace: "amazon.it",
-      targetReader: narrativeFlow?.targetReader,
+      language: selectedLanguage,
+      marketplace: previewProject?.config?.amazonMarketplace || "amazon.it",
+      targetReader: narrativeFlow?.targetReader || previewProject?.config?.targetReader,
       promise: narrativeFlow?.centralPromise || selectedSubtitle || market?.recommendedAngle,
       transformation: narrativeFlow?.centralPromise || market?.recommendedAngle,
       structureMode: narrativeFlow?.chapterProgression?.length ? "chapter progression from KDP Launch" : undefined,
@@ -544,7 +614,7 @@ export default function KdpLaunchPage() {
       keywords: packaging?.backendKeywords,
       comparableBooks: market?.competitionLevel ? [`Competition: ${market.competitionLevel}`] : undefined,
     });
-  }, [chosenSubtitle, chosenTitle, genre, idea, language, market, narrativeFlow, packaging]);
+  }, [chosenSubtitle, chosenTitle, genre, idea, language, market, narrativeFlow, packaging, previewProject, syncKdpProjectSeed]);
 
   const goToBlueprint = useCallback(() => {
     saveNarrativeToProject();
@@ -586,6 +656,7 @@ export default function KdpLaunchPage() {
       const m = await analyzeMarket(idea, { genre, language, plan });
       setMarket(m);
       setStep("market");
+      syncKdpProjectSeed({ marketOverride: m });
     } catch (e: any) {
       toast.error(e?.message || "Analisi fallita");
     } finally { setLoading(false); }
@@ -607,6 +678,7 @@ export default function KdpLaunchPage() {
       const top = t.topPicks?.[0];
       if (top) { setChosenTitle(top.title); setChosenSubtitle(top.subtitle); }
       setStep("title");
+      if (top) syncKdpProjectSeed({ title: top.title, subtitle: top.subtitle });
     } catch (e: any) {
       toast.error(e?.message || "Generazione titoli fallita");
     } finally { setLoading(false); }
@@ -623,6 +695,8 @@ export default function KdpLaunchPage() {
       );
       setPackaging(p);
       setStep("packaging");
+      syncKdpProjectSeed({ packagingOverride: p });
+      if (previewProject?.id) toast.success(italianUi ? "Packaging KDP collegato al progetto attivo" : "KDP package linked to active project");
     } catch (e: any) {
       toast.error(e?.message || "Packaging fallito");
     } finally { setLoading(false); }
@@ -1039,6 +1113,7 @@ export default function KdpLaunchPage() {
             onUseTitle={(t, s) => {
               setChosenTitle(t);
               setChosenSubtitle(s);
+              syncKdpProjectSeed({ title: t, subtitle: s });
               openBookForgeWithHandoff(
                 navigate,
                 buildBookForgeHandoff("title-domination", {

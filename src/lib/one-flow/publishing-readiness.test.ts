@@ -161,4 +161,21 @@ describe("publishing readiness audit", () => {
     expect(audit?.score).toBeGreaterThanOrEqual(82);
     expect(audit?.status).toBe("READY");
   });
+
+  it("legge keyword e categorie salvate nel progetto anche senza sessione KDP attiva", () => {
+    const audit = buildPublishingReadinessAudit(project({
+      config: {
+        ...project().config,
+        publishingMetadata: {
+          backendKeywords: ["focus profondo", "gestione attenzione", "chiarezza mentale", "routine focus", "produttivita calma"],
+          kdpCategories: ["Self-Help > Personal Growth", "Business > Time Management"],
+          sourceTools: ["keyword-gold"],
+        },
+      },
+    }));
+
+    expect(audit?.signals.hasKdpPackaging).toBe(true);
+    expect(audit?.steps.find((step) => step.id === "keyword")?.checks.find((check) => check.id === "keyword-count")?.status).toBe("PASS");
+    expect(audit?.steps.find((step) => step.id === "kdp")?.checks.find((check) => check.id === "kdp-packaging")?.status).toBe("PASS");
+  });
 });

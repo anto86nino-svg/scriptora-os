@@ -317,6 +317,8 @@ export interface BookConfig {
   referenceAuthors?: string;
   /** Structured style sliders from Configuration Studio */
   styleProfile?: import("@/lib/book-creation-os/objectives").WritingStyleProfile;
+  /** Shared publishing metadata written by KDP, Keyword Gold, Radar and Book Forge handoffs. */
+  publishingMetadata?: BookPublishingMetadata;
   /** Raw character bible text (Story Bible) */
   characterBibleText?: string;
   /** Front/back matter section toggles */
@@ -361,6 +363,20 @@ export interface BookConfig {
   forgeStoryArchitecture?: string;
   /** Post-Forge: anti-drift rules from DNA Lock */
   forgeAntiDriftRules?: string[];
+}
+
+export interface BookPublishingMetadata {
+  marketplace?: string;
+  keywords?: string[];
+  backendKeywords?: string[];
+  kdpCategories?: string[];
+  bisacCategories?: string[];
+  comparableBooks?: string[];
+  targetReader?: string;
+  commercialPromise?: string;
+  commercialAngle?: string;
+  sourceTools?: string[];
+  updatedAt?: string;
 }
 
 /**

@@ -8,12 +8,19 @@ import { getSelectedAuthorIdentity } from "@/lib/author-identity";
 import { BestsellerRadarCommercialPanel } from "@/components/bestseller-radar/BestsellerRadarCommercialPanel";
 import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
 import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
-import { loadProjects } from "@/services/storageService";
+import { getLastProjectId, loadProjects, saveProjectAsync } from "@/services/storageService";
 import { useDashboardReturn } from "@/hooks/useDashboardReturn";
 import {
   buildBookForgeHandoff,
   openBookForgeWithHandoff,
 } from "@/lib/book-forge/book-forge-handoff";
+import {
+  applyProjectHandoffSeed,
+  buildProjectHandoffSeed,
+  saveProjectHandoffSeed,
+} from "@/lib/book-forge/project-handoff";
+import { saveRadarSnapshot } from "@/lib/bestseller-radar/radar-storage";
+import type { BestsellerRadarScore } from "@/lib/bestseller-radar/types";
 
 const KDP_PREFILL_KEY = "scriptora-kdp-prefill";
 
@@ -113,6 +120,33 @@ const sampleByGenre: Record<string, RadarResult[]> = {
 
 const fallbackResults = sampleByGenre.romance;
 
+function clampScore(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function scoreFromRadarScan(marketScore: number | null, results: RadarResult[]): BestsellerRadarScore {
+  const avgPotential = results.length ? results.reduce((sum, item) => sum + item.potential, 0) / results.length : 0;
+  const base = clampScore((marketScore != null ? marketScore : avgPotential * 10));
+  const competitionRisk = clampScore(
+    results.some((item) => item.competition === "Alta") ? 72 : results.some((item) => item.competition === "Media") ? 54 : 34,
+  );
+  return {
+    overall: base,
+    hookStrength: clampScore(base + 2),
+    titlePower: clampScore(base + 4),
+    marketFit: base,
+    genreClarity: clampScore(base + 3),
+    readerPromise: clampScore(base - 2),
+    bingeability: clampScore(base - 4),
+    emotionalPull: clampScore(base - 1),
+    kdpPositioning: clampScore(base),
+    booktokPotential: clampScore(base - 6),
+    competitionRisk,
+    publishReadiness: clampScore(base - 8),
+  };
+}
+
 export default function BestsellerRadarPage() {
   const navigate = useNavigate();
   const { goBackToDashboard } = useDashboardReturn();
@@ -132,6 +166,15 @@ export default function BestsellerRadarPage() {
   useEffect(() => {
     void loadProjects((fresh) => setProjects(fresh));
   }, []);
+
+  const activeProject = useMemo(() => {
+    const lastId = getLastProjectId();
+    return (
+      (lastId ? projects.find((project) => project.id === lastId) : null) ||
+      projects.find((project) => project.config?.title?.trim()) ||
+      null
+    );
+  }, [projects]);
 
   const results = useMemo(() => {
     return searched ? (liveResults ?? []) : (sampleByGenre[genre] ?? fallbackResults);
@@ -250,6 +293,44 @@ export default function BestsellerRadarPage() {
                           authorIdentity: getSelectedAuthorIdentity(),
                         }),
                       );
+                      const nextResults = res.results?.length ? res.results : (sampleByGenre[genre] ?? fallbackResults);
+                      const score = scoreFromRadarScan(typeof res.marketScore === "number" ? res.marketScore : null, nextResults);
+                      const seed = saveProjectHandoffSeed(buildProjectHandoffSeed("bestseller-radar", {
+                        projectId: activeProject?.id,
+                        genre,
+                        category: activeProject?.config?.category || genre,
+                        subcategory: keyword.trim() || activeProject?.config?.subcategory || genre,
+                        niche: keyword.trim() || activeProject?.config?.subcategory || genre,
+                        marketplace: activeProject?.config?.amazonMarketplace || "amazon.it",
+                        language: activeProject?.config?.language || "Italian",
+                        keywords: [keyword.trim() || genre, ...nextResults.slice(0, 3).map((item) => item.category)].filter(Boolean),
+                        comparableBooks: nextResults.slice(0, 5).map((item) => item.title),
+                        commercialAngle: res.summary || undefined,
+                      }));
+                      if (activeProject?.id) {
+                        saveRadarSnapshot({
+                          id: `radar-page-${Date.now()}`,
+                          projectId: activeProject.id,
+                          createdAt: new Date().toISOString(),
+                          score,
+                          confidence: "medium",
+                          mode: "analysis-based",
+                          verdict: res.summary || "Market scan salvato da Bestseller Radar.",
+                          strengths: nextResults.slice(0, 3).map((item) => item.insight).filter(Boolean),
+                          risks: nextResults.some((item) => item.competition === "Alta") ? ["Competizione alta nella nicchia selezionata."] : [],
+                          growthLevers: ["Allinea titolo, keyword e cover al posizionamento radar."],
+                          actions: [{
+                            priority: "medium",
+                            title: "Usa insight mercato nel packaging",
+                            reason: "Radar ha prodotto keyword, comparables e angolo commerciale.",
+                            targetModule: "kdp-launch",
+                            ctaLabel: "KDP Launch",
+                          }],
+                          missingData: [],
+                          scanLog: ["Snapshot generato dalla pagina Bestseller Radar."],
+                        });
+                        void saveProjectAsync(applyProjectHandoffSeed(activeProject, seed));
+                      }
                     } catch (err) {
                       setError(err instanceof Error ? err.message : "Errore durante l'analisi");
                       setLiveResults(null);

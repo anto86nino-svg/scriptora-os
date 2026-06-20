@@ -168,6 +168,8 @@ function buildTitleStep(project: BookProject, kdpSession: ReturnType<typeof load
     project.config.category,
     project.config.subcategory,
     project.config.subgenre || "",
+    ...(project.config.publishingMetadata?.backendKeywords || []),
+    ...(project.config.publishingMetadata?.keywords || []),
     ...(kdpSession?.packaging?.backendKeywords || []),
   ]);
   const titleLower = `${title} ${subtitle}`.toLowerCase();
@@ -210,8 +212,15 @@ function buildTitleStep(project: BookProject, kdpSession: ReturnType<typeof load
 }
 
 function buildKeywordStep(project: BookProject, kdpSession: ReturnType<typeof loadCompatibleKdpSession>): PublishingStep {
-  const backendKeywords = unique(kdpSession?.packaging?.backendKeywords || [], 7);
+  const metadata = project.config.publishingMetadata;
+  const backendKeywords = unique([
+    ...(metadata?.backendKeywords || []),
+    ...(metadata?.keywords || []),
+    ...(kdpSession?.packaging?.backendKeywords || []),
+  ], 7);
   const categories = unique([
+    ...(metadata?.kdpCategories || []),
+    ...(metadata?.bisacCategories || []),
     ...(kdpSession?.packaging?.categories || []),
     project.config.category,
     project.config.subcategory,
@@ -359,6 +368,10 @@ function buildCoverStep(project: BookProject): PublishingStep {
 function buildKdpStep(project: BookProject, kdpSession: ReturnType<typeof loadCompatibleKdpSession>): PublishingStep {
   const author = getAuthorName(project);
   const packaging = kdpSession?.packaging;
+  const metadata = project.config.publishingMetadata;
+  const metadataKeywordCount = unique([...(metadata?.backendKeywords || []), ...(metadata?.keywords || [])], 7).length;
+  const metadataCategoryCount = unique([...(metadata?.kdpCategories || []), ...(metadata?.bisacCategories || [])]).length;
+  const hasMetadataPackaging = metadataKeywordCount > 0 || metadataCategoryCount > 0;
   return buildStep("kdp", "KDP", "pack-kdp", [
     check(
       "front-matter",
@@ -391,8 +404,12 @@ function buildKdpStep(project: BookProject, kdpSession: ReturnType<typeof loadCo
     check(
       "kdp-packaging",
       "Packaging KDP",
-      packaging ? "PASS" : "WARNING",
-      packaging ? `${packaging.backendKeywords?.length || 0} keyword, ${packaging.categories?.length || 0} categorie.` : "Packaging KDP non salvato nella sessione attiva.",
+      packaging || hasMetadataPackaging ? "PASS" : "WARNING",
+      packaging
+        ? `${packaging.backendKeywords?.length || 0} keyword, ${packaging.categories?.length || 0} categorie.`
+        : hasMetadataPackaging
+          ? `${metadataKeywordCount} keyword, ${metadataCategoryCount} categorie salvate nel progetto.`
+          : "Packaging KDP non salvato nella sessione attiva.",
       "Completa KDP Launch per descrizione, categorie e backend keyword.",
     ),
   ], "Checklist pubblicazione KDP: metadata, autore, copyright e pacchetto Amazon.");
@@ -516,7 +533,12 @@ export function buildPublishingReadinessAudit(project: BookProject | null | unde
       totalChapters: project.config.numberOfChapters || project.chapters?.length || 0,
       hasCover: Boolean(getProjectCoverDataUrl(project.id)?.startsWith("data:image")),
       hasCoverComposition: Boolean(getProjectCoverComposition(project.id)),
-      hasKdpPackaging: Boolean(kdpSession?.packaging),
+      hasKdpPackaging: Boolean(
+        kdpSession?.packaging ||
+        project.config.publishingMetadata?.backendKeywords?.length ||
+        project.config.publishingMetadata?.keywords?.length ||
+        project.config.publishingMetadata?.kdpCategories?.length
+      ),
       hasRadarSnapshot: Boolean(loadLatestRadarSnapshot(project.id)),
     },
   };

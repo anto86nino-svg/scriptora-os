@@ -41,6 +41,7 @@ import { toast } from "sonner";
 import { creditModeDisclosure, creditModeLabel } from "@/lib/credit-economy";
 import { isDevMode } from "@/lib/dev-mode";
 import { Badge } from "@/components/ui/badge";
+import { buildProjectHandoffSeed, saveProjectHandoffSeed } from "@/lib/book-forge/project-handoff";
 
 interface CoverGeneratorProps {
   title: string;
@@ -848,6 +849,18 @@ export function CoverGenerator({
     if (!projectId) return;
     const compositionJson = serializeCoverComposition(composition);
     const result = saveProjectCoverFull(projectId, dataUrl, compositionJson);
+    if (result.ok) {
+      saveProjectHandoffSeed(buildProjectHandoffSeed("cover-studio", {
+        projectId,
+        title: coverTitle,
+        subtitle: coverSubtitle,
+        authorName: coverAuthor,
+        genre,
+        language,
+        marketplace,
+        coverSaved: true,
+      }));
+    }
     setCoverSaved(result.ok && result.dataUrlSaved);
     if (result.error) toast.error(result.error);
     if (result.warning) toast.message(result.warning);

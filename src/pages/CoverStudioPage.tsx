@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useLocation } from "react-router-dom";
 import { ArrowLeft, ImagePlus } from "lucide-react";
 import { CoverGenerator } from "@/components/CoverGenerator";
 import { ScriptoraLogoMark } from "@/components/brand/ScriptoraLogoMark";
@@ -7,13 +8,15 @@ import { getLastProjectId, loadProjects, setLastProjectId } from "@/lib/storage"
 import type { BookProject } from "@/types/book";
 import { useDashboardReturn } from "@/hooks/useDashboardReturn";
 
-function loadBestProject(): BookProject | null {
+function loadBestProject(projectId?: string): BookProject | null {
   try {
     const loaded = loadProjects();
     const projects = Array.isArray(loaded) ? loaded : [];
     const lastId = getLastProjectId();
     return (
+      (projectId ? projects.find((project) => project.id === projectId) : null) ||
       (lastId ? projects.find((project) => project.id === lastId) : null) ||
+      projects.find((project) => project.config?.title?.trim()) ||
       projects.find((project) =>
         (project.chapters || []).some((chapter) => (chapter.content || "").trim().length > 50),
       ) ||
@@ -26,8 +29,10 @@ function loadBestProject(): BookProject | null {
 }
 
 export default function CoverStudioPage() {
+  const location = useLocation();
   const { goBackToDashboard, navigateWithReturn } = useDashboardReturn();
-  const project = useMemo(() => loadBestProject(), []);
+  const requestedProjectId = (location.state as { projectId?: string } | null)?.projectId;
+  const project = useMemo(() => loadBestProject(requestedProjectId), [requestedProjectId]);
   const activeAuthor = useMemo(() => {
     try {
       return getSelectedAuthorIdentity();
@@ -40,9 +45,7 @@ export default function CoverStudioPage() {
   const subtitle = project?.config?.subtitle || "";
   const authorName = project?.config?.authorName || activeAuthor?.penName || "";
   const language = project?.config?.language || project?.config?.titleLanguage || "Italian";
-  const chapters = Array.isArray(project?.chapters) ? project.chapters : [];
-
-  if (!project || chapters.length === 0) {
+  if (!project) {
     return (
       <main className="scriptora-brand-shell flex min-h-[100dvh] flex-col items-center justify-center bg-[#050505] px-6 text-white safe-area-pt pb-safe">
         <ScriptoraLogoMark size="md" />

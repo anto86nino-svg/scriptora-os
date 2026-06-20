@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Copy, KeyRound, Loader2, Rocket, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -16,6 +16,14 @@ import {
   buildBookForgeHandoff,
   openBookForgeWithHandoff,
 } from "@/lib/book-forge/book-forge-handoff";
+import {
+  applyProjectHandoffSeed,
+  buildProjectHandoffSeed,
+  saveProjectHandoffSeed,
+} from "@/lib/book-forge/project-handoff";
+import { getLastProjectId, loadProjects } from "@/lib/storage";
+import { saveProjectAsync } from "@/services/storageService";
+import type { BookProject } from "@/types/book";
 
 function copyText(value: string, label = "Copiato") {
   navigator.clipboard?.writeText(value).then(
@@ -24,16 +32,32 @@ function copyText(value: string, label = "Copiato") {
   );
 }
 
+function loadKeywordProject(): BookProject | null {
+  try {
+    const projects = loadProjects();
+    const lastId = getLastProjectId();
+    return (
+      (lastId ? projects.find((project) => project.id === lastId) : null) ||
+      projects.find((project) => project.config?.title?.trim()) ||
+      projects[0] ||
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
 export default function KeywordGoldPage() {
   const navigate = useNavigate();
   const { goBackToDashboard } = useDashboardReturn();
   const gate = useFeatureGate("kdp_market_base");
+  const activeProject = useMemo(() => loadKeywordProject(), []);
   const [loading, setLoading] = useState(false);
-  const [title, setTitle] = useState("");
-  const [subtitle, setSubtitle] = useState("");
-  const [genre, setGenre] = useState("Self-help");
-  const [language, setLanguage] = useState("Italian");
-  const [marketplace, setMarketplace] = useState("amazon.it");
+  const [title, setTitle] = useState(activeProject?.config?.title || "");
+  const [subtitle, setSubtitle] = useState(activeProject?.config?.subtitle || "");
+  const [genre, setGenre] = useState(activeProject?.config?.subcategory || activeProject?.config?.genre || "Self-help");
+  const [language, setLanguage] = useState(activeProject?.config?.language || "Italian");
+  const [marketplace, setMarketplace] = useState(activeProject?.config?.amazonMarketplace || "amazon.it");
   const [result, setResult] = useState<KeywordGoldResult | null>(null);
 
   async function getPlan(): Promise<PlanTier> {
@@ -58,6 +82,27 @@ export default function KeywordGoldPage() {
         plan,
       );
       setResult(out);
+      const seed = saveProjectHandoffSeed(buildProjectHandoffSeed("keyword-gold", {
+        projectId: activeProject?.id,
+        title: out.title || title.trim(),
+        subtitle: out.subtitle || subtitle.trim(),
+        genre: genre.trim(),
+        category: activeProject?.config?.category || genre.trim(),
+        subcategory: out.kdpBrowseCategories?.[0]?.path || activeProject?.config?.subcategory || genre.trim(),
+        niche: out.goldKeywords?.[0]?.keyword || activeProject?.config?.subcategory || genre.trim(),
+        language: language.trim(),
+        marketplace: marketplace.trim(),
+        targetReader: out.positioning?.mainAudience,
+        promise: out.positioning?.commercialPromise,
+        commercialAngle: out.positioning?.strongestAngle,
+        keywords: out.backendKeywords,
+        backendKeywords: out.backendKeywords,
+        kdpCategories: out.kdpBrowseCategories?.map((item) => item.path),
+        bisacCategories: out.bisacCategories?.map((item) => item.path),
+      }));
+      if (activeProject?.id) {
+        void saveProjectAsync(applyProjectHandoffSeed(activeProject, seed));
+      }
       toast.success(out.fallbackReason ? "Analisi base generata" : "Keyword Gold generato");
     } catch (e: any) {
       toast.error(e?.message || "Keyword Gold fallito");
@@ -67,6 +112,29 @@ export default function KeywordGoldPage() {
   });
 
   const backendLine = result?.backendKeywords?.join("; ") || "";
+  const applyKeywordResultToProject = () => {
+    if (!result || !activeProject) return;
+    const seed = saveProjectHandoffSeed(buildProjectHandoffSeed("keyword-gold", {
+      projectId: activeProject.id,
+      title: result.title || title,
+      subtitle: result.subtitle || subtitle,
+      genre,
+      category: activeProject.config.category || genre,
+      subcategory: result.kdpBrowseCategories?.[0]?.path || activeProject.config.subcategory || genre,
+      niche: result.goldKeywords?.[0]?.keyword || activeProject.config.subcategory || genre,
+      language,
+      marketplace,
+      targetReader: result.positioning?.mainAudience,
+      promise: result.positioning?.commercialPromise,
+      commercialAngle: result.positioning?.strongestAngle,
+      keywords: result.backendKeywords,
+      backendKeywords: result.backendKeywords,
+      kdpCategories: result.kdpBrowseCategories?.map((item) => item.path),
+      bisacCategories: result.bisacCategories?.map((item) => item.path),
+    }));
+    void saveProjectAsync(applyProjectHandoffSeed(activeProject, seed));
+    toast.success("Keyword e categorie collegate al progetto attivo");
+  };
 
   return (
     <div className="scriptora-feature-page bg-background">
@@ -215,6 +283,16 @@ export default function KeywordGoldPage() {
                 <p><span className="text-muted-foreground">Promessa commerciale:</span><br />{result.positioning?.commercialPromise}</p>
                 <p><span className="text-muted-foreground">Angolo più forte:</span><br />{result.positioning?.strongestAngle}</p>
                 <p><span className="text-muted-foreground">Rischio saturazione:</span><br />{result.positioning?.saturationWarning}</p>
+                {activeProject && (
+                  <Button
+                    variant="outline"
+                    className="mr-2 gap-2"
+                    onClick={applyKeywordResultToProject}
+                  >
+                    <KeyRound className="h-4 w-4" />
+                    Usa queste keyword nel progetto
+                  </Button>
+                )}
                 <Button
                   className="gap-2"
                   onClick={() => openBookForgeWithHandoff(

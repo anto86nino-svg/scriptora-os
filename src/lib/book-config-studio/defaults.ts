@@ -106,6 +106,7 @@ export function normalizeBookConfig(input: Partial<BookConfig> | BookConfig): Bo
     targetReader: String(input.targetReader || "").trim(),
     referenceAuthors: String(input.referenceAuthors || "").trim(),
     styleProfile: normalizeStyleProfile(input.styleProfile),
+    publishingMetadata: input.publishingMetadata,
     characterBibleText: String(input.characterBibleText || "").trim(),
     matterOptions,
     configStatus: input.configStatus || "draft",

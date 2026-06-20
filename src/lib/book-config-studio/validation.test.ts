@@ -33,4 +33,18 @@ describe("book config studio validation", () => {
     const issues = validateBookConfigStudio(normalizeBookConfig({ title: "" }));
     expect(issues.some((i) => i.id === "title")).toBe(true);
   });
+
+  it("preserves publishing metadata during normalization", () => {
+    const config = normalizeBookConfig({
+      title: "Il libro",
+      publishingMetadata: {
+        backendKeywords: ["focus profondo"],
+        kdpCategories: ["Self-Help > Personal Growth"],
+        sourceTools: ["keyword-gold"],
+      },
+    });
+
+    expect(config.publishingMetadata?.backendKeywords).toContain("focus profondo");
+    expect(config.publishingMetadata?.sourceTools).toContain("keyword-gold");
+  });
 });

@@ -83,6 +83,10 @@ import {
   mergeHandoffIntoBookConfig,
   type BookForgeHandoff,
 } from "@/lib/book-forge/book-forge-handoff";
+import {
+  buildProjectHandoffSeed,
+  saveProjectHandoffSeed,
+} from "@/lib/book-forge/project-handoff";
 
 interface BookCreationOsWizardProps {
   open: boolean;
@@ -748,6 +752,27 @@ export function BookCreationOsWizard({
   useEffect(() => {
     if (!open || !bookForgeHandoff) return;
     const p = bookForgeHandoff.prefill;
+    saveProjectHandoffSeed(buildProjectHandoffSeed(bookForgeHandoff.source, {
+      title: p.title,
+      subtitle: p.subtitle || p.promise,
+      authorName: p.authorName || p.author || p.writerName,
+      language: p.language,
+      marketplace: p.marketplace || p.amazonMarketplace,
+      bookType: p.bookType || p.bookTypeId,
+      genre: p.genre,
+      category: p.category,
+      subcategory: p.subcategory,
+      niche: p.niche || p.subgenre,
+      targetReader: p.targetReader,
+      promise: p.promise || p.transformation,
+      tone: p.tone || p.style,
+      chapterCount: p.chapterCount || p.numberOfChapters,
+      bookLength: p.bookLength,
+      keywords: p.keywords,
+      backendKeywords: p.keywords,
+      comparableBooks: p.comparableBooks,
+      commercialAngle: p.commercialAngle,
+    }));
 
     setUseGuidedInterview(false);
     setDnaConfirmed(true);
