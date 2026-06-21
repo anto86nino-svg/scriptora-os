@@ -10,7 +10,13 @@ import {
   STUDY_IMAGE_OCR_FALLBACK_COPY,
   STUDY_IMAGE_OCR_HINT,
   type StudyFileReadResult,
+  type LiteraryGenreIntent,
+  type StudyDifficultyLevel,
+  type StudyGoalIntent,
+  type StudyIntentSettings,
+  type StudyMaterialIntentType,
   type StudySessionResult,
+  type StudySubjectIntent,
 } from "@/lib/study-session";
 import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
 import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
@@ -74,6 +80,74 @@ const STUDY_OUTCOMES = [
   { icon: "🏅", title: "Attestati", desc: "Storico e download" },
   { icon: "🎯", title: "Piano studio automatico", desc: "Percorso guidato" },
 ] as const;
+
+const MATERIAL_TYPE_OPTIONS: Array<{ value: StudyMaterialIntentType; label: string }> = [
+  { value: "auto", label: "Altro / rileva automaticamente" },
+  { value: "school_notes", label: "Appunti scolastici" },
+  { value: "book_manual", label: "Libro / manuale" },
+  { value: "university_handout", label: "Dispensa universitaria" },
+  { value: "pdf_document", label: "PDF / documento" },
+  { value: "narrative_manuscript", label: "Manoscritto / capitolo narrativo" },
+  { value: "essay_theme", label: "Saggio / tema" },
+  { value: "legal_document", label: "Contratto / documento legale" },
+  { value: "image_page", label: "Immagine o foto di una pagina" },
+  { value: "other", label: "Altro / rileva automaticamente" },
+];
+
+const SUBJECT_OPTIONS: Array<{ value: StudySubjectIntent; label: string }> = [
+  { value: "auto", label: "Altro / rileva automaticamente" },
+  { value: "italian_literature", label: "Italiano / Letteratura" },
+  { value: "history", label: "Storia" },
+  { value: "geography", label: "Geografia" },
+  { value: "philosophy", label: "Filosofia" },
+  { value: "law", label: "Diritto" },
+  { value: "economics", label: "Economia" },
+  { value: "math", label: "Matematica" },
+  { value: "physics", label: "Fisica" },
+  { value: "chemistry", label: "Chimica" },
+  { value: "biology", label: "Biologia" },
+  { value: "medicine", label: "Medicina" },
+  { value: "psychology", label: "Psicologia" },
+  { value: "computer-science", label: "Informatica" },
+  { value: "languages", label: "Inglese / Lingue" },
+  { value: "art", label: "Arte" },
+  { value: "music", label: "Musica" },
+  { value: "other", label: "Altro / rileva automaticamente" },
+];
+
+const LITERARY_GENRE_OPTIONS: Array<{ value: LiteraryGenreIntent; label: string }> = [
+  { value: "auto", label: "Altro / rileva automaticamente" },
+  { value: "literary_fiction", label: "Narrativa / Letteratura" },
+  { value: "romance", label: "Romance" },
+  { value: "dark_romance", label: "Dark romance" },
+  { value: "thriller_mystery", label: "Thriller / Mystery" },
+  { value: "fantasy", label: "Fantasy" },
+  { value: "horror_gothic", label: "Horror / Gotico" },
+  { value: "memoir", label: "Memoir" },
+  { value: "narrative_self_help", label: "Self-help narrativo" },
+  { value: "poetry", label: "Poesia" },
+  { value: "narrative_essay", label: "Saggio narrativo" },
+  { value: "other", label: "Altro / rileva automaticamente" },
+];
+
+const STUDY_GOAL_OPTIONS: Array<{ value: StudyGoalIntent; label: string }> = [
+  { value: "quick_understanding", label: "Capire velocemente" },
+  { value: "oral_test", label: "Studiare per interrogazione" },
+  { value: "exam_prep", label: "Preparare esame" },
+  { value: "complete_summary", label: "Creare riassunto completo" },
+  { value: "quiz", label: "Fare quiz" },
+  { value: "flashcards", label: "Fare flashcard" },
+  { value: "manuscript_analysis", label: "Analizzare manoscritto" },
+  { value: "oral_presentation", label: "Preparare esposizione orale" },
+];
+
+const DIFFICULTY_LEVEL_OPTIONS: Array<{ value: StudyDifficultyLevel; label: string }> = [
+  { value: 1, label: "1. Base — ripasso facile" },
+  { value: 2, label: "2. Intermedio — comprensione sicura" },
+  { value: 3, label: "3. Buono — verifica scolastica seria" },
+  { value: 4, label: "4. Avanzato — interrogazione/esame" },
+  { value: 5, label: "5. Commissione d'esame" },
+];
 
 const STUDY_FILE_FALLBACK_COPY =
   "Non riesco a leggere automaticamente questo file da qui. Puoi incollare il testo oppure continuare da browser.";
@@ -160,6 +234,12 @@ function normalizeStudyResultForUI(value: any): StudySessionResult {
     trueFalse: Array.isArray(result.trueFalse) ? result.trueFalse : [],
     exercises: Array.isArray(result.exercises) ? result.exercises : [],
     conceptMap: result.conceptMap,
+    studyMaterialType: result.studyMaterialType,
+    studySubject: result.studySubject,
+    literaryGenre: result.literaryGenre,
+    studyGoal: result.studyGoal,
+    difficultyLevel: result.difficultyLevel,
+    qualityScores: result.qualityScores,
   };
 }
 
@@ -246,6 +326,18 @@ export default function StudySessionPage() {
   const [studyLanguage, setStudyLanguage] = useState<
     "Italian" | "English" | "Spanish" | "French" | "German"
   >("Italian");
+  const [studyMaterialType, setStudyMaterialType] = useState<StudyMaterialIntentType>("auto");
+  const [studySubject, setStudySubject] = useState<StudySubjectIntent>("auto");
+  const [literaryGenre, setLiteraryGenre] = useState<LiteraryGenreIntent>("auto");
+  const [studyGoal, setStudyGoal] = useState<StudyGoalIntent>("complete_summary");
+  const [difficultyLevel, setDifficultyLevel] = useState<StudyDifficultyLevel>(3);
+  const studyIntent = useMemo<StudyIntentSettings>(() => ({
+    studyMaterialType,
+    studySubject,
+    literaryGenre,
+    studyGoal,
+    difficultyLevel,
+  }), [difficultyLevel, literaryGenre, studyGoal, studyMaterialType, studySubject]);
 
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>(uxSaved.quizAnswers || {});
   const [currentQuizIndex, setCurrentQuizIndex] = useState(uxSaved.currentQuizIndex || 0);
@@ -263,9 +355,18 @@ export default function StudySessionPage() {
 
   const wordCount = useMemo(() => rawText.trim().split(/\s+/).filter(Boolean).length, [rawText]);
   const currentStudyClassification = useMemo(
-    () => wordCount >= 40 ? classifyStudyMaterial(rawText, sourceName) : null,
-    [rawText, sourceName, wordCount],
+    () => wordCount >= 40 ? classifyStudyMaterial(rawText, sourceName, studyIntent) : null,
+    [rawText, sourceName, studyIntent, wordCount],
   );
+  const restoreStudyIntent = useCallback((source: any) => {
+    const payload = source?.results?.analysis?.result || source?.result || source || {};
+    if (payload.studyMaterialType) setStudyMaterialType(payload.studyMaterialType);
+    if (payload.studySubject) setStudySubject(payload.studySubject);
+    if (payload.literaryGenre) setLiteraryGenre(payload.literaryGenre);
+    if (payload.studyGoal || payload.objective) setStudyGoal(payload.studyGoal || payload.objective);
+    const storedLevel = Number(payload.difficultyLevel || payload.level);
+    if ([1, 2, 3, 4, 5].includes(storedLevel)) setDifficultyLevel(storedLevel as StudyDifficultyLevel);
+  }, []);
   const materialReadinessCopy = useMemo(() => {
     if (wordCount < 40) return `${t("study_min_words_hint")} (${wordCount}/40)`;
     if (currentStudyClassification?.contentType === "narrative_fiction") {
@@ -349,7 +450,25 @@ export default function StudySessionPage() {
     projectOverride: string | undefined = projectId,
   ) => {
     const prepared = updateStudySessionSource(baseSession, { sourceText: text, sourceName: name, sourceType }).session;
-    const stored = attachStudyResult(prepared, normalized);
+    const withIntent = {
+      ...prepared,
+      level: String(difficultyLevel),
+      objective: studyGoal,
+      studyMaterialType,
+      studySubject,
+      literaryGenre,
+      studyGoal,
+      difficultyLevel,
+    };
+    const enriched = {
+      ...normalized,
+      studyMaterialType,
+      studySubject,
+      literaryGenre,
+      studyGoal,
+      difficultyLevel,
+    };
+    const stored = attachStudyResult(withIntent, enriched);
     setStudySession(stored);
     setCurrentStudySessionId(stored.id);
     setRawText(stored.sourceText);
@@ -357,10 +476,10 @@ export default function StudySessionPage() {
     setResult(getFreshStudyResult(stored));
     setStaleNotice("");
     resetSessionState();
-    const id = persistStudySession(normalized, text, name, projectOverride);
+    const id = persistStudySession(enriched, text, name, projectOverride);
     setProjectId(id);
     return stored;
-  }, [projectId, resetSessionState, studySession]);
+  }, [difficultyLevel, literaryGenre, projectId, resetSessionState, studyGoal, studyMaterialType, studySession, studySubject]);
 
   const startNewStudySession = useCallback(() => {
     clearScannerPages();
@@ -374,6 +493,11 @@ export default function StudySessionPage() {
     setAiMode("idle");
     setStudyGenerationStatus("");
     setImportWarnings([]);
+    setStudyMaterialType("auto");
+    setStudySubject("auto");
+    setLiteraryGenre("auto");
+    setStudyGoal("complete_summary");
+    setDifficultyLevel(3);
     setCurrentStudySessionId(null);
     resetSessionState();
     toast.success("Nuova sessione pulita");
@@ -394,6 +518,7 @@ export default function StudySessionPage() {
       setRawText(session.sourceText);
       setSourceName(session.sourceName || "sessione-studio.txt");
       setResult(getFreshStudyResult(session));
+      restoreStudyIntent(session);
       setStaleNotice(getFreshStudyResult(session) ? "" : "Risultati da rigenerare per il materiale di questa sessione.");
       resetSessionState();
       navigate(location.pathname, { replace: true, state: null });
@@ -412,6 +537,7 @@ export default function StudySessionPage() {
       setRawText(session.sourceText);
       setSourceName(session.sourceName || "sessione-studio.txt");
       setResult(fresh);
+      restoreStudyIntent(session);
       setStaleNotice(fresh ? "" : "Risultati da rigenerare per il materiale di questa sessione.");
       resetSessionState();
       return;
@@ -436,12 +562,13 @@ export default function StudySessionPage() {
     setRawText(text);
     setSourceName(project.sourceName);
     setResult(getFreshStudyResult(opened));
+    restoreStudyIntent(normalized);
     setStaleNotice("");
     setActiveSection("quiz");
     resetSessionState();
     navigate(location.pathname, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state]);
+  }, [location.state, restoreStudyIntent]);
 
   const handleExamComplete = useCallback(
     (report: { score: number; mode: "practice" | "exam"; total: number; correct: number; grade10?: number; grade30?: number; judgement?: string }) => {
@@ -566,6 +693,7 @@ export default function StudySessionPage() {
         text,
         sourceName: name,
         language: studyLanguage,
+        intent: studyIntent,
       });
       const safeLocalFallback = new Promise<StudySessionResult>((resolve) => {
         fallbackTimer = window.setTimeout(() => {
@@ -573,7 +701,7 @@ export default function StudySessionPage() {
           setStudyGenerationStatus(studyFallbackReasonRef.current);
           setAiMode("local");
           trackScriptoraEvent({ eventName: "study_fallback_local_used", tool: "study", success: true, errorCategory: "timeout" });
-          resolve(normalizeStudyResultForUI(analyzeStudyMaterial(text, name)));
+          resolve(normalizeStudyResultForUI(analyzeStudyMaterial(text, name, studyIntent)));
         }, 120_000);
       });
 
@@ -584,7 +712,7 @@ export default function StudySessionPage() {
         clearStudyNoticeTimers();
       }
     },
-    [clearStudyNoticeTimers, studyLanguage],
+    [clearStudyNoticeTimers, studyIntent, studyLanguage],
   );
 
   const analyze = async () => {
@@ -617,7 +745,7 @@ export default function StudySessionPage() {
     } catch (error) {
       devOnlyDiagnostic("study-ai-fallback", error);
       try {
-        const local = analyzeStudyMaterial(rawText, sourceName);
+        const local = analyzeStudyMaterial(rawText, sourceName, studyIntent);
         const normalized = normalizeStudyResultForUI(local);
         commitStudyResult(normalized, rawText, sourceName, studySession, hasScannerPages ? "image" : detectStudySourceType(sourceName));
         setActiveSection("quiz");
@@ -737,6 +865,7 @@ export default function StudySessionPage() {
       return;
     }
 
+    setStudyMaterialType("image_page");
     if (!append) clearScannerPages();
 
     const basePages = append ? scannerPages : [];
@@ -919,7 +1048,7 @@ export default function StudySessionPage() {
       } catch (error) {
         devOnlyDiagnostic("study-file-ai-fallback", error);
         try {
-          const local = analyzeStudyMaterial(text, readResult.fileName);
+          const local = analyzeStudyMaterial(text, readResult.fileName, studyIntent);
           const normalized = normalizeStudyResultForUI(local);
           commitStudyResult(normalized, text, readResult.fileName, fileSession, sourceType, undefined);
           setActiveSection("quiz");
@@ -1079,12 +1208,93 @@ export default function StudySessionPage() {
           <section className="min-w-0 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] p-3 backdrop-blur-2xl sm:p-4">
             <div className="mb-3 flex min-w-0 items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <h2 className="font-semibold text-foreground">1. Carica o incolla</h2>
-                <p className="text-xs text-muted-foreground">PDF · Libro · Dispensa · Appunti · Capitoli · Testi copiati</p>
+                <h2 className="font-semibold text-foreground">1. Imposta lo studio</h2>
+                <p className="text-xs text-muted-foreground">Tipo materiale · materia/genere · obiettivo · livello verifica</p>
               </div>
               <span className="shrink-0 max-w-[42%] truncate rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[11px] text-muted-foreground sm:max-w-none sm:px-3 sm:text-xs">
                 {wordCount.toLocaleString()} parole
               </span>
+            </div>
+
+            <div className="mb-3 rounded-2xl border border-white/10 bg-background/45 p-3">
+              <p className="text-sm font-semibold text-foreground">Che tipo di materiale stai studiando?</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Tipo materiale
+                  <select
+                    value={studyMaterialType}
+                    onChange={(event) => setStudyMaterialType(event.target.value as StudyMaterialIntentType)}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-background/70 px-3 py-2 text-sm text-foreground"
+                  >
+                    {MATERIAL_TYPE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+                {studyMaterialType === "narrative_manuscript" ? (
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Genere o uso editoriale
+                    <select
+                      value={literaryGenre}
+                      onChange={(event) => setLiteraryGenre(event.target.value as LiteraryGenreIntent)}
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-background/70 px-3 py-2 text-sm text-foreground"
+                    >
+                      {LITERARY_GENRE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Materia
+                    <select
+                      value={studySubject}
+                      onChange={(event) => setStudySubject(event.target.value as StudySubjectIntent)}
+                      className="mt-1 w-full rounded-xl border border-white/10 bg-background/70 px-3 py-2 text-sm text-foreground"
+                    >
+                      {SUBJECT_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Obiettivo
+                  <select
+                    value={studyGoal}
+                    onChange={(event) => setStudyGoal(event.target.value as StudyGoalIntent)}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-background/70 px-3 py-2 text-sm text-foreground"
+                  >
+                    {STUDY_GOAL_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Quanto deve essere difficile la verifica?
+                  <select
+                    value={difficultyLevel}
+                    onChange={(event) => setDifficultyLevel(Number(event.target.value) as StudyDifficultyLevel)}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-background/70 px-3 py-2 text-sm text-foreground"
+                  >
+                    {DIFFICULTY_LEVEL_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              {currentStudyClassification && (
+                <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-xs leading-5 text-emerald-50/85">
+                  Rilevamento attuale: {currentStudyClassification.subjectLabel} · {currentStudyClassification.mode} · confidenza {currentStudyClassification.confidence}%
+                </div>
+              )}
+            </div>
+
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div>
+                <h2 className="font-semibold text-foreground">2. Carica o incolla</h2>
+                <p className="text-xs text-muted-foreground">PDF · Libro · Dispensa · Appunti · Capitoli · Testi copiati</p>
+              </div>
             </div>
 
             {hasScannerPages && (

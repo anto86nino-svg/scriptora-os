@@ -1,11 +1,19 @@
 import { supabase } from "@/integrations/supabase/client";
-import { analyzeStudyMaterial, sanitizeStudyOpenQuestions, type StudySessionResult } from "@/lib/study-session";
+import {
+  analyzeStudyMaterial,
+  sanitizeStudyOpenQuestions,
+  sanitizeStudySessionResult,
+  scoreStudySessionQuality,
+  type StudyIntentSettings,
+  type StudySessionResult,
+} from "@/lib/study-session";
 
 interface GenerateStudySessionAIInput {
   text: string;
   sourceName: string;
   language?: "Italian" | "English" | "Spanish" | "French" | "German";
   level?: "soft" | "medium" | "pro";
+  intent?: StudyIntentSettings;
 }
 
 export const STUDY_AI_TIMEOUT_MS = 240_000;
@@ -62,11 +70,23 @@ function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudyS
     simple: normalizeString(item?.simple, "Spiegazione semplice non disponibile."),
     technical: normalizeString(item?.technical, "Spiegazione tecnica non disponibile."),
     example: normalizeString(item?.example, "Prova a usare questo termine in una frase tua."),
+    precise: normalizeString(item?.precise, item?.technical || ""),
+    newExample: normalizeString(item?.newExample, ""),
+    synonyms: normalizeArray<string>(item?.synonyms).slice(0, 4),
+    antonyms: normalizeArray<string>(item?.antonyms).slice(0, 4),
+    commonMistake: normalizeString(item?.commonMistake, ""),
+    examQuestion: normalizeString(item?.examQuestion, ""),
+    importance: item?.importance === "alto" || item?.importance === "medio" || item?.importance === "basso" ? item.importance : undefined,
   }));
 
   const flashcards = normalizeArray<any>(parsed?.flashcards).slice(0, 16).map((item) => ({
     front: normalizeString(item?.front, "Domanda"),
     back: normalizeString(item?.back, "Risposta"),
+    type: item?.type,
+    level: item?.level,
+    category: normalizeString(item?.category, ""),
+    example: normalizeString(item?.example, ""),
+    commonMistake: normalizeString(item?.commonMistake, ""),
   }));
 
   const openQuestions = normalizeArray<any>(parsed?.openQuestions).slice(0, 10).map((item) => ({
@@ -88,6 +108,9 @@ function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudyS
       difficulty: diff,
       memoryTrick: normalizeString(item?.memoryTrick, ""),
       commonMistake: normalizeString(item?.commonMistake, ""),
+      type: item?.type,
+      sourceReference: normalizeString(item?.sourceReference, ""),
+      testedSkill: normalizeString(item?.testedSkill, ""),
     };
   });
 
@@ -158,6 +181,11 @@ function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudyS
     exercises: exercises.length ? exercises : fallback.exercises,
     conceptMap: parsed?.conceptMap && typeof parsed.conceptMap === "object" ? parsed.conceptMap : fallback.conceptMap,
     keyConcepts: keyConcepts.length ? keyConcepts : fallback.keyConcepts,
+    studyMaterialType: parsed?.studyMaterialType || fallback.studyMaterialType,
+    studySubject: parsed?.studySubject || fallback.studySubject,
+    literaryGenre: parsed?.literaryGenre || fallback.literaryGenre,
+    studyGoal: parsed?.studyGoal || fallback.studyGoal,
+    difficultyLevel: parsed?.difficultyLevel || fallback.difficultyLevel,
   };
 }
 
@@ -266,10 +294,21 @@ async function callScriptoraStudyAI(systemPrompt: string, userPrompt: string): P
 }
 
 export async function generateStudySessionWithAI(input: GenerateStudySessionAIInput): Promise<StudySessionResult> {
-  const fallback = analyzeStudyMaterial(input.text, input.sourceName);
+  const fallback = analyzeStudyMaterial(input.text, input.sourceName, input.intent);
   const language = input.language || "Italian";
   const level = input.level || fallback.difficulty || "medium";
+  const difficultyLevel = input.intent?.difficultyLevel || fallback.difficultyLevel || 3;
   const material = trimStudyInput(input.text);
+  const intentBlock = `STUDY INTENT:
+- Manual material type: ${input.intent?.studyMaterialType || "auto"}
+- Manual subject: ${input.intent?.studySubject || "auto"}
+- Literary/editorial genre: ${input.intent?.literaryGenre || "auto"}
+- Study goal: ${input.intent?.studyGoal || "complete_summary"}
+- Difficulty level 1-5: ${difficultyLevel}
+- Manual choices have priority unless the material is clearly contradictory.
+- If material type is narrative_manuscript, classify as narrative_fiction/Narrativa-Letteratura even if contract/property/clause keywords appear.
+- If subject is law and the material is a true contract/statute/legal explanation, use legal_document/Diritto.
+- Difficulty level must change the quiz, flashcards, oral exam and explanations.`;
 
   const systemPrompt = `You are Scriptora Study OS, an elite academic tutor.
 
@@ -283,9 +322,12 @@ Return ONLY valid JSON. No markdown. No commentary outside JSON.
 
 QUALITY RULES:
 - First detect contentType before subject: narrative_fiction, study_notes, textbook, essay, legal_document, mixed_or_unknown.
+- Also support scientific_material, math_material, historical_material, literary_analysis and poetry when the material or manual intent requires it.
 - If the material is structurally narrative fiction (chapter, named characters, dialogue, scenes, setting, emotional tension, plot progression), classify it as narrative_fiction and "Narrativa / Letteratura" even if it contains legal words like contract, clause, property or signature.
 - Classify as law/legal_document only for true legal explanations, law notes, contracts/templates, statutes, proceedings or essays about law.
 - For narrative_fiction use "Analisi narrativa": summary, characters, setting, conflict, themes, style, emotional arc, narrative tension and craft-aware comprehension questions.
+- For legal_document use: object, parties, obligations, prohibitions, important clauses, risks/attention points, plain-language synthesis and verification questions.
+- For narrative/manuscript use: narrative summary, characters, setting, conflict, emotional arc, narrative tension, symbols/recurring objects, open promises, weak points and craft-aware questions.
 - Do NOT make summaries too short. This is for real studying, not a marketing blurb.
 - Light summary: bullet-oriented, fast review, max 150-180 words. Simple school language. No walls of text.
 - Medium summary: structured, ordered, complete. Include main ideas, chapter/section progression, cause-effect links, and practical meaning. Minimum 350-550 words when material is long.
@@ -298,13 +340,19 @@ QUALITY RULES:
 - Exercises: guided, free, application and reasoning tasks with solution/explanation when appropriate.
 - Concept map: nodes and relationships grounded in the material.
 - Do not invent facts not present in the material.
+- If dates, names, formulas or definitions are not present, explicitly say "non specificato nel materiale".
+- Never show undefined, null, [object Object], raw JSON, stack traces, placeholders or truncated questions.
+- Internal quality target is 9/10. If an output section is mediocre, repair it before returning JSON.
 - If the material is sampled because too long, still cover all detected major areas and do not say "chapters omitted" unless truly necessary.
 - Prefer clarity over elegance. The student must be able to study from this output.`;
 
   const userPrompt = `Create a professional study session from this material.
 
 Desired level: ${level}
+Difficulty level 1-5: ${difficultyLevel}
 Source name: ${input.sourceName}
+
+${intentBlock}
 
 Return this JSON shape exactly:
 {
@@ -314,6 +362,11 @@ Return this JSON shape exactly:
   "studyMode": "string",
   "detectedSubject": "string",
   "difficulty": "soft | medium | pro",
+  "studyMaterialType": "${input.intent?.studyMaterialType || "auto"}",
+  "studySubject": "${input.intent?.studySubject || "auto"}",
+  "literaryGenre": "${input.intent?.literaryGenre || "auto"}",
+  "studyGoal": "${input.intent?.studyGoal || "complete_summary"}",
+  "difficultyLevel": ${difficultyLevel},
   "classification": {
     "type": "history | philosophy | literature | math | physics | chemistry | medicine | law | economics | computer-science | foreign-language | scientific-article | technical-manual | mixed-notes | general",
     "label": "string",
@@ -403,9 +456,13 @@ Return this JSON shape exactly:
 }
 
 QUIZ REQUIREMENTS:
-Create at least 10 multiple-choice questions when the material is long.
+Create at least 10 multiple-choice questions when the material is long, and up to 15 when difficultyLevel is 5.
 Questions must test understanding, not just memory.
 Wrong options must be plausible and educational — never obviously wrong or joke answers.
+Adapt difficulty tiers to difficultyLevel:
+- level 1: mostly easy, direct definitions and comprehension.
+- level 3: balanced school verification, cause/effect and comparison.
+- level 5: hard commission-style questions, links, reasoning, cases, "why" and implications.
 Mix difficulty tiers: easy (definitions), medium (comprehension, comparison), hard (interpretation, oral-exam style).
 Mix question types:
 - definition questions
@@ -428,7 +485,54 @@ ${material}`;
 
   const raw = await callScriptoraStudyAI(systemPrompt, userPrompt);
   const parsed = safeJsonParse(raw);
-  return normalizeStudyResult(parsed, fallback);
+  let normalized = sanitizeStudySessionResult(normalizeStudyResult(parsed, fallback), fallback);
+
+  const quality = scoreStudySessionQuality(normalized);
+  const minScore = Math.min(
+    quality.summaryQuality,
+    quality.quizQuality,
+    quality.vocabularyQuality,
+    quality.flashcardQuality,
+    quality.oralExamQuality,
+  );
+
+  if (minScore < 8) {
+    if (import.meta.env.DEV) {
+      console.info("STUDY_QUALITY_REPAIR_TRIGGERED", {
+        minScore,
+        scores: quality,
+        sourceName: input.sourceName,
+      });
+    }
+    try {
+      const repairRaw = await callScriptoraStudyAI(
+        `${systemPrompt}\n\nRepair pass: keep the same JSON shape, preserve facts, remove artifacts, improve only weak sections. Do not invent missing facts.`,
+        `Repair this Study OS JSON. Keep content faithful to the source material and the manual intent. Remove broken questions, duplicates, placeholders and weak generic sections. Return ONLY valid JSON.\n\nQUALITY SCORES:\n${JSON.stringify(quality)}\n\nCURRENT JSON:\n${JSON.stringify(normalized).slice(0, 32000)}`,
+      );
+      const repaired = sanitizeStudySessionResult(normalizeStudyResult(safeJsonParse(repairRaw), fallback), fallback);
+      const repairedQuality = scoreStudySessionQuality(repaired);
+      const repairedMin = Math.min(
+        repairedQuality.summaryQuality,
+        repairedQuality.quizQuality,
+        repairedQuality.vocabularyQuality,
+        repairedQuality.flashcardQuality,
+        repairedQuality.oralExamQuality,
+      );
+      if (repairedMin >= 7 && repairedMin >= minScore) normalized = repaired;
+    } catch {
+      // Keep sanitized first pass or local fallback below.
+    }
+  }
+
+  const finalQuality = scoreStudySessionQuality(normalized);
+  const finalMin = Math.min(
+    finalQuality.summaryQuality,
+    finalQuality.quizQuality,
+    finalQuality.vocabularyQuality,
+    finalQuality.flashcardQuality,
+    finalQuality.oralExamQuality,
+  );
+  return finalMin < 7 ? fallback : { ...normalized, qualityScores: finalQuality };
 }
 
 export interface StudyErrorTutorInput {

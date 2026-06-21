@@ -1,4 +1,11 @@
-import type { StudySessionResult } from "@/lib/study-session";
+import type {
+  LiteraryGenreIntent,
+  StudyDifficultyLevel,
+  StudyGoalIntent,
+  StudyMaterialIntentType,
+  StudySessionResult,
+  StudySubjectIntent,
+} from "@/lib/study-session";
 
 export type StudySourceType = "paste" | "file" | "pdf" | "docx" | "txt" | "manual" | "image";
 export type StudySessionStatus = "draft" | "analyzing" | "ready" | "error";
@@ -21,6 +28,11 @@ export interface StudySessionRecord {
   language: string;
   level?: string;
   objective?: string;
+  studyMaterialType?: StudyMaterialIntentType;
+  studySubject?: StudySubjectIntent;
+  literaryGenre?: LiteraryGenreIntent;
+  studyGoal?: StudyGoalIntent;
+  difficultyLevel?: StudyDifficultyLevel;
   status: StudySessionStatus;
   results: {
     analysis?: StudyResultEnvelope;

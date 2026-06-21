@@ -7,6 +7,8 @@ import {
   readImageWithSmartOcr,
   readStudyFileDetailed,
   readStudyFiles,
+  sanitizeStudyOutput,
+  sanitizeStudyQuizQuestions,
 } from "@/lib/study-session";
 
 afterEach(() => {
@@ -83,6 +85,115 @@ describe("Study OS material analysis", () => {
     expect(result.openQuestions.length).toBeGreaterThanOrEqual(5);
     expect(result.openQuestions.every((item) => item.question.endsWith("?"))).toBe(true);
     expect(joined).not.toMatch(/Viola sent|sent…|sent\.\.\.|Cosa sente Viola\?/i);
+  });
+
+  it("respects manual narrative material type even with legal keywords", () => {
+    const chapter = studyText(
+      "Capitolo Viola",
+      "Viola firmò un contratto di proprietà con clausole rigide, ma la scena resta narrativa: dialogo, villa, tensione, mistero, Damiano e una porta chiusa che promette una rivelazione.",
+    );
+
+    const classification = classifyStudyMaterial(chapter, "capitolo.txt", {
+      studyMaterialType: "narrative_manuscript",
+      literaryGenre: "horror_gothic",
+      studyGoal: "manuscript_analysis",
+      difficultyLevel: 5,
+    });
+
+    expect(classification.contentType).toBe("narrative_fiction");
+    expect(classification.subjectLabel).toBe("Horror / Gotico");
+    expect(classification.type).toBe("literature");
+  });
+
+  it("respects manual law intent for true contracts", () => {
+    const contract = studyText(
+      "Contratto",
+      "Le parti convengono ai sensi del codice civile. Clausola 1 oggetto del contratto. Clausola 2 obblighi. Clausola 3 riservatezza. Foro competente, normativa vigente, responsabilità e consenso regolano il rapporto.",
+    );
+
+    const classification = classifyStudyMaterial(contract, "contratto.pdf", {
+      studyMaterialType: "legal_document",
+      studySubject: "law",
+      studyGoal: "exam_prep",
+      difficultyLevel: 4,
+    });
+
+    expect(classification.contentType).toBe("legal_document");
+    expect(classification.subjectLabel).toBe("Diritto");
+    expect(classification.type).toBe("law");
+  });
+
+  it("treats long pasted material as ready instead of short text", () => {
+    const text = Array.from({ length: 3248 }, (_, index) => `parola${index}`).join(" ");
+    const result = analyzeStudyMaterial(text, "appunti-lunghi.txt");
+
+    expect(result.words).toBe(3248);
+    expect(result.lightSummary).not.toContain("Minimo 40 parole");
+  });
+
+  it("sanitizes broken quiz questions before UI", () => {
+    const quiz = sanitizeStudyQuizQuestions([
+      {
+        question: "Viola sent...",
+        options: ["A", "B", "C", "D"],
+        answer: 0,
+        explanation: "Rotta",
+      },
+      {
+        question: "Perché Viola resta nella villa nonostante il pericolo?",
+        options: ["Per il conflitto narrativo", "undefined", "Per caso", "Per nessun motivo"],
+        answer: 0,
+        explanation: "La risposta richiede prove dal testo.",
+      },
+    ]);
+
+    expect(quiz.map((item) => item.question).join(" ")).not.toMatch(/Viola sent/i);
+    expect(quiz[0].question).toMatch(/\?$/);
+    expect(quiz[0].options.join(" ")).not.toContain("undefined");
+  });
+
+  it("changes quiz depth between level 1 and level 5", () => {
+    const text = studyText(
+      "Storia",
+      "La rivoluzione nasce da cause economiche, crisi politica, monarchia, guerra, conseguenze sociali, trattato e cambiamenti istituzionali.",
+    );
+    const easy = analyzeStudyMaterial(text, "storia.txt", { studySubject: "history", difficultyLevel: 1 });
+    const hard = analyzeStudyMaterial(text, "storia.txt", { studySubject: "history", difficultyLevel: 5, studyGoal: "exam_prep" });
+
+    expect(easy.quiz[0].question).toMatch(/Che cosa significa/i);
+    expect(hard.quiz.some((item) => /conseguenza|obiezione|caso concreto|collegamento|perche/i.test(item.question))).toBe(true);
+    expect(hard.quiz.filter((item) => item.difficulty === "hard").length).toBeGreaterThan(easy.quiz.filter((item) => item.difficulty === "hard").length);
+  });
+
+  it("builds rich vocabulary without duplicates for long technical material", () => {
+    const text = studyText(
+      "Biologia",
+      "Cellula, mitocondrio, metabolismo, proteina, enzima, membrana, tessuto, organismo, diagnosi, terapia, patologia, sintomo e DNA descrivono processi biologici collegati.",
+    );
+    const result = analyzeStudyMaterial(text, "biologia.txt", { studySubject: "biology", difficultyLevel: 4 });
+    const unique = new Set(result.difficultWords.map((item) => item.word.toLowerCase()));
+
+    expect(result.difficultWords.length).toBeGreaterThanOrEqual(8);
+    expect(result.difficultWords.length).toBeLessThanOrEqual(25);
+    expect(unique.size).toBe(result.difficultWords.length);
+    expect(result.difficultWords.every((item) => item.simple && item.technical && item.example && item.examQuestion)).toBe(true);
+  });
+
+  it("does not invent dates or names when they are absent", () => {
+    const text = studyText(
+      "Appunti",
+      "Il materiale spiega un concetto generale, le sue conseguenze e alcuni esempi senza fornire date, nomi propri o formule.",
+    );
+    const result = analyzeStudyMaterial(text, "appunti.txt", { studySubject: "philosophy" });
+
+    expect(result.studyNotesPro).toContain("Date: non specificato nel materiale");
+    expect(result.studyNotesPro).toContain("Formule/simboli: non specificato nel materiale");
+    expect(result.studyNotesPro).not.toMatch(/\b1789|Napoleone|Einstein\b/);
+  });
+
+  it("removes technical artifacts from study output", () => {
+    expect(sanitizeStudyOutput("undefined\n[object Object]\nDomanda valida sul testo.")).toBe("Domanda valida sul testo.");
+    expect(sanitizeStudyOutput("{\"raw\":true}")).toBe("Questa sezione non ha abbastanza informazioni nel materiale caricato.");
   });
 });
 
