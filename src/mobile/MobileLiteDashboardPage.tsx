@@ -26,6 +26,11 @@ import { isProjectComplete } from "@/lib/project-status";
 import { getLastProjectId, loadProjects, setLastProjectId } from "@/services/storageService";
 import { softDeleteProjectAsync, recoverProjectFromTrash } from "@/lib/project-trash";
 import { openMobileMarketFromDashboard } from "@/mobile/mobileMarketContext";
+import {
+  disableDesktopModeOverride,
+  enableDesktopModeOverride,
+  isDesktopModeOverrideActive,
+} from "@/lib/mobile-performance";
 import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity } from "@/lib/author-identity";
 import { normalizeBookConfig } from "@/lib/book-config-studio/defaults";
 import { buildBookTypeLock as buildGenreLock } from "@/lib/book-type-engine";
@@ -78,6 +83,7 @@ export default function MobileLiteDashboardPage() {
   const [showBookForge, setShowBookForge] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<BookProject | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [desktopOverrideActive, setDesktopOverrideActive] = useState(() => isDesktopModeOverrideActive());
   const [authorIdentity, setAuthorIdentity] = useState<AuthorIdentity>(() => getSelectedAuthorIdentity());
 
   const freeBookUsed = currentPlan === "free" && projects.length > 0;
@@ -100,6 +106,10 @@ export default function MobileLiteDashboardPage() {
     openMobileBookForge();
     navigate(location.pathname, { replace: true, state: null });
   }, [location.pathname, location.state, navigate, openMobileBookForge]);
+
+  useEffect(() => {
+    setDesktopOverrideActive(isDesktopModeOverrideActive());
+  }, [location.search]);
 
   const handleStudioComplete = useCallback(
     (payload: StudioLaunchPayload) => {
@@ -178,6 +188,20 @@ export default function MobileLiteDashboardPage() {
       state: lastProject?.id ? { projectId: lastProject.id } : undefined,
     });
   }, [lastProject, navigate]);
+
+  const toggleDesktopVisual = useCallback(() => {
+    const url = new URL(window.location.href);
+    if (desktopOverrideActive) {
+      disableDesktopModeOverride();
+      url.searchParams.delete("desktop");
+      setDesktopOverrideActive(false);
+    } else {
+      enableDesktopModeOverride();
+      url.searchParams.set("desktop", "1");
+      setDesktopOverrideActive(true);
+    }
+    window.location.assign(url.toString());
+  }, [desktopOverrideActive]);
 
   const startNewBook = () => {
     sessionStorage.removeItem("scriptora-open-project");
@@ -307,6 +331,17 @@ export default function MobileLiteDashboardPage() {
         <h2 className="mt-2 text-lg font-black text-white">Inizia dal telefono, domina da desktop.</h2>
         <p className="mt-2 text-sm leading-6 text-white/62">
           Sul telefono puoi iniziare, studiare e riprendere il lavoro. Da desktop, Scriptora apre Cover Studio, Publishing Cockpit, KDP Launch e l'intero arsenale editoriale.
+        </p>
+        <button
+          type="button"
+          onClick={toggleDesktopVisual}
+          className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#f2c400] px-4 text-sm font-black text-slate-950 shadow-lg shadow-[#f2c400]/10 hover:bg-[#ffe06a]"
+        >
+          {desktopOverrideActive ? "Torna alla visuale mobile" : "Apri visuale desktop"}
+          <ArrowRight className="h-4 w-4" />
+        </button>
+        <p className="mt-2 text-xs leading-5 text-white/55">
+          Usa la versione completa con Cover Studio, Publishing, KDP Launch e strumenti avanzati.
         </p>
         <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[11px] font-semibold text-white/72">
           <span className="rounded-2xl border border-white/10 bg-white/[0.05] px-2 py-2">Book Forge</span>

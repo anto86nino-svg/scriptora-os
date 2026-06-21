@@ -79,6 +79,7 @@ import {
 } from "@/lib/project-continuity";
 import { getUserFriendlyError } from "@/lib/user-friendly-error";
 import { trackScriptoraEvent } from "@/lib/usage-analytics";
+import { disableDesktopModeOverride, isDesktopModeOverrideActive } from "@/lib/mobile-performance";
 
 const ScriptoraSettingsHub = lazy(() =>
   import("@/components/settings/ScriptoraSettingsHub").then((m) => ({ default: m.ScriptoraSettingsHub })),
@@ -184,6 +185,7 @@ export default function Dashboard() {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showMobileMoreMenu, setShowMobileMoreMenu] = useState(false);
   const currentLang = useUILanguage();
+  const [desktopOverrideActive, setDesktopOverrideActive] = useState(() => isDesktopModeOverrideActive());
   const closeAllDashboardTools = useCallback(() => {
     setActiveDashboardTool(null);
   }, []);
@@ -218,6 +220,10 @@ export default function Dashboard() {
       success: true,
     });
   }, [activeDashboardTool]);
+
+  useEffect(() => {
+    setDesktopOverrideActive(isDesktopModeOverrideActive());
+  }, [location.search]);
 
   useEffect(() => {
     if (!activeDashboardTool) return;
@@ -867,6 +873,14 @@ typeof crypto.randomUUID === "function"
     [dashboardContextProject, completedProjects.length, closeAllDashboardTools, openDashboardTool, navigateFromDashboard, openNewBookGuarded, goApp, openCoverStudioPage],
   );
 
+  const returnToMobileDashboard = useCallback(() => {
+    disableDesktopModeOverride();
+    const url = new URL(window.location.href);
+    url.searchParams.delete("desktop");
+    setDesktopOverrideActive(false);
+    window.location.assign(url.toString());
+  }, []);
+
   const ideaPreviewProps = useMemo(() => ({
     idea,
     setIdea,
@@ -1136,6 +1150,21 @@ typeof crypto.randomUUID === "function"
           </div>
         </div>
       </header>
+
+      {desktopOverrideActive && (
+        <div className="border-b border-[#f2c400]/20 bg-[#f2c400]/10">
+          <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 text-sm text-amber-50 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+            <span className="font-semibold">Visuale desktop attiva</span>
+            <button
+              type="button"
+              onClick={returnToMobileDashboard}
+              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-[#f2c400] px-4 text-sm font-black text-slate-950 hover:bg-[#ffe06a]"
+            >
+              Torna alla visuale mobile
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="hidden border-b border-white/8 bg-background/40 md:block">
         <div className="mx-auto max-w-7xl px-3 py-2 sm:px-6 lg:px-8">
