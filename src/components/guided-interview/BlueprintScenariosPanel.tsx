@@ -1,5 +1,8 @@
 import type { ExpressBookScenario } from "@/lib/guided-interview/express-book-package";
-import { isNonfictionExpressGenre } from "@/lib/guided-interview/express-genre-config";
+import {
+  isNonfictionExpressGenre,
+  isPoetryExpressGenre,
+} from "@/lib/guided-interview/express-genre-config";
 import { cn } from "@/lib/utils";
 
 export type BlueprintScenariosPanelProps = {
@@ -80,6 +83,16 @@ export function BlueprintScenariosPanel({
                   <Row label="Struttura" value={`${scenario.chapterCount} capitoli`} />
                   <Row label="Payoff" value={scenario.finalEmotion} />
                 </>
+              ) : isPoetryExpressGenre(scenario.genre) ? (
+                <>
+                  <Row label="Voce poetica" value={scenario.protagonist} />
+                  <Row label="Immagini" value={scenario.setting} />
+                  <Row label="Tensione emotiva" value={scenario.centralConflict} />
+                  <Row label="Ferita centrale" value={scenario.emotionalWound} />
+                  <Row label="Promessa poetica" value={scenario.marketPromise} />
+                  <Row label="Struttura" value={scenario.structurePreference || `${scenario.chapterCount} sezioni poetiche`} />
+                  <Row label="Eco finale" value={scenario.finalEmotion} />
+                </>
               ) : (
                 <>
                   <Row label="Protagonisti" value={scenario.protagonist} />
@@ -116,6 +129,12 @@ export function BlueprintScenariosPanel({
                         <MiniBtn label="Più pratico" onClick={() => onModify(scenario, "commercial")} />
                         <MiniBtn label="Più trasformativo" onClick={() => onModify(scenario, "darker")} />
                         <MiniBtn label="Più profondo" onClick={() => onModify(scenario, "poetic")} />
+                      </>
+                    ) : isPoetryExpressGenre(scenario.genre) ? (
+                      <>
+                        <MiniBtn label="Più intima" onClick={() => onModify(scenario, "commercial")} />
+                        <MiniBtn label="Più audace" onClick={() => onModify(scenario, "darker")} />
+                        <MiniBtn label="Più lirica" onClick={() => onModify(scenario, "poetic")} />
                       </>
                     ) : (
                       <>

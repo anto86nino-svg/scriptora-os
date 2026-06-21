@@ -100,6 +100,14 @@ export function getExpressLengthOptions(genre: string): ExpressLengthOption[] {
       { value: "epico", label: "epico — programma completo con esercizi (60+ cap.)" },
     ];
   }
+  if (isPoetryExpressGenre(genre)) {
+    return [
+      { value: "breve", label: "breve — 4 sezioni / circa 40 poesie" },
+      { value: "medio", label: "medio — 5 sezioni / circa 60 poesie" },
+      { value: "lungo", label: "lungo — 7 sezioni / circa 80 poesie" },
+      { value: "epico", label: "epico — 7 sezioni dense / circa 80 poesie" },
+    ];
+  }
   return [
     { value: "breve", label: "breve — 8–12 capitoli" },
     { value: "medio", label: "medio — 16–24 capitoli" },

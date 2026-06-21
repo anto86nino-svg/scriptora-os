@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Camera, GraduationCap, Loader2, Upload, Wand2 } from "lucide-react";
 import { toast } from "sonner";
-import { analyzeStudyMaterial, readStudyFiles, type StudySessionResult } from "@/lib/study-session";
+import { analyzeStudyMaterial, classifyStudyMaterial, readStudyFiles, type StudySessionResult } from "@/lib/study-session";
 import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
 import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { generateStudySessionWithAI } from "@/lib/study-ai";
@@ -65,6 +65,9 @@ const STUDY_OUTCOMES = [
   { icon: "🏅", title: "Attestati", desc: "Storico e download" },
   { icon: "🎯", title: "Piano studio automatico", desc: "Percorso guidato" },
 ] as const;
+
+const STUDY_FILE_FALLBACK_COPY =
+  "Non riesco a leggere automaticamente questo file da qui. Puoi incollare il testo oppure continuare da browser.";
 
 const TAB_CONFIG: { id: StudySection; label: string; icon: string }[] = [
   { id: "materials", label: "Materiali", icon: "📎" },
@@ -147,8 +150,8 @@ function describeStudyFallback(error: unknown): string {
 
 function humanStudyErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error || "");
-  if (/immagine acquisita|scansione|pdf|docx|epub|formato|testo/i.test(message)) {
-    return message.slice(0, 180);
+  if (/immagine acquisita|scansione|pdf|docx|epub|formato|testo|ocr|image|decode|non leggibile/i.test(message)) {
+    return STUDY_FILE_FALLBACK_COPY;
   }
   return getUserFriendlyError(error, {
     area: "study",
@@ -213,6 +216,17 @@ export default function StudySessionPage() {
   );
 
   const wordCount = useMemo(() => rawText.trim().split(/\s+/).filter(Boolean).length, [rawText]);
+  const currentStudyClassification = useMemo(
+    () => wordCount >= 40 ? classifyStudyMaterial(rawText, sourceName) : null,
+    [rawText, sourceName, wordCount],
+  );
+  const materialReadinessCopy = useMemo(() => {
+    if (wordCount < 40) return `${t("study_min_words_hint")} (${wordCount}/40)`;
+    if (currentStudyClassification?.contentType === "narrative_fiction") {
+      return `Capitolo narrativo pronto per l'analisi. ${wordCount.toLocaleString("it-IT")} parole rilevate.`;
+    }
+    return `Materiale pronto per l'analisi. ${wordCount.toLocaleString("it-IT")} parole rilevate.`;
+  }, [currentStudyClassification?.contentType, wordCount]);
   const canAnalyze = wordCount >= 40 && !reading;
   const currentSourceHash = useMemo(() => computeStudySourceHash(rawText, sourceName), [rawText, sourceName]);
   const resultFresh = Boolean(result && studySession.results.analysis?.sourceHash === currentSourceHash);
@@ -634,8 +648,14 @@ export default function StudySessionPage() {
         });
         toast.message(readResult.sourceType === "image" ? "Immagine acquisita" : "Materiale acquisito", {
           description: readResult.sourceType === "image"
-            ? "Estrazione testo non disponibile in locale: trascrivi o incolla il testo della pagina nel riquadro e poi genera lo studio."
+            ? STUDY_FILE_FALLBACK_COPY
             : "Serve un testo un po' piu' lungo prima di creare riassunti, quiz e interrogazione.",
+          action: readResult.sourceType === "image"
+            ? {
+                label: "Continua da browser",
+                onClick: () => window.open("https://scriptora-os.vercel.app/study-session", "_blank", "noopener,noreferrer"),
+              }
+            : undefined,
         });
         return;
       }
@@ -676,7 +696,13 @@ export default function StudySessionPage() {
         }
       }
     } catch (error) {
-      toast.error("File non leggibile", { description: humanStudyErrorMessage(error) });
+      toast.error("File non leggibile", {
+        description: humanStudyErrorMessage(error),
+        action: {
+          label: "Continua da browser",
+          onClick: () => window.open("https://scriptora-os.vercel.app/study-session", "_blank", "noopener,noreferrer"),
+        },
+      });
     } finally {
       setReading(false);
       setStudyGenerationStatus("");
@@ -818,8 +844,8 @@ export default function StudySessionPage() {
               placeholder="Incolla qui capitoli, appunti, dispense o una parte del libro..."
               className="scriptora-text-safe min-h-[240px] w-full min-w-0 max-w-full resize-y overflow-x-hidden rounded-2xl border border-white/10 bg-background/70 p-3 text-sm leading-6 text-foreground outline-none focus:border-emerald-300/40 sm:min-h-[280px] sm:p-4 lg:min-h-[420px]"
             />
-            <p className={`mt-2 text-xs leading-5 ${wordCount < 40 ? "text-amber-200/90" : "text-muted-foreground"}`}>
-              {t("study_min_words_hint")} ({wordCount}/40)
+            <p className={`mt-2 text-xs leading-5 ${wordCount < 40 ? "text-amber-200/90" : "text-emerald-100/85"}`}>
+              {materialReadinessCopy}
             </p>
             {staleNotice && (
               <div className="mt-3 rounded-2xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100">

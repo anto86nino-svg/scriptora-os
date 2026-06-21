@@ -193,6 +193,23 @@ export function resolveLengthPresetConfig(
   genre: string,
 ): LengthPresetConfig {
   const base = LENGTH_PRESET_CONFIGS[preset];
+  if (isPoetryExpressGenre(genre)) {
+    const sectionCount = preset === "breve" ? 4 : preset === "lungo" || preset === "epico" ? 7 : 5;
+    const poemRange: [number, number] =
+      preset === "breve" ? [35, 45] : preset === "lungo" || preset === "epico" ? [70, 90] : [50, 65];
+    return {
+      ...base,
+      chapterCount: sectionCount,
+      chapterRange: [sectionCount, sectionCount],
+      expectedChapterLength: `${poemRange[0]}-${poemRange[1]} poesie totali`,
+      pacing: "arco emotivo",
+      structureDepth: "sezioni poetiche",
+      subchaptersDefault: false,
+      castSizeDefault: 1,
+      moduleDepthDefault: "voce, immagini, ritmo",
+      description: `${sectionCount} sezioni poetiche · circa ${poemRange[0]}-${poemRange[1]} poesie`,
+    };
+  }
   if (isNonfictionExpressGenre(genre) && preset === "breve") {
     return { ...base, subchaptersDefault: false };
   }
@@ -1324,6 +1341,19 @@ export function generateChapterStructure(
 ): ChapterStructureSeed[] {
   const config = resolveLengthPresetConfig(input.lengthPreset, input.genre);
   const count = chapterCount ?? config.chapterCount;
+  if (isPoetryExpressGenre(input.genre)) {
+    const labels = ["Origine", "Corpo", "Frattura", "Ritorno", "Eco", "Soglia", "Luce residua"];
+    return Array.from({ length: count }, (_, index) => ({
+      chapter: index + 1,
+      title: `Sezione ${index + 1} — ${labels[index % labels.length]}`,
+      purpose:
+        index === 0
+          ? "Aprire voce, tema e immagini ricorrenti della raccolta."
+          : index === count - 1
+            ? "Chiudere con eco emotiva e immagine finale memorabile."
+            : "Variare il tema con ritmo, simboli e progressione emotiva.",
+    }));
+  }
   const acts = input.lengthPreset === "breve" ? 3 : input.lengthPreset === "epico" ? 5 : 4;
   const perAct = Math.max(2, Math.floor(count / acts));
   const seeds: ChapterStructureSeed[] = [];

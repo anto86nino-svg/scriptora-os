@@ -7,6 +7,7 @@ import {
 import {
   buildForgeMemoryRecap,
   getForgeMemory,
+  getMemoryProgressLabel,
   isQuestionAlreadyAnswered,
   isSimilarQuestionRecentlyAsked,
   isSlotFilled,
@@ -59,6 +60,12 @@ describe("interview memory", () => {
     );
     expect(isQuestionAlreadyAnswered("language-confirmation", memory)).toBe(true);
     expect(isSimilarQuestionRecentlyAsked("language-confirmation", memory)).toBe(true);
+  });
+
+  it("returns progress without duplicate UI prefix", () => {
+    const label = getMemoryProgressLabel(getForgeMemory(getInitialInterviewState({ chatFirst: true })));
+
+    expect(label).not.toMatch(/^Stiamo costruendo:/);
   });
 
   it("non lo so shows preset choices", () => {

@@ -96,6 +96,14 @@ export type StudyMaterialType =
   | "mixed-notes"
   | "general";
 
+export type StudyContentType =
+  | "narrative_fiction"
+  | "study_notes"
+  | "textbook"
+  | "essay"
+  | "legal_document"
+  | "mixed_or_unknown";
+
 export type StudySummaryMode =
   | "brief"
   | "complete"
@@ -111,6 +119,9 @@ export type StudySummaryMode =
 export interface StudyMaterialClassification {
   type: StudyMaterialType;
   label: string;
+  contentType: StudyContentType;
+  subjectLabel: string;
+  mode: string;
   confidence: number;
   language: string;
   difficultyScore: number;
@@ -153,6 +164,9 @@ export interface StudySessionResult {
   title: string;
   sourceName: string;
   words: number;
+  contentType: StudyContentType;
+  subjectLabel: string;
+  studyMode: string;
   detectedSubject: string;
   difficulty: StudyDifficulty;
   classification?: StudyMaterialClassification;
@@ -287,6 +301,112 @@ function scorePatterns(text: string, patterns: RegExp[]): number {
   return patterns.reduce((sum, pattern) => sum + (text.match(pattern)?.length || 0), 0);
 }
 
+type StudyContentProfile = {
+  contentType: StudyContentType;
+  subjectLabel: string;
+  mode: string;
+  fictionSignalsScore: number;
+  legalKeywordScore: number;
+  legalDocumentScore: number;
+  signals: string[];
+};
+
+function detectStudyContentProfile(text: string): StudyContentProfile {
+  const clean = cleanText(text);
+  const lower = clean.toLowerCase();
+  const dialogueMarks = (clean.match(/[«»“”"]/g) || []).length;
+  const properNames = (clean.match(/\b[A-ZÀ-Ý][a-zà-ÿ]{2,}\b/g) || [])
+    .filter((name) => !/Capitolo|Articolo|Codice|Diritto|Legge|Studio|Storia|Filosofia|Informatica|Chimica|Economia|Appendice/.test(name));
+  const legalKeywordScore = scorePatterns(lower, [
+    /\b(contratto|contratti|clausola|clausole|proprietà|firmò|firmare|firma|firmato|non divulgare|riservatezza|obbligo|obbligazione|diritto|norma|legge|articolo|comma|codice|sentenza|tribunale|giurisprudenza)\b/gi,
+  ]);
+  const legalDocumentScore = scorePatterns(lower, [
+    /\b(le parti|premesso che|il sottoscritto|la sottoscritta|ai sensi|codice civile|tribunale|sentenza n\.|art\.\s*\d+|clausola\s+\d+|normativa vigente|oggetto del contratto)\b/gi,
+    /^\s*\d+[\).]\s+(oggetto|durata|corrispettivo|obblighi|riservatezza|foro competente)/gim,
+  ]);
+  const fictionLexicalScore = scorePatterns(lower, [
+    /\b(capitolo|scena|villa|corridoio|sala|ombra|pioggia|dipinto|porta chiusa|camera|silenzio|sguardo|sussurrò|disse|rispose|guardò|sentì|pensò|tremò|paura|desiderio|pericolo|mistero|segreto|tensione|gotic|romantic|suspense)\b/gi,
+    /\b(lei|lui|viola|damiano|damien)\b/gi,
+  ]);
+  const dialogueScore = Math.min(8, Math.floor(dialogueMarks / 2));
+  const properNameScore = Math.min(8, properNames.length);
+  const fictionSignalsScore = fictionLexicalScore + dialogueScore + properNameScore;
+  const hasNarrativeStructure = fictionLexicalScore + dialogueScore >= 3;
+
+  if (hasNarrativeStructure && fictionSignalsScore > legalKeywordScore && fictionSignalsScore >= 5) {
+    return {
+      contentType: "narrative_fiction",
+      subjectLabel: "Narrativa / Letteratura",
+      mode: "Analisi narrativa",
+      fictionSignalsScore,
+      legalKeywordScore,
+      legalDocumentScore,
+      signals: [
+        `Narrativa: ${fictionSignalsScore} segnali`,
+        legalKeywordScore ? `Keyword legali isolate: ${legalKeywordScore}` : "Nessuna keyword legale dominante",
+      ],
+    };
+  }
+
+  if (legalKeywordScore >= 4 && legalDocumentScore >= 2 && legalKeywordScore >= fictionSignalsScore) {
+    return {
+      contentType: "legal_document",
+      subjectLabel: "Diritto",
+      mode: "Analisi giuridica",
+      fictionSignalsScore,
+      legalKeywordScore,
+      legalDocumentScore,
+      signals: [`Documento legale: ${legalDocumentScore} segnali strutturali`, `Diritto: ${legalKeywordScore} keyword`],
+    };
+  }
+
+  if (/^[-•*]\s+/m.test(clean) || /\b(appunti|lezione|slide|dispensa|riassunto)\b/i.test(clean)) {
+    return {
+      contentType: "study_notes",
+      subjectLabel: "Appunti di studio",
+      mode: "Studio guidato",
+      fictionSignalsScore,
+      legalKeywordScore,
+      legalDocumentScore,
+      signals: ["Struttura da appunti/materiale didattico"],
+    };
+  }
+
+  if (/\b(manuale|capitolo|paragrafo|unità|esercizi|definizione|concetti chiave)\b/i.test(clean) && fictionSignalsScore < 5) {
+    return {
+      contentType: "textbook",
+      subjectLabel: "Manuale / Libro di testo",
+      mode: "Studio guidato",
+      fictionSignalsScore,
+      legalKeywordScore,
+      legalDocumentScore,
+      signals: ["Struttura da libro di testo/manuale"],
+    };
+  }
+
+  if (/\b(tesi|argomento|introduzione|conclusione|saggio|analisi critica)\b/i.test(clean)) {
+    return {
+      contentType: "essay",
+      subjectLabel: "Saggio / Elaborato",
+      mode: "Analisi argomentativa",
+      fictionSignalsScore,
+      legalKeywordScore,
+      legalDocumentScore,
+      signals: ["Struttura argomentativa/saggistica"],
+    };
+  }
+
+  return {
+    contentType: "mixed_or_unknown",
+    subjectLabel: "Materiale generale",
+    mode: "Studio guidato",
+    fictionSignalsScore,
+    legalKeywordScore,
+    legalDocumentScore,
+    signals: ["Tipo contenuto non dominante"],
+  };
+}
+
 const MATERIAL_DEFS: Array<{
   type: StudyMaterialType;
   label: string;
@@ -383,6 +503,7 @@ export function classifyStudyMaterial(text: string, sourceName = ""): StudyMater
   const clean = cleanText(text);
   const lower = clean.toLowerCase();
   const words = countStudyWords(clean);
+  const profile = detectStudyContentProfile(clean || sourceName);
   const scored = MATERIAL_DEFS.map((def) => {
     const score = scorePatterns(lower, def.patterns);
     return { ...def, score };
@@ -390,8 +511,13 @@ export function classifyStudyMaterial(text: string, sourceName = ""): StudyMater
 
   const top = scored[0];
   const second = scored[1];
-  const type = top && top.score > 0 ? top.type : "general";
-  const label = top && top.score > 0 ? top.label : "Materiale generale";
+  const override = profile.contentType === "narrative_fiction"
+    ? { type: "literature" as StudyMaterialType, label: "Narrativa / Letteratura", strategy: ["personaggi", "ambientazione", "conflitto", "temi", "stile", "tensione narrativa"] }
+    : profile.contentType === "legal_document"
+      ? { type: "law" as StudyMaterialType, label: "Diritto", strategy: ["norme", "clausole", "obblighi", "definizioni operative"] }
+      : null;
+  const type = override?.type || (top && top.score > 0 ? top.type : "general");
+  const label = override?.label || (top && top.score > 0 ? top.label : "Materiale generale");
   const longSentences = sentences(clean).filter((s) => countStudyWords(s) > 28).length;
   const formulaSignals = scorePatterns(clean, [/[=<>±√∑∫π]/g]);
   const difficultyScore = Math.max(
@@ -406,28 +532,24 @@ export function classifyStudyMaterial(text: string, sourceName = ""): StudyMater
   return {
     type,
     label,
+    contentType: profile.contentType,
+    subjectLabel: profile.subjectLabel === "Materiale generale" ? label : profile.subjectLabel,
+    mode: profile.mode,
     confidence,
     language: detectStudyLanguage(clean || sourceName),
     difficultyScore,
     estimatedStudyMinutes,
-    signals: (top?.score ? [`${top.label}: ${top.score} segnali`] : ["Classificazione generica"]).concat(
+    signals: [...profile.signals, ...(top?.score ? [`${top.label}: ${top.score} segnali`] : ["Classificazione generica"])].concat(
       second?.score ? [`Alternativa: ${second.label}`] : [],
     ),
-    strategy: top?.score ? top.strategy : ["concetti chiave", "riassunto progressivo", "quiz di comprensione"],
+    strategy: override?.strategy || (top?.score ? top.strategy : ["concetti chiave", "riassunto progressivo", "quiz di comprensione"]),
   };
 }
 
 
 
 function detectNarrative(text: string): boolean {
-  const lower = text.toLowerCase();
-
-  const score =
-    (lower.match(/chapter|capitolo/g)?.length || 0) * 2 +
-    (lower.match(/[“"]/g)?.length || 0) +
-    (lower.match(/disse|rispose|guardò|sussurrò|urlò/g)?.length || 0);
-
-  return score >= 4;
+  return detectStudyContentProfile(text).contentType === "narrative_fiction";
 }
 
 function sentences(text: string): string[] {
@@ -545,7 +667,8 @@ function buildStudyNotesPro(title: string, concepts: string[], proLines: string[
 function buildOpenQuestions(
   title: string,
   concepts: string[],
-  narrative = false
+  narrative = false,
+  sourceText = ""
 ): OpenStudyQuestion[] {
 
   const joined = concepts.join(" ").toLowerCase();
@@ -576,26 +699,160 @@ function buildOpenQuestions(
   }
 
   if (narrative) {
-    return [
-      {
-        question: "Qual è il conflitto principale della storia?",
-        answerGuide: "Spiega il problema centrale e come influenza la trama."
-      },
-      {
-        question: "Come cambia l’atmosfera del racconto?",
-        answerGuide: "Analizza emozioni, tensione e ambientazione."
-      },
-      {
-        question: "Come evolvono i personaggi principali?",
-        answerGuide: "Descrivi motivazioni, paure e cambiamenti."
-      }
-    ];
+    return buildNarrativeOpenQuestions(sourceText, title);
   }
 
   return concepts.slice(0, 5).map((concept) => ({
     question: `Spiega il significato di "${concept}" nel testo.`,
     answerGuide: `Definisci "${concept}" e collegalo al tema centrale del materiale.`,
   }));
+}
+
+function hasWords(text: string, words: string[]): boolean {
+  const lower = text.toLowerCase();
+  return words.some((word) => lower.includes(word.toLowerCase()));
+}
+
+function isValidStudyQuestion(question: string, seen = new Set<string>()): boolean {
+  const clean = question.replace(/\s+/g, " ").trim();
+  const key = clean.toLowerCase();
+  if (!clean.endsWith("?")) return false;
+  if (countStudyWords(clean) < 6) return false;
+  if (seen.has(key)) return false;
+  if (/[.…]{2,}\??$/.test(clean) || /\b(sent|sentì|guard|pens|volt)\s*[.…]/i.test(clean)) return false;
+  if (/^(cosa sente|cosa vede|chi è|dove va)\s+[^?]*\?$/i.test(clean)) return false;
+  return true;
+}
+
+export function sanitizeStudyOpenQuestions(items: OpenStudyQuestion[], fallback: OpenStudyQuestion[]): OpenStudyQuestion[] {
+  const seen = new Set<string>();
+  const clean = items
+    .map((item) => ({
+      question: String(item.question || "").replace(/\s+/g, " ").trim(),
+      answerGuide: String(item.answerGuide || "").trim() || "Rispondi con prove dal testo e collega la risposta al capitolo.",
+    }))
+    .filter((item) => {
+      const ok = isValidStudyQuestion(item.question, seen);
+      if (ok) seen.add(item.question.toLowerCase());
+      return ok;
+    });
+  return clean.length >= 3 ? clean.slice(0, 10) : fallback;
+}
+
+function buildNarrativeOpenQuestions(text: string, title: string): OpenStudyQuestion[] {
+  const hasViola = hasWords(text, ["Viola"]);
+  const hasDamiano = hasWords(text, ["Damiano", "Damien"]);
+  const hasDipinto = hasWords(text, ["dipinto", "quadro", "ritratto"]);
+  const hasVilla = hasWords(text, ["villa", "casa", "proprietà"]);
+  const hasDoor = hasWords(text, ["porta chiusa", "porta", "stanza chiusa"]);
+  const pair = hasViola && hasDamiano ? "Viola e Damiano" : "i personaggi principali";
+
+  return [
+    {
+      question: hasViola
+        ? "Perché Viola accetta di restare nella villa nonostante percepisca il pericolo?"
+        : `Perché il personaggio centrale continua ad avanzare dentro il conflitto di "${title}"?`,
+      answerGuide: "Analizza desiderio, paura, bisogno emotivo e pressione della scena usando prove testuali.",
+    },
+    {
+      question: `Che tipo di potere si crea tra ${pair}: seduzione, controllo, dipendenza o ambiguità?`,
+      answerGuide: "Descrivi la dinamica emotiva, chi conduce la scena e quali dettagli cambiano l'equilibrio.",
+    },
+    {
+      question: hasDipinto
+        ? "In che modo il dipinto riflette il trauma interiore o il mistero del capitolo?"
+        : "Quale oggetto, immagine o dettaglio simbolico concentra il mistero del capitolo?",
+      answerGuide: "Collega simbolo, atmosfera e promessa narrativa senza ridurli a semplice decorazione.",
+    },
+    {
+      question: hasDoor
+        ? "Quale funzione narrativa ha la porta chiusa?"
+        : "Quale elemento nascosto crea una promessa narrativa per il capitolo successivo?",
+      answerGuide: "Spiega se apre mistero, minaccia, desiderio, segreto familiare o tensione psicologica.",
+    },
+    {
+      question: hasVilla
+        ? "Quali dettagli costruiscono l'atmosfera gotica della villa?"
+        : "Quali dettagli costruiscono l'atmosfera dominante della scena?",
+      answerGuide: "Individua ambiente, luce, suoni, ritmo delle frasi e reazioni dei personaggi.",
+    },
+    {
+      question: "Dove il capitolo aumenta davvero la tensione e dove invece rischia di ripeterla?",
+      answerGuide: "Distingui beat nuovi, escalation, ripetizioni emotive e scene che cambiano davvero la situazione.",
+    },
+    {
+      question: "Quale promessa narrativa apre il finale del capitolo?",
+      answerGuide: "Spiega quale domanda resta aperta e perché dovrebbe spingere il lettore a continuare.",
+    },
+  ];
+}
+
+function buildNarrativeQuiz(text: string, title: string): QuizQuestion[] {
+  const hasDipinto = hasWords(text, ["dipinto", "quadro", "ritratto"]);
+  const hasVilla = hasWords(text, ["villa", "proprietà"]);
+  const hasDoor = hasWords(text, ["porta chiusa", "porta"]);
+  return [
+    {
+      question: `Qual è la domanda narrativa più importante aperta da "${title}"?`,
+      options: [
+        "Capire soltanto dove si trova il personaggio",
+        "Scoprire quale desiderio o segreto rende pericolosa la permanenza nella scena",
+        "Memorizzare tutte le descrizioni dell'ambiente",
+        "Stabilire se il testo contiene parole giuridiche",
+      ],
+      answer: 1,
+      explanation: "In narrativa conta la promessa: desiderio, segreto, rischio e conseguenza tengono aperta la lettura.",
+      difficulty: "medium",
+    },
+    {
+      question: hasVilla ? "Che funzione ha la villa nell'atmosfera gotica del capitolo?" : "Che funzione ha l'ambientazione nella tensione del capitolo?",
+      options: [
+        "È solo uno sfondo neutro",
+        "Agisce come pressione emotiva e moltiplica mistero, controllo e isolamento",
+        "Serve solo a indicare il luogo geografico",
+        "Trasforma il capitolo in un documento legale",
+      ],
+      answer: 1,
+      explanation: "L'ambientazione gotica non è neutra: modifica percezione, ritmo e pericolo.",
+      difficulty: "medium",
+    },
+    {
+      question: hasDipinto ? "Perché il dipinto può essere letto come simbolo narrativo?" : "Perché un dettaglio visivo può diventare simbolo narrativo?",
+      options: [
+        "Perché interrompe la scena senza conseguenze",
+        "Perché concentra memoria, trauma, mistero o desiderio in un'immagine concreta",
+        "Perché rende il testo più lungo",
+        "Perché sostituisce ogni conflitto tra personaggi",
+      ],
+      answer: 1,
+      explanation: "Un simbolo funziona quando porta sottotesto e promessa, non solo decorazione.",
+      difficulty: "hard",
+    },
+    {
+      question: hasDoor ? "Quale effetto produce la porta chiusa sul lettore?" : "Quale effetto produce un segreto non ancora rivelato sul lettore?",
+      options: [
+        "Chiude ogni domanda narrativa",
+        "Crea una soglia: qualcosa è nascosto e va scoperto",
+        "Rende inutile il conflitto emotivo",
+        "Serve solo a descrivere l'arredamento",
+      ],
+      answer: 1,
+      explanation: "La soglia o il segreto rinviano a una rivelazione futura e alimentano tensione.",
+      difficulty: "medium",
+    },
+    {
+      question: "Quale risposta dimostra una vera comprensione narrativa del capitolo?",
+      options: [
+        "Elencare parole isolate senza collegarle",
+        "Spiegare motivazioni, conflitto, atmosfera e promessa aperta",
+        "Contare solo quante volte appare un personaggio",
+        "Classificare il testo in base a una singola keyword",
+      ],
+      answer: 1,
+      explanation: "La comprensione narrativa collega personaggi, scena, sottotesto e progressione.",
+      difficulty: "easy",
+    },
+  ];
 }
 
 function formatLines(title: string, lines: string[]): string {
@@ -802,7 +1059,7 @@ function explainWord(word: string): DifficultWord {
 export function analyzeStudyMaterial(text: string, sourceName = "materiale-studio.txt"): StudySessionResult {
   const clean = cleanText(text);
   const classification = classifyStudyMaterial(clean, sourceName);
-  const narrativeMode = detectNarrative(clean);
+  const narrativeMode = classification.contentType === "narrative_fiction" || detectNarrative(clean);
   const words = countStudyWords(clean);
   const title = detectSubject(clean, sourceName);
   const keyConcepts = keywords(
@@ -825,7 +1082,7 @@ export function analyzeStudyMaterial(text: string, sourceName = "materiale-studi
     back: `È uno dei concetti chiave del materiale. Spiegalo con parole semplici e collegalo all'argomento principale: ${title}.`,
   }));
 
-  const quiz = keyConcepts.slice(0, 10).map((concept, index) => ({
+  const quiz = narrativeMode ? buildNarrativeQuiz(clean, title) : keyConcepts.slice(0, 10).map((concept, index) => ({
     question: `Quale affermazione descrive meglio il ruolo di "${concept}" nel materiale studiato?`,
     options: [
       "È un dettaglio secondario da memorizzare senza collegamenti",
@@ -836,12 +1093,16 @@ export function analyzeStudyMaterial(text: string, sourceName = "materiale-studi
     answer: 1,
     explanation: `La risposta corretta è collegare "${concept}" al tema centrale. In un'interrogazione non basta ricordare: bisogna spiegare, collegare e applicare.`,
   }));
+  const fallbackOpenQuestions = buildOpenQuestions(title, keyConcepts, narrativeMode, clean);
 
   return {
     title,
     sourceName,
     words,
-    detectedSubject: classification.label || keyConcepts.slice(0, 4).join(" · ") || title,
+    contentType: classification.contentType,
+    subjectLabel: classification.subjectLabel,
+    studyMode: classification.mode,
+    detectedSubject: classification.subjectLabel || classification.label || keyConcepts.slice(0, 4).join(" · ") || title,
     difficulty: classification.difficultyScore >= 8 || words > 4500 ? "pro" : classification.difficultyScore >= 5 || words > 1500 ? "medium" : "soft",
     classification,
     summaries,
@@ -851,7 +1112,7 @@ export function analyzeStudyMaterial(text: string, sourceName = "materiale-studi
     studyNotesPro: buildStudyNotesPro(title, keyConcepts, pro.length ? pro : medium),
     difficultWords,
     flashcards,
-    openQuestions: buildOpenQuestions(title, keyConcepts, narrativeMode),
+    openQuestions: sanitizeStudyOpenQuestions(fallbackOpenQuestions, fallbackOpenQuestions),
     quiz,
     trueFalse: buildTrueFalseQuiz(keyConcepts),
     exercises: buildExercises(keyConcepts, classification),
@@ -1005,7 +1266,7 @@ export async function readStudyFileDetailed(file: File): Promise<StudyFileReadRe
       warnings.push("Testo estratto via OCR browser: verifica eventuali errori di riconoscimento.");
     } catch {
       text = "";
-      warnings.push("Immagine acquisita. Estrazione testo non disponibile in locale: incolla o trascrivi il testo nel riquadro per creare riassunti e quiz.");
+      warnings.push("Non riesco a leggere automaticamente questo file da qui. Puoi incollare il testo oppure continuare da browser.");
     }
   } else {
     throw new Error("Formato non supportato. Usa PDF, EPUB, TXT, MD, Markdown, DOCX o immagini JPG/PNG/WebP/HEIC.");

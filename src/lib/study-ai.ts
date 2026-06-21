@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { analyzeStudyMaterial, type StudySessionResult } from "@/lib/study-session";
+import { analyzeStudyMaterial, sanitizeStudyOpenQuestions, type StudySessionResult } from "@/lib/study-session";
 
 interface GenerateStudySessionAIInput {
   text: string;
@@ -120,20 +120,37 @@ function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudyS
     ? { ...fallback.summaries, ...parsed.summaries }
     : fallback.summaries;
 
+  const normalizedClassification = parsed?.classification && typeof parsed.classification === "object"
+    ? { ...fallback.classification, ...parsed.classification }
+    : fallback.classification;
+  const narrativeLock = fallback.contentType === "narrative_fiction";
+  const fallbackQuestions = fallback.openQuestions || [];
+  const safeOpenQuestions = sanitizeStudyOpenQuestions(openQuestions, fallbackQuestions);
+
   return {
     ...fallback,
     title: normalizeString(parsed?.title, fallback.title),
-    detectedSubject: normalizeString(parsed?.detectedSubject, fallback.detectedSubject),
+    contentType: narrativeLock ? "narrative_fiction" : normalizeString(parsed?.contentType, fallback.contentType) as StudySessionResult["contentType"],
+    subjectLabel: narrativeLock ? "Narrativa / Letteratura" : normalizeString(parsed?.subjectLabel, fallback.subjectLabel),
+    studyMode: narrativeLock ? "Analisi narrativa" : normalizeString(parsed?.studyMode, fallback.studyMode),
+    detectedSubject: narrativeLock ? "Narrativa / Letteratura" : normalizeString(parsed?.detectedSubject, fallback.detectedSubject),
     difficulty,
-    classification: parsed?.classification && typeof parsed.classification === "object"
-      ? { ...fallback.classification, ...parsed.classification }
-      : fallback.classification,
+    classification: narrativeLock
+      ? {
+          ...normalizedClassification,
+          type: "literature",
+          label: "Narrativa / Letteratura",
+          contentType: "narrative_fiction",
+          subjectLabel: "Narrativa / Letteratura",
+          mode: "Analisi narrativa",
+        }
+      : normalizedClassification,
     summaries,
     lightSummary: normalizeString(parsed?.lightSummary, fallback.lightSummary),
     mediumSummary: normalizeString(parsed?.mediumSummary, fallback.mediumSummary),
     proSummary: normalizeString(parsed?.proSummary, fallback.proSummary),
     studyNotesPro: normalizeString(parsed?.studyNotesPro, fallback.studyNotesPro),
-    openQuestions: openQuestions.length ? openQuestions : fallback.openQuestions,
+    openQuestions: safeOpenQuestions.length ? safeOpenQuestions : fallback.openQuestions,
     difficultWords: difficultWords.length ? difficultWords : fallback.difficultWords,
     flashcards: flashcards.length ? flashcards : fallback.flashcards,
     quiz: quiz.length ? quiz : fallback.quiz,
@@ -265,6 +282,10 @@ OUTPUT RULE:
 Return ONLY valid JSON. No markdown. No commentary outside JSON.
 
 QUALITY RULES:
+- First detect contentType before subject: narrative_fiction, study_notes, textbook, essay, legal_document, mixed_or_unknown.
+- If the material is structurally narrative fiction (chapter, named characters, dialogue, scenes, setting, emotional tension, plot progression), classify it as narrative_fiction and "Narrativa / Letteratura" even if it contains legal words like contract, clause, property or signature.
+- Classify as law/legal_document only for true legal explanations, law notes, contracts/templates, statutes, proceedings or essays about law.
+- For narrative_fiction use "Analisi narrativa": summary, characters, setting, conflict, themes, style, emotional arc, narrative tension and craft-aware comprehension questions.
 - Do NOT make summaries too short. This is for real studying, not a marketing blurb.
 - Light summary: bullet-oriented, fast review, max 150-180 words. Simple school language. No walls of text.
 - Medium summary: structured, ordered, complete. Include main ideas, chapter/section progression, cause-effect links, and practical meaning. Minimum 350-550 words when material is long.
@@ -288,11 +309,17 @@ Source name: ${input.sourceName}
 Return this JSON shape exactly:
 {
   "title": "string",
+  "contentType": "narrative_fiction | study_notes | textbook | essay | legal_document | mixed_or_unknown",
+  "subjectLabel": "string",
+  "studyMode": "string",
   "detectedSubject": "string",
   "difficulty": "soft | medium | pro",
   "classification": {
     "type": "history | philosophy | literature | math | physics | chemistry | medicine | law | economics | computer-science | foreign-language | scientific-article | technical-manual | mixed-notes | general",
     "label": "string",
+    "contentType": "narrative_fiction | study_notes | textbook | essay | legal_document | mixed_or_unknown",
+    "subjectLabel": "string",
+    "mode": "string",
     "confidence": 0,
     "language": "string",
     "difficultyScore": 0,
@@ -388,6 +415,9 @@ Mix question types:
 - "what does the author mean by..." questions
 FLASHCARD REQUIREMENTS:
 Mix types: definition, cause-effect, comparison, true/false, application, oral-exam style. Break long answers into smaller chunks.
+NARRATIVE FICTION QUESTION REQUIREMENTS:
+If contentType is narrative_fiction, questions must be clean Italian craft-aware questions about character motivation, emotional conflict, scene tension, symbols, atmosphere, mystery, narrative promises and chapter progression.
+Reject/avoid truncated questions, questions without "?", very generic questions like "Cosa sente Viola?", isolated-keyword questions, duplicate questions and wrong-language questions.
 SUMMARY REQUIREMENTS:
 The 10 summary modes must be genuinely different in structure and purpose. Do not copy the same text into every mode.
 MAP/EXERCISE REQUIREMENTS:

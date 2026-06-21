@@ -18,10 +18,14 @@ import {
   generateNonfictionSubjects,
   generateTitleSubtitleOptions,
   getMissingFieldActions,
+  resolveLengthPresetConfig,
   resolveFoundationFlowStep,
   validateBookFoundationFields,
 } from "@/lib/guided-interview/book-foundation-lock";
-import { isNonfictionExpressGenre } from "@/lib/guided-interview/express-genre-config";
+import {
+  isNonfictionExpressGenre,
+  isPoetryExpressGenre,
+} from "@/lib/guided-interview/express-genre-config";
 import { foundationCastToForge } from "@/lib/guided-interview/character-foundation-studio";
 import { CharacterFoundationStudioLite } from "./CharacterFoundationStudioLite";
 import { cn } from "@/lib/utils";
@@ -59,6 +63,7 @@ export function BookFoundationFlowPanel({
 
   const step = foundation.flowStep ?? resolveFoundationFlowStep(foundation);
   const isNonfiction = isNonfictionExpressGenre(foundation.genre);
+  const isPoetry = isPoetryExpressGenre(foundation.genre);
   const missingActions = getMissingFieldActions(foundation.missingFields);
   const canConfirm = foundation.missingFields.length === 0;
 
@@ -77,20 +82,23 @@ export function BookFoundationFlowPanel({
   };
 
   const handleLengthChange = (preset: BookLengthPreset) => {
-    const config = LENGTH_PRESET_CONFIGS[preset];
+    const config = resolveLengthPresetConfig(preset, foundation.genre);
+    const nextInput = { ...input, lengthPreset: preset, genre: foundation.genre };
     applyFoundation({
       lengthPreset: preset,
       chapterCount: config.chapterCount,
       subchaptersEnabled: config.subchaptersDefault,
       structurePreset: `${preset} · ${config.pacing}`,
-      chapterStructure: generateChapterStructure(input, config.chapterCount),
+      chapterStructure: generateChapterStructure(nextInput, config.chapterCount),
     });
   };
 
   const handleGenerateStructure = () => {
+    const config = resolveLengthPresetConfig(foundation.lengthPreset, foundation.genre);
+    const nextInput = { ...input, lengthPreset: foundation.lengthPreset, genre: foundation.genre };
     applyFoundation({
-      chapterStructure: generateChapterStructure(input, foundation.chapterCount),
-      structurePreset: `${foundation.lengthPreset} · ${LENGTH_PRESET_CONFIGS[foundation.lengthPreset].pacing}`,
+      chapterStructure: generateChapterStructure(nextInput, foundation.chapterCount),
+      structurePreset: `${foundation.lengthPreset} · ${config.pacing}`,
     });
   };
 
@@ -224,31 +232,34 @@ export function BookFoundationFlowPanel({
         <div className={cn("mt-4 grid gap-4", compact ? "grid-cols-1" : "lg:grid-cols-2")}>
           <Panel title="Lunghezza e struttura">
             <div className="flex flex-wrap gap-1.5">
-              {(Object.keys(LENGTH_PRESET_CONFIGS) as BookLengthPreset[]).map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  onClick={() => handleLengthChange(preset)}
-                  className={cn(
-                    "rounded-lg border px-2.5 py-1.5 text-[10px] font-medium",
-                    foundation.lengthPreset === preset
-                      ? "border-amber-300/45 bg-amber-500/20 text-amber-100"
-                      : "border-white/10 bg-white/[0.04] text-white/55",
-                  )}
-                >
-                  {LENGTH_PRESET_CONFIGS[preset].label} ({LENGTH_PRESET_CONFIGS[preset].chapterCount} cap.)
-                </button>
-              ))}
+              {(Object.keys(LENGTH_PRESET_CONFIGS) as BookLengthPreset[]).map((preset) => {
+                const config = resolveLengthPresetConfig(preset, foundation.genre);
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => handleLengthChange(preset)}
+                    className={cn(
+                      "rounded-lg border px-2.5 py-1.5 text-[10px] font-medium",
+                      foundation.lengthPreset === preset
+                        ? "border-amber-300/45 bg-amber-500/20 text-amber-100"
+                        : "border-white/10 bg-white/[0.04] text-white/55",
+                    )}
+                  >
+                    {config.label} ({config.chapterCount} {isPoetry ? "sez." : "cap."})
+                  </button>
+                );
+              })}
             </div>
             <p className="mt-2 text-[11px] text-white/45">
-              {LENGTH_PRESET_CONFIGS[foundation.lengthPreset]?.description}
+              {resolveLengthPresetConfig(foundation.lengthPreset, foundation.genre).description}
             </p>
             <button
               type="button"
               onClick={handleGenerateStructure}
               className="mt-2 text-[10px] font-medium text-amber-200/80 underline-offset-2 hover:underline"
             >
-              Genera struttura capitoli
+              {isPoetry ? "Genera sezioni poetiche" : "Genera struttura capitoli"}
             </button>
           </Panel>
 
@@ -409,7 +420,7 @@ export function BookFoundationFlowPanel({
               <Row label="Titolo" value={foundation.title} />
               <Row label="Sottotitolo" value={foundation.subtitle} />
               <Row label="Hook" value={foundation.commercialHook} />
-              <Row label="Capitoli" value={String(foundation.chapterCount)} />
+              <Row label={isPoetry ? "Sezioni" : "Capitoli"} value={String(foundation.chapterCount)} />
               <Row label="Struttura" value={foundation.structurePreset} />
               <Row label="Pubblico" value={foundation.targetAudience} />
             </dl>

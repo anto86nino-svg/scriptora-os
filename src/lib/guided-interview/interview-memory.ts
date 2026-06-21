@@ -866,7 +866,7 @@ export function memoryRecapShown(memory: ForgeInterviewMemory, answerCount: numb
 }
 
 export function getMemoryProgressLabel(memory: ForgeInterviewMemory): string {
-  return `Stiamo costruendo: ${buildStoryRoomProgressLabel(memory)}`;
+  return buildStoryRoomProgressLabel(memory);
 }
 
 export function getMemoryStageProgress(memory: ForgeInterviewMemory): {

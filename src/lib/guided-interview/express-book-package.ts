@@ -149,6 +149,43 @@ function chapterCountForInput(input: ExpressForgeInput): number {
   return resolveLengthPresetConfig(preset, input.genre).chapterCount;
 }
 
+function poetrySectionCountForInput(input: ExpressForgeInput): number {
+  const preset = normalizeLengthPreset(input.length);
+  if (preset === "breve") return 4;
+  if (preset === "lungo" || preset === "epico") return 7;
+  return 5;
+}
+
+function poetryPoemEstimateForInput(input: ExpressForgeInput): number {
+  const preset = normalizeLengthPreset(input.length);
+  if (preset === "breve") return 40;
+  if (preset === "lungo" || preset === "epico") return 80;
+  return 60;
+}
+
+function normalizePoetryToneLabel(tone: string): string {
+  const normalized = tone.trim().toLowerCase();
+  if (!normalized) return "lirica";
+  const first = normalized.split(/[,/·-]/)[0]?.trim() || normalized;
+  const feminine: Record<string, string> = {
+    lirico: "lirica",
+    poetico: "poetica",
+    intimo: "intima",
+    crudo: "cruda",
+    contemplativo: "contemplativa",
+    visivo: "visiva",
+    minimalista: "minimalista",
+    emotivo: "emotiva",
+  };
+  return feminine[first] || first.replace(/ico\b/, "ica").replace(/oso\b/, "osa");
+}
+
+function normalizePoetryTheme(theme: string): string {
+  return theme
+    .replace(/^(una\s+)?raccolta\s+(poetica|di\s+poesie)\s+(su|sulla|sulle|sul)?\s*/i, "")
+    .trim();
+}
+
 function normalizeLanguage(language: string): string {
   const map: Record<string, string> = {
     Italiano: "Italian",
@@ -709,9 +746,14 @@ function buildPoetryExpressPackage(
   const meta = getExpressVariantMeta(input.genre, variant);
   const genreMeta = GENRE_META.poesia;
   const seed = ideaCore(input);
-  const chapterCount = chapterCountForInput(input);
+  const chapterCount = poetrySectionCountForInput(input);
+  const poemEstimate = poetryPoemEstimateForInput(input);
   const language = normalizeLanguage(input.language);
-  const theme = seed.split(/[.!?…]/)[0]?.trim() || seed;
+  const rawTheme = seed.split(/[.!?…]/)[0]?.trim() || seed;
+  const theme =
+    normalizePoetryTheme(rawTheme) ||
+    "voce, memoria e trasformazione emotiva";
+  const toneLabel = normalizePoetryToneLabel(input.tone);
   const title =
     input.title?.trim()
       ? input.title.trim()
@@ -722,21 +764,28 @@ function buildPoetryExpressPackage(
     ? input.subtitle.trim()
     : variant === "bold"
       ? "Voci che restano quando il resto svanisce"
-      : `Una raccolta ${input.tone} su ${theme.toLowerCase()}`;
-  const editorialSynopsis = `${seed} Una raccolta poetica ${input.tone} organizzata in sezioni che attraversano ${theme.toLowerCase()} — immagini, silenzi e riprese di voce che restano dopo l'ultimo verso.`;
-  const hook = `Versi su ${theme.toLowerCase()} — voce ${input.tone}, immagini nette, eco lunga.`;
+      : seed.trim()
+        ? `Una raccolta ${toneLabel} su ${theme.toLowerCase()}.`
+        : "Una raccolta lirica costruita intorno alla voce, alla memoria e alla trasformazione emotiva.";
+  const editorialSynopsis = `${seed || subtitle} Una raccolta poetica ${toneLabel} organizzata in ${chapterCount} sezioni e circa ${poemEstimate} poesie: immagini ricorrenti, silenzi, ritmo e una progressione emotiva che attraversa ${theme.toLowerCase()} senza trasformarsi in trama da romanzo.`;
+  const hook = `Versi su ${theme.toLowerCase()} — voce ${toneLabel}, immagini nette, eco lunga.`;
   const marketPromise = editorialSynopsis.slice(0, 200);
   const partial = {
     hook,
     midpoint: "Svolta tematica al centro della raccolta",
     climax: "Sezione più intensa — immagine-sintesi",
-    endingDirection: "Chiusura che restituisce luce o crepa aperta coerente con il tema",
+    endingDirection: "Eco finale che restituisce luce o crepa aperta coerente con il tema",
     finalEmotion: variant === "bold" ? "Scossa lirica e silenzio" : "Malinconia luminosa",
   };
   const chapterBlueprintSeeds = buildNonfictionChapterSeeds(chapterCount, variant, "Arco poetico").map((c, i) => ({
     ...c,
     id: `express-po-ch-${i + 1}`,
-    title: `Sezione ${i + 1} — ${["Origine", "Corpo", "Frattura", "Ritorno", "Eco"][i % 5]}`,
+    title: `Sezione ${i + 1} — ${["Origine", "Corpo", "Frattura", "Ritorno", "Eco", "Soglia", "Luce residua"][i % 7]}`,
+    summary: `Sezione poetica dedicata a ${theme.toLowerCase()}: variazione di immagini, ritmo e voce.`,
+    purpose: `Porta avanti l'arco emotivo della raccolta, non una trama da romanzo.`,
+    goal: `Costruire una tappa della progressione poetica con immagini concrete e silenzi.`,
+    conflict: "Tensione emotiva tra memoria, assenza e possibilità di nominare il dolore.",
+    hook: `Immagine-soglia o verso memorabile per aprire la sezione ${i + 1}.`,
     expectedSetting: "Spazio lirico — città, corpo, memoria",
   }));
   const characters = buildNonfictionCharacters(
@@ -750,10 +799,10 @@ function buildPoetryExpressPackage(
     arcBeats: [
       { id: "arc-1", act: "setup", label: "Apertura", change: "Voce e tema" },
       { id: "arc-2", act: "pressure", label: "Intensità", change: partial.midpoint },
-      { id: "arc-4", act: "finale", label: "Chiusura", change: partial.endingDirection },
+      { id: "arc-4", act: "finale", label: "Eco finale", change: partial.endingDirection },
     ],
     ending: {
-      tone: input.tone,
+      tone: toneLabel,
       protagonistFate: partial.endingDirection,
       readerFeeling: partial.finalEmotion,
       irreversibleChoice: partial.climax,
@@ -774,19 +823,23 @@ function buildPoetryExpressPackage(
     language,
     targetAudience: "Lettori di poesia contemporanea e lirica accessibile",
     marketPromise,
-    protagonist: `Voce poetica — ${input.tone}`,
+    protagonist: `Voce poetica — ${toneLabel}`,
     antagonistOrLoveInterest: "Silenzio, distanza, assenza",
     secondaryCharacters: [],
     setting: "Spazi lirici — città, corpo, memoria",
-    atmosphere: `${input.tone}, visivo, sensoriale`,
-    centralConflict: `${theme} vs ciò che resta indicibile`,
+    atmosphere: `${toneLabel}, visiva, sensoriale`,
+    centralConflict: `Tensione emotiva: ${theme} contro ciò che resta indicibile`,
     emotionalWound: theme,
     desire: "Dare forma al tema attraverso immagini",
     fear: "Ripetizione e cliché lirici",
     stakes: "Autenticità della voce e impatto dell'immagine",
     moralBoundary: "Niente pastiche gratuiti, niente pathos forzato",
-    antiDriftRules: [`Mantieni tono ${input.tone} e coerenza tematica`],
-    structurePreference: `${chapterCount} sezioni`,
+    antiDriftRules: [
+      `Mantieni tono ${toneLabel} e coerenza tematica`,
+      "Non introdurre forced proximity, love interest pericolosi, baci-trappola o payoff romantici se l'utente ha chiesto poesia.",
+      "Struttura la raccolta in sezioni poetiche, non in capitoli con cliffhanger da romanzo.",
+    ],
+    structurePreference: `${chapterCount} sezioni poetiche · circa ${poemEstimate} poesie`,
     chapterCount,
     subchaptersEnabled: false,
     chapterBlueprintSeeds,
@@ -804,12 +857,12 @@ function buildPoetryExpressPackage(
     whyItSells: meta.pitch,
     characters,
     storyRoom,
-    storyFuture: { endingTone: input.tone, lastPageFeeling: partial.finalEmotion, hopeOrDread: "hope" },
+    storyFuture: { endingTone: toneLabel, lastPageFeeling: partial.finalEmotion, hopeOrDread: "hope" },
     bookPromises: {
       emotional: [marketPromise],
       relationship: [],
-      plot: [theme],
-      character: [`Voce ${input.tone}`],
+      plot: [`Arco poetico: ${theme}`],
+      character: [`Voce ${toneLabel}`],
       scene: keyScenes.map((s) => s.beat),
     },
     blueprintReadiness: "complete",
@@ -1002,7 +1055,7 @@ function cleanExpressPersonName(value?: string): string {
 }
 
 function cleanExpressScenarioPeople(scenario: ExpressBookScenario): ExpressBookScenario {
-  if (isNonfictionExpressGenre(scenario.genre)) return scenario;
+  if (isNonfictionExpressGenre(scenario.genre) || isPoetryExpressGenre(scenario.genre)) return scenario;
 
   const protagonist = cleanExpressPersonName(scenario.protagonist);
   const loveInterest = cleanExpressPersonName(scenario.antagonistOrLoveInterest);
@@ -1057,6 +1110,10 @@ function strengthenScenarioDivergence(
         "Identità più memorabile, adatta a lettori che cercano una voce forte e non un manuale qualunque.",
       editorialRisks: ["Più rischioso e meno neutro, ma più riconoscibile."],
     };
+  }
+
+  if (isPoetryExpressGenre(scenario.genre)) {
+    return scenario;
   }
 
   if (scenario.variant === "safe") {

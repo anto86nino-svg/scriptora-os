@@ -21,6 +21,34 @@ describe("Study OS material analysis", () => {
     expect(classifyStudyMaterial(studyText("Economia", "Domanda, offerta, mercato, prezzo, inflazione, PIL, costo, ricavo e bilancio.")).type).toBe("economics");
   });
 
+  it("treats gothic-romantic narrative with legal keywords as narrative fiction, not law", () => {
+    const chapter = studyText(
+      "Capitolo 1",
+      "Viola entrò nella villa mentre la pioggia batteva sui vetri. Damiano le porse un contratto di riservatezza e lei firmò senza leggere tutte le clausole, perché il dipinto nella sala sembrava guardarla. \"Non aprire quella porta\", disse lui. La proprietà era piena di stanze chiuse, silenzi e una tensione gotica che trasformava ogni passo in una promessa narrativa.",
+    );
+
+    const classification = classifyStudyMaterial(chapter, "la-notte-in-cui-tutto-inizio.txt");
+
+    expect(classification.contentType).toBe("narrative_fiction");
+    expect(classification.subjectLabel).toBe("Narrativa / Letteratura");
+    expect(classification.mode).toBe("Analisi narrativa");
+    expect(classification.label).not.toBe("Diritto");
+    expect(classification.type).not.toBe("law");
+  });
+
+  it("keeps true legal templates classified as law", () => {
+    const contract = studyText(
+      "Contratto",
+      "Le parti convengono quanto segue. Ai sensi del codice civile, il sottoscritto assume obblighi di riservatezza. Clausola 1 oggetto del contratto. Clausola 2 durata. Foro competente, normativa vigente, obbligazione, articolo e comma regolano il rapporto.",
+    );
+
+    const classification = classifyStudyMaterial(contract, "contratto-riservatezza.pdf");
+
+    expect(classification.contentType).toBe("legal_document");
+    expect(classification.subjectLabel).toBe("Diritto");
+    expect(classification.type).toBe("law");
+  });
+
   it("generates distinct study modes, notes, true-false, exercises and maps", () => {
     const result = analyzeStudyMaterial(studyText(
       "Fisica",
@@ -34,6 +62,22 @@ describe("Study OS material analysis", () => {
     expect(result.trueFalse?.length).toBeGreaterThan(0);
     expect(result.exercises?.length).toBeGreaterThanOrEqual(3);
     expect(result.conceptMap?.nodes.length).toBeGreaterThan(2);
+  });
+
+  it("generates clean craft-aware narrative questions before generic study prompts", () => {
+    const chapter = studyText(
+      "Capitolo narrativo",
+      "Viola resta nella villa anche se Damiano le ha fatto firmare un contratto. Il dipinto della donna velata sembra cambiare espressione ogni notte. La porta chiusa in fondo al corridoio diventa il centro del mistero, mentre la pioggia, il silenzio e la tensione tra i due personaggi rendono ogni scena più ambigua.",
+    );
+
+    const result = analyzeStudyMaterial(chapter, "capitolo-viola-damiano.txt");
+    const joined = result.openQuestions.map((item) => item.question).join(" ");
+
+    expect(result.contentType).toBe("narrative_fiction");
+    expect(joined).toMatch(/Viola|Damiano|dipinto|porta chiusa|tensione/i);
+    expect(result.openQuestions.length).toBeGreaterThanOrEqual(5);
+    expect(result.openQuestions.every((item) => item.question.endsWith("?"))).toBe(true);
+    expect(joined).not.toMatch(/Viola sent|sent…|sent\.\.\.|Cosa sente Viola\?/i);
   });
 });
 
@@ -85,7 +129,7 @@ describe("Study OS file ingestion", () => {
     expect(result.sourceType).toBe("image");
     expect(result.empty).toBe(true);
     expect(result.text).toBe("");
-    expect(result.warnings.join(" ")).toMatch(/Immagine acquisita|Estrazione testo non disponibile/i);
+    expect(result.warnings.join(" ")).toContain("Non riesco a leggere automaticamente questo file da qui");
   });
 
   it("accepts camera HEIC/HEIF images without reporting unsupported format", async () => {

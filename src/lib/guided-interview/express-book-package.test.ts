@@ -43,6 +43,16 @@ const selfHelpInput = {
   controlLevel: "scenarios" as const,
 };
 
+const poetryInput = {
+  genre: "poesia",
+  language: "Italiano",
+  titleMode: "suggest" as const,
+  ideaSeed: "raccolta poetica su amore, perdita e rinascita",
+  tone: "lirico",
+  length: "medio" as const,
+  controlLevel: "scenarios" as const,
+};
+
 describe("buildCompleteExpressBookPackage — self-help", () => {
   it("does not produce fiction synopsis or restauratrice template", () => {
     const pkg = buildCompleteExpressBookPackage(selfHelpInput, "commercial");
@@ -79,6 +89,45 @@ describe("buildCompleteExpressBookPackage — self-help", () => {
     expect(next.selectedBookType).not.toBe("Romanzo");
     expect(next.extracted?.readerTransformation).toBeTruthy();
     expect(next.extracted?.centralConflict).toBe(pkg.readerProblem);
+  });
+});
+
+describe("buildCompleteExpressBookPackage — poetry", () => {
+  it("builds poetry-native packages without dark romance trope contamination", () => {
+    const pkg = buildCompleteExpressBookPackage(poetryInput, "commercial");
+    const joined = [
+      pkg.subtitle,
+      pkg.hook,
+      pkg.editorialSynopsis,
+      pkg.centralConflict,
+      pkg.finalEmotion,
+      pkg.structurePreference,
+      pkg.chapterBlueprintSeeds.map((seed) => seed.title).join(" "),
+    ].join(" ");
+
+    expect(pkg.genre).toBe("poetry");
+    expect(pkg.chapterCount).toBeGreaterThanOrEqual(4);
+    expect(pkg.chapterCount).toBeLessThanOrEqual(7);
+    expect(pkg.structurePreference).toMatch(/sezioni poetiche|poesie/i);
+    expect(pkg.chapterBlueprintSeeds.every((seed) => seed.title.startsWith("Sezione"))).toBe(true);
+    expect(pkg.subtitle).toContain("Una raccolta lirica");
+    expect(joined).not.toMatch(/forced proximity|uomo pericoloso|baci|trappola|payoff romantico|cliffhanger di capitolo/i);
+  });
+
+  it("keeps lyrical dark romance as a novel, not a poetry collection", () => {
+    const pkg = buildCompleteExpressBookPackage(
+      {
+        ...expressInput,
+        genre: "dark romance",
+        tone: "poetico",
+        ideaSeed: "romanzo dark romance con stile poetico e tensione morale",
+      },
+      "commercial",
+    );
+
+    expect(pkg.genre).toBe("dark-romance");
+    expect(pkg.structurePreference).toMatch(/capitoli/i);
+    expect(pkg.protagonist).not.toMatch(/Voce poetica/i);
   });
 });
 

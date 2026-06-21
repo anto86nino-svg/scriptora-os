@@ -11,7 +11,12 @@ import { FORGE_OPENING_QUESTION_ID, isFirstForgeAssistantMessage } from "@/lib/g
 import { getWelcomeInterviewQuestion } from "@/lib/guided-interview/interview-stages";
 import { evaluateForgeReadiness } from "@/lib/guided-interview/forge-readiness";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
-import { saveForgeDnaLock } from "@/lib/guided-interview/interview-state";
+import {
+  clearForgeInterviewDraft,
+  loadForgeInterviewDraft,
+  saveForgeDnaLock,
+  saveForgeInterviewDraft,
+} from "@/lib/guided-interview/interview-state";
 import { finalizeForgeForBlueprint } from "@/lib/guided-interview/forge-evolution-engine";
 import { useSpeechDictation } from "@/hooks/useSpeechDictation";
 import {
@@ -79,13 +84,17 @@ export function useGuidedInterviewController({
 }: UseGuidedInterviewOptions) {
   const hostContext: ForgeHostContext = { penName, authorName, genderHint };
 
-  const [state, setState] = useState(() =>
-    getInitialInterviewState({
+  const buildInitialState = () =>
+    getResumableInterviewState(
+      getInitialInterviewState({
+        selectedGenre,
+        chatFirst: chatFirst && !selectedGenre,
+        hostContext,
+      }),
       selectedGenre,
-      chatFirst: chatFirst && !selectedGenre,
-      hostContext,
-    }),
-  );
+    );
+
+  const [state, setState] = useState(buildInitialState);
   const [input, setInput] = useState("");
   const [showDnaPanel, setShowDnaPanel] = useState(false);
   const [dnaConfirmationDismissed, setDnaConfirmationDismissed] = useState(false);
@@ -109,13 +118,7 @@ export function useGuidedInterviewController({
   const speech = useSpeechDictation(language);
 
   useEffect(() => {
-    setState(
-      getInitialInterviewState({
-        selectedGenre,
-        chatFirst: chatFirst && !selectedGenre,
-        hostContext,
-      }),
-    );
+    setState(buildInitialState());
     setShowDnaPanel(false);
     setDnaConfirmationDismissed(false);
     setContinueNonce(0);
@@ -127,6 +130,10 @@ export function useGuidedInterviewController({
     lastQuestionTextRef.current = null;
     autoFoundationAttemptedRef.current = false;
   }, [selectedGenre, chatFirst, penName, authorName, genderHint]);
+
+  useEffect(() => {
+    saveForgeInterviewDraft(state);
+  }, [state]);
 
   const rawNext = useMemo(() => getNextInterviewQuestion(state), [state]);
   const next = useMemo(
@@ -496,6 +503,7 @@ export function useGuidedInterviewController({
     const finalized = finalizeForgeForBlueprint(normalized);
     setState(finalized);
     saveForgeDnaLock(finalized);
+    clearForgeInterviewDraft();
     onConfirmDna?.(finalized);
   };
 
@@ -591,4 +599,45 @@ export function useGuidedInterviewController({
 
 function clean(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function getResumableInterviewState(
+  fallback: GuidedInterviewState,
+  selectedGenre?: string,
+): GuidedInterviewState {
+  const draft = loadForgeInterviewDraft();
+  if (!draft || !canUseDraftForGenre(draft.state, selectedGenre)) return fallback;
+  return addResumeNotice({
+    ...draft.state,
+    completed: false,
+  });
+}
+
+function canUseDraftForGenre(state: GuidedInterviewState, selectedGenre?: string): boolean {
+  if (!selectedGenre) return true;
+  const draftGenre = clean(state.selectedGenre || state.extracted?.genre);
+  if (!draftGenre) return true;
+  return normalizeComparableGenre(draftGenre) === normalizeComparableGenre(selectedGenre);
+}
+
+function normalizeComparableGenre(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function addResumeNotice(state: GuidedInterviewState): GuidedInterviewState {
+  if (state.messages.some((message) => message.id === "assistant-forge-draft-resumed")) {
+    return state;
+  }
+  return {
+    ...state,
+    messages: [
+      ...state.messages,
+      {
+        id: "assistant-forge-draft-resumed",
+        role: "assistant",
+        content: "Intervista ripresa. Ho conservato le risposte già date.",
+        createdAt: Date.now(),
+      },
+    ],
+  };
 }
