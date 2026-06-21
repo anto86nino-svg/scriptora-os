@@ -76,6 +76,12 @@ import {
   buildCanonBrainV3PromptBlock,
   validateCanonBrainV3ChunkBeforeMerge,
 } from "@/lib/canon-brain-v3";
+import {
+  buildNarrativeQualityRepairPrompt,
+  buildUniversalWritingQualityRulesBlock,
+  validateNarrativeChapterQuality,
+  type WritingQualityReport,
+} from "@/lib/writing-quality-gate";
 
 /**
  * Verbose streaming logs are off by default — they intasavano la console
@@ -1257,6 +1263,126 @@ function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length;
 }
 
+function writingQualityGateDevLog(event: string, payload: Record<string, unknown>) {
+  try {
+    if (import.meta.env.DEV || DEV_DEBUG_STREAM) {
+      console.info(event, {
+        ts: new Date().toISOString(),
+        ...payload,
+      });
+    }
+  } catch {
+    /* diagnostics must never block generation */
+  }
+}
+
+function summarizeWritingQualityReport(report: WritingQualityReport) {
+  return report.issues.map((issue) => ({
+    kind: issue.kind,
+    severity: issue.severity,
+    evidence: issue.evidence.slice(0, 2),
+  }));
+}
+
+async function repairChapterWritingQualityIfNeeded(
+  chapterText: string,
+  context: {
+    config: BookConfig;
+    genreLock?: GenreLock;
+    usage?: AIUsageContext;
+    chapterIndex: number;
+    chapterTitle: string;
+  },
+): Promise<string> {
+  const report = validateNarrativeChapterQuality(chapterText, {
+    language: context.config.language,
+    genre: context.config.genre,
+    config: context.config as BookConfig & Record<string, unknown>,
+  });
+
+  if (!report.needsRepair) {
+    if (DEV_DEBUG_STREAM) {
+      writingQualityGateDevLog("WRITING_QUALITY_GATE_PASS", {
+        chapterIndex: context.chapterIndex + 1,
+        score: report.score,
+        issues: summarizeWritingQualityReport(report),
+      });
+    }
+    return chapterText;
+  }
+
+  writingQualityGateDevLog("WRITING_QUALITY_REPAIR_TRIGGERED", {
+    chapterIndex: context.chapterIndex + 1,
+    score: report.score,
+    issues: summarizeWritingQualityReport(report),
+  });
+
+  try {
+    const repairedText = await callAIReduced(
+      `${getSystemPrompt(context.config, context.genreLock)}
+
+Surgical narrative quality repair. Preserve canon, blueprint, plot, POV, character facts, timeline intent and author voice.`,
+      buildNarrativeQualityRepairPrompt({
+        chapterText,
+        report,
+        language: context.config.language,
+        chapterTitle: context.chapterTitle,
+      }),
+      withUsage(context.usage, {
+        taskType: "generate_chapter_quality_retry",
+        metadata: {
+          chapterIndex: context.chapterIndex + 1,
+          writingQualityGate: true,
+          writingQualityIssues: report.issues.map((issue) => issue.kind),
+          noExtraCharge: true,
+          language: context.config.language,
+          genre: context.config.genre,
+          bookTypeId: String((context.config as any).bookTypeId || (context.config as any).bookType || ""),
+        },
+      }),
+    );
+    const cleanRepairedText = repairedText.replace(/^```[a-z]*\n?/g, "").replace(/\n?```$/g, "").trim();
+    if (!cleanRepairedText) {
+      writingQualityGateDevLog("WRITING_QUALITY_REPAIR_FAILED", {
+        chapterIndex: context.chapterIndex + 1,
+        reason: "empty_repair",
+      });
+      return chapterText;
+    }
+
+    const repairedReport = validateNarrativeChapterQuality(cleanRepairedText, {
+      language: context.config.language,
+      genre: context.config.genre,
+      config: context.config as BookConfig & Record<string, unknown>,
+    });
+
+    if (repairedReport.needsRepair && repairedReport.score < report.score) {
+      writingQualityGateDevLog("WRITING_QUALITY_REPAIR_FAILED", {
+        chapterIndex: context.chapterIndex + 1,
+        reason: "repair_regressed",
+        originalScore: report.score,
+        repairedScore: repairedReport.score,
+        issues: summarizeWritingQualityReport(repairedReport),
+      });
+      return chapterText;
+    }
+
+    writingQualityGateDevLog("WRITING_QUALITY_REPAIR_PASSED", {
+      chapterIndex: context.chapterIndex + 1,
+      originalScore: report.score,
+      repairedScore: repairedReport.score,
+      remainingIssues: summarizeWritingQualityReport(repairedReport),
+    });
+    return cleanRepairedText;
+  } catch (error) {
+    writingQualityGateDevLog("WRITING_QUALITY_REPAIR_FAILED", {
+      chapterIndex: context.chapterIndex + 1,
+      reason: error instanceof Error ? error.message : String(error),
+    });
+    return chapterText;
+  }
+}
+
 export function buildChapterLivePreview(accumulatedContent: string, partialAccumulated: string): string {
   const base = String(accumulatedContent || "").trim();
   const partial = String(partialAccumulated || "").trim();
@@ -1630,6 +1756,7 @@ export async function generateChapterChunked(
     previousChapters,
   });
   const scriptoraOmegaDirective = buildScriptoraOmegaDirective(config, { chapterIndex, mode: "generation" });
+  const universalWritingQualityRules = buildUniversalWritingQualityRulesBlock(config.language);
   const genreDirective = buildPromptByGenre({
     genre: genreLock?.genre || config.genre,
     subcategory: genreLock?.subcategory || (config as any).subcategory,
@@ -1754,6 +1881,8 @@ BESTSELLER QUALITY REQUIREMENTS:
 - Use varied sentence rhythm
 - HONOR the GENRE DIRECTIVE above — chapter style and content rules are MANDATORY
 
+${universalWritingQualityRules}
+
 Return ONLY the chapter text. Start with the chapter content directly.
 Do NOT return JSON. Do NOT include the chapter title in the text.
 Write in ${config.language}.${adaptiveSuffix}`
@@ -1804,6 +1933,8 @@ CRITICAL RULES:
 - Maintain narrative coherence and emotional continuity
 - HONOR the GENRE DIRECTIVE — same chapter style throughout the book
 - Increase depth and quality with each chunk
+
+${universalWritingQualityRules}
 ${phase === "CLOSURE" ? `
 ENDING RULES:
 - Write toward a POWERFUL, SATISFYING conclusion
@@ -2198,10 +2329,17 @@ Do not summarize. Do not apologize. Return only clean chapter prose.`,
     content: accumulatedContent,
     subchapters: [],
   }, { config, previousChapters, chapterIndex, outlineSummary: outline.summary });
+  const qualityCheckedContent = await repairChapterWritingQualityIfNeeded(finalChapter.content, {
+    config,
+    genreLock,
+    usage: opts?.usage,
+    chapterIndex,
+    chapterTitle: finalChapter.title,
+  });
 
   return {
     ...finalChapter,
-    content: applyFinalManuscriptGuardToText(finalChapter.content, {
+    content: applyFinalManuscriptGuardToText(qualityCheckedContent, {
       config,
       previousChapters,
       chapterIndex,
