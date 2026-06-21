@@ -50,10 +50,10 @@ function DashboardPackagingRowInner({ projectTitle, context }: Props) {
 
   return (
     <section className="mb-4 sm:mb-6" aria-labelledby="packaging-center-pro-title">
-      <div className="rounded-2xl border border-white/10 bg-black/28 p-4 shadow-[0_18px_55px_rgba(0,0,0,0.26)]">
+      <div className="rounded-2xl border border-amber-300/20 bg-black/28 p-4 shadow-[0_18px_55px_rgba(0,0,0,0.26)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-200/58">
               Packaging Center Pro · {projectTitle || audit.projectTitle || t("untitled")}
             </p>
             <h2 id="packaging-center-pro-title" className="text-lg font-black text-white">
@@ -64,10 +64,10 @@ function DashboardPackagingRowInner({ projectTitle, context }: Props) {
             </p>
           </div>
 
-          <div className="min-w-[180px] rounded-xl border border-white/10 bg-white/[0.04] p-3">
+          <div className="min-w-[180px] rounded-xl border border-amber-300/20 bg-amber-400/[0.055] p-3">
             <div className="flex items-center justify-between gap-3">
               <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45">
-                <Gauge className="h-3.5 w-3.5" />
+                <Gauge className="h-3.5 w-3.5 text-amber-200" />
                 Readiness
               </span>
               <StatusPill status={audit.status} />
@@ -101,10 +101,10 @@ function DashboardPackagingRowInner({ projectTitle, context }: Props) {
         </div>
 
         <div className="mt-4 grid gap-3 lg:grid-cols-[1.35fr_0.65fr]">
-          <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+          <div className="rounded-xl border border-amber-300/20 bg-white/[0.035] p-3">
             <div className="mb-3 flex items-center justify-between gap-3">
               <p className="inline-flex items-center gap-2 text-xs font-black text-white">
-                <ListChecks className="h-4 w-4 text-cyan-200" />
+                <ListChecks className="h-4 w-4 text-amber-200" />
                 One Click Publish Plan
               </p>
               <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">
@@ -123,7 +123,7 @@ function DashboardPackagingRowInner({ projectTitle, context }: Props) {
                     <button
                       type="button"
                       onClick={() => handleActionId(item.targetActionId)}
-                      className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.08em] text-cyan-100/80 hover:text-cyan-50"
+                      className="mt-2 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-[0.08em] text-amber-100/80 hover:text-amber-50"
                     >
                       {item.action}
                       <ArrowRight className="h-3 w-3" />
@@ -138,7 +138,7 @@ function DashboardPackagingRowInner({ projectTitle, context }: Props) {
             )}
           </div>
 
-          <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+          <div className="rounded-xl border border-amber-300/20 bg-white/[0.035] p-3">
             <p className="text-xs font-black text-white">Segnali reali letti</p>
             <dl className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
               <Signal label="Capitoli" value={`${audit.signals.completedChapters}/${audit.signals.totalChapters}`} />

@@ -114,6 +114,19 @@ describe("buildCompleteExpressBookPackage — poetry", () => {
     expect(joined).not.toMatch(/forced proximity|uomo pericoloso|baci|trappola|payoff romantico|cliffhanger di capitolo/i);
   });
 
+  it("keeps poetry subtitle agreement with compound tones", () => {
+    const pkg = buildCompleteExpressBookPackage(
+      {
+        ...poetryInput,
+        tone: "lirico oscuro",
+      },
+      "commercial",
+    );
+
+    expect(pkg.subtitle).toContain("Una raccolta lirica");
+    expect(pkg.subtitle).not.toContain("Una raccolta lirico");
+  });
+
   it("keeps lyrical dark romance as a novel, not a poetry collection", () => {
     const pkg = buildCompleteExpressBookPackage(
       {

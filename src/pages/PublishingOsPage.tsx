@@ -105,10 +105,10 @@ export default function PublishingOsPage() {
 
   if (loading) {
     return (
-      <OsShell title="Publishing Center" subtitle="Readiness, cover, export e KDP in un solo cockpit" badge="Pubblicazione">
+      <OsShell title="Publishing Center" subtitle="Readiness, cover, export e KDP in un solo cockpit" badge="Pubblicazione" accent="publishing">
         <div className="grid min-h-[48dvh] place-items-center text-center">
           <div>
-            <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2 className="mx-auto h-6 w-6 animate-spin text-amber-200" />
             <p className="mt-3 text-sm text-muted-foreground">Carico il libro attivo e lo stato pubblicazione...</p>
           </div>
         </div>
@@ -118,9 +118,9 @@ export default function PublishingOsPage() {
 
   if (!activeProject) {
     return (
-      <OsShell title="Publishing Center" subtitle="Il centro pubblicazione si attiva sul libro attivo" badge="Pubblicazione">
-        <div className="mx-auto max-w-2xl rounded-2xl border border-white/10 bg-white/[0.035] p-6 text-center">
-          <Sparkles className="mx-auto h-8 w-8 text-sky-300" />
+      <OsShell title="Publishing Center" subtitle="Il centro pubblicazione si attiva sul libro attivo" badge="Pubblicazione" accent="publishing">
+        <div className="mx-auto max-w-2xl rounded-2xl border border-amber-300/20 bg-amber-400/[0.07] p-6 text-center">
+          <Sparkles className="mx-auto h-8 w-8 text-amber-200" />
           <h2 className="mt-4 text-xl font-black text-white">Nessun libro da pubblicare</h2>
           <p className="mt-2 text-sm leading-6 text-white/58">
             Crea un libro con Book Forge o apri un progetto esistente: da qui il flusso continua verso cover, export, KDP e pubblicazione.
@@ -129,7 +129,7 @@ export default function PublishingOsPage() {
             <button
               type="button"
               onClick={() => navigate("/dashboard", { state: { openForge: true } })}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-300 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-amber-200"
             >
               <Sparkles className="h-4 w-4" />
               Apri Book Forge
@@ -153,21 +153,22 @@ export default function PublishingOsPage() {
       title="Publishing Center"
       subtitle="Titolo, keyword, radar, cover, export e KDP nello stesso percorso"
       badge="Pubblicazione"
+      accent="publishing"
       actions={
         <button
           type="button"
           onClick={openWriter}
-          className="inline-flex h-9 items-center gap-2 rounded-xl border border-white/12 bg-white/[0.05] px-3 text-xs font-bold text-white/78 hover:bg-white/10"
+          className="inline-flex h-9 items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-400/10 px-3 text-xs font-bold text-amber-50 hover:bg-amber-400/15"
         >
           <PenLine className="h-4 w-4" />
           Writer
         </button>
       }
     >
-      <section className="mb-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <section className="mb-4 rounded-2xl border border-amber-300/20 bg-amber-400/[0.06] p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/42">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-200/70">
               Percorso unico autore → pubblicazione
             </p>
             <h2 className="mt-1 truncate text-2xl font-black text-white">{activeProject.config.title || "Libro senza titolo"}</h2>
@@ -196,7 +197,7 @@ export default function PublishingOsPage() {
             <button
               type="button"
               onClick={openWriter}
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-black text-slate-950 hover:opacity-90"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-amber-300 px-4 text-sm font-black text-slate-950 hover:bg-amber-200"
             >
               <BookOpen className="h-4 w-4" />
               Apri manoscritto
@@ -207,7 +208,7 @@ export default function PublishingOsPage() {
 
       <DashboardPackagingRow projectTitle={activeProject.config.title} context={actionContext} />
 
-      <section className="rounded-2xl border border-white/10 bg-black/24 p-4">
+      <section className="rounded-2xl border border-amber-300/20 bg-black/24 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-black text-white">Prossima destinazione</p>
@@ -218,7 +219,7 @@ export default function PublishingOsPage() {
           <button
             type="button"
             onClick={() => navigateWithProject(getToolRoute("export"))}
-            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-emerald-300/25 bg-emerald-400/10 px-4 text-sm font-black text-emerald-50 hover:bg-emerald-400/15"
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-amber-300/25 bg-amber-400/10 px-4 text-sm font-black text-amber-50 hover:bg-amber-400/15"
           >
             Vai a Export
             <ArrowRight className="h-4 w-4" />

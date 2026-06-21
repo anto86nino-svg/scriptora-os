@@ -177,7 +177,8 @@ function normalizePoetryToneLabel(tone: string): string {
     minimalista: "minimalista",
     emotivo: "emotiva",
   };
-  return feminine[first] || first.replace(/ico\b/, "ica").replace(/oso\b/, "osa");
+  const firstWord = first.split(/\s+/)[0]?.trim() || first;
+  return feminine[first] || feminine[firstWord] || firstWord.replace(/ico\b/, "ica").replace(/oso\b/, "osa");
 }
 
 function normalizePoetryTheme(theme: string): string {

@@ -35,6 +35,30 @@ describe("co-author engine", () => {
     expect(isForbiddenGenericQuestion("Il finale deve spezzare il cuore o liberare?")).toBe(false);
   });
 
+  it("does not duplicate the Stiamo costruendo prefix from saved raw ideas", () => {
+    const initial = getInitialInterviewState({ chatFirst: true });
+    const memory = getForgeMemory(initial);
+    const state = {
+      ...initial,
+      forgeMemory: {
+        ...memory,
+        answeredSlots: { ...memory.answeredSlots, rawIdea: true },
+        slotValues: {
+          ...memory.slotValues,
+          rawIdea: "Stiamo costruendo: una storia gotica su una casa che ricorda tutto.",
+        },
+      },
+    };
+    const turn = composeCoAuthorTurn(state, {
+      id: "tone-preset",
+      key: "emotionalTone",
+      question: "Che tono deve avere?",
+    });
+
+    expect(turn.memory).toContain("Stiamo costruendo:");
+    expect(turn.memory).not.toMatch(/Stiamo costruendo:\s*Stiamo costruendo:/i);
+  });
+
   it("enriched question stays interviewer-only without co-author blocks", () => {
     let state = getInitialInterviewState({ chatFirst: true });
     state = applyInterviewAnswer(

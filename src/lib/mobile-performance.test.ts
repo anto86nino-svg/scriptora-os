@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SCRIPTORA_MOBILE_LITE_CLASS, isMobileLiteMode } from "./mobile-performance";
+import {
+  SCRIPTORA_DESKTOP_MODE_KEY,
+  SCRIPTORA_MOBILE_LITE_CLASS,
+  disableDesktopModeOverride,
+  enableDesktopModeOverride,
+  isMobileLiteMode,
+} from "./mobile-performance";
 
 function setViewport(width: number, height: number, coarse = false) {
   Object.defineProperty(window, "innerWidth", { configurable: true, value: width });
@@ -22,6 +28,7 @@ function setViewport(width: number, height: number, coarse = false) {
 
 describe("mobile performance boot", () => {
   afterEach(() => {
+    disableDesktopModeOverride();
     vi.unstubAllGlobals();
   });
 
@@ -46,6 +53,16 @@ describe("mobile performance boot", () => {
 
   it("does not treat large touch workstations as Mobile Lite", () => {
     setViewport(1366, 900, true);
+    expect(isMobileLiteMode()).toBe(false);
+  });
+
+  it("lets mobile users continue in full desktop mode explicitly", () => {
+    setViewport(390, 844, true);
+    expect(isMobileLiteMode()).toBe(true);
+
+    enableDesktopModeOverride();
+
+    expect(window.localStorage.getItem(SCRIPTORA_DESKTOP_MODE_KEY)).toBe("1");
     expect(isMobileLiteMode()).toBe(false);
   });
 });

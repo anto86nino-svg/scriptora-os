@@ -125,6 +125,10 @@ function clip(text: string, max = 120): string {
   return `${t.slice(0, max - 1)}…`;
 }
 
+function clipDisplayIdea(text: string, max = 120): string {
+  return clip(text.replace(/^\s*stiamo\s+costruendo\s*:?\s*/i, ""), max);
+}
+
 function buildMemoryLine(memory: ForgeInterviewMemory): string {
   const parts: string[] = [];
   if (isSlotFilled(memory, "language")) parts.push(`in ${memory.slotValues.language}`);
@@ -138,7 +142,7 @@ function buildMemoryLine(memory: ForgeInterviewMemory): string {
 
   if (parts.length === 0) {
     return isSlotFilled(memory, "rawIdea")
-      ? `Stiamo costruendo: ${clip(String(memory.slotValues.rawIdea), 90)}.`
+      ? `Stiamo costruendo: ${clipDisplayIdea(String(memory.slotValues.rawIdea), 90)}.`
       : "Stiamo aprendo il taccuino del libro.";
   }
 

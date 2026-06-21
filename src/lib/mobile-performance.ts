@@ -1,6 +1,35 @@
 /** Mobile boot optimizations — strip heavy visuals without removing features. */
 
 export const SCRIPTORA_MOBILE_LITE_CLASS = "scriptora-mobile-lite";
+export const SCRIPTORA_DESKTOP_MODE_KEY = "scriptora-desktop-mode";
+
+export function isDesktopModeOverrideActive(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("desktop") === "1" || window.localStorage.getItem(SCRIPTORA_DESKTOP_MODE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function enableDesktopModeOverride(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(SCRIPTORA_DESKTOP_MODE_KEY, "1");
+  } catch {
+    // Non-blocking: the URL parameter fallback still works.
+  }
+}
+
+export function disableDesktopModeOverride(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(SCRIPTORA_DESKTOP_MODE_KEY);
+  } catch {
+    // Non-blocking.
+  }
+}
 
 export function isMobileDevice(): boolean {
   if (typeof window === "undefined") return false;
@@ -17,6 +46,7 @@ export function isMobileDevice(): boolean {
  */
 export function isMobileLiteMode(): boolean {
   if (typeof window === "undefined") return false;
+  if (isDesktopModeOverrideActive()) return false;
 
   const width = window.innerWidth || document.documentElement.clientWidth || 0;
   const height = window.innerHeight || document.documentElement.clientHeight || 0;

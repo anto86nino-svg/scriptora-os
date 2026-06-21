@@ -733,12 +733,12 @@ export default function KdpLaunchPage() {
   });
 
   return (
-    <div className="scriptora-feature-page scriptora-brand-shell bg-[#050505]">
+    <div className="scriptora-feature-page scriptora-brand-shell scriptora-kdp-launch-page bg-[#050505]">
       <main className="scriptora-feature-scroll mx-auto max-w-7xl space-y-5 p-4 sm:space-y-6 sm:p-6">
         <header className="flex items-center justify-between gap-2 min-w-0">
           <div className="min-w-0">
             <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2 break-words">
-              <Rocket className="h-6 w-6 shrink-0 text-primary" /> KDP Launch
+              <Rocket className="h-6 w-6 shrink-0 text-[#f2c400]" /> KDP Launch
             </h1>
             <p className="text-sm text-muted-foreground break-words">
               Crea un prodotto che vende su Amazon — non solo un libro.
@@ -791,7 +791,7 @@ export default function KdpLaunchPage() {
         <div className="scriptora-kdp-stepper flex flex-wrap items-center gap-2 text-xs text-muted-foreground overflow-x-hidden max-w-full">
           {(["idea", "market", "title", "packaging", "predict", "narrative-flow"] as Step[]).map((s, i) => (
             <div key={s} className="flex shrink-0 items-center gap-2">
-              <span className={`px-2 py-0.5 rounded-full border ${step === s ? "bg-primary text-primary-foreground border-primary" : "border-border"}`}>
+              <span className={`px-2 py-0.5 rounded-full border ${step === s ? "border-[#f2c400]/80 bg-[#f2c400] text-slate-950" : "border-white/12 bg-white/[0.035]"}`}>
                 {i + 1}. {stepLabels[s]}
               </span>
               {i < 5 && <ArrowRight className="h-3 w-3" />}
@@ -799,14 +799,14 @@ export default function KdpLaunchPage() {
           ))}
         </div>
 
-        <section className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-xs text-emerald-50/82">
+        <section className="rounded-xl border border-[#f2c400]/20 bg-[#f2c400]/10 px-4 py-3 text-xs text-amber-50/82">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="font-semibold">{creditModeLabel(devCreditMode)}</span>
             <span>
               Market {operationCreditLabel("kdp_market", devCreditMode)} · Titoli {operationCreditLabel("kdp_titles", devCreditMode)} · Predict {operationCreditLabel("kdp_prediction", devCreditMode)}
             </span>
           </div>
-          <p className="mt-2 text-[11px] leading-4 text-emerald-50/64">{creditModeDisclosure(devCreditMode)}</p>
+          <p className="mt-2 text-[11px] leading-4 text-amber-50/64">{creditModeDisclosure(devCreditMode)}</p>
         </section>
 
         <KdpPublishingPreview

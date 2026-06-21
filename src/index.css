@@ -5712,6 +5712,54 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
 }
 
 /* KDP Launch — narrative flow panel (mobile-safe) */
+.scriptora-kdp-launch-page {
+  color-scheme: dark;
+}
+
+.scriptora-kdp-launch-page .bg-primary,
+.scriptora-kdp-launch-page button.bg-primary {
+  background-color: #f2c400 !important;
+  color: #0f172a !important;
+}
+
+.scriptora-kdp-launch-page .text-primary {
+  color: #f2c400 !important;
+}
+
+.scriptora-kdp-launch-page .border-primary {
+  border-color: rgba(242, 196, 0, 0.62) !important;
+}
+
+.scriptora-kdp-launch-page .bg-primary\/5 {
+  background-color: rgba(242, 196, 0, 0.07) !important;
+}
+
+.scriptora-kdp-launch-page .bg-primary\/10 {
+  background-color: rgba(242, 196, 0, 0.1) !important;
+}
+
+.scriptora-kdp-launch-page .border-primary\/20 {
+  border-color: rgba(242, 196, 0, 0.2) !important;
+}
+
+.scriptora-kdp-launch-page .rounded-lg.border.bg-card {
+  border-color: rgba(242, 196, 0, 0.14);
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 1.5rem;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+}
+
+.scriptora-kdp-launch-page input,
+.scriptora-kdp-launch-page textarea,
+.scriptora-kdp-launch-page select {
+  border-color: rgba(255, 255, 255, 0.12);
+  background-color: rgba(5, 5, 5, 0.58);
+}
+
+.scriptora-kdp-launch-page .scriptora-kdp-stepper span {
+  white-space: nowrap;
+}
+
 .scriptora-kdp-narrative-flow {
   min-width: 0;
   max-width: 100%;
