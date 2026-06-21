@@ -434,12 +434,20 @@ export function isUncertainUserAnswer(text: string): boolean {
 }
 
 function parseLanguage(text: string): string | undefined {
-  const t = text.toLowerCase();
+  const t = text.toLowerCase().trim();
+
+  if (/^(it|italiano|italian)$/.test(t)) return "Italiano";
+  if (/^(en|english|inglese)$/.test(t)) return "English";
+  if (/^(es|español|spagnolo|spagnola)$/.test(t)) return "Español";
+  if (/^(fr|français|francese)$/.test(t)) return "Français";
+  if (/^(de|deutsch|tedesco|tedesca)$/.test(t)) return "Deutsch";
+
   if (/\bitalian[oa]?|italiano\b/.test(t)) return "Italiano";
   if (/\benglish|inglese|in inglese\b/.test(t)) return "English";
   if (/\bespañol|spagnol[oa]\b/.test(t)) return "Español";
   if (/\bfrançais|frances[ei]\b/.test(t)) return "Français";
   if (/\bdeutsch|tedesc[oa]\b/.test(t)) return "Deutsch";
+
   return undefined;
 }
 
