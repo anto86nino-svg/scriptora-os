@@ -198,7 +198,7 @@ function readSession(id: string): StudySessionRecord | null {
 }
 
 function writeSession(session: StudySessionRecord): StudySessionRecord {
-  let stored = prepareStudySessionForStorage(session, session.sourceText.length > 50000 ? "preview" : "full");
+  let stored = prepareStudySessionForStorage(session, session.sourceText.length > 250000 ? "preview" : "full");
 
   try {
     localStorage.setItem(`${SESSION_PREFIX}${stored.id}`, JSON.stringify(stored));
@@ -214,11 +214,25 @@ function writeSession(session: StudySessionRecord): StudySessionRecord {
       if (!isQuotaExceededError(retryError)) throw retryError;
 
       forcePruneStudySessionStorage(stored.id);
-      stored = {
-        ...prepareStudySessionForStorage(session, "ultra-light"),
-        results: session.results,
-      };
-      localStorage.setItem(`${SESSION_PREFIX}${stored.id}`, JSON.stringify(stored));
+      stored = prepareStudySessionForStorage(session, "ultra-light");
+      try {
+        localStorage.setItem(`${SESSION_PREFIX}${stored.id}`, JSON.stringify(stored));
+      } catch {
+        // Last-resort: keep only metadata. Never crash Study OS because browser storage is full.
+        stored = {
+          ...stored,
+          sourceText: "",
+          sourceTextPreview: stored.sourceTextPreview?.slice(0, 1000) || "",
+          results: {},
+          storageMode: "ultra-light",
+          sourceTextTruncatedForStorage: true,
+        };
+        try {
+          localStorage.setItem(`${SESSION_PREFIX}${stored.id}`, JSON.stringify(stored));
+        } catch {
+          // If even metadata cannot be persisted, return in-memory session and keep UI alive.
+        }
+      }
     }
   }
 
