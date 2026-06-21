@@ -358,6 +358,9 @@ const STOP_WORDS = new Set([
   "something","someone","nothing","everything",
   "dont","didnt","cant","couldnt","ive","im",
   "its","thats","theyre","hes","shes",
+  "without","yourself","become","became","becoming",
+  "feel","feels","feeling","other","people","moment",
+
 
   // FR / ES
 
@@ -587,6 +590,23 @@ function detectStudyContentProfile(text: string): StudyContentProfile {
       signals: [`Documento legale: ${legalDocumentScore} segnali strutturali`, `Diritto: ${legalKeywordScore} keyword`],
     };
   }
+
+  const selfHelpScore = scorePatterns(lower, [
+    /\b(boundaries|boundary|people pleasing|self worth|awakening|healing|let them be|nervous system|hypervigilance|hyper vigilance|emotional regulation|inner peace|self abandonment|personal growth|trauma|attachment|clarity|rescuing)\b/gi,
+  ]);
+
+  if (selfHelpScore >= 4) {
+    return {
+      contentType: "mixed_or_unknown",
+      subjectLabel: "Crescita personale",
+      mode: "Analisi concettuale",
+      fictionSignalsScore,
+      legalKeywordScore,
+      legalDocumentScore,
+      signals: [`Self Help: ${selfHelpScore} segnali`],
+    };
+  }
+
 
   if (/^[-•*]\s+/m.test(clean) || /\b(appunti|lezione|slide|dispensa|riassunto)\b/i.test(clean)) {
     return {
@@ -857,9 +877,20 @@ function keywords(text: string, limit = 12): string[] {
 
   const phraseCounts = new Map<string, number>();
 
+  const BAD_PHRASES = new Set([
+    "will become",
+    "will feel",
+    "feels like",
+    "other people",
+    "your own",
+    "there will",
+    "you will",
+  ]);
+
   for (const phrase of phraseMatches) {
     const parts = phrase.split(" ");
 
+    if (BAD_PHRASES.has(phrase)) continue;
     if (parts.some((p) => STOP_WORDS.has(p))) continue;
     if (phrase.length < 8) continue;
 
