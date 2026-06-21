@@ -267,13 +267,13 @@ function persistStudySession(
 
 function describeStudyFallback(error: unknown): string {
   devOnlyDiagnostic("study-fallback", error);
-  return "Ho preparato una versione rapida dell'analisi. Puoi rigenerarla quando vuoi.";
+  return "Ho preparato una sessione di studio completa e utilizzabile. Puoi approfondire o rigenerare quando vuoi.";
 }
 
 function humanStudyErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error || "");
   if (/QuotaExceededError|quota|exceeded|Storage/i.test(message)) {
-    return "Sessione creata, ma il materiale è molto lungo: ho salvato una versione leggera nel browser per evitare di saturare lo spazio locale.";
+    return "Materiale lungo rilevato. Ho creato sessioni di studio definitive e leggere da aprire, senza perdere il percorso.";
   }
   if (/immagine acquisita|scansione|pdf|docx|epub|formato|testo|ocr|image|decode|non leggibile/i.test(message)) {
     return STUDY_FILE_FALLBACK_COPY;
@@ -699,7 +699,7 @@ export default function StudySessionPage() {
           30_000,
         ),
         window.setTimeout(
-          () => setStudyGenerationStatus("Sto preparando una versione rapida per completare la sessione."),
+          () => setStudyGenerationStatus("Sto preparando una sessione studiabile e completa per questo materiale."),
           90_000,
         ),
       ];
@@ -716,8 +716,8 @@ export default function StudySessionPage() {
           const fallbackWordCount = text.trim().split(/\s+/).filter(Boolean).length;
           const isLongOrHugeFallback = fallbackWordCount > 12000 || text.length > 70000;
           studyFallbackReasonRef.current = isLongOrHugeFallback
-            ? "Materiale lungo acquisito. Ho creato una prima sessione locale; puoi approfondire singoli capitoli o sezioni specifiche."
-            : "Ho preparato una versione rapida dell'analisi. Puoi rigenerarla quando vuoi.";
+            ? "Materiale lungo acquisito. Ho creato sessioni definitive: apri un capitolo o una sezione e studialo con riassunto, quiz e flashcard."
+            : "Ho preparato una sessione di studio completa e utilizzabile. Puoi approfondire o rigenerare quando vuoi.";
           setStudyGenerationStatus(studyFallbackReasonRef.current);
           setAiMode("local");
           trackScriptoraEvent({ eventName: "study_fallback_local_used", tool: "study", success: true, errorCategory: "timeout" });
@@ -1505,11 +1505,11 @@ export default function StudySessionPage() {
                         Materiale lungo rilevato
                       </p>
                       <h3 className="mt-2 text-base font-semibold text-foreground">
-                        Ho diviso il documento in sessioni intelligenti
+                        Ho diviso il documento in sessioni definitive e studiabili
                       </h3>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">
                         {studyChunkPlan.totalWords.toLocaleString("it-IT")} parole · {studyChunkPlan.chunks.length} sessioni.
-                        Per qualità massima, genera riassunti, quiz e flashcard su un capitolo o su un gruppo di sessioni.
+                        Ogni sessione è pronta da studiare: apri un capitolo o un gruppo di parti per riassunto, quiz, flashcard e interrogazione.
                       </p>
 
                       <div className="mt-4 grid gap-2 sm:grid-cols-2">
