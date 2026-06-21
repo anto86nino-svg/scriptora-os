@@ -307,6 +307,40 @@ describe("Study OS file ingestion", () => {
   });
 
 
+
+  it("cleans real XHTML head script and raw tags from EPUB chapters", async () => {
+    const zip = new JSZip();
+    zip.file("OPS/chapter.xhtml", `<?xml version="1.0" encoding="UTF-8"?>
+      <html xml:lang="it" xmlns="http://www.w3.org/1999/xhtml">
+        <head>
+          <title>Chapter 1 — Test</title>
+          <link rel="stylesheet" href="css/book.css" type="text/css"/>
+          <script src="js/book.js"/>
+          <meta charset="UTF-8"/>
+        </head>
+        <body dir="ltr">
+          <div>
+            <h1>Chapter 1 — The Moment You Stop Chasing</h1>
+            <p>You don’t need to make an announcement when you decide to stop carrying other people’s weather inside your chest.</p>
+            <p>Boundaries allow love to breathe without becoming a container for what refuses to be contained.</p>
+          </div>
+        </body>
+      </html>`);
+    const buffer = await zip.generateAsync({ type: "uint8array" });
+    const file = new File([buffer], "real-clean.epub", { type: "application/epub+zip" });
+
+    const result = await readStudyFileDetailed(file);
+
+    expect(result.text).toContain("The Moment You Stop Chasing");
+    expect(result.text).toContain("Boundaries allow love to breathe");
+    expect(result.text).not.toContain("</title>");
+    expect(result.text).not.toContain("<link");
+    expect(result.text).not.toContain("<script");
+    expect(result.text).not.toContain("<body");
+    expect(result.text).not.toContain("book.css");
+  });
+
+
   it("uses browser TextDetector before RESULT-style file fallback", async () => {
     const text = studyText("Pagina OCR", "Storia, rivoluzione, guerra, monarchia, conseguenze e cause sono leggibili nella foto.");
     vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue({ close: vi.fn(), width: 800, height: 600 }));

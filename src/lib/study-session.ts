@@ -1801,9 +1801,33 @@ async function readEpub(file: File): Promise<string> {
   const parseXml = (raw: string) => new DOMParser().parseFromString(raw, "application/xml");
 
   const extractHtmlText = (raw: string): string => {
-    const doc = new DOMParser().parseFromString(raw, "text/html");
-    doc.querySelectorAll("script, style, nav, svg, noscript").forEach((node) => node.remove());
-    return (doc.body?.textContent || raw)
+    const withoutXmlNoise = raw
+      .replace(/<\?xml[\s\S]*?\?>/gi, " ")
+      .replace(/<!DOCTYPE[\s\S]*?>/gi, " ");
+
+    const htmlDoc = new DOMParser().parseFromString(withoutXmlNoise, "text/html");
+    const xmlDoc = new DOMParser().parseFromString(withoutXmlNoise, "application/xhtml+xml");
+
+    const cleanDocument = (doc: Document) => {
+      doc.querySelectorAll("script, style, nav, svg, noscript, head, title, meta, link").forEach((node) => node.remove());
+      const bodyText = doc.body?.textContent || "";
+      const fallbackText = doc.documentElement?.textContent || "";
+      return bodyText || fallbackText;
+    };
+
+    const candidate = cleanDocument(htmlDoc) || cleanDocument(xmlDoc) || withoutXmlNoise;
+
+    return candidate
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<head[\s\S]*?<\/head>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;|&apos;/gi, "'")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
       .replace(/\s+/g, " ")
       .replace(/^\s+|\s+$/g, "");
   };
