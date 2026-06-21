@@ -271,12 +271,15 @@ function describeStudyFallback(error: unknown): string {
 
 function humanStudyErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error || "");
+  if (/QuotaExceededError|quota|exceeded|Storage/i.test(message)) {
+    return "Sessione creata, ma il materiale è molto lungo: ho salvato una versione leggera nel browser per evitare di saturare lo spazio locale.";
+  }
   if (/immagine acquisita|scansione|pdf|docx|epub|formato|testo|ocr|image|decode|non leggibile/i.test(message)) {
     return STUDY_FILE_FALLBACK_COPY;
   }
   return getUserFriendlyError(error, {
     area: "study",
-    fallback: "Non sono riuscito a completare l'operazione al primo tentativo. I dati della sessione restano salvati: puoi riprovare con un testo piu' breve o caricare un file diverso.",
+    fallback: "Non sono riuscito a completare l'operazione al primo tentativo. I dati della sessione restano salvati: puoi riprovare o caricare un file diverso.",
   });
 }
 

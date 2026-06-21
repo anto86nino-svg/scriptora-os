@@ -25,6 +25,9 @@ export interface StudyProjectRecord {
   rawTextPreview: string;
   rawText: string;
   rawTextLength: number;
+  rawTextStoredLength?: number;
+  rawTextTruncatedForStorage?: boolean;
+  storageMode?: "full" | "preview" | "ultra-light";
   sourceHash: string;
   result: StudySessionResult;
   quizAttempts: StudyQuizAttempt[];
@@ -59,8 +62,71 @@ function readAll(): StudyProjectRecord[] {
   }
 }
 
+function makeStudyRawTextPreview(text: string, head = 20000, tail = 8000): string {
+  const clean = text || "";
+  if (clean.length <= head + tail + 500) return clean;
+  return [
+    clean.slice(0, head).trim(),
+    "",
+    `[...testo completo troppo lungo per lo storage locale: salvata anteprima. Caratteri originali: ${clean.length.toLocaleString("it-IT")}...]`,
+    "",
+    clean.slice(-tail).trim(),
+  ].join("\n\n");
+}
+
+function prepareStudyProjectForStorage(record: StudyProjectRecord, mode: "full" | "preview" | "ultra-light" = "full"): StudyProjectRecord {
+  const originalRaw = record.rawText || "";
+  const shouldPreview = mode !== "full" || originalRaw.length > 50000;
+
+  if (!shouldPreview) {
+    return {
+      ...record,
+      rawTextPreview: originalRaw.slice(0, 4000),
+      rawTextStoredLength: originalRaw.length,
+      rawTextTruncatedForStorage: false,
+      storageMode: "full",
+    };
+  }
+
+  const preview = mode === "ultra-light"
+    ? makeStudyRawTextPreview(originalRaw, 9000, 3000)
+    : makeStudyRawTextPreview(originalRaw, 20000, 8000);
+
+  return {
+    ...record,
+    rawTextPreview: preview.slice(0, 4000),
+    rawText: preview,
+    rawTextStoredLength: preview.length,
+    rawTextTruncatedForStorage: preview.length < originalRaw.length,
+    storageMode: mode,
+  };
+}
+
+function isQuotaExceededError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error || "");
+  const name = error instanceof DOMException ? error.name : "";
+  return /QuotaExceededError|quota|exceeded/i.test(`${name} ${message}`);
+}
+
 function writeAll(records: StudyProjectRecord[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+  } catch (error) {
+    if (!isQuotaExceededError(error)) throw error;
+
+    const previewRecords = records.map((record) => prepareStudyProjectForStorage(record, "preview"));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(previewRecords));
+    } catch (previewError) {
+      if (!isQuotaExceededError(previewError)) throw previewError;
+
+      const ultraLightRecords = previewRecords
+        .slice(0, 12)
+        .map((record) => prepareStudyProjectForStorage(record, "ultra-light"));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(ultraLightRecords));
+    }
+  }
+
   window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
@@ -82,21 +148,22 @@ export function saveStudyProject(input: {
   const all = readAll();
   const now = new Date().toISOString();
   const existing = input.id ? all.find((r) => r.id === input.id) : undefined;
-  const record: StudyProjectRecord = {
+  const fullRawText = input.rawText || "";
+  const record: StudyProjectRecord = prepareStudyProjectForStorage({
     id: existing?.id || `study-${crypto.randomUUID()}`,
     title: input.title || input.result.title || "Studio",
     sourceName: input.sourceName,
     sourceType: detectSourceType(input.sourceName),
-    rawTextPreview: input.rawText.slice(0, 4000),
-    rawText: input.rawText,
-    rawTextLength: input.rawText.length,
-    sourceHash: computeStudySourceHash(input.rawText, input.sourceName),
+    rawTextPreview: fullRawText.slice(0, 4000),
+    rawText: fullRawText,
+    rawTextLength: fullRawText.length,
+    sourceHash: computeStudySourceHash(fullRawText, input.sourceName),
     result: input.result,
     quizAttempts: existing?.quizAttempts || [],
     earnedBadges: existing?.earnedBadges || [],
     createdAt: existing?.createdAt || now,
     updatedAt: now,
-  };
+  }, fullRawText.length > 50000 ? "preview" : "full");
 
   const next = [record, ...all.filter((r) => r.id !== record.id)];
   writeAll(next);
