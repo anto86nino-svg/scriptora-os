@@ -237,6 +237,76 @@ describe("Study OS file ingestion", () => {
     expect(result.text).toContain("Storia rivoluzione");
   });
 
+
+  it("reads a realistic EPUB with OPF spine in reading order", async () => {
+    const zip = new JSZip();
+    zip.file("META-INF/container.xml", `<?xml version="1.0"?>
+      <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+        <rootfiles><rootfile full-path="OPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles>
+      </container>`);
+    zip.file("OPS/content.opf", `<?xml version="1.0"?>
+      <package xmlns="http://www.idpf.org/2007/opf" version="3.0">
+        <manifest>
+          <item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+          <item id="chapter2" href="chapter2.xhtml" media-type="application/xhtml+xml"/>
+          <item id="chapter1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+        </manifest>
+        <spine>
+          <itemref idref="chapter2"/>
+          <itemref idref="chapter1"/>
+        </spine>
+      </package>`);
+    zip.file("OPS/nav.xhtml", "<html><body><nav>Indice navigazione capitolo uno capitolo due contenuto non studiabile ripetuto molte volte.</nav></body></html>");
+    zip.file("OPS/chapter1.xhtml", "<html><body><p>Primo capitolo sulla repubblica romana con senato consoli leggi istituzioni conflitti cittadini e memoria storica.</p></body></html>");
+    zip.file("OPS/chapter2.xhtml", "<html><body><p>Secondo capitolo sull impero romano con Augusto province esercito amministrazione cultura potere e trasformazioni politiche.</p></body></html>");
+    const buffer = await zip.generateAsync({ type: "uint8array" });
+    const file = new File([buffer], "roma.epub", { type: "application/epub+zip" });
+
+    const result = await readStudyFileDetailed(file);
+
+    expect(result.sourceType).toBe("epub");
+    expect(result.text).toContain("Secondo capitolo");
+    expect(result.text).toContain("Primo capitolo");
+    expect(result.text.indexOf("Secondo capitolo")).toBeLessThan(result.text.indexOf("Primo capitolo"));
+    expect(result.text).not.toContain("Indice navigazione");
+  });
+
+  it("falls back to internal HTML files when OPF spine is missing", async () => {
+    const zip = new JSZip();
+    zip.file("Text/chapter-a.html", "<html><body><p>Capitolo leggibile senza spine con storia diritto economia società fonti concetti esempi e verifica.</p></body></html>");
+    const buffer = await zip.generateAsync({ type: "uint8array" });
+    const file = new File([buffer], "fallback.epub", { type: "application/epub+zip" });
+
+    const result = await readStudyFileDetailed(file);
+
+    expect(result.sourceType).toBe("epub");
+    expect(result.text).toContain("Capitolo leggibile senza spine");
+  });
+
+  it("ignores nav toc and cover only EPUB content", async () => {
+    const zip = new JSZip();
+    zip.file("nav.xhtml", "<html><body><nav>Indice capitolo capitolo capitolo capitolo capitolo capitolo capitolo capitolo capitolo capitolo.</nav></body></html>");
+    zip.file("toc.xhtml", "<html><body><p>Sommario pagina indice navigazione contenuto elenco sezioni capitoli titoli riferimenti link.</p></body></html>");
+    zip.file("cover.xhtml", "<html><body><p>Copertina titolo autore immagine copertina frontespizio catalogo editore isbn.</p></body></html>");
+    const buffer = await zip.generateAsync({ type: "uint8array" });
+    const file = new File([buffer], "vuoto.epub", { type: "application/epub+zip" });
+
+    await expect(readStudyFileDetailed(file)).rejects.toThrow(/non contiene testo estraibile/i);
+  });
+
+  it("keeps short EPUB chapter chunks with at least ten words", async () => {
+    const zip = new JSZip();
+    zip.file("OPS/chapter1.xhtml", "<html><body><p>Roma antica nasce cresce combatte governa costruisce strade leggi eserciti.</p></body></html>");
+    const buffer = await zip.generateAsync({ type: "uint8array" });
+    const file = new File([buffer], "breve.epub", { type: "application/epub+zip" });
+
+    const result = await readStudyFileDetailed(file);
+
+    expect(result.sourceType).toBe("epub");
+    expect(result.text).toContain("Roma antica nasce");
+  });
+
+
   it("uses browser TextDetector before RESULT-style file fallback", async () => {
     const text = studyText("Pagina OCR", "Storia, rivoluzione, guerra, monarchia, conseguenze e cause sono leggibili nella foto.");
     vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue({ close: vi.fn(), width: 800, height: 600 }));

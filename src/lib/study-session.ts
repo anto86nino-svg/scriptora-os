@@ -1761,24 +1761,156 @@ async function readDocx(file: File): Promise<string> {
 
 async function readEpub(file: File): Promise<string> {
   const zip = await JSZip.loadAsync(await readBlobArrayBuffer(file));
-  const entries = Object.values(zip.files)
-    .filter((entry) => !entry.dir && /\.(xhtml|html|htm|xml)$/i.test(entry.name) && !/container\.xml|opf$/i.test(entry.name))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const MAX_CHUNKS = 120;
+  const MAX_CHARS = 120_000;
 
-  if (!entries.length) throw new Error("EPUB non leggibile: capitoli HTML non trovati.");
+  const normalizeZipPath = (value: string) => value.replace(/\\/g, "/").replace(/^\/+/, "");
+  const dirname = (value: string) => {
+    const clean = normalizeZipPath(value);
+    const index = clean.lastIndexOf("/");
+    return index >= 0 ? clean.slice(0, index) : "";
+  };
+  const joinZipPath = (base: string, href: string) => {
+    const cleanHref = normalizeZipPath(href);
+    if (!base) return cleanHref;
+    const parts = `${base}/${cleanHref}`.split("/");
+    const resolved: string[] = [];
+    for (const part of parts) {
+      if (!part || part === ".") continue;
+      if (part === "..") resolved.pop();
+      else resolved.push(part);
+    }
+    return resolved.join("/");
+  };
+  const isHtmlName = (name: string) => /\.(xhtml|html|htm)$/i.test(name);
+  const isPackageName = (name: string) => /\.opf$/i.test(name);
+  const isStructuralName = (name: string) =>
+    /(^|\/)(nav|toc|cover|titlepage|copyright|colophon|imprint)\.(xhtml|html|htm)$/i.test(name);
 
-  const chunks: string[] = [];
-  for (const entry of entries.slice(0, 80)) {
-    const raw = await entry.async("text");
+  const getZipEntry = (name: string) => {
+    const clean = normalizeZipPath(name);
+    return zip.file(clean) || Object.values(zip.files).find((entry) => normalizeZipPath(entry.name) === clean) || null;
+  };
+
+  const readZipText = async (name: string): Promise<string | null> => {
+    const entry = getZipEntry(name);
+    if (!entry || entry.dir) return null;
+    return entry.async("text");
+  };
+
+  const parseXml = (raw: string) => new DOMParser().parseFromString(raw, "application/xml");
+
+  const extractHtmlText = (raw: string): string => {
     const doc = new DOMParser().parseFromString(raw, "text/html");
-    const text = (doc.body?.textContent || raw)
+    doc.querySelectorAll("script, style, nav, svg, noscript").forEach((node) => node.remove());
+    return (doc.body?.textContent || raw)
       .replace(/\s+/g, " ")
       .replace(/^\s+|\s+$/g, "");
-    if (countStudyWords(text) >= 20) chunks.push(text);
+  };
+
+  const extractFromEntries = async (entries: NonNullable<ReturnType<typeof getZipEntry>>[]) => {
+    const chunks: string[] = [];
+    let totalChars = 0;
+
+    for (const entry of entries) {
+      if (!entry || entry.dir || !isHtmlName(entry.name) || isStructuralName(entry.name)) continue;
+      const raw = await entry.async("text");
+      const text = extractHtmlText(raw);
+      if (countStudyWords(text) < 10) continue;
+
+      const remaining = MAX_CHARS - totalChars;
+      if (remaining <= 0 || chunks.length >= MAX_CHUNKS) break;
+
+      const next = text.length > remaining ? text.slice(0, remaining).trim() : text;
+      if (next) {
+        chunks.push(next);
+        totalChars += next.length;
+      }
+    }
+
+    return chunks;
+  };
+
+  let opfPath = "";
+  const containerXml = await readZipText("META-INF/container.xml");
+  if (containerXml) {
+    const containerDoc = parseXml(containerXml);
+    const rootfile = Array.from(containerDoc.getElementsByTagName("rootfile"))[0];
+    opfPath = normalizeZipPath(rootfile?.getAttribute("full-path") || "");
+  }
+
+  if (!opfPath) {
+    opfPath = normalizeZipPath(
+      Object.values(zip.files).find((entry) => !entry.dir && isPackageName(entry.name))?.name || ""
+    );
+  }
+
+  let orderedEntries: NonNullable<ReturnType<typeof getZipEntry>>[] = [];
+
+  if (opfPath) {
+    const opfRaw = await readZipText(opfPath);
+    if (opfRaw) {
+      const opfDoc = parseXml(opfRaw);
+      const opfBase = dirname(opfPath);
+      const manifest = new Map<string, { href: string; mediaType: string; properties: string }>();
+
+      Array.from(opfDoc.getElementsByTagName("item")).forEach((item) => {
+        const id = item.getAttribute("id") || "";
+        const href = item.getAttribute("href") || "";
+        if (!id || !href) return;
+        manifest.set(id, {
+          href,
+          mediaType: item.getAttribute("media-type") || "",
+          properties: item.getAttribute("properties") || "",
+        });
+      });
+
+      const spineIds = Array.from(opfDoc.getElementsByTagName("itemref"))
+        .map((item) => item.getAttribute("idref") || "")
+        .filter(Boolean);
+
+      const spinePaths = spineIds
+        .map((id) => manifest.get(id))
+        .filter((item): item is { href: string; mediaType: string; properties: string } => Boolean(item))
+        .filter((item) => {
+          const href = item.href.toLowerCase();
+          const media = item.mediaType.toLowerCase();
+          return isHtmlName(href) || /xhtml|html/.test(media);
+        })
+        .map((item) => joinZipPath(opfBase, item.href));
+
+      orderedEntries = spinePaths
+        .map(getZipEntry)
+        .filter((entry): entry is NonNullable<ReturnType<typeof getZipEntry>> => Boolean(entry && !entry.dir));
+
+      if (!orderedEntries.length) {
+        orderedEntries = Array.from(manifest.values())
+          .filter((item) => {
+            const href = item.href.toLowerCase();
+            const media = item.mediaType.toLowerCase();
+            return isHtmlName(href) || /xhtml|html/.test(media);
+          })
+          .map((item) => getZipEntry(joinZipPath(opfBase, item.href)))
+          .filter((entry): entry is NonNullable<ReturnType<typeof getZipEntry>> => Boolean(entry && !entry.dir));
+      }
+    }
+  }
+
+  let chunks = await extractFromEntries(orderedEntries);
+
+  if (countStudyWords(chunks.join(" ")) < 30) {
+    const fallbackEntries = Object.values(zip.files)
+      .filter((entry) => !entry.dir && isHtmlName(entry.name))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    chunks = await extractFromEntries(fallbackEntries);
   }
 
   const fullText = chunks.join("\n\n").trim();
-  if (!fullText) throw new Error("EPUB letto ma senza testo studiabile.");
+  if (!fullText) {
+    throw new Error("EPUB letto ma non contiene testo estraibile. Potrebbe essere protetto, vuoto o composto da immagini.");
+  }
+
   return fullText;
 }
 
