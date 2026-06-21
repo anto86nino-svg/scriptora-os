@@ -199,46 +199,51 @@ function readSession(id: string): StudySessionRecord | null {
 
 function writeSession(session: StudySessionRecord): StudySessionRecord {
   let stored = prepareStudySessionForStorage(session, session.sourceText.length > 250000 ? "preview" : "full");
+  let persisted = false;
 
-  try {
-    localStorage.setItem(`${SESSION_PREFIX}${stored.id}`, JSON.stringify(stored));
-  } catch (error) {
-    if (!isQuotaExceededError(error)) throw error;
+  const tryPersist = (record: StudySessionRecord): boolean => {
+    try {
+      localStorage.setItem(`${SESSION_PREFIX}${record.id}`, JSON.stringify(record));
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
+  persisted = tryPersist(stored);
+
+  if (!persisted) {
     pruneOldStudySessionStorage(stored.id);
     stored = prepareStudySessionForStorage(session, "ultra-light");
-
-    try {
-      localStorage.setItem(`${SESSION_PREFIX}${stored.id}`, JSON.stringify(stored));
-    } catch (retryError) {
-      if (!isQuotaExceededError(retryError)) throw retryError;
-
-      forcePruneStudySessionStorage(stored.id);
-      stored = prepareStudySessionForStorage(session, "ultra-light");
-      try {
-        localStorage.setItem(`${SESSION_PREFIX}${stored.id}`, JSON.stringify(stored));
-      } catch {
-        // Last-resort: keep only metadata. Never crash Study OS because browser storage is full.
-        stored = {
-          ...stored,
-          sourceText: "",
-          sourceTextPreview: stored.sourceTextPreview?.slice(0, 1000) || "",
-          results: {},
-          storageMode: "ultra-light",
-          sourceTextTruncatedForStorage: true,
-        };
-        try {
-          localStorage.setItem(`${SESSION_PREFIX}${stored.id}`, JSON.stringify(stored));
-        } catch {
-          // If even metadata cannot be persisted, return in-memory session and keep UI alive.
-        }
-      }
-    }
+    persisted = tryPersist(stored);
   }
 
-  writeIndex([stored.id, ...readIndex().filter((id) => id !== stored.id)].slice(0, 8));
-  window.dispatchEvent(new Event("scriptora-study-sessions-change"));
-  return stored;
+  if (!persisted) {
+    forcePruneStudySessionStorage(stored.id);
+    stored = {
+      ...prepareStudySessionForStorage(session, "ultra-light"),
+      sourceText: "",
+      sourceTextPreview: session.sourceText.slice(0, 1000),
+      results: {},
+      storageMode: "ultra-light",
+      sourceTextTruncatedForStorage: true,
+    };
+    persisted = tryPersist(stored);
+  }
+
+  if (persisted) {
+    writeIndex([stored.id, ...readIndex().filter((id) => id !== stored.id)].slice(0, 8));
+    window.dispatchEvent(new Event("scriptora-study-sessions-change"));
+    return stored;
+  }
+
+  // Never create ghost session ids in the index. Keep UI alive with in-memory record only.
+  return {
+    ...stored,
+    status: "draft",
+    sourceTextTruncatedForStorage: true,
+    storageMode: "ultra-light",
+  };
 }
 
 export function createEmptyStudySession(input: {
