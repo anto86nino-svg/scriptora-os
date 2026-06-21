@@ -88,7 +88,7 @@ function DashboardPackagingRowInner({ projectTitle, context }: Props) {
           </div>
         </div>
 
-        <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-7">
+        <div className="mt-4 grid gap-2 md:grid-cols-2">
           {audit.steps.map((step, index) => (
             <PublishingStepTile
               key={step.id}

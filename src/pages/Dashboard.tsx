@@ -9,9 +9,9 @@ import { PaywallGuard } from "@/components/PaywallGuard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
-  BookOpen, Plus, FolderOpen, Rocket, Zap,
+  BookOpen, Plus, Rocket, Zap,
   FileDown, ArrowRight, Clock, Globe, Flame, Loader2, Sparkles, Wand2,
-  Library, Home as HomeIcon, X, BarChart3,
+  Home as HomeIcon, X, BarChart3,
   TrendingUp, LogOut, CreditCard, Download as DownloadIcon, Settings, Users,
   CheckCircle2, NotebookPen, Fingerprint, ImagePlus
 } from "lucide-react";
@@ -38,7 +38,6 @@ import { FlaskConical } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { WalletScriptoraCard } from "@/components/billing/WalletScriptoraCard";
-import { GlobalCreditBar } from "@/components/billing/GlobalCreditBar";
 import { AuthSessionButton } from "@/components/auth/AuthSessionButton";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import type { ForgePreset } from "@/lib/scriptora-forge/forge-presets";
@@ -75,7 +74,6 @@ import {
   buildBlueprintPreviewProject,
   canGenerateBlueprintPreview,
   selectContinuityProject,
-  summarizeProjectLibrary,
 } from "@/lib/project-continuity";
 import { getUserFriendlyError } from "@/lib/user-friendly-error";
 import { trackScriptoraEvent } from "@/lib/usage-analytics";
@@ -845,7 +843,6 @@ typeof crypto.randomUUID === "function"
   const currentLangLabel = UI_LANGUAGES.find(l => l.value === currentLang)?.label || "English";
   const completedProjects = projects.filter(isProjectComplete);
   const draftProjects = projects.filter((p) => !isProjectComplete(p));
-  const projectSummary = summarizeProjectLibrary(projects);
   const activeProjectDoneChapters = dashboardContextProject?.chapters?.filter((chapter) => (chapter.content || "").trim().length > 50).length || 0;
   const activeProjectTargetChapters = dashboardContextProject?.config?.numberOfChapters || dashboardContextProject?.chapters?.length || 0;
   const activeProjectProgress = dashboardContextProject
@@ -1019,8 +1016,8 @@ typeof crypto.randomUUID === "function"
                       {initials}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="hidden max-w-[120px] truncate text-[11px] font-medium text-foreground lg:inline">
-                    {displayName}
+                  <span className="hidden max-w-[82px] truncate text-[11px] font-medium text-foreground lg:inline">
+                    Account
                   </span>
                 </button>
                 <div className="hidden md:block">
@@ -1166,18 +1163,7 @@ typeof crypto.randomUUID === "function"
         </div>
       )}
 
-      <div className="hidden border-b border-white/8 bg-background/40 md:block">
-        <div className="mx-auto max-w-7xl px-3 py-2 sm:px-6 lg:px-8">
-          <GlobalCreditBar variant="inline" />
-        </div>
-      </div>
-
       <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-3 sm:px-6 sm:pb-16 sm:pt-6 lg:px-8">
-        <DashboardHomePillars
-          onNewBook={openNewBookGuarded}
-              onStudyOs={() => navigateFromDashboard(getToolRoute("study"))}
-        />
-
         <OsHomeHero
           lastProject={dashboardContextProject}
           progressPercent={activeProjectProgress}
@@ -1188,37 +1174,51 @@ typeof crypto.randomUUID === "function"
           onMyBooks={() => openDashboardTool("projects")}
         />
 
-        <DashboardContinueCard
-          projects={projects}
-          lastProject={dashboardContextProject}
-          onContinue={(projectId) => goApp({ projectId })}
-          onOpenProjects={() => openDashboardTool("projects")}
+        <DashboardHomePillars
+          onNewBook={openNewBookGuarded}
+          onStudyOs={() => navigateFromDashboard(getToolRoute("study"))}
         />
 
-        <section className="mb-4 flex flex-wrap gap-2 sm:mb-6">
-          <button
-            type="button"
-            onClick={() => openDashboardTool("projects")}
-            className="scriptora-action-tile inline-flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-left transition-all hover:-translate-y-0.5"
-          >
-            <FolderOpen className="h-4 w-4 text-white/75" />
-            <span className="text-sm font-semibold text-white">I miei libri</span>
-            <span className="text-xs text-white/45">
-              {projects.length > 0 ? `${projects.length} progetti` : "Biblioteca vuota"}
-            </span>
-          </button>
-          {dashboardContextProject && (
+        <div className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <DashboardContinueCard
+            projects={projects}
+            lastProject={dashboardContextProject}
+            onContinue={(projectId) => goApp({ projectId })}
+            onOpenProjects={() => openDashboardTool("projects")}
+          />
+
+          <section ref={advancedToolsAnchorRef} className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 shadow-[0_18px_48px_rgba(0,0,0,0.18)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">Strumenti avanzati</p>
+                <h2 className="mt-1 text-lg font-black text-white">Console qualità</h2>
+                <p className="mt-1 text-xs leading-5 text-white/55">
+                  Audit, continuità, mercato e strumenti editoriali restano raccolti in un pannello dedicato.
+                </p>
+              </div>
+              <span className="rounded-xl border border-sky-300/20 bg-sky-400/10 px-2 py-1 text-[10px] font-black text-sky-100">
+                {showAdvancedLaunchpad ? "ON" : "READY"}
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[10px] font-semibold text-white/58">
+              <span className="rounded-xl border border-white/10 bg-white/[0.04] px-2 py-2">Audit</span>
+              <span className="rounded-xl border border-white/10 bg-white/[0.04] px-2 py-2">Canon</span>
+              <span className="rounded-xl border border-white/10 bg-white/[0.04] px-2 py-2">Market</span>
+            </div>
             <button
               type="button"
-              onClick={() => openDashboardTool("library")}
-              className="scriptora-action-tile inline-flex min-h-[44px] items-center gap-2 rounded-xl px-4 py-2.5 text-left transition-all hover:-translate-y-0.5"
+              onClick={() => {
+                setAdvancedLaunchpadEnabled(true);
+                setShowAdvancedLaunchpad(true);
+                openDashboardTool("advanced-tools");
+              }}
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/[0.06] px-4 text-sm font-bold text-white/80 transition-colors hover:bg-white/[0.10]"
             >
-              <Library className="h-4 w-4 text-white/75" />
-              <span className="text-sm font-semibold text-white">Libreria</span>
-              <span className="text-xs text-white/45">{completedProjects.length || projectSummary.publishingReady} completati</span>
+              <Settings className="h-4 w-4" />
+              Apri strumenti avanzati
             </button>
-          )}
-        </section>
+          </section>
+        </div>
 
         {dashboardContextProject && (
           <div ref={packagingAnchorRef}>
@@ -1228,21 +1228,6 @@ typeof crypto.randomUUID === "function"
             />
           </div>
         )}
-
-        <div ref={advancedToolsAnchorRef} className="mb-4 flex justify-end sm:mb-6">
-          <button
-            type="button"
-            onClick={() => {
-              setAdvancedLaunchpadEnabled(true);
-              setShowAdvancedLaunchpad(true);
-              openDashboardTool("advanced-tools");
-            }}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white/70 transition-colors hover:bg-white/[0.10]"
-          >
-            <Settings className="h-3.5 w-3.5" />
-            Strumenti avanzati
-          </button>
-        </div>
 
         {!activeDashboardTool && (
           <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />

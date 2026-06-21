@@ -59,10 +59,11 @@ export function OsHomeHero({
   const status = manuscriptStatus(lastProject);
 
   return (
-    <section className="mb-4 sm:mb-5">
-      <div className="scriptora-glass-panel scriptora-home-hero-impact overflow-hidden rounded-2xl p-4 sm:p-6">
-        <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-          <div className="order-2 lg:order-1">
+    <section className="mb-5">
+      <div className="scriptora-glass-panel scriptora-home-hero-impact overflow-hidden rounded-[2rem] p-4 sm:p-6">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px] xl:items-stretch">
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_230px] lg:items-center">
+            <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-200/80">Libro attivo</p>
             <h2 className="scriptora-impact-title mt-1 line-clamp-2 text-2xl font-bold tracking-tight sm:text-4xl xl:text-5xl">{title}</h2>
             <p className="scriptora-impact-subtitle mt-2 line-clamp-2 text-sm sm:text-base">{subtitle}</p>
@@ -79,8 +80,26 @@ export function OsHomeHero({
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
+            </div>
 
-            <div className="mt-4 flex flex-col gap-2">
+            <div className="flex justify-center lg:justify-end">
+              <div className="os-book-3d-scene" aria-hidden>
+                <div className="os-book-3d">
+                  <div className="os-book-spine" />
+                  <div className="os-book-cover">
+                    <p className="os-book-kicker">SCRIPTORA</p>
+                    <p className="os-book-title" title={title}>{coverDisplayTitle(title)}</p>
+                    <p className="os-book-meta">{progressPercent}% · {doneChapters} cap.</p>
+                  </div>
+                  <div className="os-book-pages" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside className="rounded-2xl border border-white/10 bg-black/25 p-3 sm:p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/45">Azioni rapide</p>
+            <div className="mt-3 grid gap-2">
               <HeroCta
                 primary
                 fullWidth
@@ -88,39 +107,24 @@ export function OsHomeHero({
                 label="Continua a scrivere"
                 onClick={lastProject ? onContinue : onNewBook}
               />
-              <div className="grid grid-cols-2 gap-2">
-                <HeroCta
-                  icon={Sparkles}
-                  label="Genera capitolo"
-                  onClick={lastProject ? onGenerateNextChapter : onNewBook}
-                  disabled={!lastProject}
-                />
-                <HeroCta icon={Package} label="Esporta libro" onClick={onExport} disabled={!lastProject} />
-              </div>
+              <HeroCta
+                icon={Sparkles}
+                label="Genera capitolo"
+                onClick={lastProject ? onGenerateNextChapter : onNewBook}
+                disabled={!lastProject}
+                fullWidth
+              />
+              <HeroCta icon={Package} label="Esporta libro" onClick={onExport} disabled={!lastProject} fullWidth />
+              <HeroCta icon={BookOpen} label="Nuovo libro" onClick={onNewBook} fullWidth />
             </div>
-
             <button
               type="button"
               onClick={onMyBooks}
-              className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-white/60 hover:text-white"
+              className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-white/60 hover:bg-white/[0.08] hover:text-white"
             >
-              <BookOpen className="h-3.5 w-3.5" /> I miei libri <ChevronRight className="h-3 w-3" />
+              I miei libri <ChevronRight className="h-3 w-3" />
             </button>
-          </div>
-
-          <div className="order-1 flex justify-center lg:order-2">
-            <div className="os-book-3d-scene" aria-hidden>
-              <div className="os-book-3d">
-                <div className="os-book-spine" />
-                <div className="os-book-cover">
-                  <p className="os-book-kicker">SCRIPTORA</p>
-                  <p className="os-book-title" title={title}>{coverDisplayTitle(title)}</p>
-                  <p className="os-book-meta">{progressPercent}% · {doneChapters} cap.</p>
-                </div>
-                <div className="os-book-pages" />
-              </div>
-            </div>
-          </div>
+          </aside>
         </div>
       </div>
     </section>
