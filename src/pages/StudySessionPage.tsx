@@ -314,6 +314,7 @@ export default function StudySessionPage() {
   const [reading, setReading] = useState(false);
   const [workStartedAt, setWorkStartedAt] = useState<number | undefined>();
   const [studyGenerationStatus, setStudyGenerationStatus] = useState("");
+  const [readyStudySessionId, setReadyStudySessionId] = useState<string | null>(() => localStorage.getItem("scriptora-last-study-session"));
   const [aiMode, setAiMode] = useState<"idle" | "deepseek" | "local">("idle");
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [scannerPages, setScannerPages] = useState<StudyScannerPage[]>([]);
@@ -476,6 +477,8 @@ export default function StudySessionPage() {
     const stored = attachStudyResult(withIntent, enriched);
     setStudySession(stored);
     setCurrentStudySessionId(stored.id);
+    setReadyStudySessionId(stored.id);
+    try { localStorage.setItem("scriptora-last-study-session", stored.id); } catch { /* noop */ }
     setRawText(stored.sourceText);
     setSourceName(stored.sourceName || name);
     setResult(getFreshStudyResult(stored));
@@ -497,6 +500,8 @@ export default function StudySessionPage() {
     setStaleNotice("");
     setAiMode("idle");
     setStudyGenerationStatus("");
+    setReadyStudySessionId(null);
+    try { localStorage.removeItem("scriptora-last-study-session"); } catch { /* noop */ }
     setImportWarnings([]);
     setStudyMaterialType("auto");
     setStudySubject("auto");
@@ -1466,6 +1471,38 @@ export default function StudySessionPage() {
                 <option value="German">🇩🇪 Deutsch</option>
               </select>
             </div>
+
+            {readyStudySessionId && resultFresh && (
+              <div className="mt-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-4">
+                <p className="text-sm font-bold text-emerald-100">Sessione di studio salvata</p>
+                <p className="mt-1 text-xs leading-5 text-emerald-50/75">
+                  Riassunto, quiz, flashcard e interrogazione sono pronti. Puoi entrare subito nella sessione o tornare alla dashboard Study OS.
+                </p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSection("summary")}
+                    className="rounded-xl border border-emerald-300/25 bg-white/10 px-3 py-2 text-xs font-bold text-emerald-50"
+                  >
+                    Vai al riassunto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSection("quiz")}
+                    className="rounded-xl bg-emerald-300 px-3 py-2 text-xs font-bold text-slate-950"
+                  >
+                    Vai alla sessione di studio
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/study")}
+                    className="rounded-xl border border-white/15 bg-white/[0.04] px-3 py-2 text-xs font-bold text-white"
+                  >
+                    Dashboard Study OS
+                  </button>
+                </div>
+              </div>
+            )}
 
             <button
               type="button"
