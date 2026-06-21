@@ -674,6 +674,24 @@ export default function StudySessionPage() {
     async (text: string, name: string): Promise<StudySessionResult> => {
       clearStudyNoticeTimers();
       studyFallbackReasonRef.current = null;
+
+      const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+      const isLongMaterial = wordCount > 12000 || text.length > 70000;
+
+      if (isLongMaterial) {
+        const message = `Materiale lungo acquisito: ${wordCount.toLocaleString("it-IT")} parole. Ho creato una prima sessione studio ottimizzata; puoi approfondire singoli capitoli o sezioni specifiche.`;
+        studyFallbackReasonRef.current = message;
+        setStudyGenerationStatus(message);
+        setAiMode("local");
+        trackScriptoraEvent({
+          eventName: "study_fallback_local_used",
+          tool: "study",
+          success: true,
+          errorCategory: "long_material",
+        });
+        return normalizeStudyResultForUI(analyzeStudyMaterial(text, name, studyIntent));
+      }
+
       setStudyGenerationStatus("Sto analizzando il materiale e preparando la sessione...");
       setAiMode("deepseek");
 

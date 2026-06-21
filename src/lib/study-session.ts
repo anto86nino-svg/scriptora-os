@@ -1810,6 +1810,9 @@ async function readEpub(file: File): Promise<string> {
 
     const cleanDocument = (doc: Document) => {
       doc.querySelectorAll("script, style, nav, svg, noscript, head, title, meta, link").forEach((node) => node.remove());
+      doc.querySelectorAll("h1, h2, h3, h4, h5, h6, p, div, section, article, li, br").forEach((node) => {
+        node.appendChild(doc.createTextNode("\n\n"));
+      });
       const bodyText = doc.body?.textContent || "";
       const fallbackText = doc.documentElement?.textContent || "";
       return bodyText || fallbackText;
@@ -1821,6 +1824,8 @@ async function readEpub(file: File): Promise<string> {
       .replace(/<script[\s\S]*?<\/script>/gi, " ")
       .replace(/<style[\s\S]*?<\/style>/gi, " ")
       .replace(/<head[\s\S]*?<\/head>/gi, " ")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|section|article|h1|h2|h3|h4|h5|h6|li)>/gi, "\n\n")
       .replace(/<[^>]+>/g, " ")
       .replace(/&nbsp;/gi, " ")
       .replace(/&amp;/gi, "&")
@@ -1828,7 +1833,10 @@ async function readEpub(file: File): Promise<string> {
       .replace(/&#39;|&apos;/gi, "'")
       .replace(/&lt;/gi, "<")
       .replace(/&gt;/gi, ">")
-      .replace(/\s+/g, " ")
+      .replace(/\s*✦\s*/g, "\n\n✦ ")
+      .replace(/([.!?])([A-Z][a-z])/g, "$1\n\n$2")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
       .replace(/^\s+|\s+$/g, "");
   };
 
@@ -1847,8 +1855,12 @@ async function readEpub(file: File): Promise<string> {
 
       const next = text.length > remaining ? text.slice(0, remaining).trim() : text;
       if (next) {
-        chunks.push(next);
-        totalChars += next.length;
+        const signature = next.slice(0, 240).toLowerCase().replace(/\s+/g, " ");
+        const alreadySeen = chunks.some((chunk) => chunk.slice(0, 240).toLowerCase().replace(/\s+/g, " ") === signature);
+        if (!alreadySeen) {
+          chunks.push(next);
+          totalChars += next.length;
+        }
       }
     }
 
