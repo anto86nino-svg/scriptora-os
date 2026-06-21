@@ -178,6 +178,7 @@ export type StudyMaterialType =
   | "economics"
   | "computer-science"
   | "foreign-language"
+  | "personal-growth"
   | "scientific-article"
   | "technical-manual"
   | "mixed-notes"
@@ -657,6 +658,15 @@ const MATERIAL_DEFS: Array<{
     label: "Letteratura",
     patterns: [/\b(romanzo|poesia|autore|narratore|stile|metafora|similitudine|tema|contesto|figure retoriche|analisi del testo)\b/gi],
     strategy: ["tema", "stile", "contesto", "figure retoriche", "analisi del testo"],
+  },
+  {
+    type: "personal-growth",
+    label: "Crescita personale / Psicologia pratica / Letteratura motivazionale",
+    patterns: [
+      /\b(self[-\s]?help|personal growth|motivational|motivation|mindset|boundaries|relationship|relationships|emotional|anxiety|healing|trauma|control|confidence|habits|let them be|mel robbins)\b/gi,
+      /\b(crescita personale|psicologia pratica|motivazione|mentalità|confini|relazioni|emozioni|ansia|guarigione|abitudini|autostima|lascia che|lasciar andare)\b/gi,
+    ],
+    strategy: ["principi chiave", "applicazioni personali", "esempi pratici", "domande di riflessione"],
   },
   {
     type: "math",

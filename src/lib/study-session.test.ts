@@ -28,6 +28,20 @@ describe("Study OS material analysis", () => {
     expect(classifyStudyMaterial(studyText("Economia", "Domanda, offerta, mercato, prezzo, inflazione, PIL, costo, ricavo e bilancio.")).type).toBe("economics");
   });
 
+  it("classifies English self-help books as growth psychology instead of mathematics", () => {
+    const text = studyText(
+      "Let Them Be",
+      "Mel Robbins explains the Let Them Be theory through emotional boundaries, relationships, anxiety, mindset, control, confidence, habits, healing and personal growth. The chapter is motivational literature and practical psychology, not formulas or equations.",
+    );
+
+    const classification = classifyStudyMaterial(text, "Let Them Be.epub");
+
+    expect(classification.type).toBe("personal-growth");
+    expect(classification.subjectLabel).toBe("Crescita personale / Psicologia pratica / Letteratura motivazionale");
+    expect(classification.type).not.toBe("math");
+    expect(classification.label).not.toBe("Matematica");
+  });
+
   it("treats gothic-romantic narrative with legal keywords as narrative fiction, not law", () => {
     const chapter = studyText(
       "Capitolo 1",

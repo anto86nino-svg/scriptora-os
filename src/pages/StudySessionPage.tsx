@@ -22,6 +22,19 @@ import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
 import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { generateStudySessionWithAI } from "@/lib/study-ai";
 import { createStudyChunkPlan } from "@/lib/study-os/chunk-planner";
+import {
+  clearCurrentStudyBook,
+  createAndSaveStudyBookManifest,
+  getCurrentStudyBookChunkId,
+  getCurrentStudyBookManifestId,
+  getStudyBookManifest,
+  readStudyBookChunkResult,
+  readStudyBookChunkText,
+  saveStudyBookChunkResult,
+  setCurrentStudyBookChunkId,
+  updateStudyBookChunk,
+  type StudyBookManifest,
+} from "@/lib/study-os/book-manifest";
 import { evaluateStudyAnswerWithAI, type StudyAnswerEvaluation } from "@/lib/study-answer-evaluator";
 import { DEFAULT_STUDY_UX, loadStudyUxState, saveStudyUxState, type FlashcardConfidence } from "@/lib/study-ux";
 import { t } from "@/lib/i18n";
@@ -319,6 +332,9 @@ export default function StudySessionPage() {
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
   const [scannerPages, setScannerPages] = useState<StudyScannerPage[]>([]);
   const [scannerStatus, setScannerStatus] = useState("");
+  const [bookManifest, setBookManifest] = useState<StudyBookManifest | null>(null);
+  const [activeBookChunkId, setActiveBookChunkId] = useState<string | null>(null);
+  const [activeBookChunkText, setActiveBookChunkText] = useState("");
   const studyNoticeTimersRef = useRef<number[]>([]);
   const studyFallbackReasonRef = useRef<string | null>(null);
 
@@ -360,6 +376,10 @@ export default function StudySessionPage() {
 
   const wordCount = useMemo(() => rawText.trim().split(/\s+/).filter(Boolean).length, [rawText]);
   const studyChunkPlan = useMemo(() => createStudyChunkPlan(rawText, sourceName), [rawText, sourceName]);
+  const activeBookChunk = useMemo(
+    () => bookManifest?.chunks.find((chunk) => chunk.id === activeBookChunkId) || null,
+    [activeBookChunkId, bookManifest],
+  );
   const currentStudyClassification = useMemo(
     () => wordCount >= 40 ? classifyStudyMaterial(rawText, sourceName, studyIntent) : null,
     [rawText, sourceName, studyIntent, wordCount],
@@ -374,12 +394,15 @@ export default function StudySessionPage() {
     if ([1, 2, 3, 4, 5].includes(storedLevel)) setDifficultyLevel(storedLevel as StudyDifficultyLevel);
   }, []);
   const materialReadinessCopy = useMemo(() => {
+    if (bookManifest && !activeBookChunkId) {
+      return `${bookManifest.totalWords.toLocaleString("it-IT")} parole divise in ${bookManifest.chunks.length} sessioni. Scegli una sessione per iniziare.`;
+    }
     if (wordCount < 40) return `${t("study_min_words_hint")} (${wordCount}/40)`;
     if (currentStudyClassification?.contentType === "narrative_fiction") {
       return `Capitolo narrativo pronto per l'analisi. ${wordCount.toLocaleString("it-IT")} parole rilevate.`;
     }
     return `Materiale pronto per l'analisi. ${wordCount.toLocaleString("it-IT")} parole rilevate.`;
-  }, [currentStudyClassification?.contentType, wordCount]);
+  }, [activeBookChunkId, bookManifest, currentStudyClassification?.contentType, wordCount]);
   const hasScannerPages = scannerPages.length > 0;
   const scannerReadyPages = scannerPages.filter((page) => page.words > 0).length;
   const scannerCopy = useMemo(() => {
@@ -398,6 +421,13 @@ export default function StudySessionPage() {
     scannerPreviewUrlsRef.current = [];
     setScannerPages([]);
     setScannerStatus("");
+  }, []);
+
+  const clearBookWorkspace = useCallback(() => {
+    clearCurrentStudyBook();
+    setBookManifest(null);
+    setActiveBookChunkId(null);
+    setActiveBookChunkText("");
   }, []);
 
   useEffect(() => () => {
@@ -432,9 +462,11 @@ export default function StudySessionPage() {
     const next = updateStudySessionSource(studySession, { sourceText: text, sourceName: name, sourceType });
     setStudySession(next.session);
     setRawText(next.session.sourceText);
+    if (activeBookChunkId) setActiveBookChunkText(next.session.sourceText);
     setSourceName(next.session.sourceName || name);
     setImportWarnings([]);
     if (next.sourceChanged) {
+      if (!activeBookChunkId) clearBookWorkspace();
       setResult(null);
       setProjectId(undefined);
       resetSessionState();
@@ -445,7 +477,7 @@ export default function StudySessionPage() {
         });
       }
     }
-  }, [result, resetSessionState, studySession]);
+  }, [activeBookChunkId, clearBookWorkspace, result, resetSessionState, studySession]);
 
   const commitStudyResult = useCallback((
     normalized: StudySessionResult,
@@ -503,6 +535,7 @@ export default function StudySessionPage() {
     setAiMode("idle");
     setStudyGenerationStatus("");
     setReadyStudySessionId(null);
+    clearBookWorkspace();
     try { localStorage.removeItem("scriptora-last-study-session"); } catch { /* noop */ }
     setImportWarnings([]);
     setStudyMaterialType("auto");
@@ -513,7 +546,73 @@ export default function StudySessionPage() {
     setCurrentStudySessionId(null);
     resetSessionState();
     toast.success("Nuova sessione pulita");
-  }, [clearScannerPages, resetSessionState, studyLanguage]);
+  }, [clearBookWorkspace, clearScannerPages, resetSessionState, studyLanguage]);
+
+  const openBookChunk = useCallback((manifest: StudyBookManifest, chunkId: string, silent = false) => {
+    const chunk = manifest.chunks.find((item) => item.id === chunkId);
+    if (!chunk) {
+      toast.error("Sessione libro non trovata");
+      return;
+    }
+
+    try {
+      const text = readStudyBookChunkText(manifest, chunkId);
+      const storedResult = readStudyBookChunkResult(manifest, chunkId);
+      const name = `${manifest.sourceName} — ${chunk.title}`;
+      const nextSession = updateStudySessionSource(createEmptyStudySession({ language: studyLanguage }), {
+        sourceText: text,
+        sourceName: name,
+        sourceType: manifest.sourceType,
+      }).session;
+
+      setBookManifest(manifest);
+      setActiveBookChunkId(chunkId);
+      setActiveBookChunkText(text);
+      setCurrentStudyBookChunkId(chunkId);
+      setStudySession(nextSession);
+      setCurrentStudySessionId(null);
+      setRawText(text);
+      setSourceName(name);
+      setResult(storedResult);
+      setProjectId(undefined);
+      setStaleNotice("");
+      setImportWarnings([]);
+      setAiMode(storedResult ? "local" : "idle");
+      setActiveSection(storedResult ? "summary" : "materials");
+      resetSessionState();
+      if (!silent) {
+        toast.message(storedResult ? "Sessione già pronta" : "Sessione selezionata", {
+          description: `${chunk.title} · ${chunk.wordCount.toLocaleString("it-IT")} parole`,
+        });
+      }
+    } catch (error) {
+      toast.error("Sessione libro non disponibile", {
+        description: humanStudyErrorMessage(error),
+      });
+    }
+  }, [resetSessionState, studyLanguage]);
+
+  const createBookManifestFromText = useCallback((text: string, name: string, sourceType: StudySourceType) => {
+    const manifest = createAndSaveStudyBookManifest(text, name, sourceType);
+    if (!manifest) return null;
+
+    setBookManifest(manifest);
+    setActiveBookChunkId(null);
+    setActiveBookChunkText("");
+    setCurrentStudyBookChunkId(null);
+    setRawText("");
+    setSourceName(manifest.sourceName);
+    setResult(null);
+    setProjectId(undefined);
+    setStaleNotice("");
+    setAiMode("idle");
+    setActiveSection("materials");
+    resetSessionState();
+    toast.success("Libro diviso in sessioni di studio", {
+      description: `${manifest.chunks.length} sessioni pronte. Scegli un capitolo: analizzerò solo quello.`,
+    });
+    return manifest;
+  }, [resetSessionState]);
 
   useEffect(() => {
     const state = location.state as { projectId?: string; sessionId?: string } | null;
@@ -537,6 +636,26 @@ export default function StudySessionPage() {
       return;
     }
     if (!state?.projectId) {
+      const currentBookId = getCurrentStudyBookManifestId();
+      const manifest = currentBookId ? getStudyBookManifest(currentBookId) : null;
+      if (manifest) {
+        const chunkId = getCurrentStudyBookChunkId();
+        setBookManifest(manifest);
+        if (chunkId && manifest.chunks.some((chunk) => chunk.id === chunkId)) {
+          openBookChunk(manifest, chunkId, true);
+        } else {
+          setActiveBookChunkId(null);
+          setActiveBookChunkText("");
+          setRawText("");
+          setSourceName(manifest.sourceName);
+          setResult(null);
+          setProjectId(undefined);
+          setStaleNotice("");
+          setAiMode("idle");
+          setActiveSection("materials");
+        }
+        return;
+      }
       const currentId = getCurrentStudySessionId();
       if (!currentId) return;
       const session = getStudySession(currentId);
@@ -580,7 +699,7 @@ export default function StudySessionPage() {
     resetSessionState();
     navigate(location.pathname, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state, restoreStudyIntent]);
+  }, [location.state, openBookChunk, restoreStudyIntent]);
 
   const handleExamComplete = useCallback(
     (report: { score: number; mode: "practice" | "exam"; total: number; correct: number; grade10?: number; grade30?: number; judgement?: string }) => {
@@ -742,7 +861,99 @@ export default function StudySessionPage() {
     [clearStudyNoticeTimers, studyIntent, studyLanguage],
   );
 
+  const generateActiveBookChunkAnalysis = useCallback(async () => {
+    if (!bookManifest || !activeBookChunk || !rawText.trim()) {
+      toast.error("Scegli una sessione del libro", {
+        description: "Apri un capitolo o un blocco prima di generare riassunto e quiz.",
+      });
+      return;
+    }
+
+    setReading(true);
+    setWorkStartedAt(Date.now());
+    setAiMode("deepseek");
+    const manifestId = bookManifest.id;
+    const chunkId = activeBookChunk.id;
+    const name = `${bookManifest.sourceName} — ${activeBookChunk.title}`;
+    const text = rawText;
+
+    try {
+      const analyzingManifest = updateStudyBookChunk(manifestId, chunkId, { status: "analyzing", errorMessage: undefined });
+      if (analyzingManifest) setBookManifest(analyzingManifest);
+
+      const next = await generateStudyResultWithRuntimeGuard(text, name);
+      const normalized = normalizeStudyResultForUI(next);
+      commitStudyResult(normalized, text, name, studySession, bookManifest.sourceType, undefined);
+      const readyManifest = saveStudyBookChunkResult(manifestId, chunkId, normalized);
+      if (readyManifest) setBookManifest(readyManifest);
+      setActiveSection("quiz");
+      saveStudyUxState({ activeSection: "quiz" });
+      toast.success("Sessione del libro pronta", {
+        description: `${activeBookChunk.title}: riassunto, quiz e flashcard generati.`,
+      });
+      trackScriptoraEvent({ eventName: "study_summary_generated", tool: "study", success: true });
+      trackScriptoraEvent({ eventName: "study_quiz_generated", tool: "study", success: true });
+    } catch (error) {
+      devOnlyDiagnostic("study-book-chunk-ai-fallback", error);
+      try {
+        const local = analyzeStudyMaterial(text, name, studyIntent);
+        const normalized = normalizeStudyResultForUI(local);
+        commitStudyResult(normalized, text, name, studySession, bookManifest.sourceType, undefined);
+        const readyManifest = saveStudyBookChunkResult(manifestId, chunkId, normalized);
+        if (readyManifest) setBookManifest(readyManifest);
+        setAiMode("local");
+        setActiveSection("quiz");
+        saveStudyUxState({ activeSection: "quiz" });
+        toast.message("Sessione del libro pronta", {
+          description: describeStudyFallback(error),
+        });
+      } catch (fallbackError) {
+        const failedManifest = updateStudyBookChunk(manifestId, chunkId, {
+          status: "error",
+          errorMessage: humanStudyErrorMessage(fallbackError),
+        });
+        if (failedManifest) setBookManifest(failedManifest);
+        toast.error("Sessione libro non creata", {
+          description: humanStudyErrorMessage(fallbackError),
+        });
+      }
+    } finally {
+      setReading(false);
+      setStudyGenerationStatus("");
+    }
+  }, [
+    activeBookChunk,
+    bookManifest,
+    commitStudyResult,
+    generateStudyResultWithRuntimeGuard,
+    rawText,
+    studyIntent,
+    studySession,
+  ]);
+
   const analyze = async () => {
+    if (bookManifest) {
+      if (!activeBookChunkId) {
+        toast.message("Scegli una sessione del libro", {
+          description: "Il libro è già diviso: apri un capitolo e genererò solo quel blocco.",
+        });
+        return;
+      }
+      await generateActiveBookChunkAnalysis();
+      return;
+    }
+
+    if (studyChunkPlan.shouldUseChunks) {
+      try {
+        createBookManifestFromText(rawText, sourceName, hasScannerPages ? "image" : detectStudySourceType(sourceName));
+      } catch (error) {
+        toast.error("Non riesco a dividere il libro", {
+          description: humanStudyErrorMessage(error),
+        });
+      }
+      return;
+    }
+
     if (!canAnalyze) {
       toast.error("Materiale troppo breve", { description: "Carica o incolla almeno 40 parole." });
       return;
@@ -1014,6 +1225,35 @@ export default function StudySessionPage() {
       const sourceType = readResult.sourceType === "pdf" || readResult.sourceType === "docx" || readResult.sourceType === "txt" || readResult.sourceType === "image"
         ? readResult.sourceType
         : "file";
+
+      const bookManifestCandidate = createAndSaveStudyBookManifest(text, readResult.fileName, sourceType);
+      if (bookManifestCandidate) {
+        const emptyBookSession = updateStudySessionSource(createEmptyStudySession({ language: studyLanguage }), {
+          sourceText: "",
+          sourceName: readResult.fileName,
+          sourceType,
+        }).session;
+        setStudySession(emptyBookSession);
+        setCurrentStudySessionId(null);
+        setBookManifest(bookManifestCandidate);
+        setActiveBookChunkId(null);
+        setActiveBookChunkText("");
+        setCurrentStudyBookChunkId(null);
+        setRawText("");
+        setSourceName(readResult.fileName);
+        setResult(null);
+        setProjectId(undefined);
+        setStaleNotice("");
+        setImportWarnings(readResult.warnings);
+        setAiMode("idle");
+        setActiveSection("materials");
+        resetSessionState();
+        toast.success("Libro diviso in sessioni di studio", {
+          description: `${bookManifestCandidate.chunks.length} sessioni pronte. Scegli una sessione: analizzerò solo quella.`,
+        });
+        return;
+      }
+
       const fileSession = updateStudySessionSource(createEmptyStudySession({ language: studyLanguage }), {
         sourceText: text,
         sourceName: readResult.fileName,
@@ -1120,6 +1360,25 @@ export default function StudySessionPage() {
   const safeKeyConcepts = safeResult?.keyConcepts || [];
   const safeExercises = safeResult?.exercises || [];
   const safeCombinedQuiz = useMemo(() => [...safeQuiz, ...safeTrueFalse], [safeQuiz, safeTrueFalse]);
+  const activeStudyWordCount = activeBookChunkId
+    ? activeBookChunkText.trim().split(/\s+/).filter(Boolean).length
+    : wordCount;
+  const primaryStudyActionDisabled = reading || (bookManifest
+    ? !activeBookChunkId || activeStudyWordCount < 40
+    : studyChunkPlan.shouldUseChunks
+      ? wordCount < 40
+      : !canAnalyze);
+  const primaryStudyActionLabel = reading
+    ? "Scriptora sta preparando la sessione..."
+    : bookManifest
+      ? activeBookChunkId
+        ? safeResult
+          ? "Rigenera questa sessione"
+          : "Genera questa sessione"
+        : "Scegli una sessione del libro"
+      : studyChunkPlan.shouldUseChunks
+        ? "Dividi libro in sessioni"
+        : "Genera Sessione Studio";
 
   return (
     <div className="scriptora-ios-screen scriptora-app-surface scriptora-page-scroll scriptora-study-session min-h-[100dvh] overflow-x-clip px-3 py-4 pb-safe sm:px-6 sm:py-5">
@@ -1511,11 +1770,11 @@ export default function StudySessionPage() {
             <button
               type="button"
               onClick={analyze}
-              disabled={!canAnalyze || reading}
+              disabled={primaryStudyActionDisabled}
               className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-emerald-300 px-4 text-sm font-bold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-              {reading ? "Scriptora sta preparando la sessione..." : "Genera Sessione Studio"}
+              {primaryStudyActionLabel}
             </button>
             {reading && studyGenerationStatus && (
               <p className="mt-2 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-3 py-2 text-xs leading-5 text-emerald-100">
@@ -1540,34 +1799,55 @@ export default function StudySessionPage() {
             {!safeResult ? (
               <div className="rounded-3xl border border-dashed border-white/15 bg-white/[0.03] p-5 sm:p-8">
                 <div className="mb-6 text-center sm:text-left">
-                  {studyChunkPlan.shouldUseChunks && (
+                  {bookManifest && (
                     <div className="mb-5 rounded-3xl border border-amber-300/25 bg-amber-300/10 p-4 text-left">
                       <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-200">
-                        Materiale lungo rilevato
+                        Libro diviso in sessioni di studio
                       </p>
                       <h3 className="mt-2 text-base font-semibold text-foreground">
-                        Ho diviso il documento in sessioni definitive e studiabili
+                        Scegli il capitolo o blocco da studiare
                       </h3>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                        {studyChunkPlan.totalWords.toLocaleString("it-IT")} parole · {studyChunkPlan.chunks.length} sessioni.
-                        Ogni sessione è pronta da studiare: apri un capitolo o un gruppo di parti per riassunto, quiz, flashcard e interrogazione.
+                        {bookManifest.totalWords.toLocaleString("it-IT")} parole · {bookManifest.chunks.length} sessioni.
+                        Ogni card è indipendente: Scriptora genera riassunto, quiz e flashcard solo per la sessione che apri.
                       </p>
 
                       <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                        {studyChunkPlan.chunks.slice(0, 10).map((chunk) => (
+                        {bookManifest.chunks.map((chunk) => (
                           <button
                             key={chunk.id}
                             type="button"
-                            onClick={() => {
-                              replaceStudySource(chunk.content, `${sourceName} — ${chunk.title}`, "manual", { toastChanged: Boolean(result) });
-                              toast.message("Sessione di studio selezionata", {
-                                description: `${chunk.title} · ${chunk.wordCount.toLocaleString("it-IT")} parole`,
-                              });
-                            }}
-                            className="rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-3 text-left transition hover:border-amber-200/50 hover:bg-amber-200/10"
+                            onClick={() => openBookChunk(bookManifest, chunk.id)}
+                            className={[
+                              "rounded-2xl border px-3 py-3 text-left transition hover:border-amber-200/50 hover:bg-amber-200/10",
+                              activeBookChunkId === chunk.id
+                                ? "border-amber-200/60 bg-amber-200/15"
+                                : "border-white/10 bg-white/[0.05]",
+                            ].join(" ")}
                           >
-                            <span className="block text-sm font-semibold text-foreground">
-                              Studia {chunk.title}
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="min-w-0 truncate text-sm font-semibold text-foreground">
+                                {chunk.title}
+                              </span>
+                              <span className={[
+                                "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
+                                chunk.status === "ready"
+                                  ? "bg-emerald-300 text-slate-950"
+                                  : chunk.status === "analyzing"
+                                    ? "bg-sky-300 text-slate-950"
+                                    : chunk.status === "error"
+                                      ? "bg-rose-300 text-slate-950"
+                                      : "bg-white/10 text-muted-foreground",
+                              ].join(" ")}
+                              >
+                                {chunk.status === "ready"
+                                  ? "Pronta"
+                                  : chunk.status === "analyzing"
+                                    ? "In corso"
+                                    : chunk.status === "error"
+                                      ? "Errore"
+                                      : "Da studiare"}
+                              </span>
                             </span>
                             <span className="mt-1 block text-xs text-muted-foreground">
                               {chunk.wordCount.toLocaleString("it-IT")} parole · {chunk.contentPreview}
@@ -1575,31 +1855,42 @@ export default function StudySessionPage() {
                           </button>
                         ))}
                       </div>
+                    </div>
+                  )}
 
-                      {studyChunkPlan.ranges.length > 0 && (
-                        <div className="mt-4 border-t border-white/10 pt-3">
-                          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                            Oppure studia gruppi
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {studyChunkPlan.ranges.slice(0, 6).map((range) => (
-                              <button
-                                key={range.id}
-                                type="button"
-                                onClick={() => {
-                                  replaceStudySource(range.content, `${sourceName} — ${range.title}`, "manual", { toastChanged: Boolean(result) });
-                                  toast.message("Gruppo studio selezionato", {
-                                    description: `${range.title} · ${range.wordCount.toLocaleString("it-IT")} parole`,
-                                  });
-                                }}
-                                className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-xs font-semibold text-amber-100 transition hover:border-amber-200/50"
-                              >
-                                {range.title}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                  {bookManifest && activeBookChunk && !safeResult && (
+                    <div className="mb-5 rounded-3xl border border-emerald-300/25 bg-emerald-300/10 p-4 text-left">
+                      <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-200">
+                        Sessione selezionata
+                      </p>
+                      <h3 className="mt-2 text-base font-semibold text-foreground">{activeBookChunk.title}</h3>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {activeBookChunk.wordCount.toLocaleString("it-IT")} parole caricate. Genero solo questo blocco: le altre sessioni restano da studiare.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void generateActiveBookChunkAnalysis()}
+                        disabled={reading || activeStudyWordCount < 40}
+                        className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-4 text-xs font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {reading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                        Genera questa sessione
+                      </button>
+                    </div>
+                  )}
+
+                  {!bookManifest && studyChunkPlan.shouldUseChunks && (
+                    <div className="mb-5 rounded-3xl border border-amber-300/25 bg-amber-300/10 p-4 text-left">
+                      <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-200">
+                        Materiale lungo rilevato
+                      </p>
+                      <h3 className="mt-2 text-base font-semibold text-foreground">
+                        Prima creo sessioni stabili, poi studi una parte alla volta
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {studyChunkPlan.totalWords.toLocaleString("it-IT")} parole · {studyChunkPlan.chunks.length} sessioni previste.
+                        Usa il pulsante “Dividi libro in sessioni”: nessuna analisi globale partirà sul documento intero.
+                      </p>
                     </div>
                   )}
 
@@ -1625,6 +1916,37 @@ export default function StudySessionPage() {
               </div>
             ) : (
               <>
+                {bookManifest && activeBookChunk && (
+                  <div className="rounded-3xl border border-amber-300/25 bg-amber-300/10 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-200">Sessione libro pronta</p>
+                        <h2 className="mt-1 text-lg font-semibold text-foreground">{activeBookChunk.title}</h2>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                          {activeBookChunk.wordCount.toLocaleString("it-IT")} parole · risultato collegato a questa sessione, non al libro intero.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveBookChunkId(null);
+                          setActiveBookChunkText("");
+                          setCurrentStudyBookChunkId(null);
+                          setRawText("");
+                          setSourceName(bookManifest.sourceName);
+                          setResult(null);
+                          setProjectId(undefined);
+                          setAiMode("idle");
+                          setActiveSection("materials");
+                        }}
+                        className="ios-toolbar-button h-10 justify-center px-3 text-xs font-semibold text-amber-100"
+                      >
+                        Torna alle sessioni
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <StudyMetricsCard
                   result={safeResult}
                   aiMode={aiMode}
