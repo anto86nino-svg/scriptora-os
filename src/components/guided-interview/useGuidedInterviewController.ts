@@ -103,6 +103,7 @@ export function useGuidedInterviewController({
   const [autoAnswerOptions, setAutoAnswerOptions] = useState<ForgeSuggestedAnswer[]>([]);
   const [autoAnswerVariantCount, setAutoAnswerVariantCount] = useState(0);
   const [autoAnswerError, setAutoAnswerError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [autoAnswerToneBias, setAutoAnswerToneBias] = useState<ForgeAutoAnswerToneBias>(null);
   const [continueNonce, setContinueNonce] = useState(0);
   const [showExpressPanel, setShowExpressPanel] = useState(false);
@@ -125,6 +126,7 @@ export function useGuidedInterviewController({
     setAutoAnswerOptions([]);
     setAutoAnswerVariantCount(0);
     setAutoAnswerError(null);
+    setSubmitError(null);
     setAutoAnswerToneBias(null);
     lastQuestionIdRef.current = null;
     lastQuestionTextRef.current = null;
@@ -309,15 +311,21 @@ export function useGuidedInterviewController({
     if (pauseInterviewForFoundation) return;
 
     setIsThinking(true);
+    setSubmitError(null);
     window.setTimeout(() => {
-      const updated = applyInterviewAnswer(state, payload, next.question ?? undefined);
-      setState(updated);
-      setInput("");
-      setAutoAnswerOptions([]);
-      setAutoAnswerVariantCount(0);
-      setAutoAnswerError(null);
-      setIsThinking(false);
-      if (speech.isListening) speech.stop();
+      try {
+        const updated = applyInterviewAnswer(state, payload, next.question ?? undefined);
+        setState(updated);
+        setInput("");
+        setAutoAnswerOptions([]);
+        setAutoAnswerVariantCount(0);
+        setAutoAnswerError(null);
+      } catch {
+        setSubmitError("Non sono riuscito a salvare questa risposta. Riprova: non perderai l'intervista.");
+      } finally {
+        setIsThinking(false);
+        if (speech.isListening) speech.stop();
+      }
     }, 480);
   };
 
@@ -590,6 +598,7 @@ export function useGuidedInterviewController({
     autoAnswerOptions,
     autoAnswerVariantCount,
     autoAnswerError,
+    submitError,
     autoAnswerToneBias,
     setAutoAnswerToneBias,
     generateAutoAnswer,

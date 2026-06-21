@@ -646,6 +646,11 @@ function InterviewInputFooter({
       {ctrl.speech.error && (
         <p className="mb-2 text-[11px] text-amber-300">{ctrl.speech.error}</p>
       )}
+      {ctrl.submitError && (
+        <p className="mb-2 rounded-xl border border-amber-300/25 bg-amber-500/10 px-3 py-2 text-[11px] leading-5 text-amber-100">
+          {ctrl.submitError}
+        </p>
+      )}
       {ctrl.speech.isListening && (
         <p className="mb-2 animate-pulse text-[11px] font-medium text-violet-300">
           🎙️ Scriptora ti sta ascoltando…

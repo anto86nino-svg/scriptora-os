@@ -428,6 +428,7 @@ function questionKeyToSlot(questionKey: string): ForgeSlotKey | null {
 
 export function isUncertainUserAnswer(text: string): boolean {
   const t = text.trim();
+  if (/^(it|en|es|fr|de|other)$/i.test(t)) return false;
   if (t.length < 4) return true;
   return UNCERTAIN_PATTERN.test(t);
 }

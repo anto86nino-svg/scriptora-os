@@ -18,6 +18,7 @@ import {
 import { FORGE_GENRE_OPENING_QUESTION_ID } from "./forge-genre-catalog";
 import { evaluateForgeReadiness } from "./forge-readiness";
 import { evaluateEditorialUnderstanding } from "./book-understanding-engine";
+import { LANGUAGE_PRESETS } from "./interview-presets";
 
 const DARK_ROMANCE_CHIP = "Romanzo · Dark Romance · dark-romance · Narrativa";
 const SELF_HELP_CHIP = "Saggio · Self Help · self-help · Non Fiction";
@@ -210,6 +211,20 @@ describe("interview memory", () => {
     expect(memory.slotValues.language).toBe("English");
     expect(diff.newlyFilledSlots).toContain("language");
     expect(isSlotFilled(memory, "language")).toBe(true);
+  });
+
+  it("language choice chips save canonical codes and do not repeat language question", () => {
+    for (const preset of LANGUAGE_PRESETS) {
+      const { memory, diff } = updateForgeMemoryFromAnswer(
+        getInitialInterviewState({ chatFirst: true }),
+        preset.value,
+        { id: "language-confirmation", key: "language" },
+      );
+      expect(memory.slotValues.language).toBe(preset.value);
+      expect(diff.newlyFilledSlots).toContain("language");
+      expect(isSlotFilled(memory, "language")).toBe(true);
+      expect(isQuestionAlreadyAnswered("language-confirmation", memory)).toBe(true);
+    }
   });
 
   it("thriller profile answers build editorial understanding", () => {

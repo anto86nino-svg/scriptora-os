@@ -1,12 +1,12 @@
 import type { InterviewQuickSuggestion } from "./types";
 
 export const LANGUAGE_PRESETS: InterviewQuickSuggestion[] = [
-  { label: "Italiano", value: "Italiano" },
-  { label: "English", value: "English" },
-  { label: "Español", value: "Español" },
-  { label: "Français", value: "Français" },
-  { label: "Deutsch", value: "Deutsch" },
-  { label: "Altra lingua", value: "Altra lingua — la specifico dopo." },
+  { label: "Italiano", value: "it" },
+  { label: "English", value: "en" },
+  { label: "Español", value: "es" },
+  { label: "Français", value: "fr" },
+  { label: "Deutsch", value: "de" },
+  { label: "Altra lingua", value: "other" },
 ];
 
 export const BOOK_TYPE_PRESETS: InterviewQuickSuggestion[] = [

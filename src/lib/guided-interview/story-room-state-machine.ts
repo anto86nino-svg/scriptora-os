@@ -728,6 +728,7 @@ export function normalizeSlotFromAnswer(
   if (!text) return text;
 
   if (slot === "language") {
+    if (/^(it|en|es|fr|de|other)$/i.test(text)) return text.toLowerCase();
     if (/italian|italiano|in italiano/i.test(text)) return "Italiano";
     if (/english|inglese|in inglese/i.test(text)) return "English";
   }
