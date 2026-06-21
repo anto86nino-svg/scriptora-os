@@ -25,6 +25,11 @@ export interface StudySessionRecord {
   sourceName?: string;
   sourceHash: string;
   sourceText: string;
+  sourceTextPreview?: string;
+  sourceTextLength?: number;
+  sourceTextStoredLength?: number;
+  sourceTextTruncatedForStorage?: boolean;
+  storageMode?: "full" | "preview" | "ultra-light";
   language: string;
   level?: string;
   objective?: string;
@@ -66,6 +71,49 @@ function normalizeText(value: unknown): string {
   return String(value || "").replace(/\r\n?/g, "\n").trim();
 }
 
+function makeStorageSafeSourceText(text: string, mode: "full" | "preview" | "ultra-light" = "full"): string {
+  const clean = normalizeText(text);
+  if (mode === "full" && clean.length <= 50000) return clean;
+
+  const head = mode === "ultra-light" ? 9000 : 20000;
+  const tail = mode === "ultra-light" ? 3000 : 8000;
+
+  if (clean.length <= head + tail + 500) return clean;
+
+  return [
+    clean.slice(0, head).trim(),
+    "",
+    `[...testo completo troppo lungo per lo storage locale: salvata anteprima. Caratteri originali: ${clean.length.toLocaleString("it-IT")}...]`,
+    "",
+    clean.slice(-tail).trim(),
+  ].join("\n\n");
+}
+
+function prepareStudySessionForStorage(
+  session: StudySessionRecord,
+  mode: "full" | "preview" | "ultra-light" = "full",
+): StudySessionRecord {
+  const originalSourceText = normalizeText(session.sourceText || "");
+  const safeSourceText = makeStorageSafeSourceText(originalSourceText, mode);
+  const storageMode = safeSourceText.length < originalSourceText.length ? mode === "full" ? "preview" : mode : "full";
+
+  return {
+    ...session,
+    sourceText: safeSourceText,
+    sourceTextPreview: safeSourceText.slice(0, 4000),
+    sourceTextLength: originalSourceText.length,
+    sourceTextStoredLength: safeSourceText.length,
+    sourceTextTruncatedForStorage: safeSourceText.length < originalSourceText.length,
+    storageMode,
+  };
+}
+
+function isQuotaExceededError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error || "");
+  const name = error instanceof DOMException ? error.name : "";
+  return /QuotaExceededError|quota|exceeded/i.test(`${name} ${message}`);
+}
+
 export function computeStudySourceHash(text: string, sourceName = ""): string {
   const normalized = `${sourceName.trim().toLowerCase()}\n${normalizeText(text).replace(/\s+/g, " ")}`;
   let hash = 2166136261;
@@ -104,17 +152,34 @@ function readSession(id: string): StudySessionRecord | null {
   try {
     const parsed = JSON.parse(localStorage.getItem(`${SESSION_PREFIX}${id}`) || "null");
     if (!parsed?.id) return null;
-    return parsed as StudySessionRecord;
+    return {
+      ...parsed,
+      sourceText: parsed.sourceText || parsed.sourceTextPreview || "",
+      sourceTextLength: parsed.sourceTextLength || String(parsed.sourceText || parsed.sourceTextPreview || "").length,
+      sourceTextStoredLength: parsed.sourceTextStoredLength || String(parsed.sourceText || parsed.sourceTextPreview || "").length,
+      sourceTextTruncatedForStorage: Boolean(parsed.sourceTextTruncatedForStorage),
+      storageMode: parsed.storageMode || "full",
+    } as StudySessionRecord;
   } catch {
     return null;
   }
 }
 
 function writeSession(session: StudySessionRecord): StudySessionRecord {
-  localStorage.setItem(`${SESSION_PREFIX}${session.id}`, JSON.stringify(session));
-  writeIndex([session.id, ...readIndex().filter((id) => id !== session.id)]);
+  let stored = prepareStudySessionForStorage(session, session.sourceText.length > 50000 ? "preview" : "full");
+
+  try {
+    localStorage.setItem(`${SESSION_PREFIX}${stored.id}`, JSON.stringify(stored));
+  } catch (error) {
+    if (!isQuotaExceededError(error)) throw error;
+
+    stored = prepareStudySessionForStorage(session, "ultra-light");
+    localStorage.setItem(`${SESSION_PREFIX}${stored.id}`, JSON.stringify(stored));
+  }
+
+  writeIndex([stored.id, ...readIndex().filter((id) => id !== stored.id)]);
   window.dispatchEvent(new Event("scriptora-study-sessions-change"));
-  return session;
+  return stored;
 }
 
 export function createEmptyStudySession(input: {
@@ -135,6 +200,11 @@ export function createEmptyStudySession(input: {
     sourceName,
     sourceHash: computeStudySourceHash(sourceText, sourceName),
     sourceText,
+    sourceTextPreview: sourceText.slice(0, 4000),
+    sourceTextLength: sourceText.length,
+    sourceTextStoredLength: sourceText.length,
+    sourceTextTruncatedForStorage: false,
+    storageMode: "full",
     language: input.language || "Italian",
     status: sourceText ? "draft" : "draft",
     results: {},
