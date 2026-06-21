@@ -21,6 +21,7 @@ import {
 import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
 import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { generateStudySessionWithAI } from "@/lib/study-ai";
+import { createStudyChunkPlan } from "@/lib/study-os/chunk-planner";
 import { evaluateStudyAnswerWithAI, type StudyAnswerEvaluation } from "@/lib/study-answer-evaluator";
 import { DEFAULT_STUDY_UX, loadStudyUxState, saveStudyUxState, type FlashcardConfidence } from "@/lib/study-ux";
 import { t } from "@/lib/i18n";
@@ -357,6 +358,7 @@ export default function StudySessionPage() {
   );
 
   const wordCount = useMemo(() => rawText.trim().split(/\s+/).filter(Boolean).length, [rawText]);
+  const studyChunkPlan = useMemo(() => createStudyChunkPlan(rawText, sourceName), [rawText, sourceName]);
   const currentStudyClassification = useMemo(
     () => wordCount >= 40 ? classifyStudyMaterial(rawText, sourceName, studyIntent) : null,
     [rawText, sourceName, studyIntent, wordCount],
@@ -1497,6 +1499,69 @@ export default function StudySessionPage() {
             {!safeResult ? (
               <div className="rounded-3xl border border-dashed border-white/15 bg-white/[0.03] p-5 sm:p-8">
                 <div className="mb-6 text-center sm:text-left">
+                  {studyChunkPlan.shouldUseChunks && (
+                    <div className="mb-5 rounded-3xl border border-amber-300/25 bg-amber-300/10 p-4 text-left">
+                      <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-200">
+                        Materiale lungo rilevato
+                      </p>
+                      <h3 className="mt-2 text-base font-semibold text-foreground">
+                        Ho diviso il documento in sessioni intelligenti
+                      </h3>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {studyChunkPlan.totalWords.toLocaleString("it-IT")} parole · {studyChunkPlan.chunks.length} sessioni.
+                        Per qualità massima, genera riassunti, quiz e flashcard su un capitolo o su un gruppo di sessioni.
+                      </p>
+
+                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                        {studyChunkPlan.chunks.slice(0, 10).map((chunk) => (
+                          <button
+                            key={chunk.id}
+                            type="button"
+                            onClick={() => {
+                              replaceStudySource(chunk.content, `${sourceName} — ${chunk.title}`, "manual", { toastChanged: Boolean(result) });
+                              toast.message("Sessione di studio selezionata", {
+                                description: `${chunk.title} · ${chunk.wordCount.toLocaleString("it-IT")} parole`,
+                              });
+                            }}
+                            className="rounded-2xl border border-white/10 bg-white/[0.05] px-3 py-3 text-left transition hover:border-amber-200/50 hover:bg-amber-200/10"
+                          >
+                            <span className="block text-sm font-semibold text-foreground">
+                              Studia {chunk.title}
+                            </span>
+                            <span className="mt-1 block text-xs text-muted-foreground">
+                              {chunk.wordCount.toLocaleString("it-IT")} parole · {chunk.contentPreview}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+
+                      {studyChunkPlan.ranges.length > 0 && (
+                        <div className="mt-4 border-t border-white/10 pt-3">
+                          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                            Oppure studia gruppi
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {studyChunkPlan.ranges.slice(0, 6).map((range) => (
+                              <button
+                                key={range.id}
+                                type="button"
+                                onClick={() => {
+                                  replaceStudySource(range.content, `${sourceName} — ${range.title}`, "manual", { toastChanged: Boolean(result) });
+                                  toast.message("Gruppo studio selezionato", {
+                                    description: `${range.title} · ${range.wordCount.toLocaleString("it-IT")} parole`,
+                                  });
+                                }}
+                                className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-xs font-semibold text-amber-100 transition hover:border-amber-200/50"
+                              >
+                                {range.title}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <GraduationCap className="mx-auto mb-3 h-10 w-10 text-emerald-200/70 sm:mx-0" />
                   <h2 className="text-lg font-semibold">2. Scriptora prepara tutto per te</h2>
                   <p className="mt-2 max-w-lg text-sm leading-6 text-muted-foreground">
