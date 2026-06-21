@@ -103,7 +103,7 @@ const CATEGORY_PATTERNS: CategoryPattern[] = [
   {
     category: "poetry",
     patterns: [/\b(poesia|poetico|versi|raccolta poetica|lirica|sonetto|voce poetica)\b/i],
-    weight: 1.35,
+    weight: 1.6,
     narrative: true,
     nonfiction: false,
     genre: "poetry",

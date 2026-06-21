@@ -453,7 +453,14 @@ function parseLanguage(text: string): string | undefined {
 
 function parseGenre(text: string): { genre?: string; bookType?: string; subgenre?: string } {
   const t = text.toLowerCase();
-  if (/dark romance/.test(t)) return { genre: "dark-romance", bookType: "Dark romance", subgenre: "Dark romance psicologico" };
+  if (/dark romance/.test(t)) {
+    const gothic = /gotic\w*|gothic|villa|castello|ombra|oscuro|oscura|segreti/.test(t);
+    return {
+      genre: "dark-romance",
+      bookType: "Romanzo",
+      subgenre: gothic ? "Dark romance gotico" : "Dark romance psicologico",
+    };
+  }
   if (/self[- ]?help|persone bloccate|metodo pratico/.test(t)) return { genre: "self-help", bookType: "Self-help" };
   if (/thriller/.test(t)) return { genre: "thriller", bookType: "Thriller" };
   if (/horror|gotico|gothic/.test(t)) return { genre: "horror", bookType: "Horror" };
@@ -482,6 +489,19 @@ function parsePov(text: string): string | undefined {
 }
 
 function parseTone(text: string): string | undefined {
+  const t = text.toLowerCase();
+  if (/gotic\w*|gothic|oscuro|oscura|villa|castello|ombra|segreti/.test(t)) {
+    return "Gotica, oscura, elegante, carica di presagi e ombre.";
+  }
+  if (/claustrofobic|paranoic|disturbant|inquietant/.test(t)) {
+    return "Claustrofobica e disturbante, con una tensione che resta addosso.";
+  }
+  if (/pratic[ao]|concret|dirett|manuale|metodo|esercizi/.test(t)) {
+    return "Diretto e concreto, senza fronzoli, con una direzione chiara.";
+  }
+  if (/intim[ao]|liric|poetic|malinconic|visceral/.test(t)) {
+    return "Intimo, poetico e sensoriale, con immagini riconoscibili.";
+  }
   for (const preset of TONE_PRESETS) {
     if (text.toLowerCase().includes(preset.label.toLowerCase())) return preset.value;
   }
@@ -697,7 +717,11 @@ export function updateForgeMemoryFromAnswer(
   if (catalogEntry) {
     applySlot(memory, "bookType", catalogEntry.bookType, diff);
     applySlot(memory, "genre", catalogEntry.subgenre ?? catalogEntry.label, diff);
-    applySlot(memory, "subgenre", catalogEntry.subgenre ?? catalogEntry.label, diff);
+    if (parsedGenre.subgenre) {
+      applySlot(memory, "subgenre", parsedGenre.subgenre, diff);
+    } else if (!isSlotFilled(memory, "subgenre")) {
+      applySlot(memory, "subgenre", catalogEntry.subgenre ?? catalogEntry.label, diff);
+    }
   } else {
     if (parsedGenre.genre) applySlot(memory, "genre", parsedGenre.genre, diff);
     if (parsedGenre.bookType) applySlot(memory, "bookType", parsedGenre.bookType, diff);
@@ -718,7 +742,13 @@ export function updateForgeMemoryFromAnswer(
   );
   if (inference.genre) applySlot(memory, "genre", inference.genre, diff);
   if (inference.bookType) applySlot(memory, "bookType", inference.bookType, diff);
-  if (inference.subgenre) applySlot(memory, "subgenre", inference.subgenre, diff);
+  if (
+    inference.subgenre &&
+    (!isSlotFilled(memory, "subgenre") ||
+      String(memory.slotValues.subgenre ?? "").length < inference.subgenre.length)
+  ) {
+    applySlot(memory, "subgenre", inference.subgenre, diff);
+  }
 
   if (!uncertain && activeQuestion?.key) {
     const fieldKey = DEPTH_KEY_TO_CRITICAL[activeQuestion.key] ?? activeQuestion.key;
