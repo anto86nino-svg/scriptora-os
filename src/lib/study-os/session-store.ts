@@ -147,7 +147,10 @@ function forcePruneStudySessionStorage(keepId?: string): void {
 }
 
 export function computeStudySourceHash(text: string, sourceName = ""): string {
-  const normalized = `${sourceName.trim().toLowerCase()}\n${normalizeText(text).replace(/\s+/g, " ")}`;
+  // Hash only the normalized study material. The file/session name can change
+  // during EPUB/PDF import or reload and must not invalidate existing results.
+  void sourceName;
+  const normalized = normalizeText(text).replace(/\s+/g, " ");
   let hash = 2166136261;
   for (let i = 0; i < normalized.length; i += 1) {
     hash ^= normalized.charCodeAt(i);
