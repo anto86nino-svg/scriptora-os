@@ -479,6 +479,8 @@ export default function StudySessionPage() {
     setCurrentStudySessionId(stored.id);
     setReadyStudySessionId(stored.id);
     try { localStorage.setItem("scriptora-last-study-session", stored.id); } catch { /* noop */ }
+    setActiveSection("summary");
+    saveStudyUxState({ activeSection: "summary" });
     setRawText(stored.sourceText);
     setSourceName(stored.sourceName || name);
     setResult(getFreshStudyResult(stored));
@@ -1107,7 +1109,9 @@ export default function StudySessionPage() {
     }
   };
 
-  const safeResult = resultFresh ? result : null;
+  const readyResult = result || studySession.results.analysis?.result || null;
+  const hasReadyStudySession = Boolean(readyStudySessionId && readyResult);
+  const safeResult = resultFresh ? result : readyResult;
   const safeDifficultWords = safeResult?.difficultWords || [];
   const safeFlashcards = safeResult?.flashcards || [];
   const safeQuiz = safeResult?.quiz || [];
@@ -1472,7 +1476,7 @@ export default function StudySessionPage() {
               </select>
             </div>
 
-            {readyStudySessionId && resultFresh && (
+            {hasReadyStudySession && (
               <div className="mt-4 rounded-2xl border border-emerald-300/30 bg-emerald-300/10 p-4">
                 <p className="text-sm font-bold text-emerald-100">Sessione di studio salvata</p>
                 <p className="mt-1 text-xs leading-5 text-emerald-50/75">
