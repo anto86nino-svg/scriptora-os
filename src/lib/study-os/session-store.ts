@@ -114,6 +114,38 @@ function isQuotaExceededError(error: unknown): boolean {
   return /QuotaExceededError|quota|exceeded/i.test(`${name} ${message}`);
 }
 
+function pruneOldStudySessionStorage(keepId?: string): void {
+  try {
+    const ids = readIndex().filter((id) => id && id !== keepId);
+    ids.slice(6).forEach((id) => {
+      localStorage.removeItem(`${SESSION_PREFIX}${id}`);
+    });
+
+    const allStudySessionKeys = Object.keys(localStorage)
+      .filter((key) => key.startsWith(SESSION_PREFIX))
+      .filter((key) => !keepId || key !== `${SESSION_PREFIX}${keepId}`);
+
+    allStudySessionKeys.slice(8).forEach((key) => localStorage.removeItem(key));
+
+    writeIndex(keepId ? [keepId, ...ids.slice(0, 5)] : ids.slice(0, 6));
+  } catch {
+    // Storage cleanup must never block Study OS.
+  }
+}
+
+function forcePruneStudySessionStorage(keepId?: string): void {
+  try {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith(SESSION_PREFIX))
+      .filter((key) => !keepId || key !== `${SESSION_PREFIX}${keepId}`)
+      .forEach((key) => localStorage.removeItem(key));
+
+    writeIndex(keepId ? [keepId] : []);
+  } catch {
+    // Last-resort cleanup must never throw.
+  }
+}
+
 export function computeStudySourceHash(text: string, sourceName = ""): string {
   const normalized = `${sourceName.trim().toLowerCase()}\n${normalizeText(text).replace(/\s+/g, " ")}`;
   let hash = 2166136261;
@@ -173,11 +205,24 @@ function writeSession(session: StudySessionRecord): StudySessionRecord {
   } catch (error) {
     if (!isQuotaExceededError(error)) throw error;
 
+    pruneOldStudySessionStorage(stored.id);
     stored = prepareStudySessionForStorage(session, "ultra-light");
-    localStorage.setItem(`${SESSION_PREFIX}${stored.id}`, JSON.stringify(stored));
+
+    try {
+      localStorage.setItem(`${SESSION_PREFIX}${stored.id}`, JSON.stringify(stored));
+    } catch (retryError) {
+      if (!isQuotaExceededError(retryError)) throw retryError;
+
+      forcePruneStudySessionStorage(stored.id);
+      stored = {
+        ...prepareStudySessionForStorage(session, "ultra-light"),
+        results: session.results,
+      };
+      localStorage.setItem(`${SESSION_PREFIX}${stored.id}`, JSON.stringify(stored));
+    }
   }
 
-  writeIndex([stored.id, ...readIndex().filter((id) => id !== stored.id)]);
+  writeIndex([stored.id, ...readIndex().filter((id) => id !== stored.id)].slice(0, 8));
   window.dispatchEvent(new Event("scriptora-study-sessions-change"));
   return stored;
 }
