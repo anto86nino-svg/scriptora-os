@@ -293,12 +293,143 @@ async function callScriptoraStudyAI(systemPrompt: string, userPrompt: string): P
   return parsed.content;
 }
 
+
+export type StudyMaterialScale = "short" | "medium" | "long" | "huge";
+
+export function countStudyDigestWords(text: string): number {
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+export function getStudyMaterialScale(text: string): StudyMaterialScale {
+  const wordCount = countStudyDigestWords(text);
+  if (wordCount > 60000 || text.length > 320000) return "huge";
+  if (wordCount > 12000 || text.length > 70000) return "long";
+  if (wordCount > 8000 || text.length > 45000) return "medium";
+  return "short";
+}
+
+function uniqueStudyLines(lines: string[], limit: number): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  for (const raw of lines) {
+    const line = raw.replace(/\s+/g, " ").trim();
+    if (line.length < 8) continue;
+
+    const signature = line.toLowerCase().slice(0, 180);
+    if (seen.has(signature)) continue;
+
+    seen.add(signature);
+    out.push(line);
+    if (out.length >= limit) break;
+  }
+
+  return out;
+}
+
+function splitStudyDigestSections(text: string): string[] {
+  return text
+    .replace(/\r/g, "")
+    .split(/\n{2,}|(?=\b(?:Chapter|Capitolo)\s+\d+\b)|(?=✦\s+)/gi)
+    .map((part) => part.replace(/\s+/g, " ").trim())
+    .filter((part) => part.length >= 120);
+}
+
+function detectStudyDigestHeadings(text: string): string[] {
+  const headingRegex = /(?:^|\n|\s)(Chapter\s+\d+\s*[—:-][^\n]{0,120}|Capitolo\s+\d+\s*[—:-][^\n]{0,120}|Parte\s+\d+[^\n]{0,120}|Sezione\s+\d+[^\n]{0,120}|✦\s*[^\n]{3,120})/gi;
+  const matches = Array.from(text.matchAll(headingRegex)).map((match) => String(match[1] || "").trim());
+  return uniqueStudyLines(matches, 80);
+}
+
+function sampleStudyDigestSections(sections: string[], maxSections: number): string[] {
+  if (sections.length <= maxSections) return sections;
+
+  const picked: string[] = [];
+  const add = (section?: string) => {
+    if (!section) return;
+    if (!picked.some((item) => item.slice(0, 180) === section.slice(0, 180))) picked.push(section);
+  };
+
+  sections.slice(0, Math.ceil(maxSections * 0.35)).forEach(add);
+
+  const middleStart = Math.max(0, Math.floor(sections.length / 2) - Math.ceil(maxSections * 0.15));
+  sections.slice(middleStart, middleStart + Math.ceil(maxSections * 0.30)).forEach(add);
+
+  sections.slice(Math.max(0, sections.length - Math.ceil(maxSections * 0.35))).forEach(add);
+
+  return picked.slice(0, maxSections);
+}
+
+export function buildLongStudyDigest(text: string, sourceName: string): string {
+  const clean = text.replace(/\r/g, "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  const wordCount = countStudyDigestWords(clean);
+  const scale = getStudyMaterialScale(clean);
+  const maxChars = scale === "huge" ? 65000 : 55000;
+
+  const headings = detectStudyDigestHeadings(clean);
+  const sections = splitStudyDigestSections(clean);
+  const practicalSections = uniqueStudyLines(
+    sections.filter((section) => section.includes("✦") || /practice|pratica|esercizio|protocol|rule|ritual|audit|filter/i.test(section)),
+    scale === "huge" ? 26 : 18,
+  );
+
+  const sampledSections = sampleStudyDigestSections(sections, scale === "huge" ? 32 : 24).map((section, index) => {
+    const maxSectionChars = scale === "huge" ? 1600 : 1900;
+    return `--- SEZIONE RAPPRESENTATIVA ${index + 1} ---\n${section.slice(0, maxSectionChars)}`;
+  });
+
+  const opening = clean.slice(0, scale === "huge" ? 9000 : 11000);
+  const middleStart = Math.max(0, Math.floor(clean.length / 2) - (scale === "huge" ? 5000 : 6500));
+  const middle = clean.slice(middleStart, middleStart + (scale === "huge" ? 10000 : 13000));
+  const ending = clean.slice(-(scale === "huge" ? 9000 : 11000));
+
+  const digest = [
+    `SCRIPTORA STUDY OS — DIGEST MATERIALE ${scale.toUpperCase()}`,
+    `Fonte: ${sourceName}`,
+    `Parole stimate nel materiale originale: ${wordCount.toLocaleString("it-IT")}`,
+    scale === "huge"
+      ? "Modalità: documento enorme. Questo digest serve per creare una prima overview, indice intelligente, piano studio e domande generali. Gli approfondimenti completi vanno generati per capitolo/sezione."
+      : "Modalità: materiale lungo. Questo digest rappresentativo serve per creare una sessione studio completa sui nuclei principali senza inviare tutto il documento grezzo.",
+    "",
+    "ISTRUZIONI PER L'ANALISI:",
+    "- Non inventare contenuti non presenti.",
+    "- Se il documento è huge, produci una overview professionale, un piano studio a blocchi e domande sui nuclei principali.",
+    "- Se il documento è long, produci riassunti per capitoli/sezioni e collegamenti tra temi ricorrenti.",
+    "- Specifica che l'analisi è ottimizzata sui nuclei principali quando necessario.",
+    "",
+    "INDICE / TITOLI RILEVATI:",
+    headings.length ? headings.map((heading) => `- ${heading}`).join("\n") : "- Nessun indice esplicito rilevato; usa i campioni rappresentativi.",
+    "",
+    "SEZIONI PRATICHE / HEADING SPECIALI RILEVANTI:",
+    practicalSections.length ? practicalSections.map((section, index) => `--- BLOCCO PRATICO ${index + 1} ---\n${section.slice(0, 1200)}`).join("\n\n") : "- Non specificate nel materiale.",
+    "",
+    "INIZIO DEL MATERIALE:",
+    opening,
+    "",
+    "CAMPIONE CENTRALE DEL MATERIALE:",
+    middle,
+    "",
+    "FINE DEL MATERIALE:",
+    ending,
+    "",
+    "CAMPIONI RAPPRESENTATIVI PER STRUTTURA:",
+    sampledSections.join("\n\n"),
+  ].join("\n\n");
+
+  return digest.slice(0, maxChars);
+}
+
+
 export async function generateStudySessionWithAI(input: GenerateStudySessionAIInput): Promise<StudySessionResult> {
   const fallback = analyzeStudyMaterial(input.text, input.sourceName, input.intent);
   const language = input.language || "Italian";
   const level = input.level || fallback.difficulty || "medium";
   const difficultyLevel = input.intent?.difficultyLevel || fallback.difficultyLevel || 3;
-  const material = trimStudyInput(input.text);
+  const materialScale = getStudyMaterialScale(input.text);
+  const isLongOrHugeMaterial = materialScale === "long" || materialScale === "huge";
+  const material = isLongOrHugeMaterial
+    ? buildLongStudyDigest(input.text, input.sourceName)
+    : trimStudyInput(input.text);
   const intentBlock = `STUDY INTENT:
 - Manual material type: ${input.intent?.studyMaterialType || "auto"}
 - Manual subject: ${input.intent?.studySubject || "auto"}
@@ -351,6 +482,17 @@ QUALITY RULES:
 Desired level: ${level}
 Difficulty level 1-5: ${difficultyLevel}
 Source name: ${input.sourceName}
+Material scale: ${materialScale}
+Original estimated words: ${countStudyDigestWords(input.text).toLocaleString("it-IT")}
+AI material mode: ${isLongOrHugeMaterial ? "optimized_digest" : "full_or_trimmed_material"}
+
+${isLongOrHugeMaterial ? `LONG/HUGE MATERIAL POLICY:
+The original document is long. You receive an optimized representative digest created by Scriptora.
+Produce a professional study session on the main nuclei, chapters, recurring themes, practical sections and detected progression.
+For huge materials, do not pretend every page has been fully analyzed. Create a high-value overview, study plan by blocks, and general exam questions.
+For long materials, structure summaries by detected chapters/sections and connect the key concepts.
+Do not invent missing details.
+` : ""}
 
 ${intentBlock}
 

@@ -676,23 +676,16 @@ export default function StudySessionPage() {
       studyFallbackReasonRef.current = null;
 
       const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+      const isHugeMaterial = wordCount > 60000 || text.length > 320000;
       const isLongMaterial = wordCount > 12000 || text.length > 70000;
 
-      if (isLongMaterial) {
-        const message = `Materiale lungo acquisito: ${wordCount.toLocaleString("it-IT")} parole. Ho creato una prima sessione studio ottimizzata; puoi approfondire singoli capitoli o sezioni specifiche.`;
-        studyFallbackReasonRef.current = message;
-        setStudyGenerationStatus(message);
-        setAiMode("local");
-        trackScriptoraEvent({
-          eventName: "study_fallback_local_used",
-          tool: "study",
-          success: true,
-          errorCategory: "long_material",
-        });
-        return normalizeStudyResultForUI(analyzeStudyMaterial(text, name, studyIntent));
+      if (isHugeMaterial) {
+        setStudyGenerationStatus(`Documento molto lungo rilevato: ${wordCount.toLocaleString("it-IT")} parole. Preparo overview, indice intelligente e piano studio a blocchi...`);
+      } else if (isLongMaterial) {
+        setStudyGenerationStatus(`Materiale lungo rilevato: ${wordCount.toLocaleString("it-IT")} parole. Preparo un'analisi ottimizzata dei capitoli principali...`);
+      } else {
+        setStudyGenerationStatus("Sto analizzando il materiale e preparando la sessione...");
       }
-
-      setStudyGenerationStatus("Sto analizzando il materiale e preparando la sessione...");
       setAiMode("deepseek");
 
       studyNoticeTimersRef.current = [
@@ -715,7 +708,11 @@ export default function StudySessionPage() {
       });
       const safeLocalFallback = new Promise<StudySessionResult>((resolve) => {
         fallbackTimer = window.setTimeout(() => {
-          studyFallbackReasonRef.current = "Ho preparato una versione rapida dell'analisi. Puoi rigenerarla quando vuoi.";
+          const fallbackWordCount = text.trim().split(/\s+/).filter(Boolean).length;
+          const isLongOrHugeFallback = fallbackWordCount > 12000 || text.length > 70000;
+          studyFallbackReasonRef.current = isLongOrHugeFallback
+            ? "Materiale lungo acquisito. Ho creato una prima sessione locale; puoi approfondire singoli capitoli o sezioni specifiche."
+            : "Ho preparato una versione rapida dell'analisi. Puoi rigenerarla quando vuoi.";
           setStudyGenerationStatus(studyFallbackReasonRef.current);
           setAiMode("local");
           trackScriptoraEvent({ eventName: "study_fallback_local_used", tool: "study", success: true, errorCategory: "timeout" });
