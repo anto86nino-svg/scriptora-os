@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Camera, GraduationCap, Loader2, Upload, Wand2 } from "lucide-react";
+import { ArrowLeft, Camera, Clipboard, ExternalLink, GraduationCap, Image as ImageIcon, Loader2, Plus, RotateCcw, Upload, Wand2 } from "lucide-react";
 import { toast } from "sonner";
-import { analyzeStudyMaterial, classifyStudyMaterial, readStudyFiles, type StudySessionResult } from "@/lib/study-session";
+import {
+  analyzeStudyMaterial,
+  classifyStudyMaterial,
+  readStudyFileDetailed,
+  readStudyFiles,
+  STUDY_IMAGE_OCR_FALLBACK_COPY,
+  STUDY_IMAGE_OCR_HINT,
+  type StudyFileReadResult,
+  type StudySessionResult,
+} from "@/lib/study-session";
 import { ScriptoraWorkingState } from "@/components/ui/ScriptoraWorkingState";
 import { WORKING_STEP_PRESETS } from "@/lib/scriptora-working-state";
 import { generateStudySessionWithAI } from "@/lib/study-ai";
@@ -68,6 +77,38 @@ const STUDY_OUTCOMES = [
 
 const STUDY_FILE_FALLBACK_COPY =
   "Non riesco a leggere automaticamente questo file da qui. Puoi incollare il testo oppure continuare da browser.";
+
+type StudyScannerPageStatus = "reading" | "ready" | "partial" | "failed";
+
+type StudyScannerPage = {
+  id: string;
+  file: File;
+  fileName: string;
+  previewUrl: string;
+  text: string;
+  words: number;
+  status: StudyScannerPageStatus;
+  warnings: string[];
+};
+
+function isStudyImageFile(file: File): boolean {
+  return /\.(png|jpe?g|webp|heic|heif)$/i.test(file.name) || file.type.startsWith("image/");
+}
+
+function buildScannerText(pages: StudyScannerPage[]): string {
+  return pages
+    .filter((page) => page.text.trim())
+    .map((page, index) => `Pagina ${index + 1}\n\n${page.text.trim()}`)
+    .join("\n\n")
+    .trim();
+}
+
+function scannerPageStatusLabel(status: StudyScannerPageStatus): string {
+  if (status === "reading") return "OCR in corso";
+  if (status === "ready") return "Testo rilevato";
+  if (status === "partial") return "Testo parziale";
+  return "Da correggere";
+}
 
 const TAB_CONFIG: { id: StudySection; label: string; icon: string }[] = [
   { id: "materials", label: "Materiali", icon: "📎" },
@@ -174,6 +215,9 @@ export default function StudySessionPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
+  const scannerAppendModeRef = useRef(false);
+  const scannerPreviewUrlsRef = useRef<string[]>([]);
   const uxSaved = useMemo(loadStudyUxState, []);
   const initialSession = useMemo(() => createEmptyStudySession({ language: "Italian" }), []);
 
@@ -188,6 +232,8 @@ export default function StudySessionPage() {
   const [studyGenerationStatus, setStudyGenerationStatus] = useState("");
   const [aiMode, setAiMode] = useState<"idle" | "deepseek" | "local">("idle");
   const [importWarnings, setImportWarnings] = useState<string[]>([]);
+  const [scannerPages, setScannerPages] = useState<StudyScannerPage[]>([]);
+  const [scannerStatus, setScannerStatus] = useState("");
   const studyNoticeTimersRef = useRef<number[]>([]);
   const studyFallbackReasonRef = useRef<string | null>(null);
 
@@ -227,9 +273,30 @@ export default function StudySessionPage() {
     }
     return `Materiale pronto per l'analisi. ${wordCount.toLocaleString("it-IT")} parole rilevate.`;
   }, [currentStudyClassification?.contentType, wordCount]);
+  const hasScannerPages = scannerPages.length > 0;
+  const scannerReadyPages = scannerPages.filter((page) => page.words > 0).length;
+  const scannerCopy = useMemo(() => {
+    if (!hasScannerPages) return "";
+    if (reading) return scannerStatus || "Sto leggendo il testo dall'immagine...";
+    if (wordCount >= 40) return "Testo rilevato. Materiale pronto per l'analisi.";
+    if (scannerReadyPages > 0) return "Ho letto parte del testo. Puoi correggerlo prima di continuare.";
+    return STUDY_IMAGE_OCR_FALLBACK_COPY;
+  }, [hasScannerPages, reading, scannerReadyPages, scannerStatus, wordCount]);
   const canAnalyze = wordCount >= 40 && !reading;
   const currentSourceHash = useMemo(() => computeStudySourceHash(rawText, sourceName), [rawText, sourceName]);
   const resultFresh = Boolean(result && studySession.results.analysis?.sourceHash === currentSourceHash);
+
+  const clearScannerPages = useCallback(() => {
+    scannerPreviewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    scannerPreviewUrlsRef.current = [];
+    setScannerPages([]);
+    setScannerStatus("");
+  }, []);
+
+  useEffect(() => () => {
+    scannerPreviewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    scannerPreviewUrlsRef.current = [];
+  }, []);
 
   const resetSessionState = useCallback(() => {
     setQuizAnswers({});
@@ -296,6 +363,7 @@ export default function StudySessionPage() {
   }, [projectId, resetSessionState, studySession]);
 
   const startNewStudySession = useCallback(() => {
+    clearScannerPages();
     const next = createEmptyStudySession({ language: studyLanguage });
     setStudySession(next);
     setRawText("");
@@ -309,7 +377,7 @@ export default function StudySessionPage() {
     setCurrentStudySessionId(null);
     resetSessionState();
     toast.success("Nuova sessione pulita");
-  }, [resetSessionState, studyLanguage]);
+  }, [clearScannerPages, resetSessionState, studyLanguage]);
 
   useEffect(() => {
     const state = location.state as { projectId?: string; sessionId?: string } | null;
@@ -532,7 +600,7 @@ export default function StudySessionPage() {
     try {
       const next = await generateStudyResultWithRuntimeGuard(rawText, sourceName);
       const normalized = normalizeStudyResultForUI(next);
-      commitStudyResult(normalized, rawText, sourceName, studySession, detectStudySourceType(sourceName));
+      commitStudyResult(normalized, rawText, sourceName, studySession, hasScannerPages ? "image" : detectStudySourceType(sourceName));
       setActiveSection("quiz");
       saveStudyUxState({ activeSection: "quiz" });
       if (studyFallbackReasonRef.current) {
@@ -551,7 +619,7 @@ export default function StudySessionPage() {
       try {
         const local = analyzeStudyMaterial(rawText, sourceName);
         const normalized = normalizeStudyResultForUI(local);
-        commitStudyResult(normalized, rawText, sourceName, studySession, detectStudySourceType(sourceName));
+        commitStudyResult(normalized, rawText, sourceName, studySession, hasScannerPages ? "image" : detectStudySourceType(sourceName));
         setActiveSection("quiz");
         saveStudyUxState({ activeSection: "quiz" });
         setAiMode("local");
@@ -605,9 +673,182 @@ export default function StudySessionPage() {
     }
   }
 
+  const openStudyInBrowser = useCallback(() => {
+    const currentSourceType = hasScannerPages ? "image" : detectStudySourceType(sourceName);
+    const current = updateStudySessionSource(studySession, {
+      sourceText: rawText,
+      sourceName,
+      sourceType: currentSourceType,
+    }).session;
+    const stored = saveStudySession(current);
+    setStudySession(stored);
+    setCurrentStudySessionId(stored.id);
+    window.open("https://scriptora-os.vercel.app/study-session", "_blank", "noopener,noreferrer");
+  }, [hasScannerPages, rawText, sourceName, studySession]);
+
+  function openImagePicker(append = false) {
+    scannerAppendModeRef.current = append;
+    imageInputRef.current?.click();
+  }
+
+  function openCameraCapture(append = false) {
+    scannerAppendModeRef.current = append;
+    if (
+      typeof navigator !== "undefined" &&
+      !navigator.mediaDevices &&
+      /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+    ) {
+      toast.message("Questa funzione richiede il browser completo", {
+        description: "Continua da browser collegandoti a Scriptora dal link diretto.",
+        action: {
+          label: "Continua da browser",
+          onClick: openStudyInBrowser,
+        },
+      });
+    }
+    cameraInputRef.current?.click();
+  }
+
+  function commitScannerSource(pages: StudyScannerPage[], warnings: string[]) {
+    const text = buildScannerText(pages);
+    const name = pages.length === 1 ? pages[0].fileName : `${pages.length} pagine acquisite`;
+    const fileSession = updateStudySessionSource(createEmptyStudySession({ language: studyLanguage }), {
+      sourceText: text,
+      sourceName: name,
+      sourceType: "image",
+    }).session;
+    setStudySession(fileSession);
+    setCurrentStudySessionId(null);
+    setRawText(text);
+    setSourceName(name);
+    setResult(null);
+    setProjectId(undefined);
+    setStaleNotice("");
+    setImportWarnings([...new Set(warnings.filter(Boolean))]);
+    resetSessionState();
+  }
+
+  async function handleScannerImages(fileList?: FileList | File[] | null, append = false) {
+    const files = Array.from(fileList || []).filter(isStudyImageFile);
+    if (!files.length) {
+      toast.error("Immagine non valida", {
+        description: "Carica JPG, PNG, WebP o una foto supportata dal browser.",
+      });
+      return;
+    }
+
+    if (!append) clearScannerPages();
+
+    const basePages = append ? scannerPages : [];
+    const incomingPages = files.map((file, index) => {
+      const previewUrl = URL.createObjectURL(file);
+      scannerPreviewUrlsRef.current.push(previewUrl);
+      return {
+        id: `${Date.now()}-${index}-${file.name}`,
+        file,
+        fileName: file.name || `pagina-${basePages.length + index + 1}.jpg`,
+        previewUrl,
+        text: "",
+        words: 0,
+        status: "reading" as StudyScannerPageStatus,
+        warnings: [STUDY_IMAGE_OCR_HINT],
+      };
+    });
+
+    let workingPages = [...basePages, ...incomingPages];
+    setScannerPages(workingPages);
+    commitScannerSource(workingPages, workingPages.flatMap((page) => page.warnings));
+    setReading(true);
+    setWorkStartedAt(Date.now());
+    setAiMode("idle");
+    setStudyGenerationStatus("Sto leggendo il testo dall'immagine...");
+    setScannerStatus("Sto preparando la foto...");
+
+    try {
+      for (const incomingPage of incomingPages) {
+        let readResult: StudyFileReadResult | null = null;
+        try {
+          readResult = await readStudyFileDetailed(incomingPage.file, {
+            imageOcr: {
+              onStatus: (_status, message) => {
+                setScannerStatus(message);
+                setStudyGenerationStatus(message);
+              },
+            },
+          });
+        } catch (error) {
+          readResult = {
+            fileName: incomingPage.fileName,
+            sourceType: "image",
+            text: "",
+            warnings: [humanStudyErrorMessage(error), STUDY_IMAGE_OCR_FALLBACK_COPY],
+            empty: true,
+          };
+        }
+
+        const words = readResult.text.trim().split(/\s+/).filter(Boolean).length;
+        const status: StudyScannerPageStatus = words >= 40 ? "ready" : words > 0 ? "partial" : "failed";
+        workingPages = workingPages.map((page) =>
+          page.id === incomingPage.id
+            ? {
+                ...page,
+                text: readResult.text,
+                words,
+                status,
+                warnings: readResult.warnings,
+              }
+            : page,
+        );
+        setScannerPages(workingPages);
+        commitScannerSource(workingPages, workingPages.flatMap((page) => page.warnings));
+      }
+
+      const finalText = buildScannerText(workingPages);
+      const finalWords = finalText.trim().split(/\s+/).filter(Boolean).length;
+      trackScriptoraEvent({
+        eventName: "study_material_uploaded",
+        tool: "study",
+        success: true,
+        errorCategory: finalWords > 0 ? undefined : "ocr_unavailable",
+      });
+
+      if (finalWords >= 40) {
+        toast.success("Testo rilevato", {
+          description: "Materiale pronto per l'analisi.",
+        });
+      } else if (finalWords > 0) {
+        toast.message("OCR parziale", {
+          description: "Ho letto parte del testo. Puoi correggerlo prima di continuare.",
+        });
+      } else {
+        toast.message("Immagine acquisita", {
+          description: STUDY_IMAGE_OCR_FALLBACK_COPY,
+          action: {
+            label: "Continua da browser",
+            onClick: openStudyInBrowser,
+          },
+        });
+      }
+    } finally {
+      setReading(false);
+      setStudyGenerationStatus("");
+      setScannerStatus("");
+    }
+  }
+
+  async function retryScannerOcr() {
+    if (!scannerPages.length) return;
+    await handleScannerImages(scannerPages.map((page) => page.file), false);
+  }
+
   const handleFiles = async (fileList?: FileList | File[] | null) => {
     const files = Array.from(fileList || []);
     if (!files.length) return;
+    if (files.every(isStudyImageFile)) {
+      await handleScannerImages(files, false);
+      return;
+    }
+    clearScannerPages();
     setReading(true);
     setWorkStartedAt(Date.now());
     try {
@@ -773,7 +1014,7 @@ export default function StudySessionPage() {
             </button>
             <button
               type="button"
-              onClick={() => imageInputRef.current?.click()}
+              onClick={() => openImagePicker(false)}
               className="ios-toolbar-button h-11 justify-center px-4 text-sm font-semibold text-emerald-100"
             >
               <Upload className="h-4 w-4" />
@@ -781,7 +1022,7 @@ export default function StudySessionPage() {
             </button>
             <button
               type="button"
-              onClick={() => cameraInputRef.current?.click()}
+              onClick={() => openCameraCapture(false)}
               className="ios-toolbar-button h-11 justify-center px-4 text-sm font-semibold text-emerald-100"
             >
               <Camera className="h-4 w-4" />
@@ -802,7 +1043,11 @@ export default function StudySessionPage() {
             multiple
             accept=".png,.jpg,.jpeg,.webp,.heic,.heif,image/png,image/jpeg,image/webp,image/heic,image/heif"
             className="hidden"
-            onChange={(event) => void handleFiles(event.target.files)}
+            onChange={(event) => {
+              const append = scannerAppendModeRef.current;
+              scannerAppendModeRef.current = false;
+              void handleScannerImages(event.target.files, append);
+            }}
           />
           <input
             ref={cameraInputRef}
@@ -810,7 +1055,11 @@ export default function StudySessionPage() {
             accept="image/*,.heic,.heif"
             capture="environment"
             className="hidden"
-            onChange={(event) => void handleFiles(event.target.files)}
+            onChange={(event) => {
+              const append = scannerAppendModeRef.current;
+              scannerAppendModeRef.current = false;
+              void handleScannerImages(event.target.files, append);
+            }}
           />
         </header>
 
@@ -838,7 +1087,111 @@ export default function StudySessionPage() {
               </span>
             </div>
 
+            {hasScannerPages && (
+              <div className="mb-3 rounded-2xl border border-emerald-300/20 bg-emerald-300/10 p-3">
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 text-sm font-semibold text-emerald-50">
+                      <ImageIcon className="h-4 w-4" />
+                      Smart Scanner
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-emerald-50/80">{scannerCopy}</p>
+                  </div>
+                  <span className="w-fit rounded-full border border-emerald-200/25 bg-emerald-200/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-50">
+                    {scannerReadyPages}/{scannerPages.length} pagine lette
+                  </span>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {scannerPages.map((page, index) => (
+                    <div key={page.id} className="overflow-hidden rounded-2xl border border-white/10 bg-background/40">
+                      <div className="aspect-[4/3] bg-black/20">
+                        <img
+                          src={page.previewUrl}
+                          alt={`Anteprima pagina ${index + 1}`}
+                          className="h-full w-full object-contain"
+                        />
+                      </div>
+                      <div className="p-2 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate font-semibold text-foreground">Pagina {index + 1}</span>
+                          <span className={[
+                            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
+                            page.status === "ready"
+                              ? "bg-emerald-300 text-slate-950"
+                              : page.status === "partial"
+                                ? "bg-amber-300 text-slate-950"
+                                : page.status === "reading"
+                                  ? "bg-sky-300 text-slate-950"
+                                  : "bg-white/10 text-muted-foreground",
+                          ].join(" ")}
+                          >
+                            {scannerPageStatusLabel(page.status)}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-muted-foreground">{page.words.toLocaleString("it-IT")} parole</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={analyze}
+                    disabled={!canAnalyze}
+                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-300 px-3 text-xs font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Wand2 className="h-3.5 w-3.5" />
+                    Analizza
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => textAreaRef.current?.focus()}
+                    className="ios-toolbar-button h-10 justify-center px-3 text-xs font-semibold text-emerald-100"
+                  >
+                    <Clipboard className="h-3.5 w-3.5" />
+                    Correggi testo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void retryScannerOcr()}
+                    disabled={reading}
+                    className="ios-toolbar-button h-10 justify-center px-3 text-xs font-semibold text-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {reading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                    Riprova OCR
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openCameraCapture(false)}
+                    className="ios-toolbar-button h-10 justify-center px-3 text-xs font-semibold text-emerald-100"
+                  >
+                    <Camera className="h-3.5 w-3.5" />
+                    Riscatta foto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openCameraCapture(true)}
+                    className="ios-toolbar-button h-10 justify-center px-3 text-xs font-semibold text-emerald-100"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Aggiungi pagina
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openStudyInBrowser}
+                    className="ios-toolbar-button h-10 justify-center px-3 text-xs font-semibold text-emerald-100"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Continua da browser
+                  </button>
+                </div>
+              </div>
+            )}
+
             <textarea
+              ref={textAreaRef}
               value={rawText}
               onChange={(event) => replaceStudySource(event.target.value, sourceName, "paste", { toastChanged: Boolean(result) })}
               placeholder="Incolla qui capitoli, appunti, dispense o una parte del libro..."

@@ -1,12 +1,17 @@
 import JSZip from "jszip";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   analyzeStudyMaterial,
   classifyStudyMaterial,
   getStudyImportCapabilities,
+  readImageWithSmartOcr,
   readStudyFileDetailed,
   readStudyFiles,
 } from "@/lib/study-session";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 function studyText(topic: string, body: string): string {
   return Array.from({ length: 8 }, (_, index) => `${topic} ${index + 1}. ${body}`).join("\n\n");
@@ -82,13 +87,13 @@ describe("Study OS material analysis", () => {
 });
 
 describe("Study OS file ingestion", () => {
-  it("espone capability import senza fingere OCR", () => {
+  it("espone capability import con fallback OCR client-side reale", () => {
     const withoutOcr = getStudyImportCapabilities(false);
     const withOcr = getStudyImportCapabilities(true);
 
     expect(withoutOcr.find((item) => item.id === "epub")?.status).toBe("READY");
-    expect(withoutOcr.find((item) => item.id === "image")?.status).toBe("UNAVAILABLE");
-    expect(withoutOcr.find((item) => item.id === "image")?.evidence).toContain("non simula OCR");
+    expect(withoutOcr.find((item) => item.id === "image")?.status).toBe("READY");
+    expect(withoutOcr.find((item) => item.id === "image")?.evidence).toContain("Tesseract.js");
     expect(withOcr.find((item) => item.id === "image")?.status).toBe("READY");
   });
 
@@ -121,22 +126,95 @@ describe("Study OS file ingestion", () => {
     expect(result.text).toContain("Storia rivoluzione");
   });
 
-  it("accepts common images and creates a manual fallback when OCR is unavailable", async () => {
+  it("uses browser TextDetector before RESULT-style file fallback", async () => {
+    const text = studyText("Pagina OCR", "Storia, rivoluzione, guerra, monarchia, conseguenze e cause sono leggibili nella foto.");
+    vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue({ close: vi.fn(), width: 800, height: 600 }));
+    class FakeTextDetector {
+      detect() {
+        return Promise.resolve([{ rawValue: text }]);
+      }
+    }
+
+    const file = new File([new Uint8Array([1, 2, 3])], "foto.png", { type: "image/png" });
+    const result = await readImageWithSmartOcr(file, {
+      skipPreprocess: true,
+      textDetectorCtor: FakeTextDetector,
+    });
+
+    expect(result.engine).toBe("text-detector");
+    expect(result.empty).toBe(false);
+    expect(result.text).toContain("Pagina OCR");
+  });
+
+  it("falls back to lazy client OCR when TextDetector is unavailable", async () => {
+    const text = studyText("Pagina Tesseract", "Diritto, articolo, comma, norma, sentenza e costituzione sono leggibili nella foto.");
     const file = new File([new Uint8Array([1, 2, 3])], "foto.png", { type: "image/png" });
 
-    const result = await readStudyFileDetailed(file);
+    const result = await readImageWithSmartOcr(file, {
+      skipPreprocess: true,
+      tesseractRecognize: async () => ({ text, confidence: 88 }),
+    });
+
+    expect(result.engine).toBe("tesseract");
+    expect(result.confidence).toBe(88);
+    expect(result.text).toContain("Pagina Tesseract");
+  });
+
+  it("accepts common images and creates a manual fallback only after OCR levels fail", async () => {
+    const file = new File([new Uint8Array([1, 2, 3])], "foto.png", { type: "image/png" });
+
+    const result = await readStudyFileDetailed(file, {
+      imageOcr: {
+        skipPreprocess: true,
+        tesseractRecognize: async () => {
+          throw new Error("OCR_EMPTY_RESULT");
+        },
+      },
+    });
 
     expect(result.sourceType).toBe("image");
     expect(result.empty).toBe(true);
     expect(result.text).toBe("");
-    expect(result.warnings.join(" ")).toContain("Non riesco a leggere automaticamente questo file da qui");
+    expect(result.warnings.join(" ")).toContain("Non sono riuscito a leggere automaticamente questa immagine");
+  });
+
+  it("merges multiple OCR image pages into one editable study text", async () => {
+    const first = new File([new Uint8Array([1])], "pagina-1.png", { type: "image/png" });
+    const second = new File([new Uint8Array([2])], "pagina-2.png", { type: "image/png" });
+
+    const combined = await readStudyFiles([first, second], {
+      imageOcr: {
+        skipPreprocess: true,
+        tesseractRecognize: async (image) => {
+          const file = image as File;
+          return file.name.includes("1")
+            ? studyText("Prima pagina", "Fisica, forza, energia, massa, velocita e accelerazione descrivono il moto.")
+            : studyText("Seconda pagina", "Chimica, atomo, molecola, reazione, legame e soluzione descrivono il processo.");
+        },
+      },
+    });
+
+    expect(combined.sourceType).toBe("image");
+    expect(combined.fileName).toBe("2 pagine acquisite");
+    expect(combined.text).toContain("Pagina 1");
+    expect(combined.text).toContain("Pagina 2");
+    expect(combined.text).toContain("Prima pagina");
+    expect(combined.text).toContain("Seconda pagina");
+    expect(analyzeStudyMaterial(combined.text, combined.fileName).words).toBeGreaterThan(40);
   });
 
   it("accepts camera HEIC/HEIF images without reporting unsupported format", async () => {
     const heic = new File([new Uint8Array([1, 2, 3])], "pagina.heic", { type: "image/heic" });
     const heif = new File([new Uint8Array([1, 2, 3])], "pagina.heif", { type: "image/heif" });
 
-    const combined = await readStudyFiles([heic, heif]);
+    const combined = await readStudyFiles([heic, heif], {
+      imageOcr: {
+        skipPreprocess: true,
+        tesseractRecognize: async () => {
+          throw new Error("OCR_EMPTY_RESULT");
+        },
+      },
+    });
 
     expect(combined.sourceType).toBe("image");
     expect(combined.empty).toBe(true);

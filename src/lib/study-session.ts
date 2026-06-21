@@ -193,12 +193,50 @@ export interface StudyFileReadResult {
   empty: boolean;
 }
 
+export type StudyImageOcrEngine = "text-detector" | "tesseract" | "manual";
+
+export interface StudyImageOcrResult {
+  text: string;
+  engine: StudyImageOcrEngine;
+  warnings: string[];
+  empty: boolean;
+  confidence?: number;
+}
+
 export interface StudyImportCapability {
   id: StudyFileReadResult["sourceType"];
   label: string;
   status: "READY" | "FALLBACK" | "UNAVAILABLE";
   evidence: string;
 }
+
+export type StudyImageOcrStatus = "preparing" | "browser-ocr" | "client-ocr" | "fallback";
+
+export type StudyImageOcrOptions = {
+  textDetectorCtor?: any;
+  tesseractRecognize?: (image: Blob | File) => Promise<string | { text?: string; confidence?: number }>;
+  skipPreprocess?: boolean;
+  onStatus?: (status: StudyImageOcrStatus, message: string) => void;
+};
+
+export type StudyFileReadOptions = {
+  imageOcr?: StudyImageOcrOptions;
+};
+
+export const STUDY_IMAGE_OCR_HINT =
+  "Per una lettura migliore, fotografa la pagina in piano, con luce uniforme e testo nitido.";
+
+export const STUDY_IMAGE_OCR_FALLBACK_COPY =
+  "Non sono riuscito a leggere automaticamente questa immagine. Puoi scattare di nuovo con più luce, caricare una foto più nitida o incollare il testo.";
+
+export const STUDY_IMAGE_UNSUPPORTED_FORMAT_COPY =
+  "Questo formato foto potrebbe non essere supportato qui. Puoi convertirlo in JPG/PNG o continuare da browser.";
+
+const STUDY_IMAGE_OCR_PARTIAL_COPY =
+  "Ho letto parte del testo. Puoi correggerlo prima di continuare.";
+
+const STUDY_IMAGE_OCR_SUCCESS_COPY =
+  "Testo rilevato. Controlla l'anteprima e avvia l'analisi.";
 
 const STOP_WORDS = new Set([
   // IT
@@ -1021,7 +1059,17 @@ function buildTrueFalseQuiz(concepts: string[]): QuizQuestion[] {
   }));
 }
 
-export function getStudyImportCapabilities(ocrAvailable = typeof (globalThis as any).TextDetector === "function"): StudyImportCapability[] {
+export function getStudyImportCapabilities(
+  browserOcrAvailable = typeof (globalThis as any).TextDetector === "function",
+  clientOcrAvailable = true,
+): StudyImportCapability[] {
+  const imageStatus: StudyImportCapability["status"] = browserOcrAvailable || clientOcrAvailable ? "READY" : "FALLBACK";
+  const imageEvidence = browserOcrAvailable
+    ? "Browser TextDetector disponibile: OCR reale attivabile."
+    : clientOcrAvailable
+      ? "TextDetector non disponibile: OCR client-side lazy con Tesseract.js attivabile solo quando serve."
+      : "OCR automatico non disponibile: resta il fallback umano senza simulare letture.";
+
   return [
     { id: "pdf", label: "PDF", status: "READY", evidence: "pdfjs legge PDF con testo selezionabile." },
     { id: "docx", label: "DOCX", status: "READY", evidence: "JSZip estrae word/document.xml." },
@@ -1031,10 +1079,8 @@ export function getStudyImportCapabilities(ocrAvailable = typeof (globalThis as 
     {
       id: "image",
       label: "Immagini/OCR",
-      status: ocrAvailable ? "READY" : "UNAVAILABLE",
-      evidence: ocrAvailable
-        ? "Browser TextDetector disponibile: OCR reale attivabile."
-        : "TextDetector non disponibile: Scriptora non simula OCR.",
+      status: imageStatus,
+      evidence: imageEvidence,
     },
   ];
 }
@@ -1159,15 +1205,89 @@ async function readEpub(file: File): Promise<string> {
   return fullText;
 }
 
-async function readImageWithBrowserOcr(file: File): Promise<string> {
-  const TextDetectorCtor = (globalThis as any).TextDetector;
+function isHeicLikeImage(file: File): boolean {
+  return /\.(heic|heif)$/i.test(file.name) || /image\/hei[cf]/i.test(file.type);
+}
+
+async function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob | null> {
+  return await new Promise((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), "image/png", 0.92);
+  });
+}
+
+async function preprocessImageForOcr(file: File, options: StudyImageOcrOptions = {}): Promise<{ image: Blob | File; warnings: string[] }> {
+  const warnings: string[] = [];
+
+  if (isHeicLikeImage(file)) {
+    warnings.push(STUDY_IMAGE_UNSUPPORTED_FORMAT_COPY);
+  }
+
+  if (options.skipPreprocess || typeof document === "undefined" || typeof createImageBitmap !== "function") {
+    return { image: file, warnings };
+  }
+
+  options.onStatus?.("preparing", "Sto preparando la foto...");
+
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: "from-image" } as ImageBitmapOptions);
+  } catch {
+    return { image: file, warnings };
+  }
+
+  try {
+    const maxSide = 1800;
+    const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+
+    if (!context) return { image: file, warnings };
+
+    context.drawImage(bitmap, 0, 0, width, height);
+
+    try {
+      const imageData = context.getImageData(0, 0, width, height);
+      const data = imageData.data;
+      const contrast = 1.2;
+      const intercept = 128 * (1 - contrast);
+
+      for (let index = 0; index < data.length; index += 4) {
+        const gray = data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
+        const adjusted = Math.max(0, Math.min(255, gray * contrast + intercept));
+        data[index] = adjusted;
+        data[index + 1] = adjusted;
+        data[index + 2] = adjusted;
+      }
+
+      context.putImageData(imageData, 0, 0);
+    } catch {
+      // Canvas preprocessing is best-effort: OCR still runs on the resized image.
+    }
+
+    const blob = await canvasToBlob(canvas);
+    return { image: blob || file, warnings };
+  } finally {
+    bitmap.close?.();
+  }
+}
+
+async function readImageWithBrowserOcr(image: Blob | File, options: StudyImageOcrOptions = {}): Promise<string> {
+  const TextDetectorCtor = options.textDetectorCtor || (globalThis as any).TextDetector;
   if (typeof TextDetectorCtor !== "function") {
     throw new Error("OCR_BROWSER_UNAVAILABLE");
+  }
+  if (typeof createImageBitmap !== "function") {
+    throw new Error("IMAGE_DECODE_UNAVAILABLE");
   }
 
   let bitmap: ImageBitmap;
   try {
-    bitmap = await createImageBitmap(file);
+    options.onStatus?.("browser-ocr", "Sto leggendo il testo dall'immagine...");
+    bitmap = await createImageBitmap(image);
   } catch {
     throw new Error("IMAGE_DECODE_UNAVAILABLE");
   }
@@ -1185,6 +1305,87 @@ async function readImageWithBrowserOcr(file: File): Promise<string> {
   } finally {
     bitmap.close?.();
   }
+}
+
+async function readImageWithTesseractOcr(image: Blob | File, options: StudyImageOcrOptions = {}): Promise<{ text: string; confidence?: number }> {
+  options.onStatus?.("client-ocr", "Sto leggendo il testo dall'immagine...");
+
+  if (options.tesseractRecognize) {
+    const result = await options.tesseractRecognize(image);
+    if (typeof result === "string") return { text: result };
+    return { text: String(result.text || ""), confidence: result.confidence };
+  }
+
+  const tesseract = await import("tesseract.js") as any;
+  const recognize = tesseract.recognize || tesseract.default?.recognize;
+  if (typeof recognize !== "function") throw new Error("OCR_CLIENT_UNAVAILABLE");
+
+  const result = await recognize(image, "ita+eng", {
+    logger: (message: { status?: string; progress?: number }) => {
+      if (import.meta.env.DEV && import.meta.env.VITE_SCRIPTORA_DEV_MODE === "true" && message.status) {
+        console.debug("[Study OCR]", message.status, typeof message.progress === "number" ? Math.round(message.progress * 100) : "");
+      }
+    },
+  });
+
+  return {
+    text: String(result?.data?.text || ""),
+    confidence: typeof result?.data?.confidence === "number" ? result.data.confidence : undefined,
+  };
+}
+
+export async function readImageWithSmartOcr(file: File, options: StudyImageOcrOptions = {}): Promise<StudyImageOcrResult> {
+  const warnings: string[] = [STUDY_IMAGE_OCR_HINT];
+  const prepared = await preprocessImageForOcr(file, options);
+  warnings.push(...prepared.warnings);
+
+  try {
+    const browserText = cleanText(await readImageWithBrowserOcr(prepared.image, options));
+    if (countStudyWords(browserText) > 0) {
+      const words = countStudyWords(browserText);
+      warnings.push(words >= 40 ? STUDY_IMAGE_OCR_SUCCESS_COPY : STUDY_IMAGE_OCR_PARTIAL_COPY);
+      return {
+        text: browserText,
+        engine: "text-detector",
+        warnings,
+        empty: false,
+      };
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) devOnlyStudyOcrDiagnostic("browser", error);
+  }
+
+  try {
+    const clientResult = await readImageWithTesseractOcr(prepared.image, options);
+    const clientText = cleanText(clientResult.text);
+    if (countStudyWords(clientText) > 0) {
+      const words = countStudyWords(clientText);
+      warnings.push(words >= 40 ? STUDY_IMAGE_OCR_SUCCESS_COPY : STUDY_IMAGE_OCR_PARTIAL_COPY);
+      return {
+        text: clientText,
+        engine: "tesseract",
+        warnings,
+        empty: false,
+        confidence: clientResult.confidence,
+      };
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) devOnlyStudyOcrDiagnostic("client", error);
+  }
+
+  options.onStatus?.("fallback", STUDY_IMAGE_OCR_FALLBACK_COPY);
+  warnings.push(STUDY_IMAGE_OCR_FALLBACK_COPY);
+  return {
+    text: "",
+    engine: "manual",
+    warnings,
+    empty: true,
+  };
+}
+
+function devOnlyStudyOcrDiagnostic(stage: "browser" | "client", error: unknown) {
+  if (import.meta.env.VITE_SCRIPTORA_DEV_MODE !== "true") return;
+  console.debug(`[Study OCR] ${stage} OCR failed`, error);
 }
 
 
@@ -1224,7 +1425,9 @@ async function readPdf(file: File): Promise<string> {
 
     return fullText;
   } catch (error) {
-    console.error("[StudySession PDF]", error);
+    if (import.meta.env.DEV && import.meta.env.VITE_SCRIPTORA_DEV_MODE === "true") {
+      console.error("[StudySession PDF]", error);
+    }
 
     throw new Error(
       error instanceof Error
@@ -1234,11 +1437,61 @@ async function readPdf(file: File): Promise<string> {
   }
 }
 
-export async function readStudyFile(file: File): Promise<string> {
-  return (await readStudyFileDetailed(file)).text;
+async function readScannedPdfWithOcr(file: File, options: StudyImageOcrOptions = {}): Promise<{ text: string; warnings: string[] }> {
+  if (typeof document === "undefined") {
+    throw new Error("Questo PDF sembra una scansione. Puoi caricare le pagine come immagini o incollare il testo.");
+  }
+
+  const pdfjsLib = await loadPdfJs();
+  const arrayBuffer = await readBlobArrayBuffer(file);
+  const pdf = await pdfjsLib.getDocument({
+    data: arrayBuffer,
+    useWorkerFetch: false,
+    isEvalSupported: false,
+  }).promise;
+
+  const warnings = ["Questo PDF sembra una scansione. Provo a leggerlo come immagine."];
+  const chunks: string[] = [];
+  const pagesToScan = Math.min(pdf.numPages, 6);
+
+  for (let pageNumber = 1; pageNumber <= pagesToScan; pageNumber += 1) {
+    const page = await pdf.getPage(pageNumber);
+    const viewport = page.getViewport({ scale: 1.6 });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(viewport.width));
+    canvas.height = Math.max(1, Math.round(viewport.height));
+    const context = canvas.getContext("2d");
+    if (!context) continue;
+
+    await page.render({ canvasContext: context, viewport }).promise;
+    const blob = await canvasToBlob(canvas);
+    if (!blob) continue;
+
+    const image = new File([blob], `${file.name}-pagina-${pageNumber}.png`, { type: "image/png" });
+    const ocr = await readImageWithSmartOcr(image, options);
+    warnings.push(...ocr.warnings);
+    if (countStudyWords(ocr.text) > 0) {
+      chunks.push(`Pagina ${pageNumber}\n\n${ocr.text}`);
+    }
+  }
+
+  if (pdf.numPages > pagesToScan) {
+    warnings.push(`Ho analizzato le prime ${pagesToScan} pagine scannerizzate per evitare un OCR troppo pesante nel browser.`);
+  }
+
+  const text = chunks.join("\n\n").trim();
+  if (!text) {
+    throw new Error("Questo PDF sembra una scansione. Non sono riuscito a leggerlo automaticamente: puoi caricare immagini piu' nitide o incollare il testo.");
+  }
+
+  return { text, warnings };
 }
 
-export async function readStudyFileDetailed(file: File): Promise<StudyFileReadResult> {
+export async function readStudyFile(file: File, options: StudyFileReadOptions = {}): Promise<string> {
+  return (await readStudyFileDetailed(file, options)).text;
+}
+
+export async function readStudyFileDetailed(file: File, options: StudyFileReadOptions = {}): Promise<StudyFileReadResult> {
   const name = file.name.toLowerCase();
   const warnings: string[] = [];
   let text = "";
@@ -1255,18 +1508,30 @@ export async function readStudyFileDetailed(file: File): Promise<StudyFileReadRe
     text = await readBlobText(file);
   } else if (name.endsWith(".pdf")) {
     sourceType = "pdf";
-    text = await readPdf(file);
+    try {
+      text = await readPdf(file);
+    } catch (error) {
+      if (!/scansione|selezionabile/i.test(error instanceof Error ? error.message : String(error))) {
+        throw error;
+      }
+      const scanned = await readScannedPdfWithOcr(file, options.imageOcr);
+      text = scanned.text;
+      warnings.push(...scanned.warnings);
+    }
   } else if (name.endsWith(".epub")) {
     sourceType = "epub";
     text = await readEpub(file);
   } else if (/\.(png|jpe?g|webp|heic|heif)$/i.test(name) || file.type.startsWith("image/")) {
     sourceType = "image";
-    try {
-      text = await readImageWithBrowserOcr(file);
-      warnings.push("Testo estratto via OCR browser: verifica eventuali errori di riconoscimento.");
-    } catch {
-      text = "";
-      warnings.push("Non riesco a leggere automaticamente questo file da qui. Puoi incollare il testo oppure continuare da browser.");
+    const ocr = await readImageWithSmartOcr(file, options.imageOcr);
+    text = ocr.text;
+    warnings.push(...ocr.warnings);
+    if (!ocr.empty) {
+      warnings.push(
+        ocr.engine === "text-detector"
+          ? "Testo estratto via OCR browser: verifica eventuali errori di riconoscimento."
+          : "Testo estratto via OCR client-side: verifica eventuali errori di riconoscimento.",
+      );
     }
   } else {
     throw new Error("Formato non supportato. Usa PDF, EPUB, TXT, MD, Markdown, DOCX o immagini JPG/PNG/WebP/HEIC.");
@@ -1285,41 +1550,49 @@ export async function readStudyFileDetailed(file: File): Promise<StudyFileReadRe
   };
 }
 
-export async function readStudyFiles(files: File[]): Promise<StudyFileReadResult> {
+export async function readStudyFiles(files: File[], options: StudyFileReadOptions = {}): Promise<StudyFileReadResult> {
   if (!files.length) throw new Error("Nessun file selezionato.");
   const results: StudyFileReadResult[] = [];
   const errors: string[] = [];
 
   for (const file of files) {
     try {
-      results.push(await readStudyFileDetailed(file));
+      results.push(await readStudyFileDetailed(file, options));
     } catch (error) {
       errors.push(error instanceof Error ? error.message : `${file.name}: errore lettura.`);
     }
   }
 
   const readable = results.filter((result) => countStudyWords(result.text) > 0);
+  const imageResults = results.filter((result) => result.sourceType === "image");
+  const allImages = results.length > 0 && results.every((result) => result.sourceType === "image");
+
   if (!readable.length) {
-    const acceptedImages = results.filter((result) => result.sourceType === "image");
-    if (acceptedImages.length) {
+    if (imageResults.length) {
       return {
-        fileName: acceptedImages.length === 1 ? acceptedImages[0].fileName : `${acceptedImages.length} immagini acquisite`,
+        fileName: imageResults.length === 1 ? imageResults[0].fileName : `${imageResults.length} immagini acquisite`,
         sourceType: "image",
         text: "",
-        warnings: [...acceptedImages.flatMap((result) => result.warnings), ...errors],
+        warnings: [...imageResults.flatMap((result) => result.warnings), ...errors],
         empty: true,
       };
     }
     throw new Error(errors.join(" ") || "Nessun testo leggibile nei file selezionati.");
   }
 
-  const combined = readable
-    .map((result, index) => `=== MATERIALE ${index + 1}: ${result.fileName} ===\n\n${result.text}`)
-    .join("\n\n");
+  const combined = allImages
+    ? readable
+        .map((result, index) => `Pagina ${index + 1}\n\n${result.text}`)
+        .join("\n\n")
+    : readable
+        .map((result, index) => `=== MATERIALE ${index + 1}: ${result.fileName} ===\n\n${result.text}`)
+        .join("\n\n");
 
   return {
-    fileName: readable.length === 1 ? readable[0].fileName : `${readable.length} materiali uniti`,
-    sourceType: readable.length === 1 ? readable[0].sourceType : "txt",
+    fileName: allImages
+      ? readable.length === 1 ? readable[0].fileName : `${readable.length} pagine acquisite`
+      : readable.length === 1 ? readable[0].fileName : `${readable.length} materiali uniti`,
+    sourceType: allImages ? "image" : readable.length === 1 ? readable[0].sourceType : "txt",
     text: combined,
     warnings: [...readable.flatMap((result) => result.warnings), ...errors],
     empty: false,
