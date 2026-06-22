@@ -1126,6 +1126,81 @@ function buildLocalUserStoryDevelopment(input: {
   return `${base} Scriptora la sviluppa come premessa editoriale completa: il cuore della storia resta quello indicato dall'utente, ma la traiettoria viene chiarita in ferita, desiderio, posta in gioco e conseguenza finale. Il genere resta ${optionLabel(ROMAN_GENRES_PRO.find(o => optionValue(o) === input.genre) || input.genre)}, con filone ${optionLabel(SUBGENRES_PRO.find(o => optionValue(o) === input.subcategory) || input.subcategory)}, tono ${input.tone || "cinematografico"} e intensità ${input.intensity || "media"}. La protagonista deve restare coerente con l'idea originale, ma ogni scena dovrà aumentare conflitto, scelta morale e tensione emotiva senza tradire la storia che l'utente vuole raccontare.`;
 }
 
+
+function cleanOneLine(value: unknown, max = 110): string {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max)
+    .trim();
+}
+
+function buildCharacterStudioFallbackTitle(input: {
+  idea?: string;
+  genre?: string;
+  subcategory?: string;
+  setting?: string;
+  centralDynamic?: string;
+}): string {
+  const genre = cleanOneLine(input.genre).toLowerCase();
+  const subcategory = cleanOneLine(input.subcategory);
+  const setting = cleanOneLine(input.setting, 48);
+  const dynamic = cleanOneLine(input.centralDynamic, 48);
+  const idea = cleanOneLine(input.idea, 90);
+
+  if (setting) {
+    if (/archiv|citt|villa|casa|palazzo|isola|accademia|regno|soteropoli/i.test(setting)) {
+      return `Il segreto di ${setting}`;
+    }
+    return `Le ombre di ${setting}`;
+  }
+
+  if (/dark.?romance|romance/.test(genre)) return dynamic ? "Ombre che Bruciano" : "Il Patto delle Ombre";
+  if (/thriller|suspense|crime|noir/.test(genre)) return "La Verità Sepolta";
+  if (/horror|gotic/.test(genre)) return "La Casa che Ricorda";
+  if (/fantasy|romantasy/.test(genre)) return "Il Canto delle Ombre";
+  if (/sci.?fi|fantascienza|cyberpunk/.test(genre)) return "La Memoria delle Stelle";
+  if (subcategory) return `Il segreto ${subcategory}`;
+
+  if (idea) {
+    const words = idea
+      .replace(/[^\p{L}\p{N}\s']/gu, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 3)
+      .slice(0, 4)
+      .join(" ");
+    if (words.length > 10) return words[0].toUpperCase() + words.slice(1);
+  }
+
+  return "Titolo provvisorio";
+}
+
+function buildCharacterStudioFallbackSubtitle(input: {
+  idea?: string;
+  narrativePromise?: string;
+  centralDynamic?: string;
+  genre?: string;
+  subcategory?: string;
+}): string {
+  const promise = cleanOneLine(input.narrativePromise, 130);
+  if (promise.length >= 12) return promise;
+
+  const dynamic = cleanOneLine(input.centralDynamic, 90);
+  if (dynamic.length >= 8) {
+    return `Una storia di ${dynamic}, segreti e trasformazione.`;
+  }
+
+  const idea = cleanOneLine(input.idea, 140);
+  if (idea.length >= 24) {
+    return idea.endsWith(".") ? idea : `${idea}.`;
+  }
+
+  const genre = cleanOneLine(input.genre || "romanzo");
+  const subcategory = cleanOneLine(input.subcategory);
+  return `Un ${genre}${subcategory ? ` ${subcategory}` : ""} dove ogni scelta cambia il destino dei personaggi.`;
+}
+
+
 export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props) {
   const navigate = useNavigate();
   const [idea, setIdea] = useState("");
@@ -1142,6 +1217,8 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   const [subchaptersEnabled, setSubchaptersEnabled] = useState(false);
   const [subchaptersPerChapter, setSubchaptersPerChapter] = useState(3);
   const [targetReader, setTargetReader] = useState("");
+  const [bookTitle, setBookTitle] = useState("");
+  const [bookSubtitle, setBookSubtitle] = useState("");
   const [narrativePromise, setNarrativePromise] = useState("");
   const [setting, setSetting] = useState("");
   const [endingType, setEndingType] = useState("chiuso ma con eco");
@@ -1264,6 +1341,8 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         if (typeof parsed.subchaptersEnabled === "boolean") setSubchaptersEnabled(parsed.subchaptersEnabled);
         if (parsed.subchaptersPerChapter) setSubchaptersPerChapter(Number(parsed.subchaptersPerChapter) || 3);
         if (parsed.targetReader) setTargetReader(parsed.targetReader);
+        if (parsed.title) setBookTitle(parsed.title);
+        if (parsed.subtitle) setBookSubtitle(parsed.subtitle);
         if (parsed.narrativePromise) setNarrativePromise(parsed.narrativePromise);
         if (parsed.setting) setSetting(parsed.setting);
         if (parsed.endingType) setEndingType(parsed.endingType);
@@ -1544,6 +1623,29 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     }
   };
 
+  const generateTitleAndSubtitle = () => {
+    const resolvedTitle = buildCharacterStudioFallbackTitle({
+      idea,
+      genre,
+      subcategory,
+      setting,
+      centralDynamic,
+    });
+
+    const resolvedSubtitle = buildCharacterStudioFallbackSubtitle({
+      idea,
+      narrativePromise,
+      centralDynamic,
+      genre,
+      subcategory,
+    });
+
+    setBookTitle(resolvedTitle);
+    setBookSubtitle(resolvedSubtitle);
+    setNarrativePromise((current) => current.trim() ? current : resolvedSubtitle);
+    toast.success("Titolo e sottotitolo preparati per Book Forge.");
+  };
+
   const saveAndLink = () => {
     const bible = String(characterBible || "").trim();
 
@@ -1564,8 +1666,26 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       intensity ? `Intensità: ${intensity}` : "",
     ].filter(Boolean).join("\n\n");
 
+    const resolvedTitle = bookTitle.trim() || buildCharacterStudioFallbackTitle({
+      idea: cleanIdea,
+      genre,
+      subcategory: cleanSubcategory,
+      setting,
+      centralDynamic: cleanDynamic,
+    });
+    const resolvedSubtitle = bookSubtitle.trim() || buildCharacterStudioFallbackSubtitle({
+      idea: cleanIdea,
+      narrativePromise,
+      centralDynamic: cleanDynamic,
+      genre,
+      subcategory: cleanSubcategory,
+    });
+    const resolvedPromise = narrativePromise.trim() || resolvedSubtitle;
+
     const payload = {
       source: "character-studio",
+      title: resolvedTitle,
+      subtitle: resolvedSubtitle,
       idea: cleanIdea,
       genre,
       subcategory: cleanSubcategory,
@@ -1590,8 +1710,8 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       characters,
       plot,
       conflict: cleanDynamic || cleanIdea,
-      promise: narrativePromise.trim() || cleanIdea || cleanDynamic,
-      narrativePromise: narrativePromise.trim(),
+      promise: resolvedPromise,
+      narrativePromise: resolvedPromise,
       targetReader:
         targetReader.trim() ||
         `Lettori di ${genre}${cleanSubcategory ? ` / ${cleanSubcategory}` : ""} con tono ${cleanTone || "cinematografico"}`,
@@ -1605,7 +1725,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       canonRules: canonRules.trim(),
       style: cleanTone,
       structureMode: subchaptersEnabled ? "chaptered-fiction-with-subchapters" : "chaptered-fiction",
-      commercialAngle: narrativePromise.trim() || cleanDynamic || cleanIdea,
+      commercialAngle: resolvedPromise || cleanDynamic || cleanIdea,
       savedAt: new Date().toISOString(),
     };
 
@@ -1670,6 +1790,8 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     sessionStorage.removeItem(SCRIPTORA_CHARACTER_PROJECT_KEY);
     setCharacterBible("");
     setManualCharacterNames("");
+    setBookTitle("");
+    setBookSubtitle("");
     setSaved(false);
     toast.info("Character Bible rimossa.");
   };
@@ -1879,6 +2001,37 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
               <p className="mt-1 text-[11px] text-muted-foreground">
                 Se hai già una storia, scrivila qui e usa “Elabora la mia storia”. Se vuoi una proposta nuova, usa “Genera idea con Scriptora”.
               </p>
+            </div>
+
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <Label>Titolo e promessa</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Book Forge userà questi dati per non bloccarsi al Blueprint. Puoi cambiarli dopo.
+                  </p>
+                </div>
+                <Button type="button" variant="secondary" onClick={generateTitleAndSubtitle}>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Genera titolo e sottotitolo
+                </Button>
+              </div>
+
+              <Input
+                value={bookTitle}
+                onChange={(e) => setBookTitle(e.target.value)}
+                placeholder="Titolo provvisorio, es. L’Archivio delle Acque"
+              />
+
+              <Textarea
+                value={bookSubtitle}
+                onChange={(e) => {
+                  setBookSubtitle(e.target.value);
+                  setNarrativePromise((current) => current.trim() ? current : e.target.value);
+                }}
+                placeholder="Sottotitolo / promessa narrativa, es. Una memoria falsa può riscrivere il destino di una città."
+                rows={3}
+              />
             </div>
 
             <div>
