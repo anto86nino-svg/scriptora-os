@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Users, Wand2, Save, X, Loader2, BookOpen, CheckCircle2, Sparkles, Fingerprint } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -1126,6 +1127,7 @@ function buildLocalUserStoryDevelopment(input: {
 }
 
 export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props) {
+  const navigate = useNavigate();
   const [idea, setIdea] = useState("");
   const [genre, setGenre] = useState("romance");
   const [subcategory, setSubcategory] = useState("slow burn");
@@ -1634,14 +1636,31 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
 
     const handoff = buildBookForgeHandoff("character-studio", payload);
 
-    window.dispatchEvent(new Event("scriptora-character-bible-change"));
-    window.dispatchEvent(
-      new CustomEvent("scriptora-open-new-book-from-character-studio", {
-        detail: { payload, handoff },
-      }),
-    );
-    setSaved(true);
-    toast.success("Personaggi collegati. Apro Book Forge con cast, genere, filone e tono già pronti.");
+    try {
+      window.dispatchEvent(new Event("scriptora-character-bible-change"));
+      window.dispatchEvent(
+        new CustomEvent("scriptora-open-new-book-from-character-studio", {
+          detail: { payload, handoff },
+        }),
+      );
+
+      setSaved(true);
+      onClose?.();
+
+      navigate("/dashboard", {
+        state: {
+          openForge: true,
+          bookForgeHandoff: handoff,
+          source: "character-studio",
+        },
+      });
+
+      toast.success("Personaggi collegati. Apro Book Forge con cast, genere, filone e tono già pronti.");
+    } catch (error) {
+      devOnlyDiagnostic("[CharacterStudio] open Book Forge failed", error);
+      setSaved(true);
+      toast.success("Cast salvato. Apri Book Forge dalla Dashboard per continuare.");
+    }
   };
 
   const clear = () => {
@@ -1931,7 +1950,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
                 Genera personaggi con Scriptora
               </Button>
 
-              <Button variant="secondary" onClick={saveAndLink} disabled={loading}>
+              <Button onClick={saveAndLink} disabled={loading || (!characterBible.trim() && !manualCharacterNames.trim())}>
                 <Save className="h-4 w-4 mr-2" />
                 Salva e continua in Book Forge
               </Button>
