@@ -645,6 +645,28 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   useEffect(() => {
     if (!open) return;
     try {
+      const freshStart = sessionStorage.getItem("scriptora-character-studio-fresh-start") === "1";
+      if (freshStart) {
+        sessionStorage.removeItem("scriptora-character-studio-fresh-start");
+        sessionStorage.removeItem(SCRIPTORA_CHARACTER_BIBLE_KEY);
+        sessionStorage.removeItem(SCRIPTORA_CHARACTER_PROJECT_KEY);
+        localStorage.removeItem(SCRIPTORA_CHARACTER_BIBLE_KEY);
+        localStorage.removeItem(SCRIPTORA_CHARACTER_PROJECT_KEY);
+
+        setIdea("");
+        setGenre("romance");
+        setSubcategory("slow burn");
+        setTone("poetico e cinematografico");
+        setIntensity("slow burn");
+        setCentralDynamic("attrazione e colpa");
+        setProtagonistType("protagonista ferita ma combattiva");
+        setLanguage("Italian");
+        setManualCharacterNames("");
+        setCharacterBible("");
+        setSaved(false);
+        return;
+      }
+
       const savedProject = localStorage.getItem(SCRIPTORA_CHARACTER_PROJECT_KEY);
       const savedBible = localStorage.getItem(SCRIPTORA_CHARACTER_BIBLE_KEY);
       if (savedProject) {
@@ -979,7 +1001,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
             <div>
               <h2 className="font-semibold text-lg">Scriptora Character Studio</h2>
               <p className="text-xs text-muted-foreground">
-                Crea cast canonico, genere, filone, tono e dinamica narrativa. Poi collegalo a Nuovo Libro.
+                Crea un nuovo cast canonico, genere, filone, tono e dinamica narrativa. Poi collegalo a Book Forge.
               </p>
             </div>
           </div>

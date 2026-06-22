@@ -205,6 +205,19 @@ export default function Dashboard() {
     requestAnimationFrame(() => setActiveDashboardTool(tool));
   }, []);
 
+  const openFreshCharacterStudio = useCallback(() => {
+    try {
+      sessionStorage.setItem("scriptora-character-studio-fresh-start", "1");
+      sessionStorage.removeItem(SCRIPTORA_CHARACTER_BIBLE_KEY);
+      sessionStorage.removeItem(SCRIPTORA_CHARACTER_PROJECT_KEY);
+      localStorage.removeItem(SCRIPTORA_CHARACTER_BIBLE_KEY);
+      localStorage.removeItem(SCRIPTORA_CHARACTER_PROJECT_KEY);
+    } catch {
+      /* noop */
+    }
+    openDashboardTool("character-studio");
+  }, [openDashboardTool]);
+
   const openSettingsHub = useCallback(() => {
     closeAllDashboardTools();
     setShowSettingsHub(true);
@@ -1171,13 +1184,13 @@ typeof crypto.randomUUID === "function"
           onContinue={() => dashboardContextProject && goApp({ projectId: dashboardContextProject.id })}
           onGenerateNextChapter={() => dashboardContextProject && goApp({ projectId: dashboardContextProject.id, section: "chapters" })}
           onExport={() => guardPlanFeature("export_epub", () => navigateFromDashboard(getToolRoute("publishing"), dashboardContextProject?.id ? { projectId: dashboardContextProject.id } : undefined))()}
-          onNewBook={() => openDashboardTool("character-studio")}
+          onNewBook={openFreshCharacterStudio}
           onMyBooks={() => openDashboardTool("projects")}
         />
 
         <DashboardHomePillars
-              onCharacterStudio={() => openDashboardTool("character-studio")}
-          onNewBook={() => openDashboardTool("character-studio")}
+              onCharacterStudio={openFreshCharacterStudio}
+          onNewBook={openFreshCharacterStudio}
           onStudyOs={() => navigateFromDashboard(getToolRoute("study"))}
         />
 
