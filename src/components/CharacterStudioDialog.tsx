@@ -638,6 +638,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   const [language, setLanguage] = useState("Italian");
   const [manualCharacterNames, setManualCharacterNames] = useState("");
   const [characterBible, setCharacterBible] = useState("");
+  const [previewPanel, setPreviewPanel] = useState<"idea" | "bible" | null>(null);
   const [loading, setLoading] = useState(false);
   const [ideaLoading, setIdeaLoading] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -871,7 +872,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       });
 
       setCharacterBible(applyManualNamesToBible(finalText, manualCharacterNames));
-      toast.success("Personaggi generati. Ora salvali e collegali a Nuovo Libro.");
+      toast.success("Personaggi generati. Ora puoi leggerli, salvarli e continuare in Book Forge.");
     } catch (e) {
       devOnlyDiagnostic("character-studio-bible-fallback", e);
       const finalText = fallbackCharacterBible({
@@ -974,7 +975,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       }),
     );
     setSaved(true);
-    toast.success("Personaggi collegati. Apro Nuovo Libro con cast, genere, filone e tono già pronti.");
+    toast.success("Personaggi collegati. Apro Book Forge con cast, genere, filone e tono già pronti.");
   };
 
   const clear = () => {
@@ -992,6 +993,59 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
 
   return (
     <div className="scriptora-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+      {previewPanel && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border bg-card/95 px-5 py-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+                  Character Studio
+                </p>
+                <h3 className="text-lg font-bold text-foreground">
+                  {previewPanel === "idea" ? "Idea del romanzo" : "Character Bible canonica"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewPanel(null)}
+                className="rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
+              >
+                Chiudi
+              </button>
+            </div>
+
+            <div className="overflow-y-auto whitespace-pre-wrap px-6 py-5 text-sm leading-7 text-foreground">
+              {(previewPanel === "idea" ? idea : characterBible).trim() || "Nessun testo disponibile."}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-muted/30 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText((previewPanel === "idea" ? idea : characterBible).trim());
+                  toast.success("Testo copiato.");
+                }}
+                className="rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-muted"
+              >
+                Copia testo
+              </button>
+              {previewPanel === "bible" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreviewPanel(null);
+                    saveAndLink();
+                  }}
+                  className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+                >
+                  Salva e continua in Book Forge
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="scriptora-modal-panel relative flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
         <div className="z-10 flex shrink-0 items-center justify-between border-b border-border bg-card/95 p-4 backdrop-blur">
           <div className="flex items-center gap-3">
@@ -1128,7 +1182,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
 
               <Button variant="secondary" onClick={saveAndLink} disabled={loading}>
                 <Save className="h-4 w-4 mr-2" />
-                Salva e collega a Nuovo Libro
+                Salva e continua in Book Forge
               </Button>
 
               <Button variant="ghost" onClick={clear}>
@@ -1213,7 +1267,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
             <div className="flex items-start gap-2">
               <BookOpen className="h-4 w-4 text-primary mt-0.5" />
               <p>
-                Dopo il salvataggio, vai su <strong>Nuovo Libro</strong>. Se il genere è narrativo, Scriptora collega automaticamente cast, filone, tono e continuità al progetto. Il motore non deve più inventare nomi a caso.
+                Dopo il salvataggio, Scriptora apre <strong>Book Forge</strong> con cast, filone, tono e continuità già collegati. Il motore non deve più inventare nomi a caso.
               </p>
             </div>
           </div>
