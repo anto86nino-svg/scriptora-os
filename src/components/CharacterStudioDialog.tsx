@@ -262,6 +262,215 @@ function ChoiceGrid({
   );
 }
 
+
+type CharacterStudioDirectionPreset = {
+  subcategory: string;
+  tone: string;
+  intensity: string;
+  centralDynamic: string;
+  subgenres: ChoiceOption[];
+  tones: ChoiceOption[];
+  intensities: ChoiceOption[];
+  dynamics: ChoiceOption[];
+  targetReader: string;
+  narrativePromise: string;
+};
+
+function normalizeCharacterStudioGenre(value: string): string {
+  return String(value || "").toLowerCase().replace(/[_\s]+/g, "-");
+}
+
+function getCharacterStudioDirectionPreset(genre: string): CharacterStudioDirectionPreset {
+  const g = normalizeCharacterStudioGenre(genre);
+
+  if (/thriller|crime|noir|mystery|mistero|suspense/.test(g)) {
+    return {
+      subcategory: "psychological suspense",
+      tone: "teso e cinematografico",
+      intensity: "high suspense",
+      centralDynamic: "indagine",
+      targetReader: "Lettori di thriller psicologici, misteri oscuri, indagini morali e colpi di scena emotivi.",
+      narrativePromise: "Un thriller ad alta tensione dove ogni risposta apre una ferita più profonda, fino a una verità che cambia il senso di tutto.",
+      subgenres: [
+        { value: "psychological suspense", label: "Suspense psicologica" },
+        { value: "domestic thriller", label: "Thriller domestico" },
+        { value: "serial killer", label: "Serial killer" },
+        { value: "missing person", label: "Persona scomparsa" },
+        { value: "legal thriller", label: "Thriller legale" },
+        { value: "conspiracy", label: "Cospirazione" },
+        { value: "revenge story", label: "Storia di vendetta" },
+        { value: "closed circle", label: "Luogo chiuso / isolamento" },
+        { value: "cold case", label: "Cold case" },
+      ],
+      tones: [
+        "teso e cinematografico",
+        "sospeso e misterioso",
+        "crudo e realistico",
+        "brutale e ad alta tensione",
+        "elegante e letterario",
+        "page-turner commerciale",
+      ],
+      intensities: [
+        { value: "high suspense", label: "Alta suspense" },
+        { value: "commercial page-turner", label: "Page-turner commerciale" },
+        { value: "intense", label: "Intensa" },
+        { value: "psychological depth", label: "Profondità psicologica" },
+      ],
+      dynamics: [
+        "indagine",
+        "segreto familiare",
+        "tradimento",
+        "vendetta",
+        "ossessione",
+        "fuga dal passato",
+        "identità nascosta",
+        "sopravvivenza",
+        "colpa e verità",
+      ],
+    };
+  }
+
+  if (/horror|gothic|folk/.test(g)) {
+    return {
+      subcategory: "gothic horror",
+      tone: "gotico e atmosferico",
+      intensity: "dark but elegant",
+      centralDynamic: "sopravvivenza",
+      targetReader: "Lettori di horror atmosferico, luoghi malati, presenze ambigue e tensione psicologica.",
+      narrativePromise: "Un horror in cui il luogo non è sfondo ma minaccia, e la verità arriva come una contaminazione.",
+      subgenres: [
+        { value: "gothic horror", label: "Horror gotico" },
+        { value: "folk horror", label: "Folk horror" },
+        { value: "haunted house", label: "Casa infestata" },
+        { value: "survival horror", label: "Survival horror" },
+        { value: "psychological horror", label: "Horror psicologico" },
+      ],
+      tones: [
+        "gotico e atmosferico",
+        "sospeso e misterioso",
+        "crudo e realistico",
+        "brutale e ad alta tensione",
+        "melanconico e disturbante",
+      ],
+      intensities: [
+        { value: "slow dread", label: "Lenta e inquietante" },
+        { value: "high suspense", label: "Alta suspense" },
+        { value: "dark but elegant", label: "Dark ma elegante" },
+        { value: "intense", label: "Intensa" },
+      ],
+      dynamics: [
+        "sopravvivenza",
+        "ossessione",
+        "segreto familiare",
+        "perdita e rinascita",
+        "fuga dal passato",
+        "memoria e colpa",
+      ],
+    };
+  }
+
+  if (/fantasy|romantasy|urban|epic|dark-fantasy/.test(g)) {
+    return {
+      subcategory: /romantasy/.test(g) ? "romantasy" : "dark fantasy",
+      tone: "epico e mitico",
+      intensity: "high drama",
+      centralDynamic: "potere e corruzione",
+      targetReader: "Lettori di fantasy con magia, destino, alleanze instabili, potere e trasformazione emotiva.",
+      narrativePromise: "Un fantasy dove il potere salva e corrompe, e ogni scelta costa identità, memoria o libertà.",
+      subgenres: [
+        { value: "epic fantasy", label: "Fantasy epico" },
+        { value: "dark fantasy", label: "Dark fantasy" },
+        { value: "urban fantasy", label: "Urban fantasy" },
+        { value: "romantasy", label: "Romantasy" },
+        { value: "chosen one", label: "Prescelto" },
+        { value: "portal fantasy", label: "Portal fantasy" },
+        { value: "academy", label: "Academy" },
+        { value: "royal court intrigue", label: "Intrighi di corte" },
+        { value: "found family", label: "Famiglia trovata" },
+      ],
+      tones: [
+        "epico e mitico",
+        "gotico e atmosferico",
+        "elegante e letterario",
+        "veloce e commerciale",
+        "sospeso e misterioso",
+      ],
+      intensities: [
+        { value: "high drama", label: "Alto dramma" },
+        { value: "commercial page-turner", label: "Page-turner commerciale" },
+        { value: "intense", label: "Intensa" },
+        { value: "dark but elegant", label: "Dark ma elegante" },
+      ],
+      dynamics: [
+        "potere e corruzione",
+        "destino contro libero arbitrio",
+        "rivalità",
+        "redenzione",
+        "identità nascosta",
+        "nemici costretti a collaborare",
+        "tradimento",
+      ],
+    };
+  }
+
+  return {
+    subcategory: /dark-romance/.test(g) ? "mafia romance" : "slow burn",
+    tone: /dark-romance/.test(g) ? "dark e sensuale" : "romantico slow burn",
+    intensity: /dark-romance/.test(g) ? "dark but elegant" : "slow burn",
+    centralDynamic: /dark-romance/.test(g) ? "attrazione e colpa" : "amore proibito",
+    targetReader: "Lettrici di romance emotivo, tensione relazionale, desiderio progressivo e payoff sentimentale forte.",
+    narrativePromise: "Una storia d'amore ad alta tensione emotiva, dove desiderio e ferita si trasformano in scelta.",
+    subgenres: SUBGENRES_PRO.filter((option) =>
+      [
+        "enemies to lovers",
+        "second chance",
+        "forbidden love",
+        "slow burn",
+        "small town",
+        "billionaire",
+        "workplace romance",
+        "fake dating",
+        "forced proximity",
+        "age gap",
+        "friends to lovers",
+        "mafia romance",
+      ].includes(optionValue(option)),
+    ),
+    tones: [
+      "romantico slow burn",
+      "poetico e cinematografico",
+      "dark e sensuale",
+      "emotivo da BookTok",
+      "spicy ma elegante",
+      "pulito e profondo",
+      "melanconico e struggente",
+    ],
+    intensities: [
+      { value: "soft", label: "Morbida" },
+      { value: "medium", label: "Media" },
+      { value: "slow burn", label: "Lenta e bruciante" },
+      { value: "high drama", label: "Alto dramma" },
+      { value: "emotional devastation", label: "Devastazione emotiva" },
+      { value: "dark but elegant", label: "Dark ma elegante" },
+    ],
+    dynamics: [
+      "amore proibito",
+      "attrazione e colpa",
+      "redenzione",
+      "tradimento",
+      "perdita e rinascita",
+      "fuga dal passato",
+      "nemici costretti a collaborare",
+    ],
+  };
+}
+
+function optionListHasValue(options: ChoiceOption[], value: string): boolean {
+  const clean = String(value || "").trim().toLowerCase();
+  return options.some((option) => optionValue(option).toLowerCase() === clean || optionLabel(option).toLowerCase() === clean);
+}
+
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -976,6 +1185,18 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   }, [genre]);
 
   useEffect(() => {
+    const preset = getCharacterStudioDirectionPreset(genre);
+
+    setSubcategory((current) => optionListHasValue(preset.subgenres, current) ? current : preset.subcategory);
+    setTone((current) => optionListHasValue(preset.tones, current) ? current : preset.tone);
+    setIntensity((current) => optionListHasValue(preset.intensities, current) ? current : preset.intensity);
+    setCentralDynamic((current) => optionListHasValue(preset.dynamics, current) ? current : preset.centralDynamic);
+
+    setTargetReader((current) => current.trim() ? current : preset.targetReader);
+    setNarrativePromise((current) => current.trim() ? current : preset.narrativePromise);
+  }, [genre]);
+
+  useEffect(() => {
     if (!open) return;
     try {
       const freshStart = sessionStorage.getItem("scriptora-character-studio-fresh-start") === "1";
@@ -1179,6 +1400,12 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   const smartToneOptions = smartPreset.tones;
   const smartIntensityOptions = smartPreset.intensities;
   const smartDynamicOptions = smartPreset.dynamics;
+
+  const directionPreset = getCharacterStudioDirectionPreset(genre);
+  const directionSubgenreOptions = directionPreset.subgenres;
+  const directionToneOptions = directionPreset.tones;
+  const directionIntensityOptions = directionPreset.intensities;
+  const directionDynamicOptions = directionPreset.dynamics;
 
   const canGenerate = idea.trim().length >= 8;
 
@@ -1940,28 +2167,28 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
             <ChoiceGrid
               label="Filone / sottogenere"
               value={subcategory}
-              options={SUBGENRES_PRO}
+              options={directionSubgenreOptions}
               onChange={setSubcategory}
             />
 
             <ChoiceGrid
               label="Tono narrativo"
               value={tone}
-              options={TONES_PRO}
+              options={directionToneOptions}
               onChange={setTone}
             />
 
             <ChoiceGrid
               label="Intensità"
               value={intensity}
-              options={INTENSITIES_PRO}
+              options={directionIntensityOptions}
               onChange={setIntensity}
             />
 
             <ChoiceGrid
               label="Dinamica centrale"
               value={centralDynamic}
-              options={CHARACTER_DYNAMICS_PRO}
+              options={directionDynamicOptions}
               onChange={setCentralDynamic}
             />
             </div>
