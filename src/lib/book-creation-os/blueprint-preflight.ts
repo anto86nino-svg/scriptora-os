@@ -147,11 +147,12 @@ export function runBlueprintPreflight(
   }
 
   const ready = issues.length === 0;
+  const issueLabels = issues.map((issue) => issue.message || issue.field).filter(Boolean);
   const humanSummary = ready
     ? "Tutto pronto: possiamo generare il blueprint."
-    : issues.length === 1
-      ? `Prima completiamo un dettaglio essenziale, poi genero il blueprint.`
-      : `Prima completiamo ${issues.length} dettagli essenziali, poi genero il blueprint.`;
+    : issueLabels.length === 1
+      ? `Per generare il Blueprint manca: ${issueLabels[0]}.`
+      : `Per generare il Blueprint mancano: ${issueLabels.join(", ")}.`;
 
   return { ready, issues, humanSummary };
 }

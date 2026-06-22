@@ -2584,6 +2584,24 @@ export function BookCreationOsWizard({
                 <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-left space-y-3">
                   <p className="text-sm font-semibold text-amber-100">Completiamo il progetto</p>
                   <p className="text-xs leading-5 text-amber-100/75">{preflightResult.humanSummary}</p>
+                  <ul className="space-y-2">
+                    {preflightResult.issues.map((issue) => (
+                      <li key={issue.id} className="flex items-start gap-2 text-xs text-amber-50/90">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                        <span>{issue.humanHint || issue.message}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {preflightResult.issues.some((i) => i.autoFillable) && (
+                    <button
+                      type="button"
+                      onClick={applyPreflightAutofill}
+                      className="inline-flex items-center gap-2 rounded-xl border border-amber-200/40 bg-amber-200/15 px-4 py-2 text-xs font-bold text-amber-50"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Completa automaticamente con Scriptora
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="rounded-2xl border border-white/12 bg-white/[0.045] p-4 text-left">
