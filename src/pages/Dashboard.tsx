@@ -1176,6 +1176,7 @@ typeof crypto.randomUUID === "function"
         />
 
         <DashboardHomePillars
+              onCharacterStudio={() => openDashboardTool("character-studio")}
           onNewBook={() => openDashboardTool("character-studio")}
           onStudyOs={() => navigateFromDashboard(getToolRoute("study"))}
         />

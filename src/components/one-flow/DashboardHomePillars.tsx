@@ -6,12 +6,13 @@ type Props = {
   onStudyOs: () => void;
 };
 
-export function DashboardHomePillars({ onNewBook, onStudyOs }: Props) {
+export function DashboardHomePillars({ onCharacterStudio,
+ onNewBook, onStudyOs }: Props) {
   return (
     <section className="mb-4 grid gap-3 sm:mb-6 lg:grid-cols-2">
       <button
         type="button"
-        onClick={onNewBook}
+        onClick={onCharacterStudio ?? onNewBook}
         className="scriptora-home-pillar group relative overflow-hidden rounded-[1.75rem] border border-sky-400/30 bg-gradient-to-br from-sky-950/70 via-slate-900/55 to-sky-900/35 p-5 text-left shadow-[0_24px_80px_rgba(14,165,233,0.18)] transition-all hover:-translate-y-0.5 hover:border-sky-300/45 sm:p-6"
       >
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-200/75">Percorso principale</p>
