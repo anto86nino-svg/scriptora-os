@@ -470,6 +470,14 @@ function optionListHasValue(options: ChoiceOption[], value: string): boolean {
   return options.some((option) => optionValue(option).toLowerCase() === clean || optionLabel(option).toLowerCase() === clean);
 }
 
+function displayChoiceLabel(options: ChoiceOption[], value: string): string {
+  const clean = String(value || "").trim().toLowerCase();
+  const found = options.find(
+    (option) => optionValue(option).toLowerCase() === clean || optionLabel(option).toLowerCase() === clean,
+  );
+  return found ? optionLabel(found) : value;
+}
+
 
 interface Props {
   open: boolean;
@@ -1887,9 +1895,10 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
               <div>
                 <Label>Filone / sottogenere</Label>
                 <Input
-                  value={subcategory}
-                  onChange={(e) => setSubcategory(e.target.value)}
-                  placeholder="slow burn, desert romance..."
+                  value={displayChoiceLabel(directionSubgenreOptions, subcategory)}
+                  readOnly
+                  title={subcategory}
+                  placeholder="Scegli il filone dalla Regia del romanzo"
                 />
               </div>
 
@@ -1908,9 +1917,10 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
               <div>
                 <Label>Tono</Label>
                 <Input
-                  value={tone}
-                  onChange={(e) => setTone(e.target.value)}
-                  placeholder="poetico, intenso..."
+                  value={displayChoiceLabel(directionToneOptions, tone)}
+                  readOnly
+                  title={tone}
+                  placeholder="Scegli il tono dalla Regia del romanzo"
                 />
               </div>
             </div>
