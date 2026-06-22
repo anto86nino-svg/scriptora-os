@@ -281,6 +281,287 @@ const GENRES = [
 
 const LANGUAGES = ["Italian", "English", "Spanish", "French", "German"];
 
+
+type CharacterStudioSmartPreset = {
+  subcategory: string;
+  tone: string;
+  intensity: string;
+  centralDynamic: string;
+  spiceLevel: string;
+  darknessLevel: string;
+  violenceLevel: string;
+  targetReader: string;
+  narrativePromise: string;
+  subgenres: string[];
+  tones: string[];
+  intensities: string[];
+  dynamics: string[];
+};
+
+function normalizeStudioGenre(value: string): string {
+  return String(value || "").toLowerCase().replace(/[_\s]+/g, "-");
+}
+
+function getCharacterStudioPreset(genre: string): CharacterStudioSmartPreset {
+  const g = normalizeStudioGenre(genre);
+
+  if (/thriller|crime|noir|mistero|suspense/.test(g)) {
+    return {
+      subcategory: "thriller psicologico",
+      tone: "teso e cinematografico",
+      intensity: "alta suspense",
+      centralDynamic: "indagine",
+      spiceLevel: "non applicabile",
+      darknessLevel: "dark",
+      violenceLevel: "psicologica",
+      targetReader: "Lettori di thriller psicologici, misteri oscuri, segreti familiari e colpi di scena emotivi.",
+      narrativePromise: "Un thriller ad alta tensione dove ogni risposta apre una ferita più profonda, fino a una verità che cambia il senso di tutto.",
+      subgenres: [
+        "Thriller psicologico",
+        "Crime / noir",
+        "Mistero",
+        "Suspense psicologica",
+        "Thriller domestico",
+        "Persona scomparsa",
+        "Thriller legale",
+        "Cospirazione",
+        "Storia di vendetta",
+        "Cold case",
+        "Isola / luogo chiuso",
+        "Segreto familiare",
+      ],
+      tones: [
+        "teso e cinematografico",
+        "sospeso e misterioso",
+        "crudo e realistico",
+        "brutale e ad alta tensione",
+        "elegante e letterario",
+        "dark e atmosferico",
+        "page-turner commerciale",
+      ],
+      intensities: [
+        "Alta suspense",
+        "Page-turner commerciale",
+        "Intensa",
+        "Lenta e inquietante",
+        "Profondità psicologica",
+        "Devastazione emotiva",
+      ],
+      dynamics: [
+        "indagine",
+        "segreto familiare",
+        "persona scomparsa",
+        "tradimento",
+        "vendetta",
+        "ossessione",
+        "fuga dal passato",
+        "identità nascosta",
+        "colpa e verità",
+        "sopravvivenza",
+      ],
+    };
+  }
+
+  if (/horror|folk/.test(g)) {
+    return {
+      subcategory: "horror gotico",
+      tone: "gotico e atmosferico",
+      intensity: "dark ma elegante",
+      centralDynamic: "sopravvivenza",
+      spiceLevel: "non applicabile",
+      darknessLevel: "dark",
+      violenceLevel: "psicologica",
+      targetReader: "Lettori di horror atmosferico, luoghi malati, presenze ambigue e tensione psicologica.",
+      narrativePromise: "Un horror in cui il luogo non è sfondo ma minaccia, e la verità arriva come una contaminazione.",
+      subgenres: [
+        "Horror gotico",
+        "Folk horror",
+        "Casa infestata",
+        "Survival horror",
+        "Possessione",
+        "Body horror leggero",
+        "Horror psicologico",
+        "Luogo maledetto",
+        "Culto / rituale",
+      ],
+      tones: [
+        "gotico e atmosferico",
+        "sospeso e misterioso",
+        "brutale e ad alta tensione",
+        "crudo e realistico",
+        "melanconico e disturbante",
+        "dark e sensoriale",
+      ],
+      intensities: [
+        "Lenta e inquietante",
+        "Alta suspense",
+        "Dark ma elegante",
+        "Intensa",
+        "Devastazione emotiva",
+      ],
+      dynamics: [
+        "sopravvivenza",
+        "ossessione",
+        "segreto familiare",
+        "perdita e rinascita",
+        "fuga dal passato",
+        "contagio",
+        "memoria e colpa",
+        "presenza soprannaturale",
+      ],
+    };
+  }
+
+  if (/fantasy|romantasy|urban|epico|dark-fantasy/.test(g)) {
+    return {
+      subcategory: /romantasy/.test(g) ? "romantasy" : "dark fantasy",
+      tone: "epico e mitico",
+      intensity: "alto dramma",
+      centralDynamic: "potere e corruzione",
+      spiceLevel: /romantasy/.test(g) ? "medio" : "non applicabile",
+      darknessLevel: /dark/.test(g) ? "dark" : "medio",
+      violenceLevel: "medio",
+      targetReader: "Lettori di fantasy con magia, destino, alleanze instabili, potere e trasformazione emotiva.",
+      narrativePromise: "Un fantasy dove il potere salva e corrompe, e ogni scelta costa identità, memoria o libertà.",
+      subgenres: [
+        "Fantasy epico",
+        "Dark fantasy",
+        "Urban fantasy",
+        "Romantasy",
+        "Prescelto",
+        "Portal fantasy",
+        "Academy",
+        "Intrighi di corte",
+        "Magia proibita",
+        "Regno in rovina",
+        "Famiglia trovata",
+      ],
+      tones: [
+        "epico e mitico",
+        "gotico e atmosferico",
+        "elegante e letterario",
+        "veloce e commerciale",
+        "sospeso e misterioso",
+        "dark e sensoriale",
+      ],
+      intensities: [
+        "Alto dramma",
+        "Page-turner commerciale",
+        "Intensa",
+        "Dark ma elegante",
+        "Profondità letteraria",
+      ],
+      dynamics: [
+        "potere e corruzione",
+        "destino contro libero arbitrio",
+        "rivalità",
+        "redenzione",
+        "identità nascosta",
+        "nemici costretti a collaborare",
+        "famiglia trovata",
+        "tradimento",
+      ],
+    };
+  }
+
+  if (/romance|dark-romance/.test(g)) {
+    return {
+      subcategory: /dark/.test(g) ? "dark romance" : "slow burn",
+      tone: /dark/.test(g) ? "dark e sensuale" : "romantico slow burn",
+      intensity: /dark/.test(g) ? "dark ma elegante" : "lenta e bruciante",
+      centralDynamic: /dark/.test(g) ? "attrazione e colpa" : "amore proibito",
+      spiceLevel: "medio",
+      darknessLevel: /dark/.test(g) ? "dark" : "medio",
+      violenceLevel: /dark/.test(g) ? "psicologica" : "assente",
+      targetReader: "Lettrici di romance emotivo, tensione relazionale, desiderio progressivo e payoff sentimentale forte.",
+      narrativePromise: "Una storia d'amore ad alta tensione emotiva, dove desiderio e ferita si trasformano in scelta.",
+      subgenres: [
+        "Slow burn",
+        "Nemici che si innamorano",
+        "Seconda occasione",
+        "Amore proibito",
+        "Piccola città",
+        "Romance sul lavoro",
+        "Finta relazione",
+        "Costretti vicini",
+        "Da amici ad amanti",
+        "Dark romance",
+        "Mafia romance",
+      ],
+      tones: [
+        "romantico slow burn",
+        "poetico e cinematografico",
+        "dark e sensuale",
+        "emotivo da BookTok",
+        "spicy ma elegante",
+        "pulito e profondo",
+        "melanconico e struggente",
+      ],
+      intensities: [
+        "Morbida",
+        "Media",
+        "Lenta e bruciante",
+        "Alto dramma",
+        "Devastazione emotiva",
+        "Dark ma elegante",
+      ],
+      dynamics: [
+        "amore proibito",
+        "attrazione e colpa",
+        "redenzione",
+        "tradimento",
+        "perdita e rinascita",
+        "fuga dal passato",
+        "nemici costretti a collaborare",
+      ],
+    };
+  }
+
+  return {
+    subcategory: "narrativa commerciale",
+    tone: "cinematografico",
+    intensity: "media",
+    centralDynamic: "segreto familiare",
+    spiceLevel: "non applicabile",
+    darknessLevel: "medio",
+    violenceLevel: "medio",
+    targetReader: "Lettori di narrativa ad alta tensione emotiva, personaggi forti e promessa chiara.",
+    narrativePromise: "Una storia con personaggi memorabili, conflitto leggibile e payoff emotivo forte.",
+    subgenres: [
+      "Narrativa letteraria",
+      "Saga familiare",
+      "Young adult",
+      "Avventura",
+      "Suspense",
+      "Formazione / crescita",
+      "Arco di redenzione",
+      "Personaggi moralmente ambigui",
+    ],
+    tones: [
+      "cinematografico",
+      "elegante e letterario",
+      "veloce e commerciale",
+      "crudo e realistico",
+      "intimo e confessionale",
+      "sospeso e misterioso",
+    ],
+    intensities: [
+      "Media",
+      "Intensa",
+      "Profondità letteraria",
+      "Page-turner commerciale",
+    ],
+    dynamics: [
+      "segreto familiare",
+      "redenzione",
+      "tradimento",
+      "perdita e rinascita",
+      "identità nascosta",
+      "fuga dal passato",
+    ],
+  };
+}
+
 function cleanManualNameLine(value: string): string {
   return value
     .replace(/^[\s\-*•\d.)]+/, "")
@@ -660,6 +941,41 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
+    const preset = getCharacterStudioPreset(genre);
+
+    setSubcategory((current) => {
+      const normalized = current.trim().toLowerCase();
+      const allowed = preset.subgenres.some((item) => item.toLowerCase() === normalized);
+      return allowed ? current : preset.subcategory;
+    });
+
+    setTone((current) => {
+      const normalized = current.trim().toLowerCase();
+      const allowed = preset.tones.some((item) => item.toLowerCase() === normalized);
+      return allowed ? current : preset.tone;
+    });
+
+    setIntensity((current) => {
+      const normalized = current.trim().toLowerCase();
+      const allowed = preset.intensities.some((item) => item.toLowerCase() === normalized);
+      return allowed ? current : preset.intensity;
+    });
+
+    setCentralDynamic((current) => {
+      const normalized = current.trim().toLowerCase();
+      const allowed = preset.dynamics.some((item) => item.toLowerCase() === normalized);
+      return allowed ? current : preset.centralDynamic;
+    });
+
+    setSpiceLevel(preset.spiceLevel);
+    setDarknessLevel(preset.darknessLevel);
+    setViolenceLevel(preset.violenceLevel);
+
+    setTargetReader((current) => current.trim() ? current : preset.targetReader);
+    setNarrativePromise((current) => current.trim() ? current : preset.narrativePromise);
+  }, [genre]);
+
+  useEffect(() => {
     if (!open) return;
     try {
       const freshStart = sessionStorage.getItem("scriptora-character-studio-fresh-start") === "1";
@@ -857,6 +1173,12 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       setIdeaLoading(false);
     }
   };
+
+  const smartPreset = getCharacterStudioPreset(genre);
+  const smartSubgenreOptions = smartPreset.subgenres;
+  const smartToneOptions = smartPreset.tones;
+  const smartIntensityOptions = smartPreset.intensities;
+  const smartDynamicOptions = smartPreset.dynamics;
 
   const canGenerate = idea.trim().length >= 8;
 
