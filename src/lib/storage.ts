@@ -75,6 +75,7 @@ async function idbDelete(id: string): Promise<void> {
 
 // In-memory cache for sync API while IDB loads
 let memCache: BookProject[] | null = null;
+let localStorageDisabled = false;
 
 // =====================================================================
 // Public sync API (kept for backwards compat — async layer underneath)
@@ -161,13 +162,16 @@ export async function hydrateFromIndexedDB(): Promise<void> {
 }
 
 function tryWriteCompressed(projects: BookProject[]): boolean {
+  if (localStorageDisabled) return false;
+
   try {
     const json = JSON.stringify(projects);
     const lz = LZString.compressToUTF16(json);
     localStorage.setItem(STORAGE_KEY_LZ, lz);
     return true;
   } catch (e) {
-    console.warn("[storage] Compressed write failed, falling back to IndexedDB:", e);
+    localStorageDisabled = true;
+    console.warn("[storage] localStorage quota exceeded, using IndexedDB only");
     return false;
   }
 }
