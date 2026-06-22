@@ -308,6 +308,146 @@ function defaultTitleForGenre(input: ExpressForgeInput, variant: ExpressScenario
   return buildTitle(input, variant);
 }
 
+function buildGenreAwareVariantCopy(
+  input: ExpressForgeInput,
+  variant: ExpressScenarioVariant,
+  protagonist: string,
+  counterpart: string,
+  setting: string,
+): {
+  hook?: string;
+  editorialSynopsis?: string;
+  centralConflict?: string;
+  stakes?: string;
+  endingDirection?: string;
+  finalEmotion?: string;
+  commercialPitch?: string;
+  whyItSells?: string;
+} {
+  if (isDarkRomance(input.genre) || isRomance(input.genre)) {
+    return {};
+  }
+
+  if (isHorrorGenre(input.genre)) {
+    if (variant === "safe") {
+      return {
+        hook: `${protagonist} entra in un luogo che non vuole essere ricordato — e ogni notte restituisce qualcosa che avrebbe dovuto restare morto.`,
+        editorialSynopsis: `La versione più stabile dell'horror: atmosfera densa, minaccia progressiva, mistero leggibile e paura crescente. ${protagonist} affronta ${setting.toLowerCase()}, dove memoria, colpa e presenza soprannaturale diventano una sola trappola.`,
+        centralConflict: `${protagonist} vuole capire cosa infesta il luogo, ma ogni risposta indebolisce il confine tra realtà, ricordo e possessione.`,
+        stakes: "Sanità mentale, identità, sopravvivenza e verità sepolta.",
+        endingDirection: "Finale catartico e inquieto: la verità emerge, ma lascia una cicatrice viva.",
+        finalEmotion: "Paura trattenuta, sollievo amaro e ultima ombra.",
+        commercialPitch: "Horror atmosferico: minaccia chiara, mistero forte e payoff disturbante.",
+        whyItSells: "Promessa horror leggibile: luogo malato, paura progressiva e finale che resta addosso.",
+      };
+    }
+
+    if (variant === "commercial") {
+      return {
+        hook: `${protagonist} scopre che la casa non è vuota: sta solo aspettando che qualcuno le dia di nuovo un nome.`,
+        editorialSynopsis: `La versione più vendibile dell'horror: capitoli aggancianti, rivelazioni a strati, oggetti maledetti, apparizioni controllate e una minaccia che si avvicina scena dopo scena. Il lettore resta perché ogni porta aperta peggiora la precedente.`,
+        centralConflict: `${protagonist} deve sopravvivere a una presenza che usa memoria e colpa come esche.`,
+        stakes: "Corpo, mente, verità familiare e possibilità di uscire ancora intera dal luogo.",
+        endingDirection: "Finale ad alto impatto: la fonte dell'orrore viene rivelata, ma il prezzo non è innocente.",
+        finalEmotion: "Terrore, rivelazione e brivido finale.",
+        commercialPitch: "Horror commerciale: hook immediato, escalation, apparizioni e cliffhanger puliti.",
+        whyItSells: "Alta leggibilità, paura crescente e promessa di mistero soprannaturale forte.",
+      };
+    }
+
+    return {
+      hook: `Il vero orrore non è ciò che ${protagonist} vede: è ciò che il luogo riesce a farle ricordare come se fosse sempre stato suo.`,
+      editorialSynopsis: `La versione più audace dell'horror: ambiguità psicologica, soprannaturale non addomesticato, corpo e memoria come campi di battaglia. La storia non consola: scava, contamina e lascia il lettore con il dubbio peggiore.`,
+      centralConflict: `${protagonist} deve decidere se distruggere la verità o lasciarsi trasformare da ciò che la abita.`,
+      stakes: "Identità, realtà, memoria e contagio dell'orrore oltre l'ultima pagina.",
+      endingDirection: "Finale disturbante: la minaccia viene compresa troppo tardi o sopravvive in una forma nuova.",
+      finalEmotion: "Inquietudine lunga, shock silenzioso ed eco disturbante.",
+      commercialPitch: "Horror bold: atmosfera autoriale, ambiguità e immagine finale memorabile.",
+      whyItSells: "Più rischioso, ma più riconoscibile: ideale per un horror che vuole restare nella pelle.",
+    };
+  }
+
+  if (isFantasyGenre(input.genre)) {
+    if (variant === "safe") {
+      return {
+        hook: `${protagonist} scopre che il potere capace di salvare il regno può anche distruggerla.`,
+        editorialSynopsis: `La versione più stabile del fantasy: mondo chiaro, magia comprensibile, minaccia crescente e arco emotivo forte. ${protagonist} entra in ${setting.toLowerCase()} e deve scegliere se accettare un'eredità che pretende un prezzo.`,
+        centralConflict: `${protagonist} deve reclamare un potere proibito mentre ${counterpart} custodisce una verità che può salvarla o tradirla.`,
+        stakes: "Regno, magia, libertà e identità della protagonista.",
+        endingDirection: "Finale epico e leggibile: scelta irreversibile, minaccia affrontata e nuova identità conquistata.",
+        finalEmotion: "Meraviglia, tensione e rinascita.",
+        commercialPitch: "Fantasy stabile: magia, destino, posta in gioco chiara e payoff emotivo.",
+        whyItSells: "Promessa fantasy classica ma forte: potere, regno, tradimento e trasformazione.",
+      };
+    }
+
+    if (variant === "commercial") {
+      return {
+        hook: `${protagonist} deve allearsi con chi conosce il segreto della corona, anche se quel segreto potrebbe condannarla.`,
+        editorialSynopsis: `La versione più vendibile del fantasy: magia proibita, alleanze instabili, tradimenti, rivelazioni progressive e capitoli con forte senso di meraviglia. Ogni scelta aumenta il costo del potere.`,
+        centralConflict: `${protagonist} deve salvare il regno senza diventare l'arma che il nemico aspettava.`,
+        stakes: "Corona, sangue, alleanze, memoria e sopravvivenza del mondo magico.",
+        endingDirection: "Finale ad alta posta in gioco: battaglia, verità sul potere e prezzo personale.",
+        finalEmotion: "Epicità, perdita e promessa di grandezza.",
+        commercialPitch: "Fantasy commerciale: magia, tradimento, corona e bingeability.",
+        whyItSells: "Hook immediato, mondo vendibile e conflitto chiaro tra potere e identità.",
+      };
+    }
+
+    return {
+      hook: `La magia non sceglie ${protagonist} per salvarla: la sceglie perché sa cosa può strapparle.`,
+      editorialSynopsis: `La versione più audace del fantasy: magia moralmente ambigua, eredità sporca, alleati instabili e una scelta finale che non lascia innocenti. Il destino del regno diventa una domanda scomoda: chi merita davvero il potere?`,
+      centralConflict: `${protagonist} deve decidere se rompere la maledizione o usarla, rischiando di diventare ciò che combatte.`,
+      stakes: "Destino del regno, corruzione del potere, identità e memoria.",
+      endingDirection: "Finale potente e agrodolce: vittoria possibile, innocenza perduta.",
+      finalEmotion: "Grandezza, ferita e senso di mito.",
+      commercialPitch: "Fantasy bold: magia oscura, moralità ambigua e finale memorabile.",
+      whyItSells: "Più distintivo: adatto a un fantasy oscuro con identità forte.",
+    };
+  }
+
+  if (isThrillerGenre(input.genre)) {
+    if (variant === "safe") {
+      return {
+        hook: `${protagonist} riapre una verità archiviata e capisce che qualcuno ha costruito il silenzio con precisione chirurgica.`,
+        editorialSynopsis: `La versione più stabile del thriller: indagine chiara, tensione progressiva, prove mancanti e minaccia credibile. Ogni scoperta avvicina ${protagonist} a una verità che qualcuno ha protetto troppo a lungo.`,
+        centralConflict: `${protagonist} deve seguire una pista cancellata mentre l'antagonista trasforma ogni prova in un rischio personale.`,
+        stakes: "Verità, reputazione, giustizia e sopravvivenza.",
+        endingDirection: "Finale risolutivo con twist controllato e verità pagata a caro prezzo.",
+        finalEmotion: "Tensione sciolta, sospetto residuo e giustizia imperfetta.",
+        commercialPitch: "Thriller stabile: indagine, pressione e twist leggibile.",
+        whyItSells: "Promessa chiara: mistero forte, ritmo e payoff.",
+      };
+    }
+
+    if (variant === "commercial") {
+      return {
+        hook: `Ogni prova che ${protagonist} trova sembra salvarla, finché non capisce che è stata messa lì per guidarla nella trappola.`,
+        editorialSynopsis: `La versione più vendibile del thriller: cliffhanger, piste false, rivelazioni a strati, pressione temporale e antagonista sempre un passo avanti. Il lettore continua perché ogni risposta cambia la domanda.`,
+        centralConflict: `${protagonist} deve distinguere prove vere e prove costruite prima che la trappola si chiuda.`,
+        stakes: "Vita, verità pubblica, colpa e possibilità di fermare il colpevole.",
+        endingDirection: "Finale ad alta tensione: twist, confronto e ribaltamento dell'ultima prova.",
+        finalEmotion: "Scarica di adrenalina e sospetto finale.",
+        commercialPitch: "Thriller commerciale: twist, ritmo e alta leggibilità.",
+        whyItSells: "Bingeability alta, capitoli-gancio e promessa di colpo di scena.",
+      };
+    }
+
+    return {
+      hook: `Il caso non vuole essere risolto: vuole dimostrare che ${protagonist} è parte della menzogna.`,
+      editorialSynopsis: `La versione più audace del thriller: paranoia, colpa, verità instabile e antagonista speculare. L'indagine non porta solo al colpevole, ma alla domanda più pericolosa: quanto della verità può sopravvivere a chi la racconta?`,
+      centralConflict: `${protagonist} deve scoprire il colpevole senza diventare la prossima menzogna del caso.`,
+      stakes: "Identità morale, verità, memoria e giustizia contaminata.",
+      endingDirection: "Finale ambiguo e tagliente: verità rivelata, ma nessuno resta pulito.",
+      finalEmotion: "Paranoia elegante, amarezza e ultima domanda.",
+      commercialPitch: "Thriller bold: psicologico, morale, memorabile.",
+      whyItSells: "Più rischioso ma più riconoscibile: ideale per thriller psicologico adulto.",
+    };
+  }
+
+  return {};
+}
+
 function buildGenreAwareEditorialSynopsis(
   input: ExpressForgeInput,
   variant: ExpressScenarioVariant,
@@ -809,11 +949,11 @@ function buildNonfictionExpressPackage(
     secondaryCharacters: ["Mentor implicito (voce autoriale)", "Comunità o accountability partner"],
     setting: "Contesto quotidiano del lettore — lavoro, relazioni, abitudini",
     atmosphere: `${input.tone}, chiaro, empatico, orientato all'azione`,
-    centralConflict,
+    centralConflict: variantCopy.centralConflict ?? centralConflict,
     emotionalWound,
     desire,
     fear,
-    stakes,
+    stakes: variantCopy.stakes ?? stakes,
     moralBoundary: "Niente promesse miracle, niente colpe al lettore, niente consigli medici o legali non qualificati",
     antiDriftRules: [
       `Mantieni il genere ${genreMeta.subgenre} e il tono ${input.tone}`,
@@ -828,13 +968,13 @@ function buildNonfictionExpressPackage(
     keyScenes,
     midpoint,
     climax,
-    endingDirection,
-    finalEmotion,
+    endingDirection: variantCopy.endingDirection ?? endingDirection,
+    finalEmotion: variantCopy.finalEmotion ?? finalEmotion,
     frontMatter: "Prefazione — perché questo metodo · Come usare il libro · Nota dell'autore",
     backMatter: "Workbook sintetico · Risorse consigliate · Ringraziamenti · Prossimi passi",
     authorName: "Da definire",
     copyright: `© ${new Date().getFullYear()} — titolare da confermare`,
-    commercialPitch: meta.pitch,
+    commercialPitch: variantCopy.commercialPitch ?? meta.pitch,
     editorialRisks: [meta.risk],
     whyItSells: `${meta.pitch} — promessa chiara, problema riconoscibile, esercizi concreti`,
     readerProblem,
@@ -1055,8 +1195,24 @@ export function buildCompleteExpressBookPackage(
     : "Finale coerente con la promessa — trasformazione visibile e payoff emotivo";
   const finalEmotion =
     variant === "bold" ? "Catharsis intensa, crepa aperta, eco lunga" : "Soddisfazione emotiva e senso di completamento";
-  const midpoint = "La verità parziale sull'incendio / sul passato ribalta fiducia e desiderio";
-  const climax = "Confronto nella casa — verità, possesso e scelta irreversibile";
+  const midpoint = isDarkRomance(input.genre)
+    ? "La verità parziale sull'incendio / sul passato ribalta fiducia e desiderio"
+    : isFantasyGenre(input.genre)
+      ? "Rivelazione sul vero costo della magia e sul tradimento dietro la corona"
+      : isThrillerGenre(input.genre)
+        ? "La prova decisiva ribalta il sospetto e rende personale la minaccia"
+        : isHorrorGenre(input.genre)
+          ? "La presenza mostra la propria origine e lega la protagonista al luogo"
+          : "Rivelazione centrale che ribalta obiettivo, fiducia e posta in gioco";
+  const climax = isDarkRomance(input.genre)
+    ? "Confronto nella casa — verità, possesso e scelta irreversibile"
+    : isFantasyGenre(input.genre)
+      ? "Scelta finale davanti al potere proibito — salvare il regno o conservare se stessa"
+      : isThrillerGenre(input.genre)
+        ? "Confronto finale con il colpevole e ribaltamento dell'ultima prova"
+        : isHorrorGenre(input.genre)
+          ? "Confronto con la presenza nel punto più malato del luogo"
+          : "Confronto finale — verità, prezzo e scelta irreversibile";
 
   const partial = {
     emotionalWound,
@@ -1069,6 +1225,19 @@ export function buildCompleteExpressBookPackage(
     climax,
     finalEmotion,
   };
+
+  const variantCopy = buildGenreAwareVariantCopy(
+    input,
+    variant,
+    lead.name,
+    counterpart.name,
+    setting,
+  );
+
+  if (variantCopy.hook) partial.hook = variantCopy.hook;
+  if (variantCopy.centralConflict) partial.centralConflict = variantCopy.centralConflict;
+  if (variantCopy.endingDirection) partial.endingDirection = variantCopy.endingDirection;
+  if (variantCopy.finalEmotion) partial.finalEmotion = variantCopy.finalEmotion;
 
   const characters = buildCharacters(lead, counterpart, partial, input.genre);
   const chapterBlueprintSeeds = buildChapterSeeds(chapterCount, input.genre, variant, setting);
@@ -1115,9 +1284,9 @@ export function buildCompleteExpressBookPackage(
     label: meta.label,
     title,
     subtitle,
-    hook,
-    logline: `${lead.name} vs ${counterpart.name}: ${centralConflict.slice(0, 120)}…`,
-    editorialSynopsis,
+    hook: variantCopy.hook ?? hook,
+    logline: `${lead.name} vs ${counterpart.name}: ${(variantCopy.centralConflict ?? centralConflict).slice(0, 120)}…`,
+    editorialSynopsis: variantCopy.editorialSynopsis ?? editorialSynopsis,
     genre: genreMeta.normalizedGenre,
     subgenre: genreMeta.subgenre,
     language,
@@ -1127,7 +1296,15 @@ export function buildCompleteExpressBookPackage(
     marketPromise,
     protagonist: lead.name,
     antagonistOrLoveInterest: `${counterpart.name} — ${counterpart.role}`,
-    secondaryCharacters: ["Sorella (memoria/assenza)", "Comunità locale che custodisce silenzi"],
+    secondaryCharacters: isDarkRomance(input.genre)
+      ? ["Sorella (memoria/assenza)", "Comunità locale che custodisce silenzi"]
+      : isFantasyGenre(input.genre)
+        ? ["Consiglio della corona", "Ordine dei maghi", "Popolo del regno"]
+        : isThrillerGenre(input.genre)
+          ? ["Testimone ambiguo", "Archivista", "Figura istituzionale corrotta"]
+          : isHorrorGenre(input.genre)
+            ? ["Presenza", "Vicino che sa troppo", "Voce nei muri"]
+            : ["Alleato ambiguo", "Custode del segreto"],
     setting,
     atmosphere: `${input.tone}, claustrofobico, sensoriale, ${variant === "bold" ? "inquietante" : "magnetico"}`,
     centralConflict,
@@ -1159,9 +1336,11 @@ export function buildCompleteExpressBookPackage(
     copyright: `© ${new Date().getFullYear()} — titolare da confermare`,
     commercialPitch: meta.pitch,
     editorialRisks: [meta.risk],
-    whyItSells: isDarkRomance(input.genre)
-      ? "Dark romance con hook territoriale, segreto familiare e tensione slow burn ad alto engagement"
-      : `${meta.pitch} — promessa chiara e personaggi con ferita riconoscibile`,
+    whyItSells:
+      variantCopy.whyItSells ??
+      (isDarkRomance(input.genre)
+        ? "Dark romance con hook territoriale, segreto familiare e tensione slow burn ad alto engagement"
+        : `${meta.pitch} — promessa chiara e personaggi con ferita riconoscibile`),
     characters,
     storyRoom,
     storyFuture,
