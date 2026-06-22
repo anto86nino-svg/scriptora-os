@@ -211,47 +211,158 @@ function isRomance(genre: string): boolean {
   return /romance/i.test(genre);
 }
 
-function parseProtagonistLabel(seed: string): { name: string; role: string } {
-  const lower = seed.toLowerCase();
-  if (/restauratrice|restauratore/i.test(seed)) {
-    return { name: "Elena", role: "restauratrice" };
-  }
-  if (/chef/i.test(seed)) {
-    return { name: "Elena", role: "chef tormentata" };
-  }
-  if (/detective|ispettore/i.test(seed)) {
-    return { name: "Luca", role: "detective segnato dal passato" };
-  }
-  const words = seed.split(/\s+/).filter(Boolean);
-  if (words.length >= 2 && /^[A-ZÀ-Ü]/.test(words[0]!)) {
-    return { name: words[0]!, role: seed };
-  }
-  return { name: "Elena", role: seed || "protagonista segnato dal passato" };
+function isFantasyGenre(genre: string): boolean {
+  return /fantasy|epic|magia|magico|urbanfantasy/i.test(genre);
 }
 
-function parseCounterpart(genre: string, variant: ExpressScenarioVariant): { name: string; role: string } {
-  if (isDarkRomance(genre)) {
+function isThrillerGenre(genre: string): boolean {
+  return /thriller|giallo|noir|crime|mystery/i.test(genre);
+}
+
+function isHorrorGenre(genre: string): boolean {
+  return /horror|gotico|gothic|paura|soprannaturale/i.test(genre);
+}
+
+function defaultLeadForGenre(genre: string): { name: string; role: string } {
+  if (isFantasyGenre(genre)) {
+    return { name: "Arianna", role: "erede di un potere antico che non ha mai chiesto" };
+  }
+  if (isThrillerGenre(genre)) {
+    return { name: "Marta", role: "investigatrice costretta a riaprire un caso sepolto" };
+  }
+  if (isHorrorGenre(genre)) {
+    return { name: "Iris", role: "sopravvissuta attratta da una verità proibita" };
+  }
+  if (isDarkRomance(genre) || isRomance(genre)) {
+    return { name: "Elena", role: "protagonista segnata dal passato" };
+  }
+  return { name: "Arianna", role: "protagonista chiamata a una scelta irreversibile" };
+}
+
+function defaultCounterpartForGenre(
+  genre: string,
+  variant: ExpressScenarioVariant,
+): { name: string; role: string } {
+  if (isFantasyGenre(genre)) {
+    return variant === "bold"
+      ? { name: "Kael", role: "principe esiliato legato alla stessa maledizione" }
+      : { name: "Kael", role: "custode ambiguo di una magia proibita" };
+  }
+  if (isThrillerGenre(genre)) {
+    return { name: "Neri", role: "antagonista invisibile che manipola prove e colpe" };
+  }
+  if (isHorrorGenre(genre)) {
+    return { name: "La Casa", role: "presenza antagonica che divora memoria e identità" };
+  }
+  if (isDarkRomance(genre) || isRomance(genre)) {
     return variant === "bold"
       ? { name: "Marco", role: "proprietario magnetico, colpevole e irresistibile" }
       : { name: "Marco", role: "proprietario affascinante e pericoloso" };
   }
-  if (/thriller|horror/i.test(genre)) {
-    return { name: "Valerio", role: "figura che conosce troppo e nasconde la verità" };
-  }
-  return { name: "Marco", role: "forza antagonica che specchia e sfida il protagonista" };
+  return { name: "La Forza Opposta", role: "forza antagonica che specchia e sfida il protagonista" };
 }
 
-function parseSetting(seed: string, genre: string): string {
-  if (/villa|incendio|restauratrice/i.test(seed)) {
-    return "Villa decadente sulle colline, segnata da un incendio doloso e da stanze che conservano cenere e silenzi";
+function defaultSettingForGenre(genre: string): string {
+  if (isFantasyGenre(genre)) {
+    return "Regno diviso tra città di cenere, foreste incantate e una corona legata a una magia proibita";
   }
-  if (/città|metropoli|urban/i.test(seed)) {
-    return "Metropoli notturna, quartieri che cambiano volto tra luci al neon e ombre che non perdonano";
+  if (isThrillerGenre(genre)) {
+    return "Città contemporanea attraversata da archivi nascosti, strade notturne e verità cancellate";
   }
-  if (isDarkRomance(genre)) {
+  if (isHorrorGenre(genre)) {
+    return "Luogo isolato dove il confine tra memoria, colpa e presenza soprannaturale si assottiglia";
+  }
+  if (isDarkRomance(genre) || isRomance(genre)) {
     return "Maniero isolato, muri umidi e stanze chiuse dove ogni oggetto sembra custodire un segreto";
   }
-  return "Ambientazione claustrofobica e sensoriale, costruita per amplificare desiderio, paura e verità negata";
+  return "Mondo narrativo ad alta tensione costruito intorno alla scelta irreversibile della protagonista";
+}
+
+function defaultTitleForGenre(input: ExpressForgeInput, variant: ExpressScenarioVariant): string {
+  if (input.title?.trim()) return input.title.trim();
+
+  if (isFantasyGenre(input.genre)) {
+    return variant === "bold"
+      ? "Cenere e Corona"
+      : variant === "commercial"
+        ? "La Corona delle Ombre"
+        : "Il Patto della Magia Perduta";
+  }
+
+  if (isThrillerGenre(input.genre)) {
+    return variant === "bold"
+      ? "La Verità Sepolta"
+      : variant === "commercial"
+        ? "Il Codice del Silenzio"
+        : "L'Ultima Prova";
+  }
+
+  if (isHorrorGenre(input.genre)) {
+    return variant === "bold"
+      ? "La Casa che Ricorda"
+      : variant === "commercial"
+        ? "Dove Dormono le Ombre"
+        : "Il Buio Dietro la Porta";
+  }
+
+  return buildTitle(input, variant);
+}
+
+function buildGenreAwareEditorialSynopsis(
+  input: ExpressForgeInput,
+  variant: ExpressScenarioVariant,
+  lead: { name: string; role: string },
+  counterpart: { name: string; role: string },
+  setting: string,
+): string {
+  if (isFantasyGenre(input.genre)) {
+    const intensity =
+      variant === "bold"
+        ? "La versione più audace: magia proibita, moralità ambigua, eredità sporca e una scelta finale che cambia il destino del regno."
+        : variant === "commercial"
+          ? "La versione più vendibile: potere nascosto, alleanze instabili, tradimenti, rivelazioni progressive e capitoli con forte senso di meraviglia."
+          : "La versione più stabile: una protagonista riconoscibile, un mondo magico chiaro, una minaccia crescente e un arco emotivo leggibile.";
+    return `${intensity} ${lead.name} entra in ${setting.toLowerCase()} e scopre che il potere non è un dono: è un debito. ${counterpart.name} può guidarla o tradirla, ma ogni passo verso la corona pretende memoria, sangue e identità.`;
+  }
+
+  if (isThrillerGenre(input.genre)) {
+    return `Un thriller ${input.tone} costruito su prove mancanti, colpe sepolte e pressione crescente. ${lead.name} deve seguire una pista che qualcuno ha cancellato, mentre ${counterpart.name} trasforma ogni risposta in una minaccia più vicina.`;
+  }
+
+  if (isHorrorGenre(input.genre)) {
+    return `Un horror ${input.tone} dove il luogo non è semplice ambientazione, ma predatore. ${lead.name} attraversa segni, presenze e memorie deformate finché la verità smette di essere liberazione e diventa contagio.`;
+  }
+
+  return buildEditorialSynopsis(input, variant, lead, counterpart, setting);
+}
+
+function parseProtagonistLabel(seed: string, genre = ""): { name: string; role: string } {
+  if (/\b([A-ZÀ-Ý][a-zà-ÿ]{2,})\b/.test(seed)) {
+    const match = seed.match(/\b([A-ZÀ-Ý][a-zà-ÿ]{2,})\b/);
+    if (match?.[1] && !/Es|Una|Un|Il|La|Lo|Gli|Le|Nel|Nella|Quando/.test(match[1])) {
+      return { name: match[1], role: defaultLeadForGenre(genre).role };
+    }
+  }
+  if (/restauratrice/i.test(seed)) return { name: "Elena", role: "restauratrice" };
+  if (/chef/i.test(seed)) return { name: "Elena", role: "chef tormentata" };
+  return defaultLeadForGenre(genre);
+}
+
+function parseCounterpart(
+  genre: string,
+  variant: ExpressScenarioVariant,
+): { name: string; role: string } {
+  return defaultCounterpartForGenre(genre, variant);
+}
+
+function parseSetting(seed: string, genre = ""): string {
+  if (/villa|incendio|restauratrice/i.test(seed) && (isDarkRomance(genre) || isRomance(genre))) {
+    return "Villa decadente sulle colline, segnata da un incendio doloso e da stanze che conservano cenere e silenzi";
+  }
+  if (/regno|corona|magia|drago|incantesimo|foresta|impero/i.test(seed)) {
+    return "Regno antico attraversato da magia proibita, alleanze spezzate e poteri che chiedono un prezzo";
+  }
+  return defaultSettingForGenre(genre);
 }
 
 function buildTitle(input: ExpressForgeInput, variant: ExpressScenarioVariant): string {
@@ -887,7 +998,7 @@ export function buildCompleteExpressBookPackage(
     normalizedGenre: input.genre,
   };
   const seed = ideaCore(input);
-  const lead = parseProtagonistLabel(seed);
+  const lead = parseProtagonistLabel(seed, input.genre);
   const counterpart = parseCounterpart(input.genre, variant);
   const setting = parseSetting(seed, input.genre);
   const chapterCount = chapterCountForInput(input);
@@ -895,25 +1006,39 @@ export function buildCompleteExpressBookPackage(
 
   const emotionalWound = isDarkRomance(input.genre)
     ? "Colpa per la morte della sorella e bisogno di controllo come unica difesa"
-    : "Ferita antica che lega identità, desiderio e paura di essere tradita di nuovo";
+    : isFantasyGenre(input.genre)
+      ? "Eredità magica rifiutata e paura che il potere riveli una parte mostruosa di sé"
+      : "Ferita antica che lega identità, desiderio e paura di essere tradita di nuovo";
   const desire = isDarkRomance(input.genre)
     ? "Scoprire la verità sull'incendio senza perdere se stessa"
-    : "Trasformazione concreta e relazione che non la annulli";
+    : isFantasyGenre(input.genre)
+      ? "Spezzare la maledizione del regno senza diventare lo strumento della corona"
+      : "Trasformazione concreta e relazione che non la annulli";
   const fear = isDarkRomance(input.genre)
     ? "Ricordare troppo — e desiderare chi dovrebbe temere"
-    : "Perdere controllo, verità e ciò che rende la vita degna di essere vissuta";
+    : isFantasyGenre(input.genre)
+      ? "Usare la magia e scoprire che il prezzo richiesto è la propria identità"
+      : "Perdere controllo, verità e ciò che rende la vita degna di essere vissuta";
   const centralConflict = isDarkRomance(input.genre)
     ? `${lead.name} cerca verità e giustizia, ma ${counterpart.name} le offre protezione solo finché non minaccia ciò che la casa nasconde`
-    : `${lead.name} deve scegliere tra ciò che desidera e ciò che teme di perdere, mentre ${counterpart.name} amplifica ogni contraddizione`;
+    : isFantasyGenre(input.genre)
+      ? `${lead.name} deve scegliere se reclamare un potere proibito per salvare il regno, mentre ${counterpart.name} custodisce una verità che può incoronarla o distruggerla`
+      : `${lead.name} deve scegliere tra ciò che desidera e ciò che teme di perdere, mentre ${counterpart.name} amplifica ogni contraddizione`;
   const stakes = isDarkRomance(input.genre)
     ? "Memoria, identità, cuore — e la possibilità che amare significhi tradire i morti"
-    : "Identità, relazioni e futuro — ciò che si perde non torna indietro";
+    : isFantasyGenre(input.genre)
+      ? "Corona, magia, libertà del regno e identità della protagonista"
+      : "Identità, relazioni e futuro — ciò che si perde non torna indietro";
   const marketPromise = isDarkRomance(input.genre)
     ? "Un dark romance claustrofobico dove colpa, desiderio e redenzione sporca si confondono, finché amare qualcuno significa scegliere se bruciare con lui o salvarsi dalle sue fiamme."
-    : `Un ${input.genre} ${input.tone} che promette tensione emotiva, payoff memorabile e una storia che resta addosso dopo l'ultima pagina.`;
+    : isFantasyGenre(input.genre)
+      ? `Un fantasy ${input.tone} dove magia, tradimento e costo del potere costruiscono una promessa epica con payoff emotivo.`
+      : `Un ${input.genre} ${input.tone} che promette tensione emotiva, payoff memorabile e una storia che resta addosso dopo l'ultima pagina.`;
   const hook = isDarkRomance(input.genre)
     ? `Tornare nella villa dove sua sorella è morta non era mai stato sicuro — ma scoprire che ${counterpart.name} la desidera è la forma più pericolosa di colpa.`
-    : `${lead.name} credeva di controllare la storia. ${setting.split(",")[0]} le dimostra il contrario.`;
+    : isFantasyGenre(input.genre)
+      ? `${lead.name} scopre che la magia capace di salvare il regno è la stessa che può trasformarla nel suo prossimo tiranno.`
+      : `${lead.name} credeva di controllare la storia. ${setting.split(",")[0]} le dimostra il contrario.`;
   const subtitle = input.subtitle?.trim()
     ? input.subtitle.trim()
     : isDarkRomance(input.genre)
@@ -921,8 +1046,8 @@ export function buildCompleteExpressBookPackage(
       ? "Quando il desiderio brucia più forte della verità"
       : "Quando la verità è più pericolosa del fuoco"
     : `Un ${input.genre} ${input.tone} — promessa, tensione e payoff`;
-  const title = buildTitle(input, variant);
-  const editorialSynopsis = buildEditorialSynopsis(input, variant, lead, counterpart, setting);
+  const title = defaultTitleForGenre(input, variant);
+  const editorialSynopsis = buildGenreAwareEditorialSynopsis(input, variant, lead, counterpart, setting);
   const endingDirection = isDarkRomance(input.genre)
     ? variant === "bold"
       ? "Finale devastante: redenzione possibile solo attraverso una scelta che brucia qualcosa per sempre"
@@ -1013,7 +1138,9 @@ export function buildCompleteExpressBookPackage(
     moralBoundary: "Niente consenso ambiguo gratuitamente, niente abuso romanticizzato, niente deus ex machina",
     antiDriftRules: [
       `Mantieni il genere ${genreMeta.subgenre} e il tono ${input.tone}`,
-      "Non trasformare il dark romance in fantasy o thriller generico",
+      isDarkRomance(input.genre)
+        ? "Non trasformare il dark romance in fantasy o thriller generico"
+        : `Non contaminare ${input.genre} con tropi dark romance se l'utente non li ha richiesti`,
       "Ogni capitolo deve aumentare desiderio, verità o posta in gioco",
       "Il finale deve pagare la promessa emotiva del setup",
     ],
