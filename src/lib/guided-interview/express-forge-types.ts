@@ -5,7 +5,20 @@ import type { ExpressBookScenario } from "./express-book-package";
 export type ExpressTitleMode = "provided" | "provisional" | "suggest";
 export type ExpressControlLevel = "auto" | "scenarios" | "minimal";
 
+export type ExpressBookFormat =
+  | "novel"
+  | "novella"
+  | "poetry_collection"
+  | "short_story_collection"
+  | "essay"
+  | "memoir"
+  | "self_help"
+  | "study_material"
+  | "children_book"
+  | "mixed_or_unknown";
+
 export type ExpressForgeInput = {
+  bookFormat: ExpressBookFormat;
   genre: string;
   language: string;
   titleMode: ExpressTitleMode;

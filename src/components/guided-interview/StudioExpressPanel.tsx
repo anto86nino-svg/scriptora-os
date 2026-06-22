@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Check, Loader2, Sparkles, Zap } from "lucide-react";
 import type {
+  ExpressBookFormat,
   ExpressControlLevel,
   ExpressForgeInput,
   ExpressTitleMode,
@@ -36,6 +37,19 @@ const GENRES = [
   "altro",
 ];
 
+const BOOK_FORMATS: { value: ExpressBookFormat; label: string }[] = [
+  { value: "novel", label: "Romanzo" },
+  { value: "novella", label: "Novella / romanzo breve" },
+  { value: "poetry_collection", label: "Raccolta poetica" },
+  { value: "short_story_collection", label: "Raccolta di racconti" },
+  { value: "essay", label: "Saggio" },
+  { value: "memoir", label: "Memoir" },
+  { value: "self_help", label: "Self-help / crescita personale" },
+  { value: "study_material", label: "Materiale di studio" },
+  { value: "children_book", label: "Libro per bambini" },
+  { value: "mixed_or_unknown", label: "Misto / non so ancora" },
+];
+
 const LANGUAGES = ["Italiano", "Inglese", "Spagnolo", "Francese", "Tedesco", "Auto"];
 const CONTROL_LEVELS: { id: ExpressControlLevel; label: string }[] = [
   { id: "auto", label: "Fai tu, voglio partire subito" },
@@ -67,6 +81,7 @@ export function StudioExpressPanel({
   compact = false,
   className,
 }: StudioExpressPanelProps) {
+  const [bookFormat, setBookFormat] = useState<ExpressBookFormat>("novel");
   const [genre, setGenre] = useState("dark romance");
   const [language, setLanguage] = useState("Italiano");
   const [titleMode, setTitleMode] = useState<ExpressTitleMode>("suggest");
@@ -88,6 +103,12 @@ export function StudioExpressPanel({
   const tones = getExpressTones(genre);
   const lengthOptions = getExpressLengthOptions(genre);
   const panelIntro = getExpressPanelIntro(genre);
+
+  useEffect(() => {
+    if (bookFormat === "poetry_collection" && genre !== "poesia") {
+      setGenre("poesia");
+    }
+  }, [bookFormat, genre]);
 
   useEffect(() => {
     const available = getExpressTones(genre);
@@ -226,6 +247,7 @@ export function StudioExpressPanel({
       finalSubtitle = best.subtitle;
     }
     onSubmit({
+      bookFormat,
       genre,
       language,
       titleMode: level === "auto" ? "suggest" : titleMode,
@@ -316,6 +338,31 @@ export function StudioExpressPanel({
             ))}
           </select>
         </Field>
+
+        <Field label="Formato libro">
+          <select
+            value={bookFormat}
+            onChange={(e) => setBookFormat(e.target.value as ExpressBookFormat)}
+            className="w-full rounded-xl border border-white/12 bg-white/[0.06] px-3 py-2 text-sm text-white"
+          >
+            {BOOK_FORMATS.map((format) => (
+              <option key={format.value} value={format.value}>
+                {format.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        {bookFormat === "poetry_collection" && (
+          <div className={cn("rounded-xl border border-fuchsia-300/25 bg-fuchsia-500/10 p-3", compact ? "" : "sm:col-span-2")}>
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-fuchsia-100/90">
+              Modalità poesia rilevata
+            </p>
+            <p className="mt-1 text-xs leading-5 text-fuchsia-50/80">
+              Scriptora costruirà voce poetica, sezioni, immagini ricorrenti ed eco finale. Niente struttura da romanzo, niente tropi romance forzati.
+            </p>
+          </div>
+        )}
 
         {isAutoMode ? (
           <div className={cn("rounded-xl border border-emerald-400/25 bg-emerald-500/10 p-3", compact ? "" : "sm:col-span-2")}>

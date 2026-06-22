@@ -1217,6 +1217,20 @@ function enforceExpressScenarioDivergence(
 
 
 export function buildExpressBookScenarios(input: ExpressForgeInput): ExpressBookScenario[] {
+  const explicitPoetryCollection =
+    input.bookFormat === "poetry_collection" ||
+    /\b(poesia|raccolta\s+poetica|silloge|liriche|versi)\b/i.test(
+      `${input.genre} ${input.ideaSeed}`,
+    );
+
+  if (explicitPoetryCollection && input.genre !== "poesia") {
+    return buildExpressBookScenarios({
+      ...input,
+      genre: "poesia",
+      tone: input.tone || "poetico",
+    });
+  }
+
   return enforceExpressScenarioDivergence(
     (["safe", "commercial", "bold"] as ExpressScenarioVariant[]).map((variant) =>
       buildCompleteExpressBookPackage(input, variant),

@@ -18,7 +18,14 @@ export function buildExpressForgeConfiguration(
   input: ExpressForgeInput,
   baseState?: GuidedInterviewState,
 ): ExpressForgeResult {
+  const inferredBookFormat =
+    input.bookFormat ??
+    (/\b(poesia|poesia\s+gotica|raccolta\s+poetica|silloge|liriche|versi)\b/i.test(`${input.genre} ${input.ideaSeed}`)
+      ? "poetry_collection"
+      : "novel");
+
   const normalizedInput: ExpressForgeInput = {
+    bookFormat: inferredBookFormat,
     ...input,
     ideaSeed: input.ideaSeed || input.protagonistSeed || "",
   };
@@ -27,6 +34,7 @@ export function buildExpressForgeConfiguration(
   const memory = createEmptyForgeMemory();
   const provenance: Record<string, ForgeFieldProvenance> = {};
 
+  provenance.bookFormat = prov(normalizedInput.bookFormat, "user", 0.95);
   provenance.genre = prov(normalizedInput.genre, "user", 0.95);
   provenance.language = prov(normalizedInput.language, "user", 0.95);
   provenance.rawIdea = prov(normalizedInput.ideaSeed, "user", 0.95);
