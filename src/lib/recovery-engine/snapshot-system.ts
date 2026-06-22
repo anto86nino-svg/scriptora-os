@@ -94,7 +94,7 @@ export function saveChapterCheckpoint(
   const snapshot = createRecoverySnapshot(project, "chapter_checkpoint");
   const chapter = snapshot.state.chapters[chapterIndex];
   if (chapter) {
-    chapter.content = content;
+    chapter.content = content.slice(-2000);
     chapter.checkpointPercent = percent;
     chapter.status = percent >= 100 ? "completed" : "generating";
   }
