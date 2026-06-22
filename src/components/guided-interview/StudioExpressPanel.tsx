@@ -422,7 +422,9 @@ export function StudioExpressPanel({
 
             {titleIncomplete && (
               <p className="mt-2 rounded-lg border border-amber-400/25 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-100/90">
-                Titolo o sottotitolo mancante —{" "}
+                {titleCandidates.length > 0
+                  ? "Scegli un titolo generato oppure usa quello consigliato — "
+                  : "Titolo o sottotitolo mancante — "}
                 <button
                   type="button"
                   onClick={handleGenerateClick}
