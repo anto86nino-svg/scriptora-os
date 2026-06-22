@@ -638,6 +638,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   const [language, setLanguage] = useState("Italian");
   const [manualCharacterNames, setManualCharacterNames] = useState("");
   const [characterBible, setCharacterBible] = useState("");
+  const [activeStudioStep, setActiveStudioStep] = useState<"identity" | "idea" | "direction" | "bible">("identity");
   const [previewPanel, setPreviewPanel] = useState<"idea" | "bible" | null>(null);
   const [loading, setLoading] = useState(false);
   const [ideaLoading, setIdeaLoading] = useState(false);
@@ -1014,6 +1015,89 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
               </button>
             </div>
 
+        <div className="border-b border-border bg-muted/20 px-4 py-3">
+          <div className="grid gap-2 sm:grid-cols-4">
+            {[
+              ["identity", "1", "Fondamenta autore", "Voce e pseudonimo"],
+              ["idea", "2", "Idea", "Premessa leggibile"],
+              ["direction", "3", "Regia", "Genere, tono, dinamica"],
+              ["bible", "4", "Cast canonico", "Bible e Book Forge"],
+            ].map(([id, num, title, subtitle]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setActiveStudioStep(id as typeof activeStudioStep)}
+                className={`rounded-2xl border px-3 py-3 text-left transition ${
+                  activeStudioStep === id
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-border bg-background/60 text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                <div className="mb-1 flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                    {num}
+                  </span>
+                  <span className="text-sm font-bold">{title}</span>
+                </div>
+                <p className="text-xs">{subtitle}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+            <div className="overflow-y-auto whitespace-pre-wrap px-6 py-5 text-sm leading-7 text-foreground">
+              {(previewPanel === "idea" ? idea : characterBible).trim() || "Nessun testo disponibile."}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-muted/30 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText((previewPanel === "idea" ? idea : characterBible).trim());
+                  toast.success("Testo copiato.");
+                }}
+                className="rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-muted"
+              >
+                Copia testo
+              </button>
+              {previewPanel === "bible" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreviewPanel(null);
+                    saveAndLink();
+                  }}
+                  className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+                >
+                  Salva e continua in Book Forge
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewPanel && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border bg-card/95 px-5 py-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
+                  Character Studio
+                </p>
+                <h3 className="text-lg font-bold text-foreground">
+                  {previewPanel === "idea" ? "Idea del romanzo in lettura" : "Character Bible canonica"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewPanel(null)}
+                className="rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
+              >
+                Chiudi
+              </button>
+            </div>
+
             <div className="overflow-y-auto whitespace-pre-wrap px-6 py-5 text-sm leading-7 text-foreground">
               {(previewPanel === "idea" ? idea : characterBible).trim() || "Nessun testo disponibile."}
             </div>
@@ -1194,7 +1278,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
               <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-300 flex items-start gap-2">
                 <CheckCircle2 className="h-4 w-4 mt-0.5" />
                 <div>
-                  <strong>Collegamento attivo.</strong> Quando apri “Nuovo Libro”, Scriptora sa già che stai creando un romanzo di genere <strong>{genre}</strong>{subcategory ? ` / ${subcategory}` : ""} e userà questi personaggi come Character Lock.
+                  <strong>Collegamento attivo.</strong> Quando apri “Book Forge”, Scriptora sa già che stai creando un romanzo di genere <strong>{genre}</strong>{subcategory ? ` / ${subcategory}` : ""} e userà questi personaggi come Character Lock.
                 </div>
               </div>
             )}
@@ -1205,7 +1289,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
             <div>
               <p className="text-sm font-semibold">Regia del romanzo</p>
               <p className="text-xs text-muted-foreground">
-                Scegli genere, filone, tono, intensità e dinamica narrativa. Scriptora userà queste coordinate per creare personaggi coerenti e agganciarli a Nuovo Libro.
+                Scegli genere, filone, tono, intensità e dinamica narrativa. Scriptora userà queste coordinate per creare personaggi coerenti e agganciarli a Book Forge.
               </p>
             </div>
 
