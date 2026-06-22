@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { lazy, Suspense, useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId } from "@/services/storageService";
+import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId, saveProjectAsync } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
 import { FocusMusicControl } from "@/components/FocusMusicControl";
