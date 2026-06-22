@@ -8,7 +8,7 @@ import type {
   RecoverySnapshotReason,
 } from "./types";
 
-const MAX_SNAPSHOTS = 32;
+const MAX_SNAPSHOTS = 3;
 
 function key(projectId: string): string {
   return `scriptora-recovery-snapshots:${projectId}`;
@@ -47,9 +47,15 @@ export function createRecoverySnapshot(
 
 export function saveRecoverySnapshot(snapshot: ProjectRecoverySnapshot): ProjectRecoverySnapshot {
   if (typeof localStorage === "undefined") return snapshot;
-  const existing = loadRecoverySnapshots(snapshot.projectId);
-  const next = [snapshot, ...existing].slice(0, MAX_SNAPSHOTS);
-  localStorage.setItem(key(snapshot.projectId), JSON.stringify(next));
+
+  try {
+    const existing = loadRecoverySnapshots(snapshot.projectId);
+    const next = [snapshot, ...existing].slice(0, MAX_SNAPSHOTS);
+    localStorage.setItem(key(snapshot.projectId), JSON.stringify(next));
+  } catch (error) {
+    console.warn("[Recovery] snapshot skipped", error);
+  }
+
   return snapshot;
 }
 
