@@ -215,8 +215,8 @@ export default function Dashboard() {
     } catch {
       /* noop */
     }
-    openDashboardTool("character-studio");
-  }, [openDashboardTool]);
+    navigateFromDashboard("/character-studio", { fresh: true });
+  }, [navigateFromDashboard]);
 
   const openSettingsHub = useCallback(() => {
     closeAllDashboardTools();
