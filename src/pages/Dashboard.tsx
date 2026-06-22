@@ -1171,12 +1171,12 @@ typeof crypto.randomUUID === "function"
           onContinue={() => dashboardContextProject && goApp({ projectId: dashboardContextProject.id })}
           onGenerateNextChapter={() => dashboardContextProject && goApp({ projectId: dashboardContextProject.id, section: "chapters" })}
           onExport={() => guardPlanFeature("export_epub", () => navigateFromDashboard(getToolRoute("publishing"), dashboardContextProject?.id ? { projectId: dashboardContextProject.id } : undefined))()}
-          onNewBook={openNewBookGuarded}
+          onNewBook={() => openDashboardTool("character-studio")}
           onMyBooks={() => openDashboardTool("projects")}
         />
 
         <DashboardHomePillars
-          onNewBook={openNewBookGuarded}
+          onNewBook={() => openDashboardTool("character-studio")}
           onStudyOs={() => navigateFromDashboard(getToolRoute("study"))}
         />
 

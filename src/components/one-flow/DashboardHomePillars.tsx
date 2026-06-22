@@ -17,9 +17,9 @@ export function DashboardHomePillars({ onNewBook, onStudyOs }: Props) {
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-200/75">Percorso principale</p>
         <div className="mt-2 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Book Forge</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Character Studio</h2>
             <p className="mt-2 max-w-md text-sm leading-6 text-white/68">
-              Crea nuovo libro — intervista guidata, blueprint e scrittura in un unico flusso.
+              Costruisci il cuore del libro — cast canonico, genere, tono, dinamica e conflitto prima del blueprint.
             </p>
             <p className="mt-3 text-xs text-white/45">{ONE_FLOW_TOOL_ROLES.forge.it}</p>
           </div>
@@ -28,7 +28,7 @@ export function DashboardHomePillars({ onNewBook, onStudyOs }: Props) {
           </span>
         </div>
         <span className="mt-5 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-sky-100/90">
-          Crea nuovo libro <ArrowRight className="h-3.5 w-3.5" />
+          Costruisci il libro <ArrowRight className="h-3.5 w-3.5" />
         </span>
       </button>
 
