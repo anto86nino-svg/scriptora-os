@@ -11,7 +11,8 @@ export type BookForgeSource =
   | "one-flow"
   | "guided-interview"
   | "auto-bestseller"
-  | "book-idea-tools";
+  | "book-idea-tools"
+  | "character-studio";
 
 export type BookForgeSlot =
   | "title"
@@ -220,11 +221,30 @@ function hasFoundation(prefill: BookForgePrefill): boolean {
   return hasSlot(prefill, "title") && hasSlot(prefill, "genre") && hasNiche;
 }
 
+function hasCharacterStudioFoundation(prefill: BookForgePrefill): boolean {
+  return (
+    hasSlot(prefill, "genre") &&
+    hasSlot(prefill, "characters") &&
+    (hasSlot(prefill, "conflict") || hasSlot(prefill, "plot"))
+  );
+}
+
+function isCharacterStudioHandoff(input: BookForgeHandoff | BookForgePrefill): boolean {
+  return "source" in input && input.source === "character-studio";
+}
+
 export function resolveBookForgeStartStep(input: BookForgeHandoff | BookForgePrefill): BookForgeStartStep {
   const prefill = "prefill" in input ? input.prefill : input;
+  const fromCharacterStudio = isCharacterStudioHandoff(input);
 
   if (prefill.blueprintApproved) return "writer";
   if (hasSlot(prefill, "blueprint")) return "blueprint-approval";
+
+  if (fromCharacterStudio && hasCharacterStudioFoundation(prefill)) {
+    if (!hasSlot(prefill, "plot") || !hasSlot(prefill, "conflict")) return "plot-forge";
+    return "blueprint-generation";
+  }
+
   if (!hasFoundation(prefill)) return "book-foundation";
 
   const poetry = isPoetryHandoff(prefill);
@@ -254,7 +274,9 @@ export function resolveBookForgeStartStep(input: BookForgeHandoff | BookForgePre
 function lockReasonFor(prefill: BookForgePrefill, startStep: BookForgeStartStep): string {
   if (startStep === "writer") return "Blueprint già approvato: il percorso converge direttamente sul Writer.";
   if (startStep === "blueprint-approval") return "Blueprint già presente ma non approvato: serve conferma autore.";
-  if (startStep === "book-foundation") return "Mancano titolo, genere o nicchia: Book Forge deve completare le fondamenta.";
+  if (startStep === "book-foundation") {
+    return "Mancano titolo, genere o nicchia: Book Forge deve completare le fondamenta.";
+  }
   if (startStep === "character-forge") return "Fondamenta commerciali presenti; mancano personaggi fiction validi.";
   if (startStep === "plot-forge") return "Titolo, genere e personaggi presenti; manca trama/conflitto.";
   if (startStep === "structure-forge") return "Metadata presenti; manca struttura o trasformazione nonfiction.";
@@ -272,16 +294,21 @@ export function buildBookForgeHandoff(
   if (prefill.chapterCount && !prefill.numberOfChapters) prefill.numberOfChapters = prefill.chapterCount;
   const completedSlots = completedSlotsFor(prefill);
   const missingSlots = missingSlotsFor(prefill);
-  const recommendedStartStep = resolveBookForgeStartStep(prefill);
-  return {
+  const draftHandoff: BookForgeHandoff = {
     id: `book-forge-handoff-${source}-${Date.now()}`,
     source,
     prefill,
     completedSlots,
     missingSlots,
+    recommendedStartStep: "book-foundation",
+    lockReason: "",
+    createdAt: new Date().toISOString(),
+  };
+  const recommendedStartStep = resolveBookForgeStartStep(draftHandoff);
+  return {
+    ...draftHandoff,
     recommendedStartStep,
     lockReason: lockReasonFor(prefill, recommendedStartStep),
-    createdAt: new Date().toISOString(),
   };
 }
 

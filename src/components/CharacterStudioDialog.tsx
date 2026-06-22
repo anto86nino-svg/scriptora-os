@@ -14,6 +14,7 @@ import {
   SCRIPTORA_CHARACTER_BIBLE_KEY,
   SCRIPTORA_CHARACTER_PROJECT_KEY,
 } from "@/lib/character-studio-keys";
+import { buildBookForgeHandoff } from "@/lib/book-forge/book-forge-handoff";
 
 export { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY };
 const SCRIPTORA_IDEA_HISTORY_KEY = "scriptora-character-idea-history-v1";
@@ -330,6 +331,44 @@ function replaceAllLiteral(text: string, from: string, to: string): string {
   const cleanTo = to.trim();
   if (!cleanFrom || !cleanTo || cleanFrom === cleanTo) return text;
   return text.split(cleanFrom).join(cleanTo);
+}
+
+function charactersFromCharacterBibleText(text?: string): any[] {
+  const raw = String(text || "").trim();
+  if (!raw) return [];
+
+  return raw
+    .split(/\n{2,}(?=Nome:|Name:)/g)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => {
+      const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
+      const get = (label: string) => {
+        const found = lines.find((line) => line.toLowerCase().startsWith(label.toLowerCase()));
+        return found ? found.replace(new RegExp("^" + label + "\\s*", "i"), "").trim() : "";
+      };
+
+      const name = get("Nome:") || get("Name:") || lines[0] || "Personaggio";
+      const surname = get("Cognome:") || get("Surname:");
+
+      return {
+        name,
+        surname,
+        role: get("Ruolo nella storia:") || get("Role:"),
+        wound: get("Ferita interiore:") || get("Core wound:"),
+        externalDesire: get("Desiderio esterno:") || get("External desire:"),
+        internalNeed: get("Bisogno interiore:") || get("Internal need:"),
+        secret: get("Segreto:") || get("Secret:"),
+        relationships: get("Rapporto con gli altri personaggi:") || get("Relationship to other characters:"),
+        personality: get("Carattere:") || get("Personality:") || block,
+        strictRules:
+          get("Regole di continuità:") ||
+          get("Continuity rules:") ||
+          `Non rinominare mai ${name}. Mantieni ruolo, ferita, desiderio, segreto e dinamica.`,
+      };
+    })
+    .filter((character) => String(character.name || "").trim().length >= 2)
+    .slice(0, 12);
 }
 
 function applyManualNamesToBible(text: string, manualCharacterNames: string): string {
@@ -841,19 +880,41 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       return;
     }
 
+    const characters = charactersFromCharacterBibleText(bible);
+    const cleanIdea = idea.trim();
+    const cleanSubcategory = subcategory.trim();
+    const cleanTone = tone.trim();
+    const cleanDynamic = centralDynamic.trim();
+    const plot = [
+      cleanIdea,
+      cleanDynamic ? `Dinamica narrativa: ${cleanDynamic}` : "",
+      protagonistType.trim() ? `Tipo protagonista: ${protagonistType.trim()}` : "",
+      intensity ? `Intensità: ${intensity}` : "",
+    ].filter(Boolean).join("\n\n");
+
     const payload = {
-      idea: idea.trim(),
+      source: "character-studio",
+      idea: cleanIdea,
       genre,
-      subcategory: subcategory.trim(),
-      tone: tone.trim(),
+      subcategory: cleanSubcategory,
+      subgenre: cleanSubcategory,
+      niche: cleanSubcategory,
+      tone: cleanTone,
       intensity,
-      centralDynamic,
+      centralDynamic: cleanDynamic,
       protagonistType: protagonistType.trim(),
       language,
       category: "Fiction",
       bookType: "novel",
+      bookTypeId: "novel",
       manualCharacterNames: manualCharacterNames.trim(),
       characterBible: bible,
+      characters,
+      plot,
+      conflict: cleanDynamic || cleanIdea,
+      promise: cleanIdea || cleanDynamic,
+      targetReader: `Lettori di ${genre}${cleanSubcategory ? ` / ${cleanSubcategory}` : ""} con tono ${cleanTone || "cinematografico"}`,
+      structureMode: "chaptered-fiction",
       savedAt: new Date().toISOString(),
     };
 
@@ -882,8 +943,14 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       return;
     }
 
+    const handoff = buildBookForgeHandoff("character-studio", payload);
+
     window.dispatchEvent(new Event("scriptora-character-bible-change"));
-    window.dispatchEvent(new CustomEvent("scriptora-open-new-book-from-character-studio", { detail: payload }));
+    window.dispatchEvent(
+      new CustomEvent("scriptora-open-new-book-from-character-studio", {
+        detail: { payload, handoff },
+      }),
+    );
     setSaved(true);
     toast.success("Personaggi collegati. Apro Nuovo Libro con cast, genere, filone e tono già pronti.");
   };

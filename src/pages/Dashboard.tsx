@@ -608,14 +608,15 @@ typeof crypto.randomUUID === "function"
   };
 
   useEffect(() => {
-    const openFromCharacterStudio = () => {
+    const openFromCharacterStudio = (event: Event) => {
+      const detail = (event as CustomEvent<{ handoff?: BookForgeHandoff }>).detail;
       closeAllDashboardTools();
-      openNewBookGuarded();
+      openNewBookGuarded(detail?.handoff || null);
     };
 
     window.addEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
     return () => window.removeEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
-  }, [closeAllDashboardTools]);
+  }, [closeAllDashboardTools, openNewBookGuarded]);
 
   const mergeCharacterStudioIntoConfig = (config: BookConfig): BookConfig => {
     let finalConfig: BookConfig = config;
