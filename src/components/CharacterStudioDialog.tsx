@@ -1796,6 +1796,52 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     toast.info("Character Bible rimossa.");
   };
 
+  const hasIdeaReady = idea.trim().length >= 8;
+  const hasTitleReady = bookTitle.trim().length >= 2;
+  const hasSubtitleReady = bookSubtitle.trim().length >= 8 || narrativePromise.trim().length >= 8;
+  const hasBibleReady = characterBible.trim().length >= 20;
+  const detectedCharacterCount = charactersFromCharacterBibleText(characterBible).length;
+
+  const missingHandoffItems = [
+    !hasIdeaReady && "idea",
+    !hasTitleReady && "titolo",
+    !hasSubtitleReady && "promessa",
+    !hasBibleReady && "personaggi",
+  ].filter(Boolean) as string[];
+
+  const primaryCharacterActionLabel = loading
+    ? "Sto generando personaggi..."
+    : ideaLoading
+      ? "Sto preparando l’idea..."
+      : !hasIdeaReady
+        ? "Genera idea con Scriptora"
+        : !hasTitleReady || !hasSubtitleReady
+          ? "Genera titolo e promessa"
+          : !hasBibleReady
+            ? "Genera personaggi"
+            : "Continua in Book Forge";
+
+  const runPrimaryCharacterAction = () => {
+    if (loading || ideaLoading) return;
+
+    if (!hasIdeaReady) {
+      void generateNovelIdea();
+      return;
+    }
+
+    if (!hasTitleReady || !hasSubtitleReady) {
+      generateTitleAndSubtitle();
+      return;
+    }
+
+    if (!hasBibleReady) {
+      void generate();
+      return;
+    }
+
+    saveAndLink();
+  };
+
   if (!open) return null;
 
   return (
@@ -1943,9 +1989,9 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
               <Users className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="font-semibold text-lg">Scriptora Character Studio</h2>
+              <h2 className="font-semibold text-lg">Studio Personaggi Scriptora</h2>
               <p className="text-xs text-muted-foreground">
-                Crea un nuovo cast canonico, genere, filone, tono e dinamica narrativa. Poi collegalo a Book Forge.
+                Segui il flusso: idea, titolo, regia, cast canonico e poi Book Forge.
               </p>
             </div>
           </div>
@@ -1964,6 +2010,14 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
 
         <div className="scriptora-modal-body min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-5">
           <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-4">
+            <div className="rounded-2xl border border-primary/15 bg-background/70 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Percorso guidato</p>
+              <h3 className="mt-1 text-lg font-bold text-foreground">1. Dai un’anima alla storia</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Parti dall’idea. Subito dopo Scriptora prepara titolo, promessa e cast senza farti saltare su e giù nella pagina.
+              </p>
+            </div>
+
             <div>
               <div className="flex items-center justify-between gap-2">
                 <Label>Idea del romanzo</Label>
@@ -2006,7 +2060,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
             <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <Label>Titolo e promessa</Label>
+                  <Label>2. Titolo e promessa</Label>
                   <p className="text-xs text-muted-foreground">
                     Book Forge userà questi dati per non bloccarsi al Blueprint. Puoi cambiarli dopo.
                   </p>
@@ -2048,6 +2102,13 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
               />
               <p className="mt-1 text-[11px] text-muted-foreground">
                 Se compili questo campo, Scriptora deve usare questi nomi e non rinominare i protagonisti.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-border/70 bg-background/50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">3. Regia narrativa</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Qui blocchi genere, filone, lingua e tono: Book Forge non dovrà più indovinarli.
               </p>
             </div>
 
@@ -2097,20 +2158,45 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={generate} disabled={!canGenerate || loading}>
-                {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
-                Genera personaggi con Scriptora
-              </Button>
+            <div className="rounded-2xl border border-border/70 bg-background/50 p-4 space-y-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">4. Cast canonico</p>
+                <h3 className="mt-1 text-base font-bold text-foreground">Genera i personaggi quando idea e titolo sono pronti</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Il pulsante principale resta sempre in basso. Qui trovi solo azioni secondarie e controllo manuale.
+                </p>
+              </div>
 
-              <Button onClick={saveAndLink} disabled={loading || (!characterBible.trim() && !manualCharacterNames.trim())}>
-                <Save className="h-4 w-4 mr-2" />
-                Salva e continua in Book Forge
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" onClick={generate} disabled={!canGenerate || loading}>
+                  {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Wand2 className="h-4 w-4 mr-2" />}
+                  Rigenera personaggi
+                </Button>
 
-              <Button variant="ghost" onClick={clear}>
-                Svuota
-              </Button>
+                <Button variant="outline" onClick={saveAndLink} disabled={loading || !hasBibleReady}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Continua ora
+                </Button>
+
+                <Button variant="ghost" onClick={clear}>
+                  Svuota
+                </Button>
+              </div>
+
+              <div className="grid gap-2 text-xs sm:grid-cols-4">
+                <div className={`rounded-xl border px-3 py-2 ${hasIdeaReady ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100" : "border-amber-400/30 bg-amber-400/10 text-amber-100"}`}>
+                  Idea {hasIdeaReady ? "pronta" : "mancante"}
+                </div>
+                <div className={`rounded-xl border px-3 py-2 ${hasTitleReady ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100" : "border-amber-400/30 bg-amber-400/10 text-amber-100"}`}>
+                  Titolo {hasTitleReady ? "pronto" : "mancante"}
+                </div>
+                <div className={`rounded-xl border px-3 py-2 ${hasSubtitleReady ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100" : "border-amber-400/30 bg-amber-400/10 text-amber-100"}`}>
+                  Promessa {hasSubtitleReady ? "pronta" : "mancante"}
+                </div>
+                <div className={`rounded-xl border px-3 py-2 ${hasBibleReady ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100" : "border-amber-400/30 bg-amber-400/10 text-amber-100"}`}>
+                  Cast {hasBibleReady ? `${detectedCharacterCount || "canonico"} pronto` : "mancante"}
+                </div>
+              </div>
             </div>
 
             {saved && (
@@ -2400,6 +2486,29 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
                 Dopo il salvataggio, Scriptora apre <strong>Book Forge</strong> con cast, filone, tono e continuità già collegati. Il motore non deve più inventare nomi a caso.
               </p>
             </div>
+          </div>
+        </div>
+
+        <div className="sticky bottom-0 z-20 border-t border-border bg-card/95 p-4 backdrop-blur-xl">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Prossima azione</p>
+              <p className="truncate text-sm text-muted-foreground">
+                {missingHandoffItems.length
+                  ? `Mancano: ${missingHandoffItems.join(", ")}`
+                  : `Pronto per Book Forge · ${bookTitle || "Titolo pronto"} · ${detectedCharacterCount || "cast"} personaggi`}
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              onClick={runPrimaryCharacterAction}
+              disabled={loading || ideaLoading}
+              className="w-full gap-2 sm:w-auto"
+            >
+              {loading || ideaLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : hasBibleReady ? <Save className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+              {primaryCharacterActionLabel}
+            </Button>
           </div>
         </div>
       </div>
