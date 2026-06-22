@@ -25,9 +25,15 @@ export function buildExpressForgeConfiguration(
       : "novel");
 
   const normalizedInput: ExpressForgeInput = {
-    bookFormat: inferredBookFormat,
     ...input,
+    bookFormat: inferredBookFormat,
     ideaSeed: input.ideaSeed || input.protagonistSeed || "",
+    language: input.language || "Italiano",
+    genre: input.genre || (inferredBookFormat === "poetry_collection" ? "poesia" : "dark romance"),
+    tone: input.tone || (inferredBookFormat === "poetry_collection" ? "poetico" : "oscuro"),
+    length: input.length || "medio",
+    controlLevel: input.controlLevel || "scenarios",
+    titleMode: input.titleMode || "suggest",
   };
 
   const packages = buildExpressBookScenarios(normalizedInput);
@@ -67,11 +73,29 @@ export function buildExpressForgeConfiguration(
       extracted: {},
       chatFirst: true,
     }),
+    extracted: {
+      ...(baseState?.extracted ?? {}),
+      genre: normalizedInput.genre,
+      language: normalizedInput.language,
+      tone: normalizedInput.tone,
+      bookType:
+        normalizedInput.bookFormat === "poetry_collection"
+          ? "poetry_collection"
+          : normalizedInput.bookFormat,
+      bookFormat: normalizedInput.bookFormat,
+      bookTitle: normalizedInput.title,
+      bookSubtitle: normalizedInput.subtitle,
+      rawIdea: normalizedInput.ideaSeed,
+    },
     forgeMode: "express",
     expressConfig: normalizedInput,
     forgeMemory: memory,
     slotProvenance: provenance,
     selectedGenre: normalizedInput.genre,
+    selectedBookType:
+      normalizedInput.bookFormat === "poetry_collection"
+        ? "poetry_collection"
+        : normalizedInput.bookFormat,
     selectedTone: normalizedInput.tone,
     selectedLength: normalizedInput.length,
     blueprintScenarios: packages,
