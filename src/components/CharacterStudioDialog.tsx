@@ -1135,6 +1135,28 @@ function cleanOneLine(value: unknown, max = 110): string {
     .trim();
 }
 
+function pickStableVariant(options: string[], seed: string): string {
+  const cleanOptions = options.filter(Boolean);
+  if (!cleanOptions.length) return "Titolo provvisorio";
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = Math.imul(31, hash) + seed.charCodeAt(i) | 0;
+  }
+  return cleanOptions[Math.abs(hash) % cleanOptions.length];
+}
+
+function titleCaseFragment(value: string): string {
+  return value
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter((word) => word.length > 2)
+    .slice(0, 4)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function buildCharacterStudioFallbackTitle(input: {
   idea?: string;
   genre?: string;
@@ -1146,40 +1168,54 @@ function buildCharacterStudioFallbackTitle(input: {
   const subcategory = cleanOneLine(input.subcategory);
   const setting = cleanOneLine(input.setting, 48);
   const dynamic = cleanOneLine(input.centralDynamic, 48);
-  const idea = cleanOneLine(input.idea, 90);
+  const idea = cleanOneLine(input.idea, 140);
+  const hay = `${idea} ${dynamic} ${genre} ${subcategory} ${setting}`.toLowerCase();
+  const seed = hay || `${Date.now()}`;
+
+  const place = titleCaseFragment(setting);
+  const motif = titleCaseFragment(
+    (hay.match(/archiv\w*|soteropoli|villa|casa|palazzo|isola|accademia|ritratto|dipinto|fotogra\w*|memoria|cenere|ombra|fiamma|contratto|patto|segreto|acqua|stelle|sangue/i) || [""])[0],
+  );
 
   if (setting) {
-    if (/archiv|citt|villa|casa|palazzo|isola|accademia|regno|soteropoli/i.test(setting)) {
-      return `Il segreto di ${setting}`;
-    }
-    return `Le ombre di ${setting}`;
+    return pickStableVariant([
+      place ? `Il segreto di ${place}` : "",
+      place ? `Le ombre di ${place}` : "",
+      place ? `La memoria di ${place}` : "",
+      motif ? `${motif} proibita` : "",
+    ], seed);
   }
 
   if (/dark.?romance|romance/.test(genre)) {
-    const hay = `${idea} ${dynamic} ${genre} ${subcategory}`.toLowerCase();
-    if (/fuoco|fiamma|brucia|cenere|incendio|ombra|ombre/.test(hay)) return "Cenere e Desiderio";
-    if (/villa|casa|stanza|segreto|famiglia/.test(hay)) return "La Villa delle Promesse Proibite";
-    if (/contratto|patto|accordo|clausola/.test(hay)) return "Il Patto dei Cuori Sbagliati";
-    if (/fotogra|ritratto|dipinto|arte|quadro/.test(hay)) return "Il Ritratto delle Cose Non Dette";
-    return dynamic ? "La Ferita che Ti Somiglia" : "Il Confine del Desiderio";
-  }
-  if (/thriller|suspense|crime|noir/.test(genre)) return "La Verità Sepolta";
-  if (/horror|gotic/.test(genre)) return "La Casa che Ricorda";
-  if (/fantasy|romantasy/.test(genre)) return "Il Canto delle Ombre";
-  if (/sci.?fi|fantascienza|cyberpunk/.test(genre)) return "La Memoria delle Stelle";
-  if (subcategory) return `Il segreto ${subcategory}`;
-
-  if (idea) {
-    const words = idea
-      .replace(/[^\p{L}\p{N}\s']/gu, " ")
-      .split(/\s+/)
-      .filter((w) => w.length > 3)
-      .slice(0, 4)
-      .join(" ");
-    if (words.length > 10) return words[0].toUpperCase() + words.slice(1);
+    return pickStableVariant([
+      motif ? `${motif} e desiderio` : "",
+      motif ? `La promessa di ${motif}` : "",
+      "La ferita che resta",
+      "Il confine del desiderio",
+      "Quello che brucia tra noi",
+      "La colpa dei baci impossibili",
+      "Dove l'amore diventa ombra",
+      "Il patto delle cose non dette",
+    ], seed);
   }
 
-  return "Titolo provvisorio";
+  if (/thriller|suspense|crime|noir/.test(genre)) {
+    return pickStableVariant(["La verità sepolta", "Il nome che manca", "L'ultima prova", "Prima che cada il silenzio"], seed);
+  }
+  if (/horror|gotic/.test(genre)) {
+    return pickStableVariant(["La casa che ricorda", "Le stanze del buio", "Il respiro delle mura", "Dove dormono le ombre"], seed);
+  }
+  if (/fantasy|romantasy/.test(genre)) {
+    return pickStableVariant(["Il canto delle ombre", "La corona spezzata", "La città sotto l'incanto", "Il giuramento delle stelle"], seed);
+  }
+  if (/sci.?fi|fantascienza|cyberpunk/.test(genre)) {
+    return pickStableVariant(["La memoria delle stelle", "L'orbita dei fantasmi", "Il codice dell'ultima alba", "Neon sopra il vuoto"], seed);
+  }
+
+  if (subcategory) return pickStableVariant([`Il segreto ${subcategory}`, `La promessa ${subcategory}`, `Anatomia di ${subcategory}`], seed);
+
+  const extracted = titleCaseFragment(idea);
+  return extracted.length > 10 ? extracted : "Titolo provvisorio";
 }
 
 function buildCharacterStudioFallbackSubtitle(input: {
@@ -1749,17 +1785,32 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
 
     try {
       const lightPayload = {
-        ...payload,
-        characterBible: "",
-        bible: "",
+        source: "character-studio",
+        title: resolvedTitle,
+        subtitle: resolvedSubtitle,
+        idea: cleanIdea.slice(0, 1200),
+        genre,
+        subcategory: cleanSubcategory,
+        subgenre: cleanSubcategory,
+        niche: cleanSubcategory,
+        tone: cleanTone,
+        language,
+        bookType: bookFormat,
+        bookTypeId: bookFormat,
+        bookFormat,
+        bookLength,
+        chapterCount,
+        numberOfChapters: chapterCount,
+        promise: resolvedPromise.slice(0, 800),
+        narrativePromise: resolvedPromise.slice(0, 800),
+        setting: setting.trim().slice(0, 500),
+        centralDynamic: cleanDynamic.slice(0, 500),
         characters: Array.isArray((payload as any).characters)
-          ? (payload as any).characters.slice(0, 12).map((character: any) => ({
+          ? (payload as any).characters.slice(0, 8).map((character: any) => ({
               id: character?.id,
               name: character?.name,
               role: character?.role,
               archetype: character?.archetype,
-              desire: character?.desire,
-              wound: character?.wound,
             }))
           : [],
         savedAsPreview: true,
