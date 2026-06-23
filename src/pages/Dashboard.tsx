@@ -629,6 +629,14 @@ typeof crypto.randomUUID === "function"
     return () => window.removeEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
   }, [closeAllDashboardTools, openNewBookGuarded]);
 
+  useEffect(() => {
+    const pending = getPendingCharacterProject();
+    if (!pending) return;
+
+    closeAllDashboardTools();
+    openNewBookGuarded(buildBookForgeHandoff("character-studio", pending));
+  }, [closeAllDashboardTools, openNewBookGuarded]);
+
   const mergeCharacterStudioIntoConfig = (config: BookConfig): BookConfig => {
     let finalConfig: BookConfig = config;
     try {
