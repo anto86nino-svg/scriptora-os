@@ -1818,7 +1818,15 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         updatedAt: new Date().toISOString(),
       };
 
-      localStorage.setItem(SCRIPTORA_CHARACTER_PROJECT_KEY, JSON.stringify(lightPayload));
+      try {
+        localStorage.setItem(SCRIPTORA_CHARACTER_PROJECT_KEY, JSON.stringify(lightPayload));
+      } catch (storageError) {
+        localStorage.removeItem(SCRIPTORA_CHARACTER_PROJECT_KEY);
+        localStorage.removeItem(SCRIPTORA_CHARACTER_BIBLE_KEY);
+        localStorage.removeItem("scriptora-study-session-active-v1");
+        localStorage.removeItem("scriptora-study-session-cache-v1");
+        localStorage.setItem(SCRIPTORA_CHARACTER_PROJECT_KEY, JSON.stringify(lightPayload));
+      }
       localStorage.removeItem(SCRIPTORA_CHARACTER_BIBLE_KEY);
       savedSomewhere = true;
     } catch (e) {
