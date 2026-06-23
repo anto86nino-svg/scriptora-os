@@ -44,6 +44,7 @@ import type { ForgePreset } from "@/lib/scriptora-forge/forge-presets";
 import { DashboardHomePillars } from "@/components/one-flow/DashboardHomePillars";
 import { DashboardPackagingRow } from "@/components/one-flow/DashboardPackagingRow";
 import { DashboardToolHost } from "@/components/one-flow/DashboardToolHost";
+import { BookCreationOsWizard } from "@/components/one-flow/BookCreationOsWizard";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
 import { resetRouteScroll } from "@/lib/one-flow/dashboard-navigation";
 import { getToolRoute } from "@/lib/one-flow/tool-registry";
