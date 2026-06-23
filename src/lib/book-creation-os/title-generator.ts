@@ -50,6 +50,144 @@ function pick<T>(list: T[], seed: number, offset = 0): T {
   return list[(seed + offset) % list.length];
 }
 
+const FORBIDDEN_ABUSED_TITLES = new Set([
+  "ombre che bruciano",
+  "il patto delle ombre",
+]);
+
+const STOP_TITLE_WORDS = new Set([
+  "una","uno","un","il","lo","la","le","gli","i","di","del","della","delle","degli","dei","da","dal","dallo","dalla","nelle","nella","nel","nei",
+  "e","che","con","per","tra","fra","sul","sulla","sulle","sui","suo","sua","sue","suo","mio","mia","tuo","tua","loro",
+  "storia","romanzo","libro","racconto","scrivi","scrivere","voglio","vorrei","crea","genera",
+  "dark","romance","thriller","fantasy","horror","self","help","manuale","guida",
+]);
+
+function titleCaseIt(value: string): string {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => {
+      const lower = word.toLowerCase();
+      if (["di","del","della","delle","degli","dei","e","che","con","per","tra","fra"].includes(lower)) return lower;
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractTitleKeywords(idea: string, context?: TitleForgeContext): string[] {
+  const raw = `${idea} ${context?.category || ""} ${context?.subcategory || ""} ${context?.subgenre || ""}`;
+  const tokens = raw
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9àèéìòù'\s-]/gi, " ")
+    .split(/\s+/)
+    .map((x) => x.trim())
+    .filter((x) => x.length >= 4 && !STOP_TITLE_WORDS.has(x));
+
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const token of tokens) {
+    if (seen.has(token)) continue;
+    seen.add(token);
+    out.push(token);
+    if (out.length >= 12) break;
+  }
+  return out;
+}
+
+function hasSemanticPermissionForAbusedTitle(title: string, idea: string): boolean {
+  const t = title.trim().toLowerCase();
+  if (!FORBIDDEN_ABUSED_TITLES.has(t)) return true;
+  const hay = idea.toLowerCase();
+  return /\b(ombra|ombre|brucia|bruciano|fuoco|fiamma|fiamme|cenere|incendio|ustione|rogo)\b/i.test(hay);
+}
+
+function buildIdeaDrivenTitlePool(idea: string, inference: GenreInference, seed: number, context?: TitleForgeContext): string[] {
+  const keywords = extractTitleKeywords(idea, context);
+  const k1 = titleCaseIt(keywords[0] || inference.subcategory || inference.category || "Segreto");
+  const k2 = titleCaseIt(keywords[1] || inference.tone || "Verità");
+  const k3 = titleCaseIt(keywords[2] || inference.targetReader || "Confine");
+  const k4 = titleCaseIt(keywords[3] || "Destino");
+
+  const darkNouns = ["Segreto", "Confine", "Cicatrice", "Promessa", "Stanza", "Verità", "Notte", "Patto", "Silenzio", "Ferita", "Maschera", "Soglia"];
+  const literaryNouns = ["Geografia", "Mappa", "Atlante", "Anatomia", "Teoria", "Liturgia", "Inventario", "Grammatica"];
+  const commercialHooks = ["Non Dovevi", "Prima dell'Ultima", "Tutto Quello che", "La Versione che", "L'Errore di", "La Legge di"];
+  const endings = [k1, k2, k3, k4].filter(Boolean);
+
+  const pool = [
+    `La ${pick(literaryNouns, seed, 1)} di ${k1}`,
+    `Il ${pick(darkNouns, seed, 2)} di ${k1}`,
+    `${k1} nella ${pick(darkNouns, seed, 3)}`,
+    `${pick(commercialHooks, seed, 4)} ${k1}`,
+    `Dove ${k1} Non Torna`,
+    `La ${pick(darkNouns, seed, 5)} delle ${k2}`,
+    `Tutto il ${k1} che Resta`,
+    `Le ${k2} di ${k1}`,
+    `Prima che ${k1} Scompaia`,
+    `Il Nome Segreto di ${k1}`,
+    `La Soglia di ${k1}`,
+    `Quello che ${k1} Nasconde`,
+    `Nessuno Ricorda ${k1}`,
+    `L'Ultima ${k2}`,
+    `${k1} Senza Perdono`,
+    `La Casa di ${k1}`,
+    `Il Giorno delle ${k2}`,
+    `Quando ${k1} Chiama`,
+    `La Promessa di ${k1}`,
+    `L'Atlante delle ${k2}`,
+  ];
+
+  if (inference.level1 === "self-help" || inference.bookTypeId === "manual") {
+    return [
+      `Il Metodo ${k1}`,
+      `${k1} Senza Confusione`,
+      `La Mappa di ${k1}`,
+      `Da Zero a ${k1}`,
+      `${k1} in Pratica`,
+      `Il Sistema ${k1}`,
+      `Manuale Chiaro di ${k1}`,
+      `La Guida Essenziale a ${k1}`,
+      `Capire ${k1}`,
+      `Allenare ${k1}`,
+    ];
+  }
+
+  if (inference.bookTypeId === "fantasy") {
+    return [
+      `La Corona di ${k1}`,
+      `Il Regno di ${k1}`,
+      `La Porta delle ${k2}`,
+      `L'Atlante dei Nomi Perduti`,
+      `Il Giuramento di ${k1}`,
+      `La Città che Ricorda ${k1}`,
+      `Il Sangue delle ${k2}`,
+      `La Stirpe di ${k1}`,
+      `Dove Dormono le ${k2}`,
+      `L'Ultimo Custode di ${k1}`,
+    ];
+  }
+
+  return pool.concat(endings.map((e, idx) => `${e}: ${pick(["Una Verità Proibita", "Il Patto Nascosto", "La Ferita Segreta", "La Notte Finale"], seed, idx)}`));
+}
+
+function uniqueAllowedTitles(titles: string[], idea: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const title of titles) {
+    const clean = title.replace(/\s+/g, " ").trim();
+    const key = clean.toLowerCase();
+    if (!clean || seen.has(key)) continue;
+    if (!hasSemanticPermissionForAbusedTitle(clean, idea)) continue;
+    seen.add(key);
+    out.push(clean);
+  }
+  return out;
+}
+
+
 export function getWizardTitleFreeRegensRemaining(): number {
   if (typeof window === "undefined") return WIZARD_TITLE_FREE_REGENS;
   try {
@@ -94,10 +232,43 @@ const HORROR_SUBS = [
   "Un horror psicologico che stringe piano, fino a spezzare.",
 ];
 
-const ROMANCE_TITLES = ["Il Patto delle Cose Spezzate", "Quando il Desiderio Fa Male", "La Stanza dei Segreti Dolci"];
-const THRILLER_TITLES = ["La Verità che Non Aspetta", "Ombre sul Confine", "Il Silenzio del Testimone"];
+const ROMANCE_TITLES = [
+  "Il Patto delle Cose Spezzate",
+  "Quando il Desiderio Fa Male",
+  "La Stanza dei Segreti Dolci",
+  "La Regola dei Cuori Proibiti",
+  "Tutto Quello che Non Dovevamo",
+  "La Ferita che Ti Somiglia",
+  "Il Confine del Desiderio",
+  "Prima che Tu Mi Salvi",
+  "La Verità tra le Tue Mani",
+  "Nessuna Promessa Innocente",
+];
+const THRILLER_TITLES = [
+  "La Verità che Non Aspetta",
+  "Ombre sul Confine",
+  "Il Silenzio del Testimone",
+  "L'Ultima Versione dei Fatti",
+  "Il Testimone Sbagliato",
+  "La Città dei Colpevoli",
+  "Nessuno Deve Sapere",
+  "La Prova Mancante",
+  "Il Caso che Respira",
+  "Prima della Confessione",
+];
 const SELF_HELP_TITLES = ["L'Arte di Tornare a Sé", "Disciplina Senza Violenza", "Piccoli Passi, Grande Direzione"];
-const FANTASY_TITLES = ["La Cattedrale delle Anime Dimenticate", "Il Regno delle Ombre Lente", "La Porta dei Nomi Persi"];
+const FANTASY_TITLES = [
+  "La Cattedrale delle Anime Dimenticate",
+  "Il Regno delle Ombre Lente",
+  "La Porta dei Nomi Persi",
+  "La Corona dei Giuramenti Spezzati",
+  "L'Atlante delle Città Sepolte",
+  "Il Custode delle Stelle Cadute",
+  "La Stirpe del Vento Nero",
+  "Il Trono delle Maree Silenti",
+  "La Lingua degli Dei Perduti",
+  "Il Patto delle Rune Vive",
+];
 
 const MANUAL_TITLES = [
   "La Guida Essenziale",
@@ -261,21 +432,32 @@ export function generateWizardTitleProposals(
       });
     }
 
-    return proposals.filter((p, idx, arr) => arr.findIndex((x) => x.title === p.title) === idx);
+    return proposals.filter((p, idx, arr) => arr.findIndex((x) => x.title.toLowerCase() === p.title.toLowerCase()) === idx);
   }
 
   const inference = inferGenreFromText(titleSeed || idea, idea);
-  const titles = titlesForInference(inference);
+  const ideaDrivenTitles = buildIdeaDrivenTitlePool(idea, inference, seed, context);
+  const titles = uniqueAllowedTitles([...ideaDrivenTitles, ...titlesForInference(inference)], idea);
   const subs = subtitlesForInference(inference);
 
-  if (titleSeed.trim() && inference.bookTypeId === "horror" && !titles.includes(titleSeed.trim())) {
-    titles.unshift(titleSeed.trim());
+  if (titles.length === 0) titles.push("La Verità che Resta");
+
+  const cleanSeedTitle = titleSeed.trim();
+  const canUseSeedTitle =
+    cleanSeedTitle.length >= 4 &&
+    hasSemanticPermissionForAbusedTitle(cleanSeedTitle, idea) &&
+    !titles.some((candidate) => candidate.toLowerCase() === cleanSeedTitle.toLowerCase());
+
+  if (canUseSeedTitle) {
+    titles.unshift(cleanSeedTitle);
   }
 
   const proposals: TitleProposal[] = [];
   for (let i = 0; i < 5; i += 1) {
     const badge = BADGES[i % BADGES.length];
-    const title = i === 0 && titleSeed.trim().length >= 4 ? titleSeed.trim() : pick(titles, seed, i * 3);
+    const title = i === 0 && cleanSeedTitle.length >= 4 && hasSemanticPermissionForAbusedTitle(cleanSeedTitle, idea)
+      ? cleanSeedTitle
+      : pick(titles, seed, i * 7);
     const subtitle = pick(subs, seed, i * 5 + 1);
     const hookScore = Math.min(98, 72 + ((seed + i * 7) % 22));
     proposals.push({
@@ -290,7 +472,7 @@ export function generateWizardTitleProposals(
     });
   }
 
-  return proposals.filter((p, idx, arr) => arr.findIndex((x) => x.title === p.title) === idx);
+  return proposals.filter((p, idx, arr) => arr.findIndex((x) => x.title.toLowerCase() === p.title.toLowerCase()) === idx);
 }
 
 export async function runTitleForgeAnimation(

@@ -1155,7 +1155,14 @@ function buildCharacterStudioFallbackTitle(input: {
     return `Le ombre di ${setting}`;
   }
 
-  if (/dark.?romance|romance/.test(genre)) return dynamic ? "Ombre che Bruciano" : "Il Patto delle Ombre";
+  if (/dark.?romance|romance/.test(genre)) {
+    const hay = `${cleanIdea} ${cleanDynamic} ${cleanTone}`.toLowerCase();
+    if (/fuoco|fiamma|brucia|cenere|incendio|ombra|ombre/.test(hay)) return "Cenere e Desiderio";
+    if (/villa|casa|stanza|segreto|famiglia/.test(hay)) return "La Villa delle Promesse Proibite";
+    if (/contratto|patto|accordo|clausola/.test(hay)) return "Il Patto dei Cuori Sbagliati";
+    if (/fotogra|ritratto|dipinto|arte|quadro/.test(hay)) return "Il Ritratto delle Cose Non Dette";
+    return dynamic ? "La Ferita che Ti Somiglia" : "Il Confine del Desiderio";
+  }
   if (/thriller|suspense|crime|noir/.test(genre)) return "La Verità Sepolta";
   if (/horror|gotic/.test(genre)) return "La Casa che Ricorda";
   if (/fantasy|romantasy/.test(genre)) return "Il Canto delle Ombre";

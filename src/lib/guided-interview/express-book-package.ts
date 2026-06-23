@@ -512,7 +512,7 @@ function buildTitle(input: ExpressForgeInput, variant: ExpressScenarioVariant): 
     return variant === "bold" ? "Cenere tra le Dita" : "La Villa delle Ceneri";
   }
   if (isDarkRomance(input.genre)) {
-    return variant === "commercial" ? "Confine Proibito" : "Ombre che Bruciano";
+    return variant === "commercial" ? "Confine Proibito" : "La Ferita che Ti Somiglia";
   }
   return `${input.genre} — ${parseProtagonistLabel(seed).name}`;
 }
@@ -835,6 +835,45 @@ function buildNonfictionCharacters(
   ];
 }
 
+
+function buildNonfictionVariantCopy(input: ExpressForgeInput, variant: ExpressScenarioVariant): {
+  centralConflict?: string;
+  stakes?: string;
+  endingDirection?: string;
+  finalEmotion?: string;
+  commercialPitch?: string;
+} {
+  const theme = String(input.ideaSeed || input.genre || "crescita personale").trim() || "crescita personale";
+
+  if (variant === "bold") {
+    return {
+      centralConflict: `Il lettore vuole cambiare, ma continua a rimandare perché ${theme} sembra troppo grande da affrontare.`,
+      stakes: "Restare fermi significa perdere fiducia, tempo e direzione.",
+      endingDirection: "Il lettore chiude il percorso con una prima pratica concreta già avviata.",
+      finalEmotion: "fiducia lucida, non euforia finta",
+      commercialPitch: `Un metodo concreto per trasformare ${theme} in azioni quotidiane misurabili.`,
+    };
+  }
+
+  if (variant === "commercial") {
+    return {
+      centralConflict: `Trasformare ${theme} da problema confuso a percorso pratico e misurabile.`,
+      stakes: "Senza un sistema semplice, il lettore ricade nei vecchi schemi.",
+      endingDirection: "Il lettore ottiene una mappa ripetibile, applicabile anche dopo l'ultima pagina.",
+      finalEmotion: "chiarezza, controllo, sollievo operativo",
+      commercialPitch: `Guida pratica a ${theme}: strumenti semplici, esempi e progressione reale.`,
+    };
+  }
+
+  return {
+    centralConflict: `Capire ${theme} senza perdersi in teoria, colpa o motivazione vuota.`,
+    stakes: "Il rischio è confondere ispirazione momentanea con cambiamento reale.",
+    endingDirection: "Dal blocco alla prima azione concreta, sostenibile e verificabile.",
+    finalEmotion: "calma, direzione, possibilità",
+    commercialPitch: `Un percorso chiaro per affrontare ${theme} senza promesse miracolose.`,
+  };
+}
+
 function buildNonfictionExpressPackage(
   input: ExpressForgeInput,
   variant: ExpressScenarioVariant,
@@ -929,6 +968,8 @@ function buildNonfictionExpressPackage(
     character: [`Trasformazione del lettore: ${readerProblem} → ${finalEmotion}`],
     scene: reflectionPrompts,
   };
+
+  const variantCopy = buildNonfictionVariantCopy(input, variant);
 
   return {
     id: `express-${variant}`,

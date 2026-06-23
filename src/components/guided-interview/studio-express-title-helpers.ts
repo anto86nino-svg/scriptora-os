@@ -5,14 +5,15 @@ import {
 } from "@/lib/guided-interview/book-foundation-lock";
 
 const SIMILAR_SEED_SUFFIXES = [
-  "villa decadente famiglia segreti desiderio",
-  "inverno isolamento colpa redenzione",
-  "stanze del peccato blackwood memoria",
-  "confine proibito possesso verità",
+  "segreto centrale conseguenza scelta irreversibile",
+  "desiderio conflitto promessa prezzo emotivo",
+  "luogo simbolico memoria colpa rivelazione",
+  "protagonista ferita obiettivo ostacolo trasformazione",
+  "mercato lettore hook immagine titolo memorabile",
 ];
 
 const GENRE_FALLBACK_TITLES: Record<string, string[]> = {
-  "dark romance": ["Le Stanze del Peccato", "L'Ultimo Inverno a Blackwood", "La Villa delle Ceneri"],
+  "dark romance": ["La Ferita che Ti Somiglia", "Il Confine del Desiderio", "Nessuna Promessa Innocente", "La Regola dei Cuori Proibiti"],
   fantasy: ["La Selva che Ricorda", "Il Confine dei Ricordi", "Cenere e Corona"],
   "self-help": ["Ricomincia da Te", "Oltre il Blocco", "La Disciplina che Resta"],
 };

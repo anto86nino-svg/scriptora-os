@@ -624,7 +624,7 @@ export function generateTitleSubtitleOptions(input: FoundationGeneratorInput): T
       risk: "Meno specifico",
     },
     {
-      title: "Ombre che Bruciano",
+      title: "La Ferita che Ti Somiglia",
       subtitle: `Storia ${input.tone} dove ogni verità ha un prezzo — e qualcuno deve pagarlo`,
       commercialReason: "Alta tensione commerciale",
       toneFit: input.tone,
