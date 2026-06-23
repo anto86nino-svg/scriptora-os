@@ -1820,14 +1820,10 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
 
       try {
         localStorage.setItem(SCRIPTORA_CHARACTER_PROJECT_KEY, JSON.stringify(lightPayload));
-      } catch (storageError) {
-        localStorage.removeItem(SCRIPTORA_CHARACTER_PROJECT_KEY);
         localStorage.removeItem(SCRIPTORA_CHARACTER_BIBLE_KEY);
-        localStorage.removeItem("scriptora-study-session-active-v1");
-        localStorage.removeItem("scriptora-study-session-cache-v1");
-        localStorage.setItem(SCRIPTORA_CHARACTER_PROJECT_KEY, JSON.stringify(lightPayload));
+      } catch (storageError) {
+        console.warn("[CharacterStudio] localStorage preview unavailable, continuing with sessionStorage handoff", storageError);
       }
-      localStorage.removeItem(SCRIPTORA_CHARACTER_BIBLE_KEY);
       savedSomewhere = true;
     } catch (e) {
       console.warn("[CharacterStudio] localStorage preview save skipped", e);
