@@ -598,7 +598,7 @@ function detectStudyContentProfile(text: string): StudyContentProfile {
   if (selfHelpScore >= 4) {
     return {
       contentType: "mixed_or_unknown",
-      subjectLabel: "Crescita personale",
+      subjectLabel: "Crescita personale / Psicologia pratica / Letteratura motivazionale",
       mode: "Analisi concettuale",
       fictionSignalsScore,
       legalKeywordScore,
