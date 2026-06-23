@@ -1121,8 +1121,8 @@ function buildLocalUserStoryDevelopment(input: {
   protagonistType: string;
   language: string;
 }) {
-  const cleanIdea = input.idea.replace(/\s+/g, " ").trim();
-  const base = cleanIdea.replace(/[.!?]*$/, ".");
+  const normalizedIdea = input.idea.replace(/\s+/g, " ").trim();
+  const base = normalizedIdea.replace(/[.!?]*$/, ".");
   return `${base} Scriptora la sviluppa come premessa editoriale completa: il cuore della storia resta quello indicato dall'utente, ma la traiettoria viene chiarita in ferita, desiderio, posta in gioco e conseguenza finale. Il genere resta ${optionLabel(ROMAN_GENRES_PRO.find(o => optionValue(o) === input.genre) || input.genre)}, con filone ${optionLabel(SUBGENRES_PRO.find(o => optionValue(o) === input.subcategory) || input.subcategory)}, tono ${input.tone || "cinematografico"} e intensità ${input.intensity || "media"}. La protagonista deve restare coerente con l'idea originale, ma ogni scena dovrà aumentare conflitto, scelta morale e tensione emotiva senza tradire la storia che l'utente vuole raccontare.`;
 }
 
@@ -1156,7 +1156,7 @@ function buildCharacterStudioFallbackTitle(input: {
   }
 
   if (/dark.?romance|romance/.test(genre)) {
-    const hay = `${cleanIdea} ${cleanDynamic} ${cleanTone}`.toLowerCase();
+    const hay = `${idea} ${dynamic} ${genre} ${subcategory}`.toLowerCase();
     if (/fuoco|fiamma|brucia|cenere|incendio|ombra|ombre/.test(hay)) return "Cenere e Desiderio";
     if (/villa|casa|stanza|segreto|famiglia/.test(hay)) return "La Villa delle Promesse Proibite";
     if (/contratto|patto|accordo|clausola/.test(hay)) return "Il Patto dei Cuori Sbagliati";
@@ -1667,23 +1667,23 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     const cleanTone = tone.trim();
     const cleanDynamic = centralDynamic.trim();
     const plot = [
-      cleanIdea,
-      cleanDynamic ? `Dinamica narrativa: ${cleanDynamic}` : "",
+      String(input.idea || "").trim(),
+      String(input.dynamic || "").trim() ? `Dinamica narrativa: ${String(input.dynamic || "").trim()}` : "",
       protagonistType.trim() ? `Tipo protagonista: ${protagonistType.trim()}` : "",
       intensity ? `Intensità: ${intensity}` : "",
     ].filter(Boolean).join("\n\n");
 
     const resolvedTitle = bookTitle.trim() || buildCharacterStudioFallbackTitle({
-      idea: cleanIdea,
+      idea: String(input.idea || "").trim(),
       genre,
       subcategory: cleanSubcategory,
       setting,
-      centralDynamic: cleanDynamic,
+      centralDynamic: String(input.dynamic || "").trim(),
     });
     const resolvedSubtitle = bookSubtitle.trim() || buildCharacterStudioFallbackSubtitle({
-      idea: cleanIdea,
+      idea: String(input.idea || "").trim(),
       narrativePromise,
-      centralDynamic: cleanDynamic,
+      centralDynamic: String(input.dynamic || "").trim(),
       genre,
       subcategory: cleanSubcategory,
     });
@@ -1693,14 +1693,14 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       source: "character-studio",
       title: resolvedTitle,
       subtitle: resolvedSubtitle,
-      idea: cleanIdea,
+      idea: String(input.idea || "").trim(),
       genre,
       subcategory: cleanSubcategory,
       subgenre: cleanSubcategory,
       niche: cleanSubcategory,
-      tone: cleanTone,
+      tone: String(input.tone || "").trim(),
       intensity,
-      centralDynamic: cleanDynamic,
+      centralDynamic: String(input.dynamic || "").trim(),
       protagonistType: protagonistType.trim(),
       language,
       category: "Fiction",
@@ -1716,12 +1716,12 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       characterBible: bible,
       characters,
       plot,
-      conflict: cleanDynamic || cleanIdea,
+      conflict: String(input.dynamic || "").trim() || String(input.idea || "").trim(),
       promise: resolvedPromise,
       narrativePromise: resolvedPromise,
       targetReader:
         targetReader.trim() ||
-        `Lettori di ${genre}${cleanSubcategory ? ` / ${cleanSubcategory}` : ""} con tono ${cleanTone || "cinematografico"}`,
+        `Lettori di ${genre}${cleanSubcategory ? ` / ${cleanSubcategory}` : ""} con tono ${String(input.tone || "").trim() || "cinematografico"}`,
       setting: setting.trim(),
       endingType,
       pov,
@@ -1730,9 +1730,9 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       darknessLevel,
       violenceLevel,
       canonRules: canonRules.trim(),
-      style: cleanTone,
+      style: String(input.tone || "").trim(),
       structureMode: subchaptersEnabled ? "chaptered-fiction-with-subchapters" : "chaptered-fiction",
-      commercialAngle: resolvedPromise || cleanDynamic || cleanIdea,
+      commercialAngle: resolvedPromise || String(input.dynamic || "").trim() || String(input.idea || "").trim(),
       savedAt: new Date().toISOString(),
     };
 
