@@ -1713,7 +1713,6 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       subchaptersEnabled,
       subchaptersPerChapter,
       manualCharacterNames: manualCharacterNames.trim(),
-      characterBible: bible,
       characters,
       plot,
       conflict: cleanDynamic || cleanIdea,
