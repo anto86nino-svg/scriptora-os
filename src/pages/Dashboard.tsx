@@ -961,6 +961,7 @@ typeof crypto.randomUUID === "function"
           }
         >
           <BookCreationOsWizard
+            open={activeDashboardTool === "book-forge"}
             onClose={closeAllDashboardTools}
             authorIdentity={activeAuthor}
             onStudioComplete={handleStudioComplete}
