@@ -1748,11 +1748,30 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     }
 
     try {
-      localStorage.setItem(SCRIPTORA_CHARACTER_BIBLE_KEY, bible);
-      localStorage.setItem(SCRIPTORA_CHARACTER_PROJECT_KEY, payloadJson);
+      const lightPayload = {
+        ...payload,
+        characterBible: "",
+        bible: "",
+        characters: Array.isArray((payload as any).characters)
+          ? (payload as any).characters.slice(0, 12).map((character: any) => ({
+              id: character?.id,
+              name: character?.name,
+              role: character?.role,
+              archetype: character?.archetype,
+              desire: character?.desire,
+              wound: character?.wound,
+            }))
+          : [],
+        savedAsPreview: true,
+        storageMode: "session-full-local-preview",
+        updatedAt: new Date().toISOString(),
+      };
+
+      localStorage.setItem(SCRIPTORA_CHARACTER_PROJECT_KEY, JSON.stringify(lightPayload));
+      localStorage.removeItem(SCRIPTORA_CHARACTER_BIBLE_KEY);
       savedSomewhere = true;
     } catch (e) {
-      console.warn("[CharacterStudio] localStorage save failed", e);
+      console.warn("[CharacterStudio] localStorage preview save skipped", e);
     }
 
     if (!savedSomewhere) {
