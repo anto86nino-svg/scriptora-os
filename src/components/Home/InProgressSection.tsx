@@ -17,7 +17,7 @@ interface RunRow {
 }
 
 interface Props {
-  /** Bumped from outside to force refresh after returning from Book Forge. */
+  /** Bumped from outside to force refresh after returning from book creation. */
   refreshKey?: number;
 }
 

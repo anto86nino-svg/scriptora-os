@@ -85,9 +85,6 @@ const ScriptoraSettingsHub = lazy(() =>
 const AdvancedAppearanceDialog = lazy(() =>
   import("@/components/AdvancedAppearanceDialog").then((m) => ({ default: m.AdvancedAppearanceDialog })),
 );
-const MobileBookForge = lazyWithRetry(() =>
-  import("@/mobile/MobileBookForge").then((m) => ({ default: m.MobileBookForge })),
-);
 
 interface DetectedIntent {
   genre: string;
@@ -518,7 +515,7 @@ export default function Dashboard() {
       idea: preset.blueprintHint,
     });
 
-    toast.success(`${preset.label}: preset preparato in Book Forge.`);
+    toast.success(`${preset.label}: preset preparato nella creazione libro.`);
     openNewBookGuarded(handoff);
   };
 
@@ -949,12 +946,12 @@ typeof crypto.randomUUID === "function"
               compact
               overlay
               tone="forge"
-              title="Apro Book Forge…"
+              title="Apro la creazione libro…"
               steps={["Caricamento studio", "Preparo interfaccia"]}
             />
           }
         >
-          <MobileBookForge
+          <BookCreationOsWizard
             onClose={closeAllDashboardTools}
             authorIdentity={activeAuthor}
             onStudioComplete={handleStudioComplete}

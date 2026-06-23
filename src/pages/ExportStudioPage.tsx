@@ -39,7 +39,7 @@ export default function ExportStudioPage() {
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
             >
               <Sparkles className="h-4 w-4" />
-              Apri Book Forge
+              Crea nuovo libro
             </button>
             <button
               type="button"

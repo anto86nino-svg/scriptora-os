@@ -1600,7 +1600,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       });
 
       setCharacterBible(applyManualNamesToBible(finalText, manualCharacterNames));
-      toast.success("Personaggi generati. Ora puoi leggerli, salvarli e continuare in Book Forge.");
+      toast.success("Personaggi generati. Ora puoi leggerli, salvarli e continuare nella creazione libro.");
     } catch (e) {
       devOnlyDiagnostic("character-studio-bible-fallback", e);
       const finalText = fallbackCharacterBible({
@@ -1643,7 +1643,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     setBookTitle(resolvedTitle);
     setBookSubtitle(resolvedSubtitle);
     setNarrativePromise((current) => current.trim() ? current : resolvedSubtitle);
-    toast.success("Titolo e sottotitolo preparati per Book Forge.");
+    toast.success("Titolo e sottotitolo preparati per il flusso libro.");
   };
 
   const saveAndLink = () => {
@@ -1775,11 +1775,11 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         },
       });
 
-      toast.success("Personaggi collegati. Apro Book Forge con cast, genere, filone e tono già pronti.");
+      toast.success("Personaggi collegati. Apro la creazione libro con cast, genere, filone e tono già pronti.");
     } catch (error) {
-      devOnlyDiagnostic("[CharacterStudio] open Book Forge failed", error);
+      devOnlyDiagnostic("[CharacterStudio] open creazione libro failed", error);
       setSaved(true);
-      toast.success("Cast salvato. Apri Book Forge dalla Dashboard per continuare.");
+      toast.success("Cast salvato. Apri la creazione libro dalla Dashboard per continuare.");
     }
   };
 
@@ -1819,7 +1819,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
           ? "Genera titolo e promessa"
           : !hasBibleReady
             ? "Genera personaggi"
-            : "Continua in Book Forge";
+            : "Continua nella creazione libro";
 
   const runPrimaryCharacterAction = () => {
     if (loading || ideaLoading) return;
@@ -1873,7 +1873,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
               ["identity", "1", "Fondamenta autore", "Voce e pseudonimo"],
               ["idea", "2", "Idea", "Premessa leggibile"],
               ["direction", "3", "Regia", "Genere, tono, dinamica"],
-              ["bible", "4", "Cast canonico", "Bible e Book Forge"],
+              ["bible", "4", "Cast canonico", "Bible e creazione libro"],
             ].map(([id, num, title, subtitle]) => (
               <button
                 key={id}
@@ -1921,7 +1921,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
                   }}
                   className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
                 >
-                  Salva e continua in Book Forge
+                  Salva e continua
                 </button>
               )}
             </div>
@@ -1974,7 +1974,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
                   }}
                   className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
                 >
-                  Salva e continua in Book Forge
+                  Salva e continua
                 </button>
               )}
             </div>
@@ -1991,7 +1991,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
             <div>
               <h2 className="font-semibold text-lg">Studio Personaggi Scriptora</h2>
               <p className="text-xs text-muted-foreground">
-                Segui il flusso: idea, titolo, regia, cast canonico e poi Book Forge.
+                Segui il flusso: idea, titolo, regia, cast canonico e poi flusso libro.
               </p>
             </div>
           </div>
@@ -2062,7 +2062,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
                 <div>
                   <Label>2. Titolo e promessa</Label>
                   <p className="text-xs text-muted-foreground">
-                    Book Forge userà questi dati per non bloccarsi al Blueprint. Puoi cambiarli dopo.
+                    Scriptora userà questi dati per non bloccarsi al Blueprint. Puoi cambiarli dopo.
                   </p>
                 </div>
                 <Button type="button" variant="secondary" onClick={generateTitleAndSubtitle}>
@@ -2108,7 +2108,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
             <div className="rounded-2xl border border-border/70 bg-background/50 p-3">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">3. Regia narrativa</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Qui blocchi genere, filone, lingua e tono: Book Forge non dovrà più indovinarli.
+                Qui blocchi genere, filone, lingua e tono: Scriptora non dovrà più indovinarli.
               </p>
             </div>
 
@@ -2203,7 +2203,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
               <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-300 flex items-start gap-2">
                 <CheckCircle2 className="h-4 w-4 mt-0.5" />
                 <div>
-                  <strong>Collegamento attivo.</strong> Quando apri “Book Forge”, Scriptora sa già che stai creando un romanzo di genere <strong>{genre}</strong>{subcategory ? ` / ${subcategory}` : ""} e userà questi personaggi come Character Lock.
+                  <strong>Collegamento attivo.</strong> Quando apri “creazione libro”, Scriptora sa già che stai creando un romanzo di genere <strong>{genre}</strong>{subcategory ? ` / ${subcategory}` : ""} e userà questi personaggi come Character Lock.
                 </div>
               </div>
             )}
@@ -2219,7 +2219,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
                 DNA completo del libro
               </p>
               <h3 className="text-lg font-bold text-foreground">
-                Impostazioni che Book Forge non dovrà più indovinare
+                Impostazioni che Scriptora non dovrà più indovinare
               </h3>
               <p className="text-sm text-muted-foreground">
                 Definisci formato, lunghezza, struttura, pubblico, promessa, finale e limiti narrativi prima del blueprint.
@@ -2421,7 +2421,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
 
 <p className="text-sm font-semibold">Regia del romanzo</p>
               <p className="text-xs text-muted-foreground">
-                Scegli genere, filone, tono, intensità e dinamica narrativa. Scriptora userà queste coordinate per creare personaggi coerenti e agganciarli a Book Forge.
+                Scegli genere, filone, tono, intensità e dinamica narrativa. Scriptora userà queste coordinate per creare personaggi coerenti e agganciarli a flusso libro.
               </p>
             </div>
 
@@ -2483,7 +2483,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
             <div className="flex items-start gap-2">
               <BookOpen className="h-4 w-4 text-primary mt-0.5" />
               <p>
-                Dopo il salvataggio, Scriptora apre <strong>Book Forge</strong> con cast, filone, tono e continuità già collegati. Il motore non deve più inventare nomi a caso.
+                Dopo il salvataggio, Scriptora apre <strong>creazione libro</strong> con cast, filone, tono e continuità già collegati. Il motore non deve più inventare nomi a caso.
               </p>
             </div>
           </div>
@@ -2496,7 +2496,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
               <p className="truncate text-sm text-muted-foreground">
                 {missingHandoffItems.length
                   ? `Mancano: ${missingHandoffItems.join(", ")}`
-                  : `Pronto per Book Forge · ${bookTitle || "Titolo pronto"} · ${detectedCharacterCount || "cast"} personaggi`}
+                  : `Pronto per creazione libro · ${bookTitle || "Titolo pronto"} · ${detectedCharacterCount || "cast"} personaggi`}
               </p>
             </div>
 

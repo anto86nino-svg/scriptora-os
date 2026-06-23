@@ -123,7 +123,7 @@ export default function PublishingOsPage() {
           <Sparkles className="mx-auto h-8 w-8 text-amber-200" />
           <h2 className="mt-4 text-xl font-black text-white">Nessun libro da pubblicare</h2>
           <p className="mt-2 text-sm leading-6 text-white/58">
-            Crea un libro con Book Forge o apri un progetto esistente: da qui il flusso continua verso cover, export, KDP e pubblicazione.
+            Crea un libro con il flusso di creazione libro o apri un progetto esistente: da qui il flusso continua verso cover, export, KDP e pubblicazione.
           </p>
           <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
             <button
@@ -132,7 +132,7 @@ export default function PublishingOsPage() {
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-300 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-amber-200"
             >
               <Sparkles className="h-4 w-4" />
-              Apri Book Forge
+              Crea nuovo libro
             </button>
             <button
               type="button"

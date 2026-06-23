@@ -37,9 +37,14 @@ import { buildBookTypeLock as buildGenreLock } from "@/lib/book-type-engine";
 import { runGenerateBlueprint } from "@/lib/generation-runtime";
 import { usePlan } from "@/lib/plan";
 import { toast } from "sonner";
-import { MobileBookForge } from "@/mobile/MobileBookForge";
 import { MobileDeleteProjectDialog } from "@/mobile/MobileDeleteProjectDialog";
 import { getToolRoute } from "@/lib/one-flow/tool-registry";
+
+const BookCreationOsWizard = lazyWithRetry(() =>
+  import("@/components/one-flow/BookCreationOsWizard").then((m) => ({
+    default: m.BookCreationOsWizard,
+  })),
+);
 
 function countWords(project?: BookProject | null): number {
   if (!project) return 0;
@@ -80,16 +85,16 @@ export default function MobileLiteDashboardPage() {
   const { plan: currentPlan } = usePlan();
   const [projects, setProjects] = useState<BookProject[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showBookForge, setShowBookForge] = useState(false);
+  const [showCreateBook, setShowCreateBook] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<BookProject | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [desktopOverrideActive, setDesktopOverrideActive] = useState(() => isDesktopModeOverrideActive());
   const [authorIdentity, setAuthorIdentity] = useState<AuthorIdentity>(() => getSelectedAuthorIdentity());
 
   const freeBookUsed = currentPlan === "free" && projects.length > 0;
-  const mobileOverlayOpen = showBookForge || !!deleteTarget;
+  const mobileOverlayOpen = showCreateBook || !!deleteTarget;
 
-  const openMobileBookForge = useCallback(() => {
+  const openCreateBook = useCallback(() => {
     if (freeBookUsed) {
       toast.error("Hai già usato il libro gratuito. Passa a un piano superiore per crearne altri.");
       navigate("/pricing");
@@ -97,15 +102,15 @@ export default function MobileLiteDashboardPage() {
     }
     setAuthorIdentity(getSelectedAuthorIdentity());
     setDeleteTarget(null);
-    setShowBookForge(true);
+    setShowCreateBook(true);
   }, [freeBookUsed, navigate]);
 
   useEffect(() => {
-    const state = location.state as { openForge?: boolean; openWizard?: boolean; openNewBook?: boolean } | null;
-    if (!state?.openForge && !state?.openWizard && !state?.openNewBook) return;
-    openMobileBookForge();
+    const state = location.state as { openCrea?: boolean; openWizard?: boolean; openNewBook?: boolean } | null;
+    if (!state?.openCrea && !state?.openWizard && !state?.openNewBook) return;
+    openCreateBook();
     navigate(location.pathname, { replace: true, state: null });
-  }, [location.pathname, location.state, navigate, openMobileBookForge]);
+  }, [location.pathname, location.state, navigate, openCreateBook]);
 
   useEffect(() => {
     setDesktopOverrideActive(isDesktopModeOverrideActive());
@@ -124,7 +129,7 @@ export default function MobileLiteDashboardPage() {
           config: finalConfig,
         }),
       );
-      setShowBookForge(false);
+      setShowCreateBook(false);
       navigate("/app");
     },
     [authorIdentity, navigate],
@@ -181,7 +186,7 @@ export default function MobileLiteDashboardPage() {
   };
 
   const openExport = useCallback(() => {
-    setShowBookForge(false);
+    setShowCreateBook(false);
     setDeleteTarget(null);
     if (lastProject?.id) setLastProjectId(lastProject.id);
     navigate(getToolRoute("publishing"), {
@@ -205,7 +210,7 @@ export default function MobileLiteDashboardPage() {
 
   const startNewBook = () => {
     sessionStorage.removeItem("scriptora-open-project");
-    openMobileBookForge();
+    openCreateBook();
   };
 
   const confirmDeleteProject = async (archived = false) => {
@@ -307,10 +312,10 @@ export default function MobileLiteDashboardPage() {
 
         <button
           type="button"
-          onClick={() => (lastProject ? openProject(lastProject) : openMobileBookForge())}
+          onClick={() => (lastProject ? openProject(lastProject) : openCreateBook())}
           className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-white px-5 text-base font-bold text-slate-950 shadow-lg"
         >
-          {lastProject ? "Continua a scrivere" : "Apri Book Forge"}
+          {lastProject ? "Continua a scrivere" : "Crea nuovo libro"}
           <ArrowRight className="h-5 w-5" />
         </button>
 
@@ -344,7 +349,7 @@ export default function MobileLiteDashboardPage() {
           Usa la versione completa con Cover Studio, Publishing, KDP Launch e strumenti avanzati.
         </p>
         <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[11px] font-semibold text-white/72">
-          <span className="rounded-2xl border border-white/10 bg-white/[0.05] px-2 py-2">Book Forge</span>
+          <span className="rounded-2xl border border-white/10 bg-white/[0.05] px-2 py-2">Crea libro</span>
           <span className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-2 py-2">Study OS</span>
           <span className="rounded-2xl border border-[#f2c400]/20 bg-[#f2c400]/10 px-2 py-2">Publishing</span>
         </div>
@@ -363,9 +368,9 @@ export default function MobileLiteDashboardPage() {
         />
         <MobileLiteAction
           icon={Sparkles}
-          title="Book Forge"
+          title="Crea libro"
           description="Racconta il libro a Scriptora: intervista, DNA Lock, blueprint e indice editabile."
-          onClick={openMobileBookForge}
+          onClick={openCreateBook}
         />
         <MobileLiteAction
           icon={GraduationCap}
@@ -436,7 +441,7 @@ export default function MobileLiteDashboardPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setShowBookForge(false);
+                  setShowCreateBook(false);
                   setDeleteTarget(project);
                 }}
                 className="flex h-14 w-12 shrink-0 items-center justify-center rounded-2xl border border-red-400/20 bg-red-500/10 text-red-200"
@@ -448,7 +453,7 @@ export default function MobileLiteDashboardPage() {
           ))}
           {!loading && projects.length === 0 && (
             <div className="rounded-2xl border border-dashed border-white/12 p-4 text-sm leading-6 text-white/58">
-              Nessun libro ancora. Apri Book Forge e racconta il libro a Scriptora.
+              Nessun libro ancora. Crea nuovo libro e racconta il libro a Scriptora.
             </div>
           )}
         </div>
@@ -457,7 +462,7 @@ export default function MobileLiteDashboardPage() {
       {!mobileOverlayOpen && (
       <nav className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] z-40 grid grid-cols-4 gap-2 rounded-3xl border border-white/10 bg-slate-950/96 p-2 shadow-xl">
         <LiteDockButton icon={BookOpen} label="Writer" onClick={() => openProject(lastProject)} />
-        <LiteDockButton icon={Sparkles} label="Forge" onClick={openMobileBookForge} />
+        <LiteDockButton icon={Sparkles} label="Crea" onClick={openCreateBook} />
         <LiteDockButton icon={GraduationCap} label="Study" onClick={() => navigate("/study")} />
         <LiteDockButton icon={Rocket} label="Pubblica" onClick={openExport} disabled={projects.length === 0} />
       </nav>
@@ -472,9 +477,9 @@ export default function MobileLiteDashboardPage() {
         busy={deleteBusy}
       />
 
-      {showBookForge && (
-        <MobileBookForge
-          onClose={() => setShowBookForge(false)}
+      {showCreateBook && (
+        <MobileBookCrea
+          onClose={() => setShowCreateBook(false)}
           authorIdentity={authorIdentity}
           onStudioComplete={handleStudioComplete}
           onGenerateBlueprint={handleGenerateBlueprint}

@@ -317,7 +317,7 @@ export default function KeywordGoldPage() {
                   )}
                 >
                   <Rocket className="h-4 w-4" />
-                  Continua in Book Forge
+                  Continua nella creazione libro
                 </Button>
               </CardContent>
             </Card>

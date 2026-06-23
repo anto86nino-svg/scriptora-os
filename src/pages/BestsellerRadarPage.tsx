@@ -392,7 +392,7 @@ export default function BestsellerRadarPage() {
                   )}
                 >
                   <Rocket className="h-4 w-4" />
-                  Crea in Book Forge
+                  Crea libro
                 </Button>
               )}
             </div>

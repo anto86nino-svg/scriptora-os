@@ -51,7 +51,7 @@ export default function CoverStudioPage() {
         <ScriptoraLogoMark size="md" />
         <h1 className="mt-6 text-2xl font-black tracking-tight">Cover Focus Studio</h1>
         <p className="mt-3 max-w-md text-center text-sm leading-6 text-white/62">
-          Studio copertina del libro attivo. Crea prima un libro con Book Forge, poi torna qui per lavorare su formato, titolo, autore e export.
+          Studio copertina del libro attivo. Crea prima un libro con il flusso di creazione libro, poi torna qui per lavorare su formato, titolo, autore e export.
         </p>
         <div className="mt-6 flex flex-col gap-2 sm:flex-row">
           <button
@@ -60,7 +60,7 @@ export default function CoverStudioPage() {
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#f2c400] px-5 py-3 text-sm font-black text-black"
           >
             <ImagePlus className="h-4 w-4" />
-            Apri Book Forge
+            Crea nuovo libro
           </button>
           <button
             type="button"

@@ -113,7 +113,7 @@ function resolveModuleTheme(featureName: string) {
         ["Bestseller Radar", BarChart3],
         ["Title Domination", BookOpen],
         ["Market Intelligence", Search],
-        ["Book Forge", Sparkles],
+        ["creazione libro", Sparkles],
       ] as const,
     };
   }
