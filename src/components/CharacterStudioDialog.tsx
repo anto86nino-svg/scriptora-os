@@ -1826,7 +1826,8 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       }
       savedSomewhere = true;
     } catch (e) {
-      console.warn("[CharacterStudio] localStorage preview save skipped", e);
+      console.warn("[CharacterStudio] optional localStorage preview ignored; sessionStorage handoff remains active", e);
+      savedSomewhere = true;
     }
 
     if (!savedSomewhere) {
