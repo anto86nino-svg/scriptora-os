@@ -1667,23 +1667,23 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     const cleanTone = tone.trim();
     const cleanDynamic = centralDynamic.trim();
     const plot = [
-      String(input.idea || "").trim(),
-      String(input.dynamic || "").trim() ? `Dinamica narrativa: ${String(input.dynamic || "").trim()}` : "",
+      cleanIdea,
+      cleanDynamic ? `Dinamica narrativa: ${cleanDynamic}` : "",
       protagonistType.trim() ? `Tipo protagonista: ${protagonistType.trim()}` : "",
       intensity ? `Intensità: ${intensity}` : "",
     ].filter(Boolean).join("\n\n");
 
     const resolvedTitle = bookTitle.trim() || buildCharacterStudioFallbackTitle({
-      idea: String(input.idea || "").trim(),
+      idea: cleanIdea,
       genre,
       subcategory: cleanSubcategory,
       setting,
-      centralDynamic: String(input.dynamic || "").trim(),
+      centralDynamic: cleanDynamic,
     });
     const resolvedSubtitle = bookSubtitle.trim() || buildCharacterStudioFallbackSubtitle({
-      idea: String(input.idea || "").trim(),
+      idea: cleanIdea,
       narrativePromise,
-      centralDynamic: String(input.dynamic || "").trim(),
+      centralDynamic: cleanDynamic,
       genre,
       subcategory: cleanSubcategory,
     });
@@ -1693,14 +1693,14 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       source: "character-studio",
       title: resolvedTitle,
       subtitle: resolvedSubtitle,
-      idea: String(input.idea || "").trim(),
+      idea: cleanIdea,
       genre,
       subcategory: cleanSubcategory,
       subgenre: cleanSubcategory,
       niche: cleanSubcategory,
-      tone: String(input.tone || "").trim(),
+      tone: cleanTone,
       intensity,
-      centralDynamic: String(input.dynamic || "").trim(),
+      centralDynamic: cleanDynamic,
       protagonistType: protagonistType.trim(),
       language,
       category: "Fiction",
@@ -1716,12 +1716,12 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       characterBible: bible,
       characters,
       plot,
-      conflict: String(input.dynamic || "").trim() || String(input.idea || "").trim(),
+      conflict: cleanDynamic || cleanIdea,
       promise: resolvedPromise,
       narrativePromise: resolvedPromise,
       targetReader:
         targetReader.trim() ||
-        `Lettori di ${genre}${cleanSubcategory ? ` / ${cleanSubcategory}` : ""} con tono ${String(input.tone || "").trim() || "cinematografico"}`,
+        `Lettori di ${genre}${cleanSubcategory ? ` / ${cleanSubcategory}` : ""} con tono ${cleanTone || "cinematografico"}`,
       setting: setting.trim(),
       endingType,
       pov,
@@ -1730,9 +1730,9 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       darknessLevel,
       violenceLevel,
       canonRules: canonRules.trim(),
-      style: String(input.tone || "").trim(),
+      style: cleanTone,
       structureMode: subchaptersEnabled ? "chaptered-fiction-with-subchapters" : "chaptered-fiction",
-      commercialAngle: resolvedPromise || String(input.dynamic || "").trim() || String(input.idea || "").trim(),
+      commercialAngle: resolvedPromise || cleanDynamic || cleanIdea,
       savedAt: new Date().toISOString(),
     };
 
