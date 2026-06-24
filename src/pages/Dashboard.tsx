@@ -199,8 +199,11 @@ export default function Dashboard() {
   const openDashboardTool = useCallback((tool: ActiveDashboardTool) => {
     setShowSettingsHub(false);
     setShowAdvancedSettings(false);
-    setActiveDashboardTool(null);
-    requestAnimationFrame(() => setActiveDashboardTool(tool));
+
+    setActiveDashboardTool((current) => {
+      if (current === tool) return current;
+      return tool;
+    });
   }, []);
 
   const openFreshCharacterStudio = useCallback(() => {
