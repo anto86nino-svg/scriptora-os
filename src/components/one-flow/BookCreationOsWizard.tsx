@@ -1134,7 +1134,16 @@ export function BookCreationOsWizard({
     }
   }, [step, open, buildConfig, identityDraft]);
 
-  const persistDraft = useCallback(() => {
+  
+const closeWizard = () => {
+  try {
+    sessionStorage.removeItem(STUDIO_DRAFT_STORAGE_KEY);
+  } catch {}
+
+  onClose();
+};
+
+const persistDraft = useCallback(() => {
     try {
       sessionStorage.setItem(STUDIO_DRAFT_STORAGE_KEY, JSON.stringify({
         step, title, subtitle, idea, authorName, language, amazonMarketplace, category, subcategory,
@@ -1736,7 +1745,7 @@ export function BookCreationOsWizard({
       if (!onGenerateBlueprint) {
         const config = buildConfig();
         onStudioComplete?.({ config, mode: "studio-draft" });
-        onClose();
+        closeWizard();
         return;
       }
 
@@ -1854,11 +1863,11 @@ export function BookCreationOsWizard({
       if (onStudioComplete) {
         onStudioComplete(payload);
         sessionStorage.removeItem(STUDIO_DRAFT_STORAGE_KEY);
-        onClose();
+        closeWizard();
         return;
       }
       onManualStudio?.(config);
-      onClose();
+      closeWizard();
     } catch (e) {
       toast.error(getUserFriendlyError(e, {
         area: "blueprint",
@@ -2623,7 +2632,7 @@ export function BookCreationOsWizard({
             disabled={!postDnaForge && step === 0}
             onClick={() => {
               if (postDnaForge && step === 6) {
-                onClose();
+                closeWizard();
                 return;
               }
               if (step === 4 && !shouldUseCharacterForge) {
