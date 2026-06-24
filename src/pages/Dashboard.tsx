@@ -184,6 +184,7 @@ export default function Dashboard() {
   const [desktopOverrideActive, setDesktopOverrideActive] = useState(() => isDesktopModeOverrideActive());
   const closeAllDashboardTools = useCallback(() => {
     setActiveDashboardTool(null);
+    setBookForgeHandoff(null);
   }, []);
 
   const navigateFromDashboard = useCallback((path: string, state?: Record<string, unknown>) => {
