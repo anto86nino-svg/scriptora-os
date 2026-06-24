@@ -241,8 +241,9 @@ export function resolveBookForgeStartStep(input: BookForgeHandoff | BookForgePre
   if (hasSlot(prefill, "blueprint")) return "blueprint-approval";
 
   if (fromCharacterStudio && hasCharacterStudioFoundation(prefill)) {
-    if (!hasSlot(prefill, "plot") || !hasSlot(prefill, "conflict")) return "plot-forge";
-    return "blueprint-generation";
+    // Non saltare mai direttamente al Blueprint.
+    // Character Studio deve passare sempre da Plot Forge.
+    return "plot-forge";
   }
 
   if (!hasFoundation(prefill)) return "book-foundation";
