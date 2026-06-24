@@ -1166,7 +1166,15 @@ const persistDraft = useCallback(() => {
       const raw = sessionStorage.getItem(STUDIO_DRAFT_STORAGE_KEY);
       if (!raw) return;
       const draft = JSON.parse(raw);
-      if (draft.step != null) setStep(draft.step);
+      const draftStep = Number(draft.step ?? 0);
+
+      if (draftStep >= 6) {
+        sessionStorage.removeItem(STUDIO_DRAFT_STORAGE_KEY);
+        setStep(0);
+        return;
+      }
+
+      if (draft.step != null) setStep(draftStep);
       if (draft.title) setTitle(draft.title);
       if (draft.subtitle) setSubtitle(draft.subtitle);
       if (draft.idea) setIdea(draft.idea);
