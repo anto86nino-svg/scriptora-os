@@ -24,6 +24,10 @@ import {
 import { usePlan } from "@/lib/plan";
 import { toast } from "sonner";
 import { GuidedInterviewPanel } from "@/components/guided-interview/GuidedInterviewPanel";
+import WelcomeStarterGrid from "./steps/WelcomeStarterGrid";
+import WelcomeForgePanel from "./steps/WelcomeForgePanel";
+import StepValidation from "./steps/StepValidation";
+import WizardFooter from "./steps/WizardFooter";
 import { STUDIO_STEPS, AMAZON_MARKETPLACES, STUDIO_GENRES, STUDIO_LANGUAGES } from "@/lib/book-config-studio/constants";
 import { DEFAULT_MATTER_OPTIONS, normalizeBookConfig } from "@/lib/book-config-studio/defaults";
 import { validateBookConfigStudio } from "@/lib/book-config-studio/validation";
@@ -1707,10 +1711,6 @@ const persistDraft = useCallback(() => {
 
   const goNext = async () => {
     if (step === 0) {
-      if (!title.trim()) {
-        toast.error("Inserisci il titolo del libro, oppure genera titoli magici dalla tua idea.");
-        return;
-      }
       if (!genre || showCoherenceWarning) {
         const inf = textInference;
         if (showCoherenceWarning && !coherenceDismissed) {
@@ -1721,6 +1721,10 @@ const persistDraft = useCallback(() => {
       }
     }
     if (step === 1) {
+      if (!title.trim()) {
+        toast.error("Inserisci il titolo del libro, oppure genera titoli magici dalla tua idea.");
+        return;
+      }
       if (!identityDraft.penName?.trim() && !authorName.trim()) {
         toast.error("Serve il nome autore in copertina prima di continuare.");
         return;
@@ -1978,148 +1982,37 @@ const persistDraft = useCallback(() => {
               touchAction: "pan-y",
             }}
           >
-          {step === 0 && mobileInterviewMode ? (
-            <div className="flex min-h-[calc(100dvh-11rem)] flex-col">
-              <GuidedInterviewPanel
-                selectedGenre={mapForgeGenreToInterviewGenre(forgePresetId, bookTypeId)}
-                language={language}
-                penName={identityDraft.penName || authorName}
-                authorName={identityDraft.name}
-                variant="mobile"
-                onComplete={handleInterviewCompleteFactory({
-                  setNarrativePromise,
-                  setCoreConflict,
-                  setSetting,
-                  setVoiceConsistency,
-                  setCommercialGoal,
-                  setTargetReader,
-                  setShowAdvancedForge,
-                })}
-                onConfirmDna={handleForgeDnaConfirm}
-                onContinueInterview={() => {
-                  setDnaConfirmed(false);
-                  setShowAdvancedForge(false);
-                }}
-              />
-            </div>
-          ) : step === 0 && (
-            <div className="space-y-3">
-              <h2 className="text-xl font-semibold text-white">
-                  {forgePresetId === "poetry" ? "Crea raccolta poetica" : forgePresetId ? `Crea ${forgePresetLabel || "libro"}` : "Crea libro"}
-                </h2>
-              <p className="text-sm text-white/65">
+          {step === 0 && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-semibold text-white">
                   {forgePresetId === "poetry"
-                    ? "Hai scelto Poesie: Scriptora userà sezioni poetiche, versi liberi, immagini, ritmo e silenzi. Niente dark romance, niente romanzo, niente saggio mascherato."
+                    ? "Crea raccolta poetica"
                     : forgePresetId
-                      ? "Hai scelto un preset Forge: Scriptora ha già impostato struttura, tono e direzione. Controlla solo i campi essenziali."
-                      : "Se parti da zero, scegli uno starter. Se hai già un'idea, scrivila: Scriptora la trasforma in una direzione editoriale."}
+                      ? `Crea ${forgePresetLabel || "libro"}`
+                      : "Da dove partiamo?"}
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-white/65">
+                  Scegli uno starter oppure lascia che Scriptora ti intervisti. Titolo, mercato, autore e struttura arrivano dopo: una cosa alla volta.
                 </p>
+              </div>
 
               {!forgePresetId && <GuidedDecisionRail activeIndex={0} />}
 
-              {!forgePresetId && (
-              <div className="grid gap-2 md:grid-cols-3">
-                {GUIDED_STARTERS.map((starter) => (
-                  <button
-                    key={starter.id}
-                    type="button"
-                    onClick={() => applyGuidedStarter(starter)}
-                    className="rounded-2xl border border-white/12 bg-white/[0.055] p-3 text-left transition-colors hover:border-sky-300/35 hover:bg-sky-400/10"
-                  >
-                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-200/70">Starter guidato</span>
-                    <span className="mt-2 block text-sm font-bold text-white">{starter.label}</span>
-                    <span className="mt-1 line-clamp-2 text-[11px] leading-4 text-white/58">{starter.promise}</span>
-                  </button>
-                ))}
-              </div>
-              )}
+              <WelcomeStarterGrid
+                starters={GUIDED_STARTERS}
+                hidden={!!forgePresetId}
+                onSelect={applyGuidedStarter}
+              />
 
-              <label className="block space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Titolo reale</span>
-                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={forgePresetId === "poetry" ? "Es. Geografia delle cose non dette" : "Es. La Cattedrale delle Anime Dimenticate"} className={inputClass} />
-              </label>
-              <label className="block space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Sottotitolo / promessa</span>
-                <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder={forgePresetId === "poetry" ? "Es. Poesie sul silenzio, la memoria e la rinascita" : "Es. Ogni segreto ha un prezzo. Ogni anima reclama il proprio debito."} className={inputClass} />
-              </label>
-
-              {forgePresetId !== "poetry" && (
-                <div className="rounded-2xl border border-violet-400/25 bg-gradient-to-br from-violet-500/10 via-sky-500/5 to-transparent p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-200/80">Forgia titoli magica</p>
-                      <p className="mt-1 text-xs text-white/55">3–5 proposte titolo + sottotitolo allineate al filone editoriale.</p>
-                    </div>
-                    <button
-                      type="button"
-                      disabled={generatingTitles}
-                      onClick={() => void runMagicalTitleGeneration()}
-                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-sky-500 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
-                    >
-                      {generatingTitles ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                      {generatingTitles ? "Forgia in corso…" : "Genera titoli magici"}
-                    </button>
-                  </div>
-                  <p className="mt-2 text-[11px] text-white/45">
-                    {freeTitleRegensLeft > 0
-                      ? `Rigenerazioni gratuite rimaste: ${freeTitleRegensLeft}/${WIZARD_TITLE_FREE_REGENS}`
-                      : "Nuova rigenerazione premium: 35 crediti"}
-                  </p>
-                  {generatingTitles && (
-                    <div className="mt-4 space-y-2">
-                      <div className="flex gap-1">
-                        {TITLE_FORGE_PHASES.map((_, i) => (
-                          <span key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= titleForgePhase ? "bg-violet-400" : "bg-white/10"}`} />
-                        ))}
-                      </div>
-                      <p className="text-sm font-medium text-violet-100 animate-pulse">{titleForgeLabel || TITLE_FORGE_PHASES[0]}</p>
-                    </div>
-                  )}
-                  {titleProposals.length > 0 && !generatingTitles && (
-                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                      {titleProposals.map((proposal) => (
-                        <button
-                          key={`${proposal.title}-${proposal.badge}`}
-                          type="button"
-                          onClick={() => applyTitleProposal(proposal)}
-                          className="rounded-xl border border-white/12 bg-white/[0.05] p-3 text-left transition-colors hover:border-violet-300/40 hover:bg-violet-400/10"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <span className="text-sm font-bold text-white">{proposal.title}</span>
-                            <span className="shrink-0 rounded-full border border-violet-300/30 bg-violet-300/10 px-2 py-0.5 text-[9px] font-bold text-violet-100">{proposal.badge}</span>
-                          </div>
-                          <p className="mt-1 text-[11px] leading-4 text-white/60">{proposal.subtitle}</p>
-                          <p className="mt-2 text-[10px] text-sky-200/80">{proposal.perceivedGenre} · Hook {proposal.hookScore}/100</p>
-                          <p className="mt-1 text-[10px] leading-4 text-white/45">{proposal.rationale}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="mb-4 flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowAdvancedForge(v => !v)}
-                  className="rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-xs font-semibold text-white/70 hover:bg-white/[0.08]"
-                >
-                  {showAdvancedForge
-                    ? "Nascondi modalità avanzata"
-                    : "⚙️ Modalità avanzata"}
-                </button>
-              </div>
-
-
-              <div className="mb-4 rounded-2xl border border-violet-400/20 bg-violet-500/10 p-4">
+              <div className="rounded-2xl border border-violet-400/20 bg-violet-500/10 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-200/80">
                       Forge intelligente
                     </p>
-
                     <p className="mt-1 text-sm text-white/65">
-                      Lascia che Scriptora ti intervisti e costruisca il libro sotto il cofano.
+                      Scriptora costruisce DNA, promessa, conflitto, lettore e direzione editoriale prima del blueprint.
                     </p>
                   </div>
 
@@ -2131,19 +2024,14 @@ const persistDraft = useCallback(() => {
                     }}
                     className="rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-xs font-semibold text-white/70"
                   >
-                    {useGuidedInterview
-                      ? "✨ Intervista attiva"
-                      : "⚙️ Manuale"}
+                    {useGuidedInterview ? "✨ Intervista attiva" : "⚙️ Manuale"}
                   </button>
                 </div>
 
                 {useGuidedInterview && (
                   <div className={`mt-4 overflow-hidden rounded-[28px] ${isMobileViewport ? "h-[min(72dvh,680px)]" : "h-[620px]"}`}>
                     <GuidedInterviewPanel
-                      selectedGenre={mapForgeGenreToInterviewGenre(
-                        forgePresetId,
-                        bookTypeId
-                      )}
+                      selectedGenre={mapForgeGenreToInterviewGenre(forgePresetId, bookTypeId)}
                       language={language}
                       penName={identityDraft.penName || authorName}
                       authorName={identityDraft.name}
@@ -2168,162 +2056,101 @@ const persistDraft = useCallback(() => {
 
                 {useGuidedInterview && dnaConfirmed && (
                   <div className="mt-3 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-xs text-emerald-100">
-                    ✅ DNA del libro confermato. Scriptora può usare questa identità come blocco anti-drift prima del blueprint.
+                    ✅ DNA del libro confermato. Ora puoi passare a titolo e identità autore.
                   </div>
                 )}
               </div>
 
-              <label className="block space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Nome autore</span>
-                <input value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="Nome in copertina" className={inputClass} />
-              </label>
-              <select value={language} onChange={(e) => setLanguage(e.target.value as Language)} className={inputClass}>
-                {STUDIO_LANGUAGES.map((lang) => <option key={lang} value={lang}>{lang}</option>)}
-              </select>
-              <select value={amazonMarketplace} onChange={(e) => setAmazonMarketplace(e.target.value)} className={inputClass}>
-                {AMAZON_MARKETPLACES.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-              </select>
-              {showAdvancedForge && (
-                <>
-                  {forgePresetId !== "poetry" && (
-                    <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-3">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">
-                        Tipi libro principali
-                      </p>
-
-                      <p className="mt-1 text-xs leading-5 text-white/50">
-                        Se non sai da dove partire, scegli un formato:
-                        Scriptora imposta genere, struttura e sottogenere.
-                      </p>
-
-                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {filteredFeaturedTypes.map((type) => {
-                          const option = STUDIO_GENRES.find((g) => g.id === type.id);
-                          if (!option) return null;
-
-                          const active =
-                            bookTypeId === option.id &&
-                            (!type.subgenre || subgenre === type.subgenre);
-
-                          return (
-                            <button
-                              key={`${type.id}-${type.label}`}
-                              type="button"
-                              onClick={() => applyFeaturedBookType(type)}
-                              className={`min-h-[86px] rounded-xl border p-2.5 text-left transition-colors ${
-                                active
-                                  ? "border-sky-300/55 bg-sky-400/15 text-sky-50"
-                                  : "border-white/12 bg-white/[0.045] text-white/72 hover:border-white/22 hover:bg-white/[0.075]"
-                              }`}
-                            >
-                              <span className="block text-xs font-bold leading-4">
-                                {type.label}
-                              </span>
-
-                              <span className="mt-1 block text-[10px] leading-4 text-white/50">
-                                {type.helper}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {forgePresetId === "poetry" ? (
-                    <div className="rounded-2xl border border-sky-300/20 bg-sky-400/10 p-3">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky-200/80">
-                        Raccolta poetica configurata
-                      </p>
-
-                      <p className="mt-1 text-sm font-semibold text-white">
-                        Poesie · Versi liberi · Sezioni emotive
-                      </p>
-
-                      <p className="mt-1 text-xs leading-5 text-white/55">
-                        Scriptora userà una struttura da raccolta poetica,
-                        non da romanzo.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid gap-3">
-                      <select
-                        value={bookTypeId}
-                        onChange={(e) => applyStudioGenre(e.target.value)}
-                        className={inputClass}
-                      >
-                        {visibleGenres.map((g) => (
-                          <option key={g.id} value={g.id}>
-                            {g.label} ({g.family})
-                          </option>
-                        ))}
-                      </select>
-
-                      <input
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        placeholder="Categoria"
-                        className={inputClass}
-                      />
-
-                      <input
-                        value={subcategory}
-                        onChange={(e) => setSubcategory(e.target.value)}
-                        placeholder="Sottocategoria"
-                        className={inputClass}
-                      />
-
-                      <input
-                        value={subgenre}
-                        onChange={(e) => {
-                          setSubgenre(e.target.value);
-                          setCoherenceDismissed(false);
-                        }}
-                        placeholder="Sottogenere (opzionale)"
-                        className={inputClass}
-                      />
-                    </div>
-                  )}
-
-                  <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-3">
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">
-                      Obiettivo commerciale
-                    </p>
-
-                    <div className="flex flex-wrap gap-2">
-                      {COMMERCIAL_GOAL_PRESETS.map((preset) => (
-                        <button
-                          key={preset}
-                          type="button"
-                          onClick={() => setCommercialGoal(preset)}
-                          className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold ${
-                            commercialGoal === preset
-                              ? "border-emerald-300/50 bg-emerald-300/15 text-emerald-100"
-                              : "border-white/12 text-white/65 hover:bg-white/[0.07]"
-                          }`}
-                        >
-                          {preset}
-                        </button>
-                      ))}
-                    </div>
-
-                    <textarea
-                      value={commercialGoal}
-                      onChange={(e) => setCommercialGoal(e.target.value)}
-                      rows={2}
-                      placeholder="Oppure scrivi tu l'obiettivo: Amazon, BookTok, saga, manuale pratico..."
-                      className={`${inputClass} mt-3`}
-                    />
-                  </div>
-                </>
+              {!useGuidedInterview && (
+                <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-3">
+                  <p className="text-sm font-semibold text-white">Modalità manuale</p>
+                  <p className="mt-1 text-xs leading-5 text-white/55">
+                    Procedi al prossimo step per inserire titolo, sottotitolo e identità autore. Le impostazioni avanzate restano disponibili dopo.
+                  </p>
+                </div>
               )}
             </div>
           )}
 
           {step === 1 && (
-            <div className="space-y-3">
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Titolo e identità autore</h2>
+                <p className="mt-1 text-sm leading-6 text-white/60">
+                  Ora definiamo la promessa visibile del libro. Niente doppioni: quello che scegli qui alimenta blueprint, copertina e Writer.
+                </p>
+              </div>
+
+              <label className="block space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Titolo reale</span>
+                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={forgePresetId === "poetry" ? "Es. Geografia delle cose non dette" : "Es. La Cattedrale delle Anime Dimenticate"} className={inputClass} />
+              </label>
+
+              <label className="block space-y-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Sottotitolo / promessa</span>
+                <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder={forgePresetId === "poetry" ? "Es. Poesie sul silenzio, la memoria e la rinascita" : "Es. Ogni segreto ha un prezzo. Ogni anima reclama il proprio debito."} className={inputClass} />
+              </label>
+
+              {forgePresetId !== "poetry" && (
+                <div className="rounded-2xl border border-violet-400/25 bg-gradient-to-br from-violet-500/10 via-sky-500/5 to-transparent p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-200/80">Forgia titoli magica</p>
+                      <p className="mt-1 text-xs text-white/55">3–5 proposte titolo + sottotitolo allineate al filone editoriale.</p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={generatingTitles}
+                      onClick={() => void runMagicalTitleGeneration()}
+                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-sky-500 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+                    >
+                      {generatingTitles ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                      {generatingTitles ? "Forgia in corso…" : "Genera titoli magici"}
+                    </button>
+                  </div>
+
+                  <p className="mt-2 text-[11px] text-white/45">
+                    {freeTitleRegensLeft > 0
+                      ? `Rigenerazioni gratuite rimaste: ${freeTitleRegensLeft}/${WIZARD_TITLE_FREE_REGENS}`
+                      : "Nuova rigenerazione premium: 35 crediti"}
+                  </p>
+
+                  {generatingTitles && (
+                    <div className="mt-4 space-y-2">
+                      <div className="flex gap-1">
+                        {TITLE_FORGE_PHASES.map((_, i) => (
+                          <span key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= titleForgePhase ? "bg-violet-400" : "bg-white/10"}`} />
+                        ))}
+                      </div>
+                      <p className="text-sm font-medium text-violet-100 animate-pulse">{titleForgeLabel || TITLE_FORGE_PHASES[0]}</p>
+                    </div>
+                  )}
+
+                  {titleProposals.length > 0 && !generatingTitles && (
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      {titleProposals.map((proposal) => (
+                        <button
+                          key={`${proposal.title}-${proposal.badge}`}
+                          type="button"
+                          onClick={() => applyTitleProposal(proposal)}
+                          className="rounded-xl border border-white/12 bg-white/[0.05] p-3 text-left transition-colors hover:border-violet-300/40 hover:bg-violet-400/10"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-sm font-bold text-white">{proposal.title}</span>
+                            <span className="shrink-0 rounded-full border border-violet-300/30 bg-violet-300/10 px-2 py-0.5 text-[9px] font-bold text-violet-100">{proposal.badge}</span>
+                          </div>
+                          <p className="mt-1 text-[11px] leading-4 text-white/60">{proposal.subtitle}</p>
+                          <p className="mt-2 text-[10px] text-sky-200/80">{proposal.perceivedGenre} · Hook {proposal.hookScore}/100</p>
+                          <p className="mt-1 text-[10px] leading-4 text-white/45">{proposal.rationale}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-white">Identità autore</h2>
+                <h3 className="text-sm font-semibold text-white/90">Identità autore</h3>
                 {onAuthorIdentity && (
                   <button type="button" onClick={onAuthorIdentity} className="text-xs text-sky-300">Apri Identity OS</button>
                 )}
@@ -2477,53 +2304,19 @@ const persistDraft = useCallback(() => {
           )}
 
           {step === 5 && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-white">Validazione progetto</h2>
-              {coherenceReport && coherenceReport.needsCorrection && (
-                <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100 space-y-3">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="h-5 w-5 shrink-0" />
-                    <div>
-                      <p className="font-semibold">Abbiamo rilevato alcune impostazioni incoerenti.</p>
-                      <p className="mt-1 text-xs text-amber-100/80">
-                        Coerenza complessiva: {coherenceReport.overall}/100
-                        {coherenceReport.suggestedFixes.length > 0
-                          ? ` · ${coherenceReport.suggestedFixes.length} correzioni disponibili`
-                          : ""}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={applyCoherenceAutoFix}
-                    className="rounded-lg border border-amber-200/40 bg-amber-200/15 px-3 py-2 text-xs font-semibold text-amber-50 hover:bg-amber-200/25"
-                  >
-                    Correggi automaticamente
-                  </button>
-                </div>
-              )}
-              {validationIssues.length === 0 ? (
-                <div className="flex items-start gap-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-sm text-emerald-100">
-                  <CheckCircle2 className="h-5 w-5 shrink-0" />
-                  <p>Configurazione completa. Puoi generare il blueprint.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {validationIssues.map((issue) => (
-                    <div key={issue.id} className="flex items-start gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
-                      <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                      <span>Step {issue.step}: {issue.message}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="rounded-xl border border-white/12 bg-white/5 p-4 text-xs text-white/70 space-y-1">
-                <p><strong className="text-white">Titolo:</strong> {title || "—"}</p>
-                <p><strong className="text-white">Autore:</strong> {authorName || identityDraft.penName}</p>
-                <p><strong className="text-white">Genere:</strong> {genre} / {subcategory}</p>
-                <p><strong className="text-white">Capitoli:</strong> {chapters}{subchaptersEnabled ? ` · ${subchaptersPerChapter} sottocapitoli` : ""}</p>
-              </div>
-            </div>
+            <StepValidation
+              coherenceReport={coherenceReport}
+              validationIssues={validationIssues}
+              applyCoherenceAutoFix={applyCoherenceAutoFix}
+              title={title}
+              authorName={authorName}
+              identityDraft={identityDraft}
+              genre={genre}
+              subcategory={subcategory}
+              chapters={chapters}
+              subchaptersEnabled={subchaptersEnabled}
+              subchaptersPerChapter={subchaptersPerChapter}
+            />
           )}
 
           {postDnaForge && (step === 6 || step === 7) ? (
@@ -2633,46 +2426,17 @@ const persistDraft = useCallback(() => {
             </div>
           ) : null}
         </div>
-
-        <div className="scriptora-wizard-footer flex shrink-0 items-center justify-between gap-3 border-t border-white/10 bg-slate-950/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5 sm:py-4">
-          <button
-            type="button"
-            disabled={!postDnaForge && step === 0}
-            onClick={() => {
-              if (postDnaForge && step === 6) {
-                closeWizard();
-                return;
-              }
-              if (step === 4 && !shouldUseCharacterForge) {
-                setStep(2);
-                return;
-              }
-              setStep((s) => Math.max(postDnaForge ? 6 : 0, s - 1));
-            }}
-            className="inline-flex items-center gap-1 rounded-xl border border-white/15 px-4 py-2 text-sm text-white/80 disabled:opacity-30"
-          >
-            <ArrowLeft className="h-4 w-4" /> {postDnaForge && step === 6 ? "Dashboard" : "Indietro"}
-          </button>
-          {step < 6 && (
-            <button type="button" onClick={() => void goNext()} className="inline-flex items-center gap-1 rounded-xl bg-white px-5 py-2 text-sm font-bold text-slate-950">
-              Avanti <ArrowRight className="h-4 w-4" />
-            </button>
-          )}
-          {step === 6 && (
-            <button type="button" disabled={generatingBlueprint} onClick={() => void goNext()}
-              className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">
-              {generatingBlueprint ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              Genera Blueprint
-            </button>
-          )}
-          {step === 7 && (
-            <button type="button" disabled={launching} onClick={() => void finishApproved()}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-5 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-60">
-              {launching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
-              Approva e apri Studio
-            </button>
-          )}
-        </div>
+        <WizardFooter
+          step={step}
+          postDnaForge={postDnaForge}
+          generatingBlueprint={generatingBlueprint}
+          launching={launching}
+          shouldUseCharacterForge={shouldUseCharacterForge}
+          closeWizard={closeWizard}
+          setStep={setStep}
+          goNext={goNext}
+          finishApproved={finishApproved}
+        />
       </div>
 
       {showTypeChangeModal && (
@@ -2709,9 +2473,9 @@ function GuidedDecisionRail({ activeIndex }: { activeIndex: number }) {
   return (
     <div className="rounded-2xl border border-white/12 bg-white/[0.035] p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/52">Book Creation Super Flow</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/52">Book Forge Flow</p>
         <span className="rounded-full border border-sky-300/25 bg-sky-300/10 px-2 py-1 text-[10px] font-semibold text-sky-100">
-          20 passaggi guidati
+          8 fasi guidate
         </span>
       </div>
       <div className="flex gap-1.5 overflow-x-auto pb-1">
