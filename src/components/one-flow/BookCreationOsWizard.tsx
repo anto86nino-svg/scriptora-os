@@ -27,7 +27,18 @@ import { GuidedInterviewPanel } from "@/components/guided-interview/GuidedInterv
 import WelcomeStarterGrid from "./steps/WelcomeStarterGrid";
 import WelcomeForgePanel from "./steps/WelcomeForgePanel";
 import StepValidation from "./steps/StepValidation";
+
 import WizardFooter from "./steps/WizardFooter";
+import {
+  emptyCharacter,
+  cleanStr,
+  parseHandoffLanguage,
+  normalizeHandoffGenre,
+  mapForgeGenreToInterviewGenre,
+  applyInterviewGenreToWizard,
+  formatForgeTime,
+} from "./wizard/utils";
+
 import { STUDIO_STEPS, AMAZON_MARKETPLACES, STUDIO_GENRES, STUDIO_LANGUAGES } from "@/lib/book-config-studio/constants";
 import { DEFAULT_MATTER_OPTIONS, normalizeBookConfig } from "@/lib/book-config-studio/defaults";
 import { validateBookConfigStudio } from "@/lib/book-config-studio/validation";
@@ -394,11 +405,6 @@ const BLUEPRINT_FORGE_COPY = [
   "Non chiudere: Scriptora sta preparando architettura, indice e piano capitoli.",
 ] as const;
 
-function formatForgeTime(seconds: number): string {
-  const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
-  const secs = Math.floor(seconds % 60).toString().padStart(2, "0");
-  return `${minutes}:${secs}`;
-}
 
 export function BookCreationOsWizard({
   open,
