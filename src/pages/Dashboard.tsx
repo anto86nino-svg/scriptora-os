@@ -43,8 +43,6 @@ import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import type { ForgePreset } from "@/lib/scriptora-forge/forge-presets";
 import { DashboardHomePillars } from "@/components/one-flow/DashboardHomePillars";
 import { DashboardPackagingRow } from "@/components/one-flow/DashboardPackagingRow";
-import { DashboardToolHost } from "@/components/one-flow/DashboardToolHost";
-import { BookCreationOsWizard } from "@/components/one-flow/BookCreationOsWizard";
 import { STUDIO_DRAFT_STORAGE_KEY } from "@/lib/book-config-studio/types";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
 import { resetRouteScroll } from "@/lib/one-flow/dashboard-navigation";
@@ -86,6 +84,12 @@ const ScriptoraSettingsHub = lazy(() =>
 );
 const AdvancedAppearanceDialog = lazy(() =>
   import("@/components/AdvancedAppearanceDialog").then((m) => ({ default: m.AdvancedAppearanceDialog })),
+);
+const BookCreationOsWizard = lazyWithRetry(() =>
+  import("@/components/one-flow/BookCreationOsWizard").then((m) => ({ default: m.BookCreationOsWizard })),
+);
+const DashboardToolHost = lazyWithRetry(() =>
+  import("@/components/one-flow/DashboardToolHost").then((m) => ({ default: m.DashboardToolHost })),
 );
 
 interface DetectedIntent {
@@ -1323,18 +1327,32 @@ typeof crypto.randomUUID === "function"
 
       </div>
 
-      <DashboardToolHost
-        activeTool={activeDashboardTool}
-        onClose={closeAllDashboardTools}
-        projects={projects}
-        draftProjects={draftProjects}
-        onDeleteProject={handleDelete}
-        onGoApp={goApp}
-        onOpenNewBook={openNewBookGuarded}
-        onNavigate={navigateFromDashboard}
-        ideaPreview={ideaPreviewProps}
-        dashboardActionContext={dashboardActionContext}
-      />
+      {activeDashboardTool && activeDashboardTool !== "book-forge" && (
+        <Suspense
+          fallback={
+            <ScriptoraAliveTransition
+              compact
+              overlay
+              tone="export"
+              title="Apro strumento…"
+              steps={["Caricamento pannello", "Quasi pronto"]}
+            />
+          }
+        >
+          <DashboardToolHost
+            activeTool={activeDashboardTool}
+            onClose={closeAllDashboardTools}
+            projects={projects}
+            draftProjects={draftProjects}
+            onDeleteProject={handleDelete}
+            onGoApp={goApp}
+            onOpenNewBook={openNewBookGuarded}
+            onNavigate={navigateFromDashboard}
+            ideaPreview={ideaPreviewProps}
+            dashboardActionContext={dashboardActionContext}
+          />
+        </Suspense>
+      )}
 
       {(showAdvancedSettings || showSettingsHub) && (
       <Suspense fallback={(

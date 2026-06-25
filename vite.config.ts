@@ -57,6 +57,10 @@ export default defineConfig(({ mode }) => ({
             if (id.includes("next-themes")) return "vendor-themes";
             if (id.includes("react-day-picker")) return "vendor-day-picker";
             if (id.includes("input-otp")) return "vendor-otp";
+            if (id.includes("react-resizable-panels")) return "vendor-resizable";
+            if (id.includes("lz-string")) return "vendor-lz";
+            if (id.includes("file-saver")) return "vendor-filesaver";
+            if (id.includes("@capacitor")) return "vendor-capacitor";
             // Do NOT manually chunk react/react-dom/scheduler/react-router — forced splits
             // create circular imports and a black screen in production.
             if (id.includes("zod")) return "vendor-zod";
