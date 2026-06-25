@@ -45,6 +45,7 @@ import { DashboardHomePillars } from "@/components/one-flow/DashboardHomePillars
 import { DashboardPackagingRow } from "@/components/one-flow/DashboardPackagingRow";
 import { DashboardToolHost } from "@/components/one-flow/DashboardToolHost";
 import { BookCreationOsWizard } from "@/components/one-flow/BookCreationOsWizard";
+import { STUDIO_DRAFT_STORAGE_KEY } from "@/lib/book-config-studio/types";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
 import { resetRouteScroll } from "@/lib/one-flow/dashboard-navigation";
 import { getToolRoute } from "@/lib/one-flow/tool-registry";
@@ -370,6 +371,17 @@ export default function Dashboard() {
     }
 
     const resolvedHandoff = isBookForgeHandoff(handoff) ? handoff : null;
+
+    // Fresh dashboard start: "Crea libro" must never resurrect an old Book Forge draft.
+    // Handoff flows keep their payload and still skip the right steps.
+    if (!resolvedHandoff) {
+      try {
+        sessionStorage.removeItem(STUDIO_DRAFT_STORAGE_KEY);
+      } catch {
+        // Storage can be unavailable in private/mobile webviews.
+      }
+    }
+
     setBookForgeHandoff(resolvedHandoff);
     if (resolvedHandoff?.recommendedStartStep === "writer") {
       navigate("/app");
