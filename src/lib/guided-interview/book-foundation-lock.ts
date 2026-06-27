@@ -16,6 +16,7 @@ import {
   foundationCastToForge,
   forgeCharacterToFoundation,
 } from "./character-foundation-studio";
+import { buildTitleV2Pipeline } from "@/lib/title-intelligence-v2";
 
 export type BookLengthPreset = "breve" | "medio" | "lungo" | "epico";
 
@@ -489,6 +490,24 @@ export function generateTitleSubtitleOptions(input: FoundationGeneratorInput): T
   const seed = clean(input.ideaSeed);
   const theme = seed.split(/[.!?…]/)[0]?.trim() || seed || input.genre;
   const lead = parseLeadName(seed);
+  const titleV2 = buildTitleV2Pipeline({
+    idea: seed,
+    genre: input.genre,
+    promise: theme,
+    language: input.language,
+  });
+  if (titleV2.finalists.length >= 3) {
+    return titleV2.finalists.slice(0, 3).map((candidate) => ({
+      title: candidate.title,
+      subtitle: candidate.subtitle,
+      commercialReason: `Title Intelligence V2: specificita' ${candidate.scores.specificity}/100, originalita' ${candidate.scores.originality}/100, rischio generico ${candidate.scores.genericRisk}/100.`,
+      toneFit: input.tone,
+      genreFit: input.genre,
+      risk: candidate.couldBelongToThousandBooks
+        ? "Troppo generico: richiede un elemento distintivo in piu'"
+        : `Elementi distintivi: ${candidate.usedDistinctiveElements.slice(0, 3).join(", ") || "tema principale"}`,
+    }));
+  }
 
   if (isNonfictionExpressGenre(input.genre)) {
     return [

@@ -1,4 +1,5 @@
 import type { BookConfig, Genre, Language } from "@/types/book";
+import { buildTitleV2Pipeline } from "@/lib/title-intelligence-v2";
 
 export interface ShadowTitleCandidate {
   title: string;
@@ -471,6 +472,29 @@ export function generateShadowTitleSet(input: ShadowTitleInput, limit = 8): Shad
   const fictionSignal = fictionSignals(input);
   const fictionTitles = fictionTitlePool(fictionSignal, language);
   const fictionTaglines = fictionTaglinePool(language);
+  const v2Pipeline = buildTitleV2Pipeline({
+    titleSeed: input.title,
+    idea: input.idea,
+    genre: input.genre,
+    category: input.category,
+    subcategory: input.subcategory,
+    targetAudience: input.targetAudience,
+    promise: input.readerPromise || input.subtitle,
+    language: input.titleLanguage || input.language,
+  });
+  if (v2Pipeline.finalists.length) {
+    return v2Pipeline.allCandidates.slice(0, limit).map((candidate) => ({
+      title: truncate(candidate.title, 92),
+      subtitle: truncate(candidate.subtitle, 150),
+      angle: candidate.angle,
+      keywords: [
+        ...candidate.usedDistinctiveElements.map((item) => item.toLowerCase()),
+        genre.toLowerCase(),
+        candidate.angle,
+      ].filter(Boolean),
+      confidence: Math.max(72, candidate.scores.finalScore),
+    }));
+  }
 
   const candidates: ShadowTitleCandidate[] = fiction
     ? [

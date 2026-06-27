@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getCurrentUserId } from "@/services/storageService";
+import { buildTitleV2Pipeline, type TitleV2Scores } from "@/lib/title-intelligence-v2";
 
 export type Level = "low" | "medium" | "high";
 
@@ -13,6 +14,8 @@ export interface TitleCard {
   demandLevel: Level;
   competitionLevel: Level;
   rationale: string;
+  scoreBreakdown?: TitleV2Scores;
+  usedDistinctiveElements?: string[];
 }
 
 export interface SubNiche {
@@ -67,8 +70,10 @@ function titleCard(
   demandLevel: Level,
   competitionLevel: Level,
   rationale: string,
+  scoreBreakdown?: TitleV2Scores,
+  usedDistinctiveElements?: string[],
 ): TitleCard {
-  return { title, subtitle, subNiche, conversionScore, opportunityScore, demandLevel, competitionLevel, rationale };
+  return { title, subtitle, subNiche, conversionScore, opportunityScore, demandLevel, competitionLevel, rationale, scoreBreakdown, usedDistinctiveElements };
 }
 
 function buildTitleIntelligenceFallback(input: TitleIntelligenceInput): TitleIntelligenceResult {
@@ -77,6 +82,73 @@ function buildTitleIntelligenceFallback(input: TitleIntelligenceInput): TitleInt
   const audience = input.targetAudience?.trim() || (italian ? "lettori motivati ma bloccati" : "motivated but stuck readers");
   const promise = input.bookPromise?.trim() || (italian ? "ottenere un risultato concreto con un metodo semplice" : "get a concrete result with a simple method");
   const baseNiche = italian ? `${genre} pratico` : `practical ${genre}`;
+  const pipeline = buildTitleV2Pipeline({
+    titleSeed: input.bookTitle,
+    idea: input.bookPromise,
+    genre: input.bookGenre,
+    targetAudience: input.targetAudience,
+    promise: input.bookPromise,
+    language: input.language,
+  });
+
+  if (pipeline.finalists.length) {
+    const toCard = (candidate: (typeof pipeline.finalists)[number], index: number): TitleCard =>
+      titleCard(
+        candidate.title,
+        candidate.subtitle,
+        candidate.usedDistinctiveElements.slice(0, 2).join(" · ") || baseNiche,
+        candidate.scores.commercialHook,
+        candidate.scores.finalScore,
+        candidate.scores.amazonSeo >= 72 ? "high" : "medium",
+        candidate.scores.genericRisk >= 55 ? "medium" : "low",
+        italian
+          ? `Ranking V2 ${index + 1}: specificita' ${candidate.scores.specificity}/100, originalita' ${candidate.scores.originality}/100, rischio generico ${candidate.scores.genericRisk}/100.`
+          : `V2 ranking ${index + 1}: specificity ${candidate.scores.specificity}/100, originality ${candidate.scores.originality}/100, generic risk ${candidate.scores.genericRisk}/100.`,
+        candidate.scores,
+        candidate.usedDistinctiveElements,
+      );
+    const topTitles = pipeline.finalists.map(toCard);
+    const shadowTitles = pipeline.semifinalists.slice(5, 10).map(toCard);
+    const elementKeywords = pipeline.distinctiveElements.map((item) => item.text.toLowerCase()).slice(0, 6);
+
+    return {
+      fallbackReason: italian
+        ? "Analisi locale V2: cloud Title Domination non disponibile, ranking costruito sugli elementi distintivi reali."
+        : "Local V2 analysis: cloud Title Domination unavailable, ranking built from real distinctive story elements.",
+      marketSnapshot: {
+        platformsAnalyzed: ["Amazon KDP", "Apple Books"],
+        topSubNiches: [
+          {
+            name: elementKeywords.slice(0, 2).join(" · ") || baseNiche,
+            demandLevel: "high",
+            competitionLevel: "low",
+            opportunityScore: topTitles[0]?.opportunityScore || 82,
+            rationale: italian
+              ? "Gli elementi concreti della storia rendono il titolo meno sostituibile e piu' cliccabile."
+              : "Concrete story elements make the title less interchangeable and more clickable.",
+          },
+          {
+            name: italian ? "hook narrativo specifico" : "specific narrative hook",
+            demandLevel: "medium",
+            competitionLevel: "low",
+            opportunityScore: 80,
+            rationale: italian
+              ? "Priorita' a luoghi, oggetti, misteri e simboli invece di emozioni generiche."
+              : "Prioritizes places, objects, mysteries and symbols over generic emotions.",
+          },
+        ],
+        marketInsight: italian
+          ? "I titoli migliori usano un oggetto, luogo o mistero riconoscibile. Se un titolo potrebbe appartenere a mille libri, viene penalizzato."
+          : "The strongest titles use a recognizable object, place or mystery. If a title could belong to a thousand books, it is penalized.",
+      },
+      topTitles,
+      shadowTitles,
+      coreKeywords: [
+        ...elementKeywords.map((keyword) => ({ keyword, demand: "high" as Level, competition: "low" as Level })),
+        { keyword: genre.toLowerCase(), demand: "high" as Level, competition: "medium" as Level },
+      ].slice(0, 8),
+    };
+  }
 
   const topTitles = italian
     ? [

@@ -507,6 +507,20 @@ function TitleCardView({
         </div>
       </div>
       <p className="text-xs text-muted-foreground italic mb-2 leading-snug">{card.subtitle}</p>
+      {card.scoreBreakdown && (
+        <div className="mb-2 grid grid-cols-2 gap-1 text-[10px] text-muted-foreground sm:grid-cols-5">
+          <span>Memo {card.scoreBreakdown.memorability}</span>
+          <span>Spec {card.scoreBreakdown.specificity}</span>
+          <span>SEO {card.scoreBreakdown.amazonSeo}</span>
+          <span>Orig {card.scoreBreakdown.originality}</span>
+          <span>Risk {card.scoreBreakdown.genericRisk}</span>
+        </div>
+      )}
+      {card.usedDistinctiveElements?.length ? (
+        <p className="mb-2 text-[10px] leading-snug text-emerald-300/80">
+          Elementi reali: {card.usedDistinctiveElements.slice(0, 4).join(", ")}
+        </p>
+      ) : null}
       <div className="flex gap-1.5 mb-2">
         <LevelChip label="Domanda" level={card.demandLevel} positive="high" />
         <LevelChip label="Concorrenza" level={card.competitionLevel} positive="low" />

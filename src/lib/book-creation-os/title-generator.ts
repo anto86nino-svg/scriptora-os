@@ -1,5 +1,6 @@
 import type { Language } from "@/types/book";
 import { inferGenreFromText, type GenreInference } from "./genre-inference";
+import { buildTitleV2Pipeline, type TitleV2Candidate } from "@/lib/title-intelligence-v2";
 
 export const WIZARD_TITLE_FREE_REGENS = 3;
 const FREE_REGENS_KEY = "scriptora-wizard-title-free-regens";
@@ -20,6 +21,15 @@ export type TitleProposal = {
   perceivedGenre: string;
   editorialPromise: string;
   hookScore: number;
+  titleScore?: number;
+  memorabilityScore?: number;
+  originalityScore?: number;
+  specificityScore?: number;
+  amazonSeoScore?: number;
+  commercialHookScore?: number;
+  storyCoherenceScore?: number;
+  genericRisk?: number;
+  usedDistinctiveElements?: string[];
   rationale: string;
   badge: TitleProposalBadge;
   inference: GenreInference;
@@ -400,6 +410,42 @@ function manualRationaleFor(badge: TitleProposalBadge, inference: GenreInference
   return `${map[badge]} Filone: ${inference.label}.`;
 }
 
+function proposalFromV2(
+  candidate: TitleV2Candidate,
+  index: number,
+  inference: GenreInference,
+  badges: TitleProposalBadge[],
+  manual = false,
+): TitleProposal {
+  const badge = badges[index % badges.length];
+  const score = candidate.scores;
+  const elementLabel = candidate.usedDistinctiveElements.length
+    ? ` Elementi usati: ${candidate.usedDistinctiveElements.slice(0, 3).join(", ")}.`
+    : "";
+  const genericLabel = candidate.couldBelongToThousandBooks
+    ? " Scartabile se non viene reso più specifico."
+    : " Supera il controllo: non sembra appartenere a mille libri diversi.";
+  return {
+    title: candidate.title,
+    subtitle: candidate.subtitle,
+    perceivedGenre: inference.label,
+    editorialPromise: inference.narrativePromise,
+    hookScore: score.commercialHook,
+    titleScore: score.finalScore,
+    memorabilityScore: score.memorability,
+    originalityScore: score.originality,
+    specificityScore: score.specificity,
+    amazonSeoScore: score.amazonSeo,
+    commercialHookScore: score.commercialHook,
+    storyCoherenceScore: score.storyCoherence,
+    genericRisk: score.genericRisk,
+    usedDistinctiveElements: candidate.usedDistinctiveElements,
+    rationale: `${manual ? manualRationaleFor(badge, inference) : rationaleFor(badge, inference)}${elementLabel}${genericLabel}`,
+    badge,
+    inference,
+  };
+}
+
 export function generateWizardTitleProposals(
   titleSeed: string,
   idea: string,
@@ -411,31 +457,40 @@ export function generateWizardTitleProposals(
 
   if (isManualTitleForgeContext(context, titleSeed, idea)) {
     const manualInference = buildManualInference(idea, context);
-
-    const proposals: TitleProposal[] = [];
-    for (let i = 0; i < 5; i += 1) {
-      const badge = MANUAL_BADGES[i % MANUAL_BADGES.length];
-      const candidateTitle = pick(MANUAL_TITLES, seed, i * 3);
-      const title = i === 0 && titleSeed.trim().length >= 4 ? titleSeed.trim() : candidateTitle;
-      const subtitle = pick(MANUAL_SUBS, seed, i * 5 + 1);
-      const hookScore = Math.min(96, 76 + ((seed + i * 7) % 18));
-
-      proposals.push({
-        title,
-        subtitle,
-        perceivedGenre: manualInference.label,
-        editorialPromise: manualInference.narrativePromise,
-        hookScore,
-        rationale: manualRationaleFor(badge, manualInference),
-        badge,
-        inference: manualInference,
-      });
-    }
-
-    return proposals.filter((p, idx, arr) => arr.findIndex((x) => x.title.toLowerCase() === p.title.toLowerCase()) === idx);
+    const pipeline = buildTitleV2Pipeline({
+      titleSeed,
+      idea,
+      genre: manualInference.genre,
+      category: manualInference.category,
+      subcategory: manualInference.subcategory,
+      subgenre: manualInference.subgenre,
+      targetAudience: manualInference.targetReader,
+      promise: manualInference.narrativePromise,
+      language,
+    });
+    return pipeline.finalists
+      .map((candidate, index) => proposalFromV2(candidate, index, manualInference, MANUAL_BADGES, true))
+      .filter((p, idx, arr) => arr.findIndex((x) => x.title.toLowerCase() === p.title.toLowerCase()) === idx);
   }
 
   const inference = inferGenreFromText(titleSeed || idea, idea);
+  const pipeline = buildTitleV2Pipeline({
+    titleSeed,
+    idea,
+    genre: inference.genre,
+    category: inference.category,
+    subcategory: inference.subcategory,
+    subgenre: inference.subgenre,
+    targetAudience: inference.targetReader,
+    promise: inference.narrativePromise,
+    language,
+  });
+  if (pipeline.finalists.length) {
+    return pipeline.finalists
+      .map((candidate, index) => proposalFromV2(candidate, index, inference, BADGES))
+      .filter((p, idx, arr) => arr.findIndex((x) => x.title.toLowerCase() === p.title.toLowerCase()) === idx);
+  }
+
   const ideaDrivenTitles = buildIdeaDrivenTitlePool(idea, inference, seed, context);
   const titles = uniqueAllowedTitles([...ideaDrivenTitles, ...titlesForInference(inference)], idea);
   const subs = subtitlesForInference(inference);

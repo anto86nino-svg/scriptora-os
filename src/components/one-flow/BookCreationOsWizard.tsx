@@ -2180,7 +2180,14 @@ const persistDraft = useCallback(() => {
                             <span className="shrink-0 rounded-full border border-violet-300/30 bg-violet-300/10 px-2 py-0.5 text-[9px] font-bold text-violet-100">{proposal.badge}</span>
                           </div>
                           <p className="mt-1 text-[11px] leading-4 text-white/60">{proposal.subtitle}</p>
-                          <p className="mt-2 text-[10px] text-sky-200/80">{proposal.perceivedGenre} · Hook {proposal.hookScore}/100</p>
+                          <p className="mt-2 text-[10px] text-sky-200/80">
+                            {proposal.perceivedGenre} · Score {proposal.titleScore ?? proposal.hookScore}/100 · Specificita' {proposal.specificityScore ?? "—"}
+                          </p>
+                          {proposal.usedDistinctiveElements?.length ? (
+                            <p className="mt-1 text-[10px] leading-4 text-emerald-200/75">
+                              Elementi: {proposal.usedDistinctiveElements.slice(0, 3).join(", ")}
+                            </p>
+                          ) : null}
                           <p className="mt-1 text-[10px] leading-4 text-white/45">{proposal.rationale}</p>
                         </button>
                       ))}
