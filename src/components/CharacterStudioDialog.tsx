@@ -474,6 +474,74 @@ function getCharacterStudioDirectionPreset(genre: string): CharacterStudioDirect
     };
   }
 
+  if (/poetry|poesia/.test(g)) {
+    return {
+      subcategory: "poesia contemporanea",
+      tone: "lirico e preciso",
+      intensity: "literary deep focus",
+      centralDynamic: "memoria e identità",
+      targetReader: "Lettori di poesia contemporanea, raccolte tematiche e voce autoriale riconoscibile.",
+      narrativePromise: "Una raccolta poetica guidata da immagini, ritmo e continuità emotiva, senza struttura da romanzo.",
+      subgenres: [
+        { value: "poesia contemporanea", label: "Poesia contemporanea" },
+        { value: "poesia lirica", label: "Poesia lirica" },
+        { value: "poesia narrativa", label: "Poesia narrativa" },
+        { value: "frammenti poetici", label: "Frammenti poetici" },
+      ],
+      tones: [
+        "lirico e preciso",
+        "intimo e confessionale",
+        "elegante e letterario",
+        "melanconico e struggente",
+        "pulito e profondo",
+      ],
+      intensities: [
+        { value: "literary deep focus", label: "Profondità letteraria" },
+        { value: "soft", label: "Morbida" },
+        { value: "emotional devastation", label: "Devastazione emotiva" },
+      ],
+      dynamics: [
+        "memoria e identità",
+        "perdita e rinascita",
+        "fuga dal passato",
+        "redenzione",
+      ],
+    };
+  }
+
+  if (/self-help|selfhelp|manual/.test(g)) {
+    return {
+      subcategory: "crescita personale",
+      tone: "chiaro e autorevole",
+      intensity: "medium",
+      centralDynamic: "trasformazione pratica",
+      targetReader: "Lettori che cercano chiarezza, metodo, esempi concreti e cambiamento applicabile.",
+      narrativePromise: "Una guida pratica che porta il lettore da confusione a chiarezza con passaggi concreti e verificabili.",
+      subgenres: [
+        { value: "crescita personale", label: "Crescita personale" },
+        { value: "mindset", label: "Mindset" },
+        { value: "produttività", label: "Produttività" },
+        { value: "benessere", label: "Benessere" },
+      ],
+      tones: [
+        "chiaro e autorevole",
+        "pratico e diretto",
+        "empatico e concreto",
+        "pulito e profondo",
+      ],
+      intensities: [
+        { value: "medium", label: "Media" },
+        { value: "commercial page-turner", label: "Page-turner commerciale" },
+        { value: "literary deep focus", label: "Profondità letteraria" },
+      ],
+      dynamics: [
+        "trasformazione pratica",
+        "chiarezza e metodo",
+        "problema e soluzione",
+      ],
+    };
+  }
+
   if (/romance|dark-romance/.test(g)) {
     return {
       subcategory: /dark-romance/.test(g) ? "mafia romance" : "slow burn",
@@ -602,6 +670,7 @@ const GENRES = [
   { value: "romance", label: "Romance" },
   { value: "dark-romance", label: "Dark Romance" },
   { value: "sci-fi", label: "Fantascienza" },
+  { value: "poetry", label: "Poesia" },
   { value: "literary fiction", label: "Narrativa" },
   { value: "historical fiction", label: "Storico" },
   { value: "self help", label: "Self Help" },
@@ -609,6 +678,17 @@ const GENRES = [
 ];
 
 const LANGUAGES = ["Italian", "English", "Spanish", "French", "German"];
+
+function requiresCanonicalCast(bookFormat: string, genre: string): boolean {
+  const normalizedFormat = normalizeStudioGenre(bookFormat);
+  const normalizedGenre = normalizeStudioGenre(genre);
+  return !(
+    normalizedFormat === "poetry-collection" ||
+    normalizedFormat === "manual" ||
+    normalizedGenre === "poetry" ||
+    normalizedGenre === "self-help"
+  );
+}
 
 
 type CharacterStudioSmartPreset = {
@@ -846,6 +926,80 @@ function getCharacterStudioPreset(genre: string): CharacterStudioSmartPreset {
     };
   }
 
+  if (/poetry|poesia/.test(g)) {
+    return {
+      subcategory: "poesia contemporanea",
+      tone: "lirico e preciso",
+      intensity: "profondità letteraria",
+      centralDynamic: "memoria e identità",
+      spiceLevel: "non applicabile",
+      darknessLevel: "medio",
+      violenceLevel: "assente",
+      targetReader: "Lettori di poesia contemporanea, raccolte tematiche e voce autoriale riconoscibile.",
+      narrativePromise: "Una raccolta poetica guidata da immagini, ritmo e continuità emotiva, senza struttura da romanzo.",
+      subgenres: [
+        "Poesia contemporanea",
+        "Poesia lirica",
+        "Poesia narrativa",
+        "Frammenti poetici",
+      ],
+      tones: [
+        "lirico e preciso",
+        "intimo e confessionale",
+        "elegante e letterario",
+        "melanconico e struggente",
+        "pulito e profondo",
+      ],
+      intensities: [
+        "Profondità letteraria",
+        "Morbida",
+        "Devastazione emotiva",
+      ],
+      dynamics: [
+        "memoria e identità",
+        "perdita e rinascita",
+        "fuga dal passato",
+        "redenzione",
+      ],
+    };
+  }
+
+  if (/self-help|selfhelp|manual/.test(g)) {
+    return {
+      subcategory: "crescita personale",
+      tone: "chiaro e autorevole",
+      intensity: "media",
+      centralDynamic: "trasformazione pratica",
+      spiceLevel: "non applicabile",
+      darknessLevel: "leggera",
+      violenceLevel: "assente",
+      targetReader: "Lettori che cercano chiarezza, metodo, esempi concreti e cambiamento applicabile.",
+      narrativePromise: "Una guida pratica che porta il lettore da confusione a chiarezza con passaggi concreti e verificabili.",
+      subgenres: [
+        "Crescita personale",
+        "Mindset",
+        "Produttività",
+        "Benessere",
+      ],
+      tones: [
+        "chiaro e autorevole",
+        "pratico e diretto",
+        "empatico e concreto",
+        "pulito e profondo",
+      ],
+      intensities: [
+        "Media",
+        "Page-turner commerciale",
+        "Profondità letteraria",
+      ],
+      dynamics: [
+        "trasformazione pratica",
+        "chiarezza e metodo",
+        "problema e soluzione",
+      ],
+    };
+  }
+
   return {
     subcategory: "narrativa commerciale",
     tone: "cinematografico",
@@ -901,6 +1055,7 @@ const CHARACTER_STUDIO_PRESET_GENRES = [
   "fantasy",
   "romantasy",
   "sci-fi",
+  "poetry",
   "literary fiction",
   "self help",
   "memoir",
@@ -1094,6 +1249,10 @@ function fallbackCharacterBible(input: {
     seed: hash,
     manualCharacterNames: input.manualCharacterNames,
   });
+  const normalizedGenre = normalizeStudioGenre(input.genre);
+  const isRomance = /romance|romantasy/.test(normalizedGenre);
+  const isHorror = /horror|gothic|folk/.test(normalizedGenre);
+  const isThriller = /thriller|crime|noir|mystery|suspense/.test(normalizedGenre);
   const professions = [
     "fotografa investigativa abituata a leggere dettagli invisibili",
     "traduttrice freelance che vive tra lingue, bugie e omissioni",
@@ -1107,50 +1266,126 @@ function fallbackCharacterBible(input: {
     "chef di navi merci che custodisce ricette come prove",
     "matematica del rischio assunta per prevedere tradimenti",
   ];
-  const counterpartRoles = [
-    "antagonista emotivo / alleato necessario",
-    "figura di svolta con agenda nascosta",
-    "rivale professionale che conosce una parte della verità",
-    "custode del luogo e della memoria che la protagonista evita",
-    "testimone ambiguo, attrazione e minaccia insieme",
-    "partner obbligato in una scelta che non lascia innocenti",
-  ];
+  const counterpartRoles = isHorror
+    ? [
+        "testimone ambiguo legato alla minaccia",
+        "custode del luogo e della memoria che la protagonista evita",
+        "sopravvissuto con un segreto che può contaminare tutti",
+        "figura di svolta che conosce la regola nascosta dell'orrore",
+      ]
+    : isThriller
+      ? [
+          "alleato investigativo con agenda nascosta",
+          "rivale professionale che conosce una parte della verità",
+          "testimone chiave che non può essere letto con sicurezza",
+          "antagonista morale che aumenta rischio e urgenza",
+        ]
+      : [
+          "antagonista emotivo / alleato necessario",
+          "figura di svolta con agenda nascosta",
+          "rivale professionale che conosce una parte della verità",
+          "custode del luogo e della memoria che la protagonista evita",
+          "testimone ambiguo, attrazione e minaccia insieme",
+          "partner obbligato in una scelta che non lascia innocenti",
+        ];
   const profession = professions[hash % professions.length];
   const counterpartRole = counterpartRoles[(hash >>> 3) % counterpartRoles.length];
   const protagonistName = selectedNames[0]?.name || "Livia";
   const protagonistSurname = selectedNames[0]?.surname || "D'Amico";
   const loveName = selectedNames[1]?.name || "Nicolò";
   const loveSurname = selectedNames[1]?.surname || "Serra";
+  const protagonistCharacter = isHorror
+    ? "Vigile, intuitiva, segnata da una paura che non nomina. Interpreta i luoghi come se potessero mentire."
+    : isThriller
+      ? "Lucida, ostinata, abituata a collegare indizi prima degli altri. Sbaglia quando confonde controllo e verità."
+      : "Sensibile, osservatrice, ferita ma non fragile. Tende a scappare quando una verità emotiva diventa troppo vicina.";
+  const protagonistWound = isHorror
+    ? "Ha vissuto un evento che le ha insegnato a non fidarsi dei ricordi, soprattutto dei propri."
+    : isThriller
+      ? "Ha fallito una scelta decisiva e ora cerca prove per non ascoltare più il senso di colpa."
+      : "Ha perso fiducia nella possibilità di appartenere davvero a qualcuno o a un luogo.";
+  const protagonistDesire = isHorror
+    ? "Capire cosa sta infestando il luogo prima che la minaccia la scelga definitivamente."
+    : isThriller
+      ? "Portare alla luce la verità prima che qualcun altro paghi il prezzo."
+      : "Ricominciare altrove e trovare una direzione concreta.";
+  const protagonistNeed = isHorror
+    ? "Guardare la paura senza trasformarla in superstizione o negazione."
+    : isThriller
+      ? "Accettare che la verità non coincide sempre con il controllo."
+      : "Smettere di scappare e imparare a scegliere.";
+  const protagonistSecret = isHorror
+    ? "Sa più della minaccia di quanto ammetta e teme che una parte dell'orrore venga da lei."
+    : isThriller
+      ? "Ha nascosto una prova, una testimonianza o un dettaglio che può cambiare l'indagine."
+      : "Nasconde una paura profonda di essere vista davvero.";
+  const protagonistFear = isHorror
+    ? "Scoprire che il mostro, il luogo o il rituale la riconoscono come parte della storia."
+    : isThriller
+      ? "Arrivare troppo tardi o accusare la persona sbagliata."
+      : "Essere scelta solo finché resta utile, poi abbandonata quando mostra il bisogno vero.";
+  const relationshipLine = isHorror
+    ? `Il suo rapporto con ${loveName} deve generare sospetto, alleanza instabile, rivelazioni e paura crescente.`
+    : isThriller
+      ? `Il suo rapporto con ${loveName} deve aumentare pressione, indizi, conflitto morale e urgenza investigativa.`
+      : `Il suo rapporto con ${loveName} deve crescere lentamente, attraverso tensione, silenzi, gesti e conseguenze.`;
+  const counterpartWound = isHorror
+    ? "Porta addosso una perdita collegata al luogo o alla minaccia, e non sa più distinguere prudenza e complicità."
+    : isThriller
+      ? "È stato vicino alla verità una volta e ha scelto di sopravvivere invece di parlare."
+      : "Porta una perdita o un fallimento che lo ha reso prudente nell'amore.";
+  const counterpartDesire = isHorror
+    ? "Impedire che il segreto sepolto riemerga nel modo peggiore."
+    : isThriller
+      ? "Chiudere il caso, proteggere la propria posizione o recuperare una verità perduta."
+      : "Proteggere il suo mondo e non perdere il controllo.";
+  const counterpartNeed = isHorror
+    ? "Rompere il patto di silenzio prima che la minaccia si ripeta."
+    : isThriller
+      ? "Scegliere la verità anche quando lo espone al rischio."
+      : "Accettare che amare di nuovo non significa tradire il passato.";
+  const counterpartRelationship = isHorror
+    ? `Con ${protagonistName} deve esserci diffidenza, necessità, paura condivisa e rivelazioni dosate.`
+    : isThriller
+      ? `Con ${protagonistName} deve esserci pressione, prove contestate, lealtà incerta e rischio crescente.`
+      : `Con ${protagonistName} deve esserci attrazione, paura, resistenza e progressiva fiducia.`;
+  const counterpartContinuity = isRomance
+    ? "Non farlo confessare troppo presto. Ogni intimità deve avere una conseguenza narrativa."
+    : isHorror
+      ? "Non renderlo una soluzione facile. Ogni rivelazione deve aumentare costo, sospetto o paura."
+      : isThriller
+        ? "Non trasformarlo in spiegazione ambulante. Ogni informazione deve avere rischio, prova o conseguenza."
+        : "Non renderlo un archetipo generico. Ogni scelta deve avere costo, sottotesto e conseguenza.";
 
   return `Nome: ${protagonistName}
 Cognome: ${protagonistSurname}
 Età: 32
 Ruolo nella storia: Protagonista / ${profession}
 Aspetto fisico: Da definire con coerenza durante la scrittura, senza contraddizioni.
-Carattere: Sensibile, osservatrice, ferita ma non fragile. Tende a scappare quando una verità emotiva diventa troppo vicina.
-Ferita interiore: Ha perso fiducia nella possibilità di appartenere davvero a qualcuno o a un luogo.
-Desiderio esterno: Ricominciare altrove e trovare una direzione concreta.
-Bisogno interiore: Smettere di scappare e imparare a scegliere.
-Segreto: Nasconde una paura profonda di essere vista davvero.
-Paura: Essere scelta solo finché resta utile, poi abbandonata quando mostra il bisogno vero.
+Carattere: ${protagonistCharacter}
+Ferita interiore: ${protagonistWound}
+Desiderio esterno: ${protagonistDesire}
+Bisogno interiore: ${protagonistNeed}
+Segreto: ${protagonistSecret}
+Paura: ${protagonistFear}
 Contraddizione: Desidera appartenenza ma sabota ogni luogo che potrebbe diventare casa.
 Difetto dominante: Trasforma lucidità e controllo in distanza emotiva.
 Trigger emotivi: Promesse vaghe, stanze chiuse, messaggi senza risposta, qualcuno che decide per lei.
 Comportamento ricorrente: Riordina oggetti piccoli quando mente o sta per cedere.
 Linguaggio personale: Frasi precise, ironia asciutta, domande che spostano il peso sull'altro.
 Arco di trasformazione: Da fuga elegante a scelta consapevole di restare anche quando costa.
-Rapporto con gli altri personaggi: Il suo rapporto con ${loveName} deve crescere lentamente, attraverso tensione, silenzi, gesti e conseguenze.
+Rapporto con gli altri personaggi: ${relationshipLine}
 Regole di continuità: Non rinominare mai ${protagonistName}. Non trasformarla in un'altra persona. Ogni capitolo deve rispettare la sua ferita, il suo desiderio e il suo arco emotivo.
 
 Nome: ${loveName}
 Cognome: ${loveSurname}
 Età: 35
-Ruolo nella storia: ${input.genre.includes("romance") ? "Interesse romantico / " : ""}${counterpartRole}
+Ruolo nella storia: ${isRomance ? "Interesse romantico / " : ""}${counterpartRole}
 Aspetto fisico: Presenza intensa, concreta, non patinata. Deve sembrare una persona reale, non un archetipo generico.
 Carattere: Riservato, magnetico, segnato dal passato. Mostra più con i gesti che con le parole.
-Ferita interiore: Porta una perdita o un fallimento che lo ha reso prudente nell'amore.
-Desiderio esterno: Proteggere il suo mondo e non perdere il controllo.
-Bisogno interiore: Accettare che amare di nuovo non significa tradire il passato.
+Ferita interiore: ${counterpartWound}
+Desiderio esterno: ${counterpartDesire}
+Bisogno interiore: ${counterpartNeed}
 Segreto: C'è una parte della sua storia che non racconta subito.
 Paura: Se lascia entrare qualcuno, dovrà ammettere quanto è rimasto fermo nel passato.
 Contraddizione: Vuole proteggere ${protagonistName}, ma ogni protezione rischia di diventare possesso.
@@ -1159,8 +1394,8 @@ Trigger emotivi: Domande sul passato, gesti di fiducia improvvisi, oggetti legat
 Comportamento ricorrente: Risponde tardi, osserva le uscite, sistema le maniche prima di dire una verità.
 Linguaggio personale: Poche parole, concrete, con sottotesto; evita confessioni dirette finché la scena lo costringe.
 Arco di trasformazione: Da custode del passato a persona capace di scegliere il presente senza cancellare ciò che ha perso.
-Rapporto con gli altri personaggi: Con ${protagonistName} deve esserci attrazione, paura, resistenza e progressiva fiducia.
-Regole di continuità: Non rinominare mai ${loveName}. Non farlo confessare troppo presto. Ogni intimità deve avere una conseguenza narrativa.`;
+Rapporto con gli altri personaggi: ${counterpartRelationship}
+Regole di continuità: Non rinominare mai ${loveName}. ${counterpartContinuity}`;
 }
 
 function readIdeaHistory(): string[] {
@@ -1331,8 +1566,10 @@ function buildCharacterStudioFallbackTitle(input: {
   subcategory?: string;
   setting?: string;
   centralDynamic?: string;
+  bookFormat?: string;
 }): string {
   const genre = cleanOneLine(input.genre).toLowerCase();
+  const bookFormat = cleanOneLine(input.bookFormat).toLowerCase();
   const subcategory = cleanOneLine(input.subcategory);
   const setting = cleanOneLine(input.setting, 48);
   const dynamic = cleanOneLine(input.centralDynamic, 48);
@@ -1344,6 +1581,24 @@ function buildCharacterStudioFallbackTitle(input: {
   const motif = titleCaseFragment(
     (hay.match(/archiv\w*|soteropoli|villa|casa|palazzo|isola|accademia|ritratto|dipinto|fotogra\w*|memoria|cenere|ombra|fiamma|contratto|patto|segreto|acqua|stelle|sangue/i) || [""])[0],
   );
+
+  if (/poetry|poesia|poetry_collection/.test(`${genre} ${bookFormat}`)) {
+    return pickStableVariant([
+      motif ? `Geografia di ${motif}` : "",
+      "Atlante delle cose perdute",
+      "Il margine della voce",
+      "Dove resta la luce",
+    ], seed);
+  }
+
+  if (/self-help|self help|manual/.test(`${genre} ${bookFormat}`)) {
+    return pickStableVariant([
+      "Il metodo della chiarezza",
+      "Ricominciare con metodo",
+      "La pratica del cambiamento",
+      "Dalla confusione alla scelta",
+    ], seed);
+  }
 
   if (setting) {
     return pickStableVariant([
@@ -1392,9 +1647,18 @@ function buildCharacterStudioFallbackSubtitle(input: {
   centralDynamic?: string;
   genre?: string;
   subcategory?: string;
+  bookFormat?: string;
 }): string {
   const promise = cleanOneLine(input.narrativePromise, 130);
   if (promise.length >= 12) return promise;
+
+  const bookIdentity = `${input.genre || ""} ${input.bookFormat || ""}`.toLowerCase();
+  if (/poetry|poesia|poetry_collection/.test(bookIdentity)) {
+    return "Una raccolta poetica costruita su immagini, ritmo e una promessa emotiva coerente.";
+  }
+  if (/self-help|self help|manual/.test(bookIdentity)) {
+    return "Una guida pratica per trasformare confusione in azioni chiare e verificabili.";
+  }
 
   const dynamic = cleanOneLine(input.centralDynamic, 90);
   if (dynamic.length >= 8) {
@@ -1495,7 +1759,6 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   const [previewPanel, setPreviewPanel] = useState<"idea" | "bible" | null>(null);
   const [showCastDetails, setShowCastDetails] = useState(false);
   const [openCharacterIndex, setOpenCharacterIndex] = useState(0);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ideaLoading, setIdeaLoading] = useState(false);
   const [liveOperation, setLiveOperation] = useState<CharacterStudioLiveOperation | null>(null);
@@ -1586,7 +1849,6 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         setCharacterBible("");
         setShowCastDetails(false);
         setOpenCharacterIndex(0);
-        setAdvancedOpen(false);
         setSaved(false);
         return;
       }
@@ -1630,6 +1892,88 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     }
   }, [open]);
 
+  const castRequired = requiresCanonicalCast(bookFormat, genre);
+  const castDisabledReason = bookFormat === "poetry_collection" || genre === "poetry"
+    ? "DNA poesia: raccolta poetica senza cast forzato."
+    : bookFormat === "manual" || normalizeStudioGenre(genre) === "self-help"
+      ? "DNA self help/manuale: niente protagonisti o archi romantici forzati."
+      : "";
+
+  const bookDnaPayload = useMemo(() => ({
+    bookFormat,
+    bookLength,
+    chapterCount,
+    subchaptersEnabled,
+    subchaptersPerChapter,
+    genre,
+    subcategory: subcategory.trim(),
+    tone: tone.trim(),
+    language,
+    pov,
+    endingType,
+    intensity,
+    darknessLevel,
+    violenceLevel,
+    spiceLevel,
+    tense,
+    canonRules: canonRules.trim(),
+    centralDynamic,
+    protagonistType: protagonistType.trim(),
+    targetReader: targetReader.trim(),
+    narrativePromise: narrativePromise.trim(),
+    setting: setting.trim(),
+  }), [
+    bookFormat,
+    bookLength,
+    chapterCount,
+    subchaptersEnabled,
+    subchaptersPerChapter,
+    genre,
+    subcategory,
+    tone,
+    language,
+    pov,
+    endingType,
+    intensity,
+    darknessLevel,
+    violenceLevel,
+    spiceLevel,
+    tense,
+    canonRules,
+    centralDynamic,
+    protagonistType,
+    targetReader,
+    narrativePromise,
+    setting,
+  ]);
+
+  const handleBookFormatChange = (nextFormat: string) => {
+    setBookFormat(nextFormat);
+    setSaved(false);
+
+    if (nextFormat === "poetry_collection") {
+      setGenre("poetry");
+      setBookLength((current) => (current === "medium" ? "short" : current));
+      setChapterCount((current) => (current === 20 ? 8 : current));
+      setSubchaptersEnabled(false);
+      setSubchaptersPerChapter(1);
+      setSpiceLevel("non applicabile");
+      setViolenceLevel("assente");
+      setCharacterBible("");
+      return;
+    }
+
+    if (nextFormat === "manual") {
+      setGenre("self help");
+      setBookLength((current) => (current === "medium" ? "short" : current));
+      setChapterCount((current) => (current === 20 ? 10 : current));
+      setSubchaptersEnabled(false);
+      setSpiceLevel("non applicabile");
+      setViolenceLevel("assente");
+      setCharacterBible("");
+    }
+  };
+
   const generateNovelIdea = async () => {
     if (ideaLoading || loading) return;
     setIdeaLoading(true);
@@ -1648,14 +1992,8 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const { data, error } = await supabase.functions.invoke("scriptora-novel-idea", {
         body: {
+          ...bookDnaPayload,
           seedIdea: currentLooksLikeGeneratedIdea ? "" : currentIdea,
-          genre,
-          subcategory: subcategory.trim(),
-          tone: tone.trim(),
-          intensity,
-          centralDynamic,
-          protagonistType: protagonistType.trim(),
-          language,
           diversitySeed,
           previousIdeas,
           userId: getCurrentUserId(),
@@ -1710,15 +2048,9 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const { data, error } = await supabase.functions.invoke("scriptora-novel-idea", {
         body: {
+          ...bookDnaPayload,
           seedIdea: userStory,
           preserveUserStory: true,
-          genre,
-          subcategory: subcategory.trim(),
-          tone: tone.trim(),
-          intensity,
-          centralDynamic,
-          protagonistType: protagonistType.trim(),
-          language,
           diversitySeed,
           previousIdeas: readIdeaHistory(),
           userId: getCurrentUserId(),
@@ -1826,6 +2158,14 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
 
   const generate = async () => {
     if (!canGenerate || loading) return;
+    if (!castRequired) {
+      setCharacterBible("");
+      setShowCastDetails(false);
+      toast.message("Cast non richiesto dal DNA", {
+        description: castDisabledReason || "Questo formato non richiede una Character Bible narrativa.",
+      });
+      return;
+    }
     setLoading(true);
     setLiveOperation("characters");
     setSaved(false);
@@ -1835,15 +2175,9 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       await chargePremiumOperation("character_studio_ai", { source: "character_studio_bible", genre }, undefined, [idea.slice(0, 32)]);
       const { data, error } = await supabase.functions.invoke("scriptora-character-bible", {
         body: {
+          ...bookDnaPayload,
           idea: idea.trim(),
-          genre,
-          subcategory: subcategory.trim(),
-          tone: tone.trim(),
-          intensity,
-          centralDynamic,
-          protagonistType: protagonistType.trim(),
           manualCharacterNames: parseManualCharacterNames(manualCharacterNames).map(characterNameLabel),
-          language,
           userId: getCurrentUserId(),
         },
       });
@@ -1907,6 +2241,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         subcategory,
         setting,
         centralDynamic,
+        bookFormat,
       });
 
       const resolvedSubtitle = buildCharacterStudioFallbackSubtitle({
@@ -1915,6 +2250,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         centralDynamic,
         genre,
         subcategory,
+        bookFormat,
       });
 
       setBookTitle(resolvedTitle);
@@ -1929,13 +2265,13 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   const saveAndLink = () => {
     const bible = String(characterBible || "").trim();
 
-    if (!bible) {
+    if (castRequired && !bible) {
       toast.error("Prima genera i personaggi: l’output Character Bible è vuoto.");
       return;
     }
     setLiveOperation("handoff");
 
-    const characters = charactersFromCharacterBibleText(bible);
+    const characters = castRequired ? charactersFromCharacterBibleText(bible) : [];
     const cleanIdea = idea.trim();
     const cleanSubcategory = subcategory.trim();
     const cleanTone = tone.trim();
@@ -1953,6 +2289,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       subcategory: cleanSubcategory,
       setting,
       centralDynamic: cleanDynamic,
+      bookFormat,
     });
     const resolvedSubtitle = bookSubtitle.trim() || buildCharacterStudioFallbackSubtitle({
       idea: cleanIdea,
@@ -1960,6 +2297,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       centralDynamic: cleanDynamic,
       genre,
       subcategory: cleanSubcategory,
+      bookFormat,
     });
     const resolvedPromise = narrativePromise.trim() || resolvedSubtitle;
 
@@ -2014,7 +2352,11 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     let savedSomewhere = false;
 
     try {
-      sessionStorage.setItem(SCRIPTORA_CHARACTER_BIBLE_KEY, bible);
+      if (bible) {
+        sessionStorage.setItem(SCRIPTORA_CHARACTER_BIBLE_KEY, bible);
+      } else {
+        sessionStorage.removeItem(SCRIPTORA_CHARACTER_BIBLE_KEY);
+      }
       sessionStorage.setItem(SCRIPTORA_CHARACTER_PROJECT_KEY, payloadJson);
       savedSomewhere = true;
     } catch (e) {
@@ -2124,6 +2466,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   const hasTitleReady = bookTitle.trim().length >= 2;
   const hasSubtitleReady = bookSubtitle.trim().length >= 8 || narrativePromise.trim().length >= 8;
   const hasBibleReady = characterBible.trim().length >= 20;
+  const readyForHandoff = hasIdeaReady && hasTitleReady && hasSubtitleReady && (!castRequired || hasBibleReady);
   const characterSummaries = useMemo(() => charactersFromCharacterBibleText(characterBible), [characterBible]);
   const detectedCharacterCount = characterSummaries.length;
   const titleScoreRows = useMemo(
@@ -2142,7 +2485,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     !hasIdeaReady && "idea",
     !hasTitleReady && "titolo",
     !hasSubtitleReady && "promessa",
-    !hasBibleReady && "personaggi",
+    castRequired && !hasBibleReady && "personaggi",
   ].filter(Boolean) as string[];
 
   const primaryCharacterActionLabel = loading
@@ -2153,7 +2496,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         ? "Genera idea con Scriptora"
         : !hasTitleReady || !hasSubtitleReady
           ? "Genera titolo e promessa"
-          : !hasBibleReady
+          : castRequired && !hasBibleReady
             ? "Genera personaggi"
             : "CONTINUA NELLA CREAZIONE LIBRO";
 
@@ -2170,7 +2513,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       return;
     }
 
-    if (!hasBibleReady) {
+    if (castRequired && !hasBibleReady) {
       void generate();
       return;
     }
@@ -2271,13 +2614,331 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         </div>
 
         <div className="scriptora-modal-body min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-5">
+          <section className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Step 1</p>
+              <h3 className="mt-1 text-lg font-bold text-foreground">Costruisci le fondamenta</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Prima di scrivere la storia, definisci che libro stai creando.
+              </p>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+              <label className="space-y-1">
+                <span className="text-xs font-semibold text-muted-foreground">Formato libro</span>
+                <select
+                  value={bookFormat}
+                  onChange={(event) => handleBookFormatChange(event.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="novel">Romanzo</option>
+                  <option value="novella">Novella</option>
+                  <option value="short_story_collection">Raccolta racconti</option>
+                  <option value="poetry_collection">Raccolta poetica</option>
+                  <option value="memoir">Memoir narrativo</option>
+                  <option value="manual">Manuale / guida</option>
+                </select>
+              </label>
+
+              <div>
+                <Label>Genere principale</Label>
+                <Select value={genre} onValueChange={setGenre}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {GENRES.map((g) => (
+                      <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Sottogenere</Label>
+                <Select value={subcategory} onValueChange={setSubcategory}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {directionSubgenreOptions.map((option) => (
+                      <SelectItem key={optionValue(option)} value={optionValue(option)}>
+                        {optionLabel(option)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Lingua</Label>
+                <Select value={language} onValueChange={setLanguage}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {LANGUAGES.map((l) => (
+                      <SelectItem key={l} value={l}>{l}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Tono</Label>
+                <Select value={tone} onValueChange={setTone}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {directionToneOptions.map((option) => (
+                      <SelectItem key={optionValue(option)} value={optionValue(option)}>
+                        {optionLabel(option)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <label className="space-y-1">
+                <span className="text-xs font-semibold text-muted-foreground">POV</span>
+                <select
+                  value={pov}
+                  onChange={(event) => setPov(event.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="terza persona limitata">Terza persona limitata</option>
+                  <option value="prima persona">Prima persona</option>
+                  <option value="pov alternato">POV alternato</option>
+                  <option value="terza persona corale">Terza persona corale</option>
+                </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-xs font-semibold text-muted-foreground">Finale</span>
+                <select
+                  value={endingType}
+                  onChange={(event) => setEndingType(event.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="chiuso ma con eco">Chiuso ma con eco</option>
+                  <option value="agrodolce">Agrodolce</option>
+                  <option value="aperto">Aperto</option>
+                  <option value="disturbante">Disturbante</option>
+                  <option value="cliffhanger">Cliffhanger</option>
+                  <option value="happy ending">Happy ending</option>
+                </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-xs font-semibold text-muted-foreground">Lunghezza</span>
+                <select
+                  value={bookLength}
+                  onChange={(event) => setBookLength(event.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="short">Breve</option>
+                  <option value="medium">Medio</option>
+                  <option value="long">Lungo</option>
+                  <option value="epic">Epico / serie</option>
+                </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-xs font-semibold text-muted-foreground">Capitoli</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={80}
+                  value={chapterCount}
+                  onChange={(event) => setChapterCount(Number(event.target.value) || 20)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-xs font-semibold text-muted-foreground">Sottocapitoli</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSubchaptersEnabled(!subchaptersEnabled)}
+                    className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
+                      subchaptersEnabled ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
+                    }`}
+                  >
+                    {subchaptersEnabled ? "Attivi" : "Off"}
+                  </button>
+                  <input
+                    type="number"
+                    min={1}
+                    max={8}
+                    disabled={!subchaptersEnabled}
+                    value={subchaptersPerChapter}
+                    onChange={(event) => setSubchaptersPerChapter(Number(event.target.value) || 3)}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm disabled:opacity-50"
+                  />
+                </div>
+              </label>
+
+              <div>
+                <Label>Intensità</Label>
+                <Select value={intensity} onValueChange={setIntensity}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {directionIntensityOptions.map((option) => (
+                      <SelectItem key={optionValue(option)} value={optionValue(option)}>
+                        {optionLabel(option)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <label className="space-y-1">
+                <span className="text-xs font-semibold text-muted-foreground">Oscurità</span>
+                <select
+                  value={darknessLevel}
+                  onChange={(event) => setDarknessLevel(event.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="leggera">Leggera</option>
+                  <option value="medio">Media</option>
+                  <option value="dark">Dark</option>
+                  <option value="estrema">Estrema</option>
+                </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-xs font-semibold text-muted-foreground">Violenza</span>
+                <select
+                  value={violenceLevel}
+                  onChange={(event) => setViolenceLevel(event.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="assente">Assente</option>
+                  <option value="medio">Media</option>
+                  <option value="alta">Alta</option>
+                  <option value="psicologica">Psicologica</option>
+                </select>
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-xs font-semibold text-muted-foreground">Spice</span>
+                <select
+                  value={spiceLevel}
+                  onChange={(event) => setSpiceLevel(event.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="pulito">Pulito</option>
+                  <option value="medio">Medio</option>
+                  <option value="intenso">Intenso</option>
+                  <option value="non applicabile">Non applicabile</option>
+                </select>
+              </label>
+
+              <label className="space-y-1 md:col-span-4">
+                <span className="text-xs font-semibold text-muted-foreground">Regole canoniche</span>
+                <textarea
+                  value={canonRules}
+                  onChange={(event) => setCanonRules(event.target.value)}
+                  placeholder="Es. non cambiare nomi, niente romance, niente cast narrativo, nessun finale tragico..."
+                  className="min-h-[74px] w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                />
+              </label>
+
+              <details className="md:col-span-4 rounded-xl border border-border bg-background/60 p-3">
+                <summary className="cursor-pointer text-sm font-semibold text-foreground">
+                  Dettagli DNA facoltativi
+                </summary>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <label className="space-y-1 md:col-span-2">
+                    <span className="text-xs font-semibold text-muted-foreground">Target lettore</span>
+                    <input
+                      value={targetReader}
+                      onChange={(event) => setTargetReader(event.target.value)}
+                      placeholder="Es. lettori che amano horror gotico, tensione emotiva e misteri familiari"
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                    />
+                  </label>
+
+                  <label className="space-y-1 md:col-span-2">
+                    <span className="text-xs font-semibold text-muted-foreground">Promessa narrativa base</span>
+                    <textarea
+                      value={narrativePromise}
+                      onChange={(event) => setNarrativePromise(event.target.value)}
+                      placeholder="Che esperienza promette il libro?"
+                      className="min-h-[80px] w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                    />
+                  </label>
+
+                  <label className="space-y-1 md:col-span-2">
+                    <span className="text-xs font-semibold text-muted-foreground">Ambientazione</span>
+                    <input
+                      value={setting}
+                      onChange={(event) => setSetting(event.target.value)}
+                      placeholder="Es. nave-laboratorio, hotel sul lago, regno in rovina..."
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                    />
+                  </label>
+
+                  <label className="space-y-1">
+                    <span className="text-xs font-semibold text-muted-foreground">Tipo protagonista / soggetto</span>
+                    <input
+                      value={protagonistType}
+                      onChange={(event) => setProtagonistType(event.target.value)}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                    />
+                  </label>
+
+                  <div>
+                    <Label>Dinamica centrale</Label>
+                    <Select value={centralDynamic} onValueChange={setCentralDynamic}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {directionDynamicOptions.map((option) => (
+                          <SelectItem key={optionValue(option)} value={optionValue(option)}>
+                            {optionLabel(option)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <label className="space-y-1">
+                    <span className="text-xs font-semibold text-muted-foreground">Tempo narrativo</span>
+                    <select
+                      value={tense}
+                      onChange={(event) => setTense(event.target.value)}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="passato">Passato</option>
+                      <option value="presente">Presente</option>
+                    </select>
+                  </label>
+
+                  <label className="space-y-1">
+                    <span className="text-xs font-semibold text-muted-foreground">Nomi canonici / saga</span>
+                    <Textarea
+                      value={manualCharacterNames}
+                      onChange={(e) => {
+                        setManualCharacterNames(e.target.value);
+                        setSaved(false);
+                      }}
+                      rows={2}
+                      placeholder={"Elena Ferri\nMarco Greco"}
+                      className="text-sm"
+                    />
+                  </label>
+                </div>
+              </details>
+            </div>
+
+            {!castRequired && (
+              <div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-sm text-amber-100">
+                {castDisabledReason}
+              </div>
+            )}
+          </section>
+
           <section className="rounded-2xl border border-border bg-muted/20 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Step 1</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Step 2</p>
                 <h3 className="mt-1 text-lg font-bold text-foreground">Racconta la tua storia</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Scrivi l'idea del romanzo. Scriptora costruirà il resto.
+                  L'idea verrà elaborata usando il DNA completo scelto sopra.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -2318,144 +2979,13 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
             </div>
           </section>
 
-          <section className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Step 2</p>
-              <h3 className="mt-1 text-lg font-bold text-foreground">Che libro stai scrivendo?</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Blocca l'identità prima di generare titolo, promessa e cast.
-              </p>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-              <div>
-                <Label>Genere principale</Label>
-                <Select value={genre} onValueChange={setGenre}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {GENRES.map((g) => (
-                      <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Filone</Label>
-                <Select value={subcategory} onValueChange={setSubcategory}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {directionSubgenreOptions.map((option) => (
-                      <SelectItem key={optionValue(option)} value={optionValue(option)}>
-                        {optionLabel(option)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Lingua</Label>
-                <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {LANGUAGES.map((l) => (
-                      <SelectItem key={l} value={l}>{l}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>Tono narrativo</Label>
-                <Select value={tone} onValueChange={setTone}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {directionToneOptions.map((option) => (
-                      <SelectItem key={optionValue(option)} value={optionValue(option)}>
-                        {optionLabel(option)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-border bg-background/60 p-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Step 3</p>
-              <h3 className="mt-1 text-lg font-bold text-foreground">Coordinate narrative</h3>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
-              <label className="space-y-1">
-                <span className="text-xs font-semibold text-muted-foreground">POV</span>
-                <select
-                  value={pov}
-                  onChange={(event) => setPov(event.target.value)}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                >
-                  <option value="terza persona limitata">Terza persona limitata</option>
-                  <option value="prima persona">Prima persona</option>
-                  <option value="pov alternato">POV alternato</option>
-                  <option value="terza persona corale">Terza persona corale</option>
-                </select>
-              </label>
-
-              <label className="space-y-1">
-                <span className="text-xs font-semibold text-muted-foreground">Finale</span>
-                <select
-                  value={endingType}
-                  onChange={(event) => setEndingType(event.target.value)}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                >
-                  <option value="chiuso ma con eco">Chiuso ma con eco</option>
-                  <option value="agrodolce">Agrodolce</option>
-                  <option value="aperto">Aperto</option>
-                  <option value="disturbante">Disturbante</option>
-                  <option value="cliffhanger">Cliffhanger</option>
-                  <option value="happy ending">Happy ending</option>
-                </select>
-              </label>
-
-              <div>
-                <Label>Intensità</Label>
-                <Select value={intensity} onValueChange={setIntensity}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {directionIntensityOptions.map((option) => (
-                      <SelectItem key={optionValue(option)} value={optionValue(option)}>
-                        {optionLabel(option)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <label className="space-y-1">
-                <span className="text-xs font-semibold text-muted-foreground">Oscurità</span>
-                <select
-                  value={darknessLevel}
-                  onChange={(event) => setDarknessLevel(event.target.value)}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                >
-                  <option value="leggera">Leggera</option>
-                  <option value="medio">Media</option>
-                  <option value="dark">Dark</option>
-                  <option value="estrema">Estrema</option>
-                </select>
-              </label>
-            </div>
-          </section>
-
           <section className="rounded-2xl border border-border bg-background/60 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Step 4</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Step 3</p>
                 <h3 className="mt-1 text-lg font-bold text-foreground">Identità commerciale</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Titolo, sottotitolo e promessa nascono dalle coordinate già scelte.
+                  Titolo, sottotitolo e promessa nascono da DNA + idea.
                 </p>
               </div>
               <Button
@@ -2508,36 +3038,42 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
           <section className="rounded-2xl border border-border bg-background/60 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Step 5</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Step 4</p>
                 <h3 className="mt-1 text-lg font-bold text-foreground">Costruisci il cast</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  I personaggi restano canonici nel passaggio a Book Forge.
+                  I personaggi nascono da DNA + idea + titolo e restano canonici nel passaggio a Book Forge.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {hasBibleReady && (
+                {castRequired && hasBibleReady && (
                   <Button type="button" variant="outline" onClick={() => setShowCastDetails((current) => !current)} className="gap-2">
                     <Eye className="h-4 w-4" />
                     Visualizza cast
                   </Button>
                 )}
-                <Button type="button" variant="secondary" onClick={generate} disabled={!canGenerate || loading} className="gap-2">
-                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-                  {hasBibleReady ? "Rigenera" : "Genera personaggi"}
-                </Button>
+                {castRequired ? (
+                  <Button type="button" variant="secondary" onClick={generate} disabled={!canGenerate || loading} className="gap-2">
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                    {hasBibleReady ? "Rigenera" : "Genera personaggi"}
+                  </Button>
+                ) : (
+                  <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-100">
+                    Cast non richiesto
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
-              <div className={`rounded-xl border px-3 py-2 ${hasBibleReady ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100" : "border-amber-400/30 bg-amber-400/10 text-amber-100"}`}>
-                {hasBibleReady ? "✓ Character Bible pronta" : "Cast non generato"}
+              <div className={`rounded-xl border px-3 py-2 ${hasBibleReady || !castRequired ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100" : "border-amber-400/30 bg-amber-400/10 text-amber-100"}`}>
+                {!castRequired ? "✓ Cast non richiesto dal DNA" : hasBibleReady ? "✓ Character Bible pronta" : "Cast non generato"}
               </div>
               <div className={`rounded-xl border px-3 py-2 ${detectedCharacterCount ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100" : "border-border bg-muted/20 text-muted-foreground"}`}>
-                {detectedCharacterCount ? `✓ ${detectedCharacterCount} personaggi creati` : "Nessun personaggio canonico ancora disponibile"}
+                {detectedCharacterCount ? `✓ ${detectedCharacterCount} personaggi creati` : castRequired ? "Nessun personaggio canonico ancora disponibile" : castDisabledReason}
               </div>
             </div>
 
-            {hasBibleReady && showCastDetails && (
+            {castRequired && hasBibleReady && showCastDetails && (
               <div className="mt-4 space-y-2">
                 {characterSummaries.length > 0 ? (
                   characterSummaries.map((character, index) => {
@@ -2580,233 +3116,11 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
             )}
           </section>
 
-          <section className="rounded-2xl border border-border bg-background/60">
-            <button
-              type="button"
-              onClick={() => setAdvancedOpen((current) => !current)}
-              className="flex w-full items-center justify-between gap-3 p-4 text-left"
-            >
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Step 6</p>
-                <h3 className="mt-1 text-lg font-bold text-foreground">Impostazioni avanzate</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Lunghezza, capitoli, target, limiti narrativi e testo canonico.
-                </p>
-              </div>
-              {advancedOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
-            </button>
-
-            {advancedOpen && (
-              <div className="border-t border-border p-4">
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="space-y-1">
-                    <span className="text-xs font-semibold text-muted-foreground">Formato libro</span>
-                    <select
-                      value={bookFormat}
-                      onChange={(event) => setBookFormat(event.target.value)}
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="novel">Romanzo</option>
-                      <option value="novella">Novella</option>
-                      <option value="short_story_collection">Raccolta racconti</option>
-                      <option value="poetry_collection">Raccolta poetica</option>
-                      <option value="memoir">Memoir narrativo</option>
-                      <option value="manual">Manuale / guida</option>
-                    </select>
-                  </label>
-
-                  <label className="space-y-1">
-                    <span className="text-xs font-semibold text-muted-foreground">Lunghezza libro</span>
-                    <select
-                      value={bookLength}
-                      onChange={(event) => setBookLength(event.target.value)}
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="short">Breve</option>
-                      <option value="medium">Medio</option>
-                      <option value="long">Lungo</option>
-                      <option value="epic">Epico / serie</option>
-                    </select>
-                  </label>
-
-                  <label className="space-y-1">
-                    <span className="text-xs font-semibold text-muted-foreground">Numero capitoli</span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={80}
-                      value={chapterCount}
-                      onChange={(event) => setChapterCount(Number(event.target.value) || 20)}
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                    />
-                  </label>
-
-                  <label className="space-y-1">
-                    <span className="text-xs font-semibold text-muted-foreground">Sottocapitoli</span>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSubchaptersEnabled(!subchaptersEnabled)}
-                        className={`rounded-xl border px-3 py-2 text-sm font-semibold ${
-                          subchaptersEnabled ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
-                        }`}
-                      >
-                        {subchaptersEnabled ? "Attivi" : "Disattivati"}
-                      </button>
-                      <input
-                        type="number"
-                        min={1}
-                        max={8}
-                        disabled={!subchaptersEnabled}
-                        value={subchaptersPerChapter}
-                        onChange={(event) => setSubchaptersPerChapter(Number(event.target.value) || 3)}
-                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm disabled:opacity-50"
-                      />
-                    </div>
-                  </label>
-
-                  <label className="space-y-1 md:col-span-2">
-                    <span className="text-xs font-semibold text-muted-foreground">Nomi protagonisti / saga</span>
-                    <Textarea
-                      value={manualCharacterNames}
-                      onChange={(e) => {
-                        setManualCharacterNames(e.target.value);
-                        setSaved(false);
-                      }}
-                      rows={2}
-                      placeholder={"Se continui una saga, inserisci qui i nomi canonici, uno per riga.\nEsempio: Elena Ferri\nMarco Greco"}
-                      className="text-sm"
-                    />
-                  </label>
-
-                  <label className="space-y-1 md:col-span-2">
-                    <span className="text-xs font-semibold text-muted-foreground">Target lettore</span>
-                    <input
-                      value={targetReader}
-                      onChange={(event) => setTargetReader(event.target.value)}
-                      placeholder="Es. lettori che amano horror gotico, tensione emotiva e misteri familiari"
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                    />
-                  </label>
-
-                  <label className="space-y-1 md:col-span-2">
-                    <span className="text-xs font-semibold text-muted-foreground">Promessa narrativa</span>
-                    <textarea
-                      value={narrativePromise}
-                      onChange={(event) => setNarrativePromise(event.target.value)}
-                      placeholder="Che esperienza promette il libro?"
-                      className="min-h-[90px] w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                    />
-                  </label>
-
-                  <label className="space-y-1 md:col-span-2">
-                    <span className="text-xs font-semibold text-muted-foreground">Ambientazione</span>
-                    <input
-                      value={setting}
-                      onChange={(event) => setSetting(event.target.value)}
-                      placeholder="Es. nave-laboratorio, hotel sul lago, regno in rovina..."
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                    />
-                  </label>
-
-                  <label className="space-y-1">
-                    <span className="text-xs font-semibold text-muted-foreground">Tipo protagonista</span>
-                    <input
-                      value={protagonistType}
-                      onChange={(event) => setProtagonistType(event.target.value)}
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                    />
-                  </label>
-
-                  <div>
-                    <Label>Dinamica centrale</Label>
-                    <Select value={centralDynamic} onValueChange={setCentralDynamic}>
-                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {directionDynamicOptions.map((option) => (
-                          <SelectItem key={optionValue(option)} value={optionValue(option)}>
-                            {optionLabel(option)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <label className="space-y-1">
-                    <span className="text-xs font-semibold text-muted-foreground">Tempo narrativo</span>
-                    <select
-                      value={tense}
-                      onChange={(event) => setTense(event.target.value)}
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="passato">Passato</option>
-                      <option value="presente">Presente</option>
-                    </select>
-                  </label>
-
-                  <label className="space-y-1">
-                    <span className="text-xs font-semibold text-muted-foreground">Spice / sensualità</span>
-                    <select
-                      value={spiceLevel}
-                      onChange={(event) => setSpiceLevel(event.target.value)}
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="pulito">Pulito</option>
-                      <option value="medio">Medio</option>
-                      <option value="intenso">Intenso</option>
-                      <option value="non applicabile">Non applicabile</option>
-                    </select>
-                  </label>
-
-                  <label className="space-y-1">
-                    <span className="text-xs font-semibold text-muted-foreground">Violenza</span>
-                    <select
-                      value={violenceLevel}
-                      onChange={(event) => setViolenceLevel(event.target.value)}
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="assente">Assente</option>
-                      <option value="medio">Media</option>
-                      <option value="alta">Alta</option>
-                      <option value="psicologica">Psicologica</option>
-                    </select>
-                  </label>
-
-                  <label className="space-y-1 md:col-span-2">
-                    <span className="text-xs font-semibold text-muted-foreground">Regole canoniche extra</span>
-                    <textarea
-                      value={canonRules}
-                      onChange={(event) => setCanonRules(event.target.value)}
-                      placeholder="Es. non cambiare nomi, niente triangolo amoroso, niente finale tragico..."
-                      className="min-h-[90px] w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                    />
-                  </label>
-
-                  {hasBibleReady && (
-                    <label className="space-y-1 md:col-span-2">
-                      <span className="text-xs font-semibold text-muted-foreground">Testo completo Character Bible</span>
-                      <Textarea
-                        value={characterBible}
-                        onChange={(e) => {
-                          setCharacterBible(e.target.value);
-                          setSaved(false);
-                        }}
-                        rows={10}
-                        placeholder="Qui apparirà la Character Bible generata da Scriptora..."
-                        className="max-h-[32dvh] min-h-[120px] resize-y font-mono text-xs leading-relaxed"
-                      />
-                    </label>
-                  )}
-                </div>
-              </div>
-            )}
-          </section>
-
           <section className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
             <div className="flex items-start gap-3">
               <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Step 7</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Step 5</p>
                 <h3 className="mt-1 text-base font-bold text-foreground">Continua nel flusso libro</h3>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Dopo il salvataggio, Scriptora apre creazione libro con cast, genere, filone e tono già collegati.
@@ -2832,7 +3146,9 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
               <p className="truncate text-sm text-muted-foreground">
                 {missingHandoffItems.length
                   ? `Mancano: ${missingHandoffItems.join(", ")}`
-                  : `Pronto per creazione libro · ${bookTitle || "Titolo pronto"} · ${detectedCharacterCount || "cast"} personaggi`}
+                  : castRequired
+                    ? `Pronto per creazione libro · ${bookTitle || "Titolo pronto"} · ${detectedCharacterCount || "cast"} personaggi`
+                    : `Pronto per creazione libro · ${bookTitle || "Titolo pronto"} · cast non richiesto`}
               </p>
             </div>
 
@@ -2842,7 +3158,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
               disabled={loading || ideaLoading}
               className="w-full gap-2 sm:w-auto"
             >
-              {loading || ideaLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : hasBibleReady ? <Save className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+              {loading || ideaLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : readyForHandoff ? <Save className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
               {primaryCharacterActionLabel}
             </Button>
           </div>
