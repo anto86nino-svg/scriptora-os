@@ -1226,7 +1226,12 @@ export function autoFillBookFoundationIfNeeded(state: GuidedInterviewState): Gui
   if (isBookFoundationLocked(state)) return state;
 
   const current = buildBookFoundationLock(state);
-  if (current.missingFields.length === 0) return state;
+  if (current.missingFields.length === 0) {
+    if (autoMode) {
+      return applyBookFoundationToForgeMemory(state, { ...current, locked: true, missingFields: [] });
+    }
+    return state;
+  }
 
   const merged = autoCompleteMissingFoundationFields(state, {
     ...current,

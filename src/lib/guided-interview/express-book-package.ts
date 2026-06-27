@@ -39,6 +39,7 @@ import {
 } from "./story-room-state-machine";
 import { buildCanonFromState, lockCanonMaster } from "./canon-genesis-engine";
 import { buildDnaLockFromInterviewState } from "./dna-lock";
+import { finalizeForgeForBlueprint } from "./forge-evolution-engine";
 import { buildForgeInterviewSeed,
   validateForgeHandoffForBlueprint,
 } from "./forge-blueprint-handoff";
@@ -1843,6 +1844,23 @@ export function validateExpressPackageReadiness(state: GuidedInterviewState): {
     handoffMissing: handoff.missing,
     criticalSlots: getCriticalMissingSlots(memory).map(String),
   };
+}
+
+/** Auto-repair incomplete forge DNA before blueprint generation. */
+export function repairForgeHandoffSeedForBlueprint(
+  seed: ReturnType<typeof buildForgeInterviewSeed>,
+): ReturnType<typeof buildForgeInterviewSeed> {
+  let state = {
+    messages: [],
+    ...(seed as GuidedInterviewState),
+  } as GuidedInterviewState;
+  if (!Array.isArray(state.messages)) {
+    state = { ...state, messages: [] };
+  }
+  state = ensureExpressBookPackageCompleteness(state);
+  state = applyBlueprintReadySummaryToState(state);
+  state = finalizeForgeForBlueprint(state);
+  return buildForgeInterviewSeed(state);
 }
 
 export function ensureExpressWriterReadiness(

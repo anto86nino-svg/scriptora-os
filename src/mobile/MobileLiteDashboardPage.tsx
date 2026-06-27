@@ -35,16 +35,16 @@ import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity } from "@/lib/au
 import { normalizeBookConfig } from "@/lib/book-config-studio/defaults";
 import { buildBookTypeLock as buildGenreLock } from "@/lib/book-type-engine";
 import { runGenerateBlueprint } from "@/lib/generation-runtime";
+import {
+  buildBlueprintPreviewProject,
+  canGenerateBlueprintPreview,
+} from "@/lib/project-continuity";
+import { saveProjectAsync } from "@/services/storageService";
 import { usePlan } from "@/lib/plan";
 import { toast } from "sonner";
 import { MobileDeleteProjectDialog } from "@/mobile/MobileDeleteProjectDialog";
 import { getToolRoute } from "@/lib/one-flow/tool-registry";
-
-const BookCreationOsWizard = lazyWithRetry(() =>
-  import("@/components/one-flow/BookCreationOsWizard").then((m) => ({
-    default: m.BookCreationOsWizard,
-  })),
-);
+import { MobileBookForge } from "@/mobile/MobileBookForge";
 
 function countWords(project?: BookProject | null): number {
   if (!project) return 0;
@@ -137,10 +137,27 @@ export default function MobileLiteDashboardPage() {
 
   const handleGenerateBlueprint = useCallback(async (config: BookConfig): Promise<BookBlueprint> => {
     const finalConfig = applyAuthorIdentityToConfig(normalizeBookConfig(config), authorIdentity) as BookConfig;
+    const gate = canGenerateBlueprintPreview(currentPlan, projects);
+    if (!gate.allowed) {
+      throw new Error(gate.message || "Limite blueprint raggiunto per il tuo piano.");
+    }
     const genreLock = buildGenreLock(finalConfig);
     const { blueprint } = await runGenerateBlueprint(finalConfig, genreLock);
+    const previewProject = buildBlueprintPreviewProject({
+      config: finalConfig,
+      blueprint,
+      sourceTool: "book-forge",
+      planId: currentPlan,
+    });
+    await saveProjectAsync(previewProject);
+    setProjects((prev) => [previewProject, ...prev.filter((project) => project.id !== previewProject.id)]);
+    setLastProjectId(previewProject.id);
+    try {
+      sessionStorage.setItem("scriptora-last-blueprint-preview-project-id", previewProject.id);
+    } catch { /* noop */ }
+    window.dispatchEvent(new Event("scriptora-projects-change"));
     return blueprint;
-  }, [authorIdentity]);
+  }, [authorIdentity, currentPlan, projects]);
 
   useEffect(() => {
     let mounted = true;
@@ -478,7 +495,7 @@ export default function MobileLiteDashboardPage() {
       />
 
       {showCreateBook && (
-        <MobileBookCrea
+        <MobileBookForge
           onClose={() => setShowCreateBook(false)}
           authorIdentity={authorIdentity}
           onStudioComplete={handleStudioComplete}

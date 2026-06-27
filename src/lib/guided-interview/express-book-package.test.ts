@@ -4,6 +4,7 @@ import {
   buildCompleteExpressBookPackage,
   buildExpressBookScenarios,
   ensureExpressBookPackageCompleteness,
+  repairForgeHandoffSeedForBlueprint,
   validateExpressPackageReadiness,
 } from "./express-book-package";
 import { confirmBookFoundationLock } from "./book-foundation-lock";
@@ -288,5 +289,14 @@ describe("buildExpressForgeConfiguration", () => {
     expect(ensured.characters?.length).toBeGreaterThan(0);
     expect(ensured.extracted?.openingHook).toBeTruthy();
     expect(ensured.extracted?.bookSubtitle).toBeTruthy();
+  });
+
+  it("repairForgeHandoffSeedForBlueprint completes sparse handoff", () => {
+    const { packages, state } = buildExpressForgeConfiguration(expressInput);
+    const sparse = buildForgeInterviewSeed(applyExpressScenarioToState(state, packages[0]!));
+    delete (sparse as { canon?: unknown }).canon;
+    const repaired = repairForgeHandoffSeedForBlueprint(sparse);
+    const check = validateForgeHandoffForBlueprint(repaired);
+    expect(check.ready, check.missing.join(", ")).toBe(true);
   });
 });

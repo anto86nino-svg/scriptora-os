@@ -3,6 +3,7 @@ import { lazy, Suspense, useState, useEffect, useMemo, useCallback, useRef } fro
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId, saveProjectAsync } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
+import { getPendingCharacterProject } from "@/lib/character-studio/pending-character-project";
 import { FocusMusicControl } from "@/components/FocusMusicControl";
 import { InProgressSection } from "@/components/Home/InProgressSection";
 import { PaywallGuard } from "@/components/PaywallGuard";
@@ -119,21 +120,6 @@ function isBookForgeHandoff(value: unknown): value is BookForgeHandoff {
   );
 }
 
-
-function getPendingCharacterProject(): any | null {
-  try {
-    const raw =
-      sessionStorage.getItem(SCRIPTORA_CHARACTER_PROJECT_KEY) ||
-      localStorage.getItem(SCRIPTORA_CHARACTER_PROJECT_KEY);
-
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed?.characterBible && !parsed?.idea) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
 
 function charactersFromBibleText(text?: string): any[] {
   const raw = String(text || "").trim();
@@ -647,14 +633,6 @@ typeof crypto.randomUUID === "function"
 
     window.addEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
     return () => window.removeEventListener("scriptora-open-new-book-from-character-studio", openFromCharacterStudio);
-  }, [closeAllDashboardTools, openNewBookGuarded]);
-
-  useEffect(() => {
-    const pending = getPendingCharacterProject();
-    if (!pending) return;
-
-    closeAllDashboardTools();
-    openNewBookGuarded(buildBookForgeHandoff("character-studio", pending));
   }, [closeAllDashboardTools, openNewBookGuarded]);
 
   const mergeCharacterStudioIntoConfig = (config: BookConfig): BookConfig => {
@@ -1211,13 +1189,12 @@ typeof crypto.randomUUID === "function"
           onContinue={() => dashboardContextProject && goApp({ projectId: dashboardContextProject.id })}
           onGenerateNextChapter={() => dashboardContextProject && goApp({ projectId: dashboardContextProject.id, section: "chapters" })}
           onExport={() => guardPlanFeature("export_epub", () => navigateFromDashboard(getToolRoute("publishing"), dashboardContextProject?.id ? { projectId: dashboardContextProject.id } : undefined))()}
-          onNewBook={openFreshCharacterStudio}
+          onNewBook={openNewBookGuarded}
           onMyBooks={() => openDashboardTool("projects")}
         />
 
         <DashboardHomePillars
-              onCharacterStudio={openFreshCharacterStudio}
-          onNewBook={openFreshCharacterStudio}
+          onCharacterStudio={openFreshCharacterStudio}
           onStudyOs={() => navigateFromDashboard(getToolRoute("study"))}
         />
 

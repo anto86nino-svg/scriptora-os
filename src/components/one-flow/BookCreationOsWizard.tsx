@@ -87,7 +87,9 @@ import {
   resolveForgeSubtitle,
   resolveForgeTitle,
   validateForgeHandoffForBlueprint,
+  type ForgeInterviewSeed,
 } from "@/lib/guided-interview/forge-blueprint-handoff";
+import { repairForgeHandoffSeedForBlueprint } from "@/lib/guided-interview/express-book-package";
 import { enrichBookConfigFromForgeSeed } from "@/lib/guided-interview/forge-writer-bridge";
 import { saveForgeDnaLock, loadForgeDnaLock } from "@/lib/guided-interview/interview-state";
 import type { GuidedInterviewState } from "@/lib/guided-interview/types";
@@ -1042,7 +1044,8 @@ export function BookCreationOsWizard({
     return TARGET_READER_PRESETS;
   }, [textInference]);
 
-  const buildConfig = useCallback((): BookConfig => {
+  const buildConfig = useCallback((handoffOverride?: ForgeInterviewSeed | null): BookConfig => {
+    const activeHandoff = handoffOverride ?? forgeHandoff;
     const styleDirective = profileToStyleDirective(styleProfile);
     const presetLabel = STYLE_PRESETS.find((p) => p.id === styleProfile.presetId)?.label || "Bestseller Commerciale";
     const mergedIdentity = saveAuthorIdentity({
@@ -1052,9 +1055,9 @@ export function BookCreationOsWizard({
       voice: identityDraft.voice || "",
       language,
     });
-    const handoffExtras = forgeHandoff ? buildForgeGuidedBriefExtras(forgeHandoff) : null;
-    const forgedCharacters = forgeHandoff
-      ? mapForgeCharactersToBookCharacters(forgeHandoff.characters)
+    const handoffExtras = activeHandoff ? buildForgeGuidedBriefExtras(activeHandoff) : null;
+    const forgedCharacters = activeHandoff
+      ? mapForgeCharactersToBookCharacters(activeHandoff.characters)
       : [];
     const resolvedCharacters =
       forgedCharacters.length > 0
@@ -1076,9 +1079,9 @@ export function BookCreationOsWizard({
     ].filter(Boolean).join("\n\n");
 
     const resolvedTitle =
-      (forgeHandoff && resolveForgeTitle(forgeHandoff)) || title.trim() || "Romanzo senza titolo";
+      (activeHandoff && resolveForgeTitle(activeHandoff)) || title.trim() || "Romanzo senza titolo";
     const resolvedSubtitle =
-      (forgeHandoff && resolveForgeSubtitle(forgeHandoff)) || subtitle.trim();
+      (activeHandoff && resolveForgeSubtitle(activeHandoff)) || subtitle.trim();
 
     const raw = normalizeBookConfig(applyAuthorIdentityToConfig({
       title: resolvedTitle,
@@ -1113,9 +1116,9 @@ export function BookCreationOsWizard({
     const handoffMerged = bookForgeHandoff
       ? mergeHandoffIntoBookConfig(sanitized, bookForgeHandoff)
       : sanitized;
-    if (!forgeHandoff) return handoffMerged;
+    if (!activeHandoff) return handoffMerged;
 
-    const enriched = enrichBookConfigFromForgeSeed(handoffMerged, forgeHandoff);
+    const enriched = enrichBookConfigFromForgeSeed(handoffMerged, activeHandoff);
     const wizardExtras = [
       coreConflict.trim() && `Conflitto principale:\n${coreConflict.trim()}`,
       narrativePromise.trim() && `Promessa narrativa/editoriale:\n${narrativePromise.trim()}`,
@@ -1767,17 +1770,22 @@ const persistDraft = useCallback(() => {
         return;
       }
 
-      if (forgeHandoff) {
-        const forgeCheck = validateForgeHandoffForBlueprint(forgeHandoff);
+      let resolvedForgeHandoff: ForgeInterviewSeed | null = forgeHandoff;
+      if (resolvedForgeHandoff) {
+        let forgeCheck = validateForgeHandoffForBlueprint(resolvedForgeHandoff);
         if (!forgeCheck.ready) {
-          toast.error(
-            `Forge incompleto per il blueprint. Manca: ${forgeCheck.missing.join(", ")}. Torna all'intervista e conferma di nuovo.`,
-          );
+          resolvedForgeHandoff = repairForgeHandoffSeedForBlueprint(resolvedForgeHandoff);
+          applyForgeHandoffSeed(resolvedForgeHandoff);
+          forgeCheck = validateForgeHandoffForBlueprint(resolvedForgeHandoff);
+        }
+        if (!forgeCheck.ready) {
+          toast.message("Quasi pronti — completo gli ultimi campi del libro.");
+          applyPreflightAutofill();
           return;
         }
       }
 
-      const preflight = runBlueprintPreflight(buildConfig(), identityDraft);
+      const preflight = runBlueprintPreflight(buildConfig(resolvedForgeHandoff), identityDraft);
       setPreflightResult(preflight);
       if (!preflight.ready) {
         toast.message(preflight.humanSummary);
@@ -1787,12 +1795,12 @@ const persistDraft = useCallback(() => {
       setGeneratingBlueprint(true);
       setBlueprintError(null);
       try {
-        const config = buildConfig();
+        const config = buildConfig(resolvedForgeHandoff);
         const bp = await onGenerateBlueprint(config);
         setBlueprintPreview(bp);
         setStep(7);
       } catch (e) {
-        const message = humanizeBlueprintError(e, buildConfig());
+        const message = humanizeBlueprintError(e, buildConfig(resolvedForgeHandoff));
         setBlueprintError(message);
         toast.error(message);
       } finally {
