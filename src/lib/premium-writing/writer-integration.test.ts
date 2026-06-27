@@ -57,6 +57,46 @@ describe("writer integration fixes", () => {
     expect(block).toContain("INTEL BLOCK");
   });
 
+  it("buildWriterMemorySource carries long promise and repetition memory", () => {
+    const block = buildWriterMemorySource({
+      config: sampleConfig(),
+      previousChapters: [],
+      chapterIndex: 2,
+      longBookMemory: {
+        version: 2,
+        updatedAt: "2026-01-01T00:00:00.000Z",
+        chaptersIndexed: 2,
+        unresolvedArcs: [],
+        characterStates: [],
+        emotionalProgression: [],
+        foreshadowing: [],
+        promisePayoffs: [{
+          id: "promise-1",
+          promise: "La chiave deve tornare",
+          chapterIntroduced: 1,
+          originChapter: 1,
+          importance: "high",
+          expectedPayoff: "La chiave deve produrre una conseguenza.",
+          status: "developing",
+        }],
+        globalRepetitionSignals: [{
+          id: "rep-1",
+          kind: "gesture",
+          phrase: "silenzio/silence as emotional beat",
+          count: 5,
+          chapters: [1, 2],
+        }],
+        relationshipStates: [],
+        worldRules: [],
+        continuityAnchors: [],
+      },
+    });
+
+    expect(block).toContain("PROMISE / PAYOFF TRACKER");
+    expect(block).toContain("promise-1");
+    expect(block).toContain("GLOBAL ANTI-REPETITION MEMORY");
+  });
+
   it("buildContinuationCanonBlock carries compact canon", () => {
     const block = buildContinuationCanonBlock({
       writerMemorySource: "WRITER MEMORY SOURCE\nCanon law.",

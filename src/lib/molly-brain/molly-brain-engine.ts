@@ -64,23 +64,6 @@ export function analyzeMollyBrain(input: MollyBrainAnalyzeInput): MollyBrainInsi
   const memory = loadMollyBrainMemory();
   const active = resolveActiveChapter(input.project, input.activeSection);
 
-  if (input.appContext === "study" && input.studyText?.trim()) {
-    const text = input.studyText.trim();
-    if (text.length < 120) return null;
-    return {
-      id: `study-${Date.now()}`,
-      trigger: "study_explanation",
-      comic: "Questo passaggio potrebbe essere più chiaro per lo studio.",
-      actions: [
-        action("more_clarity", "✓ Spiegamelo meglio"),
-        action("more_engaging", "✓ Più coinvolgente"),
-      ],
-      priority: "medium",
-      mood: "writing",
-      score: scoreMollyBrainContext({ content: text, project: input.project, chapterIndex: 0 }),
-    };
-  }
-
   if (!active || active.content.length < 180) return null;
 
   const score = scoreMollyBrainContext({

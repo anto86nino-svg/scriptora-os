@@ -60,6 +60,30 @@ const FEARS = [
   "Perdere tutto ciò che ha costruito con una sola confessione.",
   "Ripetere un errore che ha già distrutto una famiglia.",
 ];
+const INTERNAL_NEEDS = [
+  "Accettare aiuto senza viverlo come debito.",
+  "Dire la verità prima che diventi una punizione.",
+  "Lasciare che qualcuno resti anche davanti alla parte peggiore.",
+  "Scegliere protezione senza trasformarla in controllo.",
+];
+const TRIGGERS = [
+  "Promesse vaghe, ritardi inspiegabili, stanze chiuse.",
+  "Domande sul passato, gesti di pietà, silenzi dopo una confessione.",
+  "Essere corretto in pubblico, perdere il controllo del ritmo.",
+  "Oggetti legati alla famiglia, odori d'infanzia, messaggi cancellati.",
+];
+const RECURRING_BEHAVIORS = [
+  "Sistema un oggetto fuori posto quando mente.",
+  "Risponde con una domanda quando sta per cedere.",
+  "Tocca il polso o la manica prima di dire una verità.",
+  "Conta le uscite di una stanza appena entra.",
+];
+const RELATIONSHIP_PATTERNS = [
+  "Cerca alleanza ma testa continuamente la fiducia dell'altro.",
+  "Si avvicina nei gesti e si ritrae nelle parole.",
+  "Protegge gli altri anche quando questo crea distanza.",
+  "Trasforma attrazione, rivalità o lealtà in una prova di controllo.",
+];
 
 function hashSeed(input: string): number {
   return Array.from(input).reduce((sum, char) => Math.imul(sum ^ char.charCodeAt(0), 16777619), 2166136261) >>> 0;
@@ -100,14 +124,29 @@ export function generateWizardCharacter(seedInput: string): BookCharacter {
   const voice = pick(VOICES, seed, 4);
   const flaw = pick(FLAWS, seed, 5);
   const fear = pick(FEARS, seed, 6);
+  const wound = pick(WOUNDS, seed);
+  const desire = pick(DESIRES, seed);
+  const secret = pick(SECRETS, seed);
+  const internalNeed = pick(INTERNAL_NEEDS, seed, 7);
+  const emotionalTriggers = pick(TRIGGERS, seed, 8);
+  const recurringBehavior = pick(RECURRING_BEHAVIORS, seed, 9);
+  const relationships = pick(RELATIONSHIP_PATTERNS, seed, 10);
 
   return {
     name,
     role: pick(ROLES, seed),
-    wound: pick(WOUNDS, seed),
-    externalDesire: pick(DESIRES, seed),
-    secret: pick(SECRETS, seed),
-    personality: `Conflitto: ${conflict}\nArco: ${arc}\nVoce: ${voice}\nDifetto: ${flaw}\nPaura: ${fear}`,
-    strictRules: `Non rinominare mai ${name}. Mantieni ferita, desiderio, segreto e arco emotivo coerenti in ogni capitolo.`,
+    wound,
+    externalDesire: desire,
+    internalNeed,
+    secret,
+    vulnerability: fear,
+    dominantFlaw: flaw,
+    blindSpot: conflict,
+    emotionalTriggers,
+    recurringBehavior,
+    personalLanguage: voice,
+    relationships,
+    personality: `Conflitto interno: ${conflict}\nArco: ${arc}\nVoce: ${voice}\nDifetto: ${flaw}\nPaura: ${fear}`,
+    strictRules: `Non rinominare mai ${name}. Mantieni ferita, desiderio, bisogno nascosto, paura, difetto, trigger, gesto ricorrente e arco emotivo coerenti in ogni capitolo.`,
   };
 }

@@ -2,7 +2,7 @@ import type { BookProject, SectionId } from "@/types/book";
 
 export type MollyBrainMood = "sleeping" | "observing" | "writing" | "analyzing" | "worried" | "happy";
 
-export type MollyAppContext = "writing" | "generating" | "market" | "study" | "voice" | "export";
+export type MollyAppContext = "writing" | "generating" | "market" | "voice" | "export";
 
 export type MollyQuickActionId =
   | "more_human"
@@ -57,7 +57,6 @@ export interface MollyBrainAnalyzeInput {
   project: BookProject;
   activeSection: SectionId | null;
   appContext?: MollyAppContext;
-  studyText?: string;
   voiceFeedback?: string;
 }
 

@@ -138,6 +138,16 @@ function charactersFromBibleText(text?: string): any[] {
 
       const nameLine = get("Nome:") || get("Name:") || lines[0] || "";
       const surname = get("Cognome:") || get("Surname:");
+      const character = get("Carattere:") || get("Personality:");
+      const contradiction = get("Contraddizione:") || get("Contradiction:") || get("Blind spot:");
+      const dominantFlaw = get("Difetto dominante:") || get("Dominant flaw:");
+      const transformationArc = get("Arco di trasformazione:") || get("Transformation arc:");
+      const personality = [
+        character,
+        contradiction && `Contraddizione: ${contradiction}`,
+        dominantFlaw && `Difetto dominante: ${dominantFlaw}`,
+        transformationArc && `Arco di trasformazione: ${transformationArc}`,
+      ].filter(Boolean).join("\n");
 
       return {
         name: nameLine || "Personaggio",
@@ -145,11 +155,17 @@ function charactersFromBibleText(text?: string): any[] {
         age: get("Età:") || get("Age:"),
         role: get("Ruolo nella storia:") || get("Role:"),
         physicalDescription: get("Aspetto fisico:") || get("Physical description:"),
-        personality: get("Carattere:") || get("Personality:") || block,
+        personality: personality || block,
         wound: get("Ferita interiore:") || get("Core wound:"),
         externalDesire: get("Desiderio esterno:") || get("External desire:"),
         internalNeed: get("Bisogno interiore:") || get("Internal need:"),
         secret: get("Segreto:") || get("Secret:"),
+        vulnerability: get("Paura:") || get("Core fear:") || get("Fear:") || get("Vulnerabilità:") || get("Vulnerability:"),
+        dominantFlaw,
+        blindSpot: contradiction,
+        emotionalTriggers: get("Trigger emotivi:") || get("Emotional triggers:"),
+        recurringBehavior: get("Comportamento ricorrente:") || get("Recurring behavior:"),
+        personalLanguage: get("Linguaggio personale:") || get("Personal language:") || get("Voce:") || get("Voice:"),
         relationships: get("Rapporto con gli altri personaggi:") || get("Relationship to other characters:"),
         strictRules: get("Regole di continuità:") || "Never rename this character. Preserve role, wound, desire, relationships and continuity."
       };

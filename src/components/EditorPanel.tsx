@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo, type RefObject } from "react";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
-import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating, isGenerationFailureStatus } from "@/types/book";
+import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating, isGenerationFailureStatus, getSubchaptersPerChapter } from "@/types/book";
 import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, AlertTriangle, Download, Zap, Headphones, Shield, Clock3, Scissors } from "lucide-react";
 import { BlueprintTheater } from "@/components/blueprint-theater/BlueprintTheater";
 import { BlueprintRecoveryCard } from "@/components/blueprint/BlueprintRecoveryCard";
@@ -818,7 +818,12 @@ function FrontMatterView({ project, frontMatter, isGenerating, onGenerate, ws, o
           </button>
         )}
       </div>
-      {isGenerating && <LoadingBanner text={`${t("generating")}...`} />}
+      {isGenerating && (
+        <LoadingBanner
+          text="Costruzione front matter editoriale"
+          steps={FRONT_MATTER_LIVE_STEPS}
+        />
+      )}
       {frontMatter ? (
         <div className="space-y-8">
           {Object.entries(frontMatter).map(([key, val]) => (
@@ -838,6 +843,74 @@ function FrontMatterView({ project, frontMatter, isGenerating, onGenerate, ws, o
       ) : (
         !isGenerating && <EmptyState text={canGenerate ? `Click ${t("generate")} to create front matter.` : "Complete the blueprint first."} />
       )}
+    </div>
+  );
+}
+
+function resolveExpectedSubchapterCount(
+  project: BookProject,
+  outline?: { subchapters?: unknown[] },
+): number {
+  const blueprintCount = Array.isArray(outline?.subchapters) ? outline.subchapters.length : 0;
+  if (blueprintCount > 0) return blueprintCount;
+  if (project.blueprint?.chapterOutlines?.length) return 0;
+  return getSubchaptersPerChapter(project.config);
+}
+
+function SubchapterCoverageStrip({
+  chapterIndex,
+  expectedCount,
+  subchapters,
+  isGeneratingSection,
+  onGenerateSubchapter,
+}: {
+  chapterIndex: number;
+  expectedCount: number;
+  subchapters: Chapter["subchapters"];
+  isGeneratingSection: (key: string) => boolean;
+  onGenerateSubchapter: (subIdx: number) => void;
+}) {
+  const total = Math.max(expectedCount, subchapters.length);
+  if (total <= 0) return null;
+
+  const written = subchapters.filter((sub) => sub.content.trim().length > 50).length;
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-100/75">
+          Copertura sottocapitoli reali
+        </p>
+        <span className="rounded-full bg-cyan-300/10 px-2 py-1 text-[10px] font-semibold text-cyan-100">
+          {written}/{total} scritti
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {Array.from({ length: total }, (_, index) => {
+          const sub = subchapters[index];
+          const generating = isGeneratingSection(`chapter-${chapterIndex}-sub-${index}`);
+          const done = Boolean(sub?.content?.trim().length > 50);
+          const canGenerate = !done && !generating && index <= subchapters.length;
+          return (
+            <button
+              key={`sub-coverage-${chapterIndex}-${index}`}
+              type="button"
+              disabled={!canGenerate}
+              onClick={() => onGenerateSubchapter(index)}
+              title={done ? `Sottocapitolo ${chapterIndex + 1}.${index + 1} scritto` : `Genera sottocapitolo ${chapterIndex + 1}.${index + 1}`}
+              className={cn(
+                "min-h-8 rounded-lg border px-2.5 text-[11px] font-semibold transition-colors",
+                done && "border-emerald-300/25 bg-emerald-300/10 text-emerald-100",
+                generating && "border-amber-300/25 bg-amber-300/10 text-amber-100",
+                !done && !generating && canGenerate && "border-cyan-300/25 bg-cyan-300/10 text-cyan-100 hover:bg-cyan-300/15",
+                !done && !generating && !canGenerate && "border-white/10 bg-white/[0.03] text-white/35",
+              )}
+            >
+              {chapterIndex + 1}.{index + 1} · {done ? "scritto" : generating ? "live" : "manca"}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -881,6 +954,8 @@ function ChapterView({
   const showFreeWatermark = Boolean(isGenerated && shouldApplyScriptoraFreeWatermark(plan));
   const chapterLanguage = ws?.config?.language || ws?.config?.bookLanguage || ws?.config?.uiLanguage || "it";
   const currentLength = chapter?.lengthOverride || project.config.chapterLength;
+  const expectedSubchapterCount = resolveExpectedSubchapterCount(project, outline);
+  const writtenSubchapterCount = chapter?.subchapters?.filter((sub) => sub.content.trim().length > 50).length || 0;
   const [showRewriteMenu, setShowRewriteMenu] = useState(false);
   const [editorialOpen, setEditorialOpen] = useState(false);
   const [editorialMode, setEditorialMode] = useState<"analysis" | "patch">("analysis");
@@ -1134,6 +1209,16 @@ function ChapterView({
         ))}
       </div>
 
+      {(expectedSubchapterCount > 0 || (chapter?.subchapters?.length || 0) > 0) && (
+        <SubchapterCoverageStrip
+          chapterIndex={chapterIndex}
+          expectedCount={expectedSubchapterCount}
+          subchapters={chapter?.subchapters || []}
+          isGeneratingSection={isGeneratingSection}
+          onGenerateSubchapter={onGenerateSubchapter}
+        />
+      )}
+
       {isGenerating && (
         <GenerationProgress
           project={project}
@@ -1145,7 +1230,12 @@ function ChapterView({
           liveAnchorRef={liveAnchorRef}
         />
       )}
-      {isEvaluating && <LoadingBanner text={`${t("evaluate")}...`} />}
+      {isEvaluating && (
+        <LoadingBanner
+          text="Analisi editoriale in corso"
+          steps={EVALUATION_LIVE_STEPS}
+        />
+      )}
 
       {/* Error / partial recovery state */}
       {!isGenerating && chapter?.status === "recovered_partial" && (
@@ -1240,7 +1330,12 @@ function ChapterView({
                         size="sm"
                       />
                     </div>
-                    {subGenerating && <LoadingBanner text={`${t("generating")}...`} />}
+                    {subGenerating && (
+                      <LoadingBanner
+                        text="Sottocapitolo in scrittura"
+                        steps={SUBCHAPTER_LIVE_STEPS}
+                      />
+                    )}
                     <EditableBlock content={sub.content} onChange={(val) => onUpdateSubContent(j, val)} ws={ws} />
                   </div>
                 );
@@ -1251,7 +1346,10 @@ function ChapterView({
           {project.config.subchaptersEnabled && (
             <button onClick={() => onGenerateSubchapter(chapter.subchapters.length)} disabled={isGenerating}
               className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary disabled:opacity-30 transition-colors ml-6 mt-3">
-              <Plus className="h-3.5 w-3.5" /> {t("add_subchapter")}
+              <Plus className="h-3.5 w-3.5" />
+              {writtenSubchapterCount < expectedSubchapterCount
+                ? `Genera sottocapitolo ${chapter.subchapters.length + 1}/${expectedSubchapterCount}`
+                : t("add_subchapter")}
             </button>
           )}
         </>
@@ -1356,7 +1454,12 @@ function SubchapterView({
           />
         </div>
       </div>
-      {isGenerating && <LoadingBanner text={`${t("generating")}...`} />}
+      {isGenerating && (
+        <LoadingBanner
+          text="Sottocapitolo in scrittura"
+          steps={SUBCHAPTER_LIVE_STEPS}
+        />
+      )}
       <EditableBlock content={sub.content} onChange={onUpdateContent} ws={ws} />
     </div>
   );
@@ -1403,7 +1506,12 @@ function BackMatterView({ project, backMatter, phase, isGenerating, onGenerate, 
           </div>
         </div>
       )}
-      {isGenerating && <LoadingBanner text={`${t("generating")}...`} />}
+      {isGenerating && (
+        <LoadingBanner
+          text="Costruzione back matter editoriale"
+          steps={BACK_MATTER_LIVE_STEPS}
+        />
+      )}
       {backMatter ? (
         <div className="space-y-8">
           {Object.entries(backMatter).map(([key, val]) => (
@@ -1550,6 +1658,34 @@ const CHAPTER_FORGE_COPY = [
   "Applico pass qualità e realismo narrativo…",
   "Sto scrivendo il manoscritto in streaming…",
   "Rifinitura finale prima della consegna…",
+] as const;
+
+const FRONT_MATTER_LIVE_STEPS = [
+  "Allineo titolo, promessa e identità autore…",
+  "Preparo pagine iniziali coerenti con il tono del libro…",
+  "Controllo dedica, nota al lettore e apertura editoriale…",
+  "Finalizzo una soglia pulita prima del manoscritto.",
+] as const;
+
+const BACK_MATTER_LIVE_STEPS = [
+  "Rileggo l'arco completo prima della chiusura…",
+  "Creo nota autore e conclusione senza ripetere il finale…",
+  "Allineo call to action, tono e promessa editoriale…",
+  "Finalizzo materiali pronti per export e pubblicazione.",
+] as const;
+
+const SUBCHAPTER_LIVE_STEPS = [
+  "Leggo il capitolo padre e il punto esatto di continuità…",
+  "Costruisco una progressione autonoma ma non duplicata…",
+  "Proteggo personaggi, tono e micro-payoff del blueprint…",
+  "Rifinisco il sottocapitolo per integrarlo nel manoscritto.",
+] as const;
+
+const EVALUATION_LIVE_STEPS = [
+  "Misuro ritmo, tensione e chiarezza della scena…",
+  "Cerco ripetizioni, passaggi molli e dialoghi deboli…",
+  "Verifico personaggi, continuità e promessa narrativa…",
+  "Preparo un verdetto editoriale utilizzabile.",
 ] as const;
 
 function formatForgeTime(seconds: number): string {
@@ -1807,7 +1943,24 @@ const GenerationProgress = memo(function GenerationProgress({
   prev.fallbackContent === next.fallbackContent,
 );
 
-function LoadingBanner({ text }: { text: string }) {
+function LoadingBanner({
+  text,
+  steps = ["Studio attivo"],
+}: {
+  text: string;
+  steps?: readonly string[];
+}) {
+  const [stepIndex, setStepIndex] = useState(0);
+  const activeStep = steps.length ? steps[stepIndex % steps.length] : "Studio attivo";
+
+  useEffect(() => {
+    if (steps.length <= 1) return;
+    const interval = window.setInterval(() => {
+      setStepIndex((current) => current + 1);
+    }, 1400);
+    return () => window.clearInterval(interval);
+  }, [steps]);
+
   return (
     <div className="scriptora-loading-banner animate-fade-in">
       <div className="scriptora-loading-icon">
@@ -1816,7 +1969,7 @@ function LoadingBanner({ text }: { text: string }) {
       <div className="min-w-0">
         <div className="text-sm font-semibold text-white">{text}</div>
         <div className="scriptora-loading-subline">
-          <span>Studio attivo</span>
+          <span>{activeStep}</span>
           <span className="scriptora-loading-dots" aria-hidden="true"><i /><i /><i /></span>
         </div>
       </div>

@@ -48,6 +48,14 @@ const EXAM_TIME_OPTIONS = [
   { label: "15 min", sec: 900 },
 ];
 
+const LEARNING_LEVEL_LABELS: Record<string, string> = {
+  memory: "Memoria",
+  understanding: "Comprensione",
+  application: "Applicazione",
+  exam: "Esame",
+  professor: "Professore",
+};
+
 export function StudyQuizPanel({
   quiz,
   keyConcepts,
@@ -280,6 +288,9 @@ export function StudyQuizPanel({
             <p className="text-sm text-emerald-100/90">
               Confidenza: <span className="font-bold">{report.confidence}</span>
             </p>
+            <p className="text-sm text-emerald-100/90">
+              Probabilita superamento: <span className="font-bold">{report.passProbability}%</span>
+            </p>
           </div>
 
           {report.strongAreas.length > 0 && (
@@ -309,6 +320,15 @@ export function StudyQuizPanel({
             </div>
           )}
 
+          {report.areasToReview.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-200/80">Aree da ripassare</p>
+              <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
+                {report.areasToReview.map((line, i) => <li key={i}>• {line}</li>)}
+              </ul>
+            </div>
+          )}
+
           <p className="mt-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-emerald-100">
             <span className="font-semibold">Prossimo passo: </span>{report.suggestedNextStep}
           </p>
@@ -327,6 +347,11 @@ export function StudyQuizPanel({
             <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
               {inferQuizDifficulty(q, performance)}
             </span>
+            {q.learningLevel && (
+              <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-emerald-100">
+                {LEARNING_LEVEL_LABELS[q.learningLevel] || q.learningLevel}
+              </span>
+            )}
           </div>
 
           <p className="mt-4 text-base font-semibold leading-7">{q.question}</p>

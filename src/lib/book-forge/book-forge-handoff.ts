@@ -70,6 +70,8 @@ export type BookForgePrefill = Partial<BookConfig> & {
   commercialAngle?: string;
   blueprint?: BookBlueprint | null;
   blueprintApproved?: boolean;
+  approvedSlots?: BookForgeSlot[];
+  canonicalSource?: BookForgeSource;
 };
 
 export interface BookForgeHandoff {
@@ -229,6 +231,18 @@ function hasCharacterStudioFoundation(prefill: BookForgePrefill): boolean {
   );
 }
 
+function hasCharacterStudioBlueprintFoundation(prefill: BookForgePrefill): boolean {
+  return (
+    hasCharacterStudioFoundation(prefill) &&
+    hasSlot(prefill, "title") &&
+    hasSlot(prefill, "subtitle") &&
+    hasSlot(prefill, "promise") &&
+    hasSlot(prefill, "targetReader") &&
+    hasSlot(prefill, "structureMode") &&
+    hasSlot(prefill, "chapterCount")
+  );
+}
+
 function isCharacterStudioHandoff(input: BookForgeHandoff | BookForgePrefill): boolean {
   return "source" in input && input.source === "character-studio";
 }
@@ -241,9 +255,7 @@ export function resolveBookForgeStartStep(input: BookForgeHandoff | BookForgePre
   if (hasSlot(prefill, "blueprint")) return "blueprint-approval";
 
   if (fromCharacterStudio && hasCharacterStudioFoundation(prefill)) {
-    // Non saltare mai direttamente al Blueprint.
-    // Character Studio deve passare sempre da Plot Forge.
-    return "plot-forge";
+    return hasCharacterStudioBlueprintFoundation(prefill) ? "blueprint-generation" : "plot-forge";
   }
 
   if (!hasFoundation(prefill)) return "book-foundation";
@@ -293,6 +305,40 @@ export function buildBookForgeHandoff(
   const prefill: BookForgePrefill = { ...collectedData };
   if (prefill.marketplace && !prefill.amazonMarketplace) prefill.amazonMarketplace = prefill.marketplace;
   if (prefill.chapterCount && !prefill.numberOfChapters) prefill.numberOfChapters = prefill.chapterCount;
+
+  if (source === "character-studio") {
+    const canonicalSlots: BookForgeSlot[] = [
+      "title",
+      "subtitle",
+      "language",
+      "bookType",
+      "category",
+      "subcategory",
+      "genre",
+      "subgenre",
+      "niche",
+      "targetReader",
+      "promise",
+      "tone",
+      "style",
+      "chapterCount",
+      "bookLength",
+      "structureMode",
+      "characters",
+      "plot",
+      "conflict",
+      "transformation",
+      "commercialAngle",
+    ];
+    prefill.approvedSlots = Array.from(
+      new Set([
+        ...(prefill.approvedSlots ?? []),
+        ...canonicalSlots.filter((slot) => hasSlot(prefill, slot)),
+      ]),
+    );
+    prefill.canonicalSource = "character-studio";
+  }
+
   const completedSlots = completedSlotsFor(prefill);
   const missingSlots = missingSlotsFor(prefill);
   const draftHandoff: BookForgeHandoff = {
@@ -378,6 +424,7 @@ export function validateBookForgeHandoff(handoff: BookForgeHandoff): { ok: boole
 
 export function bookForgeStartStepToStudioStep(step: BookForgeStartStep): number {
   if (step === "character-forge") return 3;
+  if (step === "plot-forge") return 5;
   if (step === "structure-forge" || step === "poetry-forge" || step === "manual-forge") return 2;
   if (step === "blueprint-generation") return 6;
   if (step === "blueprint-approval") return 7;

@@ -97,13 +97,31 @@ export function StudyVocabularyPanel({
                 <div className="study-fade-in mt-3 space-y-2.5 border-t border-white/10 pt-3 text-sm">
                   <p><span className="font-semibold text-emerald-200/90">📘 Comprensione rapida: </span>{quickText}</p>
                   <p><span className="font-semibold text-emerald-200/90">🧠 Spiegazione semplice: </span>{analogy}</p>
+                  {item.school && (
+                    <p><span className="font-semibold text-emerald-200/90">🏫 Definizione scolastica: </span>{sanitizeStudyText(item.school)}</p>
+                  )}
                   {effectiveDifficulty !== "soft" && (
                     <p><span className="font-semibold text-emerald-200/90">🎓 Spiegazione docente: </span>{sanitizeStudyText(item.technical)}</p>
+                  )}
+                  {item.advanced && effectiveDifficulty === "pro" && (
+                    <p><span className="font-semibold text-emerald-200/90">🔬 Definizione avanzata: </span>{sanitizeStudyText(item.advanced)}</p>
                   )}
                   <p><span className="font-semibold text-emerald-200/90">🌍 Esempio reale: </span><em>{sanitizeStudyText(item.example)}</em></p>
                   <p><span className="font-semibold text-rose-200/80">⚠ Confusione comune: </span>
                     {item.commonMistake || `Non usare "${item.word}" senza spiegare cosa significa nel contesto.`}
                   </p>
+                  {item.connections && item.connections.length > 0 && (
+                    <div>
+                      <p className="font-semibold text-emerald-200/90">Collegamenti</p>
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {item.connections.slice(0, 5).map((connection) => (
+                          <span key={connection} className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] text-muted-foreground">
+                            {sanitizeStudyText(connection)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

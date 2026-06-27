@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BookConfig } from "@/types/book";
 import {
+  bookForgeStartStepToStudioStep,
   buildBookForgeHandoff,
   mergeHandoffIntoBookConfig,
   resolveBookForgeStartStep,
@@ -111,6 +112,37 @@ describe("Book Forge convergence handoff", () => {
 
     expect(handoff.recommendedStartStep).toBe("blueprint-generation");
     expect(validateBookForgeHandoff(handoff).ok).toBe(true);
+  });
+
+  it("Character Studio approvato blocca fondamenta e parte dal Blueprint", () => {
+    const handoff = buildBookForgeHandoff("character-studio", {
+      title: "La casa che ricorda",
+      subtitle: "Una verità familiare trasforma ogni stanza in una minaccia.",
+      genre: "horror",
+      category: "Fiction",
+      subcategory: "Gothic Horror",
+      niche: "haunted house",
+      language: "Italian",
+      targetReader: "Lettori adulti di horror gotico e misteri familiari.",
+      promise: "Una casa infestata diventa il luogo in cui la protagonista deve scegliere cosa ricordare.",
+      plot: "Una restauratrice torna nella casa della madre scomparsa.",
+      conflict: "Scoprire la verità senza diventare parte della casa.",
+      characters: [{ name: "Elena", role: "protagonista" }],
+      structureMode: "chaptered-fiction",
+      chapterCount: 20,
+      bookLength: "medium",
+      tone: "gotico e atmosferico",
+      commercialAngle: "Horror gotico con promessa familiare e mistero progressivo.",
+    });
+
+    expect(handoff.recommendedStartStep).toBe("blueprint-generation");
+    expect(handoff.prefill.canonicalSource).toBe("character-studio");
+    expect(handoff.prefill.approvedSlots).toEqual(expect.arrayContaining(["title", "subtitle", "promise", "characters"]));
+    expect(bookForgeStartStepToStudioStep(handoff.recommendedStartStep)).toBe(6);
+  });
+
+  it("Plot Forge non ricade sulla fondazione titolo", () => {
+    expect(bookForgeStartStepToStudioStep("plot-forge")).toBe(5);
   });
 
   it("Blueprint approvato va al Writer", () => {

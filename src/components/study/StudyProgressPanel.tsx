@@ -2,7 +2,7 @@ import { Activity, Target } from "lucide-react";
 import type { StudyAnswerEvaluation } from "@/lib/study-answer-evaluator";
 import type { StudySessionResult } from "@/lib/study-session";
 import { getStudyLearningMetrics } from "@/lib/study-project-storage";
-import { computeUserPerformanceLevel, type FlashcardConfidence } from "@/lib/study-ux";
+import { buildAdaptiveCoachSnapshot, computeUserPerformanceLevel, type FlashcardConfidence } from "@/lib/study-ux";
 
 interface StudyProgressPanelProps {
   result: StudySessionResult;
@@ -38,6 +38,7 @@ export function StudyProgressPanel({
   const answered = Object.keys(quizAnswers).length;
   const currentCorrect = (result.quiz || []).filter((q, index) => quizAnswers[index] === q.answer).length;
   const currentScore = answered ? Math.round((currentCorrect / answered) * 100) : 0;
+  const adaptive = buildAdaptiveCoachSnapshot({ result, quizAnswers, openEvaluations, flashcardConfidence });
 
   return (
     <div className="space-y-4">
@@ -66,10 +67,11 @@ export function StudyProgressPanel({
             <Target className="h-4 w-4 text-emerald-200" />
             <h3 className="font-semibold">Prestazione corrente</h3>
           </div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <MetricBox label="Quiz risposti" value={answered} />
             <MetricBox label="Score parziale" value={`${currentScore}/100`} />
             <MetricBox label="Profilo" value={performance} />
+            <MetricBox label="Prob. esame" value={`${adaptive.estimatedPassProbability}%`} />
           </div>
         </div>
 
@@ -79,7 +81,7 @@ export function StudyProgressPanel({
             <div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-3">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-100">Forti</p>
               <ul className="mt-2 space-y-1 text-sm text-emerald-50/90">
-                {(metrics.strongPoints.length ? metrics.strongPoints : result.keyConcepts.slice(0, 3)).map((item) => (
+                {(adaptive.strengths.length ? adaptive.strengths : metrics.strongPoints.length ? metrics.strongPoints : result.keyConcepts.slice(0, 3)).map((item) => (
                   <li key={item}>- {item}</li>
                 ))}
               </ul>
@@ -87,7 +89,7 @@ export function StudyProgressPanel({
             <div className="rounded-2xl border border-amber-300/20 bg-amber-400/10 p-3">
               <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-100">Da rinforzare</p>
               <ul className="mt-2 space-y-1 text-sm text-amber-50/90">
-                {(metrics.weakPoints.length ? metrics.weakPoints : result.keyConcepts.slice(3, 6)).map((item) => (
+                {(adaptive.gaps.length ? adaptive.gaps : metrics.weakPoints.length ? metrics.weakPoints : result.keyConcepts.slice(3, 6)).map((item) => (
                   <li key={item}>- {item}</li>
                 ))}
               </ul>

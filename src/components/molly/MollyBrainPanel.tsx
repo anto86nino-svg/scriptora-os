@@ -21,10 +21,8 @@ interface MollyBrainPanelProps {
   project: BookProject;
   activeSection: SectionId | null;
   appContext?: MollyAppContext;
-  studyText?: string;
   voiceFeedback?: string;
   onApplyChapterContent: (chapterIndex: number, content: string, subIndex?: number | null) => void;
-  onApplyStudyText?: (content: string) => void;
 }
 
 function resolveTarget(
@@ -61,10 +59,8 @@ export function MollyBrainPanel({
   project,
   activeSection,
   appContext = "writing",
-  studyText,
   voiceFeedback,
   onApplyChapterContent,
-  onApplyStudyText,
 }: MollyBrainPanelProps) {
   const [enabled, setEnabled] = useState(isMollyBrainOsEnabled);
   const [collapsed, setCollapsed] = useState(true);
@@ -85,9 +81,7 @@ export function MollyBrainPanel({
     [project, activeSection],
   );
 
-  const canAnalyze = appContext === "study"
-    ? Boolean(studyText?.trim())
-    : Boolean(target?.content);
+  const canAnalyze = Boolean(target?.content);
 
   const runAnalyze = useCallback(() => {
     if (!enabled || !canAnalyze) {
@@ -100,7 +94,6 @@ export function MollyBrainPanel({
         project,
         activeSection,
         appContext,
-        studyText,
         voiceFeedback,
       });
       if (next && next.id !== lastInsightIdRef.current) {
@@ -115,7 +108,7 @@ export function MollyBrainPanel({
     } finally {
       setAnalyzing(false);
     }
-  }, [enabled, canAnalyze, project, activeSection, appContext, studyText, voiceFeedback]);
+  }, [enabled, canAnalyze, project, activeSection, appContext, voiceFeedback]);
 
   const handleDismiss = () => {
     if (insight?.actions[0]) {
@@ -129,24 +122,6 @@ export function MollyBrainPanel({
   const handleAction = async (actionId: MollyQuickActionId) => {
     setApplying(actionId);
     try {
-      if (appContext === "study" && studyText?.trim() && onApplyStudyText) {
-        const result = executeMollyQuickAction(actionId, {
-          project,
-          chapterIndex: 0,
-          text: studyText,
-        });
-        if (!result.changed) {
-          toast.message("Molly non ha trovato modifiche sicure da applicare.");
-          return;
-        }
-        onApplyStudyText(result.text);
-        const memory = recordMollyActionAccepted(actionId, result.memoryNote);
-        setAck(mollyMemoryAcknowledgement(memory) || "Patch applicata allo studio.");
-        setInsight(null);
-        toast.success("Molly ha aggiornato il materiale.");
-        return;
-      }
-
       if (!target) return;
       const result = executeMollyQuickAction(actionId, {
         project,

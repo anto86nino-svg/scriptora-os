@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getCurrentUserId } from "@/services/storageService";
 import { devOnlyDiagnostic } from "@/lib/user-friendly-error";
+import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 
 import {
   SCRIPTORA_CHARACTER_BIBLE_KEY,
@@ -19,6 +20,65 @@ import { buildBookForgeHandoff } from "@/lib/book-forge/book-forge-handoff";
 
 export { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY };
 const SCRIPTORA_IDEA_HISTORY_KEY = "scriptora-character-idea-history-v1";
+
+type CharacterStudioLiveOperation = "idea" | "story" | "title" | "characters" | "handoff";
+
+const CHARACTER_STUDIO_LIVE_COPY: Record<CharacterStudioLiveOperation, { title: string; steps: string[] }> = {
+  idea: {
+    title: "Scriptora sta creando una premessa viva",
+    steps: [
+      "Analizzo genere, filone e dinamica centrale…",
+      "Cerco un conflitto con conseguenze leggibili…",
+      "Costruisco una premessa utilizzabile da Character Studio…",
+      "Verifico che l'idea non ripeta varianti già generate…",
+      "Finalizzo una base pronta per titolo, promessa e cast.",
+    ],
+  },
+  story: {
+    title: "Scriptora sta sviluppando la tua storia",
+    steps: [
+      "Proteggo il nucleo della tua idea originale…",
+      "Chiarisco ferita, desiderio e posta in gioco…",
+      "Allineo tono, genere e dinamica narrativa…",
+      "Rendo la premessa più leggibile per il blueprint…",
+      "Consegno una versione pronta per il cast canonico.",
+    ],
+  },
+  title: {
+    title: "Scriptora sta fissando titolo e promessa",
+    steps: [
+      "Analizzo mercato narrativo e filone…",
+      "Cerco un hook coerente con la promessa…",
+      "Creo titolo, sottotitolo e direzione editoriale…",
+      "Verifico impatto e chiarezza per Book Forge…",
+      "Blocca i dati approvati come canonici.",
+    ],
+  },
+  characters: {
+    title: "Scriptora sta costruendo il cast canonico",
+    steps: [
+      "Definisco protagonisti e forze antagoniste…",
+      "Collego ferite, desideri e segreti…",
+      "Creo relazioni e conflitti spendibili in scena…",
+      "Verifico coerenza con titolo e promessa…",
+      "Finalizzo la Character Bible per Writer Studio.",
+    ],
+  },
+  handoff: {
+    title: "Scriptora sta collegando Character Studio a Book Forge",
+    steps: [
+      "Salvo Character Bible e dati canonici…",
+      "Blocca titolo, sottotitolo e promessa approvati…",
+      "Preparo handoff senza rigenerazioni inutili…",
+      "Allineo cast, genere, struttura e target lettore…",
+      "Apro Book Forge nel punto giusto del percorso.",
+    ],
+  },
+};
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
 type ChoiceOption = string | { value: string; label: string };
 
@@ -849,17 +909,35 @@ function charactersFromCharacterBibleText(text?: string): any[] {
 
       const name = get("Nome:") || get("Name:") || lines[0] || "Personaggio";
       const surname = get("Cognome:") || get("Surname:");
+      const character = get("Carattere:") || get("Personality:");
+      const contradiction = get("Contraddizione:") || get("Contradiction:") || get("Blind spot:");
+      const dominantFlaw = get("Difetto dominante:") || get("Dominant flaw:");
+      const transformationArc = get("Arco di trasformazione:") || get("Transformation arc:");
+      const personality = [
+        character,
+        contradiction && `Contraddizione: ${contradiction}`,
+        dominantFlaw && `Difetto dominante: ${dominantFlaw}`,
+        transformationArc && `Arco di trasformazione: ${transformationArc}`,
+      ].filter(Boolean).join("\n");
 
       return {
         name,
         surname,
+        age: get("Età:") || get("Age:"),
         role: get("Ruolo nella storia:") || get("Role:"),
+        physicalDescription: get("Aspetto fisico:") || get("Physical description:"),
         wound: get("Ferita interiore:") || get("Core wound:"),
         externalDesire: get("Desiderio esterno:") || get("External desire:"),
         internalNeed: get("Bisogno interiore:") || get("Internal need:"),
         secret: get("Segreto:") || get("Secret:"),
+        vulnerability: get("Paura:") || get("Core fear:") || get("Fear:") || get("Vulnerabilità:") || get("Vulnerability:"),
+        dominantFlaw,
+        blindSpot: contradiction,
+        emotionalTriggers: get("Trigger emotivi:") || get("Emotional triggers:"),
+        recurringBehavior: get("Comportamento ricorrente:") || get("Recurring behavior:"),
+        personalLanguage: get("Linguaggio personale:") || get("Personal language:") || get("Voce:") || get("Voice:"),
         relationships: get("Rapporto con gli altri personaggi:") || get("Relationship to other characters:"),
-        personality: get("Carattere:") || get("Personality:") || block,
+        personality: personality || block,
         strictRules:
           get("Regole di continuità:") ||
           get("Continuity rules:") ||
@@ -978,6 +1056,13 @@ Ferita interiore: Ha perso fiducia nella possibilità di appartenere davvero a q
 Desiderio esterno: Ricominciare altrove e trovare una direzione concreta.
 Bisogno interiore: Smettere di scappare e imparare a scegliere.
 Segreto: Nasconde una paura profonda di essere vista davvero.
+Paura: Essere scelta solo finché resta utile, poi abbandonata quando mostra il bisogno vero.
+Contraddizione: Desidera appartenenza ma sabota ogni luogo che potrebbe diventare casa.
+Difetto dominante: Trasforma lucidità e controllo in distanza emotiva.
+Trigger emotivi: Promesse vaghe, stanze chiuse, messaggi senza risposta, qualcuno che decide per lei.
+Comportamento ricorrente: Riordina oggetti piccoli quando mente o sta per cedere.
+Linguaggio personale: Frasi precise, ironia asciutta, domande che spostano il peso sull'altro.
+Arco di trasformazione: Da fuga elegante a scelta consapevole di restare anche quando costa.
 Rapporto con gli altri personaggi: Il suo rapporto con ${loveName} deve crescere lentamente, attraverso tensione, silenzi, gesti e conseguenze.
 Regole di continuità: Non rinominare mai ${protagonistName}. Non trasformarla in un'altra persona. Ogni capitolo deve rispettare la sua ferita, il suo desiderio e il suo arco emotivo.
 
@@ -991,6 +1076,13 @@ Ferita interiore: Porta una perdita o un fallimento che lo ha reso prudente nell
 Desiderio esterno: Proteggere il suo mondo e non perdere il controllo.
 Bisogno interiore: Accettare che amare di nuovo non significa tradire il passato.
 Segreto: C'è una parte della sua storia che non racconta subito.
+Paura: Se lascia entrare qualcuno, dovrà ammettere quanto è rimasto fermo nel passato.
+Contraddizione: Vuole proteggere ${protagonistName}, ma ogni protezione rischia di diventare possesso.
+Difetto dominante: Confondere silenzio e lealtà, controllo e cura.
+Trigger emotivi: Domande sul passato, gesti di fiducia improvvisi, oggetti legati alla perdita.
+Comportamento ricorrente: Risponde tardi, osserva le uscite, sistema le maniche prima di dire una verità.
+Linguaggio personale: Poche parole, concrete, con sottotesto; evita confessioni dirette finché la scena lo costringe.
+Arco di trasformazione: Da custode del passato a persona capace di scegliere il presente senza cancellare ciò che ha perso.
 Rapporto con gli altri personaggi: Con ${protagonistName} deve esserci attrazione, paura, resistenza e progressiva fiducia.
 Regole di continuità: Non rinominare mai ${loveName}. Non farlo confessare troppo presto. Ogni intimità deve avere una conseguenza narrativa.`;
 }
@@ -1277,6 +1369,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   const [previewPanel, setPreviewPanel] = useState<"idea" | "bible" | null>(null);
   const [loading, setLoading] = useState(false);
   const [ideaLoading, setIdeaLoading] = useState(false);
+  const [liveOperation, setLiveOperation] = useState<CharacterStudioLiveOperation | null>(null);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -1408,6 +1501,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   const generateNovelIdea = async () => {
     if (ideaLoading || loading) return;
     setIdeaLoading(true);
+    setLiveOperation("idea");
 
     const currentIdea = idea.trim();
     const currentLooksLikeGeneratedIdea = currentIdea.length > 180;
@@ -1463,6 +1557,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       });
     } finally {
       setIdeaLoading(false);
+      setLiveOperation(null);
     }
   };
 
@@ -1475,6 +1570,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     }
 
     setIdeaLoading(true);
+    setLiveOperation("story");
 
     try {
       const diversitySeed = typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -1524,6 +1620,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       });
     } finally {
       setIdeaLoading(false);
+      setLiveOperation(null);
     }
   };
 
@@ -1604,6 +1701,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   const generate = async () => {
     if (!canGenerate || loading) return;
     setLoading(true);
+    setLiveOperation("characters");
     setSaved(false);
 
     try {
@@ -1663,30 +1761,39 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       });
     } finally {
       setLoading(false);
+      setLiveOperation(null);
     }
   };
 
-  const generateTitleAndSubtitle = () => {
-    const resolvedTitle = buildCharacterStudioFallbackTitle({
-      idea,
-      genre,
-      subcategory,
-      setting,
-      centralDynamic,
-    });
+  const generateTitleAndSubtitle = async () => {
+    if (liveOperation) return;
+    setLiveOperation("title");
+    try {
+      await sleep(650);
 
-    const resolvedSubtitle = buildCharacterStudioFallbackSubtitle({
-      idea,
-      narrativePromise,
-      centralDynamic,
-      genre,
-      subcategory,
-    });
+      const resolvedTitle = buildCharacterStudioFallbackTitle({
+        idea,
+        genre,
+        subcategory,
+        setting,
+        centralDynamic,
+      });
 
-    setBookTitle(resolvedTitle);
-    setBookSubtitle(resolvedSubtitle);
-    setNarrativePromise((current) => current.trim() ? current : resolvedSubtitle);
-    toast.success("Titolo e sottotitolo preparati per il flusso libro.");
+      const resolvedSubtitle = buildCharacterStudioFallbackSubtitle({
+        idea,
+        narrativePromise,
+        centralDynamic,
+        genre,
+        subcategory,
+      });
+
+      setBookTitle(resolvedTitle);
+      setBookSubtitle(resolvedSubtitle);
+      setNarrativePromise((current) => current.trim() ? current : resolvedSubtitle);
+      toast.success("Titolo e sottotitolo preparati per il flusso libro.");
+    } finally {
+      setLiveOperation(null);
+    }
   };
 
   const saveAndLink = () => {
@@ -1696,6 +1803,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       toast.error("Prima genera i personaggi: l’output Character Bible è vuoto.");
       return;
     }
+    setLiveOperation("handoff");
 
     const characters = charactersFromCharacterBibleText(bible);
     const cleanIdea = idea.trim();
@@ -1831,6 +1939,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     }
 
     if (!savedSomewhere) {
+      setLiveOperation(null);
       toast.error("Non sono riuscito a salvare il collegamento personaggi. Prova a svuotare cache/spazio browser.");
       return;
     }
@@ -1846,6 +1955,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       );
 
       setSaved(true);
+      setLiveOperation(null);
       onClose?.();
 
       navigate("/dashboard", {
@@ -1859,6 +1969,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       toast.success("Personaggi collegati. Apro la creazione libro con cast, genere, filone e tono già pronti.");
     } catch (error) {
       devOnlyDiagnostic("[CharacterStudio] open creazione libro failed", error);
+      setLiveOperation(null);
       setSaved(true);
       toast.success("Cast salvato. Apri la creazione libro dalla Dashboard per continuare.");
     }
@@ -1911,7 +2022,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     }
 
     if (!hasTitleReady || !hasSubtitleReady) {
-      generateTitleAndSubtitle();
+      void generateTitleAndSubtitle();
       return;
     }
 
@@ -1927,87 +2038,13 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
 
   return (
     <div className="scriptora-modal-overlay fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
-      {previewPanel && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border bg-card/95 px-5 py-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-                  Character Studio
-                </p>
-                <h3 className="text-lg font-bold text-foreground">
-                  {previewPanel === "idea" ? "Idea del romanzo" : "Character Bible canonica"}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPreviewPanel(null)}
-                className="rounded-full border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
-              >
-                Chiudi
-              </button>
-            </div>
-
-        <div className="border-b border-border bg-muted/20 px-4 py-3">
-          <div className="grid gap-2 sm:grid-cols-4">
-            {[
-              ["identity", "1", "Fondamenta autore", "Voce e pseudonimo"],
-              ["idea", "2", "Idea", "Premessa leggibile"],
-              ["direction", "3", "Regia", "Genere, tono, dinamica"],
-              ["bible", "4", "Cast canonico", "Bible e creazione libro"],
-            ].map(([id, num, title, subtitle]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setActiveStudioStep(id as typeof activeStudioStep)}
-                className={`rounded-2xl border px-3 py-3 text-left transition ${
-                  activeStudioStep === id
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-border bg-background/60 text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                <div className="mb-1 flex items-center gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-                    {num}
-                  </span>
-                  <span className="text-sm font-bold">{title}</span>
-                </div>
-                <p className="text-xs">{subtitle}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-
-            <div className="overflow-y-auto whitespace-pre-wrap px-6 py-5 text-sm leading-7 text-foreground">
-              {(previewPanel === "idea" ? idea : characterBible).trim() || "Nessun testo disponibile."}
-            </div>
-
-            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-muted/30 px-5 py-4">
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard?.writeText((previewPanel === "idea" ? idea : characterBible).trim());
-                  toast.success("Testo copiato.");
-                }}
-                className="rounded-full border border-border px-4 py-2 text-sm font-semibold hover:bg-muted"
-              >
-                Copia testo
-              </button>
-              {previewPanel === "bible" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPreviewPanel(null);
-                    saveAndLink();
-                  }}
-                  className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
-                >
-                  Salva e continua
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+      {liveOperation && (
+        <ScriptoraAliveTransition
+          overlay
+          tone="writer"
+          title={CHARACTER_STUDIO_LIVE_COPY[liveOperation].title}
+          steps={CHARACTER_STUDIO_LIVE_COPY[liveOperation].steps}
+        />
       )}
 
       {previewPanel && (
@@ -2146,7 +2183,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
                     Scriptora userà questi dati per non bloccarsi al Blueprint. Puoi cambiarli dopo.
                   </p>
                 </div>
-                <Button type="button" variant="secondary" onClick={generateTitleAndSubtitle}>
+                <Button type="button" variant="secondary" onClick={() => void generateTitleAndSubtitle()}>
                   <Sparkles className="h-4 w-4 mr-2" />
                   Genera titolo e sottotitolo
                 </Button>

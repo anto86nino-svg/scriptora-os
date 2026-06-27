@@ -1,4 +1,13 @@
-import type { DifficultWord, Flashcard, OpenStudyQuestion, QuizQuestion, StudyDifficulty, StudySessionResult } from "@/lib/study-session";
+import type {
+  DifficultWord,
+  Flashcard,
+  OpenStudyQuestion,
+  QuizQuestion,
+  StudyAdaptiveCoachSnapshot,
+  StudyDifficulty,
+  StudyKnowledgeArea,
+  StudySessionResult,
+} from "@/lib/study-session";
 
 export const STUDY_UX_STORAGE_KEY = "scriptora-study-ux-v1";
 
@@ -303,6 +312,8 @@ export interface QuizPerformanceReport {
   suggestedNextStep: string;
   estimatedOral: "Low" | "Medium" | "High";
   reviewMinutes: number;
+  passProbability: number;
+  areasToReview: string[];
 }
 
 export function buildQuizPerformanceReport(
@@ -350,6 +361,11 @@ export function buildQuizPerformanceReport(
   const estimatedOral: QuizPerformanceReport["estimatedOral"] =
     score >= 75 ? "High" : score >= 50 ? "Medium" : "Low";
   const reviewMinutes = Math.max(8, wrongIndices.length * 8 + (score < 60 ? 18 : score < 75 ? 10 : 5));
+  const passProbability = Math.max(5, Math.min(98, Math.round(score * 0.82 + (correctIndices.length / Math.max(1, total)) * 12 + (wrongIndices.length ? -4 : 6))));
+  const areasToReview = [
+    ...weakAreas,
+    ...wrongIndices.slice(0, 3).map((i) => quiz[i]?.testedSkill || quiz[i]?.learningLevel || ""),
+  ].filter(Boolean).slice(0, 6);
 
   return {
     score,
@@ -365,6 +381,8 @@ export function buildQuizPerformanceReport(
     suggestedNextStep,
     estimatedOral,
     reviewMinutes,
+    passProbability,
+    areasToReview,
   };
 }
 
@@ -438,6 +456,127 @@ export function computeStudyCoachMetrics(
     focusOn,
     avoid,
     coachMessage,
+  };
+}
+
+function clampMastery(value: number): number {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function containsConcept(text: string, concept: string): boolean {
+  const cleanConcept = concept.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").trim();
+  if (!cleanConcept) return false;
+  const parts = cleanConcept.split(/\s+/).filter((part) => part.length >= 4).slice(0, 4);
+  const lower = text.toLowerCase();
+  return parts.length ? parts.some((part) => lower.includes(part)) : lower.includes(cleanConcept);
+}
+
+export function buildAdaptiveKnowledgeMap(input: {
+  result: StudySessionResult;
+  quizAnswers?: Record<number, number>;
+  openEvaluations?: Record<number, { score?: number }>;
+  flashcardConfidence?: Record<number, FlashcardConfidence>;
+}): StudyKnowledgeArea[] {
+  const result = input.result;
+  const baseAreas: StudyKnowledgeArea[] = (result.knowledgeMap?.length ? result.knowledgeMap : (result.keyConcepts || []).slice(0, 10).map((concept) => ({
+    concept,
+    mastery: 50,
+    status: "medium" as const,
+    reason: "Da verificare con le attività della sessione.",
+    nextAction: `Ripassa "${concept}" e verifica con una domanda.`,
+  }))).slice(0, 10);
+
+  const quiz = result.quiz || [];
+  const answers = input.quizAnswers || {};
+  const flashcards = result.flashcards || [];
+  const confidence = input.flashcardConfidence || {};
+  const oralEvaluations = input.openEvaluations || {};
+  const oralQuestions = result.openQuestions || [];
+
+  return baseAreas.map((area, areaIndex) => {
+    const concept = sanitizeStudyText(area.concept);
+    const matchingQuiz = quiz
+      .map((question, index) => ({ question, index }))
+      .filter(({ question }) => containsConcept(`${question.question} ${question.explanation} ${question.testedSkill || ""}`, concept));
+    const answeredQuiz = matchingQuiz.filter(({ index }) => answers[index] !== undefined);
+    const correctQuiz = answeredQuiz.filter(({ question, index }) => answers[index] === question.answer).length;
+    const wrongQuiz = answeredQuiz.length - correctQuiz;
+    const quizDelta = answeredQuiz.length
+      ? Math.round((correctQuiz / answeredQuiz.length) * 32 - wrongQuiz * 10)
+      : 0;
+
+    const matchingCards = flashcards
+      .map((card, index) => ({ card, index }))
+      .filter(({ card, index }) => containsConcept(`${card.front} ${card.back}`, concept) || index === areaIndex);
+    const cardDelta = matchingCards.reduce((sum, { index }) => {
+      const value = confidence[index];
+      if (value === "known") return sum + 8;
+      if (value === "almost") return sum + 3;
+      if (value === "unknown") return sum - 8;
+      return sum;
+    }, 0);
+
+    const matchingOral = oralQuestions
+      .map((question, index) => ({ question, index, evaluation: oralEvaluations[index] }))
+      .filter(({ question, index }) => containsConcept(question.question, concept) || index === areaIndex)
+      .map(({ evaluation }) => Number(evaluation?.score))
+      .filter((score) => Number.isFinite(score));
+    const oralDelta = matchingOral.length
+      ? Math.round((matchingOral.reduce((sum, score) => sum + score, 0) / matchingOral.length - 60) * 0.35)
+      : 0;
+
+    const mastery = clampMastery((area.mastery || 50) + quizDelta + cardDelta + oralDelta);
+    const status: StudyKnowledgeArea["status"] = mastery >= 76 ? "strong" : mastery >= 55 ? "medium" : "weak";
+    const reason = answeredQuiz.length || matchingCards.length || matchingOral.length
+      ? [
+          answeredQuiz.length ? `quiz ${correctQuiz}/${answeredQuiz.length}` : "",
+          matchingCards.length ? "flashcard valutate" : "",
+          matchingOral.length ? `orale medio ${Math.round(matchingOral.reduce((sum, score) => sum + score, 0) / matchingOral.length)}/100` : "",
+        ].filter(Boolean).join(" · ")
+      : area.reason;
+    const nextAction = status === "strong"
+      ? `Mantieni "${concept}" con una domanda da esame o un collegamento.`
+      : status === "medium"
+        ? `Consolida "${concept}" con una flashcard e un esempio orale.`
+        : `Riparti da "${concept}": definizione semplice, errore comune, poi quiz facile.`;
+
+    return {
+      concept,
+      mastery,
+      status,
+      reason,
+      nextAction,
+    };
+  });
+}
+
+export function buildAdaptiveCoachSnapshot(input: {
+  result: StudySessionResult;
+  quizAnswers?: Record<number, number>;
+  openEvaluations?: Record<number, { score?: number }>;
+  flashcardConfidence?: Record<number, FlashcardConfidence>;
+}): StudyAdaptiveCoachSnapshot {
+  const knowledgeMap = buildAdaptiveKnowledgeMap(input);
+  const avg = knowledgeMap.length
+    ? Math.round(knowledgeMap.reduce((sum, area) => sum + area.mastery, 0) / knowledgeMap.length)
+    : 45;
+  const gaps = knowledgeMap.filter((area) => area.status === "weak").map((area) => area.concept).slice(0, 5);
+  const strengths = knowledgeMap.filter((area) => area.status === "strong").map((area) => area.concept).slice(0, 5);
+  const answered = Object.keys(input.quizAnswers || {}).length;
+  const quizTotal = input.result.quiz?.length || 0;
+  const quizCompletionBonus = quizTotal ? Math.round((answered / quizTotal) * 8) : 0;
+  const estimatedPassProbability = clampMastery(avg + quizCompletionBonus + (strengths.length >= 3 ? 5 : 0) - (gaps.length >= 3 ? 8 : 0));
+  const weakest = gaps[0] || knowledgeMap.sort((a, b) => a.mastery - b.mastery)[0]?.concept;
+
+  return {
+    currentLevel: estimatedPassProbability >= 78 ? "exam_ready" : estimatedPassProbability >= 55 ? "in_progress" : "base",
+    nextAction: weakest
+      ? `Prossimo passo: rinforza "${weakest}" e poi ripeti una domanda orale.`
+      : "Prossimo passo: fai una simulazione esame completa.",
+    gaps,
+    strengths: strengths.length ? strengths : knowledgeMap.filter((area) => area.status === "medium").map((area) => area.concept).slice(0, 4),
+    estimatedPassProbability,
+    knowledgeMap,
   };
 }
 

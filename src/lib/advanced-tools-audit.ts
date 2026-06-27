@@ -553,8 +553,8 @@ function buildNarrativePromiseAudit(project: BookProject): NarrativePromiseAudit
       .filter((item) => item.status === "open" || item.status === "partial" || item.status === "broken")
       .map((item) => `${item.label} (${item.status})`),
     ...(longMemory?.promisePayoffs || [])
-      .filter((item) => item.status === "open" || item.status === "overdue")
-      .map((item) => `${item.promise} (${item.status})`),
+      .filter((item) => item.status === "open" || item.status === "developing" || item.status === "overdue")
+      .map((item) => `${item.id ? `${item.id}: ` : ""}${item.promise} (${item.status})`),
     ...(longMemory?.unresolvedArcs || [])
       .filter((item) => item.type === "promise")
       .map((item) => item.description),

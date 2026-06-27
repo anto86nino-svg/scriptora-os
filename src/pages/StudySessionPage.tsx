@@ -61,8 +61,6 @@ import { StudyMapPanel } from "@/components/study/StudyMapPanel";
 import { StudyProgressPanel } from "@/components/study/StudyProgressPanel";
 import { StudyCertificatesPanel } from "@/components/study/StudyCertificatesPanel";
 import { StudyCoachPanel } from "@/components/study/StudyCoachPanel";
-import { LazyMollyBrainPanel } from "@/components/molly/LazyMollyBrainPanel";
-import type { BookProject } from "@/types/book";
 import {
   attachStudyResult,
   computeStudySourceHash,
@@ -243,11 +241,18 @@ function normalizeStudyResultForUI(value: any): StudySessionResult {
           difficulty: item?.difficulty,
           memoryTrick: item?.memoryTrick,
           commonMistake: item?.commonMistake,
+          type: item?.type,
+          sourceReference: item?.sourceReference,
+          testedSkill: item?.testedSkill,
+          learningLevel: item?.learningLevel,
         }))
       : [],
     trueFalse: Array.isArray(result.trueFalse) ? result.trueFalse : [],
     exercises: Array.isArray(result.exercises) ? result.exercises : [],
     conceptMap: result.conceptMap,
+    learningPackage: result.learningPackage,
+    knowledgeMap: Array.isArray(result.knowledgeMap) ? result.knowledgeMap : [],
+    adaptiveCoach: result.adaptiveCoach,
     studyMaterialType: result.studyMaterialType,
     studySubject: result.studySubject,
     literaryGenre: result.literaryGenre,
@@ -761,32 +766,6 @@ export default function StudySessionPage() {
       }
     },
     [projectId],
-  );
-
-  const studyBrainProject = useMemo<BookProject>(
-    () =>
-      ({
-        id: "study-session",
-        config: {
-          title: result?.title || sourceName,
-          genre: "self-help",
-          subcategory: "Study",
-          language: studyLanguage,
-          category: "Non Fiction",
-          tone: "clear",
-          numberOfChapters: 1,
-          chapterLength: "medium",
-          bookLength: "short",
-        },
-        blueprint: { overview: "", emotionalArc: "", chapterOutlines: [{ title: "Studio", summary: "" }] },
-        chapters: [{ title: "Materiale", content: rawText, status: "done", subchapters: [] }],
-        frontMatter: null,
-        backMatter: null,
-        phase: "writing",
-        messages: [],
-        updatedAt: new Date().toISOString(),
-      }) as BookProject,
-    [rawText, result?.title, sourceName, studyLanguage],
   );
 
   const handleSectionChange = useCallback((section: StudySection) => {
@@ -1991,6 +1970,7 @@ export default function StudySessionPage() {
                     proSummary={safeResult.proSummary}
                     studyNotesPro={safeResult.studyNotesPro}
                     summaries={safeResult.summaries}
+                    learningPackage={safeResult.learningPackage}
                   />
                 )}
 
@@ -2098,20 +2078,6 @@ export default function StudySessionPage() {
         </div>
       </div>
 
-      {rawText.trim().length >= 120 && (
-        <LazyMollyBrainPanel
-          project={studyBrainProject}
-          activeSection="chapter-0"
-          appContext="study"
-          studyText={rawText}
-          onApplyChapterContent={(_chapterIdx, content) =>
-            replaceStudySource(content, sourceName, "paste", { toastChanged: Boolean(result) })
-          }
-          onApplyStudyText={(content) =>
-            replaceStudySource(content, sourceName, "paste", { toastChanged: Boolean(result) })
-          }
-        />
-      )}
     </div>
   );
 }

@@ -52,15 +52,4 @@ describe("analyzeMollyBrain", () => {
     expect(insight?.trigger).toBeTruthy();
     expect(insight?.comic.length).toBeGreaterThan(10);
   });
-
-  it("returns study insight for study context", () => {
-    const insight = analyzeMollyBrain({
-      project: mockProject(),
-      activeSection: null,
-      appContext: "study",
-      studyText: "La fotosintesi clorofilliana è un processo biochimico complesso che converte energia luminosa in energia chimica attraverso reazioni redox.",
-    });
-    expect(insight?.trigger).toBe("study_explanation");
-    expect(insight?.actions[0]?.id).toBe("more_clarity");
-  });
 });

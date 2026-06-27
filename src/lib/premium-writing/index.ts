@@ -68,8 +68,10 @@ export function buildWriterMemorySource(
     const v25 = isMemoryConsistencyV25Enabled() ? buildMemoryConsistencyV25Block(ctx) : "";
     if (v25.trim()) {
       parts.push(v25.trim());
-    } else if (ctx.blueprint) {
-      const memory = buildLongBookMemory({
+    }
+
+    if (ctx.blueprint || ctx.longBookMemory) {
+      const memory = ctx.longBookMemory ?? buildLongBookMemory({
         config: ctx.config,
         blueprint: ctx.blueprint,
         chapters: ctx.previousChapters,

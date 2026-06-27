@@ -69,4 +69,35 @@ describe("Long Book Memory Engine V2", () => {
     expect(block).toContain("UNRESOLVED ARCS");
     expect(block).toContain("WORLD RULES");
   });
+
+  it("tracks promise metadata and global repetition signals", () => {
+    const memory = buildLongBookMemory({
+      config: baseConfig,
+      blueprint: {
+        overview: "A dark romance",
+        themes: ["promise", "betrayal"],
+        emotionalArc: "distrust to consequence",
+        chapterOutlines: [
+          { title: "Key", summary: "The key appears.", canonNotes: ["La chiave deve tornare nel finale."] },
+          { title: "Door", summary: "The silence grows." },
+          { title: "Debt", summary: "The debt comes due." },
+        ],
+      },
+      chapters: [
+        chapter(1, "Il silenzio resta nella stanza. Lei promise che la chiave avrebbe avuto un prezzo."),
+        chapter(2, "Il silenzio tornò nel corridoio. Quel silenzio non spiegava niente. La paura restò fredda."),
+        chapter(3, "Il silenzio si spezzò quando la chiave rivelò la conseguenza promessa."),
+      ],
+    });
+
+    expect(memory.promisePayoffs[0]?.id).toBeTruthy();
+    expect(memory.promisePayoffs[0]?.originChapter).toBe(1);
+    expect(memory.promisePayoffs[0]?.importance).toMatch(/medium|high/);
+    expect(memory.promisePayoffs[0]?.expectedPayoff).toBeTruthy();
+    expect(memory.globalRepetitionSignals?.some((signal) => signal.phrase.includes("silenzio"))).toBe(true);
+
+    const block = buildLongBookMemoryPromptBlock(memory, 3);
+    expect(block).toContain("GLOBAL ANTI-REPETITION MEMORY");
+    expect(block).toContain("expected payoff=");
+  });
 });

@@ -449,6 +449,14 @@ export function BookCreationOsWizard({
 
   const mobileInterviewMode = forgeEntry !== "post-dna" && isMobileViewport && step === 0 && useGuidedInterview;
   const postDnaForge = forgeEntry === "post-dna";
+  const approvedHandoffSlots = bookForgeHandoff?.prefill.approvedSlots ?? [];
+  const canonicalCharacterHandoff =
+    bookForgeHandoff?.source === "character-studio" ||
+    bookForgeHandoff?.prefill.canonicalSource === "character-studio";
+  const titleLockedByCharacterStudio =
+    canonicalCharacterHandoff &&
+    approvedHandoffSlots.includes("title") &&
+    approvedHandoffSlots.includes("subtitle");
 
   useEffect(() => {
     if (!open || forgeEntry !== "post-dna" || !interviewSeed) return;
@@ -2097,15 +2105,33 @@ const persistDraft = useCallback(() => {
 
               <label className="block space-y-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Titolo reale</span>
-                <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={forgePresetId === "poetry" ? "Es. Geografia delle cose non dette" : "Es. La Cattedrale delle Anime Dimenticate"} className={inputClass} />
+                <input
+                  value={title}
+                  readOnly={titleLockedByCharacterStudio}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder={forgePresetId === "poetry" ? "Es. Geografia delle cose non dette" : "Es. La Cattedrale delle Anime Dimenticate"}
+                  className={inputClass}
+                />
               </label>
 
               <label className="block space-y-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Sottotitolo / promessa</span>
-                <input value={subtitle} onChange={(e) => setSubtitle(e.target.value)} placeholder={forgePresetId === "poetry" ? "Es. Poesie sul silenzio, la memoria e la rinascita" : "Es. Ogni segreto ha un prezzo. Ogni anima reclama il proprio debito."} className={inputClass} />
+                <input
+                  value={subtitle}
+                  readOnly={titleLockedByCharacterStudio}
+                  onChange={(e) => setSubtitle(e.target.value)}
+                  placeholder={forgePresetId === "poetry" ? "Es. Poesie sul silenzio, la memoria e la rinascita" : "Es. Ogni segreto ha un prezzo. Ogni anima reclama il proprio debito."}
+                  className={inputClass}
+                />
               </label>
 
-              {forgePresetId !== "poetry" && (
+              {titleLockedByCharacterStudio && (
+                <div className="rounded-2xl border border-emerald-300/25 bg-emerald-400/10 p-3 text-xs leading-5 text-emerald-50">
+                  Titolo e sottotitolo arrivano da Character Studio e sono canonici. Book Forge li riusa per blueprint, cover, export e Writer senza rigenerarli.
+                </div>
+              )}
+
+              {forgePresetId !== "poetry" && !titleLockedByCharacterStudio && (
                 <div className="rounded-2xl border border-violet-400/25 bg-gradient-to-br from-violet-500/10 via-sky-500/5 to-transparent p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>

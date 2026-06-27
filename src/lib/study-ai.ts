@@ -70,12 +70,15 @@ function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudyS
     simple: normalizeString(item?.simple, "Spiegazione semplice non disponibile."),
     technical: normalizeString(item?.technical, "Spiegazione tecnica non disponibile."),
     example: normalizeString(item?.example, "Prova a usare questo termine in una frase tua."),
+    school: normalizeString(item?.school, ""),
+    advanced: normalizeString(item?.advanced, ""),
     precise: normalizeString(item?.precise, item?.technical || ""),
     newExample: normalizeString(item?.newExample, ""),
     synonyms: normalizeArray<string>(item?.synonyms).slice(0, 4),
     antonyms: normalizeArray<string>(item?.antonyms).slice(0, 4),
     commonMistake: normalizeString(item?.commonMistake, ""),
     examQuestion: normalizeString(item?.examQuestion, ""),
+    connections: normalizeArray<string>(item?.connections).slice(0, 6),
     importance: item?.importance === "alto" || item?.importance === "medio" || item?.importance === "basso" ? item.importance : undefined,
   }));
 
@@ -111,6 +114,9 @@ function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudyS
       type: item?.type,
       sourceReference: normalizeString(item?.sourceReference, ""),
       testedSkill: normalizeString(item?.testedSkill, ""),
+      learningLevel: ["memory", "understanding", "application", "exam", "professor"].includes(item?.learningLevel)
+        ? item.learningLevel
+        : undefined,
     };
   });
 
@@ -146,6 +152,13 @@ function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudyS
   const normalizedClassification = parsed?.classification && typeof parsed.classification === "object"
     ? { ...fallback.classification, ...parsed.classification }
     : fallback.classification;
+  const learningPackage = parsed?.learningPackage && typeof parsed.learningPackage === "object"
+    ? { ...fallback.learningPackage, ...parsed.learningPackage }
+    : fallback.learningPackage;
+  const knowledgeMap = Array.isArray(parsed?.knowledgeMap) ? parsed.knowledgeMap : fallback.knowledgeMap;
+  const adaptiveCoach = parsed?.adaptiveCoach && typeof parsed.adaptiveCoach === "object"
+    ? { ...fallback.adaptiveCoach, ...parsed.adaptiveCoach }
+    : fallback.adaptiveCoach;
   const narrativeLock = fallback.contentType === "narrative_fiction";
   const fallbackQuestions = fallback.openQuestions || [];
   const safeOpenQuestions = sanitizeStudyOpenQuestions(openQuestions, fallbackQuestions);
@@ -180,6 +193,9 @@ function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudyS
     trueFalse: trueFalse.length ? trueFalse : fallback.trueFalse,
     exercises: exercises.length ? exercises : fallback.exercises,
     conceptMap: parsed?.conceptMap && typeof parsed.conceptMap === "object" ? parsed.conceptMap : fallback.conceptMap,
+    learningPackage,
+    knowledgeMap,
+    adaptiveCoach,
     keyConcepts: keyConcepts.length ? keyConcepts : fallback.keyConcepts,
     studyMaterialType: parsed?.studyMaterialType || fallback.studyMaterialType,
     studySubject: parsed?.studySubject || fallback.studySubject,
@@ -466,10 +482,14 @@ QUALITY RULES:
 - Study Notes Pro: structured study handout with clear section headers: "Concetti da sapere", "Cosa ricordare", "Trappole d'esame", "Collegamenti causa-effetto", "Interrogazione orale". Scannable bullets, not dense paragraphs.
 - Open questions: create deep written/oral exam questions with answer guides.
 - Difficult words: explain simple meaning, technical meaning, and give concrete example.
+- Difficult words must be contextual dictionary entries: simple definition, school definition, advanced definition, example, common mistake and links to related concepts from the material.
 - Flashcards: useful for active recall, not generic.
-- Quiz: create challenging multiple-choice questions with PLAUSIBLE distractors (no joke answers). Include answer index 0-3, explanation, difficulty (easy|medium|hard), memoryTrick, and commonMistake for each question.
+- Quiz: create challenging multiple-choice questions with PLAUSIBLE distractors (no joke answers). Include answer index 0-3, explanation, difficulty (easy|medium|hard), learningLevel (memory|understanding|application|exam|professor), memoryTrick, and commonMistake for each question.
 - Exercises: guided, free, application and reasoning tasks with solution/explanation when appropriate.
 - Concept map: nodes and relationships grounded in the material.
+- Learning package: one processing pass must produce ultra brief summary, standard summary, deep summary, key concepts, common mistakes and likely exam questions.
+- Knowledge map: estimate initial mastery areas from the generated assets, then specify what to review next. Do not claim the student has mastered a concept before quiz/oral evidence exists.
+- Adaptive coach: provide nextAction, gaps, strengths and estimatedPassProbability as a conservative starting estimate.
 - Do not invent facts not present in the material.
 - If dates, names, formulas or definitions are not present, explicitly say "non specificato nel materiale".
 - Never show undefined, null, [object Object], raw JSON, stack traces, placeholders or truncated questions.
@@ -548,8 +568,13 @@ Return this JSON shape exactly:
     {
       "word": "string",
       "simple": "string",
+      "school": "string",
+      "advanced": "string",
       "technical": "string",
-      "example": "string"
+      "example": "string",
+      "commonMistake": "string",
+      "examQuestion": "string",
+      "connections": ["string"]
     }
   ],
   "flashcards": [
@@ -565,6 +590,7 @@ Return this JSON shape exactly:
       "answer": 0,
       "explanation": "string",
       "difficulty": "easy | medium | hard",
+      "learningLevel": "memory | understanding | application | exam | professor",
       "memoryTrick": "string",
       "commonMistake": "string"
     }
@@ -594,6 +620,39 @@ Return this JSON shape exactly:
     "relations": [{"from": "string", "to": "string", "label": "string", "type": "hierarchy | cause-effect | prerequisite | contrast | example"}],
     "exportText": "string"
   },
+  "learningPackage": {
+    "summaryUltraBrief": "string",
+    "summaryStandard": "string",
+    "summaryDeep": "string",
+    "keyConcepts": ["string"],
+    "commonMistakes": ["string"],
+    "examQuestions": ["string"]
+  },
+  "knowledgeMap": [
+    {
+      "concept": "string",
+      "mastery": 0,
+      "status": "strong | medium | weak",
+      "reason": "string",
+      "nextAction": "string"
+    }
+  ],
+  "adaptiveCoach": {
+    "currentLevel": "base | in_progress | exam_ready",
+    "nextAction": "string",
+    "gaps": ["string"],
+    "strengths": ["string"],
+    "estimatedPassProbability": 0,
+    "knowledgeMap": [
+      {
+        "concept": "string",
+        "mastery": 0,
+        "status": "strong | medium | weak",
+        "reason": "string",
+        "nextAction": "string"
+      }
+    ]
+  },
   "keyConcepts": ["string"]
 }
 
@@ -612,6 +671,12 @@ Mix question types:
 - concept comparison
 - application to real examples
 - "what does the author mean by..." questions
+Assign learningLevel honestly:
+- memory = recall/definition
+- understanding = explain in own words
+- application = use in an example/case
+- exam = answer as in a serious test
+- professor = hard follow-up, implication, objection or connection
 FLASHCARD REQUIREMENTS:
 Mix types: definition, cause-effect, comparison, true/false, application, oral-exam style. Break long answers into smaller chunks.
 NARRATIVE FICTION QUESTION REQUIREMENTS:

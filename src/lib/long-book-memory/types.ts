@@ -22,10 +22,23 @@ export interface ForeshadowSeed {
 }
 
 export interface PromisePayoffTracker {
+  id?: string;
   promise: string;
   chapterIntroduced: number;
+  originChapter?: number;
   payoffExpectedBy?: number;
-  status: "open" | "paid" | "overdue";
+  importance?: "low" | "medium" | "high";
+  expectedPayoff?: string;
+  actualPayoff?: string;
+  status: "open" | "developing" | "paid" | "overdue";
+}
+
+export interface GlobalRepetitionSignal {
+  id: string;
+  kind: "gesture" | "image" | "emotion" | "transition";
+  phrase: string;
+  count: number;
+  chapters: number[];
 }
 
 export interface EmotionalProgressionBeat {
@@ -51,6 +64,7 @@ export interface LongBookMemorySnapshot {
   emotionalProgression: EmotionalProgressionBeat[];
   foreshadowing: ForeshadowSeed[];
   promisePayoffs: PromisePayoffTracker[];
+  globalRepetitionSignals?: GlobalRepetitionSignal[];
   relationshipStates: string[];
   worldRules: WorldRuleLock[];
   continuityAnchors: string[];

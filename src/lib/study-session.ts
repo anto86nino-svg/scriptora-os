@@ -128,6 +128,8 @@ export interface DifficultWord {
   simple: string;
   technical: string;
   example: string;
+  school?: string;
+  advanced?: string;
   memoryTrick?: string;
   commonMistake?: string;
   precise?: string;
@@ -135,8 +137,11 @@ export interface DifficultWord {
   synonyms?: string[];
   antonyms?: string[];
   examQuestion?: string;
+  connections?: string[];
   importance?: "alto" | "medio" | "basso";
 }
+
+export type StudyLearningLevel = "memory" | "understanding" | "application" | "exam" | "professor";
 
 export interface Flashcard {
   front: string;
@@ -159,6 +164,7 @@ export interface QuizQuestion {
   type?: "multiple-choice" | "true-false" | "short-answer" | "open" | "connection" | "case" | "comparison" | "own-words";
   sourceReference?: string;
   testedSkill?: string;
+  learningLevel?: StudyLearningLevel;
 }
 
 export interface OpenStudyQuestion {
@@ -253,6 +259,32 @@ export interface StudyConceptMap {
   exportText: string;
 }
 
+export interface StudyLearningPackage {
+  summaryUltraBrief: string;
+  summaryStandard: string;
+  summaryDeep: string;
+  keyConcepts: string[];
+  commonMistakes: string[];
+  examQuestions: string[];
+}
+
+export interface StudyKnowledgeArea {
+  concept: string;
+  mastery: number;
+  status: "strong" | "medium" | "weak";
+  reason: string;
+  nextAction: string;
+}
+
+export interface StudyAdaptiveCoachSnapshot {
+  currentLevel: "base" | "in_progress" | "exam_ready";
+  nextAction: string;
+  gaps: string[];
+  strengths: string[];
+  estimatedPassProbability: number;
+  knowledgeMap: StudyKnowledgeArea[];
+}
+
 export interface StudySessionResult {
   title: string;
   sourceName: string;
@@ -275,6 +307,9 @@ export interface StudySessionResult {
   trueFalse?: QuizQuestion[];
   exercises?: StudyExercise[];
   conceptMap?: StudyConceptMap;
+  learningPackage?: StudyLearningPackage;
+  knowledgeMap?: StudyKnowledgeArea[];
+  adaptiveCoach?: StudyAdaptiveCoachSnapshot;
   keyConcepts: string[];
   studyMaterialType?: StudyMaterialIntentType;
   studySubject?: StudySubjectIntent;
@@ -1193,6 +1228,7 @@ function buildNarrativeQuiz(text: string, title: string): QuizQuestion[] {
       answer: 1,
       explanation: "In narrativa conta la promessa: desiderio, segreto, rischio e conseguenza tengono aperta la lettura.",
       difficulty: "medium",
+      learningLevel: "understanding",
     },
     {
       question: hasVilla ? "Che funzione ha la villa nell'atmosfera gotica del capitolo?" : "Che funzione ha l'ambientazione nella tensione del capitolo?",
@@ -1205,6 +1241,7 @@ function buildNarrativeQuiz(text: string, title: string): QuizQuestion[] {
       answer: 1,
       explanation: "L'ambientazione gotica non è neutra: modifica percezione, ritmo e pericolo.",
       difficulty: "medium",
+      learningLevel: "application",
     },
     {
       question: hasDipinto ? "Perché il dipinto può essere letto come simbolo narrativo?" : "Perché un dettaglio visivo può diventare simbolo narrativo?",
@@ -1217,6 +1254,7 @@ function buildNarrativeQuiz(text: string, title: string): QuizQuestion[] {
       answer: 1,
       explanation: "Un simbolo funziona quando porta sottotesto e promessa, non solo decorazione.",
       difficulty: "hard",
+      learningLevel: "exam",
     },
     {
       question: hasDoor ? "Quale effetto produce la porta chiusa sul lettore?" : "Quale effetto produce un segreto non ancora rivelato sul lettore?",
@@ -1229,6 +1267,7 @@ function buildNarrativeQuiz(text: string, title: string): QuizQuestion[] {
       answer: 1,
       explanation: "La soglia o il segreto rinviano a una rivelazione futura e alimentano tensione.",
       difficulty: "medium",
+      learningLevel: "understanding",
     },
     {
       question: "Quale risposta dimostra una vera comprensione narrativa del capitolo?",
@@ -1241,6 +1280,7 @@ function buildNarrativeQuiz(text: string, title: string): QuizQuestion[] {
       answer: 1,
       explanation: "La comprensione narrativa collega personaggi, scena, sottotesto e progressione.",
       difficulty: "easy",
+      learningLevel: "memory",
     },
   ];
 }
@@ -1250,6 +1290,15 @@ function levelDifficulty(level: StudyDifficultyLevel, index: number): "easy" | "
   if (level === 2) return index < 2 ? "easy" : index < 7 ? "medium" : "hard";
   if (level === 3) return index < 2 ? "easy" : index < 6 ? "medium" : "hard";
   return index < 2 ? "medium" : "hard";
+}
+
+function learningLevelForQuiz(index: number, total: number, level: StudyDifficultyLevel): StudyLearningLevel {
+  const ratio = total <= 1 ? 1 : index / Math.max(1, total - 1);
+  if (ratio < 0.22) return "memory";
+  if (ratio < 0.45) return "understanding";
+  if (ratio < 0.68) return "application";
+  if (ratio < 0.78 || level < 4) return "exam";
+  return "professor";
 }
 
 function buildProgressiveQuiz(
@@ -1271,6 +1320,7 @@ function buildProgressiveQuiz(
     const concept = base[index % base.length];
     const next = base[(index + 1) % base.length] || classification.label;
     const difficulty = levelDifficulty(level, index);
+    const learningLevel = learningLevelForQuiz(index, questionCount, level);
     const isHard = difficulty === "hard";
     const isEasy = difficulty === "easy";
     const question = isEasy
@@ -1310,7 +1360,16 @@ function buildProgressiveQuiz(
       difficulty,
       type: isHard ? "connection" : isEasy ? "multiple-choice" : "comparison",
       sourceReference: classification.label,
-      testedSkill: isHard ? "ragionamento e collegamenti" : isEasy ? "comprensione diretta" : "confronto tra concetti",
+      testedSkill: learningLevel === "memory"
+        ? "memoria e definizione"
+        : learningLevel === "understanding"
+          ? "comprensione"
+          : learningLevel === "application"
+            ? "applicazione"
+            : learningLevel === "professor"
+              ? "ragionamento da professore"
+              : "preparazione esame",
+      learningLevel,
       memoryTrick: isHard ? "Rispondi sempre con: concetto -> prova dal testo -> conseguenza." : "Definizione + esempio + collegamento.",
       commonMistake: "Inventare informazioni non presenti o ripetere parole senza spiegarle.",
     } satisfies QuizQuestion;
@@ -1350,12 +1409,18 @@ function buildProfessionalVocabulary(clean: string, words: number): DifficultWor
   ];
   const unique = Array.from(new Set(candidateWords.map((word) => word.trim()).filter(Boolean)));
   const target = words > 900 ? Math.max(8, Math.min(18, unique.length)) : Math.min(12, unique.length);
-  return unique.slice(0, Math.max(1, target)).map((word, index) => {
+  const selected = unique.slice(0, Math.max(1, target));
+  return selected.map((word, index) => {
     const entry = explainWord(word);
+    const connections = selected
+      .filter((candidate) => candidate.toLowerCase() !== word.toLowerCase())
+      .slice(index + 1, index + 4);
     return {
       word: entry.word,
       simple: sanitizeStudyOutput(entry.simple, "Definizione semplice dedotta dal contesto."),
       technical: sanitizeStudyOutput(entry.technical, "Definizione precisa dedotta dal contesto."),
+      school: `Definizione scolastica: "${entry.word}" e' un concetto da spiegare con definizione, contesto ed esempio tratto dal materiale.`,
+      advanced: `Definizione avanzata: collega "${entry.word}" a meccanismi, conseguenze o confronti presenti nel testo, evitando informazioni esterne non verificate.`,
       precise: sanitizeStudyOutput(entry.technical, "Definizione dedotta dal contesto."),
       example: sanitizeStudyOutput(entry.example, `Esempio dal contesto: ${entry.word} compare nel materiale studiato.`),
       newExample: `Nuovo esempio: usa "${entry.word}" in una frase che spieghi il tema centrale.`,
@@ -1363,6 +1428,7 @@ function buildProfessionalVocabulary(clean: string, words: number): DifficultWor
       antonyms: [],
       commonMistake: `Usare "${entry.word}" senza definirlo o senza collegarlo al materiale.`,
       examQuestion: `Come spiegheresti "${entry.word}" durante un'interrogazione?`,
+      connections,
       importance: index < 6 ? "alto" : index < 12 ? "medio" : "basso",
     };
   });
@@ -1542,13 +1608,115 @@ function buildTrueFalseQuiz(concepts: string[]): QuizQuestion[] {
     answer: 0,
     explanation: `"${concept}" è stato rilevato tra i concetti chiave; va definito e collegato, non memorizzato isolatamente.`,
     difficulty: index < 2 ? "easy" : "medium",
+    learningLevel: index < 3 ? "memory" : "understanding",
     memoryTrick: "Vero se puoi collegarlo al tema centrale con un esempio.",
     commonMistake: "Trattare il concetto come parola da imparare a memoria senza contesto.",
   }));
 }
 
+function buildCommonMistakes(
+  concepts: string[],
+  difficultWords: DifficultWord[],
+  classification: StudyMaterialClassification,
+): string[] {
+  const source = [
+    ...difficultWords.map((item) => item.commonMistake || "").filter(Boolean),
+    ...concepts.slice(0, 6).map((concept) => `Confondere "${concept}" con una parola da memorizzare, senza spiegare definizione, esempio e collegamento.`),
+    classification.type === "math" || classification.type === "physics"
+      ? "Saltare i passaggi intermedi: formula, significato dei simboli, sostituzione e conclusione devono restare visibili."
+      : "",
+    classification.type === "history"
+      ? "Elencare date senza collegare cause, eventi e conseguenze."
+      : "",
+    classification.type === "law"
+      ? "Citare norme o articoli senza spiegare obbligo, effetto pratico e caso applicativo."
+      : "",
+  ].filter(Boolean);
+
+  return Array.from(new Set(source)).slice(0, 8);
+}
+
+function buildExamQuestionList(
+  openQuestions: OpenStudyQuestion[],
+  quiz: QuizQuestion[],
+  concepts: string[],
+): string[] {
+  const questions = [
+    ...openQuestions.map((item) => item.question),
+    ...quiz.filter((item) => item.difficulty === "hard" || item.learningLevel === "exam" || item.learningLevel === "professor").map((item) => item.question),
+    ...concepts.slice(0, 4).map((concept) => `Spiega "${concept}" collegando definizione, esempio e conseguenza.`),
+  ];
+
+  return Array.from(new Set(questions.map((item) => sanitizeStudyOutput(item, "")).filter(Boolean))).slice(0, 10);
+}
+
+function buildLearningPackage(input: {
+  summaries: Record<StudySummaryMode, string>;
+  keyConcepts: string[];
+  difficultWords: DifficultWord[];
+  openQuestions: OpenStudyQuestion[];
+  quiz: QuizQuestion[];
+  classification: StudyMaterialClassification;
+}): StudyLearningPackage {
+  return {
+    summaryUltraBrief: input.summaries.ultraSimple || input.summaries.brief,
+    summaryStandard: input.summaries.complete,
+    summaryDeep: input.summaries.university || input.summaries.oralExam,
+    keyConcepts: input.keyConcepts.slice(0, 12),
+    commonMistakes: buildCommonMistakes(input.keyConcepts, input.difficultWords, input.classification),
+    examQuestions: buildExamQuestionList(input.openQuestions, input.quiz, input.keyConcepts),
+  };
+}
+
+function buildInitialKnowledgeMap(
+  keyConcepts: string[],
+  classification: StudyMaterialClassification,
+  level: StudyDifficultyLevel,
+): StudyKnowledgeArea[] {
+  const base = keyConcepts.length ? keyConcepts : [classification.label];
+  const difficultyPenalty = Math.max(0, level - 2) * 4 + Math.max(0, classification.difficultyScore - 5) * 3;
+
+  return base.slice(0, 10).map((concept, index) => {
+    const mastery = Math.max(35, Math.min(68, 58 - difficultyPenalty + (index < 3 ? 6 : index < 6 ? 0 : -5)));
+    return {
+      concept,
+      mastery,
+      status: mastery >= 70 ? "strong" : mastery >= 50 ? "medium" : "weak",
+      reason: "Da verificare con quiz, flashcard e risposta orale.",
+      nextAction: `Studia "${concept}" con definizione, esempio e domanda d'esame.`,
+    };
+  });
+}
+
+function buildInitialAdaptiveCoach(
+  knowledgeMap: StudyKnowledgeArea[],
+  learningPackage: StudyLearningPackage,
+  classification: StudyMaterialClassification,
+): StudyAdaptiveCoachSnapshot {
+  const avg = knowledgeMap.length
+    ? Math.round(knowledgeMap.reduce((sum, item) => sum + item.mastery, 0) / knowledgeMap.length)
+    : 45;
+  const gaps = knowledgeMap.filter((item) => item.status === "weak").map((item) => item.concept).slice(0, 4);
+  const strengths = knowledgeMap.filter((item) => item.status !== "weak").map((item) => item.concept).slice(0, 4);
+
+  return {
+    currentLevel: avg >= 76 ? "exam_ready" : avg >= 55 ? "in_progress" : "base",
+    nextAction: gaps[0]
+      ? `Rinforza "${gaps[0]}" con riassunto standard, flashcard e una risposta orale.`
+      : `Passa alla simulazione esame su ${classification.label}.`,
+    gaps: gaps.length ? gaps : learningPackage.commonMistakes.slice(0, 3),
+    strengths: strengths.length ? strengths : learningPackage.keyConcepts.slice(0, 3),
+    estimatedPassProbability: Math.max(35, Math.min(82, avg + 12)),
+    knowledgeMap,
+  };
+}
+
 function uniqueCount(items: string[]): number {
   return new Set(items.map((item) => item.toLowerCase().replace(/\s+/g, " ").trim()).filter(Boolean)).size;
+}
+
+function sanitizedSummaryFallback(text?: string): string {
+  return String(text || "Sezione non disponibile nel materiale caricato.").trim();
 }
 
 export function scoreStudySessionQuality(result: StudySessionResult): StudyQualityScores {
@@ -1625,7 +1793,11 @@ export function sanitizeStudySessionResult(result: StudySessionResult, fallback?
       word: sanitizeStudyOutput(item.word, ""),
       simple: sanitizeStudyOutput(item.simple, "Definizione semplice dedotta dal contesto."),
       technical: sanitizeStudyOutput(item.technical, "Definizione precisa dedotta dal contesto."),
+      school: item.school ? sanitizeStudyOutput(item.school, "") : item.school,
+      advanced: item.advanced ? sanitizeStudyOutput(item.advanced, "") : item.advanced,
       example: sanitizeStudyOutput(item.example, "Esempio non specificato nel materiale."),
+      commonMistake: item.commonMistake ? sanitizeStudyOutput(item.commonMistake, "") : item.commonMistake,
+      connections: Array.from(new Set((item.connections || []).map((connection) => sanitizeStudyOutput(connection, "")).filter(Boolean))).slice(0, 6),
     }))
     .filter((item) => {
       const key = item.word.toLowerCase();
@@ -1650,6 +1822,27 @@ export function sanitizeStudySessionResult(result: StudySessionResult, fallback?
       return true;
     })
     .slice(0, 18);
+  const learningPackage = result.learningPackage
+    ? {
+        summaryUltraBrief: sanitizeStudyOutput(result.learningPackage.summaryUltraBrief, fallback?.learningPackage?.summaryUltraBrief || sanitizedSummaryFallback(result.lightSummary)),
+        summaryStandard: sanitizeStudyOutput(result.learningPackage.summaryStandard, fallback?.learningPackage?.summaryStandard || sanitizedSummaryFallback(result.mediumSummary)),
+        summaryDeep: sanitizeStudyOutput(result.learningPackage.summaryDeep, fallback?.learningPackage?.summaryDeep || sanitizedSummaryFallback(result.proSummary)),
+        keyConcepts: Array.from(new Set((result.learningPackage.keyConcepts || []).map((item) => sanitizeStudyOutput(item, "")).filter(Boolean))).slice(0, 14),
+        commonMistakes: Array.from(new Set((result.learningPackage.commonMistakes || []).map((item) => sanitizeStudyOutput(item, "")).filter(Boolean))).slice(0, 10),
+        examQuestions: Array.from(new Set((result.learningPackage.examQuestions || []).map((item) => sanitizeStudyOutput(item, "")).filter(Boolean))).slice(0, 12),
+      }
+    : fallback?.learningPackage;
+  const knowledgeMap = (result.knowledgeMap || fallback?.knowledgeMap || [])
+    .map((item) => ({
+      concept: sanitizeStudyOutput(item.concept, ""),
+      mastery: Math.max(0, Math.min(100, Math.round(Number(item.mastery) || 0))),
+      status: item.status === "strong" || item.status === "medium" || item.status === "weak" ? item.status : "medium",
+      reason: sanitizeStudyOutput(item.reason, "Da verificare con esercizi e quiz."),
+      nextAction: sanitizeStudyOutput(item.nextAction, "Ripassa il concetto e verifica con una domanda."),
+    }))
+    .filter((item) => item.concept)
+    .slice(0, 12);
+  const adaptiveCoach = result.adaptiveCoach || fallback?.adaptiveCoach;
 
   const sanitized: StudySessionResult = {
     ...result,
@@ -1670,6 +1863,18 @@ export function sanitizeStudySessionResult(result: StudySessionResult, fallback?
     flashcards: flashcards.length ? flashcards : fallback?.flashcards || [],
     quiz: safeQuiz,
     trueFalse: safeTrueFalse,
+    learningPackage,
+    knowledgeMap,
+    adaptiveCoach: adaptiveCoach
+      ? {
+          currentLevel: adaptiveCoach.currentLevel === "base" || adaptiveCoach.currentLevel === "exam_ready" ? adaptiveCoach.currentLevel : "in_progress",
+          nextAction: sanitizeStudyOutput(adaptiveCoach.nextAction, "Completa quiz e interrogazione per aggiornare il percorso."),
+          gaps: Array.from(new Set((adaptiveCoach.gaps || []).map((item) => sanitizeStudyOutput(item, "")).filter(Boolean))).slice(0, 6),
+          strengths: Array.from(new Set((adaptiveCoach.strengths || []).map((item) => sanitizeStudyOutput(item, "")).filter(Boolean))).slice(0, 6),
+          estimatedPassProbability: Math.max(0, Math.min(100, Math.round(Number(adaptiveCoach.estimatedPassProbability) || 0))),
+          knowledgeMap: knowledgeMap.length ? knowledgeMap : adaptiveCoach.knowledgeMap || [],
+        }
+      : undefined,
   };
 
   return {
@@ -1746,10 +1951,28 @@ export function analyzeStudyMaterial(
   const flashcards = buildProfessionalFlashcards(keyConcepts, classification, manual.difficultyLevel);
   const quiz = narrativeMode ? buildNarrativeQuiz(clean, title) : buildProgressiveQuiz(keyConcepts, classification, manual.difficultyLevel);
   const fallbackOpenQuestions = buildOpenQuestions(title, keyConcepts, narrativeMode, clean);
+  const openQuestions = sanitizeStudyOpenQuestions(fallbackOpenQuestions, fallbackOpenQuestions);
+  const trueFalse = buildTrueFalseQuiz(keyConcepts);
+  const learningPackage = buildLearningPackage({
+    summaries,
+    keyConcepts,
+    difficultWords,
+    openQuestions,
+    quiz,
+    classification,
+  });
+  const knowledgeMap = buildInitialKnowledgeMap(keyConcepts, classification, manual.difficultyLevel);
+  const adaptiveCoach = buildInitialAdaptiveCoach(knowledgeMap, learningPackage, classification);
   const studyNotesPro = [
     buildStudyNotesPro(title, keyConcepts, pro.length ? pro : medium),
     "",
-    "5. Date/nomi/formule/definizioni",
+    "5. Errori comuni",
+    ...learningPackage.commonMistakes.slice(0, 6).map((item) => `• ${item}`),
+    "",
+    "6. Possibili domande d'esame",
+    ...learningPackage.examQuestions.slice(0, 6).map((item) => `• ${item}`),
+    "",
+    "7. Date/nomi/formule/definizioni",
     `• ${buildEvidenceInventory(clean)}`,
   ].join("\n");
 
@@ -1770,11 +1993,14 @@ export function analyzeStudyMaterial(
     studyNotesPro,
     difficultWords,
     flashcards,
-    openQuestions: sanitizeStudyOpenQuestions(fallbackOpenQuestions, fallbackOpenQuestions),
+    openQuestions,
     quiz,
-    trueFalse: buildTrueFalseQuiz(keyConcepts),
+    trueFalse,
     exercises: buildExercises(keyConcepts, classification),
     conceptMap: buildConceptMap(title, keyConcepts, pro.length ? pro : medium, classification),
+    learningPackage,
+    knowledgeMap,
+    adaptiveCoach,
     keyConcepts,
     studyMaterialType: manual.studyMaterialType,
     studySubject: manual.studySubject,

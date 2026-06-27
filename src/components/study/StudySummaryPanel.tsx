@@ -1,5 +1,5 @@
 import { compressLightSummary, parseStudyNotesPro, sanitizeStudyText, type StudyNotesSection } from "@/lib/study-ux";
-import type { StudySummaryMode } from "@/lib/study-session";
+import type { StudyLearningPackage, StudySummaryMode } from "@/lib/study-session";
 
 interface StudySummaryPanelProps {
   lightSummary: string;
@@ -7,6 +7,7 @@ interface StudySummaryPanelProps {
   proSummary: string;
   studyNotesPro: string;
   summaries?: Partial<Record<StudySummaryMode, string>>;
+  learningPackage?: StudyLearningPackage;
 }
 
 const SUMMARY_MODE_LABELS: Array<{ key: StudySummaryMode; title: string; badge: string }> = [
@@ -144,12 +145,72 @@ function NotesSectionCard({ section }: { section: StudyNotesSection }) {
   );
 }
 
+function LearningPackagePanel({ pack }: { pack?: StudyLearningPackage }) {
+  if (!pack) return null;
+  const keyConcepts = pack.keyConcepts || [];
+  const mistakes = pack.commonMistakes || [];
+  const questions = pack.examQuestions || [];
+
+  return (
+    <div className="study-card-enter rounded-3xl border border-emerald-300/20 bg-emerald-400/10 p-4 backdrop-blur-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="font-semibold text-emerald-50">Pacchetto studio immediato</h3>
+          <p className="mt-1 text-xs text-emerald-100/75">Una sola elaborazione: capire, ricordare, preparare l&apos;esame.</p>
+        </div>
+        <span className="rounded-full border border-emerald-200/20 bg-black/15 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-100">
+          6 output
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        <div className="rounded-2xl border border-white/10 bg-background/35 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-100/80">Ultra breve</p>
+          <p className="mt-2 text-sm leading-6 text-foreground/85">{sanitizeStudyText(pack.summaryUltraBrief)}</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-background/35 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-100/80">Standard</p>
+          <p className="mt-2 text-sm leading-6 text-foreground/85">{sanitizeStudyText(pack.summaryStandard)}</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-background/35 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-100/80">Approfondito</p>
+          <p className="mt-2 text-sm leading-6 text-foreground/85">{sanitizeStudyText(pack.summaryDeep)}</p>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-3">
+        <MiniList title="Concetti chiave" items={keyConcepts} />
+        <MiniList title="Errori comuni" items={mistakes} danger />
+        <MiniList title="Domande d'esame" items={questions} />
+      </div>
+    </div>
+  );
+}
+
+function MiniList({ title, items, danger = false }: { title: string; items: string[]; danger?: boolean }) {
+  if (!items.length) return null;
+  return (
+    <div className={`rounded-2xl border p-3 ${danger ? "border-amber-300/20 bg-amber-400/10" : "border-white/10 bg-background/35"}`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{title}</p>
+      <ul className="mt-2 space-y-1.5 text-sm leading-5 text-muted-foreground">
+        {items.slice(0, 6).map((item) => (
+          <li key={item} className="flex gap-2">
+            <span className={danger ? "text-amber-300/80" : "text-emerald-300/70"}>•</span>
+            <span>{sanitizeStudyText(item)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function StudySummaryPanel({
   lightSummary,
   mediumSummary,
   proSummary,
   studyNotesPro,
   summaries,
+  learningPackage,
 }: StudySummaryPanelProps) {
   const lightCompressed = compressLightSummary(lightSummary);
   const notesSections = parseStudyNotesPro(studyNotesPro);
@@ -159,6 +220,8 @@ export function StudySummaryPanel({
 
   return (
     <div className="space-y-4">
+      <LearningPackagePanel pack={learningPackage} />
+
       {modeCards.length >= 4 ? (
         <div className="grid gap-3 lg:grid-cols-2">
           {modeCards.map((mode) => (

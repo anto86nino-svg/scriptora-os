@@ -85,6 +85,24 @@ describe("Study OS material analysis", () => {
     expect(result.conceptMap?.nodes.length).toBeGreaterThan(2);
   });
 
+  it("builds a single-pass learning package, contextual dictionary and cognitive quiz levels", () => {
+    const result = analyzeStudyMaterial(studyText(
+      "Biologia",
+      "La cellula contiene membrana, nucleo, mitocondrio, DNA, proteine, enzimi e metabolismo. La mitosi consente la divisione cellulare, mentre la meiosi produce cellule sessuali con combinazioni genetiche diverse.",
+    ), "biologia-cellula.txt", { studySubject: "biology", studyGoal: "exam_prep", difficultyLevel: 5 });
+
+    expect(result.learningPackage?.summaryUltraBrief).toBeTruthy();
+    expect(result.learningPackage?.summaryStandard).toBeTruthy();
+    expect(result.learningPackage?.summaryDeep).toBeTruthy();
+    expect(result.learningPackage?.commonMistakes.length).toBeGreaterThan(0);
+    expect(result.learningPackage?.examQuestions.length).toBeGreaterThan(0);
+    expect(result.difficultWords.some((item) => item.school && item.advanced && item.commonMistake)).toBe(true);
+    expect(result.difficultWords.some((item) => item.connections && item.connections.length > 0)).toBe(true);
+    expect(new Set(result.quiz.map((item) => item.learningLevel)).has("professor")).toBe(true);
+    expect(result.knowledgeMap?.length).toBeGreaterThan(0);
+    expect(result.adaptiveCoach?.estimatedPassProbability).toBeGreaterThan(0);
+  });
+
   it("generates clean craft-aware narrative questions before generic study prompts", () => {
     const chapter = studyText(
       "Capitolo narrativo",

@@ -3,6 +3,7 @@ import type {
   CharacterMemoryState,
   EmotionalProgressionBeat,
   ForeshadowSeed,
+  GlobalRepetitionSignal,
   LongBookMemorySnapshot,
   PromisePayoffTracker,
   UnresolvedArc,
@@ -23,6 +24,22 @@ const FORESHADOW_PATTERNS = [
 
 const PAYOFF_PATTERNS = [
   /\b(finalmente|at last|finally understood|revealed|rivelato|payoff|conseguenza)\b/gi,
+];
+
+const REPETITION_SIGNAL_PATTERNS: Array<{
+  kind: GlobalRepetitionSignal["kind"];
+  phrase: string;
+  pattern: RegExp;
+}> = [
+  { kind: "gesture", phrase: "silenzio/silence as emotional beat", pattern: /\b(silenzio|silence)\b/gi },
+  { kind: "gesture", phrase: "sguardo/eyes carrying the scene", pattern: /\b(sguardo|guardò|occhi|eyes|looked)\b/gi },
+  { kind: "gesture", phrase: "jaw/throat tension", pattern: /\b(mascella|gola|throat|jaw)\b/gi },
+  { kind: "image", phrase: "ombra/shadow image", pattern: /\b(ombra|ombre|shadow|shadows)\b/gi },
+  { kind: "image", phrase: "cold/coldness image", pattern: /\b(fredd[oa]|cold)\b/gi },
+  { kind: "emotion", phrase: "fear named directly", pattern: /\b(paura|afraid|fear)\b/gi },
+  { kind: "emotion", phrase: "pain/wound named directly", pattern: /\b(dolore|ferita|pain|wound)\b/gi },
+  { kind: "transition", phrase: "everything changed transition", pattern: /\b(tutto cambiò|niente sarebbe stato|everything changed|nothing would ever)\b/gi },
+  { kind: "transition", phrase: "for a moment transition", pattern: /\b(per un istante|per un attimo|for a moment|for one second)\b/gi },
 ];
 
 const EMOTION_LEXICON: Record<string, string[]> = {
@@ -81,6 +98,54 @@ function extractSentencesMatching(text: string, patterns: RegExp[], limit = 6): 
     if (matches.length >= limit) break;
   }
   return matches;
+}
+
+function stableId(prefix: string, text: string, chapter: number): string {
+  const hash = Array.from(text)
+    .reduce((sum, char) => Math.imul(sum ^ char.charCodeAt(0), 16777619), 2166136261) >>> 0;
+  return `${prefix}-${chapter}-${hash.toString(36).slice(0, 6)}`;
+}
+
+function promiseImportance(text: string, introducedChapter: number, totalChapters: number): "low" | "medium" | "high" {
+  const lower = text.toLowerCase();
+  if (/morte|death|kill|segreto|secret|profezia|prophecy|minaccia|threat|finale|climax|tradimento|betrayal/.test(lower)) {
+    return "high";
+  }
+  if (introducedChapter <= Math.max(2, Math.ceil(totalChapters * 0.25))) return "high";
+  if (/promess|promise|mister|mystery|indizio|clue|love|amore|desiderio|desire/.test(lower)) return "medium";
+  return "low";
+}
+
+function expectedPayoffFor(text: string, expectedChapter?: number): string {
+  const target = expectedChapter ? ` entro il capitolo ${expectedChapter}` : "";
+  if (/segreto|secret|mister|mystery|indizio|clue/i.test(text)) return `Rivelazione, conseguenza o falso indizio risolutivo${target}.`;
+  if (/promess|promise|giur|vow/i.test(text)) return `Scelta visibile che mantiene, tradisce o paga la promessa${target}.`;
+  if (/minaccia|threat|pericolo|danger/i.test(text)) return `La minaccia deve produrre costo concreto, ferita o nuova decisione${target}.`;
+  return `Sviluppo o chiusura verificabile sulla pagina${target}.`;
+}
+
+function findActualPayoff(promise: string, chapters: Chapter[], introducedIndex: number): string | undefined {
+  const keywords = promise
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter((word) => word.length >= 6)
+    .slice(0, 5);
+  if (!keywords.length) return undefined;
+
+  for (let index = introducedIndex + 1; index < chapters.length; index += 1) {
+    const text = chapterText(chapters[index]);
+    const lower = text.toLowerCase();
+    const keywordHits = keywords.filter((word) => lower.includes(word)).length;
+    const hasPayoffLanguage = PAYOFF_PATTERNS.some((pattern) => {
+      pattern.lastIndex = 0;
+      return pattern.test(text);
+    });
+    if (keywordHits >= 2 || (keywordHits >= 1 && hasPayoffLanguage)) {
+      return `Ch${index + 1}: ${endingSnippet(text, 160)}`;
+    }
+  }
+  return undefined;
 }
 
 function buildCharacterStates(
@@ -192,22 +257,34 @@ function buildForeshadowing(chapters: Chapter[]): ForeshadowSeed[] {
 
 function buildPromisePayoffs(chapters: Chapter[], blueprint: BookBlueprint | null): PromisePayoffTracker[] {
   const items: PromisePayoffTracker[] = [];
+  const totalChapters = blueprint?.chapterOutlines?.length || chapters.length || 1;
 
   chapters.forEach((chapter, index) => {
     const notes = blueprint?.chapterOutlines?.[index]?.canonNotes || [];
     notes.forEach((note) => {
+      const payoffExpectedBy = Math.min(totalChapters, index + 3);
       items.push({
+        id: stableId("promise-note", note, index + 1),
         promise: note,
         chapterIntroduced: index + 1,
-        payoffExpectedBy: Math.min(blueprint?.chapterOutlines?.length || index + 3, index + 3),
+        originChapter: index + 1,
+        payoffExpectedBy,
+        importance: promiseImportance(note, index + 1, totalChapters),
+        expectedPayoff: expectedPayoffFor(note, payoffExpectedBy),
         status: "open",
       });
     });
 
     extractSentencesMatching(chapterText(chapter), [/\b(promett|promise|must|dovrà|will have to)\b/gi], 2).forEach((hit) => {
+      const payoffExpectedBy = Math.min(totalChapters, index + 4);
       items.push({
+        id: stableId("promise-text", hit, index + 1),
         promise: hit,
         chapterIntroduced: index + 1,
+        originChapter: index + 1,
+        payoffExpectedBy,
+        importance: promiseImportance(hit, index + 1, totalChapters),
+        expectedPayoff: expectedPayoffFor(hit, payoffExpectedBy),
         status: "open",
       });
     });
@@ -217,13 +294,48 @@ function buildPromisePayoffs(chapters: Chapter[], blueprint: BookBlueprint | nul
   return items.slice(0, 12).map((item) => {
     const fragment = item.promise.toLowerCase().slice(0, 36);
     const paid = fragment.length > 8 && corpus.lastIndexOf(fragment) > corpus.indexOf(fragment);
+    const actualPayoff = findActualPayoff(item.promise, chapters, Math.max(0, item.chapterIntroduced - 1));
     const overdue =
-      item.payoffExpectedBy !== undefined && chapters.length > item.payoffExpectedBy && !paid;
+      item.payoffExpectedBy !== undefined && chapters.length > item.payoffExpectedBy && !paid && !actualPayoff;
+    const developing =
+      !paid && !actualPayoff && item.chapterIntroduced < chapters.length && item.status !== "overdue";
     return {
       ...item,
-      status: paid ? "paid" : overdue ? "overdue" : "open",
+      actualPayoff,
+      status: paid || actualPayoff ? "paid" : overdue ? "overdue" : developing ? "developing" : "open",
     };
   });
+}
+
+function buildGlobalRepetitionSignals(chapters: Chapter[]): GlobalRepetitionSignal[] {
+  const signals: GlobalRepetitionSignal[] = [];
+  const written = chapters
+    .map((chapter, index) => ({ index, text: chapterText(chapter) }))
+    .filter((chapter) => chapter.text.length > 50);
+
+  for (const signal of REPETITION_SIGNAL_PATTERNS) {
+    const chaptersWithSignal: number[] = [];
+    let count = 0;
+    for (const chapter of written) {
+      signal.pattern.lastIndex = 0;
+      const matches = chapter.text.match(signal.pattern) || [];
+      if (matches.length > 0) {
+        chaptersWithSignal.push(chapter.index + 1);
+        count += matches.length;
+      }
+    }
+    if (count >= 4 && chaptersWithSignal.length >= 2) {
+      signals.push({
+        id: stableId(`rep-${signal.kind}`, signal.phrase, chaptersWithSignal[0] || 1),
+        kind: signal.kind,
+        phrase: signal.phrase,
+        count,
+        chapters: chaptersWithSignal.slice(0, 8),
+      });
+    }
+  }
+
+  return signals.sort((a, b) => b.count - a.count).slice(0, 8);
 }
 
 function buildEmotionalProgression(chapters: Chapter[]): EmotionalProgressionBeat[] {
@@ -313,6 +425,7 @@ export function buildLongBookMemory(input: {
     emotionalProgression: buildEmotionalProgression(written),
     foreshadowing: buildForeshadowing(written),
     promisePayoffs: buildPromisePayoffs(written, input.blueprint),
+    globalRepetitionSignals: buildGlobalRepetitionSignals(written),
     relationshipStates: buildRelationshipStates(input.config, input.blueprint),
     worldRules: buildWorldRules(input.config, input.blueprint),
     continuityAnchors: buildContinuityAnchors(written),
@@ -340,8 +453,13 @@ This is the opening movement. Plant durable seeds, character wounds, and world r
 
   const openArcs = memory.unresolvedArcs.filter((arc) => arc.urgency !== "low").slice(0, 6);
   const openSeeds = memory.foreshadowing.filter((seed) => seed.payoffStatus === "open").slice(0, 5);
-  const openPromises = memory.promisePayoffs.filter((item) => item.status !== "paid").slice(0, 5);
+  const openPromises = memory.promisePayoffs.filter((item) => item.status !== "paid");
+  const trackedPromises = [
+    ...openPromises,
+    ...memory.promisePayoffs.filter((item) => item.status === "paid"),
+  ].slice(0, 5);
   const overduePromises = memory.promisePayoffs.filter((item) => item.status === "overdue");
+  const repetitionSignals = (memory.globalRepetitionSignals || []).slice(0, 6);
 
   return `LONG BOOK MEMORY ENGINE V2 — CANON LAW FOR CHAPTER ${chapterIndex + 1}
 Chapters indexed: ${memory.chaptersIndexed}
@@ -365,8 +483,11 @@ FORESHADOWING SEEDS (honor open seeds or pay them off deliberately):
 ${openSeeds.length ? openSeeds.map((seed) => `• [Ch${seed.chapter}] ${seed.seed}`).join("\n") : "• Preserve planted seeds; do not contradict earlier setup."}
 
 PROMISE / PAYOFF TRACKER:
-${openPromises.length ? openPromises.map((item) => `• [Ch${item.chapterIntroduced}] ${item.promise} — status: ${item.status}`).join("\n") : "• Do not break promises made to the reader in earlier chapters."}
+${trackedPromises.length ? trackedPromises.map((item) => `• ${item.id ? `${item.id} ` : ""}[origin Ch${item.originChapter || item.chapterIntroduced}] importance=${item.importance || "medium"} status=${item.status}; promise=${item.promise}; expected payoff=${item.expectedPayoff || "visible development or closure on page"}${item.actualPayoff ? `; actual payoff=${item.actualPayoff}` : ""}`).join("\n") : "• Do not break promises made to the reader in earlier chapters."}
 ${overduePromises.length ? `\nOVERDUE PAYOFFS (address now):\n${overduePromises.map((item) => `• ${item.promise}`).join("\n")}` : ""}
+
+GLOBAL ANTI-REPETITION MEMORY (avoid recycled prose):
+${repetitionSignals.length ? repetitionSignals.map((item) => `• ${item.kind}: "${item.phrase}" used ${item.count}x across Ch${item.chapters.join(", ")} — replace with a fresh concrete behavior/image.`).join("\n") : "• No dominant repeated image/gesture detected yet; keep each scene visually specific."}
 
 WORLD RULES (immutable):
 ${memory.worldRules.length ? memory.worldRules.map((rule) => `• ${rule.rule}`).join("\n") : "• Do not violate established world logic, facts, or character rules."}
