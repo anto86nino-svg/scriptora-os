@@ -1,4 +1,4 @@
-import { Suspense, type ReactNode } from "react";
+import { Suspense } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
@@ -14,13 +14,10 @@ import { MobileAppChrome } from "@/components/MobileAppChrome";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { RouteSuspenseFallback } from "@/components/boot/ScriptoraAliveTransition";
-import { useMobileLiteMode } from "@/hooks/use-mobile-lite-mode";
 
 const Home = lazyWithRetry(() => import("./pages/Home.tsx"));
 const Dashboard = lazyWithRetry(() => import("./pages/Dashboard.tsx"));
-const MobileLiteDashboardPage = lazyWithRetry(() => import("./mobile/MobileLiteDashboardPage.tsx"));
 const MobileMarketHubPage = lazyWithRetry(() => import("./mobile/MobileMarketHubPage.tsx"));
-const MobileDesktopStudioNotice = lazyWithRetry(() => import("./mobile/MobileDesktopStudioNotice.tsx"));
 const Index = lazyWithRetry(() => import("./pages/Index.tsx"));
 const AuthPage = lazyWithRetry(() => import("./pages/Auth.tsx"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound.tsx"));
@@ -46,16 +43,6 @@ const ExportStudioPage = lazyWithRetry(() => import("./pages/ExportStudioPage.ts
 
 const queryClient = new QueryClient();
 
-function DashboardRoute() {
-  const mobileLite = useMobileLiteMode();
-  return mobileLite ? <MobileLiteDashboardPage /> : <Dashboard />;
-}
-
-function MobileDesktopOnlyRoute({ featureName, children }: { featureName: string; children: ReactNode }) {
-  const mobileLite = useMobileLiteMode();
-  return mobileLite ? <MobileDesktopStudioNotice featureName={featureName} /> : <>{children}</>;
-}
-
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -72,17 +59,17 @@ const App = () => (
                 <Route path="/auth" element={<AuthPage />} />
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/legal" element={<LegalPage />} />
-                <Route path="/dashboard" element={<ProtectedRoute><FeatureErrorBoundary featureName="Dashboard"><DashboardRoute /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/dashboard" element={<ProtectedRoute><FeatureErrorBoundary featureName="Dashboard"><Dashboard /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/writer" element={<ProtectedRoute><FeatureErrorBoundary featureName="Writer"><Navigate to="/app" replace /></FeatureErrorBoundary></ProtectedRoute>} />
-                <Route path="/bestseller" element={<ProtectedRoute requiredFeature="trending_niches_limited"><FeatureErrorBoundary featureName="Bestseller Radar"><MobileDesktopOnlyRoute featureName="Bestseller Radar"><BestsellerRadarPage /></MobileDesktopOnlyRoute></FeatureErrorBoundary></ProtectedRoute>} />
-                <Route path="/publishing" element={<ProtectedRoute><FeatureErrorBoundary featureName="Publishing OS"><MobileDesktopOnlyRoute featureName="Publishing OS"><PublishingOsPage /></MobileDesktopOnlyRoute></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/bestseller" element={<ProtectedRoute requiredFeature="trending_niches_limited"><FeatureErrorBoundary featureName="Bestseller Radar"><BestsellerRadarPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/publishing" element={<ProtectedRoute><FeatureErrorBoundary featureName="Publishing OS"><PublishingOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/identity" element={<ProtectedRoute><FeatureErrorBoundary featureName="Identity OS"><IdentityOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/study" element={<ProtectedRoute><FeatureErrorBoundary featureName="Study OS"><StudyOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/study-session" element={<ProtectedRoute><FeatureErrorBoundary featureName="Study OS"><StudySessionPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/mobile-market" element={<ProtectedRoute><FeatureErrorBoundary featureName="Market OS"><MobileMarketHubPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/app" element={<ProtectedRoute><FeatureErrorBoundary featureName="Writer Studio"><Index /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/usage" element={<ProtectedRoute><FeatureErrorBoundary featureName="Usage"><UsagePage /></FeatureErrorBoundary></ProtectedRoute>} />
-                <Route path="/kdp-launch" element={<ProtectedRoute requiredFeature="kdp_market_base"><FeatureErrorBoundary featureName="KDP Launch"><MobileDesktopOnlyRoute featureName="KDP Launch"><KdpLaunchPage /></MobileDesktopOnlyRoute></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/kdp-launch" element={<ProtectedRoute requiredFeature="kdp_market_base"><FeatureErrorBoundary featureName="KDP Launch"><KdpLaunchPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/cover" element={<ProtectedRoute requiredFeature="cover_studio_template"><FeatureErrorBoundary featureName="Cover Studio"><CoverStudioPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/export-studio" element={<ProtectedRoute requiredFeature="export_epub"><FeatureErrorBoundary featureName="Export Studio"><ExportStudioPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/notepad" element={<ProtectedRoute><FeatureErrorBoundary featureName="Block Notes"><NotepadPage /></FeatureErrorBoundary></ProtectedRoute>} />
@@ -91,8 +78,8 @@ const App = () => (
                 <Route path="/manuscript-lab" element={<ProtectedRoute requiredFeature="chapter_improvement"><FeatureErrorBoundary featureName="Manuscript Lab"><ManuscriptLabPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/author-identity" element={<ProtectedRoute requiredFeature="book_engine_full"><FeatureErrorBoundary featureName="Author Identity"><IdentityOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/downloads" element={<ProtectedRoute><FeatureErrorBoundary featureName="Downloads"><DownloadsPage /></FeatureErrorBoundary></ProtectedRoute>} />
-                <Route path="/bestseller-radar" element={<ProtectedRoute requiredFeature="trending_niches_limited"><MobileDesktopOnlyRoute featureName="Bestseller Radar"><BestsellerRadarPage /></MobileDesktopOnlyRoute></ProtectedRoute>} />
-                <Route path="/keyword-gold" element={<ProtectedRoute requiredFeature="kdp_market_base"><MobileDesktopOnlyRoute featureName="Keyword Gold"><KeywordGoldPage /></MobileDesktopOnlyRoute></ProtectedRoute>} />
+                <Route path="/bestseller-radar" element={<ProtectedRoute requiredFeature="trending_niches_limited"><BestsellerRadarPage /></ProtectedRoute>} />
+                <Route path="/keyword-gold" element={<ProtectedRoute requiredFeature="kdp_market_base"><KeywordGoldPage /></ProtectedRoute>} />
                 <Route path="/install" element={<InstallPage />} />
                 <Route path="/diagnostics" element={<DiagnosticsPage />} />
                 <Route path="*" element={<NotFound />} />

@@ -956,6 +956,7 @@ function ChapterView({
   const currentLength = chapter?.lengthOverride || project.config.chapterLength;
   const expectedSubchapterCount = resolveExpectedSubchapterCount(project, outline);
   const writtenSubchapterCount = chapter?.subchapters?.filter((sub) => sub.content.trim().length > 50).length || 0;
+  const chapterWordCount = chapter?.content?.trim() ? chapter.content.trim().split(/\s+/).length : 0;
   const [showRewriteMenu, setShowRewriteMenu] = useState(false);
   const [editorialOpen, setEditorialOpen] = useState(false);
   const [editorialMode, setEditorialMode] = useState<"analysis" | "patch">("analysis");
@@ -1035,6 +1036,7 @@ function ChapterView({
     >
       <div className={cn(
         "scriptora-chapter-header flex min-w-0 w-full max-w-full flex-col gap-3",
+        isGenerated && "sticky top-2 z-30 rounded-2xl border border-white/10 bg-background/90 p-3 shadow-2xl shadow-slate-950/10 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75",
         !premiumWriter && "sm:flex-row sm:items-start sm:justify-between sm:gap-4",
       )}>
         <div className="min-w-0 w-full flex-1">
@@ -1274,7 +1276,7 @@ function ChapterView({
 
       {!isGenerating && isGenerationCompleteStatus(chapter?.status) && chapter?.status !== "completed" && chapter?.content && (
         <div className="rounded-lg border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-amber-900 dark:text-amber-100 animate-fade-in">
-          Contenuto recuperato. Alcune parti richiedono completamento.
+          Capitolo salvato. Alcune analisi richiedono completamento.
         </div>
       )}
 
@@ -1305,54 +1307,68 @@ function ChapterView({
       )}
 
       {isGenerated && (
-        <>
-          {!premiumWriter && <AIRatingCard rating={chapter.aiRating} />}
-          <EditableBlock content={chapter.content} onChange={onUpdateContent} ws={ws} premium={premiumWriter} />
-          {showFreeWatermark && (
-            <ScriptoraFreeWatermark language={chapterLanguage} />
-          )}
-
-          {chapter.subchapters.length > 0 && (
-            <div className="space-y-6 mt-10">
-              <div className="border-t border-border/30 pt-8">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase mb-6">{t("subchapters")}</p>
-              </div>
-              {chapter.subchapters.map((sub, j) => {
-                const subGenerating = isGeneratingSection(`chapter-${chapterIndex}-sub-${j}`);
-                return (
-                  <div key={j} className="pl-6 border-l-2 border-primary/15 space-y-3">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-primary/40 font-mono text-sm shrink-0">{chapterIndex + 1}.{j + 1}</span>
-                      <EditableTitle
-                        value={sub.title}
-                        onChange={(v) => onUpdateSubTitle?.(j, v)}
-                        disabled={!onUpdateSubTitle}
-                        size="sm"
-                      />
-                    </div>
-                    {subGenerating && (
-                      <LoadingBanner
-                        text="Sottocapitolo in scrittura"
-                        steps={SUBCHAPTER_LIVE_STEPS}
-                      />
-                    )}
-                    <EditableBlock content={sub.content} onChange={(val) => onUpdateSubContent(j, val)} ws={ws} />
-                  </div>
-                );
-              })}
+        <div className="scriptora-chapter-reading-shell overflow-hidden rounded-2xl border border-border/45 bg-background/70 shadow-inner shadow-slate-950/5">
+          <div className="sticky top-0 z-10 flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-border/35 bg-background/95 px-4 py-2.5 backdrop-blur-xl">
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">Lettura capitolo</p>
+              <p className="truncate text-xs font-semibold text-foreground/80">{displayedTitle}</p>
             </div>
-          )}
+            <div className="flex shrink-0 items-center gap-2 text-[11px] font-semibold text-muted-foreground">
+              <span>{chapterWordCount.toLocaleString("it-IT")} parole</span>
+              {expectedSubchapterCount > 0 && <span>{writtenSubchapterCount}/{expectedSubchapterCount} sottocapitoli</span>}
+            </div>
+          </div>
+          <div className="scriptora-chapter-reading-scroll max-h-[min(72dvh,760px)] overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 lg:px-8">
+            <div className="mx-auto w-full max-w-[74ch] space-y-6">
+              {!premiumWriter && <AIRatingCard rating={chapter.aiRating} />}
+              <EditableBlock content={chapter.content} onChange={onUpdateContent} ws={ws} premium={premiumWriter} />
+              {showFreeWatermark && (
+                <ScriptoraFreeWatermark language={chapterLanguage} />
+              )}
 
-          {project.config.subchaptersEnabled && (
-            <button onClick={() => onGenerateSubchapter(chapter.subchapters.length)} disabled={isGenerating}
-              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary disabled:opacity-30 transition-colors ml-6 mt-3">
-              <Plus className="h-3.5 w-3.5" />
-              {writtenSubchapterCount < expectedSubchapterCount
-                ? `Genera sottocapitolo ${chapter.subchapters.length + 1}/${expectedSubchapterCount}`
-                : t("add_subchapter")}
-            </button>
-          )}
-        </>
+              {chapter.subchapters.length > 0 && (
+                <div className="space-y-6 pt-4">
+                  <div className="border-t border-border/30 pt-8">
+                    <p className="mb-6 text-[11px] font-semibold uppercase text-muted-foreground">{t("subchapters")}</p>
+                  </div>
+                  {chapter.subchapters.map((sub, j) => {
+                    const subGenerating = isGeneratingSection(`chapter-${chapterIndex}-sub-${j}`);
+                    return (
+                      <div key={j} className="space-y-3 border-l-2 border-primary/15 pl-4 sm:pl-6">
+                        <div className="flex items-baseline gap-2">
+                          <span className="shrink-0 font-mono text-sm text-primary/40">{chapterIndex + 1}.{j + 1}</span>
+                          <EditableTitle
+                            value={sub.title}
+                            onChange={(v) => onUpdateSubTitle?.(j, v)}
+                            disabled={!onUpdateSubTitle}
+                            size="sm"
+                          />
+                        </div>
+                        {subGenerating && (
+                          <LoadingBanner
+                            text="Sottocapitolo in scrittura"
+                            steps={SUBCHAPTER_LIVE_STEPS}
+                          />
+                        )}
+                        <EditableBlock content={sub.content} onChange={(val) => onUpdateSubContent(j, val)} ws={ws} />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {project.config.subchaptersEnabled && (
+                <button onClick={() => onGenerateSubchapter(chapter.subchapters.length)} disabled={isGenerating}
+                  className="ml-0 mt-3 flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-primary disabled:opacity-30 sm:ml-6">
+                  <Plus className="h-3.5 w-3.5" />
+                  {writtenSubchapterCount < expectedSubchapterCount
+                    ? `Genera sottocapitolo ${chapter.subchapters.length + 1}/${expectedSubchapterCount}`
+                    : t("add_subchapter")}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {!isGenerating && <div ref={liveAnchorRef} aria-hidden="true" className="h-px" />}

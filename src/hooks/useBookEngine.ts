@@ -146,6 +146,15 @@ function recoveredStatusForContent(content: string): GenerationStatus {
   return RecoveryEngine.classifyPartialSuccess(content).status;
 }
 
+const CHAPTER_SAVED_WITH_ANALYSIS_WARNING = "Capitolo salvato. Alcune analisi richiedono completamento.";
+
+function chooseBestRecoverableChapterContent(...candidates: Array<string | undefined | null>): string {
+  return candidates
+    .map((candidate) => stripGeneratedHeading(candidate || ""))
+    .filter((candidate) => hasRecoverableChapterContent(candidate))
+    .sort((a, b) => countWordsSafe(b) - countWordsSafe(a) || b.length - a.length)[0] || "";
+}
+
 const chapterCheckpointSaved = new Map<string, Set<number>>();
 
 async function getActivePlanForEngine() {
@@ -262,6 +271,7 @@ export function useBookEngine(syncCallbacks?: SyncCallbacks) {
   // multiple chapters generate in parallel and emit hundreds of token events.
   const lastProgressRenderAt = useRef<Map<string, number>>(new Map());
   const lastSaveAt = useRef<Map<string, number>>(new Map());
+  const lastLiveChapterContent = useRef<Map<string, string>>(new Map());
   const liveUiUpdateLogged = useRef<Set<string>>(new Set());
   const chapterGenerationIds = useRef<Map<string, string>>(new Map());
   const rewriteLocks = useRef<Set<number>>(new Set());
@@ -900,6 +910,10 @@ typeof crypto.randomUUID === "function"
             return;
           }
 
+          if (hasLiveContent) {
+            lastLiveChapterContent.current.set(key, progress.content);
+          }
+
           // Throttle: skip UI/state churn when tokens arrive faster than ~6fps.
           // The first non-empty live preview must render immediately.
           const now = performance.now();
@@ -1025,29 +1039,37 @@ typeof crypto.randomUUID === "function"
         : formatChapterDisplayTitle(index, chapter.title, { config: p.config });
       addMessage("assistant", `${finalTitle} complete! ✅ (${finalWords} words)`);
 
-      const postForgeIntel = consultIntelligenceLayer({
-        project: latestAfterSave || latestP,
-        chapterIndex: index,
-        chapterText: latestAfterSave?.chapters?.[index]?.content || chapter.content,
-      });
-      const report = postForgeIntel.manuscriptReport;
-      const editorialHints = report
-        ? [
-            ...report.narrativeDirectorNotes.slice(0, 2),
-            ...report.editorialSuggestions.slice(0, 2),
-          ].filter(Boolean)
-        : [];
-      if (editorialHints.length) {
-        addMessage(
-          "assistant",
-          `📝 Revisione editoriale (suggerimenti, non modifiche automatiche): ${editorialHints.join(" · ")}`,
-        );
-      }
-      if (report?.commercialNotes.length) {
-        addMessage(
-          "assistant",
-          `💡 Consulenza commerciale: ${report.commercialNotes.join(" · ")}`,
-        );
+      try {
+        const postForgeIntel = consultIntelligenceLayer({
+          project: latestAfterSave || latestP,
+          chapterIndex: index,
+          chapterText: latestAfterSave?.chapters?.[index]?.content || chapter.content,
+        });
+        const report = postForgeIntel.manuscriptReport;
+        const editorialHints = report
+          ? [
+              ...report.narrativeDirectorNotes.slice(0, 2),
+              ...report.editorialSuggestions.slice(0, 2),
+            ].filter(Boolean)
+          : [];
+        if (editorialHints.length) {
+          addMessage(
+            "assistant",
+            `📝 Revisione editoriale (suggerimenti, non modifiche automatiche): ${editorialHints.join(" · ")}`,
+          );
+        }
+        if (report?.commercialNotes.length) {
+          addMessage(
+            "assistant",
+            `💡 Consulenza commerciale: ${report.commercialNotes.join(" · ")}`,
+          );
+        }
+      } catch (postSaveError: any) {
+        scriptoraLog.warn("chapter", "Post-save chapter analysis skipped", {
+          chapterIndex: index + 1,
+          raw: postSaveError?.message,
+        });
+        addMessage("assistant", `⚠️ ${CHAPTER_SAVED_WITH_ANALYSIS_WARNING}`);
       }
 
       if (countProjectWordsHard(getLatestProject()) >= maxProjectWordsAfterGeneration) {
@@ -1062,16 +1084,22 @@ typeof crypto.randomUUID === "function"
       }
       let recoveredStatus: GenerationStatus | null = null;
       let recoveredContentForMessage = "";
+      const liveContent = lastLiveChapterContent.current.get(genKey) || "";
+      const checkpointContent = RecoveryEngine.bestChapterCheckpoint(targetProjectId, index)?.content || "";
       updateAndSave(proj => {
         if (proj.id !== targetProjectId) return proj;
         const chapters = [...proj.chapters];
+        while (chapters.length <= index) {
+          chapters.push({ title: resolveProjectChapterTitle(proj, chapters.length), content: "", subchapters: [], status: "idle" });
+        }
         const existing = chapters[index];
-        const recoveredContent = stripGeneratedHeading(existing?.content || "");
+        const recoveredContent = chooseBestRecoverableChapterContent(existing?.content, liveContent, checkpointContent);
         if (existing && hasRecoverableChapterContent(recoveredContent)) {
           recoveredStatus = recoveredStatusForContent(recoveredContent);
           recoveredContentForMessage = recoveredContent;
           chapters[index] = {
             ...existing,
+            title: resolveProjectChapterTitle(proj, index, existing.title),
             content: recoveredContent,
             status: recoveredStatus,
             rewriteInProgress: false,
@@ -1086,8 +1114,8 @@ typeof crypto.randomUUID === "function"
       scriptoraLog.error("chapter", formatUserMessage(err), { chapterIndex: index + 1, raw: e?.message, recoveredStatus });
       if (recoveredStatus) {
         const partial = RecoveryEngine.classifyPartialSuccess(recoveredContentForMessage);
-        addMessage("assistant", `⚠️ ${partial.body} (${formatUserMessage(err)})`);
-        toast.warning(partial.title);
+        addMessage("assistant", `⚠️ ${CHAPTER_SAVED_WITH_ANALYSIS_WARNING} (${partial.body})`);
+        toast.warning(CHAPTER_SAVED_WITH_ANALYSIS_WARNING);
       } else {
         addMessage("assistant", `❌ Capitolo ${index + 1}: ${formatUserMessage(err)}`);
         toast.error(formatToastMessage(err));
@@ -1099,6 +1127,7 @@ typeof crypto.randomUUID === "function"
       liveUiUpdateLogged.current.delete(`chapter-${index}`);
       lastProgressRenderAt.current.delete(`chapter-${index}`);
       lastSaveAt.current.delete(`chapter-${index}`);
+      lastLiveChapterContent.current.delete(`chapter-${index}`);
     }
   }, [project, generatingSet, addMessage, updateAndSave]);
 
@@ -1251,8 +1280,8 @@ typeof crypto.randomUUID === "function"
         });
 
         if (recoveredStatus) {
-          addMessage("assistant", `⚠️ Capitolo ${index + 1} generato, ma con un warning finale: ${formatUserMessage(err)}`);
-          toast.warning(`Capitolo ${index + 1} generato. Warning finale non bloccante.`);
+          addMessage("assistant", `⚠️ ${CHAPTER_SAVED_WITH_ANALYSIS_WARNING} (${formatUserMessage(err)})`);
+          toast.warning(CHAPTER_SAVED_WITH_ANALYSIS_WARNING);
         } else {
           addMessage("assistant", `❌ Capitolo ${index + 1}: ${formatUserMessage(err)}`);
           toast.error(formatToastMessage(err));
