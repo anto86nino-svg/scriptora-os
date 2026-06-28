@@ -71,6 +71,7 @@ import {
   type BookForgeHandoff,
 } from "@/lib/book-forge/book-forge-handoff";
 import { DashboardContinueCard } from "@/components/projects/DashboardContinueCard";
+import { DashboardIdeaBookCard } from "@/components/one-flow/DashboardIdeaBookCard";
 import {
   buildBlueprintPreviewProject,
   canGenerateBlueprintPreview,
@@ -79,6 +80,14 @@ import {
 import { getUserFriendlyError } from "@/lib/user-friendly-error";
 import { trackScriptoraEvent } from "@/lib/usage-analytics";
 import { disableDesktopModeOverride, isDesktopModeOverrideActive } from "@/lib/mobile-performance";
+import {
+  ideaBookDraftToConfig,
+  type IdeaBookDraft,
+} from "@/lib/book-creation-os/idea-book-flow";
+import {
+  buildProjectHandoffSeed,
+  saveProjectHandoffSeed,
+} from "@/lib/book-forge/project-handoff";
 
 const ScriptoraSettingsHub = lazy(() =>
   import("@/components/settings/ScriptoraSettingsHub").then((m) => ({ default: m.ScriptoraSettingsHub })),
@@ -856,6 +865,69 @@ typeof crypto.randomUUID === "function"
     });
   };
 
+  const saveIdeaBookSeed = (draft: IdeaBookDraft) => {
+    saveProjectHandoffSeed(buildProjectHandoffSeed("book-idea-tools", {
+      title: draft.title,
+      subtitle: draft.subtitle,
+      language: draft.language,
+      bookType: draft.bookTypeId,
+      genre: draft.genre,
+      category: draft.category,
+      subcategory: draft.subcategory,
+      niche: draft.subgenre,
+      targetReader: draft.targetReader,
+      promise: draft.promise,
+      tone: draft.tone,
+      chapterCount: draft.chaptersCount,
+      bookLength: draft.bookLength,
+      commercialAngle: draft.subtitle,
+    }));
+  };
+
+  const startWritingFromIdeaBook = (draft: IdeaBookDraft) => {
+    saveIdeaBookSeed(draft);
+    const config = normalizeBookConfig(ideaBookDraftToConfig(draft));
+    handleStudioComplete({
+      config,
+      mode: "studio-draft",
+    });
+    toast.success("Idea Libro trasformata in progetto. Apro il Writer Studio.");
+  };
+
+  const openBookForgeFromIdeaBook = (draft: IdeaBookDraft) => {
+    saveIdeaBookSeed(draft);
+    openNewBookGuarded(buildBookForgeHandoff("book-idea-tools", {
+      title: draft.title,
+      subtitle: draft.subtitle,
+      idea: draft.originalIdea,
+      plot: draft.originalIdea,
+      bookType: draft.bookFormat,
+      bookTypeId: draft.bookTypeId,
+      bookFormat: draft.bookFormat,
+      genre: draft.genre,
+      category: draft.category,
+      subcategory: draft.subcategory,
+      subgenre: draft.subgenre,
+      niche: draft.subgenre,
+      language: draft.language,
+      titleLanguage: draft.language,
+      chapterCount: draft.chaptersCount,
+      numberOfChapters: draft.chaptersCount,
+      bookLength: draft.bookLength,
+      structureMode: draft.structureMode,
+      subchaptersEnabled: draft.subchaptersEnabled,
+      subchaptersPerChapter: draft.subchaptersPerChapter,
+      targetReader: draft.targetReader,
+      promise: draft.promise,
+      transformation: draft.promise,
+      tone: draft.tone,
+      commercialAngle: draft.subtitle,
+      authorIdentityId: activeAuthor.id,
+      authorIdentity: activeAuthor,
+      authorName: activeAuthor.penName,
+    }));
+  };
+
   const openBookForgeFromIdeaPreview = () => {
     closeAllDashboardTools();
     openNewBookGuarded(buildIdeaBookForgeHandoff(intent));
@@ -1207,6 +1279,13 @@ typeof crypto.randomUUID === "function"
           onExport={() => guardPlanFeature("export_epub", () => navigateFromDashboard(getToolRoute("publishing"), dashboardContextProject?.id ? { projectId: dashboardContextProject.id } : undefined))()}
           onNewBook={openNewBookGuarded}
           onMyBooks={() => openDashboardTool("projects")}
+        />
+
+        <DashboardIdeaBookCard
+          currentPlan={currentPlan}
+          defaultLanguage={toBookLanguage(bookLang)}
+          onStartWriting={startWritingFromIdeaBook}
+          onOpenAdvancedForge={openBookForgeFromIdeaBook}
         />
 
         <DashboardHomePillars

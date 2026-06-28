@@ -11,6 +11,10 @@ export type InferredBookFormat =
   | "lyrical_prose"
   | "short_story_collection"
   | "essay"
+  | "short_essay"
+  | "manual"
+  | "guide"
+  | "historical_essay"
   | "memoir"
   | "self_help"
   | "study_material"
@@ -115,7 +119,8 @@ function bookFormatForBookType(bookTypeId: string): InferredBookFormat {
   if (bookTypeId === "education") return "study_material";
   if (bookTypeId === "memoir") return "memoir";
   if (bookTypeId === "children") return "children_book";
-  if (bookTypeId === "business" || bookTypeId === "manual") return "essay";
+  if (bookTypeId === "manual") return "manual";
+  if (bookTypeId === "business") return "essay";
   return "novel";
 }
 

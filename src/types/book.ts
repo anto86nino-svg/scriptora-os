@@ -307,6 +307,18 @@ export interface BookConfig {
   titleLanguage?: Language;
   /** Concept / idea captured in Configuration Studio step 1 */
   idea?: string;
+  /** Raw first sentence from Idea Libro / external handoff. */
+  originalIdea?: string;
+  /** First-level editorial format, before commercial genre. */
+  bookFormat?: string;
+  /** Source flow that created the configuration. */
+  generatedFrom?: string;
+  /** Human-friendly structure label, e.g. chapters, sections, lessons. */
+  structureMode?: string;
+  /** Alias kept for handoff surfaces that speak in chapters/sections count. */
+  chaptersCount?: number;
+  /** Editorial promise captured before blueprint generation. */
+  promise?: string;
   /** Amazon marketplace target (e.g. amazon.it) */
   amazonMarketplace?: string;
   /** Fine-grained genre label beyond primary genre */
