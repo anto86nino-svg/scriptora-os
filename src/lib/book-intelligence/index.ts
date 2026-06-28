@@ -27,6 +27,10 @@ export {
   resolveBookKernel,
   validateFormatCoherence,
 } from "./book-intelligence-kernel";
+export {
+  resolveGenreDominanceContract,
+  scoreGenreDominance,
+} from "./genre-dominance";
 export type {
   BlueprintType,
   BookFormat,
@@ -45,6 +49,10 @@ export type {
   StructureModel,
   UniversalStructureMode,
 } from "./book-intelligence-kernel";
+export type {
+  GenreDominanceContract,
+  GenreDominanceScore,
+} from "./genre-dominance";
 
 import type { BookConfig } from "@/types/book";
 import { buildBookIntelligenceSnapshot, detectBookIntelligence } from "./detector";

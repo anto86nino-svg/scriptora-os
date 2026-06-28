@@ -100,4 +100,20 @@ describe("generateWizardTitleProposals", () => {
     expect(generic.scores.finalScore).toBeLessThan(winner.scores.finalScore);
     expect(`${winner.title} ${winner.subtitle}`).toMatch(/camera 14|hotel|lago|mappe|lettere|donna scomparsa/i);
   });
+
+  it("scores title intelligence with DNA, genre, bestseller and click metrics", () => {
+    const pipeline = buildTitleV2Pipeline({
+      idea: "Dark Romance friends to lovers: due amici, una lettera nascosta, attrazione proibita, ferita familiare e desiderio che mette a rischio la relazione.",
+      genre: "dark romance",
+      subcategory: "friends to lovers",
+      language: "Italian",
+    });
+    const winner = pipeline.finalists[0];
+
+    expect(winner.scores.dnaCoherence).toBeGreaterThanOrEqual(60);
+    expect(winner.scores.genreCoherence).toBeGreaterThanOrEqual(60);
+    expect(winner.scores.bestsellerPotential).toBeGreaterThanOrEqual(60);
+    expect(winner.scores.clickPotential).toBeGreaterThanOrEqual(50);
+    expect(`${winner.title} ${winner.subtitle}`).toMatch(/attrazione|desiderio|relazione|ferita|romance|lettera/i);
+  });
 });

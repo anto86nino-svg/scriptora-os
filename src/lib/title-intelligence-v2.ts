@@ -21,6 +21,10 @@ export interface TitleV2Scores {
   originality: number;
   emotionalStrength: number;
   specificity: number;
+  dnaCoherence: number;
+  genreCoherence: number;
+  bestsellerPotential: number;
+  clickPotential: number;
   amazonSeo: number;
   commercialHook: number;
   storyCoherence: number;
@@ -189,6 +193,39 @@ function genreFamily(input: TitleV2Input): "romance" | "thriller" | "fantasy" | 
 function isDarkRomanceInput(input: TitleV2Input): boolean {
   const raw = normalize([input.genre, input.category, input.subcategory, input.subgenre].filter(Boolean).join(" "));
   return /\bdark romance\b/.test(raw);
+}
+
+function genericSubtitlePenalty(subtitle: string): number {
+  const text = normalize(subtitle);
+  if (!text) return 0;
+  const generic = [
+    /una storia d amore ad alta tensione emotiva/,
+    /una storia di .*segreti.*trasformazione/,
+    /un viaggio intenso/,
+    /una vicenda che cambiera tutto/,
+    /dove amore e destino/,
+    /un libro che cambiera/,
+  ];
+  return generic.some((pattern) => pattern.test(text)) ? 24 : 0;
+}
+
+function genreCoherenceScore(input: TitleV2Input, title: string, subtitle: string): number {
+  const family = genreFamily(input);
+  const text = normalize(`${title} ${subtitle}`);
+  if (isDarkRomanceInput(input)) {
+    const romanceHits = ["attrazione", "desiderio", "relazione", "ferita", "colpa", "romance"].filter((term) => text.includes(term)).length;
+    const mysteryHits = ["indagine", "testimone", "cold case", "prova", "procedura"].filter((term) => text.includes(term)).length;
+    return clampScore(45 + romanceHits * 14 - mysteryHits * 10);
+  }
+  if (family === "horror") {
+    const hits = ["paura", "inquietudine", "atmosfera", "ombra", "buio", "stanza", "casa", "voci"].filter((term) => text.includes(term)).length;
+    return clampScore(50 + hits * 10 - (/\b(regno|corona|quest|magia epica)\b/.test(text) ? 18 : 0));
+  }
+  if (family === "self-help") {
+    const hits = ["metodo", "pratica", "strumenti", "chiarezza", "esercizi", "guida", "sistema"].filter((term) => text.includes(term)).length;
+    return clampScore(48 + hits * 9 - (/\b(trama|protagonista|romanzo)\b/.test(text) ? 24 : 0));
+  }
+  return clampScore(58 + (text.includes(normalize(String(input.genre || ""))) ? 14 : 0));
 }
 
 function addElement(
@@ -463,18 +500,40 @@ function scoreCandidate(input: TitleV2Input, title: string, subtitle: string, el
   const amazonSeo = clampScore(52 + used.length * 10 + familyBoost + (clean(input.targetAudience) ? 5 : 0));
   const commercialHook = clampScore(55 + (/\b(quello che|prima di|quando|nessuno|non|ultima|what|before|when|no one)\b/i.test(title) ? 15 : 0) + used.length * 7 + familyBoost);
   const storyCoherence = clampScore(50 + used.length * 16 + familyBoost + (used.length >= 2 ? 8 : 0));
-  const genericRisk = clampScore((thousand ? 78 : 28) + genericCount * 12 - used.length * 15);
+  const dnaCoherence = clampScore(45 + used.length * 16 + topWeight * 0.16 + (used.length >= 2 ? 10 : 0));
+  const genreCoherence = genreCoherenceScore(input, title, subtitle);
+  const clickPotential = clampScore(48 + commercialHook * 0.28 + memorability * 0.22 + specificity * 0.18 - genericSubtitlePenalty(subtitle));
+  const bestsellerPotential = clampScore(42 + genreCoherence * 0.25 + dnaCoherence * 0.24 + originality * 0.18 + amazonSeo * 0.12 + commercialHook * 0.14);
+  const genericRisk = clampScore((thousand ? 78 : 28) + genericCount * 12 - used.length * 15 + genericSubtitlePenalty(subtitle));
   const finalScore = clampScore(
     memorability * 0.15 +
       originality * 0.16 +
       emotionalStrength * 0.14 +
       specificity * 0.19 +
+      dnaCoherence * 0.12 +
+      genreCoherence * 0.12 +
+      bestsellerPotential * 0.1 +
+      clickPotential * 0.08 +
       amazonSeo * 0.12 +
       commercialHook * 0.14 +
       storyCoherence * 0.16 -
       genericRisk * 0.12,
   );
-  return { memorability, originality, emotionalStrength, specificity, amazonSeo, commercialHook, storyCoherence, genericRisk, finalScore };
+  return {
+    memorability,
+    originality,
+    emotionalStrength,
+    specificity,
+    dnaCoherence,
+    genreCoherence,
+    bestsellerPotential,
+    clickPotential,
+    amazonSeo,
+    commercialHook,
+    storyCoherence,
+    genericRisk,
+    finalScore,
+  };
 }
 
 function uniqueCandidates(items: Array<{ title: string; subtitle: string; angle: string }>): Array<{ title: string; subtitle: string; angle: string }> {
@@ -529,8 +588,22 @@ export function buildTitleV2Pipeline(input: TitleV2Input): TitleV2Pipeline {
       };
     })
     .sort((a, b) => b.scores.finalScore - a.scores.finalScore || b.scores.specificity - a.scores.specificity);
-  const filtered = scored.filter((item) => !item.couldBelongToThousandBooks || item.usedDistinctiveElements.length >= 1);
-  const allCandidates = (filtered.length >= 10 ? filtered : scored).slice(0, 30);
+  const strongEditorialCandidates = scored.filter((item) =>
+    item.scores.originality >= 70 &&
+    item.scores.dnaCoherence >= 65 &&
+    item.scores.genreCoherence >= 60 &&
+    item.scores.bestsellerPotential >= 60 &&
+    !item.couldBelongToThousandBooks,
+  );
+  const preferred = strongEditorialCandidates.length >= 10
+    ? strongEditorialCandidates
+    : scored.filter((item) => !item.couldBelongToThousandBooks || item.usedDistinctiveElements.length >= 1);
+  const preferredKeys = new Set(preferred.map((item) => normalize(item.title)));
+  const filled = [
+    ...preferred,
+    ...scored.filter((item) => !preferredKeys.has(normalize(item.title))),
+  ];
+  const allCandidates = filled.slice(0, 30);
   const semifinalists = allCandidates.slice(0, 10).map((item) => ({ ...item, stage: "semifinalist" as const }));
   const finalists = semifinalists.slice(0, 5).map((item) => ({ ...item, stage: "finalist" as const }));
   return { distinctiveElements: elements, allCandidates, semifinalists, finalists };
