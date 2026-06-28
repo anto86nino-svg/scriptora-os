@@ -1,5 +1,6 @@
 import type { BookBlueprint, BookCharacter, BookConfig, Genre, Language } from "@/types/book";
 import { resolveUniversalBookStudio, type UniversalBookStudioId } from "@/lib/book-intelligence/universal-book-studios";
+import { enrichBookKernelWithQuality } from "@/lib/book-intelligence/book-intelligence-kernel";
 
 export type BookForgeSource =
   | "title-domination"
@@ -79,6 +80,11 @@ export type BookForgePrefill = Partial<BookConfig> & {
   blueprintApproved?: boolean;
   approvedSlots?: BookForgeSlot[];
   canonicalSource?: BookForgeSource;
+  bookKernel?: BookConfig["bookKernel"];
+  readerPsychology?: BookConfig["readerPsychology"];
+  bookDNA?: BookConfig["bookDNA"];
+  greatnessScore?: BookConfig["greatnessScore"];
+  publishingReadiness?: BookConfig["publishingReadiness"];
 };
 
 export interface BookForgeHandoff {
@@ -331,10 +337,15 @@ export function buildBookForgeHandoff(
   if (prefill.marketplace && !prefill.amazonMarketplace) prefill.amazonMarketplace = prefill.marketplace;
   if (prefill.chapterCount && !prefill.numberOfChapters) prefill.numberOfChapters = prefill.chapterCount;
   const explicitFormat = prefill.bookFormat || prefill.bookTypeId || prefill.bookType;
-  const { studio, kernel } = resolveUniversalBookStudio({
+  const { studio, kernel: resolvedKernel } = resolveUniversalBookStudio({
     config: prefill,
     idea: text(prefill.idea || prefill.promise || prefill.commercialAngle || prefill.subtitle),
     explicitBookFormat: explicitFormat,
+  });
+  const kernel = enrichBookKernelWithQuality({
+    kernel: resolvedKernel,
+    config: prefill,
+    text: text(prefill.idea || prefill.promise || prefill.commercialAngle || prefill.subtitle || prefill.title),
   });
   prefill.studioId = prefill.studioId || studio.id;
   prefill.studioName = prefill.studioName || studio.visibleName;
@@ -348,6 +359,11 @@ export function buildBookForgeHandoff(
   prefill.blueprintType = prefill.blueprintType || kernel.blueprintType;
   prefill.generationStrategy = prefill.generationStrategy || kernel.generationStrategy;
   prefill.contentMode = prefill.contentMode || kernel.contentMode;
+  prefill.bookKernel = prefill.bookKernel || kernel;
+  prefill.readerPsychology = prefill.readerPsychology || kernel.readerPsychology;
+  prefill.bookDNA = prefill.bookDNA || kernel.bookDNA;
+  prefill.greatnessScore = prefill.greatnessScore || kernel.greatnessScore;
+  prefill.publishingReadiness = prefill.publishingReadiness || kernel.publishingReadiness;
 
   if (source === "character-studio") {
     const canonicalSlots: BookForgeSlot[] = [
@@ -437,6 +453,11 @@ export function mergeHandoffIntoBookConfig(config: BookConfig, handoff: BookForg
     characters: preferExisting(config.characters, p.characters) || config.characters,
     authorIdentity: preferExisting(config.authorIdentity, p.authorIdentity) || config.authorIdentity,
     authorIdentityId: preferExisting(config.authorIdentityId, p.authorIdentityId) || config.authorIdentityId,
+    bookKernel: preferExisting(config.bookKernel, p.bookKernel) || config.bookKernel,
+    readerPsychology: preferExisting(config.readerPsychology, p.readerPsychology) || config.readerPsychology,
+    bookDNA: preferExisting(config.bookDNA, p.bookDNA) || config.bookDNA,
+    greatnessScore: preferExisting(config.greatnessScore, p.greatnessScore) || config.greatnessScore,
+    publishingReadiness: preferExisting(config.publishingReadiness, p.publishingReadiness) || config.publishingReadiness,
     idea: preferExisting(
       config.idea,
       [

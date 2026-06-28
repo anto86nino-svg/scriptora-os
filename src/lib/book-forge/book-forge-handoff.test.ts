@@ -137,6 +137,11 @@ describe("Book Forge convergence handoff", () => {
 
     expect(handoff.recommendedStartStep).toBe("blueprint-generation");
     expect(handoff.prefill.canonicalSource).toBe("character-studio");
+    expect(handoff.prefill.bookKernel?.bookFormat).toBe("novel");
+    expect(handoff.prefill.bookDNA?.format).toBe("novel");
+    expect(handoff.prefill.readerPsychology?.purchaseReason).toBeTruthy();
+    expect(handoff.prefill.greatnessScore?.scores.overall).toBeGreaterThan(0);
+    expect(handoff.prefill.publishingReadiness?.score).toBeGreaterThan(0);
     expect(handoff.prefill.approvedSlots).toEqual(expect.arrayContaining(["title", "subtitle", "promise", "characters"]));
     expect(bookForgeStartStepToStudioStep(handoff.recommendedStartStep)).toBe(6);
   });

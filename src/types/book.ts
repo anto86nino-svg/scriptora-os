@@ -330,6 +330,14 @@ export interface BookConfig {
   qualityGate?: import("@/lib/book-intelligence/book-intelligence-kernel").FormatQualityGate;
   commercialIntelligence?: import("@/lib/book-intelligence/book-intelligence-kernel").FormatCommercialIntelligence;
   exportIntelligence?: import("@/lib/book-intelligence/book-intelligence-kernel").FormatExportIntelligence;
+  /** Derived by Book Intelligence Kernel: one canonical reader model for all studios. */
+  readerPsychology?: import("@/lib/book-intelligence/book-intelligence-kernel").ReaderPsychologyProfile;
+  /** Derived by Book Intelligence Kernel: canonical DNA passed to Forge, Blueprint, Writer and publishing tools. */
+  bookDNA?: import("@/lib/book-intelligence/book-intelligence-kernel").BookDNAProfile;
+  /** Derived by Book Intelligence Kernel: editorial greatness score, not a separate brain. */
+  greatnessScore?: import("@/lib/book-intelligence/book-intelligence-kernel").KernelGreatnessReport;
+  /** Derived by Book Intelligence Kernel: publishing readiness view. */
+  publishingReadiness?: import("@/lib/book-intelligence/book-intelligence-kernel").PublishingReadinessView;
   requiresCharacters?: boolean;
   requiresPlot?: boolean;
   requiresWorldbuilding?: boolean;

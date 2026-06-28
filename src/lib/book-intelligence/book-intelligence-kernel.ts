@@ -156,6 +156,63 @@ export interface FormatExportIntelligence {
   formattingRules: string[];
 }
 
+export interface ReaderPsychologyProfile {
+  target: string;
+  primaryDesire: string;
+  primaryFear: string;
+  readerExpectation: string;
+  purchaseReason: string;
+  abandonmentRisk: string;
+  emotionalPromise: string;
+  practicalPromise: string;
+  curiosityTriggers: string[];
+}
+
+export interface BookDNAProfile {
+  format: BookFormat;
+  contentMode: ContentMode;
+  genre: Genre | string;
+  subgenre: string;
+  centralPromise: string;
+  dominantEmotion: string;
+  dominantImage: string;
+  coreDesire: string;
+  coreWoundOrProblem: string;
+  transformation: string;
+  commercialHook: string;
+  marketDifference: string;
+  formatNonNegotiables: string[];
+}
+
+export interface KernelGreatnessScores {
+  originality: number;
+  specificity: number;
+  promiseStrength: number;
+  readerPotential: number;
+  formatCoherence: number;
+  genreCoherence: number;
+  memorability: number;
+  genericityRisk: number;
+  clicheRisk: number;
+  overall: number;
+}
+
+export interface KernelGreatnessReport {
+  version: 1;
+  threshold: number;
+  status: "show" | "improve" | "reject";
+  scores: KernelGreatnessScores;
+  issues: string[];
+  improvements: string[];
+}
+
+export interface PublishingReadinessView {
+  score: number;
+  status: "ready" | "needs_improvement" | "blocked";
+  blockers: string[];
+  recommendations: string[];
+}
+
 export interface BookIntelligenceKernelSnapshot {
   version: 1;
   bookFormat: BookFormat;
@@ -195,6 +252,10 @@ export interface BookIntelligenceKernelSnapshot {
   qualityGate: FormatQualityGate;
   commercialIntelligence: FormatCommercialIntelligence;
   exportIntelligence: FormatExportIntelligence;
+  readerPsychology: ReaderPsychologyProfile;
+  bookDNA: BookDNAProfile;
+  greatnessScore: KernelGreatnessReport;
+  publishingReadiness: PublishingReadinessView;
   registryKey: string;
   lockedAt: string;
 }
@@ -226,6 +287,10 @@ export type BookKernelTemplate = Omit<BookIntelligenceKernelSnapshot,
   | "qualityGate"
   | "commercialIntelligence"
   | "exportIntelligence"
+  | "readerPsychology"
+  | "bookDNA"
+  | "greatnessScore"
+  | "publishingReadiness"
   | "registryKey"
   | "lockedAt"
 > & {
@@ -394,6 +459,520 @@ function exportIntelligenceFor(format: BookFormat, template: BookKernelTemplate)
     return { layoutProfile: "narrative-prose", frontMatter: ["titolo", "dedica facoltativa", "indice"], backMatter: ["ringraziamenti", "nota autore"], formattingRules: ["capitoli puliti", "scene break coerenti", "nessun layout da workbook"] };
   }
   return { layoutProfile: "professional-nonfiction", frontMatter: ["introduzione", "promessa", "indice"], backMatter: ["risorse", "checklist", "note"], formattingRules: ["heading coerenti", "liste leggibili", "azioni evidenziate"] };
+}
+
+function clampScore(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function cleanInline(value: unknown, max = 220): string {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max)
+    .trim();
+}
+
+function compactText(parts: unknown[]): string {
+  return parts.map((part) => cleanInline(part, 1200)).filter(Boolean).join("\n");
+}
+
+const GENERIC_COMMERCIAL_PATTERNS = [
+  /una storia (?:intensa|emozionante|coinvolgente|indimenticabile)/i,
+  /un viaggio (?:intenso|emozionante|alla scoperta|di crescita)/i,
+  /una vicenda che cambiera tutto/i,
+  /niente sara piu come prima/i,
+  /segreti del passato/i,
+  /verita nascost[ae]/i,
+  /amore e destino/i,
+  /passione e mistero/i,
+  /una guida pratica per migliorare la vita/i,
+  /un percorso di crescita/i,
+  /una raccolta guidata da immagini/i,
+];
+
+const CLICHE_PATTERNS = [
+  /ombra|ombre|destino|cuore spezzato|baci proibiti|attrazione fatale|potere corrompe/i,
+  /salvare se stess[oa]|cambiare tutto|verita che non doveva emergere/i,
+  /per sempre|mai piu|luce e buio|passato oscuro/i,
+];
+
+function distinctiveTermsFrom(text: string): string[] {
+  const matches = text.match(/\b[A-ZÀ-Ý][A-Za-zÀ-ÖØ-öø-ÿ'’-]{3,}(?:\s+[A-ZÀ-Ý][A-Za-zÀ-ÖØ-öø-ÿ'’-]{2,}){0,3}\b/g) || [];
+  const labels = text.match(/\b(?:camera|sala|hotel|sigillo|lettere|mappa|mappe|lago|abbazia|faro|archivio|nebbia|acqua|luce|debito|sangue)\b[\w\s'’-]{0,32}/gi) || [];
+  return Array.from(new Set([...matches, ...labels].map((item) => cleanInline(item, 60)).filter((item) => item.length >= 4))).slice(0, 10);
+}
+
+function genericityRiskFor(text: string): number {
+  const normalizedText = normalize(text);
+  const phraseHits = GENERIC_COMMERCIAL_PATTERNS.filter((pattern) => pattern.test(normalizedText)).length;
+  const distinctiveCount = distinctiveTermsFrom(text).length;
+  const shortTextRisk = normalizedText.length > 0 && normalizedText.length < 90 ? 18 : 0;
+  return clampScore(phraseHits * 22 + shortTextRisk + Math.max(0, 4 - distinctiveCount) * 9);
+}
+
+function clicheRiskFor(text: string): number {
+  const normalizedText = normalize(text);
+  const hits = CLICHE_PATTERNS.filter((pattern) => pattern.test(normalizedText)).length;
+  return clampScore(hits * 20);
+}
+
+function promiseStrengthFor(text: string, kernel: Pick<BookIntelligenceKernelSnapshot, "bookFormat" | "requiresExercises" | "requiresPoems" | "requiresPlot">): number {
+  const normalizedText = normalize(text);
+  let score = 42;
+  if (/\b(promessa|trasformazione|risultato|obiettivo|beneficio|payoff|arco emotivo|promessa poetica)\b/.test(normalizedText)) score += 16;
+  if (/\b(perche|quando|se|senza|prima|dopo|da .+ a )\b/.test(normalizedText)) score += 10;
+  if (kernel.requiresExercises && /\b(esercizi|checklist|schede|tracker|azioni|strumenti)\b/.test(normalizedText)) score += 18;
+  if (kernel.requiresPoems && /\b(voce poetica|immagini ricorrenti|campo simbolico|ritmo|sezioni)\b/.test(normalizedText)) score += 22;
+  if (kernel.requiresPlot && /\b(conflitto|desiderio|paura|scelta|minaccia|relazione|segreto)\b/.test(normalizedText)) score += 16;
+  return clampScore(score);
+}
+
+function specificityFor(text: string, kernel: Pick<BookIntelligenceKernelSnapshot, "bookFormat" | "qualityGate">): number {
+  const normalizedText = normalize(text);
+  const labels = (text.match(/^[A-ZÀ-Ý][^:\n]{2,48}:/gm) || []).length;
+  const distinctiveCount = distinctiveTermsFrom(text).length;
+  const mustHaveHits = kernel.qualityGate.mustHave.filter((item) => normalizedText.includes(normalize(item).slice(0, 18))).length;
+  return clampScore(34 + labels * 6 + distinctiveCount * 7 + mustHaveHits * 8);
+}
+
+function memorabilityFor(text: string): number {
+  const distinctiveCount = distinctiveTermsFrom(text).length;
+  const sensoryHits = (normalize(text).match(/\b(nebbia|acqua|luce|sangue|sigillo|lettere|mappa|camera|sale|vetro|inchiostro|faro|lago|abbazia)\b/g) || []).length;
+  return clampScore(36 + distinctiveCount * 8 + sensoryHits * 5);
+}
+
+function genreCoherenceFor(text: string, kernel: Pick<BookIntelligenceKernelSnapshot, "genre" | "subgenre" | "bookFormat">): number {
+  const normalizedText = normalize(text);
+  const identity = normalize(`${kernel.genre} ${kernel.subgenre}`);
+  let score = 66;
+  if (/dark romance|romance/.test(identity)) {
+    score += /\b(relazione|desiderio|attrazione|ferita|fiducia|payoff emotivo)\b/.test(normalizedText) ? 24 : -22;
+    score -= /\b(indagine|mistero|killer|delitto)\b/.test(normalizedText) && !/\b(relazione|desiderio)\b/.test(normalizedText) ? 20 : 0;
+  }
+  if (/horror|gotic/.test(identity)) {
+    score += /\b(atmosfera|inquietudine|paura|decadenza|minaccia|presenza)\b/.test(normalizedText) ? 24 : -18;
+    score -= /\b(quest|regno|battaglia epica|magia eroica)\b/.test(normalizedText) ? 18 : 0;
+  }
+  if (/self help|manual|business|study|education/.test(identity) || kernel.bookFormat !== "novel") {
+    score += /\b(metodo|strumenti|obiettivo|moduli|esercizi|checklist|risultati)\b/.test(normalizedText) ? 18 : 0;
+  }
+  return clampScore(score);
+}
+
+function readerPotentialFor(text: string, psychology: ReaderPsychologyProfile): number {
+  const normalizedText = normalize(text);
+  let score = 52;
+  for (const trigger of psychology.curiosityTriggers) {
+    if (trigger && normalizedText.includes(normalize(trigger).slice(0, 16))) score += 7;
+  }
+  if (normalize(psychology.primaryDesire) && normalizedText.includes(normalize(psychology.primaryDesire).slice(0, 18))) score += 8;
+  if (normalize(psychology.practicalPromise) && normalizedText.includes(normalize(psychology.practicalPromise).slice(0, 18))) score += 8;
+  if (normalize(psychology.emotionalPromise) && normalizedText.includes(normalize(psychology.emotionalPromise).slice(0, 18))) score += 8;
+  return clampScore(score);
+}
+
+export function deriveReaderPsychologyFromKernel(
+  kernel: Pick<BookIntelligenceKernelSnapshot, "bookFormat" | "contentMode" | "genre" | "subgenre" | "targetReader" | "commercialPromise" | "publishingStandards">,
+): ReaderPsychologyProfile {
+  const target = cleanInline(kernel.targetReader) || kernel.publishingStandards.readerExpectations[0] || "lettore del formato scelto";
+  const identity = normalize(`${kernel.bookFormat} ${kernel.genre} ${kernel.subgenre}`);
+
+  if (kernel.bookFormat === "poetry_collection") {
+    return {
+      target,
+      primaryDesire: "riconoscersi in una voce precisa",
+      primaryFear: "trovare versi generici o ornamentali",
+      readerExpectation: "voce, immagini, ritmo e arco emotivo",
+      purchaseReason: "un estratto memorabile e una promessa poetica riconoscibile",
+      abandonmentRisk: "immagini astratte ripetute senza progressione",
+      emotionalPromise: "attraversare una ferita con immagini concrete",
+      practicalPromise: "una raccolta coerente, citabile e leggibile per sezioni",
+      curiosityTriggers: ["voce poetica", "immagini ricorrenti", "campo simbolico", "arco emotivo"],
+    };
+  }
+
+  if (["manual", "self_help", "psychology_guide", "business_book"].includes(kernel.bookFormat)) {
+    return {
+      target,
+      primaryDesire: "capire cosa fare e vedere un miglioramento concreto",
+      primaryFear: "leggere teoria vaga senza applicazione",
+      readerExpectation: "metodo, esempi, esercizi e checklist",
+      purchaseReason: "trasformazione credibile e strumenti usabili subito",
+      abandonmentRisk: "promesse assolute o capitoli motivazionali generici",
+      emotionalPromise: "sentirsi guidato senza essere giudicato",
+      practicalPromise: "passare dal problema a un metodo applicabile",
+      curiosityTriggers: ["problema lettore", "trasformazione", "metodo", "esercizi", "checklist"],
+    };
+  }
+
+  if (kernel.bookFormat === "workbook" || kernel.bookFormat === "journal") {
+    return {
+      target,
+      primaryDesire: "completare esercizi che producono micro-progressi",
+      primaryFear: "schede confuse o ripetitive",
+      readerExpectation: "schede, tracker, attivita' e risultati misurabili",
+      purchaseReason: "percorso pratico che accompagna l'azione",
+      abandonmentRisk: "attivita' troppo vaghe o senza feedback",
+      emotionalPromise: "sentire avanzamento e controllo",
+      practicalPromise: "trasformare riflessione in azioni tracciabili",
+      curiosityTriggers: ["schede", "progress tracker", "attivita'", "risultati misurabili"],
+    };
+  }
+
+  if (kernel.bookFormat === "study_material" || kernel.contentMode === "educational") {
+    return {
+      target,
+      primaryDesire: "capire, ricordare e verificare la preparazione",
+      primaryFear: "studiare materiale confuso o non affidabile",
+      readerExpectation: "moduli, definizioni, quiz, flashcard e simulazioni",
+      purchaseReason: "prepararsi meglio a prove, esami o verifiche",
+      abandonmentRisk: "spiegazioni generiche senza verifica",
+      emotionalPromise: "sentirsi piu' preparato e meno disperso",
+      practicalPromise: "organizzare studio, ripasso e autovalutazione",
+      curiosityTriggers: ["moduli", "quiz", "flashcard", "simulazione", "obiettivi di apprendimento"],
+    };
+  }
+
+  if (/dark romance|romance/.test(identity)) {
+    return {
+      target,
+      primaryDesire: "vivere tensione emotiva e payoff relazionale",
+      primaryFear: "relazione piatta o mistero che divora il romance",
+      readerExpectation: "desiderio, ferita, scelta e conseguenze intime",
+      purchaseReason: "una coppia con ostacolo specifico e promessa emotiva",
+      abandonmentRisk: "titoli e conflitti gia' visti mille volte",
+      emotionalPromise: "attrazione che costa qualcosa",
+      practicalPromise: "una storia centrata sulla relazione",
+      curiosityTriggers: ["desiderio", "ferita", "relazione", "fiducia", "payoff emotivo"],
+    };
+  }
+
+  if (/horror|gotic/.test(identity)) {
+    return {
+      target,
+      primaryDesire: "provare inquietudine crescente e immagini disturbanti",
+      primaryFear: "horror generico o fantasy mascherato",
+      readerExpectation: "atmosfera, minaccia, paura e conseguenza",
+      purchaseReason: "un luogo o simbolo che resta in mente",
+      abandonmentRisk: "mostri spiegati troppo presto o azione senza paura",
+      emotionalPromise: "entrare in un luogo che non lascia uscire uguali",
+      practicalPromise: "un'esperienza gotica coerente",
+      curiosityTriggers: ["atmosfera", "decadenza", "minaccia", "paura", "segreto del luogo"],
+    };
+  }
+
+  return {
+    target,
+    primaryDesire: "trovare una promessa chiara e diversa",
+    primaryFear: "leggere qualcosa di generico",
+    readerExpectation: kernel.publishingStandards.readerExpectations.join(", "),
+    purchaseReason: kernel.commercialPromise,
+    abandonmentRisk: "mancanza di specificita' o coerenza",
+    emotionalPromise: kernel.commercialPromise,
+    practicalPromise: kernel.commercialPromise,
+    curiosityTriggers: kernel.publishingStandards.readerExpectations.slice(0, 5),
+  };
+}
+
+export function deriveBookDNAFromKernel(input: {
+  kernel: Pick<BookIntelligenceKernelSnapshot, "bookFormat" | "contentMode" | "genre" | "subgenre" | "commercialPromise" | "qualityGate" | "commercialIntelligence">;
+  config?: Partial<BookConfig> | null;
+  text?: string;
+  readerPsychology?: ReaderPsychologyProfile;
+}): BookDNAProfile {
+  const { kernel, config } = input;
+  const text = cleanInline(input.text, 1600);
+  const distinctive = distinctiveTermsFrom(text || compactText([config?.title, config?.subtitle, config?.idea, config?.promise, config?.targetReader]));
+  const centralPromise = cleanInline(config?.promise || config?.subtitle || (config as any)?.narrativePromise || kernel.commercialPromise, 220);
+  const dominantImage = cleanInline((config as any)?.setting || distinctive[0] || kernel.qualityGate.mustHave[0], 140);
+  const psychology = input.readerPsychology || deriveReaderPsychologyFromKernel(kernel as BookIntelligenceKernelSnapshot);
+  return {
+    format: kernel.bookFormat,
+    contentMode: kernel.contentMode,
+    genre: kernel.genre,
+    subgenre: kernel.subgenre,
+    centralPromise,
+    dominantEmotion: psychology.emotionalPromise,
+    dominantImage,
+    coreDesire: psychology.primaryDesire,
+    coreWoundOrProblem: psychology.primaryFear,
+    transformation: cleanInline((config as any)?.transformation || psychology.practicalPromise || centralPromise, 220),
+    commercialHook: cleanInline((config as any)?.commercialAngle || centralPromise || kernel.commercialIntelligence.positioning, 220),
+    marketDifference: cleanInline(`${kernel.commercialIntelligence.differentiation}${distinctive.length ? `; elementi distintivi: ${distinctive.slice(0, 5).join(", ")}` : ""}`, 360),
+    formatNonNegotiables: [
+      ...kernel.qualityGate.mustHave,
+      ...kernel.qualityGate.rejectIf.map((item) => `Vietato: ${item}`),
+    ].slice(0, 12),
+  };
+}
+
+export function evaluateKernelGreatness(input: {
+  kernel: Pick<BookIntelligenceKernelSnapshot,
+    "bookFormat" | "contentMode" | "genre" | "subgenre" | "targetReader" | "commercialPromise" | "publishingStandards" | "qualityGate" | "generationStrategy" | "blueprintType" | "requiresExercises" | "requiresPoems" | "requiresPlot">;
+  config?: Partial<BookConfig> | null;
+  text?: string;
+  readerPsychology?: ReaderPsychologyProfile;
+}): KernelGreatnessReport {
+  const kernel = input.kernel;
+  const text = compactText([
+    input.text,
+    input.config?.title,
+    input.config?.subtitle,
+    input.config?.idea,
+    input.config?.promise,
+    (input.config as any)?.narrativePromise,
+    input.config?.targetReader,
+    (input.config as any)?.setting,
+  ]);
+  const psychology = input.readerPsychology || deriveReaderPsychologyFromKernel(kernel as BookIntelligenceKernelSnapshot);
+  const genericityRisk = genericityRiskFor(text);
+  const clicheRisk = clicheRiskFor(text);
+  const specificity = specificityFor(text, kernel as BookIntelligenceKernelSnapshot);
+  const promiseStrength = promiseStrengthFor(text, kernel);
+  const memorability = memorabilityFor(text);
+  const readerPotential = readerPotentialFor(text, psychology);
+  const genreCoherence = genreCoherenceFor(text, kernel);
+  const purity = text.trim()
+    ? validateFormatPurity({
+      bookFormat: kernel.bookFormat,
+      genre: kernel.genre,
+      subcategory: kernel.subgenre,
+      generationStrategy: kernel.generationStrategy,
+      blueprintType: kernel.blueprintType,
+      text,
+      requireMandatorySections: false,
+    })
+    : { score: 100, passed: true, issues: [] as Array<{ evidence: string[] }> };
+  const formatCoherence = purity.score;
+  const originality = clampScore(100 - genericityRisk * 0.82 - clicheRisk * 0.42 + distinctiveTermsFrom(text).length * 4);
+  const overall = clampScore(
+    originality * 0.16 +
+    specificity * 0.17 +
+    promiseStrength * 0.18 +
+    readerPotential * 0.15 +
+    formatCoherence * 0.16 +
+    genreCoherence * 0.1 +
+    memorability * 0.08 -
+    genericityRisk * 0.08 -
+    clicheRisk * 0.05,
+  );
+  const threshold =
+    kernel.bookFormat === "poetry_collection" ? 86 :
+      kernel.bookFormat === "study_material" ? 82 :
+        kernel.requiresExercises ? 80 : 78;
+  const issues: string[] = [];
+  if (!purity.passed) issues.push(`Format purity sotto soglia: ${purity.score}`);
+  if (genericityRisk >= 48) issues.push("Rischio genericita' alto: promessa o concept potrebbero appartenere a troppi libri.");
+  if (clicheRisk >= 45) issues.push("Rischio cliche' alto: immagini o promessa troppo viste.");
+  if (specificity < 62) issues.push("Specificita' insufficiente: servono elementi unici, simboli, luoghi o benefici concreti.");
+  if (promiseStrength < 64) issues.push("Promessa debole: il lettore non vede abbastanza desiderio, conflitto o risultato.");
+  if (readerPotential < 62) issues.push("Potenziale lettore migliorabile: desiderio/fear/beneficio non sono abbastanza leggibili.");
+  const improvements = [
+    genericityRisk >= 48 ? "Inserire elemento unico e verificabile nel titolo/concept." : "",
+    clicheRisk >= 45 ? "Sostituire formule astratte con immagini, oggetti o benefici specifici." : "",
+    specificity < 62 ? "Usare nomi di luoghi, simboli, metodo, campo visivo o risultato pratico." : "",
+    promiseStrength < 64 ? "Esplicitare cosa cambia per il lettore o cosa costa al personaggio." : "",
+  ].filter(Boolean);
+
+  return {
+    version: 1,
+    threshold,
+    status: !purity.passed || overall < threshold - 18 ? "reject" : overall < threshold ? "improve" : "show",
+    scores: {
+      originality,
+      specificity,
+      promiseStrength,
+      readerPotential,
+      formatCoherence,
+      genreCoherence,
+      memorability,
+      genericityRisk,
+      clicheRisk,
+      overall,
+    },
+    issues,
+    improvements,
+  };
+}
+
+export function derivePublishingReadinessFromKernel(greatness: KernelGreatnessReport): PublishingReadinessView {
+  const blockers = greatness.issues.filter((issue) => /Format purity|genericita' alto|promessa/i.test(issue));
+  return {
+    score: greatness.scores.overall,
+    status: greatness.status === "reject" ? "blocked" : greatness.status === "improve" ? "needs_improvement" : "ready",
+    blockers,
+    recommendations: greatness.improvements.length
+      ? greatness.improvements
+      : ["Mantenere il DNA approvato in titolo, blueprint, copertina, export e marketing."],
+  };
+}
+
+export function enrichBookKernelWithQuality(input: {
+  kernel: BookIntelligenceKernelSnapshot;
+  config?: Partial<BookConfig> | null;
+  text?: string;
+}): BookIntelligenceKernelSnapshot {
+  const readerPsychology = deriveReaderPsychologyFromKernel(input.kernel);
+  const bookDNA = deriveBookDNAFromKernel({
+    kernel: input.kernel,
+    config: input.config,
+    text: input.text,
+    readerPsychology,
+  });
+  const greatnessScore = evaluateKernelGreatness({
+    kernel: input.kernel,
+    config: input.config,
+    text: input.text,
+    readerPsychology,
+  });
+  const publishingReadiness = derivePublishingReadinessFromKernel(greatnessScore);
+  return {
+    ...input.kernel,
+    readerPsychology,
+    bookDNA,
+    greatnessScore,
+    publishingReadiness,
+  };
+}
+
+export function isGenericCommercialText(value: unknown): boolean {
+  return genericityRiskFor(cleanInline(value, 1200)) >= 48;
+}
+
+export function refineConceptWithBookKernel(input: {
+  kernel: BookIntelligenceKernelSnapshot;
+  config?: Partial<BookConfig> | null;
+  text: string;
+}): { text: string; kernel: BookIntelligenceKernelSnapshot; changed: boolean; greatness: KernelGreatnessReport } {
+  const currentText = cleanInline(input.text, 5000);
+  const enriched = enrichBookKernelWithQuality({ kernel: input.kernel, config: input.config, text: currentText });
+  if (enriched.greatnessScore.status === "show") {
+    return { text: currentText, kernel: enriched, changed: false, greatness: enriched.greatnessScore };
+  }
+
+  const dna = enriched.bookDNA;
+  const psychology = enriched.readerPsychology;
+  let refined = currentText;
+
+  if (enriched.bookFormat === "poetry_collection") {
+    refined = `Tema centrale:
+${cleanInline((input.config as any)?.centralDynamic || dna.centralPromise || "Memoria, identita' e riconoscimento")}.
+
+Voce poetica:
+${cleanInline((input.config as any)?.protagonistType || "Intima, contemplativa, precisa, attraversata dalla perdita ma non vittimistica")}.
+
+Campo simbolico:
+${cleanInline((input.config as any)?.setting || dna.dominantImage || "Nebbia, acqua, mappe, luce, stanze vuote")}.
+
+Immagini ricorrenti:
+${cleanInline((input.config as any)?.setting || dna.dominantImage || "Nebbia, acqua, mappe, luce, stanze vuote")}.
+
+Arco emotivo:
+Smarrimento -> ricerca -> riconoscimento -> accettazione.
+
+Struttura:
+Raccolta in sezioni progressive, con nuclei poetici autonomi e risonanze interne.
+
+Numero sezioni:
+${Number((input.config as any)?.subchaptersPerChapter || 4)}.
+
+Numero poesie:
+${Number((input.config as any)?.chapterCount || (input.config as any)?.numberOfChapters || 60)}.
+
+Promessa poetica:
+${psychology.emotionalPromise}, senza trasformarsi in racconto lineare.
+
+Tono e ritmo:
+Essenziale, musicale, concreto, con variazioni tra frammento breve e respiro disteso.
+
+Cosa NON fara':
+Non seguira' logiche di intreccio, indagine, relazione romance o saga: restera' una raccolta poetica.`;
+  } else if (["manual", "self_help", "psychology_guide", "business_book"].includes(enriched.bookFormat)) {
+    refined = `Problema lettore:
+${cleanInline((input.config as any)?.centralDynamic || dna.coreWoundOrProblem || "Un problema concreto che il lettore vuole risolvere")}.
+
+Trasformazione:
+${dna.transformation}.
+
+Metodo:
+Un percorso in passaggi chiari con spiegazione, esempio, esercizio, checklist e verifica.
+
+Capitoli pratici:
+${Number((input.config as any)?.chapterCount || (input.config as any)?.numberOfChapters || 10)} capitoli orientati all'applicazione.
+
+Esercizi:
+Domande guidate, azioni brevi, revisione dei progressi e casi realistici.
+
+Checklist:
+Controlli di fine capitolo per capire cosa e' stato applicato davvero.
+
+Promessa commerciale:
+${dna.commercialHook}.
+
+Avvertenza responsabile:
+Il libro educa e guida, senza promettere risultati assoluti o sostituire supporto professionale quando necessario.`;
+  } else if (enriched.bookFormat === "workbook" || enriched.bookFormat === "journal") {
+    refined = `Obiettivo operativo:
+${cleanInline((input.config as any)?.centralDynamic || dna.transformation)}.
+
+Schede:
+Schede progressive con istruzioni, spazio di lavoro e micro-obiettivo.
+
+Esercizi:
+Attivita' brevi, domande guidate e azioni misurabili.
+
+Progress tracker:
+Tracciamento settimanale di completamento, consapevolezza e prossima azione.
+
+Risultati misurabili:
+Ogni sezione produce una decisione, una prova concreta o un'abitudine verificabile.`;
+  } else if (enriched.bookFormat === "study_material") {
+    refined = `Materia:
+${cleanInline((input.config as any)?.centralDynamic || dna.centralPromise || "Argomento da studiare")}.
+
+Livello:
+${cleanInline((input.config as any)?.targetReader || "Studente che deve capire, ricordare e verificarsi")}.
+
+Moduli:
+Moduli progressivi con prerequisiti, definizioni, esempi e sintesi.
+
+Quiz:
+Domande di memoria, comprensione, applicazione e simulazione.
+
+Flashcard:
+Carte su definizioni, formule, date, relazioni logiche e concetti chiave.
+
+Simulazioni:
+Prove a difficolta' crescente con feedback e aree da ripassare.
+
+Obiettivi di apprendimento:
+${psychology.practicalPromise}.`;
+  } else if (/dark romance|romance/i.test(`${enriched.genre} ${enriched.subgenre}`)) {
+    refined = `${currentText}
+
+KERNEL REFINEMENT:
+La relazione resta il motore centrale: desiderio, ferita, paura di esporsi e payoff emotivo devono dominare qualunque mistero esterno. Il click nasce da una coppia con ostacolo specifico, non da formule generiche su amore, destino o segreti.`;
+  } else if (/horror|gotic/i.test(`${enriched.genre} ${enriched.subgenre}`)) {
+    refined = `${currentText}
+
+KERNEL REFINEMENT:
+L'atmosfera domina l'azione: luogo, decadenza, minaccia e immagine disturbante devono precedere spiegazioni o battaglie. Il click nasce da un simbolo concreto che promette paura, non da fantasy generico.`;
+  } else {
+    refined = `${currentText}
+
+KERNEL REFINEMENT:
+Rendere immediatamente visibili promessa, elemento unico, rischio e differenza di mercato: niente formule intercambiabili, niente promessa vaga.`;
+  }
+
+  const finalKernel = enrichBookKernelWithQuality({ kernel: input.kernel, config: input.config, text: refined });
+  return {
+    text: refined,
+    kernel: finalKernel,
+    changed: refined.trim() !== currentText.trim(),
+    greatness: finalKernel.greatnessScore,
+  };
 }
 
 const MATRIX: Record<BookFormat, BookKernelTemplate> = {
@@ -1421,7 +2000,7 @@ export function resolveBookKernel(input: {
     ...template.qualityRules,
     ...template.forbiddenPatterns.map((pattern) => `Vietato: ${pattern}`),
   ];
-  return {
+  const kernel = {
     ...template,
     contentLock: template.contentMode,
     structureLock,
@@ -1438,7 +2017,13 @@ export function resolveBookKernel(input: {
     exportIntelligence: exportIntelligenceFor(format, template),
     registryKey: format,
     lockedAt: new Date().toISOString(),
-  };
+  } as BookIntelligenceKernelSnapshot;
+
+  return enrichBookKernelWithQuality({
+    kernel,
+    config: explicitConfig,
+    text: input.idea,
+  });
 }
 
 export function isNarrativeKernel(kernel: Pick<BookIntelligenceKernelSnapshot, "contentMode" | "requiresPlot">): boolean {
@@ -1471,6 +2056,10 @@ export function applyBookKernelToConfig(config: BookConfig): BookConfig {
     qualityGate: kernel.qualityGate,
     commercialIntelligence: kernel.commercialIntelligence,
     exportIntelligence: kernel.exportIntelligence,
+    readerPsychology: kernel.readerPsychology,
+    bookDNA: kernel.bookDNA,
+    greatnessScore: kernel.greatnessScore,
+    publishingReadiness: kernel.publishingReadiness,
     requiresCharacters: kernel.requiresCharacters,
     requiresPlot: kernel.requiresPlot,
     requiresWorldbuilding: kernel.requiresWorldbuilding,

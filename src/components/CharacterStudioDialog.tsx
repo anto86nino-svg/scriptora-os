@@ -13,7 +13,12 @@ import { devOnlyDiagnostic } from "@/lib/user-friendly-error";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 import { resolveCharacterStudioFormatUiProfile } from "@/lib/character-studio/format-aware-ui";
 import { resolveGenreDominanceContract, scoreGenreDominance } from "@/lib/book-intelligence/genre-dominance";
-import { buildBookKernelPromptBlock, resolveBookKernel } from "@/lib/book-intelligence";
+import {
+  buildBookKernelPromptBlock,
+  enrichBookKernelWithQuality,
+  refineConceptWithBookKernel,
+  resolveBookKernel,
+} from "@/lib/book-intelligence";
 import {
   buildDeterministicBookConcept,
 } from "../../supabase/functions/_shared/book-concept-format.ts";
@@ -2126,6 +2131,10 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     () => resolveBookKernel({ config: bookKernelConfig, explicitBookFormat: bookFormat }),
     [bookKernelConfig, bookFormat],
   );
+  const activeBookKernel = useMemo(
+    () => enrichBookKernelWithQuality({ kernel: bookKernel, config: bookKernelConfig, text: idea }),
+    [bookKernel, bookKernelConfig, idea],
+  );
   const bookKernelPromptBlock = useMemo(
     () => buildBookKernelPromptBlock(bookKernelConfig),
     [bookKernelConfig],
@@ -2163,22 +2172,26 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     studioExportProfile: formatUiProfile.exportProfile,
     studioVisibleFields: formatUiProfile.visibleFields,
     studioForbiddenFields: formatUiProfile.forbiddenFields,
-    contentMode: bookKernel.contentMode,
-    structureMode: bookKernel.structureModel,
-    structureLock: bookKernel.structureLock,
-    blueprintType: bookKernel.blueprintType,
-    generationStrategy: bookKernel.generationStrategy,
-    requiresCharacters: bookKernel.requiresCharacters,
-    requiresPlot: bookKernel.requiresPlot,
-    requiresPoems: bookKernel.requiresPoems,
-    bookKernel,
+    contentMode: activeBookKernel.contentMode,
+    structureMode: activeBookKernel.structureModel,
+    structureLock: activeBookKernel.structureLock,
+    blueprintType: activeBookKernel.blueprintType,
+    generationStrategy: activeBookKernel.generationStrategy,
+    requiresCharacters: activeBookKernel.requiresCharacters,
+    requiresPlot: activeBookKernel.requiresPlot,
+    requiresPoems: activeBookKernel.requiresPoems,
+    readerPsychology: activeBookKernel.readerPsychology,
+    bookDNA: activeBookKernel.bookDNA,
+    greatnessScore: activeBookKernel.greatnessScore,
+    publishingReadiness: activeBookKernel.publishingReadiness,
+    bookKernel: activeBookKernel,
     bookKernelPromptBlock,
     formatLocks: {
-      FORMAT_LOCK: bookKernel.bookFormat,
-      CONTENT_LOCK: bookKernel.contentLock,
-      STRUCTURE_LOCK: bookKernel.structureLock,
-      PROMISE_LOCK: bookKernel.promiseLock,
-      QUALITY_LOCK: bookKernel.qualityLock,
+      FORMAT_LOCK: activeBookKernel.bookFormat,
+      CONTENT_LOCK: activeBookKernel.contentLock,
+      STRUCTURE_LOCK: activeBookKernel.structureLock,
+      PROMISE_LOCK: activeBookKernel.promiseLock,
+      QUALITY_LOCK: activeBookKernel.qualityLock,
     },
   }), [
     bookFormat,
@@ -2212,7 +2225,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     formatUiProfile.exportProfile,
     formatUiProfile.visibleFields,
     formatUiProfile.forbiddenFields,
-    bookKernel,
+    activeBookKernel,
     bookKernelPromptBlock,
   ]);
 
@@ -2299,16 +2312,16 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       if (!generated) throw new Error("Idea vuota");
 
       const formatPurity = validateFormatPurity({
-        bookFormat: bookKernel.bookFormat,
+        bookFormat: activeBookKernel.bookFormat,
         genre,
         subcategory,
         studioId: formatUiProfile.studioId,
-        generationStrategy: bookKernel.generationStrategy,
-        blueprintType: bookKernel.blueprintType,
+        generationStrategy: activeBookKernel.generationStrategy,
+        blueprintType: activeBookKernel.blueprintType,
         text: generated,
       });
       if (!formatPurity.passed) {
-        const corrected = buildLocalNovelIdea({
+        const localConcept = buildLocalNovelIdea({
           bookFormat,
           bookLength,
           chapterCount,
@@ -2324,6 +2337,11 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
           language,
           previousIdeas,
         });
+        const corrected = refineConceptWithBookKernel({
+          kernel: activeBookKernel,
+          config: bookKernelConfig,
+          text: localConcept,
+        }).text;
         setIdea(corrected);
         saveIdeaToHistory(corrected);
         toast.message("Nucleo riallineato al formato scelto.", {
@@ -2332,12 +2350,23 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         return;
       }
 
-      setIdea(generated);
-      saveIdeaToHistory(generated);
-      toast.success("Concept generato da Scriptora con variante nuova.");
+      const refined = refineConceptWithBookKernel({
+        kernel: activeBookKernel,
+        config: bookKernelConfig,
+        text: generated,
+      });
+      setIdea(refined.text);
+      saveIdeaToHistory(refined.text);
+      if (refined.changed) {
+        toast.message("Concept rafforzato dal Book Intelligence Kernel.", {
+          description: "Ho aumentato specificità, promessa e potenziale lettore prima di mostrarlo.",
+        });
+      } else {
+        toast.success("Concept generato da Scriptora con variante nuova.");
+      }
     } catch (error) {
       devOnlyDiagnostic("character-studio-idea-fallback", error);
-      const generated = buildLocalNovelIdea({
+      const localConcept = buildLocalNovelIdea({
         bookFormat,
         bookLength,
         chapterCount,
@@ -2353,6 +2382,11 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         language,
         previousIdeas,
       });
+      const generated = refineConceptWithBookKernel({
+        kernel: activeBookKernel,
+        config: bookKernelConfig,
+        text: localConcept,
+      }).text;
       setIdea(generated);
       saveIdeaToHistory(generated);
       toast.message("Idea pronta", {
@@ -2396,16 +2430,16 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       if (!developed) throw new Error("Idea elaborata vuota");
 
       const developedPurity = validateFormatPurity({
-        bookFormat: bookKernel.bookFormat,
+        bookFormat: activeBookKernel.bookFormat,
         genre,
         subcategory,
         studioId: formatUiProfile.studioId,
-        generationStrategy: bookKernel.generationStrategy,
-        blueprintType: bookKernel.blueprintType,
+        generationStrategy: activeBookKernel.generationStrategy,
+        blueprintType: activeBookKernel.blueprintType,
         text: developed,
       });
       if (!developedPurity.passed) {
-        const corrected = buildLocalUserStoryDevelopment({
+        const localDevelopment = buildLocalUserStoryDevelopment({
           idea: userStory,
           bookFormat,
           chapterCount,
@@ -2420,6 +2454,11 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
           setting,
           language,
         });
+        const corrected = refineConceptWithBookKernel({
+          kernel: activeBookKernel,
+          config: bookKernelConfig,
+          text: localDevelopment,
+        }).text;
         setIdea(corrected);
         saveIdeaToHistory(corrected);
         toast.message("Direzione riallineata al formato scelto.", {
@@ -2428,12 +2467,23 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         return;
       }
 
-      setIdea(developed);
-      saveIdeaToHistory(developed);
-      toast.success("La tua storia è stata elaborata mantenendo il nucleo originale.");
+      const refined = refineConceptWithBookKernel({
+        kernel: activeBookKernel,
+        config: bookKernelConfig,
+        text: developed,
+      });
+      setIdea(refined.text);
+      saveIdeaToHistory(refined.text);
+      if (refined.changed) {
+        toast.message("Storia elaborata e rafforzata dal Kernel.", {
+          description: "Ho reso promessa, specificità e lettore più leggibili senza cambiare formato.",
+        });
+      } else {
+        toast.success("La tua storia è stata elaborata mantenendo il nucleo originale.");
+      }
     } catch (error) {
       devOnlyDiagnostic("character-studio-story-fallback", error);
-      const developed = buildLocalUserStoryDevelopment({
+      const localDevelopment = buildLocalUserStoryDevelopment({
         idea: userStory,
         bookFormat,
         chapterCount,
@@ -2448,6 +2498,11 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
         setting,
         language,
       });
+      const developed = refineConceptWithBookKernel({
+        kernel: activeBookKernel,
+        config: bookKernelConfig,
+        text: localDevelopment,
+      }).text;
       setIdea(developed);
       saveIdeaToHistory(developed);
       toast.message("Storia elaborata", {
@@ -2499,6 +2554,11 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     manualCharacterNames: manualCharacterNames.trim(),
     characterBible: characterBible.trim(),
     genreDominance: genreDominanceContract,
+    bookKernel: activeBookKernel,
+    readerPsychology: activeBookKernel.readerPsychology,
+    bookDNA: activeBookKernel.bookDNA,
+    greatnessScore: activeBookKernel.greatnessScore,
+    publishingReadiness: activeBookKernel.publishingReadiness,
     createdAt: new Date().toISOString(),
   }), [
     idea,
@@ -2528,6 +2588,7 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     characterBible,
     projectCategory,
     genreDominanceContract,
+    activeBookKernel,
   ]);
 
   const generate = async () => {
