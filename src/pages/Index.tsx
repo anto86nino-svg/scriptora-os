@@ -941,6 +941,8 @@ const Index = () => {
               onExport={guardedExportEpub}
               onVoice={() => activeChapterIndex != null && openVoiceStudioForChapter(activeChapterIndex)}
               onCleanup={activeChapterGenerated ? () => triggerChapterTool("cleanup") : undefined}
+              onEvaluate={activeChapterGenerated && activeChapterIndex != null ? () => engine.evaluateChapter(activeChapterIndex) : undefined}
+              onRewrite={activeChapterGenerated && activeChapterIndex != null ? (level: RewriteLevel) => engine.rewriteChapterWithDepth(activeChapterIndex, level) : undefined}
               onSettings={() => (isMobileLayout ? openMobileSettingsExclusive() : setShowSettings(true))}
               onCoach={() => (isMobileLayout ? openMobileCoachExclusive() : setShowCoach(true))}
               onMarket={

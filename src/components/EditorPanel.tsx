@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback, memo, type RefObject } from "react";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { BookProject, SectionId, Chapter, GenerationStatus, ChapterLength, AIQualityRating, isGenerationFailureStatus, getSubchaptersPerChapter } from "@/types/book";
-import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, AlertTriangle, Download, Zap, Headphones, Shield, Clock3, Scissors } from "lucide-react";
+import { Play, RefreshCw, Sparkles, Plus, Loader2, Star, Eye, PenLine, Search, ChevronDown, Target, Square, AlertTriangle, Download, Zap, Headphones, Shield, Clock3, Scissors, CheckCircle2 } from "lucide-react";
 import { BlueprintTheater } from "@/components/blueprint-theater/BlueprintTheater";
 import { BlueprintRecoveryCard } from "@/components/blueprint/BlueprintRecoveryCard";
 import { ChapterIntelligencePanel } from "@/components/ChapterIntelligencePanel";
@@ -35,6 +35,7 @@ import {
   validateEditorialCleanupResult,
   type EditorialCleanupResult,
 } from "@/lib/editorial-cleanup";
+import { buildChapterEditorialOutcome, REWRITE_LEVEL_LABELS, type ChapterEditorialOutcome } from "@/lib/chapter-editorial-tools";
 
 interface EditorPanelProps {
   project: BookProject;
@@ -922,6 +923,171 @@ function SubchapterCoverageStrip({
   );
 }
 
+function recommendationLabel(action: ChapterEditorialOutcome["recommendedNextAction"]): string {
+  switch (action) {
+    case "editorial_cleanup":
+      return "Pulizia consigliata";
+    case "patch":
+      return "Patch consigliata";
+    case "rewrite_light":
+      return "Riscrittura leggera consigliata";
+    case "rewrite_medium":
+      return "Riscrittura media consigliata";
+    default:
+      return "Nessuna riscrittura necessaria";
+  }
+}
+
+function ChapterToolsHub({
+  outcome,
+  busy,
+  cleanupDisabled,
+  cleanupRunning,
+  rewriteOpen,
+  onAnalysis,
+  onEvaluate,
+  onCleanup,
+  onPatch,
+  onToggleRewrite,
+  onRewrite,
+}: {
+  outcome: ChapterEditorialOutcome;
+  busy: boolean;
+  cleanupDisabled: boolean;
+  cleanupRunning: boolean;
+  rewriteOpen: boolean;
+  onAnalysis: () => void;
+  onEvaluate: () => void;
+  onCleanup: () => void;
+  onPatch: () => void;
+  onToggleRewrite: () => void;
+  onRewrite: (level: RewriteLevel) => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-border/45 bg-muted/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.10)]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-muted-foreground">Strumenti capitolo</p>
+          <h3 className="mt-1 text-base font-black text-foreground">Esito editoriale</h3>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">{outcome.summary}</p>
+        </div>
+        <span className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-[11px] font-bold text-emerald-100">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          {recommendationLabel(outcome.recommendedNextAction)}
+        </span>
+      </div>
+
+      {outcome.issues.length > 0 && (
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          {outcome.issues.slice(0, 2).map((issue) => (
+            <div key={`${issue.type}-${issue.severity}`} className="rounded-xl border border-border/35 bg-background/35 px-3 py-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-muted-foreground">
+                Priorita' {issue.severity}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-foreground/70">{issue.description}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+        <ChapterToolHubButton
+          icon={Zap}
+          label="Analizza"
+          description="Trova problemi di ritmo, coerenza e struttura."
+          onClick={onAnalysis}
+          disabled={busy}
+        />
+        <ChapterToolHubButton
+          icon={Search}
+          label="Vota"
+          description="Assegna un voto editoriale severo al capitolo."
+          onClick={onEvaluate}
+          disabled={busy}
+        />
+        <ChapterToolHubButton
+          icon={Shield}
+          label="Pulizia editoriale"
+          description="Corregge errori e ripetizioni senza riscrivere."
+          onClick={onCleanup}
+          disabled={cleanupDisabled || cleanupRunning}
+          loading={cleanupRunning}
+        />
+        <ChapterToolHubButton
+          icon={Scissors}
+          label="Patch"
+          description="Corregge un problema specifico."
+          onClick={onPatch}
+          disabled={busy}
+        />
+        <ChapterToolHubButton
+          icon={Sparkles}
+          label="Riscrivi"
+          description="Riscrive con intervento piu' forte."
+          onClick={onToggleRewrite}
+          disabled={busy}
+        />
+      </div>
+
+      {rewriteOpen && (
+        <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3">
+          <p className="text-xs font-bold text-amber-100">
+            La riscrittura e' piu' invasiva di Pulizia editoriale e Patch.
+          </p>
+          <p className="mt-1 text-[11px] leading-5 text-amber-100/75">
+            Usala solo se il capitolo e' debole a livello di struttura, ritmo o resa narrativa.
+          </p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            {(["light", "deep", "bestseller"] as RewriteLevel[]).map((level) => (
+              <button
+                key={level}
+                type="button"
+                onClick={() => onRewrite(level)}
+                className="rounded-xl border border-border/35 bg-background/35 px-3 py-2 text-left transition hover:bg-muted/25"
+              >
+                <p className="text-xs font-black text-foreground">{REWRITE_LEVEL_LABELS[level].label}</p>
+                <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{REWRITE_LEVEL_LABELS[level].description}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ChapterToolHubButton({
+  icon: Icon,
+  label,
+  description,
+  onClick,
+  disabled,
+  loading,
+}: {
+  icon: typeof Zap;
+  label: string;
+  description: string;
+  onClick: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      title={description}
+      onClick={onClick}
+      disabled={disabled}
+      className="flex min-h-[5.75rem] flex-col items-start gap-2 rounded-xl border border-border/40 bg-background/40 p-3 text-left transition enabled:hover:border-primary/30 enabled:hover:bg-muted/20 disabled:opacity-35"
+    >
+      <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+      </span>
+      <span className="text-sm font-black text-foreground">{label}</span>
+      <span className="text-[11px] leading-4 text-muted-foreground">{description}</span>
+    </button>
+  );
+}
+
 function ChapterView({
   project, chapterIndex, outline, chapter, isGenerating, isEvaluating,
   onGenerate, onRegenerate, onRewrite, onEvaluate, onAutoRewrite, onGenerateSubchapter,
@@ -956,7 +1122,7 @@ function ChapterView({
   onRecoverProject?: () => void;
   onContinueChapter?: () => void;
 }) {
-  const isGenerated = chapter && chapter.content.length > 0;
+  const isGenerated = Boolean(chapter?.content?.length);
   const { plan } = usePlan();
   const showFreeWatermark = Boolean(isGenerated && shouldApplyScriptoraFreeWatermark(plan));
   const chapterLanguage = ws?.config?.language || ws?.config?.bookLanguage || ws?.config?.uiLanguage || "it";
@@ -983,6 +1149,10 @@ function ChapterView({
   const liveAnchorRef = useRef<HTMLDivElement | null>(null);
   const autoFollowLiveRef = useRef(true);
   const [showReturnToLive, setShowReturnToLive] = useState(false);
+  const editorialOutcome = useMemo(
+    () => buildChapterEditorialOutcome(chapter?.content || ""),
+    [chapter?.content],
+  );
 
   const rawPublicTitle = isGenerated
     ? ((chapter as any)?.narrativeTitle || chapter!.title || outline.title)
@@ -1190,12 +1360,12 @@ function ChapterView({
                   setEditorialOpen(true);
                 }}
                 disabled={isGenerating || isEvaluating}
-                title="Diagnostica editoriale sul capitolo selezionato"
+                title="Trova problemi di ritmo, coerenza e struttura."
                 className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-gradient-to-r from-primary to-primary/80 px-3 text-[11px] font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-30"
               >
                 <Zap className="h-3.5 w-3.5 shrink-0" />
-                <span className="sm:hidden">Analysis</span>
-                <span className="hidden sm:inline">Analysis Pro</span>
+                <span className="sm:hidden">Analizza</span>
+                <span className="hidden sm:inline">Analizza</span>
               </button>
               <button
                 type="button"
@@ -1204,7 +1374,7 @@ function ChapterView({
                   setEditorialOpen(true);
                 }}
                 disabled={isGenerating || isEvaluating}
-                title="Patch chirurgica sul capitolo"
+                title="Corregge un problema specifico."
                 className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-violet-400/35 bg-violet-500/15 px-3 text-[11px] font-semibold text-violet-100 disabled:opacity-30"
               >
                 <Scissors className="h-3.5 w-3.5 shrink-0" />
@@ -1223,7 +1393,7 @@ function ChapterView({
                 <span className="hidden sm:inline">Pulizia editoriale</span>
               </button>
               <div className="flex shrink-0 flex-col items-center gap-1">
-                <ActionButton icon={<Search className="h-3.5 w-3.5" />} title={t("evaluate")} onClick={onEvaluate} disabled={isGenerating || isEvaluating} />
+                <ActionButton icon={<Search className="h-3.5 w-3.5" />} title="Vota" onClick={onEvaluate} disabled={isGenerating || isEvaluating} />
                 <CreditCostBadge operation="chapter_diagnostic" className="max-w-[5.5rem] truncate sm:max-w-none" />
               </div>
               <ActionButton icon={<RefreshCw className="h-3.5 w-3.5" />} title={t("regenerate")} onClick={onRegenerate} disabled={isGenerating} />
@@ -1247,14 +1417,14 @@ function ChapterView({
                 {showRewriteMenu && (
                   <div className="absolute right-0 top-10 z-20 w-48 rounded-lg border border-border bg-card py-1 shadow-xl">
                     {([
-                      { level: "light" as RewriteLevel, label: "Light Polish", desc: "Fix phrasing, tighten prose" },
-                      { level: "deep" as RewriteLevel, label: "Deep Rewrite", desc: "Restructure + fresh insights" },
-                      { level: "bestseller" as RewriteLevel, label: "Bestseller Upgrade", desc: "Total transformation" },
+                      { level: "light" as RewriteLevel },
+                      { level: "deep" as RewriteLevel },
+                      { level: "bestseller" as RewriteLevel },
                     ]).map(opt => (
                       <button key={opt.level} onClick={() => { onRewrite(opt.level); setShowRewriteMenu(false); }}
                         className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors">
-                        <p className="text-xs font-medium text-foreground">{opt.label}</p>
-                        <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
+                        <p className="text-xs font-medium text-foreground">{REWRITE_LEVEL_LABELS[opt.level].label}</p>
+                        <p className="text-[10px] text-muted-foreground">{REWRITE_LEVEL_LABELS[opt.level].description}</p>
                       </button>
                     ))}
                     {onAutoRewrite && (
@@ -1276,6 +1446,31 @@ function ChapterView({
           )}
         </div>
       </div>
+
+      {isGenerated && (
+        <ChapterToolsHub
+          outcome={editorialOutcome}
+          busy={isGenerating || isEvaluating}
+          cleanupDisabled={!canRunCleanup}
+          cleanupRunning={cleanupStatus === "running"}
+          rewriteOpen={showRewriteMenu}
+          onAnalysis={() => {
+            setEditorialMode("analysis");
+            setEditorialOpen(true);
+          }}
+          onEvaluate={onEvaluate}
+          onCleanup={runCleanupPreview}
+          onPatch={() => {
+            setEditorialMode("patch");
+            setEditorialOpen(true);
+          }}
+          onToggleRewrite={() => setShowRewriteMenu((value) => !value)}
+          onRewrite={(level) => {
+            onRewrite(level);
+            setShowRewriteMenu(false);
+          }}
+        />
+      )}
 
       {editorialOpen && isGenerated && onPersistChapterEditorialAnalysis && (
         <ChapterEditorialWorkbench

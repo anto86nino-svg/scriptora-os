@@ -32,10 +32,10 @@ export function MobileWriterBar({
       )}
     >
       <BarButton icon={Layers} label="Indice" onClick={onOpenIndex} />
-      <BarButton icon={Headphones} label="Ascolta" onClick={onListen} disabled={listenDisabled || !onListen} />
-      <BarButton icon={Scissors} label="Patch" onClick={onPatch} disabled={toolsDisabled || !onPatch} />
+      <BarButton icon={Zap} label="Analizza" onClick={onAnalysis} disabled={toolsDisabled || !onAnalysis} />
       <BarButton icon={Shield} label="Pulizia" onClick={onCleanup} disabled={toolsDisabled || !onCleanup} />
-      <BarButton icon={Zap} label="Analysis" onClick={onAnalysis} disabled={toolsDisabled || !onAnalysis} />
+      <BarButton icon={Scissors} label="Patch" onClick={onPatch} disabled={toolsDisabled || !onPatch} />
+      <BarButton icon={Headphones} label="Ascolta" onClick={onListen} disabled={listenDisabled || !onListen} />
       <BarButton icon={MoreHorizontal} label="Altro" onClick={onMore} disabled={!onMore} />
     </nav>
   );

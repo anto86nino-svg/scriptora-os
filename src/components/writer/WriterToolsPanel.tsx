@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { RewriteLevel } from "@/lib/generation-types";
 import { cn } from "@/lib/utils";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
+import { REWRITE_LEVEL_LABELS } from "@/lib/chapter-editorial-tools";
 
 export type WriterToolsPanelProps = {
   open: boolean;
@@ -59,7 +60,7 @@ export function WriterToolsPanel({
       <div className="flex items-center justify-between border-b border-white/[0.08] px-4 py-3">
         <p className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
           <Sparkles className="h-3.5 w-3.5 text-violet-300" />
-          Tools
+          Strumenti capitolo
         </p>
         <button type="button" onClick={onToggle} className="rounded-lg p-1.5 text-white/50 hover:bg-white/[0.06] hover:text-white">
           <ChevronRight className="h-4 w-4" />
@@ -70,7 +71,7 @@ export function WriterToolsPanel({
         {!isGenerated ? (
           <div className="space-y-2">
             <p className="rounded-xl border border-dashed border-white/10 p-4 text-xs leading-5 text-white/45">
-              Genera il capitolo per sbloccare Analysis, Patch e Rewrite.
+              Genera il capitolo per sbloccare Analisi, Voto, Pulizia, Patch e Riscrittura.
             </p>
             {onGenerate && (
               <button
@@ -85,19 +86,20 @@ export function WriterToolsPanel({
           </div>
         ) : (
           <>
-            <ToolButton icon={Zap} label="Analysis" onClick={onAnalysis} disabled={busy} />
-            <ToolButton icon={Scissors} label="Patch" onClick={onPatch} disabled={busy} />
-            <ToolButton icon={Shield} label="Pulizia editoriale" onClick={onCleanup} disabled={busy || !onCleanup} />
-            <ToolButton icon={Headphones} label="Voice / Ascolta" onClick={onListen} disabled={busy} />
-            <ToolButton icon={Target} label="Evaluate" onClick={onEvaluate} disabled={busy} />
+            <ToolButton icon={Zap} label="Analizza" description="Trova problemi di ritmo, coerenza e struttura." onClick={onAnalysis} disabled={busy} />
+            <ToolButton icon={Target} label="Vota" description="Assegna un voto editoriale severo al capitolo." onClick={onEvaluate} disabled={busy} />
+            <ToolButton icon={Shield} label="Pulizia editoriale" description="Corregge errori e ripetizioni senza riscrivere." onClick={onCleanup} disabled={busy || !onCleanup} />
+            <ToolButton icon={Scissors} label="Patch" description="Corregge un problema specifico." onClick={onPatch} disabled={busy} />
+            <ToolButton icon={Headphones} label="Ascolta" description="Rileggi il capitolo in Voice Studio." onClick={onListen} disabled={busy} />
             <div className="px-1">
               <CreditCostBadge operation="chapter_diagnostic" />
             </div>
-            <ToolButton icon={RefreshCw} label="Regenerate" onClick={onRegenerate} disabled={busy} />
+            <ToolButton icon={RefreshCw} label="Rigenera" description="Ricrea il capitolo dal blueprint." onClick={onRegenerate} disabled={busy} />
             <div className="relative">
               <ToolButton
                 icon={Sparkles}
-                label="Rewrite"
+                label="Riscrivi"
+                description="Intervento piu' forte di Pulizia e Patch."
                 onClick={() => setShowRewrite((v) => !v)}
                 disabled={busy || !onRewrite}
               />
@@ -111,9 +113,10 @@ export function WriterToolsPanel({
                         onRewrite(level);
                         setShowRewrite(false);
                       }}
-                      className="w-full rounded-lg px-2 py-1.5 text-left text-[11px] capitalize text-white/75 hover:bg-white/[0.06]"
+                      className="w-full rounded-lg px-2 py-1.5 text-left text-[11px] text-white/75 hover:bg-white/[0.06]"
                     >
-                      {level}
+                      <span className="font-bold text-white/85">{REWRITE_LEVEL_LABELS[level].label}</span>
+                      <span className="mt-0.5 block leading-4 text-white/45">{REWRITE_LEVEL_LABELS[level].description}</span>
                     </button>
                   ))}
                   {onAutoRewrite &&
@@ -146,11 +149,13 @@ export function WriterToolsPanel({
 function ToolButton({
   icon: Icon,
   label,
+  description,
   onClick,
   disabled,
 }: {
   icon: typeof Zap;
   label: string;
+  description?: string;
   onClick?: () => void;
   disabled?: boolean;
 }) {
@@ -159,13 +164,17 @@ function ToolButton({
       type="button"
       onClick={onClick}
       disabled={disabled || !onClick}
+      title={description}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-left text-sm font-medium text-white/80 transition",
+        "flex w-full items-start gap-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2.5 text-left text-sm font-medium text-white/80 transition",
         "enabled:hover:border-white/15 enabled:hover:bg-white/[0.06] disabled:opacity-35",
       )}
     >
-      <Icon className="h-4 w-4 shrink-0 text-violet-300/90" />
-      {label}
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-violet-300/90" />
+      <span className="min-w-0">
+        <span className="block">{label}</span>
+        {description && <span className="mt-0.5 block text-[11px] leading-4 text-white/42">{description}</span>}
+      </span>
     </button>
   );
 }

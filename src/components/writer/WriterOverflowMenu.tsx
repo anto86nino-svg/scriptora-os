@@ -1,4 +1,6 @@
-import { BarChart3, Download, Headphones, Settings, Shield, Sparkles, Upload } from "lucide-react";
+import { BarChart3, Download, Headphones, Settings, Shield, Sparkles, Target, Upload } from "lucide-react";
+import type { RewriteLevel } from "@/lib/generation-types";
+import { REWRITE_LEVEL_LABELS } from "@/lib/chapter-editorial-tools";
 import { cn } from "@/lib/utils";
 import { MobileFullscreenShell } from "@/mobile/MobileFullscreenShell";
 
@@ -8,6 +10,8 @@ export type WriterOverflowMenuProps = {
   onExport?: () => void;
   onVoice?: () => void;
   onCleanup?: () => void;
+  onEvaluate?: () => void;
+  onRewrite?: (level: RewriteLevel) => void;
   onSettings?: () => void;
   onCoach?: () => void;
   onMarket?: () => void;
@@ -22,6 +26,8 @@ export function WriterOverflowMenu({
   onExport,
   onVoice,
   onCleanup,
+  onEvaluate,
+  onRewrite,
   onSettings,
   onCoach,
   onMarket,
@@ -32,10 +38,27 @@ export function WriterOverflowMenu({
 
   if (fullscreen) {
     return (
-      <MobileFullscreenShell title="Strumenti Writer" subtitle="Export · Voice · Coach · Settings" onClose={onClose}>
+      <MobileFullscreenShell title="Strumenti Writer" subtitle="Voto · Riscrittura · Voice · Export" onClose={onClose}>
         <div className="space-y-2 px-4 py-4">
+          {onEvaluate && <FullscreenMenuItem icon={Target} label="Vota capitolo" onClick={() => { onEvaluate(); onClose(); }} />}
+          {onRewrite && (
+            <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-2">
+              <p className="px-2 pb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-amber-50/65">Riscrivi</p>
+              {(["light", "deep", "bestseller"] as RewriteLevel[]).map((level) => (
+                <FullscreenMenuItem
+                  key={level}
+                  icon={Sparkles}
+                  label={`Riscrivi ${REWRITE_LEVEL_LABELS[level].label.toLowerCase()}`}
+                  onClick={() => {
+                    onRewrite(level);
+                    onClose();
+                  }}
+                />
+              ))}
+            </div>
+          )}
+          {onVoice && <FullscreenMenuItem icon={Headphones} label="Ascolta" onClick={() => { onVoice(); onClose(); }} />}
           {onExport && <FullscreenMenuItem icon={Upload} label="Export" onClick={() => { onExport(); onClose(); }} />}
-          {onVoice && <FullscreenMenuItem icon={Headphones} label="Voice Studio" onClick={() => { onVoice(); onClose(); }} />}
           {onCleanup && <FullscreenMenuItem icon={Shield} label="Pulizia editoriale" onClick={() => { onCleanup(); onClose(); }} />}
           {onCoach && <FullscreenMenuItem icon={Sparkles} label="AI Coach" onClick={() => { onCoach(); onClose(); }} />}
           {onMarket && <FullscreenMenuItem icon={BarChart3} label="Market OS" onClick={() => { onMarket(); onClose(); }} />}
@@ -54,8 +77,24 @@ export function WriterOverflowMenu({
           className,
         )}
       >
+        {onEvaluate && <MenuItem icon={Target} label="Vota capitolo" onClick={() => { onEvaluate(); onClose(); }} />}
+        {onRewrite && (
+          <>
+            {(["light", "deep", "bestseller"] as RewriteLevel[]).map((level) => (
+              <MenuItem
+                key={level}
+                icon={Sparkles}
+                label={`Riscrivi ${REWRITE_LEVEL_LABELS[level].label.toLowerCase()}`}
+                onClick={() => {
+                  onRewrite(level);
+                  onClose();
+                }}
+              />
+            ))}
+          </>
+        )}
+        {onVoice && <MenuItem icon={Headphones} label="Ascolta" onClick={() => { onVoice(); onClose(); }} />}
         {onExport && <MenuItem icon={Upload} label="Export" onClick={() => { onExport(); onClose(); }} />}
-        {onVoice && <MenuItem icon={Headphones} label="Voice Studio" onClick={() => { onVoice(); onClose(); }} />}
         {onCleanup && <MenuItem icon={Shield} label="Pulizia editoriale" onClick={() => { onCleanup(); onClose(); }} />}
         {onCoach && <MenuItem icon={Sparkles} label="AI Coach" onClick={() => { onCoach(); onClose(); }} />}
         {onMarket && <MenuItem icon={BarChart3} label="Market OS" onClick={() => { onMarket(); onClose(); }} />}
