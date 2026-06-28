@@ -1,6 +1,9 @@
 import type { GuidedInterviewState, InterviewGenre, InterviewQuickSuggestion } from "./types";
 import { sanitizeDnaText } from "./dna-cleaner";
 import { buildCharacterAwareQuestionPrompt } from "./character-foundation-studio";
+import {
+  resolveHorrorGothicNormalizedGenre,
+} from "@/lib/genre/horror-gothic-identity";
 
 export type InterviewBookCategory =
   | "gothic-dark"
@@ -50,8 +53,8 @@ const CATEGORY_PATTERNS: CategoryPattern[] = [
     weight: 1.4,
     narrative: true,
     nonfiction: false,
-    genre: "literary-fiction",
-    subgenre: "Gotico / dark",
+    genre: "horror",
+    subgenre: "Horror gotico",
   },
   {
     category: "thriller-horror",
@@ -441,6 +444,20 @@ export function inferInterviewBookSignals(state: GuidedInterviewState): Intervie
     CATEGORY_PATTERNS.find((p) => p.category === category) ??
     CATEGORY_PATTERNS.find((p) => p.category === "literary-fiction")!;
 
+  const horrorResolved = resolveHorrorGothicNormalizedGenre({
+    genre: activePattern.genre ?? inferredGenre,
+    subcategory: activePattern.subgenre ?? state.inferredProfile?.subgenre,
+    idea: blob,
+  });
+  const resolvedGenre =
+    category === "gothic-dark"
+      ? ("horror" as InterviewGenre)
+      : ((activePattern.genre ?? inferredGenre) as InterviewGenre | undefined);
+  const resolvedSubgenre =
+    horrorResolved?.subgenre ??
+    activePattern.subgenre ??
+    state.inferredProfile?.subgenre;
+
   return {
     category,
     secondaryCategory,
@@ -448,8 +465,8 @@ export function inferInterviewBookSignals(state: GuidedInterviewState): Intervie
     isNarrative: activePattern.narrative,
     isNonfiction: activePattern.nonfiction,
     userAnswerCount,
-    genre: activePattern.genre ?? inferredGenre,
-    subgenreHint: activePattern.subgenre ?? state.inferredProfile?.subgenre,
+    genre: resolvedGenre,
+    subgenreHint: resolvedSubgenre,
   };
 }
 

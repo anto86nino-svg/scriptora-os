@@ -24,6 +24,7 @@ const DARK_ROMANCE_IDEA =
   "una restauratrice torna nella villa dove sua sorella è morta in un incendio doloso";
 
 const expressInput = {
+  bookFormat: "novel" as const,
   genre: "dark romance",
   language: "Italiano",
   titleMode: "suggest" as const,
@@ -34,6 +35,7 @@ const expressInput = {
 };
 
 const selfHelpInput = {
+  bookFormat: "self_help" as const,
   genre: "self-help",
   language: "Italiano",
   titleMode: "suggest" as const,
@@ -45,6 +47,7 @@ const selfHelpInput = {
 };
 
 const poetryInput = {
+  bookFormat: "poetry_collection" as const,
   genre: "poesia",
   language: "Italiano",
   titleMode: "suggest" as const,
@@ -142,6 +145,82 @@ describe("buildCompleteExpressBookPackage — poetry", () => {
     expect(pkg.genre).toBe("dark-romance");
     expect(pkg.structurePreference).toMatch(/capitoli/i);
     expect(pkg.protagonist).not.toMatch(/Voce poetica/i);
+  });
+});
+
+describe("buildCompleteExpressBookPackage — format-driven nonfiction", () => {
+  it("builds workbook package without fiction tropes", () => {
+    const pkg = buildCompleteExpressBookPackage(
+      {
+        bookFormat: "workbook",
+        genre: "workbook",
+        language: "Italiano",
+        titleMode: "suggest",
+        ideaSeed: "workbook su autostima con tracker settimanali e schede operative",
+        tone: "pratico",
+        length: "medio",
+        controlLevel: "scenarios",
+      },
+      "commercial",
+    );
+
+    const joined = [pkg.editorialSynopsis, pkg.hook, pkg.protagonist, pkg.antagonistOrLoveInterest].join(" ");
+    expect(joined).not.toMatch(/restauratrice|love interest|villa|slow burn/i);
+    expect(pkg.methodFramework).toBeTruthy();
+    expect(pkg.exercises?.length).toBeGreaterThan(2);
+    expect(pkg.chapterBlueprintSeeds[0]?.title).toMatch(/diagnosi|setup|modulo|tracker/i);
+    expect(pkg.antiDriftRules.some((rule) => /workbook|tracker|esercizi/i.test(rule))).toBe(true);
+  });
+
+  it("builds study material package with learning modules", () => {
+    const pkg = buildCompleteExpressBookPackage(
+      {
+        bookFormat: "study_material",
+        genre: "study_material",
+        language: "Italiano",
+        titleMode: "suggest",
+        ideaSeed: "materiale di studio per esame HACCP con moduli e quiz",
+        tone: "didattico",
+        length: "medio",
+        controlLevel: "scenarios",
+      },
+      "commercial",
+    );
+
+    const joined = [pkg.editorialSynopsis, pkg.hook, pkg.protagonist].join(" ");
+    expect(joined).not.toMatch(/restauratrice|elena|marco|love interest/i);
+    expect(pkg.chapterBlueprintSeeds[0]?.goal).toMatch(/apprendimento|obiettivo/i);
+    expect(pkg.methodFramework).toBeTruthy();
+    expect(pkg.antiDriftRules.some((rule) => /study material|moduli|obiettivi/i.test(rule))).toBe(true);
+  });
+
+  it("builds memoir package with reflective arc, not romance tropes", () => {
+    const pkg = buildCompleteExpressBookPackage(
+      {
+        bookFormat: "memoir",
+        genre: "memoir",
+        language: "Italiano",
+        titleMode: "suggest",
+        ideaSeed: "memoir di un viaggio interiore dopo una perdita e una ricostruzione",
+        tone: "riflessivo",
+        length: "medio",
+        controlLevel: "scenarios",
+      },
+      "commercial",
+    );
+
+    const joined = [
+      pkg.editorialSynopsis,
+      pkg.hook,
+      pkg.centralConflict,
+      pkg.antagonistOrLoveInterest,
+      pkg.keyScenes.map((s) => s.beat).join(" "),
+    ].join(" ");
+
+    expect(joined).not.toMatch(/restauratrice|slow burn|love interest|desiderio proibito/i);
+    expect(pkg.chapterBlueprintSeeds[0]?.title).toMatch(/origine|contesto|fase/i);
+    expect(pkg.reflectionPrompts?.length).toBeGreaterThan(1);
+    expect(pkg.antiDriftRules.some((rule) => /memoir|riflessiv/i.test(rule))).toBe(true);
   });
 });
 
@@ -298,5 +377,52 @@ describe("buildExpressForgeConfiguration", () => {
     const repaired = repairForgeHandoffSeedForBlueprint(sparse);
     const check = validateForgeHandoffForBlueprint(repaired);
     expect(check.ready, check.missing.join(", ")).toBe(true);
+  });
+});
+
+describe("buildCompleteExpressBookPackage — sci-fi and romance subgenres", () => {
+  it("builds sci-fi package with worldbuilding and tech stakes, not dark romance", () => {
+    const pkg = buildCompleteExpressBookPackage(
+      {
+        bookFormat: "novel",
+        genre: "sci-fi",
+        language: "Italiano",
+        titleMode: "suggest",
+        ideaSeed: "colonia orbitale con protocollo di quarantena e sabotaggio tecnologico",
+        tone: "distopico",
+        length: "medio",
+        controlLevel: "scenarios",
+      },
+      "commercial",
+    );
+
+    const joined = [pkg.marketPromise, pkg.editorialSynopsis, pkg.hook, pkg.centralConflict].join(" ");
+    expect(pkg.genre).toBe("sci-fi");
+    expect(joined).toMatch(/sci-fi|worldbuilding|tecnolog|protocollo|colonia|missione/i);
+    expect(joined).not.toMatch(/dark romance|restauratrice|villa|slow burn|incendio doloso/i);
+    expect(pkg.antiDriftRules.some((rule) => /sci-fi|fantasy medievale|dark romance/i.test(rule))).toBe(true);
+  });
+
+  it("builds friends-to-lovers package without dark romance defaults", () => {
+    const pkg = buildCompleteExpressBookPackage(
+      {
+        bookFormat: "novel",
+        genre: "friends to lovers",
+        language: "Italiano",
+        titleMode: "suggest",
+        ideaSeed: "due amici di lunga data scoprono che la prossimità emotiva sta cambiando tutto",
+        tone: "emozionale",
+        length: "medio",
+        controlLevel: "scenarios",
+      },
+      "commercial",
+    );
+
+    const joined = [pkg.marketPromise, pkg.editorialSynopsis, pkg.subtitle, pkg.hook, pkg.centralConflict].join(" ");
+    expect(pkg.subgenre).toBe("friends to lovers");
+    expect(joined).toMatch(/friends-to-lovers|amicizia|prossimit|tensione emotiva/i);
+    expect(joined).not.toMatch(/incendio doloso|restauratrice|villa decadente|desiderio proibito oscuro/i);
+    expect(pkg.marketPromise).not.toMatch(/^Un dark romance/i);
+    expect(pkg.antiDriftRules.some((rule) => /dark romance|villa|incendio/i.test(rule))).toBe(true);
   });
 });

@@ -9,6 +9,7 @@ import {
   type BookIntelligenceKernelSnapshot,
   type KernelGreatnessReport,
 } from "./book-intelligence-kernel";
+import { isHorrorGothicIdentity } from "@/lib/genre/horror-gothic-identity";
 
 export type KernelGreatnessGateStatus = "allowed" | "refined" | "blocked" | "bypassed";
 
@@ -56,8 +57,14 @@ function buildBlockedMessage(greatness: KernelGreatnessReport): string {
   return `Il concept ha bisogno di più specificità prima del Blueprint. ${tip}`;
 }
 
-function shouldAttemptRefine(greatness: KernelGreatnessReport, conceptText: string): boolean {
+function shouldAttemptRefine(
+  greatness: KernelGreatnessReport,
+  conceptText: string,
+  kernel: BookIntelligenceKernelSnapshot,
+): boolean {
   if (greatness.status === "show") return false;
+  const horrorIdentity = `${kernel.genre} ${kernel.subgenre} ${conceptText}`;
+  if (isHorrorGothicIdentity(horrorIdentity) && greatness.scores.genreCoherence < 55) return true;
   return greatness.scores.genericityRisk >= 48
     || isGenericCommercialText(conceptText)
     || greatness.status === "improve"
@@ -125,7 +132,7 @@ export function enforceKernelGreatnessBeforeForge(input: {
     return { ...initial, status: "allowed" };
   }
 
-  if (input.allowRefine !== false && shouldAttemptRefine(initial.greatness, currentText)) {
+  if (input.allowRefine !== false && shouldAttemptRefine(initial.greatness, currentText, currentKernel)) {
     const refinedConcept = refineConceptWithBookKernel({
       kernel: currentKernel,
       config: input.config,

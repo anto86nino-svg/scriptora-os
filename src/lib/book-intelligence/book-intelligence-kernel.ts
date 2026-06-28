@@ -1,4 +1,5 @@
 import type { BookBlueprint, BookConfig, Genre } from "@/types/book";
+import { stripRomanceContaminationForHorror } from "@/lib/genre/horror-gothic-identity";
 import { validateFormatPurity } from "../../../supabase/functions/_shared/format-purity-engine.ts";
 
 export type BookFormat =
@@ -490,6 +491,10 @@ const GENERIC_COMMERCIAL_PATTERNS = [
   /una guida pratica per migliorare la vita/i,
   /un percorso di crescita/i,
   /una raccolta guidata da immagini/i,
+  /promessa narrativa ed emotiva/i,
+  /promessa narrativa compatta/i,
+  /promessa narrativa commerciale/i,
+  /promessa editoriale da chiarire/i,
 ];
 
 const CLICHE_PATTERNS = [
@@ -554,6 +559,7 @@ function genreCoherenceFor(text: string, kernel: Pick<BookIntelligenceKernelSnap
   if (/horror|gotic/.test(identity)) {
     score += /\b(atmosfera|inquietudine|paura|decadenza|minaccia|presenza)\b/.test(normalizedText) ? 24 : -18;
     score -= /\b(quest|regno|battaglia epica|magia eroica)\b/.test(normalizedText) ? 18 : 0;
+    score -= /\b(attrazione crescente|dinamica romantica|slow burn|desiderio proibito|payoff emotivo)\b/.test(normalizedText) ? 24 : 0;
   }
   if (/self help|manual|business|study|education/.test(identity) || kernel.bookFormat !== "novel") {
     score += /\b(metodo|strumenti|obiettivo|moduli|esercizi|checklist|risultati)\b/.test(normalizedText) ? 18 : 0;
@@ -765,6 +771,9 @@ export function evaluateKernelGreatness(input: {
   const issues: string[] = [];
   if (!purity.passed) issues.push(`Format purity sotto soglia: ${purity.score}`);
   if (genericityRisk >= 48) issues.push("Rischio genericita' alto: promessa o concept potrebbero appartenere a troppi libri.");
+  if (/^promessa (narrativa|editoriale|poetica|pratica|trasformativa|accademica|workbook|spirituale|culinaria|travel|storica|research|ibrida|biografica|autobiografica|memoir|devozionale|journal|field guide)\b/i.test(normalize(kernel.commercialPromise))) {
+    issues.push("Promessa commerciale placeholder: serve specificità editoriale concreta.");
+  }
   if (clicheRisk >= 45) issues.push("Rischio cliche' alto: immagini o promessa troppo viste.");
   if (specificity < 62) issues.push("Specificita' insufficiente: servono elementi unici, simboli, luoghi o benefici concreti.");
   if (promiseStrength < 64) issues.push("Promessa debole: il lettore non vede abbastanza desiderio, conflitto o risultato.");
@@ -955,10 +964,11 @@ ${psychology.practicalPromise}.`;
 KERNEL REFINEMENT:
 La relazione resta il motore centrale: desiderio, ferita, paura di esporsi e payoff emotivo devono dominare qualunque mistero esterno. Il click nasce da una coppia con ostacolo specifico, non da formule generiche su amore, destino o segreti.`;
   } else if (/horror|gotic/i.test(`${enriched.genre} ${enriched.subgenre}`)) {
-    refined = `${currentText}
+    const cleaned = stripRomanceContaminationForHorror(currentText);
+    refined = `${cleaned}
 
 KERNEL REFINEMENT:
-L'atmosfera domina l'azione: luogo, decadenza, minaccia e immagine disturbante devono precedere spiegazioni o battaglie. Il click nasce da un simbolo concreto che promette paura, non da fantasy generico.`;
+L'atmosfera domina l'azione: luogo, decadenza, minaccia e immagine disturbante devono precedere spiegazioni o battaglie. Il click nasce da un simbolo concreto che promette paura, non da attrazione, slow burn o payoff romance.`;
   } else {
     refined = `${currentText}
 
@@ -1764,7 +1774,7 @@ const MATRIX: Record<BookFormat, BookKernelTemplate> = {
 const FORMAT_ALIASES: Array<{ format: BookFormat; pattern: RegExp }> = [
   { format: "poetry_collection", pattern: /\b(poetry_collection|raccolta poetica|silloge|poesie|poesia|versi|liriche|poetry)\b/i },
   { format: "short_story_collection", pattern: /\b(short_story_collection|raccolta di racconti|raccolta racconti|racconti horror|story collection|short stories)\b/i },
-  { format: "psychology_guide", pattern: /\b(psychology_guide|psicologia|psicologico|narcisismo|narcisista|ansia|anxiety|trauma|dipendenza affettiva|conflitto interiore)\b/i },
+  { format: "psychology_guide", pattern: /\b(psychology_guide|psicologia|narcisismo|narcisista|ansia|anxiety|trauma|dipendenza affettiva)\b|(?<![\w-])(?:psicologico|conflitto interiore)(?![\w-])/i },
   { format: "self_help", pattern: /\b(self_help|self-help|self help|crescita personale|autostima|vincere l'ansia|come vincere|guida introspettiva)\b/i },
   { format: "business_book", pattern: /\b(business_book|business|marketing|vendere libri|amazon|kdp|leadership|startup|sales|vendite)\b/i },
   { format: "workbook", pattern: /\b(workbook|quaderno operativo|schede|esercizi guidati|autostima workbook)\b/i },
@@ -1773,10 +1783,10 @@ const FORMAT_ALIASES: Array<{ format: BookFormat; pattern: RegExp }> = [
   { format: "academic_book", pattern: /\b(academic_book|libro accademico|trattato accademico|monografia accademica|academic book)\b/i },
   { format: "research_book", pattern: /\b(research_book|libro di ricerca|ricerca scientifica|research book|studio di ricerca)\b/i },
   { format: "historical_analysis", pattern: /\b(historical_analysis|analisi storica|saggio storico|studio storico|historical analysis)\b/i },
-  { format: "travel_guide", pattern: /\b(travel_guide|guida di viaggio|itinerario|itinerari|travel guide|viaggio)\b/i },
+  { format: "memoir", pattern: /\b(memoir|memorie|mia rinascita|la mia storia|periodo difficile|viaggio interiore)\b/i },
+  { format: "travel_guide", pattern: /\b(travel_guide|guida di viaggio|itinerario|itinerari|travel guide)\b|(?<![\w-])viaggio(?![\w-])/i },
   { format: "manual", pattern: /\b(manual|manuale|guida pratica|how to|come fare|tutorial|guida)\b/i },
   { format: "essay", pattern: /\b(essay|saggio|tesi|argomentazione|potere della solitudine)\b/i },
-  { format: "memoir", pattern: /\b(memoir|memorie|mia rinascita|la mia storia|periodo difficile)\b/i },
   { format: "autobiography", pattern: /\b(autobiografia|autobiography)\b/i },
   { format: "biography", pattern: /\b(biografia|biography|vita di)\b/i },
   { format: "picture_book", pattern: /\b(picture_book|albo illustrato|libro illustrato|picture book|silent book)\b/i },
@@ -1928,6 +1938,35 @@ function readConfigText(config?: Partial<BookConfig> | null, extra = ""): string
   ].filter(Boolean).join(" ");
 }
 
+const FICTION_FORMAT_CONTEXT_RE =
+  /\b(romanzo|novel|narrativa|horror|thriller|mystery|giallo|noir|crime|fantasy|romance)\b/i;
+
+function disambiguateAliasFormat(format: BookFormat, text: string): BookFormat {
+  const normalized = normalize(text);
+
+  if (format === "psychology_guide") {
+    if (FICTION_FORMAT_CONTEXT_RE.test(normalized)) return "novel";
+    if (/\bpsicologico\b/.test(normalized) && FICTION_FORMAT_CONTEXT_RE.test(normalized)) return "novel";
+    if (/\bpoesia\b|\bpoetry\b|\braccolta poetica\b/.test(normalized)) return "poetry_collection";
+    if (/\bself help\b|\bmanuale\b|\bguida\b|\bcome vincere\b|\bnarcisismo\b|\bansia\b/.test(normalized)) {
+      return "psychology_guide";
+    }
+    if (/\bpsicologico\b/.test(normalized) && !/\b(horror|thriller|mystery|giallo|noir|crime|romanzo|novel|narrativa)\b/.test(normalized)) {
+      return "psychology_guide";
+    }
+    if (/\bpsicologico\b/.test(normalized)) return "novel";
+  }
+
+  if (format === "travel_guide") {
+    if (/\b(memoir|memorie|autobiograf|viaggio interiore|autobiografia)\b/.test(normalized)) return "memoir";
+    if (/\b(interiore|spirituale|esistenziale|riflessiv)\b/.test(normalized) && /\bviaggio\b/.test(normalized)) {
+      return "memoir";
+    }
+  }
+
+  return format;
+}
+
 function parseFormat(value?: unknown): BookFormat | null {
   const raw = String(value || "").trim();
   if (!raw) return null;
@@ -1938,7 +1977,7 @@ function parseFormat(value?: unknown): BookFormat | null {
   const customAlias = CUSTOM_FORMAT_ALIASES.find((entry) => entry.pattern.test(normalized));
   if (customAlias) return customAlias.format;
   const byAlias = FORMAT_ALIASES.find((entry) => entry.pattern.test(normalized));
-  return byAlias?.format || null;
+  return byAlias ? disambiguateAliasFormat(byAlias.format, normalized) : null;
 }
 
 function inferFormat(config?: Partial<BookConfig> | null, explicitText = ""): BookFormat {
@@ -1957,17 +1996,12 @@ function inferFormat(config?: Partial<BookConfig> | null, explicitText = ""): Bo
   ].filter(Boolean).join(" "));
   const explicitFormatText = FORMAT_ALIASES.find((entry) => entry.pattern.test(userIntentText));
   if (explicitFormatText) {
-    if (explicitFormatText.format === "psychology_guide") {
-      if (/\bromanzo\b|\bnovel\b|\bnarrativa\b/.test(userIntentText)) return "novel";
-      if (/\bpoesia\b|\bpoetry\b|\braccolta poetica\b/.test(userIntentText)) return "poetry_collection";
-      if (/\bself help\b|\bmanuale\b|\bguida\b|\bcome vincere\b|\bnarcisismo\b|\bansia\b/.test(userIntentText)) return "psychology_guide";
-    }
-    return explicitFormatText.format;
+    return disambiguateAliasFormat(explicitFormatText.format, userIntentText);
   }
 
   const text = normalize(readConfigText(config, explicitText));
   const configFormatText = FORMAT_ALIASES.find((entry) => entry.pattern.test(text));
-  if (configFormatText) return configFormatText.format;
+  if (configFormatText) return disambiguateAliasFormat(configFormatText.format, text);
 
   const genre = normalize(config?.genre);
   if (genre && BOOK_TYPE_FORMAT[genre]) return BOOK_TYPE_FORMAT[genre];

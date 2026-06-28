@@ -26,6 +26,8 @@ describe("contextual interview suggestion engine", () => {
     );
     const signals = inferInterviewBookSignals(state);
     expect(signals.category).toBe("gothic-dark");
+    expect(signals.genre).toBe("horror");
+    expect(signals.genre).not.toBe("literary-fiction");
     const labels = chipLabels(state, "targetReader");
     expect(labels.some((l) => /gotico|oscure|segreti|presagi|dark/i.test(l))).toBe(true);
     expect(labels.some((l) => SELF_HELP_LABELS.includes(l))).toBe(false);

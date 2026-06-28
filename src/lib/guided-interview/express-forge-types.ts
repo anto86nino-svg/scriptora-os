@@ -14,6 +14,7 @@ export type ExpressBookFormat =
   | "memoir"
   | "self_help"
   | "study_material"
+  | "workbook"
   | "children_book"
   | "mixed_or_unknown";
 

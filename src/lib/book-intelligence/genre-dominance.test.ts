@@ -5,7 +5,7 @@ describe("Genre Dominance Engine", () => {
   it("keeps dark romance relationship-dominant over mystery", () => {
     const contract = resolveGenreDominanceContract({
       genre: "dark-romance",
-      subcategory: "friends to lovers",
+      subcategory: "dark romance",
       bookFormat: "novel",
     });
     const text = "Attrazione, desiderio, tensione emotiva, ferita e relazione dominano; il mistero resta pressione sulla coppia.";
@@ -38,5 +38,48 @@ describe("Genre Dominance Engine", () => {
 
     expect(score.dominanceRatio).toBe(100);
     expect(score.passed).toBe(true);
+  });
+
+  it("rejects fantasy text dominated by self-help tropes", () => {
+    const contract = resolveGenreDominanceContract({
+      genre: "fantasy",
+      subcategory: "epic fantasy",
+      bookFormat: "novel",
+    });
+    const score = scoreGenreDominance(
+      "Trasformazione personale con checklist, self-help e esercizi pratici per crescita.",
+      contract,
+    );
+
+    expect(contract.genreKey).toBe("fantasy");
+    expect(score.passed).toBe(false);
+    expect(score.forbiddenDominanceHits.length).toBeGreaterThan(0);
+  });
+
+  it("resolves sci-fi dominance contract", () => {
+    const contract = resolveGenreDominanceContract({
+      genre: "sci-fi",
+      bookFormat: "novel",
+    });
+    expect(contract.genreKey).toBe("sci-fi");
+    expect(contract.mustNotDominate).toEqual(expect.arrayContaining(["slow burn"]));
+  });
+
+  it("resolves thriller contract for mystery subgenre", () => {
+    const contract = resolveGenreDominanceContract({
+      genre: "mystery",
+      bookFormat: "novel",
+    });
+    expect(contract.genreKey).toBe("thriller");
+  });
+
+  it("resolves friends-to-lovers as romance subgenre, not dark romance", () => {
+    const contract = resolveGenreDominanceContract({
+      genre: "romance",
+      subcategory: "friends to lovers",
+      bookFormat: "novel",
+    });
+    expect(contract.genreKey).toBe("friends-to-lovers");
+    expect(contract.mustNotDominate).toEqual(expect.arrayContaining(["desiderio proibito oscuro"]));
   });
 });

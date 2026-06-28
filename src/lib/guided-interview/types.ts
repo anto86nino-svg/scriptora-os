@@ -18,6 +18,7 @@ export type InterviewGenre =
   | "romance"
   | "dark-romance"
   | "thriller"
+  | "horror"
   | "fantasy"
   | "literary-fiction"
   | "self-help"

@@ -57,6 +57,24 @@ describe("Study OS material analysis", () => {
     expect(classification.type).not.toBe("law");
   });
 
+  it("uses study-appropriate quiz for academic textbook content, not gothic narrative tropes", () => {
+    const textbook = studyText(
+      "Capitolo",
+      "Definizione: la fotosintesi clorofilliana è un processo biochimico. Obiettivi di apprendimento: comprendere clorofilla, glucosio, anidride carbonica e luce. Modulo 2 introduce concetti chiave, esercizi di verifica e domande d'esame per studenti universitari.",
+    );
+
+    const result = analyzeStudyMaterial(textbook, "biologia-modulo-2.txt", {
+      studyMaterialType: "book_manual",
+      studySubject: "biology",
+      studyGoal: "exam_prep",
+    });
+
+    const quizText = result.quiz.map((item) => item.question).join(" ");
+    expect(result.classification.contentType).not.toBe("narrative_fiction");
+    expect(quizText).not.toMatch(/villa gotica|Viola|Damiano|desiderio proibito|slow burn/i);
+    expect(quizText).toMatch(/concetto|materiale|Capitolo|Biologia|Modulo/i);
+  });
+
   it("keeps true legal templates classified as law", () => {
     const contract = studyText(
       "Contratto",

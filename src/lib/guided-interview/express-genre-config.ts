@@ -7,11 +7,43 @@ const NONFICTION_GENRE_RE =
 
 const POETRY_GENRE_RE = /poesia|poetry|lyric/i;
 
+const MEMOIR_GENRE_RE = /memoir|memorie|autobiograf/i;
+
+const WORKBOOK_GENRE_RE = /workbook|quaderno operativo|schede operativ/i;
+
+const STUDY_MATERIAL_GENRE_RE = /study_material|materiale di studio|materiale studio|sicurezza sul lavoro/i;
+
 const FICTION_GENRE_RE =
-  /romance|thriller|horror|fantasy|narrativ|fiction|giallo|noir|distopi|urban fantasy|dark romance/i;
+  /romance|thriller|horror|fantasy|sci-fi|science fiction|fantascienza|narrativ|fiction|giallo|noir|distopi|urban fantasy|dark romance|friends to lovers|enemies to lovers/i;
+
+export function isMemoirExpressGenre(genre: string): boolean {
+  return MEMOIR_GENRE_RE.test(genre);
+}
+
+export function isWorkbookExpressGenre(genre: string): boolean {
+  return WORKBOOK_GENRE_RE.test(genre);
+}
+
+export function isStudyMaterialExpressGenre(genre: string): boolean {
+  return STUDY_MATERIAL_GENRE_RE.test(genre);
+}
 
 export function isNonfictionExpressGenre(genre: string): boolean {
+  if (isMemoirExpressGenre(genre) || isWorkbookExpressGenre(genre) || isStudyMaterialExpressGenre(genre)) {
+    return false;
+  }
   return NONFICTION_GENRE_RE.test(genre);
+}
+
+export function isFormatDrivenExpressGenre(genre: string, bookFormat?: string): boolean {
+  return (
+    isMemoirExpressGenre(genre) ||
+    isWorkbookExpressGenre(genre) ||
+    isStudyMaterialExpressGenre(genre) ||
+    bookFormat === "memoir" ||
+    bookFormat === "study_material" ||
+    bookFormat === "workbook"
+  );
 }
 
 export function isPoetryExpressGenre(genre: string): boolean {
@@ -19,7 +51,15 @@ export function isPoetryExpressGenre(genre: string): boolean {
 }
 
 export function isFictionExpressGenre(genre: string): boolean {
-  if (isNonfictionExpressGenre(genre) || isPoetryExpressGenre(genre)) return false;
+  if (
+    isNonfictionExpressGenre(genre) ||
+    isPoetryExpressGenre(genre) ||
+    isMemoirExpressGenre(genre) ||
+    isWorkbookExpressGenre(genre) ||
+    isStudyMaterialExpressGenre(genre)
+  ) {
+    return false;
+  }
   return FICTION_GENRE_RE.test(genre) || genre === "altro";
 }
 
@@ -29,6 +69,27 @@ export type ExpressIdeaFieldConfig = {
 };
 
 export function getExpressIdeaFieldConfig(genre: string): ExpressIdeaFieldConfig {
+  if (isMemoirExpressGenre(genre)) {
+    return {
+      label: "Periodo di vita / tema / arco riflessivo",
+      placeholder:
+        "Es. il mio viaggio interiore dopo una crisi — dalla perdita alla ricostruzione dell'identità…",
+    };
+  }
+  if (isWorkbookExpressGenre(genre)) {
+    return {
+      label: "Tema / obiettivo / esercizi del workbook",
+      placeholder:
+        "Es. workbook su autostima con tracker settimanali, schede operative e progressione in 12 settimane…",
+    };
+  }
+  if (isStudyMaterialExpressGenre(genre)) {
+    return {
+      label: "Materia / obiettivi di apprendimento / livello",
+      placeholder:
+        "Es. materiale di studio per esame HACCP con moduli, quiz e obiettivi per modulo…",
+    };
+  }
   if (isNonfictionExpressGenre(genre)) {
     return {
       label: "Tema / problema del lettore / trasformazione promessa",

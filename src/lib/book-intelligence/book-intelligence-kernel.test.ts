@@ -269,6 +269,46 @@ describe("Book Intelligence Kernel", () => {
     expect(kernel.exportIntelligence.layoutProfile).toMatch(/narrative|professional|study|poetry|workbook|recipe/i);
   });
 
+  it("routes psychological horror as novel, not psychology guide", () => {
+    const { kernel } = expectKernel({
+      idea: "horror psicologico in una casa isolata",
+      genre: "horror",
+      category: "Fiction",
+    }, {
+      format: "novel",
+      requiresCharacters: true,
+      structureIncludes: "narrative_chapters",
+      strategy: "generateNovel",
+    });
+
+    expect(kernel.bookFormat).toBe("novel");
+    expect(kernel.bookFormat).not.toBe("psychology_guide");
+  });
+
+  it("routes psychological thriller as novel, not psychology guide", () => {
+    const kernel = resolveBookKernel({
+      idea: "thriller psicologico con indagine e sospetti",
+      config: config({ genre: "thriller", category: "Fiction" }),
+    });
+
+    expect(kernel.bookFormat).toBe("novel");
+    expect(kernel.bookFormat).not.toBe("psychology_guide");
+  });
+
+  it("routes reflective travel memoir as memoir, not travel guide", () => {
+    const { kernel } = expectKernel({
+      idea: "memoir di un viaggio interiore dopo una crisi",
+    }, {
+      format: "memoir",
+      requiresCharacters: true,
+      structureIncludes: "memoir_arc",
+      strategy: "generateMemoir",
+    });
+
+    expect(kernel.bookFormat).toBe("memoir");
+    expect(kernel.bookFormat).not.toBe("travel_guide");
+  });
+
   it("routes travel guide as practical travel sections", () => {
     const { kernel } = expectKernel({
       idea: "guida di viaggio con itinerari di 7 giorni in Sicilia",

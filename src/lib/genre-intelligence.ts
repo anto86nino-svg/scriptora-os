@@ -1072,16 +1072,41 @@ export function resolveGenreKey(genre: string, subcategory?: string): GenreKey {
     g.includes("spirit")
   )
     return "spirituality";
+  if (
+    (sub.includes("gothic") || sub.includes("gotico") || sub.includes("folk")) &&
+    (sub.includes("horror") || g.includes("horror") || g.includes("gothic") || g.includes("gotico"))
+  ) {
+    return "horror";
+  }
   if (sub.includes("gothic") || sub.includes("gotico") || sub.includes("noir")) return "thriller";
   if (g.includes("dark")) return "dark-romance";
   if (g.includes("romance")) return "romance";
-  if (g.includes("thrill") || g.includes("gothic")) return "thriller";
+  if (g.includes("thrill") || (g.includes("gothic") && !g.includes("horror"))) return "thriller";
   if (g.includes("fantasy")) return "fantasy";
   if (g.includes("philos") || g.includes("filos")) return "philosophy";
   if (g.includes("business")) return "business";
   if (g.includes("memoir") || g.includes("autobio")) return "memoir";
+  if (
+    g.includes("mystery") ||
+    g.includes("crime") ||
+    g.includes("giallo") ||
+    sub.includes("mystery") ||
+    sub.includes("crime") ||
+    sub.includes("giallo")
+  ) {
+    return "thriller";
+  }
   if (g.includes("self") || g.includes("crescita") || g.includes("ansia"))
     return "self-help";
+
+  if (
+    g.includes("fiction") ||
+    g.includes("narrativ") ||
+    g.includes("romanzo") ||
+    g.includes("novel")
+  ) {
+    return "thriller";
+  }
 
   return "self-help";
 }

@@ -233,7 +233,7 @@ function isRomance(genre: string): boolean {
 }
 
 function isHorror(genre: string): boolean {
-  return /horror/i.test(genre);
+  return /horror|gotico|gothic|paura|soprannaturale/i.test(genre);
 }
 
 function isThriller(genre: string): boolean {

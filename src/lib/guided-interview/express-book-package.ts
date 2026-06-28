@@ -12,8 +12,11 @@ import type {
 import type { ExpressForgeInput } from "./express-forge-types";
 import {
   getExpressVariantMeta,
+  isMemoirExpressGenre,
   isNonfictionExpressGenre,
   isPoetryExpressGenre,
+  isStudyMaterialExpressGenre,
+  isWorkbookExpressGenre,
   resolveExpressBookType,
   type ExpressScenarioVariant,
 } from "./express-genre-config";
@@ -138,15 +141,26 @@ export type ExpressBookScenario = CompleteExpressBookPackage;
 const GENRE_META: Record<string, { subgenre: string; normalizedGenre: string }> = {
   romance: { subgenre: "contemporary romance", normalizedGenre: "romance" },
   "dark romance": { subgenre: "dark romance", normalizedGenre: "dark-romance" },
+  "friends to lovers": { subgenre: "friends to lovers", normalizedGenre: "romance" },
+  "friends-to-lovers": { subgenre: "friends to lovers", normalizedGenre: "romance" },
+  "enemies to lovers": { subgenre: "enemies to lovers", normalizedGenre: "romance" },
+  "enemies-to-lovers": { subgenre: "enemies to lovers", normalizedGenre: "romance" },
   thriller: { subgenre: "psychological thriller", normalizedGenre: "thriller" },
+  mystery: { subgenre: "mystery", normalizedGenre: "thriller" },
   horror: { subgenre: "supernatural horror", normalizedGenre: "horror" },
   fantasy: { subgenre: "epic fantasy", normalizedGenre: "fantasy" },
+  "sci-fi": { subgenre: "science fiction", normalizedGenre: "sci-fi" },
+  "science fiction": { subgenre: "science fiction", normalizedGenre: "sci-fi" },
+  fantascienza: { subgenre: "science fiction", normalizedGenre: "sci-fi" },
   "self-help": { subgenre: "personal growth", normalizedGenre: "self-help" },
   business: { subgenre: "business growth", normalizedGenre: "business" },
   manuale: { subgenre: "practical guide", normalizedGenre: "manual" },
   saggio: { subgenre: "essay", normalizedGenre: "essay" },
   educational: { subgenre: "educational", normalizedGenre: "educational" },
   poesia: { subgenre: "lyric poetry", normalizedGenre: "poetry" },
+  memoir: { subgenre: "reflective memoir", normalizedGenre: "memoir" },
+  workbook: { subgenre: "practical workbook", normalizedGenre: "workbook" },
+  study_material: { subgenre: "structured study", normalizedGenre: "study_material" },
 };
 
 function chapterCountForInput(input: ExpressForgeInput): number {
@@ -212,8 +226,24 @@ function isDarkRomance(genre: string): boolean {
   return /dark.?romance|romance.*dark/i.test(genre);
 }
 
+function isFriendsToLoversGenre(genre: string): boolean {
+  return /friends to lovers|friends-to-lovers|amici ad amanti/i.test(genre);
+}
+
+function isEnemiesToLoversGenre(genre: string): boolean {
+  return /enemies to lovers|enemies-to-lovers|nemici che si innamorano|nemici ad amanti/i.test(genre);
+}
+
+function isRomanceSubgenre(genre: string): boolean {
+  return isFriendsToLoversGenre(genre) || isEnemiesToLoversGenre(genre);
+}
+
 function isRomance(genre: string): boolean {
-  return /romance/i.test(genre);
+  return /romance/i.test(genre) && !isDarkRomance(genre);
+}
+
+function isScifiGenre(genre: string): boolean {
+  return /sci\s*fi|science fiction|fantascienza|cyberpunk|distopi/i.test(genre);
 }
 
 function isFantasyGenre(genre: string): boolean {
@@ -229,6 +259,9 @@ function isHorrorGenre(genre: string): boolean {
 }
 
 function defaultLeadForGenre(genre: string): { name: string; role: string } {
+  if (isScifiGenre(genre)) {
+    return { name: "Lena", role: "ingegnera di bordo costretta a scegliere tra protocollo e sopravvivenza" };
+  }
   if (isFantasyGenre(genre)) {
     return { name: "Arianna", role: "erede di un potere antico che non ha mai chiesto" };
   }
@@ -238,7 +271,7 @@ function defaultLeadForGenre(genre: string): { name: string; role: string } {
   if (isHorrorGenre(genre)) {
     return { name: "Iris", role: "sopravvissuta attratta da una verità proibita" };
   }
-  if (isDarkRomance(genre) || isRomance(genre)) {
+  if (isDarkRomance(genre) || isRomance(genre) || isRomanceSubgenre(genre)) {
     return { name: "Elena", role: "protagonista segnata dal passato" };
   }
   return { name: "Arianna", role: "protagonista chiamata a una scelta irreversibile" };
@@ -248,6 +281,11 @@ function defaultCounterpartForGenre(
   genre: string,
   variant: ExpressScenarioVariant,
 ): { name: string; role: string } {
+  if (isScifiGenre(genre)) {
+    return variant === "bold"
+      ? { name: "Kael", role: "ex ufficiale della flotta con un segreto che può spegnere la colonia" }
+      : { name: "Kael", role: "comandante di missione con agenda nascosta" };
+  }
   if (isFantasyGenre(genre)) {
     return variant === "bold"
       ? { name: "Kael", role: "principe esiliato legato alla stessa maledizione" }
@@ -259,15 +297,22 @@ function defaultCounterpartForGenre(
   if (isHorrorGenre(genre)) {
     return { name: "La Casa", role: "presenza antagonica che divora memoria e identità" };
   }
-  if (isDarkRomance(genre) || isRomance(genre)) {
+  if (isDarkRomance(genre) || isRomance(genre) || isRomanceSubgenre(genre)) {
     return variant === "bold"
       ? { name: "Marco", role: "proprietario magnetico, colpevole e irresistibile" }
-      : { name: "Marco", role: "proprietario affascinante e pericoloso" };
+      : isFriendsToLoversGenre(genre)
+        ? { name: "Marco", role: "migliore amico diventato confine emotivo impossibile" }
+        : isEnemiesToLoversGenre(genre)
+          ? { name: "Marco", role: "rivale ostile con una ferita speculare alla sua" }
+          : { name: "Marco", role: "proprietario affascinante e pericoloso" };
   }
   return { name: "La Forza Opposta", role: "forza antagonica che specchia e sfida il protagonista" };
 }
 
 function defaultSettingForGenre(genre: string): string {
+  if (isScifiGenre(genre)) {
+    return "Stazione orbitale e colonia al limite del sistema, dove tecnologia, protocollo e sopravvivenza si scontrano";
+  }
   if (isFantasyGenre(genre)) {
     return "Regno diviso tra città di cenere, foreste incantate e una corona legata a una magia proibita";
   }
@@ -277,14 +322,26 @@ function defaultSettingForGenre(genre: string): string {
   if (isHorrorGenre(genre)) {
     return "Luogo isolato dove il confine tra memoria, colpa e presenza soprannaturale si assottiglia";
   }
-  if (isDarkRomance(genre) || isRomance(genre)) {
-    return "Maniero isolato, muri umidi e stanze chiuse dove ogni oggetto sembra custodire un segreto";
+  if (isDarkRomance(genre) || isRomance(genre) || isRomanceSubgenre(genre)) {
+    return isFriendsToLoversGenre(genre)
+      ? "Contesto quotidiano condiviso — lavoro, città, amicizia — dove ogni prossimità diventa confine"
+      : isEnemiesToLoversGenre(genre)
+        ? "Arena di conflitto professionale o familiare dove attrito e desiderio convivono"
+        : "Maniero isolato, muri umidi e stanze chiuse dove ogni oggetto sembra custodire un segreto";
   }
   return "Mondo narrativo ad alta tensione costruito intorno alla scelta irreversibile della protagonista";
 }
 
 function defaultTitleForGenre(input: ExpressForgeInput, variant: ExpressScenarioVariant): string {
   if (input.title?.trim()) return input.title.trim();
+
+  if (isScifiGenre(input.genre)) {
+    return variant === "bold"
+      ? "Orbita dei Fantasmi"
+      : variant === "commercial"
+        ? "Il Codice dell'Ultima Alba"
+        : "Memoria delle Stelle";
+  }
 
   if (isFantasyGenre(input.genre)) {
     return variant === "bold"
@@ -329,8 +386,45 @@ function buildGenreAwareVariantCopy(
   commercialPitch?: string;
   whyItSells?: string;
 } {
-  if (isDarkRomance(input.genre) || isRomance(input.genre)) {
+  if (isDarkRomance(input.genre) || isRomance(input.genre) || isRomanceSubgenre(input.genre)) {
     return {};
+  }
+
+  if (isScifiGenre(input.genre)) {
+    if (variant === "safe") {
+      return {
+        hook: `${protagonist} scopre che la missione nasconde un protocollo che nessuno doveva attivare.`,
+        editorialSynopsis: `La versione più stabile dello sci-fi: mondo credibile, tecnologia comprensibile, posta in gioco chiara. ${protagonist} affronta ${setting.toLowerCase()} dove ogni sistema può salvare o condannare la colonia.`,
+        centralConflict: `${protagonist} deve rispettare il protocollo mentre ${counterpart} rivela che la minaccia è più vicina del previsto.`,
+        stakes: "Sopravvivenza, identità, futuro della colonia e verità sepolta.",
+        endingDirection: "Finale risolutivo: scelta tecnologica irreversibile con costo umano visibile.",
+        finalEmotion: "Meraviglia speculativa, tensione e senso di conseguenza.",
+        commercialPitch: "Sci-fi stabile: worldbuilding, tech stakes e payoff chiaro.",
+        whyItSells: "Promessa sci-fi leggibile: futuro possibile, dilemma morale e tensione crescente.",
+      };
+    }
+    if (variant === "commercial") {
+      return {
+        hook: `Ogni allarme che ${protagonist} spegne sembra risolvere il problema — finché capisce che il sistema è stato progettato per fallire.`,
+        editorialSynopsis: `La versione più vendibile dello sci-fi: hook immediato, rivelazioni a strati, tech stakes e capitoli ad alta tensione. Il lettore continua perché ogni risposta cambia la posta in gioco della missione.`,
+        centralConflict: `${protagonist} deve distinguere guasto tecnico e sabotaggio prima che la colonia ceda.`,
+        stakes: "Vita dell'equipaggio, verità della missione, futuro del sistema solare.",
+        endingDirection: "Finale ad alto impatto: verità rivelata e scelta che ridefinisce il futuro.",
+        finalEmotion: "Adrenalina speculativa e eco di conseguenza.",
+        commercialPitch: "Sci-fi commerciale: ritmo, tech stakes e cliffhanger puliti.",
+        whyItSells: "Alta leggibilità, worldbuilding vendibile e promessa di dilemma morale forte.",
+      };
+    }
+    return {
+      hook: `La tecnologia non tradisce ${protagonist}: le tradisce ciò che ha deciso di non vedere.`,
+      editorialSynopsis: `La versione più audace dello sci-fi: ambiguità morale, futuro instabile, identità e sistema come specchi. La missione non chiede solo sopravvivenza — chiede chi merita di continuare.`,
+      centralConflict: `${protagonist} deve scegliere tra protocollo e verità, rischiando di diventare ciò che combatte.`,
+      stakes: "Identità, memoria, futuro dell'umanità e contagio della scelta.",
+      endingDirection: "Finale disturbante: vittoria possibile, ma nessuna innocenza resta intatta.",
+      finalEmotion: "Inquietudine speculativa, shock e domanda finale.",
+      commercialPitch: "Sci-fi bold: moralità ambigua, tech e finale memorabile.",
+      whyItSells: "Più distintivo: ideale per sci-fi adulto con posta in gioco alta.",
+    };
   }
 
   if (isHorrorGenre(input.genre)) {
@@ -470,6 +564,10 @@ function buildGenreAwareEditorialSynopsis(
     return `${intensity} ${lead.name} entra in ${setting.toLowerCase()} e scopre che il potere non è un dono: è un debito. ${counterpart.name} può guidarla o tradirla, ma ogni passo verso la corona pretende memoria, sangue e identità.`;
   }
 
+  if (isScifiGenre(input.genre)) {
+    return `Uno sci-fi ${input.tone} costruito su tecnologia, protocollo e posta in gioco speculativa. ${lead.name} deve navigare ${setting.toLowerCase()} mentre ${counterpart.name} rivela che la minaccia non è solo esterna — è nel design della missione stessa.`;
+  }
+
   if (isThrillerGenre(input.genre)) {
     return `Un thriller ${input.tone} costruito su prove mancanti, colpe sepolte e pressione crescente. ${lead.name} deve seguire una pista che qualcuno ha cancellato, mentre ${counterpart.name} trasforma ogni risposta in una minaccia più vicina.`;
   }
@@ -606,10 +704,26 @@ function buildChapterSeeds(count: number, genre: string, variant: ExpressScenari
     "Aftermath",
     "Finale e nuovo equilibrio",
   ];
+  const horrorArc = [
+    "Arrivo nel luogo malato",
+    "Primi segni e presenze",
+    "Segreto che contamina",
+    "Inquietudine crescente",
+    "Midpoint — origine della minaccia",
+    "Isolamento e decadenza",
+    "Confronto con la paura",
+    "Rivelazione disturbante",
+    "Escalation soprannaturale",
+    "Climax nel cuore del buio",
+    "Contagio e conseguenza",
+    "Finale inquieto",
+  ];
   const labels =
-    isRomance(genre) || /thriller|horror/i.test(genre)
-      ? romanceArc
-      : Array.from({ length: count }, (_, i) => `Atto ${i + 1} — escalation narrativa`);
+    isHorrorGenre(genre)
+      ? horrorArc
+      : isRomance(genre) || /thriller/i.test(genre)
+        ? romanceArc
+        : Array.from({ length: count }, (_, i) => `Atto ${i + 1} — escalation narrativa`);
 
   return Array.from({ length: count }, (_, i) => {
     const title = labels[i % labels.length] ?? `Capitolo ${i + 1}`;
@@ -1167,10 +1281,487 @@ function buildPoetryExpressPackage(
   };
 }
 
+function buildFormatChapterSeeds(
+  count: number,
+  labels: string[],
+  variant: ExpressScenarioVariant,
+  purposePrefix: string,
+): ChapterBlueprintSeed[] {
+  return Array.from({ length: count }, (_, i) => {
+    const title = labels[i % labels.length] ?? `Sezione ${i + 1}`;
+    return {
+      id: `express-fmt-ch-${i + 1}`,
+      chapter: i + 1,
+      title,
+      summary: `${purposePrefix}: ${title.toLowerCase()}.`,
+      purpose: purposePrefix,
+      goal: `Completare la tappa ${i + 1} con chiarezza e continuità.`,
+      conflict: variant === "bold" ? "Resistenza interna e verità difficile da nominare" : "Gap tra intenzione e pratica",
+      hook: `Apertura operativa per ${title.toLowerCase()}.`,
+      expectedSetting: "Contesto del lettore / autore",
+      subchapters: [],
+    };
+  });
+}
+
+function buildMemoirExpressPackage(
+  input: ExpressForgeInput,
+  variant: ExpressScenarioVariant,
+): CompleteExpressBookPackage {
+  const meta = getExpressVariantMeta(input.genre, variant);
+  const genreMeta = GENRE_META.memoir;
+  const seed = ideaCore(input);
+  const chapterCount = chapterCountForInput(input);
+  const language = normalizeLanguage(input.language);
+  const lifeTheme = seed.split(/[.!?…]/)[0]?.trim() || "crisi, perdita e ricostruzione";
+  const title = input.title?.trim() || (variant === "bold" ? "Ciò che resta dopo" : `Memorie di ${lifeTheme.slice(0, 32)}`);
+  const subtitle =
+    input.subtitle?.trim() ||
+    (variant === "bold"
+      ? "Un viaggio interiore senza maschere"
+      : `Un memoir riflessivo su ${lifeTheme.toLowerCase()}.`);
+  const editorialSynopsis = `${seed || subtitle} Un memoir strutturato in fasi di vita: origine, frattura, svolta e integrazione. Voce autentica, arco riflessivo e scene di memoria — non trama da romanzo né payoff romance.`;
+  const hook = `Un memoir su ${lifeTheme.toLowerCase()} — memoria, verità e ricostruzione dell'identità.`;
+  const marketPromise = editorialSynopsis.slice(0, 220);
+  const centralConflict = `Riconciliare ${lifeTheme.toLowerCase()} con la versione di sé che emerge dal racconto`;
+  const emotionalWound = lifeTheme;
+  const desire = "Dare forma alla propria storia senza tradire la verità vissuta";
+  const fear = "Esporsi e scoprire che il passato non può essere riscritto";
+  const stakes = "Identità, memoria, relazioni e senso di continuità";
+  const endingDirection =
+    variant === "bold"
+      ? "Integrazione lucida: il passato resta, ma cambia il modo di portarlo"
+      : "Chiusura riflessiva con senso di direzione e verità nominata";
+  const finalEmotion = variant === "bold" ? "Catarsi sobria e eco lunga" : "Chiarezza emotiva e accettazione";
+  const midpoint = "Svolta centrale: la frattura diventa punto di non ritorno nel racconto";
+  const climax = "Confronto con la verità più scomoda del periodo narrato";
+  const memoirArc = [
+    "Origine e contesto",
+    "Prima crepa",
+    "Periodo di crisi",
+    "Incontro decisivo",
+    "Svolta interiore",
+    "Perdita o limite",
+    "Riconoscimento",
+    "Ricostruzione",
+    "Nuovo equilibrio",
+    "Integrazione",
+    "Eco finale",
+    "Lettera al lettore",
+  ];
+  const chapterBlueprintSeeds = buildFormatChapterSeeds(
+    chapterCount,
+    memoirArc,
+    variant,
+    "Fase di vita nel memoir",
+  );
+  const partial = { hook, midpoint, climax, endingDirection, finalEmotion };
+  const keyScenes = buildKeyScenes(partial).map((s, i) =>
+    i === 0
+      ? { ...s, beat: "Scena di apertura — memoria che ancora pesa", stakes: "Il lettore entra nel periodo vissuto" }
+      : i === 3
+        ? { ...s, beat: endingDirection, stakes: finalEmotion }
+        : { ...s, beat: s.beat.replace(/conflitto|verità/i, "momento di memoria"), stakes: "Verità riflessiva, non cliffhanger narrativo" },
+  );
+  const storyRoom: StoryRoomState = {
+    scenes: keyScenes.map((s, i) => ({
+      id: `express-memoir-scene-${i}`,
+      role: s.role,
+      beat: s.beat,
+      stakes: s.stakes,
+    })),
+    arcBeats: [
+      { id: "arc-1", act: "setup", label: "Origine", change: "Contesto e voce del racconto" },
+      { id: "arc-2", act: "pressure", label: "Frattura", change: midpoint },
+      { id: "arc-4", act: "finale", label: "Integrazione", change: endingDirection },
+    ],
+    ending: {
+      tone: input.tone,
+      protagonistFate: endingDirection,
+      readerFeeling: finalEmotion,
+      irreversibleChoice: climax,
+    },
+  };
+
+  return {
+    id: `express-${variant}`,
+    variant,
+    label: meta.label,
+    title,
+    subtitle,
+    hook,
+    logline: seed.slice(0, 120) || hook,
+    editorialSynopsis,
+    genre: genreMeta.normalizedGenre,
+    subgenre: genreMeta.subgenre,
+    language,
+    targetAudience: "Lettori di memoir e narrativa autobiografica riflessiva",
+    marketPromise,
+    protagonist: "Voce autoriale in prima persona",
+    antagonistOrLoveInterest: "Passato, vergogna e narrativa limitante",
+    secondaryCharacters: ["Figure del passato", "Alleato di fase", "Specchio critico"],
+    setting: "Luoghi e periodi della vita reale raccontata",
+    atmosphere: `${input.tone}, intimo, riflessivo, autentico`,
+    centralConflict,
+    emotionalWound,
+    desire,
+    fear,
+    stakes,
+    moralBoundary: "Niente invenzioni su fatti verificabili, niente payoff romance forzato",
+    antiDriftRules: [
+      "Mantieni il formato memoir: fasi di vita, non trama da romanzo",
+      "Niente restauratrice, love interest o tropi dark romance",
+      "Ogni capitolo avanza l'arco riflessivo, non un cliffhanger narrativo",
+      "Il finale integra verità e memoria, non payoff romantico",
+    ],
+    structurePreference: `${chapterCount} capitoli · arco di vita riflessivo`,
+    chapterCount,
+    subchaptersEnabled: input.length === "epico" || input.length === "pro" || input.length === "lungo",
+    chapterBlueprintSeeds,
+    keyScenes,
+    midpoint,
+    climax,
+    endingDirection,
+    finalEmotion,
+    frontMatter: "Nota dell'autore · Avvertenza su memoria e verità · Dediche",
+    backMatter: "Ringraziamenti · Nota sul processo · Domande per il lettore",
+    authorName: "Da definire",
+    copyright: `© ${new Date().getFullYear()} — titolare da confermare`,
+    commercialPitch: meta.pitch,
+    editorialRisks: [meta.risk],
+    whyItSells: "Memoir autentico con arco riflessivo riconoscibile e voce distintiva",
+    reflectionPrompts: [
+      "Quale verità stai evitando di nominare?",
+      "Cosa è cambiato nel modo in cui racconti questa fase?",
+      "Quale relazione o luogo ancora pesa di più?",
+    ],
+    characters: [],
+    storyRoom,
+    storyFuture: {
+      endingTone: input.tone,
+      lastPageFeeling: finalEmotion,
+      hopeOrDread: variant === "bold" ? "dread" : "hope",
+    },
+    bookPromises: {
+      emotional: [marketPromise],
+      relationship: [],
+      plot: memoirArc.slice(0, 4),
+      character: ["Arco riflessivo della voce autoriale"],
+      scene: keyScenes.map((s) => s.beat),
+    },
+    blueprintReadiness: "complete",
+  };
+}
+
+function buildWorkbookExpressPackage(
+  input: ExpressForgeInput,
+  variant: ExpressScenarioVariant,
+): CompleteExpressBookPackage {
+  const meta = getExpressVariantMeta(input.genre, variant);
+  const genreMeta = GENRE_META.workbook;
+  const seed = ideaCore(input);
+  const chapterCount = chapterCountForInput(input);
+  const language = normalizeLanguage(input.language);
+  const theme = seed.split(/[.!?…]/)[0]?.trim() || "crescita personale operativa";
+  const methodFramework =
+    variant === "bold"
+      ? "Tracker ARC: Awareness → Routine → Checkpoint"
+      : variant === "commercial"
+        ? "Framework 4S: Setup, Scheda, Svolgimento, Sintesi"
+        : "Percorso 3T: Tema, Task, Tracciamento";
+  const exercises = buildNonfictionExercises(seed, variant);
+  const title = input.title?.trim() || `Workbook: ${theme.slice(0, 36)}`;
+  const subtitle =
+    input.subtitle?.trim() ||
+    (variant === "commercial"
+      ? "Esercizi, tracker e progressione settimanale"
+      : "Quaderno operativo con schede e checkpoint");
+  const editorialSynopsis = `${seed || subtitle} Workbook pratico con moduli, esercizi guidati, tracker di progressione e checkpoint misurabili — nessuna trama narrativa.`;
+  const hook = `Workbook operativo su ${theme.toLowerCase()} — esercizi, tracker e progressione concreta.`;
+  const marketPromise = editorialSynopsis.slice(0, 220);
+  const workbookArc = [
+    "Diagnosi iniziale",
+    "Setup e tracker",
+    "Modulo 1 — esercizi base",
+    "Checkpoint settimana 1",
+    "Modulo 2 — pratica guidata",
+    "Scheda operativa",
+    "Checkpoint intermedio",
+    "Modulo 3 — consolidamento",
+    "Tracker avanzato",
+    "Revisione risultati",
+    "Piano di mantenimento",
+    "Chiusura e prossimi passi",
+  ];
+  const chapterBlueprintSeeds = buildFormatChapterSeeds(
+    chapterCount,
+    workbookArc,
+    variant,
+    "Modulo workbook",
+  );
+  const partial = {
+    hook,
+    midpoint: "Checkpoint intermedio: il lettore misura progressi con tracker e scheda",
+    climax: "Integrazione: routine sostenibile e piano di mantenimento",
+    endingDirection: "Il lettore chiude con tracker compilato e prossima azione pianificata",
+    finalEmotion: "Agency operativa e chiarezza",
+  };
+  const keyScenes = buildKeyScenes(partial);
+
+  return {
+    id: `express-${variant}`,
+    variant,
+    label: meta.label,
+    title,
+    subtitle,
+    hook,
+    logline: hook,
+    editorialSynopsis,
+    genre: genreMeta.normalizedGenre,
+    subgenre: genreMeta.subgenre,
+    language,
+    targetAudience: "Lettori che vogliono risultati pratici con esercizi e tracker",
+    marketPromise,
+    protagonist: "Lettore-operatore del workbook",
+    antagonistOrLoveInterest: "Procrastinazione e abitudini che sabotano la pratica",
+    secondaryCharacters: [],
+    setting: "Contesto quotidiano del lettore — casa, lavoro, routine",
+    atmosphere: `${input.tone}, operativo, chiaro, orientato all'azione`,
+    centralConflict: `Trasformare ${theme.toLowerCase()} da intenzione a pratica tracciata`,
+    emotionalWound: `Blocco su ${theme.toLowerCase()}`,
+    desire: "Avanzare con esercizi misurabili e tracker visibili",
+    fear: "Compilare schede senza cambiare comportamento reale",
+    stakes: "Tempo, disciplina e risultati concreti",
+    moralBoundary: "Niente promesse miracle; esercizi realistici e tracciabili",
+    antiDriftRules: [
+      "Mantieni il formato workbook: esercizi, tracker, checkpoint",
+      "Niente protagonista fiction, love interest o scene narrative",
+      "Ogni capitolo include task operativo o scheda",
+      "Il finale chiude con piano di mantenimento misurabile",
+    ],
+    structurePreference: `${chapterCount} moduli · workbook con tracker`,
+    chapterCount,
+    subchaptersEnabled: true,
+    chapterBlueprintSeeds,
+    keyScenes,
+    midpoint: partial.midpoint,
+    climax: partial.climax,
+    endingDirection: partial.endingDirection,
+    finalEmotion: partial.finalEmotion,
+    frontMatter: "Come usare il workbook · Legenda tracker · Nota dell'autore",
+    backMatter: "Schede ripetibili · Tracker sintetico · Risorse",
+    authorName: "Da definire",
+    copyright: `© ${new Date().getFullYear()} — titolare da confermare`,
+    commercialPitch: meta.pitch,
+    editorialRisks: [meta.risk],
+    whyItSells: "Workbook con progressione chiara, esercizi e tracker — facile da posizionare",
+    methodFramework,
+    exercises,
+    reflectionPrompts: buildNonfictionReflectionPrompts(variant),
+    idealReader: "Adulti che vogliono strumenti pratici, non teoria",
+    characters: [],
+    storyRoom: {
+      scenes: keyScenes.map((s, i) => ({
+        id: `express-wb-scene-${i}`,
+        role: s.role,
+        beat: s.beat,
+        stakes: s.stakes,
+      })),
+      arcBeats: [
+        { id: "arc-1", act: "setup", label: "Setup", change: "Diagnosi e tracker iniziale" },
+        { id: "arc-2", act: "pressure", label: "Pratica", change: partial.midpoint },
+        { id: "arc-4", act: "finale", label: "Mantenimento", change: partial.endingDirection },
+      ],
+      ending: {
+        tone: input.tone,
+        protagonistFate: partial.endingDirection,
+        readerFeeling: partial.finalEmotion,
+        irreversibleChoice: partial.climax,
+      },
+    },
+    storyFuture: {
+      endingTone: input.tone,
+      lastPageFeeling: partial.finalEmotion,
+      hopeOrDread: "hope",
+    },
+    bookPromises: {
+      emotional: [marketPromise],
+      relationship: [],
+      plot: [methodFramework, ...exercises.slice(0, 2)],
+      character: ["Progressione del lettore via tracker"],
+      scene: exercises.slice(0, 3),
+    },
+    blueprintReadiness: "complete",
+  };
+}
+
+function buildStudyMaterialExpressPackage(
+  input: ExpressForgeInput,
+  variant: ExpressScenarioVariant,
+): CompleteExpressBookPackage {
+  const meta = getExpressVariantMeta(input.genre, variant);
+  const genreMeta = GENRE_META.study_material;
+  const seed = ideaCore(input);
+  const chapterCount = chapterCountForInput(input);
+  const language = normalizeLanguage(input.language);
+  const subject = seed.split(/[.!?…]/)[0]?.trim() || "materia da apprendere";
+  const methodFramework =
+    variant === "bold"
+      ? "Moduli MLO: Modulo → Learning objectives → Output"
+      : variant === "commercial"
+        ? "Struttura LEAP: Learn, Example, Apply, Practice"
+        : "Schema 3O: Obiettivo, Spiegazione, Verifica";
+  const title = input.title?.trim() || `Materiale di studio: ${subject.slice(0, 36)}`;
+  const subtitle =
+    input.subtitle?.trim() ||
+    (variant === "commercial"
+      ? "Moduli, obiettivi e verifiche per modulo"
+      : "Apprendimento strutturato con quiz e sintesi");
+  const editorialSynopsis = `${seed || subtitle} Materiale di studio organizzato in moduli con obiettivi di apprendimento, esempi, quiz e sintesi — senza trama narrativa.`;
+  const hook = `Materiale di studio su ${subject.toLowerCase()} — moduli chiari e obiettivi misurabili.`;
+  const marketPromise = editorialSynopsis.slice(0, 220);
+  const studyArc = [
+    "Introduzione e obiettivi generali",
+    "Modulo 1 — fondamenti",
+    "Esempi guidati",
+    "Quiz modulo 1",
+    "Modulo 2 — applicazione",
+    "Esercizi di verifica",
+    "Sintesi intermedia",
+    "Modulo 3 — casi pratici",
+    "Checklist di ripasso",
+    "Simulazione d'esame",
+    "Errori frequenti",
+    "Recap finale",
+  ];
+  const chapterBlueprintSeeds = buildFormatChapterSeeds(
+    chapterCount,
+    studyArc,
+    variant,
+    "Modulo di studio",
+  ).map((chapter, i) => ({
+    ...chapter,
+    goal: `Obiettivo di apprendimento modulo ${i + 1}: comprensione e verifica`,
+    summary: `Modulo ${i + 1} con obiettivi, spiegazione, esempi e verifica.`,
+  }));
+  const partial = {
+    hook,
+    midpoint: "Verifica intermedia: il lettore testa comprensione con quiz e sintesi",
+    climax: "Simulazione finale e recap degli obiettivi",
+    endingDirection: "Il lettore chiude con checklist di ripasso e autovalutazione",
+    finalEmotion: "Sicurezza operativa sul contenuto",
+  };
+  const keyScenes = buildKeyScenes(partial);
+
+  return {
+    id: `express-${variant}`,
+    variant,
+    label: meta.label,
+    title,
+    subtitle,
+    hook,
+    logline: hook,
+    editorialSynopsis,
+    genre: genreMeta.normalizedGenre,
+    subgenre: genreMeta.subgenre,
+    language,
+    targetAudience: "Studenti e professionisti che preparano esami o certificazioni",
+    marketPromise,
+    protagonist: "Studente / professionista in formazione",
+    antagonistOrLoveInterest: "Gap di comprensione e overload informativo",
+    secondaryCharacters: [],
+    setting: "Contesto formativo — corso, esame, aggiornamento professionale",
+    atmosphere: `${input.tone}, chiaro, didattico, progressivo`,
+    centralConflict: `Padroneggiare ${subject.toLowerCase()} con moduli verificabili`,
+    emotionalWound: `Incertezza su ${subject.toLowerCase()}`,
+    desire: "Comprendere, applicare e superare la verifica",
+    fear: "Studiare senza sapere se si è pronti",
+    stakes: "Esito dell'esame, competenza professionale, tempo investito",
+    moralBoundary: "Niente contenuti inventati su normative o procedure critiche",
+    antiDriftRules: [
+      "Mantieni il formato study material: moduli e obiettivi di apprendimento",
+      "Niente trama fiction, love interest o scene narrative",
+      "Ogni modulo chiude con verifica o sintesi",
+      "Il finale offre recap e autovalutazione",
+    ],
+    structurePreference: `${chapterCount} moduli · materiale di studio`,
+    chapterCount,
+    subchaptersEnabled: true,
+    chapterBlueprintSeeds,
+    keyScenes,
+    midpoint: partial.midpoint,
+    climax: partial.climax,
+    endingDirection: partial.endingDirection,
+    finalEmotion: partial.finalEmotion,
+    frontMatter: "Come usare il materiale · Obiettivi generali · Prerequisiti",
+    backMatter: "Glossario · Checklist finale · Risorse",
+    authorName: "Da definire",
+    copyright: `© ${new Date().getFullYear()} — titolare da confermare`,
+    commercialPitch: meta.pitch,
+    editorialRisks: [meta.risk],
+    whyItSells: "Materiale strutturato con obiettivi chiari e verifiche — adatto a formazione ed esami",
+    methodFramework,
+    exercises: [
+      "Quiz a risposta multipla per modulo",
+      "Esercizi di applicazione guidata",
+      "Checklist di autovalutazione finale",
+      "Sintesi operativa per ripasso veloce",
+    ],
+    reflectionPrompts: [
+      "Quali obiettivi del modulo hai già raggiunto?",
+      "Dove serve un secondo passaggio di studio?",
+      "Quali errori frequenti devi evitare in verifica?",
+    ],
+    idealReader: "Chi prepara esami o certificazioni con poco tempo",
+    characters: [],
+    storyRoom: {
+      scenes: keyScenes.map((s, i) => ({
+        id: `express-study-scene-${i}`,
+        role: s.role,
+        beat: s.beat,
+        stakes: s.stakes,
+      })),
+      arcBeats: [
+        { id: "arc-1", act: "setup", label: "Fondamenti", change: "Obiettivi e modulo 1" },
+        { id: "arc-2", act: "pressure", label: "Verifica", change: partial.midpoint },
+        { id: "arc-4", act: "finale", label: "Recap", change: partial.endingDirection },
+      ],
+      ending: {
+        tone: input.tone,
+        protagonistFate: partial.endingDirection,
+        readerFeeling: partial.finalEmotion,
+        irreversibleChoice: partial.climax,
+      },
+    },
+    storyFuture: {
+      endingTone: input.tone,
+      lastPageFeeling: partial.finalEmotion,
+      hopeOrDread: "hope",
+    },
+    bookPromises: {
+      emotional: [marketPromise],
+      relationship: [],
+      plot: [methodFramework, "Obiettivi di apprendimento per modulo"],
+      character: ["Progressione dello studente"],
+      scene: studyArc.slice(0, 4),
+    },
+    blueprintReadiness: "complete",
+  };
+}
+
 export function buildCompleteExpressBookPackage(
   input: ExpressForgeInput,
   variant: ExpressScenarioVariant = "commercial",
 ): CompleteExpressBookPackage {
+  if (isMemoirExpressGenre(input.genre) || input.bookFormat === "memoir") {
+    return buildMemoirExpressPackage(input, variant);
+  }
+  if (isWorkbookExpressGenre(input.genre) || input.bookFormat === "workbook") {
+    return buildWorkbookExpressPackage(input, variant);
+  }
+  if (isStudyMaterialExpressGenre(input.genre) || input.bookFormat === "study_material") {
+    return buildStudyMaterialExpressPackage(input, variant);
+  }
   if (isNonfictionExpressGenre(input.genre)) {
     return buildNonfictionExpressPackage(input, variant);
   }
@@ -1192,41 +1783,77 @@ export function buildCompleteExpressBookPackage(
 
   const emotionalWound = isDarkRomance(input.genre)
     ? "Colpa per la morte della sorella e bisogno di controllo come unica difesa"
-    : isFantasyGenre(input.genre)
+    : isFriendsToLoversGenre(input.genre)
+      ? "Paura di perdere l'amicizia più importante trasformandola in qualcosa di irreversibile"
+      : isEnemiesToLoversGenre(input.genre)
+        ? "Ferita da tradimento passato che le fa confondere attrito con protezione"
+        : isScifiGenre(input.genre)
+          ? "Trauma da un fallimento di missione che la lega al protocollo più di quanto le faccia bene"
+          : isFantasyGenre(input.genre)
       ? "Eredità magica rifiutata e paura che il potere riveli una parte mostruosa di sé"
-      : "Ferita antica che lega identità, desiderio e paura di essere tradita di nuovo";
+      : isHorrorGenre(input.genre)
+        ? "Memoria distorta e colpa legata a un luogo che non ha mai lasciato andarla"
+        : "Ferita antica che lega identità, desiderio e paura di essere tradita di nuovo";
   const desire = isDarkRomance(input.genre)
     ? "Scoprire la verità sull'incendio senza perdere se stessa"
-    : isFantasyGenre(input.genre)
+    : isFriendsToLoversGenre(input.genre)
+      ? "Capire se l'amicizia può diventare amore senza distruggere ciò che le tiene in piedi"
+      : isEnemiesToLoversGenre(input.genre)
+        ? "Vincere il conflitto senza cedere al desiderio che la tradisce"
+        : isScifiGenre(input.genre)
+          ? "Salvare la missione e la colonia senza ripetere l'errore del passato"
+          : isFantasyGenre(input.genre)
       ? "Spezzare la maledizione del regno senza diventare lo strumento della corona"
-      : "Trasformazione concreta e relazione che non la annulli";
+      : isHorrorGenre(input.genre)
+        ? "Capire cosa infesta il luogo prima che la minaccia la scelga definitivamente"
+        : "Trasformazione concreta e relazione che non la annulli";
   const fear = isDarkRomance(input.genre)
     ? "Ricordare troppo — e desiderare chi dovrebbe temere"
     : isFantasyGenre(input.genre)
       ? "Usare la magia e scoprire che il prezzo richiesto è la propria identità"
-      : "Perdere controllo, verità e ciò che rende la vita degna di essere vissuta";
+      : isHorrorGenre(input.genre)
+        ? "Perdere il confine tra ricordo, presenza e realtà"
+        : "Perdere controllo, verità e ciò che rende la vita degna di essere vissuta";
   const centralConflict = isDarkRomance(input.genre)
     ? `${lead.name} cerca verità e giustizia, ma ${counterpart.name} le offre protezione solo finché non minaccia ciò che la casa nasconde`
     : isFantasyGenre(input.genre)
       ? `${lead.name} deve scegliere se reclamare un potere proibito per salvare il regno, mentre ${counterpart.name} custodisce una verità che può incoronarla o distruggerla`
-      : `${lead.name} deve scegliere tra ciò che desidera e ciò che teme di perdere, mentre ${counterpart.name} amplifica ogni contraddizione`;
+      : isHorrorGenre(input.genre)
+        ? `${lead.name} cerca la verità sepolta nel luogo, ma ${counterpart.name} la trascina sempre più dentro una presenza che non perdona`
+        : `${lead.name} deve scegliere tra ciò che desidera e ciò che teme di perdere, mentre ${counterpart.name} amplifica ogni contraddizione`;
   const stakes = isDarkRomance(input.genre)
     ? "Memoria, identità, cuore — e la possibilità che amare significhi tradire i morti"
     : isFantasyGenre(input.genre)
       ? "Corona, magia, libertà del regno e identità della protagonista"
-      : "Identità, relazioni e futuro — ciò che si perde non torna indietro";
+      : isHorrorGenre(input.genre)
+        ? "Sanità mentale, identità, sopravvivenza e verità sepolta"
+        : "Identità, relazioni e futuro — ciò che si perde non torna indietro";
   const marketPromise = isDarkRomance(input.genre)
     ? "Un dark romance claustrofobico dove colpa, desiderio e redenzione sporca si confondono, finché amare qualcuno significa scegliere se bruciare con lui o salvarsi dalle sue fiamme."
-    : isFantasyGenre(input.genre)
+    : isFriendsToLoversGenre(input.genre)
+      ? `Un romance ${input.tone} friends-to-lovers dove amicizia, prossimità e tensione emotiva costruiscono un payoff credibile — senza tropi dark romance.`
+      : isEnemiesToLoversGenre(input.genre)
+        ? `Un romance ${input.tone} enemies-to-lovers dove attrito, attrazione e conflitto emotivo si trasformano in relazione — senza deriva dark romance.`
+        : isScifiGenre(input.genre)
+          ? `Uno sci-fi ${input.tone} dove worldbuilding, tech stakes e dilemma morale costruiscono una promessa speculativa con payoff forte.`
+          : isFantasyGenre(input.genre)
       ? `Un fantasy ${input.tone} dove magia, tradimento e costo del potere costruiscono una promessa epica con payoff emotivo.`
-      : `Un ${input.genre} ${input.tone} che promette tensione emotiva, payoff memorabile e una storia che resta addosso dopo l'ultima pagina.`;
+      : isHorrorGenre(input.genre)
+        ? `Un horror ${input.tone} dove atmosfera, decadenza e paura crescente trasformano il luogo in minaccia viva e la verità in contagio.`
+        : `Un ${input.genre} ${input.tone} che promette tensione emotiva, payoff memorabile e una storia che resta addosso dopo l'ultima pagina.`;
   const hook = isDarkRomance(input.genre)
     ? `Tornare nella villa dove sua sorella è morta non era mai stato sicuro — ma scoprire che ${counterpart.name} la desidera è la forma più pericolosa di colpa.`
     : isFantasyGenre(input.genre)
       ? `${lead.name} scopre che la magia capace di salvare il regno è la stessa che può trasformarla nel suo prossimo tiranno.`
-      : `${lead.name} credeva di controllare la storia. ${setting.split(",")[0]} le dimostra il contrario.`;
+      : isHorrorGenre(input.genre)
+        ? `${lead.name} entra in un luogo che non vuole essere ricordato — e ogni notte restituisce qualcosa che avrebbe dovuto restare sepolto.`
+        : `${lead.name} credeva di controllare la storia. ${setting.split(",")[0]} le dimostra il contrario.`;
   const subtitle = input.subtitle?.trim()
     ? input.subtitle.trim()
+    : isFriendsToLoversGenre(input.genre) || isEnemiesToLoversGenre(input.genre) || isRomance(input.genre)
+    ? variant === "bold"
+      ? "Quando l'amicizia diventa confine — e il confine diventa desiderio"
+      : "Quando la relazione cambia tutto — senza tornare indietro"
     : isDarkRomance(input.genre)
     ? variant === "bold"
       ? "Quando il desiderio brucia più forte della verità"
@@ -1318,7 +1945,9 @@ export function buildCompleteExpressBookPackage(
 
   const bookPromises: BookPromises = {
     emotional: [marketPromise],
-    relationship: isRomance(input.genre) ? [`Tensione tra ${lead.name} e ${counterpart.name} fino al payoff`] : [],
+    relationship: isRomance(input.genre) || isRomanceSubgenre(input.genre) || isDarkRomance(input.genre)
+      ? [`Tensione tra ${lead.name} e ${counterpart.name} fino al payoff`]
+      : [],
     plot: [centralConflict],
     character: [`Arco di ${lead.name}: da ferita a scelta consapevole`],
     scene: keyScenes.map((s) => s.beat),
@@ -1338,7 +1967,11 @@ export function buildCompleteExpressBookPackage(
     language,
     targetAudience: isDarkRomance(input.genre)
       ? "Lettrici 25–45 che cercano dark romance intenso, slow burn e payoff emotivo"
-      : `Lettori di ${input.genre} attratti da tono ${input.tone} e storia ad alta posta in gioco`,
+      : isFriendsToLoversGenre(input.genre) || isEnemiesToLoversGenre(input.genre)
+        ? `Lettori di romance ${input.tone} attratti da payoff emotivo credibile e dinamica di coppia riconoscibile`
+        : isScifiGenre(input.genre)
+          ? `Lettori sci-fi attratti da worldbuilding, tech stakes e dilemmi morali ${input.tone}`
+          : `Lettori di ${input.genre} attratti da tono ${input.tone} e storia ad alta posta in gioco`,
     marketPromise,
     protagonist: lead.name,
     antagonistOrLoveInterest: `${counterpart.name} — ${counterpart.role}`,
@@ -1363,9 +1996,19 @@ export function buildCompleteExpressBookPackage(
       `Mantieni il genere ${genreMeta.subgenre} e il tono ${input.tone}`,
       isDarkRomance(input.genre)
         ? "Non trasformare il dark romance in fantasy o thriller generico"
-        : `Non contaminare ${input.genre} con tropi dark romance se l'utente non li ha richiesti`,
-      "Ogni capitolo deve aumentare desiderio, verità o posta in gioco",
-      "Il finale deve pagare la promessa emotiva del setup",
+        : isHorrorGenre(input.genre)
+          ? "Non contaminare l'horror con tropi romance, slow burn o payoff emotivo da dark romance"
+          : isFriendsToLoversGenre(input.genre) || isEnemiesToLoversGenre(input.genre)
+            ? "Non contaminare il romance con tropi dark romance, villa o incendio se l'utente non li ha richiesti"
+            : isScifiGenre(input.genre)
+              ? "Non contaminare lo sci-fi con tropi fantasy medievale o dark romance"
+              : `Non contaminare ${input.genre} con tropi dark romance se l'utente non li ha richiesti`,
+      isHorrorGenre(input.genre)
+        ? "Ogni capitolo deve aumentare inquietudine, minaccia o decadenza del luogo"
+        : "Ogni capitolo deve aumentare desiderio, verità o posta in gioco",
+      isHorrorGenre(input.genre)
+        ? "Il finale deve pagare la promessa di paura e atmosfera del setup"
+        : "Il finale deve pagare la promessa emotiva del setup",
     ],
     structurePreference: `${chapterCount} capitoli · ${input.length === "breve" ? "ritmo compatto" : "ritmo sostenuto"}`,
     chapterCount,
@@ -1408,7 +2051,15 @@ function cleanExpressPersonName(value?: string): string {
 }
 
 function cleanExpressScenarioPeople(scenario: ExpressBookScenario): ExpressBookScenario {
-  if (isNonfictionExpressGenre(scenario.genre) || isPoetryExpressGenre(scenario.genre)) return scenario;
+  if (
+    isNonfictionExpressGenre(scenario.genre) ||
+    isPoetryExpressGenre(scenario.genre) ||
+    isMemoirExpressGenre(scenario.genre) ||
+    isWorkbookExpressGenre(scenario.genre) ||
+    isStudyMaterialExpressGenre(scenario.genre)
+  ) {
+    return scenario;
+  }
 
   const protagonist = cleanExpressPersonName(scenario.protagonist);
   const loveInterest = cleanExpressPersonName(scenario.antagonistOrLoveInterest);
@@ -1426,6 +2077,14 @@ function strengthenScenarioDivergence(
 ): ExpressBookScenario {
   const protagonist = cleanExpressPersonName(scenario.protagonist) || "la protagonista";
   const setting = scenario.setting || "un luogo pieno di segreti";
+
+  if (
+    isMemoirExpressGenre(scenario.genre) ||
+    isWorkbookExpressGenre(scenario.genre) ||
+    isStudyMaterialExpressGenre(scenario.genre)
+  ) {
+    return scenario;
+  }
 
   if (isNonfictionExpressGenre(scenario.genre)) {
     if (scenario.variant === "safe") {
@@ -1738,6 +2397,14 @@ export function applyExpressScenarioToState(
   return next;
 }
 
+function resolveExpressMemoryGenre(memory: ReturnType<typeof getForgeMemory>): string {
+  const genre = String(memory.slotValues.genre ?? "").trim();
+  if (genre) return genre;
+  const subgenre = String(memory.slotValues.subgenre ?? "").trim();
+  if (subgenre) return subgenre;
+  return "narrativa";
+}
+
 export function ensureExpressBookPackageCompleteness(
   state: GuidedInterviewState,
 ): GuidedInterviewState {
@@ -1750,7 +2417,7 @@ export function ensureExpressBookPackageCompleteness(
   if (!ex.bookSubtitle && !ti.subtitle) {
     const sub = buildCompleteExpressBookPackage(
       {
-        genre: String(memory.slotValues.genre ?? "dark romance"),
+        genre: resolveExpressMemoryGenre(memory),
         language: ex.language ?? "Italian",
         titleMode: "suggest",
         ideaSeed: String(memory.slotValues.rawIdea ?? memory.slotValues.protagonist ?? ""),
@@ -1781,7 +2448,7 @@ export function ensureExpressBookPackageCompleteness(
 
   if (!next.characters?.length) {
     const pkg = buildCompleteExpressBookPackage({
-      genre: String(memory.slotValues.genre ?? "dark romance"),
+      genre: resolveExpressMemoryGenre(memory),
       language: ex.language ?? "Italian",
       titleMode: "provisional",
       title: ex.bookTitle,
@@ -1798,7 +2465,7 @@ export function ensureExpressBookPackageCompleteness(
 
   if (!next.storyRoom?.scenes?.length && next.characters?.length) {
     next.storyRoom = buildCompleteExpressBookPackage({
-      genre: String(memory.slotValues.genre ?? "dark romance"),
+      genre: resolveExpressMemoryGenre(memory),
       language: ex.language ?? "Italian",
       titleMode: "provisional",
       ideaSeed: String(memory.slotValues.protagonist ?? ""),

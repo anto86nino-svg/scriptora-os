@@ -598,8 +598,23 @@ function detectStudyContentProfile(text: string): StudyContentProfile {
   const properNameScore = Math.min(8, properNames.length);
   const fictionSignalsScore = fictionLexicalScore + dialogueScore + properNameScore;
   const hasNarrativeStructure = fictionLexicalScore + dialogueScore >= 3;
+  const educationalScore = scorePatterns(lower, [
+    /\b(definizione|concetto|modulo|obiettivo|apprendimento|didattic|accademico|universit|esame|lezione|dispensa|formula|teorema|ipotesi|metodo scientifico|capitolo\s+\d|unita didattica|obiettivi di apprendimento)\b/gi,
+  ]);
 
-  if (hasNarrativeStructure && fictionSignalsScore > legalKeywordScore && fictionSignalsScore >= 5) {
+  if (educationalScore >= 3 && fictionSignalsScore < 8) {
+    return {
+      contentType: "textbook",
+      subjectLabel: "Manuale / Libro di testo",
+      mode: "Studio guidato",
+      fictionSignalsScore,
+      legalKeywordScore,
+      legalDocumentScore,
+      signals: [`Materiale didattico: ${educationalScore} segnali`, `Narrativa: ${fictionSignalsScore} segnali`],
+    };
+  }
+
+  if (hasNarrativeStructure && fictionSignalsScore > legalKeywordScore && fictionSignalsScore >= 8) {
     return {
       contentType: "narrative_fiction",
       subjectLabel: "Narrativa / Letteratura",
@@ -1926,6 +1941,19 @@ function explainWord(word: string): DifficultWord {
   };
 }
 
+export function isStudyEducationalContentType(contentType: StudyContentType): boolean {
+  return [
+    "study_notes",
+    "textbook",
+    "scientific_material",
+    "math_material",
+    "historical_material",
+    "essay",
+    "legal_document",
+    "mixed_or_unknown",
+  ].includes(contentType);
+}
+
 export function analyzeStudyMaterial(
   text: string,
   sourceName = "materiale-studio.txt",
@@ -1934,7 +1962,15 @@ export function analyzeStudyMaterial(
   const clean = cleanText(text);
   const manual = normalizeStudyIntent(intent);
   const classification = classifyStudyMaterial(clean, sourceName, manual);
-  const narrativeMode = classification.contentType === "narrative_fiction" || detectNarrative(clean);
+  const educationalProfile =
+    isStudyEducationalContentType(classification.contentType)
+    || manual.studyMaterialType === "book_manual"
+    || manual.studyMaterialType === "university_handout"
+    || manual.studyMaterialType === "school_notes"
+    || manual.studyMaterialType === "pdf_document"
+    || manual.studyMaterialType === "essay_theme";
+  const narrativeMode = !educationalProfile
+    && (classification.contentType === "narrative_fiction" || detectNarrative(clean));
   const words = countStudyWords(clean);
   const title = detectSubject(clean, sourceName);
   const keyConcepts = keywords(

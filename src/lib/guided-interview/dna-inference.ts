@@ -29,7 +29,9 @@ type GenreSignal = {
 const GENRE_SIGNALS: GenreSignal[] = [
   { genre: "romance", bookType: "Romanzo", subgenre: "Romance", keywords: /\b(romance|amore|relazione|cuore|passione|slow burn|enemies to lovers)\b/i, weight: 1 },
   { genre: "dark-romance", bookType: "Romanzo", subgenre: "Dark Romance", keywords: /\b(dark romance|ossessione|proibito|mora|possessiv)\b/i, weight: 1.1 },
-  { genre: "thriller", bookType: "Thriller", subgenre: "Suspense", keywords: /\b(thriller|omicidio|mistero|suspense|assassino|indagine|psicologico)\b/i, weight: 1 },
+  { genre: "thriller", bookType: "Thriller", subgenre: "Suspense", keywords: /\b(thriller|omicidio|mistero|suspense|assassino|indagine)\b/i, weight: 1 },
+  { genre: "horror", bookType: "Romanzo", subgenre: "Horror", keywords: /\b(horror psicologico|horror)\b/i, weight: 1.3 },
+  { genre: "horror", bookType: "Romanzo", subgenre: "Horror gotico", keywords: /\b(horror gotico|gothic horror|folk horror|maniero|presen|decadenza|soprannatur)\b/i, weight: 1.15 },
   { genre: "fantasy", bookType: "Fantasy", subgenre: "Epic Fantasy", keywords: /\b(fantasy|magia|regno|elfi|draghi|epico|mondo immaginario)\b/i, weight: 1 },
   { genre: "poetry", bookType: "Poesia", subgenre: "Raccolta poetica", keywords: /\b(poesia|poetico|versi|raccolta poetica|lirica|sonetto)\b/i, weight: 1.2 },
   { genre: "self-help", bookType: "Saggio", subgenre: "Self-help", keywords: /\b(self[- ]?help|crescita|abitudini|benessere|motivaz|trasformazione personale|mindset)\b/i, weight: 1 },
@@ -91,6 +93,7 @@ function inferPromise(text: string, genre?: InterviewGenre): string | undefined 
   if (genre === "self-help") return "Un percorso concreto di trasformazione personale.";
   if (genre === "romance") return "Un payoff emotivo che resta addosso al lettore.";
   if (genre === "thriller") return "Tensione crescente fino a una rivelazione inevitabile.";
+  if (genre === "horror") return "Atmosfera densa, inquietudine crescente e paura che contamina luogo e memoria.";
   return undefined;
 }
 

@@ -14,6 +14,13 @@ import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransi
 import { resolveCharacterStudioFormatUiProfile } from "@/lib/character-studio/format-aware-ui";
 import { resolveGenreDominanceContract, scoreGenreDominance } from "@/lib/book-intelligence/genre-dominance";
 import {
+  buildHorrorGothicFallbackPromise,
+  buildHorrorGothicFallbackTitle,
+  isHorrorGothicIdentity,
+  isMetaCommercialSubcategory,
+  resolveHorrorGothicNormalizedGenre,
+} from "@/lib/genre/horror-gothic-identity";
+import {
   buildBookKernelPromptBlock,
   enrichBookKernelWithQuality,
   refineConceptWithBookKernel,
@@ -1673,7 +1680,7 @@ function isGenericCommercialPromise(value: string): boolean {
   const text = cleanOneLine(value, 220).toLowerCase();
   if (!text) return false;
   return /^(una storia di|un viaggio intenso|una vicenda che|un romanzo dove|un libro che|una guida per)\b/.test(text) ||
-    /attrazione e colpa, segreti e trasformazione|cambier[aà] tutto|alta tensione emotiva/i.test(text);
+    /attrazione e colpa, segreti e trasformazione|cambier[aà] tutto|alta tensione emotiva|segreto familiare narrativa commerciale|promessa narrativa commerciale|promessa narrativa ed emotiva|promessa narrativa compatta/i.test(text);
 }
 
 function extractPromiseAnchor(input: {
@@ -1708,6 +1715,16 @@ function buildCharacterStudioFallbackTitle(input: {
   const idea = cleanOneLine(input.idea, 140);
   const hay = `${idea} ${dynamic} ${genre} ${subcategory} ${setting}`.toLowerCase();
   const seed = hay || `${Date.now()}`;
+
+  const horrorTitle = buildHorrorGothicFallbackTitle({
+    genre: input.genre,
+    subcategory: input.subcategory,
+    idea: input.idea,
+    setting: input.setting,
+    centralDynamic: input.centralDynamic,
+    bookFormat: input.bookFormat,
+  });
+  if (horrorTitle) return horrorTitle;
 
   const place = titleCaseFragment(setting);
   const motif = titleCaseFragment(
@@ -1757,7 +1774,7 @@ function buildCharacterStudioFallbackTitle(input: {
   if (/thriller|suspense|crime|noir/.test(genre)) {
     return pickStableVariant(["La verità sepolta", "Il nome che manca", "L'ultima prova", "Prima che cada il silenzio"], seed);
   }
-  if (/horror|gotic/.test(genre)) {
+  if (/horror|gotic/.test(genre) || isHorrorGothicIdentity(hay)) {
     return pickStableVariant(["La casa che ricorda", "Le stanze del buio", "Il respiro delle mura", "Dove dormono le ombre"], seed);
   }
   if (/fantasy|romantasy/.test(genre)) {
@@ -1767,7 +1784,19 @@ function buildCharacterStudioFallbackTitle(input: {
     return pickStableVariant(["La memoria delle stelle", "L'orbita dei fantasmi", "Il codice dell'ultima alba", "Neon sopra il vuoto"], seed);
   }
 
-  if (subcategory) return pickStableVariant([`Il segreto ${subcategory}`, `La promessa ${subcategory}`, `Anatomia di ${subcategory}`], seed);
+  if (subcategory && !isMetaCommercialSubcategory(subcategory)) {
+    return pickStableVariant([`Il segreto ${subcategory}`, `Anatomia di ${subcategory}`, `La memoria ${subcategory}`], seed);
+  }
+
+  if (genre && genre.length > 2 && !/general|altro|unknown/.test(genre)) {
+    const label = titleCaseFragment(genre.replace(/-/g, " "));
+    return pickStableVariant([
+      label ? `Il cuore del ${label}` : "",
+      label ? `Confini del ${label}` : "",
+      label ? `Storie di ${label}` : "",
+      "La scelta che resta",
+    ], seed);
+  }
 
   const extracted = titleCaseFragment(idea);
   return extracted.length > 10 ? extracted : "Titolo provvisorio";
@@ -1790,6 +1819,7 @@ function buildCharacterStudioFallbackSubtitle(input: {
     bookFormat: input.bookFormat,
     genre: input.genre,
     subcategory: input.subcategory,
+    idea: input.idea,
   });
   const anchor = extractPromiseAnchor(input);
   if (/poetry|poesia|poetry_collection/.test(bookIdentity)) {
@@ -1808,11 +1838,17 @@ function buildCharacterStudioFallbackSubtitle(input: {
     return `${anchor || "Un segreto troppo vicino"} mette alla prova desiderio, ferita e relazione prima che la colpa diventi scelta.`;
   }
   if (dominance.genreKey === "gothic-horror" || dominance.genreKey === "horror") {
-    return `${anchor || "Un luogo malato"} porta in superficie atmosfera, inquietudine e una paura che non resta sepolta.`;
+    return buildHorrorGothicFallbackPromise({
+      genre: input.genre,
+      subcategory: input.subcategory,
+      idea: input.idea,
+      setting: input.setting,
+      centralDynamic: input.centralDynamic,
+    });
   }
 
   const dynamic = cleanOneLine(input.centralDynamic, 90);
-  if (dynamic.length >= 8) {
+  if (dynamic.length >= 8 && !/segreto familiare|narrativa commerciale/i.test(dynamic)) {
     return `${anchor || dynamic} costringe desiderio, conflitto e curiosita' a convergere in una scelta irreversibile.`;
   }
 
@@ -1974,6 +2010,19 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   }, [genre]);
 
   useEffect(() => {
+    const resolved = resolveHorrorGothicNormalizedGenre({ genre, subcategory, idea });
+    if (!resolved) return;
+    const preset = getCharacterStudioPreset("horror");
+    if (genre !== "horror" && genre !== "gothic horror") setGenre("horror");
+    if (isMetaCommercialSubcategory(subcategory)) setSubcategory(preset.subcategory);
+    if (centralDynamic === "segreto familiare" || isMetaCommercialSubcategory(centralDynamic)) {
+      setCentralDynamic(preset.centralDynamic);
+    }
+    if (isAutoPresetText(narrativePromise, "narrativePromise")) setNarrativePromise(preset.narrativePromise);
+    if (isAutoPresetText(targetReader, "targetReader")) setTargetReader(preset.targetReader);
+  }, [idea, genre, subcategory, centralDynamic, narrativePromise, targetReader]);
+
+  useEffect(() => {
     if (!open) return;
     try {
       const freshStart = sessionStorage.getItem("scriptora-character-studio-fresh-start") === "1";
@@ -2059,8 +2108,8 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     [bookFormat, genre, subcategory],
   );
   const genreDominanceContract = useMemo(
-    () => resolveGenreDominanceContract({ bookFormat, genre, subcategory }),
-    [bookFormat, genre, subcategory],
+    () => resolveGenreDominanceContract({ bookFormat, genre, subcategory, idea }),
+    [bookFormat, genre, subcategory, idea],
   );
   const castRequired = requiresCanonicalCast(bookFormat, genre);
   const castDisabledReason = !castRequired
