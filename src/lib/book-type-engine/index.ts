@@ -10,6 +10,7 @@ import type { BookTypeContext } from "./types";
 import { resolveBookTypeDefinition } from "./taxonomy";
 import { buildTitleEnginePromptBlock } from "./title-engine";
 import { buildSubchapterEnginePromptBlock } from "./subchapter-engine";
+import { buildBookKernelPromptBlock } from "@/lib/book-intelligence";
 
 function buildHumanizationBlock(family: BookTypeContext["definition"]["family"]): string {
   const narrative = `HUMANIZATION:
@@ -148,6 +149,7 @@ export function resolveBookTypeContext(config: BookConfig): BookTypeContext {
 export function buildBookTypeEngineBlock(config: BookConfig): string {
   const ctx = resolveBookTypeContext(config);
   return [
+    buildBookKernelPromptBlock(config),
     `UNIVERSAL BOOK TYPE ENGINE — ${ctx.definition.label} (${ctx.definition.family})`,
     buildGenreSystemBlock(config.genre, config.subcategory),
     buildGenreBlueprintBlock(config.genre, config.subcategory),

@@ -4,6 +4,7 @@ import { DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
 import { DEFAULT_STYLE_PROFILE, type WritingStyleProfile } from "@/lib/book-creation-os/objectives";
 import type { BookMatterOptions } from "@/types/book";
 import { normalizeProjectChapters } from "@/lib/manuscript/chapter-normalization";
+import { applyBookKernelToConfig } from "@/lib/book-intelligence";
 
 const VALID_LANGUAGES: Language[] = ["English", "Italian", "Spanish", "French", "German"];
 
@@ -71,7 +72,7 @@ export function normalizeBookConfig(input: Partial<BookConfig> | BookConfig): Bo
   const subchaptersEnabled = input.subchaptersEnabled ?? bookTypeDef.defaultSubchapters;
   const matterOptions = normalizeMatterOptions(input.matterOptions);
 
-  return {
+  const normalized: BookConfig = {
     bookTypeId: input.bookTypeId || bookTypeDef.id,
     title: String(input.title || "").trim() || "Romanzo senza titolo",
     subtitle: String(input.subtitle || "").trim(),
@@ -88,6 +89,27 @@ export function normalizeBookConfig(input: Partial<BookConfig> | BookConfig): Bo
     category: String(input.category || "Fiction").trim() || "Fiction",
     subcategory: String(input.subcategory || "General").trim() || "General",
     subgenre: String(input.subgenre || input.subcategory || "").trim(),
+    bookFormat: String(input.bookFormat || "").trim() || undefined,
+    contentMode: String(input.contentMode || "").trim() || undefined,
+    structureMode: String(input.structureMode || "").trim() || undefined,
+    structureLock: String(input.structureLock || "").trim() || undefined,
+    structureModeLabel: String(input.structureModeLabel || "").trim() || undefined,
+    blueprintType: String(input.blueprintType || "").trim() || undefined,
+    generationStrategy: String(input.generationStrategy || "").trim() || undefined,
+    promiseLock: String(input.promiseLock || "").trim() || undefined,
+    qualityLock: input.qualityLock,
+    publishingStandards: input.publishingStandards,
+    bestsellerIntelligence: input.bestsellerIntelligence,
+    qualityGate: input.qualityGate,
+    commercialIntelligence: input.commercialIntelligence,
+    exportIntelligence: input.exportIntelligence,
+    requiresCharacters: input.requiresCharacters,
+    requiresPlot: input.requiresPlot,
+    requiresWorldbuilding: input.requiresWorldbuilding,
+    requiresExercises: input.requiresExercises,
+    requiresPoems: input.requiresPoems,
+    bookIntelligence: input.bookIntelligence,
+    bookKernel: input.bookKernel,
     chapterLength: input.chapterLength || "medium",
     bookLength: input.bookLength || "medium",
     customTotalWords: input.customTotalWords,
@@ -111,6 +133,8 @@ export function normalizeBookConfig(input: Partial<BookConfig> | BookConfig): Bo
     matterOptions,
     configStatus: input.configStatus || "draft",
   };
+
+  return applyBookKernelToConfig(normalized);
 }
 
 export function normalizeBookProject(project: BookProject): BookProject {

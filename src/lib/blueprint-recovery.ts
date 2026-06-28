@@ -2,6 +2,7 @@ import type { BookBlueprint, BookConfig } from "@/types/book";
 import { getSubchaptersPerChapter } from "@/types/book";
 import { getGenreBlueprint } from "@/lib/genre-intelligence";
 import { isGenericChapterTitle, resolveChapterTitle } from "@/lib/chapter-titles";
+import { resolveBookKernel } from "@/lib/book-intelligence";
 import {
   normalizeBlueprintIntegrity,
   normalizeChapterOutlineExtras,
@@ -199,30 +200,84 @@ export function repairBlueprintResponse(
 }
 
 export function buildFallbackBlueprintFromConfig(config: BookConfig): BookBlueprint {
+  const kernel = resolveBookKernel({ config });
   const editorial = getGenreBlueprint(config.genre, config.subcategory);
-  const scaffold = editorial.structure.length
-    ? editorial.structure
-    : (isItalian(config)
-      ? ["Fondamenta", "Metodo", "Pratica", "Approfondimento", "Integrazione", "Sintesi"]
-      : ["Foundations", "Method", "Practice", "Deep Dive", "Integration", "Synthesis"]);
+  const italian = isItalian(config);
+  const scaffold = kernel.bookFormat === "poetry_collection"
+    ? (italian
+      ? ["La ferita", "Il nome del buio", "Quello che resta acceso", "Rinascita"]
+      : ["The Wound", "The Name of the Dark", "What Still Burns", "Return"])
+    : kernel.bookFormat === "workbook"
+      ? (italian
+        ? ["Diagnosi", "Schede guidate", "Pratica", "Verifica", "Piano personale"]
+        : ["Assessment", "Guided Worksheets", "Practice", "Review", "Personal Plan"])
+      : kernel.bookFormat === "study_material" || kernel.bookFormat === "academic_summary"
+        ? (italian
+          ? ["Obiettivi", "Concetti chiave", "Esempi", "Ripasso", "Verifica"]
+          : ["Objectives", "Key Concepts", "Examples", "Review", "Assessment"])
+        : editorial.structure.length
+          ? editorial.structure
+          : (italian
+            ? ["Fondamenta", "Metodo", "Pratica", "Approfondimento", "Integrazione", "Sintesi"]
+            : ["Foundations", "Method", "Practice", "Deep Dive", "Integration", "Synthesis"]);
+
+  const sectionTitle = (beat: string, index: number): string => {
+    if (kernel.bookFormat === "poetry_collection") {
+      const roman = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"][index] || String(index + 1);
+      return italian ? `Parte ${roman} — ${beat}` : `Part ${roman} — ${beat}`;
+    }
+    if (kernel.bookFormat === "short_story_collection") return italian ? `Racconto ${index + 1} — ${beat}` : `Story ${index + 1} — ${beat}`;
+    if (kernel.bookFormat === "workbook") return italian ? `Scheda ${index + 1} — ${beat}` : `Worksheet ${index + 1} — ${beat}`;
+    if (kernel.educationalMode) return italian ? `Modulo ${index + 1} — ${beat}` : `Module ${index + 1} — ${beat}`;
+    if (!kernel.narrativeMode) return italian ? `Modulo ${index + 1} — ${beat}` : `Module ${index + 1} — ${beat}`;
+    return beat;
+  };
+
+  const sectionSummary = (beat: string, index: number): string => {
+    if (kernel.bookFormat === "poetry_collection") {
+      return italian
+        ? `Sezione poetica ${index + 1} — ${beat}: organizza poesie autonome, immagini ricorrenti, voce lirica e progressione emotiva della raccolta.`
+        : `Poetry section ${index + 1} — ${beat}: organize standalone poems, recurring images, lyric voice and emotional progression for the collection.`;
+    }
+    if (kernel.bookFormat === "workbook") {
+      return italian
+        ? `Scheda ${index + 1} — ${beat}: domande guidate, esercizi, spazio risposta e verifica del progresso.`
+        : `Worksheet ${index + 1} — ${beat}: guided questions, exercises, answer space and progress check.`;
+    }
+    if (kernel.educationalMode) {
+      return italian
+        ? `Modulo ${index + 1} — ${beat}: obiettivo, spiegazione, esempio, ripasso, quiz/flashcard e verifica.`
+        : `Module ${index + 1} — ${beat}: objective, explanation, example, recap, quiz/flashcards and assessment.`;
+    }
+    if (!kernel.narrativeMode) {
+      return italian
+        ? `Modulo ${index + 1} — ${beat}: promessa pratica, spiegazione chiara, esempi, esercizi, checklist e azioni concrete.`
+        : `Module ${index + 1} — ${beat}: practical promise, clear explanation, examples, exercises, checklists and concrete actions.`;
+    }
+    return italian
+      ? `Capitolo ${index + 1} — ${beat}: struttura base dalla configurazione (${config.genre}). Da raffinare con AI.`
+      : `Chapter ${index + 1} — ${beat}: base structure from configuration (${config.genre}). Refine with AI.`;
+  };
+
   const chapterOutlines = Array.from({ length: config.numberOfChapters }, (_, i) => {
     const beat = scaffold[i % scaffold.length] || `Step ${i + 1}`;
-    const title = resolveChapterTitle(`${beat}`, i, { config, totalChapters: config.numberOfChapters });
-    const summary = isItalian(config)
-      ? `Capitolo ${i + 1} — ${beat}: struttura base dalla configurazione (${config.genre}). Da raffinare con AI.`
-      : `Chapter ${i + 1} — ${beat}: base structure from configuration (${config.genre}). Refine with AI.`;
+    const rawTitle = sectionTitle(beat, i);
+    const title = kernel.bookFormat === "poetry_collection" || !kernel.narrativeMode
+      ? rawTitle
+      : resolveChapterTitle(rawTitle, i, { config, totalChapters: config.numberOfChapters });
+    const summary = sectionSummary(beat, i);
     return { title, summary };
   });
 
   return normalizeBlueprintShape({
-    overview: isItalian(config)
-      ? `Struttura base creata dalla configurazione per "${config.title}". Non è un blueprint AI completo: puoi raffinarla capitolo per capitolo o rigenerare con AI. Genere: ${config.genre}. Promessa: ${config.subtitle || config.title}.`
-      : `Base structure created from configuration for "${config.title}". This is not a full AI blueprint — refine per chapter or regenerate with AI. Genre: ${config.genre}. Promise: ${config.subtitle || config.title}.`,
+    overview: italian
+      ? `Struttura base creata dalla configurazione per "${config.title}". Blueprint: ${kernel.blueprintType}. Formato bloccato: ${kernel.bookFormat}. Promessa: ${kernel.commercialPromise}.`
+      : `Base structure created from configuration for "${config.title}". Blueprint: ${kernel.blueprintType}. Locked format: ${kernel.bookFormat}. Promise: ${kernel.commercialPromise}.`,
     chapterOutlines,
-    themes: [config.genre, config.tone, config.subcategory || config.category].filter(Boolean),
-    emotionalArc: isItalian(config)
-      ? "Progressione pratica e chiara — da raffinare con AI."
-      : "Clear practical progression — refine with AI.",
+    themes: [kernel.bookFormat, config.genre, config.tone, config.subcategory || config.category].filter(Boolean),
+    emotionalArc: italian
+      ? `${kernel.commercialPromise}. Struttura: ${kernel.allowedStructures.join(" → ")}.`
+      : `${kernel.commercialPromise}. Structure: ${kernel.allowedStructures.join(" → ")}.`,
   }, config);
 }
 

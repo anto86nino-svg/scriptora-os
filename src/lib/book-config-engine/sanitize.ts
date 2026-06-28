@@ -2,6 +2,7 @@ import type { BookConfig } from "@/types/book";
 import { resolveBookTypeDefinition } from "@/lib/book-type-engine";
 import { studioGenresFromRegistry } from "@/lib/book-type-engine";
 import { DEFAULT_STYLE_PROFILE } from "@/lib/book-creation-os/objectives";
+import { applyBookKernelToConfig } from "@/lib/book-intelligence";
 import type { ConfigFix, SanitizeResult } from "./types";
 import {
   defaultBookTypeIdForLevel1,
@@ -183,7 +184,7 @@ export function sanitizeBookConfiguration(
   }
 
   return {
-    config,
+    config: applyBookKernelToConfig(config),
     fixes,
     level1,
     previousLevel1,

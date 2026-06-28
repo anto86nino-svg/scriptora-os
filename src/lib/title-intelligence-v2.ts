@@ -186,6 +186,11 @@ function genreFamily(input: TitleV2Input): "romance" | "thriller" | "fantasy" | 
   return "fiction";
 }
 
+function isDarkRomanceInput(input: TitleV2Input): boolean {
+  const raw = normalize([input.genre, input.category, input.subcategory, input.subgenre].filter(Boolean).join(" "));
+  return /\bdark romance\b/.test(raw);
+}
+
 function addElement(
   list: DistinctiveTitleElement[],
   seen: Set<string>,
@@ -280,6 +285,23 @@ function subtitleFor(input: TitleV2Input, title: string, elements: DistinctiveTi
     return italian
       ? `Un metodo pratico per ${audience.toLowerCase()} senza perdersi nella teoria.`
       : `A practical method for ${audience.toLowerCase()} without getting lost in theory.`;
+  }
+  if (isDarkRomanceInput(input)) {
+    const it = [
+      `Quando ${e1} torna alla luce, desiderio e colpa trasformano ${e2.toLowerCase()} in una trappola.`,
+      `Un dark romance di segreti concreti, attrazione pericolosa e verita' che chiedono un prezzo.`,
+      `Prima di aprire ${e1.toLowerCase()}, nessuno sapeva quanto potesse costare desiderare la persona sbagliata.`,
+      `Ogni indizio porta a ${e2.toLowerCase()}. Ogni risposta stringe il patto tra desiderio e colpa.`,
+      `Il passato ha lasciato una traccia: ${e1.toLowerCase()}. Il romance comincia dove la salvezza diventa rischio.`,
+    ];
+    const en = [
+      `When ${e1} resurfaces, desire and guilt turn ${e2.toLowerCase()} into a trap.`,
+      `A dark romance of concrete secrets, dangerous attraction, and truths that demand a price.`,
+      `Before ${e1.toLowerCase()} is opened, nobody knows the cost of wanting the wrong person.`,
+      `Every clue leads to ${e2.toLowerCase()}. Every answer tightens the pact between desire and guilt.`,
+      `The past left one trace behind: ${e1.toLowerCase()}. The romance begins where rescue becomes risk.`,
+    ];
+    return (italian ? it : en)[offset % 5];
   }
   const it = [
     `Quando ${e1} torna alla luce, ${e2.toLowerCase()} non puo' piu' restare sepolto.`,

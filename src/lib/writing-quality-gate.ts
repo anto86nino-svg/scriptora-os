@@ -1,4 +1,5 @@
 import type { BookConfig } from "@/types/book";
+import { resolveBookKernel } from "@/lib/book-intelligence";
 
 export type WritingQualityIssueKind =
   | "duplicate_event"
@@ -331,6 +332,13 @@ function detectVagueFinalHook(text: string): WritingQualityIssue[] {
 function detectFormatContamination(text: string, context: WritingQualityGateContext = {}): WritingQualityIssue[] {
   const normalized = normalizeText(text);
   const config = context.config || {};
+  const kernel = resolveBookKernel({
+    config: {
+      ...(config as Partial<BookConfig>),
+      bookFormat: String(context.bookFormat || (config as any).bookFormat || ""),
+      genre: (context.genre || (config as any).genre) as any,
+    },
+  });
   const formatSignal = normalizeText([
     context.bookFormat,
     context.genre,
@@ -342,24 +350,27 @@ function detectFormatContamination(text: string, context: WritingQualityGateCont
     config.subcategory,
   ].filter(Boolean).join(" "));
   const isPoetry = /\b(poetry|poesia|poetico|poetica|poetry_collection|raccolta poetica)\b/.test(formatSignal);
-  if (!isPoetry) return [];
 
   const contaminationHits = [
-    /\b(20 capitoli|venti capitoli|twenty chapters)\b/.test(normalized) ? "chapter-plan contamination" : "",
-    /\bforced proximity\b/.test(normalized) ? "forced proximity" : "",
-    /\b(dark romance|love interest|cliffhanger seriale)\b/.test(normalized) ? "romance template" : "",
-    /\b(baci|bacio|kiss|kisses|trappola|trappole|trap|traps)\b/.test(normalized) ? "plot-trope contamination" : "",
-    /\bcapitolo\s+\d+\b/.test(normalized) ? "novel chapter marker" : "",
+    isPoetry && /\b(20 capitoli|venti capitoli|twenty chapters)\b/.test(normalized) ? "chapter-plan contamination" : "",
+    /\bforced proximity\b/.test(normalized) && !kernel.narrativeMode ? "forced proximity" : "",
+    /\b(dark romance|love interest|cliffhanger seriale)\b/.test(normalized) && !kernel.narrativeMode ? "romance template" : "",
+    isPoetry && /\b(baci|bacio|kiss|kisses|trappola|trappole|trap|traps)\b/.test(normalized) ? "plot-trope contamination" : "",
+    isPoetry && /\bcapitolo\s+\d+\b/.test(normalized) ? "novel chapter marker" : "",
+    !kernel.requiresCharacters && /\b(protagonista|antagonista|cast|love interest)\b/.test(normalized) ? "fiction character contamination" : "",
+    !kernel.requiresPlot && /\b(trama|plot twist|climax|arco narrativo|worldbuilding)\b/.test(normalized) ? "plot structure contamination" : "",
+    kernel.educationalMode && /\b(romanzo|romance|bacio|protagonista tormentato)\b/.test(normalized) ? "study-to-novel contamination" : "",
+    kernel.requiresWorkbook && /\bcapitoli narrativi|scena dominante\b/.test(normalized) ? "workbook-to-novel contamination" : "",
   ].filter(Boolean);
 
-  if (contaminationHits.length < 2) return [];
+  if (contaminationHits.length < (isPoetry ? 2 : 1)) return [];
 
   return [{
     kind: "format_contamination",
     severity: "high",
-    message: "Il testo contiene segnali forti di un template narrativo non coerente con una raccolta poetica.",
+    message: `Il testo contiene segnali non coerenti con il formato ${kernel.bookFormat}.`,
     evidence: contaminationHits,
-    repairInstruction: "Rimuovi la struttura da romanzo/tropi non richiesti e riallinea il testo al formato poetico del progetto.",
+    repairInstruction: "Rimuovi strutture vietate dal formato e riallinea il testo al contratto editoriale del progetto.",
   }];
 }
 

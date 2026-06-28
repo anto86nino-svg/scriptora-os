@@ -311,10 +311,38 @@ export interface BookConfig {
   originalIdea?: string;
   /** First-level editorial format, before commercial genre. */
   bookFormat?: string;
+  /** Kernel-resolved content mode. Format decides the machine; genre colors it. */
+  contentMode?: string;
+  /** Kernel-resolved structure model, e.g. poetry_sections, practical_chapters. */
+  structureMode?: string;
+  /** Universal structure lock, e.g. chapters, modules, poems, exercises. */
+  structureLock?: string;
+  /** Kernel-resolved blueprint family. */
+  blueprintType?: string;
+  /** Kernel-resolved generation strategy id. */
+  generationStrategy?: string;
+  /** Kernel-resolved promise lock for downstream modules. */
+  promiseLock?: string;
+  /** Kernel-resolved quality rules and rejection constraints. */
+  qualityLock?: string[];
+  publishingStandards?: import("@/lib/book-intelligence/book-intelligence-kernel").FormatPublishingStandards;
+  bestsellerIntelligence?: import("@/lib/book-intelligence/book-intelligence-kernel").FormatBestsellerIntelligence;
+  qualityGate?: import("@/lib/book-intelligence/book-intelligence-kernel").FormatQualityGate;
+  commercialIntelligence?: import("@/lib/book-intelligence/book-intelligence-kernel").FormatCommercialIntelligence;
+  exportIntelligence?: import("@/lib/book-intelligence/book-intelligence-kernel").FormatExportIntelligence;
+  requiresCharacters?: boolean;
+  requiresPlot?: boolean;
+  requiresWorldbuilding?: boolean;
+  requiresExercises?: boolean;
+  requiresPoems?: boolean;
+  /** Legacy Book Intelligence V2 snapshot. */
+  bookIntelligence?: import("@/lib/book-intelligence/types").BookIntelligenceSnapshot;
+  /** Format-first decision contract persisted with the project. */
+  bookKernel?: import("@/lib/book-intelligence/book-intelligence-kernel").BookIntelligenceKernelSnapshot;
   /** Source flow that created the configuration. */
   generatedFrom?: string;
   /** Human-friendly structure label, e.g. chapters, sections, lessons. */
-  structureMode?: string;
+  structureModeLabel?: string;
   /** Alias kept for handoff surfaces that speak in chapters/sections count. */
   chaptersCount?: number;
   /** Editorial promise captured before blueprint generation. */

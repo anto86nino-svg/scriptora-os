@@ -17,6 +17,35 @@ export {
   refineDetectedGenre,
 } from "./detector";
 
+export {
+  applyBookKernelToConfig,
+  buildBookKernelPromptBlock,
+  getKernelTemplate,
+  isNarrativeKernel,
+  listBookKernelFormats,
+  registerBookKernelTemplate,
+  resolveBookKernel,
+  validateFormatCoherence,
+} from "./book-intelligence-kernel";
+export type {
+  BlueprintType,
+  BookFormat,
+  BookKernelTemplate,
+  BookIntelligenceKernelSnapshot,
+  ContentMode,
+  CustomBookKernelTemplate,
+  FormatBestsellerIntelligence,
+  FormatCommercialIntelligence,
+  FormatCoherenceIssue,
+  FormatCoherenceReport,
+  FormatExportIntelligence,
+  FormatPublishingStandards,
+  FormatQualityGate,
+  GenerationStrategy,
+  StructureModel,
+  UniversalStructureMode,
+} from "./book-intelligence-kernel";
+
 import type { BookConfig } from "@/types/book";
 import { buildBookIntelligenceSnapshot, detectBookIntelligence } from "./detector";
 import type { BookIntelligenceSnapshot } from "./types";
