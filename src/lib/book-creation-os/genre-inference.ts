@@ -3,7 +3,22 @@ import { studioGenresFromRegistry } from "@/lib/book-type-engine";
 import { resolveLevel1FromBookTypeId } from "@/lib/book-config-engine";
 import type { Level1BookType } from "@/lib/book-config-engine/types";
 
+export type InferredBookFormat =
+  | "novel"
+  | "novella"
+  | "poetry_collection"
+  | "poetic_essay"
+  | "lyrical_prose"
+  | "short_story_collection"
+  | "essay"
+  | "memoir"
+  | "self_help"
+  | "study_material"
+  | "children_book"
+  | "mixed_or_unknown";
+
 export type GenreInference = {
+  bookFormat: InferredBookFormat;
   bookTypeId: string;
   genre: Genre;
   category: string;
@@ -23,13 +38,118 @@ type Signal = {
   id: string;
   test: RegExp;
   weight: number;
-  inference: Omit<GenreInference, "confidence" | "label" | "suggestedChapters"> & { label: string; chapters: number };
+  inference: Omit<GenreInference, "bookFormat" | "confidence" | "label" | "suggestedChapters"> & {
+    bookFormat?: InferredBookFormat;
+    label: string;
+    chapters: number;
+  };
 };
 
 const STUDIO = studioGenresFromRegistry();
 
 function studioMeta(bookTypeId: string) {
   return STUDIO.find((g) => g.id === bookTypeId) || STUDIO.find((g) => g.id === "literary")!;
+}
+
+const POETRY_FORM_PATTERNS = [
+  /raccolta poetic[ao]/i,
+  /libro poetic[ao]/i,
+  /saggio poetic[ao]/i,
+  /prosa poetic[ao]/i,
+  /prosa liric[ao]/i,
+  /\bpoesia\b/i,
+  /\bpoesie\b/i,
+  /\bframmenti\b/i,
+  /\bmeditazioni\b/i,
+  /\baforismi\b/i,
+];
+
+const POETRY_CONTENT_PATTERNS = [
+  /voce autentica/i,
+  /\bsilenzio\b/i,
+  /\bmargine\b/i,
+  /\bcrepa\b/i,
+  /domanda interiore/i,
+  /\bverit[aà]\b/i,
+  /\bidentit[aà]\b/i,
+  /\bascolto\b/i,
+  /io interiore/i,
+  /testo introspettivo/i,
+  /\bliric[ao]\b/i,
+];
+
+const EXPLICIT_ROMANCE_PATTERN =
+  /dark romance|romance|relazione romantica|love interest|storia d['’]?amore|\bcoppia\b|\battrazione\b|\bdesiderio\b|\bbacio\b|rottura sentimentale|riconciliazione amorosa|slow burn|enemies to lovers/i;
+
+function countPatternHits(patterns: RegExp[], text: string): number {
+  return patterns.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0);
+}
+
+function inferPoeticBookFormat(text: string): InferredBookFormat | null {
+  const formHits = countPatternHits(POETRY_FORM_PATTERNS, text);
+  const contentHits = countPatternHits(POETRY_CONTENT_PATTERNS, text);
+  const explicitNovelForm = /\bromanzo\b|novella|racconto|saga|trilogia|fantasy|thriller|horror/i.test(text);
+  const poeticToneOnly = /\bpoetic[ao]\b/i.test(text) && formHits === 0 && contentHits < 2;
+
+  if (poeticToneOnly) return null;
+  if (explicitNovelForm && formHits === 0) return null;
+  if (EXPLICIT_ROMANCE_PATTERN.test(text) && formHits === 0) return null;
+
+  if (/raccolta poetic[ao]|\bpoesia\b|\bpoesie\b|\bframmenti\b|\baforismi\b/i.test(text)) {
+    return "poetry_collection";
+  }
+  if (/saggio poetic[ao]|testo introspettivo|voce autentica/i.test(text) && (formHits > 0 || contentHits >= 2)) {
+    return "poetic_essay";
+  }
+  if (/prosa poetic[ao]|prosa liric[ao]|\bliric[ao]\b/i.test(text) && (formHits > 0 || contentHits >= 2)) {
+    return "lyrical_prose";
+  }
+  if (formHits > 0 && contentHits > 0) return "poetic_essay";
+  if (contentHits >= 3 && /\bintrospettiv[ao]\b|\bpoetic[ao]\b|\bliric[ao]\b/i.test(text)) return "lyrical_prose";
+  return null;
+}
+
+function bookFormatForBookType(bookTypeId: string): InferredBookFormat {
+  if (bookTypeId === "poetry") return "poetry_collection";
+  if (bookTypeId === "self-help") return "self_help";
+  if (bookTypeId === "education") return "study_material";
+  if (bookTypeId === "memoir") return "memoir";
+  if (bookTypeId === "children") return "children_book";
+  if (bookTypeId === "business" || bookTypeId === "manual") return "essay";
+  return "novel";
+}
+
+function buildPoetryInference(format: InferredBookFormat, score: number): GenreInference {
+  const meta = studioMeta("poetry");
+  const label =
+    format === "poetry_collection"
+      ? "Raccolta poetica"
+      : format === "lyrical_prose"
+        ? "Prosa lirica"
+        : "Saggio poetico";
+  const subgenre =
+    format === "poetry_collection"
+      ? "raccolta poetica contemporanea"
+      : format === "lyrical_prose"
+        ? "prosa lirica introspettiva"
+        : "saggio poetico esistenziale";
+
+  return {
+    bookFormat: format,
+    label,
+    bookTypeId: "poetry",
+    genre: "poetry",
+    category: meta.category,
+    subcategory: "Poesia",
+    subgenre,
+    tone: "lirico, introspettivo, concreto, musicale",
+    targetReader: "Lettori di poesia e prosa lirica che cercano voce autentica, immagini precise e risonanza interiore.",
+    narrativePromise: "Una struttura per sezioni, frammenti e meditazioni che sviluppa un percorso emotivo senza forzare trama o archi sentimentali.",
+    commercialGoal: "Identità poetica chiara, titolo evocativo e promessa letteraria riconoscibile senza schemi da romanzo commerciale.",
+    level1: "poesia",
+    confidence: score >= 4 ? "high" : "medium",
+    suggestedChapters: 7,
+  };
 }
 
 const SIGNALS: Signal[] = [
@@ -55,7 +175,7 @@ const SIGNALS: Signal[] = [
   {
     id: "dark-romance",
     test: /dark romance|romance dark|enemies to lovers|morally grey|ossessione|desiderio pericoloso/i,
-    weight: 11,
+    weight: 15,
     inference: {
       label: "Dark Romance",
       bookTypeId: "dark-romance",
@@ -191,6 +311,12 @@ const GENERIC_SELF_HELP_TITLES = /^(il viaggio interiore|rinascere|la forza dent
 
 export function inferGenreFromText(title: string, idea = ""): GenreInference {
   const hay = `${title} ${idea}`.toLowerCase();
+  const poetryFormat = inferPoeticBookFormat(hay);
+  if (poetryFormat) {
+    const poetryScore = countPatternHits(POETRY_FORM_PATTERNS, hay) * 2 + countPatternHits(POETRY_CONTENT_PATTERNS, hay);
+    return buildPoetryInference(poetryFormat, poetryScore);
+  }
+
   let best: { score: number; signal: Signal } | null = null;
 
   for (const signal of SIGNALS) {
@@ -203,6 +329,7 @@ export function inferGenreFromText(title: string, idea = ""): GenreInference {
     const meta = studioMeta(best.signal.inference.bookTypeId);
     return {
       ...best.signal.inference,
+      bookFormat: best.signal.inference.bookFormat || bookFormatForBookType(best.signal.inference.bookTypeId),
       category: meta.category,
       subcategory: best.signal.inference.subcategory || meta.defaultSubcategory,
       level1: resolveLevel1FromBookTypeId(best.signal.inference.bookTypeId),
@@ -217,6 +344,7 @@ export function inferGenreFromText(title: string, idea = ""): GenreInference {
   if (looksFictionTitle || GENERIC_SELF_HELP_TITLES.test(title.trim())) {
     const meta = studioMeta("literary");
     return {
+      bookFormat: "novel",
       label: "Narrativa letteraria",
       bookTypeId: "literary",
       genre: "philosophy",
@@ -235,6 +363,7 @@ export function inferGenreFromText(title: string, idea = ""): GenreInference {
 
   const meta = studioMeta("literary");
   return {
+    bookFormat: "novel",
     label: "Romanzo (default narrativo)",
     bookTypeId: "literary",
     genre: "philosophy",

@@ -518,16 +518,16 @@ export function BookCreationOsWizard({
     const applyForgeBookType = () => {
       if (!normalizedForgeText) return;
 
-      if (/poesia|poet|versi|raccolta poetica/.test(normalizedForgeText)) {
-        setLevel1BookType("poetry" as any);
-        setBookTypeId("literary");
-        setGenre("literary" as Genre);
-        setCategory("Fiction");
-        setSubcategory("Poetry");
-        setSubgenre("raccolta poetica");
+      if (/poesia|poet|versi|raccolta poetica|libro poetico|prosa poetica|prosa lirica|saggio poetico|frammenti|meditazioni|aforismi|voce autentica|silenzio|margine|crepa|domanda interiore|identit|verit/.test(normalizedForgeText)) {
+        setLevel1BookType("poesia");
+        setBookTypeId("poetry");
+        setGenre("poetry" as Genre);
+        setCategory("Poesia");
+        setSubcategory("Poesia");
+        setSubgenre(cleanStr(ext.genre) || cleanStr(ext.subgenre) || "raccolta poetica / prosa lirica");
         setSubchaptersEnabled(false);
         setSubchaptersPerChapter(0);
-        setChapters((current) => Math.min(current || 8, 10));
+        setChapters((current) => Math.min(current || 7, 10));
         return;
       }
 
@@ -1580,6 +1580,16 @@ const persistDraft = useCallback(() => {
     if (!narrativePromise.trim()) setNarrativePromise(inference.narrativePromise);
     if (!commercialGoal.trim()) setCommercialGoal(inference.commercialGoal);
     if (!chapters || chapters < 6) setChapters(inference.suggestedChapters);
+    if (["poetry_collection", "poetic_essay", "lyrical_prose"].includes(inference.bookFormat)) {
+      setLevel1BookType("poesia");
+      setBookTypeId("poetry");
+      setGenre("poetry" as Genre);
+      setCategory("Poesia");
+      setSubcategory("Poesia");
+      setSubchaptersEnabled(false);
+      setSubchaptersPerChapter(0);
+      setChapters((current) => Math.min(inference.suggestedChapters || current || 7, 12));
+    }
     setCoherenceDismissed(false);
     toast.success("Configurazione aggiornata dal DNA del titolo.");
   };
