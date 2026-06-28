@@ -4,8 +4,8 @@ import { callDeepSeekTracked } from "../_shared/ai-tracking.ts";
 import {
   buildDeterministicBookConcept,
   buildFormatAwareConceptPrompts,
-  isConceptContaminatedForFormat,
 } from "../_shared/book-concept-format.ts";
+import { validateFormatPurity } from "../_shared/format-purity-engine.ts";
 
 const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY") || "";
 
@@ -224,13 +224,14 @@ serve(async (req) => {
       },
     });
 
-    if (isConceptContaminatedForFormat({ ...promptInput, bookFormat: prompts.format, text: idea })) {
+    let formatPurity = validateFormatPurity({ ...promptInput, bookFormat: prompts.format, text: idea });
+    if (!formatPurity.passed) {
       idea = await callDeepSeek(
         prompts.system,
         `${prompts.user}
 
 RIGENERA IN MODO PIU' SEVERO.
-La risposta precedente ha contaminato il formato con elementi non ammessi.
+La risposta precedente ha ottenuto Format Purity Score ${formatPurity.score}/${formatPurity.threshold} e ha contaminato il formato con elementi non ammessi.
 Rispetta il formato ${prompts.format} e restituisci solo il concept corretto.`,
         {
           userId,
@@ -251,13 +252,15 @@ Rispetta il formato ${prompts.format} e restituisci solo il concept corretto.`,
           },
         },
       );
+      formatPurity = validateFormatPurity({ ...promptInput, bookFormat: prompts.format, text: idea });
     }
 
-    if (isConceptContaminatedForFormat({ ...promptInput, bookFormat: prompts.format, text: idea })) {
+    if (!formatPurity.passed) {
       idea = buildDeterministicBookConcept(promptInput);
+      formatPurity = validateFormatPurity({ ...promptInput, bookFormat: prompts.format, text: idea });
     }
 
-    return new Response(JSON.stringify({ idea }), {
+    return new Response(JSON.stringify({ idea, formatPurity }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

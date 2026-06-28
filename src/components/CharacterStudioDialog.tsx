@@ -16,8 +16,8 @@ import { resolveGenreDominanceContract, scoreGenreDominance } from "@/lib/book-i
 import { buildBookKernelPromptBlock, resolveBookKernel } from "@/lib/book-intelligence";
 import {
   buildDeterministicBookConcept,
-  isConceptContaminatedForFormat,
 } from "../../supabase/functions/_shared/book-concept-format.ts";
+import { validateFormatPurity } from "../../supabase/functions/_shared/format-purity-engine.ts";
 
 import {
   SCRIPTORA_CHARACTER_BIBLE_KEY,
@@ -2298,14 +2298,16 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       const generated = String(data?.idea || data?.text || "").trim();
       if (!generated) throw new Error("Idea vuota");
 
-      if (isConceptContaminatedForFormat({
+      const formatPurity = validateFormatPurity({
         bookFormat: bookKernel.bookFormat,
         genre,
         subcategory,
+        studioId: formatUiProfile.studioId,
         generationStrategy: bookKernel.generationStrategy,
         blueprintType: bookKernel.blueprintType,
         text: generated,
-      })) {
+      });
+      if (!formatPurity.passed) {
         const corrected = buildLocalNovelIdea({
           bookFormat,
           bookLength,
@@ -2393,14 +2395,16 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       const developed = String(data?.idea || data?.text || "").trim();
       if (!developed) throw new Error("Idea elaborata vuota");
 
-      if (isConceptContaminatedForFormat({
+      const developedPurity = validateFormatPurity({
         bookFormat: bookKernel.bookFormat,
         genre,
         subcategory,
+        studioId: formatUiProfile.studioId,
         generationStrategy: bookKernel.generationStrategy,
         blueprintType: bookKernel.blueprintType,
         text: developed,
-      })) {
+      });
+      if (!developedPurity.passed) {
         const corrected = buildLocalUserStoryDevelopment({
           idea: userStory,
           bookFormat,

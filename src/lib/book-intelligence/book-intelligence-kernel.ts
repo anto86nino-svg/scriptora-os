@@ -1,4 +1,5 @@
 import type { BookBlueprint, BookConfig, Genre } from "@/types/book";
+import { validateFormatPurity } from "../../../supabase/functions/_shared/format-purity-engine.ts";
 
 export type BookFormat =
   | "novel"
@@ -1569,6 +1570,26 @@ export function validateFormatCoherence(
       message: "Promessa editoriale non definita dal kernel.",
       evidence: [kernel.bookFormat],
     });
+  }
+
+  if (haystack.trim()) {
+    const purity = validateFormatPurity({
+      bookFormat: kernel.bookFormat,
+      genre: kernel.genre,
+      subcategory: kernel.subgenre,
+      generationStrategy: kernel.generationStrategy,
+      blueprintType: kernel.blueprintType,
+      text: haystack,
+      requireMandatorySections: false,
+    });
+    if (!purity.passed) {
+      issues.push({
+        kind: "forbidden_pattern",
+        severity: "critical",
+        message: `Format Purity Score ${purity.score}/${purity.threshold}: output contaminato per ${kernel.bookFormat}.`,
+        evidence: purity.issues.flatMap((issue) => issue.evidence).slice(0, 8),
+      });
+    }
   }
 
   return {

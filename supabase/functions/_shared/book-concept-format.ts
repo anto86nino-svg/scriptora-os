@@ -1,3 +1,8 @@
+import {
+  repairFormatPurityText,
+  validateFormatPurity,
+} from "./format-purity-engine.ts";
+
 export type BookConceptFormat =
   | "poetry_collection"
   | "manual"
@@ -123,59 +128,8 @@ export function resolveBookConceptFormat(input: BookConceptFormatInput): BookCon
   return "novel";
 }
 
-function hasAny(text: string, patterns: RegExp[]): boolean {
-  return patterns.some((pattern) => pattern.test(text));
-}
-
-const narrativeContaminationPatterns = [
-  /\bprotagonist[aoie]?\b/i,
-  /\bantagonist[aoie]?\b/i,
-  /\bpersonaggi?\b/i,
-  /\bcast\b/i,
-  /\btrama\b/i,
-  /\bconflitto narrativo\b/i,
-  /\bpromessa narrativa\b/i,
-  /\bla storia segue\b/i,
-  /\bla storia racconta\b/i,
-  /\bdeve allearsi con\b/i,
-  /\bper scoprire la verit[ae]\b/i,
-  /\blei e\b/i,
-  /\blui e\b/i,
-  /\bscene\b/i,
-];
-
-const practicalContaminationPatterns = [
-  /\bprotagonist[aoie]?\b/i,
-  /\bantagonist[aoie]?\b/i,
-  /\bpersonaggi?\b/i,
-  /\bcast\b/i,
-  /\btrama\b/i,
-  /\bpromessa narrativa\b/i,
-  /\bromance\b/i,
-  /\bcliffhanger\b/i,
-  /\bla storia segue\b/i,
-  /\blei e\b/i,
-  /\blui e\b/i,
-];
-
 export function isConceptContaminatedForFormat(input: BookConceptFormatInput & { text?: unknown }): boolean {
-  const text = clean(input.text, 12000);
-  if (!text) return true;
-
-  const format = resolveBookConceptFormat(input);
-  if (format === "poetry_collection") {
-    return hasAny(text, narrativeContaminationPatterns);
-  }
-  if (format === "manual" || format === "self_help" || format === "psychology_guide" || format === "workbook" || format === "study_material" || format === "essay") {
-    return hasAny(text, practicalContaminationPatterns);
-  }
-  if (format === "short_story_collection") {
-    return hasAny(text, [/\bsingolo romanzo\b/i, /\bromanzo unico\b/i, /\bun unico protagonista\b/i]);
-  }
-  if (format === "memoir") {
-    return hasAny(text, [/\bromanzo inventato\b/i, /\bcast fiction\b/i, /\bmitologia fantasy\b/i]);
-  }
-  return false;
+  return !validateFormatPurity(input).passed;
 }
 
 export function buildDeterministicBookConcept(input: BookConceptInput): string {
@@ -188,9 +142,9 @@ export function buildDeterministicBookConcept(input: BookConceptInput): string {
   const sections = numberOr(input.subchaptersPerChapter, 4);
 
   if (format === "poetry_collection") {
-    const theme = central || "Memoria e identita'";
-    const voice = subject || tone || "Intima e contemplativa, limpida, ferita ma non vittimistica";
-    const symbols = setting || "Nebbia, acqua ferma, mappe, luce dei lampioni, camere vuote";
+    const theme = repairFormatPurityText({ ...input, text: central || "Memoria e identita'", requireMandatorySections: false }).text;
+    const voice = repairFormatPurityText({ ...input, text: subject || tone || "Intima e contemplativa, limpida, ferita ma non vittimistica", requireMandatorySections: false }).text;
+    const symbols = repairFormatPurityText({ ...input, text: setting || "Nebbia, acqua ferma, mappe, luce dei lampioni, camere vuote", requireMandatorySections: false }).text;
     return `Tema centrale:
 ${theme}.
 
@@ -200,11 +154,20 @@ ${voice}.
 Campo simbolico:
 ${symbols}.
 
+Immagini ricorrenti:
+${symbols}.
+
 Arco emotivo:
 Smarrimento -> ricerca -> riconoscimento -> accettazione.
 
 Struttura:
-${sections} sezioni, ${poems} poesie.
+Raccolta in sezioni progressive, ciascuna con nuclei autonomi e risonanza interna.
+
+Numero sezioni:
+${sections}.
+
+Numero poesie:
+${poems}.
 
 Possibili sezioni:
 1. Origine della frattura
@@ -292,7 +255,13 @@ Flashcard:
 Carte su definizioni, formule, date, relazioni logiche e concetti essenziali.
 
 Simulazione:
-Verifica finale con punteggio, feedback e aree da ripassare.
+Prove a tempo e scenari di esame con difficolta' progressiva.
+
+Verifiche:
+Controlli intermedi e verifica finale con punteggio, feedback e aree da ripassare.
+
+Simulazioni:
+Sessioni complete per misurare preparazione, velocita' e sicurezza.
 
 Obiettivi di apprendimento:
 Capire, ricordare, applicare e prepararsi a una prova reale.`;
