@@ -39,6 +39,15 @@ export {
   scoreGenreDominance,
 } from "./genre-dominance";
 export {
+  applyGreatnessGateToConfig,
+  enforceKernelGreatnessBeforeForge,
+  isKernelGreatnessGateBypassed,
+} from "./kernel-greatness-gate";
+export type {
+  KernelGreatnessGateResult,
+  KernelGreatnessGateStatus,
+} from "./kernel-greatness-gate";
+export {
   buildUniversalStudioContract,
   getUniversalBookStudio,
   listUniversalBookStudios,

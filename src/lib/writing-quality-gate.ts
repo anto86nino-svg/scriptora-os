@@ -5,6 +5,10 @@ import {
   type BookIntelligenceKernelSnapshot,
 } from "@/lib/book-intelligence";
 import {
+  resolveGenreDominanceContract,
+  scoreGenreDominance,
+} from "@/lib/book-intelligence/genre-dominance";
+import {
   validateFormatPurity,
   type FormatPurityIssue,
 } from "../../supabase/functions/_shared/format-purity-engine.ts";
@@ -16,7 +20,8 @@ export type WritingQualityIssueKind =
   | "broken_sentence"
   | "stagnant_character_dynamic"
   | "vague_final_hook"
-  | "format_contamination";
+  | "format_contamination"
+  | "genre_dominance_weak";
 
 export type WritingQualitySeverity = "critical" | "high" | "medium" | "low";
 
@@ -397,6 +402,30 @@ function shouldRepair(issues: WritingQualityIssue[]): boolean {
   return criticalOrHigh || mediumCount >= 2;
 }
 
+function detectGenreDominanceWeak(chapterText: string, context: WritingQualityGateContext = {}): WritingQualityIssue[] {
+  if (!context.config) return [];
+  const kernel = resolveBookKernel({ config: context.config as BookConfig });
+  if (!kernel.requiresPlot && kernel.bookFormat !== "memoir") return [];
+  const contract = resolveGenreDominanceContract({
+    genre: context.genre || kernel.genre,
+    subcategory: kernel.subgenre,
+    bookFormat: kernel.bookFormat,
+  });
+  if (contract.genreKey === "generic") return [];
+  const dominance = scoreGenreDominance(chapterText, contract);
+  if (dominance.passed) return [];
+  return [{
+    kind: "genre_dominance_weak",
+    severity: "medium",
+    message: "Il capitolo non mantiene il dominio di genere concordato.",
+    evidence: [
+      ...dominance.forbiddenDominanceHits.map((term) => `domina: ${term}`),
+      ...dominance.requiredHits.map((term) => `manca peso: ${term}`),
+    ].slice(0, 6),
+    repairInstruction: contract.generationInstruction,
+  }];
+}
+
 export function validateNarrativeChapterQuality(
   chapterText: string,
   context: WritingQualityGateContext = {},
@@ -409,6 +438,7 @@ export function validateNarrativeChapterQuality(
     ...detectStagnantCharacterDynamic(chapterText),
     ...detectVagueFinalHook(chapterText),
     ...detectFormatContamination(chapterText, context),
+    ...detectGenreDominanceWeak(chapterText, context),
   ];
   const penalty = issues.reduce((sum, issue) => sum + severityPenalty(issue.severity), 0);
   const score = Math.max(0, Math.min(100, 100 - penalty));

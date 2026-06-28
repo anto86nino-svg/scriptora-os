@@ -1,6 +1,10 @@
 import type { BookBlueprint, BookCharacter, BookConfig, Genre, Language } from "@/types/book";
 import { resolveUniversalBookStudio, type UniversalBookStudioId } from "@/lib/book-intelligence/universal-book-studios";
-import { enrichBookKernelWithQuality } from "@/lib/book-intelligence/book-intelligence-kernel";
+import {
+  enrichBookKernelWithQuality,
+  enforceKernelGreatnessBeforeForge,
+  type KernelGreatnessGateResult,
+} from "@/lib/book-intelligence";
 
 export type BookForgeSource =
   | "title-domination"
@@ -96,6 +100,7 @@ export interface BookForgeHandoff {
   recommendedStartStep: BookForgeStartStep;
   lockReason: string;
   createdAt: string;
+  greatnessGate?: KernelGreatnessGateResult;
 }
 
 const SUPPORTED_SLOTS: BookForgeSlot[] = [
@@ -365,6 +370,25 @@ export function buildBookForgeHandoff(
   prefill.greatnessScore = prefill.greatnessScore || kernel.greatnessScore;
   prefill.publishingReadiness = prefill.publishingReadiness || kernel.publishingReadiness;
 
+  const conceptText = text(
+    prefill.idea || prefill.plot || prefill.promise || prefill.commercialAngle || prefill.subtitle || prefill.title,
+  );
+  const greatnessGate = enforceKernelGreatnessBeforeForge({
+    config: prefill,
+    conceptText,
+  });
+  if (greatnessGate.refined) {
+    prefill.idea = greatnessGate.conceptText;
+    if (!hasText(prefill.plot) && hasText(prefill.idea, 18)) {
+      prefill.plot = prefill.idea;
+    }
+  }
+  prefill.bookKernel = greatnessGate.kernel;
+  prefill.readerPsychology = greatnessGate.kernel.readerPsychology;
+  prefill.bookDNA = greatnessGate.kernel.bookDNA;
+  prefill.greatnessScore = greatnessGate.greatness;
+  prefill.publishingReadiness = greatnessGate.kernel.publishingReadiness;
+
   if (source === "character-studio") {
     const canonicalSlots: BookForgeSlot[] = [
       "title",
@@ -411,10 +435,16 @@ export function buildBookForgeHandoff(
     createdAt: new Date().toISOString(),
   };
   const recommendedStartStep = resolveBookForgeStartStep(draftHandoff);
+  const blockedByGreatness =
+    !greatnessGate.allowed
+    && recommendedStartStep === "blueprint-generation";
   return {
     ...draftHandoff,
     recommendedStartStep,
-    lockReason: lockReasonFor(prefill, recommendedStartStep),
+    lockReason: blockedByGreatness
+      ? greatnessGate.message
+      : lockReasonFor(prefill, recommendedStartStep),
+    greatnessGate,
   };
 }
 

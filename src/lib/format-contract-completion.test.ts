@@ -114,6 +114,19 @@ const FORMAT_CASES = [
     layoutProfile: "professional-nonfiction",
   },
   {
+    label: "Narcisismo",
+    input: {
+      idea: "guida pratica per riconoscere il narcisismo e le dinamiche tossiche nelle relazioni",
+      genre: "self-help" as const,
+      category: "Psychology",
+      subcategory: "narcisismo",
+    },
+    format: "psychology_guide",
+    narrativeRepair: false,
+    exportUnit: "Capitolo",
+    layoutProfile: "professional-nonfiction",
+  },
+  {
     label: "Workbook",
     input: {
       idea: "workbook di 30 giorni per abitudini e tracker",
@@ -163,7 +176,7 @@ const FORMAT_CASES = [
   },
 ] as const;
 
-describe("Sprint 2 — format contract completion pipeline", () => {
+describe("Sprint 3 — format contract e2e matrix (10 formati)", () => {
   FORMAT_CASES.forEach((scenario) => {
     it(`${scenario.label}: Idea → BookDNA → Blueprint → export layout`, () => {
       const { kernel, blueprint, dna, coherence, exportLayout } = pipelineFor(scenario.input);
@@ -300,5 +313,23 @@ Dopo una lunga notte senza sonno, la mattina dopo scelse di non mostrarla a ness
     expect(exportLayout.unitLabelKey).toBe("phase");
     expect(exportLayout.useChapterOrnament).toBe(true);
     expect(formatExportUnitLabel(2, baseConfig({ genre: "memoir", language: "Italian" }), exportLayout)).toBe("Fase 2");
+  });
+
+  it("narcissism guide resolves psychology format with responsible nonfiction repair routing", () => {
+    const { kernel, exportLayout } = pipelineFor({
+      idea: "guida sul narcisismo e confini nelle relazioni tossiche",
+      genre: "self-help" as const,
+      category: "Psychology",
+      subcategory: "narcisismo",
+    });
+
+    expect(kernel.bookFormat).toBe("psychology_guide");
+    expect(exportLayout.layoutProfile).toBe("professional-nonfiction");
+    expect(requiresFormatQualityRepair(pipelineFor({
+      idea: "guida sul narcisismo",
+      genre: "self-help" as const,
+      category: "Psychology",
+      subcategory: "narcisismo",
+    }).resolved)).toBe(true);
   });
 });

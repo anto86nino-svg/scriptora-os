@@ -65,6 +65,10 @@ import {
   runBlueprintPreflight,
   type BlueprintPreflightResult,
 } from "@/lib/book-creation-os/blueprint-preflight";
+import {
+  applyGreatnessGateToConfig,
+  enforceKernelGreatnessBeforeForge,
+} from "@/lib/book-intelligence";
 import { useMobileForgeBodyLock } from "@/hooks/useMobileForgeViewport";
 import {
   consumeWizardTitleFreeRegen,
@@ -1810,15 +1814,25 @@ const persistDraft = useCallback(() => {
         return;
       }
 
+      const draftConfig = buildConfig(resolvedForgeHandoff);
+      const greatnessGate = enforceKernelGreatnessBeforeForge({ config: draftConfig });
+      if (!greatnessGate.allowed) {
+        toast.error(greatnessGate.message);
+        return;
+      }
+      if (greatnessGate.refined) {
+        toast.message("Ho rafforzato il concept prima del Blueprint.");
+      }
+      const gatedConfig = applyGreatnessGateToConfig(draftConfig, greatnessGate);
+
       setGeneratingBlueprint(true);
       setBlueprintError(null);
       try {
-        const config = buildConfig(resolvedForgeHandoff);
-        const bp = await onGenerateBlueprint(config);
+        const bp = await onGenerateBlueprint(gatedConfig);
         setBlueprintPreview(bp);
         setStep(7);
       } catch (e) {
-        const message = humanizeBlueprintError(e, buildConfig(resolvedForgeHandoff));
+        const message = humanizeBlueprintError(e, gatedConfig);
         setBlueprintError(message);
         toast.error(message);
       } finally {

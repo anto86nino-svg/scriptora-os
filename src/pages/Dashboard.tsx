@@ -67,6 +67,10 @@ import {
   setAdvancedLaunchpadEnabled,
 } from "@/components/one-flow/ProfileMenuDialog";
 import {
+  applyGreatnessGateToConfig,
+  enforceKernelGreatnessBeforeForge,
+} from "@/lib/book-intelligence";
+import {
   buildBookForgeHandoff,
   type BookForgeHandoff,
 } from "@/lib/book-forge/book-forge-handoff";
@@ -735,6 +739,11 @@ typeof crypto.randomUUID === "function"
       });
       throw new Error(gate.message);
     }
+    const greatnessGate = enforceKernelGreatnessBeforeForge({ config: finalConfig });
+    if (!greatnessGate.allowed) {
+      throw new Error(greatnessGate.message);
+    }
+    const gatedConfig = applyGreatnessGateToConfig(finalConfig, greatnessGate);
     trackScriptoraEvent({
       eventName: "blueprint_generation_requested",
       tool: "book-forge",
@@ -745,10 +754,10 @@ typeof crypto.randomUUID === "function"
       import("@/lib/book-type-engine"),
       import("@/lib/generation-runtime"),
     ]);
-    const genreLock = buildGenreLock(finalConfig);
-    const { blueprint } = await runGenerateBlueprint(finalConfig, genreLock);
+    const genreLock = buildGenreLock(gatedConfig);
+    const { blueprint } = await runGenerateBlueprint(gatedConfig, genreLock);
     const previewProject = buildBlueprintPreviewProject({
-      config: finalConfig,
+      config: gatedConfig,
       blueprint,
       sourceTool: "book-forge",
       planId: currentPlan,

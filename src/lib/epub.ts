@@ -24,7 +24,16 @@ function typographicQuotes(s: string): string {
     .replace(/\.\.\./g, "\u2026");
 }
 
-function textToHtml(text: unknown, opts?: { dropCap?: boolean }): string {
+function textToHtml(text: unknown, opts?: { dropCap?: boolean; preserveLineBreaks?: boolean }): string {
+  const raw = typeof text === "string" ? text : text == null ? "" : String(text);
+  if (opts?.preserveLineBreaks) {
+    const lines = cleanExportText(raw).split("\n").map((line) => line.trim()).filter(Boolean);
+    if (lines.length === 0) return "";
+    return lines
+      .map((line) => `<p class="verse-line">${escapeXml(cleanMarkdownInline(line))}</p>`)
+      .join("\n");
+  }
+
   const blocks = parseExportBlocks(text);
   let firstParagraph = true;
 
@@ -239,6 +248,18 @@ blockquote {
 .chapter-break {
   page-break-before: always;
 }
+p.verse-line, .verse {
+  white-space: pre-wrap;
+  text-align: left;
+  text-indent: 0;
+  margin: 0 0 0.45em;
+  hyphens: none;
+  -webkit-hyphens: none;
+  -epub-hyphens: none;
+}
+.poetry-body p.verse-line + p.verse-line {
+  margin-top: 0;
+}
 `;
 
 interface ContentEntry {
@@ -366,13 +387,13 @@ export async function generateEpub(project: BookProject, coverDataUrl?: string):
       : "";
     let body = `<p class="chapter-num">${escapeXml(chapterNumLabel)}</p>
 <h1>${escapeXml(chTitle)}</h1>
-${ornament}${textToHtml(ch.content, { dropCap: exportLayout.useDropCap })}`;
+${ornament}<div class="poetry-body">${textToHtml(ch.content, { dropCap: exportLayout.useDropCap, preserveLineBreaks: exportLayout.preserveLineBreaks })}</div>`;
     const children: { id: string; title: string }[] = [];
     if (ch.subchapters?.length) {
       ch.subchapters.forEach((sub, j) => {
         const subId = `${chId}_sub${j + 1}`;
         children.push({ id: subId, title: sub.title });
-        body += `\n<h2 id="${subId}">${escapeXml(sub.title)}</h2>\n${textToHtml(sub.content)}`;
+        body += `\n<h2 id="${subId}">${escapeXml(sub.title)}</h2>\n<div class="poetry-body">${textToHtml(sub.content, { preserveLineBreaks: exportLayout.preserveLineBreaks })}</div>`;
       });
     }
     entries.push({

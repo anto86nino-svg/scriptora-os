@@ -47,6 +47,10 @@ import { applyBlueprintReadySummaryToState } from "./blueprint-ready-summary";
 import { isMetadataOnly } from "./blueprint-ready-summary";
 import { validateBookReadinessForBlueprint } from "@/lib/book-config-engine/blueprint-readiness";
 import { enrichBookConfigFromForgeSeed } from "./forge-writer-bridge";
+import {
+  applyGreatnessGateToConfig,
+  enforceKernelGreatnessBeforeForge,
+} from "@/lib/book-intelligence";
 import type { BookConfig } from "@/types/book";
 
 export type ChapterBlueprintSeed = {
@@ -1871,6 +1875,7 @@ export function ensureExpressWriterReadiness(
   ready: boolean;
   blockingIssues: string[];
   warnings: string[];
+  config: BookConfig;
 } {
   let next = ensureExpressBookPackageCompleteness(state);
   next = applyBlueprintReadySummaryToState(next);
@@ -1897,16 +1902,36 @@ export function ensureExpressWriterReadiness(
     seed,
   );
   const report = validateBookReadinessForBlueprint(config);
+  const greatnessGate = enforceKernelGreatnessBeforeForge({ config });
   const packageSeeds = next.forgeMemory?.slotValues?.indexOutline;
   const warnings: string[] = [];
   if (!packageSeeds && !next.extracted?.structurePreference) {
     warnings.push("Struttura capitoli inferita — verrà normalizzata al blueprint.");
   }
+  if (greatnessGate.refined) {
+    warnings.push("Concept rafforzato automaticamente prima del Blueprint.");
+  }
+  const gatedConfig = applyGreatnessGateToConfig(config, greatnessGate);
   return {
-    state: next,
-    ready: handoff.ready && report.blockingIssues.length === 0,
-    blockingIssues: [...handoff.missing, ...report.blockingIssues, ...report.missingFields],
+    state: greatnessGate.refined
+      ? {
+        ...next,
+        extracted: {
+          ...next.extracted,
+          editorialSynopsis: greatnessGate.conceptText || next.extracted?.editorialSynopsis,
+          promise: next.extracted?.promise || greatnessGate.conceptText,
+        },
+      }
+      : next,
+    ready: handoff.ready && report.blockingIssues.length === 0 && greatnessGate.allowed,
+    blockingIssues: [
+      ...handoff.missing,
+      ...report.blockingIssues,
+      ...report.missingFields,
+      ...(greatnessGate.allowed ? [] : [greatnessGate.message]),
+    ],
     warnings,
+    config: gatedConfig,
   };
 }
 

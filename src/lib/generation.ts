@@ -1443,6 +1443,7 @@ async function enforceChapterFormatPurityBeforeSave(
     usage?: AIUsageContext;
     chapterIndex: number;
     chapterTitle: string;
+    skipFormatAiRepair?: boolean;
   },
 ): Promise<string> {
   const kernel = resolveBookKernel({ config: context.config });
@@ -1481,7 +1482,7 @@ async function enforceChapterFormatPurityBeforeSave(
     }
   }
 
-  if (requiresFormatQualityRepair(context.config)) {
+  if (requiresFormatQualityRepair(context.config) && !context.skipFormatAiRepair) {
     const repaired = await repairFormatChapterQualityIfNeeded(deterministic.changed ? deterministic.text : chapterText, {
       config: context.config,
       usage: context.usage,
@@ -2567,6 +2568,7 @@ Do not summarize. Do not apologize. Return only clean chapter prose.`,
     usage: opts?.usage,
     chapterIndex,
     chapterTitle: finalChapter.title,
+    skipFormatAiRepair: shouldSkipNarrativeQualityRepair(config),
   });
 
   return {

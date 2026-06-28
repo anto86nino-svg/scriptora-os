@@ -48,6 +48,7 @@ import {
   type BlueprintEditorialField,
 } from "@/lib/guided-interview/blueprint-ready-summary";
 import { pickExpressAutoScenario } from "./studio-express-ui";
+import { enforceKernelGreatnessBeforeForge } from "@/lib/book-intelligence";
 
 import type { ForgeHostContext } from "@/lib/guided-interview/forge-host-engine";
 
@@ -508,7 +509,49 @@ export function useGuidedInterviewController({
     if (!blueprintGate.isBlueprintReady) return;
     if (!ready && !blueprintGate.canShowConfirmation) return;
     const normalized = applyBlueprintReadySummaryToState(state);
-    const finalized = finalizeForgeForBlueprint(normalized);
+    const greatnessGate = enforceKernelGreatnessBeforeForge({
+      config: {
+        title: normalized.extracted?.bookTitle,
+        subtitle: normalized.extracted?.bookSubtitle,
+        genre: (normalized.selectedGenre || normalized.extracted?.genre) as any,
+        category: normalized.extracted?.category,
+        subcategory: normalized.extracted?.subgenre,
+        targetReader: normalized.extracted?.targetReader,
+        idea:
+          normalized.extracted?.editorialSynopsis
+          || normalized.extracted?.promise
+          || normalized.extracted?.centralConflict,
+        tone: normalized.extracted?.emotionalTone,
+        numberOfChapters: Number(normalized.extracted?.chapterCount || normalized.selectedLength || 12) || 12,
+        language: normalized.extracted?.language as any,
+      },
+    });
+    if (!greatnessGate.allowed) {
+      setState((prev) => ({
+        ...prev,
+        messages: [
+          ...prev.messages,
+          {
+            id: `assistant-greatness-gate-${Date.now()}`,
+            role: "assistant",
+            content: greatnessGate.message,
+          },
+        ],
+      }));
+      return;
+    }
+    const finalized = finalizeForgeForBlueprint(
+      greatnessGate.refined
+        ? {
+          ...normalized,
+          extracted: {
+            ...normalized.extracted,
+            editorialSynopsis: greatnessGate.conceptText || normalized.extracted?.editorialSynopsis,
+            promise: normalized.extracted?.promise || greatnessGate.conceptText,
+          },
+        }
+        : normalized,
+    );
     setState(finalized);
     saveForgeDnaLock(finalized);
     clearForgeInterviewDraft();
