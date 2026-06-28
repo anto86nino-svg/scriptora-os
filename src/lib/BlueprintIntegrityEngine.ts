@@ -6,6 +6,7 @@ import type {
   BookConfig,
   BookSubchapterOutline,
 } from "@/types/book";
+import { isNarrativeKernel, resolveBookKernel } from "@/lib/book-intelligence";
 
 export const BLUEPRINT_INTEGRITY_STORAGE_KEY = "scriptora-blueprint-integrity-enabled";
 
@@ -85,6 +86,8 @@ function normalizeCharacterMemory(source: unknown, config: BookConfig): Blueprin
 
   if (fromIntegrity.length) return fromIntegrity;
 
+  if (!isNarrativeBlueprintIntegrity(config)) return [];
+
   return (config.characters || [])
     .map((character) => ({
       canonicalName: [character.name, character.surname].filter(Boolean).join(" ").trim(),
@@ -122,102 +125,189 @@ export function setBlueprintIntegrityEnabled(enabled: boolean) {
   }
 }
 
+function isNarrativeBlueprintIntegrity(config: BookConfig): boolean {
+  const kernel = resolveBookKernel({ config });
+  return kernel.narrativeMode || isNarrativeKernel(kernel);
+}
+
 export function normalizeBlueprintIntegrity(
   raw: unknown,
   config: BookConfig,
   chapterOutlines: BookChapterOutline[] = [],
 ): BlueprintIntegrity {
   const source = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
-  const bookCoreFallback: StringRecord = {
-    title: config.title,
-    subtitle: config.subtitle,
-    genre: config.genre,
-    subgenre: config.subcategory || "not specified",
-    narrativePromise: config.subtitle || config.title,
-    emotionalPromise: config.tone,
-    coreTheme: chapterOutlines[0]?.summary || "not specified",
-    coreFear: "defined by the protagonist's wound and the genre promise",
-    coreDesire: "defined by the protagonist's external desire and reader fantasy",
-    readerFantasy: config.category || config.genre,
-    tone: config.tone,
-    atmosphere: config.tone,
-    writingStyle: config.authorStyle,
-    emotionalDensity: "genre-appropriate, controlled, never repetitive",
-    violenceLevel: "genre-appropriate",
-    spiceRomanceLevel: String(config.genre).includes("romance") ? "slow-burn tension, no instant payoff" : "only if genre-relevant",
-    endingDirection: chapterOutlines.at(-1)?.summary || "pay off the central promise without betraying canon",
-    targetAudience: config.category || "not specified",
-    bestsellerPositioning: `${config.genre} / ${config.subcategory || config.category || "general"}`,
-  };
+  const narrative = isNarrativeBlueprintIntegrity(config);
+  const bookCoreFallback: StringRecord = narrative
+    ? {
+        title: config.title,
+        subtitle: config.subtitle,
+        genre: config.genre,
+        subgenre: config.subcategory || "not specified",
+        narrativePromise: config.subtitle || config.title,
+        emotionalPromise: config.tone,
+        coreTheme: chapterOutlines[0]?.summary || "not specified",
+        coreFear: "defined by the protagonist's wound and the genre promise",
+        coreDesire: "defined by the protagonist's external desire and reader fantasy",
+        readerFantasy: config.category || config.genre,
+        tone: config.tone,
+        atmosphere: config.tone,
+        writingStyle: config.authorStyle,
+        emotionalDensity: "genre-appropriate, controlled, never repetitive",
+        violenceLevel: "genre-appropriate",
+        spiceRomanceLevel: String(config.genre).includes("romance") ? "slow-burn tension, no instant payoff" : "only if genre-relevant",
+        endingDirection: chapterOutlines.at(-1)?.summary || "pay off the central promise without betraying canon",
+        targetAudience: config.category || "not specified",
+        bestsellerPositioning: `${config.genre} / ${config.subcategory || config.category || "general"}`,
+      }
+    : {
+        title: config.title,
+        subtitle: config.subtitle,
+        genre: config.genre,
+        subgenre: config.subcategory || "not specified",
+        narrativePromise: config.subtitle || config.title,
+        emotionalPromise: config.tone,
+        coreTheme: chapterOutlines[0]?.summary || "not specified",
+        coreFear: "reader confusion, unsafe advice, or unclear next steps",
+        coreDesire: "clear practical outcome aligned with the book promise",
+        readerFantasy: config.category || config.genre,
+        tone: config.tone,
+        atmosphere: config.tone,
+        writingStyle: config.authorStyle,
+        emotionalDensity: "clear, focused, never repetitive",
+        violenceLevel: "not applicable",
+        spiceRomanceLevel: "not applicable",
+        endingDirection: chapterOutlines.at(-1)?.summary || "deliver the promised practical outcome",
+        targetAudience: config.category || "not specified",
+        bestsellerPositioning: `${config.genre} / ${config.subcategory || config.category || "general"}`,
+      };
 
   return {
     bookCoreDNA: normalizeRecord(pick(source, ["bookCoreDNA", "book_core_dna", "coreDNA"]), bookCoreFallback),
-    worldLoreFoundation: normalizeRecord(pick(source, ["worldLoreFoundation", "world_lore_foundation", "worldAndLore"]), {
-      worldRules: "Preserve every established rule. Do not invent contradictions to make prose prettier.",
-      socialStructure: "Maintain the hierarchy implied by genre, setting, and previous chapters.",
-      geography: "Locations are immutable once established.",
-      politicalTensions: "Escalate existing tensions before adding new ones.",
-      religionsBeliefs: "Keep beliefs internally coherent.",
-      technologyOrMagicSystems: "Power systems must have limits, cost, and continuity.",
-      forbiddenElements: "No random lore mutations, no unexplained new powers, no renamed places.",
-      historicalScars: "Past wounds must keep consequences.",
-      culturalTensions: "Use culture through behavior and conflict, not exposition dumps.",
-      environmentalTone: config.tone,
-      symbolicRecurringElements: "Repeat symbols with variation and purpose only.",
-    }),
+    worldLoreFoundation: normalizeRecord(pick(source, ["worldLoreFoundation", "world_lore_foundation", "worldAndLore"]), narrative
+      ? {
+          worldRules: "Preserve every established rule. Do not invent contradictions to make prose prettier.",
+          socialStructure: "Maintain the hierarchy implied by genre, setting, and previous chapters.",
+          geography: "Locations are immutable once established.",
+          politicalTensions: "Escalate existing tensions before adding new ones.",
+          religionsBeliefs: "Keep beliefs internally coherent.",
+          technologyOrMagicSystems: "Power systems must have limits, cost, and continuity.",
+          forbiddenElements: "No random lore mutations, no unexplained new powers, no renamed places.",
+          historicalScars: "Past wounds must keep consequences.",
+          culturalTensions: "Use culture through behavior and conflict, not exposition dumps.",
+          environmentalTone: config.tone,
+          symbolicRecurringElements: "Repeat symbols with variation and purpose only.",
+        }
+      : {
+          worldRules: "Domain facts, terminology, and methodology must stay consistent.",
+          socialStructure: "Audience context and use cases remain stable across chapters.",
+          geography: "Examples and settings must not contradict prior chapters.",
+          politicalTensions: "Stakeholder or systemic tensions only when format-relevant.",
+          religionsBeliefs: "Keep beliefs and frameworks internally coherent.",
+          technologyOrMagicSystems: "Tools, frameworks, and methods must have clear limits and steps.",
+          forbiddenElements: "No invented facts, renamed concepts, or contradictory advice.",
+          historicalScars: "Past mistakes or case outcomes must keep consequences.",
+          culturalTensions: "Use context through application, not exposition dumps.",
+          environmentalTone: config.tone,
+          symbolicRecurringElements: "Repeat motifs with variation and purpose only.",
+        }),
     characterMemoryEngine: normalizeCharacterMemory(pick(source, ["characterMemoryEngine", "characters", "character_memory_engine"]), config),
-    structuralStoryArchitecture: normalizeRecord(pick(source, ["structuralStoryArchitecture", "storyArchitecture", "structural_story_architecture"]), {
-      actStructure: "Opening pressure, rising complication, midpoint shift, escalation, final payoff.",
-      narrativeEscalation: "Every chapter changes the situation and raises the cost.",
-      emotionalEscalation: "Growth is gradual. No emotional teleportation.",
-      midpointShift: "A truth, cost, betrayal, or reversal changes how the book must be read.",
-      characterReversals: "Reversals must emerge from psychology, not convenience.",
-      betrayals: "Betrayals require setup and aftermath.",
-      tensionSpikes: "One dominant spike per chapter; avoid reveal overload.",
-      quietMoments: "Quiet scenes must reveal pressure, not stall momentum.",
-      setupsPayoffs: "Every setup must be tracked until payoff or intentional subversion.",
-      cliffhangers: "Use unanswered consequence, not random shock.",
-      revelationTiming: "Prefer questions before answers.",
-      finalPayoffStrategy: "Pay off theme through character choice and consequence.",
-    }),
-    relationshipTensionEngine: normalizeRecord(pick(source, ["relationshipTensionEngine", "relationship_tension_engine", "relationships"]), {
-      attraction: "Build through behavior, risk, and restraint.",
-      resistance: "Resistance must come from fear, wound, status, loyalty, or cost.",
-      trustEvolution: "Trust rises in steps and can regress after pressure.",
-      emotionalDependency: "Show through choices, not declarations.",
-      jealousy: "Use only when earned by the relationship map.",
-      vulnerability: "Vulnerability arrives partially, never as instant therapy speech.",
-      powerImbalance: "Acknowledge cost and agency.",
-      conflictChemistry: "Conflict should reveal desire and fear at the same time.",
-      emotionalDistance: "Distance changes physically before it changes verbally.",
-      unresolvedTension: "Protect longing until payoff is earned.",
-      emotionalPayoffTiming: "Delay resolution; aftermath matters.",
-    }),
+    structuralStoryArchitecture: normalizeRecord(pick(source, ["structuralStoryArchitecture", "storyArchitecture", "structural_story_architecture"]), narrative
+      ? {
+          actStructure: "Opening pressure, rising complication, midpoint shift, escalation, final payoff.",
+          narrativeEscalation: "Every chapter changes the situation and raises the cost.",
+          emotionalEscalation: "Growth is gradual. No emotional teleportation.",
+          midpointShift: "A truth, cost, betrayal, or reversal changes how the book must be read.",
+          characterReversals: "Reversals must emerge from psychology, not convenience.",
+          betrayals: "Betrayals require setup and aftermath.",
+          tensionSpikes: "One dominant spike per chapter; avoid reveal overload.",
+          quietMoments: "Quiet scenes must reveal pressure, not stall momentum.",
+          setupsPayoffs: "Every setup must be tracked until payoff or intentional subversion.",
+          cliffhangers: "Use unanswered consequence, not random shock.",
+          revelationTiming: "Prefer questions before answers.",
+          finalPayoffStrategy: "Pay off theme through character choice and consequence.",
+        }
+      : {
+          actStructure: "Foundation, method, practice, integration, mastery.",
+          narrativeEscalation: "Each chapter increases depth, scope, or application.",
+          emotionalEscalation: "Confidence builds gradually through demonstrated progress.",
+          midpointShift: "A reframing or synthesis changes how the reader applies the method.",
+          characterReversals: "Not applicable — focus on reader capability shifts.",
+          betrayals: "Not applicable.",
+          tensionSpikes: "One dominant learning spike per chapter; avoid concept overload.",
+          quietMoments: "Reflection beats must clarify next action, not stall momentum.",
+          setupsPayoffs: "Every concept introduced must be applied or reviewed later.",
+          cliffhangers: "Use open practice questions, not plot shock.",
+          revelationTiming: "Prefer guided discovery before full explanation.",
+          finalPayoffStrategy: "Pay off through applied understanding and measurable progress.",
+        }),
+    relationshipTensionEngine: normalizeRecord(pick(source, ["relationshipTensionEngine", "relationship_tension_engine", "relationships"]), narrative
+      ? {
+          attraction: "Build through behavior, risk, and restraint.",
+          resistance: "Resistance must come from fear, wound, status, loyalty, or cost.",
+          trustEvolution: "Trust rises in steps and can regress after pressure.",
+          emotionalDependency: "Show through choices, not declarations.",
+          jealousy: "Use only when earned by the relationship map.",
+          vulnerability: "Vulnerability arrives partially, never as instant therapy speech.",
+          powerImbalance: "Acknowledge cost and agency.",
+          conflictChemistry: "Conflict should reveal desire and fear at the same time.",
+          emotionalDistance: "Distance changes physically before it changes verbally.",
+          unresolvedTension: "Protect longing until payoff is earned.",
+          emotionalPayoffTiming: "Delay resolution; aftermath matters.",
+        }
+      : {
+          attraction: "Reader engagement through clarity, relevance, and usefulness.",
+          resistance: "Complexity only after prior concepts are established.",
+          trustEvolution: "Trust builds via accurate, actionable guidance.",
+          emotionalDependency: "Not applicable — maintain professional reader agency.",
+          jealousy: "Not applicable.",
+          vulnerability: "Honest acknowledgment of limits, prerequisites, and scope.",
+          powerImbalance: "Expert-to-reader dynamic with explicit agency for the reader.",
+          conflictChemistry: "Productive friction between old habits and new methods.",
+          emotionalDistance: "Warm but focused — no melodrama or fiction framing.",
+          unresolvedTension: "Open questions drive the next practical step.",
+          emotionalPayoffTiming: "Payoff comes through applied understanding, not plot twist.",
+        }),
     canonProtectionLayer: {
       immutableCanonRules: valueToStringArray(pick(source, ["immutableCanonRules", "canonProtectionLayer"])).length
         ? valueToStringArray(pick(source, ["immutableCanonRules", "canonProtectionLayer"]))
-        : [
-            "Names, roles, places, timeline facts, relationships, physical descriptions, lore rules and power systems are immutable after establishment.",
-            "Canon consistency outranks beautiful prose, dramatic convenience, and new ideas.",
-            "Every rewrite must preserve narrative identity, factual continuity, and reveal order.",
-          ],
+        : narrative
+          ? [
+              "Names, roles, places, timeline facts, relationships, physical descriptions, lore rules and power systems are immutable after establishment.",
+              "Canon consistency outranks beautiful prose, dramatic convenience, and new ideas.",
+              "Every rewrite must preserve narrative identity, factual continuity, and reveal order.",
+            ]
+          : [
+              "Terminology, steps, frameworks, examples, and factual claims are immutable after establishment.",
+              "Accuracy and clarity outrank decorative prose and dramatic convenience.",
+              "Every rewrite must preserve instructional continuity and the book promise.",
+            ],
       forbiddenMutations: valueToStringArray(pick(source, ["forbiddenMutations", "forbidden_mutations"])).length
         ? valueToStringArray(pick(source, ["forbiddenMutations", "forbidden_mutations"]))
-        : ["renaming characters", "changing wounds", "changing relationship status without scene cause", "adding powers without cost", "moving reveals earlier for drama"],
+        : narrative
+          ? ["renaming characters", "changing wounds", "changing relationship status without scene cause", "adding powers without cost", "moving reveals earlier for drama"]
+          : ["renaming core concepts", "contradicting prior advice", "adding fiction plot framing", "inventing unsafe claims"],
       priorityOrder: valueToStringArray(pick(source, ["priorityOrder", "priority_order"])).length
         ? valueToStringArray(pick(source, ["priorityOrder", "priority_order"]))
-        : ["canon", "character psychology", "emotional continuity", "genre promise", "prose beauty"],
+        : narrative
+          ? ["canon", "character psychology", "emotional continuity", "genre promise", "prose beauty"]
+          : ["accuracy", "clarity", "progressive structure", "format promise", "prose quality"],
     },
     narrativeImmersionRules: {
       prioritize: valueToStringArray(pick(source, ["prioritize", "narrativeImmersionRules"])).length
         ? valueToStringArray(pick(source, ["prioritize", "narrativeImmersionRules"]))
-        : ["subtext", "emotional realism", "sensory immersion", "imperfect behavior", "tension", "silence", "restraint", "psychological realism", "cinematic pacing"],
+        : narrative
+          ? ["subtext", "emotional realism", "sensory immersion", "imperfect behavior", "tension", "silence", "restraint", "psychological realism", "cinematic pacing"]
+          : ["clarity", "actionable steps", "concrete examples", "progressive difficulty", "reader agency", "scannable structure"],
       avoid: valueToStringArray(pick(source, ["avoid", "avoidRules"])).length
         ? valueToStringArray(pick(source, ["avoid", "avoidRules"]))
-        : ["repetitive metaphors", "overexplained emotions", "AI-perfect dialogue", "poetic overload", "generic reactions", "exposition dumps"],
+        : narrative
+          ? ["repetitive metaphors", "overexplained emotions", "AI-perfect dialogue", "poetic overload", "generic reactions", "exposition dumps"]
+          : ["fiction plot framing", "protagonist/antagonist language", "repetitive filler", "vague advice", "concept dumps without application"],
       sceneLaws: valueToStringArray(pick(source, ["sceneLaws", "scene_laws"])).length
         ? valueToStringArray(pick(source, ["sceneLaws", "scene_laws"]))
-        : ["Every scene needs desire, obstacle, tension, choice, and consequence.", "Every continuation must feel written by the same invisible mind."],
+        : narrative
+          ? ["Every scene needs desire, obstacle, tension, choice, and consequence.", "Every continuation must feel written by the same invisible mind."]
+          : ["Every section needs objective, explanation, example, and next action.", "Every continuation must feel written by the same expert voice."],
     },
   };
 }
@@ -263,6 +353,23 @@ export function buildBlueprintIntegrityFoundationBlock(config: BookConfig): stri
 
 export function buildBlueprintIntegrityBlueprintRequest(config: BookConfig): string {
   if (!isBlueprintIntegrityEnabled()) return "";
+  if (!isNarrativeBlueprintIntegrity(config)) {
+    return `
+
+BLUEPRINT INTEGRITY ENGINE — PRACTICAL FORMAT EXPANSION:
+Add this top-level field to the returned JSON:
+"integrity": {
+  "bookCoreDNA": { "title", "subtitle", "genre", "subgenre", "narrativePromise", "emotionalPromise", "coreTheme", "coreFear", "coreDesire", "readerFantasy", "tone", "atmosphere", "writingStyle", "targetAudience", "bestsellerPositioning" },
+  "structuralStoryArchitecture": { "actStructure", "narrativeEscalation", "setupsPayoffs", "finalPayoffStrategy" },
+  "canonProtectionLayer": { "immutableCanonRules": [], "forbiddenMutations": [], "priorityOrder": [] },
+  "narrativeImmersionRules": { "prioritize": [], "avoid": [], "sceneLaws": [] }
+}
+
+Do NOT include characterMemoryEngine, worldLoreFoundation, or relationshipTensionEngine for this practical/non-fiction format.
+Also enrich EVERY chapterOutlines item with: "purpose", "narrativeProgression", "canonNotes".
+${config.subchaptersEnabled ? "Every subchapter must also include purpose, narrativeProgression and canonNotes." : ""}
+Keep JSON compact but specific. Language: ${config.language}.`;
+  }
   return `
 
 BLUEPRINT INTEGRITY ENGINE — REQUIRED JSON EXPANSION:

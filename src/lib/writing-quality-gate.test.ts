@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildFormatQualityRepairPrompt,
   buildUniversalWritingQualityRulesBlock,
+  requiresFormatQualityRepair,
+  validateFormatChapterQuality,
   validateNarrativeChapterQuality,
 } from "./writing-quality-gate";
 
@@ -63,5 +66,36 @@ Dopo una lunga notte senza sonno, la mattina dopo scelse di non mostrarla a ness
     expect(block).toContain("REGOLE QUALITA'");
     expect(block).toContain("Non ripetere due volte la stessa scena");
     expect(block).toContain("gancio concreto");
+  });
+
+  it("routes poetry to format-dedicated repair", () => {
+    expect(requiresFormatQualityRepair({
+      bookFormat: "poetry_collection",
+      genre: "poetry",
+    } as any)).toBe(true);
+  });
+
+  it("builds format repair prompt from kernel quality gate", () => {
+    const report = validateFormatChapterQuality("Il protagonista affronta la trama.", {
+      config: {
+        bookFormat: "manual",
+        genre: "manual",
+        language: "Italian",
+      } as any,
+      language: "Italian",
+      chapterTitle: "Capitolo 1",
+    });
+
+    const prompt = buildFormatQualityRepairPrompt({
+      chapterText: "Il protagonista affronta la trama.",
+      report,
+      config: { bookFormat: "manual", genre: "manual", language: "Italian" } as any,
+      language: "Italian",
+      chapterTitle: "Capitolo 1",
+    });
+
+    expect(prompt).toContain("manual");
+    expect(prompt).toContain("MUST HAVE");
+    expect(prompt).toContain("REJECT IF");
   });
 });

@@ -1,5 +1,13 @@
 import type { BookConfig } from "@/types/book";
-import { resolveBookKernel } from "@/lib/book-intelligence";
+import {
+  resolveBookKernel,
+  validateFormatCoherence,
+  type BookIntelligenceKernelSnapshot,
+} from "@/lib/book-intelligence";
+import {
+  validateFormatPurity,
+  type FormatPurityIssue,
+} from "../../supabase/functions/_shared/format-purity-engine.ts";
 
 export type WritingQualityIssueKind =
   | "duplicate_event"
@@ -444,6 +452,306 @@ export function buildUniversalWritingQualityRulesBlock(language?: string | null)
 - End with a concrete hook: object, reveal, irreversible choice, physical sign, threat or strong image.
 - Before finalizing, silently remove duplicated beats and broken sentences.
 - Preserve blueprint, genre, character canon and chapter goal.`;
+}
+
+const FORMAT_DEDICATED_REPAIR_FORMATS = new Set([
+  "poetry_collection",
+  "workbook",
+  "study_material",
+  "manual",
+  "self_help",
+  "psychology_guide",
+  "journal",
+]);
+
+const FORMAT_DEDICATED_REPAIR_MODES = new Set([
+  "poetic",
+  "instructional",
+  "practical",
+  "reference",
+  "academic",
+  "educational",
+  "transformational",
+]);
+
+export function requiresFormatQualityRepair(config: Partial<BookConfig>): boolean {
+  const kernel = resolveBookKernel({ config });
+  if (FORMAT_DEDICATED_REPAIR_FORMATS.has(kernel.bookFormat)) return true;
+  return FORMAT_DEDICATED_REPAIR_MODES.has(kernel.contentMode);
+}
+
+function purityIssueToWritingIssue(issue: FormatPurityIssue): WritingQualityIssue {
+  return {
+    kind: "format_contamination",
+    severity: issue.severity === "critical" ? "critical" : issue.severity === "high" ? "high" : "medium",
+    message: issue.message,
+    evidence: issue.evidence,
+    repairInstruction: `Correggi contaminazione formato: ${issue.message}`,
+  };
+}
+
+function detectFormatSpecificGaps(text: string, kernel: BookIntelligenceKernelSnapshot): WritingQualityIssue[] {
+  const normalized = normalizeText(text);
+  const issues: WritingQualityIssue[] = [];
+
+  if (kernel.bookFormat === "poetry_collection") {
+    const plotSignals = /\b(protagonista|trama|conflitto narrativo|love interest|cliffhanger|scena dominante)\b/.test(normalized);
+    const hasVerseStructure = /\n/.test(text) && text.split("\n").filter((line) => line.trim().length > 0 && line.trim().length < 90).length >= 3;
+    if (plotSignals) {
+      issues.push({
+        kind: "format_contamination",
+        severity: "critical",
+        message: "La sezione poetica contiene segnali narrativi da romanzo.",
+        evidence: ["trama/personaggi/love interest"],
+        repairInstruction: "Rimuovi trama e personaggi fiction; rafforza immagini, simboli, ritmo e coerenza poetica.",
+      });
+    }
+    if (!hasVerseStructure && text.length > 280) {
+      issues.push({
+        kind: "format_contamination",
+        severity: "medium",
+        message: "Il testo poetico manca di struttura a versi o strofe.",
+        evidence: ["blocco prosa continuo"],
+        repairInstruction: "Riorganizza in versi/strofe con respiro, ripetizioni controllate e campo simbolico coerente.",
+      });
+    }
+  }
+
+  if (kernel.bookFormat === "workbook" || kernel.requiresWorkbook) {
+    const hasWorkbookSignals = /\b(eserciz|tracker|scheda|attivit|checkbox|□|☐|\[\s*\]|spazio risposta)\b/i.test(normalized);
+    if (!hasWorkbookSignals && text.length > 220) {
+      issues.push({
+        kind: "format_contamination",
+        severity: "high",
+        message: "Il workbook manca di esercizi, schede o tracker.",
+        evidence: ["nessun esercizio/tracker"],
+        repairInstruction: "Aggiungi esercizi applicabili, tracker di progressione e spazi risposta; niente scene o dialoghi narrativi.",
+      });
+    }
+    if (/\b(dialogo|scena|arco narrativo|climax)\b/.test(normalized)) {
+      issues.push({
+        kind: "format_contamination",
+        severity: "high",
+        message: "Il workbook contiene struttura narrativa invece di attivita' pratiche.",
+        evidence: ["scena/dialogo/arco narrativo"],
+        repairInstruction: "Sostituisci scene e dialoghi con esercizi, checklist operative e tracker.",
+      });
+    }
+  }
+
+  if (kernel.bookFormat === "study_material" || kernel.educationalMode) {
+    const hasStudySignals = /\b(modul|quiz|flashcard|verific|simulazion|definizion|obiettiv)/i.test(normalized);
+    if (!hasStudySignals && text.length > 220) {
+      issues.push({
+        kind: "format_contamination",
+        severity: "high",
+        message: "Il materiale di studio manca di moduli, quiz o struttura didattica.",
+        evidence: ["nessun modulo/quiz"],
+        repairInstruction: "Organizza in moduli con obiettivi, definizioni, quiz o flashcard; niente trama fiction.",
+      });
+    }
+  }
+
+  if (["manual", "self_help", "psychology_guide"].includes(kernel.bookFormat)) {
+    const hasOperationalSignals = /\b(checklist|framework|procedur|passo\s*\d|eserciz|strument|azione|metodo)\b/i.test(normalized);
+    if (!hasOperationalSignals && text.length > 220) {
+      issues.push({
+        kind: "format_contamination",
+        severity: "medium",
+        message: "Il capitolo operativo manca di checklist, framework o azioni concrete.",
+        evidence: ["nessuna checklist/framework"],
+        repairInstruction: "Aggiungi framework, checklist e passi operativi applicabili; niente protagonista o trama fiction.",
+      });
+    }
+    if (/\b(protagonista|antagonista|trama|love interest)\b/.test(normalized)) {
+      issues.push({
+        kind: "format_contamination",
+        severity: "critical",
+        message: "Guida/manuale contaminato da struttura fiction.",
+        evidence: ["protagonista/trama"],
+        repairInstruction: "Rimuovi personaggi e trama; mantieni capitoli operativi con checklist e framework.",
+      });
+    }
+  }
+
+  return issues;
+}
+
+function buildFormatRepairFocusBlock(kernel: BookIntelligenceKernelSnapshot, language?: string | null): string {
+  const isItalian = isItalianLanguage(language);
+  const focusByFormat: Partial<Record<string, { it: string; en: string }>> = {
+    poetry_collection: {
+      it: "Ripara immagini, simboli, ritmo, voce poetica e coerenza lirica. NON personaggi, trama o conflitto narrativo.",
+      en: "Repair imagery, symbols, rhythm, poetic voice and lyrical coherence. NOT characters, plot or narrative conflict.",
+    },
+    workbook: {
+      it: "Ripara esercizi, schede, tracker e progressione pratica. NON scene, dialoghi o archi narrativi.",
+      en: "Repair exercises, sheets, trackers and practical progression. NOT scenes, dialogues or narrative arcs.",
+    },
+    study_material: {
+      it: "Ripara moduli, quiz, flashcard e struttura didattica. NON cast o trama fiction.",
+      en: "Repair modules, quizzes, flashcards and study structure. NOT fiction cast or plot.",
+    },
+    manual: {
+      it: "Ripara capitoli operativi, checklist, framework e procedure. NON protagonista o trama.",
+      en: "Repair operational chapters, checklists, frameworks and procedures. NOT protagonist or plot.",
+    },
+    self_help: {
+      it: "Ripara trasformazione pratica, esercizi, domande e framework. NON storia romanzata.",
+      en: "Repair practical transformation, exercises, prompts and frameworks. NOT novelized story.",
+    },
+    psychology_guide: {
+      it: "Ripara framework psicologici, esercizi, checklist e applicazione responsabile. NON trama fiction.",
+      en: "Repair psychological frameworks, exercises, checklists and responsible application. NOT fiction plot.",
+    },
+    journal: {
+      it: "Ripara prompt riflessivi, tracker e spazi risposta. NON trama o personaggi fiction.",
+      en: "Repair reflective prompts, trackers and answer spaces. NOT plot or fiction characters.",
+    },
+  };
+
+  const focus = focusByFormat[kernel.bookFormat];
+  const focusLine = focus ? (isItalian ? focus.it : focus.en) : "";
+
+  const allowed = kernel.allowedStructures.slice(0, 6).join(", ");
+  const forbidden = kernel.forbiddenPatterns.slice(0, 6).join(", ");
+  const qualityRules = kernel.qualityRules.slice(0, 4).join("; ");
+
+  if (isItalian) {
+    return `FOCUS RIPARAZIONE FORMATO (${kernel.bookFormat} / ${kernel.contentMode}):
+${focusLine}
+- Modello struttura: ${kernel.structureModel}
+- Promessa editoriale: ${kernel.commercialPromise}
+- Strutture consentite: ${allowed}
+- Vietato: ${forbidden}
+- Regole qualita': ${qualityRules}`;
+  }
+
+  return `FORMAT REPAIR FOCUS (${kernel.bookFormat} / ${kernel.contentMode}):
+${focusLine}
+- Structure model: ${kernel.structureModel}
+- Editorial promise: ${kernel.commercialPromise}
+- Allowed structures: ${allowed}
+- Forbidden: ${forbidden}
+- Quality rules: ${qualityRules}`;
+}
+
+function isItalianLanguage(language?: string | null): boolean {
+  return normalizeText(language || "").startsWith("ital") || normalizeText(language || "") === "it";
+}
+
+export function validateFormatChapterQuality(
+  chapterText: string,
+  context: WritingQualityGateContext & { chapterTitle?: string | null } = {},
+): WritingQualityReport {
+  const config = (context.config || {}) as Partial<BookConfig>;
+  const kernel = resolveBookKernel({ config });
+
+  const purity = validateFormatPurity({
+    bookFormat: kernel.bookFormat,
+    genre: kernel.genre,
+    subcategory: kernel.subgenre,
+    generationStrategy: kernel.generationStrategy,
+    blueprintType: kernel.blueprintType,
+    text: chapterText,
+    requireMandatorySections: false,
+  });
+
+  const coherence = validateFormatCoherence(config, null, chapterText);
+
+  const issues: WritingQualityIssue[] = [
+    ...purity.issues.map(purityIssueToWritingIssue),
+    ...coherence.issues.map((issue) => ({
+      kind: "format_contamination" as const,
+      severity: issue.severity,
+      message: issue.message,
+      evidence: issue.evidence,
+      repairInstruction: `Riallinea al contratto ${kernel.bookFormat}: ${issue.message}`,
+    })),
+    ...detectFormatSpecificGaps(chapterText, kernel),
+  ];
+
+  const penalty = issues.reduce((sum, issue) => sum + severityPenalty(issue.severity), 0);
+  const score = Math.max(0, Math.min(100, 100 - penalty));
+  const needsRepair = shouldRepair(issues) || !purity.passed || !coherence.passed;
+
+  return {
+    passed: !needsRepair,
+    needsRepair,
+    score,
+    issues,
+  };
+}
+
+export function buildFormatQualityRepairPrompt(input: {
+  chapterText: string;
+  report: WritingQualityReport;
+  config: Partial<BookConfig>;
+  language?: string | null;
+  chapterTitle?: string | null;
+}): string {
+  const kernel = resolveBookKernel({ config: input.config });
+  const language = input.language || "Italian";
+  const issues = input.report.issues
+    .map((issue, index) => {
+      const evidence = issue.evidence.length ? ` Evidence: ${issue.evidence.join(" | ")}` : "";
+      return `${index + 1}. ${issue.kind} (${issue.severity}) - ${issue.repairInstruction}${evidence}`;
+    })
+    .join("\n");
+
+  const focusBlock = buildFormatRepairFocusBlock(kernel, language);
+  const mustHave = kernel.qualityGate.mustHave.map((item) => `- ${item}`).join("\n");
+  const rejectIf = kernel.qualityGate.rejectIf.map((item) => `- ${item}`).join("\n");
+
+  if (isItalianLanguage(language)) {
+    return `Ripara questa sezione in ${language} rispettando il contratto editoriale ${kernel.bookFormat}.
+Non introdurre trama fiction, personaggi canon o scene narrative se il formato li vieta.
+Mantieni titolo, obiettivo della sezione, voce autoriale e informazioni gia' presenti.
+Correggi solo contaminazioni di formato, lacune strutturali e incoerenze elencate sotto.
+Restituisci SOLO il testo revisionato, senza JSON, note o commenti.
+
+${focusBlock}
+
+MUST HAVE:
+${mustHave}
+
+REJECT IF:
+${rejectIf}
+
+SEZIONE: ${input.chapterTitle || "senza titolo"}
+
+PROBLEMI DA RIPARARE:
+${issues}
+
+TESTO:
+"""
+${input.chapterText}
+"""`;
+  }
+
+  return `Repair this section in ${language} under the ${kernel.bookFormat} editorial contract.
+Do not add fiction plot, canon characters or narrative scenes when the format forbids them.
+Preserve title, section goal, author voice and existing information.
+Fix only format contamination, structural gaps and listed incoherences.
+Return ONLY the revised text, no JSON, notes or commentary.
+
+${focusBlock}
+
+MUST HAVE:
+${mustHave}
+
+REJECT IF:
+${rejectIf}
+
+SECTION: ${input.chapterTitle || "untitled"}
+
+ISSUES TO REPAIR:
+${issues}
+
+TEXT:
+"""
+${input.chapterText}
+"""`;
 }
 
 export function buildNarrativeQualityRepairPrompt(input: {

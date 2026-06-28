@@ -1,4 +1,4 @@
-import { normalizeExportProject, exportLabel, cleanExportText, parseExportBlocks, cleanMarkdownInline } from "@/lib/export-cleanup";
+import { normalizeExportProject, exportLabel, cleanExportText, parseExportBlocks, cleanMarkdownInline, resolveExportLayoutFromConfig, formatExportUnitLabel } from "@/lib/export-cleanup";
 import { assertExportReady } from "@/lib/export-readiness";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import { BookProject } from "@/types/book";
@@ -284,6 +284,7 @@ export async function generateEpub(project: BookProject, coverDataUrl?: string):
   assertExportReady(project);
   const normalizedProject = normalizeExportProject(project);
   const { config, frontMatter, chapters, backMatter } = normalizedProject;
+  const exportLayout = resolveExportLayoutFromConfig(config);
   const lang = config.language;
   const fmLabels = getFrontMatterLabels(lang);
   const bmLabels = getBackMatterLabels(lang);
@@ -359,15 +360,13 @@ export async function generateEpub(project: BookProject, coverDataUrl?: string):
       summary: project.blueprint?.chapterOutlines?.[i]?.summary,
       totalChapters: config.numberOfChapters,
     });
-    const chapterNumLabel = lang === "Italian" ? `Capitolo ${i + 1}`
-      : lang === "Spanish" ? `Capítulo ${i + 1}`
-      : lang === "French" ? `Chapitre ${i + 1}`
-      : lang === "German" ? `Kapitel ${i + 1}`
-      : `${exportLabel("chapter", config.language)} ${i + 1}`;
+    const chapterNumLabel = formatExportUnitLabel(i + 1, config, exportLayout);
+    const ornament = exportLayout.useChapterOrnament
+      ? `<p class="chapter-ornament">\u2726 \u2726 \u2726</p>\n`
+      : "";
     let body = `<p class="chapter-num">${escapeXml(chapterNumLabel)}</p>
 <h1>${escapeXml(chTitle)}</h1>
-<p class="chapter-ornament">\u2726 \u2726 \u2726</p>
-${textToHtml(ch.content, { dropCap: true })}`;
+${ornament}${textToHtml(ch.content, { dropCap: exportLayout.useDropCap })}`;
     const children: { id: string; title: string }[] = [];
     if (ch.subchapters?.length) {
       ch.subchapters.forEach((sub, j) => {

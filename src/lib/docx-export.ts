@@ -1,4 +1,4 @@
-import { normalizeExportProject, exportLabel, cleanExportText, parseExportBlocks, cleanMarkdownInline } from "@/lib/export-cleanup";
+import { normalizeExportProject, exportLabel, cleanExportText, parseExportBlocks, cleanMarkdownInline, resolveExportLayoutFromConfig, formatExportUnitLabel } from "@/lib/export-cleanup";
 import { assertExportReady } from "@/lib/export-readiness";
 import { formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import {
@@ -99,30 +99,31 @@ function bodyParagraphs(text: string, opts?: { firstNoIndent?: boolean; dropCap?
   return out;
 }
 
-function chapterOpener(num: number, title: string): Paragraph[] {
-  return [
-    // Extra space at top
+function chapterOpener(num: number, title: string, unitLabel: string, useOrnament: boolean): Paragraph[] {
+  const paragraphs: Paragraph[] = [
     new Paragraph({ spacing: { before: 1800 }, children: [] }),
-    // "Chapter X" small label
     new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 240 },
-      children: [new TextRun({ text: `Capitolo ${num}`, font: "Garamond", size: 22, italics: true, color: "666666" })],
+      children: [new TextRun({ text: `${unitLabel} ${num}`, font: "Garamond", size: 22, italics: true, color: "666666" })],
     }),
-    // Big title
     new Paragraph({
       heading: HeadingLevel.HEADING_1,
       alignment: AlignmentType.CENTER,
       spacing: { before: 0, after: 360 },
       children: [new TextRun({ text: cleanMarkdown(title), font: "Garamond", size: 40, bold: true })],
     }),
-    // Ornament
-    new Paragraph({
+  ];
+
+  if (useOrnament) {
+    paragraphs.push(new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 480 },
       children: [new TextRun({ text: "✦  ✦  ✦", font: "Garamond", size: 22 })],
-    }),
-  ];
+    }));
+  }
+
+  return paragraphs;
 }
 
 function sectionH1(text: string): Paragraph {
@@ -147,6 +148,8 @@ export async function generateDocx(project: BookProject): Promise<Blob> {
   assertExportReady(project);
   const normalizedProject = normalizeExportProject(project);
   const { config, frontMatter, chapters, backMatter } = normalizedProject;
+  const exportLayout = resolveExportLayoutFromConfig(config);
+  const unitLabel = exportLabel(exportLayout.unitLabelKey, config.language);
   const author = String(config.authorName || config.author || config.writerName || "").trim();
   const bookTitle = config.title || "Untitled";
 
@@ -225,8 +228,8 @@ export async function generateDocx(project: BookProject): Promise<Blob> {
     const ch = chapters[i];
     if (!ch || (!ch.content && (!ch.subchapters || ch.subchapters.length === 0))) continue;
 
-    children.push(...chapterOpener(i + 1, ch.title));
-    children.push(...bodyParagraphs(ch.content, { dropCap: true, firstNoIndent: true }));
+    children.push(...chapterOpener(i + 1, ch.title, unitLabel, exportLayout.useChapterOrnament));
+    children.push(...bodyParagraphs(ch.content, { dropCap: exportLayout.useDropCap, firstNoIndent: true }));
 
     if (ch.subchapters) {
       for (const sub of ch.subchapters) {

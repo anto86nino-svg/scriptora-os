@@ -60,6 +60,8 @@ import {
   BlueprintValidationError,
   buildBlueprintCorrectivePrompt,
   buildFallbackBlueprintFromConfig,
+  buildFormatCoherenceCorrectivePrompt,
+  enforceBlueprintFormatCoherence,
   normalizeBlueprintShape,
   resolveBlueprintFromAiResponse,
   type BlueprintSource,
@@ -77,11 +79,19 @@ import {
   validateCanonBrainV3ChunkBeforeMerge,
 } from "@/lib/canon-brain-v3";
 import {
+  buildFormatQualityRepairPrompt,
   buildNarrativeQualityRepairPrompt,
   buildUniversalWritingQualityRulesBlock,
+  requiresFormatQualityRepair,
+  validateFormatChapterQuality,
   validateNarrativeChapterQuality,
   type WritingQualityReport,
 } from "@/lib/writing-quality-gate";
+import { resolveBookKernel, validateFormatCoherence } from "@/lib/book-intelligence";
+import {
+  repairFormatPurityText,
+  validateFormatPurity,
+} from "../../supabase/functions/_shared/format-purity-engine.ts";
 
 /**
  * Verbose streaming logs are off by default — they intasavano la console
@@ -791,6 +801,44 @@ async function callBlueprintFast(systemPrompt: string, userPrompt: string, usage
 
 /* ============ Context Memory Engine ============ */
 
+export type WriterMemoryLabel = "NARRATIVE MEMORY" | "POETIC CONTINUITY" | "PRACTICAL CONTINUITY";
+
+export function resolveWriterMemoryLabel(config: BookConfig): WriterMemoryLabel {
+  const def = resolveBookTypeDefinition(config.genre, config.subcategory, config.subgenre, config.bookTypeId);
+  const kernel = resolveBookKernel({ config });
+  const hay = `${config.genre} ${config.subcategory || ""} ${config.subgenre || ""}`.toLowerCase();
+
+  if (def.family === "poetry" || kernel.contentMode === "poetic") return "POETIC CONTINUITY";
+
+  const isMemoir = def.id === "memoir" || def.id === "biography" || /memoir|biograph/.test(hay);
+  if (def.family === "narrative" || isMemoir) return "NARRATIVE MEMORY";
+
+  if (
+    def.family === "manual"
+    || def.family === "educational"
+    || def.family === "nonfiction"
+    || def.family === "cookbook"
+    || kernel.contentMode === "instructional"
+    || kernel.contentMode === "practical"
+    || kernel.contentMode === "reference"
+    || kernel.contentMode === "academic"
+    || kernel.contentMode === "educational"
+    || kernel.bookFormat === "study_material"
+    || kernel.bookFormat === "workbook"
+    || kernel.bookFormat === "manual"
+    || kernel.bookFormat === "self_help"
+    || kernel.bookFormat === "psychology_guide"
+  ) {
+    return "PRACTICAL CONTINUITY";
+  }
+
+  return "NARRATIVE MEMORY";
+}
+
+function shouldSkipNarrativeQualityRepair(config: BookConfig): boolean {
+  return requiresFormatQualityRepair(config);
+}
+
 function extractKeyIdeas(content: string): string[] {
   // Extract sentences that look like key insights (contain strong verbs, declarations)
   const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 40 && s.trim().length < 200);
@@ -845,7 +893,7 @@ Continuity signal — you MUST carry forward:
     ? `Emotional trajectory: The book has moved from "${previousChapters[0].title}" through "${previousChapters[previousChapters.length - 1].title}". Continue escalating.`
     : "";
 
-  return `NARRATIVE MEMORY (you MUST maintain perfect continuity):
+  return `${resolveWriterMemoryLabel(config)} (you MUST maintain perfect continuity):
 
 PREVIOUS CHAPTERS:
 ${summaries}
@@ -1284,6 +1332,173 @@ function summarizeWritingQualityReport(report: WritingQualityReport) {
   }));
 }
 
+async function repairFormatChapterQualityIfNeeded(
+  chapterText: string,
+  context: {
+    config: BookConfig;
+    usage?: AIUsageContext;
+    chapterIndex: number;
+    chapterTitle: string;
+  },
+): Promise<string> {
+  const report = validateFormatChapterQuality(chapterText, {
+    language: context.config.language,
+    genre: context.config.genre,
+    config: context.config as BookConfig & Record<string, unknown>,
+    chapterTitle: context.chapterTitle,
+  });
+
+  if (!report.needsRepair) {
+    if (DEV_DEBUG_STREAM) {
+      writingQualityGateDevLog("FORMAT_QUALITY_GATE_PASS", {
+        chapterIndex: context.chapterIndex + 1,
+        score: report.score,
+        issues: summarizeWritingQualityReport(report),
+      });
+    }
+    return chapterText;
+  }
+
+  writingQualityGateDevLog("FORMAT_QUALITY_REPAIR_TRIGGERED", {
+    chapterIndex: context.chapterIndex + 1,
+    score: report.score,
+    issues: summarizeWritingQualityReport(report),
+  });
+
+  try {
+    const kernel = resolveBookKernel({ config: context.config });
+    const repairedText = await callAIReduced(
+      `${getSystemPrompt(context.config)}
+
+Surgical ${kernel.bookFormat} format repair. Preserve section goal, author voice and factual content. Never add fiction plot or characters when forbidden.`,
+      buildFormatQualityRepairPrompt({
+        chapterText,
+        report,
+        config: context.config,
+        language: context.config.language,
+        chapterTitle: context.chapterTitle,
+      }),
+      withUsage(context.usage, {
+        taskType: "generate_chapter_quality_retry",
+        metadata: {
+          chapterIndex: context.chapterIndex + 1,
+          formatQualityGate: true,
+          bookFormat: kernel.bookFormat,
+          writingQualityIssues: report.issues.map((issue) => issue.kind),
+          noExtraCharge: true,
+          language: context.config.language,
+          genre: context.config.genre,
+        },
+      }),
+    );
+    const cleanRepairedText = repairedText.replace(/^```[a-z]*\n?/g, "").replace(/\n?```$/g, "").trim();
+    if (!cleanRepairedText) {
+      writingQualityGateDevLog("FORMAT_QUALITY_REPAIR_FAILED", {
+        chapterIndex: context.chapterIndex + 1,
+        reason: "empty_repair",
+      });
+      return chapterText;
+    }
+
+    const repairedReport = validateFormatChapterQuality(cleanRepairedText, {
+      language: context.config.language,
+      genre: context.config.genre,
+      config: context.config as BookConfig & Record<string, unknown>,
+      chapterTitle: context.chapterTitle,
+    });
+
+    if (repairedReport.needsRepair && repairedReport.score < report.score) {
+      writingQualityGateDevLog("FORMAT_QUALITY_REPAIR_FAILED", {
+        chapterIndex: context.chapterIndex + 1,
+        reason: "repair_regressed",
+        originalScore: report.score,
+        repairedScore: repairedReport.score,
+        issues: summarizeWritingQualityReport(repairedReport),
+      });
+      return chapterText;
+    }
+
+    writingQualityGateDevLog("FORMAT_QUALITY_REPAIR_PASSED", {
+      chapterIndex: context.chapterIndex + 1,
+      originalScore: report.score,
+      repairedScore: repairedReport.score,
+      remainingIssues: summarizeWritingQualityReport(repairedReport),
+    });
+    return cleanRepairedText;
+  } catch (error) {
+    writingQualityGateDevLog("FORMAT_QUALITY_REPAIR_FAILED", {
+      chapterIndex: context.chapterIndex + 1,
+      reason: error instanceof Error ? error.message : String(error),
+    });
+    return chapterText;
+  }
+}
+
+async function enforceChapterFormatPurityBeforeSave(
+  chapterText: string,
+  context: {
+    config: BookConfig;
+    blueprint?: BookBlueprint;
+    genreLock?: GenreLock;
+    usage?: AIUsageContext;
+    chapterIndex: number;
+    chapterTitle: string;
+  },
+): Promise<string> {
+  const kernel = resolveBookKernel({ config: context.config });
+  const purityInput = {
+    bookFormat: kernel.bookFormat,
+    genre: kernel.genre,
+    subcategory: kernel.subgenre,
+    generationStrategy: kernel.generationStrategy,
+    blueprintType: kernel.blueprintType,
+    text: chapterText,
+    requireMandatorySections: false,
+  };
+
+  const coherenceReport = validateFormatCoherence(context.config, context.blueprint ?? null, chapterText);
+  const purityReport = validateFormatPurity(purityInput);
+
+  if (coherenceReport.passed && purityReport.passed) {
+    return chapterText;
+  }
+
+  writingQualityGateDevLog("FORMAT_PURITY_POST_CHAPTER_TRIGGERED", {
+    chapterIndex: context.chapterIndex + 1,
+    purityScore: purityReport.score,
+    coherenceIssues: coherenceReport.issues.length,
+  });
+
+  const deterministic = repairFormatPurityText(purityInput);
+  if (deterministic.changed) {
+    const recheckPurity = validateFormatPurity({ ...purityInput, text: deterministic.text });
+    const recheckCoherence = validateFormatCoherence(context.config, context.blueprint ?? null, deterministic.text);
+    if (recheckPurity.passed && recheckCoherence.passed) {
+      writingQualityGateDevLog("FORMAT_PURITY_DETERMINISTIC_REPAIR_PASSED", {
+        chapterIndex: context.chapterIndex + 1,
+      });
+      return deterministic.text;
+    }
+  }
+
+  if (requiresFormatQualityRepair(context.config)) {
+    const repaired = await repairFormatChapterQualityIfNeeded(deterministic.changed ? deterministic.text : chapterText, {
+      config: context.config,
+      usage: context.usage,
+      chapterIndex: context.chapterIndex,
+      chapterTitle: context.chapterTitle,
+    });
+    const finalPurity = validateFormatPurity({ ...purityInput, text: repaired });
+    const finalCoherence = validateFormatCoherence(context.config, context.blueprint ?? null, repaired);
+    if (finalPurity.passed && finalCoherence.passed) {
+      return repaired;
+    }
+    if (repaired !== chapterText) return repaired;
+  }
+
+  return deterministic.changed ? deterministic.text : chapterText;
+}
+
 async function repairChapterWritingQualityIfNeeded(
   chapterText: string,
   context: {
@@ -1294,6 +1509,15 @@ async function repairChapterWritingQualityIfNeeded(
     chapterTitle: string;
   },
 ): Promise<string> {
+  if (shouldSkipNarrativeQualityRepair(context.config)) {
+    return repairFormatChapterQualityIfNeeded(chapterText, {
+      config: context.config,
+      usage: context.usage,
+      chapterIndex: context.chapterIndex,
+      chapterTitle: context.chapterTitle,
+    });
+  }
+
   const report = validateNarrativeChapterQuality(chapterText, {
     language: context.config.language,
     genre: context.config.genre,
@@ -2336,10 +2560,18 @@ Do not summarize. Do not apologize. Return only clean chapter prose.`,
     chapterIndex,
     chapterTitle: finalChapter.title,
   });
+  const purityCheckedContent = await enforceChapterFormatPurityBeforeSave(qualityCheckedContent, {
+    config,
+    blueprint,
+    genreLock,
+    usage: opts?.usage,
+    chapterIndex,
+    chapterTitle: finalChapter.title,
+  });
 
   return {
     ...finalChapter,
-    content: applyFinalManuscriptGuardToText(qualityCheckedContent, {
+    content: applyFinalManuscriptGuardToText(purityCheckedContent, {
       config,
       previousChapters,
       chapterIndex,
@@ -2409,6 +2641,22 @@ Return a JSON object with:
     withUsage(usage, { taskType: "generate_blueprint" }),
   );
 
+  const finalizeBlueprint = async (
+    blueprint: BookBlueprint,
+    source: BlueprintSource,
+  ): Promise<BlueprintGenerationResult> =>
+    enforceBlueprintFormatCoherence(config, blueprint, source, async () => {
+      try {
+        const report = validateFormatCoherence(config, blueprint);
+        const corrective = buildFormatCoherenceCorrectivePrompt(config, report);
+        const rawRepair = await attempt(`${prompt}\n\n${corrective}`);
+        const repaired = resolveBlueprintFromAiResponse(rawRepair, config);
+        return repaired.ok ? repaired.blueprint : null;
+      } catch {
+        return null;
+      }
+    });
+
   let rawPrimary = "";
   try {
     rawPrimary = await attempt(prompt);
@@ -2420,21 +2668,19 @@ Return a JSON object with:
       title: config.title,
       genre: config.genre,
     });
-    return {
-      blueprint: buildFallbackBlueprintFromConfig(config),
-      source: "config_fallback",
-    };
+    return finalizeBlueprint(buildFallbackBlueprintFromConfig(config), "config_fallback");
   }
   const primary = resolveBlueprintFromAiResponse(rawPrimary, config);
+
   if (primary.ok) {
-    return { blueprint: primary.blueprint, source: primary.source };
+    return finalizeBlueprint(primary.blueprint, primary.source);
   }
 
   const corrective = buildBlueprintCorrectivePrompt(config, primary.errors);
   const rawRetry = await attempt(`${prompt}\n\n${corrective}`);
   const retry = resolveBlueprintFromAiResponse(rawRetry, config);
   if (retry.ok) {
-    return { blueprint: retry.blueprint, source: retry.source };
+    return finalizeBlueprint(retry.blueprint, retry.source);
   }
 
   console.error("========== BLUEPRINT FAILURE ==========");
@@ -2456,10 +2702,7 @@ Return a JSON object with:
     retryErrors: retry.errors,
   });
 
-  return {
-    blueprint: buildFallbackBlueprintFromConfig(config),
-    source: "config_fallback",
-  };
+  return finalizeBlueprint(buildFallbackBlueprintFromConfig(config), "config_fallback");
 }
 
 /* ============ Front Matter — TEMPLATE-DRIVEN PER GENRE ============ */

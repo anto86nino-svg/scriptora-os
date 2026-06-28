@@ -1,4 +1,4 @@
-import { normalizeExportProject, exportLabel, cleanExportText, parseExportBlocks, cleanMarkdownInline } from "@/lib/export-cleanup";
+import { normalizeExportProject, exportLabel, cleanExportText, parseExportBlocks, cleanMarkdownInline, resolveExportLayoutFromConfig, formatExportUnitLabel } from "@/lib/export-cleanup";
 import { assertExportReady } from "@/lib/export-readiness";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import jsPDF from "jspdf";
@@ -150,7 +150,24 @@ function writePlainLines(state: PdfState, text: string, opts?: { indent?: number
   state.y += 3;
 }
 
-function writeParagraphsWithDropCap(state: PdfState, text: string, useDropCap: boolean) {
+function writeParagraphsWithDropCap(state: PdfState, text: string, useDropCap: boolean, preserveLineBreaks = false) {
+  if (preserveLineBreaks) {
+    const lines = safeText(text).split("\n").map((line) => line.trim()).filter(Boolean);
+    for (const line of lines) {
+      const ml = getMarginLeft(state.pageNum);
+      const wrapped = state.doc.splitTextToSize(cleanMarkdown(line), CONTENT_W);
+      state.doc.setFontSize(BODY_SIZE);
+      state.doc.setFont("times", "normal");
+      for (const wrappedLine of wrapped) {
+        ensureSpace(state, LINE_HEIGHT);
+        state.doc.text(wrappedLine, ml, state.y, { maxWidth: CONTENT_W });
+        state.y += LINE_HEIGHT;
+      }
+      state.y += LINE_HEIGHT * 0.35;
+    }
+    return;
+  }
+
   const blocks = parseExportBlocks(safeText(text));
   if (blocks.length === 0) return;
 
@@ -250,6 +267,7 @@ export async function generatePdf(project: BookProject): Promise<Blob> {
   assertExportReady(project);
   const normalizedProject = normalizeExportProject(project);
   const { config, frontMatter, chapters, backMatter } = normalizedProject;
+  const exportLayout = resolveExportLayoutFromConfig(config);
   const doc = new jsPDF({ unit: "pt", format: [PAGE_W, PAGE_H], compress: true });
   const author = String(config.authorName || config.author || config.writerName || "").trim();
 
@@ -355,23 +373,24 @@ export async function generatePdf(project: BookProject): Promise<Blob> {
     doc.setFontSize(11);
     doc.setFont("times", "italic");
     doc.setTextColor(100, 100, 100);
-    doc.text(`${exportLabel("chapter", config.language)} ${i + 1}`, getMarginLeft(state.pageNum) + CONTENT_W / 2, state.y, { align: "center" });
+    doc.text(formatExportUnitLabel(i + 1, config, exportLayout), getMarginLeft(state.pageNum) + CONTENT_W / 2, state.y, { align: "center" });
     doc.setTextColor(0, 0, 0);
     state.y += 30;
     writeCenteredTitle(state, chapterTitle, HEADING_SIZE);
     state.y += 30;
-    // Ornamental separator
-    doc.setFontSize(10);
-    doc.text("✦  ✦  ✦", getMarginLeft(state.pageNum) + CONTENT_W / 2, state.y, { align: "center" });
-    state.y += 28;
+    if (exportLayout.useChapterOrnament) {
+      doc.setFontSize(10);
+      doc.text("✦  ✦  ✦", getMarginLeft(state.pageNum) + CONTENT_W / 2, state.y, { align: "center" });
+      state.y += 28;
+    }
 
-    writeParagraphsWithDropCap(state, ch.content, true);
+    writeParagraphsWithDropCap(state, ch.content, exportLayout.useDropCap, exportLayout.preserveLineBreaks);
 
     if (ch.subchapters) {
       for (const sub of ch.subchapters) {
         if (!sub.content) continue;
         writeSectionTitle(state, sub.title, 13);
-        writeParagraphsWithDropCap(state, sub.content, false);
+        writeParagraphsWithDropCap(state, sub.content, false, exportLayout.preserveLineBreaks);
       }
     }
   }

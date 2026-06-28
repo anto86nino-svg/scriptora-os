@@ -1,5 +1,7 @@
 import { resolveChapterTitle } from "@/lib/chapter-titles";
 import { resolveExportAuthorName } from "@/lib/export-author";
+import { resolveBookKernel } from "@/lib/book-intelligence";
+import type { BookConfig } from "@/types/book";
 
 type AnyBookProject = any;
 
@@ -594,6 +596,11 @@ export function exportLabel(key: string, language?: string): string {
   const it: Record<string, string> = {
     contents: "Indice",
     chapter: "Capitolo",
+    section: "Sezione",
+    module: "Modulo",
+    sheet: "Scheda",
+    phase: "Fase",
+    poem: "Poesia",
     copyright: "Copyright",
     dedication: "Dedica",
     aboutAuthor: "Nota sull’autore",
@@ -609,6 +616,11 @@ export function exportLabel(key: string, language?: string): string {
   const en: Record<string, string> = {
     contents: "Contents",
     chapter: "Chapter",
+    section: "Section",
+    module: "Module",
+    sheet: "Sheet",
+    phase: "Phase",
+    poem: "Poem",
     copyright: "Copyright",
     dedication: "Dedication",
     aboutAuthor: "About the Author",
@@ -622,4 +634,103 @@ export function exportLabel(key: string, language?: string): string {
   };
 
   return (isItalian ? it : en)[key] || key;
+}
+
+export interface ExportLayoutSettings {
+  layoutProfile: string;
+  unitLabelKey: string;
+  useDropCap: boolean;
+  useChapterOrnament: boolean;
+  justifyProse: boolean;
+  preserveLineBreaks: boolean;
+}
+
+export function resolveExportLayoutFromConfig(config: Partial<BookConfig>): ExportLayoutSettings {
+  const kernel = resolveBookKernel({ config });
+  const profile = kernel.exportIntelligence.layoutProfile;
+
+  if (kernel.bookFormat === "poetry_collection") {
+    return {
+      layoutProfile: profile,
+      unitLabelKey: "section",
+      useDropCap: false,
+      useChapterOrnament: false,
+      justifyProse: false,
+      preserveLineBreaks: true,
+    };
+  }
+
+  if (kernel.bookFormat === "workbook" || kernel.bookFormat === "journal") {
+    return {
+      layoutProfile: profile,
+      unitLabelKey: "sheet",
+      useDropCap: false,
+      useChapterOrnament: false,
+      justifyProse: false,
+      preserveLineBreaks: true,
+    };
+  }
+
+  if (kernel.bookFormat === "study_material" || kernel.educationalMode) {
+    return {
+      layoutProfile: profile,
+      unitLabelKey: "module",
+      useDropCap: false,
+      useChapterOrnament: false,
+      justifyProse: true,
+      preserveLineBreaks: false,
+    };
+  }
+
+  if (kernel.bookFormat === "memoir") {
+    return {
+      layoutProfile: profile,
+      unitLabelKey: "phase",
+      useDropCap: true,
+      useChapterOrnament: true,
+      justifyProse: true,
+      preserveLineBreaks: false,
+    };
+  }
+
+  if (["manual", "self_help", "psychology_guide", "business_book"].includes(kernel.bookFormat)) {
+    return {
+      layoutProfile: profile,
+      unitLabelKey: "chapter",
+      useDropCap: false,
+      useChapterOrnament: false,
+      justifyProse: true,
+      preserveLineBreaks: false,
+    };
+  }
+
+  if (kernel.narrativeMode) {
+    return {
+      layoutProfile: profile,
+      unitLabelKey: "chapter",
+      useDropCap: true,
+      useChapterOrnament: true,
+      justifyProse: true,
+      preserveLineBreaks: false,
+    };
+  }
+
+  return {
+    layoutProfile: profile,
+    unitLabelKey: "chapter",
+    useDropCap: false,
+    useChapterOrnament: false,
+    justifyProse: true,
+    preserveLineBreaks: false,
+  };
+}
+
+export function formatExportUnitLabel(
+  unitIndex: number,
+  config: Partial<BookConfig>,
+  layout?: ExportLayoutSettings,
+): string {
+  const resolved = layout || resolveExportLayoutFromConfig(config);
+  const label = exportLabel(resolved.unitLabelKey, config.language);
+  return `${label} ${unitIndex}`;
 }

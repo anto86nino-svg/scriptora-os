@@ -2,7 +2,12 @@ import type { BookBlueprint, BookConfig } from "@/types/book";
 import { getSubchaptersPerChapter } from "@/types/book";
 import { getGenreBlueprint } from "@/lib/genre-intelligence";
 import { isGenericChapterTitle, resolveChapterTitle } from "@/lib/chapter-titles";
-import { resolveBookKernel } from "@/lib/book-intelligence";
+import {
+  buildBookKernelPromptBlock,
+  resolveBookKernel,
+  validateFormatCoherence,
+  type FormatCoherenceReport,
+} from "@/lib/book-intelligence";
 import {
   normalizeBlueprintIntegrity,
   normalizeChapterOutlineExtras,
@@ -299,4 +304,65 @@ Restituisci SOLO un oggetto JSON valido, senza markdown, senza testo prima o dop
 Campi obbligatori: overview (string), chapterOutlines (array di esattamente ${config.numberOfChapters} elementi con title e summary), themes (array), emotionalArc (string).
 Lingua obbligatoria: ${config.language}.
 Titoli capitolo specifici e non generici (mai "Capitolo 1" o "Chapter 1" da soli).`;
+}
+
+export function buildFormatCoherenceCorrectivePrompt(
+  config: BookConfig,
+  report: FormatCoherenceReport,
+): string {
+  const issueSummary = report.issues
+    .map((issue) => `- ${issue.message}${issue.evidence?.length ? ` (${issue.evidence.slice(0, 3).join("; ")})` : ""}`)
+    .join("\n");
+  return `FORMAT COHERENCE REPAIR — CRITICAL
+The previous blueprint violates the locked book format. Repair it completely.
+
+${buildBookKernelPromptBlock(config)}
+
+Issues detected:
+${issueSummary}
+
+Rules:
+- Remove ALL forbidden fiction/narrative structures if this is not a novel.
+- Respect the format structure model exactly.
+- Keep exactly ${config.numberOfChapters} chapter outlines.
+- Return ONLY valid JSON with overview, chapterOutlines, themes, emotionalArc.
+- Language: ${config.language}.
+- Do NOT use numbered chapter titles like "Capitolo 1" for poetry collections.`;
+}
+
+export async function enforceBlueprintFormatCoherence(
+  config: BookConfig,
+  blueprint: BookBlueprint,
+  source: BlueprintSource,
+  retry?: () => Promise<BookBlueprint | null>,
+): Promise<{ blueprint: BookBlueprint; source: BlueprintSource }> {
+  const report = validateFormatCoherence(config, blueprint);
+  if (report.passed) {
+    return { blueprint, source };
+  }
+
+  if (retry) {
+    try {
+      const repairedBlueprint = await retry();
+      if (repairedBlueprint) {
+        const repairReport = validateFormatCoherence(config, repairedBlueprint);
+        if (repairReport.passed) {
+          return { blueprint: repairedBlueprint, source: "repaired" };
+        }
+      }
+    } catch {
+      /* silent — fall through to safe fallback */
+    }
+  }
+
+  console.warn("Format coherence gate failed — using safe config fallback", {
+    issues: report.issues.map((issue) => issue.kind),
+    title: config.title,
+    format: report.kernel.bookFormat,
+  });
+
+  return {
+    blueprint: buildFallbackBlueprintFromConfig(config),
+    source: "config_fallback",
+  };
 }
