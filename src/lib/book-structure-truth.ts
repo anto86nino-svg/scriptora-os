@@ -1,5 +1,6 @@
 import type { BookBlueprint, BookProject } from "@/types/book";
 import { getSubchaptersPerChapter } from "@/types/book";
+import { hasRealSubchapterContent } from "@/lib/manuscript/subchapter-content";
 
 export interface BookStructureTruth {
   requiresSubchapters: boolean;
@@ -127,7 +128,7 @@ export function getMissingActiveSubchapterRefs(project: StructureProject): Array
 
     for (let subIndex = 0; subIndex < truth.subchaptersPerChapter; subIndex += 1) {
       const sub = chapter.subchapters?.[subIndex];
-      if (!sub?.content || sub.content.trim().length <= 50) {
+      if (!hasRealSubchapterContent(sub?.content)) {
         missing.push({ chapterIndex, subIndex });
       }
     }

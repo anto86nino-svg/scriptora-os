@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
+import { hasRealSubchapterContent } from "@/lib/manuscript/subchapter-content";
 import { chapterAnchorId, getChapterIndexFromSection } from "@/lib/writer/chapter-navigation";
 import { buildEditorialChapterPreview } from "@/lib/project-generation-readiness";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
@@ -870,10 +871,10 @@ function SubchapterCoverageStrip({
   isGeneratingSection: (key: string) => boolean;
   onGenerateSubchapter: (subIdx: number) => void;
 }) {
-  const total = Math.max(expectedCount, subchapters.length);
+  const total = expectedCount > 0 ? expectedCount : subchapters.length;
   if (total <= 0) return null;
 
-  const written = subchapters.filter((sub) => sub.content.trim().length > 50).length;
+  const written = subchapters.slice(0, total).filter((sub) => hasRealSubchapterContent(sub.content)).length;
 
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
@@ -889,8 +890,8 @@ function SubchapterCoverageStrip({
         {Array.from({ length: total }, (_, index) => {
           const sub = subchapters[index];
           const generating = isGeneratingSection(`chapter-${chapterIndex}-sub-${index}`);
-          const done = Boolean(sub?.content?.trim().length > 50);
-          const canGenerate = !done && !generating && index <= subchapters.length;
+          const done = hasRealSubchapterContent(sub?.content);
+          const canGenerate = !done && !generating && index < total;
           return (
             <button
               key={`sub-coverage-${chapterIndex}-${index}`}
@@ -955,7 +956,16 @@ function ChapterView({
   const chapterLanguage = ws?.config?.language || ws?.config?.bookLanguage || ws?.config?.uiLanguage || "it";
   const currentLength = chapter?.lengthOverride || project.config.chapterLength;
   const expectedSubchapterCount = resolveExpectedSubchapterCount(project, outline);
-  const writtenSubchapterCount = chapter?.subchapters?.filter((sub) => sub.content.trim().length > 50).length || 0;
+  const writtenSubchapterCount = chapter?.subchapters
+    ?.slice(0, expectedSubchapterCount > 0 ? expectedSubchapterCount : undefined)
+    .filter((sub) => hasRealSubchapterContent(sub.content)).length || 0;
+  const nextMissingSubchapterCandidate = expectedSubchapterCount > 0
+    ? Array.from({ length: expectedSubchapterCount }, (_, index) => index)
+        .find((index) => !hasRealSubchapterContent(chapter?.subchapters?.[index]?.content))
+    : -1;
+  const nextMissingSubchapterIndex = typeof nextMissingSubchapterCandidate === "number" ? nextMissingSubchapterCandidate : -1;
+  const hasMissingExpectedSubchapter = typeof nextMissingSubchapterIndex === "number" && nextMissingSubchapterIndex >= 0;
+  const subchapterCtaIndex = hasMissingExpectedSubchapter ? nextMissingSubchapterIndex : (chapter?.subchapters?.length || 0);
   const chapterWordCount = chapter?.content?.trim() ? chapter.content.trim().split(/\s+/).length : 0;
   const [showRewriteMenu, setShowRewriteMenu] = useState(false);
   const [editorialOpen, setEditorialOpen] = useState(false);
@@ -965,14 +975,19 @@ function ChapterView({
   const autoFollowLiveRef = useRef(true);
   const [showReturnToLive, setShowReturnToLive] = useState(false);
 
-  const displayedTitle = resolveChapterTitle(isGenerated ? (chapter!.title || outline.title) : outline.title, chapterIndex, {
+  const rawPublicTitle = isGenerated
+    ? ((chapter as any)?.narrativeTitle || chapter!.title || outline.title)
+    : outline.title;
+  const displayedTitle = resolveChapterTitle(rawPublicTitle, chapterIndex, {
     config: project.config,
     summary: outline.summary,
+    content: chapter?.content,
     totalChapters: project.config.numberOfChapters,
   });
   const chapterDisplayLabel = formatChapterDisplayTitle(chapterIndex, displayedTitle, {
     config: project.config,
     summary: outline.summary,
+    content: chapter?.content,
     totalChapters: project.config.numberOfChapters,
   });
   const liveSignature = `${chunkProgress?.chunkIndex ?? 0}:${chunkProgress?.currentWords ?? 0}:${chunkProgress?.content?.length ?? chapter?.content?.length ?? 0}`;
@@ -1358,11 +1373,15 @@ function ChapterView({
               )}
 
               {project.config.subchaptersEnabled && (
-                <button onClick={() => onGenerateSubchapter(chapter.subchapters.length)} disabled={isGenerating}
+                <button
+                  onClick={() => onGenerateSubchapter(subchapterCtaIndex)}
+                  disabled={isGenerating || (expectedSubchapterCount > 0 && !hasMissingExpectedSubchapter)}
                   className="ml-0 mt-3 flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-primary disabled:opacity-30 sm:ml-6">
                   <Plus className="h-3.5 w-3.5" />
-                  {writtenSubchapterCount < expectedSubchapterCount
-                    ? `Genera sottocapitolo ${chapter.subchapters.length + 1}/${expectedSubchapterCount}`
+                  {expectedSubchapterCount > 0
+                    ? hasMissingExpectedSubchapter
+                      ? `Genera sottocapitolo ${nextMissingSubchapterIndex + 1}/${expectedSubchapterCount}`
+                      : "Sottocapitoli completi"
                     : t("add_subchapter")}
                 </button>
               )}

@@ -4,6 +4,7 @@ import { fallbackTitleForFamily, isForbiddenGenericTitle, resolveBookTypeDefinit
 type ChapterTitleContext = {
   config?: Partial<BookConfig>;
   summary?: string;
+  content?: string;
   totalChapters?: number;
   language?: string;
 };
@@ -14,6 +15,10 @@ const PLACEHOLDER_TITLE_RE =
   /^(?:untitled|senza titolo|to be generated|da generare|chapter title|titolo capitolo|titolo del capitolo)$/i;
 const FORBIDDEN_TITLE_RE =
   /^(?:to|the|a|an|titolo|title|section|sezione|part|parte|intro|introduction|preface|prefazione)$/i;
+const TECHNICAL_BEAT_TITLE_RE =
+  /^(?:forced proximity(?:\s*\/\s*inevitable encounter)?|inevitable encounter|setup mondi separati|costruzione attrazione|primo bacio(?:\/momento)?|ostacolo(?:\/rottura)?|riconciliazione|promessa futura|antagonistic chemistry|respect earned|vulnerability reveal|shift)$/i;
+const TECHNICAL_BEAT_FRAGMENT_RE =
+  /(?:forced proximity|inevitable encounter|setup mondi separati|costruzione attrazione|primo bacio|ostacolo|rottura|riconciliazione|promessa futura|antagonistic chemistry|respect earned|vulnerability reveal)/i;
 const CHAPTER_PREFIX_RE =
   /^(?:chapter|capitolo|chapitre|kapitel|capitulo|capitulo|cap\.?|ch\.?)\s*\d+\s*(?:[:.\-–—·]\s*)?/i;
 
@@ -115,6 +120,8 @@ export function isGenericChapterTitle(value: unknown): boolean {
     GENERIC_TITLE_RE.test(loose) ||
     PLACEHOLDER_TITLE_RE.test(loose) ||
     FORBIDDEN_TITLE_RE.test(loose) ||
+    TECHNICAL_BEAT_TITLE_RE.test(loose) ||
+    ((/[\/→]/.test(cleaned) || loose.split(/\s+/).length <= 6) && TECHNICAL_BEAT_FRAGMENT_RE.test(loose)) ||
     isForbiddenGenericTitle(cleaned)
   );
 }
@@ -148,6 +155,42 @@ function titleFromSummary(summary?: string): string {
   return title ? title.charAt(0).toUpperCase() + title.slice(1) : "";
 }
 
+function storySignalTitle(context: ChapterTitleContext, index: number): string {
+  const source = `${context.content || ""}\n${context.summary || ""}`.toLowerCase();
+  if (!source.trim()) return "";
+
+  const signals: Array<{ test: RegExp; titles: string[] }> = [
+    {
+      test: /condotti|voce nei condotti|corridoi tecnici/,
+      titles: ["La Voce nei Condotti", "La Cosa nei Condotti"],
+    },
+    {
+      test: /sala del sangue|debito di sangue|patto di sangue|sangue/,
+      titles: ["Il Patto del Sangue", "La Sala del Sangue"],
+    },
+    {
+      test: /sigillo d['’]?argento|argento|sigillo/,
+      titles: ["Il Sigillo d'Argento", "La Legge del Sigillo"],
+    },
+    {
+      test: /coscienza artificiale|codice|armature|ferro|bracciale di rame/,
+      titles: ["Memoria nel Ferro", "Quello che non era uomo"],
+    },
+    {
+      test: /lettere segrete|lettere mai spedite|lettera proibita|lettere/,
+      titles: ["La Lettera Proibita", "Le Lettere che Restano"],
+    },
+    {
+      test: /falso nome|nome scelto|celeste|leo|vera|marzio/,
+      titles: ["Il Nome Scelto", "Il Falso Nome"],
+    },
+  ];
+
+  const match = signals.find((signal) => signal.test.test(source));
+  if (!match) return "";
+  return match.titles[index % match.titles.length];
+}
+
 function fallbackTitle(index: number, context: ChapterTitleContext = {}): string {
   const language = context.language || context.config?.language || "Italian";
   if (context.config?.genre) {
@@ -174,6 +217,9 @@ export function resolveChapterTitle(
 ): string {
   const stripped = stripChapterTitlePrefix(rawTitle);
   if (!isGenericChapterTitle(stripped)) return stripped;
+
+  const fromSignals = storySignalTitle(context, index);
+  if (fromSignals) return fromSignals;
 
   const fromSummary = titleFromSummary(context.summary);
   if (fromSummary) return fromSummary;

@@ -2,12 +2,14 @@ import { useState, useCallback, useRef } from "react";
 import {
   BookProject,
   BookConfig,
+  Chapter,
   ChatMessage,
   GenerationPhase,
   GenerationStatus,
   AIQualityRating,
   ChapterEditorialSnapshot,
   isGenerationFailureStatus,
+  getSubchaptersPerChapter,
 } from "@/types/book";
 import { saveProjectAsync, createProjectId, setLastProjectId, loadProjects as loadScopedProjects } from "@/services/storageService";
 import { saveProject } from "@/lib/storage";
@@ -62,6 +64,7 @@ import { ensureBookTitleMetadata } from "@/lib/title-shadow";
 import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
 import { normalizeBookConfig, normalizeBookProject } from "@/lib/book-config-studio/defaults";
 import { normalizeProjectChapters, normalizeChapterForGeneration } from "@/lib/manuscript/chapter-normalization";
+import { distributeChapterContentToSubchapters, hasRealSubchapterContent } from "@/lib/manuscript/subchapter-content";
 import type { BookBlueprint } from "@/types/book";
 import { getActiveSubchaptersPerChapter, getBookStructureTruth, getMissingActiveSubchapterRefs } from "@/lib/book-structure-truth";
 import {
@@ -225,12 +228,38 @@ function handleGenerationBlocked(
   toast.error(classified.cause);
 }
 
-function resolveProjectChapterTitle(project: BookProject, index: number, rawTitle?: string): string {
+function resolveProjectChapterTitle(project: BookProject, index: number, rawTitle?: string, chapterContent?: string): string {
   const outline = project.blueprint?.chapterOutlines?.[index];
   return resolveChapterTitle(rawTitle || outline?.title, index, {
     config: project.config,
     summary: outline?.summary,
+    content: chapterContent,
     totalChapters: project.config?.numberOfChapters,
+  });
+}
+
+function getExpectedSubchapterCountForChapter(project: BookProject, chapterIndex: number): number {
+  const outlineSubs = project.blueprint?.chapterOutlines?.[chapterIndex]?.subchapters;
+  const blueprintCount = Array.isArray(outlineSubs) ? outlineSubs.length : 0;
+  if (blueprintCount > 0) return blueprintCount;
+  if (project.blueprint?.chapterOutlines?.length) return 0;
+  return getSubchaptersPerChapter(project.config);
+}
+
+function distributeGeneratedChapterSubchapters(
+  project: BookProject,
+  chapterIndex: number,
+  chapterContent: string,
+  existingSubchapters?: Chapter["subchapters"],
+): Chapter["subchapters"] {
+  const expectedCount = getExpectedSubchapterCountForChapter(project, chapterIndex);
+  const outlineSubchapters = project.blueprint?.chapterOutlines?.[chapterIndex]?.subchapters || [];
+  return distributeChapterContentToSubchapters({
+    chapterContent,
+    chapterIndex,
+    expectedCount,
+    existingSubchapters,
+    outlineSubchapters,
   });
 }
 
@@ -1004,11 +1033,18 @@ typeof crypto.randomUUID === "function"
         const usedWithoutThisChapter = countProjectWordsHard({ ...proj, chapters });
         const remaining = Math.max(0, maxProjectWordsAfterGeneration - usedWithoutThisChapter);
 
+        const finalContent = trimTextToWordLimit(chapter.content, remaining);
+        const existingSubchapters = safeSubchapters(existingChapter).length
+          ? safeSubchapters(existingChapter)
+          : safeSubchapters(chapter);
+
         finalChapter = {
           ...chapter,
-          title: resolveProjectChapterTitle(proj, index, chapter.title),
-          content: trimTextToWordLimit(chapter.content, remaining),
-          subchapters: remaining < countWordsSafe(chapter.content) ? [] : safeSubchapters(chapter),
+          title: resolveProjectChapterTitle(proj, index, chapter.title, finalContent),
+          content: finalContent,
+          subchapters: remaining < countWordsSafe(chapter.content)
+            ? []
+            : distributeGeneratedChapterSubchapters(proj, index, finalContent, existingSubchapters),
         };
 
         if (remaining <= 0 || countWordsSafe(finalChapter.content) >= remaining) {
@@ -1035,8 +1071,9 @@ typeof crypto.randomUUID === "function"
         ? formatChapterDisplayTitle(index, latestAfterSave.chapters?.[index]?.title || chapter.title, {
             config: latestAfterSave.config,
             summary: latestAfterSave.blueprint?.chapterOutlines?.[index]?.summary,
+            content: latestAfterSave.chapters?.[index]?.content || chapter.content,
           })
-        : formatChapterDisplayTitle(index, chapter.title, { config: p.config });
+        : formatChapterDisplayTitle(index, chapter.title, { config: p.config, content: chapter.content });
       addMessage("assistant", `${finalTitle} complete! ✅ (${finalWords} words)`);
 
       try {
@@ -1099,8 +1136,14 @@ typeof crypto.randomUUID === "function"
           recoveredContentForMessage = recoveredContent;
           chapters[index] = {
             ...existing,
-            title: resolveProjectChapterTitle(proj, index, existing.title),
+            title: resolveProjectChapterTitle(proj, index, existing.title, recoveredContent),
             content: recoveredContent,
+            subchapters: distributeGeneratedChapterSubchapters(
+              proj,
+              index,
+              recoveredContent,
+              safeSubchapters(existing),
+            ),
             status: recoveredStatus,
             rewriteInProgress: false,
             lastGenerationId: generationId,
@@ -1762,7 +1805,7 @@ typeof crypto.randomUUID === "function"
           for (let subIndex = 0; subIndex < targetSubchapters; subIndex += 1) {
             const current = getLatestProject() || afterChapter;
             const existingSub = current.chapters?.[i]?.subchapters?.[subIndex];
-            if (existingSub?.content && existingSub.content.length > 50) continue;
+            if (hasRealSubchapterContent(existingSub?.content)) continue;
             onSectionFocus?.(`chapter-${i}-sub-${subIndex}`);
             await generateSingleSubchapter(i, subIndex);
             await new Promise(r => setTimeout(r, 250));
