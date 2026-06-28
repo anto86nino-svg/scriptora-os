@@ -1,4 +1,5 @@
 import type { BookBlueprint, BookCharacter, BookConfig, Genre, Language } from "@/types/book";
+import { resolveUniversalBookStudio, type UniversalBookStudioId } from "@/lib/book-intelligence/universal-book-studios";
 
 export type BookForgeSource =
   | "title-domination"
@@ -55,6 +56,12 @@ export type BookForgeStartStep =
   | "writer";
 
 export type BookForgePrefill = Partial<BookConfig> & {
+  studioId?: UniversalBookStudioId | string;
+  studioName?: string;
+  studioGenerator?: string;
+  studioBlueprint?: string;
+  studioQualityGate?: string;
+  studioExportProfile?: string;
   marketplace?: string;
   bookType?: string;
   niche?: string;
@@ -135,7 +142,17 @@ function normalizeGenre(value: unknown): string {
   return text(value).toLowerCase().replace(/[_\s]+/g, "-");
 }
 
+function resolveStudioIdForHandoff(prefill: BookForgePrefill): UniversalBookStudioId {
+  if (prefill.studioId) return prefill.studioId as UniversalBookStudioId;
+  return resolveUniversalBookStudio({
+    config: prefill,
+    idea: text(prefill.idea || prefill.promise || prefill.commercialAngle || prefill.subtitle),
+    explicitBookFormat: prefill.bookFormat || prefill.bookTypeId || prefill.bookType,
+  }).studio.id;
+}
+
 export function isPoetryHandoff(prefill: BookForgePrefill): boolean {
+  if (resolveStudioIdForHandoff(prefill) === "poetry") return true;
   const blob = [
     prefill.bookTypeId,
     prefill.bookType,
@@ -149,6 +166,8 @@ export function isPoetryHandoff(prefill: BookForgePrefill): boolean {
 }
 
 export function isManualHandoff(prefill: BookForgePrefill): boolean {
+  const studioId = resolveStudioIdForHandoff(prefill);
+  if (studioId === "professional_guide" || studioId === "transformation" || studioId === "memoir") return true;
   const blob = [
     prefill.bookTypeId,
     prefill.bookType,
@@ -162,6 +181,7 @@ export function isManualHandoff(prefill: BookForgePrefill): boolean {
 }
 
 export function isFictionHandoff(prefill: BookForgePrefill): boolean {
+  if (resolveStudioIdForHandoff(prefill) === "narrative") return true;
   if (isPoetryHandoff(prefill) || isManualHandoff(prefill)) return false;
   const blob = [
     prefill.bookTypeId,
@@ -260,15 +280,20 @@ export function resolveBookForgeStartStep(input: BookForgeHandoff | BookForgePre
 
   if (!hasFoundation(prefill)) return "book-foundation";
 
+  const hasExplicitFormat =
+    fromCharacterStudio ||
+    hasText(prefill.bookFormat) ||
+    hasText(prefill.bookTypeId) ||
+    hasText(prefill.bookType);
   const poetry = isPoetryHandoff(prefill);
-  if (poetry) {
+  if (poetry && hasExplicitFormat) {
     return hasSlot(prefill, "structureMode") && hasSlot(prefill, "promise")
       ? "blueprint-generation"
       : "poetry-forge";
   }
 
   const manual = isManualHandoff(prefill);
-  if (manual) {
+  if (manual && hasExplicitFormat) {
     return hasSlot(prefill, "structureMode") && hasSlot(prefill, "transformation")
       ? "blueprint-generation"
       : "manual-forge";
@@ -305,6 +330,24 @@ export function buildBookForgeHandoff(
   const prefill: BookForgePrefill = { ...collectedData };
   if (prefill.marketplace && !prefill.amazonMarketplace) prefill.amazonMarketplace = prefill.marketplace;
   if (prefill.chapterCount && !prefill.numberOfChapters) prefill.numberOfChapters = prefill.chapterCount;
+  const explicitFormat = prefill.bookFormat || prefill.bookTypeId || prefill.bookType;
+  const { studio, kernel } = resolveUniversalBookStudio({
+    config: prefill,
+    idea: text(prefill.idea || prefill.promise || prefill.commercialAngle || prefill.subtitle),
+    explicitBookFormat: explicitFormat,
+  });
+  prefill.studioId = prefill.studioId || studio.id;
+  prefill.studioName = prefill.studioName || studio.visibleName;
+  prefill.studioGenerator = prefill.studioGenerator || studio.generatorName;
+  prefill.studioBlueprint = prefill.studioBlueprint || studio.blueprintName;
+  prefill.studioQualityGate = prefill.studioQualityGate || studio.qualityGateName;
+  prefill.studioExportProfile = prefill.studioExportProfile || studio.exportProfile;
+  if (explicitFormat || source === "character-studio") {
+    prefill.bookFormat = prefill.bookFormat || kernel.bookFormat;
+  }
+  prefill.blueprintType = prefill.blueprintType || kernel.blueprintType;
+  prefill.generationStrategy = prefill.generationStrategy || kernel.generationStrategy;
+  prefill.contentMode = prefill.contentMode || kernel.contentMode;
 
   if (source === "character-studio") {
     const canonicalSlots: BookForgeSlot[] = [

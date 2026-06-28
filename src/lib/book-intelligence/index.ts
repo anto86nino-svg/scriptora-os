@@ -31,6 +31,12 @@ export {
   resolveGenreDominanceContract,
   scoreGenreDominance,
 } from "./genre-dominance";
+export {
+  buildUniversalStudioContract,
+  getUniversalBookStudio,
+  listUniversalBookStudios,
+  resolveUniversalBookStudio,
+} from "./universal-book-studios";
 export type {
   BlueprintType,
   BookFormat,
@@ -53,6 +59,12 @@ export type {
   GenreDominanceContract,
   GenreDominanceScore,
 } from "./genre-dominance";
+export type {
+  ResolvedUniversalBookStudio,
+  UniversalBookStudioDefinition,
+  UniversalBookStudioId,
+  UniversalStudioFieldMode,
+} from "./universal-book-studios";
 
 import type { BookConfig } from "@/types/book";
 import { buildBookIntelligenceSnapshot, detectBookIntelligence } from "./detector";

@@ -2050,8 +2050,8 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
   }, [open]);
 
   const formatUiProfile = useMemo(
-    () => resolveCharacterStudioFormatUiProfile({ bookFormat, genre }),
-    [bookFormat, genre],
+    () => resolveCharacterStudioFormatUiProfile({ bookFormat, genre, subcategory }),
+    [bookFormat, genre, subcategory],
   );
   const genreDominanceContract = useMemo(
     () => resolveGenreDominanceContract({ bookFormat, genre, subcategory }),
@@ -2087,6 +2087,11 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     narrativePromise: narrativePromise.trim(),
     setting: setting.trim(),
     idea: idea.trim(),
+    studioId: formatUiProfile.studioId,
+    studioName: formatUiProfile.studioTitle,
+    studioGenerator: formatUiProfile.generatorName,
+    studioBlueprint: formatUiProfile.blueprintName,
+    studioQualityGate: formatUiProfile.qualityGateName,
   }), [
     bookFormat,
     bookLength,
@@ -2111,6 +2116,11 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     narrativePromise,
     setting,
     idea,
+    formatUiProfile.studioId,
+    formatUiProfile.studioTitle,
+    formatUiProfile.generatorName,
+    formatUiProfile.blueprintName,
+    formatUiProfile.qualityGateName,
   ]);
   const bookKernel = useMemo(
     () => resolveBookKernel({ config: bookKernelConfig, explicitBookFormat: bookFormat }),
@@ -2145,6 +2155,14 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     narrativePromise: narrativePromise.trim(),
     setting: setting.trim(),
     genreDominance: genreDominanceContract,
+    studioId: formatUiProfile.studioId,
+    studioName: formatUiProfile.studioTitle,
+    studioGenerator: formatUiProfile.generatorName,
+    studioBlueprint: formatUiProfile.blueprintName,
+    studioQualityGate: formatUiProfile.qualityGateName,
+    studioExportProfile: formatUiProfile.exportProfile,
+    studioVisibleFields: formatUiProfile.visibleFields,
+    studioForbiddenFields: formatUiProfile.forbiddenFields,
     contentMode: bookKernel.contentMode,
     structureMode: bookKernel.structureModel,
     structureLock: bookKernel.structureLock,
@@ -2186,6 +2204,14 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     narrativePromise,
     setting,
     genreDominanceContract,
+    formatUiProfile.studioId,
+    formatUiProfile.studioTitle,
+    formatUiProfile.generatorName,
+    formatUiProfile.blueprintName,
+    formatUiProfile.qualityGateName,
+    formatUiProfile.exportProfile,
+    formatUiProfile.visibleFields,
+    formatUiProfile.forbiddenFields,
     bookKernel,
     bookKernelPromptBlock,
   ]);

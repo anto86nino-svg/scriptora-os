@@ -101,6 +101,10 @@ describe("format-aware book concept generation", () => {
   it("routes the server prompt to the poetry collection strategy", () => {
     const prompts = buildFormatAwareConceptPrompts({
       bookFormat: "poetry_collection",
+      studioId: "poetry",
+      studioName: "POESIE E RACCOLTE",
+      studioGenerator: "Poetry Collection Generator",
+      studioBlueprint: "Poetry Blueprint",
       generationStrategy: "generatePoetryCollection",
       blueprintType: "PoetryBlueprint",
       genre: "poesia",
@@ -113,5 +117,7 @@ describe("format-aware book concept generation", () => {
     })).toBe("poetry_collection");
     expect(prompts.format).toBe("poetry_collection");
     expect(prompts.user).toContain("GENERA UN NUCLEO POETICO");
+    expect(prompts.user).toContain("Studio: POESIE E RACCOLTE");
+    expect(prompts.user).toContain("Generatore studio: Poetry Collection Generator");
   });
 });

@@ -17,6 +17,7 @@ export interface BookConceptFormatInput {
   subcategory?: unknown;
   generationStrategy?: unknown;
   blueprintType?: unknown;
+  studioId?: unknown;
 }
 
 export interface BookConceptInput extends BookConceptFormatInput {
@@ -34,6 +35,14 @@ export interface BookConceptInput extends BookConceptFormatInput {
   preserveUserStory?: boolean;
   bookKernelPromptBlock?: unknown;
   creativeCoordinates?: Record<string, unknown>;
+  studioId?: unknown;
+  studioName?: unknown;
+  studioGenerator?: unknown;
+  studioBlueprint?: unknown;
+  studioQualityGate?: unknown;
+  studioExportProfile?: unknown;
+  studioVisibleFields?: unknown;
+  studioForbiddenFields?: unknown;
   contentMode?: unknown;
   structureMode?: unknown;
   blueprintType?: unknown;
@@ -67,6 +76,7 @@ function numberOr(value: unknown, fallback: number): number {
 
 export function resolveBookConceptFormat(input: BookConceptFormatInput): BookConceptFormat {
   const identity = [
+    input.studioId,
     input.bookFormat,
     input.genre,
     input.subcategory,
@@ -74,6 +84,12 @@ export function resolveBookConceptFormat(input: BookConceptFormatInput): BookCon
     input.blueprintType,
   ].map(normalize).join(" ");
 
+  if (/\bpoetry\b/.test(identity)) return "poetry_collection";
+  if (/\bstudy\b/.test(identity)) return "study_material";
+  if (/\bworkbook\b/.test(identity)) return "workbook";
+  if (/\btransformation\b/.test(identity)) return "self_help";
+  if (/\bprofessional-guide\b|\bprofessional_guide\b/.test(identity)) return "manual";
+  if (/\bmemoir\b/.test(identity)) return "memoir";
   if (/poetry-collection|poetryblueprint|generatepoetrycollection|raccolta-poetica|poesia|poetry/.test(identity)) {
     return "poetry_collection";
   }
@@ -352,6 +368,11 @@ La raccolta non diventa un singolo romanzo lungo: funziona per risonanza, contra
 
 function formatLocks(input: BookConceptInput): string {
   const parts = [
+    `studioId=${clean(input.studioId)}`,
+    `studioName=${clean(input.studioName)}`,
+    `studioGenerator=${clean(input.studioGenerator)}`,
+    `studioBlueprint=${clean(input.studioBlueprint)}`,
+    `studioQualityGate=${clean(input.studioQualityGate)}`,
     `bookFormat=${clean(input.bookFormat)}`,
     `contentMode=${clean(input.contentMode)}`,
     `structureMode=${clean(input.structureMode)}`,
@@ -381,6 +402,13 @@ Kernel:
 ${clean(input.bookKernelPromptBlock, 3000) || "Kernel non disponibile nel payload."}
 
 Coordinate:
+Studio: ${clean(input.studioName) || "determinato dal formato"}
+Generatore studio: ${clean(input.studioGenerator) || "determinato dal formato"}
+Blueprint studio: ${clean(input.studioBlueprint) || "determinato dal formato"}
+Quality gate studio: ${clean(input.studioQualityGate) || "determinato dal formato"}
+Export studio: ${clean(input.studioExportProfile) || "determinato dal formato"}
+Campi visibili: ${Array.isArray(input.studioVisibleFields) ? input.studioVisibleFields.map((item) => clean(item)).filter(Boolean).join(", ") : "kernel"}
+Campi vietati: ${Array.isArray(input.studioForbiddenFields) ? input.studioForbiddenFields.map((item) => clean(item)).filter(Boolean).join(", ") : "kernel"}
 Genere: ${clean(input.genre) || "da rispettare in base al formato"}
 Filone / sottogenere: ${clean(input.subcategory) || "coerente con formato e genere"}
 Tono: ${clean(input.tone) || "professionale e vendibile"}

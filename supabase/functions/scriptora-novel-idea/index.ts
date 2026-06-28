@@ -71,6 +71,14 @@ serve(async (req) => {
     const structureMode = String(body.structureMode || body.structureLock || kernel.structureModel || kernel.structureLock || "").trim();
     const blueprintType = String(body.blueprintType || kernel.blueprintType || "").trim();
     const generationStrategy = String(body.generationStrategy || kernel.generationStrategy || "").trim();
+    const studioId = String(body.studioId || "").trim();
+    const studioName = String(body.studioName || "").trim();
+    const studioGenerator = String(body.studioGenerator || "").trim();
+    const studioBlueprint = String(body.studioBlueprint || "").trim();
+    const studioQualityGate = String(body.studioQualityGate || "").trim();
+    const studioExportProfile = String(body.studioExportProfile || "").trim();
+    const studioVisibleFields = Array.isArray(body.studioVisibleFields) ? body.studioVisibleFields : [];
+    const studioForbiddenFields = Array.isArray(body.studioForbiddenFields) ? body.studioForbiddenFields : [];
     const bookKernelPromptBlock = String(body.bookKernelPromptBlock || "").trim();
     const requiresCharacters = Boolean(body.requiresCharacters ?? kernel.requiresCharacters);
     const requiresPlot = Boolean(body.requiresPlot ?? kernel.requiresPlot);
@@ -180,6 +188,14 @@ serve(async (req) => {
       structureMode,
       blueprintType,
       generationStrategy,
+      studioId,
+      studioName,
+      studioGenerator,
+      studioBlueprint,
+      studioQualityGate,
+      studioExportProfile,
+      studioVisibleFields,
+      studioForbiddenFields,
       requiresCharacters,
       requiresPlot,
       requiresPoems,
@@ -204,6 +220,7 @@ serve(async (req) => {
         preserveUserStory,
         generationStrategy,
         blueprintType,
+        studioId,
       },
     });
 
@@ -230,6 +247,7 @@ Rispetta il formato ${prompts.format} e restituisci solo il concept corretto.`,
             regeneration: "format_contamination",
             generationStrategy,
             blueprintType,
+            studioId,
           },
         },
       );
