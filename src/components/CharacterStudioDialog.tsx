@@ -13,6 +13,11 @@ import { devOnlyDiagnostic } from "@/lib/user-friendly-error";
 import { ScriptoraAliveTransition } from "@/components/boot/ScriptoraAliveTransition";
 import { resolveCharacterStudioFormatUiProfile } from "@/lib/character-studio/format-aware-ui";
 import { resolveGenreDominanceContract, scoreGenreDominance } from "@/lib/book-intelligence/genre-dominance";
+import { buildBookKernelPromptBlock, resolveBookKernel } from "@/lib/book-intelligence";
+import {
+  buildDeterministicBookConcept,
+  isConceptContaminatedForFormat,
+} from "../../supabase/functions/_shared/book-concept-format.ts";
 
 import {
   SCRIPTORA_CHARACTER_BIBLE_KEY,
@@ -1455,12 +1460,17 @@ function saveIdeaToHistory(nextIdea: string): void {
 
 function buildLocalNovelIdea(input: {
   bookFormat?: string;
+  bookLength?: string;
+  chapterCount?: number;
+  subchaptersPerChapter?: number;
   genre: string;
   subcategory: string;
   tone: string;
   intensity: string;
   centralDynamic: string;
   protagonistType: string;
+  targetReader?: string;
+  setting?: string;
   language: string;
   previousIdeas?: string[];
 }) {
@@ -1471,17 +1481,22 @@ function buildLocalNovelIdea(input: {
     subcategory: input.subcategory,
   });
 
-  if (formatProfile.mode === "poetry") {
-    return `Raccolta poetica costruita su ${input.centralDynamic || "memoria, perdita e rinascita"}. La voce poetica resta ${input.tone || "lirica e precisa"}, con immagini ricorrenti di ${input.protagonistType || "stanze, acqua, luce e soglie"}. La promessa non e' una trama: e' un arco emotivo in sezioni, dove ogni poesia aggiunge ritmo, silenzio, immagine concreta e continuita' interiore. ${dominance.generationInstruction}`;
-  }
-
-  if (formatProfile.mode === "manual" || formatProfile.mode === "workbook" || formatProfile.mode === "study") {
-    const practicalCore = formatProfile.mode === "study"
-      ? "moduli, quiz, flashcard, simulazioni e ripasso progressivo"
-      : formatProfile.mode === "workbook"
-        ? "schede, esercizi, tracker e attivita' completabili"
-        : "metodo, esempi, checklist, esercizi e obiettivi misurabili";
-    return `Libro ${formatProfile.mode} su ${input.centralDynamic || "trasformazione pratica"}. Il lettore parte da un problema chiaro e arriva a un risultato verificabile attraverso ${practicalCore}. La promessa deve includere trasformazione, strumenti, chiarezza e applicazione pratica; nessun protagonista, nessuna trama e nessun finale narrativo. ${dominance.generationInstruction}`;
+  if (formatProfile.mode !== "narrative") {
+    return buildDeterministicBookConcept({
+      bookFormat: input.bookFormat,
+      genre: input.genre,
+      subcategory: input.subcategory,
+      tone: input.tone,
+      intensity: input.intensity,
+      centralDynamic: input.centralDynamic,
+      protagonistType: input.protagonistType,
+      targetReader: input.targetReader,
+      setting: input.setting,
+      language: input.language,
+      chapterCount: input.chapterCount,
+      subchaptersPerChapter: input.subchaptersPerChapter,
+      previousIdeas: input.previousIdeas,
+    });
   }
 
   if (dominance.genreKey === "dark-romance") {
@@ -1578,12 +1593,16 @@ function buildLocalNovelIdea(input: {
 function buildLocalUserStoryDevelopment(input: {
   idea: string;
   bookFormat?: string;
+  chapterCount?: number;
+  subchaptersPerChapter?: number;
   genre: string;
   subcategory: string;
   tone: string;
   intensity: string;
   centralDynamic: string;
   protagonistType: string;
+  targetReader?: string;
+  setting?: string;
   language: string;
 }) {
   const normalizedIdea = input.idea.replace(/\s+/g, " ").trim();
@@ -1595,7 +1614,21 @@ function buildLocalUserStoryDevelopment(input: {
     subcategory: input.subcategory,
   });
   if (!formatProfile.showNarrativeFields) {
-    return `${base} Scriptora la sviluppa come progetto editoriale ${formatProfile.mode}: formato, genere e DNA dominano l'idea originale. La traiettoria viene chiarita in promessa, pubblico, struttura, metodo e risultato verificabile. ${dominance.generationInstruction}`;
+    return buildDeterministicBookConcept({
+      bookFormat: input.bookFormat,
+      genre: input.genre,
+      subcategory: input.subcategory,
+      tone: input.tone,
+      intensity: input.intensity,
+      centralDynamic: input.centralDynamic || base,
+      protagonistType: input.protagonistType,
+      targetReader: input.targetReader,
+      setting: input.setting,
+      language: input.language,
+      chapterCount: input.chapterCount,
+      subchaptersPerChapter: input.subchaptersPerChapter,
+      seedIdea: base,
+    });
   }
   return `${base} Scriptora la sviluppa come premessa editoriale completa: il cuore della storia resta quello indicato dall'utente, ma la traiettoria viene chiarita in ferita, desiderio, posta in gioco e conseguenza finale. Il genere resta ${optionLabel(ROMAN_GENRES_PRO.find(o => optionValue(o) === input.genre) || input.genre)}, con filone ${optionLabel(SUBGENRES_PRO.find(o => optionValue(o) === input.subcategory) || input.subcategory)}, tono ${input.tone || "cinematografico"} e intensità ${input.intensity || "media"}. ${dominance.generationInstruction} La protagonista deve restare coerente con l'idea originale, ma ogni scena dovrà aumentare conflitto, scelta morale e tensione emotiva senza tradire la storia che l'utente vuole raccontare.`;
 }
@@ -2030,6 +2063,64 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     : "";
   const projectCategory = categoryForCharacterStudioFormat(bookFormat, castRequired);
 
+  const bookKernelConfig = useMemo(() => ({
+    bookFormat,
+    bookLength,
+    chapterCount,
+    subchaptersEnabled,
+    subchaptersPerChapter,
+    genre,
+    subcategory: subcategory.trim(),
+    tone: tone.trim(),
+    language,
+    pov,
+    endingType,
+    intensity,
+    darknessLevel,
+    violenceLevel,
+    spiceLevel,
+    tense,
+    canonRules: canonRules.trim(),
+    centralDynamic,
+    protagonistType: protagonistType.trim(),
+    targetReader: targetReader.trim(),
+    narrativePromise: narrativePromise.trim(),
+    setting: setting.trim(),
+    idea: idea.trim(),
+  }), [
+    bookFormat,
+    bookLength,
+    chapterCount,
+    subchaptersEnabled,
+    subchaptersPerChapter,
+    genre,
+    subcategory,
+    tone,
+    language,
+    pov,
+    endingType,
+    intensity,
+    darknessLevel,
+    violenceLevel,
+    spiceLevel,
+    tense,
+    canonRules,
+    centralDynamic,
+    protagonistType,
+    targetReader,
+    narrativePromise,
+    setting,
+    idea,
+  ]);
+  const bookKernel = useMemo(
+    () => resolveBookKernel({ config: bookKernelConfig, explicitBookFormat: bookFormat }),
+    [bookKernelConfig, bookFormat],
+  );
+  const bookKernelPromptBlock = useMemo(
+    () => buildBookKernelPromptBlock(bookKernelConfig),
+    [bookKernelConfig],
+  );
+
   const bookDnaPayload = useMemo(() => ({
     bookFormat,
     bookLength,
@@ -2054,6 +2145,23 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     narrativePromise: narrativePromise.trim(),
     setting: setting.trim(),
     genreDominance: genreDominanceContract,
+    contentMode: bookKernel.contentMode,
+    structureMode: bookKernel.structureModel,
+    structureLock: bookKernel.structureLock,
+    blueprintType: bookKernel.blueprintType,
+    generationStrategy: bookKernel.generationStrategy,
+    requiresCharacters: bookKernel.requiresCharacters,
+    requiresPlot: bookKernel.requiresPlot,
+    requiresPoems: bookKernel.requiresPoems,
+    bookKernel,
+    bookKernelPromptBlock,
+    formatLocks: {
+      FORMAT_LOCK: bookKernel.bookFormat,
+      CONTENT_LOCK: bookKernel.contentLock,
+      STRUCTURE_LOCK: bookKernel.structureLock,
+      PROMISE_LOCK: bookKernel.promiseLock,
+      QUALITY_LOCK: bookKernel.qualityLock,
+    },
   }), [
     bookFormat,
     bookLength,
@@ -2078,6 +2186,8 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
     narrativePromise,
     setting,
     genreDominanceContract,
+    bookKernel,
+    bookKernelPromptBlock,
   ]);
 
   const handleBookFormatChange = (nextFormat: string) => {
@@ -2162,19 +2272,56 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       const generated = String(data?.idea || data?.text || "").trim();
       if (!generated) throw new Error("Idea vuota");
 
+      if (isConceptContaminatedForFormat({
+        bookFormat: bookKernel.bookFormat,
+        genre,
+        subcategory,
+        generationStrategy: bookKernel.generationStrategy,
+        blueprintType: bookKernel.blueprintType,
+        text: generated,
+      })) {
+        const corrected = buildLocalNovelIdea({
+          bookFormat,
+          bookLength,
+          chapterCount,
+          subchaptersPerChapter,
+          genre,
+          subcategory,
+          tone,
+          intensity,
+          centralDynamic,
+          protagonistType,
+          targetReader,
+          setting,
+          language,
+          previousIdeas,
+        });
+        setIdea(corrected);
+        saveIdeaToHistory(corrected);
+        toast.message("Nucleo riallineato al formato scelto.", {
+          description: "Ho rispettato il DNA del libro invece di forzare una premessa da romanzo.",
+        });
+        return;
+      }
+
       setIdea(generated);
       saveIdeaToHistory(generated);
-      toast.success("Idea romanzo generata da Scriptora con variante nuova.");
+      toast.success("Concept generato da Scriptora con variante nuova.");
     } catch (error) {
       devOnlyDiagnostic("character-studio-idea-fallback", error);
       const generated = buildLocalNovelIdea({
         bookFormat,
+        bookLength,
+        chapterCount,
+        subchaptersPerChapter,
         genre,
         subcategory,
         tone,
         intensity,
         centralDynamic,
         protagonistType,
+        targetReader,
+        setting,
         language,
         previousIdeas,
       });
@@ -2220,6 +2367,37 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       const developed = String(data?.idea || data?.text || "").trim();
       if (!developed) throw new Error("Idea elaborata vuota");
 
+      if (isConceptContaminatedForFormat({
+        bookFormat: bookKernel.bookFormat,
+        genre,
+        subcategory,
+        generationStrategy: bookKernel.generationStrategy,
+        blueprintType: bookKernel.blueprintType,
+        text: developed,
+      })) {
+        const corrected = buildLocalUserStoryDevelopment({
+          idea: userStory,
+          bookFormat,
+          chapterCount,
+          subchaptersPerChapter,
+          genre,
+          subcategory,
+          tone,
+          intensity,
+          centralDynamic,
+          protagonistType,
+          targetReader,
+          setting,
+          language,
+        });
+        setIdea(corrected);
+        saveIdeaToHistory(corrected);
+        toast.message("Direzione riallineata al formato scelto.", {
+          description: "Ho mantenuto il nucleo originale senza trasformarlo in un formato diverso.",
+        });
+        return;
+      }
+
       setIdea(developed);
       saveIdeaToHistory(developed);
       toast.success("La tua storia è stata elaborata mantenendo il nucleo originale.");
@@ -2228,12 +2406,16 @@ export function CharacterStudioDialog({ open, onClose, onAuthorIdentity }: Props
       const developed = buildLocalUserStoryDevelopment({
         idea: userStory,
         bookFormat,
+        chapterCount,
+        subchaptersPerChapter,
         genre,
         subcategory,
         tone,
         intensity,
         centralDynamic,
         protagonistType,
+        targetReader,
+        setting,
         language,
       });
       setIdea(developed);

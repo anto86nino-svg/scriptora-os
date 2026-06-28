@@ -1,6 +1,11 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { callDeepSeekTracked } from "../_shared/ai-tracking.ts";
+import {
+  buildDeterministicBookConcept,
+  buildFormatAwareConceptPrompts,
+  isConceptContaminatedForFormat,
+} from "../_shared/book-concept-format.ts";
 
 const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY") || "";
 
@@ -32,7 +37,7 @@ async function callDeepSeek(system: string, user: string, context: { userId?: st
     model: "deepseek-chat",
     temperature: 1.05,
     maxTokens: 1300,
-    taskType: "scriptora_novel_idea",
+    taskType: "scriptora_book_concept",
     projectId: context.projectId,
     userId: context.userId,
     metadata: context.metadata,
@@ -47,7 +52,11 @@ serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
+    const kernel = body.bookKernel && typeof body.bookKernel === "object"
+      ? body.bookKernel as Record<string, unknown>
+      : {};
 
+    const bookFormat = String(body.bookFormat || kernel.bookFormat || "").trim();
     const genre = String(body.genre || "romance").trim();
     const seedIdea = String(body.seedIdea || body.idea || "").trim();
     const subcategory = String(body.subcategory || "").trim();
@@ -55,7 +64,19 @@ serve(async (req) => {
     const intensity = String(body.intensity || "").trim();
     const centralDynamic = String(body.centralDynamic || "").trim();
     const protagonistType = String(body.protagonistType || "").trim();
+    const targetReader = String(body.targetReader || kernel.targetReader || "").trim();
+    const setting = String(body.setting || "").trim();
     const language = String(body.language || "Italian").trim();
+    const contentMode = String(body.contentMode || kernel.contentMode || "").trim();
+    const structureMode = String(body.structureMode || body.structureLock || kernel.structureModel || kernel.structureLock || "").trim();
+    const blueprintType = String(body.blueprintType || kernel.blueprintType || "").trim();
+    const generationStrategy = String(body.generationStrategy || kernel.generationStrategy || "").trim();
+    const bookKernelPromptBlock = String(body.bookKernelPromptBlock || "").trim();
+    const requiresCharacters = Boolean(body.requiresCharacters ?? kernel.requiresCharacters);
+    const requiresPlot = Boolean(body.requiresPlot ?? kernel.requiresPlot);
+    const requiresPoems = Boolean(body.requiresPoems ?? kernel.requiresPoems);
+    const chapterCount = body.chapterCount ?? kernel.chapterCount;
+    const subchaptersPerChapter = body.subchaptersPerChapter ?? kernel.subchaptersPerChapter;
     const preserveUserStory = Boolean(body.preserveUserStory);
     const diversitySeed = String(body.diversitySeed || crypto.randomUUID()).trim();
     const previousIdeas: string[] = Array.isArray(body.previousIdeas)
@@ -141,76 +162,82 @@ serve(async (req) => {
       sensoryAnchor: pick(sensoryAnchors, seed, 5),
     };
 
-    const system = `Sei Scriptora Novel Concept Architect.
-Crei idee di romanzo commerciali, emotive, fresche e non ripetitive.
-Scrivi in ${language}.
-Output SOLO l'idea del romanzo, niente elenco, niente spiegazioni, niente markdown.
-Ogni generazione deve sembrare nuova, concreta, vendibile e pronta per creare personaggi e trama.
-Se l'utente non specifica una trama precisa, devi cambiare davvero: professione, luogo, ferita, conflitto, segreto, dinamica e promessa narrativa.
-Non riciclare protagoniste generiche, uomini misteriosi indistinti, città del passato, segreti familiari vaghi o lo schema “torna nel luogo che aveva dimenticato”, salvo richiesta esplicita.
-Se preserveUserStory=true, NON sostituire la storia dell'utente: rispettala, chiariscila, potenziala e rendila pronta per Character Bible e trama.`;
+    const promptInput = {
+      bookFormat,
+      genre,
+      subcategory,
+      tone,
+      intensity,
+      centralDynamic,
+      protagonistType,
+      targetReader,
+      setting,
+      language,
+      seedIdea,
+      previousIdeas,
+      preserveUserStory,
+      contentMode,
+      structureMode,
+      blueprintType,
+      generationStrategy,
+      requiresCharacters,
+      requiresPlot,
+      requiresPoems,
+      chapterCount,
+      subchaptersPerChapter,
+      bookKernelPromptBlock,
+      creativeCoordinates,
+    };
+    const prompts = buildFormatAwareConceptPrompts(promptInput);
 
-    const user = preserveUserStory && seedIdea
-      ? `ELABORA LA STORIA DELL'UTENTE SENZA SOSTITUIRLA.
-
-STORIA SCRITTA DALL'UTENTE:
-${seedIdea}
-
-Coordinate editoriali:
-Genere: ${genre}
-Filone / sottogenere: ${subcategory || "da dedurre rispettando la storia"}
-Tono: ${tone || "cinematografico, emotivo, bestseller"}
-Intensità: ${intensity || "medium"}
-Dinamica centrale: ${centralDynamic || "desiderio, conflitto e conseguenza"}
-Tipo protagonista: ${protagonistType || "protagonista memorabile, contraddittoria, ferita ma attiva"}
-
-Regole:
-- Mantieni protagonista, nucleo emotivo, conflitto principale, mondo e promessa narrativa indicati dall'utente.
-- Non cambiare mestiere, identità, genere narrativo o mitologia centrale se l'utente li ha specificati.
-- Puoi rafforzare chiarezza, posta in gioco, desiderio, ferita, antagonismo, atmosfera e conseguenze.
-- Trasforma la storia in una premessa editoriale professionale di 4-7 frasi.
-- Evita riassunti piatti: rendila più vendibile, più leggibile, più pronta per creare personaggi e trama.
-- Non creare titoli.
-- Non scrivere note tecniche.`
-      : `Crea UNA idea di romanzo originale usando queste coordinate:
-
-Genere: ${genre}
-Filone / sottogenere: ${subcategory || "da scegliere in modo coerente"}
-Tono: ${tone || "cinematografico, emotivo, bestseller"}
-Intensità: ${intensity || "medium"}
-Dinamica centrale: ${centralDynamic || "desiderio, conflitto e segreto"}
-Tipo protagonista: ${protagonistType || "protagonista ferita ma attiva"}
-${seedIdea ? `Seme dato dall'utente da rispettare e trasformare senza clonare idee precedenti: ${seedIdea}` : "Nessun seme trama specifico: inventa una direzione nuova usando le coordinate creative."}
-
-Coordinate creative obbligatorie per differenziare questa generazione:
-- Ruolo/professione protagonista: ${creativeCoordinates.protagonistRole}
-- Location principale: ${creativeCoordinates.setting}
-- Motore del conflitto: ${creativeCoordinates.conflictEngine}
-- Geometria relazionale: ${creativeCoordinates.relationshipShape}
-- Ancora sensoriale: ${creativeCoordinates.sensoryAnchor}
-- Seed interno: ${diversitySeed}
-
-Idee recenti da NON imitare:
-${previousIdeas.length ? previousIdeas.map((item, index) => `${index + 1}. ${item}`).join("\n") : "Nessuna idea recente disponibile."}
-
-Regole:
-- 4-7 frasi massimo.
-- Deve contenere protagonista, ferita, desiderio, conflitto, atmosfera e promessa narrativa.
-- Deve essere specifica, non generica.
-- Deve evitare cliché banali.
-- Deve poter alimentare una Character Bible e un romanzo completo.
-- Se nelle idee recenti compare restauratrice/restauratore/restauro/restaurare/archivio/reliquia, NON usare di nuovo quel mestiere, quella funzione narrativa o quel campo semantico, salvo richiesta esplicita e breve dell'utente.
-- Se non hai un seme utente preciso, NON usare la formula “una donna arriva/torna/scappa” come apertura.
-- Non creare due protagonisti con ferite o segreti simili alle idee recenti.
-- I personaggi devono avere identità, lavoro, desiderio e contraddizione riconoscibili, non archetipi intercambiabili.
-- Non usare titoli.
-- Non scrivere note tecniche.`;
-
-    const idea = await callDeepSeek(system, user, {
+    let idea = await callDeepSeek(prompts.system, prompts.user, {
       userId,
       projectId,
-      metadata: { genre, subcategory, language, source: "character_studio", diversitySeed, previousIdeas: previousIdeas.length, preserveUserStory },
+      metadata: {
+        bookFormat: prompts.format,
+        genre,
+        subcategory,
+        language,
+        source: "character_studio",
+        diversitySeed,
+        previousIdeas: previousIdeas.length,
+        preserveUserStory,
+        generationStrategy,
+        blueprintType,
+      },
     });
+
+    if (isConceptContaminatedForFormat({ ...promptInput, bookFormat: prompts.format, text: idea })) {
+      idea = await callDeepSeek(
+        prompts.system,
+        `${prompts.user}
+
+RIGENERA IN MODO PIU' SEVERO.
+La risposta precedente ha contaminato il formato con elementi non ammessi.
+Rispetta il formato ${prompts.format} e restituisci solo il concept corretto.`,
+        {
+          userId,
+          projectId,
+          metadata: {
+            bookFormat: prompts.format,
+            genre,
+            subcategory,
+            language,
+            source: "character_studio",
+            diversitySeed,
+            previousIdeas: previousIdeas.length,
+            preserveUserStory,
+            regeneration: "format_contamination",
+            generationStrategy,
+            blueprintType,
+          },
+        },
+      );
+    }
+
+    if (isConceptContaminatedForFormat({ ...promptInput, bookFormat: prompts.format, text: idea })) {
+      idea = buildDeterministicBookConcept(promptInput);
+    }
 
     return new Response(JSON.stringify({ idea }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
