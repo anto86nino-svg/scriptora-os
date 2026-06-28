@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Headphones, RefreshCw, Scissors, Sparkles, Target, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Headphones, RefreshCw, Scissors, Shield, Sparkles, Target, Zap } from "lucide-react";
 import { useState } from "react";
 import type { RewriteLevel } from "@/lib/generation-types";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ export type WriterToolsPanelProps = {
   onListen?: () => void;
   onAnalysis?: () => void;
   onPatch?: () => void;
+  onCleanup?: () => void;
   onEvaluate?: () => void;
   onRegenerate?: () => void;
   onRewrite?: (level: RewriteLevel) => void;
@@ -30,6 +31,7 @@ export function WriterToolsPanel({
   onListen,
   onAnalysis,
   onPatch,
+  onCleanup,
   onEvaluate,
   onRegenerate,
   onRewrite,
@@ -85,6 +87,7 @@ export function WriterToolsPanel({
           <>
             <ToolButton icon={Zap} label="Analysis" onClick={onAnalysis} disabled={busy} />
             <ToolButton icon={Scissors} label="Patch" onClick={onPatch} disabled={busy} />
+            <ToolButton icon={Shield} label="Pulizia editoriale" onClick={onCleanup} disabled={busy || !onCleanup} />
             <ToolButton icon={Headphones} label="Voice / Ascolta" onClick={onListen} disabled={busy} />
             <ToolButton icon={Target} label="Evaluate" onClick={onEvaluate} disabled={busy} />
             <div className="px-1">

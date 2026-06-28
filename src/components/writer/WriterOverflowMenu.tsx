@@ -1,4 +1,4 @@
-import { BarChart3, Download, Headphones, Settings, Sparkles, Upload } from "lucide-react";
+import { BarChart3, Download, Headphones, Settings, Shield, Sparkles, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MobileFullscreenShell } from "@/mobile/MobileFullscreenShell";
 
@@ -7,6 +7,7 @@ export type WriterOverflowMenuProps = {
   onClose: () => void;
   onExport?: () => void;
   onVoice?: () => void;
+  onCleanup?: () => void;
   onSettings?: () => void;
   onCoach?: () => void;
   onMarket?: () => void;
@@ -20,6 +21,7 @@ export function WriterOverflowMenu({
   onClose,
   onExport,
   onVoice,
+  onCleanup,
   onSettings,
   onCoach,
   onMarket,
@@ -34,6 +36,7 @@ export function WriterOverflowMenu({
         <div className="space-y-2 px-4 py-4">
           {onExport && <FullscreenMenuItem icon={Upload} label="Export" onClick={() => { onExport(); onClose(); }} />}
           {onVoice && <FullscreenMenuItem icon={Headphones} label="Voice Studio" onClick={() => { onVoice(); onClose(); }} />}
+          {onCleanup && <FullscreenMenuItem icon={Shield} label="Pulizia editoriale" onClick={() => { onCleanup(); onClose(); }} />}
           {onCoach && <FullscreenMenuItem icon={Sparkles} label="AI Coach" onClick={() => { onCoach(); onClose(); }} />}
           {onMarket && <FullscreenMenuItem icon={BarChart3} label="Market OS" onClick={() => { onMarket(); onClose(); }} />}
           {onSettings && <FullscreenMenuItem icon={Settings} label="Impostazioni" onClick={() => { onSettings(); onClose(); }} />}
@@ -53,6 +56,7 @@ export function WriterOverflowMenu({
       >
         {onExport && <MenuItem icon={Upload} label="Export" onClick={() => { onExport(); onClose(); }} />}
         {onVoice && <MenuItem icon={Headphones} label="Voice Studio" onClick={() => { onVoice(); onClose(); }} />}
+        {onCleanup && <MenuItem icon={Shield} label="Pulizia editoriale" onClick={() => { onCleanup(); onClose(); }} />}
         {onCoach && <MenuItem icon={Sparkles} label="AI Coach" onClick={() => { onCoach(); onClose(); }} />}
         {onMarket && <MenuItem icon={BarChart3} label="Market OS" onClick={() => { onMarket(); onClose(); }} />}
         {onSettings && <MenuItem icon={Settings} label="Impostazioni" onClick={() => { onSettings(); onClose(); }} />}

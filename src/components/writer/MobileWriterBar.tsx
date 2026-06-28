@@ -1,4 +1,4 @@
-import { Headphones, Layers, MoreHorizontal, Scissors, Zap } from "lucide-react";
+import { Headphones, Layers, MoreHorizontal, Scissors, Shield, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type MobileWriterBarProps = {
@@ -6,6 +6,7 @@ export type MobileWriterBarProps = {
   onListen?: () => void;
   onPatch?: () => void;
   onAnalysis?: () => void;
+  onCleanup?: () => void;
   onMore?: () => void;
   listenDisabled?: boolean;
   toolsDisabled?: boolean;
@@ -17,6 +18,7 @@ export function MobileWriterBar({
   onListen,
   onPatch,
   onAnalysis,
+  onCleanup,
   onMore,
   listenDisabled,
   toolsDisabled,
@@ -25,13 +27,14 @@ export function MobileWriterBar({
   return (
     <nav
       className={cn(
-        "scriptora-mobile-writer-bar fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] z-40 grid grid-cols-5 gap-1 rounded-2xl border border-white/10 bg-[#0c0c12]/95 p-1.5 shadow-2xl backdrop-blur-xl",
+        "scriptora-mobile-writer-bar fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom,0px)+0.5rem)] z-40 grid grid-cols-6 gap-1 rounded-2xl border border-white/10 bg-[#0c0c12]/95 p-1.5 shadow-2xl backdrop-blur-xl",
         className,
       )}
     >
       <BarButton icon={Layers} label="Indice" onClick={onOpenIndex} />
       <BarButton icon={Headphones} label="Ascolta" onClick={onListen} disabled={listenDisabled || !onListen} />
       <BarButton icon={Scissors} label="Patch" onClick={onPatch} disabled={toolsDisabled || !onPatch} />
+      <BarButton icon={Shield} label="Pulizia" onClick={onCleanup} disabled={toolsDisabled || !onCleanup} />
       <BarButton icon={Zap} label="Analysis" onClick={onAnalysis} disabled={toolsDisabled || !onAnalysis} />
       <BarButton icon={MoreHorizontal} label="Altro" onClick={onMore} disabled={!onMore} />
     </nav>

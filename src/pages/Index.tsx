@@ -195,7 +195,7 @@ const Index = () => {
   const [activeSection, setActiveSection] = useState<SectionId | null>("blueprint");
   const [toolsPanelOpen, setToolsPanelOpen] = useState(false);
   const [writerMenuOpen, setWriterMenuOpen] = useState(false);
-  const [chapterToolRequest, setChapterToolRequest] = useState<{ mode: "analysis" | "patch"; nonce: number } | null>(null);
+  const [chapterToolRequest, setChapterToolRequest] = useState<{ mode: "analysis" | "patch" | "cleanup"; nonce: number } | null>(null);
   const [writingSettings, setWritingSettings] = useState<WritingSettings>(loadSettings());
   const openedFromDashboard =
     sessionStorage.getItem("scriptora-open-from-dashboard") === "1";
@@ -230,7 +230,7 @@ const Index = () => {
   const activeChapterGenerated = !!(activeChapter?.content?.length);
   const isChapterView = activeChapterIndex != null;
 
-  const triggerChapterTool = (mode: "analysis" | "patch") => {
+  const triggerChapterTool = (mode: "analysis" | "patch" | "cleanup") => {
     setChapterToolRequest({ mode, nonce: Date.now() });
   };
 
@@ -940,6 +940,7 @@ const Index = () => {
               fullscreen={isMobileLayout}
               onExport={guardedExportEpub}
               onVoice={() => activeChapterIndex != null && openVoiceStudioForChapter(activeChapterIndex)}
+              onCleanup={activeChapterGenerated ? () => triggerChapterTool("cleanup") : undefined}
               onSettings={() => (isMobileLayout ? openMobileSettingsExclusive() : setShowSettings(true))}
               onCoach={() => (isMobileLayout ? openMobileCoachExclusive() : setShowCoach(true))}
               onMarket={
@@ -1143,6 +1144,7 @@ const Index = () => {
           onListen={activeChapterIndex != null ? () => openVoiceStudioForChapter(activeChapterIndex) : undefined}
           onAnalysis={() => triggerChapterTool("analysis")}
           onPatch={() => triggerChapterTool("patch")}
+          onCleanup={activeChapterGenerated ? () => triggerChapterTool("cleanup") : undefined}
           onEvaluate={activeChapterIndex != null ? () => engine.evaluateChapter(activeChapterIndex) : undefined}
           onRegenerate={activeChapterIndex != null ? () => engine.regenerateChapter(activeChapterIndex) : undefined}
           onRewrite={activeChapterIndex != null ? (level: RewriteLevel) => engine.rewriteChapterWithDepth(activeChapterIndex, level) : undefined}
@@ -1156,6 +1158,7 @@ const Index = () => {
           onOpenIndex={openMobileNavExclusive}
           onListen={activeChapterGenerated && activeChapterIndex != null ? () => openVoiceStudioForChapter(activeChapterIndex) : undefined}
           onPatch={activeChapterGenerated ? () => triggerChapterTool("patch") : undefined}
+          onCleanup={activeChapterGenerated ? () => triggerChapterTool("cleanup") : undefined}
           onAnalysis={activeChapterGenerated ? () => triggerChapterTool("analysis") : undefined}
           onMore={openMobileWriterMenu}
           listenDisabled={!activeChapterGenerated}

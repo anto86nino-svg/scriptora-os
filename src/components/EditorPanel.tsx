@@ -29,6 +29,12 @@ import { resolveChapterGenerationOperation } from "@/lib/billing";
 import { validateBookReadinessForBlueprint } from "@/lib/book-config-engine/blueprint-readiness";
 import { RecoveryProjectBanner } from "@/components/recovery/RecoveryProjectBanner";
 import { isGenerationCompleteStatus } from "@/types/book";
+import {
+  hasCleanableChapterContent,
+  runEditorialCleanup,
+  validateEditorialCleanupResult,
+  type EditorialCleanupResult,
+} from "@/lib/editorial-cleanup";
 
 interface EditorPanelProps {
   project: BookProject;
@@ -69,7 +75,7 @@ interface EditorPanelProps {
   ) => void;
   premiumWriter?: boolean;
   hideDesktopToolbar?: boolean;
-  chapterToolRequest?: { mode: "analysis" | "patch"; nonce: number } | null;
+  chapterToolRequest?: { mode: "analysis" | "patch" | "cleanup"; nonce: number } | null;
   onSelectChapter?: (index: number) => void;
   onCover?: () => void;
   onKdp?: () => void;
@@ -946,7 +952,7 @@ function ChapterView({
   onPersistChapterEditorialAnalysis?: EditorPanelProps["onPersistChapterEditorialAnalysis"];
   premiumWriter?: boolean;
   hideDesktopToolbar?: boolean;
-  chapterToolRequest?: { mode: "analysis" | "patch"; nonce: number } | null;
+  chapterToolRequest?: { mode: "analysis" | "patch" | "cleanup"; nonce: number } | null;
   onRecoverProject?: () => void;
   onContinueChapter?: () => void;
 }) {
@@ -971,6 +977,9 @@ function ChapterView({
   const [editorialOpen, setEditorialOpen] = useState(false);
   const [editorialMode, setEditorialMode] = useState<"analysis" | "patch">("analysis");
   const [showFullReport, setShowFullReport] = useState(false);
+  const [cleanupStatus, setCleanupStatus] = useState<"idle" | "running" | "ready" | "applied" | "error">("idle");
+  const [cleanupResult, setCleanupResult] = useState<EditorialCleanupResult | null>(null);
+  const [cleanupError, setCleanupError] = useState("");
   const liveAnchorRef = useRef<HTMLDivElement | null>(null);
   const autoFollowLiveRef = useRef(true);
   const [showReturnToLive, setShowReturnToLive] = useState(false);
@@ -1038,11 +1047,71 @@ function ChapterView({
     if (chapterToolRequest.mode === "analysis") {
       setEditorialMode("analysis");
       setEditorialOpen(true);
-    } else {
+    } else if (chapterToolRequest.mode === "patch") {
       setEditorialMode("patch");
       setEditorialOpen(true);
+    } else {
+      runCleanupPreview();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapterToolRequest?.nonce, chapterToolRequest?.mode]);
+
+  useEffect(() => {
+    setCleanupStatus("idle");
+    setCleanupResult(null);
+    setCleanupError("");
+  }, [chapterIndex, chapter?.content]);
+
+  const canRunCleanup = Boolean(
+    isGenerated &&
+    !isGenerating &&
+    !isEvaluating &&
+    hasCleanableChapterContent(chapter?.content, chapter?.subchapters),
+  );
+
+  const runCleanupPreview = useCallback(() => {
+    if (!chapter || !canRunCleanup) return;
+    setCleanupStatus("running");
+    setCleanupError("");
+    window.setTimeout(() => {
+      try {
+        const result = runEditorialCleanup({
+          title: displayedTitle,
+          content: chapter.content || "",
+          subchapters: chapter.subchapters,
+        });
+        const validation = validateEditorialCleanupResult(chapter.content || "", result);
+        if (!validation.valid) {
+          setCleanupResult(null);
+          setCleanupError(validation.reason || "Pulizia non sicura: versione pulita non applicabile.");
+          setCleanupStatus("error");
+          return;
+        }
+        setCleanupResult(result);
+        setCleanupStatus("ready");
+      } catch {
+        setCleanupResult(null);
+        setCleanupError("Pulizia editoriale non completata. Il capitolo originale resta invariato.");
+        setCleanupStatus("error");
+      }
+    }, 160);
+  }, [canRunCleanup, chapter, displayedTitle]);
+
+  const applyCleanupResult = useCallback(() => {
+    if (!cleanupResult || !chapter) return;
+    const validation = validateEditorialCleanupResult(chapter.content || "", cleanupResult);
+    if (!validation.valid) {
+      setCleanupError(validation.reason || "Versione pulita non applicabile.");
+      setCleanupStatus("error");
+      return;
+    }
+
+    onUpdateContent(cleanupResult.cleanedContent);
+    cleanupResult.cleanedSubchapters?.forEach((sub, index) => {
+      onUpdateSubContent(index, sub.content);
+    });
+    setCleanupStatus("applied");
+  }, [chapter, cleanupResult, onUpdateContent, onUpdateSubContent]);
 
   return (
     <div
@@ -1142,6 +1211,17 @@ function ChapterView({
                 <span className="sm:hidden">Patch</span>
                 <span className="hidden sm:inline">Patch</span>
               </button>
+              <button
+                type="button"
+                onClick={runCleanupPreview}
+                disabled={!canRunCleanup || cleanupStatus === "running"}
+                title="Corregge errori, frasi rotte e ripetizioni senza riscrivere il capitolo da zero."
+                className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-emerald-300/35 bg-emerald-400/15 px-3 text-[11px] font-semibold text-emerald-100 transition-colors hover:bg-emerald-400/20 disabled:opacity-30"
+              >
+                {cleanupStatus === "running" ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : <Shield className="h-3.5 w-3.5 shrink-0" />}
+                <span className="sm:hidden">Pulizia</span>
+                <span className="hidden sm:inline">Pulizia editoriale</span>
+              </button>
               <div className="flex shrink-0 flex-col items-center gap-1">
                 <ActionButton icon={<Search className="h-3.5 w-3.5" />} title={t("evaluate")} onClick={onEvaluate} disabled={isGenerating || isEvaluating} />
                 <CreditCostBadge operation="chapter_diagnostic" className="max-w-[5.5rem] truncate sm:max-w-none" />
@@ -1209,6 +1289,75 @@ function ChapterView({
           onClose={() => setEditorialOpen(false)}
           onOpenFullReport={() => setShowFullReport(true)}
         />
+      )}
+
+      {cleanupStatus === "running" && (
+        <LoadingBanner
+          text="Pulizia editoriale in corso"
+          steps={[
+            "Cerco frasi rotte e refusi",
+            "Controllo ripetizioni evidenti",
+            "Preparo una versione pulita senza riscrivere il capitolo",
+          ]}
+        />
+      )}
+
+      {cleanupStatus === "error" && cleanupError && (
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {cleanupError}
+        </div>
+      )}
+
+      {(cleanupStatus === "ready" || cleanupStatus === "applied") && cleanupResult && (
+        <div className="rounded-2xl border border-emerald-300/25 bg-emerald-400/10 p-4 text-sm text-emerald-50 shadow-[0_18px_48px_rgba(16,185,129,0.10)]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="flex items-center gap-2 text-sm font-black text-emerald-100">
+                <CheckCircle2 className="h-4 w-4" />
+                {cleanupStatus === "applied" ? "Capitolo pulito" : "Pulizia completata"}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-emerald-50/72">{cleanupResult.summary}</p>
+            </div>
+            <span className="rounded-lg border border-emerald-200/20 bg-black/18 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-100">
+              Confidenza {Math.round(cleanupResult.confidence * 100)}%
+            </span>
+          </div>
+          <div className="mt-3 grid gap-2 text-xs sm:grid-cols-4">
+            <span className="rounded-xl border border-emerald-200/15 bg-black/14 px-3 py-2">Errori corretti: <strong>{cleanupResult.stats.errorsCorrected}</strong></span>
+            <span className="rounded-xl border border-emerald-200/15 bg-black/14 px-3 py-2">Ripetizioni ridotte: <strong>{cleanupResult.stats.repetitionsReduced}</strong></span>
+            <span className="rounded-xl border border-emerald-200/15 bg-black/14 px-3 py-2">Frasi incomplete: <strong>{cleanupResult.stats.incompleteSentencesFixed}</strong></span>
+            <span className="rounded-xl border border-emerald-200/15 bg-black/14 px-3 py-2">Refusi rimossi: <strong>{cleanupResult.stats.typosRemoved}</strong></span>
+          </div>
+          {cleanupResult.changesApplied.length > 0 && (
+            <ul className="mt-3 space-y-1 text-xs text-emerald-50/78">
+              {cleanupResult.changesApplied.slice(0, 4).map((change) => (
+                <li key={change}>• {change}</li>
+              ))}
+            </ul>
+          )}
+          {cleanupStatus === "ready" && (
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={applyCleanupResult}
+                className="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl bg-emerald-300 px-4 text-sm font-black text-slate-950 transition hover:bg-emerald-200"
+              >
+                Applica versione pulita
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCleanupStatus("idle");
+                  setCleanupResult(null);
+                  setCleanupError("");
+                }}
+                className="inline-flex min-h-10 flex-1 items-center justify-center rounded-xl border border-white/10 bg-white/[0.06] px-4 text-sm font-bold text-white/75 transition hover:bg-white/[0.10]"
+              >
+                Annulla
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
