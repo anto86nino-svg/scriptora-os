@@ -67,6 +67,9 @@ const CHIP_HINTS: Record<string, Partial<ExpressForgeInput>> = {
   Workbook: { bookFormat: "workbook", genre: "workbook" },
   Memoir: { bookFormat: "memoir", genre: "memoir" },
   "Raccolta poetica": { bookFormat: "poetry_collection", genre: "poesia" },
+  Cookbook: { bookFormat: "cookbook", genre: "cookbook" },
+  Ricettario: { bookFormat: "cookbook", genre: "cookbook" },
+  "Libro di ricette": { bookFormat: "cookbook", genre: "cookbook" },
 };
 
 export function resolveQuestionBudget(idea: string): number {
@@ -79,7 +82,13 @@ export function resolveQuestionBudget(idea: string): number {
 
 export function mapGenreHintToExpressInput(hint?: string): Partial<ExpressForgeInput> {
   if (!hint) return {};
-  return CHIP_HINTS[hint] ?? {};
+  const direct = CHIP_HINTS[hint];
+  if (direct) return direct;
+  const normalized = hint.trim().toLowerCase();
+  if (normalized === "cookbook" || normalized === "ricettario" || normalized.includes("libro di ricette")) {
+    return { bookFormat: "cookbook", genre: "cookbook" };
+  }
+  return {};
 }
 
 function pickCommercialPackage(result: ReturnType<typeof buildExpressForgeConfiguration>) {

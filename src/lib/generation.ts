@@ -2851,7 +2851,7 @@ export async function generateFrontMatter(
 ): Promise<FrontMatter> {
   config = withSanitizedConfig(config);
   const bp = resolveLockedBlueprint(config, genreLock);
-  const genreKey = resolveGenreKey(config.genre, (config as any).subcategory);
+  const genreKey = resolveGenreKey(config.genre, (config as any).subcategory, (config as any).bookFormat);
   const matterOpts = resolveMatterOptions(config);
   const sectionsList = filterFrontMatterTemplateSections(
     bp.frontMatterTemplate.length
@@ -3045,7 +3045,7 @@ export async function generateBackMatter(
 ): Promise<BackMatter> {
   config = withSanitizedConfig(config);
   const bp = resolveLockedBlueprint(config, genreLock);
-  const genreKey = resolveGenreKey(config.genre, (config as any).subcategory);
+  const genreKey = resolveGenreKey(config.genre, (config as any).subcategory, (config as any).bookFormat);
   const chapterTitles = chapters.map((c, i) => formatChapterDisplayTitle(i, c.title, {
     config,
     summary: blueprint.chapterOutlines[i]?.summary,

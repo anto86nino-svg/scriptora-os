@@ -154,6 +154,47 @@ function isItalian(config: BookConfig): boolean {
   return String(config.language || "").toLowerCase().includes("ital");
 }
 
+function normalizeForValidation(value: string): string {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+export function validateBlueprintMatchesFormat(candidate: BookBlueprint, config: BookConfig): string[] {
+  const errors: string[] = [];
+  const haystack = normalizeForValidation(
+    [
+      candidate.overview,
+      candidate.emotionalArc,
+      ...(candidate.themes || []),
+      ...(candidate.chapterOutlines || []).flatMap((outline) => [
+        outline.title,
+        outline.summary,
+        ...(outline.subchapters || []).flatMap((sub) => [sub.title, sub.summary]),
+      ]),
+    ].filter(Boolean).join("\n"),
+  );
+  const format = String(config.bookFormat || "").toLowerCase().trim();
+
+  if (
+    format === "cookbook" &&
+    (/tradizione filosofica/.test(haystack) || /implicazione esistenziale/.test(haystack))
+  ) {
+    errors.push("cookbook contiene marcatori filosofici vietati (Tradizione filosofica / Implicazione esistenziale)");
+  }
+  if (format === "poetry_collection" && /capitolo 1 normalita/.test(haystack)) {
+    errors.push("poetry_collection contiene pattern narrativo vietato (Capitolo 1 Normalità)");
+  }
+  if (format === "workbook" && /hero journey|escalation|plot twist/.test(haystack)) {
+    errors.push("workbook contiene pattern narrativi vietati (Hero journey / Escalation / Plot twist)");
+  }
+  if (format === "manual" && /protagonista|romance arc/.test(haystack)) {
+    errors.push("manual contiene pattern fiction vietati (Protagonista / Romance arc)");
+  }
+  return errors;
+}
+
 export function getBlueprintValidationErrors(candidate: BookBlueprint, config: BookConfig): string[] {
   const errors: string[] = [];
   if (!String(candidate.overview || "").trim() || candidate.overview.trim().length < 20) {
@@ -172,6 +213,7 @@ export function getBlueprintValidationErrors(candidate: BookBlueprint, config: B
       errors.push(`capitolo ${index + 1}: riassunto troppo debole`);
     }
   });
+  errors.push(...validateBlueprintMatchesFormat(candidate, config));
   return errors;
 }
 

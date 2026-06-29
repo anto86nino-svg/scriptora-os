@@ -1041,7 +1041,14 @@ const BLUEPRINTS: Partial<Record<GenreKey, GenreBlueprint>> = {
  * Risolve il genere selezionato dall'utente (con sub-categoria opzionale)
  * a una `GenreKey` del registro PROFILES.
  */
-export function resolveGenreKey(genre: string, subcategory?: string): GenreKey {
+export function resolveGenreKey(genre: string, subcategory?: string, bookFormat?: string): GenreKey {
+  const fmt = (bookFormat || "").toLowerCase().trim();
+  if (fmt === "cookbook") return "cookbook";
+  if (fmt === "poetry_collection") return "poetry";
+  if (fmt === "workbook" || fmt === "manual" || fmt === "study_material") return "manual";
+  if (fmt === "memoir") return "memoir";
+  if (fmt === "self_help") return "self-help";
+
   const g = (genre || "").toLowerCase().trim();
   const sub = (subcategory || "").toLowerCase().trim();
 
@@ -1111,8 +1118,8 @@ export function resolveGenreKey(genre: string, subcategory?: string): GenreKey {
   return "self-help";
 }
 
-export function getGenreProfile(genre: string, subcategory?: string): GenreProfile {
-  const key = resolveGenreKey(genre, subcategory);
+export function getGenreProfile(genre: string, subcategory?: string, bookFormat?: string): GenreProfile {
+  const key = resolveGenreKey(genre, subcategory, bookFormat);
   return PROFILES[key];
 }
 
@@ -1120,9 +1127,9 @@ export function getGenreProfile(genre: string, subcategory?: string): GenreProfi
  * Rende il profilo come blocco prompt da iniettare nel system prompt
  * del Writing Engine. Sostituisce il vecchio `getGenrePrompt`.
  */
-export function buildGenreSystemBlock(genre: string, subcategory?: string): string {
-  const p = getGenreProfile(genre, subcategory);
-  const key = resolveGenreKey(genre, subcategory);
+export function buildGenreSystemBlock(genre: string, subcategory?: string, bookFormat?: string): string {
+  const p = getGenreProfile(genre, subcategory, bookFormat);
+  const key = resolveGenreKey(genre, subcategory, bookFormat);
 
   return `GENRE INTELLIGENCE — ${key.toUpperCase()}
 Authors-DNA reference: ${p.authorsDNA}
@@ -1150,9 +1157,9 @@ CHAPTER ENDING RULE: ${p.chapterEnding}`;
  * Rende il profilo come blocco prompt per il Blueprint Engine
  * (usato in generateBlueprint). Più sintetico, focalizzato su struttura.
  */
-export function buildGenreBlueprintBlock(genre: string, subcategory?: string): string {
-  const p = getGenreProfile(genre, subcategory);
-  const key = resolveGenreKey(genre, subcategory);
+export function buildGenreBlueprintBlock(genre: string, subcategory?: string, bookFormat?: string): string {
+  const p = getGenreProfile(genre, subcategory, bookFormat);
+  const key = resolveGenreKey(genre, subcategory, bookFormat);
 
   return `BLUEPRINT GUIDANCE — ${key.toUpperCase()}
 Narrative/logical structure: ${p.structure}
@@ -1186,8 +1193,8 @@ function buildFallbackBlueprint(key: GenreKey, p: GenreProfile): GenreBlueprint 
   };
 }
 
-export function getGenreBlueprint(genre: string, subcategory?: string): GenreBlueprint {
-  const key = resolveGenreKey(genre, subcategory);
+export function getGenreBlueprint(genre: string, subcategory?: string, bookFormat?: string): GenreBlueprint {
+  const key = resolveGenreKey(genre, subcategory, bookFormat);
   const explicit = BLUEPRINTS[key];
   if (explicit) return explicit;
   return buildFallbackBlueprint(key, PROFILES[key]);
@@ -1197,9 +1204,9 @@ export function getGenreBlueprint(genre: string, subcategory?: string): GenreBlu
  * Editorial blueprint block: structure, chapter style, mandatory content rules.
  * Injected in the system prompt to change HOW the book is written per genre.
  */
-export function buildGenreEditorialBlock(genre: string, subcategory?: string): string {
-  const bp = getGenreBlueprint(genre, subcategory);
-  const key = resolveGenreKey(genre, subcategory);
+export function buildGenreEditorialBlock(genre: string, subcategory?: string, bookFormat?: string): string {
+  const bp = getGenreBlueprint(genre, subcategory, bookFormat);
+  const key = resolveGenreKey(genre, subcategory, bookFormat);
 
   return `EDITORIAL BLUEPRINT — ${key.toUpperCase()}
 Book structure (sections): ${bp.structure.join(" → ")}

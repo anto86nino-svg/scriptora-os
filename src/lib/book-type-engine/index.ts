@@ -129,7 +129,7 @@ export function buildBookTypeLock(config: BookConfig): GenreLock {
 
 export function resolveBookTypeContext(config: BookConfig): BookTypeContext {
   const definition = resolveBookTypeDefinition(config.genre, config.subcategory, config.subgenre, config.bookTypeId);
-  const genreKey = resolveGenreKey(config.genre, config.subcategory);
+  const genreKey = resolveGenreKey(config.genre, config.subcategory, config.bookFormat);
   const lock = buildBookTypeLock(config);
   const subCount = config.subchaptersEnabled ? (config.subchaptersPerChapter || 3) : 0;
 
@@ -151,8 +151,8 @@ export function buildBookTypeEngineBlock(config: BookConfig): string {
   return [
     buildBookKernelPromptBlock(config),
     `UNIVERSAL BOOK TYPE ENGINE — ${ctx.definition.label} (${ctx.definition.family})`,
-    buildGenreSystemBlock(config.genre, config.subcategory),
-    buildGenreBlueprintBlock(config.genre, config.subcategory),
+    buildGenreSystemBlock(config.genre, config.subcategory, config.bookFormat),
+    buildGenreBlueprintBlock(config.genre, config.subcategory, config.bookFormat),
     ctx.editorialRulesBlock,
     ctx.titleRulesBlock,
     ctx.subchapterRulesBlock,

@@ -56,10 +56,10 @@ export function buildPromptFromCanonicalConfig(
     French: "French (Français)", German: "German (Deutsch)",
   };
   const lang = langMap[config.language] || config.language;
-  const genrePrompt = buildGenreSystemBlock(config.genre, config.subcategory);
+  const genrePrompt = buildGenreSystemBlock(config.genre, config.subcategory, config.bookFormat);
   const dnaBlock = buildGenreDnaPromptBlock(resolveGenreDnaProfile(config));
   const bp = resolveLockedBlueprint(config, lock);
-  const editorialBlock = `EDITORIAL BLUEPRINT — ${resolveGenreKey(config.genre, config.subcategory).toUpperCase()}${lock ? " (LOCKED)" : ""}
+  const editorialBlock = `EDITORIAL BLUEPRINT — ${resolveGenreKey(config.genre, config.subcategory, config.bookFormat).toUpperCase()}${lock ? " (LOCKED)" : ""}
 Book structure (sections): ${bp.structure.join(" → ")}
 Editorial tone: ${bp.tone}
 Chapter style: ${bp.chapterStyle}

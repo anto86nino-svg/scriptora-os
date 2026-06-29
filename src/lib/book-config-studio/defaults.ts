@@ -5,6 +5,7 @@ import { DEFAULT_STYLE_PROFILE, type WritingStyleProfile } from "@/lib/book-crea
 import type { BookMatterOptions } from "@/types/book";
 import { normalizeProjectChapters } from "@/lib/manuscript/chapter-normalization";
 import { applyBookKernelToConfig } from "@/lib/book-intelligence";
+import { applyFormatDominance } from "@/lib/book-format-dominance";
 
 const VALID_LANGUAGES: Language[] = ["English", "Italian", "Spanish", "French", "German"];
 
@@ -60,7 +61,21 @@ export function normalizeStyleProfile(value?: Partial<WritingStyleProfile> | nul
 
 /** Safe defaults — never crash generation for missing config. */
 export function normalizeBookConfig(input: Partial<BookConfig> | BookConfig): BookConfig {
-  const genre = normalizeGenre(input.genre, `${input.title || ""} ${input.idea || ""} ${input.subgenre || ""}`);
+  const dominanceSeed = applyFormatDominance({
+    bookFormat: input.bookFormat,
+    bookTypeId: input.bookTypeId,
+    genre: input.genre,
+    subgenre: input.subgenre,
+    subcategory: input.subcategory,
+    category: input.category,
+    family: (input as any).family,
+    brain: (input as any).brain,
+    blueprintType: input.blueprintType,
+  });
+  const genre = normalizeGenre(
+    dominanceSeed.genre || input.genre,
+    `${input.title || ""} ${input.idea || ""} ${input.subgenre || ""}`,
+  );
   const language = normalizeLanguage(input.language);
   const bookTypeDef = resolveBookTypeDefinition(
     genre,
@@ -73,7 +88,7 @@ export function normalizeBookConfig(input: Partial<BookConfig> | BookConfig): Bo
   const matterOptions = normalizeMatterOptions(input.matterOptions);
 
   const normalized: BookConfig = {
-    bookTypeId: input.bookTypeId || bookTypeDef.id,
+    bookTypeId: (dominanceSeed.bookTypeId as string | undefined) || input.bookTypeId || bookTypeDef.id,
     title: String(input.title || "").trim() || "Romanzo senza titolo",
     subtitle: String(input.subtitle || "").trim(),
     titleLanguage: input.titleLanguage ? normalizeLanguage(input.titleLanguage) : language,
@@ -85,16 +100,16 @@ export function normalizeBookConfig(input: Partial<BookConfig> | BookConfig): Bo
     authorIdentity: input.authorIdentity,
     authorStyle: String(input.authorStyle || "Bestseller Commerciale").trim(),
     language,
-    genre,
+    genre: (dominanceSeed.genre as Genre | undefined) || genre,
     category: String(input.category || "Fiction").trim() || "Fiction",
     subcategory: String(input.subcategory || "General").trim() || "General",
     subgenre: String(input.subgenre || input.subcategory || "").trim(),
-    bookFormat: String(input.bookFormat || "").trim() || undefined,
+    bookFormat: String((dominanceSeed.bookFormat as string | undefined) || input.bookFormat || "").trim() || undefined,
     contentMode: String(input.contentMode || "").trim() || undefined,
     structureMode: String(input.structureMode || "").trim() || undefined,
     structureLock: String(input.structureLock || "").trim() || undefined,
     structureModeLabel: String(input.structureModeLabel || "").trim() || undefined,
-    blueprintType: String(input.blueprintType || "").trim() || undefined,
+    blueprintType: String((dominanceSeed.blueprintType as string | undefined) || input.blueprintType || "").trim() || undefined,
     generationStrategy: String(input.generationStrategy || "").trim() || undefined,
     promiseLock: String(input.promiseLock || "").trim() || undefined,
     qualityLock: input.qualityLock,

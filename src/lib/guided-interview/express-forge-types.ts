@@ -10,6 +10,7 @@ export type ExpressBookFormat =
   | "novella"
   | "poetry_collection"
   | "short_story_collection"
+  | "cookbook"
   | "essay"
   | "memoir"
   | "self_help"

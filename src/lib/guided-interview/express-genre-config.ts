@@ -3,7 +3,7 @@ import type { ExpressForgeInput } from "./express-forge-types";
 export type ExpressScenarioVariant = "safe" | "commercial" | "bold";
 
 const NONFICTION_GENRE_RE =
-  /self-help|self help|business|manuale|manual|saggio|educational|didattic|nonfiction|non-fiction|guida|psicologia|crescita/i;
+  /self-help|self help|business|manuale|manual|saggio|educational|didattic|nonfiction|non-fiction|guida|psicologia|crescita|cookbook|ricettario|ricette|cucina/i;
 
 const POETRY_GENRE_RE = /poesia|poetry|lyric/i;
 
@@ -249,6 +249,7 @@ export function getExpressVariantMeta(
 
 export function resolveExpressBookType(genre: string): string {
   if (isNonfictionExpressGenre(genre)) {
+    if (/cookbook|ricettario|ricette|cucina/i.test(genre)) return "Cookbook";
     if (/manuale|manual|business|educational|didattic/i.test(genre)) return "Manuale";
     return "Saggio o self-help";
   }

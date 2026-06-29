@@ -15,6 +15,8 @@ export type InferredBookFormat =
   | "short_essay"
   | "manual"
   | "guide"
+  | "cookbook"
+  | "workbook"
   | "historical_essay"
   | "memoir"
   | "self_help"
@@ -156,6 +158,85 @@ function buildPoetryInference(format: InferredBookFormat, score: number): GenreI
     confidence: score >= 4 ? "high" : "medium",
     suggestedChapters: 7,
   };
+}
+
+function buildFormatLockedInference(format: InferredBookFormat, title: string, idea: string): GenreInference | null {
+  const combined = `${title} ${idea}`.trim();
+  if (format === "cookbook") {
+    return {
+      bookFormat: "cookbook",
+      label: "Cookbook",
+      bookTypeId: "cookbook",
+      genre: "cookbook",
+      category: "Non-Fiction",
+      subcategory: "Cookbook",
+      subgenre: "ricettario pratico",
+      tone: "chiaro, pratico, sensoriale",
+      targetReader: "Lettori che cercano ricette replicabili con ingredienti e tecniche chiare.",
+      narrativePromise: "Struttura in ingredienti, ricette, tecniche e menu senza derive narrative.",
+      commercialGoal: "Ricettario operativo, leggibile e orientato all'esecuzione.",
+      level1: "manualistica",
+      confidence: "high",
+      suggestedChapters: 12,
+    };
+  }
+  if (format === "workbook") {
+    return {
+      bookFormat: "workbook",
+      label: "Workbook",
+      bookTypeId: "manual",
+      genre: "manual",
+      category: "Non-Fiction",
+      subcategory: "Workbook",
+      subgenre: "schede operative",
+      tone: "operativo, chiaro, guidato",
+      targetReader: "Lettori che vogliono esercizi, tracker e progressione pratica.",
+      narrativePromise: "Percorso pratico in schede, esercizi e verifiche senza archi narrativi fiction.",
+      commercialGoal: "Workbook ad alta completabilità con risultati misurabili.",
+      level1: "manualistica",
+      confidence: "high",
+      suggestedChapters: 12,
+    };
+  }
+  if (format === "study_material") {
+    return {
+      bookFormat: "study_material",
+      label: "Materiale di studio",
+      bookTypeId: "education",
+      genre: "education",
+      category: "Education",
+      subcategory: "Study Material",
+      subgenre: "moduli didattici",
+      tone: "didattico, chiaro, progressivo",
+      targetReader: "Studenti e professionisti in preparazione esami/certificazioni.",
+      narrativePromise: "Moduli, esempi, quiz e verifica progressiva senza fallback filosofico.",
+      commercialGoal: "Materiale formativo strutturato e verificabile.",
+      level1: "educazione",
+      confidence: "high",
+      suggestedChapters: 14,
+    };
+  }
+  if (format === "poetry_collection") return buildPoetryInference("poetry_collection", 5);
+  if (format === "memoir") {
+    const meta = studioMeta("memoir");
+    return withIdeaAwarePromise({
+      bookFormat: "memoir",
+      label: "Memoir",
+      bookTypeId: "memoir",
+      genre: "memoir",
+      category: meta.category,
+      subcategory: "Memoir",
+      subgenre: "memoir riflessivo",
+      tone: "intimo, riflessivo, concreto",
+      targetReader: "Lettori memoir in cerca di verità personale e scena vissuta.",
+      narrativePromise: "Percorso autobiografico con scene e riflessione, senza fallback generico fiction.",
+      commercialGoal: "Memoir con voce personale e promessa chiara.",
+      level1: "memoir",
+      confidence: "high",
+      suggestedChapters: 14,
+    }, combined);
+  }
+  return null;
 }
 
 const SIGNALS: Signal[] = [
@@ -322,7 +403,12 @@ function withIdeaAwarePromise(inference: GenreInference, idea: string): GenreInf
   };
 }
 
-export function inferGenreFromText(title: string, idea = ""): GenreInference {
+export function inferGenreFromText(title: string, idea = "", knownBookFormat?: string): GenreInference {
+  const known = String(knownBookFormat || "").toLowerCase().trim() as InferredBookFormat;
+  if (known) {
+    const locked = buildFormatLockedInference(known, title, idea);
+    if (locked) return locked;
+  }
   const hay = `${title} ${idea}`.toLowerCase();
   const poetryFormat = inferPoeticBookFormat(hay);
   if (poetryFormat) {
@@ -427,10 +513,20 @@ export function getGuidedGenreAlternatives(inference: GenreInference): GenreInfe
 
 /** Fill missing genre fields from title/idea — never defaults to Self-help for fiction. */
 export function fillMissingGenreFromInference(
-  config: { title?: string; idea?: string; category?: string; subcategory?: string; genre?: Genre; bookTypeId?: string; subgenre?: string; tone?: string },
+  config: {
+    title?: string;
+    idea?: string;
+    category?: string;
+    subcategory?: string;
+    genre?: Genre;
+    bookTypeId?: string;
+    subgenre?: string;
+    tone?: string;
+    bookFormat?: string;
+  },
 ): void {
   if (config.category && config.subcategory && config.genre) return;
-  const inf = inferGenreFromText(config.title || "", config.idea || "");
+  const inf = inferGenreFromText(config.title || "", config.idea || "", config.bookFormat);
   if (!config.category) config.category = inf.category;
   if (!config.subcategory) config.subcategory = inf.subcategory;
   if (!config.genre) config.genre = inf.genre;

@@ -57,6 +57,7 @@ import {
   applyGreatnessGateToConfig,
   enforceKernelGreatnessBeforeForge,
 } from "@/lib/book-intelligence";
+import { applyFormatDominance } from "@/lib/book-format-dominance";
 import type { BookConfig } from "@/types/book";
 
 export type ChapterBlueprintSeed = {
@@ -164,6 +165,9 @@ const GENRE_META: Record<string, { subgenre: string; normalizedGenre: string }> 
   memoir: { subgenre: "reflective memoir", normalizedGenre: "memoir" },
   workbook: { subgenre: "practical workbook", normalizedGenre: "workbook" },
   study_material: { subgenre: "structured study", normalizedGenre: "study_material" },
+  cookbook: { subgenre: "ricettario pratico", normalizedGenre: "cookbook" },
+  ricettario: { subgenre: "ricettario pratico", normalizedGenre: "cookbook" },
+  ricette: { subgenre: "ricettario pratico", normalizedGenre: "cookbook" },
 };
 
 function chapterCountForInput(input: ExpressForgeInput): number {
@@ -259,6 +263,10 @@ function isThrillerGenre(genre: string): boolean {
 
 function isHorrorGenre(genre: string): boolean {
   return /horror|gotico|gothic|paura|soprannaturale/i.test(genre);
+}
+
+function isCookbookGenre(genre: string): boolean {
+  return /cookbook|ricettario|ricette|cucina/i.test(genre);
 }
 
 function defaultLeadForGenre(genre: string): { name: string; role: string } {
@@ -1177,6 +1185,138 @@ function buildNonfictionExpressPackage(
   };
 }
 
+function buildCookbookExpressPackage(
+  input: ExpressForgeInput,
+  variant: ExpressScenarioVariant,
+): CompleteExpressBookPackage {
+  const meta = getExpressVariantMeta(input.genre, variant);
+  const genreMeta = GENRE_META.cookbook;
+  const seed = ideaCore(input);
+  const chapterCount = chapterCountForInput(input);
+  const language = normalizeLanguage(input.language);
+  const theme = seed.split(/[.!?…]/)[0]?.trim() || "cucina pratica";
+  const title = input.title?.trim() || `Ricettario: ${theme.slice(0, 36)}`;
+  const subtitle =
+    input.subtitle?.trim() ||
+    (variant === "commercial"
+      ? "Ricette, ingredienti, tecniche e menu pronti"
+      : "Ricette testate con tempi, dosi e varianti");
+  const methodFramework = "Struttura RITM: Ricetta, Ingredienti, Tecnica, Menu";
+  const hook = `Dal mercato alla tavola: ${theme.toLowerCase()} con ricette ripetibili e tecniche chiare.`;
+  const editorialSynopsis =
+    `${seed || subtitle} Ricettario pratico in ${chapterCount} sezioni con Ingredienti precisi, Ricette passo-passo, Tecniche fondamentali e Menu completi. ` +
+    "Nessuna deriva narrativa o filosofica: solo cucina applicabile, varianti e servizio.";
+  const marketPromise = editorialSynopsis.slice(0, 220);
+  const cookbookArc = [
+    "Ingredienti base",
+    "Tecniche fondamentali",
+    "Ricette rapide",
+    "Ricette complete",
+    "Menu settimanali",
+    "Varianti e sostituzioni",
+    "Errori comuni",
+    "Servizio e impiattamento",
+  ];
+  const chapterBlueprintSeeds = buildFormatChapterSeeds(chapterCount, cookbookArc, variant, "Sezione ricettario").map(
+    (chapter, i) => ({
+      ...chapter,
+      title: `Sezione ${i + 1} — ${cookbookArc[i % cookbookArc.length]}`,
+      summary: "Ingredienti, Ricette, Tecniche e menu operativi con tempi e porzioni.",
+      goal: "Far replicare il risultato al lettore in cucina.",
+    }),
+  );
+  const partial = {
+    hook,
+    midpoint: "Le tecniche base diventano ricette complete con varianti.",
+    climax: "Composizione di menu completi con timing e servizio.",
+    endingDirection: "Il lettore chiude con menu replicabili e autonomia in cucina.",
+    finalEmotion: "Fiducia operativa ai fornelli",
+  };
+  const keyScenes = buildKeyScenes(partial);
+
+  return {
+    id: `express-${variant}`,
+    variant,
+    label: meta.label,
+    title,
+    subtitle,
+    hook,
+    logline: hook,
+    editorialSynopsis,
+    genre: genreMeta.normalizedGenre,
+    subgenre: genreMeta.subgenre,
+    language,
+    targetAudience: "Lettori che vogliono cucinare ricette affidabili con tecniche chiare",
+    marketPromise,
+    protagonist: "Lettore-cuoco",
+    antagonistOrLoveInterest: "Errori tecnici e confusione in cucina",
+    secondaryCharacters: [],
+    setting: "Cucina domestica",
+    atmosphere: `${input.tone}, pratico, sensoriale, preciso`,
+    centralConflict: `Trasformare ${theme.toLowerCase()} in ricette ripetibili e menu concreti`,
+    emotionalWound: `Incertezza su ${theme.toLowerCase()}`,
+    desire: "Cucinare con sicurezza risultati costanti",
+    fear: "Sprecare ingredienti senza ottenere il risultato",
+    stakes: "Tempo, budget e qualità del risultato in tavola",
+    moralBoundary: "Niente quantità vaghe, niente passaggi ambigui, niente derive narrative",
+    antiDriftRules: [
+      "Mantieni formato cookbook: Ingredienti, Ricette, Tecniche, Menu",
+      "Niente Tradizione filosofica o Implicazione esistenziale",
+      "Niente protagonista fiction, romance arc o plot twist",
+    ],
+    structurePreference: `${chapterCount} sezioni · ricettario con tecniche e menu`,
+    chapterCount,
+    subchaptersEnabled: true,
+    chapterBlueprintSeeds,
+    keyScenes,
+    midpoint: partial.midpoint,
+    climax: partial.climax,
+    endingDirection: partial.endingDirection,
+    finalEmotion: partial.finalEmotion,
+    frontMatter: "Come usare il ricettario · Attrezzatura · Pantry essenziale",
+    backMatter: "Conversioni · Sostituzioni · Indice ingredienti · Menu stagionali",
+    authorName: "Da definire",
+    copyright: `© ${new Date().getFullYear()} — titolare da confermare`,
+    commercialPitch: meta.pitch,
+    editorialRisks: [meta.risk],
+    whyItSells: "Ricettario ad alta usabilità con schema Ingredienti/Ricette/Tecniche/Menu",
+    readerProblem: `Difficoltà nel preparare ${theme.toLowerCase()} in modo affidabile`,
+    transformationPromise: "Passare dall'improvvisazione a ricette replicabili con metodo.",
+    methodFramework,
+    exercises: ["Checklist mise en place", "Piano prep settimanale", "Scheda controllo tempi e porzioni"],
+    reflectionPrompts: ["Quale tecnica vuoi padroneggiare questa settimana?"],
+    idealReader: "Home cook che cerca ricette chiare e pratiche.",
+    characters: [],
+    storyRoom: {
+      scenes: keyScenes.map((s, i) => ({ id: `express-cb-scene-${i}`, role: s.role, beat: s.beat, stakes: s.stakes })),
+      arcBeats: [
+        { id: "arc-1", act: "setup", label: "Fondamenti", change: "Ingredienti e basi" },
+        { id: "arc-2", act: "pressure", label: "Tecnica", change: partial.midpoint },
+        { id: "arc-4", act: "finale", label: "Menu", change: partial.endingDirection },
+      ],
+      ending: {
+        tone: input.tone,
+        protagonistFate: partial.endingDirection,
+        readerFeeling: partial.finalEmotion,
+        irreversibleChoice: partial.climax,
+      },
+    },
+    storyFuture: {
+      endingTone: input.tone,
+      lastPageFeeling: partial.finalEmotion,
+      hopeOrDread: "hope",
+    },
+    bookPromises: {
+      emotional: [marketPromise],
+      relationship: [],
+      plot: [methodFramework, "Tecniche ripetibili", "Menu bilanciati"],
+      character: ["Progressione del lettore-cuoco"],
+      scene: chapterBlueprintSeeds.slice(0, 3).map((seedItem) => seedItem.title),
+    },
+    blueprintReadiness: "complete",
+  };
+}
+
 function buildPoetryExpressPackage(
   input: ExpressForgeInput,
   variant: ExpressScenarioVariant,
@@ -1779,6 +1919,9 @@ export function buildCompleteExpressBookPackage(
   input: ExpressForgeInput,
   variant: ExpressScenarioVariant = "commercial",
 ): CompleteExpressBookPackage {
+  if (isCookbookGenre(input.genre) || input.bookFormat === "cookbook") {
+    return buildCookbookExpressPackage(input, variant);
+  }
   if (isMemoirExpressGenre(input.genre) || input.bookFormat === "memoir") {
     return buildMemoirExpressPackage(input, variant);
   }
@@ -2578,6 +2721,8 @@ export function ensureExpressWriterReadiness(
   next = applyBlueprintReadySummaryToState(next);
   const seed = buildForgeInterviewSeed(next);
   const handoff = validateForgeHandoffForBlueprint(seed);
+  const preservedFormat = baseConfig?.bookFormat;
+  const preservedBookTypeId = baseConfig?.bookTypeId;
   const config = enrichBookConfigFromForgeSeed(
     {
       title: next.extracted?.bookTitle ?? "Romanzo",
@@ -2598,8 +2743,13 @@ export function ensureExpressWriterReadiness(
     } as BookConfig,
     seed,
   );
-  const report = validateBookReadinessForBlueprint(config);
-  const greatnessGate = enforceKernelGreatnessBeforeForge({ config });
+  const dominantConfig = applyFormatDominance({
+    ...config,
+    bookFormat: preservedFormat ?? config.bookFormat,
+    bookTypeId: preservedBookTypeId ?? config.bookTypeId,
+  }) as BookConfig;
+  const report = validateBookReadinessForBlueprint(dominantConfig);
+  const greatnessGate = enforceKernelGreatnessBeforeForge({ config: dominantConfig });
   const packageSeeds = next.forgeMemory?.slotValues?.indexOutline;
   const warnings: string[] = [];
   if (!packageSeeds && !next.extracted?.structurePreference) {
@@ -2608,7 +2758,7 @@ export function ensureExpressWriterReadiness(
   if (greatnessGate.refined) {
     warnings.push("Concept rafforzato automaticamente prima del Blueprint.");
   }
-  const gatedConfig = applyGreatnessGateToConfig(config, greatnessGate);
+  const gatedConfig = applyGreatnessGateToConfig(dominantConfig, greatnessGate);
   return {
     state: greatnessGate.refined
       ? {
