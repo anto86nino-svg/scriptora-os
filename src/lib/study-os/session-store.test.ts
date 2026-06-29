@@ -9,6 +9,7 @@ import {
   isStudyResultFresh,
   listStudySessions,
   migrateLegacyStudySession,
+  resolveCommittedStudyResult,
   setCurrentStudySessionId,
   updateStudySessionSource,
 } from "./session-store";
@@ -114,5 +115,46 @@ describe("Study session isolation", () => {
     expect(imported?.title).toMatch(/Sessione precedente importata/);
     expect(listStudySessions().some((session) => session.id === imported?.id)).toBe(true);
     expect(getCurrentStudySessionId()).toBeNull();
+  });
+
+  it("hydrates commit result from enriched payload when store envelope is missing", () => {
+    const session = createEmptyStudySession({
+      sourceText: "Materiale di studio con contenuto sufficiente.",
+      sourceName: "materiale.txt",
+    });
+    const enriched = resultFixture("Materiale di studio");
+    const stripped = { ...session, results: {}, status: "ready" as const };
+
+    const committed = resolveCommittedStudyResult(stripped, enriched);
+
+    expect(committed.result).toBe(enriched);
+    expect(committed.persistedInStore).toBe(false);
+    expect(getFreshStudyResult(stripped)).toBeNull();
+  });
+
+  it("preserves in-memory results when storage quota forces stripped persist", () => {
+    const session = createEmptyStudySession({
+      sourceText: "Materiale di studio con contenuto sufficiente per la sessione.",
+      sourceName: "quota-test.txt",
+    });
+    const enriched = resultFixture("Quota test");
+    const originalSetItem = Storage.prototype.setItem;
+
+    Storage.prototype.setItem = function setItem(key: string) {
+      if (String(key).startsWith("scriptora-study-session-") || key === "scriptora-study-sessions-v2") {
+        throw new DOMException("Quota exceeded", "QuotaExceededError");
+      }
+      return originalSetItem.call(this, key, arguments[1] as string);
+    };
+
+    try {
+      const saved = attachStudyResult(session, enriched);
+
+      expect(getFreshStudyResult(saved)).not.toBeNull();
+      expect(saved.results.analysis?.result.title).toBe(enriched.title);
+      expect(saved.status).toBe("ready");
+    } finally {
+      Storage.prototype.setItem = originalSetItem;
+    }
   });
 });

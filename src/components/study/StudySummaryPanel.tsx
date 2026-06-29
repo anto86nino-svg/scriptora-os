@@ -1,5 +1,14 @@
+import { useMemo, useState } from "react";
 import { compressLightSummary, parseStudyNotesPro, sanitizeStudyText, type StudyNotesSection } from "@/lib/study-ux";
-import type { StudyLearningPackage, StudySummaryMode } from "@/lib/study-session";
+import type { StudyLearningPackage, StudySessionResult, StudySummaryMode } from "@/lib/study-session";
+import {
+  buildRiassuntoPro,
+  getRiassuntoProLevelLabel,
+  RIASSUNTO_PRO_LEVELS,
+  type RiassuntoProSection,
+} from "@/lib/study-os/riassunti-pro";
+import type { RiassuntoProLevel, StudyKernelPlan } from "@/lib/study-os/study-intelligence-kernel";
+import { StudyDictionaryPopover } from "@/components/study/StudyDictionaryPopover";
 
 interface StudySummaryPanelProps {
   lightSummary: string;
@@ -8,6 +17,11 @@ interface StudySummaryPanelProps {
   studyNotesPro: string;
   summaries?: Partial<Record<StudySummaryMode, string>>;
   learningPackage?: StudyLearningPackage;
+  result?: StudySessionResult;
+  recommendedLevel?: RiassuntoProLevel;
+  initialLevel?: RiassuntoProLevel;
+  onLevelChange?: (level: RiassuntoProLevel) => void;
+  kernelPlan?: StudyKernelPlan | null;
 }
 
 const SUMMARY_MODE_LABELS: Array<{ key: StudySummaryMode; title: string; badge: string }> = [
@@ -22,6 +36,101 @@ const SUMMARY_MODE_LABELS: Array<{ key: StudySummaryMode; title: string; badge: 
   { key: "bulletPoints", title: "Punti elenco", badge: "Checklist" },
   { key: "oralExam", title: "Esame orale", badge: "Metodo professore" },
 ];
+
+function RiassuntoProPanel({
+  section,
+  level,
+  onLevelChange,
+  recommendedLevel,
+}: {
+  section: RiassuntoProSection;
+  level: RiassuntoProLevel;
+  onLevelChange: (level: RiassuntoProLevel) => void;
+  recommendedLevel?: RiassuntoProLevel;
+}) {
+  return (
+    <div className="study-card-enter rounded-3xl border border-emerald-300/20 bg-emerald-400/10 p-4 backdrop-blur-2xl">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 className="font-semibold text-emerald-50">Riassunti Pro</h3>
+          <p className="mt-1 text-xs text-emerald-100/75">5 livelli strutturati — concetti, definizioni, esempi, formule, errori comuni.</p>
+        </div>
+        {recommendedLevel === level && (
+          <span className="rounded-full border border-sky-300/30 bg-sky-400/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-sky-100">
+            Consigliato
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {RIASSUNTO_PRO_LEVELS.map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onLevelChange(item)}
+            className={[
+              "rounded-xl px-3 py-1.5 text-xs font-semibold transition",
+              level === item
+                ? "bg-emerald-300 text-slate-950"
+                : "border border-white/10 bg-white/[0.04] text-muted-foreground hover:text-foreground",
+            ].join(" ")}
+          >
+            {getRiassuntoProLevelLabel(item)}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-white/10 bg-background/35 p-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Testo</p>
+        <div className="mt-2 space-y-1.5 text-sm leading-6 text-foreground/85">
+          {sanitizeStudyText(section.body).split("\n").filter(Boolean).map((line, i) => (
+            <p key={i}>{line}</p>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        {section.keyConcepts.length > 0 && (
+          <StructuredList title="Concetti chiave" items={section.keyConcepts} />
+        )}
+        {section.definitions.length > 0 && (
+          <div className="rounded-2xl border border-white/10 bg-background/35 p-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Definizioni</p>
+            <ul className="mt-2 space-y-2 text-sm leading-5 text-muted-foreground">
+              {section.definitions.map((item) => (
+                <li key={item.term}>
+                  <span className="font-semibold text-foreground/90">{item.term}: </span>
+                  {item.definition}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {section.examples.length > 0 && <StructuredList title="Esempi" items={section.examples} />}
+        {section.formulas.length > 0 && <StructuredList title="Formule" items={section.formulas} />}
+        {section.commonErrors.length > 0 && (
+          <StructuredList title="Errori comuni" items={section.commonErrors} danger />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StructuredList({ title, items, danger = false }: { title: string; items: string[]; danger?: boolean }) {
+  return (
+    <div className={`rounded-2xl border p-3 ${danger ? "border-amber-300/20 bg-amber-400/10" : "border-white/10 bg-background/35"}`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">{title}</p>
+      <ul className="mt-2 space-y-1.5 text-sm leading-5 text-muted-foreground">
+        {items.map((item) => (
+          <li key={item} className="flex gap-2">
+            <span className={danger ? "text-amber-300/80" : "text-emerald-300/70"}>•</span>
+            <span>{sanitizeStudyText(item)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 function SummaryCard({ title, text, badge }: { title: string; text: string; badge?: string }) {
   return (
@@ -211,15 +320,50 @@ export function StudySummaryPanel({
   studyNotesPro,
   summaries,
   learningPackage,
+  result,
+  recommendedLevel,
+  initialLevel,
+  onLevelChange,
+  kernelPlan,
 }: StudySummaryPanelProps) {
+  const [level, setLevel] = useState<RiassuntoProLevel>(initialLevel ?? recommendedLevel ?? "dettagliato");
   const lightCompressed = compressLightSummary(lightSummary);
   const notesSections = parseStudyNotesPro(studyNotesPro);
   const modeCards = SUMMARY_MODE_LABELS
     .map((mode) => ({ ...mode, text: summaries?.[mode.key] || "" }))
     .filter((mode) => mode.text.trim().length > 0);
 
+  const riassuntoSection = useMemo(() => {
+    if (!result) return null;
+    return buildRiassuntoPro(result, level);
+  }, [result, level]);
+
+  function handleLevelChange(next: RiassuntoProLevel) {
+    setLevel(next);
+    onLevelChange?.(next);
+  }
+
   return (
     <div className="space-y-4">
+      {result && (result.difficultWords?.length || result.keyConcepts?.length) ? (
+        <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
+          <StudyDictionaryPopover
+            difficultWords={result.difficultWords ?? []}
+            keyConcepts={result.keyConcepts ?? []}
+            kernelPlan={kernelPlan}
+          />
+        </div>
+      ) : null}
+
+      {riassuntoSection && (
+        <RiassuntoProPanel
+          section={riassuntoSection}
+          level={level}
+          onLevelChange={handleLevelChange}
+          recommendedLevel={recommendedLevel}
+        />
+      )}
+
       <LearningPackagePanel pack={learningPackage} />
 
       {modeCards.length >= 4 ? (

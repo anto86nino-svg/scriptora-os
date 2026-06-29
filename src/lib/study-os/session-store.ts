@@ -223,15 +223,20 @@ function writeSession(session: StudySessionRecord): StudySessionRecord {
 
   if (!persisted) {
     forcePruneStudySessionStorage(stored.id);
-    stored = {
+    const strippedForStorage = {
       ...prepareStudySessionForStorage(session, "ultra-light"),
       sourceText: "",
       sourceTextPreview: session.sourceText.slice(0, 1000),
       results: {},
-      storageMode: "ultra-light",
+      storageMode: "ultra-light" as const,
       sourceTextTruncatedForStorage: true,
     };
-    persisted = tryPersist(stored);
+    persisted = tryPersist(strippedForStorage);
+    stored = {
+      ...strippedForStorage,
+      results: session.results,
+      status: session.status,
+    };
   }
 
   if (persisted) {
@@ -243,7 +248,8 @@ function writeSession(session: StudySessionRecord): StudySessionRecord {
   // Never create ghost session ids in the index. Keep UI alive with in-memory record only.
   return {
     ...stored,
-    status: "draft",
+    results: session.results,
+    status: session.status,
     sourceTextTruncatedForStorage: true,
     storageMode: "ultra-light",
   };
@@ -369,6 +375,17 @@ export function isStudyResultFresh(session: Pick<StudySessionRecord, "sourceHash
 
 export function getFreshStudyResult(session: StudySessionRecord): StudySessionResult | null {
   return isStudyResultFresh(session, session.results.analysis) ? session.results.analysis!.result : null;
+}
+
+export function resolveCommittedStudyResult(
+  stored: StudySessionRecord,
+  enriched: StudySessionResult,
+): { result: StudySessionResult; persistedInStore: boolean } {
+  const fromStore = getFreshStudyResult(stored);
+  return {
+    result: fromStore ?? enriched,
+    persistedInStore: Boolean(fromStore),
+  };
 }
 
 export function migrateLegacyStudySession(): StudySessionRecord | null {

@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Flashcard } from "@/lib/study-session";
 import {
+  confidenceToSm2Quality,
+  getDueFlashcards,
+  recordFlashcardReview,
+  type SpacedFlashcard,
+} from "@/lib/study-os/study-flashcards";
+import {
   getFlashcardBuckets,
   inferFlashcardType,
   prioritizeFlashcardOrder,
@@ -14,6 +20,17 @@ interface StudyFlashcardsPanelProps {
   initialConfidence?: Record<number, FlashcardConfidence>;
   initialFlipped?: Record<number, boolean>;
   onConfidenceChange?: (confidence: Record<number, FlashcardConfidence>) => void;
+  spacedDeck?: SpacedFlashcard[];
+  onSpacedDeckChange?: (deck: SpacedFlashcard[]) => void;
+}
+
+function spacedCardToFlashcard(card: SpacedFlashcard): Flashcard {
+  return {
+    front: card.front,
+    back: card.back,
+    type: card.type === "definition" ? "definition" : card.type === "true_false" ? "true-false" : "application",
+    category: card.category,
+  };
 }
 
 export function StudyFlashcardsPanel({
@@ -22,14 +39,30 @@ export function StudyFlashcardsPanel({
   initialConfidence = {},
   initialFlipped = {},
   onConfidenceChange,
+  spacedDeck,
+  onSpacedDeckChange,
 }: StudyFlashcardsPanelProps) {
+  const sm2Enabled = Boolean(spacedDeck?.length);
+  const displayCards = useMemo(
+    () => (sm2Enabled ? spacedDeck!.map(spacedCardToFlashcard) : cards),
+    [cards, sm2Enabled, spacedDeck],
+  );
+
   const [confidence, setConfidence] = useState<Record<number, FlashcardConfidence>>(initialConfidence);
   const [flipped, setFlipped] = useState<Record<number, boolean>>(initialFlipped);
 
-  const studyOrder = useMemo(
-    () => prioritizeFlashcardOrder(cards.length, confidence),
-    [cards.length, confidence]
-  );
+  const studyOrder = useMemo(() => {
+    if (sm2Enabled && spacedDeck) {
+      const dueIds = new Set(getDueFlashcards(spacedDeck).map((card) => card.id));
+      const dueIndices = spacedDeck
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => dueIds.has(card.id))
+        .map(({ index }) => index);
+      const fallback = spacedDeck.map((_, index) => index);
+      return dueIndices.length ? dueIndices : fallback;
+    }
+    return prioritizeFlashcardOrder(displayCards.length, confidence);
+  }, [confidence, displayCards.length, sm2Enabled, spacedDeck]);
 
   const [orderPos, setOrderPos] = useState(() => {
     const pos = studyOrder.indexOf(initialIndex);
@@ -37,9 +70,10 @@ export function StudyFlashcardsPanel({
   });
 
   const index = studyOrder[orderPos] ?? 0;
-  const card = cards[index];
+  const card = displayCards[index];
   const isFlipped = flipped[index] ?? false;
-  const buckets = getFlashcardBuckets(cards, confidence);
+  const buckets = getFlashcardBuckets(displayCards, confidence);
+  const dueCount = sm2Enabled && spacedDeck ? getDueFlashcards(spacedDeck).length : buckets.reviewNow.length;
 
   useEffect(() => {
     saveStudyUxState({
@@ -50,7 +84,7 @@ export function StudyFlashcardsPanel({
     onConfidenceChange?.(confidence);
   }, [index, confidence, flipped, onConfidenceChange]);
 
-  if (cards.length === 0) {
+  if (displayCards.length === 0) {
     return (
       <p className="rounded-2xl border border-white/10 bg-background/45 p-3 text-sm text-muted-foreground">
         Nessuna flashcard disponibile.
@@ -58,9 +92,22 @@ export function StudyFlashcardsPanel({
     );
   }
 
+  function updateSpacedDeck(cardId: string, level: FlashcardConfidence) {
+    if (!spacedDeck || !onSpacedDeckChange) return;
+    const quality = confidenceToSm2Quality(level);
+    const nextDeck = spacedDeck.map((item) => {
+      if (item.id !== cardId) return item;
+      return recordFlashcardReview(item, quality >= 3).card;
+    });
+    onSpacedDeckChange(nextDeck);
+  }
+
   function setCardConfidence(level: FlashcardConfidence) {
     setConfidence((prev) => ({ ...prev, [index]: level }));
     setFlipped((prev) => ({ ...prev, [index]: false }));
+    if (sm2Enabled && spacedDeck?.[index]) {
+      updateSpacedDeck(spacedDeck[index].id, level);
+    }
     if (orderPos < studyOrder.length - 1) {
       setTimeout(() => setOrderPos((v) => v + 1), 300);
     }
@@ -77,25 +124,26 @@ export function StudyFlashcardsPanel({
   return (
     <div className="study-card-enter rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold">🃏 Memory Engine</h3>
+        <h3 className="font-semibold">🃏 Memory Engine{sm2Enabled ? " · SM-2" : ""}</h3>
         <span className="rounded-full bg-white/[0.06] px-3 py-1 text-xs font-semibold text-muted-foreground">
-          {orderPos + 1}/{cards.length} · {inferFlashcardType(card, index)}
+          {orderPos + 1}/{displayCards.length} · {inferFlashcardType(card, index)}
+          {sm2Enabled ? ` · ${dueCount} in scadenza` : ""}
         </span>
       </div>
 
       <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        <BucketPill icon="🔥" label="Ripassa ora" count={buckets.reviewNow.length} tone="rose" />
+        <BucketPill icon="🔥" label="Ripassa ora" count={dueCount} tone="rose" />
         <BucketPill icon="⚡" label="Quasi" count={buckets.almostMastered.length} tone="amber" />
         <BucketPill icon="✅" label="Padroneggiato" count={buckets.mastered.length} tone="emerald" />
       </div>
 
-      {buckets.reviewNow.length > 0 && (
+      {dueCount > 0 && (
         <button
           type="button"
           onClick={jumpToWeak}
           className="mt-3 w-full rounded-xl border border-rose-300/25 bg-rose-400/10 py-2 text-xs font-semibold text-rose-100"
         >
-          🔥 Ripassa concetti deboli ({buckets.reviewNow.length})
+          🔥 Ripassa concetti deboli ({dueCount})
         </button>
       )}
 

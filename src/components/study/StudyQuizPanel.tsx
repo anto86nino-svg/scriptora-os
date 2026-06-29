@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Clock, GraduationCap, Lightbulb, Loader2, MessageCircle, RotateCcw, Trophy } from "lucide-react";
+import { Clock, GraduationCap, Lightbulb, Loader2, Lock, MessageCircle, RotateCcw, Trophy } from "lucide-react";
 import { explainStudyQuizError, type StudyErrorTutorResult } from "@/lib/study-ai";
 import type { OpenStudyQuestion, QuizQuestion } from "@/lib/study-session";
+import type { QuizDifficultyTier } from "@/lib/study-os/study-intelligence-kernel";
+import { formatExamCountdown, shouldAutoSubmitExam } from "@/lib/study-os/study-exam-simulation";
 import {
   buildQuizFeedback,
   buildQuizPerformanceReport,
@@ -39,6 +41,18 @@ interface StudyQuizPanelProps {
     grade30?: number;
     judgement?: string;
   }) => void;
+  quizDifficultyTier?: QuizDifficultyTier;
+  onAnswerRecorded?: (payload: {
+    questionIndex: number;
+    question: string;
+    selectedIndex: number;
+    correctIndex: number;
+    correct: boolean;
+    topic?: string;
+  }) => void;
+  /** Called when proctored exam session starts/ends (for tab lockdown) */
+  onExamSessionActive?: (active: boolean, lockdown: boolean) => void;
+  proctoredExam?: boolean;
 }
 
 const EXAM_TIME_OPTIONS = [
@@ -68,6 +82,10 @@ export function StudyQuizPanel({
   initialOrder = [],
   onStateChange,
   onExamComplete,
+  quizDifficultyTier,
+  onAnswerRecorded,
+  onExamSessionActive,
+  proctoredExam = false,
 }: StudyQuizPanelProps) {
   const [quizMode, setQuizMode] = useState<"practice" | "exam">(initialMode);
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>(initialAnswers);
@@ -82,6 +100,8 @@ export function StudyQuizPanel({
   const [examTimeLimitSec, setExamTimeLimitSec] = useState<number | null>(null);
   const [examStartedAt, setExamStartedAt] = useState<number | null>(null);
   const [examElapsed, setExamElapsed] = useState(0);
+  const [examForceComplete, setExamForceComplete] = useState(false);
+  const [examLockdown, setExamLockdown] = useState(proctoredExam);
   const [showExamSetup, setShowExamSetup] = useState(initialMode === "exam");
   const [showFeedback, setShowFeedback] = useState(false);
   const [tutorLoading, setTutorLoading] = useState(false);
@@ -100,7 +120,7 @@ export function StudyQuizPanel({
 
   const total = quiz.length;
   const answeredCount = Object.keys(quizAnswers).length;
-  const isComplete = total > 0 && answeredCount === total;
+  const isComplete = total > 0 && (answeredCount === total || examForceComplete);
   const currentQuestionIndex = quizOrder[orderPosition] ?? 0;
   const q = quiz[currentQuestionIndex];
   const selected = quizAnswers[currentQuestionIndex];
@@ -156,6 +176,22 @@ export function StudyQuizPanel({
 
   const timeRemaining = examTimeLimitSec ? Math.max(0, examTimeLimitSec - examElapsed) : null;
 
+  useEffect(() => {
+    if (quizMode !== "exam" || examForceComplete || !examTimeLimitSec) return;
+    if (shouldAutoSubmitExam(examElapsed, examTimeLimitSec)) {
+      setExamForceComplete(true);
+      onExamSessionActive?.(false, false);
+    }
+  }, [quizMode, examElapsed, examTimeLimitSec, examForceComplete, onExamSessionActive]);
+
+  useEffect(() => {
+    if (quizMode === "exam" && examStartedAt) {
+      onExamSessionActive?.(true, examLockdown);
+    } else if (quizMode !== "exam" || isComplete) {
+      onExamSessionActive?.(false, false);
+    }
+  }, [quizMode, examStartedAt, examLockdown, isComplete, onExamSessionActive]);
+
   function startExamMode(limitSec: number | null) {
     setQuizMode("exam");
     setQuizOrder(shuffleIndices(total));
@@ -164,6 +200,7 @@ export function StudyQuizPanel({
     setExamTimeLimitSec(limitSec);
     setExamStartedAt(Date.now());
     setExamElapsed(0);
+    setExamForceComplete(false);
     setShowExamSetup(false);
   }
 
@@ -175,13 +212,23 @@ export function StudyQuizPanel({
     setExamStartedAt(null);
     setExamTimeLimitSec(null);
     setExamElapsed(0);
+    setExamForceComplete(false);
     setShowExamSetup(false);
+    onExamSessionActive?.(false, false);
     clearStudyUxQuizState();
   }
 
   function handleAnswer(optionIndex: number) {
-    if (answered) return;
+    if (answered || !q) return;
     setQuizAnswers((prev) => ({ ...prev, [currentQuestionIndex]: optionIndex }));
+    onAnswerRecorded?.({
+      questionIndex: currentQuestionIndex,
+      question: q.question,
+      selectedIndex: optionIndex,
+      correctIndex: q.answer,
+      correct: q.answer === optionIndex,
+      topic: q.testedSkill || q.sourceReference,
+    });
   }
 
   function goNext() {
@@ -220,7 +267,7 @@ export function StudyQuizPanel({
           <p className="mt-1 text-xs text-muted-foreground">
             {quizMode === "exam"
               ? "Esame reale: niente aiuti fino alla fine."
-              : `${adaptiveLabel} — Scriptora adatta la difficoltà a te.`}
+              : `${adaptiveLabel} — Scriptora adatta la difficoltà a te.${quizDifficultyTier ? ` Livello kernel: ${quizDifficultyTier}.` : ""}`}
           </p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-background/50 px-4 py-2 text-sm">
@@ -261,13 +308,27 @@ export function StudyQuizPanel({
               </button>
             ))}
           </div>
+          <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={examLockdown}
+              onChange={(e) => setExamLockdown(e.target.checked)}
+              className="rounded border-white/20"
+            />
+            <Lock className="h-3.5 w-3.5" />
+            Modalità lockdown — nascondi le altre schede durante l&apos;esame
+          </label>
         </div>
       )}
 
       {quizMode === "exam" && examStartedAt && timeRemaining !== null && (
-        <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-100">
+        <div className={[
+          "mt-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold",
+          timeRemaining <= 60 ? "border-rose-300/40 bg-rose-400/15 text-rose-100" : "border-amber-300/30 bg-amber-400/10 text-amber-100",
+        ].join(" ")}
+        >
           <Clock className="h-3.5 w-3.5" />
-          {Math.floor(timeRemaining / 60)}:{String(timeRemaining % 60).padStart(2, "0")}
+          {examForceComplete ? "Tempo scaduto — invio automatico" : formatExamCountdown(timeRemaining)}
         </div>
       )}
 

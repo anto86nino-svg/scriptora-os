@@ -69,6 +69,7 @@ import {
   getCurrentStudySessionId,
   getFreshStudyResult,
   getStudySession,
+  resolveCommittedStudyResult,
   saveStudySession,
   setCurrentStudySessionId,
   updateStudySessionSource,
@@ -76,6 +77,33 @@ import {
   type StudySourceType,
 } from "@/lib/study-os/session-store";
 import { STUDY_USAGE_LIMITS, formatStudyLimitMessage } from "@/lib/study-os/study-limits";
+import {
+  buildSessionKernelPlan,
+  buildStudyQuizPack,
+  classifyStudyInput,
+  hasSemanticStudyContent,
+  initializeFlashcardDeck,
+  loadStudyMemory,
+  recordOralEvaluation,
+  recordQuizAttempt as recordKernelQuizAttempt,
+  resolveRecommendedSummaryLevel,
+  saveFlashcardDeck,
+  studyModeToSection,
+  analyzeStudyGaps,
+  selectExamSimQuestions,
+  toCertificateInput,
+  STUDY_INSUFFICIENT_MESSAGE,
+  type RiassuntoProLevel,
+  type SpacedFlashcard,
+  type StudyKernelPlan,
+  type StudyMemorySnapshot,
+  type ExamSimReport,
+} from "@/lib/study-os";
+import { StudyKernelBanner, studyTabHighlightClass } from "@/components/study/StudyKernelBanner";
+import { StudyDictionaryPopover } from "@/components/study/StudyDictionaryPopover";
+import { StudyDashboardStrip } from "@/components/study/StudyDashboardStrip";
+import { StudyExamSimPanel } from "@/components/study/StudyExamSimPanel";
+import { StudyPlanPanel } from "@/components/study/StudyPlanPanel";
 import { devOnlyDiagnostic, getUserFriendlyError } from "@/lib/user-friendly-error";
 import { trackScriptoraEvent } from "@/lib/usage-analytics";
 
@@ -259,6 +287,10 @@ function normalizeStudyResultForUI(value: any): StudySessionResult {
     studyGoal: result.studyGoal,
     difficultyLevel: result.difficultyLevel,
     qualityScores: result.qualityScores,
+    sessionMode: result.sessionMode,
+    contentType: result.contentType,
+    subjectLabel: String(result.subjectLabel || "Materiale di studio"),
+    studyMode: String(result.studyMode || "Studio guidato"),
   };
 }
 
@@ -299,6 +331,37 @@ function humanStudyErrorMessage(error: unknown): string {
   return getUserFriendlyError(error, {
     area: "study",
     fallback: "Non sono riuscito a completare l'operazione al primo tentativo. I dati della sessione restano salvati: puoi riprovare o caricare un file diverso.",
+  });
+}
+
+const STUDY_STORAGE_QUOTA_COPY =
+  "Spazio di archiviazione locale insufficiente. Puoi studiare in questa scheda; riapri o libera spazio per salvare la sessione.";
+
+function toastAfterStudyCommit(
+  outcome: { result: StudySessionResult; persistedInStore: boolean },
+  options: {
+    fallbackDescription?: string;
+    successDescription?: string;
+  } = {},
+): void {
+  if (!outcome.result) {
+    toast.error("Sessione Studio non creata", {
+      description: "Non è stato possibile preparare riassunti e quiz.",
+    });
+    return;
+  }
+  if (!outcome.persistedInStore) {
+    toast.message("Sessione disponibile in questa scheda", {
+      description: STUDY_STORAGE_QUOTA_COPY,
+    });
+    return;
+  }
+  if (options.fallbackDescription) {
+    toast.message("Sessione Studio pronta", { description: options.fallbackDescription });
+    return;
+  }
+  toast.success("Pipeline Study completata", {
+    description: options.successDescription || "Riassunti, flashcard e quiz pronti — inizia la verifica.",
   });
 }
 
@@ -378,17 +441,29 @@ export default function StudySessionPage() {
   const [flashcardConfidence, setFlashcardConfidence] = useState<Record<number, FlashcardConfidence>>(
     uxSaved.flashcardConfidence || {}
   );
+  const [memorySnapshot, setMemorySnapshot] = useState<StudyMemorySnapshot | null>(null);
+  const [spacedDeck, setSpacedDeck] = useState<SpacedFlashcard[]>([]);
+  const [riassuntoLevel, setRiassuntoLevel] = useState<RiassuntoProLevel>("dettagliato");
+  const [examQuizAnswers, setExamQuizAnswers] = useState<Record<number, number>>({});
+  const [examLockdownActive, setExamLockdownActive] = useState(false);
 
   const wordCount = useMemo(() => rawText.trim().split(/\s+/).filter(Boolean).length, [rawText]);
+  const studyInputKind = useMemo(() => classifyStudyInput(rawText), [rawText]);
   const studyChunkPlan = useMemo(() => createStudyChunkPlan(rawText, sourceName), [rawText, sourceName]);
   const activeBookChunk = useMemo(
     () => bookManifest?.chunks.find((chunk) => chunk.id === activeBookChunkId) || null,
     [activeBookChunkId, bookManifest],
   );
-  const currentStudyClassification = useMemo(
-    () => wordCount >= 40 ? classifyStudyMaterial(rawText, sourceName, studyIntent) : null,
-    [rawText, sourceName, studyIntent, wordCount],
-  );
+  const currentStudyClassification = useMemo(() => {
+    if (!rawText.trim()) return null;
+    if (studyInputKind.kind === "topic_only") {
+      return analyzeStudyMaterial(rawText, sourceName, studyIntent).classification;
+    }
+    if (studyInputKind.kind === "real_material") {
+      return classifyStudyMaterial(rawText, sourceName, studyIntent);
+    }
+    return null;
+  }, [rawText, sourceName, studyIntent, studyInputKind.kind]);
   const restoreStudyIntent = useCallback((source: any) => {
     const payload = source?.results?.analysis?.result || source?.result || source || {};
     if (payload.studyMaterialType) setStudyMaterialType(payload.studyMaterialType);
@@ -402,12 +477,18 @@ export default function StudySessionPage() {
     if (bookManifest && !activeBookChunkId) {
       return `${bookManifest.totalWords.toLocaleString("it-IT")} parole divise in ${bookManifest.chunks.length} sessioni. Scegli una sessione per iniziare.`;
     }
+    if (wordCount < 40 && studyInputKind.kind === "topic_only") {
+      return `Argomento rilevato: modalità esplorazione disponibile (${wordCount} parole). Non simulerò una sessione completa.`;
+    }
+    if (studyInputKind.kind === "insufficient") {
+      return `${STUDY_INSUFFICIENT_MESSAGE} Incolla testo, carica un PDF o inserisci un argomento (${wordCount}/40).`;
+    }
     if (wordCount < 40) return `${t("study_min_words_hint")} (${wordCount}/40)`;
     if (currentStudyClassification?.contentType === "narrative_fiction") {
       return `Capitolo narrativo pronto per l'analisi. ${wordCount.toLocaleString("it-IT")} parole rilevate.`;
     }
     return `Materiale pronto per l'analisi. ${wordCount.toLocaleString("it-IT")} parole rilevate.`;
-  }, [activeBookChunkId, bookManifest, currentStudyClassification?.contentType, wordCount]);
+  }, [activeBookChunkId, bookManifest, currentStudyClassification?.contentType, studyInputKind.kind, wordCount]);
   const hasScannerPages = scannerPages.length > 0;
   const scannerReadyPages = scannerPages.filter((page) => page.words > 0).length;
   const scannerCopy = useMemo(() => {
@@ -417,9 +498,45 @@ export default function StudySessionPage() {
     if (scannerReadyPages > 0) return "Ho letto parte del testo. Puoi correggerlo prima di continuare.";
     return STUDY_IMAGE_OCR_FALLBACK_COPY;
   }, [hasScannerPages, reading, scannerReadyPages, scannerStatus, wordCount]);
-  const canAnalyze = wordCount >= 40 && !reading;
+  const canAnalyze = (studyInputKind.kind === "real_material" || studyInputKind.kind === "topic_only") && !reading;
   const currentSourceHash = useMemo(() => computeStudySourceHash(rawText, sourceName), [rawText, sourceName]);
   const resultFresh = Boolean(result && studySession.results.analysis?.sourceHash === currentSourceHash);
+
+  const kernelPlan = useMemo<StudyKernelPlan | null>(() => buildSessionKernelPlan({
+    text: rawText,
+    sourceName,
+    studySubject,
+    studyGoal,
+    difficultyLevel,
+    intent: studyIntent,
+    memory: memorySnapshot,
+  }), [rawText, sourceName, studySubject, studyGoal, difficultyLevel, studyIntent, memorySnapshot]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadStudyMemory(studySession.id).then((snapshot) => {
+      if (cancelled) return;
+      setMemorySnapshot(snapshot);
+      if (snapshot?.flashcardDeck?.length) {
+        setSpacedDeck(snapshot.flashcardDeck);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [studySession.id]);
+
+  const resolveKernelSection = useCallback((text: string, name: string) => {
+    const plan = buildSessionKernelPlan({
+      text,
+      sourceName: name,
+      studySubject,
+      studyGoal,
+      difficultyLevel,
+      intent: studyIntent,
+      memory: memorySnapshot,
+    });
+    if (plan) setRiassuntoLevel(plan.summaryLevel);
+    return plan ? studyModeToSection(plan.primaryMode) : "summary";
+  }, [difficultyLevel, memorySnapshot, studyGoal, studyIntent, studyMaterialType, studySubject]);
 
   const clearScannerPages = useCallback(() => {
     scannerPreviewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
@@ -447,6 +564,7 @@ export default function StudySessionPage() {
     setQuizOrder([]);
     setOpenAnswers({});
     setOpenEvaluations({});
+    setSpacedDeck([]);
     saveStudyUxState({
       quizAnswers: {},
       currentQuizIndex: 0,
@@ -491,7 +609,7 @@ export default function StudySessionPage() {
     baseSession: StudySessionRecord = studySession,
     sourceType?: StudySourceType,
     projectOverride: string | undefined = projectId,
-  ) => {
+  ): { result: StudySessionResult; persistedInStore: boolean } => {
     const prepared = updateStudySessionSource(baseSession, { sourceText: text, sourceName: name, sourceType }).session;
     const withIntent = {
       ...prepared,
@@ -516,17 +634,19 @@ export default function StudySessionPage() {
     setCurrentStudySessionId(stored.id);
     setReadyStudySessionId(stored.id);
     try { localStorage.setItem("scriptora-last-study-session", stored.id); } catch { /* noop */ }
-    setActiveSection("summary");
-    saveStudyUxState({ activeSection: "summary" });
+    const nextSection = resolveKernelSection(text, name);
+    setActiveSection(nextSection);
+    saveStudyUxState({ activeSection: nextSection });
     setRawText(stored.sourceText);
     setSourceName(stored.sourceName || name);
-    setResult(getFreshStudyResult(stored));
+    const committed = resolveCommittedStudyResult(stored, enriched);
+    setResult(committed.result);
     setStaleNotice("");
     resetSessionState();
     const id = persistStudySession(enriched, text, name, projectOverride);
     setProjectId(id);
-    return stored;
-  }, [difficultyLevel, literaryGenre, projectId, resetSessionState, studyGoal, studyMaterialType, studySession, studySubject]);
+    return committed;
+  }, [difficultyLevel, literaryGenre, projectId, resetSessionState, resolveKernelSection, studyGoal, studyMaterialType, studySession, studySubject]);
 
   const startNewStudySession = useCallback(() => {
     clearScannerPages();
@@ -785,6 +905,17 @@ export default function StudySessionPage() {
       clearStudyNoticeTimers();
       studyFallbackReasonRef.current = null;
 
+      const inputKind = classifyStudyInput(text);
+      if (inputKind.kind === "topic_only" || inputKind.kind === "insufficient") {
+        setStudyGenerationStatus(
+          inputKind.kind === "topic_only"
+            ? "Preparo una panoramica esplorativa sull'argomento..."
+            : STUDY_INSUFFICIENT_MESSAGE,
+        );
+        setAiMode("local");
+        return normalizeStudyResultForUI(analyzeStudyMaterial(text, name, studyIntent));
+      }
+
       const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
       const isHugeMaterial = wordCount > 60000 || text.length > 320000;
       const isLongMaterial = wordCount > 12000 || text.length > 70000;
@@ -865,8 +996,6 @@ export default function StudySessionPage() {
       commitStudyResult(normalized, text, name, studySession, bookManifest.sourceType, undefined);
       const readyManifest = saveStudyBookChunkResult(manifestId, chunkId, normalized);
       if (readyManifest) setBookManifest(readyManifest);
-      setActiveSection("quiz");
-      saveStudyUxState({ activeSection: "quiz" });
       toast.success("Sessione del libro pronta", {
         description: `${activeBookChunk.title}: riassunto, quiz e flashcard generati.`,
       });
@@ -881,8 +1010,6 @@ export default function StudySessionPage() {
         const readyManifest = saveStudyBookChunkResult(manifestId, chunkId, normalized);
         if (readyManifest) setBookManifest(readyManifest);
         setAiMode("local");
-        setActiveSection("quiz");
-        saveStudyUxState({ activeSection: "quiz" });
         toast.message("Sessione del libro pronta", {
           description: describeStudyFallback(error),
         });
@@ -933,8 +1060,15 @@ export default function StudySessionPage() {
       return;
     }
 
+    if (studyInputKind.kind === "insufficient") {
+      toast.error(STUDY_INSUFFICIENT_MESSAGE, {
+        description: "Incolla almeno 40 parole, carica un PDF o inserisci un argomento esplorabile (es. «Intelligenza Artificiale»).",
+      });
+      return;
+    }
+
     if (!canAnalyze) {
-      toast.error("Materiale troppo breve", { description: "Carica o incolla almeno 40 parole." });
+      toast.error("Materiale troppo breve", { description: "Carica o incolla almeno 40 parole, oppure inserisci un argomento." });
       return;
     }
 
@@ -945,18 +1079,12 @@ export default function StudySessionPage() {
     try {
       const next = await generateStudyResultWithRuntimeGuard(rawText, sourceName);
       const normalized = normalizeStudyResultForUI(next);
-      commitStudyResult(normalized, rawText, sourceName, studySession, hasScannerPages ? "image" : detectStudySourceType(sourceName));
-      setActiveSection("quiz");
-      saveStudyUxState({ activeSection: "quiz" });
-      if (studyFallbackReasonRef.current) {
-        toast.message("Sessione Studio pronta", {
-          description: studyFallbackReasonRef.current,
-        });
-      } else {
-        toast.success("Pipeline Study completata", {
-          description: "Riassunti, flashcard e quiz pronti — inizia la verifica.",
-        });
-      }
+      const committed = commitStudyResult(normalized, rawText, sourceName, studySession, hasScannerPages ? "image" : detectStudySourceType(sourceName));
+      toastAfterStudyCommit(committed, {
+        fallbackDescription: normalized.sessionMode === "topic"
+          ? "Modalità esplorazione attiva: nessun quiz o simulazione esame finché non carichi materiale reale."
+          : studyFallbackReasonRef.current || undefined,
+      });
       trackScriptoraEvent({ eventName: "study_summary_generated", tool: "study", success: true, projectId });
       trackScriptoraEvent({ eventName: "study_quiz_generated", tool: "study", success: true, projectId });
     } catch (error) {
@@ -964,14 +1092,10 @@ export default function StudySessionPage() {
       try {
         const local = analyzeStudyMaterial(rawText, sourceName, studyIntent);
         const normalized = normalizeStudyResultForUI(local);
-        commitStudyResult(normalized, rawText, sourceName, studySession, hasScannerPages ? "image" : detectStudySourceType(sourceName));
-        setActiveSection("quiz");
-        saveStudyUxState({ activeSection: "quiz" });
+        const committed = commitStudyResult(normalized, rawText, sourceName, studySession, hasScannerPages ? "image" : detectStudySourceType(sourceName));
         setAiMode("local");
         trackScriptoraEvent({ eventName: "study_fallback_local_used", tool: "study", success: true, errorCategory: "provider" });
-        toast.message("Sessione Studio pronta", {
-          description: describeStudyFallback(error),
-        });
+        toastAfterStudyCommit(committed, { fallbackDescription: describeStudyFallback(error) });
       } catch (fallbackError) {
         console.error("[StudySession] local fallback failed", fallbackError);
         toast.error("Sessione Studio non creata", {
@@ -1008,6 +1132,10 @@ export default function StudySessionPage() {
         saveStudyUxState({ openEvaluations: next });
         return next;
       });
+      void recordOralEvaluation(studySession.id, subjectMemoryLabel, {
+        questionIndex: index,
+        score: evaluation.score,
+      }).then(setMemorySnapshot);
       toast.success(`Risposta valutata: ${evaluation.score}/100`);
     } catch (error) {
       toast.error("Valutazione non riuscita", {
@@ -1077,7 +1205,7 @@ export default function StudySessionPage() {
     const files = Array.from(fileList || []).filter(isStudyImageFile);
     if (!files.length) {
       toast.error("Immagine non valida", {
-        description: "Carica JPG, PNG, WebP o una foto supportata dal browser.",
+        description: "Carica JPG, PNG, WebP, HEIC o scatta una foto dal dispositivo.",
       });
       return;
     }
@@ -1279,16 +1407,11 @@ export default function StudySessionPage() {
       try {
         const next = await generateStudyResultWithRuntimeGuard(text, readResult.fileName);
         const normalized = normalizeStudyResultForUI(next);
-        commitStudyResult(normalized, text, readResult.fileName, fileSession, sourceType, undefined);
-        setActiveSection("quiz");
-        saveStudyUxState({ activeSection: "quiz" });
-        if (studyFallbackReasonRef.current) {
-          toast.message("Sessione Studio pronta", {
-            description: studyFallbackReasonRef.current,
-          });
-        } else {
-          toast.success("Pipeline Study completata", { description: `${readResult.fileName} — quiz e verifica pronti.` });
-        }
+        const committed = commitStudyResult(normalized, text, readResult.fileName, fileSession, sourceType, undefined);
+        toastAfterStudyCommit(committed, {
+          fallbackDescription: studyFallbackReasonRef.current || undefined,
+          successDescription: `${readResult.fileName} — quiz e verifica pronti.`,
+        });
         trackScriptoraEvent({ eventName: "study_summary_generated", tool: "study", success: true });
         trackScriptoraEvent({ eventName: "study_quiz_generated", tool: "study", success: true });
       } catch (error) {
@@ -1296,14 +1419,10 @@ export default function StudySessionPage() {
         try {
           const local = analyzeStudyMaterial(text, readResult.fileName, studyIntent);
           const normalized = normalizeStudyResultForUI(local);
-          commitStudyResult(normalized, text, readResult.fileName, fileSession, sourceType, undefined);
-          setActiveSection("quiz");
-          saveStudyUxState({ activeSection: "quiz" });
+          const committed = commitStudyResult(normalized, text, readResult.fileName, fileSession, sourceType, undefined);
           setAiMode("local");
           trackScriptoraEvent({ eventName: "study_fallback_local_used", tool: "study", success: true, errorCategory: "provider" });
-          toast.message("Sessione Studio pronta", {
-            description: describeStudyFallback(error),
-          });
+          toastAfterStudyCommit(committed, { fallbackDescription: describeStudyFallback(error) });
         } catch (fallbackError) {
           console.error("[StudySession] local file fallback failed", fallbackError);
           toast.error("Sessione Studio non creata", {
@@ -1339,6 +1458,78 @@ export default function StudySessionPage() {
   const safeKeyConcepts = safeResult?.keyConcepts || [];
   const safeExercises = safeResult?.exercises || [];
   const safeCombinedQuiz = useMemo(() => [...safeQuiz, ...safeTrueFalse], [safeQuiz, safeTrueFalse]);
+  const isTopicSession = safeResult?.sessionMode === "topic";
+  const canShowFullStudyTools = Boolean(safeResult && hasSemanticStudyContent(safeResult));
+  const visibleTabs = useMemo(() => {
+    if (examLockdownActive) return TAB_CONFIG.filter((tab) => tab.id === "exam");
+    if (isTopicSession || (safeResult && !canShowFullStudyTools)) {
+      return TAB_CONFIG.filter((tab) => ["materials", "summary", "maps", "coach", "progress"].includes(tab.id));
+    }
+    return TAB_CONFIG;
+  }, [canShowFullStudyTools, examLockdownActive, isTopicSession, safeResult]);
+  const subjectMemoryLabel = safeResult?.detectedSubject || currentStudyClassification?.subjectLabel || "Materiale di studio";
+  const quizPack = useMemo(
+    () => (safeResult && kernelPlan ? buildStudyQuizPack(safeResult, kernelPlan) : null),
+    [safeResult, kernelPlan],
+  );
+  const enhancedQuiz = quizPack?.items ?? safeCombinedQuiz;
+  const examSimQuiz = useMemo(
+    () => (quizPack ? selectExamSimQuestions(quizPack.items, kernelPlan, 12) : enhancedQuiz.slice(0, 12)),
+    [quizPack, kernelPlan, enhancedQuiz],
+  );
+  const recommendedSummaryLevel = resolveRecommendedSummaryLevel(kernelPlan);
+  const gapAnalysis = useMemo(
+    () => analyzeStudyGaps({ memory: memorySnapshot }),
+    [memorySnapshot],
+  );
+
+  useEffect(() => {
+    if (!safeResult || !kernelPlan || spacedDeck.length > 0 || !canShowFullStudyTools) return;
+    setSpacedDeck(initializeFlashcardDeck(safeResult, kernelPlan));
+  }, [canShowFullStudyTools, safeResult, kernelPlan, spacedDeck.length]);
+
+  const handleQuizAnswerRecorded = useCallback(async (payload: {
+    questionIndex: number;
+    question: string;
+    selectedIndex: number;
+    correctIndex: number;
+    correct: boolean;
+    topic?: string;
+  }) => {
+    const snapshot = await recordKernelQuizAttempt(studySession.id, subjectMemoryLabel, {
+      questionIndex: payload.questionIndex,
+      question: payload.question,
+      correct: payload.correct,
+      selectedIndex: payload.selectedIndex,
+      correctIndex: payload.correctIndex,
+      topic: payload.topic,
+    });
+    setMemorySnapshot(snapshot);
+  }, [studySession.id, subjectMemoryLabel]);
+
+  const handleExamCertificate = useCallback(
+    (report: ExamSimReport) => {
+      const identity = getSelectedAuthorIdentity();
+      const studentName = identity.penName || identity.realName || identity.name || "Studente Scriptora";
+      const cert = toCertificateInput(
+        report,
+        studentName,
+        safeResult?.detectedSubject || subjectMemoryLabel,
+        projectId,
+      );
+      saveStudyCertificate(cert);
+      void downloadStudyCertificate(cert);
+      toast.success("Attestato generato", { description: `Punteggio ${report.score}/100` });
+    },
+    [projectId, safeResult?.detectedSubject, subjectMemoryLabel],
+  );
+
+  const handleSpacedDeckChange = useCallback(async (deck: SpacedFlashcard[]) => {
+    setSpacedDeck(deck);
+    const snapshot = await saveFlashcardDeck(studySession.id, subjectMemoryLabel, deck);
+    setMemorySnapshot(snapshot);
+  }, [studySession.id, subjectMemoryLabel]);
+
   const activeStudyWordCount = activeBookChunkId
     ? activeBookChunkText.trim().split(/\s+/).filter(Boolean).length
     : wordCount;
@@ -1357,6 +1548,8 @@ export default function StudySessionPage() {
         : "Scegli una sessione del libro"
       : studyChunkPlan.shouldUseChunks
         ? "Dividi libro in sessioni"
+      : studyInputKind.kind === "topic_only"
+        ? "Esplora argomento"
         : "Genera Sessione Studio";
 
   return (
@@ -1674,6 +1867,15 @@ export default function StudySessionPage() {
               placeholder="Incolla qui capitoli, appunti, dispense o una parte del libro..."
               className="scriptora-text-safe min-h-[240px] w-full min-w-0 max-w-full resize-y overflow-x-hidden rounded-2xl border border-white/10 bg-background/70 p-3 text-sm leading-6 text-foreground outline-none focus:border-emerald-300/40 sm:min-h-[280px] sm:p-4 lg:min-h-[420px]"
             />
+            {studyInputKind.kind === "insufficient" && wordCount > 0 && (
+              <div className="mt-3 rounded-2xl border border-amber-300/25 bg-amber-300/10 px-3 py-3 text-xs leading-5 text-amber-50">
+                <p className="font-semibold">{STUDY_INSUFFICIENT_MESSAGE}</p>
+                <p className="mt-2 text-amber-50/85">
+                  Puoi incollare più testo, caricare un PDF oppure inserire solo un argomento (es. «Intelligenza Artificiale», «DNA», «Rivoluzione Francese») per la modalità esplorazione.
+                </p>
+              </div>
+            )}
+
             <p className={`mt-2 text-xs leading-5 ${wordCount < 40 ? "text-amber-200/90" : "text-emerald-100/85"}`}>
               {materialReadinessCopy}
             </p>
@@ -1926,6 +2128,17 @@ export default function StudySessionPage() {
                   </div>
                 )}
 
+                {isTopicSession && (
+                  <div className="rounded-3xl border border-sky-300/25 bg-sky-300/10 p-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.22em] text-sky-200">Modalità esplorazione argomento</p>
+                    <h2 className="mt-1 text-lg font-semibold text-foreground">{safeResult?.title}</h2>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      Non stai studiando un capitolo reale: Scriptora ti propone panoramica, concetti chiave, mappa e domande esplorative.
+                      Per quiz, flashcard e simulazione esame carica almeno 40 parole di materiale vero.
+                    </p>
+                  </div>
+                )}
+
                 <StudyMetricsCard
                   result={safeResult}
                   aiMode={aiMode}
@@ -1934,21 +2147,36 @@ export default function StudySessionPage() {
                   flashcardConfidence={flashcardConfidence}
                 />
 
+                <StudyDashboardStrip />
+
+                {kernelPlan && (
+                  <StudyKernelBanner
+                    plan={kernelPlan}
+                    activeSection={activeSection}
+                    onNavigate={handleSectionChange}
+                    gapAnalysis={gapAnalysis.weakTopics.length || gapAnalysis.strongTopics.length ? gapAnalysis : null}
+                  />
+                )}
+
                 <div className="sticky top-2 z-10 rounded-3xl border border-white/10 bg-background/80 p-2 backdrop-blur-xl">
-                  <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {TAB_CONFIG.map((tab) => (
+                  {examLockdownActive && (
+                    <p className="mb-2 rounded-xl border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100">
+                      Modalità esame attiva — le altre schede sono nascoste fino al termine.
+                    </p>
+                  )}
+                  <div className="flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {(examLockdownActive ? TAB_CONFIG.filter((tab) => tab.id === "exam") : visibleTabs).map((tab) => (
                       <button
                         key={tab.id}
                         type="button"
                         onClick={() => handleSectionChange(tab.id)}
                         className={[
-                          "shrink-0 rounded-2xl px-4 py-2 text-sm font-semibold transition",
-                          activeSection === tab.id
-                            ? "bg-emerald-300 text-slate-950"
-                            : "border border-white/10 bg-white/[0.04] text-muted-foreground",
+                          "min-h-[44px] shrink-0 snap-start rounded-2xl px-4 py-2.5 text-sm font-semibold transition",
+                          studyTabHighlightClass(tab.id, activeSection, kernelPlan),
                         ].join(" ")}
                       >
                         {tab.icon} {tab.label}
+                        {kernelPlan && studyModeToSection(kernelPlan.primaryMode) === tab.id ? " ★" : ""}
                       </button>
                     ))}
                   </div>
@@ -1971,6 +2199,11 @@ export default function StudySessionPage() {
                     studyNotesPro={safeResult.studyNotesPro}
                     summaries={safeResult.summaries}
                     learningPackage={safeResult.learningPackage}
+                    result={safeResult}
+                    recommendedLevel={recommendedSummaryLevel}
+                    initialLevel={riassuntoLevel}
+                    onLevelChange={setRiassuntoLevel}
+                    kernelPlan={kernelPlan}
                   />
                 )}
 
@@ -1981,13 +2214,15 @@ export default function StudySessionPage() {
                     initialConfidence={flashcardConfidence}
                     initialFlipped={uxSaved.flashcardFlipped}
                     onConfidenceChange={setFlashcardConfidence}
+                    spacedDeck={spacedDeck}
+                    onSpacedDeckChange={handleSpacedDeckChange}
                   />
                 )}
 
                 {activeSection === "quiz" && (
                   <div className="space-y-4">
                     <StudyQuizPanel
-                      quiz={safeCombinedQuiz}
+                      quiz={enhancedQuiz}
                       keyConcepts={safeKeyConcepts}
                       openQuestions={safeOpenQuestions}
                       flashcardConfidence={flashcardConfidence}
@@ -1996,6 +2231,8 @@ export default function StudySessionPage() {
                       initialIndex={currentQuizIndex}
                       initialMode={quizMode}
                       initialOrder={quizOrder}
+                      quizDifficultyTier={kernelPlan?.quizDifficulty}
+                      onAnswerRecorded={handleQuizAnswerRecorded}
                       onStateChange={(state) => {
                         setQuizAnswers(state.quizAnswers);
                         setCurrentQuizIndex(state.currentQuizIndex);
@@ -2028,26 +2265,56 @@ export default function StudySessionPage() {
                       openEvaluations={openEvaluations}
                       flashcardConfidence={flashcardConfidence}
                     />
+                    {(safeDifficultWords.length > 0 || safeKeyConcepts.length > 0) && (
+                      <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
+                        <StudyDictionaryPopover
+                          difficultWords={safeDifficultWords}
+                          keyConcepts={safeKeyConcepts}
+                          kernelPlan={kernelPlan}
+                          variant="inline"
+                          materialContext={safeResult.lightSummary?.slice(0, 500)}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {activeSection === "maps" && (
-                  <StudyMapPanel conceptMap={safeResult.conceptMap} exercises={safeExercises} />
+                  <StudyMapPanel result={safeResult} kernelPlan={kernelPlan} exercises={safeExercises} />
                 )}
 
                 {activeSection === "exam" && (
-                  <StudyQuizPanel
-                    quiz={safeCombinedQuiz}
-                    keyConcepts={safeKeyConcepts}
-                    openQuestions={safeOpenQuestions}
-                    flashcardConfidence={flashcardConfidence}
-                    openEvaluations={openEvaluations}
-                    initialAnswers={{}}
-                    initialIndex={0}
-                    initialMode="exam"
-                    initialOrder={[]}
-                    onExamComplete={handleExamComplete}
-                  />
+                  <div className="space-y-4">
+                    {kernelPlan?.recommendedModes.includes("exam_sim") && (
+                      <div className="rounded-2xl border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-xs leading-5 text-amber-100">
+                        Simulazione esame consigliata dal piano studio — modalità verifica senza aiuti.
+                      </div>
+                    )}
+                    <StudyQuizPanel
+                      quiz={examSimQuiz}
+                      keyConcepts={safeKeyConcepts}
+                      openQuestions={safeOpenQuestions}
+                      flashcardConfidence={flashcardConfidence}
+                      openEvaluations={openEvaluations}
+                      initialAnswers={examQuizAnswers}
+                      initialIndex={0}
+                      initialMode="exam"
+                      initialOrder={[]}
+                      quizDifficultyTier={kernelPlan?.quizDifficulty ?? "esame"}
+                      proctoredExam
+                      onExamSessionActive={(active, lockdown) => setExamLockdownActive(active && lockdown)}
+                      onAnswerRecorded={handleQuizAnswerRecorded}
+                      onStateChange={(state) => setExamQuizAnswers(state.quizAnswers)}
+                      onExamComplete={handleExamComplete}
+                    />
+                    <StudyExamSimPanel
+                      quiz={examSimQuiz}
+                      answers={examQuizAnswers}
+                      kernelPlan={kernelPlan}
+                      memory={memorySnapshot}
+                      onRequestCertificate={handleExamCertificate}
+                    />
+                  </div>
                 )}
 
                 {activeSection === "progress" && (
@@ -2065,12 +2332,19 @@ export default function StudySessionPage() {
                 )}
 
                 {activeSection === "coach" && (
-                  <StudyCoachPanel
-                    result={safeResult}
-                    quizAnswers={quizAnswers}
-                    openEvaluations={openEvaluations}
-                    flashcardConfidence={flashcardConfidence}
-                  />
+                  <div className="space-y-4">
+                    <StudyPlanPanel
+                      materia={subjectMemoryLabel}
+                      kernelPlan={kernelPlan}
+                      memory={memorySnapshot}
+                    />
+                    <StudyCoachPanel
+                      result={safeResult}
+                      quizAnswers={quizAnswers}
+                      openEvaluations={openEvaluations}
+                      flashcardConfidence={flashcardConfidence}
+                    />
+                  </div>
                 )}
               </>
             )}

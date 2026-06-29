@@ -5,8 +5,14 @@ import {
   sanitizeStudySessionResult,
   scoreStudySessionQuality,
   type StudyIntentSettings,
+  type StudyMaterialType,
   type StudySessionResult,
 } from "@/lib/study-session";
+import {
+  buildTopicModeSession,
+  classifyStudyInput,
+  hasSemanticStudyContent,
+} from "@/lib/study-os/study-topic-mode";
 
 interface GenerateStudySessionAIInput {
   text: string;
@@ -56,11 +62,57 @@ function normalizeString(value: unknown, fallback = ""): string {
   return clean || fallback;
 }
 
+const STEM_TYPES = new Set<StudyMaterialType>([
+  "computer-science",
+  "math",
+  "physics",
+  "chemistry",
+  "medicine",
+]);
+
+const HUMANITIES_TYPES = new Set<StudyMaterialType>([
+  "history",
+  "philosophy",
+  "literature",
+  "law",
+  "economics",
+]);
+
+function isIncompatibleStudyClassification(
+  localType: StudyMaterialType | undefined,
+  aiType: StudyMaterialType | undefined,
+  sourceText: string,
+): boolean {
+  if (!localType || !aiType || localType === aiType) return false;
+  if (localType === "computer-science" && aiType === "history") {
+    return /\b(intelligenza artificiale|machine learning|deep learning|informatica|algoritmi|programmazione|\bIA\b|\bAI\b|\bML\b)/i.test(sourceText);
+  }
+  if (STEM_TYPES.has(localType) && HUMANITIES_TYPES.has(aiType)) return true;
+  if (HUMANITIES_TYPES.has(localType) && STEM_TYPES.has(aiType)) return true;
+  return false;
+}
+
+function resolveStudyClassification(
+  parsed: any,
+  fallback: StudySessionResult,
+  sourceText: string,
+): StudySessionResult["classification"] {
+  const normalized = parsed?.classification && typeof parsed.classification === "object"
+    ? { ...fallback.classification, ...parsed.classification }
+    : fallback.classification;
+  const aiType = normalized?.type as StudyMaterialType | undefined;
+  const localType = fallback.classification?.type;
+  if (isIncompatibleStudyClassification(localType, aiType, sourceText)) {
+    return fallback.classification;
+  }
+  return normalized;
+}
+
 function normalizeArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? value.filter(Boolean) as T[] : [];
 }
 
-function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudySessionResult {
+function normalizeStudyResult(parsed: any, fallback: StudySessionResult, sourceText = ""): StudySessionResult {
   const difficulty = parsed?.difficulty === "soft" || parsed?.difficulty === "medium" || parsed?.difficulty === "pro"
     ? parsed.difficulty
     : fallback.difficulty;
@@ -149,9 +201,7 @@ function normalizeStudyResult(parsed: any, fallback: StudySessionResult): StudyS
     ? { ...fallback.summaries, ...parsed.summaries }
     : fallback.summaries;
 
-  const normalizedClassification = parsed?.classification && typeof parsed.classification === "object"
-    ? { ...fallback.classification, ...parsed.classification }
-    : fallback.classification;
+  const normalizedClassification = resolveStudyClassification(parsed, fallback, sourceText);
   const learningPackage = parsed?.learningPackage && typeof parsed.learningPackage === "object"
     ? { ...fallback.learningPackage, ...parsed.learningPackage }
     : fallback.learningPackage;
@@ -437,6 +487,14 @@ export function buildLongStudyDigest(text: string, sourceName: string): string {
 
 
 export async function generateStudySessionWithAI(input: GenerateStudySessionAIInput): Promise<StudySessionResult> {
+  const inputKind = classifyStudyInput(input.text);
+  if (inputKind.kind === "topic_only") {
+    return buildTopicModeSession(input.text, input.sourceName, input.intent);
+  }
+  if (inputKind.kind === "insufficient") {
+    return analyzeStudyMaterial(input.text, input.sourceName, input.intent);
+  }
+
   const fallback = analyzeStudyMaterial(input.text, input.sourceName, input.intent);
   const language = input.language || "Italian";
   const level = input.level || fallback.difficulty || "medium";
@@ -692,7 +750,17 @@ ${material}`;
 
   const raw = await callScriptoraStudyAI(systemPrompt, userPrompt);
   const parsed = safeJsonParse(raw);
-  let normalized = sanitizeStudySessionResult(normalizeStudyResult(parsed, fallback), fallback);
+  let normalized = sanitizeStudySessionResult(normalizeStudyResult(parsed, fallback, input.text), fallback);
+  if (!hasSemanticStudyContent(normalized)) {
+    normalized = {
+      ...normalized,
+      quiz: [],
+      flashcards: [],
+      trueFalse: [],
+      difficultWords: [],
+      sessionMode: normalized.sessionMode === "full" ? "topic" : normalized.sessionMode,
+    };
+  }
 
   const quality = scoreStudySessionQuality(normalized);
   const minScore = Math.min(
@@ -716,7 +784,7 @@ ${material}`;
         `${systemPrompt}\n\nRepair pass: keep the same JSON shape, preserve facts, remove artifacts, improve only weak sections. Do not invent missing facts.`,
         `Repair this Study OS JSON. Keep content faithful to the source material and the manual intent. Remove broken questions, duplicates, placeholders and weak generic sections. Return ONLY valid JSON.\n\nQUALITY SCORES:\n${JSON.stringify(quality)}\n\nCURRENT JSON:\n${JSON.stringify(normalized).slice(0, 32000)}`,
       );
-      const repaired = sanitizeStudySessionResult(normalizeStudyResult(safeJsonParse(repairRaw), fallback), fallback);
+      const repaired = sanitizeStudySessionResult(normalizeStudyResult(safeJsonParse(repairRaw), fallback, input.text), fallback);
       const repairedQuality = scoreStudySessionQuality(repaired);
       const repairedMin = Math.min(
         repairedQuality.summaryQuality,
@@ -739,7 +807,7 @@ ${material}`;
     finalQuality.flashcardQuality,
     finalQuality.oralExamQuality,
   );
-  return finalMin < 7 ? fallback : { ...normalized, qualityScores: finalQuality };
+  return finalMin < 7 ? fallback : { ...normalized, qualityScores: finalQuality, sessionMode: "full" };
 }
 
 export interface StudyErrorTutorInput {
@@ -785,6 +853,62 @@ export async function explainStudyQuizError(input: StudyErrorTutorInput): Promis
         correctAnswer: String(data?.correctAnswer || correct),
         whyWrong: text,
         reviewTip: String(data?.reviewTip || local.reviewTip),
+        source: "ai",
+      };
+    }
+  } catch {
+    /* fallback local */
+  }
+
+  return local;
+}
+
+export interface StudyDictionaryAiInput {
+  term: string;
+  mode: "bambino" | "universitario";
+  localBody: string;
+  localHeadline: string;
+  context?: string;
+  language?: string;
+}
+
+export interface StudyDictionaryAiResult {
+  body: string;
+  headline: string;
+  source: "ai" | "local";
+}
+
+/** AI-enhanced dictionary lookup with local fallback (offline / no credits). */
+export async function explainStudyDictionaryTerm(input: StudyDictionaryAiInput): Promise<StudyDictionaryAiResult> {
+  const local: StudyDictionaryAiResult = {
+    body: input.localBody,
+    headline: input.localHeadline,
+    source: "local",
+  };
+
+  const modePrompt =
+    input.mode === "bambino"
+      ? "Spiega come se il lettore avesse 10 anni, con esempio concreto."
+      : "Spiega in modo universitario: definizione precisa, collegamenti e possibile errore d'esame.";
+
+  try {
+    const { data, error } = await supabase.functions.invoke("scriptora-study-tutor", {
+      body: {
+        task: "dictionary",
+        term: input.term,
+        mode: input.mode,
+        context: input.context || "",
+        language: input.language || "Italian",
+        localDefinition: input.localBody,
+        instruction: modePrompt,
+      },
+    });
+    if (error) throw error;
+    const body = String(data?.definition || data?.body || data?.explanation || "").trim();
+    if (body.length > 20) {
+      return {
+        body,
+        headline: String(data?.headline || input.localHeadline),
         source: "ai",
       };
     }

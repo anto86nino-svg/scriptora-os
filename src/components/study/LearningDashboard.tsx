@@ -1,9 +1,16 @@
-import { GraduationCap, Trophy, TrendingUp, BookOpen, Award } from "lucide-react";
+import { useEffect, useState } from "react";
+import { GraduationCap, Trophy, TrendingUp, BookOpen, Award, Bell } from "lucide-react";
 import { getStudyLearningMetrics } from "@/lib/study-project-storage";
 import { achievementById } from "@/lib/study-achievements";
+import { loadStudyDashboardStats, type StudyDashboardStats } from "@/lib/study-os/study-dashboard";
 
 export function LearningDashboard() {
   const metrics = getStudyLearningMetrics();
+  const [idbStats, setIdbStats] = useState<StudyDashboardStats | null>(null);
+
+  useEffect(() => {
+    void loadStudyDashboardStats().then(setIdbStats);
+  }, []);
 
   return (
     <section className="space-y-4">
@@ -13,11 +20,24 @@ export function LearningDashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <MetricCard icon={BookOpen} label="Sessioni" value={String(metrics.sessions)} />
-        <MetricCard icon={Trophy} label="Punteggio medio" value={metrics.avgScore ? `${metrics.avgScore}/100` : "—"} />
-        <MetricCard icon={TrendingUp} label="Livello" value={metrics.level} />
-        <MetricCard icon={GraduationCap} label="Materie" value={String(metrics.subjects.length)} />
+        <MetricCard icon={BookOpen} label="Sessioni" value={String(idbStats?.sessionsCount ?? metrics.sessions)} />
+        <MetricCard
+          icon={Trophy}
+          label="Punteggio medio"
+          value={idbStats?.avgQuizAccuracy ? `${idbStats.avgQuizAccuracy}%` : metrics.avgScore ? `${metrics.avgScore}/100` : "—"}
+        />
+        <MetricCard icon={TrendingUp} label="Retention FC" value={idbStats ? `${idbStats.flashcardRetention}%` : metrics.level} />
+        <MetricCard icon={GraduationCap} label="Materie" value={String(idbStats?.subjects.length ?? metrics.subjects.length)} />
       </div>
+
+      {idbStats && idbStats.reviewsDue > 0 && (
+        <div className="rounded-2xl border border-amber-400/20 bg-amber-400/8 p-3 text-sm text-amber-100">
+          <p className="flex items-center gap-2 font-semibold">
+            <Bell className="h-4 w-4" />
+            {idbStats.reviewsDue} ripasso{idbStats.reviewsDue === 1 ? "" : "i"} in scadenza — apri una sessione Study per ripassare.
+          </p>
+        </div>
+      )}
 
       {metrics.badges.length > 0 && (
         <div className="rounded-2xl border border-amber-400/20 bg-amber-400/8 p-4">

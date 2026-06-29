@@ -1,5 +1,10 @@
 import JSZip from "jszip";
 import { explainProfessionalWord, extractProfessionalTerms } from "@/lib/professional-dictionary";
+import {
+  buildInsufficientStudySession,
+  buildTopicModeSession,
+  classifyStudyInput,
+} from "@/lib/study-os/study-topic-mode";
 
 async function loadPdfJs() {
   const pdfjsLib = await import("pdfjs-dist");
@@ -285,6 +290,8 @@ export interface StudyAdaptiveCoachSnapshot {
   knowledgeMap: StudyKnowledgeArea[];
 }
 
+export type StudySessionMode = "full" | "topic" | "insufficient";
+
 export interface StudySessionResult {
   title: string;
   sourceName: string;
@@ -294,6 +301,8 @@ export interface StudySessionResult {
   studyMode: string;
   detectedSubject: string;
   difficulty: StudyDifficulty;
+  /** full = materiale reale; topic = esplorazione argomento; insufficient = sotto soglia parole */
+  sessionMode?: StudySessionMode;
   classification?: StudyMaterialClassification;
   summaries?: Record<StudySummaryMode, string>;
   lightSummary: string;
@@ -712,6 +721,16 @@ const MATERIAL_DEFS: Array<{
   strategy: string[];
 }> = [
   {
+    type: "computer-science",
+    label: "Informatica / Intelligenza Artificiale",
+    patterns: [
+      /\b(intelligenza artificiale|informatica|machine learning|deep learning|algoritmi|programmazione|rete neurale|reti neurali|computer vision|software|hardware|database|rete|api|codice|funzione|variabile|classe|server|protocollo|dataset|training|inferenza|nlp|transformer|chatgpt|llm)\b/gi,
+      /\b(IA|AI|ML|DL)\b/g,
+      /```|[{};<>]/g,
+    ],
+    strategy: ["definizioni", "algoritmi e modelli", "dataset e training", "applicazioni pratiche"],
+  },
+  {
     type: "history",
     label: "Storia",
     patterns: [/\b(secolo|guerra|rivoluzione|impero|periodo|anno|date|fonti|cause|conseguenze|trattato|monarchia|repubblica)\b/gi, /\b\d{3,4}\b/g],
@@ -773,12 +792,6 @@ const MATERIAL_DEFS: Array<{
     label: "Economia",
     patterns: [/\b(mercato|domanda|offerta|inflazione|pil|costo|ricavo|profitto|bilancio|capitale|moneta|prezzo)\b/gi],
     strategy: ["concetti", "modelli", "grafici mentali", "casi applicativi"],
-  },
-  {
-    type: "computer-science",
-    label: "Informatica",
-    patterns: [/\b(algoritmo|software|hardware|database|rete|api|codice|funzione|variabile|classe|server|protocollo)\b/gi, /```|[{};<>]/g],
-    strategy: ["definizioni", "flussi", "esempi guidati", "debug concettuale"],
   },
   {
     type: "foreign-language",
@@ -1736,6 +1749,12 @@ function sanitizedSummaryFallback(text?: string): string {
 
 export function scoreStudySessionQuality(result: StudySessionResult): StudyQualityScores {
   const reasons: string[] = [];
+  if (result.sessionMode === "topic" || result.sessionMode === "insufficient") {
+    reasons.push("exploration_or_insufficient_mode");
+  }
+  if ((result.words || 0) < 40 && (result.quiz?.length || 0) > 0) {
+    reasons.push("quiz_on_insufficient_material");
+  }
   const summaryText = [
     result.lightSummary,
     result.mediumSummary,
@@ -1761,12 +1780,17 @@ export function scoreStudySessionQuality(result: StudySessionResult): StudyQuali
     + (summaryText.includes("non specificato") || !/\b(1999|2000|2020|Napoleone|Einstein)\b/i.test(summaryText) ? 1 : 0)
     - artifactPenalty,
   ));
+  const quizPenalty =
+    result.sessionMode === "topic" || result.sessionMode === "insufficient" || ((result.words || 0) < 40 && result.quiz.length > 0)
+      ? 4
+      : 0;
   const quizQuality = Math.max(1, Math.min(10,
     5
     + (result.quiz.length >= 8 ? 2 : 0)
     + (result.quiz.some((item) => item.difficulty === "hard") ? 1 : 0)
     + (result.quiz.every((item) => item.options.length >= 2 && item.explanation.trim()) ? 1 : 0)
-    + (uniqueCount(quizQuestions) === quizQuestions.length ? 1 : -2),
+    + (uniqueCount(quizQuestions) === quizQuestions.length ? 1 : -2)
+    - quizPenalty,
   ));
   const vocabularyQuality = Math.max(1, Math.min(10,
     5
@@ -1859,6 +1883,19 @@ export function sanitizeStudySessionResult(result: StudySessionResult, fallback?
     .slice(0, 12);
   const adaptiveCoach = result.adaptiveCoach || fallback?.adaptiveCoach;
 
+  const semanticReady =
+    result.sessionMode !== "topic"
+    && result.sessionMode !== "insufficient"
+    && (result.words || 0) >= 40
+    && (result.keyConcepts?.length || 0) >= 3
+    && [result.lightSummary, result.mediumSummary, result.proSummary]
+      .some((part) => countStudyWords(String(part || "")) >= 8);
+
+  const guardedQuiz = semanticReady ? safeQuiz : [];
+  const guardedFlashcards = semanticReady ? (flashcards.length ? flashcards : fallback?.flashcards || []) : [];
+  const guardedTrueFalse = semanticReady ? safeTrueFalse : [];
+  const guardedDifficultWords = semanticReady ? (difficultWords.length ? difficultWords : fallback?.difficultWords || []) : [];
+
   const sanitized: StudySessionResult = {
     ...result,
     title: sanitizeStudyOutput(result.title, fallback?.title || "Sessione Studio"),
@@ -1874,10 +1911,10 @@ export function sanitizeStudySessionResult(result: StudySessionResult, fallback?
     ) as Record<StudySummaryMode, string>,
     keyConcepts: Array.from(new Set((result.keyConcepts || []).map((item) => sanitizeStudyOutput(item, "")).filter(Boolean))).slice(0, 18),
     openQuestions: safeOpenQuestions,
-    difficultWords: difficultWords.length ? difficultWords : fallback?.difficultWords || [],
-    flashcards: flashcards.length ? flashcards : fallback?.flashcards || [],
-    quiz: safeQuiz,
-    trueFalse: safeTrueFalse,
+    difficultWords: guardedDifficultWords,
+    flashcards: guardedFlashcards,
+    quiz: guardedQuiz,
+    trueFalse: guardedTrueFalse,
     learningPackage,
     knowledgeMap,
     adaptiveCoach: adaptiveCoach
@@ -1960,6 +1997,14 @@ export function analyzeStudyMaterial(
   intent: StudyIntentSettings = {},
 ): StudySessionResult {
   const clean = cleanText(text);
+  const inputKind = classifyStudyInput(clean);
+  if (inputKind.kind === "topic_only") {
+    return buildTopicModeSession(clean, sourceName, intent);
+  }
+  if (inputKind.kind === "insufficient") {
+    return buildInsufficientStudySession(clean, sourceName, intent, inputKind.wordCount);
+  }
+
   const manual = normalizeStudyIntent(intent);
   const classification = classifyStudyMaterial(clean, sourceName, manual);
   const educationalProfile =
@@ -2021,6 +2066,7 @@ export function analyzeStudyMaterial(
     studyMode: classification.mode,
     detectedSubject: classification.subjectLabel || classification.label || keyConcepts.slice(0, 4).join(" · ") || title,
     difficulty: difficultyFromLevel(manual.difficultyLevel) || (classification.difficultyScore >= 8 || words > 4500 ? "pro" : classification.difficultyScore >= 5 || words > 1500 ? "medium" : "soft"),
+    sessionMode: "full",
     classification,
     summaries,
     lightSummary: summaries.brief || paragraph("Riassunto leggero", light.length ? light : ["Il testo è breve: parti dai concetti principali e riscrivili con parole tue."]),
@@ -2267,7 +2313,32 @@ async function preprocessImageForOcr(file: File, options: StudyImageOcrOptions =
   const warnings: string[] = [];
 
   if (isHeicLikeImage(file)) {
-    warnings.push(STUDY_IMAGE_UNSUPPORTED_FORMAT_COPY);
+    if (typeof document !== "undefined" && typeof createImageBitmap === "function") {
+      try {
+        options.onStatus?.("preparing", "Converto foto HEIC per l'OCR...");
+        const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" } as ImageBitmapOptions);
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = bitmap.width;
+          canvas.height = bitmap.height;
+          const context = canvas.getContext("2d");
+          if (context) {
+            context.drawImage(bitmap, 0, 0);
+            const blob = await canvasToBlob(canvas);
+            if (blob) {
+              warnings.push("Foto HEIC convertita automaticamente per la lettura OCR.");
+              return { image: blob, warnings };
+            }
+          }
+        } finally {
+          bitmap.close?.();
+        }
+      } catch {
+        warnings.push(STUDY_IMAGE_UNSUPPORTED_FORMAT_COPY);
+      }
+    } else {
+      warnings.push(STUDY_IMAGE_UNSUPPORTED_FORMAT_COPY);
+    }
   }
 
   if (options.skipPreprocess || typeof document === "undefined" || typeof createImageBitmap !== "function") {

@@ -24,6 +24,7 @@ describe("Study OS material analysis", () => {
     expect(classifyStudyMaterial(studyText("Storia", "La rivoluzione del 1789 ebbe cause economiche, guerra, monarchia e conseguenze politiche.")).type).toBe("history");
     expect(classifyStudyMaterial(studyText("Diritto", "Articolo, comma, codice civile, norma, contratto, obbligazione e costituzione regolano il caso.")).type).toBe("law");
     expect(classifyStudyMaterial(studyText("Informatica", "Algoritmo, database, funzione, variabile, classe, server, API e protocollo descrivono il software.")).type).toBe("computer-science");
+    expect(classifyStudyMaterial("Intelligenza Artificiale. Machine learning, deep learning, reti neurali e algoritmi.", "ia.txt").type).toBe("computer-science");
     expect(classifyStudyMaterial(studyText("Chimica", "Atomo, molecola, reazione, legame, acido, base, ossidazione, riduzione e soluzione.")).type).toBe("chemistry");
     expect(classifyStudyMaterial(studyText("Economia", "Domanda, offerta, mercato, prezzo, inflazione, PIL, costo, ricavo e bilancio.")).type).toBe("economics");
   });
