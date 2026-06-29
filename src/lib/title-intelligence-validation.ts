@@ -1,5 +1,6 @@
 import { buildTitleV2Pipeline, type TitleV2Input } from "@/lib/title-intelligence-v2";
 import { isWeakBookTitle } from "@/lib/title-shadow";
+import { isGenericPhilosophyTitleForFiction } from "@/lib/concept-dominance";
 
 const TITLE_STOP_WORDS = new Set([
   "una", "uno", "un", "il", "lo", "la", "le", "gli", "i", "di", "del", "della", "delle", "degli", "dei",
@@ -63,6 +64,7 @@ export function isInvalidGeneratedTitle(title: string, idea: string): boolean {
   if (countMeaningfulTitleWords(clean) < 3) return true;
   if (isIdeaTruncatedTitle(clean, idea)) return true;
   if (isStopWordHeavyTitle(clean)) return true;
+  if (isGenericPhilosophyTitleForFiction(clean, idea)) return true;
   return false;
 }
 

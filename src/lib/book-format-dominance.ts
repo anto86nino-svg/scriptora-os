@@ -38,6 +38,24 @@ type DominanceInput = {
 
 type MutableShape = DominanceInput & Record<string, unknown>;
 
+const PRESERVED_FICTION_GENRES = [
+  "fantasy",
+  "horror",
+  "thriller",
+  "romance",
+  "dark-romance",
+  "sci-fi",
+  "historical",
+  "mystery",
+  "narrativa",
+];
+
+function isPreservedFictionGenre(genre?: string): boolean {
+  const g = normalize(genre || "");
+  if (!g) return false;
+  return PRESERVED_FICTION_GENRES.some((item) => g.includes(item));
+}
+
 const FORMAT_PROFILES: Record<string, FormatProfile> = {
   cookbook: {
     format: "cookbook",
@@ -202,7 +220,8 @@ export function applyFormatDominance<T extends MutableShape>(input: T): T {
   const isForbiddenGenre =
     profile.forbiddenGenres?.some((forbidden) => existingGenre.includes(normalize(forbidden))) ?? false;
 
-  if (!existingGenre || isForbiddenGenre || resolved.source !== "genre") {
+  const shouldPreserveGenre = isPreservedFictionGenre(existingGenre);
+  if ((!existingGenre || isForbiddenGenre || resolved.source !== "genre") && !shouldPreserveGenre) {
     next.genre = profile.genre as T["genre"];
   }
 

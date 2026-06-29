@@ -2301,6 +2301,15 @@ function strengthenScenarioDivergence(
     return scenario;
   }
 
+  const isRomanceFiction =
+    isRomance(scenario.genre) ||
+    isDarkRomance(scenario.genre) ||
+    isRomanceSubgenre(scenario.genre);
+
+  if (!isRomanceFiction) {
+    return scenario;
+  }
+
   if (scenario.variant === "safe") {
     return {
       ...scenario,

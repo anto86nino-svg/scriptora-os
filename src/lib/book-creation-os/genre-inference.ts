@@ -3,6 +3,7 @@ import { studioGenresFromRegistry } from "@/lib/book-type-engine";
 import { resolveLevel1FromBookTypeId } from "@/lib/book-config-engine";
 import type { Level1BookType } from "@/lib/book-config-engine/types";
 import { resolveNarrativePromise } from "@/lib/narrative-promise-intelligence";
+import { hasHighConceptFantasySignals } from "@/lib/concept-dominance";
 
 export type InferredBookFormat =
   | "novel"
@@ -299,7 +300,7 @@ const SIGNALS: Signal[] = [
   },
   {
     id: "fantasy",
-    test: /fantasy|fantasia|magia|regno|elf|drago|portal|epic fantasy|mondo immagin/i,
+    test: /fantasy|fantasia|magia|regno|elf|drago|portal|epic fantasy|mondo immagin|high concept|porta(?:\s+nel\s+cuore)?|memoria ancestrale|fine del mondo|apocaliss|mille anni|custod/i,
     weight: 10,
     inference: {
       label: "Fantasy",
@@ -318,7 +319,7 @@ const SIGNALS: Signal[] = [
   },
   {
     id: "romance",
-    test: /romance|slow burn|love story|storia d'amore|relazione|cuore/i,
+    test: /romance|slow burn|love story|storia d'amore|relazione|amore proibito|desiderio|forced proximity|enemies to lovers/i,
     weight: 8,
     inference: {
       label: "Romance",
@@ -439,6 +440,22 @@ export function inferGenreFromText(title: string, idea = "", knownBookFormat?: s
 
   const looksFictionTitle = /la |le |il |lo |una |un |casa|notte|sangue|ombra|madre|anima|morte|segreto/i.test(title)
     && !/guida|manuale|metodo|abitudin|disciplina/i.test(hay);
+
+  if (hasHighConceptFantasySignals(hay)) {
+    const fantasySignal = SIGNALS.find((signal) => signal.id === "fantasy");
+    if (fantasySignal) {
+      const meta = studioMeta(fantasySignal.inference.bookTypeId);
+      return withIdeaAwarePromise({
+        ...fantasySignal.inference,
+        bookFormat: fantasySignal.inference.bookFormat || bookFormatForBookType(fantasySignal.inference.bookTypeId),
+        category: meta.category,
+        subcategory: fantasySignal.inference.subcategory || meta.defaultSubcategory,
+        level1: resolveLevel1FromBookTypeId(fantasySignal.inference.bookTypeId),
+        confidence: "high",
+        suggestedChapters: fantasySignal.inference.chapters,
+      }, idea);
+    }
+  }
 
   if (looksFictionTitle || GENERIC_SELF_HELP_TITLES.test(title.trim())) {
     const meta = studioMeta("literary");

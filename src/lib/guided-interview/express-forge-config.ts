@@ -1,6 +1,7 @@
 import type { GuidedInterviewState } from "./types";
 import { createEmptyForgeMemory, getCriticalMissingSlots } from "./interview-memory";
 import type { ExpressForgeInput, ExpressBookFormat, ExpressForgeResult, ForgeFieldProvenance } from "./express-forge-types";
+import { resolveConceptDominance } from "@/lib/concept-dominance";
 import {
   buildExpressBookScenarios,
   type ExpressBookScenario,
@@ -31,6 +32,8 @@ function inferDefaultExpressGenre(
   genre?: string,
 ): string {
   if (genre?.trim()) return genre.trim();
+  const concept = resolveConceptDominance(ideaSeed, { genre });
+  if (concept.genre) return concept.genre;
   if (bookFormat === "poetry_collection") return "poesia";
   if (bookFormat === "memoir") return "memoir";
   if (bookFormat === "workbook") return "workbook";
@@ -38,6 +41,7 @@ function inferDefaultExpressGenre(
   if (bookFormat === "self_help") return "self-help";
   if (bookFormat === "essay") return "saggio";
   const bag = ideaSeed.toLowerCase();
+  if (/fantasy|magia|porta|ricordi|fine del mondo|destino|mille anni|high concept/.test(bag)) return "fantasy";
   if (/horror|gotico|paura/.test(bag)) return "horror";
   if (/thriller|giallo|crime|mystery/.test(bag)) return "thriller";
   if (/fantasy|magia/.test(bag)) return "fantasy";

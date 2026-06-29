@@ -1,3 +1,5 @@
+import { hasHighConceptFantasySignals } from "@/lib/concept-dominance";
+
 const GENERIC_PROMISE_PATTERNS = [
   /mistero disturbante con rivelazione progressiva/i,
   /tensione emotiva crescente/i,
@@ -45,10 +47,19 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
   };
   if (!text) return signals;
 
-  const protagonistMatch = text.match(/\b([A-ZÀ-Ý][a-zà-ÿ]+)\b/);
-  if (protagonistMatch) signals.protagonist = protagonistMatch[1];
+  const skipProtagonist = new Set([
+    "Ogni", "Una", "Uno", "Il", "Lo", "La", "Le", "I", "Gli", "Quando", "Dopo", "Prima", "Fotografie", "Ricordi", "Donna", "Persone",
+  ]);
+  for (const match of text.matchAll(/\b([A-ZÀ-Ý][a-zà-ÿ]+)\b/g)) {
+    const name = match[1];
+    if (!skipProtagonist.has(name)) {
+      signals.protagonist = name;
+      break;
+    }
+  }
 
   const placePatterns = [
+    /\b(porta(?:\s+nel\s+cuore)?)/gi,
     /\b(stazione(?:\s+ferroviaria)?(?:\s+abbandonata)?)/gi,
     /\b(gallerie?\s+inesistenti?)/gi,
     /\b(casa|villa|villaggio|bosco|ospedale|manicomio|isola)\b/gi,
@@ -73,6 +84,10 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
   }
 
   const mysteryPatterns = [
+    /\b(donna(?:\s+vissuta)?(?:\s+\w+){0,4}\s+mille\s+anni)/gi,
+    /\b(fine del mondo|apocaliss\w*|giorno della fine)/gi,
+    /\b(ricordi(?:\s+di)?(?:\s+\w+){0,4})/gi,
+    /\b(destino|memoria ancestrale)/gi,
     /\b(donna vestita di nero)/gi,
     /\b(\d{1,2}:\d{2})/g,
     /\b(ricordi che si riscrivono)/gi,
@@ -89,6 +104,8 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
 
   if (/\bmadre\b/i.test(text)) signals.stakes.push("madre");
   if (/\bmemor/i.test(text) || /\bricordi\b/i.test(text)) signals.stakes.push("memoria");
+  if (/\bdestino\b/i.test(text)) signals.stakes.push("destino");
+  if (/\bfine del mondo|apocaliss/i.test(text)) signals.stakes.push("fine del mondo");
   if (/\bcolpa\b/i.test(text)) signals.stakes.push("colpa");
   if (/\bverità\b/i.test(text)) signals.stakes.push("verità");
 
@@ -114,6 +131,17 @@ export function buildNarrativePromiseFromIdea(idea: string, genre?: string): str
 
   if (signals.uniqueElements.length < 2) {
     return "";
+  }
+
+  if ((hasHighConceptFantasySignals(idea) || /fantasy/i.test(genre || "")) && !/horror|thriller/i.test(genre || "")) {
+    const door = signals.places.find((place) => /porta/i.test(place)) || "la porta nel cuore";
+    const endWorld = signals.stakes.includes("fine del mondo") || /\bfine del mondo|apocaliss/i.test(idea);
+    const memory = signals.stakes.includes("memoria") || /\bricordi\b/i.test(idea);
+    return `Quando ${lead} apre ${door}, scopre i ricordi di una donna vissuta mille anni prima${
+      endWorld ? " che conosce il giorno esatto in cui il mondo finirà" : ""
+    }. Per cambiare il destino dovrà capire perché quei ricordi sono stati affidati a lui${
+      memory ? " e quale sacrificio richiede il futuro" : ""
+    }.`;
   }
 
   const place = signals.places[0];
