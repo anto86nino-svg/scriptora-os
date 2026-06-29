@@ -5,7 +5,6 @@ import { isProjectComplete } from "@/lib/project-status";
 import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
 import { getPendingCharacterProject } from "@/lib/character-studio/pending-character-project";
 import { FocusMusicControl } from "@/components/FocusMusicControl";
-import { InProgressSection } from "@/components/Home/InProgressSection";
 import { PaywallGuard } from "@/components/PaywallGuard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -42,7 +41,8 @@ import { WalletScriptoraCard } from "@/components/billing/WalletScriptoraCard";
 import { AuthSessionButton } from "@/components/auth/AuthSessionButton";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import type { ForgePreset } from "@/lib/scriptora-forge/forge-presets";
-import { DashboardOperationalSections } from "@/components/one-flow/DashboardOperationalSections";
+import { FORGE_PRESETS } from "@/lib/scriptora-forge/forge-presets";
+import { HomeRebirth } from "@/components/os/home/HomeRebirth";
 import { STUDIO_DRAFT_STORAGE_KEY } from "@/lib/book-config-studio/types";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
 import { readDashboardReturnState } from "@/lib/one-flow/dashboard-return-context";
@@ -425,8 +425,7 @@ export default function Dashboard() {
     action();
   }, [currentPlan, navigate]);
 
-  const advancedToolsAnchorRef = useRef<HTMLDivElement | null>(null);
-  const packagingAnchorRef = useRef<HTMLDivElement | null>(null);
+  const packagingAnchorRef = useRef<HTMLElement | null>(null);
   const panelHandledRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -438,6 +437,7 @@ export default function Dashboard() {
       openCover?: boolean;
       openExport?: boolean;
       openAdvancedTools?: boolean;
+      openSettings?: boolean;
       bookForgeHandoff?: BookForgeHandoff;
       projectId?: string;
     } | null;
@@ -453,6 +453,7 @@ export default function Dashboard() {
     if (state?.openExport) {
       guardPlanFeature("export_epub", openExportStudioPage)();
     }
+    if (state?.openSettings) openSettingsHub();
     if (state?.openAdvancedTools || returnCtx?.openAdvancedTools) {
       setAdvancedLaunchpadEnabled(true);
       setShowAdvancedLaunchpad(true);
@@ -570,6 +571,51 @@ export default function Dashboard() {
     openNewBookGuarded(handoff);
   };
 
+  const openForgePresetById = (presetId: string) => {
+    const preset = FORGE_PRESETS.find((item) => item.id === presetId);
+    if (preset) openForgePreset(preset);
+  };
+
+  const openForgeFormat = (formatId: "workbook" | "memoir") => {
+    const hints =
+      formatId === "workbook"
+        ? {
+            bookType: "workbook",
+            bookTypeId: "workbook",
+            genre: "education" as Genre,
+            category: "Non-Fiction",
+            subcategory: "Workbook",
+            niche: "Workbook",
+            structureMode: "lessons" as const,
+            tone: "pratico, operativo, guidato",
+            promise: "Trasformare un metodo in esercizi e schede operative.",
+            idea: "Workbook con tracker, esercizi graduati e schede operative settimanali.",
+          }
+        : {
+            bookType: "memoir",
+            bookTypeId: "memoir",
+            genre: "memoir" as Genre,
+            category: "Non-Fiction",
+            subcategory: "Memoir",
+            niche: "Memoir",
+            structureMode: "chapters" as const,
+            tone: "riflessivo, intimo, autentico",
+            promise: "Raccontare un percorso interiore con verità personale.",
+            idea: "Memoir di trasformazione interiore con memoria viva e arco riflessivo.",
+          };
+
+    openNewBookGuarded(buildBookForgeHandoff("preset-forge", {
+      ...hints,
+      language: toBookLanguage(bookLang),
+      chapterCount: formatId === "workbook" ? 10 : 12,
+      numberOfChapters: formatId === "workbook" ? 10 : 12,
+      bookLength: "medium",
+      subchaptersEnabled: formatId === "workbook",
+      subchaptersPerChapter: formatId === "workbook" ? 3 : 0,
+      commercialAngle: hints.idea,
+    }));
+  };
+
   const openCoverStudioPage = useCallback(() => {
     const projectId = dashboardContextProject?.id || getLastProjectId();
     if (projectId) setLastProjectId(projectId);
@@ -599,10 +645,7 @@ export default function Dashboard() {
     panelHandledRef.current = key;
 
     if (panel === "advanced-tools") {
-      setAdvancedLaunchpadEnabled(true);
-      setShowAdvancedLaunchpad(true);
-      openDashboardTool("advanced-tools");
-      focusDashboardToolPanelWhenReady("advanced-tools");
+      navigate("/os/scrittura?open=advanced-tools", { replace: true });
       return;
     }
     if (panel === "packaging") {
@@ -1306,26 +1349,20 @@ typeof crypto.randomUUID === "function"
       )}
 
       <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-3 sm:px-6 sm:pb-16 sm:pt-6 lg:px-8">
-        <DashboardOperationalSections
+        <HomeRebirth
           lastProject={dashboardContextProject}
           progressPercent={activeProjectProgress}
           projects={projects}
           dashboardActionContext={dashboardActionContext}
           packagingAnchorRef={packagingAnchorRef}
-          advancedToolsAnchorRef={advancedToolsAnchorRef}
-          showAdvancedLaunchpad={showAdvancedLaunchpad}
           onContinue={() => dashboardContextProject && goApp({ projectId: dashboardContextProject.id })}
           onContinueProject={(projectId) => goApp({ projectId })}
-          onGenerateNextChapter={() => dashboardContextProject && goApp({ projectId: dashboardContextProject.id, section: "chapters" })}
-          onExport={() => guardPlanFeature("export_epub", openExportStudioPage)()}
           onNewBook={openNewBookGuarded}
           onMyBooks={() => openDashboardTool("projects")}
-          onOpenCover={() => guardPlanFeature("cover_studio_template", openCoverStudioPage)()}
-          onStudyOs={() => navigateFromDashboard(getToolRoute("study"))}
-          onCharacterStudio={openFreshCharacterStudio}
-          onOpenAdvancedTools={openAdvancedToolsPanel}
-          onOpenSettings={openSettingsHub}
-          ideaBookCard={(
+          onCreatePreset={openForgePresetById}
+          onCreateFormat={openForgeFormat}
+          onOpenStudy={() => navigateFromDashboard(getToolRoute("study"))}
+          ideaBookSlot={(
             <DashboardIdeaBookCard
               currentPlan={currentPlan}
               defaultLanguage={toBookLanguage(bookLang)}
@@ -1334,10 +1371,6 @@ typeof crypto.randomUUID === "function"
             />
           )}
         />
-
-        {!activeDashboardTool && (
-          <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />
-        )}
 
         {projects.length === 0 && !activeRun && (
           <section className="mb-6 rounded-2xl border border-sky-300/25 bg-gradient-to-br from-sky-400/10 via-transparent to-violet-400/10 p-6 shadow-[0_16px_40px_rgba(0,0,0,0.12)]">

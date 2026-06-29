@@ -40,6 +40,11 @@ const CharacterStudioPage = lazyWithRetry(() => import("./pages/CharacterStudioP
 const TitleIntelligencePage = lazyWithRetry(() => import("./pages/TitleIntelligencePage.tsx"));
 const ManuscriptLabPage = lazyWithRetry(() => import("./pages/ManuscriptLabPage.tsx"));
 const ExportStudioPage = lazyWithRetry(() => import("./pages/ExportStudioPage.tsx"));
+const CasaScritturaPage = lazyWithRetry(() => import("./pages/os/CasaScritturaPage.tsx"));
+const CasaPubblicazionePage = lazyWithRetry(() => import("./pages/os/CasaPubblicazionePage.tsx"));
+const CasaMercatoPage = lazyWithRetry(() => import("./pages/os/CasaMercatoPage.tsx"));
+const CasaStudioPage = lazyWithRetry(() => import("./pages/os/CasaStudioPage.tsx"));
+const CasaImpostazioniPage = lazyWithRetry(() => import("./pages/os/CasaImpostazioniPage.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -60,6 +65,11 @@ const App = () => (
                 <Route path="/pricing" element={<PricingPage />} />
                 <Route path="/legal" element={<LegalPage />} />
                 <Route path="/dashboard" element={<ProtectedRoute><FeatureErrorBoundary featureName="Dashboard"><Dashboard /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/os/scrittura" element={<ProtectedRoute><FeatureErrorBoundary featureName="Casa Scrittura"><CasaScritturaPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/os/pubblicazione" element={<ProtectedRoute><FeatureErrorBoundary featureName="Casa Pubblicazione"><CasaPubblicazionePage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/os/mercato" element={<ProtectedRoute><FeatureErrorBoundary featureName="Casa Mercato"><CasaMercatoPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/os/studio" element={<ProtectedRoute><FeatureErrorBoundary featureName="Casa Studio"><CasaStudioPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/os/impostazioni" element={<ProtectedRoute><FeatureErrorBoundary featureName="Casa Impostazioni"><CasaImpostazioniPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/writer" element={<ProtectedRoute><FeatureErrorBoundary featureName="Writer"><Navigate to="/app" replace /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/bestseller" element={<ProtectedRoute requiredFeature="trending_niches_limited"><FeatureErrorBoundary featureName="Bestseller Radar"><BestsellerRadarPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/publishing" element={<ProtectedRoute><FeatureErrorBoundary featureName="Publishing OS"><PublishingOsPage /></FeatureErrorBoundary></ProtectedRoute>} />
