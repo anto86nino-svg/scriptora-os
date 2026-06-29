@@ -23,10 +23,16 @@ export function buildFinalBookReview(state: GuidedInterviewState): FinalBookRevi
   const copyright = deriveCopyrightConfig(state);
   const lead = state.characters?.find((c) => c.role === "protagonist");
   const villain = state.characters?.find((c) => c.role === "antagonist");
+  const supporting = (state.characters ?? [])
+    .filter((c) => c.role === "supporting")
+    .map((c) => c.name)
+    .filter((name) => clean(name).length >= 2);
   const storyRoom = getStoryRoom(state);
   const endingFacts = state.canon?.ending.facts ?? [];
   const characterLine = lead?.name
-    ? `${lead.name}${villain?.name ? ` vs ${villain.name}` : ""}${lead.arc ? ` — ${lead.arc}` : ""}`
+    ? `${lead.name}${villain?.name ? ` vs ${villain.name}` : ""}${
+        supporting.length ? ` · ${supporting.join(", ")}` : ""
+      }${lead.arc ? ` — ${lead.arc}` : ""}`
     : pick(ex.protagonistWound, ex.centralConflict);
   const sceneLine =
     storyRoom.scenes

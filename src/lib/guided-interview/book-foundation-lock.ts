@@ -23,6 +23,12 @@ import {
   regenerateTitleFromIdea,
 } from "@/lib/title-intelligence-validation";
 import { resolveNarrativePromise } from "@/lib/narrative-promise-intelligence";
+import {
+  buildSupernaturalThrillerSubtitle,
+  buildTimeAnchoredTitle,
+  hasSupernaturalThrillerSignals,
+  sanitizeUserConceptInput,
+} from "@/lib/concept-dominance";
 
 export type BookLengthPreset = "breve" | "medio" | "lungo" | "epico";
 
@@ -606,6 +612,37 @@ export function generateTitleSubtitleOptions(input: FoundationGeneratorInput): T
         toneFit: input.tone,
         genreFit: "romance",
         risk: "Meno specifico sul seed",
+      },
+    ];
+  }
+
+  if (hasSupernaturalThrillerSignals(seed) && /thriller/i.test(input.genre)) {
+    const timeTitle = buildTimeAnchoredTitle(seed);
+    const commercialSubtitle = buildSupernaturalThrillerSubtitle(seed, "commercial");
+    return [
+      {
+        title: timeTitle || (lead ? `Le Visioni di ${lead}` : "Ogni Notte alle 03:17"),
+        subtitle: commercialSubtitle,
+        commercialReason: "Hook temporale + promessa di morte annunciata e ricordi dal futuro",
+        toneFit: input.tone,
+        genreFit: "supernatural thriller",
+        risk: "Richiede coerenza su orario, paese e visioni nel blueprint",
+      },
+      {
+        title: lead ? `Il Destino di ${lead}` : "La Profezia del Paese",
+        subtitle: buildSupernaturalThrillerSubtitle(seed, "safe"),
+        commercialReason: "Paese chiuso + tensione collettiva + destino personale",
+        toneFit: input.tone,
+        genreFit: "thriller soprannaturale",
+        risk: "Meno distintivo se manca l'ancora temporale",
+      },
+      {
+        title: timeTitle || "Ricordi dal Futuro",
+        subtitle: buildSupernaturalThrillerSubtitle(seed, "bold"),
+        commercialReason: "Versione più audace sulla profezia e sul costo del sapere",
+        toneFit: input.tone,
+        genreFit: "psychological thriller",
+        risk: "Più rischiosa ma più memorabile",
       },
     ];
   }

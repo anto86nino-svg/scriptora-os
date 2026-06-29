@@ -28,6 +28,16 @@ import {
   resolveLengthPresetConfig,
 } from "./book-foundation-lock";
 import { buildEntityAwareChapterScaffold, hasRichIdeaEntities } from "@/lib/blueprint-entity-enrichment";
+import {
+  buildSupernaturalThrillerSecondaryCast,
+  buildSupernaturalThrillerSubtitle,
+  buildTimeAnchoredTitle,
+  extractConceptProtagonist,
+  extractTimeAnchor,
+  hasSupernaturalThrillerSignals,
+  resolveConceptDominance,
+  sanitizeUserConceptInput,
+} from "@/lib/concept-dominance";
 import { resolveNarrativePromise } from "@/lib/narrative-promise-intelligence";
 import { regenerateTitleFromIdea } from "@/lib/title-intelligence-validation";
 
@@ -226,7 +236,7 @@ function normalizeLanguage(language: string): string {
 }
 
 function ideaCore(input: ExpressForgeInput): string {
-  return (input.ideaSeed || input.protagonistSeed || "").trim();
+  return sanitizeUserConceptInput(input.ideaSeed || input.protagonistSeed || "");
 }
 
 function isDarkRomance(genre: string): boolean {
@@ -347,6 +357,11 @@ function defaultTitleForGenre(input: ExpressForgeInput, variant: ExpressScenario
   if (input.title?.trim()) return input.title.trim();
 
   const seed = ideaCore(input);
+  const timeTitle = buildTimeAnchoredTitle(seed);
+  if (timeTitle && isThrillerGenre(input.genre) && hasSupernaturalThrillerSignals(seed)) {
+    return timeTitle;
+  }
+
   const regenerated = regenerateTitleFromIdea({
     idea: seed,
     genre: input.genre,
@@ -599,25 +614,42 @@ function buildGenreAwareEditorialSynopsis(
 }
 
 function parseProtagonistLabel(seed: string, genre = ""): { name: string; role: string } {
-  if (/\b([A-ZÀ-Ý][a-zà-ÿ]{2,})\b/.test(seed)) {
-    const match = seed.match(/\b([A-ZÀ-Ý][a-zà-ÿ]{2,})\b/);
-    if (match?.[1] && !/Es|Una|Un|Il|La|Lo|Gli|Le|Nel|Nella|Quando/.test(match[1])) {
-      return { name: match[1], role: defaultLeadForGenre(genre).role };
-    }
+  const sanitized = sanitizeUserConceptInput(seed);
+  const extracted = extractConceptProtagonist(sanitized);
+  if (extracted) {
+    const role = /insegnante/i.test(sanitized)
+      ? "insegnante nel miraggio di ricordi che anticipano la morte"
+      : defaultLeadForGenre(genre).role;
+    return { name: extracted, role };
   }
-  if (/restauratrice/i.test(seed)) return { name: "Elena", role: "restauratrice" };
-  if (/chef/i.test(seed)) return { name: "Elena", role: "chef tormentata" };
+  if (/restauratrice/i.test(sanitized)) return { name: "Elena", role: "restauratrice" };
+  if (/chef/i.test(sanitized)) return { name: "Elena", role: "chef tormentata" };
   return defaultLeadForGenre(genre);
 }
 
 function parseCounterpart(
   genre: string,
   variant: ExpressScenarioVariant,
+  seed = "",
 ): { name: string; role: string } {
+  if (hasSupernaturalThrillerSignals(seed)) {
+    return variant === "bold"
+      ? {
+          name: "L'Uomo del Futuro",
+          role: "figura che annuncia la morte nelle visioni e stringe il tempo attorno al paese",
+        }
+      : {
+          name: "Primo uomo del futuro",
+          role: "presenza enigmatica che invia ricordi dal futuro e nasconde il vero costo del destino",
+        };
+  }
   return defaultCounterpartForGenre(genre, variant);
 }
 
 function parseSetting(seed: string, genre = ""): string {
+  if (/\b(paese|villaggio|piccolo\s+paese)\b/i.test(seed) && (isThrillerGenre(genre) || hasSupernaturalThrillerSignals(seed))) {
+    return "Piccolo paese chiuso nel silenzio, dove ogni abitante custodisce un pezzo della verità";
+  }
   if (/villa|incendio|restauratrice/i.test(seed) && (isDarkRomance(genre) || isRomance(genre))) {
     return "Villa decadente sulle colline, segnata da un incendio doloso e da stanze che conservano cenere e silenzi";
   }
@@ -706,6 +738,70 @@ function buildCharacters(
   };
 
   return [protagonist, antagonist];
+}
+
+function buildSupernaturalThrillerCharacters(
+  lead: { name: string; role: string },
+  counterpart: { name: string; role: string },
+  pkg: Partial<CompleteExpressBookPackage>,
+): ForgeCharacter[] {
+  const protagonist: ForgeCharacter = {
+    id: "express-protagonist",
+    role: "protagonist",
+    name: lead.name,
+    wound: "Visioni notturne che anticipano eventi impossibili e una morte che sembra già scritta",
+    fear: "Che i ricordi dal futuro siano una condanna, non un avvertimento",
+    desire: "Capire chi le invia le visioni e se può ancora cambiare il destino",
+    contradiction: "Vuole proteggere il paese ma ogni visione la avvicina alla propria fine",
+    obsession: "Decifrare il significato delle immagini che arrivano ogni notte",
+    secret: "Ha già visto la propria morte e non sa a chi dirlo",
+    arc: pkg.endingDirection
+      ? `Da ${lead.role} paralizzata dalle visioni a donna costretta a scegliere se credere al futuro o combatterlo`
+      : "Trasformazione da testimone passivo a chi decide se il destino si può riscrivere",
+    vulnerability: "Il legame con gli abitanti e la paura di diventare la profezia che tutti temono",
+    dominantFlaw: "Confonde premonizione e paranoia finché il paese non le lascia più margine",
+  };
+
+  const antagonist: ForgeCharacter = {
+    id: "express-counterpart",
+    role: "antagonist",
+    name: counterpart.name,
+    wound: "Esiste fuori dal tempo che gli altri conoscono",
+    fear: "Che qualcuno impedisca il futuro che ha già visto",
+    desire: "Far accettare al paese — e a Marta — il destino che le visioni mostrano",
+    contradiction: "Avverte e condanna con la stessa voce",
+    obsession: "Tenere aperto il corridoio tra presente e futuro",
+    secret: "Non è il primo a inviare ricordi dal futuro in quel paese",
+    arc: "Da voce lontana nelle visioni a presenza che costringe una scelta irreversibile",
+  };
+
+  const sheriff: ForgeCharacter = {
+    id: "express-sheriff",
+    role: "supporting",
+    name: "Sceriffo locale",
+    wound: "Anni di silenzi imposti dal paese su eventi inspiegabili",
+    fear: "Che le visioni dividano definitivamente la comunità",
+    desire: "Mantenere l'ordine senza ammettere ciò che non può spiegare",
+    contradiction: "Deve proteggere tutti ma non crede a nessuna versione della verità",
+    obsession: "Tenere chiuso il paese prima che le visioni diventino panico",
+    secret: "Ha ricevuto anch'egli frammenti di futuro che non ha mai confessato",
+    arc: "Da custode del silenzio a uomo costretto a scegliere da che parte stare",
+  };
+
+  const villagers: ForgeCharacter = {
+    id: "express-villagers",
+    role: "supporting",
+    name: "Abitanti che ricevono visioni",
+    wound: "Condividono incubi che nessuno osa nominare ad alta voce",
+    fear: "Che il futuro mostrato nelle visioni sia già iniziato",
+    desire: "Capire se sono testimoni o complici del destino di Marta",
+    contradiction: "Cercano protezione nel gruppo ma alimentano il panico collettivo",
+    obsession: "Interpretare ogni segno come conferma o smentita della morte annunciata",
+    secret: "Alcuni hanno già visto la stessa scena della fine",
+    arc: "Da coro sussurrante a massa che spinge Marta verso la profezia o la ribellione",
+  };
+
+  return [protagonist, antagonist, sheriff, villagers];
 }
 
 function buildChapterSeeds(count: number, genre: string, variant: ExpressScenarioVariant, setting: string, ideaSeed?: string): ChapterBlueprintSeed[] {
@@ -1939,13 +2035,17 @@ export function buildCompleteExpressBookPackage(
   }
 
   const meta = getExpressVariantMeta(input.genre, variant);
-  const genreMeta = GENRE_META[input.genre.toLowerCase()] ?? {
-    subgenre: input.genre,
-    normalizedGenre: input.genre,
-  };
   const seed = ideaCore(input);
+  const isSupernaturalThriller =
+    hasSupernaturalThrillerSignals(seed) && isThrillerGenre(input.genre);
+  const genreMeta = isSupernaturalThriller
+    ? { subgenre: "supernatural psychological thriller", normalizedGenre: "thriller" }
+    : GENRE_META[input.genre.toLowerCase()] ?? {
+        subgenre: input.genre,
+        normalizedGenre: input.genre,
+      };
   const lead = parseProtagonistLabel(seed, input.genre);
-  const counterpart = parseCounterpart(input.genre, variant);
+  const counterpart = parseCounterpart(input.genre, variant, seed);
   const setting = parseSetting(seed, input.genre);
   const chapterCount = chapterCountForInput(input);
   const language = normalizeLanguage(input.language);
@@ -1983,7 +2083,9 @@ export function buildCompleteExpressBookPackage(
       : isHorrorGenre(input.genre)
         ? "Perdere il confine tra ricordo, presenza e realtà"
         : "Perdere controllo, verità e ciò che rende la vita degna di essere vissuta";
-  const centralConflict = isDarkRomance(input.genre)
+  const centralConflict = isSupernaturalThriller
+    ? `${lead.name} riceve ogni notte ricordi dal futuro che annunciano la sua morte, mentre ${counterpart.name} e gli abitanti del paese stringono il cerchio tra profezia e panico`
+    : isDarkRomance(input.genre)
     ? `${lead.name} cerca verità e giustizia, ma ${counterpart.name} le offre protezione solo finché non minaccia ciò che la casa nasconde`
     : isFantasyGenre(input.genre)
       ? `${lead.name} deve scegliere se reclamare un potere proibito per salvare il regno, mentre ${counterpart.name} custodisce una verità che può incoronarla o distruggerla`
@@ -2014,7 +2116,13 @@ export function buildCompleteExpressBookPackage(
         ? `Un horror ${input.tone} dove atmosfera, decadenza e paura crescente trasformano il luogo in minaccia viva e la verità in contagio.`
         : `Un ${input.genre} ${input.tone} che promette tensione emotiva, payoff memorabile e una storia che resta addosso dopo l'ultima pagina.`,
   );
-  const hook = isDarkRomance(input.genre)
+  const hook = isSupernaturalThriller
+    ? (() => {
+        const time = extractTimeAnchor(seed);
+        const timeClause = time ? ` alle ${time}` : "";
+        return `Ogni notte${timeClause} ${lead.name} riceve una visione più precisa della precedente — e l'ultima mostra la sua morte nel paese che credeva di conoscere.`;
+      })()
+    : isDarkRomance(input.genre)
     ? `Tornare nella villa dove sua sorella è morta non era mai stato sicuro — ma scoprire che ${counterpart.name} la desidera è la forma più pericolosa di colpa.`
     : isFantasyGenre(input.genre)
       ? `${lead.name} scopre che la magia capace di salvare il regno è la stessa che può trasformarla nel suo prossimo tiranno.`
@@ -2023,6 +2131,8 @@ export function buildCompleteExpressBookPackage(
         : `${lead.name} credeva di controllare la storia. ${setting.split(",")[0]} le dimostra il contrario.`;
   const subtitle = input.subtitle?.trim()
     ? input.subtitle.trim()
+    : isSupernaturalThriller
+      ? buildSupernaturalThrillerSubtitle(seed, variant)
     : isFriendsToLoversGenre(input.genre) || isEnemiesToLoversGenre(input.genre) || isRomance(input.genre)
     ? variant === "bold"
       ? "Quando l'amicizia diventa confine — e il confine diventa desiderio"
@@ -2085,7 +2195,9 @@ export function buildCompleteExpressBookPackage(
   if (variantCopy.endingDirection) partial.endingDirection = variantCopy.endingDirection;
   if (variantCopy.finalEmotion) partial.finalEmotion = variantCopy.finalEmotion;
 
-  const characters = buildCharacters(lead, counterpart, partial, input.genre);
+  const characters = isSupernaturalThriller
+    ? buildSupernaturalThrillerCharacters(lead, counterpart, partial)
+    : buildCharacters(lead, counterpart, partial, input.genre);
   const chapterBlueprintSeeds = buildChapterSeeds(chapterCount, input.genre, variant, setting, ideaCore(input));
   const keyScenes = buildKeyScenes(partial);
 
@@ -2148,7 +2260,9 @@ export function buildCompleteExpressBookPackage(
     marketPromise,
     protagonist: lead.name,
     antagonistOrLoveInterest: `${counterpart.name} — ${counterpart.role}`,
-    secondaryCharacters: isDarkRomance(input.genre)
+    secondaryCharacters: isSupernaturalThriller
+      ? buildSupernaturalThrillerSecondaryCast()
+      : isDarkRomance(input.genre)
       ? ["Sorella (memoria/assenza)", "Comunità locale che custodisce silenzi"]
       : isFantasyGenre(input.genre)
         ? ["Consiglio della corona", "Ordine dei maghi", "Popolo del regno"]
@@ -2410,23 +2524,36 @@ function enforceExpressScenarioDivergence(
 
 
 export function buildExpressBookScenarios(input: ExpressForgeInput): ExpressBookScenario[] {
+  const sanitizedIdea = sanitizeUserConceptInput(input.ideaSeed || input.protagonistSeed || "");
+  const dominance = resolveConceptDominance(sanitizedIdea, { genre: input.genre });
+  const normalizedInput: ExpressForgeInput = {
+    ...input,
+    ideaSeed: sanitizedIdea,
+    genre: dominance.genre || input.genre,
+    tone:
+      input.tone ||
+      (dominance.genre === "thriller" && hasSupernaturalThrillerSignals(sanitizedIdea)
+        ? "misterioso, inquietante, claustrofobico"
+        : input.tone),
+  };
+
   const explicitPoetryCollection =
-    input.bookFormat === "poetry_collection" ||
+    normalizedInput.bookFormat === "poetry_collection" ||
     /\b(poesia|raccolta\s+poetica|silloge|liriche|versi)\b/i.test(
-      `${input.genre} ${input.ideaSeed}`,
+      `${normalizedInput.genre} ${normalizedInput.ideaSeed}`,
     );
 
-  if (explicitPoetryCollection && input.genre !== "poesia") {
+  if (explicitPoetryCollection && normalizedInput.genre !== "poesia") {
     return buildExpressBookScenarios({
-      ...input,
+      ...normalizedInput,
       genre: "poesia",
-      tone: input.tone || "poetico",
+      tone: normalizedInput.tone || "poetico",
     });
   }
 
   return enforceExpressScenarioDivergence(
     (["safe", "commercial", "bold"] as ExpressScenarioVariant[]).map((variant) =>
-      buildCompleteExpressBookPackage(input, variant),
+      buildCompleteExpressBookPackage(normalizedInput, variant),
     ),
   );
 }

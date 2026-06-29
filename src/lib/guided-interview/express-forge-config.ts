@@ -1,7 +1,7 @@
 import type { GuidedInterviewState } from "./types";
 import { createEmptyForgeMemory, getCriticalMissingSlots } from "./interview-memory";
 import type { ExpressForgeInput, ExpressBookFormat, ExpressForgeResult, ForgeFieldProvenance } from "./express-forge-types";
-import { resolveConceptDominance } from "@/lib/concept-dominance";
+import { resolveConceptDominance, sanitizeUserConceptInput } from "@/lib/concept-dominance";
 import {
   buildExpressBookScenarios,
   type ExpressBookScenario,
@@ -31,20 +31,20 @@ function inferDefaultExpressGenre(
   ideaSeed: string,
   genre?: string,
 ): string {
-  if (genre?.trim()) return genre.trim();
-  const concept = resolveConceptDominance(ideaSeed, { genre });
+  const sanitized = sanitizeUserConceptInput(ideaSeed);
+  const concept = resolveConceptDominance(sanitized, { genre });
   if (concept.genre) return concept.genre;
+  if (genre?.trim()) return genre.trim();
   if (bookFormat === "poetry_collection") return "poesia";
   if (bookFormat === "memoir") return "memoir";
   if (bookFormat === "workbook") return "workbook";
   if (bookFormat === "study_material") return "study_material";
   if (bookFormat === "self_help") return "self-help";
   if (bookFormat === "essay") return "saggio";
-  const bag = ideaSeed.toLowerCase();
-  if (/fantasy|magia|porta|ricordi|fine del mondo|destino|mille anni|high concept/.test(bag)) return "fantasy";
+  const bag = sanitized.toLowerCase();
+  if (/fantasy|magia|porta nel cuore|mille anni|memoria ancestrale|fine del mondo|high concept/.test(bag)) return "fantasy";
   if (/horror|gotico|paura/.test(bag)) return "horror";
-  if (/thriller|giallo|crime|mystery/.test(bag)) return "thriller";
-  if (/fantasy|magia/.test(bag)) return "fantasy";
+  if (/thriller|giallo|crime|mystery|soprannatural/.test(bag)) return "thriller";
   if (/sci\s*fi|science fiction|fantascienza|cyberpunk/.test(bag)) return "sci-fi";
   if (/friends to lovers|amici ad amanti/.test(bag)) return "friends to lovers";
   if (/enemies to lovers|nemici che si innamorano/.test(bag)) return "enemies to lovers";
@@ -71,13 +71,14 @@ export function buildExpressForgeConfiguration(
   input: ExpressForgeInput,
   baseState?: GuidedInterviewState,
 ): ExpressForgeResult {
-  const inferredBookFormat = inferExpressBookFormat(input);
-  const normalizedGenre = inferDefaultExpressGenre(inferredBookFormat, input.ideaSeed || input.protagonistSeed || "", input.genre);
+  const sanitizedIdea = sanitizeUserConceptInput(input.ideaSeed || input.protagonistSeed || "");
+  const inferredBookFormat = inferExpressBookFormat({ ...input, ideaSeed: sanitizedIdea });
+  const normalizedGenre = inferDefaultExpressGenre(inferredBookFormat, sanitizedIdea, input.genre);
 
   const normalizedInput: ExpressForgeInput = {
     ...input,
     bookFormat: inferredBookFormat,
-    ideaSeed: input.ideaSeed || input.protagonistSeed || "",
+    ideaSeed: sanitizedIdea,
     language: input.language || "Italiano",
     genre: normalizedGenre,
     tone: input.tone || inferDefaultExpressTone(inferredBookFormat, normalizedGenre),

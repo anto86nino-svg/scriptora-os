@@ -28,6 +28,7 @@ import { regenerateTitleFromIdea } from "@/lib/title-intelligence-validation";
 import { isInvalidGeneratedTitle } from "@/lib/title-intelligence-validation";
 import type { StudioLaunchPayload } from "@/lib/book-config-studio/types";
 import { normalizeBookConfig } from "@/lib/book-config-studio/defaults";
+import { sanitizeUserConceptInput } from "@/lib/concept-dominance";
 
 export type OneFlowPhase = "interview" | "proposal" | "ready";
 
@@ -157,7 +158,7 @@ export function startOneFlowSession(
   idea: string,
   opts: { genreHint?: string; language?: string } = {},
 ): OneFlowSession {
-  const trimmed = idea.trim();
+  const trimmed = sanitizeUserConceptInput(idea);
   const budget = resolveQuestionBudget(trimmed);
   const expressResult = buildExpressForgeConfiguration(
     buildExpressInput(trimmed, opts),

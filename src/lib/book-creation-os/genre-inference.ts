@@ -3,7 +3,7 @@ import { studioGenresFromRegistry } from "@/lib/book-type-engine";
 import { resolveLevel1FromBookTypeId } from "@/lib/book-config-engine";
 import type { Level1BookType } from "@/lib/book-config-engine/types";
 import { resolveNarrativePromise } from "@/lib/narrative-promise-intelligence";
-import { hasHighConceptFantasySignals } from "@/lib/concept-dominance";
+import { hasHighConceptFantasySignals, hasSupernaturalThrillerSignals, sanitizeUserConceptInput } from "@/lib/concept-dominance";
 
 export type InferredBookFormat =
   | "novel"
@@ -280,6 +280,25 @@ const SIGNALS: Signal[] = [
     },
   },
   {
+    id: "supernatural-thriller",
+    test: /thriller\s+soprannatural|soprannatural\w*\s+thriller|\b\d{1,2}:\d{2}\b.*\b(morte|visioni?|futuro|ricordi|paese|insegnante)\b|\bthriller\b.*\b(visioni?|ricordi\s+dal\s+futuro|morte\s+predett)/i,
+    weight: 14,
+    inference: {
+      label: "Thriller soprannaturale",
+      bookTypeId: "thriller",
+      genre: "thriller",
+      category: "Fiction",
+      subcategory: "Thriller",
+      subgenre: "supernatural psychological thriller",
+      tone: "misterioso, inquietante, claustrofobico, cinematografico",
+      targetReader: "Lettori thriller che cercano mistero temporale, visioni e tensione crescente in un contesto chiuso.",
+      narrativePromise: "Visioni dal futuro, morte annunciata e verità sepolte che collassano il tempo fino a una scelta irreversibile.",
+      commercialGoal: "Hook temporale forte, escalation di visioni e payoff thriller su KDP.",
+      level1: "romanzo",
+      chapters: 26,
+    },
+  },
+  {
     id: "thriller",
     test: /thriller|noir|mistero|indagine|omicid|serial killer|sospett|crime|giallo/i,
     weight: 10,
@@ -300,7 +319,7 @@ const SIGNALS: Signal[] = [
   },
   {
     id: "fantasy",
-    test: /fantasy|fantasia|magia|regno|elf|drago|portal|epic fantasy|mondo immagin|high concept|porta(?:\s+nel\s+cuore)?|memoria ancestrale|fine del mondo|apocaliss|mille anni|custod/i,
+    test: /fantasy|fantasia|magia|regno|elf|drago|portal|epic fantasy|mondo immagin|high concept|porta\s+nel\s+cuore|memoria ancestrale|fine del mondo|apocaliss|mille anni|custod/i,
     weight: 10,
     inference: {
       label: "Fantasy",
@@ -406,11 +425,12 @@ function withIdeaAwarePromise(inference: GenreInference, idea: string): GenreInf
 
 export function inferGenreFromText(title: string, idea = "", knownBookFormat?: string): GenreInference {
   const known = String(knownBookFormat || "").toLowerCase().trim() as InferredBookFormat;
+  const sanitizedIdea = sanitizeUserConceptInput(idea);
   if (known) {
-    const locked = buildFormatLockedInference(known, title, idea);
+    const locked = buildFormatLockedInference(known, title, sanitizedIdea);
     if (locked) return locked;
   }
-  const hay = `${title} ${idea}`.toLowerCase();
+  const hay = `${title} ${sanitizedIdea}`.toLowerCase();
   const poetryFormat = inferPoeticBookFormat(hay);
   if (poetryFormat) {
     const poetryScore = countPatternHits(POETRY_FORM_PATTERNS, hay) * 2 + countPatternHits(POETRY_CONTENT_PATTERNS, hay);
@@ -421,6 +441,8 @@ export function inferGenreFromText(title: string, idea = "", knownBookFormat?: s
 
   for (const signal of SIGNALS) {
     if (!signal.test.test(hay)) continue;
+    if (signal.id === "fantasy" && hasSupernaturalThrillerSignals(hay) && !hasHighConceptFantasySignals(hay)) continue;
+    if (signal.id === "supernatural-thriller" && /horror|gotico|gothic|stazione\s+ferroviaria/i.test(hay) && !/\bthriller\b/.test(hay)) continue;
     const score = signal.weight + (hay.length > 40 ? 2 : 0);
     if (!best || score > best.score) best = { score, signal };
   }
@@ -435,11 +457,28 @@ export function inferGenreFromText(title: string, idea = "", knownBookFormat?: s
       level1: resolveLevel1FromBookTypeId(best.signal.inference.bookTypeId),
       confidence: best.score >= 11 ? "high" : "medium",
       suggestedChapters: best.signal.inference.chapters,
-    }, idea);
+    }, sanitizedIdea);
   }
 
   const looksFictionTitle = /la |le |il |lo |una |un |casa|notte|sangue|ombra|madre|anima|morte|segreto/i.test(title)
     && !/guida|manuale|metodo|abitudin|disciplina/i.test(hay);
+
+  if (hasSupernaturalThrillerSignals(hay) && !hasHighConceptFantasySignals(hay)) {
+    const thrillerSignal = SIGNALS.find((signal) => signal.id === "supernatural-thriller")
+      ?? SIGNALS.find((signal) => signal.id === "thriller");
+    if (thrillerSignal) {
+      const meta = studioMeta(thrillerSignal.inference.bookTypeId);
+      return withIdeaAwarePromise({
+        ...thrillerSignal.inference,
+        bookFormat: thrillerSignal.inference.bookFormat || bookFormatForBookType(thrillerSignal.inference.bookTypeId),
+        category: meta.category,
+        subcategory: thrillerSignal.inference.subcategory || meta.defaultSubcategory,
+        level1: resolveLevel1FromBookTypeId(thrillerSignal.inference.bookTypeId),
+        confidence: "high",
+        suggestedChapters: thrillerSignal.inference.chapters,
+      }, sanitizedIdea);
+    }
+  }
 
   if (hasHighConceptFantasySignals(hay)) {
     const fantasySignal = SIGNALS.find((signal) => signal.id === "fantasy");
@@ -453,7 +492,7 @@ export function inferGenreFromText(title: string, idea = "", knownBookFormat?: s
         level1: resolveLevel1FromBookTypeId(fantasySignal.inference.bookTypeId),
         confidence: "high",
         suggestedChapters: fantasySignal.inference.chapters,
-      }, idea);
+      }, sanitizedIdea);
     }
   }
 
@@ -474,7 +513,7 @@ export function inferGenreFromText(title: string, idea = "", knownBookFormat?: s
       level1: "romanzo",
       confidence: "low",
       suggestedChapters: 24,
-    }, idea);
+    }, sanitizedIdea);
   }
 
   const meta = studioMeta("literary");
@@ -493,7 +532,7 @@ export function inferGenreFromText(title: string, idea = "", knownBookFormat?: s
     level1: "romanzo",
     confidence: "low",
     suggestedChapters: 20,
-  }, idea);
+  }, sanitizedIdea);
 }
 
 export function isConfigIncoherentWithInference(
