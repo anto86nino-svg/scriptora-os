@@ -1,6 +1,15 @@
 import { buildTitleV2Pipeline, type TitleV2Input } from "@/lib/title-intelligence-v2";
 import { isWeakBookTitle } from "@/lib/title-shadow";
-import { isGenericPhilosophyTitleForFiction } from "@/lib/concept-dominance";
+import {
+  extractConceptProtagonist,
+  extractTimeAnchor,
+  hasHighConceptFantasySignals,
+  hasSupernaturalThrillerSignals,
+  isConceptDominanceSubtitle,
+  isGenericPhilosophyTitleForFiction,
+  sanitizeUserConceptInput,
+  shouldPreserveConceptSubtitle,
+} from "@/lib/concept-dominance";
 
 const TITLE_STOP_WORDS = new Set([
   "una", "uno", "un", "il", "lo", "la", "le", "gli", "i", "di", "del", "della", "delle", "degli", "dei",
@@ -58,13 +67,43 @@ export function isStopWordHeavyTitle(title: string): boolean {
   return meaningful < 3 || stopCount / words.length > 0.55;
 }
 
-export function isInvalidGeneratedTitle(title: string, idea: string): boolean {
+export function breaksConceptAnchors(title: string, subtitle: string, idea: string): boolean {
+  const sanitized = sanitizeUserConceptInput(idea);
+  const titleHay = normalize(title);
+  const subtitleHay = normalize(subtitle);
+
+  if (hasSupernaturalThrillerSignals(sanitized)) {
+    if (/\b(kael|porta nel cuore|mille anni|magia proibita|epic fantasy)\b/.test(`${titleHay} ${subtitleHay}`)) {
+      return true;
+    }
+    if (shouldPreserveConceptSubtitle(sanitized) && subtitle.trim() && !isConceptDominanceSubtitle(subtitle, sanitized)) {
+      const hasThrillerSignal = /futuro|morte|ricord|vision|profez|tempo/.test(subtitleHay);
+      if (!hasThrillerSignal && /desiderio|amore|romance|bacio/.test(subtitleHay)) return true;
+    }
+    const time = extractTimeAnchor(sanitized);
+    const protagonist = extractConceptProtagonist(sanitized);
+    if (time && !titleHay.includes(normalize(time)) && countMeaningfulTitleWords(title) < 4) {
+      if (protagonist && !titleHay.includes(normalize(protagonist))) return true;
+    }
+  }
+
+  if (hasHighConceptFantasySignals(sanitized)) {
+    if (/\b(romance|desiderio|bacio|innamor|enemies to lovers)\b/.test(subtitleHay) && !/\bromance\b/.test(normalize(sanitized))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function isInvalidGeneratedTitle(title: string, idea: string, subtitle = ""): boolean {
   const clean = String(title || "").trim();
   if (!clean || isWeakBookTitle(clean)) return true;
   if (countMeaningfulTitleWords(clean) < 3) return true;
   if (isIdeaTruncatedTitle(clean, idea)) return true;
   if (isStopWordHeavyTitle(clean)) return true;
   if (isGenericPhilosophyTitleForFiction(clean, idea)) return true;
+  if (subtitle && breaksConceptAnchors(clean, subtitle, idea)) return true;
   return false;
 }
 
@@ -80,8 +119,9 @@ export function regenerateTitleFromIdea(input: TitleV2Input): { title: string; s
   ];
 
   for (const candidate of candidates) {
-    if (isInvalidGeneratedTitle(candidate.title, idea)) continue;
+    if (isInvalidGeneratedTitle(candidate.title, idea, candidate.subtitle)) continue;
     if (candidate.couldBelongToThousandBooks && candidate.usedDistinctiveElements.length < 2) continue;
+    if (shouldPreserveConceptSubtitle(idea) && !isConceptDominanceSubtitle(candidate.subtitle, idea)) continue;
     return {
       title: candidate.title,
       subtitle: candidate.subtitle,

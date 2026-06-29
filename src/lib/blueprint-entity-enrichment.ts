@@ -1,5 +1,15 @@
 import type { BookBlueprint, BookConfig } from "@/types/book";
 import { extractNarrativeIdeaSignals, hasRichNarrativeIdea } from "@/lib/narrative-promise-intelligence";
+import {
+  buildFantasyChapterBeats,
+  buildMemoirChapterTitles,
+  buildPsychologicalThrillerChapterTitles,
+  buildSelfHelpChapterTitles,
+  buildSupernaturalThrillerChapterTitles,
+  expandConceptBeatsToCount,
+  hasHighConceptFantasySignals,
+  hasSupernaturalThrillerSignals,
+} from "@/lib/concept-dominance";
 
 export interface BlueprintEntityAnchor {
   label: string;
@@ -96,6 +106,35 @@ function chapterBeatForIndex(
   };
 }
 
+export function buildFormatAwareChapterScaffold(
+  idea: string,
+  chapterCount: number,
+  opts: { genre?: string; bookFormat?: string } = {},
+): Array<{ title: string; summary: string }> {
+  const genre = String(opts.genre || "");
+  const bookFormat = String(opts.bookFormat || "");
+
+  if (hasSupernaturalThrillerSignals(idea)) {
+    return expandConceptBeatsToCount(buildSupernaturalThrillerChapterTitles(idea), chapterCount);
+  }
+  if (hasHighConceptFantasySignals(idea)) {
+    return expandConceptBeatsToCount(buildFantasyChapterBeats(idea), chapterCount);
+  }
+  if (/thriller|giallo|noir/i.test(genre) && /\b(serial killer|omicid|indagine|colpevole|psicolog)/i.test(idea)) {
+    return expandConceptBeatsToCount(buildPsychologicalThrillerChapterTitles(idea), chapterCount);
+  }
+  if (/memoir|memorie|autobiograf/i.test(genre) || bookFormat === "memoir") {
+    return expandConceptBeatsToCount(buildMemoirChapterTitles(idea), chapterCount);
+  }
+  if (/self-help|self help|manuale|business|guida/i.test(genre) || bookFormat === "self_help") {
+    return expandConceptBeatsToCount(buildSelfHelpChapterTitles(idea), chapterCount);
+  }
+  if (hasRichIdeaEntities(idea)) {
+    return buildEntityAwareChapterScaffold(idea, chapterCount);
+  }
+  return [];
+}
+
 export function buildEntityAwareChapterScaffold(
   idea: string,
   chapterCount: number,
@@ -123,9 +162,19 @@ export function enrichBlueprintFromIdeaSeed(
   ideaSeed?: string,
 ): BookBlueprint {
   const idea = clean(ideaSeed || (config as BookConfig & { idea?: string }).idea || "");
-  if (!idea || !hasRichIdeaEntities(idea)) return blueprint;
+  if (!idea) return blueprint;
 
-  const scaffold = buildEntityAwareChapterScaffold(idea, config.numberOfChapters);
+  const formatScaffold = buildFormatAwareChapterScaffold(idea, config.numberOfChapters, {
+    genre: config.genre,
+    bookFormat: (config as BookConfig & { bookFormat?: string }).bookFormat,
+  });
+  const scaffold = formatScaffold.length > 0
+    ? formatScaffold
+    : hasRichIdeaEntities(idea)
+      ? buildEntityAwareChapterScaffold(idea, config.numberOfChapters)
+      : [];
+  if (scaffold.length === 0) return blueprint;
+
   const enrichedOutlines = blueprint.chapterOutlines.map((outline, index) => {
     const entityBeat = scaffold[index];
     if (!entityBeat) return outline;

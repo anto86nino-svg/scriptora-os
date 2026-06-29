@@ -27,8 +27,9 @@ import {
   normalizeLengthPreset,
   resolveLengthPresetConfig,
 } from "./book-foundation-lock";
-import { buildEntityAwareChapterScaffold, hasRichIdeaEntities } from "@/lib/blueprint-entity-enrichment";
+import { buildEntityAwareChapterScaffold, buildFormatAwareChapterScaffold, hasRichIdeaEntities } from "@/lib/blueprint-entity-enrichment";
 import {
+  buildMemoirChapterTitles,
   buildSupernaturalThrillerSecondaryCast,
   buildSupernaturalThrillerSubtitle,
   buildTimeAnchoredTitle,
@@ -805,6 +806,24 @@ function buildSupernaturalThrillerCharacters(
 }
 
 function buildChapterSeeds(count: number, genre: string, variant: ExpressScenarioVariant, setting: string, ideaSeed?: string): ChapterBlueprintSeed[] {
+  const formatScaffold = ideaSeed
+    ? buildFormatAwareChapterScaffold(ideaSeed, count, { genre })
+    : [];
+  if (formatScaffold.length > 0) {
+    return formatScaffold.map((beat, i) => ({
+      id: `express-ch-${i + 1}`,
+      chapter: i + 1,
+      title: beat.title,
+      summary: beat.summary,
+      purpose: beat.summary,
+      goal: beat.summary,
+      conflict: beat.summary,
+      hook: beat.summary,
+      expectedSetting: setting,
+      subchapters: [] as [],
+    }));
+  }
+
   if (ideaSeed && hasRichIdeaEntities(ideaSeed)) {
     return buildEntityAwareChapterScaffold(ideaSeed, count).map((beat, i) => ({
       id: `express-ch-${i + 1}`,
@@ -848,10 +867,26 @@ function buildChapterSeeds(count: number, genre: string, variant: ExpressScenari
     "Contagio e conseguenza",
     "Finale inquieto",
   ];
+  const thrillerArc = [
+    "La prima prova",
+    "Pista sepolta",
+    "Sospetto che si avvicina",
+    "Alibi che crolla",
+    "Midpoint — verità parziale",
+    "Trappola psicologica",
+    "Pressione crescente",
+    "Prova decisiva",
+    "Confronto con il colpevole",
+    "Rivelazione finale",
+    "Conseguenze dell'indagine",
+    "Chiusura del caso",
+  ];
   const labels =
     isHorrorGenre(genre)
       ? horrorArc
-      : isRomance(genre) || /thriller/i.test(genre)
+      : isThrillerGenre(genre)
+        ? thrillerArc
+      : isRomance(genre)
         ? romanceArc
         : Array.from({ length: count }, (_, i) => `Atto ${i + 1} — escalation narrativa`);
 
@@ -1582,7 +1617,7 @@ function buildMemoirExpressPackage(
     (variant === "bold"
       ? "Un viaggio interiore senza maschere"
       : `Un memoir riflessivo su ${lifeTheme.toLowerCase()}.`);
-  const editorialSynopsis = `${seed || subtitle} Un memoir strutturato in fasi di vita: origine, frattura, svolta e integrazione. Voce autentica, arco riflessivo e scene di memoria — non trama da romanzo né payoff romance.`;
+  const editorialSynopsis = `${seed || subtitle} Un memoir strutturato in fasi di vita: origine, frattura, svolta e integrazione. Voce autentica, arco riflessivo e scene di memoria — non trama da fiction né payoff emotivo da romanzo.`;
   const hook = `Un memoir su ${lifeTheme.toLowerCase()} — memoria, verità e ricostruzione dell'identità.`;
   const marketPromise = editorialSynopsis.slice(0, 220);
   const centralConflict = `Riconciliare ${lifeTheme.toLowerCase()} con la versione di sé che emerge dal racconto`;
@@ -1597,20 +1632,7 @@ function buildMemoirExpressPackage(
   const finalEmotion = variant === "bold" ? "Catarsi sobria e eco lunga" : "Chiarezza emotiva e accettazione";
   const midpoint = "Svolta centrale: la frattura diventa punto di non ritorno nel racconto";
   const climax = "Confronto con la verità più scomoda del periodo narrato";
-  const memoirArc = [
-    "Origine e contesto",
-    "Prima crepa",
-    "Periodo di crisi",
-    "Incontro decisivo",
-    "Svolta interiore",
-    "Perdita o limite",
-    "Riconoscimento",
-    "Ricostruzione",
-    "Nuovo equilibrio",
-    "Integrazione",
-    "Eco finale",
-    "Lettera al lettore",
-  ];
+  const memoirArc = buildMemoirChapterTitles(seed).map((beat) => beat.title);
   const chapterBlueprintSeeds = buildFormatChapterSeeds(
     chapterCount,
     memoirArc,

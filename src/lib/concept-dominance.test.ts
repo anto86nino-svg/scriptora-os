@@ -67,7 +67,7 @@ describe("concept-dominance", () => {
   it("builds supernatural thriller subtitle with futuro, morte and ricordi", () => {
     const subtitle = buildSupernaturalThrillerSubtitle(martaIdea, "commercial");
     expect(subtitle.toLowerCase()).toMatch(/futuro|morte|ricord/);
-    expect(subtitle).toMatch(/ucciderla/i);
+    expect(subtitle).not.toMatch(/ucciderla|ucciderlo/i);
     expect(buildSupernaturalThrillerSecondaryCast().join(" ")).toMatch(/sceriffo/i);
   });
 

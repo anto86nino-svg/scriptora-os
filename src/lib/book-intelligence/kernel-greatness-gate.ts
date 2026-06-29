@@ -71,6 +71,25 @@ function shouldAttemptRefine(
     || greatness.status === "reject";
 }
 
+function isFormatDrivenExpressReady(
+  kernel: BookIntelligenceKernelSnapshot,
+  greatness: KernelGreatnessReport,
+  conceptText: string,
+): boolean {
+  const readyFormats: BookIntelligenceKernelSnapshot["bookFormat"][] = [
+    "memoir",
+    "workbook",
+    "cookbook",
+    "self_help",
+    "study_material",
+    "poetry_collection",
+  ];
+  if (!readyFormats.includes(kernel.bookFormat)) return false;
+  if (greatness.status === "reject") return false;
+  if (conceptText.trim().length < 40) return false;
+  return greatness.scores.overall >= greatness.threshold - 14;
+}
+
 function evaluateGate(
   kernel: BookIntelligenceKernelSnapshot,
   config: Partial<BookConfig>,
@@ -82,7 +101,7 @@ function evaluateGate(
     text: conceptText,
     readerPsychology: kernel.readerPsychology,
   });
-  const allowed = greatness.status === "show";
+  const allowed = greatness.status === "show" || isFormatDrivenExpressReady(kernel, greatness, conceptText);
   return {
     status: allowed ? "allowed" : "blocked",
     allowed,

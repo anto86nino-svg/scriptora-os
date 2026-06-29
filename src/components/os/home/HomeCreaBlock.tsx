@@ -6,9 +6,13 @@ export const HOME_CREA_CHIPS = [
   "Thriller",
   "Horror",
   "Fantasy",
+  "Romance",
   "Manuale",
+  "Business",
+  "Self-help",
   "Workbook",
   "Memoir",
+  "Ricettario",
   "Raccolta poetica",
 ] as const;
 

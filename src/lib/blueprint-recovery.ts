@@ -15,6 +15,7 @@ import {
 } from "@/lib/BlueprintIntegrityEngine";
 import {
   buildEntityAwareChapterScaffold,
+  buildFormatAwareChapterScaffold,
   enrichBlueprintFromIdeaSeed,
   hasRichIdeaEntities,
 } from "@/lib/blueprint-entity-enrichment";
@@ -253,8 +254,16 @@ export function repairBlueprintResponse(
 
 export function buildFallbackBlueprintFromConfig(config: BookConfig): BookBlueprint {
   const idea = String((config as BookConfig & { idea?: string }).idea || "").trim();
-  if (hasRichIdeaEntities(idea)) {
-    const scaffold = buildEntityAwareChapterScaffold(idea, config.numberOfChapters);
+  const formatScaffold = idea
+    ? buildFormatAwareChapterScaffold(idea, config.numberOfChapters, {
+        genre: config.genre,
+        bookFormat: (config as BookConfig & { bookFormat?: string }).bookFormat,
+      })
+    : [];
+  if (formatScaffold.length > 0 || (idea && hasRichIdeaEntities(idea))) {
+    const scaffold = formatScaffold.length > 0
+      ? formatScaffold
+      : buildEntityAwareChapterScaffold(idea, config.numberOfChapters);
     const chapterOutlines = scaffold.map((beat, i) => ({
       title: resolveChapterTitle(beat.title, i, { config, totalChapters: config.numberOfChapters, summary: beat.summary }),
       summary: beat.summary,
