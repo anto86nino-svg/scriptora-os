@@ -13,6 +13,11 @@ import {
   normalizeChapterOutlineExtras,
   normalizeSubchapterOutlineExtras,
 } from "@/lib/BlueprintIntegrityEngine";
+import {
+  buildEntityAwareChapterScaffold,
+  enrichBlueprintFromIdeaSeed,
+  hasRichIdeaEntities,
+} from "@/lib/blueprint-entity-enrichment";
 
 export type BlueprintSource = "ai" | "repaired" | "config_fallback";
 
@@ -205,6 +210,21 @@ export function repairBlueprintResponse(
 }
 
 export function buildFallbackBlueprintFromConfig(config: BookConfig): BookBlueprint {
+  const idea = String((config as BookConfig & { idea?: string }).idea || "").trim();
+  if (hasRichIdeaEntities(idea)) {
+    const scaffold = buildEntityAwareChapterScaffold(idea, config.numberOfChapters);
+    const chapterOutlines = scaffold.map((beat, i) => ({
+      title: resolveChapterTitle(beat.title, i, { config, totalChapters: config.numberOfChapters, summary: beat.summary }),
+      summary: beat.summary,
+    }));
+    return enrichBlueprintFromIdeaSeed(normalizeBlueprintShape({
+      overview: `Struttura narrativa ancorata all'idea per "${config.title}". Ogni capitolo sviluppa elementi concreti del seed originale.`,
+      chapterOutlines,
+      themes: [config.genre, config.tone, "mistero", "memoria"].filter(Boolean),
+      emotionalArc: `Progressione emotiva legata all'idea originale — non template generico di genere.`,
+    }, config), config, idea);
+  }
+
   const kernel = resolveBookKernel({ config });
   const editorial = getGenreBlueprint(config.genre, config.subcategory);
   const italian = isItalian(config);
@@ -291,8 +311,10 @@ export function resolveBlueprintFromAiResponse(
   config: BookConfig,
 ): { ok: true; blueprint: BookBlueprint; source: BlueprintSource } | { ok: false; errors: string[] } {
   const repaired = repairBlueprintResponse(rawResponse, config);
+  const idea = String((config as BookConfig & { idea?: string }).idea || "").trim();
   if (repaired.candidate) {
-    return { ok: true, blueprint: repaired.candidate, source: repaired.source };
+    const blueprint = enrichBlueprintFromIdeaSeed(repaired.candidate, config, idea);
+    return { ok: true, blueprint, source: repaired.source };
   }
   return { ok: false, errors: repaired.errors };
 }

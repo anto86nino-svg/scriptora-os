@@ -262,9 +262,12 @@ export function extractDistinctiveTitleElements(input: TitleV2Input): Distinctiv
   const seen = new Set<string>();
 
   collectMatches(text, /\b(?:camera|stanza|room)\s*\d+\b/gi, "place", 98, list, seen);
+  collectMatches(text, /\b\d{1,2}:\d{2}\b/g, "mystery", 96, list, seen);
+  collectMatches(text, /\b(?:stazione|gallerie?|treno|ferrovia|binari?)\b(?:\s+(?:ferroviaria|abbandonata|inesistente|inesistenti|fantasma|nero|nera|[a-zA-ZÀ-ÿ0-9'-]+)){0,3}/gi, "place", 92, list, seen);
   collectMatches(text, /\b(?:hotel|albergo|villa|casa|castello|cattedrale|faro|isola|lago|bosco|collegio|orfanotrofio|ospedale|manicomio|biblioteca|libreria|museo|stazione|villaggio|paese|citta|città|regno|tempio|cripta|teatro)(?:\s+(?:sul|sulla|del|della|delle|di|dei|nel|nella|antico|antica|abbandonato|abbandonata|nero|nera|sepolto|sepolta|perduto|perduta|[a-zA-ZÀ-ÿ0-9'-]+)){0,4}/gi, "place", 88, list, seen);
   collectMatches(text, /\b(?:lettere|mappe|diario|anello|chiave|ritratto|fotografia|foto|orologio|specchio|maschera|carillon|registratore|corona|spada|reliquia|manoscritto|nastro|cassette|biglietto|archivio|codice|formula|algoritmo)(?:\s+(?:mai|antiche|antichi|rotto|rotta|segreto|segreta|perduto|perduta|spedite|spediti|dimenticate|dimenticati|nascosto|nascosta|[a-zA-ZÀ-ÿ0-9'-]+)){0,4}/gi, "object", 92, list, seen);
   collectMatches(text, /\b(?:donna|uomo|bambina|bambino|madre|padre|sorella|fratello|professore|medico|paziente|testimone|erede)\s+(?:scomparsa|scomparso|sparita|sparito|morta|morto|accusata|accusato|proibita|proibito)\b/gi, "mystery", 94, list, seen);
+  collectMatches(text, /\b(?:madre|padre|sorella|fratello)\b/gi, "relationship", 84, list, seen);
   collectMatches(text, /\b(?:lettere mai spedite|mappe antiche|donna scomparsa|uomo scomparso|patto proibito|promessa infranta|cadavere nascosto|verita sepolta|verità sepolta|segreto di famiglia|profezia spezzata)\b/gi, "secret", 96, list, seen);
   collectMatches(text, /\b(?:incendio|naufragio|incidente|tradimento|processo|fuga|omicidio|sparizione|massacro|fallimento|divorzio|lutto|rapimento|esperimento)(?:\s+[a-zA-ZÀ-ÿ0-9'-]+){0,3}/gi, "trauma", 82, list, seen);
   collectMatches(text, /\b(?:nemici|rivali|ex|bodyguard|guardia del corpo|migliore amica|migliore amico|fratellastri|sorellastre|professore e studentessa|capo e assistente|medico e paziente)\b/gi, "relationship", 78, list, seen);
@@ -422,6 +425,9 @@ function candidateTemplates(input: TitleV2Input, elements: DistinctiveTitleEleme
       { title: `L'Atlante di ${e1}`, angle: "atlas" },
     ],
     horror: [
+      { title: `La Stazione delle ${e2}`, angle: "haunted station" },
+      { title: `Alle ${e3}`, angle: "deadline time" },
+      { title: `Il Treno di ${e1}`, angle: "ghost train" },
       { title: `La Stanza ${e1}`, angle: "haunted room" },
       { title: `Il Carillon di ${e3}`, angle: "haunted object" },
       { title: `Non Entrare in ${e1}`, angle: "warning" },
@@ -557,7 +563,7 @@ export function buildTitleV2Pipeline(input: TitleV2Input): TitleV2Pipeline {
   const fallbackTopic = clean(input.titleSeed || input.idea || input.promise || input.genre || "Scriptora");
   const elements = distinctiveElements.length
     ? distinctiveElements
-    : [{ text: titleCaseIt(fallbackTopic.split(/[,.!?;:]/)[0].split(/\s+/).slice(0, 3).join(" ")), type: "keyword" as const, weight: 45 }];
+    : [{ text: titleCaseIt(fallbackTopic.split(/\s+/).filter((w) => w.length >= 4).slice(0, 2).join(" ") || "Segreto"), type: "keyword" as const, weight: 45 }];
   let raw = uniqueCandidates(expandCandidates(input, elements));
   const fillAngles = isItalian(input)
     ? ["Senza Rumore", "In Pratica", "Che Resta", "Sotto Pressione", "Per Giorni Difficili", "Metodo Essenziale", "Mappa Operativa", "Prima della Svolta"]

@@ -7,6 +7,8 @@ import type {
   BookSubchapterOutline,
 } from "@/types/book";
 import { isNarrativeKernel, resolveBookKernel } from "@/lib/book-intelligence";
+import { extractBlueprintEntityAnchors, hasRichIdeaEntities } from "@/lib/blueprint-entity-enrichment";
+import { buildNarrativePromiseFromIdea } from "@/lib/narrative-promise-intelligence";
 
 export const BLUEPRINT_INTEGRITY_STORAGE_KEY = "scriptora-blueprint-integrity-enabled";
 
@@ -137,15 +139,23 @@ export function normalizeBlueprintIntegrity(
 ): BlueprintIntegrity {
   const source = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
   const narrative = isNarrativeBlueprintIntegrity(config);
+  const idea = String((config as BookConfig & { idea?: string }).idea || "").trim();
+  const entityAnchors = hasRichIdeaEntities(idea) ? extractBlueprintEntityAnchors(idea) : [];
+  const entityLabels = entityAnchors.map((anchor) => anchor.label).slice(0, 6);
+  const ideaPromise = entityLabels.length
+    ? buildNarrativePromiseFromIdea(idea, config.genre)
+    : "";
   const bookCoreFallback: StringRecord = narrative
     ? {
         title: config.title,
         subtitle: config.subtitle,
         genre: config.genre,
         subgenre: config.subcategory || "not specified",
-        narrativePromise: config.subtitle || config.title,
+        narrativePromise: ideaPromise || config.subtitle || config.title,
         emotionalPromise: config.tone,
-        coreTheme: chapterOutlines[0]?.summary || "not specified",
+        coreTheme: entityLabels.length
+          ? `Mistero ancorato a: ${entityLabels.join(", ")}`
+          : chapterOutlines[0]?.summary || "not specified",
         coreFear: "defined by the protagonist's wound and the genre promise",
         coreDesire: "defined by the protagonist's external desire and reader fantasy",
         readerFantasy: config.category || config.genre,
@@ -212,20 +222,35 @@ export function normalizeBlueprintIntegrity(
         }),
     characterMemoryEngine: normalizeCharacterMemory(pick(source, ["characterMemoryEngine", "characters", "character_memory_engine"]), config),
     structuralStoryArchitecture: normalizeRecord(pick(source, ["structuralStoryArchitecture", "storyArchitecture", "structural_story_architecture"]), narrative
-      ? {
-          actStructure: "Opening pressure, rising complication, midpoint shift, escalation, final payoff.",
-          narrativeEscalation: "Every chapter changes the situation and raises the cost.",
-          emotionalEscalation: "Growth is gradual. No emotional teleportation.",
-          midpointShift: "A truth, cost, betrayal, or reversal changes how the book must be read.",
-          characterReversals: "Reversals must emerge from psychology, not convenience.",
-          betrayals: "Betrayals require setup and aftermath.",
-          tensionSpikes: "One dominant spike per chapter; avoid reveal overload.",
-          quietMoments: "Quiet scenes must reveal pressure, not stall momentum.",
-          setupsPayoffs: "Every setup must be tracked until payoff or intentional subversion.",
-          cliffhangers: "Use unanswered consequence, not random shock.",
-          revelationTiming: "Prefer questions before answers.",
-          finalPayoffStrategy: "Pay off theme through character choice and consequence.",
-        }
+      ? entityLabels.length
+        ? {
+            actStructure: `Apertura con ${entityLabels[0]} → complicazione su ${entityLabels[1] || entityLabels[0]} → midpoint su ${entityLabels[2] || "verità"} → escalation su ${entityLabels[3] || "minaccia"} → payoff su ${entityLabels[4] || entityLabels[0]}.`,
+            narrativeEscalation: `Ogni capitolo deve far evolvere ${entityLabels.slice(0, 3).join(", ")} — mai beat generici senza entità.`,
+            emotionalEscalation: "Crescita graduale legata a memoria, paura e rivelazioni concrete dell'idea.",
+            midpointShift: `Una verità su ${entityLabels[1] || entityLabels[0]} cambia la lettura del mistero.`,
+            characterReversals: "Le inversioni emergono da psicologia e prove legate all'idea.",
+            betrayals: "Tradimenti solo se preparati da indizi concreti del seed.",
+            tensionSpikes: "Un picco dominante per capitolo, ancorato a oggetti/luoghi dell'idea.",
+            quietMoments: "Scene quiete che rivelano pressione tramite dettagli concreti.",
+            setupsPayoffs: `Tracciare setup/payoff su ${entityLabels.join(", ")}.`,
+            cliffhangers: "Conseguenze irrisolte legate agli elementi distintivi.",
+            revelationTiming: "Domande prima delle risposte — sempre legate al seed.",
+            finalPayoffStrategy: `Pagare la promessa attraverso scelta e conseguenza su ${entityLabels[0]}.`,
+          }
+        : {
+            actStructure: "Opening pressure, rising complication, midpoint shift, escalation, final payoff.",
+            narrativeEscalation: "Every chapter changes the situation and raises the cost.",
+            emotionalEscalation: "Growth is gradual. No emotional teleportation.",
+            midpointShift: "A truth, cost, betrayal, or reversal changes how the book must be read.",
+            characterReversals: "Reversals must emerge from psychology, not convenience.",
+            betrayals: "Betrayals require setup and aftermath.",
+            tensionSpikes: "One dominant spike per chapter; avoid reveal overload.",
+            quietMoments: "Quiet scenes must reveal pressure, not stall momentum.",
+            setupsPayoffs: "Every setup must be tracked until payoff or intentional subversion.",
+            cliffhangers: "Use unanswered consequence, not random shock.",
+            revelationTiming: "Prefer questions before answers.",
+            finalPayoffStrategy: "Pay off theme through character choice and consequence.",
+          }
       : {
           actStructure: "Foundation, method, practice, integration, mastery.",
           narrativeEscalation: "Each chapter increases depth, scope, or application.",

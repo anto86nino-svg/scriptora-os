@@ -2,6 +2,7 @@ import type { Genre } from "@/types/book";
 import { studioGenresFromRegistry } from "@/lib/book-type-engine";
 import { resolveLevel1FromBookTypeId } from "@/lib/book-config-engine";
 import type { Level1BookType } from "@/lib/book-config-engine/types";
+import { resolveNarrativePromise } from "@/lib/narrative-promise-intelligence";
 
 export type InferredBookFormat =
   | "novel"
@@ -314,6 +315,13 @@ const SIGNALS: Signal[] = [
 
 const GENERIC_SELF_HELP_TITLES = /^(il viaggio interiore|rinascere|la forza dentro di te|torna a te|ritrova te stesso|il potere di)$/i;
 
+function withIdeaAwarePromise(inference: GenreInference, idea: string): GenreInference {
+  return {
+    ...inference,
+    narrativePromise: resolveNarrativePromise(idea, inference.genre, inference.narrativePromise),
+  };
+}
+
 export function inferGenreFromText(title: string, idea = ""): GenreInference {
   const hay = `${title} ${idea}`.toLowerCase();
   const poetryFormat = inferPoeticBookFormat(hay);
@@ -332,7 +340,7 @@ export function inferGenreFromText(title: string, idea = ""): GenreInference {
 
   if (best) {
     const meta = studioMeta(best.signal.inference.bookTypeId);
-    return {
+    return withIdeaAwarePromise({
       ...best.signal.inference,
       bookFormat: best.signal.inference.bookFormat || bookFormatForBookType(best.signal.inference.bookTypeId),
       category: meta.category,
@@ -340,7 +348,7 @@ export function inferGenreFromText(title: string, idea = ""): GenreInference {
       level1: resolveLevel1FromBookTypeId(best.signal.inference.bookTypeId),
       confidence: best.score >= 11 ? "high" : "medium",
       suggestedChapters: best.signal.inference.chapters,
-    };
+    }, idea);
   }
 
   const looksFictionTitle = /la |le |il |lo |una |un |casa|notte|sangue|ombra|madre|anima|morte|segreto/i.test(title)
@@ -348,7 +356,7 @@ export function inferGenreFromText(title: string, idea = ""): GenreInference {
 
   if (looksFictionTitle || GENERIC_SELF_HELP_TITLES.test(title.trim())) {
     const meta = studioMeta("literary");
-    return {
+    return withIdeaAwarePromise({
       bookFormat: "novel",
       label: "Narrativa letteraria",
       bookTypeId: "literary",
@@ -363,11 +371,11 @@ export function inferGenreFromText(title: string, idea = ""): GenreInference {
       level1: "romanzo",
       confidence: "low",
       suggestedChapters: 24,
-    };
+    }, idea);
   }
 
   const meta = studioMeta("literary");
-  return {
+  return withIdeaAwarePromise({
     bookFormat: "novel",
     label: "Romanzo (default narrativo)",
     bookTypeId: "literary",
@@ -382,7 +390,7 @@ export function inferGenreFromText(title: string, idea = ""): GenreInference {
     level1: "romanzo",
     confidence: "low",
     suggestedChapters: 20,
-  };
+  }, idea);
 }
 
 export function isConfigIncoherentWithInference(

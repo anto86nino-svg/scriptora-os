@@ -17,6 +17,12 @@ import {
   forgeCharacterToFoundation,
 } from "./character-foundation-studio";
 import { buildTitleV2Pipeline } from "@/lib/title-intelligence-v2";
+import {
+  filterValidTitleCandidates,
+  isInvalidGeneratedTitle,
+  regenerateTitleFromIdea,
+} from "@/lib/title-intelligence-validation";
+import { resolveNarrativePromise } from "@/lib/narrative-promise-intelligence";
 
 export type BookLengthPreset = "breve" | "medio" | "lungo" | "epico";
 
@@ -486,30 +492,67 @@ export function generateNonfictionSubjects(input: FoundationGeneratorInput): Non
   };
 }
 
+function uniqueTitleSubtitleOptions(options: TitleSubtitleOption[]): TitleSubtitleOption[] {
+  const seen = new Set<string>();
+  const out: TitleSubtitleOption[] = [];
+  for (const option of options) {
+    const key = option.title.toLowerCase().trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(option);
+  }
+  return out;
+}
+
 export function generateTitleSubtitleOptions(input: FoundationGeneratorInput): TitleSubtitleOption[] {
   const seed = clean(input.ideaSeed);
-  const theme = seed.split(/[.!?…]/)[0]?.trim() || seed || input.genre;
   const lead = parseLeadName(seed);
-  const titleV2 = buildTitleV2Pipeline({
+  const titleV2Input = {
     idea: seed,
     genre: input.genre,
-    promise: theme,
+    promise: resolveNarrativePromise(seed, input.genre, ""),
     language: input.language,
-  });
-  if (titleV2.finalists.length >= 3) {
-    return titleV2.finalists.slice(0, 3).map((candidate) => ({
+  };
+  const titleV2 = buildTitleV2Pipeline(titleV2Input);
+  const validPool = filterValidTitleCandidates(
+    [...titleV2.finalists, ...titleV2.semifinalists, ...titleV2.allCandidates],
+    seed,
+  );
+  const v2Options = uniqueTitleSubtitleOptions(validPool.map((candidate) => ({
+    title: candidate.title,
+    subtitle: candidate.subtitle,
+    commercialReason: `Title Intelligence V2: specificita' ${candidate.scores.specificity}/100, originalita' ${candidate.scores.originality}/100, rischio generico ${candidate.scores.genericRisk}/100.`,
+    toneFit: input.tone,
+    genreFit: input.genre,
+    risk: candidate.couldBelongToThousandBooks
+      ? "Troppo generico: richiede un elemento distintivo in piu'"
+      : `Elementi distintivi: ${candidate.usedDistinctiveElements.slice(0, 3).join(", ") || "tema principale"}`,
+  })));
+  if (v2Options.length >= 3) {
+    return v2Options.slice(0, 3);
+  }
+
+  const regenerated = regenerateTitleFromIdea(titleV2Input);
+  if (regenerated) {
+    const extra = filterValidTitleCandidates(
+      [...titleV2.semifinalists, ...titleV2.allCandidates].filter((c) => c.title !== regenerated.title),
+      seed,
+    ).slice(0, 2);
+    const rebuilt = uniqueTitleSubtitleOptions([regenerated, ...extra].map((candidate) => ({
       title: candidate.title,
-      subtitle: candidate.subtitle,
-      commercialReason: `Title Intelligence V2: specificita' ${candidate.scores.specificity}/100, originalita' ${candidate.scores.originality}/100, rischio generico ${candidate.scores.genericRisk}/100.`,
+      subtitle: "subtitle" in candidate ? candidate.subtitle : "",
+      commercialReason: "commercialReason" in candidate
+        ? candidate.commercialReason
+        : `Title Intelligence V2: originalita' ${candidate.scores.originality}/100.`,
       toneFit: input.tone,
       genreFit: input.genre,
-      risk: candidate.couldBelongToThousandBooks
-        ? "Troppo generico: richiede un elemento distintivo in piu'"
-        : `Elementi distintivi: ${candidate.usedDistinctiveElements.slice(0, 3).join(", ") || "tema principale"}`,
-    }));
+      risk: `Elementi distintivi: ${"usedDistinctiveElements" in candidate ? candidate.usedDistinctiveElements.slice(0, 3).join(", ") : "ricostruiti dall'idea"}`,
+    })));
+    if (rebuilt.length >= 3) return rebuilt.slice(0, 3);
   }
 
   if (isNonfictionExpressGenre(input.genre)) {
+    const theme = seed.split(/[.!?…]/)[0]?.trim() || seed || input.genre;
     return [
       {
         title: "Ricomincia da Te",
@@ -520,7 +563,7 @@ export function generateTitleSubtitleOptions(input: FoundationGeneratorInput): T
         risk: "Titolo comune — compensare con sottotitolo specifico",
       },
       {
-        title: theme.split(/\s+/).slice(0, 4).join(" ") || "Oltre il Blocco",
+        title: lead ? `Il Metodo di ${lead}` : "Oltre il Blocco",
         subtitle: `Guida ${input.tone} con esercizi, casi reali e piano settimanale misurabile`,
         commercialReason: "Specifico sul tema dell'utente",
         toneFit: input.tone,
@@ -586,7 +629,7 @@ export function generateTitleSubtitleOptions(input: FoundationGeneratorInput): T
         risk: "Meno aderente al seed specifico",
       },
       {
-        title: theme.split(/\s+/).slice(0, 3).join(" ") || "Oltre la Soglia",
+        title: lead ? `Il Destino di ${lead}` : "Oltre la Soglia",
         subtitle: `Un mondo ${input.tone} dove una scelta irreversibile definisce chi sopravvive alla propria storia`,
         commercialReason: "Aderente all'idea breve dell'utente",
         toneFit: input.tone,
@@ -615,19 +658,49 @@ export function generateTitleSubtitleOptions(input: FoundationGeneratorInput): T
         risk: "Richiede setting coerente",
       },
       {
-        title: theme.slice(0, 40) || "Non Guardare Indietro",
+        title: lead ? `La Stanza di ${lead}` : "Non Guardare Indietro",
         subtitle: "Ogni indizio aumenta la posta in gioco — finché la verità diventa insopportabile",
         commercialReason: "Tensione escalante",
         toneFit: input.tone,
         genreFit: "thriller horror",
-        risk: "Titolo dipende dalla qualità del seed",
+        risk: "Titolo ancorato al protagonista dell'idea",
+      },
+    ];
+  }
+
+  const entityTitle = regenerateTitleFromIdea(titleV2Input);
+  if (entityTitle && !isInvalidGeneratedTitle(entityTitle.title, seed)) {
+    return [
+      {
+        title: entityTitle.title,
+        subtitle: entityTitle.subtitle,
+        commercialReason: entityTitle.commercialReason,
+        toneFit: input.tone,
+        genreFit: input.genre,
+        risk: "Titolo ricostruito dagli elementi distintivi dell'idea",
+      },
+      {
+        title: lead ? `Il Confine di ${lead}` : "Oltre il Confine",
+        subtitle: "Desiderio, paura e una scelta che non può essere disfatta",
+        commercialReason: "Hook emotivo universale",
+        toneFit: input.tone,
+        genreFit: input.genre,
+        risk: "Meno specifico",
+      },
+      {
+        title: "La Ferita che Ti Somiglia",
+        subtitle: `Storia ${input.tone} dove ogni verità ha un prezzo — e qualcuno deve pagarlo`,
+        commercialReason: "Alta tensione commerciale",
+        toneFit: input.tone,
+        genreFit: "fiction",
+        risk: "Più generico",
       },
     ];
   }
 
   return [
     {
-      title: theme.slice(0, 40) || `${input.genre} — ${lead}`,
+      title: lead ? `${lead} e il Segreto` : `Oltre il ${input.genre}`,
       subtitle: `Un ${input.genre} ${input.tone} con tensione emotiva e payoff memorabile`,
       commercialReason: "Aderente a genere e tono",
       toneFit: input.tone,

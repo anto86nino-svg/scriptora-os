@@ -66,6 +66,8 @@ import {
   resolveBlueprintFromAiResponse,
   type BlueprintSource,
 } from "@/lib/blueprint-recovery";
+import { buildBlueprintEntityPromptBlock, enrichBlueprintFromIdeaSeed } from "@/lib/blueprint-entity-enrichment";
+import { applyCleanTextPass } from "@/lib/writer/clean-text-pass";
 import {
   assertProjectReadyForGeneration,
   sanitizeEditorialSummary,
@@ -2695,13 +2697,13 @@ Do not summarize. Do not apologize. Return only clean chapter prose.`,
 
   return {
     ...finalChapter,
-    content: applyFinalManuscriptGuardToText(purityCheckedContent, {
+    content: applyCleanTextPass(applyFinalManuscriptGuardToText(purityCheckedContent, {
       config,
       previousChapters,
       chapterIndex,
       chapterTitle: finalChapter.title,
       writingPlan: chapterWritingPlan,
-    }),
+    }), config.language),
   };
 }
 
@@ -2722,6 +2724,9 @@ export async function generateBlueprint(config: BookConfig, genreLock?: GenreLoc
     ? `\nGENRE STRUCTURE SCAFFOLD${genreLock ? " (LOCKED)" : ""} (use as backbone, expand into ${config.numberOfChapters} chapters):\n${editorialBP.structure.map((s, i) => `${i + 1}. ${s}`).join("\n")}\nMap and expand this scaffold across the ${config.numberOfChapters} chapters — fold/split sections so EVERY chapter advances the editorial structure above.`
     : "";
 
+  const ideaSeed = String((config as BookConfig & { idea?: string }).idea || "").trim();
+  const entityBlock = buildBlueprintEntityPromptBlock(ideaSeed);
+
   const prompt = `Create a detailed book blueprint for:
 Title: "${config.title}"
 Subtitle: "${config.subtitle}"
@@ -2740,6 +2745,8 @@ ${buildGenreBlueprintBlock(config.genre, (config as any).subcategory)}
 ${buildBookTypeEngineBlock(config)}
 
 ${buildBlueprintIntegrityBlueprintRequest(config)}
+
+${entityBlock}
 
 CRITICAL — BESTSELLER QUALITY TITLES:
 - Chapter titles must be EMOTIONALLY COMPELLING — the kind that make readers flip to that page
@@ -2769,7 +2776,7 @@ Return a JSON object with:
     blueprint: BookBlueprint,
     source: BlueprintSource,
   ): Promise<BlueprintGenerationResult> =>
-    enforceBlueprintFormatCoherence(config, blueprint, source, async () => {
+    enforceBlueprintFormatCoherence(config, enrichBlueprintFromIdeaSeed(blueprint, config, ideaSeed), source, async () => {
       try {
         const report = validateFormatCoherence(config, blueprint);
         const corrective = buildFormatCoherenceCorrectivePrompt(config, report);

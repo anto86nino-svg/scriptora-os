@@ -48,12 +48,19 @@ export function EditorScorePro({ content, chapterIndex, config, className }: Edi
     <section className={cn("rounded-2xl border border-white/10 bg-white/[0.03] p-4", className)}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/50">Editor Score Pro</p>
-        {metrics && (
-          <span className="text-[10px] text-white/40">
-            {metrics.repairType !== "none" ? `Riparazione: ${metrics.repairType}` : "Nessuna riparazione"}
-            {metrics.retryCount > 0 ? ` · ${metrics.retryCount} retry` : ""}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {report.provisional && (
+            <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-200">
+              Provvisorio
+            </span>
+          )}
+          {metrics && (
+            <span className="text-[10px] text-white/40">
+              {metrics.repairType !== "none" ? `Riparazione: ${metrics.repairType}` : "Nessuna riparazione"}
+              {metrics.retryCount > 0 ? ` · ${metrics.retryCount} retry` : ""}
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

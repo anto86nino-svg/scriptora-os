@@ -27,6 +27,9 @@ import {
   normalizeLengthPreset,
   resolveLengthPresetConfig,
 } from "./book-foundation-lock";
+import { buildEntityAwareChapterScaffold, hasRichIdeaEntities } from "@/lib/blueprint-entity-enrichment";
+import { resolveNarrativePromise } from "@/lib/narrative-promise-intelligence";
+import { regenerateTitleFromIdea } from "@/lib/title-intelligence-validation";
 
 export type { ExpressScenarioVariant } from "./express-genre-config";
 import {
@@ -334,6 +337,14 @@ function defaultSettingForGenre(genre: string): string {
 
 function defaultTitleForGenre(input: ExpressForgeInput, variant: ExpressScenarioVariant): string {
   if (input.title?.trim()) return input.title.trim();
+
+  const seed = ideaCore(input);
+  const regenerated = regenerateTitleFromIdea({
+    idea: seed,
+    genre: input.genre,
+    language: input.language,
+  });
+  if (regenerated?.title) return regenerated.title;
 
   if (isScifiGenre(input.genre)) {
     return variant === "bold"
@@ -689,7 +700,22 @@ function buildCharacters(
   return [protagonist, antagonist];
 }
 
-function buildChapterSeeds(count: number, genre: string, variant: ExpressScenarioVariant, setting: string): ChapterBlueprintSeed[] {
+function buildChapterSeeds(count: number, genre: string, variant: ExpressScenarioVariant, setting: string, ideaSeed?: string): ChapterBlueprintSeed[] {
+  if (ideaSeed && hasRichIdeaEntities(ideaSeed)) {
+    return buildEntityAwareChapterScaffold(ideaSeed, count).map((beat, i) => ({
+      id: `express-ch-${i + 1}`,
+      chapter: i + 1,
+      title: beat.title,
+      summary: beat.summary,
+      purpose: beat.summary,
+      goal: beat.summary,
+      conflict: beat.summary,
+      hook: beat.summary,
+      expectedSetting: setting,
+      subchapters: [] as [],
+    }));
+  }
+
   const romanceArc = [
     "Arrivo e attrazione pericolosa",
     "Confini che cedono",
@@ -1828,7 +1854,10 @@ export function buildCompleteExpressBookPackage(
       : isHorrorGenre(input.genre)
         ? "Sanità mentale, identità, sopravvivenza e verità sepolta"
         : "Identità, relazioni e futuro — ciò che si perde non torna indietro";
-  const marketPromise = isDarkRomance(input.genre)
+  const marketPromise = resolveNarrativePromise(
+    ideaCore(input),
+    input.genre,
+    isDarkRomance(input.genre)
     ? "Un dark romance claustrofobico dove colpa, desiderio e redenzione sporca si confondono, finché amare qualcuno significa scegliere se bruciare con lui o salvarsi dalle sue fiamme."
     : isFriendsToLoversGenre(input.genre)
       ? `Un romance ${input.tone} friends-to-lovers dove amicizia, prossimità e tensione emotiva costruiscono un payoff credibile — senza tropi dark romance.`
@@ -1840,7 +1869,8 @@ export function buildCompleteExpressBookPackage(
       ? `Un fantasy ${input.tone} dove magia, tradimento e costo del potere costruiscono una promessa epica con payoff emotivo.`
       : isHorrorGenre(input.genre)
         ? `Un horror ${input.tone} dove atmosfera, decadenza e paura crescente trasformano il luogo in minaccia viva e la verità in contagio.`
-        : `Un ${input.genre} ${input.tone} che promette tensione emotiva, payoff memorabile e una storia che resta addosso dopo l'ultima pagina.`;
+        : `Un ${input.genre} ${input.tone} che promette tensione emotiva, payoff memorabile e una storia che resta addosso dopo l'ultima pagina.`,
+  );
   const hook = isDarkRomance(input.genre)
     ? `Tornare nella villa dove sua sorella è morta non era mai stato sicuro — ma scoprire che ${counterpart.name} la desidera è la forma più pericolosa di colpa.`
     : isFantasyGenre(input.genre)
@@ -1913,7 +1943,7 @@ export function buildCompleteExpressBookPackage(
   if (variantCopy.finalEmotion) partial.finalEmotion = variantCopy.finalEmotion;
 
   const characters = buildCharacters(lead, counterpart, partial, input.genre);
-  const chapterBlueprintSeeds = buildChapterSeeds(chapterCount, input.genre, variant, setting);
+  const chapterBlueprintSeeds = buildChapterSeeds(chapterCount, input.genre, variant, setting, ideaCore(input));
   const keyScenes = buildKeyScenes(partial);
 
   const storyRoom: StoryRoomState = {

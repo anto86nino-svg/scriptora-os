@@ -62,6 +62,7 @@ export interface MemorabilityReport {
   problems: string[];
   improvements: string[];
   needsLocalPatch: boolean;
+  provisional: boolean;
 }
 
 const PREDICTABLE_TROPES = [
@@ -310,6 +311,33 @@ function buildLocalPatchHints(text: string, issues: MemorabilityIssue[], languag
   return hints.slice(0, 3);
 }
 
+function countWords(text: string): number {
+  return String(text || "").trim().split(/\s+/).filter(Boolean).length;
+}
+
+function resolveChapterTargetWords(context: MemorabilityContext): number {
+  const config = context.config;
+  if (!config) return 2500;
+  const chapters = Number(config.numberOfChapters) > 0 ? Number(config.numberOfChapters) : 12;
+  const bookLength = String(config.bookLength || "medium");
+  const totalWords = bookLength === "short" ? 40000 : bookLength === "long" ? 120000 : 70000;
+  const base = Math.round(totalWords / chapters);
+  const chapterLength = String(config.chapterLength || "medium");
+  const multiplier = chapterLength === "short" ? 0.6 : chapterLength === "long" ? 1.5 : 1;
+  return Math.round(base * multiplier);
+}
+
+export function isProvisionalChapterScore(content: string, context: MemorabilityContext = {}): boolean {
+  if (!context.config) return false;
+  const words = countWords(content);
+  const target = resolveChapterTargetWords(context);
+  return words > 0 && words < target * 0.45;
+}
+
+function applyProvisionalScoreCap(value: number, provisional: boolean): number {
+  return provisional ? Math.min(value, 62) : value;
+}
+
 function fillTemplate(template: string, kind: LocalPatchHintKind, italian: boolean): string {
   const fillers: Record<LocalPatchHintKind, Record<string, string>> = {
     memorable_image: { image: italian ? "luce tagliata sul bordo del vetro" : "light fractured along the glass edge" },
@@ -328,6 +356,7 @@ function fillTemplate(template: string, kind: LocalPatchHintKind, italian: boole
 export function evaluateMemorability(chapterText: string, context: MemorabilityContext = {}): MemorabilityReport {
   const text = String(chapterText || "").trim();
   const issues = detectAntiSafeWritingIssues(text);
+  const provisional = isProvisionalChapterScore(text, context);
 
   const predictability = clampScore(35 + countMatches(text, PREDICTABLE_TROPES) * 18 + countMatches(text, GENERIC_IMAGERY) * 10);
   const emotionalSurprise = clampScore(72 - countMatches(text, PREDICTABLE_TROPES) * 15 + countMatches(text, TENSION_MARKERS) * 4);
@@ -370,28 +399,34 @@ export function evaluateMemorability(chapterText: string, context: MemorabilityC
     return "Differenzia i gesti dei personaggi nel dialogo.";
   });
 
-  const needsLocalPatch = memorability < 62 || issues.some((i) => i.severity === "high");
+  const needsLocalPatch = !provisional && (memorability < 62 || issues.some((i) => i.severity === "high"));
+  const cappedScores = {
+    predictability: applyProvisionalScoreCap(predictability, provisional),
+    emotionalSurprise: applyProvisionalScoreCap(emotionalSurprise, provisional),
+    sceneIdentity: applyProvisionalScoreCap(sceneIdentity, provisional),
+    characterDistinction: applyProvisionalScoreCap(characterDistinction, provisional),
+    memorability: applyProvisionalScoreCap(memorability, provisional),
+    originality: applyProvisionalScoreCap(originality, provisional),
+    narrativeQuality: applyProvisionalScoreCap(narrativeQuality, provisional),
+    dialogue: applyProvisionalScoreCap(dialogue, provisional),
+    tension: applyProvisionalScoreCap(tension, provisional),
+    coherence: applyProvisionalScoreCap(coherence, provisional),
+    rhythm: applyProvisionalScoreCap(rhythm, provisional),
+    repetitions: applyProvisionalScoreCap(repetitions, provisional),
+  };
 
   return {
-    scores: {
-      predictability,
-      emotionalSurprise,
-      sceneIdentity,
-      characterDistinction,
-      memorability,
-      originality,
-      narrativeQuality,
-      dialogue,
-      tension,
-      coherence,
-      rhythm,
-      repetitions,
-    },
+    scores: cappedScores,
     issues,
     localPatchHints,
-    problems,
-    improvements,
+    problems: provisional
+      ? ["Capitolo incompleto rispetto al target: punteggio provvisorio.", ...problems]
+      : problems,
+    improvements: provisional
+      ? ["Completa il capitolo prima di considerare il punteggio definitivo.", ...improvements]
+      : improvements,
     needsLocalPatch,
+    provisional,
   };
 }
 
