@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { ArrowLeft, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,12 +26,6 @@ export function DedicatedToolScreen({
   maxWidthClass = "max-w-3xl",
   panelId,
 }: Props) {
-  useEffect(() => {
-    if (!open) return;
-    document.body.classList.add("scriptora-dashboard-tool-open");
-    return () => document.body.classList.remove("scriptora-dashboard-tool-open");
-  }, [open]);
-
   if (!open) return null;
 
   return (

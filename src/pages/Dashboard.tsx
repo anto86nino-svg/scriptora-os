@@ -203,6 +203,8 @@ export default function Dashboard() {
   const closeAllDashboardTools = useCallback(() => {
     setActiveDashboardTool(null);
     setBookForgeHandoff(null);
+    setShowMobileMoreMenu(false);
+    resetRouteScroll();
   }, []);
 
   const navigateFromDashboard = useCallback((path: string, state?: Record<string, unknown>) => {
@@ -261,6 +263,8 @@ export default function Dashboard() {
     document.body.classList.add("scriptora-dashboard-tool-open");
     return () => document.body.classList.remove("scriptora-dashboard-tool-open");
   }, [activeDashboardTool]);
+
+  useEffect(() => () => resetRouteScroll(), []);
 
   const [activeRun, setActiveRun] = useState<{ runId: string; title: string; startedAt: number } | null>(null);
 
@@ -547,6 +551,11 @@ export default function Dashboard() {
     };
 
     const handoff = buildBookForgeHandoff("preset-forge", {
+      title: preset.label,
+      subtitle: preset.subtitle,
+      authorName: activeAuthor.penName,
+      authorIdentityId: activeAuthor.id,
+      authorIdentity: activeAuthor,
       bookType: preset.id,
       bookTypeId: preset.id,
       genre: presetGenreById[preset.id] || "education",
@@ -605,6 +614,11 @@ export default function Dashboard() {
           };
 
     openNewBookGuarded(buildBookForgeHandoff("preset-forge", {
+      title: formatId === "workbook" ? "Workbook" : "Memoir",
+      subtitle: hints.subtitle,
+      authorName: activeAuthor.penName,
+      authorIdentityId: activeAuthor.id,
+      authorIdentity: activeAuthor,
       ...hints,
       language: toBookLanguage(bookLang),
       chapterCount: formatId === "workbook" ? 10 : 12,
@@ -645,7 +659,10 @@ export default function Dashboard() {
     panelHandledRef.current = key;
 
     if (panel === "advanced-tools") {
-      navigate("/os/scrittura?open=advanced-tools", { replace: true });
+      setAdvancedLaunchpadEnabled(true);
+      setShowAdvancedLaunchpad(true);
+      openDashboardTool("advanced-tools");
+      navigate("/dashboard", { replace: true });
       return;
     }
     if (panel === "packaging") {
@@ -653,7 +670,7 @@ export default function Dashboard() {
         scrollElementIntoViewWithOffset(packagingAnchorRef.current, { behavior: "smooth" });
       });
     }
-  }, [location.search, openDashboardTool]);
+  }, [location.search, openDashboardTool, navigate]);
 
   useEffect(() => {
     if (activeDashboardTool === "advanced-tools") {

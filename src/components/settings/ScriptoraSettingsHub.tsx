@@ -116,7 +116,7 @@ export function ScriptoraSettingsHub({
   return (
     <div className="scriptora-modal-overlay fixed inset-0 z-[90] flex items-end justify-center bg-black/70 p-0 backdrop-blur-md sm:items-center sm:p-4">
       <div
-        className="scriptora-modal-panel scriptora-settings-hub flex w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-slate-950/95 shadow-[0_30px_100px_rgba(0,0,0,0.55)] sm:rounded-3xl"
+        className="scriptora-modal-panel scriptora-settings-hub flex max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] w-full max-w-5xl flex-col overflow-hidden rounded-t-3xl border border-white/15 bg-slate-950/95 shadow-[0_30px_100px_rgba(0,0,0,0.55)] sm:max-h-[min(92dvh,900px)] sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5 safe-area-pt">

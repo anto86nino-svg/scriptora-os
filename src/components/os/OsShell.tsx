@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { resetRouteScroll } from "@/lib/one-flow/dashboard-navigation";
 
 interface OsShellProps {
   title: string;
@@ -50,7 +51,10 @@ export function OsShell({ title, subtitle, badge, backTo = "/dashboard", childre
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
-              onClick={() => navigate(backTo)}
+              onClick={() => {
+                resetRouteScroll();
+                navigate(backTo);
+              }}
               className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${theme.button}`}
               aria-label="Torna indietro"
             >

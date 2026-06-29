@@ -6,6 +6,7 @@ import {
   readDashboardReturnState,
   type DashboardReturnContext,
 } from "@/lib/one-flow/dashboard-return-context";
+import { resetRouteScroll } from "@/lib/one-flow/dashboard-navigation";
 
 export function useDashboardReturn() {
   const location = useLocation();
@@ -17,6 +18,7 @@ export function useDashboardReturn() {
   );
 
   const goBackToDashboard = useCallback(() => {
+    resetRouteScroll();
     navigate(getDashboardReturnPath(returnContext));
   }, [navigate, returnContext]);
 

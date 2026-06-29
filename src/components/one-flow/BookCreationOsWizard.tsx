@@ -2051,6 +2051,7 @@ const persistDraft = useCallback(() => {
                 onSelect={applyGuidedStarter}
               />
 
+              {!bookForgeHandoff && (
               <div className="rounded-2xl border border-violet-400/20 bg-violet-500/10 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -2106,8 +2107,9 @@ const persistDraft = useCallback(() => {
                   </div>
                 )}
               </div>
+              )}
 
-              {!useGuidedInterview && (
+              {!useGuidedInterview && !bookForgeHandoff && (
                 <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-3">
                   <p className="text-sm font-semibold text-white">Modalità manuale</p>
                   <p className="mt-1 text-xs leading-5 text-white/55">
