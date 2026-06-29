@@ -92,6 +92,18 @@ import {
   repairFormatPurityText,
   validateFormatPurity,
 } from "../../supabase/functions/_shared/format-purity-engine.ts";
+import {
+  applyMemorabilityLocalPatch,
+  evaluateMemorability,
+  MAX_QUALITY_REPAIR_ATTEMPTS,
+  runMemorabilityPreHumanPass,
+} from "@/lib/writer/memorability-engine";
+import {
+  getWriterRetryCount,
+  incrementWriterRetryCount,
+  recordWriterPerformanceMetric,
+  resetWriterRetryCount,
+} from "@/lib/writer/writer-performance-metrics";
 
 /**
  * Verbose streaming logs are off by default — they intasavano la console
@@ -1500,6 +1512,52 @@ async function enforceChapterFormatPurityBeforeSave(
   return deterministic.changed ? deterministic.text : chapterText;
 }
 
+function applyMemorabilityRepairFallback(
+  chapterText: string,
+  context: {
+    config: BookConfig;
+    chapterIndex: number;
+    chapterTitle: string;
+  },
+  reason: string,
+): string {
+  const memorability = evaluateMemorability(chapterText, {
+    language: context.config.language,
+    genre: context.config.genre,
+    bookTitle: context.config.title,
+    chapterTitle: context.chapterTitle,
+    chapterIndex: context.chapterIndex,
+    config: context.config,
+  });
+  const patched = applyMemorabilityLocalPatch(
+    chapterText,
+    memorability.localPatchHints,
+    context.config.language,
+  );
+  if (patched !== chapterText) {
+    recordWriterPerformanceMetric({
+      chapterIndex: context.chapterIndex,
+      retryCount: getWriterRetryCount(),
+      repairType: "local",
+      memorabilityBefore: memorability.scores.memorability,
+      memorabilityAfter: evaluateMemorability(patched, {
+        language: context.config.language,
+        genre: context.config.genre,
+        bookTitle: context.config.title,
+        chapterTitle: context.chapterTitle,
+        chapterIndex: context.chapterIndex,
+        config: context.config,
+      }).scores.memorability,
+    });
+    writingQualityGateDevLog("WRITING_QUALITY_LOCAL_PATCH_APPLIED", {
+      chapterIndex: context.chapterIndex + 1,
+      reason,
+    });
+    return patched;
+  }
+  return chapterText;
+}
+
 async function repairChapterWritingQualityIfNeeded(
   chapterText: string,
   context: {
@@ -1533,6 +1591,11 @@ async function repairChapterWritingQualityIfNeeded(
         issues: summarizeWritingQualityReport(report),
       });
     }
+    recordWriterPerformanceMetric({
+      chapterIndex: context.chapterIndex,
+      retryCount: getWriterRetryCount(),
+      repairType: "none",
+    });
     return chapterText;
   }
 
@@ -1542,7 +1605,12 @@ async function repairChapterWritingQualityIfNeeded(
     issues: summarizeWritingQualityReport(report),
   });
 
+  if (getWriterRetryCount() >= MAX_QUALITY_REPAIR_ATTEMPTS) {
+    return applyMemorabilityRepairFallback(chapterText, context, "retry_cap_reached");
+  }
+
   try {
+    incrementWriterRetryCount();
     const repairedText = await callAIReduced(
       `${getSystemPrompt(context.config, context.genreLock)}
 
@@ -1572,7 +1640,7 @@ Surgical narrative quality repair. Preserve canon, blueprint, plot, POV, charact
         chapterIndex: context.chapterIndex + 1,
         reason: "empty_repair",
       });
-      return chapterText;
+      return applyMemorabilityRepairFallback(chapterText, context, "empty_repair");
     }
 
     const repairedReport = validateNarrativeChapterQuality(cleanRepairedText, {
@@ -1589,7 +1657,7 @@ Surgical narrative quality repair. Preserve canon, blueprint, plot, POV, charact
         repairedScore: repairedReport.score,
         issues: summarizeWritingQualityReport(repairedReport),
       });
-      return chapterText;
+      return applyMemorabilityRepairFallback(chapterText, context, "repair_regressed");
     }
 
     writingQualityGateDevLog("WRITING_QUALITY_REPAIR_PASSED", {
@@ -1598,13 +1666,18 @@ Surgical narrative quality repair. Preserve canon, blueprint, plot, POV, charact
       repairedScore: repairedReport.score,
       remainingIssues: summarizeWritingQualityReport(repairedReport),
     });
+    recordWriterPerformanceMetric({
+      chapterIndex: context.chapterIndex,
+      retryCount: getWriterRetryCount(),
+      repairType: "surgical_ai",
+    });
     return cleanRepairedText;
   } catch (error) {
     writingQualityGateDevLog("WRITING_QUALITY_REPAIR_FAILED", {
       chapterIndex: context.chapterIndex + 1,
       reason: error instanceof Error ? error.message : String(error),
     });
-    return chapterText;
+    return applyMemorabilityRepairFallback(chapterText, context, "repair_error");
   }
 }
 
@@ -1920,6 +1993,7 @@ export async function generateChapterChunked(
   },
 ): Promise<Chapter> {
   config = withSanitizedConfig(config);
+  resetWriterRetryCount();
   const runtimeProject: BookProject = {
     id: opts?.usage?.projectId || "runtime",
     config,
@@ -2503,8 +2577,10 @@ Do not summarize. Do not apologize. Return only clean chapter prose.`,
   const constitutionRetry = buildStoryConstitutionRetryInstruction(supremePass.analysis);
 
   if (!ultraPass.quality.passed && ultraPass.quality.composite < 58 && (ultraPass.retryInstruction || constitutionRetry)) {
-    try {
-      const retryText = await callAIReduced(
+    if (getWriterRetryCount() < MAX_QUALITY_REPAIR_ATTEMPTS) {
+      try {
+        incrementWriterRetryCount();
+        const retryText = await callAIReduced(
         getSystemPrompt(config, genreLock) + " Surgical quality retry — preserve author voice and genre. Fix only the listed issues.",
         `Improve this chapter text surgically. Scores: repetition=${ultraPass.quality.emotionalRepetition}, dialogue=${ultraPass.quality.dialogueHumanity}, progression=${ultraPass.quality.sceneProgression}.\n${ultraPass.retryInstruction}\n${constitutionRetry}\n\nTEXT (last segment):\n${accumulatedContent.slice(-4000)}`,
         withUsage(opts?.usage, {
@@ -2540,9 +2616,55 @@ Do not summarize. Do not apologize. Return only clean chapter prose.`,
           priorText,
         }).text;
       }
-    } catch {
-      /* keep original on retry failure */
+      } catch {
+        accumulatedContent = applyMemorabilityLocalPatch(
+          accumulatedContent,
+          evaluateMemorability(accumulatedContent, {
+            language: config.language,
+            genre: config.genre,
+            bookTitle: config.title,
+            chapterIndex,
+            config,
+          }).localPatchHints,
+          config.language,
+        );
+      }
+    } else {
+      accumulatedContent = applyMemorabilityLocalPatch(
+        accumulatedContent,
+        evaluateMemorability(accumulatedContent, {
+          language: config.language,
+          genre: config.genre,
+          bookTitle: config.title,
+          chapterIndex,
+          config,
+        }).localPatchHints,
+        config.language,
+      );
+      recordWriterPerformanceMetric({
+        chapterIndex,
+        retryCount: getWriterRetryCount(),
+        repairType: "local",
+      });
     }
+  }
+
+  const memorabilityPass = runMemorabilityPreHumanPass(accumulatedContent, {
+    language: config.language,
+    genre: config.genre,
+    bookTitle: config.title,
+    chapterIndex,
+    config,
+  });
+  accumulatedContent = memorabilityPass.text;
+  if (memorabilityPass.appliedLocalPatch) {
+    recordWriterPerformanceMetric({
+      chapterIndex,
+      retryCount: getWriterRetryCount(),
+      repairType: "local",
+      memorabilityBefore: evaluateMemorability(memorabilityPass.text, { language: config.language, genre: config.genre }).scores.memorability,
+      memorabilityAfter: memorabilityPass.report.scores.memorability,
+    });
   }
 
   const finalChapter = humanizeChapter({

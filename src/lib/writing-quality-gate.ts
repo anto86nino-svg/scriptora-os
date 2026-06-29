@@ -1,4 +1,5 @@
 import type { BookConfig } from "@/types/book";
+import { detectAntiSafeWritingIssues } from "@/lib/writer/memorability-engine";
 import {
   resolveBookKernel,
   validateFormatCoherence,
@@ -21,7 +22,11 @@ export type WritingQualityIssueKind =
   | "stagnant_character_dynamic"
   | "vague_final_hook"
   | "format_contamination"
-  | "genre_dominance_weak";
+  | "genre_dominance_weak"
+  | "predictable_trope"
+  | "explained_dialogue"
+  | "early_reconciliation"
+  | "missing_subtext";
 
 export type WritingQualitySeverity = "critical" | "high" | "medium" | "low";
 
@@ -426,6 +431,28 @@ function detectGenreDominanceWeak(chapterText: string, context: WritingQualityGa
   }];
 }
 
+function detectAntiSafeWritingQualityIssues(text: string): WritingQualityIssue[] {
+  const allowed = new Set<WritingQualityIssueKind>([
+    "predictable_trope",
+    "explained_dialogue",
+    "early_reconciliation",
+    "missing_subtext",
+  ]);
+  return detectAntiSafeWritingIssues(text)
+    .filter((issue) => allowed.has(issue.kind as WritingQualityIssueKind))
+    .map((issue) => ({
+      kind: issue.kind as WritingQualityIssueKind,
+      severity: issue.severity,
+      message: issue.message,
+      evidence: issue.evidence,
+      repairInstruction: issue.kind === "early_reconciliation"
+        ? "Mantieni attrito residuo, silenzi o domande non risolte prima di ogni riconciliazione."
+        : issue.kind === "missing_subtext" || issue.kind === "explained_dialogue"
+          ? "Sostituisci dichiarazioni esplicite con gesti, silenzi e risposte evasive."
+          : "Aggiungi un dettaglio specifico del mondo del libro invece di pattern narrativi sicuri.",
+    }));
+}
+
 export function validateNarrativeChapterQuality(
   chapterText: string,
   context: WritingQualityGateContext = {},
@@ -439,6 +466,7 @@ export function validateNarrativeChapterQuality(
     ...detectVagueFinalHook(chapterText),
     ...detectFormatContamination(chapterText, context),
     ...detectGenreDominanceWeak(chapterText, context),
+    ...detectAntiSafeWritingQualityIssues(chapterText),
   ];
   const penalty = issues.reduce((sum, issue) => sum + severityPenalty(issue.severity), 0);
   const score = Math.max(0, Math.min(100, 100 - penalty));

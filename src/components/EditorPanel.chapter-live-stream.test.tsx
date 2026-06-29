@@ -1,4 +1,3 @@
-import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { BookProject } from "@/types/book";
 import type { ChunkProgress } from "@/lib/generation-types";
@@ -47,16 +46,17 @@ function project(): BookProject {
   };
 }
 
-describe("EditorPanel Chapter Forge live manuscript", () => {
-  it("renders partial chunkProgress content while the chapter is generating", () => {
+describe("EditorPanel Chapter Forge live stream V2", () => {
+  it("shows status lines instead of full manuscript preview while generating", async () => {
+    const { render, screen } = await import("@testing-library/react");
     const chunkProgress: ChunkProgress = {
       chunkIndex: 0,
       totalChunks: 1,
       currentWords: 7,
       targetWords: 1200,
       phase: "OPENING",
-      content: "Prime parole del capitolo in streaming.",
-      statusMessage: "Scrittura live del capitolo...",
+      content: "Prime parole del capitolo in streaming con un paragrafo molto lungo che non deve apparire per intero nel pannello live.",
+      statusMessage: "Continuity e apertura scena…",
     };
 
     render(
@@ -76,11 +76,12 @@ describe("EditorPanel Chapter Forge live manuscript", () => {
         onSetChapterLengthOverride={vi.fn()}
         isGeneratingSection={(key) => key === "chapter-0"}
         chunkProgress={{ "chapter-0": chunkProgress }}
+        premiumWriter
       />,
     );
 
-    expect(screen.getByText("Manoscritto live")).toBeInTheDocument();
-    expect(screen.getByText("Prime parole del capitolo in streaming.")).toBeInTheDocument();
-    expect(screen.queryByText(/Nessun testo ricevuto ancora/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Live Stream V2")).toBeInTheDocument();
+    expect(screen.queryByText(/Prime parole del capitolo in streaming con un paragrafo molto lungo/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/Continuity: allineo blueprint/i)).toBeInTheDocument();
   });
 });

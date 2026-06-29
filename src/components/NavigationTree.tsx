@@ -91,6 +91,16 @@ export function NavigationTree({ project, activeSection, onSelectSection, genera
 
   return (
     <nav className={cn("scrollbar-thin flex-1 overflow-y-auto px-2 py-2", variant === "premium" && "scriptora-story-nav px-3")}>
+      {variant === "premium" && (
+        <div className="mb-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">Indice libro</p>
+          <p className="mt-1 line-clamp-2 text-sm font-semibold text-white">{config.title || "Senza titolo"}</p>
+          <p className="mt-1 text-[10px] text-white/45">
+            {blueprint?.chapterOutlines?.length ?? config.numberOfChapters} capitoli
+            {config.subchaptersEnabled ? " · sottocapitoli attivi" : ""}
+          </p>
+        </div>
+      )}
       {variant === "default" && (
       <div className="ios-glass-soft mb-2 space-y-2 rounded-lg px-3 py-2">
         <BookTypeBadge config={config} className="w-full justify-center" />

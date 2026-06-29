@@ -36,6 +36,8 @@ import {
   type EditorialCleanupResult,
 } from "@/lib/editorial-cleanup";
 import { buildChapterEditorialOutcome, REWRITE_LEVEL_LABELS, type ChapterEditorialOutcome } from "@/lib/chapter-editorial-tools";
+import { EditorScorePro } from "@/components/writer/EditorScorePro";
+import { WRITER_STREAM_STATUS_LINES } from "@/lib/writer/live-stream-status";
 
 interface EditorPanelProps {
   project: BookProject;
@@ -1679,6 +1681,13 @@ function ChapterView({
           </div>
           <div className="scriptora-chapter-reading-scroll max-h-[min(72dvh,760px)] overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 lg:px-8">
             <div className="mx-auto w-full max-w-[74ch] space-y-6">
+              {premiumWriter && (
+                <EditorScorePro
+                  content={chapter?.content || ""}
+                  chapterIndex={chapterIndex}
+                  config={project.config}
+                />
+              )}
               {!premiumWriter && <AIRatingCard rating={chapter.aiRating} />}
               <EditableBlock content={chapter.content} onChange={onUpdateContent} ws={ws} premium={premiumWriter} />
               {showFreeWatermark && (
@@ -2022,20 +2031,18 @@ const EditableTitle = memo(function EditableTitle({
 
 
 const CHAPTER_FORGE_STEPS = [
-  "Preparazione memoria narrativa",
-  "Analisi continuity",
-  "Costruzione tensione",
-  "Human realism pass",
-  "Scrittura manoscritto",
+  "Continuity",
+  "Scene build",
+  "Tensione emotiva",
+  "Human pass",
   "Rifinitura finale",
 ] as const;
 
 const CHAPTER_FORGE_COPY = [
-  "Carico memoria narrativa e continuità del libro…",
-  "Verifico coerenza con blueprint e personaggi…",
-  "Calibro tensione emotiva e ritmo del capitolo…",
-  "Applico pass qualità e realismo narrativo…",
-  "Sto scrivendo il manoscritto in streaming…",
+  "Verifico continuità con blueprint e memoria narrativa…",
+  "Costruisco la scena e il ritmo del capitolo…",
+  "Calibro tensione emotiva e attrito narrativo…",
+  "Applico human pass e realismo…",
   "Rifinitura finale prima della consegna…",
 ] as const;
 
@@ -2107,26 +2114,14 @@ function resolveChapterForgeStep(
   }
   const phaseBase: Record<string, number> = {
     OPENING: 0,
-    DEVELOPMENT: 2,
-    EXPANSION: 3,
-    TRANSITION: 4,
-    CLOSURE: 5,
+    DEVELOPMENT: 1,
+    EXPANSION: 2,
+    TRANSITION: 3,
+    CLOSURE: 4,
   };
   const base = phaseBase[chunkProgress.phase] ?? 1;
   const pctStep = Math.floor((realPct / 100) * (CHAPTER_FORGE_STEPS.length - 1));
   return Math.min(CHAPTER_FORGE_STEPS.length - 1, Math.max(base, pctStep));
-}
-
-function getCompactLiveStreamLines(content: string): string[] {
-  const normalized = content
-    .replace(/\r/g, "")
-    .replace(/^#+\s*.+$/gm, "")
-    .trim();
-  if (!normalized) return [];
-  const paragraphs = normalized.split(/\n{2,}/).map((part) => part.trim()).filter(Boolean);
-  const tail = paragraphs.slice(-2).join("\n\n");
-  const lines = tail.split(/\n+/).map((line) => line.trim()).filter(Boolean);
-  return lines.length <= 6 ? lines : lines.slice(-6);
 }
 
 const GenerationProgress = memo(function GenerationProgress({
@@ -2194,7 +2189,10 @@ const GenerationProgress = memo(function GenerationProgress({
             ? "Il modello sta preparando l'apertura del capitolo..."
             : "Nessun testo ricevuto ancora: Scriptora sta attendendo il primo blocco dal modello...";
 
-  const streamLines = getCompactLiveStreamLines(liveContent);
+  const streamLines = useMemo(
+    () => (WRITER_STREAM_STATUS_LINES[activeStep] ?? WRITER_STREAM_STATUS_LINES[0]).slice(0, 5),
+    [activeStep],
+  );
   const chapterTitle = resolveChapterTitle(outline?.title || "", chapterIndex, {
     config: project.config,
     summary: outline?.summary,
@@ -2279,19 +2277,18 @@ const GenerationProgress = memo(function GenerationProgress({
       <div className="scriptora-chapter-live-stream">
         <div className="scriptora-chapter-live-stream-head">
           <PenLine className="h-3.5 w-3.5 text-emerald-200" />
-          <span>Manoscritto live</span>
+          <span>Live Stream V2</span>
         </div>
         <div ref={streamRef} className="scriptora-chapter-live-stream-body">
           {streamLines.length > 0 ? (
             streamLines.map((line, index) => (
-              <p key={`${index}-${line.slice(0, 12)}`}>{line}</p>
+              <p key={`${index}-${line.slice(0, 12)}`} className="text-white/75">{line}</p>
             ))
           ) : (
             <div className="scriptora-chapter-live-stream-placeholder">
               <p>{dynamicStatusMessage}</p>
             </div>
           )}
-          {liveContent && <span className="scriptora-generation-caret" aria-hidden="true" />}
         </div>
       </div>
 
