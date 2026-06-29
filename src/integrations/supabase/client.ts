@@ -3,9 +3,11 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+// Prefer the legacy anon JWT for auth — it is fully compatible with OAuth PKCE
+// token exchange. Fall back to publishable keys when anon is not configured.
 const SUPABASE_KEY =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  import.meta.env.VITE_SUPABASE_ANON_KEY;
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 /** True when VITE_SUPABASE_* were present at build/dev time. */
 export const isSupabaseConfigured = !!(SUPABASE_URL && SUPABASE_KEY);
@@ -42,7 +44,9 @@ export const supabase = isSupabaseConfigured
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: false,
+        // PKCE OAuth callbacks (?code=) are exchanged on client bootstrap.
+        // Implicit-flow hash tokens are stripped above before createClient runs.
+        detectSessionInUrl: true,
         flowType: "pkce",
       },
     })

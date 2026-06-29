@@ -10,8 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { requestAppEntryLoading } from "@/lib/app-entry-loading";
+import { hasValidConsent } from "@/lib/legal-consent";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 import { getUserFriendlyError } from "@/lib/user-friendly-error";
+
+const OAUTH_CALLBACK_HANDLED_KEY = "scriptora:oauth-callback-handled";
 
 const AUTH_DEBUG_PREFIX = "[auth-debug]";
 
@@ -175,6 +178,18 @@ export default function AuthPage() {
     if (redirectingRef.current) return;
     redirectingRef.current = true;
     clearAuthCallbackUrl();
+    try {
+      sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
+    } catch {
+      /* private mode */
+    }
+    if (!hasValidConsent()) {
+      navigate("/?legalRequired=true", {
+        replace: true,
+        state: { legalReturnTo: "/dashboard", fromAuth: true },
+      });
+      return;
+    }
     requestAppEntryLoading();
     redirectToDashboard(navigate);
   }, [navigate]);
@@ -264,36 +279,42 @@ export default function AuthPage() {
         return;
       }
 
-      callbackHandledRef.current = true;
-
-      if (code) {
-        logAuthDebug("exchangeCodeForSession start", { hasCode: true });
-        const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        logAuthDebug("exchangeCodeForSession result", {
-          session: summarizeSession(exchangeData.session),
-          userId: exchangeData.user?.id ?? null,
-          userEmail: exchangeData.user?.email ?? null,
-          error: summarizeAuthError(exchangeError),
-        });
-        if (cancelled) return;
-        if (exchangeData.session?.user) {
-          goToDashboard();
+      const callbackFingerprint = code || error || "oauth-callback";
+      try {
+        if (sessionStorage.getItem(OAUTH_CALLBACK_HANDLED_KEY) === callbackFingerprint) {
+          await finishIfSessionExists(false);
           return;
         }
-        if (exchangeError) {
-          console.warn(AUTH_DEBUG_PREFIX, "OAuth code exchange failed", summarizeAuthError(exchangeError));
-          clearAuthCallbackUrl();
-          setAuthenticating(false);
-          setBusy(false);
-          toast.error(tt("google_access_incomplete_with_error", { message: exchangeError.message }));
-          return;
-        }
+        sessionStorage.setItem(OAUTH_CALLBACK_HANDLED_KEY, callbackFingerprint);
+      } catch {
+        /* private mode */
       }
 
+      callbackHandledRef.current = true;
+      logAuthDebug("OAuth callback waiting for session", { hasCode: !!code, detectSessionInUrl: true });
+
+      // With detectSessionInUrl + PKCE, Supabase exchanges ?code= during client bootstrap.
+      // Wait for the persisted session instead of calling exchangeCodeForSession again.
       await finishIfSessionExists(true);
     };
 
-    completeOAuthCallback();
+    completeOAuthCallback().catch((callbackError) => {
+      if (cancelled) return;
+      console.error(AUTH_DEBUG_PREFIX, "OAuth callback failed", callbackError);
+      clearAuthCallbackUrl();
+      setAuthenticating(false);
+      setBusy(false);
+      try {
+        sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
+      } catch {
+        /* private mode */
+      }
+      toast.error(tt("google_access_incomplete_with_error", {
+        message: getUserFriendlyError(callbackError, {
+          fallback: t("google_access_incomplete"),
+        }),
+      }));
+    });
 
     return () => {
       cancelled = true;
