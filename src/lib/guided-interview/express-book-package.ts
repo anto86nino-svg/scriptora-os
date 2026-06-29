@@ -29,23 +29,50 @@ import {
 } from "./book-foundation-lock";
 import { buildEntityAwareChapterScaffold, buildFormatAwareChapterScaffold, hasRichIdeaEntities } from "@/lib/blueprint-entity-enrichment";
 import {
+  buildBusinessRestaurantSubtitle,
+  buildBusinessRestaurantTitle,
+  buildCookbookChapterTitles,
+  buildCookbookMediterraneanTitle,
+  buildDragonFlameFantasySubtitle,
+  buildDragonFlameFantasyTitle,
+  buildHospitalMemoirSubtitle,
+  buildHospitalMemoirTitle,
+  buildHospitalMemoirChapterTitles,
+  buildHorrorStationSubtitle,
+  buildHorrorStationTitle,
   buildMemoirChapterTitles,
+  buildPhotographyManualSubtitle,
+  buildPhotographyManualTitle,
   buildSubmergedCitySecondaryCast,
   buildSubmergedCitySubtitle,
   buildSubmergedCityTitle,
   buildSupernaturalThrillerSecondaryCast,
   buildSupernaturalThrillerSubtitle,
   buildTimeAnchoredTitle,
+  expandChapterScaffold,
+  type ChapterScaffoldFormat,
   extractConceptProtagonist,
   extractSubmergedCityLabel,
   extractSubmergedCityRole,
   extractTimeAnchor,
+  hasBusinessRestaurantSignals,
+  hasCookbookMediterraneanSignals,
+  hasDragonFlameFantasySignals,
+  hasHospitalGuardianMemoirSignals,
+  hasHorrorStationSignals,
+  hasPhotographyManualSignals,
   hasSubmergedCitySciFiSignals,
   hasSupernaturalThrillerSignals,
+  isSparseConceptInput,
   resolveConceptDominance,
   sanitizeUserConceptInput,
+  shouldUseEntityDrivenScaffold,
 } from "@/lib/concept-dominance";
-import { resolveNarrativePromise } from "@/lib/narrative-promise-intelligence";
+import {
+  buildEntityDrivenSubtitle,
+  buildEntityDrivenTitle,
+  resolveNarrativePromise,
+} from "@/lib/narrative-promise-intelligence";
 import { regenerateTitleFromIdea } from "@/lib/title-intelligence-validation";
 
 export type { ExpressScenarioVariant } from "./express-genre-config";
@@ -365,12 +392,41 @@ function defaultTitleForGenre(input: ExpressForgeInput, variant: ExpressScenario
 
   const seed = ideaCore(input);
   const timeTitle = buildTimeAnchoredTitle(seed);
-  if (timeTitle && isThrillerGenre(input.genre) && hasSupernaturalThrillerSignals(seed)) {
+  if (timeTitle && (isThrillerGenre(input.genre) && hasSupernaturalThrillerSignals(seed) || (isHorrorGenre(input.genre) && hasHorrorStationSignals(seed)))) {
     return timeTitle;
+  }
+
+  if (hasDragonFlameFantasySignals(seed)) {
+    return buildDragonFlameFantasyTitle(seed);
+  }
+
+  if (hasHorrorStationSignals(seed)) {
+    return buildHorrorStationTitle(seed, variant);
+  }
+
+  if (hasHospitalGuardianMemoirSignals(seed)) {
+    return buildHospitalMemoirTitle(seed);
+  }
+
+  if (hasBusinessRestaurantSignals(seed)) {
+    return buildBusinessRestaurantTitle(seed);
+  }
+
+  if (hasCookbookMediterraneanSignals(seed)) {
+    return buildCookbookMediterraneanTitle(seed);
+  }
+
+  if (hasPhotographyManualSignals(seed)) {
+    return buildPhotographyManualTitle();
   }
 
   if (hasSubmergedCitySciFiSignals(seed)) {
     return buildSubmergedCityTitle(seed, variant);
+  }
+
+  const entityTitle = buildEntityDrivenTitle(seed);
+  if (entityTitle && shouldUseEntityDrivenScaffold(seed)) {
+    return entityTitle;
   }
 
   const regenerated = regenerateTitleFromIdea({
@@ -666,19 +722,38 @@ function parseProtagonistLabel(seed: string, genre = ""): { name: string; role: 
   const sanitized = sanitizeUserConceptInput(seed);
   const extracted = extractConceptProtagonist(sanitized);
   if (extracted) {
+    if (/pescatrice/i.test(sanitized)) {
+      return { name: extracted, role: "pescatrice costretta a leggere i morti che il mare restituisce" };
+    }
+    if (/amministratore/i.test(sanitized)) {
+      return { name: extracted, role: "amministratore di condominio tra bollette e presenze" };
+    }
+    if (/interprete/i.test(sanitized)) {
+      return { name: extracted, role: "interprete la cui traduzione può scatenare una guerra" };
+    }
+    if (/volpe/i.test(sanitized)) {
+      return { name: extracted, role: "volpe che non sa mentire in un regno di menzogne obbligatorie" };
+    }
     const role = /cartograf\w*/i.test(sanitized)
       ? "giovane cartografo della città nel ghiaccio"
+      : hasDragonFlameFantasySignals(sanitized)
+        ? "drago nato senza fiamma, condannato a morte e capace di controllare il fuoco altrui"
       : /insegnante/i.test(sanitized)
       ? "insegnante nel miraggio di ricordi che anticipano la morte"
       : /storico|storica/i.test(sanitized)
         ? "ultimo storico della città nel ghiaccio"
         : hasSubmergedCitySciFiSignals(sanitized)
           ? `giovane ${extractSubmergedCityRole(sanitized)} della città nel ghiaccio`
-          : defaultLeadForGenre(genre).role;
+          : shouldUseEntityDrivenScaffold(sanitized)
+            ? "protagonista legato all'idea originale dell'autore"
+            : defaultLeadForGenre(genre).role;
     return { name: extracted, role };
   }
   if (/restauratrice/i.test(sanitized)) return { name: "Elena", role: "restauratrice" };
   if (/chef/i.test(sanitized)) return { name: "Elena", role: "chef tormentata" };
+  if (isSparseConceptInput(sanitized)) {
+    return { name: "Voce lirica", role: "voce autoriale che esplora il tema senza inventare un cast" };
+  }
   return defaultLeadForGenre(genre);
 }
 
@@ -721,6 +796,53 @@ function parseCounterpart(
           role: "presenza enigmatica che invia ricordi dal futuro e nasconde il vero costo del destino",
         };
   }
+  if (hasHorrorStationSignals(seed)) {
+    return variant === "bold"
+      ? {
+          name: "Il Treno Fantasma",
+          role: "presenza ferroviaria che riappare alle 03:17 e reclama chi salga a bordo",
+        }
+      : {
+          name: "La Fotografia della Madre",
+          role: "immagine maledetta che avverte di non lasciare salire sul treno",
+        };
+  }
+  if (hasDragonFlameFantasySignals(seed)) {
+    return variant === "bold"
+      ? {
+          name: "Il Clan dei Draghi",
+          role: "ordine che condanna alla morte chi nasce senza fiamma",
+        }
+      : {
+          name: "Custodi del Fuoco",
+          role: "draghi che temono chi può controllare il fuoco altrui",
+        };
+  }
+  if (shouldUseEntityDrivenScaffold(seed)) {
+    const hay = sanitizeUserConceptInput(seed).toLowerCase();
+    if (/\bscatola\b/.test(hay) && /\bmarted/.test(hay)) {
+      return { name: "Il Calendario Rubato", role: "forza che cancella i giorni uno dopo l'altro" };
+    }
+    if (/\bcadaver/.test(hay)) {
+      return { name: "Il Mare che Sale", role: "marea crescente che riporta morti parlanti" };
+    }
+    if (/\bsonno\b/.test(hay) && /\bincubi|banche\b/.test(hay)) {
+      return { name: "Il Mercato Nero degli Incubi", role: "economia occulta del sonno che controlla il futuro" };
+    }
+    if (/\bvolpe\b/.test(hay)) {
+      return { name: "Re delle Mezze Verità", role: "sovrano di un regno dove mentire è obbligatorio" };
+    }
+    if (/\bfantasma\b/.test(hay)) {
+      return { name: "L'Assemblea dei Morti", role: "presenze che votano via Wi-Fi contro i vivi" };
+    }
+    if (/\bconfessione\b/.test(hay)) {
+      return { name: "La Parola Proibita", role: "traduzione che può scatenare una guerra tra imperi" };
+    }
+    if (/\bchiave\b/.test(hay)) {
+      return { name: "Le Porte Perdute", role: "soglie che aprono solo ciò che non esiste più" };
+    }
+    return { name: "La Posta in Gioco", role: "forza antagonica legata all'idea originale dell'autore" };
+  }
   return defaultCounterpartForGenre(genre, variant);
 }
 
@@ -731,10 +853,19 @@ function parseSetting(seed: string, genre = ""): string {
   if (hasSubmergedCitySciFiSignals(seed) || /\b(citt[aà]\s+sommersa|sommersa|disgelo|ghiaccio|nascost\w*\s+sotto)\b/i.test(seed)) {
     return "Città nascosta sotto il ghiaccio eterno del Nord, dove il disgelo rivela tecnologia impossibile e segreti sepolti";
   }
+  if (/\bbruma\b/i.test(seed)) {
+    return "Bruma, città portuale dove il mare sale e i morti parlano nei sogni dei bambini";
+  }
+  if (/\bnagasaki\b/i.test(seed)) {
+    return "Nagasaki nel 1743, crocevia di imperi dove una traduzione può costare mille vite";
+  }
+  if (/\bcondominio\b/i.test(seed)) {
+    return "Un condominio dove i morti usano il Wi-Fi e il fantasma protesta solo per le bollette";
+  }
   if (/villa|incendio|restauratrice/i.test(seed) && (isDarkRomance(genre) || isRomance(genre))) {
     return "Villa decadente sulle colline, segnata da un incendio doloso e da stanze che conservano cenere e silenzi";
   }
-  if (/regno|corona|magia|drago|incantesimo|foresta|impero/i.test(seed)) {
+  if (/regno|corona|magia|drago|incantesimo|foresta|impero/i.test(seed) && !shouldUseEntityDrivenScaffold(seed)) {
     return "Regno antico attraversato da magia proibita, alleanze spezzate e poteri che chiedono un prezzo";
   }
   return defaultSettingForGenre(genre);
@@ -786,7 +917,38 @@ function buildCharacters(
   counterpart: { name: string; role: string },
   pkg: Partial<CompleteExpressBookPackage>,
   genre: string,
+  seed = "",
 ): ForgeCharacter[] {
+  if (seed && shouldUseEntityDrivenScaffold(seed)) {
+    const protagonist: ForgeCharacter = {
+      id: "express-protagonist",
+      role: "protagonist",
+      name: lead.name,
+      wound: pkg.emotionalWound ?? "Un equilibrio fragile legato all'idea centrale del racconto",
+      fear: pkg.fear ?? "Che la verità dell'idea cancelli ciò che credeva reale",
+      desire: pkg.desire ?? "Risolvere il mistero senza perdere se stesso",
+      contradiction: "Vuole capire ma ogni risposta aumenta il costo",
+      obsession: "Seguire gli indizi concreti dell'idea fino alla fine",
+      secret: "Tem di essere già parte del meccanismo che combatte",
+      arc: `Da ${lead.role} a protagonista costretto a pagare il prezzo della verità`,
+      vulnerability: "La posta in gioco personale legata all'idea",
+      dominantFlaw: "Sottovaluta ciò che l'idea nasconde",
+    };
+    const antagonist: ForgeCharacter = {
+      id: "express-counterpart",
+      role: "antagonist",
+      name: counterpart.name,
+      wound: "Legata al mistero centrale dell'idea",
+      fear: "Che la verità venga rivelata",
+      desire: "Mantenere il sistema descritto nell'idea",
+      contradiction: "Sembra assente ma guida ogni conseguenza",
+      obsession: counterpart.role,
+      secret: "È più vicina al protagonista di quanto appaia",
+      arc: "Da forza nascosta a ostacolo concreto nel finale",
+    };
+    return [protagonist, antagonist];
+  }
+
   const protagonist: ForgeCharacter = {
     id: "express-protagonist",
     role: "protagonist",
@@ -883,6 +1045,72 @@ function buildSupernaturalThrillerCharacters(
   };
 
   return [protagonist, antagonist, sheriff, villagers];
+}
+
+function buildHorrorStationCharacters(
+  lead: { name: string; role: string },
+  counterpart: { name: string; role: string },
+): ForgeCharacter[] {
+  return [
+    {
+      id: "express-protagonist",
+      role: "protagonist",
+      name: lead.name,
+      wound: "Un legame con la madre che la fotografia maledetta riapre ogni notte",
+      fear: "Che il treno porti via ciò che resta della sua memoria",
+      desire: "Capire perché la stazione riappare alle 03:17 e cosa chiede la fotografia",
+      arc: "Da testimone impotente a chi deve impedire che la madre salga sul treno",
+    },
+    {
+      id: "express-counterpart",
+      role: "antagonist",
+      name: counterpart.name,
+      wound: "Legata a un evento ferroviario che nessuno ha mai nominato",
+      desire: "Far salire sul treno ciò che la fotografia mostra",
+      arc: "Da immagine statica a minaccia che contamina ricordi e realtà",
+    },
+    {
+      id: "express-station",
+      role: "supporting",
+      name: "La Stazione Abbandonata",
+      wound: "Esiste solo tra gallerie che non dovrebbero esistere",
+      desire: "Riapparire ogni notte alle 03:17 finché qualcuno obbedisce all'avvertimento",
+      arc: "Da luogo fantasma a predatore che stringe Elia nel suo orario",
+    },
+  ];
+}
+
+function buildDragonFlameCharacters(
+  lead: { name: string; role: string },
+  counterpart: { name: string; role: string },
+): ForgeCharacter[] {
+  return [
+    {
+      id: "express-protagonist",
+      role: "protagonist",
+      name: lead.name,
+      wound: "Nato senza la fiamma che definisce ogni drago e condannato a morte per questo",
+      fear: "Che il fuoco altrui lo renda mostro agli occhi del continente",
+      desire: "Sopravvivere alla condanna e capire perché può comandare il fuoco degli altri draghi",
+      arc: "Da drago emarginato a minaccia capace di riscrivere l'ordine del fuoco",
+    },
+    {
+      id: "express-counterpart",
+      role: "antagonist",
+      name: counterpart.name,
+      wound: "L'ordine dei draghi si fonda sulla fiamma individuale e intoccabile",
+      desire: "Eliminare chi può rubare il fuoco altrui prima che il continente cambi",
+      arc: "Da giudice implacabile a forza che costringe Kael a scegliere il proprio fuoco",
+    },
+    {
+      id: "express-clan",
+      role: "supporting",
+      name: "Il Continente dei Draghi",
+      wound: "Non ha mai visto un drago senza fiamma controllare il fuoco altrui",
+      desire: "Ripristinare la legge del fuoco o usare Kael come arma",
+      arc: "Da osservatore distante a campo di battaglia del nuovo ordine",
+    },
+  ];
 }
 
 function buildSubmergedCityCharacters(
@@ -1065,6 +1293,22 @@ function parseNonfictionSeed(seed: string): {
   theme: string;
 } {
   const trimmed = seed.trim();
+  if (hasBusinessRestaurantSignals(trimmed)) {
+    return {
+      readerProblem: "Crescere nel food business senza sistemi replicabili e senza capire quali errori evitare",
+      transformationPromise:
+        "Dal chiosco di panini alla catena di 17 ristoranti: sistemi, errori e strategie che portano da zero a milioni di fatturato",
+      theme: "crescita imprenditoriale nella ristorazione",
+    };
+  }
+  if (hasPhotographyManualSignals(trimmed)) {
+    return {
+      readerProblem: "Fotografare senza padroneggiare esposizione, diaframma e composizione",
+      transformationPromise:
+        "Manuale pratico di fotografia digitale per principianti con esposizione, diaframma, composizione, luce, esercizi e piano di 30 giorni",
+      theme: "fotografia digitale per principianti",
+    };
+  }
   const theme = trimmed.split(/[.!?…]/)[0]?.trim() || trimmed;
   const readerProblem =
     /bloccat|paura|fallimento|ansia|procrastin|insicurezz|stress|burnout/i.test(trimmed)
@@ -1079,6 +1323,9 @@ function parseNonfictionSeed(seed: string): {
 
 function buildNonfictionTitle(input: ExpressForgeInput, variant: ExpressScenarioVariant, theme: string): string {
   if (input.title?.trim()) return input.title.trim();
+  const seed = ideaCore(input);
+  if (hasBusinessRestaurantSignals(seed)) return buildBusinessRestaurantTitle(seed);
+  if (hasPhotographyManualSignals(seed)) return buildPhotographyManualTitle();
   const short = theme.split(/\s+/).slice(0, 4).join(" ");
   if (variant === "bold") return `Oltre il blocco: ${short}`;
   if (variant === "commercial") return `30 giorni per ${short.toLowerCase()}`;
@@ -1091,6 +1338,9 @@ function buildNonfictionSubtitle(
   transformationPromise: string,
 ): string {
   if (input.subtitle?.trim()) return input.subtitle.trim();
+  const seed = ideaCore(input);
+  if (hasBusinessRestaurantSignals(seed)) return buildBusinessRestaurantSubtitle(seed);
+  if (hasPhotographyManualSignals(seed)) return buildPhotographyManualSubtitle();
   const snippet = transformationPromise.slice(0, 72).replace(/\s+\S*$/, "");
   if (variant === "bold") return `${snippet} — un metodo profondo per cambiare identità e abitudini`;
   if (variant === "commercial") return `${snippet} — passi chiari, esercizi e risultati misurabili`;
@@ -1206,12 +1456,85 @@ function buildNonfictionCharacters(
   idealReader: string,
   readerProblem: string,
   transformationPromise: string,
+  seed = "",
+  genre = "",
 ): ForgeCharacter[] {
+  if (hasHospitalGuardianMemoirSignals(seed) || isMemoirExpressGenre(genre)) {
+    return [
+      {
+        id: "express-memoir-voice",
+        role: "protagonist",
+        name: hasHospitalGuardianMemoirSignals(seed)
+          ? "Voce autoriale (guardiano notturno)"
+          : "Voce autoriale",
+        wound: readerProblem,
+        desire: transformationPromise.slice(0, 120),
+        arc: "Da memoria frammentata a integrazione riflessiva",
+        vulnerability: idealReader,
+      },
+    ];
+  }
+
+  if (hasBusinessRestaurantSignals(seed)) {
+    return [
+      {
+        id: "express-business-founder",
+        role: "protagonist",
+        name: "Imprenditore della ristorazione",
+        wound: readerProblem,
+        fear: "Ripetere errori costosi nella scalata da chiosco a catena",
+        desire: transformationPromise.slice(0, 120),
+        contradiction: "Vuole espandersi ma teme di perdere controllo qualità",
+        obsession: "Costruire sistemi replicabili da zero a milioni di fatturato",
+        arc: "Da chiosco di panini a fondatore con catena strutturata",
+        vulnerability: idealReader,
+        dominantFlaw: "Confonde intuizione con assenza di processi",
+      },
+      {
+        id: "express-business-chaos",
+        role: "antagonist",
+        name: "Caos operativo",
+        wound: "Crescita senza standard né delega",
+        fear: "Perdere margini e reputazione nella scalata",
+        desire: "Imporre ordine prima che la catena crolli",
+        arc: "Da caos imprenditoriale a sistema che regge da solo",
+      },
+    ];
+  }
+
+  if (hasCookbookMediterraneanSignals(seed) || /cookbook|ricettario/i.test(genre)) {
+    return [
+      {
+        id: "express-cook-reader",
+        role: "protagonist",
+        name: "Cuoco casalingo",
+        wound: readerProblem,
+        desire: "Ricette mediterranee replicabili con menu settimanali",
+        arc: "Da improvvisazione a cucina mediterranea autonoma",
+        vulnerability: idealReader,
+      },
+    ];
+  }
+
+  if (hasPhotographyManualSignals(seed) || /manuale|manual/i.test(genre)) {
+    return [
+      {
+        id: "express-photo-beginner",
+        role: "protagonist",
+        name: "Fotografo principiante",
+        wound: readerProblem,
+        desire: transformationPromise.slice(0, 120),
+        arc: "Da principiante a fotografo consapevole con portfolio iniziale",
+        vulnerability: idealReader,
+      },
+    ];
+  }
+
   return [
     {
       id: "express-reader-archetype",
       role: "protagonist",
-      name: "Lettore ideale",
+      name: "Lettore in trasformazione",
       wound: readerProblem,
       fear: "Fallire di nuovo e confermare la narrativa limitante",
       desire: transformationPromise.slice(0, 120),
@@ -1221,18 +1544,6 @@ function buildNonfictionCharacters(
       arc: "Da consapevolezza del problema a azione sostenuta e identità rinnovata",
       vulnerability: idealReader,
       dominantFlaw: "Confonde prudenza e paralisi",
-    },
-    {
-      id: "express-inner-obstacle",
-      role: "antagonist",
-      name: "Ostacolo interno",
-      wound: "Paura del fallimento radicata in esperienze passate",
-      fear: "Esporsi e risultare inadeguato",
-      desire: "Mantenere il controllo evitando il rischio",
-      contradiction: "Protegge ma imprigiona",
-      obsession: "Evitare il disagio a ogni costo",
-      secret: "Il blocco è servito come scudo — ora non serve più",
-      arc: "Da voce critica dominante a segnale da ascoltare e integrare",
     },
   ];
 }
@@ -1314,7 +1625,9 @@ function buildNonfictionExpressPackage(
     variant === "commercial"
       ? `Se ${readerProblem.toLowerCase()}, questo metodo ti guida passo passo — senza motivazione vuota.`
       : `Non è un altro libro di teoria: è un percorso per ${transformationPromise.slice(0, 80).toLowerCase()}…`;
-  const marketPromise = `${transformationPromise} Con tono ${input.tone}, esercizi applicabili e capitoli progressivi che trasformano insight in abitudini.`;
+  const marketPromise = hasBusinessRestaurantSignals(seed) || hasPhotographyManualSignals(seed)
+    ? resolveNarrativePromise(seed, input.genre, transformationPromise)
+    : `${transformationPromise} Con tono ${input.tone}, esercizi applicabili e capitoli progressivi che trasformano insight in abitudini.`;
   const centralConflict = `${readerProblem} vs la versione di sé che il lettore vuole diventare`;
   const emotionalWound = readerProblem;
   const desire = transformationPromise;
@@ -1328,7 +1641,30 @@ function buildNonfictionExpressPackage(
     variant === "bold" ? "Empowerment profondo e senso di direzione" : "Speranza pratica e momentum";
   const midpoint = "Il framework diventa operativo: il lettore applica il primo ciclo completo del metodo";
   const climax = "Integrazione: il lettore supera la resistenza interna con accountability e celebrazione";
-  const chapterBlueprintSeeds = buildNonfictionChapterSeeds(chapterCount, variant, methodFramework);
+  const chapterBlueprintSeeds = (() => {
+    const useConceptScaffold = hasBusinessRestaurantSignals(seed) || hasPhotographyManualSignals(seed);
+    const formatScaffold = useConceptScaffold
+      ? buildFormatAwareChapterScaffold(seed, chapterCount, {
+          genre: input.genre,
+          bookFormat: input.bookFormat,
+        })
+      : [];
+    if (formatScaffold.length > 0) {
+      return formatScaffold.map((beat, i) => ({
+        id: `express-nf-ch-${i + 1}`,
+        chapter: i + 1,
+        title: beat.title,
+        summary: beat.summary,
+        purpose: beat.summary,
+        goal: beat.summary,
+        conflict: beat.summary,
+        hook: beat.summary,
+        expectedSetting: "Contesto del lettore / autore",
+        subchapters: [] as [],
+      }));
+    }
+    return buildNonfictionChapterSeeds(chapterCount, variant, methodFramework);
+  })();
   const partial = { hook, midpoint, climax, endingDirection, finalEmotion };
   const keyScenes = buildKeyScenes(partial).map((s, i) =>
     i === 0
@@ -1337,7 +1673,7 @@ function buildNonfictionExpressPackage(
         ? { ...s, beat: endingDirection, stakes: finalEmotion }
         : s,
   );
-  const characters = buildNonfictionCharacters(idealReader, readerProblem, transformationPromise);
+  const characters = buildNonfictionCharacters(idealReader, readerProblem, transformationPromise, seed, input.genre);
   const storyRoom: StoryRoomState = {
     scenes: keyScenes.map((s, i) => ({
       id: `express-nf-scene-${i}`,
@@ -1444,7 +1780,9 @@ function buildCookbookExpressPackage(
   const chapterCount = chapterCountForInput(input);
   const language = normalizeLanguage(input.language);
   const theme = seed.split(/[.!?…]/)[0]?.trim() || "cucina pratica";
-  const title = input.title?.trim() || `Ricettario: ${theme.slice(0, 36)}`;
+  const title = input.title?.trim() || (hasCookbookMediterraneanSignals(seed)
+    ? buildCookbookMediterraneanTitle(seed)
+    : `Ricettario: ${theme.slice(0, 36)}`);
   const subtitle =
     input.subtitle?.trim() ||
     (variant === "commercial"
@@ -1455,25 +1793,36 @@ function buildCookbookExpressPackage(
   const editorialSynopsis =
     `${seed || subtitle} Ricettario pratico in ${chapterCount} sezioni con Ingredienti precisi, Ricette passo-passo, Tecniche fondamentali e Menu completi. ` +
     "Nessuna deriva narrativa o filosofica: solo cucina applicabile, varianti e servizio.";
-  const marketPromise = editorialSynopsis.slice(0, 220);
-  const cookbookArc = [
-    "Ingredienti base",
-    "Tecniche fondamentali",
-    "Ricette rapide",
-    "Ricette complete",
-    "Menu settimanali",
-    "Varianti e sostituzioni",
-    "Errori comuni",
-    "Servizio e impiattamento",
-  ];
-  const chapterBlueprintSeeds = buildFormatChapterSeeds(chapterCount, cookbookArc, variant, "Sezione ricettario").map(
-    (chapter, i) => ({
-      ...chapter,
-      title: `Sezione ${i + 1} — ${cookbookArc[i % cookbookArc.length]}`,
-      summary: "Ingredienti, Ricette, Tecniche e menu operativi con tempi e porzioni.",
-      goal: "Far replicare il risultato al lettore in cucina.",
-    }),
-  );
+  const marketPromise = hasCookbookMediterraneanSignals(seed)
+    ? resolveNarrativePromise(seed, input.genre, "Passare dall'improvvisazione a ricette replicabili con metodo.")
+    : editorialSynopsis.slice(0, 220);
+  const cookbookBeats = hasCookbookMediterraneanSignals(seed)
+    ? buildCookbookChapterTitles()
+    : [
+        "Ingredienti base",
+        "Tecniche fondamentali",
+        "Ricette rapide",
+        "Ricette complete",
+        "Menu settimanali",
+        "Varianti e sostituzioni",
+        "Errori comuni",
+        "Servizio e impiattamento",
+      ].map((title) => ({
+        title,
+        summary: "Ingredienti, Ricette, Tecniche e menu operativi con tempi e porzioni.",
+      }));
+  const chapterBlueprintSeeds = buildFormatChapterSeeds(
+    chapterCount,
+    cookbookBeats,
+    variant,
+    "Sezione ricettario",
+    seed,
+    "cookbook",
+  ).map((chapter) => ({
+    ...chapter,
+    summary: "Ingredienti, Ricette, Tecniche e menu operativi con tempi e porzioni.",
+    goal: "Far replicare il risultato al lettore in cucina.",
+  }));
   const partial = {
     hook,
     midpoint: "Le tecniche base diventano ricette complete con varianti.",
@@ -1581,14 +1930,21 @@ function buildPoetryExpressPackage(
     normalizePoetryTheme(rawTheme) ||
     "voce, memoria e trasformazione emotiva";
   const toneLabel = normalizePoetryToneLabel(input.tone);
+  const sparsePoetry = isSparseConceptInput(seed);
+  const entityTitle = buildEntityDrivenTitle(seed);
+  const entitySubtitle = buildEntityDrivenSubtitle(seed);
   const title =
     input.title?.trim()
       ? input.title.trim()
+      : sparsePoetry && entityTitle
+        ? entityTitle
       : variant === "bold"
         ? `Cenere e luce: ${theme.slice(0, 30)}`
         : theme.slice(0, 40) || "Raccolta poetica";
   const subtitle = input.subtitle?.trim()
     ? input.subtitle.trim()
+    : sparsePoetry && entitySubtitle
+      ? entitySubtitle
     : variant === "bold"
       ? "Voci che restano quando il resto svanisce"
       : seed.trim()
@@ -1698,25 +2054,25 @@ function buildPoetryExpressPackage(
 
 function buildFormatChapterSeeds(
   count: number,
-  labels: string[],
+  beats: Array<{ title: string; summary: string }>,
   variant: ExpressScenarioVariant,
   purposePrefix: string,
+  idea = "",
+  format: ChapterScaffoldFormat = "generic",
 ): ChapterBlueprintSeed[] {
-  return Array.from({ length: count }, (_, i) => {
-    const title = labels[i % labels.length] ?? `Sezione ${i + 1}`;
-    return {
-      id: `express-fmt-ch-${i + 1}`,
-      chapter: i + 1,
-      title,
-      summary: `${purposePrefix}: ${title.toLowerCase()}.`,
-      purpose: purposePrefix,
-      goal: `Completare la tappa ${i + 1} con chiarezza e continuità.`,
-      conflict: variant === "bold" ? "Resistenza interna e verità difficile da nominare" : "Gap tra intenzione e pratica",
-      hook: `Apertura operativa per ${title.toLowerCase()}.`,
-      expectedSetting: "Contesto del lettore / autore",
-      subchapters: [],
-    };
-  });
+  const expanded = expandChapterScaffold(beats, count, idea, format);
+  return expanded.map((beat, i) => ({
+    id: `express-fmt-ch-${i + 1}`,
+    chapter: i + 1,
+    title: beat.title,
+    summary: beat.summary || `${purposePrefix}: ${beat.title.toLowerCase()}.`,
+    purpose: purposePrefix,
+    goal: `Avanzare ${beat.title.toLowerCase()} con chiarezza e continuità.`,
+    conflict: variant === "bold" ? "Resistenza interna e verità difficile da nominare" : "Gap tra intenzione e pratica",
+    hook: `Apertura operativa per ${beat.title.toLowerCase()}.`,
+    expectedSetting: "Contesto del lettore / autore",
+    subchapters: [],
+  }));
 }
 
 function buildMemoirExpressPackage(
@@ -1728,16 +2084,27 @@ function buildMemoirExpressPackage(
   const seed = ideaCore(input);
   const chapterCount = chapterCountForInput(input);
   const language = normalizeLanguage(input.language);
-  const lifeTheme = seed.split(/[.!?…]/)[0]?.trim() || "crisi, perdita e ricostruzione";
-  const title = input.title?.trim() || (variant === "bold" ? "Ciò che resta dopo" : `Memorie di ${lifeTheme.slice(0, 32)}`);
+  const hospitalMemoir = hasHospitalGuardianMemoirSignals(seed);
+  const lifeTheme = hospitalMemoir
+    ? "venticinque anni come guardiano notturno in un ospedale destinato alla chiusura"
+    : seed.split(/[.!?…]/)[0]?.trim() || "crisi, perdita e ricostruzione";
+  const title = input.title?.trim() || (hospitalMemoir
+    ? buildHospitalMemoirTitle(seed)
+    : variant === "bold"
+      ? "Ciò che resta dopo"
+      : `Memorie di ${lifeTheme.slice(0, 32)}`);
   const subtitle =
     input.subtitle?.trim() ||
-    (variant === "bold"
-      ? "Un viaggio interiore senza maschere"
-      : `Un memoir riflessivo su ${lifeTheme.toLowerCase()}.`);
+    (hospitalMemoir
+      ? buildHospitalMemoirSubtitle(seed)
+      : variant === "bold"
+        ? "Un viaggio interiore senza maschere"
+        : `Un memoir riflessivo su ${lifeTheme.toLowerCase()}.`);
   const editorialSynopsis = `${seed || subtitle} Un memoir strutturato in fasi di vita: origine, frattura, svolta e integrazione. Voce autentica, arco riflessivo e scene di memoria — non trama da fiction né payoff emotivo da romanzo.`;
   const hook = `Un memoir su ${lifeTheme.toLowerCase()} — memoria, verità e ricostruzione dell'identità.`;
-  const marketPromise = editorialSynopsis.slice(0, 220);
+  const marketPromise = hospitalMemoir
+    ? resolveNarrativePromise(seed, input.genre, hook)
+    : editorialSynopsis.slice(0, 220);
   const centralConflict = `Riconciliare ${lifeTheme.toLowerCase()} con la versione di sé che emerge dal racconto`;
   const emotionalWound = lifeTheme;
   const desire = "Dare forma alla propria storia senza tradire la verità vissuta";
@@ -1750,13 +2117,16 @@ function buildMemoirExpressPackage(
   const finalEmotion = variant === "bold" ? "Catarsi sobria e eco lunga" : "Chiarezza emotiva e accettazione";
   const midpoint = "Svolta centrale: la frattura diventa punto di non ritorno nel racconto";
   const climax = "Confronto con la verità più scomoda del periodo narrato";
-  const memoirArc = buildMemoirChapterTitles(seed).map((beat) => beat.title);
+  const memoirBeats = hospitalMemoir ? buildHospitalMemoirChapterTitles() : buildMemoirChapterTitles(seed);
   const chapterBlueprintSeeds = buildFormatChapterSeeds(
     chapterCount,
-    memoirArc,
+    memoirBeats,
     variant,
     "Fase di vita nel memoir",
+    seed,
+    hospitalMemoir ? "hospital_memoir" : "memoir",
   );
+  const memoirArc = memoirBeats.map((beat) => beat.title);
   const partial = { hook, midpoint, climax, endingDirection, finalEmotion };
   const keyScenes = buildKeyScenes(partial).map((s, i) =>
     i === 0
@@ -1881,25 +2251,30 @@ function buildWorkbookExpressPackage(
   const editorialSynopsis = `${seed || subtitle} Workbook pratico con moduli, esercizi guidati, tracker di progressione e checkpoint misurabili — nessuna trama narrativa.`;
   const hook = `Workbook operativo su ${theme.toLowerCase()} — esercizi, tracker e progressione concreta.`;
   const marketPromise = editorialSynopsis.slice(0, 220);
-  const workbookArc = [
+  const workbookBeats = [
     "Diagnosi iniziale",
     "Setup e tracker",
-    "Modulo 1 — esercizi base",
+    "Esercizi base",
     "Checkpoint settimana 1",
-    "Modulo 2 — pratica guidata",
+    "Pratica guidata",
     "Scheda operativa",
     "Checkpoint intermedio",
-    "Modulo 3 — consolidamento",
+    "Consolidamento",
     "Tracker avanzato",
     "Revisione risultati",
     "Piano di mantenimento",
     "Chiusura e prossimi passi",
-  ];
+  ].map((title) => ({
+    title,
+    summary: `Workbook: ${title.toLowerCase()} con esercizi, tracker e verifica.`,
+  }));
   const chapterBlueprintSeeds = buildFormatChapterSeeds(
     chapterCount,
-    workbookArc,
+    workbookBeats,
     variant,
     "Modulo workbook",
+    seed,
+    "self_help",
   );
   const partial = {
     hook,
@@ -2022,29 +2397,33 @@ function buildStudyMaterialExpressPackage(
   const editorialSynopsis = `${seed || subtitle} Materiale di studio organizzato in moduli con obiettivi di apprendimento, esempi, quiz e sintesi — senza trama narrativa.`;
   const hook = `Materiale di studio su ${subject.toLowerCase()} — moduli chiari e obiettivi misurabili.`;
   const marketPromise = editorialSynopsis.slice(0, 220);
-  const studyArc = [
+  const studyBeats = [
     "Introduzione e obiettivi generali",
-    "Modulo 1 — fondamenti",
+    "Fondamenti",
     "Esempi guidati",
-    "Quiz modulo 1",
-    "Modulo 2 — applicazione",
+    "Quiz di verifica",
+    "Applicazione pratica",
     "Esercizi di verifica",
     "Sintesi intermedia",
-    "Modulo 3 — casi pratici",
+    "Casi pratici",
     "Checklist di ripasso",
     "Simulazione d'esame",
     "Errori frequenti",
     "Recap finale",
-  ];
+  ].map((title) => ({
+    title,
+    summary: `Modulo di studio: ${title.toLowerCase()} con obiettivi, spiegazione ed esempi.`,
+  }));
   const chapterBlueprintSeeds = buildFormatChapterSeeds(
     chapterCount,
-    studyArc,
+    studyBeats,
     variant,
     "Modulo di studio",
+    seed,
+    "self_help",
   ).map((chapter, i) => ({
     ...chapter,
-    goal: `Obiettivo di apprendimento modulo ${i + 1}: comprensione e verifica`,
-    summary: `Modulo ${i + 1} con obiettivi, spiegazione, esempi e verifica.`,
+    goal: `Obiettivo di apprendimento capitolo ${i + 1}: comprensione e verifica`,
   }));
   const partial = {
     hook,
@@ -2145,7 +2524,7 @@ function buildStudyMaterialExpressPackage(
       relationship: [],
       plot: [methodFramework, "Obiettivi di apprendimento per modulo"],
       character: ["Progressione dello studente"],
-      scene: studyArc.slice(0, 4),
+      scene: studyBeats.map((beat) => beat.title).slice(0, 4),
     },
     blueprintReadiness: "complete",
   };
@@ -2176,10 +2555,13 @@ export function buildCompleteExpressBookPackage(
 
   const meta = getExpressVariantMeta(input.genre, variant);
   const seed = ideaCore(input);
+  const entityDriven = shouldUseEntityDrivenScaffold(seed);
   const isSupernaturalThriller =
     hasSupernaturalThrillerSignals(seed) && isThrillerGenre(input.genre);
   const isSubmergedCitySciFi =
     hasSubmergedCitySciFiSignals(seed) && isScifiGenre(input.genre);
+  const isDragonFlameFantasy = hasDragonFlameFantasySignals(seed) && isFantasyGenre(input.genre);
+  const isHorrorStation = hasHorrorStationSignals(seed) && isHorrorGenre(input.genre);
   const genreMeta = isSupernaturalThriller
     ? { subgenre: "supernatural psychological thriller", normalizedGenre: "thriller" }
     : isSubmergedCitySciFi
@@ -2251,7 +2633,9 @@ export function buildCompleteExpressBookPackage(
       : isHorrorGenre(input.genre)
         ? "Sanità mentale, identità, sopravvivenza e verità sepolta"
         : "Identità, relazioni e futuro — ciò che si perde non torna indietro";
-  const marketPromise = resolveNarrativePromise(
+  const marketPromise = entityDriven
+    ? resolveNarrativePromise(seed, input.genre, buildEntityDrivenSubtitle(seed, lead.name))
+    : resolveNarrativePromise(
     ideaCore(input),
     input.genre,
     isDarkRomance(input.genre)
@@ -2265,9 +2649,13 @@ export function buildCompleteExpressBookPackage(
             ? resolveNarrativePromise(seed, input.genre, `Dopo trecento anni di ghiaccio, ${lead.name} deve svelare tecnologia impossibile, un segreto storico e ciò che la prigione di ghiaccio stava contenendo sotto la città.`)
             : `Uno sci-fi ${input.tone} dove worldbuilding, tech stakes e dilemma morale costruiscono una promessa speculativa con payoff forte.`
           : isFantasyGenre(input.genre)
-      ? `Un fantasy ${input.tone} dove magia, tradimento e costo del potere costruiscono una promessa epica con payoff emotivo.`
+      ? isDragonFlameFantasy
+        ? resolveNarrativePromise(seed, input.genre, `${lead.name} nasce senza fiamma e scopre di controllare il fuoco degli altri draghi.`)
+        : `Un fantasy ${input.tone} dove magia, tradimento e costo del potere costruiscono una promessa epica con payoff emotivo.`
       : isHorrorGenre(input.genre)
-        ? `Un horror ${input.tone} dove atmosfera, decadenza e paura crescente trasformano il luogo in minaccia viva e la verità in contagio.`
+        ? isHorrorStation
+          ? resolveNarrativePromise(seed, input.genre, `Un horror ${input.tone} sulla stazione che riappare alle 03:17.`)
+          : `Un horror ${input.tone} dove atmosfera, decadenza e paura crescente trasformano il luogo in minaccia viva e la verità in contagio.`
         : `Un ${input.genre} ${input.tone} che promette tensione emotiva, payoff memorabile e una storia che resta addosso dopo l'ultima pagina.`,
   );
   const hook = isSubmergedCitySciFi
@@ -2287,10 +2675,16 @@ export function buildCompleteExpressBookPackage(
         : `${lead.name} credeva di controllare la storia. ${setting.split(",")[0]} le dimostra il contrario.`;
   const subtitle = input.subtitle?.trim()
     ? input.subtitle.trim()
+    : entityDriven
+      ? buildEntityDrivenSubtitle(seed, lead.name)
     : isSubmergedCitySciFi
       ? buildSubmergedCitySubtitle(seed, variant)
     : isSupernaturalThriller
       ? buildSupernaturalThrillerSubtitle(seed, variant)
+    : isDragonFlameFantasy
+      ? buildDragonFlameFantasySubtitle(seed, variant)
+    : isHorrorStation
+      ? buildHorrorStationSubtitle(seed, variant)
     : isFriendsToLoversGenre(input.genre) || isEnemiesToLoversGenre(input.genre) || isRomance(input.genre)
     ? variant === "bold"
       ? "Quando l'amicizia diventa confine — e il confine diventa desiderio"
@@ -2357,7 +2751,11 @@ export function buildCompleteExpressBookPackage(
     ? buildSubmergedCityCharacters(lead, counterpart, partial)
     : isSupernaturalThriller
     ? buildSupernaturalThrillerCharacters(lead, counterpart, partial)
-    : buildCharacters(lead, counterpart, partial, input.genre);
+    : isHorrorStation
+      ? buildHorrorStationCharacters(lead, counterpart)
+      : isDragonFlameFantasy
+        ? buildDragonFlameCharacters(lead, counterpart)
+    : buildCharacters(lead, counterpart, partial, input.genre, seed);
   const chapterBlueprintSeeds = buildChapterSeeds(chapterCount, input.genre, variant, setting, ideaCore(input));
   const keyScenes = buildKeyScenes(partial);
 
@@ -2698,6 +3096,22 @@ export function buildExpressBookScenarios(input: ExpressForgeInput): ExpressBook
         ? "misterioso, inquietante, claustrofobico"
         : input.tone),
   };
+
+  if (isSparseConceptInput(sanitizedIdea)) {
+    return enforceExpressScenarioDivergence(
+      (["safe", "commercial", "bold"] as ExpressScenarioVariant[]).map((variant) =>
+        buildPoetryExpressPackage(
+          {
+            ...normalizedInput,
+            genre: "poesia",
+            bookFormat: "poetry_collection",
+            tone: normalizedInput.tone || "contemplativo",
+          },
+          variant,
+        ),
+      ),
+    );
+  }
 
   const explicitPoetryCollection =
     normalizedInput.bookFormat === "poetry_collection" ||

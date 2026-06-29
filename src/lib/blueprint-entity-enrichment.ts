@@ -2,15 +2,28 @@ import type { BookBlueprint, BookConfig } from "@/types/book";
 import { extractNarrativeIdeaSignals, hasRichNarrativeIdea } from "@/lib/narrative-promise-intelligence";
 import {
   buildFantasyChapterBeats,
+  buildBusinessRestaurantChapterTitles,
+  buildCookbookChapterTitles,
+  buildDragonFlameFantasyChapterTitles,
+  buildHospitalMemoirChapterTitles,
+  buildHorrorStationChapterTitles,
   buildMemoirChapterTitles,
+  buildPhotographyManualChapterTitles,
   buildPsychologicalThrillerChapterTitles,
   buildSelfHelpChapterTitles,
   buildSubmergedCityChapterTitles,
   buildSupernaturalThrillerChapterTitles,
   expandConceptBeatsToCount,
+  hasBusinessRestaurantSignals,
+  hasCookbookMediterraneanSignals,
+  hasDragonFlameFantasySignals,
   hasHighConceptFantasySignals,
+  hasHospitalGuardianMemoirSignals,
+  hasHorrorStationSignals,
+  hasPhotographyManualSignals,
   hasSubmergedCitySciFiSignals,
   hasSupernaturalThrillerSignals,
+  shouldUseEntityDrivenScaffold,
 } from "@/lib/concept-dominance";
 
 export interface BlueprintEntityAnchor {
@@ -43,16 +56,20 @@ function normalize(value: string): string {
 export function extractBlueprintEntityAnchors(idea: string): BlueprintEntityAnchor[] {
   const signals = extractNarrativeIdeaSignals(idea);
   const anchors: BlueprintEntityAnchor[] = [];
+  const protagonist = signals.protagonist;
 
-  if (signals.protagonist) {
-    anchors.push({ label: signals.protagonist, kind: "character" });
+  if (protagonist) {
+    anchors.push({ label: protagonist, kind: "character" });
   }
   for (const label of signals.places) anchors.push({ label, kind: "place" });
   for (const label of signals.objects) anchors.push({ label, kind: "object" });
   for (const label of signals.mysteries) anchors.push({ label, kind: "mystery" });
   for (const label of signals.stakes) anchors.push({ label, kind: "stake" });
 
-  return anchors;
+  return anchors.filter(
+    (anchor, index, arr) =>
+      arr.findIndex((item) => item.label.toLowerCase() === anchor.label.toLowerCase()) === index,
+  );
 }
 
 export function hasRichIdeaEntities(idea: string): boolean {
@@ -70,7 +87,11 @@ function chapterBeatForIndex(
   anchors: BlueprintEntityAnchor[],
   protagonist: string,
 ): { title: string; summary: string } {
-  const a = (offset: number) => anchors[offset % Math.max(1, anchors.length)]?.label || "il mistero centrale";
+  const beatAnchors = anchors.filter(
+    (anchor) => !(anchor.kind === "character" && anchor.label.toLowerCase() === protagonist.toLowerCase()),
+  );
+  const pool = beatAnchors.length > 0 ? beatAnchors : anchors;
+  const a = (offset: number) => pool[offset % Math.max(1, pool.length)]?.label || "il mistero centrale";
   const chapter = index + 1;
   const isOpening = index === 0;
   const isMid = index === Math.floor(total / 2);
@@ -117,24 +138,45 @@ export function buildFormatAwareChapterScaffold(
   const bookFormat = String(opts.bookFormat || "");
 
   if (hasSupernaturalThrillerSignals(idea)) {
-    return expandConceptBeatsToCount(buildSupernaturalThrillerChapterTitles(idea), chapterCount);
+    return expandConceptBeatsToCount(buildSupernaturalThrillerChapterTitles(idea), chapterCount, idea, "supernatural_thriller");
   }
   if (hasSubmergedCitySciFiSignals(idea)) {
-    return expandConceptBeatsToCount(buildSubmergedCityChapterTitles(idea), chapterCount);
+    return expandConceptBeatsToCount(buildSubmergedCityChapterTitles(idea), chapterCount, idea, "submerged_city");
+  }
+  if (hasDragonFlameFantasySignals(idea)) {
+    return expandConceptBeatsToCount(buildDragonFlameFantasyChapterTitles(idea), chapterCount, idea, "dragon_fantasy");
+  }
+  if (hasHorrorStationSignals(idea)) {
+    return expandConceptBeatsToCount(buildHorrorStationChapterTitles(idea), chapterCount, idea, "horror_station");
   }
   if (hasHighConceptFantasySignals(idea)) {
-    return expandConceptBeatsToCount(buildFantasyChapterBeats(idea), chapterCount);
+    return expandConceptBeatsToCount(buildFantasyChapterBeats(idea), chapterCount, idea, "fantasy");
   }
   if (/thriller|giallo|noir/i.test(genre) && /\b(serial killer|omicid|indagine|colpevole|psicolog)/i.test(idea)) {
-    return expandConceptBeatsToCount(buildPsychologicalThrillerChapterTitles(idea), chapterCount);
+    return expandConceptBeatsToCount(buildPsychologicalThrillerChapterTitles(idea), chapterCount, idea, "psychological_thriller");
+  }
+  if (hasHospitalGuardianMemoirSignals(idea)) {
+    return expandConceptBeatsToCount(buildHospitalMemoirChapterTitles(), chapterCount, idea, "hospital_memoir");
   }
   if (/memoir|memorie|autobiograf/i.test(genre) || bookFormat === "memoir") {
-    return expandConceptBeatsToCount(buildMemoirChapterTitles(idea), chapterCount);
+    return expandConceptBeatsToCount(buildMemoirChapterTitles(idea), chapterCount, idea, "memoir");
+  }
+  if (hasBusinessRestaurantSignals(idea)) {
+    return expandConceptBeatsToCount(buildBusinessRestaurantChapterTitles(), chapterCount, idea, "business");
+  }
+  if (hasCookbookMediterraneanSignals(idea) || bookFormat === "cookbook" || /cookbook|ricettario/i.test(genre)) {
+    return expandConceptBeatsToCount(buildCookbookChapterTitles(), chapterCount, idea, "cookbook");
+  }
+  if (hasPhotographyManualSignals(idea) || (bookFormat === "manual" && /fotograf|esposizione|diaframma/i.test(idea))) {
+    return expandConceptBeatsToCount(buildPhotographyManualChapterTitles(), chapterCount, idea, "photography_manual");
   }
   if (/self-help|self help|manuale|business|guida/i.test(genre) || bookFormat === "self_help") {
-    return expandConceptBeatsToCount(buildSelfHelpChapterTitles(idea), chapterCount);
+    return expandConceptBeatsToCount(buildSelfHelpChapterTitles(idea), chapterCount, idea, "self_help");
   }
   if (hasRichIdeaEntities(idea)) {
+    return buildEntityAwareChapterScaffold(idea, chapterCount);
+  }
+  if (shouldUseEntityDrivenScaffold(idea)) {
     return buildEntityAwareChapterScaffold(idea, chapterCount);
   }
   return [];

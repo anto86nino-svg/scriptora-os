@@ -7,6 +7,11 @@ import {
   hasExplicitRomanceSignals,
   hasSubmergedCitySciFiSignals,
   hasSupernaturalThrillerSignals,
+  hasDragonFlameFantasySignals,
+  hasHospitalGuardianMemoirSignals,
+  hasBusinessRestaurantSignals,
+  expandChapterScaffold,
+  buildHorrorStationChapterTitles,
   isGenericPhilosophyTitleForFiction,
   resolveConceptDominance,
   sanitizeUserConceptInput,
@@ -152,5 +157,44 @@ Mentre il mondo combatte per impossessarsene, Aren scopre che il ghiaccio era un
     expect(joined).not.toMatch(/tradizione filosofica|implicazione esistenziale|domanda contemplativa/i);
     expect(session.proposal?.characters?.toLowerCase() ?? "").toMatch(/aren/);
     expect(session.proposal?.characters?.toLowerCase() ?? "").not.toMatch(/^per\b/);
+  });
+
+  const kaelDragonIdea = `Ogni drago nasce con una sola fiamma.
+Kael nasce senza.
+Per questo viene condannato a morte.
+Quando scopre di poter controllare il fuoco degli altri draghi diventa l'uomo più pericoloso del continente.`;
+
+  it("detects dragon flame fantasy and extracts Kael not Per", () => {
+    expect(hasDragonFlameFantasySignals(kaelDragonIdea)).toBe(true);
+    expect(extractConceptProtagonist(kaelDragonIdea)).toBe("Kael");
+    expect(extractConceptProtagonist(kaelDragonIdea)).not.toBe("Per");
+    const resolved = resolveConceptDominance(kaelDragonIdea, { genre: "Fantasy" });
+    expect(resolved.genre).toBe("fantasy");
+    expect(resolved.protagonist).toBe("Kael");
+  });
+
+  it("detects hospital memoir without fiction protagonist extraction", () => {
+    const memoirIdea = `Per venticinque anni ho lavorato come guardiano notturno in un ospedale destinato alla chiusura.
+Questo libro racconta le persone che mi hanno insegnato cosa significa essere umani.`;
+    expect(hasHospitalGuardianMemoirSignals(memoirIdea)).toBe(true);
+    expect(extractConceptProtagonist(memoirIdea)).toBeUndefined();
+    expect(resolveConceptDominance(memoirIdea, { genre: "Memoir" }).bookFormat).toBe("memoir");
+  });
+
+  it("detects business restaurant growth signals", () => {
+    const businessIdea = `Ho costruito una catena di 17 ristoranti partendo da un chiosco di panini.
+Questo libro racconta sistemi, errori e strategie che mi hanno portato da zero a milioni di fatturato.`;
+    expect(hasBusinessRestaurantSignals(businessIdea)).toBe(true);
+    expect(extractConceptProtagonist(businessIdea)).toBeUndefined();
+  });
+
+  it("expands horror station beats to 20 unique chapters without tappa suffixes", () => {
+    const horrorIdea = `Ogni notte alle 03:17 una stazione ferroviaria abbandonata compare tra due gallerie inesistenti.
+Elia trova una fotografia della madre con scritto: "Non lasciare che io salga sul treno."`;
+    const expanded = expandChapterScaffold(buildHorrorStationChapterTitles(horrorIdea), 20, horrorIdea, "horror_station");
+    expect(expanded).toHaveLength(20);
+    const titles = expanded.map((b) => b.title);
+    expect(new Set(titles).size).toBe(20);
+    expect(titles.join(" ")).not.toMatch(/tappa\s*2|tappa\s*3/i);
   });
 });

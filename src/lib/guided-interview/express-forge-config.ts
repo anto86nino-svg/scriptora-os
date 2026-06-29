@@ -1,7 +1,7 @@
 import type { GuidedInterviewState } from "./types";
 import { createEmptyForgeMemory, getCriticalMissingSlots } from "./interview-memory";
 import type { ExpressForgeInput, ExpressBookFormat, ExpressForgeResult, ForgeFieldProvenance } from "./express-forge-types";
-import { resolveConceptDominance, sanitizeUserConceptInput } from "@/lib/concept-dominance";
+import { resolveConceptDominance, sanitizeUserConceptInput, inferNarrativeGenreFromIdea, isSparseConceptInput, shouldUseEntityDrivenScaffold } from "@/lib/concept-dominance";
 import {
   buildExpressBookScenarios,
   type ExpressBookScenario,
@@ -18,11 +18,16 @@ function prov(
 function inferExpressBookFormat(input: ExpressForgeInput): ExpressBookFormat {
   if (input.bookFormat) return input.bookFormat;
   const bag = `${input.genre} ${input.ideaSeed}`;
+  const sanitized = sanitizeUserConceptInput(input.ideaSeed || "");
+  if (isSparseConceptInput(sanitized) || /\b(libro\s+sul|libro\s+sulla|libro\s+su)\b/i.test(sanitized)) {
+    return "poetry_collection";
+  }
   if (/\b(poesia|poesia\s+gotica|raccolta\s+poetica|silloge|liriche|versi)\b/i.test(bag)) return "poetry_collection";
   if (/\b(memoir|memorie|autobiograf|viaggio interiore)\b/i.test(bag)) return "memoir";
   if (/\b(workbook|quaderno operativo|schede operativ)\b/i.test(bag)) return "workbook";
   if (/\b(study_material|materiale di studio|materiale studio)\b/i.test(bag)) return "study_material";
-  if (/\b(self.?help|crescita personale)\b/i.test(bag)) return "self_help";
+  if (/\b(cookbook|ricettario|ricette|cucina)\b/i.test(bag)) return "cookbook";
+  if (/\b(manuale pratico|fotografia digitale|esposizione|diaframma)\b/i.test(bag)) return "self_help";
   return "novel";
 }
 
@@ -34,7 +39,10 @@ function inferDefaultExpressGenre(
   const sanitized = sanitizeUserConceptInput(ideaSeed);
   const concept = resolveConceptDominance(sanitized, { genre });
   if (concept.genre) return concept.genre;
+  const inferred = inferNarrativeGenreFromIdea(sanitized);
+  if (inferred) return inferred;
   if (genre?.trim()) return genre.trim();
+  if (isSparseConceptInput(sanitized)) return "poesia";
   if (bookFormat === "poetry_collection") return "poesia";
   if (bookFormat === "memoir") return "memoir";
   if (bookFormat === "workbook") return "workbook";
@@ -42,7 +50,7 @@ function inferDefaultExpressGenre(
   if (bookFormat === "self_help") return "self-help";
   if (bookFormat === "essay") return "saggio";
   const bag = sanitized.toLowerCase();
-  if (/fantasy|magia|porta nel cuore|mille anni|memoria ancestrale|fine del mondo|high concept/.test(bag)) return "fantasy";
+  if (/fantasy|magia|porta nel cuore|mille anni|memoria ancestrale|fine del mondo|high concept/.test(bag) && !shouldUseEntityDrivenScaffold(sanitized)) return "fantasy";
   if (/horror|gotico|paura/.test(bag)) return "horror";
   if (/thriller|giallo|crime|mystery|soprannatural/.test(bag)) return "thriller";
   if (/citt[aà]\s+sommersa|disgelo|ghiaccio|nascost\w*\s+sotto|prigione\s+(di\s+)?ghiaccio|tecnolog\w*\s+impossibil|entit[aà]\s+antica|trecento\s+anni|sette\s+giorni/.test(bag)) return "sci-fi";
@@ -51,7 +59,8 @@ function inferDefaultExpressGenre(
   if (/enemies to lovers|nemici che si innamorano/.test(bag)) return "enemies to lovers";
   if (/dark romance|romance oscur/.test(bag)) return "dark romance";
   if (/romance|amore/.test(bag)) return "romance";
-  if (/self.?help|crescita personale/.test(bag)) return "self-help";
+  if (/business|ristorant|chiosco|fatturato|imprend/.test(bag)) return "business";
+  if (/manuale|manual|fotograf|esposizione|diaframma/.test(bag)) return "manual";
   if (/memoir|autobiograf/.test(bag)) return "memoir";
   if (/workbook|quaderno/.test(bag)) return "workbook";
   if (/poesia|poetry/.test(bag)) return "poesia";

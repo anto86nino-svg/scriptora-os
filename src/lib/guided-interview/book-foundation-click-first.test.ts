@@ -133,7 +133,8 @@ describe("click-first foundation flow", () => {
 
   it("nonfiction path uses subjects not narrative cast", () => {
     const cast = generateFoundationCast(selfHelpInput);
-    expect(cast[0]?.name).toBe("Lettore ideale");
+    expect(cast[0]?.name).toBe("Lettore in trasformazione");
+    expect(cast.some((c) => c.name === "Ostacolo interno")).toBe(false);
     const state = {
       ...getInitialInterviewState({ selectedGenre: "self-help" }),
       selectedGenre: "self-help",

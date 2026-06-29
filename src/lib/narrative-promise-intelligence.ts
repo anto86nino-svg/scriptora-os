@@ -2,10 +2,19 @@ import {
   extractConceptProtagonist,
   extractSubmergedCityLabel,
   extractSubmergedCityRole,
+  hasBusinessRestaurantSignals,
+  hasCookbookMediterraneanSignals,
+  hasDragonFlameFantasySignals,
+  hasEntityDrivenNarrativeSignals,
   hasHighConceptFantasySignals,
+  hasHospitalGuardianMemoirSignals,
+  hasHorrorStationSignals,
+  hasPhotographyManualSignals,
   hasSubmergedCitySciFiSignals,
   hasSupernaturalThrillerSignals,
+  isSparseConceptInput,
   sanitizeUserConceptInput,
+  shouldUseEntityDrivenScaffold,
 } from "@/lib/concept-dominance";
 
 const GENERIC_PROMISE_PATTERNS = [
@@ -62,13 +71,14 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
   const placePatterns = [
     /\b(citt[aà]\s+sommersa)\b/gi,
     /\b(citt[aà](?:\s+nel|\s+nascosta\s+sotto)?\s+(?:il\s+)?ghiaccio)/gi,
+    /\b(citt[aà]\s+portuale\s+di\s+\w+)/gi,
     /\b(ghiaccio\s+etern\w*)\b/gi,
     /\b(prigione\s+(?:di\s+)?ghiaccio)\b/gi,
     /\b(porta(?:\s+nel\s+cuore)?)/gi,
     /\b(stazione(?:\s+ferroviaria)?(?:\s+abbandonata)?)/gi,
     /\b(gallerie?\s+inesistenti?)/gi,
     /\b(piccolo\s+paese|paese|villaggio)/gi,
-    /\b(casa|villa|bosco|ospedale|manicomio|isola)\b/gi,
+    /\b(casa|villa|bosco|ospedale|manicomio|isola|condominio|nagasaki|bruma|regno)\b/gi,
   ];
   for (const pattern of placePatterns) {
     for (const match of text.matchAll(pattern)) {
@@ -80,7 +90,7 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
   const objectPatterns = [
     /\b(fotograf(?:ia|ie))/gi,
     /\b(treno)/gi,
-    /\b(lettere?|diari?o|mappe?|orologio|specchio)\b/gi,
+    /\b(lettere?|diari?o|mappe?|orologio|specchio|scatola|chiave|confessione|bollette?)\b/gi,
   ];
   for (const pattern of objectPatterns) {
     for (const match of text.matchAll(pattern)) {
@@ -100,6 +110,7 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
     /\b(persone cancellate dall'esistenza)/gi,
     /\b(fotograf(?:ia|ie) che cambiano)/gi,
     /\b(non lasciare che io salga sul treno)/gi,
+    /\b(marted\w*|calendario|sonno|incubi|wifi|cadaver\w*|fantasma|mare\s+sta\s+salendo|mercato\s+nero|banche\s+dei\s+sogni|mezze\s+verit\w*)/gi,
   ];
   for (const pattern of mysteryPatterns) {
     for (const match of text.matchAll(pattern)) {
@@ -115,6 +126,10 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
   if (/\bfuturo\b/i.test(text)) signals.stakes.push("futuro");
   if (/\bfine del mondo|apocaliss/i.test(text)) signals.stakes.push("fine del mondo");
   if (/\bcolpa\b/i.test(text)) signals.stakes.push("colpa");
+  if (/\bparola\b/i.test(text)) signals.stakes.push("parola");
+  if (/\bguerra\b/i.test(text)) signals.stakes.push("guerra");
+  if (/\bsilenzio\b/i.test(text)) signals.stakes.push("silenzio");
+  if (/\bmentir\w*\b/i.test(text)) signals.stakes.push("menzogna");
   if (/\bsegreto\b/i.test(text)) signals.stakes.push("segreto");
   if (/\bghiaccio\b/i.test(text)) signals.stakes.push("ghiaccio");
   if (/\bdisgelo\b/i.test(text)) signals.stakes.push("disgelo");
@@ -131,8 +146,67 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
 }
 
 export function hasRichNarrativeIdea(idea: string): boolean {
+  if (isSparseConceptInput(idea)) return false;
+  if (hasEntityDrivenNarrativeSignals(idea)) return true;
   const signals = extractNarrativeIdeaSignals(idea);
-  return signals.uniqueElements.length >= 3;
+  const sanitized = sanitizeUserConceptInput(idea);
+  const words = sanitized.split(/\s+/).filter(Boolean);
+  if (signals.uniqueElements.length >= 3) return true;
+  if (signals.protagonist && signals.uniqueElements.length >= 2) return true;
+  if (words.length >= 14 && signals.uniqueElements.length >= 2) return true;
+  return false;
+}
+
+export function buildEntityDrivenTitle(idea: string): string | undefined {
+  const hay = clean(sanitizeUserConceptInput(idea)).toLowerCase();
+  if (/\bscatola\b/.test(hay) && /\bmarted/.test(hay)) return "La Scatola del Martedì";
+  if (/\bcadaver/.test(hay) && /\bbruma\b/.test(hay)) return "I Cadaveri che Parlano nei Sogni";
+  if (/\bsonno\b/.test(hay) && /\bvaluta|banche\b/.test(hay)) return "La Valuta del Sonno";
+  if (/\bvolpe\b/.test(hay) && /\bregno\b/.test(hay)) return "La Volpe che Non Sa Mentire";
+  if (/\bfantasma\b/.test(hay) && /\bbollette|wifi\b/.test(hay)) return "Il Fantasma delle Bollette";
+  if (/\bconfessione\b/.test(hay) && /\bnagasaki\b/.test(hay)) return "Una Parola a Nagasaki";
+  if (/\bsilenzio\b/.test(hay)) return "Il Libro del Silenzio";
+  if (/\bchiave\b/.test(hay) && /\bporte?\b/.test(hay)) return "La Chiave delle Porte Perdute";
+
+  const signals = extractNarrativeIdeaSignals(idea);
+  const anchor = signals.mysteries[0] || signals.objects[0] || signals.places[0];
+  if (anchor && signals.protagonist) {
+    return `${anchor}: storia di ${signals.protagonist}`;
+  }
+  if (anchor) return anchor.charAt(0).toUpperCase() + anchor.slice(1);
+  return undefined;
+}
+
+export function buildEntityDrivenSubtitle(idea: string, protagonist?: string): string {
+  const lead = protagonist || extractConceptProtagonist(idea) || "il protagonista";
+  const hay = clean(sanitizeUserConceptInput(idea)).toLowerCase();
+  if (/\bscatola\b/.test(hay) && /\bmarted/.test(hay)) {
+    return `Ogni volta che ${lead} apre la scatola, un giorno sparisce dal calendario di tutti — e nessuno ricorda che sia mai esistito.`;
+  }
+  if (/\bcadaver/.test(hay) && /\bbruma\b/.test(hay)) {
+    return `A Bruma, ${lead} pesca cadaveri che parlano solo nei sogni dei bambini mentre il mare sale di un piano a ogni luna piena.`;
+  }
+  if (/\bsonno\b/.test(hay) && /\bvaluta|banche|economist/.test(hay)) {
+    return `Se il sonno è valuta, chi controlla le banche dei sogni controlla il futuro — tre economisti e un insomne cercano di chiudere il mercato nero degli incubi prima che diventi irreversibile.`;
+  }
+  if (/\bvolpe\b/.test(hay) && /\bmentir/.test(hay)) {
+    return `${lead} non sa mentire in un regno dove mentire è obbligatorio per legge — e deve consegnare una lettera al Re delle Mezze Verità.`;
+  }
+  if (/\bfantasma\b/.test(hay) && /\bbollette|wifi|condominio/.test(hay)) {
+    return `${lead} scopre che i morti del condominio usano il Wi-Fi per votare le assemblee — e il fantasma si lamenta solo delle bollette.`;
+  }
+  if (/\bconfessione\b/.test(hay) && /\bnagasaki|interprete/.test(hay)) {
+    return `Nel 1743 a Nagasaki, ${lead} traduce una confessione che può far scoppiare una guerra tra tre imperi: una parola sbagliata costa mille vite.`;
+  }
+  if (/\bchiave\b/.test(hay) && /\bporte?\b/.test(hay)) {
+    return `${lead} trova una chiave che apre solo porte che non esistono più — e ogni soglia rivelata riscrive ciò che credeva reale.`;
+  }
+  if (/\bsilenzio\b/.test(hay)) {
+    return "Un'indagine lirica sul silenzio: cosa resta quando le parole non bastano più.";
+  }
+  const signals = extractNarrativeIdeaSignals(idea);
+  const anchors = signals.uniqueElements.slice(0, 3).join(", ");
+  return `${lead} attraversa ${anchors}: ogni capitolo aumenta la posta in gioco finché la verità non può più restare nascosta.`;
 }
 
 export function buildNarrativePromiseFromIdea(idea: string, genre?: string): string {
@@ -140,6 +214,38 @@ export function buildNarrativePromiseFromIdea(idea: string, genre?: string): str
   const signals = extractNarrativeIdeaSignals(sanitized);
   const lead = signals.protagonist || "il protagonista";
   const genreLabel = clean(genre || "horror");
+
+  if (hasDragonFlameFantasySignals(sanitized)) {
+    return `${lead} nasce senza la fiamma che ogni drago riceve alla nascita e viene condannato a morte — finché scopre di poter controllare il fuoco degli altri draghi e diventa la minaccia più temuta del continente.`;
+  }
+
+  if (hasHospitalGuardianMemoirSignals(sanitized)) {
+    return "Per venticinque anni di guardia notturna in un ospedale destinato alla chiusura, questo memoir racconta in prima persona le persone che hanno insegnato cosa significa essere umani — senza trama da fiction.";
+  }
+
+  if (hasBusinessRestaurantSignals(sanitized)) {
+    return "Dal chiosco di panini alla catena di 17 ristoranti e milioni di fatturato: sistemi, errori e strategie imprenditoriali raccontati con chiarezza operativa — non arco narrativo da romanzo.";
+  }
+
+  if (hasPhotographyManualSignals(sanitized)) {
+    return "Manuale pratico di fotografia digitale per principianti: esposizione, diaframma, composizione, luce, esercizi e piano di miglioramento di 30 giorni — senza deriva narrativa.";
+  }
+
+  if (hasCookbookMediterraneanSignals(sanitized)) {
+    return "Ricettario mediterraneo con 100 ricette tradizionali, menu settimanali, varianti vegetariane e piano alimentare di 30 giorni — solo cucina applicabile.";
+  }
+
+  if (shouldUseEntityDrivenScaffold(sanitized)) {
+    const entityPromise = buildEntityDrivenSubtitle(sanitized, lead);
+    if (entityPromise && entityPromise.length >= 24) return entityPromise;
+  }
+
+  if (hasHorrorStationSignals(sanitized)) {
+    const time = signals.mysteries.find((m) => /\d{1,2}:\d{2}/.test(m)) || extractTimeAnchor(sanitized);
+    const place = signals.places.find((p) => /stazione/i.test(p)) || "la stazione ferroviaria abbandonata";
+    const object = signals.objects.find((o) => /fotograf/i.test(o)) || "una fotografia della madre";
+    return `${lead} deve capire perché ogni notte alle ${time || "03:17"} ${place} compare tra gallerie inesistenti — e cosa significa ${object} con l'avvertimento di non lasciare salire sul treno la madre.`;
+  }
 
   if (signals.uniqueElements.length < 2) {
     return "";
@@ -180,7 +286,7 @@ export function buildNarrativePromiseFromIdea(idea: string, genre?: string): str
     return `${lead}${placeClause} riceve ogni notte visioni dal futuro${timeClause}. ${visionClause}, deve capire chi le sta inviando quelle immagini e se può ancora cambiare il destino prima che il paese chiuda ogni via di fuga.`;
   }
 
-  if ((hasHighConceptFantasySignals(sanitized) || /fantasy/i.test(genre || "")) && !/horror|thriller/i.test(genre || "")) {
+  if ((hasHighConceptFantasySignals(sanitized) || /fantasy/i.test(genre || "")) && !/horror|thriller/i.test(genre || "") && !hasDragonFlameFantasySignals(sanitized)) {
     const door = signals.places.find((place) => /porta/i.test(place)) || "la porta nel cuore";
     const endWorld = signals.stakes.includes("fine del mondo") || /\bfine del mondo|apocaliss/i.test(sanitized);
     const memory = signals.stakes.includes("memoria") || /\bricordi\b/i.test(sanitized);
@@ -207,6 +313,9 @@ export function buildNarrativePromiseFromIdea(idea: string, genre?: string): str
   }
 
   const anchors = signals.uniqueElements.slice(0, 4).join(", ");
+  if (shouldUseEntityDrivenScaffold(sanitized)) {
+    return `Un racconto costruito su ${anchors}: ogni capitolo aumenta la posta in gioco finché ${lead} non può più fingere di non sapere.`;
+  }
   return `Un ${genreLabel} costruito su ${anchors}: ogni capitolo aumenta la posta in gioco finché ${lead} non può più fingere di non sapere.`;
 }
 
@@ -215,8 +324,19 @@ export function resolveNarrativePromise(
   genre: string,
   fallback: string,
 ): string {
+  const sanitized = sanitizeUserConceptInput(idea);
   const fromIdea = buildNarrativePromiseFromIdea(idea, genre);
-  if (fromIdea && hasRichNarrativeIdea(idea)) return fromIdea;
+  const conceptLocked =
+    hasDragonFlameFantasySignals(sanitized) ||
+    hasHorrorStationSignals(sanitized) ||
+    hasHospitalGuardianMemoirSignals(sanitized) ||
+    hasBusinessRestaurantSignals(sanitized) ||
+    hasPhotographyManualSignals(sanitized) ||
+    hasCookbookMediterraneanSignals(sanitized) ||
+    hasSubmergedCitySciFiSignals(sanitized) ||
+    hasSupernaturalThrillerSignals(sanitized) ||
+    shouldUseEntityDrivenScaffold(sanitized);
+  if (fromIdea && (hasRichNarrativeIdea(idea) || conceptLocked)) return fromIdea;
   if (!isGenericNarrativePromise(fallback)) return fallback;
   if (fromIdea) return fromIdea;
   return fallback;

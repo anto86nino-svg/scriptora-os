@@ -83,8 +83,9 @@ describe("generateGenreAwareCharacters", () => {
 
   it("self-help generates idealReader, readerProblem, method via nonfiction subjects path", () => {
     const chars = generateGenreAwareCharacters(selfHelpInput);
-    expect(chars[0]?.name).toBe("Lettore ideale");
+    expect(chars[0]?.name).toBe("Lettore in trasformazione");
     expect(chars[0]?.wound).toMatch(/bloccat|fallimento|paura/i);
+    expect(chars.some((c) => c.name === "Ostacolo interno")).toBe(false);
     const nf = buildCompleteExpressBookPackage(
       {
         genre: "self-help",

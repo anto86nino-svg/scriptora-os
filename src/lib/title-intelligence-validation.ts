@@ -1,15 +1,28 @@
+import { buildEntityDrivenTitle } from "@/lib/narrative-promise-intelligence";
 import { buildTitleV2Pipeline, type TitleV2Input } from "@/lib/title-intelligence-v2";
 import { isWeakBookTitle } from "@/lib/title-shadow";
 import {
   extractConceptProtagonist,
   extractTimeAnchor,
   hasHighConceptFantasySignals,
+  hasDragonFlameFantasySignals,
+  hasHorrorStationSignals,
   hasSubmergedCitySciFiSignals,
   hasSupernaturalThrillerSignals,
+  buildDragonFlameFantasyTitle,
+  buildHorrorStationTitle,
+  buildCookbookMediterraneanTitle,
+  buildHospitalMemoirTitle,
+  buildBusinessRestaurantTitle,
+  buildPhotographyManualTitle,
+  buildSubmergedCityTitle,
+  buildTimeAnchoredTitle,
   isConceptDominanceSubtitle,
   isGenericPhilosophyTitleForFiction,
   sanitizeUserConceptInput,
   shouldPreserveConceptSubtitle,
+  shouldUseEntityDrivenScaffold,
+  isSparseConceptInput,
 } from "@/lib/concept-dominance";
 
 const TITLE_STOP_WORDS = new Set([
@@ -79,6 +92,26 @@ export function breaksConceptAnchors(title: string, subtitle: string, idea: stri
     }
   }
 
+  if (hasDragonFlameFantasySignals(sanitized)) {
+    if (/\b(fantasy emozionale|magia, tradimento|porta nel cuore|primo ricordo|ultima scelta)\b/.test(`${titleHay} ${subtitleHay}`)) {
+      return true;
+    }
+    if (shouldPreserveConceptSubtitle(sanitized) && subtitle.trim() && !isConceptDominanceSubtitle(subtitle, sanitized)) {
+      const hasDragonSignal = /fiamma|drago|fuoco|condannat/.test(subtitleHay);
+      if (!hasDragonSignal && /fantasy|tradimento|potere/.test(subtitleHay)) return true;
+    }
+  }
+
+  if (hasHorrorStationSignals(sanitized)) {
+    if (/\b(kael|fantasy|magia proibita|romance|desiderio proibito)\b/.test(`${titleHay} ${subtitleHay}`)) {
+      return true;
+    }
+    if (shouldPreserveConceptSubtitle(sanitized) && subtitle.trim() && !isConceptDominanceSubtitle(subtitle, sanitized)) {
+      const hasHorrorSignal = /stazione|03:17|fotograf|treno|madre|gallerie/.test(subtitleHay);
+      if (!hasHorrorSignal && /promessa, tensione e payoff|horror oscuro/.test(subtitleHay)) return true;
+    }
+  }
+
   if (hasSubmergedCitySciFiSignals(sanitized)) {
     if (/\b(kael|magia proibita|corona|regno|fantasy epico|epic fantasy|mondo ordinario|chiamata|mentore)\b/.test(`${titleHay} ${subtitleHay}`)) {
       return true;
@@ -116,9 +149,66 @@ export function breaksConceptAnchors(title: string, subtitle: string, idea: stri
 export function isInvalidGeneratedTitle(title: string, idea: string, subtitle = ""): boolean {
   const clean = String(title || "").trim();
   if (!clean || isWeakBookTitle(clean)) return true;
-  if (countMeaningfulTitleWords(clean) < 3) return true;
-  if (isIdeaTruncatedTitle(clean, idea)) return true;
-  if (isStopWordHeavyTitle(clean)) return true;
+
+  const sanitized = sanitizeUserConceptInput(idea);
+  if (shouldUseEntityDrivenScaffold(sanitized)) {
+    const entityTitle = buildEntityDrivenTitle(sanitized);
+    if (entityTitle && normalize(clean) === normalize(entityTitle)) return false;
+  }
+  if (isSparseConceptInput(sanitized)) {
+    const entityTitle = buildEntityDrivenTitle(sanitized);
+    if (entityTitle && normalize(clean) === normalize(entityTitle)) return false;
+    if (/\bsilenzio\b/.test(normalize(sanitized)) && /\bsilenzio\b/.test(normalize(clean))) return false;
+  }
+  if (shouldPreserveConceptSubtitle(sanitized)) {
+    const preservedTitles = [
+      buildDragonFlameFantasyTitle(sanitized),
+      buildHorrorStationTitle(sanitized, "commercial"),
+      buildHorrorStationTitle(sanitized, "safe"),
+      buildHorrorStationTitle(sanitized, "bold"),
+      buildTimeAnchoredTitle(sanitized),
+      buildHospitalMemoirTitle(sanitized),
+      buildBusinessRestaurantTitle(sanitized),
+      buildCookbookMediterraneanTitle(sanitized),
+      buildPhotographyManualTitle(),
+      buildSubmergedCityTitle(sanitized, "commercial"),
+    ]
+      .filter(Boolean)
+      .map((value) => normalize(value!));
+    if (preservedTitles.includes(normalize(clean))) return false;
+    if (hasHorrorStationSignals(sanitized)) {
+      const lead = extractConceptProtagonist(sanitized);
+      const horrorTitles = [
+        buildHorrorStationTitle(sanitized, "commercial"),
+        buildHorrorStationTitle(sanitized, "safe"),
+        buildHorrorStationTitle(sanitized, "bold"),
+        buildTimeAnchoredTitle(sanitized),
+        lead ? `La Fotografia di ${lead}` : null,
+        "Non Lasciare che Io Salga sul Treno",
+        lead ? `La Stazione delle 03:17` : null,
+      ]
+        .filter(Boolean)
+        .map((value) => normalize(value!));
+      if (horrorTitles.includes(normalize(clean))) return false;
+    }
+  }
+
+  if (countMeaningfulTitleWords(clean) < 2) return true;
+  if (!shouldPreserveConceptSubtitle(sanitized) && countMeaningfulTitleWords(clean) < 3) return true;
+  if (isIdeaTruncatedTitle(clean, idea)) {
+    const timeTitle = buildTimeAnchoredTitle(sanitized);
+    if (
+      timeTitle &&
+      normalize(clean) === normalize(timeTitle) &&
+      (hasHorrorStationSignals(sanitized) || hasSupernaturalThrillerSignals(sanitized))
+    ) {
+      // Time-anchored hook titles are intentional even when they mirror the idea opener.
+    } else {
+      return true;
+    }
+  }
+  if (!shouldPreserveConceptSubtitle(sanitized) && isStopWordHeavyTitle(clean)) return true;
+  if (shouldPreserveConceptSubtitle(sanitized) && countMeaningfulTitleWords(clean) < 3 && isStopWordHeavyTitle(clean)) return true;
   if (isGenericPhilosophyTitleForFiction(clean, idea)) return true;
   if (subtitle && breaksConceptAnchors(clean, subtitle, idea)) return true;
   return false;
@@ -127,6 +217,15 @@ export function isInvalidGeneratedTitle(title: string, idea: string, subtitle = 
 export function regenerateTitleFromIdea(input: TitleV2Input): { title: string; subtitle: string; commercialReason: string } | null {
   const idea = String(input.idea || input.titleSeed || "").trim();
   if (!idea) return null;
+
+  const entityTitle = buildEntityDrivenTitle(idea);
+  if (entityTitle && !isInvalidGeneratedTitle(entityTitle, idea)) {
+    return {
+      title: entityTitle,
+      subtitle: "",
+      commercialReason: "Titolo ancorato agli elementi distintivi dell'idea.",
+    };
+  }
 
   const pipeline = buildTitleV2Pipeline(input);
   const candidates = [

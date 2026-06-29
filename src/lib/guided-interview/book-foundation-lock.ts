@@ -4,6 +4,7 @@ import type { ExpressForgeInput } from "./express-forge-types";
 import type { CompleteExpressBookPackage } from "./express-book-package";
 import {
   isNonfictionExpressGenre,
+  isMemoirExpressGenre,
   isPoetryExpressGenre,
   resolveExpressBookType,
 } from "./express-genre-config";
@@ -24,14 +25,32 @@ import {
 } from "@/lib/title-intelligence-validation";
 import { resolveNarrativePromise } from "@/lib/narrative-promise-intelligence";
 import {
+  buildBusinessRestaurantSubtitle,
+  buildBusinessRestaurantTitle,
+  buildDragonFlameFantasySubtitle,
+  buildDragonFlameFantasyTitle,
+  buildHospitalMemoirSubtitle,
+  buildHospitalMemoirTitle,
+  buildHorrorStationSubtitle,
   buildSubmergedCitySubtitle,
   buildSubmergedCityTitle,
   buildSupernaturalThrillerSubtitle,
   buildTimeAnchoredTitle,
   extractConceptProtagonist,
+  hasBusinessRestaurantSignals,
+  hasCookbookMediterraneanSignals,
+  hasDragonFlameFantasySignals,
+  hasHospitalGuardianMemoirSignals,
+  hasHorrorStationSignals,
+  hasPhotographyManualSignals,
+  buildCookbookMediterraneanTitle,
+  buildHorrorStationTitle,
+  buildPhotographyManualTitle,
+  buildPhotographyManualSubtitle,
   hasSubmergedCitySciFiSignals,
   hasSupernaturalThrillerSignals,
   isConceptDominanceSubtitle,
+  isFirstPersonAuthorVoice,
   sanitizeUserConceptInput,
   shouldPreserveConceptSubtitle,
 } from "@/lib/concept-dominance";
@@ -263,10 +282,17 @@ function isFantasy(genre: string): boolean {
 }
 
 function parseLeadName(seed: string): string {
-  const extracted = extractConceptProtagonist(sanitizeUserConceptInput(seed));
+  const sanitized = sanitizeUserConceptInput(seed);
+  if (isFirstPersonAuthorVoice(sanitized)) return "";
+  const extracted = extractConceptProtagonist(sanitized);
   if (extracted) return extracted;
-  const words = seed.split(/\s+/).filter(Boolean);
-  if (words.length >= 2 && /^[A-ZÀ-Ü]/.test(words[0]!)) return words[0]!;
+  const words = sanitized.split(/\s+/).filter(Boolean);
+  if (words.length >= 2 && /^[A-ZÀ-Ü]/.test(words[0]!)) {
+    const first = words[0]!.toLowerCase();
+    if (!["per", "ho", "questo", "ogni", "una", "il", "la", "un", "menu", "manuale", "libro"].includes(first)) {
+      return words[0]!;
+    }
+  }
   if (/restauratrice/i.test(seed)) return "Elena";
   if (/chef/i.test(seed)) return "Elena";
   if (/detective|ispettore/i.test(seed)) return "Luca";
@@ -318,8 +344,65 @@ export function generateGenreAwareCharacters(input: FoundationGeneratorInput): F
   if (isNonfictionExpressGenre(genre)) {
     const problem = seed || "blocco ricorrente che impedisce progresso concreto";
     const promise = `Trasformare ${problem.toLowerCase()} in azione sostenibile`;
+
+    if (hasHospitalGuardianMemoirSignals(seed)) {
+      return [
+        baseCharacter("protagonist", "Voce autoriale (guardiano notturno)", {
+          wound: "Venticinque anni di notti in un ospedale destinato alla chiusura",
+          desire: "Raccontare le persone che hanno insegnato cosa significa essere umani",
+          arc: "Da guardiano testimone a narratore di verità umane",
+        }),
+      ];
+    }
+
+    if (hasBusinessRestaurantSignals(seed)) {
+      return [
+        baseCharacter("protagonist", "Imprenditore della ristorazione", {
+          wound: "Crescere nel food business senza sistemi replicabili",
+          fear: "Ripetere errori costosi nella scalata da chiosco a catena",
+          desire: "Da zero a milioni di fatturato con processi che reggono",
+          contradiction: "Vuole espandersi ma teme di perdere controllo qualità",
+          obsession: "Costruire una catena di 17 ristoranti senza implodere",
+          secret: "Sa che la crescita veloce ha già quasi distrutto tutto una volta",
+          arc: "Da chiosco di panini a fondatore con sistemi replicabili",
+          vulnerability: "Ristorazione e imprenditoria food",
+          dominantFlaw: "Confonde intuizione imprenditoriale con assenza di processi",
+        }),
+        baseCharacter("antagonist", "Caos operativo", {
+          wound: "Crescita senza standard né delega",
+          fear: "Perdere margini e reputazione nella scalata",
+          desire: "Imporre ordine prima che la catena crolli",
+          contradiction: "Serve struttura ma il fondatore resiste a delegare",
+          obsession: "Evitare l'errore che costa un punto vendita intero",
+          arc: "Da caos imprenditoriale a sistema che regge da solo",
+        }),
+      ];
+    }
+
+    if (hasCookbookMediterraneanSignals(seed)) {
+      return [
+        baseCharacter("protagonist", "Cuoco casalingo", {
+          wound: "Cucina quotidiana senza ricette affidabili né menu chiari",
+          desire: "100 ricette mediterranee replicabili con menu settimanali",
+          arc: "Da improvvisazione a cucina mediterranea autonoma",
+          vulnerability: "Cucina domestica e alimentazione quotidiana",
+        }),
+      ];
+    }
+
+    if (hasPhotographyManualSignals(seed)) {
+      return [
+        baseCharacter("protagonist", "Fotografo principiante", {
+          wound: "Scatti incerti su esposizione, diaframma e composizione",
+          desire: "Padroneggiare la fotografia digitale con esercizi e piano di 30 giorni",
+          arc: "Da principiante a fotografo consapevole con portfolio iniziale",
+          vulnerability: "Fotografia digitale per principianti",
+        }),
+      ];
+    }
+
     return [
-      baseCharacter("protagonist", "Lettore ideale", {
+      baseCharacter("protagonist", "Lettore in trasformazione", {
         wound: problem,
         fear: "Investire tempo senza ottenere cambiamento reale",
         desire: promise,
@@ -330,15 +413,6 @@ export function generateGenreAwareCharacters(input: FoundationGeneratorInput): F
         vulnerability: input.bookType || "Saggio o self-help",
         dominantFlaw: "Confonde prudenza e paralisi",
       }),
-      baseCharacter("antagonist", "Ostacolo interno", {
-        wound: "Paura del fallimento radicata nel passato",
-        fear: "Esporsi e risultare inadeguato",
-        desire: "Mantenere il controllo evitando il rischio",
-        contradiction: "Protegge ma imprigiona",
-        obsession: "Evitare il disagio a ogni costo",
-        secret: "Il blocco è servito come scudo",
-        arc: "Da voce critica dominante a segnale da integrare",
-      }),
     ];
   }
 
@@ -348,6 +422,25 @@ export function generateGenreAwareCharacters(input: FoundationGeneratorInput): F
         wound: seed.split(/[.!?]/)[0] || "Perdita e memoria",
         desire: "Dare forma poetica al tema",
         arc: "Da frammento a raccolta coerente",
+      }),
+    ];
+  }
+
+  if (isMemoirExpressGenre(genre)) {
+    if (hasHospitalGuardianMemoirSignals(seed)) {
+      return [
+        baseCharacter("protagonist", "Voce autoriale", {
+          wound: "Venticinque anni di notti in un ospedale destinato alla chiusura",
+          desire: "Raccontare le persone che hanno insegnato cosa significa essere umani",
+          arc: "Da guardiano testimone a narratore di verità umane",
+        }),
+      ];
+    }
+    return [
+      baseCharacter("protagonist", "Voce autoriale", {
+        wound: seed.split(/[.!?]/)[0] || "Periodo di vita vissuto",
+        desire: "Dare forma autentica alla memoria personale",
+        arc: "Da memoria frammentata a integrazione riflessiva",
       }),
     ];
   }
@@ -601,6 +694,104 @@ export function generateTitleSubtitleOptions(input: FoundationGeneratorInput): T
         toneFit: input.tone,
         genreFit: "sci-fi adulto",
         risk: "Più rischiosa ma più distintiva",
+      },
+    ];
+  }
+
+  if (hasDragonFlameFantasySignals(seed)) {
+    const protagonist = extractConceptProtagonist(seed) || "Kael";
+    return [
+      {
+        title: buildDragonFlameFantasyTitle(seed),
+        subtitle: buildDragonFlameFantasySubtitle(seed, "commercial"),
+        commercialReason: `Fantasy su draghi e fiamme con ${protagonist} come minaccia del continente`,
+        toneFit: input.tone,
+        genreFit: "fantasy",
+        risk: "Richiede coerenza su fiamma, condanna e fuoco altrui nel blueprint",
+      },
+      {
+        title: buildDragonFlameFantasyTitle(seed),
+        subtitle: buildDragonFlameFantasySubtitle(seed, "safe"),
+        commercialReason: "Versione più chiara sulla nascita senza fiamma e sulla condanna",
+        toneFit: input.tone,
+        genreFit: "epic fantasy",
+        risk: "Meno audace ma più leggibile",
+      },
+      {
+        title: protagonist ? `Il Fuoco di ${protagonist}` : "La Fiamma Rubata",
+        subtitle: buildDragonFlameFantasySubtitle(seed, "bold"),
+        commercialReason: "Versione più memorabile sul controllo del fuoco altrui",
+        toneFit: input.tone,
+        genreFit: "fantasy adulto",
+        risk: "Più rischiosa ma più distintiva",
+      },
+    ];
+  }
+
+  if (hasHorrorStationSignals(seed)) {
+    return [
+      {
+        title: buildHorrorStationTitle(seed, "commercial"),
+        subtitle: buildHorrorStationSubtitle(seed, "commercial"),
+        commercialReason: "Hook temporale + stazione fantasma + fotografia della madre",
+        toneFit: input.tone,
+        genreFit: "horror",
+        risk: "Richiede coerenza su stazione, treno e fotografia nel blueprint",
+      },
+      {
+        title: buildHorrorStationTitle(seed, "safe"),
+        subtitle: buildHorrorStationSubtitle(seed, "safe"),
+        commercialReason: "Versione più stabile ancorata a madre, treno e avvertimento",
+        toneFit: input.tone,
+        genreFit: "supernatural horror",
+        risk: "Meno distintivo se manca l'orario",
+      },
+      {
+        title: buildHorrorStationTitle(seed, "bold"),
+        subtitle: buildHorrorStationSubtitle(seed, "bold"),
+        commercialReason: "Versione più audace sulla minaccia ferroviaria",
+        toneFit: input.tone,
+        genreFit: "horror psicologico",
+        risk: "Più rischiosa ma più memorabile",
+      },
+    ];
+  }
+
+  if (hasHospitalGuardianMemoirSignals(seed)) {
+    return [
+      {
+        title: buildHospitalMemoirTitle(seed),
+        subtitle: buildHospitalMemoirSubtitle(seed),
+        commercialReason: "Memoir in prima persona su ospedale, guardia notturna e umanità",
+        toneFit: input.tone,
+        genreFit: "memoir",
+        risk: "Mantenere voce autoriale senza deriva fiction",
+      },
+    ];
+  }
+
+  if (hasBusinessRestaurantSignals(seed)) {
+    return [
+      {
+        title: buildBusinessRestaurantTitle(seed),
+        subtitle: buildBusinessRestaurantSubtitle(seed),
+        commercialReason: "Business food con sistemi, errori e strategie da chiosco a catena",
+        toneFit: input.tone,
+        genreFit: "business",
+        risk: "Evitare arco narrativo da protagonista fiction",
+      },
+    ];
+  }
+
+  if (hasPhotographyManualSignals(seed)) {
+    return [
+      {
+        title: buildPhotographyManualTitle(),
+        subtitle: buildPhotographyManualSubtitle(),
+        commercialReason: "Manuale fotografico con esposizione, diaframma, composizione e piano 30 giorni",
+        toneFit: input.tone,
+        genreFit: "manual",
+        risk: "Mantenere formato didattico senza deriva narrativa",
       },
     ];
   }
