@@ -213,3 +213,29 @@ export function getToolRoute(id: ScriptoraToolId): string {
 export function getCanonicalToolRoutes(): string[] {
   return Array.from(new Set(Object.values(SCRIPTORA_TOOL_REGISTRY).map((tool) => tool.canonicalRoute)));
 }
+
+/** Canonical publishing wizard chain: title → keyword → radar → cover → kdp → export */
+export const PUBLISHING_FLOW_ORDER: ScriptoraToolId[] = [
+  "title",
+  "keyword",
+  "radar",
+  "cover",
+  "kdp",
+  "export",
+];
+
+export function getPublishingFlowNext(currentToolId: ScriptoraToolId): string | undefined {
+  return SCRIPTORA_TOOL_REGISTRY[currentToolId]?.nextRoute;
+}
+
+export function resolvePublishingFlowToolId(routeOrPath: string): ScriptoraToolId | undefined {
+  const normalized = routeOrPath.split("?")[0];
+  const match = Object.values(SCRIPTORA_TOOL_REGISTRY).find((tool) => tool.canonicalRoute === normalized);
+  return match?.id;
+}
+
+export function getPublishingFlowNextToolId(currentToolId: ScriptoraToolId): ScriptoraToolId | undefined {
+  const nextRoute = getPublishingFlowNext(currentToolId);
+  if (!nextRoute) return undefined;
+  return resolvePublishingFlowToolId(nextRoute);
+}

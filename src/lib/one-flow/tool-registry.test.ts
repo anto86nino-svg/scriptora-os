@@ -5,7 +5,7 @@ import {
   isValidDashboardRoute,
   type DashboardActionContext,
 } from "./dashboard-home-actions";
-import { getCanonicalToolRoutes, getToolRoute } from "./tool-registry";
+import { getCanonicalToolRoutes, getPublishingFlowNext, getToolRoute, PUBLISHING_FLOW_ORDER, resolvePublishingFlowToolId } from "./tool-registry";
 
 const baseContext: DashboardActionContext = {
   hasActiveBook: true,
@@ -50,6 +50,32 @@ describe("tool registry convergence", () => {
       getToolRoute("keyword"),
       getToolRoute("radar"),
     ]);
+  });
+
+  it("routes export actions to export studio, not publishing center", () => {
+    const exportAction = buildDashboardPackagingActions(baseContext).find((action) => action.id === "pack-export");
+    expect(exportAction?.route).toBe("/export-studio");
+    expect(exportAction?.route).not.toBe(getToolRoute("publishing"));
+  });
+
+  it("returns no packaging actions without an active book", () => {
+    const emptyContext = { ...baseContext, hasActiveBook: false, activeProject: null };
+    expect(buildDashboardPackagingActions(emptyContext)).toEqual([]);
+  });
+});
+
+describe("publishing flow nextRoute", () => {
+  it("walks title → keyword → radar → cover → kdp → export", () => {
+    expect(getPublishingFlowNext("title")).toBe(getToolRoute("keyword"));
+    expect(getPublishingFlowNext("keyword")).toBe(getToolRoute("radar"));
+    expect(getPublishingFlowNext("radar")).toBe(getToolRoute("publishing"));
+    expect(getPublishingFlowNext("cover")).toBe(getToolRoute("export"));
+    expect(getPublishingFlowNext("export")).toBe(getToolRoute("kdp"));
+  });
+
+  it("resolves publishing flow tool ids from canonical routes", () => {
+    expect(resolvePublishingFlowToolId(getToolRoute("title"))).toBe("title");
+    expect(PUBLISHING_FLOW_ORDER).toEqual(["title", "keyword", "radar", "cover", "kdp", "export"]);
   });
 });
 

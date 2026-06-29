@@ -38,6 +38,7 @@ export type DashboardActionContext = {
   onNewBook: () => void;
   onContinue?: () => void;
   onOpenCover: () => void;
+  onOpenVoiceStudio?: () => void;
   onNavigate: (path: string, state?: Record<string, unknown>) => void;
 };
 
@@ -244,6 +245,17 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       group: "writer",
       mode: "route",
       route: getToolRoute("character"),
+    },
+    {
+      id: "voice-studio",
+      label: "Voice Studio",
+      description: "Narrazione vocale e pacing del capitolo attivo",
+      enabled: Boolean(ctx.onOpenVoiceStudio),
+      requiresActiveBook: true,
+      feature: "book_engine_full",
+      group: "writer",
+      mode: "callback",
+      onClick: ctx.onOpenVoiceStudio,
     },
     {
       id: "author-identity",

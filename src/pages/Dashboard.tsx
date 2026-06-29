@@ -42,10 +42,10 @@ import { WalletScriptoraCard } from "@/components/billing/WalletScriptoraCard";
 import { AuthSessionButton } from "@/components/auth/AuthSessionButton";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
 import type { ForgePreset } from "@/lib/scriptora-forge/forge-presets";
-import { DashboardHomePillars } from "@/components/one-flow/DashboardHomePillars";
-import { DashboardPackagingRow } from "@/components/one-flow/DashboardPackagingRow";
+import { DashboardOperationalSections } from "@/components/one-flow/DashboardOperationalSections";
 import { STUDIO_DRAFT_STORAGE_KEY } from "@/lib/book-config-studio/types";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
+import { readDashboardReturnState } from "@/lib/one-flow/dashboard-return-context";
 import { resetRouteScroll } from "@/lib/one-flow/dashboard-navigation";
 import { getToolRoute } from "@/lib/one-flow/tool-registry";
 import {
@@ -54,7 +54,6 @@ import {
 } from "@/lib/one-flow/dashboard-panel-scroll";
 import type { ActiveDashboardTool } from "@/lib/one-flow/dashboard-active-tool";
 import { activeToolGuideRoute } from "@/lib/one-flow/dashboard-active-tool";
-import { OsHomeHero } from "@/components/os/OsHomeHero";
 import {
   MobileDashboardCreditPill,
   MobileDashboardMoreMenu,
@@ -74,7 +73,6 @@ import {
   buildBookForgeHandoff,
   type BookForgeHandoff,
 } from "@/lib/book-forge/book-forge-handoff";
-import { DashboardContinueCard } from "@/components/projects/DashboardContinueCard";
 import { DashboardIdeaBookCard } from "@/components/one-flow/DashboardIdeaBookCard";
 import {
   buildBlueprintPreviewProject,
@@ -427,6 +425,10 @@ export default function Dashboard() {
     action();
   }, [currentPlan, navigate]);
 
+  const advancedToolsAnchorRef = useRef<HTMLDivElement | null>(null);
+  const packagingAnchorRef = useRef<HTMLDivElement | null>(null);
+  const panelHandledRef = useRef<string | null>(null);
+
   useEffect(() => {
     const state = location.state as {
       openWizard?: boolean;
@@ -435,19 +437,32 @@ export default function Dashboard() {
       openProjects?: boolean;
       openCover?: boolean;
       openExport?: boolean;
+      openAdvancedTools?: boolean;
       bookForgeHandoff?: BookForgeHandoff;
       projectId?: string;
     } | null;
-    if (!state) return;
-    if (state.projectId) {
+    const returnCtx = readDashboardReturnState(state);
+    if (!state && !returnCtx) return;
+    if (state?.projectId) {
       setFlowProjectId(state.projectId);
       setLastProjectId(state.projectId);
     }
-    if (state.openForge || state.openWizard || state.openNewBook) openNewBookGuarded(state.bookForgeHandoff || null);
-    if (state.openProjects) openDashboardTool("projects");
-    if (state.openCover) guardPlanFeature("cover_studio_template", openCoverStudioPage)();
-    if (state.openExport) {
-      guardPlanFeature("export_epub", () => navigateFromDashboard(getToolRoute("publishing"), state.projectId ? { projectId: state.projectId } : undefined))();
+    if (state?.openForge || state?.openWizard || state?.openNewBook) openNewBookGuarded(state.bookForgeHandoff || null);
+    if (state?.openProjects) openDashboardTool("projects");
+    if (state?.openCover) guardPlanFeature("cover_studio_template", openCoverStudioPage)();
+    if (state?.openExport) {
+      guardPlanFeature("export_epub", openExportStudioPage)();
+    }
+    if (state?.openAdvancedTools || returnCtx?.openAdvancedTools) {
+      setAdvancedLaunchpadEnabled(true);
+      setShowAdvancedLaunchpad(true);
+      openDashboardTool("advanced-tools");
+      focusDashboardToolPanelWhenReady("advanced-tools");
+    }
+    if (returnCtx?.scrollTo === "packaging") {
+      requestAnimationFrame(() => {
+        scrollElementIntoViewWithOffset(packagingAnchorRef.current, { behavior: "smooth" });
+      });
     }
     navigate(location.pathname, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -561,9 +576,17 @@ export default function Dashboard() {
     navigateFromDashboard(getToolRoute("cover"), projectId ? { projectId } : undefined);
   }, [dashboardContextProject?.id, navigateFromDashboard]);
 
-  const advancedToolsAnchorRef = useRef<HTMLDivElement | null>(null);
-  const packagingAnchorRef = useRef<HTMLDivElement | null>(null);
-  const panelHandledRef = useRef<string | null>(null);
+  const openExportStudioPage = useCallback(() => {
+    const projectId = dashboardContextProject?.id || getLastProjectId();
+    if (projectId) setLastProjectId(projectId);
+    navigateFromDashboard(getToolRoute("export"), projectId ? { projectId } : undefined);
+  }, [dashboardContextProject?.id, navigateFromDashboard]);
+
+  const openAdvancedToolsPanel = useCallback(() => {
+    setAdvancedLaunchpadEnabled(true);
+    setShowAdvancedLaunchpad(true);
+    openDashboardTool("advanced-tools");
+  }, [openDashboardTool]);
 
   useEffect(() => {
     const panel = new URLSearchParams(location.search).get("panel");
@@ -980,9 +1003,12 @@ typeof crypto.randomUUID === "function"
       onNewBook: openNewBookGuarded,
       onContinue: dashboardContextProject ? () => { closeAllDashboardTools(); goApp({ projectId: dashboardContextProject.id }); } : undefined,
       onOpenCover: () => { closeAllDashboardTools(); guardPlanFeature("cover_studio_template", openCoverStudioPage)(); },
+      onOpenVoiceStudio: dashboardContextProject
+        ? () => { closeAllDashboardTools(); goApp({ projectId: dashboardContextProject.id, voice: true }); }
+        : undefined,
       onNavigate: navigateFromDashboard,
     }),
-    [dashboardContextProject, completedProjects.length, closeAllDashboardTools, openDashboardTool, navigateFromDashboard, openNewBookGuarded, goApp, openCoverStudioPage],
+    [dashboardContextProject, completedProjects.length, closeAllDashboardTools, openDashboardTool, navigateFromDashboard, openNewBookGuarded, goApp, openCoverStudioPage, guardPlanFeature],
   );
 
   const returnToMobileDashboard = useCallback(() => {
@@ -1249,7 +1275,7 @@ typeof crypto.randomUUID === "function"
               onCloseMoreMenu={() => setShowMobileMoreMenu(false)}
               onProfile={() => setShowProfileMenu(true)}
               onCoverStudio={() => guardPlanFeature("cover_studio_template", openCoverStudioPage)()}
-              onExportStudio={() => guardPlanFeature("export_epub", () => navigateFromDashboard(getToolRoute("publishing"), dashboardContextProject?.id ? { projectId: dashboardContextProject.id } : undefined))()}
+              onExportStudio={() => guardPlanFeature("export_epub", openExportStudioPage)()}
               onAuthorIdentity={() => openAuthorIdentity()}
               onSignOut={async () => {
                 try {
@@ -1280,77 +1306,34 @@ typeof crypto.randomUUID === "function"
       )}
 
       <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-3 sm:px-6 sm:pb-16 sm:pt-6 lg:px-8">
-        <OsHomeHero
+        <DashboardOperationalSections
           lastProject={dashboardContextProject}
           progressPercent={activeProjectProgress}
+          projects={projects}
+          dashboardActionContext={dashboardActionContext}
+          packagingAnchorRef={packagingAnchorRef}
+          advancedToolsAnchorRef={advancedToolsAnchorRef}
+          showAdvancedLaunchpad={showAdvancedLaunchpad}
           onContinue={() => dashboardContextProject && goApp({ projectId: dashboardContextProject.id })}
+          onContinueProject={(projectId) => goApp({ projectId })}
           onGenerateNextChapter={() => dashboardContextProject && goApp({ projectId: dashboardContextProject.id, section: "chapters" })}
-          onExport={() => guardPlanFeature("export_epub", () => navigateFromDashboard(getToolRoute("publishing"), dashboardContextProject?.id ? { projectId: dashboardContextProject.id } : undefined))()}
+          onExport={() => guardPlanFeature("export_epub", openExportStudioPage)()}
           onNewBook={openNewBookGuarded}
           onMyBooks={() => openDashboardTool("projects")}
-        />
-
-        <DashboardIdeaBookCard
-          currentPlan={currentPlan}
-          defaultLanguage={toBookLanguage(bookLang)}
-          onStartWriting={startWritingFromIdeaBook}
-          onOpenAdvancedForge={openBookForgeFromIdeaBook}
-        />
-
-        <DashboardHomePillars
-          onCharacterStudio={openFreshCharacterStudio}
+          onOpenCover={() => guardPlanFeature("cover_studio_template", openCoverStudioPage)()}
           onStudyOs={() => navigateFromDashboard(getToolRoute("study"))}
-        />
-
-        <div className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <DashboardContinueCard
-            projects={projects}
-            lastProject={dashboardContextProject}
-            onContinue={(projectId) => goApp({ projectId })}
-            onOpenProjects={() => openDashboardTool("projects")}
-          />
-
-          <section ref={advancedToolsAnchorRef} className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 shadow-[0_18px_48px_rgba(0,0,0,0.18)]">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/45">Strumenti avanzati</p>
-                <h2 className="mt-1 text-lg font-black text-white">Console qualità</h2>
-                <p className="mt-1 text-xs leading-5 text-white/55">
-                  Audit, continuità, mercato e strumenti editoriali restano raccolti in un pannello dedicato.
-                </p>
-              </div>
-              <span className="rounded-xl border border-sky-300/20 bg-sky-400/10 px-2 py-1 text-[10px] font-black text-sky-100">
-                {showAdvancedLaunchpad ? "ON" : "READY"}
-              </span>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[10px] font-semibold text-white/58">
-              <span className="rounded-xl border border-white/10 bg-white/[0.04] px-2 py-2">Audit</span>
-              <span className="rounded-xl border border-white/10 bg-white/[0.04] px-2 py-2">Canon</span>
-              <span className="rounded-xl border border-white/10 bg-white/[0.04] px-2 py-2">Market</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setAdvancedLaunchpadEnabled(true);
-                setShowAdvancedLaunchpad(true);
-                openDashboardTool("advanced-tools");
-              }}
-              className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/12 bg-white/[0.06] px-4 text-sm font-bold text-white/80 transition-colors hover:bg-white/[0.10]"
-            >
-              <Settings className="h-4 w-4" />
-              Apri strumenti avanzati
-            </button>
-          </section>
-        </div>
-
-        {dashboardContextProject && (
-          <div ref={packagingAnchorRef}>
-            <DashboardPackagingRow
-              projectTitle={dashboardContextProject.config.title}
-              context={dashboardActionContext}
+          onCharacterStudio={openFreshCharacterStudio}
+          onOpenAdvancedTools={openAdvancedToolsPanel}
+          onOpenSettings={openSettingsHub}
+          ideaBookCard={(
+            <DashboardIdeaBookCard
+              currentPlan={currentPlan}
+              defaultLanguage={toBookLanguage(bookLang)}
+              onStartWriting={startWritingFromIdeaBook}
+              onOpenAdvancedForge={openBookForgeFromIdeaBook}
             />
-          </div>
-        )}
+          )}
+        />
 
         {!activeDashboardTool && (
           <InProgressSection refreshKey={projects.length + (activeRun ? 1 : 0)} />

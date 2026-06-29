@@ -206,7 +206,7 @@ export default function MobileLiteDashboardPage() {
     setShowCreateBook(false);
     setDeleteTarget(null);
     if (lastProject?.id) setLastProjectId(lastProject.id);
-    navigate(getToolRoute("publishing"), {
+    navigate(getToolRoute("export"), {
       state: lastProject?.id ? { projectId: lastProject.id } : undefined,
     });
   }, [lastProject, navigate]);

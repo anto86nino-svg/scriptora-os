@@ -4,7 +4,8 @@ import { ArrowRight, BookOpen, FolderOpen, Loader2, PenLine, Sparkles } from "lu
 import { OsShell } from "@/components/os/OsShell";
 import { DashboardPackagingRow } from "@/components/one-flow/DashboardPackagingRow";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
-import { getToolRoute } from "@/lib/one-flow/tool-registry";
+import { buildDashboardReturnState } from "@/lib/one-flow/dashboard-return-context";
+import { getPublishingFlowNext, getToolRoute } from "@/lib/one-flow/tool-registry";
 import { isProjectComplete } from "@/lib/project-status";
 import { loadProjects } from "@/services/storageService";
 import { getLastProjectId, setLastProjectId } from "@/lib/storage";
@@ -95,7 +96,13 @@ export default function PublishingOsPage() {
         navigate("/dashboard", { state: { openForge: true } });
         return;
       }
-      navigate("/dashboard", { state: { openAdvancedTools: true } });
+      navigate("/dashboard?panel=advanced-tools", {
+        state: buildDashboardReturnState({
+          from: "advanced-tools",
+          openAdvancedTools: true,
+          scrollTo: "advanced-tools",
+        }),
+      });
     },
     onNewBook: () => navigate("/dashboard", { state: { openForge: true } }),
     onContinue: openWriter,
@@ -216,6 +223,7 @@ export default function PublishingOsPage() {
               Quando readiness e checklist sono pronte, esporta i file finali e completa KDP senza cambiare contesto.
             </p>
           </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
             onClick={() => navigateWithProject(getToolRoute("export"))}
@@ -224,6 +232,15 @@ export default function PublishingOsPage() {
             Vai a Export
             <ArrowRight className="h-4 w-4" />
           </button>
+          <button
+            type="button"
+            onClick={() => navigateWithProject(getPublishingFlowNext("radar") || getToolRoute("kdp"))}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-bold text-white/78 hover:bg-white/[0.08]"
+          >
+            Prossimo passo
+            <ArrowRight className="h-4 w-4" />
+          </button>
+          </div>
         </div>
       </section>
     </OsShell>
