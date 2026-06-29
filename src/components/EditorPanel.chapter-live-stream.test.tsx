@@ -47,6 +47,10 @@ function project(): BookProject {
 }
 
 describe("EditorPanel Chapter Forge live stream V2", () => {
+  beforeAll(() => {
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+
   it("shows status lines instead of full manuscript preview while generating", async () => {
     const { render, screen } = await import("@testing-library/react");
     const chunkProgress: ChunkProgress = {

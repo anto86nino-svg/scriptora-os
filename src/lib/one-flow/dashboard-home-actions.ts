@@ -110,7 +110,7 @@ export function safeExecuteDashboardAction(
     if (action.requiresCompletedBook && !ctx.hasCompletedBook) {
       toast.message("Libro non ancora completato", {
         description: action.fallbackMessage || "Completa o apri un libro prima di usare questo strumento.",
-        action: { label: "Book Forge", onClick: ctx.onNewBook },
+        action: { label: "One Flow", onClick: ctx.onNewBook },
       });
       return;
     }

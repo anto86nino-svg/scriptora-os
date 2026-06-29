@@ -345,7 +345,7 @@ const Index = () => {
       toast.error(t("toast_free_book_used"));
       return;
     }
-    navigate("/dashboard", { state: { openForge: true } });
+    navigate("/dashboard", { state: { openNewBook: true } });
   };
 
   useEffect(() => {
@@ -1246,7 +1246,7 @@ const Index = () => {
           onClose={() => setShowPublish(false)}
           onStartFresh={() => {
             setShowPublish(false);
-            navigate("/dashboard", { state: { openForge: true } });
+            navigate("/dashboard", { state: { openNewBook: true } });
           }}
           onGenerateFullBook={() => engine.generateFullBook((s) => setActiveSection(s as SectionId))}
           isBookGenerating={engine.isAnythingGenerating}

@@ -16,7 +16,7 @@ const dashboardContext: DashboardActionContext = {
 };
 
 describe("HomeRebirth", () => {
-  it("renders the four home blocks", () => {
+  it("renders the four home blocks with One Flow hero", () => {
     render(
       <MemoryRouter>
         <HomeRebirth
@@ -29,17 +29,16 @@ describe("HomeRebirth", () => {
           onContinueProject={vi.fn()}
           onNewBook={vi.fn()}
           onMyBooks={vi.fn()}
-          onCreatePreset={vi.fn()}
-          onCreateFormat={vi.fn()}
-          onOpenStudy={vi.fn()}
+          onStartOneFlow={vi.fn()}
         />
       </MemoryRouter>,
     );
 
     expect(screen.getByRole("button", { name: /continua a scrivere/i })).toBeTruthy();
     expect(screen.getByRole("heading", { name: /i miei libri/i })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: /^crea$/i })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /che libro vuoi creare/i })).toBeTruthy();
     expect(screen.getByRole("heading", { name: /stato pubblicazione/i })).toBeTruthy();
     expect(screen.getByRole("navigation", { name: /case scriptora os/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /crea il libro/i })).toBeTruthy();
   });
 });

@@ -92,6 +92,7 @@ export default function PublishingOsPage() {
         navigate("/dashboard", { state: { openProjects: true } });
         return;
       }
+      // Explicit Book Forge tool card: Pro/advanced handoff stays on Forge, not One Flow.
       if (tool === "book-forge") {
         navigate("/dashboard", { state: { openForge: true } });
         return;
@@ -104,7 +105,7 @@ export default function PublishingOsPage() {
         }),
       });
     },
-    onNewBook: () => navigate("/dashboard", { state: { openForge: true } }),
+    onNewBook: () => navigate("/dashboard", { state: { openNewBook: true } }),
     onContinue: openWriter,
     onOpenCover: () => navigateWithProject(getToolRoute("cover")),
     onNavigate: navigateWithProject,
@@ -135,7 +136,7 @@ export default function PublishingOsPage() {
           <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
             <button
               type="button"
-              onClick={() => navigate("/dashboard", { state: { openForge: true } })}
+              onClick={() => navigate("/dashboard", { state: { openNewBook: true } })}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-300 px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-amber-200"
             >
               <Sparkles className="h-4 w-4" />

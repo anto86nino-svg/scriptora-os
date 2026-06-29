@@ -227,3 +227,7 @@ export function safeReadContinuityStorage<T>(key: string, fallback: T): T {
   if (typeof localStorage === "undefined") return fallback;
   return safeParseStorage<T>(localStorage.getItem(key), fallback);
 }
+
+export function isWritingUnlockedForProject(project: BookProject): boolean {
+  return project.blueprintApproved === true || Boolean(project.blueprintApprovedAt);
+}

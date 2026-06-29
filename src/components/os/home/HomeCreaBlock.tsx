@@ -1,73 +1,90 @@
-import { ArrowRight, BookOpen, GraduationCap, NotebookPen, PenLine, Sparkles } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { useState } from "react";
+import { ArrowRight, Sparkles } from "lucide-react";
 
-export type HomeCreaOption = {
-  id: string;
-  label: string;
-  description: string;
-  icon: LucideIcon;
-};
+export const HOME_CREA_CHIPS = [
+  "Romanzo",
+  "Thriller",
+  "Horror",
+  "Fantasy",
+  "Manuale",
+  "Workbook",
+  "Memoir",
+  "Raccolta poetica",
+] as const;
 
-export const HOME_CREA_OPTIONS: HomeCreaOption[] = [
-  { id: "novel", label: "Romanzo", description: "Narrativa con capitoli", icon: BookOpen },
-  { id: "poetry", label: "Raccolta poetica", description: "Sezioni liriche e versi", icon: Sparkles },
-  { id: "manual", label: "Manuale", description: "Metodo pratico e lezioni", icon: NotebookPen },
-  { id: "workbook", label: "Workbook", description: "Esercizi e schede operative", icon: PenLine },
-  { id: "studio", label: "Studio", description: "Study OS e formazione", icon: GraduationCap },
-  { id: "memoir", label: "Memoir", description: "Memoria viva e riflessione", icon: BookOpen },
-];
+export type HomeCreaChip = (typeof HOME_CREA_CHIPS)[number];
 
 type Props = {
-  onCreatePreset: (presetId: string) => void;
-  onCreateFormat: (formatId: "workbook" | "memoir") => void;
-  onOpenStudy: () => void;
+  onStartOneFlow: (idea: string, genreHint?: HomeCreaChip) => void;
 };
 
-export function HomeCreaBlock({ onCreatePreset, onCreateFormat, onOpenStudy }: Props) {
-  const handleClick = (option: HomeCreaOption) => {
-    if (option.id === "studio") {
-      onOpenStudy();
-      return;
-    }
-    if (option.id === "workbook" || option.id === "memoir") {
-      onCreateFormat(option.id);
-      return;
-    }
-    onCreatePreset(option.id);
+export function HomeCreaBlock({ onStartOneFlow }: Props) {
+  const [idea, setIdea] = useState("");
+  const [activeChip, setActiveChip] = useState<HomeCreaChip | null>(null);
+  const valid = idea.trim().length >= 6;
+
+  const launch = (chip?: HomeCreaChip) => {
+    if (!valid) return;
+    onStartOneFlow(idea.trim(), chip ?? activeChip ?? undefined);
   };
 
   return (
     <section aria-labelledby="home-crea-title" className="rounded-[1.5rem] bg-white/[0.04] p-5 sm:p-6">
       <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">Nuovo</p>
-      <h2 id="home-crea-title" className="mt-1 text-xl font-bold text-white">
-        Crea
+      <h2 id="home-crea-title" className="mt-1 text-xl font-bold text-white sm:text-2xl">
+        Che libro vuoi creare?
       </h2>
-      <p className="mt-1 text-sm text-white/50">Avvia Book Forge con il formato giusto o apri Study OS.</p>
+      <p className="mt-1 text-sm text-white/50">
+        Descrivi l&apos;idea — anche grezza. Scriptora costruisce titolo, promessa e blueprint in un solo flusso.
+      </p>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        {HOME_CREA_OPTIONS.map((option) => {
-          const Icon = option.icon;
-          return (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => handleClick(option)}
-              className="group flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] px-3 py-3 text-left transition hover:bg-white/[0.07]"
-            >
-              <span className="flex min-w-0 items-center gap-3">
-                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-white/80">
-                  <Icon className="h-4 w-4" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-white">{option.label}</span>
-                  <span className="block truncate text-xs text-white/45">{option.description}</span>
-                </span>
-              </span>
-              <ArrowRight className="h-4 w-4 shrink-0 text-white/30 transition group-hover:text-white/60" />
-            </button>
-          );
-        })}
+      <label htmlFor="home-crea-idea" className="sr-only">
+        La tua idea di libro
+      </label>
+      <textarea
+        id="home-crea-idea"
+        value={idea}
+        onChange={(event) => setIdea(event.target.value)}
+        placeholder="Descrivi la tua idea, anche in modo grezzo..."
+        rows={5}
+        className="mt-4 min-h-[132px] w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-white/30 focus:border-amber-200/45 focus:ring-2 focus:ring-amber-300/15"
+      />
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {HOME_CREA_CHIPS.map((chip) => (
+          <button
+            key={chip}
+            type="button"
+            onClick={() => {
+              setActiveChip(chip);
+              if (!idea.trim()) {
+                setIdea(`Voglio scrivere un ${chip.toLowerCase()} che `);
+              }
+            }}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+              activeChip === chip
+                ? "border-amber-300/50 bg-amber-300/15 text-amber-100"
+                : "border-white/10 bg-white/[0.04] text-white/65 hover:border-white/20 hover:bg-white/[0.08]"
+            }`}
+          >
+            {chip}
+          </button>
+        ))}
       </div>
+
+      <button
+        type="button"
+        onClick={() => launch()}
+        disabled={!valid}
+        className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 text-sm font-black text-slate-950 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+      >
+        <Sparkles className="h-4 w-4" />
+        Crea il libro
+        <ArrowRight className="h-4 w-4" />
+      </button>
+      {!valid && (
+        <p className="mt-2 text-xs text-white/45">Almeno qualche parola — anche una frase grezza va bene.</p>
+      )}
     </section>
   );
 }

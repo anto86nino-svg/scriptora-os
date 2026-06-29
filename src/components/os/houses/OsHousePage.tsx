@@ -4,6 +4,7 @@ import { OsShell } from "@/components/os/OsShell";
 import { OsHouseGrid } from "@/components/os/houses/OsHouseGrid";
 import { getOsHouse, type OsHouseToolCard } from "@/lib/os/os-house-registry";
 import type { OsHouseId } from "@/lib/os/os-house-registry";
+import { isAdvancedLaunchpadEnabled } from "@/components/one-flow/ProfileMenuDialog";
 
 type Props = {
   houseId: OsHouseId;
@@ -13,6 +14,7 @@ export function OsHousePage({ houseId }: Props) {
   const house = getOsHouse(houseId);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const showProTools = isAdvancedLaunchpadEnabled();
 
   const openTool = useCallback(
     (tool: OsHouseToolCard) => {
@@ -36,7 +38,8 @@ export function OsHousePage({ houseId }: Props) {
   );
 
   const requestedOpen = searchParams.get("open");
-  const highlightTool = house.tools.find((tool) => tool.id === requestedOpen || tool.dashboardTool === requestedOpen);
+  const visibleTools = house.tools.filter((tool) => !tool.proOnly || showProTools);
+  const highlightTool = visibleTools.find((tool) => tool.id === requestedOpen || tool.dashboardTool === requestedOpen);
 
   return (
     <OsShell title={house.label} subtitle={house.subtitle} badge="Scriptora OS" accent={house.accent}>
@@ -45,7 +48,7 @@ export function OsHousePage({ houseId }: Props) {
           Accesso rapido: <span className="font-semibold text-white">{highlightTool.label}</span>
         </div>
       ) : null}
-      <OsHouseGrid tools={house.tools} onOpenTool={openTool} />
+      <OsHouseGrid tools={visibleTools} onOpenTool={openTool} />
     </OsShell>
   );
 }

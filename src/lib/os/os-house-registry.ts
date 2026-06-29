@@ -33,6 +33,8 @@ export type OsHouseToolCard = {
   /** dashboard overlay tool id when route stays on /dashboard */
   dashboardTool?: string;
   feature?: string;
+  /** visible only when advanced launchpad / pro creation is enabled */
+  proOnly?: boolean;
 };
 
 export type OsHouseDefinition = {
@@ -63,12 +65,13 @@ export const OS_HOUSES: OsHouseDefinition[] = [
     icon: PenLine,
     tools: [
       {
-        id: "book-forge",
-        label: "Book Forge",
-        description: "DNA, blueprint e avvio progetto",
+        id: "advanced-creation",
+        label: "Creazione Avanzata",
+        description: "Book Forge completo — DNA, blueprint e wizard a 8 step",
         route: "/dashboard",
         dashboardTool: "book-forge",
         icon: Sparkles,
+        proOnly: true,
       },
       {
         id: "character",

@@ -1,6 +1,7 @@
-import type { ReactNode, RefObject } from "react";
+import type { RefObject } from "react";
 import type { BookProject } from "@/types/book";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
+import type { HomeCreaChip } from "@/components/os/home/HomeCreaBlock";
 import { HomeContinuaBlock } from "@/components/os/home/HomeContinuaBlock";
 import { HomeLibriBlock } from "@/components/os/home/HomeLibriBlock";
 import { HomeCreaBlock } from "@/components/os/home/HomeCreaBlock";
@@ -17,10 +18,7 @@ export type HomeRebirthProps = {
   onContinueProject: (projectId: string) => void;
   onNewBook: () => void;
   onMyBooks: () => void;
-  onCreatePreset: (presetId: string) => void;
-  onCreateFormat: (formatId: "workbook" | "memoir") => void;
-  onOpenStudy: () => void;
-  ideaBookSlot?: ReactNode;
+  onStartOneFlow: (idea: string, genreHint?: HomeCreaChip) => void;
 };
 
 export function HomeRebirth({
@@ -33,10 +31,7 @@ export function HomeRebirth({
   onContinueProject,
   onNewBook,
   onMyBooks,
-  onCreatePreset,
-  onCreateFormat,
-  onOpenStudy,
-  ideaBookSlot,
+  onStartOneFlow,
 }: HomeRebirthProps) {
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -53,14 +48,8 @@ export function HomeRebirth({
           onOpenLibrary={onMyBooks}
           onContinueProject={onContinueProject}
         />
-        <HomeCreaBlock
-          onCreatePreset={onCreatePreset}
-          onCreateFormat={onCreateFormat}
-          onOpenStudy={onOpenStudy}
-        />
+        <HomeCreaBlock onStartOneFlow={onStartOneFlow} />
       </div>
-
-      {ideaBookSlot ? <div className="rounded-[1.5rem] bg-white/[0.02] p-1">{ideaBookSlot}</div> : null}
 
       <HomePubblicazioneBlock
         ref={packagingAnchorRef}
