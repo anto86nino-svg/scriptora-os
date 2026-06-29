@@ -5,9 +5,11 @@ import {
   buildMemoirChapterTitles,
   buildPsychologicalThrillerChapterTitles,
   buildSelfHelpChapterTitles,
+  buildSubmergedCityChapterTitles,
   buildSupernaturalThrillerChapterTitles,
   expandConceptBeatsToCount,
   hasHighConceptFantasySignals,
+  hasSubmergedCitySciFiSignals,
   hasSupernaturalThrillerSignals,
 } from "@/lib/concept-dominance";
 
@@ -116,6 +118,9 @@ export function buildFormatAwareChapterScaffold(
 
   if (hasSupernaturalThrillerSignals(idea)) {
     return expandConceptBeatsToCount(buildSupernaturalThrillerChapterTitles(idea), chapterCount);
+  }
+  if (hasSubmergedCitySciFiSignals(idea)) {
+    return expandConceptBeatsToCount(buildSubmergedCityChapterTitles(idea), chapterCount);
   }
   if (hasHighConceptFantasySignals(idea)) {
     return expandConceptBeatsToCount(buildFantasyChapterBeats(idea), chapterCount);

@@ -28,7 +28,7 @@ import { regenerateTitleFromIdea } from "@/lib/title-intelligence-validation";
 import { isInvalidGeneratedTitle } from "@/lib/title-intelligence-validation";
 import type { StudioLaunchPayload } from "@/lib/book-config-studio/types";
 import { normalizeBookConfig } from "@/lib/book-config-studio/defaults";
-import { sanitizeUserConceptInput } from "@/lib/concept-dominance";
+import { analyzeConceptFromIdea, sanitizeUserConceptInput } from "@/lib/concept-dominance";
 
 export type OneFlowPhase = "interview" | "proposal" | "ready";
 
@@ -112,12 +112,12 @@ function lockExpressFoundation(state: GuidedInterviewState): GuidedInterviewStat
 
 function buildExpressInput(
   idea: string,
-  opts: { genreHint?: string; language?: string } = {},
+  opts: { genreHint?: string; language?: string; analyzedGenre?: string } = {},
 ): ExpressForgeInput {
-  const hint = mapGenreHintToExpressInput(opts.genreHint);
+  const hint = mapGenreHintToExpressInput(opts.genreHint ?? opts.analyzedGenre);
   return {
     bookFormat: (hint.bookFormat ?? "novel") as ExpressBookFormat,
-    genre: hint.genre ?? "",
+    genre: opts.analyzedGenre ?? hint.genre ?? "",
     language: opts.language ?? "Italiano",
     titleMode: "suggest",
     ideaSeed: idea.trim(),
@@ -162,13 +162,20 @@ export function startOneFlowSession(
   opts: { genreHint?: string; language?: string } = {},
 ): OneFlowSession {
   const trimmed = sanitizeUserConceptInput(idea);
+  const analysis = analyzeConceptFromIdea(trimmed, { genre: opts.genreHint });
   const budget = resolveQuestionBudget(trimmed);
   const expressResult = buildExpressForgeConfiguration(
-    buildExpressInput(trimmed, opts),
+    buildExpressInput(trimmed, { ...opts, analyzedGenre: analysis.genre }),
     getInitialInterviewState({ chatFirst: true }),
   );
   const scenario = pickCommercialPackage(expressResult);
   let state = applyExpressScenarioToState(expressResult.state, scenario);
+  if (analysis.protagonist) {
+    state = {
+      ...state,
+      extracted: { ...state.extracted, protagonistWound: analysis.protagonist },
+    };
+  }
   state = lockExpressFoundation(state);
 
   const rich = hasRichIdeaEntities(trimmed);

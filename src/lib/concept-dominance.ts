@@ -45,11 +45,21 @@ function stripCommaSeparatedChipPrefix(text: string): string {
 }
 
 const PROTAGONIST_SKIP = new Set([
-  "Ogni", "Una", "Uno", "Il", "Lo", "La", "Le", "I", "Gli", "Quando", "Dopo", "Prima",
-  "Fotografie", "Ricordi", "Donna", "Persone", "Thriller", "Horror", "Fantasy", "Romanzo",
+  "Ogni", "Una", "Uno", "Il", "Lo", "La", "Le", "I", "Gli", "Quando", "Dopo", "Prima", "Durante",
+  "Mentre", "Per", "Oltre", "Se", "Non", "Anche", "Sempre", "Mai", "Tutto", "Nulla", "Qualcosa",
+  "Qualcuno", "Nessuno", "Altri", "Altre", "Molti", "Pochi", "Tutti", "Tutte", "Come", "Dove",
+  "Perche", "Perché", "Cosi", "Così", "Loro", "Lui", "Lei", "Noi", "Voi", "Esso", "Era", "Erano",
+  "Sono", "Infine", "Inoltre", "Tuttavia", "Quindi", "Perciò", "Benché", "Sebbene", "Oppure",
+  "Forse", "Fotografie", "Ricordi", "Donna", "Persone", "Thriller", "Horror", "Fantasy", "Romanzo",
   "Libro", "Idea", "Mistero", "Memoria", "Destino", "Tempo", "Futuro", "Supernatural",
   "Soprannaturale", "High", "Concept", "Mystery", "Romance", "Narrativa", "Notte", "Alle",
-  "Piccolo", "Nel", "Nella", "Che", "Un", "Es", "Nel", "Nella", "Visione",
+  "Piccolo", "Nel", "Nella", "Che", "Un", "Es", "Visione", "Città", "Citta", "Una",
+]);
+
+const ITALIAN_SENTENCE_STARTERS = new Set([
+  "per", "oltre", "quando", "dopo", "prima", "durante", "mentre", "se", "non", "anche", "ogni",
+  "una", "uno", "il", "lo", "la", "le", "i", "gli", "nel", "nella", "nello", "negli", "nelle",
+  "un", "una", "che", "come", "dove", "perché", "perche", "così", "cosi", "infine", "inoltre",
 ]);
 
 function normalize(value: string): string {
@@ -140,13 +150,138 @@ export function hasExplicitRomanceSignals(text: string): boolean {
   );
 }
 
+function isSkippedProtagonistCandidate(name: string, offset: number, text: string): boolean {
+  if (!name || name.length < 2) return true;
+  if (PROTAGONIST_SKIP.has(name)) return true;
+  if (ITALIAN_SENTENCE_STARTERS.has(name.toLowerCase())) {
+    const before = text.slice(Math.max(0, offset - 2), offset);
+    if (offset === 0 || /(?:^|[.!?…]\s*)$/.test(before)) return true;
+  }
+  return false;
+}
+
 export function extractConceptProtagonist(idea: string): string | undefined {
   const text = sanitizeUserConceptInput(idea);
-  for (const match of text.matchAll(/\b([A-ZÀ-Ý][a-zà-ÿ]+)\b/g)) {
+  if (!text) return undefined;
+
+  const explicitRole = text.match(
+    /\bprotagonist[ao]\s+([A-ZÀ-Ý][a-zà-ÿ]{1,24})\b/i,
+  );
+  if (explicitRole?.[1] && !PROTAGONIST_SKIP.has(explicitRole[1])) {
+    return explicitRole[1];
+  }
+
+  const commaRolePatterns = [
+    /,\s*([A-ZÀ-Ý][a-zà-ÿ]{1,24})\s*,\s*(?:ultim[oa]|investigatore|storico|storica|insegnante|restauratrice|chef|medico|medica)\b/i,
+    /(?:^|[.!?…]\s+)([A-ZÀ-Ý][a-zà-ÿ]{1,24})\s*,\s*(?:ultim[oa]|investigatore|storico|storica|insegnante)\b/i,
+    /(?:^|[.!?…]\s+)([A-ZÀ-Ý][a-zà-ÿ]{1,24})\s*,/,
+  ];
+  for (const pattern of commaRolePatterns) {
+    const match = text.match(pattern);
+    const name = match?.[1];
+    if (name && !isSkippedProtagonistCandidate(name, match?.index ?? 0, text)) return name;
+  }
+
+  for (const match of text.matchAll(/\b([A-ZÀ-Ý][a-zà-ÿ]{1,24})\b/g)) {
     const name = match[1];
-    if (!PROTAGONIST_SKIP.has(name)) return name;
+    const offset = match.index ?? 0;
+    if (!isSkippedProtagonistCandidate(name, offset, text)) return name;
   }
   return undefined;
+}
+
+export type ConceptAnalysis = {
+  protagonist?: string;
+  setting?: string;
+  timeAnchor?: string;
+  entities: string[];
+  genre?: string;
+  bookFormat?: string;
+};
+
+function extractConceptSetting(idea: string): string | undefined {
+  const text = sanitizeUserConceptInput(idea);
+  const patterns = [
+    /\b(citt[aà]\s+sommersa)\b/i,
+    /\b(piccolo\s+paese|paese|villaggio)\b/i,
+    /\b(stazione(?:\s+ferroviaria)?(?:\s+abbandonata)?)\b/i,
+    /\b(regno|impero|colonia)\b/i,
+    /\b(casa|villa|bosco|isola)\b/i,
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+  return undefined;
+}
+
+function extractConceptEntities(idea: string): string[] {
+  const text = sanitizeUserConceptInput(idea);
+  const entities: string[] = [];
+  const patterns = [
+    /\b(citt[aà]\s+sommersa)\b/gi,
+    /\b(disgelo|ghiaccio|congelat\w*)\b/gi,
+    /\b(trecento\s+anni|\d+\s+anni)\b/gi,
+    /\b(tecnolog\w*\s+impossibil\w*)\b/gi,
+    /\b(entit[aà]\s+antica)\b/gi,
+    /\b(segret\w*)\b/gi,
+    /\b(storico|storica)\b/gi,
+  ];
+  for (const pattern of patterns) {
+    for (const match of text.matchAll(pattern)) {
+      const label = match[0].trim();
+      if (label && !entities.some((e) => e.toLowerCase() === label.toLowerCase())) {
+        entities.push(label);
+      }
+    }
+  }
+  const protagonist = extractConceptProtagonist(text);
+  if (protagonist && !entities.includes(protagonist)) entities.unshift(protagonist);
+  return entities;
+}
+
+export function hasSubmergedCitySciFiSignals(text: string): boolean {
+  const hay = normalizedConceptHay(text);
+  if (!hay) return false;
+  const iceCity =
+    /\b(citta\s+sommersa|sommersa|sottacqua|sottomarin)\b/.test(hay) ||
+    (/\bcitt\w+\b/.test(hay) && /\b(ghiaccio|disgelo|congelat|nascost\w*\s+sotto|prigione)\b/.test(hay)) ||
+    /\bprigione\s+(di\s+)?ghiaccio\b/.test(hay) ||
+    /\bghiaccio\s+etern/.test(hay);
+  const thaw = /\b(disgelo|ghiaccio|congelat|prigione|svegli\w*|risvegli\w*)\b/.test(hay);
+  const ancient = /\b(entita\s+antica|tecnolog\w*\s+impossibil|segreto|svegli\w*|risvegli\w*)\b/.test(hay);
+  const timeJump = /\b(trecento|tre\s+cento|\d+\s+anni|sette\s+giorni)\b/.test(hay);
+  return iceCity && (thaw || ancient || timeJump);
+}
+
+export function extractSubmergedCityRole(idea: string): string {
+  const hay = normalizedConceptHay(idea);
+  if (/\bcartograf\w*\b/.test(hay)) return "cartografo";
+  if (/\b(storico|storica)\b/.test(hay)) return "storico della città";
+  return "cartografo";
+}
+
+export function extractSubmergedCityLabel(idea: string): string {
+  const hay = normalizedConceptHay(idea);
+  if (/\bcitta\s+sommersa\b/.test(hay)) return "la città sommersa";
+  if (/\bnord\b/.test(hay)) return "la città nascosta sotto il ghiaccio del Nord";
+  return "la città nel ghiaccio";
+}
+
+export function analyzeConceptFromIdea(
+  idea: string,
+  opts: { genre?: string; tags?: string } = {},
+): ConceptAnalysis {
+  const sanitized = sanitizeUserConceptInput(idea);
+  const dominance = resolveConceptDominance(sanitized, opts);
+  return {
+    protagonist: extractConceptProtagonist(sanitized),
+    setting: extractConceptSetting(sanitized),
+    timeAnchor: extractTimeAnchor(sanitized),
+    entities: extractConceptEntities(sanitized),
+    genre: dominance.genre,
+    bookFormat: dominance.bookFormat,
+  };
 }
 
 export function extractTimeAnchor(idea: string): string | undefined {
@@ -167,14 +302,54 @@ export function buildTimeAnchoredTitle(idea: string): string | undefined {
 export type SupernaturalThrillerSubtitleVariant = "safe" | "commercial" | "bold";
 
 export function shouldPreserveConceptSubtitle(idea: string): boolean {
-  return hasSupernaturalThrillerSignals(idea);
+  return hasSupernaturalThrillerSignals(idea) || hasSubmergedCitySciFiSignals(idea);
 }
 
 export function isConceptDominanceSubtitle(subtitle: string, idea: string): boolean {
   if (!shouldPreserveConceptSubtitle(idea)) return false;
   const variants: SupernaturalThrillerSubtitleVariant[] = ["safe", "commercial", "bold"];
   const norm = normalize(subtitle);
+  if (hasSubmergedCitySciFiSignals(idea)) {
+    return variants.some((variant) => normalize(buildSubmergedCitySubtitle(idea, variant)) === norm);
+  }
   return variants.some((variant) => normalize(buildSupernaturalThrillerSubtitle(idea, variant)) === norm);
+}
+
+export function buildSubmergedCityTitle(
+  idea: string,
+  variant: SupernaturalThrillerSubtitleVariant = "commercial",
+): string {
+  const hay = normalizedConceptHay(idea);
+  if (variant === "bold") return "La Prigione Eterna di Ghiaccio";
+  if (/\bprigione\b/.test(hay) && /\bghiaccio\b/.test(hay)) return "La Città nella Prigione di Ghiaccio";
+  if (/\bdisgelo\b/.test(hay)) return "Il Disgelo della Città Nascosta";
+  if (/\bsette\s+giorni\b/.test(hay)) return "I Sette Giorni Perduti nel Ghiaccio";
+  return "La Città nel Ghiaccio Eterno";
+}
+
+export function buildSubmergedCitySubtitle(
+  idea: string,
+  variant: SupernaturalThrillerSubtitleVariant = "commercial",
+): string {
+  const protagonist = extractConceptProtagonist(idea) || "il cartografo";
+  const role = extractSubmergedCityRole(idea);
+  const city = extractSubmergedCityLabel(idea);
+
+  if (variant === "bold") {
+    return "Quando il ghiaccio cede, la prigione si apre — e qualcosa sotto la città ricorda come svegliarsi";
+  }
+  if (variant === "safe") {
+    return `Dopo trecento anni nel ghiaccio, ${protagonist} scopre che ${city} custodisce un segreto capace di riscrivere la storia dell'umanità`;
+  }
+  return `Una città nascosta nel ghiaccio, sette giorni perduti e un ${role} che scopre la tecnologia impossibile prima che il mondo la raggiunga`;
+}
+
+export function buildSubmergedCitySecondaryCast(): string[] {
+  return [
+    "Abitanti convinti che siano passati solo sette giorni",
+    "Potenze mondiali in cerca del segreto",
+    "Custodi della tecnologia impossibile",
+  ];
 }
 
 export function buildSupernaturalThrillerSubtitle(
@@ -242,7 +417,18 @@ export function resolveConceptDominance(
     };
   }
 
-  if (hasHighConceptFantasySignals(hay)) {
+  if (hasSubmergedCitySciFiSignals(sanitized)) {
+    return {
+      genre: "sci-fi",
+      bookFormat: "novel",
+      blockRomanceTemplates: true,
+      blockPhilosophyBlueprint: true,
+      blockFantasyTemplates: true,
+      protagonist,
+    };
+  }
+
+  if (hasHighConceptFantasySignals(sanitized)) {
     return {
       genre: "fantasy",
       bookFormat: "novel",
@@ -415,6 +601,47 @@ export function buildFantasyChapterTitles(idea: string): string[] {
   if (/custod/.test(hay)) titles.push("I Custodi");
   titles.push("L'Ultima Scelta");
   return titles;
+}
+
+export function buildSubmergedCityChapterTitles(idea: string): ConceptChapterBeat[] {
+  const text = sanitizeUserConceptInput(idea);
+  const protagonist = extractConceptProtagonist(text) || "Il protagonista";
+  const role = extractSubmergedCityRole(text);
+  const city = extractSubmergedCityLabel(text);
+  const hasSevenDays = /\bsette\s+giorni\b/i.test(text);
+  const hasAwakening = /\bsvegli\w*|risvegli\w*\b/i.test(text);
+  const threatLabel = /\bentit[aà]\s+antica\b/i.test(text) ? "un'entità antica" : "qualcosa imprigionato nel ghiaccio";
+
+  return [
+    {
+      title: "Il Disgelo",
+      summary: `${protagonist}, giovane ${role}, nota i primi segni del disgelo su ${city} — e capisce che trecento anni di ghiaccio eterno stanno per finire.`,
+    },
+    {
+      title: "I Sette Giorni Perduti",
+      summary: hasSevenDays
+        ? `Gli abitanti credono che siano passati solo sette giorni. ${protagonist} scopre che il salto temporale nasconde il vero costo del risveglio della città.`
+        : `Il tempo nella città non coincide con il mondo esterno. ${protagonist} deve capire quanti secoli il ghiaccio ha davvero congelato.`,
+    },
+    {
+      title: "La Tecnologia Impossibile",
+      summary: `Sotto il ghiaccio emergono macchine che non dovrebbero esistere. ${protagonist} documenta ciò che può riscrivere la storia dell'umanità mentre il mondo inizia a combattere per impossessarsene.`,
+    },
+    {
+      title: "La Prigione di Ghiaccio",
+      summary: `${protagonist} scopre che il ghiaccio non era solo protezione: era una prigione costruita per contenere ${threatLabel} sotto la città.`,
+    },
+    {
+      title: "Ciò che Si Sveglia",
+      summary: hasAwakening
+        ? `Il disgelo libera non solo rovine e segreti: ${threatLabel} sta per svegliarsi. ${protagonist} deve capire perché è stata imprigionata e cosa accadrà quando il ghiaccio cederà del tutto.`
+        : `La minaccia sepolta sotto ${city} inizia a muoversi. ${protagonist} collega tecnologia impossibile, segreto storico e prigione di ghiaccio in un'unica posta in gioco.`,
+    },
+    {
+      title: "Il Prezzo della Verità",
+      summary: `${protagonist} deve decidere se rivelare il segreto che cambia la storia dell'umanità o lasciare ancora imprigionato ciò che il ghiaccio teneva in catene.`,
+    },
+  ];
 }
 
 export function buildFantasyChapterBeats(idea: string): ConceptChapterBeat[] {

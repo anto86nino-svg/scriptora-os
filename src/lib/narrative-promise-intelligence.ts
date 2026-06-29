@@ -1,6 +1,9 @@
 import {
   extractConceptProtagonist,
+  extractSubmergedCityLabel,
+  extractSubmergedCityRole,
   hasHighConceptFantasySignals,
+  hasSubmergedCitySciFiSignals,
   hasSupernaturalThrillerSignals,
   sanitizeUserConceptInput,
 } from "@/lib/concept-dominance";
@@ -13,6 +16,8 @@ const GENERIC_PROMISE_PATTERNS = [
   /rivelazione progressiva e pressione emotiva/i,
   /atmosfera, decadenza e paura crescente/i,
   /un horror .+ dove atmosfera/i,
+  /un fantasy .+ dove magia, tradimento e costo del potere/i,
+  /magia, tradimento e costo del potere costruiscono una promessa epica/i,
 ];
 
 export interface NarrativeIdeaSignals {
@@ -55,6 +60,10 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
   signals.protagonist = extractConceptProtagonist(text);
 
   const placePatterns = [
+    /\b(citt[aà]\s+sommersa)\b/gi,
+    /\b(citt[aà](?:\s+nel|\s+nascosta\s+sotto)?\s+(?:il\s+)?ghiaccio)/gi,
+    /\b(ghiaccio\s+etern\w*)\b/gi,
+    /\b(prigione\s+(?:di\s+)?ghiaccio)\b/gi,
     /\b(porta(?:\s+nel\s+cuore)?)/gi,
     /\b(stazione(?:\s+ferroviaria)?(?:\s+abbandonata)?)/gi,
     /\b(gallerie?\s+inesistenti?)/gi,
@@ -106,7 +115,10 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
   if (/\bfuturo\b/i.test(text)) signals.stakes.push("futuro");
   if (/\bfine del mondo|apocaliss/i.test(text)) signals.stakes.push("fine del mondo");
   if (/\bcolpa\b/i.test(text)) signals.stakes.push("colpa");
-  if (/\bverità\b/i.test(text)) signals.stakes.push("verità");
+  if (/\bsegreto\b/i.test(text)) signals.stakes.push("segreto");
+  if (/\bghiaccio\b/i.test(text)) signals.stakes.push("ghiaccio");
+  if (/\bdisgelo\b/i.test(text)) signals.stakes.push("disgelo");
+  if (/\bsvegli\w*|risvegli\w*\b/i.test(text)) signals.stakes.push("risveglio");
 
   signals.uniqueElements = [
     ...signals.places,
@@ -131,6 +143,23 @@ export function buildNarrativePromiseFromIdea(idea: string, genre?: string): str
 
   if (signals.uniqueElements.length < 2) {
     return "";
+  }
+
+  if (hasSubmergedCitySciFiSignals(sanitized) || (/sci[-\s]?fi/i.test(genre || "") && /\b(citt[aà]|disgelo|ghiaccio)\b/i.test(sanitized))) {
+    const city = extractSubmergedCityLabel(sanitized);
+    const cityClause = /^l[ae]\s+/i.test(city)
+      ? `della ${city.replace(/^l[ae]\s+/i, "")}`
+      : `di ${city}`;
+    const role = extractSubmergedCityRole(sanitized);
+    const sevenDays = /\bsette\s+giorni\b/i.test(sanitized);
+    const awakening = /\bsvegli\w*|risvegli\w*\b/i.test(sanitized);
+    const timeClause = sevenDays
+      ? " mentre gli abitanti credono che siano passati solo sette giorni"
+      : "";
+    const threatClause = awakening
+      ? " — e scopre che il ghiaccio era una prigione costruita per contenere qualcosa che sta per svegliarsi"
+      : " — mentre una minaccia imprigionata sotto la città inizia a risvegliarsi";
+    return `${lead}, giovane ${role} ${cityClause}, scopre che il disgelo dopo trecento anni rivela tecnologia impossibile e un segreto capace di riscrivere la storia dell'umanità${timeClause}${threatClause}.`;
   }
 
   if (hasSupernaturalThrillerSignals(sanitized) || (/thriller/i.test(genre || "") && !hasHighConceptFantasySignals(sanitized))) {

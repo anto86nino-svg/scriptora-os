@@ -4,6 +4,7 @@ import {
   extractConceptProtagonist,
   extractTimeAnchor,
   hasHighConceptFantasySignals,
+  hasSubmergedCitySciFiSignals,
   hasSupernaturalThrillerSignals,
   isConceptDominanceSubtitle,
   isGenericPhilosophyTitleForFiction,
@@ -71,6 +72,22 @@ export function breaksConceptAnchors(title: string, subtitle: string, idea: stri
   const sanitized = sanitizeUserConceptInput(idea);
   const titleHay = normalize(title);
   const subtitleHay = normalize(subtitle);
+
+  if (hasHighConceptFantasySignals(sanitized)) {
+    if (/\b(kael|porta nel cuore|mille anni|magia proibita|epic fantasy)\b/.test(`${titleHay} ${subtitleHay}`)) {
+      return true;
+    }
+  }
+
+  if (hasSubmergedCitySciFiSignals(sanitized)) {
+    if (/\b(kael|magia proibita|corona|regno|fantasy epico|epic fantasy|mondo ordinario|chiamata|mentore)\b/.test(`${titleHay} ${subtitleHay}`)) {
+      return true;
+    }
+    if (shouldPreserveConceptSubtitle(sanitized) && subtitle.trim() && !isConceptDominanceSubtitle(subtitle, sanitized)) {
+      const hasIceCitySignal = /ghiaccio|disgelo|sette giorni|tecnolog|segreto|prigione|svegli/.test(subtitleHay);
+      if (!hasIceCitySignal && /fantasy|magia|tradimento|potere/.test(subtitleHay)) return true;
+    }
+  }
 
   if (hasSupernaturalThrillerSignals(sanitized)) {
     if (/\b(kael|porta nel cuore|mille anni|magia proibita|epic fantasy)\b/.test(`${titleHay} ${subtitleHay}`)) {

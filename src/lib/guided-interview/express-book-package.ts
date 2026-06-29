@@ -30,11 +30,17 @@ import {
 import { buildEntityAwareChapterScaffold, buildFormatAwareChapterScaffold, hasRichIdeaEntities } from "@/lib/blueprint-entity-enrichment";
 import {
   buildMemoirChapterTitles,
+  buildSubmergedCitySecondaryCast,
+  buildSubmergedCitySubtitle,
+  buildSubmergedCityTitle,
   buildSupernaturalThrillerSecondaryCast,
   buildSupernaturalThrillerSubtitle,
   buildTimeAnchoredTitle,
   extractConceptProtagonist,
+  extractSubmergedCityLabel,
+  extractSubmergedCityRole,
   extractTimeAnchor,
+  hasSubmergedCitySciFiSignals,
   hasSupernaturalThrillerSignals,
   resolveConceptDominance,
   sanitizeUserConceptInput,
@@ -261,7 +267,7 @@ function isRomance(genre: string): boolean {
 }
 
 function isScifiGenre(genre: string): boolean {
-  return /sci\s*fi|science fiction|fantascienza|cyberpunk|distopi/i.test(genre);
+  return /sci[-\s]?fi|science fiction|fantascienza|cyberpunk|distopi/i.test(genre);
 }
 
 function isFantasyGenre(genre: string): boolean {
@@ -363,6 +369,10 @@ function defaultTitleForGenre(input: ExpressForgeInput, variant: ExpressScenario
     return timeTitle;
   }
 
+  if (hasSubmergedCitySciFiSignals(seed)) {
+    return buildSubmergedCityTitle(seed, variant);
+  }
+
   const regenerated = regenerateTitleFromIdea({
     idea: seed,
     genre: input.genre,
@@ -426,6 +436,44 @@ function buildGenreAwareVariantCopy(
   }
 
   if (isScifiGenre(input.genre)) {
+    if (hasSubmergedCitySciFiSignals(ideaCore(input))) {
+      const city = extractSubmergedCityLabel(ideaCore(input));
+      const role = extractSubmergedCityRole(ideaCore(input));
+      if (variant === "safe") {
+        return {
+          hook: `${protagonist} trova i primi segni del disgelo su ${city} — e capisce che trecento anni di ghiaccio nascondevano tecnologia impossibile.`,
+          editorialSynopsis: `La versione più stabile dello sci-fi: ${protagonist}, giovane ${role}, documenta come il disgelo rivela tecnologia impossibile e un segreto capace di riscrivere la storia dell'umanità. Gli abitanti credono che siano passati solo sette giorni mentre il ghiaccio, prigione costruita per contenere qualcosa che sta per svegliarsi, inizia a cedere.`,
+          centralConflict: `${protagonist} deve decidere se rivelare il segreto storico o lasciare ancora imprigionato ciò che il ghiaccio teneva sotto la città.`,
+          stakes: "Verità storica, futuro dell'umanità, città nel ghiaccio e risveglio della minaccia sepolta.",
+          endingDirection: "Finale risolutivo: scelta tra verità pubblica e contenimento di ciò che si sveglia.",
+          finalEmotion: "Meraviglia speculativa, inquietudine e senso di conseguenza storica.",
+          commercialPitch: "Sci-fi ancorato all'idea: disgelo, ghiaccio, tecnologia impossibile.",
+          whyItSells: "Promessa leggibile con elementi concreti dell'idea originale.",
+        };
+      }
+      if (variant === "commercial") {
+        return {
+          hook: `Ogni strato di ghiaccio che cede su ${city} rivela una macchina che non dovrebbe esistere — e ${protagonist} è l'unico ${role} ancora in grado di leggerla.`,
+          editorialSynopsis: `La versione più vendibile: hook immediato, disgelo progressivo, sette giorni perduti, tecnologia impossibile e segreto che cambia la storia dell'umanità. ${protagonist} segue le prove sepolte sotto ${city} mentre il mondo combatte per impossessarsene e ciò che il ghiaccio imprigionava inizia a svegliarsi.`,
+          centralConflict: `${protagonist} deve distinguere minaccia archeologica e risveglio sotto il ghiaccio prima che il segreto travolga il mondo.`,
+          stakes: "Storia dell'umanità, verità sepolta, città nel ghiaccio e risveglio della minaccia.",
+          endingDirection: "Finale ad alto impatto: verità rivelata e scelta sul destino di ciò che si sveglia.",
+          finalEmotion: "Tensione speculativa e eco di conseguenza globale.",
+          commercialPitch: "Sci-fi commerciale ancorato a disgelo, segreto e prigione di ghiaccio.",
+          whyItSells: "Alta leggibilità con elementi distintivi dell'idea.",
+        };
+      }
+      return {
+        hook: `Il disgelo non libera solo rovine: libera ciò che ${protagonist} ha passato trecento anni a non nominare.`,
+        editorialSynopsis: `La versione più audace: ${protagonist}, giovane ${role}, scopre che il disgelo rivela tecnologia impossibile, un segreto capace di riscrivere la storia dell'umanità e una prigione di ghiaccio costruita per contenere qualcosa che sta per svegliarsi. La verità non chiede solo di essere raccontata — chiede chi può sopravvivere a conoscerla.`,
+        centralConflict: `${protagonist} deve scegliere tra contenere ciò che si sveglia e diventare custode di una verità che nessuno vuole accettare.`,
+        stakes: "Identità, memoria storica, futuro dell'umanità e risveglio sotto il ghiaccio.",
+        endingDirection: "Finale disturbante: verità parziale e costo irreversibile sul disgelo.",
+        finalEmotion: "Inquietudine speculativa, shock e domanda finale.",
+        commercialPitch: "Sci-fi bold: città nel ghiaccio, disgelo, prigione e risveglio.",
+        whyItSells: "Distintivo e ancorato all'idea dell'autore.",
+      };
+    }
     if (variant === "safe") {
       return {
         hook: `${protagonist} scopre che la missione nasconde un protocollo che nessuno doveva attivare.`,
@@ -618,9 +666,15 @@ function parseProtagonistLabel(seed: string, genre = ""): { name: string; role: 
   const sanitized = sanitizeUserConceptInput(seed);
   const extracted = extractConceptProtagonist(sanitized);
   if (extracted) {
-    const role = /insegnante/i.test(sanitized)
+    const role = /cartograf\w*/i.test(sanitized)
+      ? "giovane cartografo della città nel ghiaccio"
+      : /insegnante/i.test(sanitized)
       ? "insegnante nel miraggio di ricordi che anticipano la morte"
-      : defaultLeadForGenre(genre).role;
+      : /storico|storica/i.test(sanitized)
+        ? "ultimo storico della città nel ghiaccio"
+        : hasSubmergedCitySciFiSignals(sanitized)
+          ? `giovane ${extractSubmergedCityRole(sanitized)} della città nel ghiaccio`
+          : defaultLeadForGenre(genre).role;
     return { name: extracted, role };
   }
   if (/restauratrice/i.test(sanitized)) return { name: "Elena", role: "restauratrice" };
@@ -633,6 +687,29 @@ function parseCounterpart(
   variant: ExpressScenarioVariant,
   seed = "",
 ): { name: string; role: string } {
+  if (hasSubmergedCitySciFiSignals(seed)) {
+    const hay = sanitizeUserConceptInput(seed).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (/\bsvegli\w*|risvegli\w*\b/.test(hay) && !/\bentita\s+antica\b/.test(hay)) {
+      return variant === "bold"
+        ? {
+            name: "Ciò che Si Sveglia",
+            role: "presenza imprigionata nel ghiaccio che il disgelo sta liberando",
+          }
+        : {
+            name: "La Minaccia nel Ghiaccio",
+            role: "forza sepolta sotto la città che trecento anni di prigione di ghiaccio stanno risvegliando",
+          };
+    }
+    return variant === "bold"
+      ? {
+          name: "L'Entità Antica",
+          role: "presenza imprigionata sotto la città che il disgelo sta risvegliando",
+        }
+      : {
+          name: "Entità antica",
+          role: "forza sepolta sotto la città che la tecnologia impossibile ha tenuto in catene",
+        };
+  }
   if (hasSupernaturalThrillerSignals(seed)) {
     return variant === "bold"
       ? {
@@ -650,6 +727,9 @@ function parseCounterpart(
 function parseSetting(seed: string, genre = ""): string {
   if (/\b(paese|villaggio|piccolo\s+paese)\b/i.test(seed) && (isThrillerGenre(genre) || hasSupernaturalThrillerSignals(seed))) {
     return "Piccolo paese chiuso nel silenzio, dove ogni abitante custodisce un pezzo della verità";
+  }
+  if (hasSubmergedCitySciFiSignals(seed) || /\b(citt[aà]\s+sommersa|sommersa|disgelo|ghiaccio|nascost\w*\s+sotto)\b/i.test(seed)) {
+    return "Città nascosta sotto il ghiaccio eterno del Nord, dove il disgelo rivela tecnologia impossibile e segreti sepolti";
   }
   if (/villa|incendio|restauratrice/i.test(seed) && (isDarkRomance(genre) || isRomance(genre))) {
     return "Villa decadente sulle colline, segnata da un incendio doloso e da stanze che conservano cenere e silenzi";
@@ -803,6 +883,44 @@ function buildSupernaturalThrillerCharacters(
   };
 
   return [protagonist, antagonist, sheriff, villagers];
+}
+
+function buildSubmergedCityCharacters(
+  lead: { name: string; role: string },
+  counterpart: { name: string; role: string },
+  pkg: Partial<CompleteExpressBookPackage>,
+): ForgeCharacter[] {
+  const protagonist: ForgeCharacter = {
+    id: "express-protagonist",
+    role: "protagonist",
+    name: lead.name,
+    wound: "Crescere in una città congelata nel tempo e scoprire che le proprie mappe nascondono più verità di quante osi tracciare",
+    fear: "Che il disgelo liberi ciò che il ghiaccio imprigionava e che la verità cancelli la città che credeva di conoscere",
+    desire: "Svelare il segreto che la città custodisce nel ghiaccio senza consegnarlo alle potenze che combattono per impossessarsene",
+    contradiction: "Vuole proteggere la città ma ogni mappa rivelata avvicina il mondo esterno e il risveglio sotto il ghiaccio",
+    obsession: "Documentare tecnologia impossibile e segreti storici prima che il disgelo li consegni a chi combatte per impossessarsene",
+    secret: "Ha già visto segni che il ghiaccio non era solo protezione ma una prigione",
+    arc: pkg.endingDirection
+      ? `Da ${lead.role} testimone del disgelo a cartografo costretto a scegliere tra verità pubblica e contenimento di ciò che si sveglia`
+      : "Trasformazione da osservatore del ghiaccio a custode di una verità che cambia la storia dell'umanità",
+    vulnerability: "Il legame con gli abitanti convinti che siano passati solo sette giorni",
+    dominantFlaw: "Confonde protezione della città e occultamento di una minaccia che il ghiaccio non può più contenere",
+  };
+
+  const antagonist: ForgeCharacter = {
+    id: "express-counterpart",
+    role: "antagonist",
+    name: counterpart.name,
+    wound: "Trecento anni di prigionia nel ghiaccio hanno alterato ciò che un tempo era",
+    fear: "Che il disgelo arrivi senza lasciare una via di ritorno al sonno",
+    desire: "Completare il risveglio che il disgelo ha reso inevitabile",
+    contradiction: "Non chiede solo libertà — chiede chi pagherà il prezzo del suo risveglio",
+    obsession: "Usare la tecnologia impossibile e il segreto della città come chiave della propria liberazione",
+    secret: "Il ghiaccio non era una barriera naturale: era una prigione costruita apposta",
+    arc: "Da presenza sepolta sotto la città a minaccia che il mondo non può più ignorare",
+  };
+
+  return [protagonist, antagonist];
 }
 
 function buildChapterSeeds(count: number, genre: string, variant: ExpressScenarioVariant, setting: string, ideaSeed?: string): ChapterBlueprintSeed[] {
@@ -2060,8 +2178,12 @@ export function buildCompleteExpressBookPackage(
   const seed = ideaCore(input);
   const isSupernaturalThriller =
     hasSupernaturalThrillerSignals(seed) && isThrillerGenre(input.genre);
+  const isSubmergedCitySciFi =
+    hasSubmergedCitySciFiSignals(seed) && isScifiGenre(input.genre);
   const genreMeta = isSupernaturalThriller
     ? { subgenre: "supernatural psychological thriller", normalizedGenre: "thriller" }
+    : isSubmergedCitySciFi
+      ? { subgenre: "speculative sci-fi", normalizedGenre: "sci-fi" }
     : GENRE_META[input.genre.toLowerCase()] ?? {
         subgenre: input.genre,
         normalizedGenre: input.genre,
@@ -2072,7 +2194,9 @@ export function buildCompleteExpressBookPackage(
   const chapterCount = chapterCountForInput(input);
   const language = normalizeLanguage(input.language);
 
-  const emotionalWound = isDarkRomance(input.genre)
+  const emotionalWound = isSubmergedCitySciFi
+    ? "Crescere in una città congelata nel tempo e scoprire che la propria cartografia nasconde più verità di quante osi tracciare"
+    : isDarkRomance(input.genre)
     ? "Colpa per la morte della sorella e bisogno di controllo come unica difesa"
     : isFriendsToLoversGenre(input.genre)
       ? "Paura di perdere l'amicizia più importante trasformandola in qualcosa di irreversibile"
@@ -2085,7 +2209,9 @@ export function buildCompleteExpressBookPackage(
       : isHorrorGenre(input.genre)
         ? "Memoria distorta e colpa legata a un luogo che non ha mai lasciato andarla"
         : "Ferita antica che lega identità, desiderio e paura di essere tradita di nuovo";
-  const desire = isDarkRomance(input.genre)
+  const desire = isSubmergedCitySciFi
+    ? "Svelare il segreto che la città custodisce nel ghiaccio senza consegnarlo alle potenze che combattono per impossessarsene"
+    : isDarkRomance(input.genre)
     ? "Scoprire la verità sull'incendio senza perdere se stessa"
     : isFriendsToLoversGenre(input.genre)
       ? "Capire se l'amicizia può diventare amore senza distruggere ciò che le tiene in piedi"
@@ -2098,14 +2224,18 @@ export function buildCompleteExpressBookPackage(
       : isHorrorGenre(input.genre)
         ? "Capire cosa infesta il luogo prima che la minaccia la scelga definitivamente"
         : "Trasformazione concreta e relazione che non la annulli";
-  const fear = isDarkRomance(input.genre)
+  const fear = isSubmergedCitySciFi
+    ? "Che il disgelo liberi ciò che il ghiaccio imprigionava e che la verità cancelli la città che credeva di conoscere"
+    : isDarkRomance(input.genre)
     ? "Ricordare troppo — e desiderare chi dovrebbe temere"
     : isFantasyGenre(input.genre)
       ? "Usare la magia e scoprire che il prezzo richiesto è la propria identità"
       : isHorrorGenre(input.genre)
         ? "Perdere il confine tra ricordo, presenza e realtà"
         : "Perdere controllo, verità e ciò che rende la vita degna di essere vissuta";
-  const centralConflict = isSupernaturalThriller
+  const centralConflict = isSubmergedCitySciFi
+    ? `${lead.name}, giovane ${extractSubmergedCityRole(seed)}, deve mappare il disgelo e la tecnologia impossibile senza risvegliare ciò che il ghiaccio teneva imprigionato sotto la città`
+    : isSupernaturalThriller
     ? `${lead.name} riceve ogni notte ricordi dal futuro che annunciano la sua morte, mentre ${counterpart.name} e gli abitanti del paese stringono il cerchio tra profezia e panico`
     : isDarkRomance(input.genre)
     ? `${lead.name} cerca verità e giustizia, ma ${counterpart.name} le offre protezione solo finché non minaccia ciò che la casa nasconde`
@@ -2131,14 +2261,18 @@ export function buildCompleteExpressBookPackage(
       : isEnemiesToLoversGenre(input.genre)
         ? `Un romance ${input.tone} enemies-to-lovers dove attrito, attrazione e conflitto emotivo si trasformano in relazione — senza deriva dark romance.`
         : isScifiGenre(input.genre)
-          ? `Uno sci-fi ${input.tone} dove worldbuilding, tech stakes e dilemma morale costruiscono una promessa speculativa con payoff forte.`
+          ? isSubmergedCitySciFi
+            ? resolveNarrativePromise(seed, input.genre, `Dopo trecento anni di ghiaccio, ${lead.name} deve svelare tecnologia impossibile, un segreto storico e ciò che la prigione di ghiaccio stava contenendo sotto la città.`)
+            : `Uno sci-fi ${input.tone} dove worldbuilding, tech stakes e dilemma morale costruiscono una promessa speculativa con payoff forte.`
           : isFantasyGenre(input.genre)
       ? `Un fantasy ${input.tone} dove magia, tradimento e costo del potere costruiscono una promessa epica con payoff emotivo.`
       : isHorrorGenre(input.genre)
         ? `Un horror ${input.tone} dove atmosfera, decadenza e paura crescente trasformano il luogo in minaccia viva e la verità in contagio.`
         : `Un ${input.genre} ${input.tone} che promette tensione emotiva, payoff memorabile e una storia che resta addosso dopo l'ultima pagina.`,
   );
-  const hook = isSupernaturalThriller
+  const hook = isSubmergedCitySciFi
+    ? `${lead.name} scopre che il disgelo sulla città nel ghiaccio sta rivelando tecnologia impossibile — e un segreto capace di riscrivere la storia dell'umanità.`
+    : isSupernaturalThriller
     ? (() => {
         const time = extractTimeAnchor(seed);
         const timeClause = time ? ` alle ${time}` : "";
@@ -2153,6 +2287,8 @@ export function buildCompleteExpressBookPackage(
         : `${lead.name} credeva di controllare la storia. ${setting.split(",")[0]} le dimostra il contrario.`;
   const subtitle = input.subtitle?.trim()
     ? input.subtitle.trim()
+    : isSubmergedCitySciFi
+      ? buildSubmergedCitySubtitle(seed, variant)
     : isSupernaturalThriller
       ? buildSupernaturalThrillerSubtitle(seed, variant)
     : isFriendsToLoversGenre(input.genre) || isEnemiesToLoversGenre(input.genre) || isRomance(input.genre)
@@ -2217,7 +2353,9 @@ export function buildCompleteExpressBookPackage(
   if (variantCopy.endingDirection) partial.endingDirection = variantCopy.endingDirection;
   if (variantCopy.finalEmotion) partial.finalEmotion = variantCopy.finalEmotion;
 
-  const characters = isSupernaturalThriller
+  const characters = isSubmergedCitySciFi
+    ? buildSubmergedCityCharacters(lead, counterpart, partial)
+    : isSupernaturalThriller
     ? buildSupernaturalThrillerCharacters(lead, counterpart, partial)
     : buildCharacters(lead, counterpart, partial, input.genre);
   const chapterBlueprintSeeds = buildChapterSeeds(chapterCount, input.genre, variant, setting, ideaCore(input));
@@ -2282,7 +2420,9 @@ export function buildCompleteExpressBookPackage(
     marketPromise,
     protagonist: lead.name,
     antagonistOrLoveInterest: `${counterpart.name} — ${counterpart.role}`,
-    secondaryCharacters: isSupernaturalThriller
+    secondaryCharacters: isSubmergedCitySciFi
+      ? buildSubmergedCitySecondaryCast()
+      : isSupernaturalThriller
       ? buildSupernaturalThrillerSecondaryCast()
       : isDarkRomance(input.genre)
       ? ["Sorella (memoria/assenza)", "Comunità locale che custodisce silenzi"]

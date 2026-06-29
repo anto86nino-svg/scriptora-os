@@ -24,8 +24,12 @@ import {
 } from "@/lib/title-intelligence-validation";
 import { resolveNarrativePromise } from "@/lib/narrative-promise-intelligence";
 import {
+  buildSubmergedCitySubtitle,
+  buildSubmergedCityTitle,
   buildSupernaturalThrillerSubtitle,
   buildTimeAnchoredTitle,
+  extractConceptProtagonist,
+  hasSubmergedCitySciFiSignals,
   hasSupernaturalThrillerSignals,
   isConceptDominanceSubtitle,
   sanitizeUserConceptInput,
@@ -259,6 +263,8 @@ function isFantasy(genre: string): boolean {
 }
 
 function parseLeadName(seed: string): string {
+  const extracted = extractConceptProtagonist(sanitizeUserConceptInput(seed));
+  if (extracted) return extracted;
   const words = seed.split(/\s+/).filter(Boolean);
   if (words.length >= 2 && /^[A-ZÀ-Ü]/.test(words[0]!)) return words[0]!;
   if (/restauratrice/i.test(seed)) return "Elena";
@@ -342,6 +348,23 @@ export function generateGenreAwareCharacters(input: FoundationGeneratorInput): F
         wound: seed.split(/[.!?]/)[0] || "Perdita e memoria",
         desire: "Dare forma poetica al tema",
         arc: "Da frammento a raccolta coerente",
+      }),
+    ];
+  }
+
+  if (hasSubmergedCitySciFiSignals(seed)) {
+    const leadName = parseLeadName(seed);
+    return [
+      baseCharacter("protagonist", leadName, {
+        wound: "Crescere in una città congelata nel tempo e scoprire che le proprie mappe nascondono più verità di quante osi tracciare",
+        fear: "Che il disgelo liberi ciò che il ghiaccio imprigionava",
+        desire: "Svelare il segreto nel ghiaccio senza consegnarlo alle potenze che combattono per impossessarsene",
+        arc: "Da cartografo testimone del disgelo a custode di una verità che cambia la storia dell'umanità",
+      }),
+      baseCharacter("antagonist", "La Minaccia nel Ghiaccio", {
+        wound: "Trecento anni di prigionia nel ghiaccio",
+        desire: "Completare il risveglio che il disgelo ha reso inevitabile",
+        arc: "Da presenza sepolta a minaccia che il mondo non può ignorare",
       }),
     ];
   }
@@ -549,6 +572,35 @@ export function generateTitleSubtitleOptions(input: FoundationGeneratorInput): T
         toneFit: input.tone,
         genreFit: "psychological thriller",
         risk: "Più rischiosa ma più memorabile",
+      },
+    ];
+  }
+
+  if (hasSubmergedCitySciFiSignals(seed)) {
+    return [
+      {
+        title: buildSubmergedCityTitle(seed, "commercial"),
+        subtitle: buildSubmergedCitySubtitle(seed, "commercial"),
+        commercialReason: "Disgelo, ghiaccio e città nascosta con promessa speculativa leggibile",
+        toneFit: input.tone,
+        genreFit: "sci-fi",
+        risk: "Richiede coerenza su sette giorni, tecnologia impossibile e prigione di ghiaccio nel blueprint",
+      },
+      {
+        title: buildSubmergedCityTitle(seed, "safe"),
+        subtitle: buildSubmergedCitySubtitle(seed, "safe"),
+        commercialReason: "Versione più stabile ancorata al segreto storico e al cartografo",
+        toneFit: input.tone,
+        genreFit: "sci-fi speculativo",
+        risk: "Meno audace ma più chiara sulla posta in gioco",
+      },
+      {
+        title: buildSubmergedCityTitle(seed, "bold"),
+        subtitle: buildSubmergedCitySubtitle(seed, "bold"),
+        commercialReason: "Versione più memorabile sulla prigione di ghiaccio e sul risveglio",
+        toneFit: input.tone,
+        genreFit: "sci-fi adulto",
+        risk: "Più rischiosa ma più distintiva",
       },
     ];
   }

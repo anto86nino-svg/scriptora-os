@@ -5,6 +5,7 @@ import {
   extractConceptProtagonist,
   hasHighConceptFantasySignals,
   hasExplicitRomanceSignals,
+  hasSubmergedCitySciFiSignals,
   hasSupernaturalThrillerSignals,
   isGenericPhilosophyTitleForFiction,
   resolveConceptDominance,
@@ -102,5 +103,54 @@ describe("concept-dominance", () => {
     expect(joined).not.toMatch(/mille anni/i);
     expect(joined).not.toMatch(/\bidea\b.*vs/i);
     expect(extractConceptProtagonist(session.rawIdea)).toBe("Marta");
+  });
+
+  it("resolves sci-fi dominance for ice-city idea even with Fantasy genre hint", () => {
+    const exactIdea = `Per oltre trecento anni una città è rimasta nascosta sotto il ghiaccio eterno del Nord.
+Quando il disgelo libera la città, i suoi abitanti credono che siano passati solo sette giorni.
+Aren, giovane cartografo, scopre che la città custodisce una tecnologia impossibile e un segreto capace di riscrivere la storia dell'umanità.
+Mentre il mondo combatte per impossessarsene, Aren scopre che il ghiaccio era una prigione costruita per contenere qualcosa che sta per svegliarsi.`;
+    const resolved = resolveConceptDominance(exactIdea, { genre: "Fantasy" });
+    expect(resolved.genre).toBe("sci-fi");
+    expect(hasSubmergedCitySciFiSignals(exactIdea)).toBe(true);
+    expect(hasHighConceptFantasySignals(exactIdea)).toBe(false);
+  });
+
+  it("extracts Aren not Per from submerged city concept", () => {
+    const arenIdea =
+      "Per oltre trecento anni la città sommersa è rimasta congelata nel ghiaccio. Aren, ultimo storico della città, scopre che il disgelo sta rivelando tecnologia impossibile e un segreto che cambia la storia dell'umanità. Un'entità antica è stata imprigionata sotto la città.";
+    expect(extractConceptProtagonist(arenIdea)).toBe("Aren");
+    expect(extractConceptProtagonist(arenIdea)).not.toBe("Per");
+  });
+
+  it("keeps Aren submerged-city sci-fi through One Flow without philosophy template", () => {
+    const arenIdea =
+      "Per oltre trecento anni la città sommersa è rimasta congelata nel ghiaccio. Aren, ultimo storico della città, scopre che il disgelo sta rivelando tecnologia impossibile e un segreto che cambia la storia dell'umanità. Un'entità antica è stata imprigionata sotto la città.";
+    const session = startOneFlowSession(arenIdea, { language: "Italiano" });
+    const { payload } = prepareOneFlowWriterPackage(session);
+    expect(payload).toBeTruthy();
+
+    const joined = [
+      payload!.config.genre,
+      session.proposal?.title ?? "",
+      session.proposal?.subtitle ?? "",
+      session.proposal?.promise ?? "",
+      session.proposal?.characters ?? "",
+      session.proposal?.premise ?? "",
+      payload!.blueprint!.overview,
+      payload!.blueprint!.chapterOutlines.map((c) => `${c.title} ${c.summary}`).join(" "),
+    ].join(" ");
+
+    expect(extractConceptProtagonist(session.rawIdea)).toBe("Aren");
+    expect(joined).toMatch(/aren/i);
+    expect(joined).toMatch(/citt[aà]\s+sommersa|sommersa/i);
+    expect(joined).toMatch(/disgelo|ghiaccio/i);
+    expect(joined).toMatch(/trecento|300/i);
+    expect(joined).toMatch(/entit[aà]/i);
+    expect(joined).toMatch(/sci[-\s]?fi|tecnolog/i);
+    expect(joined).not.toMatch(/\bper\s+vs\b/i);
+    expect(joined).not.toMatch(/tradizione filosofica|implicazione esistenziale|domanda contemplativa/i);
+    expect(session.proposal?.characters?.toLowerCase() ?? "").toMatch(/aren/);
+    expect(session.proposal?.characters?.toLowerCase() ?? "").not.toMatch(/^per\b/);
   });
 });

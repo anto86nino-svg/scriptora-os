@@ -45,6 +45,7 @@ function inferDefaultExpressGenre(
   if (/fantasy|magia|porta nel cuore|mille anni|memoria ancestrale|fine del mondo|high concept/.test(bag)) return "fantasy";
   if (/horror|gotico|paura/.test(bag)) return "horror";
   if (/thriller|giallo|crime|mystery|soprannatural/.test(bag)) return "thriller";
+  if (/citt[aà]\s+sommersa|disgelo|ghiaccio|nascost\w*\s+sotto|prigione\s+(di\s+)?ghiaccio|tecnolog\w*\s+impossibil|entit[aà]\s+antica|trecento\s+anni|sette\s+giorni/.test(bag)) return "sci-fi";
   if (/sci\s*fi|science fiction|fantascienza|cyberpunk/.test(bag)) return "sci-fi";
   if (/friends to lovers|amici ad amanti/.test(bag)) return "friends to lovers";
   if (/enemies to lovers|nemici che si innamorano/.test(bag)) return "enemies to lovers";
