@@ -23,7 +23,6 @@ import {
 } from "@/lib/book-creation-os/character-generator";
 import { usePlan } from "@/lib/plan";
 import { toast } from "sonner";
-import { GuidedInterviewPanel } from "@/components/guided-interview/GuidedInterviewPanel";
 import WelcomeStarterGrid from "./steps/WelcomeStarterGrid";
 import WelcomeForgePanel from "./steps/WelcomeForgePanel";
 import StepValidation from "./steps/StepValidation";
@@ -34,7 +33,6 @@ import {
   cleanStr,
   parseHandoffLanguage,
   normalizeHandoffGenre,
-  mapForgeGenreToInterviewGenre,
   applyInterviewGenreToWizard,
   formatForgeTime,
 } from "./wizard/utils";
@@ -127,12 +125,12 @@ interface BookCreationOsWizardProps {
     suggestedSubtitles: string[];
     bestTitleIndex: number;
   } | null>;
-  /** Skip interview — open directly at blueprint after mobile Book Forge DNA */
+  /** Legacy compatibility: open directly at blueprint after an existing DNA handoff. */
   forgeEntry?: "full" | "post-dna";
   initialStep?: number;
   interviewSeed?: ForgeInterviewSeed;
   bookForgeHandoff?: BookForgeHandoff | null;
-  /** Render inside Mobile Book Forge shell — single page scroll, no modal overlay. */
+  /** Render inside mobile One Book Flow shell — single page scroll, no modal overlay. */
   embeddedInMobileForge?: boolean;
   mobileForgeHeader?: ReactNode;
 }
@@ -142,73 +140,6 @@ function emptyCharacter(): BookCharacter {
 }
 
 
-
-function mapForgeGenreToInterviewGenre(
-  forgePresetId?: string | null,
-  bookTypeId?: string
-) {
-  const source =
-    forgePresetId
-      ? forgePresetId.toLowerCase()
-      : (bookTypeId || "general").toLowerCase();
-
-  const map: Record<string, string> = {
-    poetry: "poetry",
-    romance: "romance",
-    "dark-romance": "dark-romance",
-    thriller: "thriller",
-    horror: "thriller",
-    fantasy: "fantasy",
-    "self-help": "self-help",
-    business: "business",
-    manual: "manual",
-    story: "literary-fiction",
-    storia: "literary-fiction",
-    historical: "literary-fiction",
-    history: "literary-fiction",
-    "historical-fiction": "literary-fiction",
-    novel: "literary-fiction",
-    fiction: "literary-fiction",
-    handbook: "manual",
-  };
-
-  return map[source] || "general";
-}
-
-function handleInterviewCompleteFactory({
-  setNarrativePromise,
-  setCoreConflict,
-  setSetting,
-  setVoiceConsistency,
-  setCommercialGoal,
-  setTargetReader,
-  setShowAdvancedForge,
-}: {
-  setNarrativePromise: (value: string) => void;
-  setCoreConflict: (value: string) => void;
-  setSetting: (value: string) => void;
-  setVoiceConsistency: (value: string) => void;
-  setCommercialGoal: (value: string) => void;
-  setTargetReader?: (value: string) => void;
-  setShowAdvancedForge: (value: boolean) => void;
-}) {
-  return (state: { extracted?: Record<string, string | undefined> }) => {
-    const extracted = state?.extracted ?? {};
-
-    setNarrativePromise(
-      cleanStr(extracted.promise) ||
-      cleanStr(extracted.readerTransformation),
-    );
-
-    setCoreConflict(cleanStr(extracted.centralConflict));
-    setSetting(cleanStr(extracted.setting));
-    setVoiceConsistency(cleanStr(extracted.emotionalTone));
-    setCommercialGoal(cleanStr(extracted.promise));
-    if (setTargetReader) setTargetReader(cleanStr(extracted.targetReader));
-
-    setShowAdvancedForge(true);
-  };
-}
 
 function cleanStr(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -448,10 +379,9 @@ export function BookCreationOsWizard({
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  const [useGuidedInterview, setUseGuidedInterview] = useState(forgeEntry !== "post-dna" && !bookForgeHandoff);
+  const [useGuidedInterview, setUseGuidedInterview] = useState(false);
   const [dnaConfirmed, setDnaConfirmed] = useState(forgeEntry === "post-dna" || Boolean(bookForgeHandoff));
 
-  const mobileInterviewMode = forgeEntry !== "post-dna" && isMobileViewport && step === 0 && useGuidedInterview;
   const postDnaForge = forgeEntry === "post-dna";
   const approvedHandoffSlots = bookForgeHandoff?.prefill.approvedSlots ?? [];
   const canonicalCharacterHandoff =
@@ -653,7 +583,7 @@ export function BookCreationOsWizard({
 
     if (cleanStr(ext.structurePreference)) {
       setVoiceConsistency((prev) =>
-        `${prev}\n\nStruttura richiesta da Book Forge: ${cleanStr(ext.structurePreference)}`.trim(),
+        `${prev}\n\nStruttura richiesta nel One Book Flow: ${cleanStr(ext.structurePreference)}`.trim(),
       );
     }
 
@@ -1989,7 +1919,7 @@ const persistDraft = useCallback(() => {
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-300">
-                {postDnaForge ? "Blueprint Theater" : forgePresetId ? "Scriptora Forge" : "Book Configuration Studio"}
+                {postDnaForge ? "Blueprint Preview" : forgePresetId ? "One Book Flow" : "One Book Flow"}
               </p>
             <p className="text-sm font-semibold text-white">
                 {postDnaForge
@@ -1997,17 +1927,15 @@ const persistDraft = useCallback(() => {
                     ? "La struttura del libro prende forma"
                     : "Forgia la struttura"
                   : forgePresetId
-                    ? `Preset: ${forgePresetLabel || "Libro rapido"}`
-                    : `Macro step ${step + 1}/${STUDIO_STEPS.length} — ${stepLabel}`}
+                    ? `Configurazione: ${forgePresetLabel || "Libro"}`
+                    : `Step ${step + 1}/${STUDIO_STEPS.length} — ${stepLabel}`}
               </p>
             <p className="mt-0.5 text-[11px] text-white/45">
                 {postDnaForge
                   ? "DNA confermato — genera architettura e indice prima del writer"
-                  : useGuidedInterview
-                    ? "Book Forge · intervista chat-first fino al DNA Lock"
-                    : forgePresetId
+                  : forgePresetId
                       ? "Configurazione rapida: controlla solo titolo, autore, lingua e idea."
-                      : "20 decisioni guidate prima della generazione reale"}
+                      : "Una sola configurazione manuale prima di blueprint e Writer"}
               </p>
           </div>
           {!embeddedInMobileForge && (
@@ -2036,10 +1964,10 @@ const persistDraft = useCallback(() => {
                     ? "Crea raccolta poetica"
                     : forgePresetId
                       ? `Crea ${forgePresetLabel || "libro"}`
-                      : "Da dove partiamo?"}
+                    : "Configura il libro"}
                 </h2>
                 <p className="mt-1 text-sm leading-6 text-white/65">
-                  Scegli uno starter oppure lascia che Scriptora ti intervisti. Titolo, mercato, autore e struttura arrivano dopo: una cosa alla volta.
+                  Una porta sola: scegli tu formato, genere, tono e struttura. Scriptora non sostituisce le tue decisioni e non rigenera campi gia' scritti.
                 </p>
               </div>
 
@@ -2052,68 +1980,10 @@ const persistDraft = useCallback(() => {
               />
 
               {!bookForgeHandoff && (
-              <div className="rounded-2xl border border-violet-400/20 bg-violet-500/10 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-violet-200/80">
-                      Forge intelligente
-                    </p>
-                    <p className="mt-1 text-sm text-white/65">
-                      Scriptora costruisce DNA, promessa, conflitto, lettore e direzione editoriale prima del blueprint.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUseGuidedInterview(v => !v);
-                      setDnaConfirmed(false);
-                    }}
-                    className="rounded-full border border-white/12 bg-white/[0.05] px-4 py-2 text-xs font-semibold text-white/70"
-                  >
-                    {useGuidedInterview ? "✨ Intervista attiva" : "⚙️ Manuale"}
-                  </button>
-                </div>
-
-                {useGuidedInterview && (
-                  <div className={`mt-4 overflow-hidden rounded-[28px] ${isMobileViewport ? "h-[min(72dvh,680px)]" : "h-[620px]"}`}>
-                    <GuidedInterviewPanel
-                      selectedGenre={mapForgeGenreToInterviewGenre(forgePresetId, bookTypeId)}
-                      language={language}
-                      penName={identityDraft.penName || authorName}
-                      authorName={identityDraft.name}
-                      variant={isMobileViewport ? "mobile" : "desktop"}
-                      onComplete={handleInterviewCompleteFactory({
-                        setNarrativePromise,
-                        setCoreConflict,
-                        setSetting,
-                        setVoiceConsistency,
-                        setCommercialGoal,
-                        setTargetReader,
-                        setShowAdvancedForge,
-                      })}
-                      onConfirmDna={handleForgeDnaConfirm}
-                      onContinueInterview={() => {
-                        setDnaConfirmed(false);
-                        setShowAdvancedForge(false);
-                      }}
-                    />
-                  </div>
-                )}
-
-                {useGuidedInterview && dnaConfirmed && (
-                  <div className="mt-3 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-xs text-emerald-100">
-                    ✅ DNA del libro confermato. Ora puoi passare a titolo e identità autore.
-                  </div>
-                )}
-              </div>
-              )}
-
-              {!useGuidedInterview && !bookForgeHandoff && (
-                <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-3">
-                  <p className="text-sm font-semibold text-white">Modalità manuale</p>
+                <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-3">
+                  <p className="text-sm font-semibold text-emerald-50">Lock canonico attivo</p>
                   <p className="mt-1 text-xs leading-5 text-white/55">
-                    Procedi al prossimo step per inserire titolo, sottotitolo e identità autore. Le impostazioni avanzate restano disponibili dopo.
+                    Ogni valore scritto o scelto resta canonico. Generatori e fallback possono completare solo campi vuoti o modificare campi su richiesta esplicita.
                   </p>
                 </div>
               )}
@@ -2153,7 +2023,7 @@ const persistDraft = useCallback(() => {
 
               {titleLockedByCharacterStudio && (
                 <div className="rounded-2xl border border-emerald-300/25 bg-emerald-400/10 p-3 text-xs leading-5 text-emerald-50">
-                  Titolo e sottotitolo arrivano da Character Studio e sono canonici. Book Forge li riusa per blueprint, cover, export e Writer senza rigenerarli.
+                  Titolo e sottotitolo sono canonici: One Book Flow li riusa per blueprint, cover, export e Writer senza rigenerarli.
                 </div>
               )}
 
@@ -2294,7 +2164,7 @@ const persistDraft = useCallback(() => {
             <div className="space-y-3">
               <h2 className="text-xl font-semibold text-white">Struttura editoriale</h2>
               <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/10 p-4 text-sm leading-6 text-emerald-50">
-                Questo percorso non richiede personaggi da romanzo. Book Forge userà promessa, struttura, tono e lettore per costruire il blueprint.
+                Questo percorso non richiede personaggi da romanzo. One Book Flow usera' promessa, struttura, tono e lettore per costruire il blueprint.
               </div>
             </div>
           )}
@@ -2546,7 +2416,7 @@ function GuidedDecisionRail({ activeIndex }: { activeIndex: number }) {
   return (
     <div className="rounded-2xl border border-white/12 bg-white/[0.035] p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/52">Book Forge Flow</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/52">One Book Flow</p>
         <span className="rounded-full border border-sky-300/25 bg-sky-300/10 px-2 py-1 text-[10px] font-semibold text-sky-100">
           8 fasi guidate
         </span>
@@ -2585,7 +2455,7 @@ function BlueprintForgePanel({ elapsedSeconds }: { elapsedSeconds: number }) {
     <div className="overflow-hidden rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.18),rgba(15,23,42,0.96)_48%,rgba(2,6,23,0.98))] p-4 text-left shadow-[0_24px_70px_rgba(8,47,73,0.35)] sm:p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-200/70">Blueprint Forge</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-cyan-200/70">Blueprint</p>
           <p className="mt-1 text-sm font-semibold text-white">{copy}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2 rounded-2xl border border-cyan-300/25 bg-black/35 px-3 py-2 shadow-[inset_0_0_24px_rgba(34,211,238,0.12)]">

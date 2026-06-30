@@ -36,7 +36,7 @@ export type ScriptoraToolDefinition = {
 export const SCRIPTORA_TOOL_REGISTRY: Record<ScriptoraToolId, ScriptoraToolDefinition> = {
   "book-forge": {
     id: "book-forge",
-    label: "Book Forge",
+    label: "One Book Flow",
     canonicalRoute: "/dashboard",
     mobileSupport: "full",
     requiresProject: false,
@@ -133,13 +133,13 @@ export const SCRIPTORA_TOOL_REGISTRY: Record<ScriptoraToolId, ScriptoraToolDefin
   },
   character: {
     id: "character",
-    label: "Character Studio",
-    canonicalRoute: "/character-studio",
-    mobileSupport: "desktop-only",
-    requiresProject: true,
+    label: "One Book Flow",
+    canonicalRoute: "/dashboard",
+    mobileSupport: "full",
+    requiresProject: false,
     nextRoute: "/app",
     feature: "book_engine_full",
-    status: "production",
+    status: "legacy",
   },
   manuscript: {
     id: "manuscript",

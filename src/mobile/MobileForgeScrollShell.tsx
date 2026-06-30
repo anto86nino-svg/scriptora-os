@@ -14,7 +14,7 @@ export type MobileForgeScrollShellProps = {
 };
 
 /**
- * Canonical mobile Book Forge viewport shell.
+ * Canonical mobile One Book Flow viewport shell.
  *
  * Architecture (single scroll, no nesting):
  *   fixed 100dvh column

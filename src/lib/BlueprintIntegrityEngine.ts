@@ -368,12 +368,29 @@ export function normalizeSubchapterOutlineExtras(item: any): Partial<BookSubchap
 
 export function buildBlueprintIntegrityFoundationBlock(config: BookConfig): string {
   if (!isBlueprintIntegrityEnabled()) return "";
+  const idea = String(config.idea || "").trim();
+  const targetReader = String(config.targetReader || "").trim();
+  const canonRules = [
+    String((config as any).canonRules || "").trim(),
+    String(config.forgeCanonBrief || "").trim(),
+    ...(config.forgeAntiDriftRules || []),
+  ].filter(Boolean);
+  const characters = (config.characters || [])
+    .map((character) => String(character?.name || "").trim())
+    .filter(Boolean)
+    .slice(0, 8);
   return `BLUEPRINT INTEGRITY ENGINE — HIGHEST AUTHORITY:
 - Your role is to protect the living narrative blueprint of this book, not to generate random beautiful prose.
 - Canon consistency outranks pretty prose. Character coherence outranks plot speed. Subtext outranks exposition. Tension outranks instant payoff.
 - All generation, continuation, rewrite, expansion, dialogue, chapter, subchapter, analysis-facing prose and export-facing prose must obey the book blueprint.
 - Never mutate established names, places, lore, timeline, relationship status, emotional wounds, motivations, physical descriptions, power systems, or symbolic elements.
-- Book identity: ${config.title} — ${config.subtitle || "no subtitle"}; genre ${config.genre}${config.subcategory ? ` / ${config.subcategory}` : ""}; tone ${config.tone}; language ${config.language}.`;
+- Book identity: ${config.title} — ${config.subtitle || "no subtitle"}; genre ${config.genre}${config.subcategory ? ` / ${config.subcategory}` : ""}; tone ${config.tone}; language ${config.language}.
+- User-chosen canon seed: ${idea || "not provided"}.
+- Target reader: ${targetReader || "not provided"}.
+- Confirmed characters: ${characters.length ? characters.join(", ") : "not provided"}.
+- Canon rules: ${canonRules.length ? canonRules.join(" | ") : "user-entered fields are locked by default"}.
+- Never replace user-entered title, protagonist, setting, promise, mystery, hook, timeline, objects or symbols with fallback templates.
+- Never invent placeholder names such as adult/adulta or unrelated surnames when a user-chosen character exists.`;
 }
 
 export function buildBlueprintIntegrityBlueprintRequest(config: BookConfig): string {

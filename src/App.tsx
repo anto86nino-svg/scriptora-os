@@ -36,7 +36,6 @@ const IdentityOsPage = lazyWithRetry(() => import("./pages/IdentityOsPage.tsx"))
 const UsagePage = lazyWithRetry(() => import("./pages/UsagePage.tsx"));
 const DiagnosticsPage = lazyWithRetry(() => import("./pages/DiagnosticsPage.tsx"));
 const NotepadPage = lazyWithRetry(() => import("./pages/NotepadPage.tsx"));
-const CharacterStudioPage = lazyWithRetry(() => import("./pages/CharacterStudioPage.tsx"));
 const TitleIntelligencePage = lazyWithRetry(() => import("./pages/TitleIntelligencePage.tsx"));
 const ManuscriptLabPage = lazyWithRetry(() => import("./pages/ManuscriptLabPage.tsx"));
 const ExportStudioPage = lazyWithRetry(() => import("./pages/ExportStudioPage.tsx"));
@@ -83,7 +82,7 @@ const App = () => (
                 <Route path="/cover" element={<ProtectedRoute requiredFeature="cover_studio_template"><FeatureErrorBoundary featureName="Cover Studio"><CoverStudioPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/export-studio" element={<ProtectedRoute requiredFeature="export_epub"><FeatureErrorBoundary featureName="Export Studio"><ExportStudioPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/notepad" element={<ProtectedRoute><FeatureErrorBoundary featureName="Block Notes"><NotepadPage /></FeatureErrorBoundary></ProtectedRoute>} />
-                <Route path="/character-studio" element={<ProtectedRoute requiredFeature="book_engine_full"><FeatureErrorBoundary featureName="Character Studio"><CharacterStudioPage /></FeatureErrorBoundary></ProtectedRoute>} />
+                <Route path="/character-studio" element={<ProtectedRoute requiredFeature="book_engine_full"><Navigate to="/dashboard" replace state={{ openForge: true, source: "character-studio-redirect" }} /></ProtectedRoute>} />
                 <Route path="/title-intelligence" element={<ProtectedRoute requiredFeature="title_intelligence_base"><FeatureErrorBoundary featureName="Title Intelligence"><TitleIntelligencePage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/manuscript-lab" element={<ProtectedRoute requiredFeature="chapter_improvement"><FeatureErrorBoundary featureName="Manuscript Lab"><ManuscriptLabPage /></FeatureErrorBoundary></ProtectedRoute>} />
                 <Route path="/author-identity" element={<ProtectedRoute requiredFeature="book_engine_full"><FeatureErrorBoundary featureName="Author Identity"><IdentityOsPage /></FeatureErrorBoundary></ProtectedRoute>} />

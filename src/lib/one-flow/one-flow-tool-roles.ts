@@ -25,8 +25,8 @@ export const ONE_FLOW_TOOL_ROLES = {
     en: "Market decision support",
   },
   ideaPreview: {
-    it: "Anteprima idea → Book Forge",
-    en: "Idea preview → Book Forge",
+    it: "Anteprima idea -> One Book Flow",
+    en: "Idea preview -> One Book Flow",
   },
 } as const;
 

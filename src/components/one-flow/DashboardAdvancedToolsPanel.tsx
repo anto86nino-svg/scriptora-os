@@ -151,7 +151,7 @@ function DashboardAdvancedToolsPanelInner({ context }: Props) {
               className="inline-flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.06] px-4 py-2.5 text-sm font-semibold text-white/85"
             >
               <Sparkles className="h-4 w-4" />
-              Book Forge
+              One Book Flow
             </button>
           </div>
         )}

@@ -237,16 +237,6 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       route: getToolRoute("manuscript"),
     },
     {
-      id: "character-studio",
-      label: "Character Studio",
-      description: "Personaggi e coerenza narrativa",
-      enabled: true,
-      feature: "book_engine_full",
-      group: "writer",
-      mode: "route",
-      route: getToolRoute("character"),
-    },
-    {
       id: "voice-studio",
       label: "Voice Studio",
       description: "Narrazione vocale e pacing del capitolo attivo",
@@ -279,7 +269,7 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
     {
       id: "idea-preview",
       label: "Anteprima idea",
-      description: "Esplora un'idea prima di Book Forge",
+      description: "Esplora un'idea prima del One Book Flow",
       enabled: true,
       group: "optimization",
       mode: "tool",

@@ -240,7 +240,7 @@ export default function Dashboard() {
     } catch {
       /* noop */
     }
-    navigateFromDashboard("/character-studio", { fresh: true });
+    navigateFromDashboard("/dashboard", { openForge: true, source: "character-studio-redirect", fresh: true });
   }, [navigateFromDashboard]);
 
   const openSettingsHub = useCallback(() => {
@@ -251,7 +251,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!activeDashboardTool) return;
     trackScriptoraEvent({
-      eventName: activeDashboardTool === "book-forge" ? "book_forge_opened" : "home_cta_clicked",
+      eventName: activeDashboardTool === "book-forge" ? "one_book_flow_opened" : "home_cta_clicked",
       tool: activeDashboardTool,
       success: true,
     });
@@ -425,7 +425,7 @@ export default function Dashboard() {
       });
       trackScriptoraEvent({
         eventName: "free_blueprint_limit_blocked",
-        tool: "book-forge",
+        tool: "one-book-flow",
         planId: currentPlan,
         success: false,
       });
@@ -435,7 +435,7 @@ export default function Dashboard() {
 
     const resolvedHandoff = isBookForgeHandoff(handoff) ? handoff : null;
 
-    // Fresh dashboard start: "Crea libro" must never resurrect an old Book Forge draft.
+    // Fresh dashboard start: "Crea libro" must never resurrect an old creation draft.
     // Handoff flows keep their payload and still skip the right steps.
     if (!resolvedHandoff) {
       try {
@@ -451,8 +451,7 @@ export default function Dashboard() {
       return;
     }
 
-    // Single creation flow: every "new book" entrypoint opens Scriptora Forge.
-    // The legacy wizard remains available only inside Forge after DNA confirmation.
+    // Single creation flow: every "new book" entrypoint opens One Book Flow.
     openDashboardTool("book-forge");
   };
 
@@ -862,7 +861,7 @@ typeof crypto.randomUUID === "function"
     if (!devBypassLimits && !gate.allowed) {
       trackScriptoraEvent({
         eventName: "free_blueprint_limit_blocked",
-        tool: "book-forge",
+        tool: "one-book-flow",
         planId: currentPlan,
         success: false,
       });
@@ -875,7 +874,7 @@ typeof crypto.randomUUID === "function"
     const gatedConfig = applyGreatnessGateToConfig(finalConfig, greatnessGate);
     trackScriptoraEvent({
       eventName: "blueprint_generation_requested",
-      tool: "book-forge",
+      tool: "one-book-flow",
       planId: currentPlan,
       success: true,
     });
@@ -888,7 +887,7 @@ typeof crypto.randomUUID === "function"
     const previewProject = buildBlueprintPreviewProject({
       config: gatedConfig,
       blueprint,
-      sourceTool: "book-forge",
+      sourceTool: "one-book-flow",
       planId: currentPlan,
     });
     await saveProjectAsync(previewProject);
@@ -901,14 +900,14 @@ typeof crypto.randomUUID === "function"
     window.dispatchEvent(new Event("scriptora-projects-change"));
     trackScriptoraEvent({
       eventName: "blueprint_generated",
-      tool: "book-forge",
+      tool: "one-book-flow",
       projectId: previewProject.id,
       planId: currentPlan,
       success: true,
     });
     trackScriptoraEvent({
       eventName: "blueprint_saved",
-      tool: "book-forge",
+      tool: "one-book-flow",
       projectId: previewProject.id,
       planId: currentPlan,
       success: true,
@@ -1193,13 +1192,13 @@ typeof crypto.randomUUID === "function"
             <ScriptoraAliveTransition
               compact
               overlay
-              tone="forge"
+                tone="forge"
               title="Apro la creazione libro…"
               steps={["Caricamento studio", "Preparo interfaccia"]}
             />
           }
         >
-          <BookCreationOsWizard
+            <BookCreationOsWizard
             open={activeDashboardTool === "book-forge"}
             onClose={closeAllDashboardTools}
             authorIdentity={activeAuthor}

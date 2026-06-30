@@ -145,22 +145,13 @@ export function DashboardOperationalSections({
         <SectionShell
           kicker="Creazione"
           title="Crea nuovo libro"
-          description="Avvia Book Forge con DNA, blueprint e writer."
+          description="Avvia One Book Flow: configurazione, concept, blueprint e Writer."
         >
-          <QuickLinkButton icon={Plus} label="Nuovo libro con Book Forge" onClick={onNewBook} accent="primary" />
+          <QuickLinkButton icon={Plus} label="Nuovo libro" onClick={onNewBook} accent="primary" />
         </SectionShell>
       </div>
 
       {ideaBookCard}
-
-      <SectionShell
-        kicker="Percorso narrativo"
-        title="Character Studio"
-        description="Cast, genere, tono e conflitto prima del blueprint."
-        className="mb-4"
-      >
-        <QuickLinkButton icon={Sparkles} label="Apri Character Studio" onClick={onCharacterStudio} accent="primary" />
-      </SectionShell>
 
       <div ref={packagingAnchorRef}>
         <Suspense

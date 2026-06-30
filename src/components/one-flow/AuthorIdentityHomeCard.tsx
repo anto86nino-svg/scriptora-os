@@ -103,7 +103,7 @@ export function AuthorIdentityHomeCard({
             </div>
           </dl>
           <p className="mt-3 rounded-xl border border-emerald-400/15 bg-emerald-400/10 px-3 py-2 text-xs leading-5 text-emerald-50/70">
-            Usata da Scriptora per coerenza voce, Character Studio, packaging KDP, cover ed export.
+            Usata da Scriptora per coerenza voce, One Book Flow, packaging KDP, cover ed export.
           </p>
         </div>
         <button

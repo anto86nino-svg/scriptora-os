@@ -16,12 +16,12 @@ const TOOL_LABELS: Record<Exclude<ActiveDashboardTool, null>, string> = {
   library: "Libreria",
   export: "Export Studio",
   "author-identity": "Identità autore",
-  "character-studio": "Character Studio",
+  "character-studio": "One Book Flow",
   notepad: "Block Notes",
   "title-intelligence": "Title Intelligence",
   "idea-preview": "Anteprima idea",
   "manuscript-lab": "Manuscript Lab",
-  "book-forge": "Book Forge",
+  "book-forge": "One Book Flow",
   "advanced-tools": "Strumenti avanzati",
 };
 
@@ -101,7 +101,7 @@ export function DashboardToolHost({
         <DedicatedToolScreen
           open
           title="Anteprima idea"
-          description="Esplora un'idea prima di Book Forge."
+          description="Esplora un'idea prima del One Book Flow."
           onClose={onClose}
           maxWidthClass="max-w-xl"
         >
