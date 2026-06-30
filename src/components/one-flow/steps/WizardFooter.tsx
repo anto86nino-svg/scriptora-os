@@ -18,7 +18,6 @@ export default function WizardFooter(props: Props) {
     postDnaForge,
     generatingBlueprint,
     launching,
-    shouldUseCharacterForge,
     closeWizard,
     setStep,
     goNext,
@@ -34,11 +33,6 @@ export default function WizardFooter(props: Props) {
         onClick={() => {
           if (postDnaForge && step === 6) {
             closeWizard();
-            return;
-          }
-
-          if (step === 4 && !shouldUseCharacterForge) {
-            setStep(2);
             return;
           }
 

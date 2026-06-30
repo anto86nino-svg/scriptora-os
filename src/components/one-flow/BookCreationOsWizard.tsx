@@ -130,7 +130,7 @@ interface BookCreationOsWizardProps {
   initialStep?: number;
   interviewSeed?: ForgeInterviewSeed;
   bookForgeHandoff?: BookForgeHandoff | null;
-  /** Render inside mobile One Book Flow shell — single page scroll, no modal overlay. */
+  /** Render inside mobile creation shell — single page scroll, no modal overlay. */
   embeddedInMobileForge?: boolean;
   mobileForgeHeader?: ReactNode;
 }
@@ -199,28 +199,43 @@ function applyInterviewGenreToWizard(
 const inputClass =
   "w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/35 focus:border-sky-400/50 focus:outline-none";
 
-const BOOK_CREATION_DECISIONS = [
-  "Tipo libro",
-  "Sottogenere",
-  "Tono",
-  "Target lettore",
-  "Lunghezza",
+export const BOOK_CREATION_DECISIONS = [
+  "Base libro",
+  "Stile e lettore",
   "Struttura",
-  "Stile autore",
-  "Velocità narrativa",
-  "Intensità emotiva",
-  "Personaggi",
-  "Conflitto",
-  "Promessa",
-  "Ambientazione",
-  "Hook iniziale",
-  "Twist",
-  "Obiettivo commerciale",
-  "Voice consistency",
+  "Narrativa",
+  "Limiti e regole",
+  "Mercato e pubblicazione",
   "Blueprint",
-  "Conferma",
-  "Generazione reale",
+  "Conferma e Writer",
 ] as const;
+
+export const BOOK_FLOW_REQUIRED_CONFIGURATION_FIELDS = [
+  "lingua",
+  "genere",
+  "sottogenere",
+  "lunghezza",
+  "capitoli",
+  "sottocapitoli",
+  "tono",
+  "pov",
+  "finale",
+  "protagonista",
+  "ambientazione",
+  "regole canoniche",
+] as const;
+
+const LEVEL1_BOOK_TYPE_OPTIONS: { id: Level1BookType; label: string }[] = [
+  { id: "romanzo", label: "Romanzo / narrativa" },
+  { id: "poesia", label: "Poesie e raccolte" },
+  { id: "manuale", label: "Manuale / guida" },
+  { id: "self-help", label: "Self-help" },
+  { id: "business", label: "Business" },
+  { id: "educazione", label: "Materiale didattico" },
+  { id: "biografia", label: "Biografia / memoir" },
+  { id: "saggistica", label: "Saggistica" },
+  { id: "bambini", label: "Libro per bambini" },
+];
 
 const GUIDED_STARTERS = [
   {
@@ -583,7 +598,7 @@ export function BookCreationOsWizard({
 
     if (cleanStr(ext.structurePreference)) {
       setVoiceConsistency((prev) =>
-        `${prev}\n\nStruttura richiesta nel One Book Flow: ${cleanStr(ext.structurePreference)}`.trim(),
+        `${prev}\n\nStruttura richiesta nel percorso libro: ${cleanStr(ext.structurePreference)}`.trim(),
       );
     }
 
@@ -673,6 +688,32 @@ export function BookCreationOsWizard({
   const [mainTwists, setMainTwists] = useState("");
   const [commercialGoal, setCommercialGoal] = useState("");
   const [voiceConsistency, setVoiceConsistency] = useState("Mantieni stessa voce, stesso punto di vista, stessi comportamenti e stessa promessa emotiva in ogni capitolo.");
+  const [showFullCustomization, setShowFullCustomization] = useState(false);
+  const [targetAge, setTargetAge] = useState("");
+  const [languageLevel, setLanguageLevel] = useState("accessibile");
+  const [structureType, setStructureType] = useState("classica a tre atti");
+  const [wordsPerChapter, setWordsPerChapter] = useState("");
+  const [protagonist, setProtagonist] = useState("");
+  const [antagonist, setAntagonist] = useState("");
+  const [secondaryCast, setSecondaryCast] = useState("");
+  const [pov, setPov] = useState("terza persona limitata");
+  const [tense, setTense] = useState("passato");
+  const [endingType, setEndingType] = useState("finale con twist");
+  const [canonRules, setCanonRules] = useState("");
+  const [forbiddenContent, setForbiddenContent] = useState("");
+  const [avoidThemes, setAvoidThemes] = useState("");
+  const [violenceLevel, setViolenceLevel] = useState("medio");
+  const [darknessLevel, setDarknessLevel] = useState("medio");
+  const [spiceLevel, setSpiceLevel] = useState("basso");
+  const [explicitLanguage, setExplicitLanguage] = useState(false);
+  const [romancePresence, setRomancePresence] = useState(false);
+  const [supernaturalPresence, setSupernaturalPresence] = useState(false);
+  const [marketTarget, setMarketTarget] = useState("Italia");
+  const [publishingPlatform, setPublishingPlatform] = useState("KDP");
+  const [kdpCategory, setKdpCategory] = useState("");
+  const [initialKeywords, setInitialKeywords] = useState("");
+  const [shortDescription, setShortDescription] = useState("");
+  const [marketingPromise, setMarketingPromise] = useState("");
 
   const applyForgeHandoffSeed = useCallback((seed: ForgeInterviewSeed) => {
     setForgeHandoff(seed);
@@ -1001,22 +1042,71 @@ export function BookCreationOsWizard({
     const forgedCharacters = activeHandoff
       ? mapForgeCharactersToBookCharacters(activeHandoff.characters)
       : [];
+    const manualCharacters: BookCharacter[] = [
+      protagonist.trim() && {
+        name: protagonist.trim(),
+        role: "Protagonista scelto dall'autore",
+        externalDesire: coreConflict.trim(),
+        wound: "",
+        secret: "",
+        personality: "",
+      },
+      antagonist.trim() && {
+        name: antagonist.trim(),
+        role: "Antagonista / forza oppositiva scelta dall'autore",
+        externalDesire: "",
+        wound: "",
+        secret: "",
+        personality: "",
+      },
+      ...secondaryCast
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean)
+        .map((name) => ({
+          name,
+          role: "Cast secondario scelto dall'autore",
+          externalDesire: "",
+          wound: "",
+          secret: "",
+          personality: "",
+        })),
+    ].filter(Boolean) as BookCharacter[];
     const resolvedCharacters =
       forgedCharacters.length > 0
         ? forgedCharacters
-        : characters.filter((c) => String(c.name || "").trim());
+        : [
+            ...manualCharacters,
+            ...characters.filter((c) => {
+              const name = String(c.name || "").trim();
+              return name && !manualCharacters.some((manual) => manual.name?.toLowerCase() === name.toLowerCase());
+            }),
+          ];
 
     const guidedBrief = [
       handoffExtras?.characterBibleText &&
         `FORGE CHARACTER & CANON LOCK:\n${handoffExtras.characterBibleText}`,
       handoffExtras?.canonBrief,
+      `Configurazione autore:\nFormato libro: ${level1BookType}\nLingua: ${language}\nGenere: ${genre}\nSottogenere: ${subgenre.trim() || subcategory}\nLunghezza: ${bookLength}\nCapitoli: ${chapters}\nSottocapitoli: ${subchaptersEnabled ? `${subchaptersPerChapter} per capitolo` : "no"}\nTono: ${tone}\nPOV: ${pov}\nTempo verbale: ${tense}\nFinale: ${endingType}`,
       idea.trim() && `Idea del libro:\n${idea.trim()}`,
+      protagonist.trim() && `Protagonista confermato:\n${protagonist.trim()}`,
+      antagonist.trim() && `Antagonista / opposizione confermata:\n${antagonist.trim()}`,
+      secondaryCast.trim() && `Cast secondario confermato:\n${secondaryCast.trim()}`,
       coreConflict.trim() && `Conflitto principale:\n${coreConflict.trim()}`,
       narrativePromise.trim() && `Promessa narrativa/editoriale:\n${narrativePromise.trim()}`,
       setting.trim() && `Ambientazione:\n${setting.trim()}`,
       openingHook.trim() && `Hook iniziale:\n${openingHook.trim()}`,
       mainTwists.trim() && `Twist principali:\n${mainTwists.trim()}`,
+      targetAge.trim() && `Eta target:\n${targetAge.trim()}`,
+      languageLevel.trim() && `Livello linguistico:\n${languageLevel.trim()}`,
+      structureType.trim() && `Tipo struttura:\n${structureType.trim()}`,
+      wordsPerChapter.trim() && `Parole per capitolo:\n${wordsPerChapter.trim()}`,
+      canonRules.trim() && `Regole canoniche vincolanti:\n${canonRules.trim()}`,
+      forbiddenContent.trim() && `Cose vietate dall'autore:\n${forbiddenContent.trim()}`,
+      avoidThemes.trim() && `Temi da evitare:\n${avoidThemes.trim()}`,
+      `Limiti contenuto:\nViolenza: ${violenceLevel}\nOscurita: ${darknessLevel}\nSpice: ${spiceLevel}\nLinguaggio esplicito: ${explicitLanguage ? "si" : "no"}\nRomance: ${romancePresence ? "si" : "no"}\nSoprannaturale: ${supernaturalPresence ? "si" : "no"}`,
       commercialGoal.trim() && `Obiettivo commerciale:\n${commercialGoal.trim()}`,
+      `Mercato e pubblicazione:\nMercato target: ${marketTarget}\nPiattaforma: ${publishingPlatform}\nCategoria KDP: ${kdpCategory || category}\nKeyword iniziali: ${initialKeywords || "da definire"}\nDescrizione breve: ${shortDescription || "da definire"}\nPromessa marketing: ${marketingPromise || commercialGoal || narrativePromise || "da definire"}`,
       voiceConsistency.trim() && `Voice consistency:\n${voiceConsistency.trim()}`,
     ].filter(Boolean).join("\n\n");
 
@@ -1062,12 +1152,25 @@ export function BookCreationOsWizard({
 
     const enriched = enrichBookConfigFromForgeSeed(handoffMerged, activeHandoff);
     const wizardExtras = [
+      `Configurazione autore:\nFormato libro: ${level1BookType}\nLingua: ${language}\nGenere: ${genre}\nSottogenere: ${subgenre.trim() || subcategory}\nLunghezza: ${bookLength}\nCapitoli: ${chapters}\nSottocapitoli: ${subchaptersEnabled ? `${subchaptersPerChapter} per capitolo` : "no"}\nTono: ${tone}\nPOV: ${pov}\nTempo verbale: ${tense}\nFinale: ${endingType}`,
+      protagonist.trim() && `Protagonista confermato:\n${protagonist.trim()}`,
+      antagonist.trim() && `Antagonista / opposizione confermata:\n${antagonist.trim()}`,
+      secondaryCast.trim() && `Cast secondario confermato:\n${secondaryCast.trim()}`,
       coreConflict.trim() && `Conflitto principale:\n${coreConflict.trim()}`,
       narrativePromise.trim() && `Promessa narrativa/editoriale:\n${narrativePromise.trim()}`,
       setting.trim() && `Ambientazione:\n${setting.trim()}`,
       openingHook.trim() && `Hook iniziale:\n${openingHook.trim()}`,
       mainTwists.trim() && `Twist principali:\n${mainTwists.trim()}`,
+      targetAge.trim() && `Eta target:\n${targetAge.trim()}`,
+      languageLevel.trim() && `Livello linguistico:\n${languageLevel.trim()}`,
+      structureType.trim() && `Tipo struttura:\n${structureType.trim()}`,
+      wordsPerChapter.trim() && `Parole per capitolo:\n${wordsPerChapter.trim()}`,
+      canonRules.trim() && `Regole canoniche vincolanti:\n${canonRules.trim()}`,
+      forbiddenContent.trim() && `Cose vietate dall'autore:\n${forbiddenContent.trim()}`,
+      avoidThemes.trim() && `Temi da evitare:\n${avoidThemes.trim()}`,
+      `Limiti contenuto:\nViolenza: ${violenceLevel}\nOscurita: ${darknessLevel}\nSpice: ${spiceLevel}\nLinguaggio esplicito: ${explicitLanguage ? "si" : "no"}\nRomance: ${romancePresence ? "si" : "no"}\nSoprannaturale: ${supernaturalPresence ? "si" : "no"}`,
       commercialGoal.trim() && `Obiettivo commerciale:\n${commercialGoal.trim()}`,
+      `Mercato e pubblicazione:\nMercato target: ${marketTarget}\nPiattaforma: ${publishingPlatform}\nCategoria KDP: ${kdpCategory || category}\nKeyword iniziali: ${initialKeywords || "da definire"}\nDescrizione breve: ${shortDescription || "da definire"}\nPromessa marketing: ${marketingPromise || commercialGoal || narrativePromise || "da definire"}`,
       voiceConsistency.trim() && `Voice consistency:\n${voiceConsistency.trim()}`,
     ].filter(Boolean).join("\n\n");
     if (wizardExtras) {
@@ -1078,9 +1181,13 @@ export function BookCreationOsWizard({
     styleProfile, identityDraft, authorName, title, subtitle, idea, language, amazonMarketplace,
     bookTypeId, genre, category, subcategory, subgenre, tone, targetReader, referenceAuthors, chapterLength,
     bookLength, isFree, chapters, subchaptersEnabled, subchaptersPerChapter, matterOptions, characters,
-    coreConflict, narrativePromise, setting, openingHook, mainTwists, commercialGoal, voiceConsistency,
-    forgeHandoff,
-    bookForgeHandoff,
+      coreConflict, narrativePromise, setting, openingHook, mainTwists, commercialGoal, voiceConsistency,
+      level1BookType, protagonist, antagonist, secondaryCast, pov, tense, endingType, targetAge, languageLevel,
+      structureType, wordsPerChapter, canonRules, forbiddenContent, avoidThemes, violenceLevel, darknessLevel,
+      spiceLevel, explicitLanguage, romancePresence, supernaturalPresence, marketTarget, publishingPlatform,
+      kdpCategory, initialKeywords, shortDescription, marketingPromise,
+      forgeHandoff,
+      bookForgeHandoff,
   ]);
 
   useEffect(() => {
@@ -1105,6 +1212,11 @@ const persistDraft = useCallback(() => {
         bookTypeId, genre, subgenre, chapters, chapterLength, bookLength, subchaptersEnabled, subchaptersPerChapter,
         matterOptions, characters, styleProfile, tone, targetReader, referenceAuthors,
         coreConflict, narrativePromise, setting, openingHook, mainTwists, commercialGoal, voiceConsistency,
+        showFullCustomization, targetAge, languageLevel, structureType, wordsPerChapter,
+        protagonist, antagonist, secondaryCast, pov, tense, endingType, canonRules, forbiddenContent,
+        avoidThemes, violenceLevel, darknessLevel, spiceLevel, explicitLanguage, romancePresence,
+        supernaturalPresence, marketTarget, publishingPlatform, kdpCategory, initialKeywords,
+        shortDescription, marketingPromise,
       }));
     } catch { /* noop */ }
   }, [
@@ -1112,6 +1224,11 @@ const persistDraft = useCallback(() => {
     bookTypeId, genre, subgenre, chapters, chapterLength, bookLength, subchaptersEnabled, subchaptersPerChapter,
     matterOptions, characters, styleProfile, tone, targetReader, referenceAuthors,
     coreConflict, narrativePromise, setting, openingHook, mainTwists, commercialGoal, voiceConsistency,
+    showFullCustomization, targetAge, languageLevel, structureType, wordsPerChapter,
+    protagonist, antagonist, secondaryCast, pov, tense, endingType, canonRules, forbiddenContent,
+    avoidThemes, violenceLevel, darknessLevel, spiceLevel, explicitLanguage, romancePresence,
+    supernaturalPresence, marketTarget, publishingPlatform, kdpCategory, initialKeywords,
+    shortDescription, marketingPromise,
   ]);
 
   useEffect(() => {
@@ -1162,6 +1279,32 @@ const persistDraft = useCallback(() => {
       if (draft.mainTwists) setMainTwists(draft.mainTwists);
       if (draft.commercialGoal) setCommercialGoal(draft.commercialGoal);
       if (draft.voiceConsistency) setVoiceConsistency(draft.voiceConsistency);
+      if (draft.showFullCustomization != null) setShowFullCustomization(Boolean(draft.showFullCustomization));
+      if (draft.targetAge) setTargetAge(draft.targetAge);
+      if (draft.languageLevel) setLanguageLevel(draft.languageLevel);
+      if (draft.structureType) setStructureType(draft.structureType);
+      if (draft.wordsPerChapter) setWordsPerChapter(draft.wordsPerChapter);
+      if (draft.protagonist) setProtagonist(draft.protagonist);
+      if (draft.antagonist) setAntagonist(draft.antagonist);
+      if (draft.secondaryCast) setSecondaryCast(draft.secondaryCast);
+      if (draft.pov) setPov(draft.pov);
+      if (draft.tense) setTense(draft.tense);
+      if (draft.endingType) setEndingType(draft.endingType);
+      if (draft.canonRules) setCanonRules(draft.canonRules);
+      if (draft.forbiddenContent) setForbiddenContent(draft.forbiddenContent);
+      if (draft.avoidThemes) setAvoidThemes(draft.avoidThemes);
+      if (draft.violenceLevel) setViolenceLevel(draft.violenceLevel);
+      if (draft.darknessLevel) setDarknessLevel(draft.darknessLevel);
+      if (draft.spiceLevel) setSpiceLevel(draft.spiceLevel);
+      if (draft.explicitLanguage != null) setExplicitLanguage(Boolean(draft.explicitLanguage));
+      if (draft.romancePresence != null) setRomancePresence(Boolean(draft.romancePresence));
+      if (draft.supernaturalPresence != null) setSupernaturalPresence(Boolean(draft.supernaturalPresence));
+      if (draft.marketTarget) setMarketTarget(draft.marketTarget);
+      if (draft.publishingPlatform) setPublishingPlatform(draft.publishingPlatform);
+      if (draft.kdpCategory) setKdpCategory(draft.kdpCategory);
+      if (draft.initialKeywords) setInitialKeywords(draft.initialKeywords);
+      if (draft.shortDescription) setShortDescription(draft.shortDescription);
+      if (draft.marketingPromise) setMarketingPromise(draft.marketingPromise);
     } catch { /* noop */ }
   }, [open, bookForgeHandoff]);
 
@@ -1421,7 +1564,7 @@ const persistDraft = useCallback(() => {
 
   const validationIssues = validateBookConfigStudio(buildConfig(), identityDraft);
   const coherenceReport = step >= 5 ? validateConfigCoherence(buildConfig()) : null;
-  const stepLabel = STUDIO_STEPS[step];
+  const stepLabel = BOOK_CREATION_DECISIONS[step] || STUDIO_STEPS[step];
 
   const applyCoherenceAutoFix = () => {
     const { config } = sanitizeBookConfiguration(buildConfig());
@@ -1657,16 +1800,7 @@ const persistDraft = useCallback(() => {
     setVoiceConsistency("Non cambiare voce, desiderio, ferita, ritmo emotivo o promessa del libro durante i capitoli. La crescita deve essere graduale.");
     setCharacters((current) => current.some((character) => character.name.trim())
       ? current
-      : [
-          {
-            name: "Protagonista",
-            role: "Centro emotivo della storia",
-            externalDesire: starter.conflict,
-            wound: "Ferita coerente con il conflitto principale",
-            secret: "Una verità che deve emergere gradualmente",
-            personality: "Contraddittoria, specifica, non perfetta",
-          },
-        ]);
+      : [emptyCharacter()]);
     toast.success(`${starter.label}: percorso guidato applicato.`);
   };
 
@@ -1691,17 +1825,12 @@ const persistDraft = useCallback(() => {
         return;
       }
       if (!targetReader.trim()) {
-        toast.message("Manca il pubblico ideale: lo suggerisco dal titolo.");
-        applyInference(textInference);
+        toast.message("Puoi indicare il pubblico ideale ora o completarlo prima del blueprint.");
       }
       saveAuthorIdentity({ ...identityDraft, penName: identityDraft.penName || authorName, language });
     }
     if (step === 2 && chapters < 1) {
       toast.error("Imposta il numero di capitoli per la struttura del libro.");
-      return;
-    }
-    if (step === 2 && !shouldUseCharacterForge) {
-      setStep(4);
       return;
     }
     if (step === 5 && validationIssues.length) {
@@ -1919,7 +2048,7 @@ const persistDraft = useCallback(() => {
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-sky-300">
-                {postDnaForge ? "Blueprint Preview" : forgePresetId ? "One Book Flow" : "One Book Flow"}
+                {postDnaForge ? "Blueprint Preview" : forgePresetId ? "Percorso libro" : "Crea libro"}
               </p>
             <p className="text-sm font-semibold text-white">
                 {postDnaForge
@@ -1961,29 +2090,120 @@ const persistDraft = useCallback(() => {
               <div>
                 <h2 className="text-xl font-semibold text-white">
                   {forgePresetId === "poetry"
-                    ? "Crea raccolta poetica"
+                    ? "Base raccolta poetica"
                     : forgePresetId
-                      ? `Crea ${forgePresetLabel || "libro"}`
-                    : "Configura il libro"}
+                      ? `Base ${forgePresetLabel || "libro"}`
+                    : "Base libro"}
                 </h2>
                 <p className="mt-1 text-sm leading-6 text-white/65">
-                  Una porta sola: scegli tu formato, genere, tono e struttura. Scriptora non sostituisce le tue decisioni e non rigenera campi gia' scritti.
+                  Scegli tu le fondamenta. Scriptora costruisce solo sopra le decisioni che confermi.
                 </p>
               </div>
 
               {!forgePresetId && <GuidedDecisionRail activeIndex={0} />}
 
-              <WelcomeStarterGrid
-                starters={GUIDED_STARTERS}
-                hidden={!!forgePresetId}
-                onSelect={applyGuidedStarter}
-              />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Formato libro</span>
+                  <select
+                    value={level1BookType}
+                    onChange={(event) => {
+                      const nextLevel = event.target.value as Level1BookType;
+                      setLevel1BookType(nextLevel);
+                      const firstType = getVisibleBookTypesForLevel1(nextLevel)[0];
+                      if (firstType) {
+                        setBookTypeId(firstType.id);
+                        setGenre(firstType.genre);
+                        setCategory(firstType.category);
+                        setSubcategory(firstType.defaultSubcategory);
+                        setSubgenre(firstType.defaultSubcategory);
+                        setSubchaptersEnabled(firstType.defaultSubchapters);
+                      }
+                    }}
+                    className={inputClass}
+                  >
+                    {LEVEL1_BOOK_TYPE_OPTIONS.map((option) => (
+                      <option key={option.id} value={option.id}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Lingua</span>
+                  <select value={language} onChange={(event) => setLanguage(event.target.value as Language)} className={inputClass}>
+                    {STUDIO_LANGUAGES.map((lang) => (
+                      <option key={lang} value={lang}>{lang}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Genere</span>
+                  <select value={bookTypeId} onChange={(event) => applyStudioGenre(event.target.value)} className={inputClass}>
+                    {visibleGenres.map((option) => (
+                      <option key={option.id} value={option.id}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="block space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Sottogenere</span>
+                  <input value={subgenre} onChange={(event) => setSubgenre(event.target.value)} placeholder="Es. thriller psicologico, dark romance, poesia contemporanea" className={inputClass} />
+                </label>
+
+                <label className="block space-y-1.5 sm:col-span-2">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Titolo provvisorio</span>
+                  <input
+                    value={title}
+                    readOnly={titleLockedByCharacterStudio}
+                    onChange={(event) => setTitle(event.target.value)}
+                    placeholder="Puoi lasciarlo vuoto e generarlo dopo"
+                    className={inputClass}
+                  />
+                </label>
+
+                <label className="block space-y-1.5 sm:col-span-2">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Idea del libro</span>
+                  <textarea
+                    value={idea}
+                    onChange={(event) => setIdea(event.target.value)}
+                    rows={6}
+                    placeholder="Descrivi la tua idea. Questa materia non sovrascrive formato, genere o regole che scegli tu."
+                    className={inputClass}
+                  />
+                </label>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowFullCustomization((value) => !value)}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-lime-300/25 bg-lime-300/10 px-4 text-sm font-bold text-lime-50"
+              >
+                <Sparkles className="h-4 w-4" />
+                Personalizza tutto
+              </button>
+
+              {showFullCustomization && (
+                <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-4">
+                  <p className="text-sm font-semibold text-white">Scorciatoie facoltative</p>
+                  <p className="mt-1 text-xs leading-5 text-white/55">
+                    Gli starter compilano campi vuoti per iniziare più velocemente. Puoi modificare ogni valore dopo.
+                  </p>
+                  <div className="mt-3">
+                    <WelcomeStarterGrid
+                      starters={GUIDED_STARTERS}
+                      hidden={!!forgePresetId}
+                      onSelect={applyGuidedStarter}
+                    />
+                  </div>
+                </div>
+              )}
 
               {!bookForgeHandoff && (
                 <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-3">
-                  <p className="text-sm font-semibold text-emerald-50">Lock canonico attivo</p>
+                  <p className="text-sm font-semibold text-emerald-50">Scelte autore al centro</p>
                   <p className="mt-1 text-xs leading-5 text-white/55">
-                    Ogni valore scritto o scelto resta canonico. Generatori e fallback possono completare solo campi vuoti o modificare campi su richiesta esplicita.
+                    Le tue scelte restano sempre al centro del libro. Scriptora può completare i campi vuoti quando glielo chiedi.
                   </p>
                 </div>
               )}
@@ -1993,10 +2213,26 @@ const persistDraft = useCallback(() => {
           {step === 1 && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-xl font-semibold text-white">Titolo e identità autore</h2>
+                <h2 className="text-xl font-semibold text-white">Stile e lettore</h2>
                 <p className="mt-1 text-sm leading-6 text-white/60">
-                  Ora definiamo la promessa visibile del libro. Niente doppioni: quello che scegli qui alimenta blueprint, copertina e Writer.
+                  Definisci voce, pubblico e promessa visibile del libro. Ogni campo resta modificabile.
                 </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input value={targetReader} onChange={(e) => setTargetReader(e.target.value)} placeholder="Target lettore" className={inputClass} />
+                <input value={targetAge} onChange={(e) => setTargetAge(e.target.value)} placeholder="Eta target" className={inputClass} />
+                <input value={languageLevel} onChange={(e) => setLanguageLevel(e.target.value)} placeholder="Livello linguistico" className={inputClass} />
+                <input value={tone} onChange={(e) => setTone(e.target.value)} placeholder="Tono editoriale" className={inputClass} />
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {STYLE_PRESETS.map((p) => (
+                  <button key={p.id} type="button" onClick={() => applyPreset(p.id)}
+                    className={`rounded-full border px-3 py-1 text-[11px] font-medium ${styleProfile.presetId === p.id ? "border-amber-300/50 bg-amber-400/15 text-amber-100" : "border-white/12 text-white/70"}`}>
+                    {p.label}
+                  </button>
+                ))}
               </div>
 
               <label className="block space-y-1.5">
@@ -2023,7 +2259,7 @@ const persistDraft = useCallback(() => {
 
               {titleLockedByCharacterStudio && (
                 <div className="rounded-2xl border border-emerald-300/25 bg-emerald-400/10 p-3 text-xs leading-5 text-emerald-50">
-                  Titolo e sottotitolo sono canonici: One Book Flow li riusa per blueprint, cover, export e Writer senza rigenerarli.
+                  Titolo e sottotitolo sono confermati: Scriptora li riusa per blueprint, cover, export e Writer senza rigenerarli.
                 </div>
               )}
 
@@ -2101,7 +2337,6 @@ const persistDraft = useCallback(() => {
               <input value={identityDraft.penName || authorName} onChange={(e) => setIdentityDraft((d) => ({ ...d, penName: e.target.value }))} placeholder="Pen name *" className={inputClass} />
               <textarea value={identityDraft.biography || ""} onChange={(e) => setIdentityDraft((d) => ({ ...d, biography: e.target.value }))} rows={3} placeholder="Bio breve *" className={inputClass} />
               <textarea value={identityDraft.voice || ""} onChange={(e) => setIdentityDraft((d) => ({ ...d, voice: e.target.value }))} rows={2} placeholder="Voce narrativa *" className={inputClass} />
-              <input value={targetReader} onChange={(e) => setTargetReader(e.target.value)} placeholder="Target lettore" className={inputClass} />
               <div className="flex flex-wrap gap-2">
                 {filteredTargetPresets.map((preset) => (
                   <button
@@ -2124,7 +2359,30 @@ const persistDraft = useCallback(() => {
 
           {step === 2 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-white">Configurazione libro</h2>
+              <div>
+                <h2 className="text-xl font-semibold text-white">Struttura</h2>
+                <p className="mt-1 text-sm leading-6 text-white/60">
+                  Scegli dimensione, capitoli, sottocapitoli e parti editoriali prima del blueprint.
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Lunghezza</span>
+                  <select value={bookLength} disabled={isFree} onChange={(event) => setBookLength(event.target.value as "short" | "medium" | "long")} className={inputClass}>
+                    <option value="short">Breve</option>
+                    <option value="medium">Media</option>
+                    <option value="long">Lunga</option>
+                  </select>
+                </label>
+                <label className="block space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Parole per capitolo</span>
+                  <input value={wordsPerChapter} onChange={(event) => setWordsPerChapter(event.target.value)} placeholder="Es. 1800-2500" className={inputClass} />
+                </label>
+                <label className="block space-y-1.5 sm:col-span-2">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Tipo struttura</span>
+                  <input value={structureType} onChange={(event) => setStructureType(event.target.value)} placeholder="Es. tre atti, viaggio dell'eroe, moduli pratici, sezioni poetiche" className={inputClass} />
+                </label>
+              </div>
               <label className="block text-sm text-white/70">Capitoli: {chapters}
                 <input type="range" min={6} max={32} value={chapters} onChange={(e) => setChapters(Number(e.target.value))} className="mt-2 w-full accent-emerald-400" />
               </label>
@@ -2160,106 +2418,193 @@ const persistDraft = useCallback(() => {
             </div>
           )}
 
-          {step === 3 && !shouldUseCharacterForge && (
-            <div className="space-y-3">
-              <h2 className="text-xl font-semibold text-white">Struttura editoriale</h2>
-              <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/10 p-4 text-sm leading-6 text-emerald-50">
-                Questo percorso non richiede personaggi da romanzo. One Book Flow usera' promessa, struttura, tono e lettore per costruire il blueprint.
+          {step === 3 && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Narrativa</h2>
+                <p className="mt-1 text-sm leading-6 text-white/60">
+                  Compila la scheda libro: personaggi quando servono, ma sempre promessa, hook, ambientazione e regole di racconto.
+                </p>
               </div>
-            </div>
-          )}
 
-          {step === 3 && shouldUseCharacterForge && (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-xl font-semibold text-white">Personaggi</h2>
-                <div className="flex gap-2">
-                  <button type="button" disabled={generatingCharacter} onClick={async () => {
-                    setGeneratingCharacter(true);
-                    try {
-                      const remaining = getWizardCharacterFreeRegensRemaining();
-                      if (remaining <= 0) {
-                        const { chargePremiumOperation } = await import("@/lib/billing/charge");
-                        await chargePremiumOperation("character_studio_ai", { source: "wizard_character_generate" });
-                      } else {
-                        consumeWizardCharacterFreeRegen();
-                        setFreeRegensLeft(getWizardCharacterFreeRegensRemaining());
-                      }
-                      const generated = generateWizardCharacter(`${idea}|${Date.now()}`);
-                      setCharacters((list) => [...list.filter((c) => c.name?.trim()), generated]);
-                      toast.success("Personaggio generato.");
-                    } catch (e) {
-                      toast.error(getUserFriendlyError(e, {
-                        area: "blueprint",
-                        fallback: "Personaggio non generato. Le schede esistenti restano salvate.",
-                      }));
-                    } finally {
-                      setGeneratingCharacter(false);
-                    }
-                  }} className="inline-flex items-center gap-1 rounded-lg border border-sky-400/30 bg-sky-400/12 px-2.5 py-1 text-[11px] font-semibold text-sky-100">
-                    {generatingCharacter ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                    Genera
-                  </button>
-                  <button type="button" onClick={() => setCharacters((c) => [...c, emptyCharacter()])} className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1 text-[11px] text-white/80">
-                    <Plus className="h-3 w-3" /> Aggiungi
-                  </button>
-                </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input value={protagonist} onChange={(event) => setProtagonist(event.target.value)} placeholder="Protagonista" className={inputClass} />
+                <input value={antagonist} onChange={(event) => setAntagonist(event.target.value)} placeholder="Antagonista / forza oppositiva" className={inputClass} />
+                <input value={secondaryCast} onChange={(event) => setSecondaryCast(event.target.value)} placeholder="Cast secondario, separato da virgole" className={inputClass} />
+                <input value={setting} onChange={(event) => setSetting(event.target.value)} placeholder="Ambientazione" className={inputClass} />
+                <input value={pov} onChange={(event) => setPov(event.target.value)} placeholder="POV" className={inputClass} />
+                <input value={tense} onChange={(event) => setTense(event.target.value)} placeholder="Tempo verbale" className={inputClass} />
+                <input value={endingType} onChange={(event) => setEndingType(event.target.value)} placeholder="Tipo di finale" className={inputClass} />
+                <input value={coreConflict} onChange={(event) => setCoreConflict(event.target.value)} placeholder="Conflitto centrale" className={inputClass} />
+                <input value={narrativePromise} onChange={(event) => setNarrativePromise(event.target.value)} placeholder="Promessa narrativa / editoriale" className={inputClass} />
+                <input value={openingHook} onChange={(event) => setOpeningHook(event.target.value)} placeholder="Hook" className={inputClass} />
+                <textarea value={mainTwists} onChange={(event) => setMainTwists(event.target.value)} rows={3} placeholder="Twist, tema, regole del mondo o elementi chiave" className={`${inputClass} sm:col-span-2`} />
               </div>
-              <p className="text-[11px] text-white/55">Rigenerazioni gratuite: {freeRegensLeft}</p>
-              {characters.map((ch, idx) => (
-                <div key={idx} className="rounded-xl border border-white/12 bg-white/5 p-3 space-y-2">
-                  <div className="flex gap-2">
-                    <input value={ch.name} onChange={(e) => setCharacters((list) => list.map((c, i) => i === idx ? { ...c, name: e.target.value } : c))} placeholder="Nome" className={inputClass} />
-                    <button type="button" onClick={() => setCharacters((list) => list.filter((_, i) => i !== idx))} className="rounded-lg p-2 text-white/50 hover:text-red-300"><Trash2 className="h-4 w-4" /></button>
-                  </div>
-                  {([["role", "Ruolo"], ["externalDesire", "Obiettivo"], ["wound", "Ferita"], ["secret", "Segreto"], ["personality", "Arco narrativo"]] as const).map(([field, ph]) => (
-                    <input key={field} value={String(ch[field] || "")} onChange={(e) => setCharacters((list) => list.map((c, i) => i === idx ? { ...c, [field]: e.target.value } : c))} placeholder={ph} className={inputClass} />
-                  ))}
+
+              {!shouldUseCharacterForge && (
+                <div className="rounded-xl border border-emerald-400/25 bg-emerald-400/10 p-4 text-sm leading-6 text-emerald-50">
+                  Questo formato non richiede cast da romanzo. Scriptora userà struttura, promessa, tono e lettore per costruire il blueprint.
                 </div>
-              ))}
-              <p className="text-[11px] text-white/50 flex items-center gap-1"><Users className="h-3 w-3" /> Salvati nella Story Bible del progetto.</p>
+              )}
+
+              {shouldUseCharacterForge && (
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-white/90">Schede personaggio</h3>
+                    <div className="flex gap-2">
+                      <button type="button" disabled={generatingCharacter} onClick={async () => {
+                        setGeneratingCharacter(true);
+                        try {
+                          const remaining = getWizardCharacterFreeRegensRemaining();
+                          if (remaining <= 0) {
+                            const { chargePremiumOperation } = await import("@/lib/billing/charge");
+                            await chargePremiumOperation("character_studio_ai", { source: "wizard_character_generate" });
+                          } else {
+                            consumeWizardCharacterFreeRegen();
+                            setFreeRegensLeft(getWizardCharacterFreeRegensRemaining());
+                          }
+                          const generated = generateWizardCharacter(`${idea}|${Date.now()}`);
+                          setCharacters((list) => [...list.filter((c) => c.name?.trim()), generated]);
+                          toast.success("Personaggio generato.");
+                        } catch (e) {
+                          toast.error(getUserFriendlyError(e, {
+                            area: "blueprint",
+                            fallback: "Personaggio non generato. Le schede esistenti restano salvate.",
+                          }));
+                        } finally {
+                          setGeneratingCharacter(false);
+                        }
+                      }} className="inline-flex items-center gap-1 rounded-lg border border-sky-400/30 bg-sky-400/12 px-2.5 py-1 text-[11px] font-semibold text-sky-100">
+                        {generatingCharacter ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                        Genera
+                      </button>
+                      <button type="button" onClick={() => setCharacters((c) => [...c, emptyCharacter()])} className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1 text-[11px] text-white/80">
+                        <Plus className="h-3 w-3" /> Aggiungi
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-white/55">Rigenerazioni gratuite: {freeRegensLeft}</p>
+                  {characters.map((ch, idx) => (
+                    <div key={idx} className="rounded-xl border border-white/12 bg-white/5 p-3 space-y-2">
+                      <div className="flex gap-2">
+                        <input value={ch.name} onChange={(e) => setCharacters((list) => list.map((c, i) => i === idx ? { ...c, name: e.target.value } : c))} placeholder="Nome" className={inputClass} />
+                        <button type="button" onClick={() => setCharacters((list) => list.filter((_, i) => i !== idx))} className="rounded-lg p-2 text-white/50 hover:text-red-300"><Trash2 className="h-4 w-4" /></button>
+                      </div>
+                      {([["role", "Ruolo"], ["externalDesire", "Obiettivo"], ["wound", "Ferita"], ["secret", "Segreto"], ["personality", "Arco narrativo"]] as const).map(([field, ph]) => (
+                        <input key={field} value={String(ch[field] || "")} onChange={(e) => setCharacters((list) => list.map((c, i) => i === idx ? { ...c, [field]: e.target.value } : c))} placeholder={ph} className={inputClass} />
+                      ))}
+                    </div>
+                  ))}
+                  <p className="text-[11px] text-white/50 flex items-center gap-1"><Users className="h-3 w-3" /> Salvati nella Story Bible del progetto.</p>
+                </div>
+              )}
             </div>
           )}
 
           {step === 4 && (
             <div className="space-y-4">
-              <h2 className="text-xl font-semibold text-white">Stile e tono</h2>
-              <div className="flex flex-wrap gap-2">
-                {STYLE_PRESETS.map((p) => (
-                  <button key={p.id} type="button" onClick={() => applyPreset(p.id)}
-                    className={`rounded-full border px-3 py-1 text-[11px] font-medium ${styleProfile.presetId === p.id ? "border-amber-300/50 bg-amber-400/15 text-amber-100" : "border-white/12 text-white/70"}`}>
-                    {p.label}
-                  </button>
+              <div>
+                <h2 className="text-xl font-semibold text-white">Limiti e regole</h2>
+                <p className="mt-1 text-sm leading-6 text-white/60">
+                  Blocca canone, contenuti vietati e soglie creative prima che Scriptora generi la struttura.
+                </p>
+              </div>
+
+              <textarea value={canonRules} onChange={(event) => setCanonRules(event.target.value)} rows={3} placeholder="Regole canoniche: cosa deve restare sempre vero nel libro" className={inputClass} />
+              <textarea value={forbiddenContent} onChange={(event) => setForbiddenContent(event.target.value)} rows={3} placeholder="Cose vietate: elementi, svolte o contenuti da non generare" className={inputClass} />
+              <textarea value={avoidThemes} onChange={(event) => setAvoidThemes(event.target.value)} rows={3} placeholder="Temi da evitare o trattare con cautela" className={inputClass} />
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                {([
+                  ["Violenza", violenceLevel, setViolenceLevel],
+                  ["Oscurita", darknessLevel, setDarknessLevel],
+                  ["Spice", spiceLevel, setSpiceLevel],
+                ] as const).map(([label, value, setter]) => (
+                  <label key={label} className="block space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">{label}</span>
+                    <select value={value} onChange={(event) => setter(event.target.value)} className={inputClass}>
+                      <option value="assente">Assente</option>
+                      <option value="basso">Basso</option>
+                      <option value="medio">Medio</option>
+                      <option value="alto">Alto</option>
+                      <option value="estremo">Estremo</option>
+                    </select>
+                  </label>
                 ))}
               </div>
-              <input value={tone} onChange={(e) => setTone(e.target.value)} placeholder="Tono editoriale" className={inputClass} />
-              {([
-                ["voiceIntensity", "Voce autore"], ["emotionalIntensity", "Livello emotivo"], ["dialogueLevel", "Intensità dialoghi"],
-                ["poeticLevel", "Intensità descrizioni"], ["narrativePace", "Ritmo narrativo"], ["tensionIntensity", "Livello tensione"],
-                ["psychologicalDepth", "Livello dettaglio"],
-              ] as const).map(([key, label]) => (
-                <label key={key} className="block">
-                  <span className="mb-1 flex justify-between text-[11px] text-white/70"><span>{label}</span><span>{styleProfile[key]}%</span></span>
-                  <input type="range" min={0} max={100} value={styleProfile[key]} onChange={(e) => setStyleProfile((p) => ({ ...p, [key]: Number(e.target.value) }))} className="w-full accent-sky-400" />
-                </label>
-              ))}
+
+              <div className="grid gap-2 sm:grid-cols-3">
+                {([
+                  ["Linguaggio esplicito", explicitLanguage, setExplicitLanguage],
+                  ["Romance", romancePresence, setRomancePresence],
+                  ["Soprannaturale", supernaturalPresence, setSupernaturalPresence],
+                ] as const).map(([label, value, setter]) => (
+                  <label key={label} className="flex items-center justify-between rounded-xl border border-white/12 bg-white/5 px-3 py-2 text-sm text-white">
+                    {label}
+                    <input type="checkbox" checked={value} onChange={(event) => setter(event.target.checked)} />
+                  </label>
+                ))}
+              </div>
+
+              <div className="rounded-2xl border border-white/12 bg-white/[0.04] p-3">
+                <p className="text-sm font-semibold text-white">Controlli di stile</p>
+                <div className="mt-3 space-y-3">
+                  {([
+                    ["voiceIntensity", "Voce autore"], ["emotionalIntensity", "Intensita emotiva"], ["dialogueLevel", "Dialoghi"],
+                    ["poeticLevel", "Descrizioni"], ["narrativePace", "Ritmo narrativo"], ["tensionIntensity", "Tensione"],
+                    ["psychologicalDepth", "Profondita"],
+                  ] as const).map(([key, label]) => (
+                    <label key={key} className="block">
+                      <span className="mb-1 flex justify-between text-[11px] text-white/70"><span>{label}</span><span>{styleProfile[key]}%</span></span>
+                      <input type="range" min={0} max={100} value={styleProfile[key]} onChange={(e) => setStyleProfile((p) => ({ ...p, [key]: Number(e.target.value) }))} className="w-full accent-sky-400" />
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
           {step === 5 && (
-            <StepValidation
-              coherenceReport={coherenceReport}
-              validationIssues={validationIssues}
-              applyCoherenceAutoFix={applyCoherenceAutoFix}
-              title={title}
-              authorName={authorName}
-              identityDraft={identityDraft}
-              genre={genre}
-              subcategory={subcategory}
-              chapters={chapters}
-              subchaptersEnabled={subchaptersEnabled}
-              subchaptersPerChapter={subchaptersPerChapter}
-            />
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Mercato e pubblicazione</h2>
+                <p className="mt-1 text-sm leading-6 text-white/60">
+                  Aggiungi destinazione commerciale e dati utili per export, KDP Launch e readiness.
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Marketplace Amazon</span>
+                  <select value={amazonMarketplace} onChange={(event) => setAmazonMarketplace(event.target.value)} className={inputClass}>
+                    {AMAZON_MARKETPLACES.map((marketplace) => (
+                      <option key={marketplace.id} value={marketplace.id}>{marketplace.label}</option>
+                    ))}
+                  </select>
+                </label>
+                <input value={marketTarget} onChange={(event) => setMarketTarget(event.target.value)} placeholder="Mercato target" className={inputClass} />
+                <input value={publishingPlatform} onChange={(event) => setPublishingPlatform(event.target.value)} placeholder="Piattaforma: KDP, StreetLib, Kobo, Apple..." className={inputClass} />
+                <input value={kdpCategory} onChange={(event) => setKdpCategory(event.target.value)} placeholder="Categoria KDP" className={inputClass} />
+                <input value={initialKeywords} onChange={(event) => setInitialKeywords(event.target.value)} placeholder="Keyword iniziali" className={inputClass} />
+                <input value={commercialGoal} onChange={(event) => setCommercialGoal(event.target.value)} placeholder="Obiettivo commerciale" className={inputClass} />
+                <textarea value={shortDescription} onChange={(event) => setShortDescription(event.target.value)} rows={3} placeholder="Descrizione breve" className={`${inputClass} sm:col-span-2`} />
+                <textarea value={marketingPromise} onChange={(event) => setMarketingPromise(event.target.value)} rows={3} placeholder="Promessa marketing" className={`${inputClass} sm:col-span-2`} />
+              </div>
+
+              <StepValidation
+                coherenceReport={coherenceReport}
+                validationIssues={validationIssues}
+                applyCoherenceAutoFix={applyCoherenceAutoFix}
+                title={title}
+                authorName={authorName}
+                identityDraft={identityDraft}
+                genre={genre}
+                subcategory={subcategory}
+                chapters={chapters}
+                subchaptersEnabled={subchaptersEnabled}
+                subchaptersPerChapter={subchaptersPerChapter}
+              />
+            </div>
           )}
 
           {postDnaForge && (step === 6 || step === 7) ? (
@@ -2416,9 +2761,9 @@ function GuidedDecisionRail({ activeIndex }: { activeIndex: number }) {
   return (
     <div className="rounded-2xl border border-white/12 bg-white/[0.035] p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/52">One Book Flow</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/52">Percorso libro</p>
         <span className="rounded-full border border-sky-300/25 bg-sky-300/10 px-2 py-1 text-[10px] font-semibold text-sky-100">
-          8 fasi guidate
+          8 step guidati
         </span>
       </div>
       <div className="flex gap-1.5 overflow-x-auto pb-1">
