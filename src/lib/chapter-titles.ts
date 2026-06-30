@@ -1,5 +1,6 @@
 import type { BookConfig, BookProject } from "@/types/book";
 import { fallbackTitleForFamily, isForbiddenGenericTitle, resolveBookTypeDefinition } from "@/lib/book-type-engine";
+import { isForbiddenFantasyTitlePattern, isLiteraryRomanceGenreContext } from "@/lib/concept-dominance";
 
 type ChapterTitleContext = {
   config?: Partial<BookConfig>;
@@ -139,6 +140,22 @@ function contextText(context: ChapterTitleContext = {}): string {
     .trim();
 }
 
+function isLiteraryRomanceTitleContext(context: ChapterTitleContext = {}): boolean {
+  const config = context.config || {};
+  return isLiteraryRomanceGenreContext({
+    genre: config.genre,
+    subcategory: config.subcategory,
+    subgenre: config.subgenre,
+    bookTypeId: config.bookTypeId,
+  });
+}
+
+function isForbiddenTitleForContext(value: string, context: ChapterTitleContext = {}): boolean {
+  if (isDisconnectedTemplateTitle(value, context)) return true;
+  if (isLiteraryRomanceTitleContext(context) && isForbiddenFantasyTitlePattern(value)) return true;
+  return false;
+}
+
 function isDisconnectedTemplateTitle(value: string, context: ChapterTitleContext = {}): boolean {
   const loose = normalizeLoose(value);
   if (!loose) return true;
@@ -211,6 +228,17 @@ function storySignalTitle(context: ChapterTitleContext, index: number): string {
   if (!source.trim()) return "";
 
   const signals: Array<{ test: RegExp; titles: string[] }> = [
+    {
+      test: /amore\s+maturo|romance\s+emozional|scelte\s+irreversibili|secondo\s+sospeso|spostati\s+di\s+un\s+secondo|romanzo\s+contemporaneo\s+emozional/,
+      titles: [
+        "Il secondo che cambia tutto",
+        "La distanza necessaria",
+        "Ciò che il passato tiene ancora",
+        "Un appuntamento senza alibi",
+        "La scelta che non si rimanda",
+        "Ciò che resta dopo il silenzio",
+      ],
+    },
     {
       test: /casa sotto pelle|madri scomparse|madre scomparsa|paese d['’]?infanzia|casa di famiglia|ricordare pi[ùu] di lei/,
       titles: [
@@ -289,7 +317,7 @@ export function resolveChapterTitle(
   context: ChapterTitleContext = {},
 ): string {
   const stripped = stripChapterTitlePrefix(rawTitle);
-  if (!isGenericChapterTitle(stripped) && !isDisconnectedTemplateTitle(stripped, context)) return stripped;
+  if (!isGenericChapterTitle(stripped) && !isForbiddenTitleForContext(stripped, context)) return stripped;
 
   const fromSignals = storySignalTitle(context, index);
   if (fromSignals) return fromSignals;
@@ -395,7 +423,7 @@ export function resolveSubchapterTitle(
     !inheritsWeakParent &&
     !SUBCHAPTER_BEAT_RE.test(loose) &&
     !isGenericChapterTitle(stripped) &&
-    !isDisconnectedTemplateTitle(stripped, context)
+    !isForbiddenTitleForContext(stripped, context)
   ) {
     return stripped;
   }

@@ -535,25 +535,8 @@ export function inferGenreFromText(title: string, idea = "", knownBookFormat?: s
   }, sanitizedIdea);
 }
 
-export function isConfigIncoherentWithInference(
-  inference: GenreInference,
-  category: string,
-  genre: Genre,
-  subcategory: string,
-): boolean {
-  const hay = `${category} ${subcategory} ${genre}`.toLowerCase();
-  const fictionInference = inference.level1 === "romanzo";
-  const nonfictionHay = /self.?help|mindset|non.?fiction|business|productiv|wellness/i.test(hay);
-  const fictionHay = /fiction|horror|thriller|romance|fantasy|literary/i.test(hay) || ["horror", "thriller", "romance", "fantasy", "dark-romance", "philosophy", "sci-fi", "historical"].includes(genre);
-
-  if (fictionInference && nonfictionHay && /mindset|self.?help|productiv/i.test(hay)) return true;
-  if (!fictionInference && fictionHay && inference.level1 === "self-help") return true;
-
-  if (inference.bookTypeId === "horror" && /mindset|self.?help|wellness/i.test(hay)) return true;
-  if (inference.bookTypeId === "self-help" && /horror|thriller|dark romance|gothic/i.test(hay)) return true;
-
-  return inference.genre !== genre && inference.confidence === "high";
-}
+export { computeTitleCategoryCoherence, isConfigIncoherentWithInference } from "./title-category-coherence";
+export type { TitleCategoryCoherenceInput, TitleCategoryCoherenceLevel, TitleCategoryCoherenceResult } from "./title-category-coherence";
 
 export function getGuidedGenreAlternatives(inference: GenreInference): GenreInference[] {
   const alts: GenreInference[] = [inference];

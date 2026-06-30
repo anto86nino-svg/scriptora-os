@@ -4217,9 +4217,11 @@ html[data-scriptora-bg="classic-premium-author"] body::before {
 /* ── Mobile UX: wizard + modals ── */
 .scriptora-wizard-shell {
   max-height: min(94dvh, 900px);
+  min-height: 0;
 }
 .scriptora-wizard-scroll {
   -webkit-overflow-scrolling: touch;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
 }
 .scriptora-wizard-footer {
   position: sticky;
@@ -6860,7 +6862,8 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
     padding-right: 0.35rem !important;
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.35rem) !important;
     padding-left: 0.35rem !important;
-    overflow: hidden !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
   }
 
   html.scriptora-mobile-lite .scriptora-wizard-shell,
@@ -6884,7 +6887,7 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
     overscroll-behavior-y: contain !important;
     -webkit-overflow-scrolling: touch !important;
     touch-action: pan-y !important;
-    padding-bottom: 1rem !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem) !important;
   }
 
   html.scriptora-mobile-lite .scriptora-wizard-scroll > *,
@@ -6903,8 +6906,9 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
 /* SCRIPTORA MOBILE — NEW BOOK WIZARD PAGE-SCROLL FALLBACK
    Strong fallback: scroll the whole fixed overlay instead of relying on inner scroll.
    This is intentionally scoped to overlays containing .scriptora-wizard-shell.
+   Also applies on short desktop viewports where inner flex scroll traps content.
 */
-@media (max-width: 767px) {
+@media (max-width: 767px), (max-height: 720px) {
   .scriptora-modal-overlay:has(.scriptora-wizard-shell) {
     display: block !important;
     align-items: initial !important;
@@ -6933,7 +6937,7 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
     min-height: auto !important;
     max-height: none !important;
     overflow: visible !important;
-    padding-bottom: 1rem !important;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem) !important;
   }
 
   .scriptora-modal-overlay:has(.scriptora-wizard-shell) .scriptora-wizard-footer {

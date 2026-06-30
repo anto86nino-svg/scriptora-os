@@ -56,7 +56,11 @@ export function EditorScorePro({ content, chapterIndex, config, className }: Edi
           )}
           {metrics && (
             <span className="text-[10px] text-white/40">
-              {metrics.repairType !== "none" ? `Riparazione: ${metrics.repairType}` : "Nessuna riparazione"}
+              {metrics.editorialPass === "traditional_editor"
+                ? "Editor tradizionale"
+                : metrics.repairType !== "none"
+                  ? `Riparazione: ${metrics.repairType}`
+                  : "Nessuna riparazione"}
               {metrics.retryCount > 0 ? ` · ${metrics.retryCount} retry` : ""}
             </span>
           )}

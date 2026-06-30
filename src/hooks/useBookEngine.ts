@@ -23,6 +23,7 @@ import {
   runGenerateBackMatter,
   runGenerateChapter,
   runGenerateChapterChunked,
+  runGenerateChapterViaSubchapterPipeline,
   runGenerateSubchapter,
   runRewriteChapter,
   runEvaluateChapterQuality,
@@ -65,6 +66,7 @@ import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorId
 import { normalizeBookConfig, normalizeBookProject } from "@/lib/book-config-studio/defaults";
 import { normalizeProjectChapters, normalizeChapterForGeneration } from "@/lib/manuscript/chapter-normalization";
 import { distributeChapterContentToSubchapters, hasRealSubchapterContent } from "@/lib/manuscript/subchapter-content";
+import { shouldUseRealSubchapterPipeline } from "@/lib/writer/subchapter-pipeline";
 import type { BookBlueprint } from "@/types/book";
 import { getActiveSubchaptersPerChapter, getBookStructureTruth, getMissingActiveSubchapterRefs } from "@/lib/book-structure-truth";
 import {
@@ -928,7 +930,12 @@ typeof crypto.randomUUID === "function"
         );
       }
 
-      const chapter = await runGenerateChapterChunked(
+      const useSubchapterPipeline = shouldUseRealSubchapterPipeline(latestP.config, latestP.blueprint);
+      const generateChapter = useSubchapterPipeline
+        ? runGenerateChapterViaSubchapterPipeline
+        : runGenerateChapterChunked;
+
+      const chapter = await generateChapter(
         latestP.config, latestP.blueprint!, index, prevChapters, chapterOverride,
         (progress) => {
           const key = `chapter-${index}`;
@@ -1044,7 +1051,9 @@ typeof crypto.randomUUID === "function"
           content: finalContent,
           subchapters: remaining < countWordsSafe(chapter.content)
             ? []
-            : distributeGeneratedChapterSubchapters(proj, index, finalContent, existingSubchapters),
+            : useSubchapterPipeline
+              ? safeSubchapters(chapter)
+              : distributeGeneratedChapterSubchapters(proj, index, finalContent, existingSubchapters),
         };
 
         if (remaining <= 0 || countWordsSafe(finalChapter.content) >= remaining) {

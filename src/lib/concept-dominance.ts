@@ -92,6 +92,44 @@ export function isPreservedFictionGenre(genre?: string): boolean {
   return PRESERVED_FICTION_GENRES.some((item) => g.includes(item));
 }
 
+export type LiteraryRomanceGenreContext = {
+  genre?: string;
+  subcategory?: string;
+  subgenre?: string;
+  bookTypeId?: string;
+};
+
+export function isLiteraryRomanceGenreContext(opts: LiteraryRomanceGenreContext = {}): boolean {
+  const hay = `${opts.genre || ""} ${opts.subcategory || ""} ${opts.subgenre || ""} ${opts.bookTypeId || ""}`
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  if (!hay.trim()) return false;
+  const romanceOrLiterary =
+    /\b(romance|romantico|emozional|literary|letterari|women|narrativa\s+contemporanea|fiction\s+letteraria|romanzo\s+contemporaneo)\b/.test(hay);
+  const disqualified = /\b(fantasy|fantasi|horror|thriller|sci-?fi|fantascienza|dark\s+fantasy)\b/.test(hay);
+  return romanceOrLiterary && !disqualified;
+}
+
+export function hasLiteraryRomanceSignals(text: string, genreContext?: LiteraryRomanceGenreContext): boolean {
+  const hay = normalizedConceptHay(text);
+  const contextBag = `${hay} ${genreContext?.subgenre || ""} ${genreContext?.subcategory || ""} ${genreContext?.genre || ""}`
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  const romanceInContext = /\b(romance|romantico|emozional|amore\s+maturo|women'?s\s+fiction|fiction\s+letteraria)\b/.test(
+    contextBag,
+  );
+  const romanceInIdea = /\b(romance|romantico|emozional|amore\s+maturo|storia\s+d'amore|seconda\s+opportunit|slow\s*burn|literary|letterari|innamor|desiderio|cuore|scelte\s+irreversibili)\b/.test(
+    hay,
+  );
+  if (!romanceInContext && !romanceInIdea) return false;
+  if (hasHighConceptFantasySignals(text, genreContext)) return false;
+  if (hasSupernaturalThrillerSignals(text)) return false;
+  if (hasSubmergedCitySciFiSignals(text)) return false;
+  return true;
+}
+
 function normalizedConceptHay(text: string): string {
   return normalize(sanitizeUserConceptInput(text));
 }
@@ -137,9 +175,18 @@ export function hasSupernaturalThrillerSignals(text: string): boolean {
   return hasThrillerAnchors(hay);
 }
 
-export function hasHighConceptFantasySignals(text: string): boolean {
+export function hasHighConceptFantasySignals(
+  text: string,
+  genreContext?: LiteraryRomanceGenreContext,
+): boolean {
   const hay = normalizedConceptHay(text);
   if (!hay) return false;
+  if (genreContext && isLiteraryRomanceGenreContext(genreContext)) {
+    if (/\b(fantasy|fantasia|epic\s+fantasy|high\s+concept)\b/.test(hay)) return true;
+    if (/\b(magia|drago|draghi|draghe|incantesim\w*|corona\s+di|regno\s+di)\b/.test(hay)) return true;
+    if (/\bporta\s+nel\s+cuore\b/.test(hay) && /\bmille\s+anni\b/.test(hay)) return true;
+    return false;
+  }
   if (hasThrillerAnchors(hay) && !hasExplicitFantasyAnchors(hay)) return false;
   return hasExplicitFantasyAnchors(hay);
 }
@@ -668,7 +715,23 @@ export function resolveConceptDominance(
     };
   }
 
-  if (hasHighConceptFantasySignals(sanitized)) {
+  const genreContext: LiteraryRomanceGenreContext = {
+    genre: opts.genre,
+    subcategory: opts.tags,
+  };
+
+  if (hasLiteraryRomanceSignals(sanitized, genreContext)) {
+    return {
+      genre: opts.genre || "romance",
+      bookFormat: "novel",
+      blockRomanceTemplates: false,
+      blockPhilosophyBlueprint: false,
+      blockFantasyTemplates: true,
+      protagonist,
+    };
+  }
+
+  if (hasHighConceptFantasySignals(sanitized, genreContext)) {
     return {
       genre: "fantasy",
       bookFormat: "novel",
@@ -855,6 +918,56 @@ export function buildFantasyChapterTitles(idea: string): string[] {
   if (/custod/.test(hay)) titles.push("I Custodi");
   titles.push("L'Ultima Scelta");
   return titles;
+}
+
+export function isForbiddenFantasyTitlePattern(title: string): boolean {
+  const loose = normalize(title);
+  if (!loose) return false;
+  return /\b(porta|custod\w*|corona|ghiaccio|mille\s+anni|patto\s+spezzato|soglia\s+magica|regno|incantesim|drago|magia|apocaliss|prigione\s+di\s+ghiaccio|disgelo|entita\s+antica)\b/.test(
+    loose,
+  );
+}
+
+export function buildLiteraryRomanceChapterBeats(idea: string): ConceptChapterBeat[] {
+  const text = sanitizeUserConceptInput(idea);
+  const protagonist = extractConceptProtagonist(text) || "Il protagonista";
+  const hay = normalizedConceptHay(text);
+  const memory = /\b(memori|ricord|passato)\b/.test(hay);
+  const choice = /\b(scelte?\s+irreversibili|decisione|seconda\s+opportunit)\b/.test(hay);
+  const matureLove = /\b(amore\s+maturo|desiderio|innamor|ritrov|separat)\b/.test(hay);
+
+  return [
+    {
+      title: "Il secondo che cambia tutto",
+      summary: `${protagonist} vive un momento sospeso che riapre una ferita emotiva — non magia, ma memoria e desiderio che tornano a galla.`,
+    },
+    {
+      title: "La distanza necessaria",
+      summary: matureLove
+        ? `${protagonist} misura quanto l'amore maturo chieda silenzi, pause e verità mai dette.`
+        : `${protagonist} capisce che la vicinanza emotiva può ferire più della lontananza.`,
+    },
+    {
+      title: memory ? "Ciò che il passato tiene ancora" : "Il nome che non si pronuncia",
+      summary: memory
+        ? `Il passato non è un mistero soprannaturale: è ciò che ${protagonist} ha scelto di non guardare.`
+        : `${protagonist} affronta ciò che è stato evitato troppo a lungo tra due persone reali.`,
+    },
+    {
+      title: "Un appuntamento senza alibi",
+      summary: `Un incontro concreto obbliga ${protagonist} a uscire dalla difesa — tempo, luogo e corpo contano più delle metafore.`,
+    },
+    {
+      title: choice ? "La scelta che non si rimanda" : "Il peso del domani",
+      summary: choice
+        ? `${protagonist} deve decidere cosa salvare e cosa lasciare andare senza illusioni eroiche.`
+        : `${protagonist} capisce che rimandare equivale già a una decisione.`,
+    },
+    {
+      title: "Ciò che resta dopo il silenzio",
+      summary: `Conseguenze emotive reali: ${protagonist} integra ciò che è emerso senza payoff da fantasy né trama artificiale.`,
+    },
+  ];
 }
 
 export function buildSubmergedCityChapterTitles(idea: string): ConceptChapterBeat[] {
@@ -1177,6 +1290,7 @@ export type ChapterScaffoldFormat =
   | "psychological_thriller"
   | "self_help"
   | "fantasy"
+  | "literary_romance"
   | "generic";
 
 type ExpansionPhase = "escalation" | "complication" | "reversal" | "climax" | "denouement";
@@ -1370,6 +1484,16 @@ function getFormatExpansionPool(format: ChapterScaffoldFormat, idea: string): Co
       expansionBeat("Corona di Cenere", "", protagonist, "il destino del mondo", "climax"),
       expansionBeat("Ultimo Custode", "", protagonist, "la scelta finale", "denouement"),
     ],
+    literary_romance: [
+      expansionBeat("Il messaggio non inviato", "", protagonist, "il desiderio trattenuto", "escalation"),
+      expansionBeat("La stanza del confronto", "", protagonist, "la verità emotiva", "complication"),
+      expansionBeat("Un caffè di troppo", "", protagonist, "la routine interrotta", "escalation"),
+      expansionBeat("La promessa sospesa", "", protagonist, "ciò che non si è detto", "complication"),
+      expansionBeat("Il corpo che ricorda", "", protagonist, "memoria sensoriale", "reversal"),
+      expansionBeat("La scelta del mattino", "", protagonist, "la decisione concreta", "climax"),
+      expansionBeat("Dopo la tempesta domestica", "", protagonist, "le conseguenze reali", "denouement"),
+      expansionBeat("La forma del perdono", "", protagonist, "amore maturo", "denouement"),
+    ],
     generic: [],
   };
 
@@ -1428,7 +1552,10 @@ export function expandChapterScaffold(
   if (targetCount <= 0) return [];
   if (beats.length === 0) return [];
 
-  const merged = dedupeChapterBeats([...beats, ...getFormatExpansionPool(format, idea)]);
+  const expansionPool = format === "literary_romance"
+    ? getFormatExpansionPool(format, idea).filter((beat) => !isForbiddenFantasyTitlePattern(beat.title))
+    : getFormatExpansionPool(format, idea);
+  const merged = dedupeChapterBeats([...beats, ...expansionPool]);
   if (targetCount <= merged.length) {
     return merged.slice(0, targetCount);
   }

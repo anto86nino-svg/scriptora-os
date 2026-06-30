@@ -7,6 +7,7 @@ export interface WriterPerformanceSnapshot {
   repairType: WriterRepairType;
   memorabilityBefore?: number;
   memorabilityAfter?: number;
+  editorialPass?: "traditional_editor";
   timestamp: number;
 }
 

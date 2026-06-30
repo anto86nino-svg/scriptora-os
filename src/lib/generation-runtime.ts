@@ -39,6 +39,12 @@ export async function runGenerateChapterChunked(
   return (await loadGenerationModule()).generateChapterChunked(...args);
 }
 
+export async function runGenerateChapterViaSubchapterPipeline(
+  ...args: Parameters<GenerationModule["generateChapterViaSubchapterPipeline"]>
+): ReturnType<GenerationModule["generateChapterViaSubchapterPipeline"]> {
+  return (await loadGenerationModule()).generateChapterViaSubchapterPipeline(...args);
+}
+
 export async function runGenerateSubchapter(
   ...args: Parameters<GenerationModule["generateSubchapter"]>
 ): ReturnType<GenerationModule["generateSubchapter"]> {

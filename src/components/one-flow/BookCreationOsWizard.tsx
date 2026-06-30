@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   X, ArrowLeft, ArrowRight, Rocket, Sparkles, Plus, Trash2, Users, Loader2,
-  CheckCircle2, AlertTriangle, BookOpen, Clock3,
+  CheckCircle2, AlertTriangle, BookOpen, Clock3, Info,
 } from "lucide-react";
 import type { AuthorIdentity, BookBlueprint, BookCharacter, BookConfig, Genre, Language } from "@/types/book";
 import { DEFAULT_SUBCHAPTERS_PER_CHAPTER } from "@/types/book";
@@ -54,8 +54,9 @@ import {
 } from "@/lib/book-config-engine";
 import {
   inferGenreFromText,
-  isConfigIncoherentWithInference,
+  computeTitleCategoryCoherence,
   type GenreInference,
+  type TitleCategoryCoherenceLevel,
 } from "@/lib/book-creation-os/genre-inference";
 import {
   buildWizardAutofillPatch,
@@ -913,8 +914,7 @@ export function BookCreationOsWizard({
   const [generatingTitles, setGeneratingTitles] = useState(false);
   const [freeTitleRegensLeft, setFreeTitleRegensLeft] = useState(() => getWizardTitleFreeRegensRemaining());
   const [preflightResult, setPreflightResult] = useState<BlueprintPreflightResult | null>(null);
-  const [showCoherenceWarning, setShowCoherenceWarning] = useState(false);
-  const [coherenceDismissed, setCoherenceDismissed] = useState(false);
+  const [titleCategoryCoherence, setTitleCategoryCoherence] = useState<TitleCategoryCoherenceLevel>("high");
   const [forgePresetId, setForgePresetId] = useState<string | null>(null);
   const [forgePresetLabel, setForgePresetLabel] = useState<string | null>(null);
 
@@ -930,11 +930,18 @@ export function BookCreationOsWizard({
   }, [bookForgeHandoff, level1BookType, bookTypeId]);
 
   useEffect(() => {
-    if (coherenceDismissed) return;
-    setShowCoherenceWarning(
-      isConfigIncoherentWithInference(textInference, category, genre, subcategory),
-    );
-  }, [textInference, category, genre, subcategory, coherenceDismissed]);
+    const result = computeTitleCategoryCoherence({
+      title,
+      subtitle,
+      idea,
+      genre,
+      category,
+      subcategory,
+      subgenre,
+      bookTypeId,
+    });
+    setTitleCategoryCoherence(result.level);
+  }, [title, subtitle, idea, genre, category, subcategory, subgenre, bookTypeId]);
 
   const visibleGenres = useMemo(() => {
   const baseGenres =
@@ -1349,8 +1356,6 @@ const persistDraft = useCallback(() => {
           presetHint ||
           "Mantieni coerenza di struttura, tono, promessa editoriale e lettore in ogni sezione."
         );
-        setCoherenceDismissed(true);
-        setShowCoherenceWarning(false);
 
         if (presetTone) setTone(presetTone);
 
@@ -1667,7 +1672,6 @@ const persistDraft = useCallback(() => {
       setSubchaptersPerChapter(0);
       setChapters((current) => Math.min(inference.suggestedChapters || current || 7, 12));
     }
-    setCoherenceDismissed(false);
     toast.success("Configurazione aggiornata dal DNA del titolo.");
   };
 
@@ -1806,12 +1810,8 @@ const persistDraft = useCallback(() => {
 
   const goNext = async () => {
     if (step === 0) {
-      if (!genre || showCoherenceWarning) {
+      if (!genre) {
         const inf = textInference;
-        if (showCoherenceWarning && !coherenceDismissed) {
-          toast.error("Titolo e categoria non sono allineati. Correggi automaticamente o conferma la scelta.");
-          return;
-        }
         if (inf.confidence !== "low") applyInference(inf);
       }
     }
@@ -2026,7 +2026,7 @@ const persistDraft = useCallback(() => {
       className={
         embeddedInMobileForge
           ? "scriptora-book-forge-mobile fixed inset-0 z-[100] flex h-[100dvh] max-h-[100dvh] flex-col bg-slate-950"
-          : "scriptora-modal-overlay fixed inset-0 z-[80] flex items-stretch justify-stretch overflow-hidden bg-black/70 p-[calc(env(safe-area-inset-top,0px)+0.35rem)_0.35rem_calc(env(safe-area-inset-bottom,0px)+0.35rem)] backdrop-blur-sm sm:items-center sm:justify-center sm:p-4"
+          : "scriptora-modal-overlay fixed inset-0 z-[80] flex items-stretch justify-stretch overflow-y-auto overscroll-contain bg-black/70 p-[calc(env(safe-area-inset-top,0px)+0.35rem)_0.35rem_calc(env(safe-area-inset-bottom,0px)+0.35rem)] backdrop-blur-sm sm:items-center sm:justify-center sm:p-4"
       }
     >
       {embeddedInMobileForge ? mobileForgeHeader : null}
@@ -2077,8 +2077,8 @@ const persistDraft = useCallback(() => {
         <div
             className={
               embeddedInMobileForge
-                ? "scriptora-book-forge-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 py-4 pb-8 sm:px-5 sm:py-5"
-                : "scriptora-modal-body scriptora-wizard-scroll min-h-0 flex-1 overflow-x-clip overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5"
+                ? "scriptora-book-forge-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 py-4 pb-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] sm:px-5 sm:py-5"
+                : "scriptora-modal-body scriptora-wizard-scroll min-h-0 flex-1 overflow-x-clip overflow-y-auto overscroll-contain px-4 py-4 pb-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] sm:px-5 sm:py-5 sm:pb-5"
             }
             style={{
               WebkitOverflowScrolling: "touch",
@@ -2173,6 +2173,44 @@ const persistDraft = useCallback(() => {
                   />
                 </label>
               </div>
+
+              {(title.trim() || idea.trim()) && (
+                <div
+                  className={
+                    titleCategoryCoherence === "high"
+                      ? "rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-3"
+                      : titleCategoryCoherence === "medium"
+                        ? "rounded-2xl border border-sky-400/25 bg-sky-500/10 p-3"
+                        : "rounded-2xl border border-amber-400/25 bg-amber-500/10 p-3"
+                  }
+                >
+                  <p className="flex items-center gap-2 text-sm font-semibold text-white">
+                    {titleCategoryCoherence === "high" ? (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" />
+                        <span className="text-emerald-50">Titolo e categoria coerenti</span>
+                      </>
+                    ) : titleCategoryCoherence === "medium" ? (
+                      <>
+                        <Info className="h-4 w-4 shrink-0 text-sky-300" />
+                        <span className="text-sky-50">Verifica consigliata</span>
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-300" />
+                        <span className="text-amber-50">Titolo e categoria potrebbero non essere allineati</span>
+                      </>
+                    )}
+                  </p>
+                  {titleCategoryCoherence !== "high" && (
+                    <p className="mt-1 text-xs leading-5 text-white/55">
+                      {titleCategoryCoherence === "medium"
+                        ? "Il titolo è evocativo: controlla che genere e sottogenere rispecchino l'idea del libro."
+                        : "Titolo e categoria sembrano in conflitto. Puoi comunque procedere e correggere dopo."}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <button
                 type="button"

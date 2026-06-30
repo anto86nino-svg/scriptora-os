@@ -19,6 +19,7 @@ import {
   enrichBlueprintFromIdeaSeed,
   hasRichIdeaEntities,
 } from "@/lib/blueprint-entity-enrichment";
+import { enrichBlueprintSubchapterOutlines } from "@/lib/writer/subchapter-pipeline";
 
 export type BlueprintSource = "ai" | "repaired" | "config_fallback";
 
@@ -131,7 +132,7 @@ export function normalizeBlueprintShape(raw: unknown, config: BookConfig): BookB
     ? source.themes.map(stringifyField).map((x) => x.trim()).filter(Boolean)
     : [];
 
-  return {
+  return enrichBlueprintSubchapterOutlines({
     overview: stringifyField(source.overview).trim()
       || (isItalian(config)
         ? `Panoramica strutturale per "${config.title}" — ${config.genre}, tono ${config.tone}.`
@@ -143,7 +144,7 @@ export function normalizeBlueprintShape(raw: unknown, config: BookConfig): BookB
         ? `Progressione emotiva coerente con ${config.genre} e la promessa del libro.`
         : `Emotional progression aligned with ${config.genre} and the book promise.`),
     integrity: normalizeBlueprintIntegrity((source as any).integrity || (source as any).blueprintIntegrity, config, chapterOutlines),
-  };
+  }, config);
 }
 
 function isItalian(config: BookConfig): boolean {
@@ -252,6 +253,9 @@ export function buildFallbackBlueprintFromConfig(config: BookConfig): BookBluepr
   const formatScaffold = idea
     ? buildFormatAwareChapterScaffold(idea, config.numberOfChapters, {
         genre: config.genre,
+        subcategory: config.subcategory,
+        subgenre: config.subgenre,
+        bookTypeId: config.bookTypeId,
         bookFormat: (config as BookConfig & { bookFormat?: string }).bookFormat,
       })
     : [];

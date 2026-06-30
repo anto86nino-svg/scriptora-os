@@ -69,6 +69,27 @@ import {
 } from "@/lib/blueprint-recovery";
 import { buildBlueprintEntityPromptBlock, enrichBlueprintFromIdeaSeed } from "@/lib/blueprint-entity-enrichment";
 import { applyCleanTextPass } from "@/lib/writer/clean-text-pass";
+import { buildEditorialNovelModeBlock, applyEditorialNovelModePass, isEditorialNovelModeGenre } from "@/lib/writer/editorial-novel-mode";
+import {
+  TRADITIONAL_EDITOR_SYSTEM_PROMPT,
+  applyTraditionalEditorLocalPrep,
+  buildTraditionalEditorUserPrompt,
+  meetsTraditionalEditorWordCountGuard,
+  shouldApplyTraditionalEditorPass,
+  shouldShowTraditionalEditorStatus,
+} from "@/lib/writer/traditional-editor-pass";
+import {
+  buildTimelineCoherencePromptBlock,
+  validateNarrativeTimeline,
+} from "@/lib/writer/narrative-timeline-validator";
+import {
+  assembleChapterFromSubchapters,
+  buildSubchapterContextBlock,
+  ensureNarrativeSubchapterOutlines,
+  finalizeAssembledChapter,
+  shouldUseRealSubchapterPipeline,
+  validateSubchapterNarrativeUnit,
+} from "@/lib/writer/subchapter-pipeline";
 import {
   assertProjectReadyForGeneration,
   sanitizeEditorialSummary,
@@ -1561,6 +1582,121 @@ function applyMemorabilityRepairFallback(
   return chapterText;
 }
 
+async function applyTraditionalEditorPassIfNeeded(
+  text: string,
+  context: {
+    config: BookConfig;
+    genreLock?: GenreLock;
+    usage?: AIUsageContext;
+    chapterIndex: number;
+    chapterTitle?: string;
+    outlineSummary?: string;
+    onStatus?: (message: string) => void;
+  },
+): Promise<string> {
+  if (!shouldApplyTraditionalEditorPass(context.config)) return text;
+
+  const prepped = applyTraditionalEditorLocalPrep(text);
+  const inputWords = countWords(prepped);
+  if (shouldShowTraditionalEditorStatus(context.config)) {
+    context.onStatus?.("Editor tradizionale in corso…");
+  }
+
+  try {
+    const repairedText = await callAIReduced(
+      TRADITIONAL_EDITOR_SYSTEM_PROMPT(context.config),
+      buildTraditionalEditorUserPrompt(prepped, {
+        config: context.config,
+        chapterIndex: context.chapterIndex,
+        chapterTitle: context.chapterTitle,
+        outlineSummary: context.outlineSummary,
+        language: context.config.language,
+      }),
+      withUsage(context.usage, {
+        taskType: "traditional_editor_pass",
+        metadata: {
+          chapterIndex: context.chapterIndex + 1,
+          genre: context.config.genre,
+          noExtraCharge: true,
+          language: context.config.language,
+        },
+      }),
+    );
+    const cleaned = repairedText.replace(/^```[a-z]*\n?/g, "").replace(/\n?```$/g, "").trim();
+    if (!cleaned) return prepped;
+
+    const outputWords = countWords(cleaned);
+    if (!meetsTraditionalEditorWordCountGuard(inputWords, outputWords)) {
+      writingQualityGateDevLog("TRADITIONAL_EDITOR_WORD_COUNT_REJECTED", {
+        chapterIndex: context.chapterIndex + 1,
+        inputWords,
+        outputWords,
+      });
+      return prepped;
+    }
+
+    recordWriterPerformanceMetric({
+      chapterIndex: context.chapterIndex,
+      retryCount: getWriterRetryCount(),
+      repairType: "surgical_ai",
+      editorialPass: "traditional_editor",
+    });
+    return cleaned;
+  } catch {
+    writingQualityGateDevLog("TRADITIONAL_EDITOR_PASS_FAILED", {
+      chapterIndex: context.chapterIndex + 1,
+    });
+    return prepped;
+  }
+}
+
+async function applyChapterEditorialFinishingPasses(
+  text: string,
+  context: {
+    config: BookConfig;
+    genreLock?: GenreLock;
+    usage?: AIUsageContext;
+    chapterIndex: number;
+    chapterTitle?: string;
+    outlineSummary?: string;
+    onChunkProgress?: (progress: ChunkProgress) => void;
+  },
+): Promise<string> {
+  const editorialContent = isEditorialNovelModeGenre(context.config)
+    ? applyEditorialNovelModePass(text)
+    : text;
+
+  const traditionalContent = await applyTraditionalEditorPassIfNeeded(editorialContent, {
+    config: context.config,
+    genreLock: context.genreLock,
+    usage: context.usage,
+    chapterIndex: context.chapterIndex,
+    chapterTitle: context.chapterTitle,
+    outlineSummary: context.outlineSummary,
+    onStatus: (message) => {
+      context.onChunkProgress?.({
+        chunkIndex: 0,
+        totalChunks: 1,
+        currentWords: countWords(editorialContent),
+        targetWords: countWords(editorialContent),
+        phase: "CLOSURE",
+        content: editorialContent,
+        statusMessage: message,
+      });
+    },
+  });
+
+  const timelineAudit = validateNarrativeTimeline(traditionalContent);
+  if (!timelineAudit.valid && import.meta.env.DEV) {
+    console.warn("[Scriptora] Timeline coherence issues in chapter", {
+      chapterIndex: context.chapterIndex,
+      issues: timelineAudit.issues,
+    });
+  }
+
+  return applyCleanTextPass(traditionalContent, context.config.language);
+}
+
 async function repairChapterWritingQualityIfNeeded(
   chapterText: string,
   context: {
@@ -2171,6 +2307,8 @@ ${humanBestsellerModeV11}
 
 ${humanBestsellerModeV12}
 
+${buildEditorialNovelModeBlock(config)}
+
 ${scriptoraOmegaDirective}
 
 ${humanizerBlock}
@@ -2224,6 +2362,8 @@ ${humanNarrativeRealismV4}
 ${humanBestsellerModeV11}
 
 ${humanBestsellerModeV12}
+
+${buildEditorialNovelModeBlock(config)}
 
 ${scriptoraOmegaDirective}
 
@@ -2701,15 +2841,26 @@ Do not summarize. Do not apologize. Return only clean chapter prose.`,
     skipFormatAiRepair: shouldSkipNarrativeQualityRepair(config),
   });
 
+  const guardedContent = applyFinalManuscriptGuardToText(purityCheckedContent, {
+    config,
+    previousChapters,
+    chapterIndex,
+    chapterTitle: finalChapter.title,
+    writingPlan: chapterWritingPlan,
+  });
+  const finishedContent = await applyChapterEditorialFinishingPasses(guardedContent, {
+    config,
+    genreLock,
+    usage: opts?.usage,
+    chapterIndex,
+    chapterTitle: finalChapter.title,
+    outlineSummary: outline.summary,
+    onChunkProgress,
+  });
+
   return {
     ...finalChapter,
-    content: applyCleanTextPass(applyFinalManuscriptGuardToText(purityCheckedContent, {
-      config,
-      previousChapters,
-      chapterIndex,
-      chapterTitle: finalChapter.title,
-      writingPlan: chapterWritingPlan,
-    }), config.language),
+    content: finishedContent,
   };
 }
 
@@ -2979,16 +3130,19 @@ export async function generateSubchapter(
     outlineSummary: subOutline?.summary || outline.summary,
   });
   const scriptoraOmegaDirective = buildScriptoraOmegaDirective(config, { chapterIndex, mode: "subchapter" });
+  const editorialNovelMode = buildEditorialNovelModeBlock(config);
+  const subchapterContext = buildSubchapterContextBlock(safeSubchapters(chapter));
 
   const prompt = `Write Subchapter ${subchapterIndex + 1} of ${subchapterCount} for Chapter ${chapterIndex + 1} "${chapter.title}" in "${config.title}".
-${subOutline ? `Subchapter plan: "${subOutline.title}" — ${subOutline.summary}` : `Write the ${subchapterIndex + 1}th subchapter.`}
+${subOutline ? `Subchapter plan: "${subOutline.title}" — ${subOutline.summary}${subOutline.purpose ? ` (Purpose: ${subOutline.purpose})` : ""}` : `Write the ${subchapterIndex + 1}th subchapter.`}
 Genre: ${config.genre}
 Language: ${config.language} — WRITE ENTIRELY IN ${config.language}
 Write approximately ${subMin}–${subMax} words.
 
 ${genreDirective}
 
-Parent chapter intro: ${chapter.content.substring(0, 500)}...
+${subchapterContext ? `${subchapterContext}\n` : ""}
+Parent chapter context: ${chapter.content.substring(0, 500) || outline.summary}...
 ${existingSubs ? `Already written subchapters (do NOT repeat):\n${existingSubs}` : ""}
 ${contextMemory}
 
@@ -2998,7 +3152,15 @@ ${humanizerBlock}
 
 ${premiumWritingBlock}
 
+${editorialNovelMode}
+
 ${scriptoraOmegaDirective}
+
+SUBCHAPTER STRUCTURE — MANDATORY:
+- Opening: enter the scene or emotional beat without recap.
+- Development: advance one concrete narrative unit only.
+- Mini-climax: a turn, revelation or pressure spike inside this subchapter.
+- Closure: land a specific consequence that hands context to the next subchapter.
 
 BESTSELLER QUALITY — same standard as main chapters. HONOR the genre directive above.
 This must be a real written section with scene/argument progression, not a heading preview.
@@ -3030,7 +3192,12 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
     });
     return {
       title,
-      content: applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex }),
+      content: applyCleanTextPass(
+        isEditorialNovelModeGenre(config)
+          ? applyEditorialNovelModePass(applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex }))
+          : applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex }),
+        config.language,
+      ),
     };
   } catch {
     const rawContent = humanizeNarrativeText(result, {
@@ -3047,10 +3214,116 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
     });
     return {
       title,
-      content: applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex }),
+      content: applyCleanTextPass(
+        isEditorialNovelModeGenre(config)
+          ? applyEditorialNovelModePass(applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex }))
+          : applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex }),
+        config.language,
+      ),
     };
   }
 }
+
+export async function generateChapterViaSubchapterPipeline(
+  config: BookConfig,
+  blueprint: BookBlueprint,
+  chapterIndex: number,
+  previousChapters: Chapter[],
+  chapterLengthOverride?: string,
+  onChunkProgress?: (progress: ChunkProgress) => void,
+  genreLock?: GenreLock,
+  opts?: {
+    adaptive?: { plan: import("@/lib/plan").PlanTier };
+    usage?: AIUsageContext;
+    longBookMemory?: import("@/lib/long-book-memory/types").LongBookMemorySnapshot;
+    writerIntelBlock?: string;
+    memoryGraph?: import("@/lib/memory-graph/types").MemoryGraphSnapshot;
+  },
+): Promise<Chapter> {
+  config = withSanitizedConfig(config);
+  const rawOutline = blueprint.chapterOutlines[chapterIndex] || {
+    title: "",
+    summary: `Develop chapter ${chapterIndex + 1} of "${config.title}".`,
+  };
+  const outline = {
+    ...rawOutline,
+    title: resolveChapterTitle(rawOutline.title, chapterIndex, {
+      config,
+      summary: rawOutline.summary,
+      totalChapters: config.numberOfChapters,
+    }),
+    subchapters: ensureNarrativeSubchapterOutlines(
+      Array.isArray(rawOutline.subchapters) ? rawOutline.subchapters : [],
+      rawOutline.summary,
+      getSubchaptersPerChapter(config),
+      config,
+    ),
+  };
+
+  let chapterShell: Chapter = {
+    title: outline.title,
+    content: "",
+    subchapters: [],
+  };
+
+  const subchapterCount = outline.subchapters?.length || getSubchaptersPerChapter(config);
+  for (let subIndex = 0; subIndex < subchapterCount; subIndex += 1) {
+    onChunkProgress?.({
+      chunkIndex: subIndex,
+      totalChunks: subchapterCount,
+      currentWords: countWords(assembleChapterFromSubchapters(chapterShell.subchapters || [])),
+      targetWords: getChapterTargetWords(config, chapterIndex, config.numberOfChapters, chapterLengthOverride),
+      phase: subIndex === subchapterCount - 1 ? "CLOSURE" : "DEVELOPMENT",
+      content: assembleChapterFromSubchapters(chapterShell.subchapters || []),
+      statusMessage: `Scrittura sottocapitolo ${subIndex + 1}/${subchapterCount}...`,
+    });
+
+    const sub = await generateSubchapter(
+      config,
+      {
+        ...blueprint,
+        chapterOutlines: blueprint.chapterOutlines.map((item, idx) =>
+          idx === chapterIndex ? outline : item,
+        ),
+      },
+      chapterIndex,
+      subIndex,
+      chapterShell,
+      previousChapters,
+      genreLock,
+      opts?.usage,
+    );
+
+    const validation = validateSubchapterNarrativeUnit(sub.content);
+    if (!validation.valid && import.meta.env.DEV) {
+      console.warn("[Scriptora] Subchapter narrative validation", { chapterIndex, subIndex, issues: validation.issues });
+    }
+
+    chapterShell = {
+      ...chapterShell,
+      subchapters: [...safeSubchapters(chapterShell), { title: sub.title, content: sub.content }],
+    };
+  }
+
+  const assembled = finalizeAssembledChapter(chapterShell);
+  const finishedContent = await applyChapterEditorialFinishingPasses(assembled.content, {
+    config,
+    genreLock,
+    usage: opts?.usage,
+    chapterIndex,
+    chapterTitle: outline.title,
+    outlineSummary: outline.summary,
+    onChunkProgress,
+  });
+
+  return {
+    ...assembled,
+    title: outline.title,
+    content: finishedContent,
+  };
+}
+
+export { shouldUseRealSubchapterPipeline };
 
 /* ============ Back Matter ============ */
 
@@ -3291,6 +3564,8 @@ ${humanNarrativeRealismV4}
 ${humanBestsellerModeV11}
 
 ${humanBestsellerModeV12}
+
+${buildEditorialNovelModeBlock(config)}
 
 ${scriptoraOmegaDirective}
 

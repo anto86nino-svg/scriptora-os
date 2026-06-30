@@ -7,6 +7,7 @@ import {
   buildDragonFlameFantasyChapterTitles,
   buildHospitalMemoirChapterTitles,
   buildHorrorStationChapterTitles,
+  buildLiteraryRomanceChapterBeats,
   buildMemoirChapterTitles,
   buildPhotographyManualChapterTitles,
   buildPsychologicalThrillerChapterTitles,
@@ -20,9 +21,11 @@ import {
   hasHighConceptFantasySignals,
   hasHospitalGuardianMemoirSignals,
   hasHorrorStationSignals,
+  hasLiteraryRomanceSignals,
   hasPhotographyManualSignals,
   hasSubmergedCitySciFiSignals,
   hasSupernaturalThrillerSignals,
+  isLiteraryRomanceGenreContext,
   shouldUseEntityDrivenScaffold,
 } from "@/lib/concept-dominance";
 
@@ -132,11 +135,20 @@ function chapterBeatForIndex(
 export function buildFormatAwareChapterScaffold(
   idea: string,
   chapterCount: number,
-  opts: { genre?: string; bookFormat?: string } = {},
+  opts: { genre?: string; subcategory?: string; subgenre?: string; bookTypeId?: string; bookFormat?: string } = {},
 ): Array<{ title: string; summary: string }> {
   const genre = String(opts.genre || "");
   const bookFormat = String(opts.bookFormat || "");
+  const genreContext = {
+    genre: opts.genre,
+    subcategory: opts.subcategory,
+    subgenre: opts.subgenre,
+    bookTypeId: opts.bookTypeId,
+  };
 
+  if (hasLiteraryRomanceSignals(idea, genreContext)) {
+    return expandConceptBeatsToCount(buildLiteraryRomanceChapterBeats(idea), chapterCount, idea, "literary_romance");
+  }
   if (hasSupernaturalThrillerSignals(idea)) {
     return expandConceptBeatsToCount(buildSupernaturalThrillerChapterTitles(idea), chapterCount, idea, "supernatural_thriller");
   }
@@ -149,7 +161,7 @@ export function buildFormatAwareChapterScaffold(
   if (hasHorrorStationSignals(idea)) {
     return expandConceptBeatsToCount(buildHorrorStationChapterTitles(idea), chapterCount, idea, "horror_station");
   }
-  if (hasHighConceptFantasySignals(idea)) {
+  if (hasHighConceptFantasySignals(idea, genreContext)) {
     return expandConceptBeatsToCount(buildFantasyChapterBeats(idea), chapterCount, idea, "fantasy");
   }
   if (/thriller|giallo|noir/i.test(genre) && /\b(serial killer|omicid|indagine|colpevole|psicolog)/i.test(idea)) {
@@ -213,6 +225,9 @@ export function enrichBlueprintFromIdeaSeed(
 
   const formatScaffold = buildFormatAwareChapterScaffold(idea, config.numberOfChapters, {
     genre: config.genre,
+    subcategory: config.subcategory,
+    subgenre: config.subgenre,
+    bookTypeId: config.bookTypeId,
     bookFormat: (config as BookConfig & { bookFormat?: string }).bookFormat,
   });
   const scaffold = formatScaffold.length > 0
