@@ -6,6 +6,7 @@ import {
   type SubchapterInput,
 } from "@/lib/writer/subchapter-continuity-engine";
 import { applyCleanTextPass, repairCorruptedMergeFragments } from "@/lib/writer/clean-text-pass";
+import { detectNarrativeCorruption } from "@/lib/writer/narrative-cleanup-pass";
 import { assembleChapterFromSubchapters } from "@/lib/writer/subchapter-pipeline";
 
 export type NarrativePhase =
@@ -271,6 +272,18 @@ function detectGlobalContinuityIssues(subchapters: SubchapterInput[]): {
         offendingSubchapterIndices.add(index);
         criticalFailureTypes.add("corrupted_fragment");
       }
+    }
+
+    for (const corruption of detectNarrativeCorruption(content)) {
+      errors.push({
+        severity: corruption.kind === "out_of_context" || corruption.kind === "nonsense_fragment" ? "critical" : "medium",
+        category: "narrative_corruption",
+        subchapterIndex: index,
+        message: corruption.message,
+        excerpt: corruption.excerpt,
+      });
+      offendingSubchapterIndices.add(index);
+      criticalFailureTypes.add("narrative_corruption");
     }
   });
 

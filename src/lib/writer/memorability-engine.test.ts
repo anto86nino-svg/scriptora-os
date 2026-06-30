@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyMemorabilityLocalPatch,
   evaluateMemorability,
+  isProvisionalChapterScore,
   MAX_QUALITY_REPAIR_ATTEMPTS,
   runMemorabilityPreHumanPass,
   shouldApplyMemorabilityLocalPatch,
@@ -55,5 +56,63 @@ describe("memorability-engine", () => {
     expect(report.improvements.length).toBeGreaterThan(0);
     expect(report.scores.narrativeQuality).toBeGreaterThan(0);
     expect(report.scores.dialogue).toBeGreaterThan(0);
+  });
+
+  it("does not flatten all scores to the same provisional cap", () => {
+    const chapterText = Array.from({ length: 20 }, () => DISTINCTIVE_THRILLER).join("\n\n");
+    const config = {
+      language: "Italian",
+      genre: "romance",
+      numberOfChapters: 12,
+      bookLength: "medium",
+      chapterLength: "medium",
+      subchaptersPerChapter: 3,
+    } as const;
+    const third = Math.ceil(chapterText.length / 3);
+    const subchapters = [
+      { title: "4.1", content: chapterText.slice(0, third) },
+      { title: "4.2", content: chapterText.slice(third, third * 2) },
+      { title: "4.3", content: chapterText.slice(third * 2) },
+    ];
+
+    expect(isProvisionalChapterScore(chapterText, { config, subchapters })).toBe(false);
+
+    const report = evaluateMemorability(chapterText, {
+      language: "Italian",
+      genre: "romance",
+      config,
+      subchapters,
+      chapterTitle: "Capitolo 4",
+    });
+
+    const values = [
+      report.scores.narrativeContinuity,
+      report.scores.narrativeQuality,
+      report.scores.originality,
+      report.scores.memorability,
+      report.scores.dialogue,
+      report.scores.tension,
+      report.scores.coherence,
+    ];
+    const unique = new Set(values);
+    expect(unique.size).toBeGreaterThan(1);
+    expect(values.every((v) => v === 62)).toBe(false);
+  });
+
+  it("penalizes narrative quality when corruption artifacts are present", () => {
+    const clean = evaluateMemorability(DISTINCTIVE_THRILLER, {
+      language: "Italian",
+      genre: "thriller",
+      bookTitle: "La chiave nera",
+    });
+    const corrupted = evaluateMemorability(
+      `${DISTINCTIVE_THRILLER} Perché Non rispose. Non subito.. La cattedrale cadeva a pezzi.`,
+      {
+        language: "Italian",
+        genre: "romance",
+        bookTitle: "La chiave nera",
+      },
+    );
+    expect(corrupted.scores.narrativeQuality).toBeLessThan(clean.scores.narrativeQuality);
   });
 });

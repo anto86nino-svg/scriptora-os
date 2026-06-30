@@ -5,6 +5,7 @@ import {
   repairChapterContinuityAssembly,
   type RegenerateSubchapterFn,
 } from "@/lib/writer/chapter-continuity-assembly";
+import { applyNarrativeCleanupToChapter } from "@/lib/writer/narrative-cleanup-pass";
 import { finalizeAssembledChapter } from "@/lib/writer/subchapter-pipeline";
 
 export type CriticalFailureType =
@@ -15,7 +16,8 @@ export type CriticalFailureType =
   | "duplicate_revelation"
   | "duplicate_threshold"
   | "causality_violation"
-  | "corrupted_fragment";
+  | "corrupted_fragment"
+  | "narrative_corruption";
 
 export type CriticalFailure = {
   type: CriticalFailureType | string;
@@ -114,7 +116,7 @@ export async function ensureChapterContinuityBeforeSave(
     regenerateSubchapter?: RegenerateSubchapterFn;
   } = {},
 ): Promise<EnsureContinuityBeforeSaveResult> {
-  let working = chapter;
+  let working = applyNarrativeCleanupToChapter(chapter, { language: options.language });
   let gate = runNarrativeContinuityGate(working, { language: options.language });
   if (gate.pass) {
     return { chapter: working, gate, blocked: false, repaired: false };

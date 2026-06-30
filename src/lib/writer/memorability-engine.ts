@@ -1,5 +1,6 @@
 import type { BookConfig } from "@/types/book";
 import { runNarrativeContinuityGate } from "@/lib/writer/narrative-continuity-gate";
+import { countNarrativeCorruptionIssues } from "@/lib/writer/narrative-cleanup-pass";
 
 export interface MemorabilityContext {
   language?: string | null;
@@ -330,15 +331,38 @@ function resolveChapterTargetWords(context: MemorabilityContext): number {
   return Math.round(base * multiplier);
 }
 
-export function isProvisionalChapterScore(content: string, context: MemorabilityContext = {}): boolean {
-  if (!context.config) return false;
-  const words = countWords(content);
-  const target = resolveChapterTargetWords(context);
-  return words > 0 && words < target * 0.45;
+function countSubchaptersWithContent(context: MemorabilityContext): number {
+  return (context.subchapters || []).filter((s) => String(s.content || "").trim()).length;
 }
 
-function applyProvisionalScoreCap(value: number, provisional: boolean): number {
-  return provisional ? Math.min(value, 62) : value;
+function resolveExpectedSubchapters(config: Partial<BookConfig> & Record<string, unknown>): number {
+  const explicit = Number(config.subchaptersPerChapter);
+  if (explicit > 0) return explicit;
+  const chapters = Number(config.numberOfChapters) > 0 ? Number(config.numberOfChapters) : 12;
+  if (chapters <= 8) return 2;
+  if (chapters <= 14) return 3;
+  return 4;
+}
+
+export function isProvisionalChapterScore(content: string, context: MemorabilityContext = {}): boolean {
+  const words = countWords(content);
+  if (!context.config) return false;
+
+  if (words < 350) return true;
+
+  const subs = countSubchaptersWithContent(context);
+  const expectedSubs = resolveExpectedSubchapters(context.config);
+  const subchaptersComplete = expectedSubs > 0 && subs >= expectedSubs;
+  if (subchaptersComplete && words >= 700) return false;
+
+  const target = resolveChapterTargetWords(context);
+  return words < target * 0.32;
+}
+
+function applyProvisionalUncertainty(value: number, provisional: boolean): number {
+  if (!provisional) return value;
+  // Keep differentiated scores while signalling incomplete chapter (soft ceiling, not flat 62).
+  return Math.round(Math.min(value, value * 0.92 + 4));
 }
 
 function fillTemplate(template: string, kind: LocalPatchHintKind, italian: boolean): string {
@@ -390,6 +414,12 @@ export function evaluateMemorability(chapterText: string, context: MemorabilityC
   const provisional = isProvisionalChapterScore(text, context);
   const continuity = resolveNarrativeContinuityScore(context);
   const genre = context.genre || String(context.config?.genre || "");
+  const corruptionIssues = countNarrativeCorruptionIssues(text, {
+    language: context.language,
+    genre,
+    chapterTitle: context.chapterTitle,
+  });
+  const corruptionPenalty = Math.min(28, corruptionIssues * 7);
 
   const predictability = clampScore(35 + countMatches(text, PREDICTABLE_TROPES) * 18 + countMatches(text, GENERIC_IMAGERY) * 10);
   const emotionalSurprise = clampScore(72 - countMatches(text, PREDICTABLE_TROPES) * 15 + countMatches(text, TENSION_MARKERS) * 4);
@@ -412,11 +442,11 @@ export function evaluateMemorability(chapterText: string, context: MemorabilityC
     characterDistinction * 0.25,
   );
   const originality = clampScore(100 - predictability * 0.6 - countMatches(text, GENERIC_IMAGERY) * 8);
-  let narrativeQuality = clampScore(memorability * 0.4 + sceneIdentity * 0.3 + emotionalSurprise * 0.3);
+  let narrativeQuality = clampScore(memorability * 0.4 + sceneIdentity * 0.3 + emotionalSurprise * 0.3 - corruptionPenalty);
   const dialogue = characterDistinction;
   const tension = clampScore(50 + countMatches(text, TENSION_MARKERS) * 6 - countMatches(text, RECONCILIATION_MARKERS) * 10);
   const coherence = clampScore(78 - issues.filter((i) => i.kind === "early_reconciliation").length * 15);
-  const narrativeContinuity = continuity.score;
+  const narrativeContinuity = clampScore(continuity.score - Math.min(15, corruptionIssues * 4));
   const rhythm = clampScore(70 - (splitParagraphs(text).some((p) => p.split(/\s+/).length > 80) ? 12 : 0));
   const repetitions = clampScore(85 - countMatches(text, PREDICTABLE_TROPES) * 10);
 
@@ -427,6 +457,7 @@ export function evaluateMemorability(chapterText: string, context: MemorabilityC
   const localPatchHints = buildLocalPatchHints(text, issues, context.language);
   const problems = [
     ...continuity.problems,
+    ...(corruptionIssues > 0 ? [`Artefatti narrativi rilevati (${corruptionIssues}): pulizia consigliata.`] : []),
     ...issues
       .sort((a, b) => (a.severity === "high" ? -1 : 1))
       .slice(0, 3)
@@ -446,19 +477,19 @@ export function evaluateMemorability(chapterText: string, context: MemorabilityC
     cappedMemorability = applyContinuityCap(memorability, narrativeContinuity, genre);
   }
   const cappedScores = {
-    predictability: applyProvisionalScoreCap(predictability, provisional),
-    emotionalSurprise: applyProvisionalScoreCap(emotionalSurprise, provisional),
-    sceneIdentity: applyProvisionalScoreCap(sceneIdentity, provisional),
-    characterDistinction: applyProvisionalScoreCap(characterDistinction, provisional),
-    memorability: applyProvisionalScoreCap(cappedMemorability, provisional),
-    originality: applyProvisionalScoreCap(originality, provisional),
-    narrativeQuality: applyProvisionalScoreCap(narrativeQuality, provisional),
-    dialogue: applyProvisionalScoreCap(dialogue, provisional),
-    tension: applyProvisionalScoreCap(tension, provisional),
-    coherence: applyProvisionalScoreCap(coherence, provisional),
-    narrativeContinuity: applyProvisionalScoreCap(narrativeContinuity, provisional),
-    rhythm: applyProvisionalScoreCap(rhythm, provisional),
-    repetitions: applyProvisionalScoreCap(repetitions, provisional),
+    predictability: applyProvisionalUncertainty(predictability, provisional),
+    emotionalSurprise: applyProvisionalUncertainty(emotionalSurprise, provisional),
+    sceneIdentity: applyProvisionalUncertainty(sceneIdentity, provisional),
+    characterDistinction: applyProvisionalUncertainty(characterDistinction, provisional),
+    memorability: applyProvisionalUncertainty(cappedMemorability, provisional),
+    originality: applyProvisionalUncertainty(originality, provisional),
+    narrativeQuality: applyProvisionalUncertainty(narrativeQuality, provisional),
+    dialogue: applyProvisionalUncertainty(dialogue, provisional),
+    tension: applyProvisionalUncertainty(tension, provisional),
+    coherence: applyProvisionalUncertainty(coherence, provisional),
+    narrativeContinuity: applyProvisionalUncertainty(narrativeContinuity, provisional),
+    rhythm: applyProvisionalUncertainty(rhythm, provisional),
+    repetitions: applyProvisionalUncertainty(repetitions, provisional),
   };
 
   return {

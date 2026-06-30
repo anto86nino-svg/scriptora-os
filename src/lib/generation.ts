@@ -98,6 +98,7 @@ import {
 import {
   runNarrativeContinuityGate,
 } from "@/lib/writer/narrative-continuity-gate";
+import { applyNarrativeCleanupToChapter } from "@/lib/writer/narrative-cleanup-pass";
 import {
   assertProjectReadyForGeneration,
   sanitizeEditorialSummary,
@@ -3355,6 +3356,12 @@ export async function generateChapterViaSubchapterPipeline(
       ),
   });
   chapterShell = assemblyRepair.chapter;
+
+  chapterShell = applyNarrativeCleanupToChapter(chapterShell, {
+    language: config.language,
+    genre: config.genre,
+    chapterTitle: outline.title,
+  });
 
   const continuityGate = runNarrativeContinuityGate(chapterShell, { language: config.language });
   if (!continuityGate.pass && import.meta.env.DEV) {
