@@ -8,6 +8,7 @@ import { buildBookTypeEngineBlock, buildBookTypeLock, resolveBookTypeDefinition 
 import { runManuscriptQualityV3 } from "@/lib/manuscript-quality-v3";
 import { finalManuscriptGuard } from "@/lib/final-manuscript-guard";
 import { sanitizeGeneratedChapterContent } from "@/lib/manuscript/manuscript-integrity-guard";
+import { applySafeManuscriptCleanup } from "@/lib/manuscript/safe-manuscript-cleanup";
 import { safeSubchapters } from "@/lib/manuscript/chapter-normalization";
 import {
   buildChapterWritingPlan,
@@ -33,7 +34,7 @@ import {
   normalizeAuthorIdentity,
   resolveAuthorIdentityForPublishing,
 } from "@/lib/author-identity";
-import { resolveChapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
+import { resolveChapterTitle, resolveSubchapterTitle, formatChapterDisplayTitle } from "@/lib/chapter-titles";
 import { getCurrentUserId } from "@/services/storageService";
 import { buildHumanizerPromptBlock, humanizeChapter, humanizeNarrativeText } from "@/lib/HumanizerLayer";
 import { buildHumanBestsellerModeV11Block } from "@/lib/human-bestseller-mode-v11";
@@ -1868,34 +1869,49 @@ function applyFinalManuscriptGuardToText(
     writingPlan?: ChapterWritingPlan;
   },
 ): string {
-  const cleaned = runManuscriptQualityV3(text, {
-    language: context.config.language ?? "Italian",
-    priorText: priorTextFromChapters(context.previousChapters),
-    config: context.config,
-    chapterIndex: context.chapterIndex,
-  }).text;
+  const label = context.chapterIndex != null ? `Capitolo ${context.chapterIndex + 1}` : "Output";
+  const result = applySafeManuscriptCleanup(
+    text,
+    (source) => {
+      const cleaned = runManuscriptQualityV3(source, {
+        language: context.config.language ?? "Italian",
+        priorText: priorTextFromChapters(context.previousChapters),
+        config: context.config,
+        chapterIndex: context.chapterIndex,
+      }).text;
 
-  const integrity = sanitizeGeneratedChapterContent(cleaned, {
-    language: context.config.language ?? "Italian",
-    chapterTitle: context.chapterTitle,
-    chapterNumber: context.chapterIndex,
-    bookSetting: context.config.idea?.slice(0, 400) || context.config.subgenre,
-    expectedSetting: context.config.subgenre || context.config.subcategory,
-    genre: context.config.genre,
-    chapterLength: context.config.chapterLength,
-    writingPlan: context.writingPlan,
-  });
+      const integrity = sanitizeGeneratedChapterContent(cleaned, {
+        language: context.config.language ?? "Italian",
+        chapterTitle: context.chapterTitle,
+        chapterNumber: context.chapterIndex,
+        bookSetting: context.config.idea?.slice(0, 400) || context.config.subgenre,
+        expectedSetting: context.config.subgenre || context.config.subcategory,
+        genre: context.config.genre,
+        chapterLength: context.config.chapterLength,
+        writingPlan: context.writingPlan,
+      });
 
-  const guarded = finalManuscriptGuard(integrity.content, {
-    language: context.config.language ?? "Italian",
-  });
+      return finalManuscriptGuard(integrity.content, {
+        language: context.config.language ?? "Italian",
+      });
+    },
+    { label, minWords: 300 },
+  );
 
-  if (!guarded.trim() || countWords(guarded) < 3) {
-    const label = context.chapterIndex != null ? `Capitolo ${context.chapterIndex + 1}` : "Output";
-    throw new Error(`${label}: output finale non valido dopo la pulizia del manoscritto.`);
+  if (result.status === "failed") {
+    throw new Error(result.blockingError || `${label}: output finale non valido dopo la pulizia del manoscritto.`);
   }
 
-  return guarded;
+  if (result.warning) {
+    writingQualityGateDevLog("[Scriptora] Safe manuscript cleanup fallback", {
+      label,
+      warning: result.warning,
+      originalWords: countWords(text),
+      returnedWords: countWords(result.content),
+    });
+  }
+
+  return result.content;
 }
 
 function applyUltraHumanAndFinalGuardToText(
@@ -1914,16 +1930,6 @@ function applyUltraHumanAndFinalGuardToText(
 
 function normalizeBlueprint(raw: unknown, config: BookConfig): BookBlueprint {
   return normalizeBlueprintShape(raw, config);
-}
-
-function buildFallbackSubchapterTitle(chapterTitle: string, index: number, language: string): string {
-  const italian = String(language || "").toLowerCase().includes("ital");
-  const beats = italian
-    ? ["Apertura", "Pressione", "Scelta", "Conseguenza", "Rivelazione", "Ferita", "Svolta", "Aftershock"]
-    : ["Opening Move", "Pressure Point", "Choice", "Consequence", "Revelation", "Wound", "Turn", "Aftershock"];
-  const beat = beats[index % beats.length];
-  const cleanTitle = stringifyField(chapterTitle).replace(/^chapter\s+\d+[:.\-\s]*/i, "").trim();
-  return cleanTitle ? `${cleanTitle} · ${beat}` : beat;
 }
 
 function normalizeFrontMatter(raw: unknown, config: BookConfig): FrontMatter {
@@ -3016,8 +3022,14 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
       chapterIndex,
       outlineSummary: subOutline?.summary || outline.summary,
     });
+    const title = resolveSubchapterTitle(stringifyField(parsed?.title).trim() || subOutline?.title, subchapterIndex, outline.title, {
+      config,
+      summary: subOutline?.summary || outline.summary,
+      content: rawContent,
+      totalChapters: config.numberOfChapters,
+    });
     return {
-      title: stringifyField(parsed?.title).trim() || subOutline?.title || `Subchapter ${subchapterIndex + 1}`,
+      title,
       content: applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex }),
     };
   } catch {
@@ -3027,8 +3039,14 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
       chapterIndex,
       outlineSummary: subOutline?.summary || outline.summary,
     });
+    const title = resolveSubchapterTitle(subOutline?.title, subchapterIndex, outline.title, {
+      config,
+      summary: subOutline?.summary || outline.summary,
+      content: rawContent,
+      totalChapters: config.numberOfChapters,
+    });
     return {
-      title: subOutline?.title || `Subchapter ${subchapterIndex + 1}`,
+      title,
       content: applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex }),
     };
   }

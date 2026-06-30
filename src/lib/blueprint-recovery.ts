@@ -1,7 +1,7 @@
 import type { BookBlueprint, BookConfig } from "@/types/book";
 import { getSubchaptersPerChapter } from "@/types/book";
 import { getGenreBlueprint } from "@/lib/genre-intelligence";
-import { isGenericChapterTitle, resolveChapterTitle } from "@/lib/chapter-titles";
+import { isGenericChapterTitle, resolveChapterTitle, resolveSubchapterTitle } from "@/lib/chapter-titles";
 import {
   buildBookKernelPromptBlock,
   resolveBookKernel,
@@ -49,16 +49,6 @@ function stringifyField(value: unknown): string {
       .join("\n");
   }
   return String(value);
-}
-
-function buildFallbackSubchapterTitle(chapterTitle: string, index: number, language: string): string {
-  const italian = String(language || "").toLowerCase().includes("ital");
-  const beats = italian
-    ? ["Apertura", "Pressione", "Scelta", "Conseguenza", "Rivelazione", "Ferita", "Svolta", "Aftershock"]
-    : ["Opening Move", "Pressure Point", "Choice", "Consequence", "Revelation", "Wound", "Turn", "Aftershock"];
-  const beat = beats[index % beats.length];
-  const cleanTitle = stringifyField(chapterTitle).replace(/^chapter\s+\d+[:.\-\s]*/i, "").trim();
-  return cleanTitle ? `${cleanTitle} · ${beat}` : beat;
 }
 
 export function extractJsonFromText(raw: string): string | null {
@@ -118,10 +108,15 @@ export function normalizeBlueprintShape(raw: unknown, config: BookConfig): BookB
     const subchapters = subchapterCount > 0
       ? Array.from({ length: subchapterCount }, (_, j) => {
           const sub = rawSubs[j] || {};
-          const fallbackTitle = buildFallbackSubchapterTitle(title, j, config.language);
+          const subSummary = stringifyField(sub?.summary).trim();
+          const fallbackTitle = resolveSubchapterTitle(stringifyField(sub?.title).trim(), j, title, {
+            config,
+            summary: subSummary || summary,
+            totalChapters: config.numberOfChapters,
+          });
           return {
-            title: stringifyField(sub?.title).trim() || fallbackTitle,
-            summary: stringifyField(sub?.summary).trim()
+            title: fallbackTitle,
+            summary: subSummary
               || `${summary} ${isItalian(config) ? "Focus:" : "Focus:"} ${fallbackTitle.toLowerCase()}.`,
             ...normalizeSubchapterOutlineExtras(sub),
           };

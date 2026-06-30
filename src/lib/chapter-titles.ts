@@ -21,6 +21,14 @@ const TECHNICAL_BEAT_FRAGMENT_RE =
   /(?:forced proximity|inevitable encounter|setup mondi separati|costruzione attrazione|primo bacio|ostacolo|rottura|riconciliazione|promessa futura|antagonistic chemistry|respect earned|vulnerability reveal)/i;
 const CHAPTER_PREFIX_RE =
   /^(?:chapter|capitolo|chapitre|kapitel|capitulo|capitulo|cap\.?|ch\.?)\s*\d+\s*(?:[:.\-–—·]\s*)?/i;
+const WEAK_ISOLATED_TITLE_RE =
+  /^(?:trova|trovare|paese|casa|memoria|adulto|adulta|protagonista|antagonista|personaggio|conflitto|segreto|mistero|ritorno)$/i;
+const WEAK_COMPOSITE_TITLE_RE =
+  /^(?:trova|trovare|paese|casa|memoria|adulto|adulta|protagonista|antagonista|personaggio|conflitto|segreto|mistero|ritorno|e|di|del|della|nel|nella|su|la|il|lo|le|gli|un|una|\d+)(?:\s+(?:trova|trovare|paese|casa|memoria|adulto|adulta|protagonista|antagonista|personaggio|conflitto|segreto|mistero|ritorno|e|di|del|della|nel|nella|su|la|il|lo|le|gli|un|una|\d+))*$/i;
+const DISCONNECTED_TEMPLATE_RE =
+  /(?:confronto\s+su\s+la\s+citt[àa]\s+nel\s+ghiaccio|citt[àa]\s+nel\s+ghiaccio|fotografia:\s*storia\s+di\s+adulta)/i;
+const SUBCHAPTER_BEAT_RE =
+  /^(?:apertura|pressione|scelta|conseguenza|rivelazione|ferita|svolta|aftershock|opening move|pressure point|choice|consequence|revelation|wound|turn)$/i;
 
 const ITALIAN_FALLBACK_TITLES = [
   "L'innesco",
@@ -103,6 +111,46 @@ function normalizeLoose(value: string): string {
     .toLowerCase();
 }
 
+function contextText(context: ChapterTitleContext = {}): string {
+  const config = (context.config || {}) as Partial<BookConfig> & Record<string, unknown>;
+  const characters = Array.isArray(config.characters)
+    ? config.characters
+        .map((character: any) => [character?.name, character?.surname, character?.role, character?.secret].filter(Boolean).join(" "))
+        .join(" ")
+    : "";
+  return [
+    context.content,
+    context.summary,
+    config.title,
+    config.subtitle,
+    config.idea,
+    config.originalIdea,
+    config.genre,
+    config.subgenre,
+    config.subcategory,
+    config.targetReader,
+    config.promise,
+    config.forgeCanonBrief,
+    Array.isArray(config.forgeAntiDriftRules) ? config.forgeAntiDriftRules.join(" ") : "",
+    characters,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
+function isDisconnectedTemplateTitle(value: string, context: ChapterTitleContext = {}): boolean {
+  const loose = normalizeLoose(value);
+  if (!loose) return true;
+  if (DISCONNECTED_TEMPLATE_RE.test(loose)) {
+    const bag = normalizeLoose(contextText(context));
+    return !bag.includes("citta nel ghiaccio");
+  }
+  if (/\b(?:adulto|adulta|protagonista|antagonista|personaggio)\b/.test(loose)) return true;
+  if (/^confronto\s+su\b/.test(loose)) return true;
+  return false;
+}
+
 export function stripChapterTitlePrefix(value: unknown): string {
   return cleanTitle(value)
     .replace(CHAPTER_PREFIX_RE, "")
@@ -114,9 +162,12 @@ export function isGenericChapterTitle(value: unknown): boolean {
   const cleaned = cleanTitle(value);
   if (!cleaned) return true;
   const loose = normalizeLoose(cleaned);
+  const words = loose.split(/\s+/).filter(Boolean);
   return (
     /^\d+$/.test(loose) ||
     loose.length < 3 ||
+    WEAK_ISOLATED_TITLE_RE.test(loose) ||
+    (words.length <= 4 && WEAK_COMPOSITE_TITLE_RE.test(loose)) ||
     GENERIC_TITLE_RE.test(loose) ||
     PLACEHOLDER_TITLE_RE.test(loose) ||
     FORBIDDEN_TITLE_RE.test(loose) ||
@@ -156,10 +207,32 @@ function titleFromSummary(summary?: string): string {
 }
 
 function storySignalTitle(context: ChapterTitleContext, index: number): string {
-  const source = `${context.content || ""}\n${context.summary || ""}`.toLowerCase();
+  const source = contextText(context).toLowerCase();
   if (!source.trim()) return "";
 
   const signals: Array<{ test: RegExp; titles: string[] }> = [
+    {
+      test: /casa sotto pelle|madri scomparse|madre scomparsa|paese d['’]?infanzia|casa di famiglia|ricordare pi[ùu] di lei/,
+      titles: [
+        "Il ritorno alla piazza vuota",
+        "Le madri dietro le pareti",
+        "La casa che ricorda",
+        "La targa che mente",
+        "Il paese senza madri",
+        "La stanza sotto pelle",
+      ],
+    },
+    {
+      test: /nome scritto nel buio|nome scritto su un muro|nomi sui muri|sette giorni|bambino scomparso|documenti ufficiali/,
+      titles: [
+        "Il nome sul muro",
+        "Sette giorni al buio",
+        "Il bambino che non esiste",
+        "Il fascicolo cancellato",
+        "La parete dei condannati",
+        "La prova del settimo giorno",
+      ],
+    },
     {
       test: /condotti|voce nei condotti|corridoi tecnici/,
       titles: ["La Voce nei Condotti", "La Cosa nei Condotti"],
@@ -216,7 +289,7 @@ export function resolveChapterTitle(
   context: ChapterTitleContext = {},
 ): string {
   const stripped = stripChapterTitlePrefix(rawTitle);
-  if (!isGenericChapterTitle(stripped)) return stripped;
+  if (!isGenericChapterTitle(stripped) && !isDisconnectedTemplateTitle(stripped, context)) return stripped;
 
   const fromSignals = storySignalTitle(context, index);
   if (fromSignals) return fromSignals;
@@ -252,31 +325,133 @@ export function formatChapterDisplayTitle(
   return `${chapterLabelWord(language)} ${index + 1}: ${title}`;
 }
 
+function subchapterSignalTitles(context: ChapterTitleContext, chapterTitle: string): string[] {
+  const source = `${contextText(context)} ${chapterTitle}`.toLowerCase();
+  if (/casa sotto pelle|madri scomparse|madre scomparsa|paese d['’]?infanzia|casa di famiglia|la casa che ricorda|piazza vuota/.test(source)) {
+    return [
+      "La fontana scomparsa",
+      "La targa che mente",
+      "La madre di Tommaso",
+      "La stanza che respira",
+      "Il corridoio delle fotografie",
+      "La porta murata",
+    ];
+  }
+  if (/nome scritto nel buio|nome scritto su un muro|nomi sui muri|sette giorni|bambino scomparso|fascicolo cancellato/.test(source)) {
+    return [
+      "Il primo nome sul muro",
+      "Il fascicolo che non esiste",
+      "La settima notte",
+      "La vittima senza passato",
+      "Il bambino cancellato",
+      "La parete che condanna",
+    ];
+  }
+  if (/sala del sangue|debito di sangue|sigillo d['’]?argento/.test(source)) {
+    return [
+      "La soglia della Sala",
+      "Il sigillo che pretende",
+      "Il debito inciso",
+      "La legge del sangue",
+    ];
+  }
+  return [];
+}
+
+function fallbackSubchapterTitle(index: number, context: ChapterTitleContext = {}): string {
+  const italian = String(context.language || context.config?.language || "Italian").toLowerCase().includes("ital");
+  const titles = italian
+    ? [
+        "La soglia del ritorno",
+        "La pressione del segreto",
+        "La scelta senza prova",
+        "La conseguenza nascosta",
+        "La rivelazione che incrina",
+        "La ferita in superficie",
+      ]
+    : [
+        "The Returning Threshold",
+        "The Pressure of the Secret",
+        "The Choice Without Proof",
+        "The Hidden Consequence",
+        "The Fracturing Revelation",
+        "The Wound at the Surface",
+      ];
+  return titles[index % titles.length]!;
+}
+
+export function resolveSubchapterTitle(
+  rawTitle: unknown,
+  subchapterIndex: number,
+  chapterTitle: unknown,
+  context: ChapterTitleContext = {},
+): string {
+  const stripped = stripChapterTitlePrefix(rawTitle);
+  const loose = normalizeLoose(stripped);
+  const beatSuffix = /[·:–—-]\s*([a-zà-ú ]+)$/i.exec(stripped)?.[1] || "";
+  const inheritsWeakParent = beatSuffix && SUBCHAPTER_BEAT_RE.test(normalizeLoose(beatSuffix));
+  if (
+    stripped &&
+    !inheritsWeakParent &&
+    !SUBCHAPTER_BEAT_RE.test(loose) &&
+    !isGenericChapterTitle(stripped) &&
+    !isDisconnectedTemplateTitle(stripped, context)
+  ) {
+    return stripped;
+  }
+
+  const parentTitle = resolveChapterTitle(chapterTitle, 0, context);
+  const signalTitles = subchapterSignalTitles(context, parentTitle);
+  if (signalTitles.length) return signalTitles[subchapterIndex % signalTitles.length]!;
+  return fallbackSubchapterTitle(subchapterIndex, context);
+}
+
 export function normalizeProjectChapterTitles(project: BookProject): BookProject {
   const totalChapters = project.config?.numberOfChapters || project.blueprint?.chapterOutlines?.length || project.chapters?.length || 0;
   const blueprint = project.blueprint
     ? {
         ...project.blueprint,
-        chapterOutlines: project.blueprint.chapterOutlines.map((outline, index) => ({
-          ...outline,
-          title: resolveChapterTitle(outline?.title, index, {
+        chapterOutlines: project.blueprint.chapterOutlines.map((outline, index) => {
+          const context = {
             config: project.config,
             summary: outline?.summary,
             totalChapters,
-          }),
-        })),
+          };
+          const title = resolveChapterTitle(outline?.title, index, context);
+          return {
+            ...outline,
+            title,
+            subchapters: outline.subchapters?.map((sub, subIndex) => ({
+              ...sub,
+              title: resolveSubchapterTitle(sub?.title, subIndex, title, {
+                ...context,
+                summary: sub?.summary || outline?.summary,
+              }),
+            })),
+          };
+        }),
       }
     : project.blueprint;
 
   const chapters = (project.chapters || []).map((chapter, index) => {
     const outline = blueprint?.chapterOutlines?.[index];
+    const title = resolveChapterTitle(chapter?.title || outline?.title, index, {
+      config: project.config,
+      summary: outline?.summary,
+      totalChapters,
+    });
     return {
       ...chapter,
-      title: resolveChapterTitle(chapter?.title || outline?.title, index, {
-        config: project.config,
-        summary: outline?.summary,
-        totalChapters,
-      }),
+      title,
+      subchapters: chapter.subchapters?.map((sub, subIndex) => ({
+        ...sub,
+        title: resolveSubchapterTitle(sub?.title || outline?.subchapters?.[subIndex]?.title, subIndex, title, {
+          config: project.config,
+          summary: outline?.subchapters?.[subIndex]?.summary || outline?.summary,
+          content: sub?.content,
+          totalChapters,
+        }),
+      })) || [],
     };
   });
 
