@@ -2,6 +2,14 @@ import type { BookBlueprint, BookConfig, Chapter, SubChapter } from "@/types/boo
 import { getSubchaptersPerChapter } from "@/types/book";
 import { resolveSubchapterTitle } from "@/lib/chapter-titles";
 import { hasRealSubchapterContent } from "@/lib/manuscript/subchapter-content";
+import {
+  analyzeSubchapterContinuity,
+  buildContinuityRepairPromptBlock,
+  buildSubchapterHandoffPromptBlock,
+  CONTINUITY_SCORE_THRESHOLD,
+  reconstructSubchapterSequence,
+  type SubchapterContinuityAnalysis,
+} from "@/lib/writer/subchapter-continuity-engine";
 
 export type NarrativeSubchapterOutline = {
   title: string;
@@ -143,11 +151,59 @@ export function enrichBlueprintSubchapterOutlines(blueprint: BookBlueprint, conf
 
 export function buildSubchapterContextBlock(previousSubchapters: SubChapter[]): string {
   if (!previousSubchapters.length) return "";
+  const handoff = buildSubchapterHandoffPromptBlock(previousSubchapters[previousSubchapters.length - 1]);
   const lines = previousSubchapters.map((sub, index) =>
     `Subchapter ${index + 1} "${sub.title}": ${String(sub.content || "").slice(-400)}`,
   );
-  return `PREVIOUS SUBCHAPTERS IN THIS CHAPTER (continue forward, do not repeat):\n${lines.join("\n")}`;
+  return [
+    handoff,
+    `PREVIOUS SUBCHAPTERS IN THIS CHAPTER (continue forward, do not repeat):\n${lines.join("\n")}`,
+  ].filter(Boolean).join("\n\n");
 }
+
+export function auditSubchapterContinuity(
+  subchapters: SubChapter[],
+  context?: { language?: string },
+): SubchapterContinuityAnalysis {
+  return analyzeSubchapterContinuity({ subchapters }, context);
+}
+
+export function repairSubchapterContinuityIfNeeded(
+  chapter: Chapter,
+  context?: { language?: string },
+): { chapter: Chapter; analysis: SubchapterContinuityAnalysis; repaired: boolean } {
+  const subs = Array.isArray(chapter.subchapters) ? chapter.subchapters : [];
+  const analysis = analyzeSubchapterContinuity({ subchapters: subs }, context);
+  const hasCritical = analysis.errors.some((e) => e.severity === "critical");
+  const needsRepair = analysis.score < CONTINUITY_SCORE_THRESHOLD || hasCritical;
+
+  if (!needsRepair || subs.length < 2) {
+    return { chapter, analysis, repaired: false };
+  }
+
+  const reconstruction = reconstructSubchapterSequence(analysis, subs);
+  if (reconstruction.improvedScore <= analysis.score && !reconstruction.reordered) {
+    return { chapter, analysis, repaired: false };
+  }
+
+  const repairedSubs: SubChapter[] = reconstruction.subchapters.map((sub, index) => ({
+    title: sub.title || subs[index]?.title || "",
+    content: sub.content,
+  }));
+
+  return {
+    chapter: finalizeAssembledChapter({ ...chapter, subchapters: repairedSubs }),
+    analysis: {
+      ...analysis,
+      score: reconstruction.improvedScore,
+      correctedStructure: reconstruction.subchapters,
+      narrativePatch: reconstruction.patchPlan,
+    },
+    repaired: true,
+  };
+}
+
+export { buildContinuityRepairPromptBlock, CONTINUITY_SCORE_THRESHOLD };
 
 export function finalizeAssembledChapter(chapter: Chapter): Chapter {
   const subs = Array.isArray(chapter.subchapters) ? chapter.subchapters : [];

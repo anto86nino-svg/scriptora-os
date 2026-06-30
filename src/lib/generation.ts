@@ -84,9 +84,11 @@ import {
 } from "@/lib/writer/narrative-timeline-validator";
 import {
   assembleChapterFromSubchapters,
+  auditSubchapterContinuity,
   buildSubchapterContextBlock,
   ensureNarrativeSubchapterOutlines,
   finalizeAssembledChapter,
+  repairSubchapterContinuityIfNeeded,
   shouldUseRealSubchapterPipeline,
   validateSubchapterNarrativeUnit,
 } from "@/lib/writer/subchapter-pipeline";
@@ -3162,6 +3164,12 @@ SUBCHAPTER STRUCTURE — MANDATORY:
 - Mini-climax: a turn, revelation or pressure spike inside this subchapter.
 - Closure: land a specific consequence that hands context to the next subchapter.
 
+SUBCHAPTER CONTINUITY — ABSOLUTE:
+- Inizia esattamente dove termina il sottocapitolo precedente. Non ripetere eventi già accaduti.
+- I sottocapitoli NON sono storie indipendenti: sono UNA sequenza narrativa continua.
+- Vietato: telefonate/incontri/decisioni duplicate, salti temporali all'indietro, riaprire conflitti già risolti.
+- Ogni scena deve produrre una conseguenza per la scena successiva.
+
 BESTSELLER QUALITY — same standard as main chapters. HONOR the genre directive above.
 This must be a real written section with scene/argument progression, not a heading preview.
 
@@ -3303,6 +3311,28 @@ export async function generateChapterViaSubchapterPipeline(
       ...chapterShell,
       subchapters: [...safeSubchapters(chapterShell), { title: sub.title, content: sub.content }],
     };
+  }
+
+  const continuityRepair = repairSubchapterContinuityIfNeeded(chapterShell, { language: config.language });
+  if (continuityRepair.repaired) {
+    chapterShell = continuityRepair.chapter;
+    if (import.meta.env.DEV) {
+      console.warn("[Scriptora] Subchapter continuity auto-repair", {
+        chapterIndex,
+        scoreBefore: continuityRepair.analysis.score,
+        patch: continuityRepair.analysis.narrativePatch,
+      });
+    }
+  } else {
+    const continuityAudit = auditSubchapterContinuity(safeSubchapters(chapterShell), { language: config.language });
+    const hasCritical = continuityAudit.errors.some((e) => e.severity === "critical");
+    if ((continuityAudit.score < 70 || hasCritical) && import.meta.env.DEV) {
+      console.warn("[Scriptora] Subchapter continuity issues", {
+        chapterIndex,
+        score: continuityAudit.score,
+        errors: continuityAudit.errors.slice(0, 5),
+      });
+    }
   }
 
   const assembled = finalizeAssembledChapter(chapterShell);
