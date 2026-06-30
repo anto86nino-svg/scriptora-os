@@ -93,6 +93,12 @@ import {
   validateSubchapterNarrativeUnit,
 } from "@/lib/writer/subchapter-pipeline";
 import {
+  repairChapterContinuityAssembly,
+} from "@/lib/writer/chapter-continuity-assembly";
+import {
+  runNarrativeContinuityGate,
+} from "@/lib/writer/narrative-continuity-gate";
+import {
   assertProjectReadyForGeneration,
   sanitizeEditorialSummary,
 } from "@/lib/project-generation-readiness";
@@ -3086,6 +3092,7 @@ export async function generateSubchapter(
   subchapterIndex: number, chapter: Chapter, previousChapters: Chapter[],
   genreLock?: GenreLock,
   usage?: AIUsageContext,
+  opts?: { repairPrompt?: string },
 ): Promise<{ title: string; content: string }> {
   config = withSanitizedConfig(config);
   const rawOutline = blueprint.chapterOutlines[chapterIndex] || {
@@ -3144,6 +3151,7 @@ Write approximately ${subMin}–${subMax} words.
 ${genreDirective}
 
 ${subchapterContext ? `${subchapterContext}\n` : ""}
+${opts?.repairPrompt ? `${opts.repairPrompt}\n` : ""}
 Parent chapter context: ${chapter.content.substring(0, 500) || outline.summary}...
 ${existingSubs ? `Already written subchapters (do NOT repeat):\n${existingSubs}` : ""}
 ${contextMemory}
@@ -3323,6 +3331,39 @@ export async function generateChapterViaSubchapterPipeline(
         patch: continuityRepair.analysis.narrativePatch,
       });
     }
+  }
+
+  const assemblyRepair = await repairChapterContinuityAssembly(chapterShell, {
+    language: config.language,
+    maxRegenAttemptsPerSubchapter: 2,
+    regenerateSubchapter: async (subIndex, ch, repairPrompt) =>
+      generateSubchapter(
+        config,
+        {
+          ...blueprint,
+          chapterOutlines: blueprint.chapterOutlines.map((item, idx) =>
+            idx === chapterIndex ? outline : item,
+          ),
+        },
+        chapterIndex,
+        subIndex,
+        ch,
+        previousChapters,
+        genreLock,
+        opts?.usage,
+        { repairPrompt },
+      ),
+  });
+  chapterShell = assemblyRepair.chapter;
+
+  const continuityGate = runNarrativeContinuityGate(chapterShell, { language: config.language });
+  if (!continuityGate.pass && import.meta.env.DEV) {
+    console.warn("[Scriptora] Narrative continuity gate FAILED after repair", {
+      chapterIndex,
+      score: continuityGate.score,
+      failures: continuityGate.criticalFailures.slice(0, 5),
+      regenAttempts: assemblyRepair.regenAttempts,
+    });
   } else {
     const continuityAudit = auditSubchapterContinuity(safeSubchapters(chapterShell), { language: config.language });
     const hasCritical = continuityAudit.errors.some((e) => e.severity === "critical");

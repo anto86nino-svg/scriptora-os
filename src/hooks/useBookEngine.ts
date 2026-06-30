@@ -66,7 +66,8 @@ import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorId
 import { normalizeBookConfig, normalizeBookProject } from "@/lib/book-config-studio/defaults";
 import { normalizeProjectChapters, normalizeChapterForGeneration } from "@/lib/manuscript/chapter-normalization";
 import { distributeChapterContentToSubchapters, hasRealSubchapterContent } from "@/lib/manuscript/subchapter-content";
-import { shouldUseRealSubchapterPipeline } from "@/lib/writer/subchapter-pipeline";
+import { shouldUseRealSubchapterPipeline, finalizeAssembledChapter } from "@/lib/writer/subchapter-pipeline";
+import { ensureChapterContinuityBeforeSave } from "@/lib/writer/narrative-continuity-gate";
 import type { BookBlueprint } from "@/types/book";
 import { getActiveSubchaptersPerChapter, getBookStructureTruth, getMissingActiveSubchapterRefs } from "@/lib/book-structure-truth";
 import {
@@ -131,6 +132,51 @@ function trimTextToWordLimit(text: string, maxWords: number): string {
   const markerWords = marker.split(/\s+/).filter(Boolean);
   const allowedBodyWords = Math.max(0, maxWords - markerWords.length);
   return [...words.slice(0, allowedBodyWords), ...markerWords].join(" ");
+}
+
+async function applyContinuityGateToChapter(
+  chapter: Chapter,
+  chapterIndex: number,
+  project: BookProject,
+): Promise<{ chapter: Chapter; blocked: boolean; score: number }> {
+  const subs = safeSubchapters(chapter).filter((s) => String(s.content || "").trim());
+  if (subs.length < 2 || !project.blueprint) {
+    return { chapter, blocked: false, score: 95 };
+  }
+
+  const result = await ensureChapterContinuityBeforeSave(chapter, {
+    language: project.config.language,
+    maxRegenAttemptsPerSubchapter: 2,
+    regenerateSubchapter: async (subIndex, ch, repairPrompt) =>
+      runGenerateSubchapter(
+        project.config,
+        project.blueprint!,
+        chapterIndex,
+        subIndex,
+        ch,
+        project.chapters.filter((_, i) => i < chapterIndex),
+        project.genreLock,
+        {
+          projectId: project.id,
+          taskType: "generate_subchapter",
+        },
+        { repairPrompt },
+      ),
+  });
+
+  if (result.blocked) {
+    const summary = result.gate.criticalFailures.slice(0, 2).map((f) => f.message).join(" · ");
+    toast.warning(`Continuità narrativa insufficiente (${result.gate.score}/100). ${summary}`);
+    scriptoraLog.warn("continuity-gate", "Chapter failed narrative continuity gate before save", {
+      chapterIndex: chapterIndex + 1,
+      score: result.gate.score,
+      failures: result.gate.criticalFailures.slice(0, 3),
+    });
+  } else if (result.repaired) {
+    toast.info(`Continuità narrativa ripristinata (${result.gate.score}/100).`);
+  }
+
+  return { chapter: result.chapter, blocked: result.blocked, score: result.gate.score };
 }
 
 function chapterGenerationKey(projectId: string, index: number): string {
@@ -935,7 +981,7 @@ typeof crypto.randomUUID === "function"
         ? runGenerateChapterViaSubchapterPipeline
         : runGenerateChapterChunked;
 
-      const chapter = await generateChapter(
+      let chapter = await generateChapter(
         latestP.config, latestP.blueprint!, index, prevChapters, chapterOverride,
         (progress) => {
           const key = `chapter-${index}`;
@@ -1024,6 +1070,33 @@ typeof crypto.randomUUID === "function"
         scriptoraLog.warn("chapter", "Ignored stale chapter generation result", { chapterIndex: index + 1, generationId });
         return;
       }
+
+      const continuityResult = await applyContinuityGateToChapter(chapter, index, latestP);
+      if (continuityResult.blocked) {
+        addMessage(
+          "assistant",
+          `⚠️ Capitolo ${index + 1}: continuità narrativa critica (${continuityResult.score}/100). Salvataggio bloccato — rigenera i sottocapitoli in conflitto.`,
+        );
+        updateAndSave(proj => {
+          if (proj.id !== targetProjectId) return proj;
+          const chapters = [...proj.chapters];
+          while (chapters.length <= index) {
+            chapters.push({ title: resolveProjectChapterTitle(proj, chapters.length), content: "", subchapters: [], status: "idle" });
+          }
+          chapters[index] = {
+            ...chapters[index],
+            content: continuityResult.chapter.content,
+            subchapters: safeSubchapters(continuityResult.chapter),
+            status: "error" as GenerationStatus,
+            rewriteInProgress: false,
+            lastGenerationId: generationId,
+          };
+          return { ...proj, chapters };
+        });
+        toast.error(`Capitolo ${index + 1}: continuità narrativa insufficiente. Salvataggio completato bloccato.`);
+        return;
+      }
+      chapter = continuityResult.chapter;
 
       updateAndSave(proj => {
         if (proj.id !== targetProjectId) return proj;
@@ -1208,13 +1281,27 @@ typeof crypto.randomUUID === "function"
         idempotencyKey,
         taskType: "generate_subchapter",
       });
+      const draftChapter = finalizeAssembledChapter({
+        ...chapter,
+        subchapters: (() => {
+          const subs = [...safeSubchapters(chapter)];
+          while (subs.length <= subIndex) subs.push({ title: "", content: "" });
+          subs[subIndex] = sub;
+          return subs;
+        })(),
+      });
+      const continuityResult = await applyContinuityGateToChapter(draftChapter, chapterIndex, p);
+      if (continuityResult.blocked) {
+        addMessage(
+          "assistant",
+          `⚠️ Sottocapitolo salvato ma continuità del capitolo ${chapterIndex + 1} critica (${continuityResult.score}/100). Rigenera i sottocapitoli in conflitto.`,
+        );
+      }
       updateAndSave(proj => {
         const chapters = [...proj.chapters];
         const ch = { ...chapters[chapterIndex] };
-        const subs = [...safeSubchapters(ch)];
-        while (subs.length <= subIndex) subs.push({ title: "", content: "" });
-        subs[subIndex] = sub;
-        ch.subchapters = subs;
+        ch.subchapters = safeSubchapters(continuityResult.chapter);
+        ch.content = continuityResult.chapter.content;
         chapters[chapterIndex] = ch;
         return { ...proj, chapters };
       });

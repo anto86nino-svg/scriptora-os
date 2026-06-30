@@ -14,4 +14,11 @@ describe("clean-text-pass", () => {
     const input = "Something, from the other side.";
     expect(applyCleanTextPass(input, "English")).toBe(input);
   });
+
+  it("repairs corrupted merge fragments", () => {
+    const input = "Anch'io Le mani non trovarono a da fare. non diceva a.";
+    const output = applyCleanTextPass(input, "Italiano");
+    expect(output).not.toContain("non diceva a.");
+    expect(output).not.toContain("non trovarono a da fare");
+  });
 });

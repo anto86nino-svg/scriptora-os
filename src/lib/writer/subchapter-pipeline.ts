@@ -10,6 +10,7 @@ import {
   reconstructSubchapterSequence,
   type SubchapterContinuityAnalysis,
 } from "@/lib/writer/subchapter-continuity-engine";
+import { extractDeliveredRevelations } from "@/lib/writer/chapter-continuity-assembly";
 
 export type NarrativeSubchapterOutline = {
   title: string;
@@ -151,13 +152,33 @@ export function enrichBlueprintSubchapterOutlines(blueprint: BookBlueprint, conf
 
 export function buildSubchapterContextBlock(previousSubchapters: SubChapter[]): string {
   if (!previousSubchapters.length) return "";
-  const handoff = buildSubchapterHandoffPromptBlock(previousSubchapters[previousSubchapters.length - 1]);
+  const lastSub = previousSubchapters[previousSubchapters.length - 1]!;
+  const handoff = buildSubchapterHandoffPromptBlock(lastSub);
+  const lastEnding = String(lastSub.content || "").trim().slice(-600);
+  const revelations = extractDeliveredRevelations(previousSubchapters);
+  const revelationBlock = revelations.length
+    ? `INFORMAZIONI GIÀ RIVELATE AL LETTORE (NON reintrodurre):\n${revelations.map((r) => `- ${r}`).join("\n")}`
+    : "";
+
+  const stateLocation = /\b(?:a casa|in casa|at home)\b/i.test(lastEnding.slice(-200))
+    ? "casa"
+    : /\b(?:porta|soglia|entr[òo])\b/i.test(lastEnding.slice(-200))
+      ? "soglia/ingresso"
+      : /\b(?:incontr|appuntamento)\b/i.test(lastEnding.slice(-200))
+        ? "incontro in corso o appena concluso"
+        : "scena in corso";
+
   const lines = previousSubchapters.map((sub, index) =>
-    `Subchapter ${index + 1} "${sub.title}": ${String(sub.content || "").slice(-400)}`,
+    `Subchapter ${index + 1} "${sub.title}" (closing): ${String(sub.content || "").slice(-400)}`,
   );
+
   return [
     handoff,
-    `PREVIOUS SUBCHAPTERS IN THIS CHAPTER (continue forward, do not repeat):\n${lines.join("\n")}`,
+    `LAST 600 CHARS OF PREVIOUS SUBCHAPTER:\n"""${lastEnding}"""`,
+    `SCENE STATE: location/situation ≈ ${stateLocation}; continue forward from this exact moment.`,
+    revelationBlock,
+    `PREVIOUS SUBCHAPTERS IN THIS CHAPTER (continue forward, do NOT repeat):\n${lines.join("\n")}`,
+    "REGOLA: NON reintrodurre informazioni già rivelate al lettore. NON ripetere eventi già narrati.",
   ].filter(Boolean).join("\n\n");
 }
 

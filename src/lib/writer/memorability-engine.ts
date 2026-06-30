@@ -1,4 +1,5 @@
 import type { BookConfig } from "@/types/book";
+import { runNarrativeContinuityGate } from "@/lib/writer/narrative-continuity-gate";
 
 export interface MemorabilityContext {
   language?: string | null;
@@ -7,6 +8,7 @@ export interface MemorabilityContext {
   chapterTitle?: string;
   chapterIndex?: number;
   config?: Partial<BookConfig> & Record<string, unknown>;
+  subchapters?: Array<{ title?: string; content?: string }>;
 }
 
 export interface MemorabilityScores {
@@ -20,6 +22,7 @@ export interface MemorabilityScores {
   dialogue: number;
   tension: number;
   coherence: number;
+  narrativeContinuity: number;
   rhythm: number;
   repetitions: number;
 }
@@ -353,10 +356,40 @@ function fillTemplate(template: string, kind: LocalPatchHintKind, italian: boole
   return out;
 }
 
+function isLiteraryOrRomance(genre?: string | null): boolean {
+  const g = String(genre || "").toLowerCase();
+  return /romance|romantic|literary|narrative|fiction|dramma|love/i.test(g);
+}
+
+function resolveNarrativeContinuityScore(context: MemorabilityContext): {
+  score: number;
+  problems: string[];
+} {
+  const subs = (context.subchapters || []).filter((s) => String(s.content || "").trim());
+  if (subs.length < 2) {
+    return { score: subs.length ? 90 : 70, problems: [] };
+  }
+  const gate = runNarrativeContinuityGate(
+    { title: context.chapterTitle || "", content: "", subchapters: subs },
+    { language: context.language || undefined },
+  );
+  const problems = gate.criticalFailures.slice(0, 3).map((f) => f.message);
+  return { score: gate.score, problems };
+}
+
+function applyContinuityCap<T extends number>(value: T, continuityScore: number, genre?: string | null): number {
+  if (!isLiteraryOrRomance(genre)) return value;
+  if (continuityScore >= 60) return value;
+  const cap = Math.max(35, continuityScore + 5);
+  return Math.min(value, cap) as T;
+}
+
 export function evaluateMemorability(chapterText: string, context: MemorabilityContext = {}): MemorabilityReport {
   const text = String(chapterText || "").trim();
   const issues = detectAntiSafeWritingIssues(text);
   const provisional = isProvisionalChapterScore(text, context);
+  const continuity = resolveNarrativeContinuityScore(context);
+  const genre = context.genre || String(context.config?.genre || "");
 
   const predictability = clampScore(35 + countMatches(text, PREDICTABLE_TROPES) * 18 + countMatches(text, GENERIC_IMAGERY) * 10);
   const emotionalSurprise = clampScore(72 - countMatches(text, PREDICTABLE_TROPES) * 15 + countMatches(text, TENSION_MARKERS) * 4);
@@ -379,18 +412,26 @@ export function evaluateMemorability(chapterText: string, context: MemorabilityC
     characterDistinction * 0.25,
   );
   const originality = clampScore(100 - predictability * 0.6 - countMatches(text, GENERIC_IMAGERY) * 8);
-  const narrativeQuality = clampScore(memorability * 0.4 + sceneIdentity * 0.3 + emotionalSurprise * 0.3);
+  let narrativeQuality = clampScore(memorability * 0.4 + sceneIdentity * 0.3 + emotionalSurprise * 0.3);
   const dialogue = characterDistinction;
   const tension = clampScore(50 + countMatches(text, TENSION_MARKERS) * 6 - countMatches(text, RECONCILIATION_MARKERS) * 10);
   const coherence = clampScore(78 - issues.filter((i) => i.kind === "early_reconciliation").length * 15);
+  const narrativeContinuity = continuity.score;
   const rhythm = clampScore(70 - (splitParagraphs(text).some((p) => p.split(/\s+/).length > 80) ? 12 : 0));
   const repetitions = clampScore(85 - countMatches(text, PREDICTABLE_TROPES) * 10);
 
+  if (isLiteraryOrRomance(genre) && narrativeContinuity < 60) {
+    narrativeQuality = applyContinuityCap(narrativeQuality, narrativeContinuity, genre);
+  }
+
   const localPatchHints = buildLocalPatchHints(text, issues, context.language);
-  const problems = issues
-    .sort((a, b) => (a.severity === "high" ? -1 : 1))
-    .slice(0, 3)
-    .map((i) => i.message);
+  const problems = [
+    ...continuity.problems,
+    ...issues
+      .sort((a, b) => (a.severity === "high" ? -1 : 1))
+      .slice(0, 3)
+      .map((i) => i.message),
+  ].filter((p, i, arr) => arr.indexOf(p) === i).slice(0, 4);
   const improvements = localPatchHints.slice(0, 3).map((h) => {
     if (h.kind === "subtext") return "Sostituisci dichiarazioni esplicite con silenzi o risposte evasive.";
     if (h.kind === "memorable_image") return "Aggiungi un'immagine specifica del mondo del libro, non stock.";
@@ -400,17 +441,22 @@ export function evaluateMemorability(chapterText: string, context: MemorabilityC
   });
 
   const needsLocalPatch = !provisional && (memorability < 62 || issues.some((i) => i.severity === "high"));
+  let cappedMemorability = memorability;
+  if (isLiteraryOrRomance(genre) && narrativeContinuity < 60) {
+    cappedMemorability = applyContinuityCap(memorability, narrativeContinuity, genre);
+  }
   const cappedScores = {
     predictability: applyProvisionalScoreCap(predictability, provisional),
     emotionalSurprise: applyProvisionalScoreCap(emotionalSurprise, provisional),
     sceneIdentity: applyProvisionalScoreCap(sceneIdentity, provisional),
     characterDistinction: applyProvisionalScoreCap(characterDistinction, provisional),
-    memorability: applyProvisionalScoreCap(memorability, provisional),
+    memorability: applyProvisionalScoreCap(cappedMemorability, provisional),
     originality: applyProvisionalScoreCap(originality, provisional),
     narrativeQuality: applyProvisionalScoreCap(narrativeQuality, provisional),
     dialogue: applyProvisionalScoreCap(dialogue, provisional),
     tension: applyProvisionalScoreCap(tension, provisional),
     coherence: applyProvisionalScoreCap(coherence, provisional),
+    narrativeContinuity: applyProvisionalScoreCap(narrativeContinuity, provisional),
     rhythm: applyProvisionalScoreCap(rhythm, provisional),
     repetitions: applyProvisionalScoreCap(repetitions, provisional),
   };

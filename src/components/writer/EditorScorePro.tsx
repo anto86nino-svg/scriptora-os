@@ -1,17 +1,19 @@
 import { useMemo } from "react";
 import { evaluateMemorability } from "@/lib/writer/memorability-engine";
 import { getLatestWriterPerformance } from "@/lib/writer/writer-performance-metrics";
-import type { BookConfig } from "@/types/book";
+import type { BookConfig, SubChapter } from "@/types/book";
 import { cn } from "@/lib/utils";
 
 interface EditorScoreProProps {
   content: string;
   chapterIndex: number;
   config: BookConfig;
+  subchapters?: SubChapter[];
   className?: string;
 }
 
 const SCORE_LABELS: Array<{ key: keyof ReturnType<typeof evaluateMemorability>["scores"]; label: string }> = [
+  { key: "narrativeContinuity", label: "Continuità narrativa" },
   { key: "narrativeQuality", label: "Qualità narrativa" },
   { key: "originality", label: "Originalità" },
   { key: "memorability", label: "Memorabilità" },
@@ -28,7 +30,7 @@ function scoreTone(value: number): string {
   return "text-rose-300";
 }
 
-export function EditorScorePro({ content, chapterIndex, config, className }: EditorScoreProProps) {
+export function EditorScorePro({ content, chapterIndex, config, subchapters, className }: EditorScoreProProps) {
   const report = useMemo(
     () => evaluateMemorability(content, {
       language: config.language,
@@ -36,8 +38,9 @@ export function EditorScorePro({ content, chapterIndex, config, className }: Edi
       bookTitle: config.title,
       chapterIndex,
       config,
+      subchapters,
     }),
-    [content, chapterIndex, config],
+    [content, chapterIndex, config, subchapters],
   );
 
   const metrics = getLatestWriterPerformance(chapterIndex);

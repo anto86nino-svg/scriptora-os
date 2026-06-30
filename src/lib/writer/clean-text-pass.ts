@@ -13,14 +13,38 @@ const ITALIAN_FIXES: Array<[RegExp, string]> = [
   [/\bun' altro\b/gi, "un altro"],
 ];
 
+const CORRUPTED_MERGE_PATTERNS: Array<[RegExp, string]> = [
+  [/\bnon diceva a\./gi, "non diceva nulla."],
+  [/\bAnch'io Le mani non trovarono a da fare\./gi, "Anch'io non trovai nulla da fare con le mani."],
+  [/\bLe mani non trovarono a da fare\b/gi, "Le mani non trovarono nulla da fare"],
+  [/\bnon trovarono a da fare\b/gi, "non trovarono nulla da fare"],
+  [/\.\s*([a-zàèéìòù])/g, ". $1"],
+  [/\s+([,.!?…])/g, "$1"],
+  [/\b([A-ZÀÈÉÌÒÙ][a-zàèéìòù]+)\s+([a-zàèéìòù]{1,2})\s+([A-ZÀÈÉÌÒÙ])/g, "$1 $2. $3"],
+];
+
+export function repairCorruptedMergeFragments(text: string): string {
+  let result = String(text || "");
+  if (!result.trim()) return result;
+
+  for (const [pattern, replacement] of CORRUPTED_MERGE_PATTERNS) {
+    result = result.replace(pattern, replacement);
+  }
+
+  return result
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\n{4,}/g, "\n\n\n")
+    .trim();
+}
+
 export function applyCleanTextPass(text: string, language?: string | null): string {
   const source = String(text || "");
   if (!source.trim()) return source;
 
   const lang = String(language || "").toLowerCase();
-  if (lang && !lang.includes("ital")) return source;
+  let result = repairCorruptedMergeFragments(source);
+  if (lang && !lang.includes("ital")) return result;
 
-  let result = source;
   for (const [pattern, replacement] of ITALIAN_FIXES) {
     result = result.replace(pattern, replacement);
   }

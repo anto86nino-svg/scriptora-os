@@ -1686,6 +1686,7 @@ function ChapterView({
                   content={chapter?.content || ""}
                   chapterIndex={chapterIndex}
                   config={project.config}
+                  subchapters={chapter?.subchapters}
                 />
               )}
               {!premiumWriter && <AIRatingCard rating={chapter.aiRating} />}
