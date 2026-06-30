@@ -44,7 +44,7 @@ export function HomeContinuaBlock({ project, progressPercent, onContinue, onNewB
         className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-black uppercase tracking-[0.06em] text-slate-950 shadow-[0_12px_32px_rgba(14,165,233,0.22)] transition hover:-translate-y-0.5 sm:w-auto sm:px-6"
       >
         <PenLine className="h-4 w-4" />
-        Continua a scrivere
+        {project ? "Continua a scrivere" : "Crea nuovo libro"}
         <ArrowRight className="h-4 w-4" />
       </button>
     </section>

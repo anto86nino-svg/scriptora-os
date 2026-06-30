@@ -45,6 +45,7 @@ import { FORGE_PRESETS } from "@/lib/scriptora-forge/forge-presets";
 import { HomeRebirth } from "@/components/os/home/HomeRebirth";
 import { STUDIO_DRAFT_STORAGE_KEY } from "@/lib/book-config-studio/types";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
+import { readHomeIdeaSeedFromStorage, saveHomeCreationDraft } from "@/lib/one-flow/home-creation-draft";
 import { readDashboardReturnState } from "@/lib/one-flow/dashboard-return-context";
 import { resetRouteScroll } from "@/lib/one-flow/dashboard-navigation";
 import { getToolRoute } from "@/lib/one-flow/tool-registry";
@@ -91,9 +92,6 @@ import {
   saveProjectHandoffSeed,
 } from "@/lib/book-forge/project-handoff";
 
-const OneFlowOverlay = lazyWithRetry(() =>
-  import("@/components/one-flow/OneFlowOverlay").then((m) => ({ default: m.OneFlowOverlay })),
-);
 const ScriptoraSettingsHub = lazy(() =>
   import("@/components/settings/ScriptoraSettingsHub").then((m) => ({ default: m.ScriptoraSettingsHub })),
 );
@@ -372,9 +370,6 @@ export default function Dashboard() {
   const devBypassLimits = devOn;
   const freeBookUsed = currentPlan === "free" && !devBypassLimits && !blueprintGate.allowed;
   const [bookForgeHandoff, setBookForgeHandoff] = useState<BookForgeHandoff | null>(null);
-  const [oneFlowOpen, setOneFlowOpen] = useState(false);
-  const [oneFlowIdea, setOneFlowIdea] = useState("");
-  const [oneFlowGenreHint, setOneFlowGenreHint] = useState<HomeCreaChip | undefined>(undefined);
 
   useEffect(() => {
     if (currentPlan === "free" && bookLength !== "short") {
@@ -382,41 +377,36 @@ export default function Dashboard() {
     }
   }, [bookLength, currentPlan]);
 
-  const openOneFlow = useCallback((idea: string, genreHint?: HomeCreaChip) => {
+  const readHomeIdeaSeed = useCallback((): string => readHomeIdeaSeedFromStorage(), []);
+
+  const openOneFlowFromHome = useCallback((ideaOverride?: string, genreHint?: HomeCreaChip) => {
     if (freeBookUsed) {
       toast.error("Limite Blueprint Free raggiunto", {
         description: blueprintGate.message || "Passa a un piano autore o sblocca un singolo progetto.",
       });
+      trackScriptoraEvent({
+        eventName: "free_blueprint_limit_blocked",
+        tool: "one-book-flow",
+        planId: currentPlan,
+        success: false,
+      });
       navigate("/pricing");
       return;
     }
-    setOneFlowIdea(idea);
-    setOneFlowGenreHint(genreHint);
-    setOneFlowOpen(true);
-  }, [blueprintGate.message, freeBookUsed, navigate]);
-
-  const closeOneFlow = useCallback(() => {
-    setOneFlowOpen(false);
-    setOneFlowIdea("");
-    setOneFlowGenreHint(undefined);
-  }, []);
-
-  const readHomeIdeaSeed = useCallback((): string => {
-    try {
-      const raw = sessionStorage.getItem(STUDIO_DRAFT_STORAGE_KEY);
-      if (!raw) return "";
-      const draft = JSON.parse(raw) as { idea?: string; title?: string };
-      return String(draft.idea || draft.title || "").trim();
-    } catch {
-      return "";
-    }
-  }, []);
-
-  const openOneFlowFromHome = useCallback((ideaOverride?: string) => {
     closeAllDashboardTools();
     const seed = ideaOverride?.trim() || readHomeIdeaSeed();
-    openOneFlow(seed);
-  }, [closeAllDashboardTools, openOneFlow, readHomeIdeaSeed]);
+    saveHomeCreationDraft({ idea: seed, genreHint });
+    setBookForgeHandoff(null);
+    openDashboardTool("book-forge");
+  }, [
+    blueprintGate.message,
+    closeAllDashboardTools,
+    currentPlan,
+    freeBookUsed,
+    navigate,
+    openDashboardTool,
+    readHomeIdeaSeed,
+  ]);
 
   const openNewBookGuarded = (handoff?: BookForgeHandoff | null | unknown) => {
     if (freeBookUsed) {
@@ -960,48 +950,6 @@ typeof crypto.randomUUID === "function"
     }
   };
 
-  const buildIdeaBookForgeHandoff = (detected?: DetectedIntent | null): BookForgeHandoff | null => {
-    const sourceIdea = idea.trim();
-    const safeBookLength = currentPlan === "free" ? "short" : bookLength;
-    const best = Math.max(0, Math.min(2, Number(detected?.bestTitleIndex || 0)));
-    const resolvedTitle = briefTitle.trim() || detected?.suggestedTitles?.[best] || detected?.suggestedTitles?.[0] || "";
-    const resolvedSubtitle = briefSubtitle.trim() || detected?.suggestedSubtitles?.[best] || detected?.suggestedSubtitles?.[0] || "";
-    const resolvedChapters = Math.max(3, Math.min(50, Number(oneClickChapters || detected?.numberOfChapters) || 10));
-    const resolvedGenre = detected?.genre as Genre | undefined;
-
-    if (!sourceIdea && !resolvedTitle && !resolvedSubtitle && !resolvedGenre) return null;
-
-    return buildBookForgeHandoff("book-idea-tools", {
-      title: resolvedTitle,
-      subtitle: resolvedSubtitle,
-      idea: sourceIdea,
-      plot: sourceIdea,
-      genre: resolvedGenre,
-      category: resolvedGenre
-        ? isNarrativeGenreForCharacters(resolvedGenre) ? "Fiction" : "Non-Fiction"
-        : undefined,
-      subcategory: detected?.subcategory,
-      niche: detected?.subcategory,
-      language: toBookLanguage(bookLang),
-      titleLanguage: toBookLanguage(titleLang || bookLang),
-      chapterCount: resolvedChapters,
-      numberOfChapters: resolvedChapters,
-      bookLength: safeBookLength,
-      customTotalWords: safeBookLength === "custom" ? customTotalWords : undefined,
-      subchaptersEnabled: oneClickSubchaptersEnabled,
-      subchaptersPerChapter: oneClickSubchaptersEnabled
-        ? Math.max(1, Math.min(8, Number(oneClickSubchaptersPerChapter) || DEFAULT_SUBCHAPTERS_PER_CHAPTER))
-        : undefined,
-      targetReader: detected?.targetAudience,
-      promise: detected?.readerPromise,
-      transformation: detected?.readerPromise,
-      tone: detected?.tone,
-      authorIdentityId: activeAuthor.id,
-      authorIdentity: activeAuthor,
-      authorName: activeAuthor.penName,
-    });
-  };
-
   const saveIdeaBookSeed = (draft: IdeaBookDraft) => {
     saveProjectHandoffSeed(buildProjectHandoffSeed("book-idea-tools", {
       title: draft.title,
@@ -1022,10 +970,10 @@ typeof crypto.randomUUID === "function"
   };
 
   const startWritingFromIdeaBook = (draft: IdeaBookDraft) => {
-    toast.error("Approva prima la proposta editoriale e il blueprint.", {
-      description: "Usa One Flow dalla home per generare titolo, promessa e struttura prima del Writer.",
+    toast.error("Completa prima la configurazione del libro.", {
+      description: "One Book Flow apre configurazione, scheda libro e blueprint prima del Writer.",
     });
-    openOneFlow(draft.originalIdea || draft.title);
+    openOneFlowFromHome(draft.originalIdea || draft.title);
   };
 
   const openBookForgeFromIdeaBook = (draft: IdeaBookDraft) => {
@@ -1063,34 +1011,14 @@ typeof crypto.randomUUID === "function"
   };
 
   const openBookForgeFromIdeaPreview = () => {
-    closeAllDashboardTools();
-    openNewBookGuarded(buildIdeaBookForgeHandoff(intent));
+    openOneFlowFromHome(idea.trim());
   };
 
   const launchOneClick = async () => {
     if (idea.trim().length < 6) return;
     setLaunching(true);
-    let i = intent;
-    if (!i) i = await detectIntent();
-    if (!i) {
-      setLaunching(false);
-      return;
-    }
-
-    closeAllDashboardTools();
-    try {
-      sessionStorage.setItem(
-        STUDIO_DRAFT_STORAGE_KEY,
-        JSON.stringify({
-          idea: idea.trim(),
-          title: i.suggestedTitles?.[i.bestTitleIndex] || i.suggestedTitles?.[0] || "",
-        }),
-      );
-    } catch {
-      // Storage can be unavailable in private/mobile webviews.
-    }
     setLaunching(false);
-    openOneFlow(idea.trim());
+    openOneFlowFromHome(idea.trim());
   };
 
   const heroValid = idea.trim().length >= 6;
@@ -1433,7 +1361,7 @@ typeof crypto.randomUUID === "function"
           onContinueProject={(projectId) => goApp({ projectId })}
           onNewBook={openOneFlowFromHome}
           onMyBooks={() => openDashboardTool("projects")}
-          onStartOneFlow={openOneFlow}
+          onStartOneFlow={openOneFlowFromHome}
         />
 
         {projects.length === 0 && !activeRun && (
@@ -1536,36 +1464,6 @@ typeof crypto.randomUUID === "function"
           />
       )}
       </Suspense>
-      )}
-
-      {oneFlowOpen && (
-        <Suspense
-          fallback={
-            <ScriptoraAliveTransition
-              compact
-              overlay
-              tone="forge"
-              title="Apro One Flow…"
-              steps={["Caricamento…", "Quasi pronto…"]}
-            />
-          }
-        >
-          <OneFlowOverlay
-            open={oneFlowOpen}
-            initialIdea={oneFlowIdea}
-            genreHint={oneFlowGenreHint}
-            language="Italiano"
-            onClose={closeOneFlow}
-            onApprove={(payload) => {
-              handleStudioComplete(payload);
-              toast.success("Proposta approvata. Apro il Writer Studio.");
-            }}
-            onDeepenCharacters={() => {
-              closeOneFlow();
-              openFreshCharacterStudio();
-            }}
-          />
-        </Suspense>
       )}
 
       <ProfileMenuDialog

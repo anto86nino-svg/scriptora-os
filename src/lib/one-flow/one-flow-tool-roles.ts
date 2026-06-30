@@ -25,16 +25,14 @@ export const ONE_FLOW_TOOL_ROLES = {
     en: "Market decision support",
   },
   ideaPreview: {
-    it: "Anteprima idea -> One Book Flow",
-    en: "Idea preview -> One Book Flow",
+    it: "Idea modificabile dentro One Book Flow",
+    en: "Editable idea inside One Book Flow",
   },
 } as const;
 
 export const ONE_FLOW_PATH = [
-  "NUOVO LIBRO",
-  "FORGE",
-  "BLUEPRINT THEATER",
-  "WRITER",
-  "PACKAGING CENTER",
-  "PUBBLICAZIONE",
+  "CREA",
+  "BLUEPRINT",
+  "SCRIVI",
+  "ESPORTA",
 ] as const;

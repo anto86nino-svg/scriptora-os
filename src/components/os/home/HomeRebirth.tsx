@@ -6,7 +6,6 @@ import { HomeContinuaBlock } from "@/components/os/home/HomeContinuaBlock";
 import { HomeLibriBlock } from "@/components/os/home/HomeLibriBlock";
 import { HomeCreaBlock } from "@/components/os/home/HomeCreaBlock";
 import { HomePubblicazioneBlock } from "@/components/os/home/HomePubblicazioneBlock";
-import { HomeHousesNav } from "@/components/os/home/HomeHousesNav";
 
 export type HomeRebirthProps = {
   lastProject: BookProject | null | undefined;
@@ -56,8 +55,6 @@ export function HomeRebirth({
         projectTitle={lastProject?.config?.title}
         context={dashboardActionContext}
       />
-
-      <HomeHousesNav />
     </div>
   );
 }

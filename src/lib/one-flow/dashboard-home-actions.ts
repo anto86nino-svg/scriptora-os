@@ -266,15 +266,6 @@ export function buildDashboardAdvancedActions(ctx: DashboardActionContext): Dash
       mode: "route",
       route: getToolRoute("notepad"),
     },
-    {
-      id: "idea-preview",
-      label: "Anteprima idea",
-      description: "Esplora un'idea prima del One Book Flow",
-      enabled: true,
-      group: "optimization",
-      mode: "tool",
-      toolId: "idea-preview",
-    },
   ];
 
   return actions.filter((action) => isDashboardActionRenderable(action, ctx));
