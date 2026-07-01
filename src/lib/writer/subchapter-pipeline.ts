@@ -1,7 +1,10 @@
 import type { BookBlueprint, BookConfig, Chapter, SubChapter } from "@/types/book";
 import { getSubchaptersPerChapter } from "@/types/book";
 import { resolveSubchapterTitle } from "@/lib/chapter-titles";
-import { hasRealSubchapterContent } from "@/lib/manuscript/subchapter-content";
+import {
+  distributeChapterContentToSubchapters,
+  hasRealSubchapterContent,
+} from "@/lib/manuscript/subchapter-content";
 import {
   analyzeSubchapterContinuity,
   buildContinuityRepairPromptBlock,
@@ -233,4 +236,38 @@ export function finalizeAssembledChapter(chapter: Chapter): Chapter {
     content: assembleChapterFromSubchapters(subs),
     subchapters: subs,
   };
+}
+
+export function resolveGeneratedChapterAssembly(input: {
+  useSubchapterPipeline: boolean;
+  generatedChapter: Pick<Chapter, "content" | "subchapters">;
+  finalContent: string;
+  chapterIndex: number;
+  expectedCount: number;
+  outlineSubchapters?: Array<Partial<SubChapter>>;
+  existingSubchapters?: SubChapter[];
+}): { content: string; subchapters: SubChapter[] } {
+  const pipelineSubs = Array.isArray(input.generatedChapter.subchapters)
+    ? input.generatedChapter.subchapters
+    : [];
+  const hasPipelineSubs = pipelineSubs.some((sub) => hasRealSubchapterContent(sub.content));
+
+  const subchapters = input.useSubchapterPipeline && hasPipelineSubs
+    ? pipelineSubs
+    : distributeChapterContentToSubchapters({
+        chapterContent: input.finalContent,
+        chapterIndex: input.chapterIndex,
+        expectedCount: input.expectedCount,
+        existingSubchapters: hasPipelineSubs
+          ? pipelineSubs
+          : input.existingSubchapters,
+        outlineSubchapters: input.outlineSubchapters,
+      });
+
+  const hasResolvedSubs = subchapters.some((sub) => hasRealSubchapterContent(sub.content));
+  const content = hasResolvedSubs
+    ? assembleChapterFromSubchapters(subchapters)
+    : input.finalContent;
+
+  return { content, subchapters };
 }

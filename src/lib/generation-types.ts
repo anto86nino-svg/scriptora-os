@@ -12,6 +12,7 @@ export interface ChunkProgress {
   targetWords: number;
   phase: ChunkProgressPhase;
   content: string;
+  subchapters?: Array<{ title: string; content: string }>;
   chunkSize?: ChunkProgressSize;
   statusMessage?: string;
 }

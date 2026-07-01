@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   assembleChapterFromSubchapters,
   ensureNarrativeSubchapterOutlines,
+  resolveGeneratedChapterAssembly,
   validateSubchapterNarrativeUnit,
 } from "./subchapter-pipeline";
 
@@ -33,5 +34,47 @@ describe("subchapter-pipeline", () => {
       numberOfChapters: 10,
     });
     expect(outlines.map((outline) => outline.purpose)).toEqual(["Evento", "Conseguenza", "Decisione"]);
+  });
+
+  it("resolves pipeline assembly into subchapters and merged chapter content", () => {
+    const subs = [
+      { title: "6.1", content: "Prima scena. ".repeat(40) },
+      { title: "6.2", content: "Seconda scena. ".repeat(40) },
+      { title: "6.3", content: "Terza scena. ".repeat(40) },
+    ];
+    const bloatedContent = `${subs.map((sub) => sub.content).join("\n\n")}\n\n${subs[0]!.content}`;
+
+    const resolved = resolveGeneratedChapterAssembly({
+      useSubchapterPipeline: true,
+      generatedChapter: { content: bloatedContent, subchapters: subs },
+      finalContent: bloatedContent,
+      chapterIndex: 5,
+      expectedCount: 3,
+    });
+
+    expect(resolved.subchapters).toHaveLength(3);
+    expect(resolved.subchapters.every((sub) => sub.content.length >= 80)).toBe(true);
+    expect(resolved.content).toBe(assembleChapterFromSubchapters(resolved.subchapters));
+    expect(resolved.content).not.toContain(subs[0]!.content + "\n\n" + subs[0]!.content);
+  });
+
+  it("falls back to distribution when pipeline subchapters are empty", () => {
+    const chapterContent = [
+      "Prima unita narrativa con abbastanza testo per essere reale.",
+      "Seconda unita narrativa con abbastanza testo per essere reale.",
+      "Terza unita narrativa con abbastanza testo per essere reale.",
+    ].map((paragraph) => `${paragraph} ${"dettaglio ".repeat(20)}`).join("\n\n");
+
+    const resolved = resolveGeneratedChapterAssembly({
+      useSubchapterPipeline: true,
+      generatedChapter: { content: chapterContent, subchapters: [] },
+      finalContent: chapterContent,
+      chapterIndex: 5,
+      expectedCount: 3,
+    });
+
+    expect(resolved.subchapters).toHaveLength(3);
+    expect(resolved.subchapters.every((sub) => sub.content.length >= 80)).toBe(true);
+    expect(resolved.content).toBe(assembleChapterFromSubchapters(resolved.subchapters));
   });
 });

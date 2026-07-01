@@ -66,7 +66,7 @@ import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorId
 import { normalizeBookConfig, normalizeBookProject } from "@/lib/book-config-studio/defaults";
 import { normalizeProjectChapters, normalizeChapterForGeneration } from "@/lib/manuscript/chapter-normalization";
 import { distributeChapterContentToSubchapters, hasRealSubchapterContent } from "@/lib/manuscript/subchapter-content";
-import { shouldUseRealSubchapterPipeline, finalizeAssembledChapter } from "@/lib/writer/subchapter-pipeline";
+import { shouldUseRealSubchapterPipeline, finalizeAssembledChapter, resolveGeneratedChapterAssembly } from "@/lib/writer/subchapter-pipeline";
 import { ensureChapterContinuityBeforeSave } from "@/lib/writer/narrative-continuity-gate";
 import type { BookBlueprint } from "@/types/book";
 import { getActiveSubchaptersPerChapter, getBookStructureTruth, getMissingActiveSubchapterRefs } from "@/lib/book-structure-truth";
@@ -1042,6 +1042,9 @@ typeof crypto.randomUUID === "function"
               ...chapters[index],
               title: resolveProjectChapterTitle(proj, index, chapters[index]?.title),
               content: progress.content,
+              subchapters: progress.subchapters?.length
+                ? progress.subchapters
+                : safeSubchapters(chapters[index]),
               status: "generating" as GenerationStatus,
               lastGenerationId: generationId,
             };
@@ -1114,19 +1117,21 @@ typeof crypto.randomUUID === "function"
         const remaining = Math.max(0, maxProjectWordsAfterGeneration - usedWithoutThisChapter);
 
         const finalContent = trimTextToWordLimit(chapter.content, remaining);
-        const existingSubchapters = safeSubchapters(existingChapter).length
-          ? safeSubchapters(existingChapter)
-          : safeSubchapters(chapter);
+        const assembly = resolveGeneratedChapterAssembly({
+          useSubchapterPipeline,
+          generatedChapter: chapter,
+          finalContent,
+          chapterIndex: index,
+          expectedCount: getExpectedSubchapterCountForChapter(proj, index),
+          outlineSubchapters: proj.blueprint?.chapterOutlines?.[index]?.subchapters || [],
+          existingSubchapters: safeSubchapters(existingChapter),
+        });
 
         finalChapter = {
           ...chapter,
-          title: resolveProjectChapterTitle(proj, index, chapter.title, finalContent),
-          content: finalContent,
-          subchapters: remaining < countWordsSafe(chapter.content)
-            ? []
-            : useSubchapterPipeline
-              ? safeSubchapters(chapter)
-              : distributeGeneratedChapterSubchapters(proj, index, finalContent, existingSubchapters),
+          title: resolveProjectChapterTitle(proj, index, chapter.title, assembly.content),
+          content: trimTextToWordLimit(assembly.content, remaining),
+          subchapters: assembly.subchapters,
         };
 
         if (remaining <= 0 || countWordsSafe(finalChapter.content) >= remaining) {

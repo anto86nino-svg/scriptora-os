@@ -3292,6 +3292,7 @@ export async function generateChapterViaSubchapterPipeline(
       targetWords: getChapterTargetWords(config, chapterIndex, config.numberOfChapters, chapterLengthOverride),
       phase: subIndex === subchapterCount - 1 ? "CLOSURE" : "DEVELOPMENT",
       content: assembleChapterFromSubchapters(chapterShell.subchapters || []),
+      subchapters: safeSubchapters(chapterShell),
       statusMessage: `Scrittura sottocapitolo ${subIndex + 1}/${subchapterCount}...`,
     });
 
