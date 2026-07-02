@@ -153,26 +153,30 @@ function clearAuthCallbackUrl() {
 }
 
 const OAUTH_COMPLETION_TIMEOUT_MS = 15_000;
-const OAUTH_SESSION_POLL_MS = 250;
-const OAUTH_SESSION_POLL_BUDGET_MS = 3_000;
 
-/** Poll for detectSessionInUrl, then fall back to explicit PKCE exchange. */
+const OAUTH_SESSION_EXPIRED_MESSAGE =
+  "Sessione Google scaduta o interrotta. Riprova l'accesso da questa stessa finestra.";
+
+function isPkceVerifierMissingError(error: { name?: string; message?: string }) {
+  return (
+    error.name === "AuthPKCECodeVerifierMissingError" ||
+    (error.message?.includes("PKCE code verifier not found") ?? false)
+  );
+}
+
+/** Single owner of exchangeCodeForSession for PKCE OAuth callbacks. */
 async function tryEstablishSessionFromOAuthCallback(code: string) {
-  const deadline = Date.now() + OAUTH_SESSION_POLL_BUDGET_MS;
-  while (Date.now() < deadline) {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    if (data.session?.user) return data.session;
-    await new Promise((resolve) => window.setTimeout(resolve, OAUTH_SESSION_POLL_MS));
+  const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+  if (!exchangeError) {
+    return exchanged.session ?? null;
   }
 
-  const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-  if (exchangeError) {
+  if (isPkceVerifierMissingError(exchangeError)) {
     const { data: retryData } = await supabase.auth.getSession();
-    if (retryData.session?.user) return retryData.session;
-    throw exchangeError;
+    return retryData.session?.user ? retryData.session : null;
   }
-  return exchanged.session ?? null;
+
+  throw exchangeError;
 }
 
 /**
@@ -188,8 +192,6 @@ export default function AuthPage() {
   const { user, loading } = useAuth();
   const redirectingRef = useRef(false);
   const callbackHandledRef = useRef(false);
-  // Freeze callback params on first render — Supabase may strip ?code= during bootstrap
-  // before this effect runs, which previously left authenticating stuck forever.
   const oauthCallbackRef = useRef(frozenOAuthCallback);
 
   const [tab, setTab] = useState<"signin" | "signup">("signin");
@@ -343,7 +345,7 @@ export default function AuthPage() {
       }
       callbackHandledRef.current = true;
 
-      logAuthDebug("OAuth callback resolving session", { hasCode: !!code, detectSessionInUrl: true });
+      logAuthDebug("OAuth callback resolving session", { hasCode: !!code });
 
       if (code) {
         try {
@@ -354,6 +356,15 @@ export default function AuthPage() {
             finishWithSession();
             return;
           }
+          toast.error(OAUTH_SESSION_EXPIRED_MESSAGE);
+          clearAuthCallbackUrl();
+          releaseOAuthLoading();
+          try {
+            sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
+          } catch {
+            /* private mode */
+          }
+          return;
         } catch (callbackError) {
           if (cancelled) return;
           console.error(AUTH_DEBUG_PREFIX, "OAuth callback failed", callbackError);

@@ -12,7 +12,7 @@ const SUPABASE_KEY =
 /** True when VITE_SUPABASE_* were present at build/dev time. */
 export const isSupabaseConfigured = !!(SUPABASE_URL && SUPABASE_KEY);
 
-/** Captured at module load before detectSessionInUrl can strip ?code= from the URL. */
+/** Captured at module load so OAuth callback params survive early URL cleanup. */
 export function captureOAuthCallbackFromUrl() {
   if (typeof window === "undefined") return { hasCallback: false, error: "", code: "" };
   const search = new URLSearchParams(window.location.search);
@@ -67,9 +67,9 @@ export const supabase = isSupabaseConfigured
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        // PKCE OAuth callbacks (?code=) are exchanged on client bootstrap.
+        // PKCE ?code= exchange is owned by Auth.tsx — not client bootstrap.
         // Implicit-flow hash tokens are stripped above before createClient runs.
-        detectSessionInUrl: true,
+        detectSessionInUrl: false,
         flowType: "pkce",
       },
     })
