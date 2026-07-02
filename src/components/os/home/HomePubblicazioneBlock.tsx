@@ -68,15 +68,15 @@ export const HomePubblicazioneBlock = forwardRef<HTMLElement, Props>(function Ho
     <section
       ref={ref}
       aria-labelledby="home-pubblicazione-title"
-      className="rounded-[1.5rem] border border-stone-200 bg-white p-5 shadow-[0_16px_48px_rgba(15,23,42,0.07)] sm:p-6"
+      className="scriptora-home-card rounded-[1.5rem] p-5 sm:p-6"
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700/65">Pubblicazione</p>
-          <h2 id="home-pubblicazione-title" className="mt-1 text-xl font-black text-slate-950">
+          <p className="scriptora-home-eyebrow">Pubblicazione</p>
+          <h2 id="home-pubblicazione-title" className="mt-1 text-xl font-black text-[#1a1209]">
             Pubblicazione / Export
           </h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-[#5c4030]">
             {context.hasActiveBook
               ? `Readiness per ${projectTitle || "il libro attivo"}`
               : "Seleziona un libro per calcolare il readiness packaging."}
@@ -84,14 +84,14 @@ export const HomePubblicazioneBlock = forwardRef<HTMLElement, Props>(function Ho
         </div>
 
         {expanded && audit ? (
-          <div className="min-w-[160px] rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <div className="min-w-[160px] rounded-xl border border-[#d9c9b0] bg-[#faf6ee] p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Readiness</span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#8b7355]">Readiness</span>
               <StatusPill status={audit.status} />
             </div>
             <div className="mt-2 flex items-end gap-1.5">
-              <span className="text-3xl font-black text-slate-950 tabular-nums">{audit.score}</span>
-              <span className="pb-0.5 text-xs text-slate-400">%</span>
+              <span className="text-3xl font-black text-[#1a1209] tabular-nums">{audit.score}</span>
+              <span className="pb-0.5 text-xs text-[#8b7355]">%</span>
             </div>
           </div>
         ) : null}
@@ -102,7 +102,7 @@ export const HomePubblicazioneBlock = forwardRef<HTMLElement, Props>(function Ho
           type="button"
           onClick={() => setExpanded(true)}
           disabled={!context.hasActiveBook}
-          className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 text-sm font-bold text-amber-900 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-45"
+          className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl border border-[#c9a87c]/45 bg-[#efe2cc] px-4 text-sm font-bold text-[#5c4030] transition hover:bg-[#e8dcc8] disabled:cursor-not-allowed disabled:opacity-45"
         >
           <Gauge className="h-4 w-4" />
           Controlla readiness
@@ -110,43 +110,43 @@ export const HomePubblicazioneBlock = forwardRef<HTMLElement, Props>(function Ho
       ) : (
         <div className="mt-4 space-y-3">
           {loading && !audit ? (
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
+            <div className="flex items-center gap-2 text-sm text-[#5c4030]">
+              <Loader2 className="h-4 w-4 animate-spin text-[#8b5a2b]" />
               Calcolo readiness…
             </div>
           ) : null}
 
           {audit ? (
             <>
-              <div className="h-1.5 overflow-hidden rounded-full bg-stone-100">
+              <div className="h-1.5 overflow-hidden rounded-full bg-[#e8dcc8]">
                 <div
                   className={`h-full rounded-full ${
                     audit.status === "READY"
-                      ? "bg-emerald-400"
+                      ? "bg-[#8b5a2b]"
                       : audit.status === "WARNING"
-                        ? "bg-amber-400"
-                        : "bg-rose-400"
+                        ? "bg-amber-500"
+                        : "bg-rose-500"
                   }`}
                   style={{ width: `${audit.score}%` }}
                 />
               </div>
               {nextStep ? (
-                <div className="flex flex-col gap-2 rounded-xl border border-stone-100 bg-stone-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2 rounded-xl border border-[#d9c9b0] bg-[#faf6ee]/80 p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-xs font-bold text-slate-900">Prossimo passo</p>
-                    <p className="text-sm text-slate-500">{nextStep.label}</p>
+                    <p className="text-xs font-bold text-[#1a1209]">Prossimo passo</p>
+                    <p className="text-sm text-[#5c4030]">{nextStep.label}</p>
                   </div>
                   <button
                     type="button"
                     onClick={handleNextStep}
-                    className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg bg-slate-950 px-3 text-xs font-black text-white hover:bg-emerald-950"
+                    className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg bg-[#2c1810] px-3 text-xs font-black text-[#faf6ee] hover:bg-[#3d2618]"
                   >
                     Vai
                     <ArrowRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
               ) : (
-                <p className="text-sm text-emerald-700">Tutti i passi packaging risultano pronti.</p>
+                <p className="text-sm text-[#8b5a2b]">Tutti i passi packaging risultano pronti.</p>
               )}
             </>
           ) : null}
@@ -156,7 +156,7 @@ export const HomePubblicazioneBlock = forwardRef<HTMLElement, Props>(function Ho
       <button
         type="button"
         onClick={() => navigate(OS_HOUSE_PATHS.pubblicazione)}
-        className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-950"
+        className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-[#8b5a2b] hover:text-[#1a1209]"
       >
         Apri Pubblicazione / Export
         <ArrowRight className="h-3.5 w-3.5" />
@@ -168,7 +168,7 @@ export const HomePubblicazioneBlock = forwardRef<HTMLElement, Props>(function Ho
 function StatusPill({ status }: { status: PublishingReadinessStatus }) {
   if (status === "READY") {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+      <span className="inline-flex items-center gap-1 rounded-full bg-[#e8f0e4] px-2 py-0.5 text-[10px] font-bold text-[#3d5c34]">
         <CheckCircle2 className="h-3 w-3" />
         Pronto
       </span>

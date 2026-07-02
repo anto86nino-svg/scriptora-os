@@ -14,6 +14,7 @@ export type ScriptoraBackgroundId =
   | "coffee-house" | "tokyo-night" | "tuscany-writer" | "nordic-cabin" | "ancient-rome"
   // Premium immersive theme packs
   | "horror-crime-lab" | "dark-romance-velvet" | "fantasy-throne" | "scifi-intel-lab" | "classic-premium-author"
+  | "literary-espresso"
   | "custom-personal";
 
 export type ScriptoraThemeCategory =
@@ -126,6 +127,14 @@ export const SCRIPTORA_BACKGROUNDS: Array<{ id: ScriptoraBackgroundId; name: str
   { category: "fantasy", id: "fantasy-throne", name: "🏰 Fantasy Kingdom", description: "Throne room, magical library, ancient maps. Build your epic world in premium cinematic light.", css: "radial-gradient(ellipse at 50% 0%, rgba(120,80,200,.22), transparent 44%), radial-gradient(ellipse at 20% 80%, rgba(40,120,80,.16), transparent 38%), linear-gradient(160deg, #04030f 0%, #0e0820 45%, #060d10 75%, #020208 100%)" },
   { category: "scifi", id: "scifi-intel-lab", name: "🧠 Sci-Fi Intelligence Lab", description: "Neural interfaces, holographic UI, Apple-grade cinematic minimalism. Engineer your bestseller.", css: "radial-gradient(ellipse at 70% 10%, rgba(0,180,220,.20), transparent 42%), radial-gradient(ellipse at 20% 90%, rgba(60,80,200,.16), transparent 36%), linear-gradient(150deg, #020810 0%, #060f1a 42%, #030b14 72%, #010408 100%)" },
   { category: "classic-premium", id: "classic-premium-author", name: "📖 Classic Premium Author", description: "Luxury publishing house, warm materials, editorial precision. The serious professional author.", css: "radial-gradient(ellipse at 60% 10%, rgba(180,130,50,.18), transparent 38%), radial-gradient(ellipse at 30% 85%, rgba(80,50,20,.14), transparent 36%), linear-gradient(155deg, #0c0804 0%, #1a1008 45%, #100c06 72%, #060402 100%)" },
+  {
+    category: "classic-premium",
+    id: "literary-espresso",
+    name: "☕ Literary Espresso",
+    description: "Espresso brown, parchment warmth, manuscript lines — the Scriptora author studio.",
+    css:
+      "radial-gradient(ellipse at 14% 0%, rgba(242,196,0,.14), transparent 34%), radial-gradient(ellipse at 88% 18%, rgba(139,90,43,.16), transparent 32%), radial-gradient(ellipse at 50% 100%, rgba(44,24,16,.22), transparent 40%), linear-gradient(155deg, #1a1008 0%, #2c1810 38%, #241610 68%, #120a06 100%)",
+  },
 
   // ── Atmospheres ────────────────────────────────────────────────────────────
   { category: "atmosphere", id: "midnight-ink", name: "🌌 Midnight Writer", description: "Scuro, premium, perfetto per scrivere di notte.", css: "radial-gradient(circle at top left, rgba(79,70,229,.24), transparent 34%), radial-gradient(circle at bottom right, rgba(236,72,153,.12), transparent 36%), linear-gradient(135deg, #050510 0%, #0b1020 45%, #020617 100%)" },
@@ -179,9 +188,43 @@ export const WRITING_FONTS: Array<{ id: ScriptoraWritingFont; name: string; css:
 ];
 
 export const DEFAULT_SCRIPTORA_APPEARANCE: ScriptoraAppearanceSettings = {
-  backgroundId: "clean-pro",
+  backgroundId: "literary-espresso",
   writingFont: "system",
 };
+
+const LIGHT_SURFACE_BACKGROUNDS = new Set<ScriptoraBackgroundId>([
+  "clean-pro",
+  "soft-parchment",
+  "arctic-glass",
+]);
+
+function applySurfaceContrastTokens(backgroundId: ScriptoraBackgroundId) {
+  const root = document.documentElement;
+  const isLight = LIGHT_SURFACE_BACKGROUNDS.has(backgroundId);
+
+  root.dataset.scriptoraSurface = isLight ? "light" : "dark";
+
+  if (isLight) {
+    root.style.setProperty("--foreground", "24 38% 11%");
+    root.style.setProperty("--muted-foreground", "24 14% 36%");
+    root.style.setProperty("--card", "38 42% 94%");
+    root.style.setProperty("--card-foreground", "24 38% 11%");
+    root.style.setProperty("--popover", "38 42% 96%");
+    root.style.setProperty("--popover-foreground", "24 38% 11%");
+    root.style.setProperty("--border", "30 22% 78%");
+    root.style.setProperty("--input", "30 22% 78%");
+    return;
+  }
+
+  root.style.removeProperty("--foreground");
+  root.style.removeProperty("--muted-foreground");
+  root.style.removeProperty("--card");
+  root.style.removeProperty("--card-foreground");
+  root.style.removeProperty("--popover");
+  root.style.removeProperty("--popover-foreground");
+  root.style.removeProperty("--border");
+  root.style.removeProperty("--input");
+}
 
 export function getCustomScriptoraBackground(): string | null {
   try {
@@ -338,6 +381,7 @@ export function applyScriptoraAppearance(settings: ScriptoraAppearanceSettings =
   document.documentElement.style.setProperty("--scriptora-app-bg", finalBackground);
   document.documentElement.style.setProperty("--scriptora-writing-font", font.css);
   document.documentElement.dataset.scriptoraBg = settings.backgroundId;
+  applySurfaceContrastTokens(settings.backgroundId);
 
   // Inject immersive environment tokens for this theme category
   applyScriptoraEnvironment(bg.category);

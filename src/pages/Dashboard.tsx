@@ -1140,8 +1140,8 @@ typeof crypto.randomUUID === "function"
   }
 
   return (
-    <div className="scriptora-dashboard-shell scriptora-ios-screen scriptora-app-surface scriptora-dashboard-mobile scriptora-page-scroll scriptora-cinematic-shell scriptora-brand-shell relative min-h-[100dvh] overflow-x-hidden safe-area-pt">
-      <header className="sticky top-0 z-20 border-b border-[#f2c400]/20 bg-[#050505]/72 shadow-[0_10px_40px_rgba(0,0,0,0.35)] backdrop-blur-2xl safe-area-pt">
+    <div className="scriptora-dashboard-shell scriptora-ios-screen scriptora-app-surface scriptora-literary-shell scriptora-dashboard-mobile scriptora-page-scroll scriptora-cinematic-shell scriptora-brand-shell relative min-h-[100dvh] overflow-x-hidden safe-area-pt">
+      <header className="sticky top-0 z-20 border-b border-[#f2c400]/20 bg-[#2c1810]/88 shadow-[0_10px_40px_rgba(0,0,0,0.35)] backdrop-blur-2xl safe-area-pt">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             <button

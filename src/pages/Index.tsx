@@ -634,7 +634,7 @@ const Index = () => {
 
   if (focusMode && engine.project) {
     return (
-      <div className="scriptora-ios-screen scriptora-app-surface flex min-h-[100dvh] flex-col overflow-x-hidden">
+      <div className="scriptora-ios-screen scriptora-app-surface scriptora-literary-shell flex min-h-[100dvh] flex-col overflow-x-hidden">
         <div className="ios-glass-soft flex h-12 shrink-0 items-center justify-between px-4">
           <span className="text-xs text-muted-foreground">{t("focus_mode")}</span>
           <button onClick={() => setFocusMode(false)}
@@ -727,7 +727,7 @@ const Index = () => {
   }
 
   return (
-    <div className="scriptora-ios-screen scriptora-app-surface scriptora-writer-studio relative flex min-h-[100dvh] overflow-x-hidden overflow-y-visible lg:flex-row">
+    <div className="scriptora-ios-screen scriptora-app-surface scriptora-literary-shell scriptora-writer-studio relative flex min-h-[100dvh] overflow-x-hidden overflow-y-visible lg:flex-row">
       {/* Floating sidebar toggle — mobile opens fullscreen navigator; desktop toggles sidebar */}
       <button
         onClick={() => {
