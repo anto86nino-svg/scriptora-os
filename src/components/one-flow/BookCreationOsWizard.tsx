@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   X, ArrowLeft, ArrowRight, Rocket, Sparkles, Plus, Trash2, Users, Loader2,
   CheckCircle2, AlertTriangle, BookOpen, Clock3, Info,
@@ -108,6 +108,38 @@ import {
   buildProjectHandoffSeed,
   saveProjectHandoffSeed,
 } from "@/lib/book-forge/project-handoff";
+import {
+  isStepComplete,
+  canAdvanceToStep,
+  stepCompletionHint,
+  canOpenWriter,
+  isNarrativeReadyForBlueprint,
+  NARRATIVE_BLUEPRINT_BLOCKED_MESSAGE,
+  type BookForgeWizardState,
+} from "@/lib/book-forge/step-completion";
+import {
+  analyzeLongIdeaForProposal,
+  detectGenreWithConfidence,
+  LONG_IDEA_THRESHOLD,
+  type AutoDetectionProposal,
+} from "@/lib/book-forge/auto-detection-engine";
+import { shouldBlockCloudGenreMutation } from "@/lib/book-forge/genre-priority";
+import {
+  resolveWizardGenreInference,
+  resolveWizardBookFormat,
+  applyDominanceToWizardPatch,
+} from "@/lib/book-forge/genre-lock-wizard";
+import { GuidedInterviewPanel } from "@/components/guided-interview/GuidedInterviewPanel";
+import { buildIdeaBookDraft } from "@/lib/book-creation-os/idea-book-flow";
+import { analyzeConceptFromIdea } from "@/lib/concept-dominance";
+import GuidedFieldActions from "@/components/book-forge/GuidedFieldActions";
+import GuidedEmptyState from "@/components/book-forge/GuidedEmptyState";
+import AutoDetectionProposalCard from "@/components/book-forge/AutoDetectionProposal";
+import ShortIdeaDetectionCard from "@/components/book-forge/ShortIdeaDetectionCard";
+import StepApprovalChecklist, {
+  approvalChecklistComplete,
+  type ApprovalCheckItem,
+} from "@/components/book-forge/StepApprovalChecklist";
 
 interface BookCreationOsWizardProps {
   open: boolean;
@@ -669,6 +701,8 @@ export function BookCreationOsWizard({
   const [bookTypeId, setBookTypeId] = useState("romance");
   const [genre, setGenre] = useState<Genre>("romance");
   const [subgenre, setSubgenre] = useState("");
+  const [bookFormat, setBookFormat] = useState("");
+  const [genreManuallyLocked, setGenreManuallyLocked] = useState(false);
   const [identityDraft, setIdentityDraft] = useState<AuthorIdentity>(authorIdentity);
   const [chapters, setChapters] = useState(18);
   const [chapterLength, setChapterLength] = useState<"short" | "medium" | "long">("medium");
@@ -917,10 +951,50 @@ export function BookCreationOsWizard({
   const [titleCategoryCoherence, setTitleCategoryCoherence] = useState<TitleCategoryCoherenceLevel>("high");
   const [forgePresetId, setForgePresetId] = useState<string | null>(null);
   const [forgePresetLabel, setForgePresetLabel] = useState<string | null>(null);
+  const [autoDetectionDismissed, setAutoDetectionDismissed] = useState(false);
+  const [genreDetectionAccepted, setGenreDetectionAccepted] = useState(false);
+  const [narrativeAutoApproved, setNarrativeAutoApproved] = useState(false);
+  const [shortIdeaForceDetect, setShortIdeaForceDetect] = useState(false);
+  const [pendingAutoDetection, setPendingAutoDetection] = useState<AutoDetectionProposal | null>(null);
+  const [generatingGuidedField, setGeneratingGuidedField] = useState<string | null>(null);
+  const ideaInputRef = useRef<HTMLTextAreaElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const targetReaderInputRef = useRef<HTMLInputElement>(null);
+  const toneInputRef = useRef<HTMLInputElement>(null);
+
+  const genreMutationContext = useMemo(
+    () => ({
+      genreManuallyLocked,
+      genreDetectionAccepted,
+      hasPendingAutoDetection: Boolean(pendingAutoDetection),
+    }),
+    [genreManuallyLocked, genreDetectionAccepted, pendingAutoDetection],
+  );
+
+  const shortIdeaHypotheses = useMemo(() => {
+    if (!idea.trim() || idea.trim().length >= LONG_IDEA_THRESHOLD) return [];
+    return detectGenreWithConfidence(idea, {
+      title,
+      existingGenre: genre,
+      existingSubgenre: subgenre,
+      existingBookTypeId: bookTypeId,
+      genreManuallyLocked,
+    });
+  }, [idea, title, genre, subgenre, bookTypeId, genreManuallyLocked]);
 
   const textInference = useMemo(
-    () => inferGenreFromText(title, idea),
-    [title, idea],
+    () => resolveWizardGenreInference(title, idea, {
+      title,
+      idea,
+      genre,
+      subgenre,
+      bookTypeId,
+      category,
+      subcategory,
+      bookFormat,
+      genreManuallyLocked,
+    }),
+    [title, idea, genre, subgenre, bookTypeId, category, subcategory, bookFormat, genreManuallyLocked],
   );
   const shouldUseCharacterForge = useMemo(() => {
     if (bookForgeHandoff) return isFictionHandoff(bookForgeHandoff.prefill);
@@ -1565,11 +1639,122 @@ const persistDraft = useCallback(() => {
     return () => window.clearInterval(timer);
   }, [generatingBlueprint]);
 
+  useEffect(() => {
+    if (!open || step !== 0 || autoDetectionDismissed || !idea.trim()) {
+      if (!open || step !== 0) setPendingAutoDetection(null);
+      return;
+    }
+    const isShort = idea.trim().length < LONG_IDEA_THRESHOLD;
+    if (isShort && !shortIdeaForceDetect) {
+      setPendingAutoDetection(null);
+      return;
+    }
+    const result = analyzeLongIdeaForProposal(idea, {
+      existingGenre: genre,
+      existingSubgenre: subgenre,
+      existingBookTypeId: bookTypeId,
+      genreManuallyLocked,
+      title,
+    });
+    setPendingAutoDetection(result.shouldPropose ? result.proposal : null);
+  }, [open, step, idea, genre, subgenre, bookTypeId, title, autoDetectionDismissed, genreManuallyLocked, shortIdeaForceDetect]);
+
+  const prevIdeaRef = useRef(idea);
+  useEffect(() => {
+    if (prevIdeaRef.current !== idea) {
+      setAutoDetectionDismissed(false);
+      setShortIdeaForceDetect(false);
+      prevIdeaRef.current = idea;
+    }
+  }, [idea]);
+
   if (!open) return null;
 
   const validationIssues = validateBookConfigStudio(buildConfig(), identityDraft);
   const coherenceReport = step >= 5 ? validateConfigCoherence(buildConfig()) : null;
   const stepLabel = BOOK_CREATION_DECISIONS[step] || STUDIO_STEPS[step];
+
+  const forgeWizardState: BookForgeWizardState = {
+    language,
+    bookTypeId,
+    genre,
+    subgenre,
+    idea,
+    title,
+    targetReader,
+    tone,
+    subtitle,
+    authorName: authorName.trim() || identityDraft.penName?.trim() || "",
+    identityBasicsOk: isUserAuthorIdentityConfigured(identityDraft),
+    pov,
+    chapters,
+    bookLength,
+    structureType,
+    narrativePromise,
+    coreConflict,
+    setting,
+    openingHook,
+    protagonist,
+    shouldUseCharacterForge,
+    hasNamedCharacter: characters.some((character) => character.name?.trim()),
+    canonRules,
+    forbiddenContent,
+    validationIssueCount: validationIssues.length,
+    commercialGoal,
+    shortDescription,
+    blueprintPreview: Boolean(blueprintPreview),
+    narrativeAutoApproved,
+  };
+
+  const currentStepComplete = isStepComplete(step, forgeWizardState);
+  const stepAdvanceHint = stepCompletionHint(step, forgeWizardState);
+
+  const jumpToWizardStep = (target: number) => {
+    if (target < step) {
+      setStep(target);
+      return;
+    }
+    if (!canAdvanceToStep(target, forgeWizardState)) {
+      for (let s = 0; s < target; s += 1) {
+        if (!isStepComplete(s, forgeWizardState)) {
+          toast.error(stepCompletionHint(s, forgeWizardState) || "Completa gli step precedenti.");
+          return;
+        }
+      }
+      toast.error("Completa gli step precedenti prima di saltare avanti.");
+      return;
+    }
+    setStep(target);
+  };
+
+  const approvalChecklistItems: ApprovalCheckItem[] = [
+    {
+      id: "blueprint",
+      label: "Blueprint generato e visibile",
+      done: Boolean(blueprintPreview),
+      hint: "Torna allo step Blueprint e premi Genera Blueprint.",
+    },
+    {
+      id: "title",
+      label: "Titolo e sottotitolo confermati",
+      done: Boolean(title.trim().length >= 3 && subtitle.trim().length >= 8),
+      hint: "Completa o rigenera titolo e promessa in copertina.",
+    },
+    {
+      id: "structure",
+      label: "Capitoli strutturati nel blueprint",
+      done: Boolean(blueprintPreview?.chapterOutlines?.length),
+      hint: "Il blueprint deve includere almeno un capitolo.",
+    },
+    {
+      id: "identity",
+      label: "Identità autore pronta per Writer",
+      done: isUserAuthorIdentityConfigured(identityDraft) || Boolean(authorName.trim().length >= 2),
+      hint: "Completa pen name, bio e voce nello step Stile e lettore.",
+    },
+  ];
+
+  const approvalReady = approvalChecklistComplete(approvalChecklistItems);
 
   const applyCoherenceAutoFix = () => {
     const { config } = sanitizeBookConfiguration(buildConfig());
@@ -1594,7 +1779,7 @@ const persistDraft = useCallback(() => {
     setTone(preset.label);
   };
 
-  const applyStudioGenre = (id: string, opts?: { force?: boolean; featuredSubgenre?: string }) => {
+  const applyStudioGenre = (id: string, opts?: { force?: boolean; featuredSubgenre?: string; lockGenre?: boolean }) => {
     const newLevel1 = resolveLevel1FromBookTypeId(id);
     const prevLevel1 = resolveLevel1FromBookTypeId(bookTypeId);
     if (!opts?.force && newLevel1 !== prevLevel1) {
@@ -1637,6 +1822,33 @@ const persistDraft = useCallback(() => {
       if (!opts?.featuredSubgenre) setSubgenre((current) => current || g.defaultSubcategory);
     }
     setSubchaptersEnabled(g.defaultSubchapters);
+
+    const dominated = applyDominanceToWizardPatch(
+      {
+        bookTypeId: g.id,
+        genre: g.genre,
+        category: g.category,
+        subcategory: g.defaultSubcategory,
+        subgenre: opts?.featuredSubgenre || subgenre,
+      },
+      { bookTypeId: g.id, genre: g.genre, subgenre, category, subcategory },
+    );
+    if (dominated.genre) setGenre(dominated.genre as Genre);
+    if (dominated.bookTypeId) setBookTypeId(String(dominated.bookTypeId));
+    const nextFormat = resolveWizardBookFormat({
+      bookTypeId: String(dominated.bookTypeId || g.id),
+      genre: String(dominated.genre || g.genre),
+      subgenre: opts?.featuredSubgenre || subgenre,
+      category: g.category,
+      subcategory: g.defaultSubcategory,
+      idea,
+      title,
+    });
+    if (nextFormat) setBookFormat(nextFormat);
+    if (opts?.lockGenre !== false) {
+      setGenreManuallyLocked(true);
+      setGenreDetectionAccepted(false);
+    }
   };
 
   const confirmTypeChange = () => {
@@ -1651,17 +1863,29 @@ const persistDraft = useCallback(() => {
     applyStudioGenre(type.id, { featuredSubgenre: type.subgenre });
   };
 
-  const applyInference = (inference: GenreInference, opts?: { keepTitle?: boolean }) => {
-    applyStudioGenre(inference.bookTypeId, { force: true, featuredSubgenre: inference.subgenre });
-    setGenre(inference.genre);
-    setCategory(inference.category);
-    setSubcategory(inference.subcategory);
-    setSubgenre(inference.subgenre);
-    setTone(inference.tone);
-    if (!targetReader.trim()) setTargetReader(inference.targetReader);
-    if (!narrativePromise.trim()) setNarrativePromise(inference.narrativePromise);
-    if (!commercialGoal.trim()) setCommercialGoal(inference.commercialGoal);
-    if (!chapters || chapters < 6) setChapters(inference.suggestedChapters);
+  const applyInference = (inference: GenreInference, opts?: { keepTitle?: boolean; lockGenre?: boolean }) => {
+    const dominated = resolveWizardGenreInference(title, idea, {
+      title,
+      idea,
+      genre: inference.genre,
+      subgenre: inference.subgenre,
+      bookTypeId: inference.bookTypeId,
+      category: inference.category,
+      subcategory: inference.subcategory,
+      bookFormat: inference.bookFormat,
+      genreManuallyLocked: opts?.lockGenre ?? false,
+    });
+    applyStudioGenre(dominated.bookTypeId, { force: true, featuredSubgenre: dominated.subgenre, lockGenre: opts?.lockGenre ?? false });
+    setGenre(dominated.genre);
+    setCategory(dominated.category);
+    setSubcategory(dominated.subcategory);
+    setSubgenre(dominated.subgenre);
+    setTone(dominated.tone);
+    setBookFormat(dominated.bookFormat);
+    if (!targetReader.trim()) setTargetReader(dominated.targetReader);
+    if (!narrativePromise.trim()) setNarrativePromise(dominated.narrativePromise);
+    if (!commercialGoal.trim()) setCommercialGoal(dominated.commercialGoal);
+    if (!chapters || chapters < 6) setChapters(dominated.suggestedChapters);
     if (["poetry_collection", "poetic_essay", "lyrical_prose"].includes(inference.bookFormat)) {
       setLevel1BookType("poesia");
       setBookTypeId("poetry");
@@ -1732,7 +1956,10 @@ const persistDraft = useCallback(() => {
               };
               setTitleProposals([...proposals]);
             }
-            if (detected.genre) {
+            if (
+              !shouldBlockCloudGenreMutation(genreMutationContext)
+              && detected.genre
+            ) {
               const remoteInference = inferGenreFromText(remoteTitle || title, `${idea} ${detected.genre} ${detected.subcategory || ""}`);
               proposals[0] = { ...proposals[0], inference: remoteInference, perceivedGenre: remoteInference.label };
               setTitleProposals([...proposals]);
@@ -1758,6 +1985,8 @@ const persistDraft = useCallback(() => {
       coreConflict,
       setting,
       openingHook,
+      genreManuallyLocked,
+      genreDetectionAccepted,
     });
     if (patch.bookTypeId) applyStudioGenre(patch.bookTypeId, { force: true, featuredSubgenre: patch.subgenre });
     if (patch.genre) setGenre(patch.genre);
@@ -1808,11 +2037,147 @@ const persistDraft = useCallback(() => {
     toast.success(`${starter.label}: percorso guidato applicato.`);
   };
 
+  const acceptAutoDetection = () => {
+    if (!pendingAutoDetection) return;
+    applyStudioGenre(pendingAutoDetection.bookTypeId, { force: true, lockGenre: false });
+    setGenre(pendingAutoDetection.genre as Genre);
+    setCategory(pendingAutoDetection.category);
+    setSubcategory(pendingAutoDetection.subcategory);
+    setBookFormat(pendingAutoDetection.bookFormat);
+    if (pendingAutoDetection.subgenre) setSubgenre(pendingAutoDetection.subgenre);
+    if (pendingAutoDetection.tone) setTone(pendingAutoDetection.tone);
+    if (pendingAutoDetection.targetReader) setTargetReader(pendingAutoDetection.targetReader);
+    if (pendingAutoDetection.protagonist) setProtagonist(pendingAutoDetection.protagonist);
+    if (pendingAutoDetection.setting) setSetting(pendingAutoDetection.setting);
+    setGenreManuallyLocked(true);
+    setGenreDetectionAccepted(true);
+    const detectedLabel = pendingAutoDetection.detectedLabel;
+    setPendingAutoDetection(null);
+    setAutoDetectionDismissed(true);
+    toast.success(`Proposta accettata: ${detectedLabel}.`);
+  };
+
+  const generateIdeaFromContext = async () => {
+    const seed = idea.trim() || title.trim();
+    if (!seed) {
+      toast.error("Scrivi almeno un'indizio — anche una frase — per generare l'idea.");
+      return;
+    }
+    setGeneratingGuidedField("idea");
+    try {
+      const draft = buildIdeaBookDraft(seed, { language, planIsFree: isFree });
+      const expanded = [
+        draft.originalIdea,
+        draft.promise && `Promessa: ${draft.promise}`,
+        draft.targetReader && `Lettore ideale: ${draft.targetReader}`,
+        draft.tone && `Tono: ${draft.tone}`,
+      ].filter(Boolean).join("\n\n");
+      setIdea(expanded);
+      if (!shouldBlockCloudGenreMutation(genreMutationContext)) {
+        applyInference(inferGenreFromText(draft.title, expanded));
+      }
+      if (!title.trim() && draft.title) setTitle(draft.title);
+      toast.success("Idea espansa da Scriptora.");
+    } finally {
+      setGeneratingGuidedField(null);
+    }
+  };
+
+  const generateReaderToneFields = () => {
+    const patch = buildWizardAutofillPatch(buildConfig(), textInference, { genreManuallyLocked, genreDetectionAccepted });
+    if (patch.targetReader) setTargetReader(patch.targetReader);
+    if (patch.tone) setTone(patch.tone);
+    if (!pov.trim()) setPov("terza persona limitata");
+    toast.success("Pubblico e tono suggeriti.");
+  };
+
+  const generateStructureFields = () => {
+    const patch = buildWizardAutofillPatch(buildConfig(), textInference, { genreManuallyLocked, genreDetectionAccepted });
+    if (patch.chapters) setChapters(patch.chapters);
+    if (!structureType.trim()) {
+      setStructureType(level1BookType === "romanzo" ? "classica a tre atti" : "moduli pratici");
+    }
+    if (!wordsPerChapter.trim()) {
+      setWordsPerChapter(bookLength === "short" ? "1200-1800" : bookLength === "long" ? "2200-3000" : "1800-2500");
+    }
+    toast.success("Struttura suggerita applicata.");
+  };
+
+  const generateNarrativeFields = () => {
+    const patch = buildWizardAutofillPatch(buildConfig(), textInference, {
+      narrativePromise,
+      commercialGoal,
+      coreConflict,
+      setting,
+      openingHook,
+      genreManuallyLocked,
+      genreDetectionAccepted,
+    });
+    if (patch.narrativePromise) setNarrativePromise(patch.narrativePromise);
+    if (patch.coreConflict) setCoreConflict(patch.coreConflict);
+    if (patch.setting) setSetting(patch.setting);
+    if (patch.openingHook) setOpeningHook(patch.openingHook);
+    const analysis = analyzeConceptFromIdea(idea);
+    if (analysis.protagonist && !protagonist.trim()) setProtagonist(analysis.protagonist);
+    if (analysis.setting && !setting.trim()) setSetting(analysis.setting);
+    if (!pov.trim()) setPov("terza persona limitata");
+    setNarrativeAutoApproved(true);
+    toast.success("Scheda narrativa completata.");
+  };
+
+  const generateLimitsFields = () => {
+    if (!canonRules.trim()) {
+      setCanonRules("Mantieni coerenza di voce, POV e promessa emotiva. Nessun salto di tono senza motivazione narrativa.");
+    }
+    toast.success("Regole canoniche base applicate.");
+  };
+
+  const generateMarketFields = () => {
+    if (!commercialGoal.trim()) setCommercialGoal(textInference.commercialGoal);
+    if (!shortDescription.trim()) setShortDescription(textInference.narrativePromise.slice(0, 220));
+    if (!kdpCategory.trim()) setKdpCategory(category);
+    if (!marketingPromise.trim()) setMarketingPromise(textInference.narrativePromise);
+    toast.success("Dati mercato suggeriti.");
+  };
+
+  const runExtendedTitleSuggestions = async () => {
+    if (!idea.trim() && !title.trim()) {
+      toast.error("Scrivi almeno un'idea o un titolo di partenza.");
+      return;
+    }
+    setGeneratingGuidedField("titles");
+    try {
+      const titleForgeContext: TitleForgeContext = {
+        bookTypeId,
+        level1BookType,
+        forgePresetId,
+        category,
+        subcategory,
+        subgenre,
+      };
+      const merged = ["a", "b", "c"].flatMap((salt) =>
+        generateWizardTitleProposals(title, idea, language, salt, titleForgeContext),
+      );
+      const unique = merged.filter(
+        (proposal, index, list) =>
+          list.findIndex((item) => item.title.toLowerCase() === proposal.title.toLowerCase()) === index,
+      ).slice(0, 10);
+      setTitleProposals(unique);
+      toast.success(`${unique.length} titoli suggeriti.`);
+    } finally {
+      setGeneratingGuidedField(null);
+    }
+  };
+
   const goNext = async () => {
+    if (!currentStepComplete && step < 6) {
+      toast.error(stepAdvanceHint || "Completa questo step prima di andare avanti.");
+      return;
+    }
     if (step === 0) {
-      if (!genre) {
-        const inf = textInference;
-        if (inf.confidence !== "low") applyInference(inf);
+      if (!genre && !bookTypeId) {
+        toast.error("Scegli genere e formato, oppure accetta la proposta di Scriptora dall'idea.");
+        return;
       }
     }
     if (step === 1) {
@@ -1838,6 +2203,11 @@ const persistDraft = useCallback(() => {
       return;
     }
     if (step === 6) {
+      if (!isNarrativeReadyForBlueprint(forgeWizardState)) {
+        toast.error(NARRATIVE_BLUEPRINT_BLOCKED_MESSAGE);
+        return;
+      }
+
       if (useGuidedInterview && !dnaConfirmed) {
         toast.error("Conferma il DNA del libro prima di generare il blueprint.");
         setShowAdvancedForge(true);
@@ -1866,7 +2236,7 @@ const persistDraft = useCallback(() => {
         }
       }
 
-      const preflight = runBlueprintPreflight(buildConfig(resolvedForgeHandoff), identityDraft);
+      const preflight = runBlueprintPreflight(buildConfig(resolvedForgeHandoff), identityDraft, forgeWizardState);
       setPreflightResult(preflight);
       if (!preflight.ready) {
         toast.message(preflight.humanSummary);
@@ -1964,6 +2334,15 @@ const persistDraft = useCallback(() => {
     ] || BLUEPRINT_FORGE_COPY[0];
 
   const finishApproved = async () => {
+    const writerGate = canOpenWriter(forgeWizardState);
+    if (!writerGate.ok) {
+      toast.error(writerGate.message);
+      return;
+    }
+    if (!approvalReady) {
+      toast.error("Completa la checklist di approvazione prima di aprire Writer.");
+      return;
+    }
     if (!blueprintPreview) {
       toast.error("Genera e rivedi il blueprint prima di approvare.");
       return;
@@ -2001,7 +2380,9 @@ const persistDraft = useCallback(() => {
       return;
     }
     const local = inferGenreFromText(title, idea);
-    applyInference(local);
+    if (!shouldBlockCloudGenreMutation(genreMutationContext)) {
+      applyInference(local);
+    }
     if (!onDetectIntent) return;
     try {
       const detected = await onDetectIntent(idea.trim(), language);
@@ -2011,7 +2392,10 @@ const persistDraft = useCallback(() => {
         setSubtitle(detected.suggestedSubtitles?.[best] || "");
       }
       if (detected?.numberOfChapters) setChapters(detected.numberOfChapters);
-      if (detected?.genre || detected?.subcategory) {
+      if (
+        !shouldBlockCloudGenreMutation(genreMutationContext)
+        && (detected?.genre || detected?.subcategory)
+      ) {
         const merged = inferGenreFromText(title || detected.suggestedTitles?.[0] || "", `${idea} ${detected.genre || ""} ${detected.subcategory || ""}`);
         applyInference(merged);
       }
@@ -2085,7 +2469,51 @@ const persistDraft = useCallback(() => {
               touchAction: "pan-y",
             }}
           >
-          {step === 0 && (
+          {!forgePresetId && !postDnaForge && !useGuidedInterview && (
+            <div className="mb-4">
+              <GuidedDecisionRail
+                activeIndex={step}
+                onJump={jumpToWizardStep}
+                forgeState={forgeWizardState}
+              />
+            </div>
+          )}
+
+          {useGuidedInterview && step <= 1 && !bookForgeHandoff ? (
+            <div className="space-y-4">
+              <WelcomeForgePanel
+                header={(
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-semibold text-violet-50">Intervista guidata Scriptora</p>
+                      <p className="mt-1 text-xs leading-5 text-white/55">
+                        Rispondi alle domande: Scriptora blocca genere e DNA prima del wizard manuale.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setUseGuidedInterview(false)}
+                      className="rounded-xl border border-white/15 px-3 py-1.5 text-xs font-semibold text-white/75"
+                    >
+                      Torna al wizard manuale
+                    </button>
+                  </div>
+                )}
+              >
+                <GuidedInterviewPanel
+                  selectedGenre={genre}
+                  language={language}
+                  penName={authorName}
+                  authorName={authorName}
+                  variant={embeddedInMobileForge || isMobileViewport ? "mobile" : "desktop"}
+                  unifiedScroll={embeddedInMobileForge}
+                  onConfirmDna={handleForgeDnaConfirm}
+                />
+              </WelcomeForgePanel>
+            </div>
+          ) : null}
+
+          {!useGuidedInterview && step === 0 && (
             <div className="space-y-4">
               <div>
                 <h2 className="text-xl font-semibold text-white">
@@ -2100,7 +2528,25 @@ const persistDraft = useCallback(() => {
                 </p>
               </div>
 
-              {!forgePresetId && <GuidedDecisionRail activeIndex={0} />}
+              {!bookForgeHandoff && (
+                <WelcomeForgePanel
+                  header={(
+                    <p className="mb-2 text-sm font-semibold text-violet-50">Preferisci un percorso dialogato?</p>
+                  )}
+                >
+                  <p className="text-xs leading-5 text-white/55">
+                    L&apos;intervista guidata blocca genere e DNA del libro prima di compilare i campi manualmente.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setUseGuidedInterview(true)}
+                    className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-xl bg-violet-500 px-4 py-2 text-xs font-bold text-white"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Avvia intervista guidata
+                  </button>
+                </WelcomeForgePanel>
+              )}
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block space-y-1.5">
@@ -2112,12 +2558,7 @@ const persistDraft = useCallback(() => {
                       setLevel1BookType(nextLevel);
                       const firstType = getVisibleBookTypesForLevel1(nextLevel)[0];
                       if (firstType) {
-                        setBookTypeId(firstType.id);
-                        setGenre(firstType.genre);
-                        setCategory(firstType.category);
-                        setSubcategory(firstType.defaultSubcategory);
-                        setSubgenre(firstType.defaultSubcategory);
-                        setSubchaptersEnabled(firstType.defaultSubchapters);
+                        applyStudioGenre(firstType.id, { force: true, lockGenre: true });
                       }
                     }}
                     className={inputClass}
@@ -2152,8 +2593,22 @@ const persistDraft = useCallback(() => {
                 </label>
 
                 <label className="block space-y-1.5 sm:col-span-2">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Titolo provvisorio</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Titolo provvisorio</span>
+                    <GuidedFieldActions
+                      compact
+                      hasValue={Boolean(title.trim())}
+                      generating={generatingGuidedField === "titles" || generatingTitles}
+                      onWrite={() => titleInputRef.current?.focus()}
+                      onGenerate={() => void runExtendedTitleSuggestions()}
+                      onSuggest={() => void runExtendedTitleSuggestions()}
+                      onRegenerate={() => void runMagicalTitleGeneration()}
+                      showRegenerate={Boolean(title.trim())}
+                      generateLabel="Suggerisci titoli"
+                    />
+                  </div>
                   <input
+                    ref={titleInputRef}
                     value={title}
                     readOnly={titleLockedByCharacterStudio}
                     onChange={(event) => setTitle(event.target.value)}
@@ -2163,8 +2618,20 @@ const persistDraft = useCallback(() => {
                 </label>
 
                 <label className="block space-y-1.5 sm:col-span-2">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Idea del libro</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Idea del libro</span>
+                    <GuidedFieldActions
+                      compact
+                      hasValue={Boolean(idea.trim())}
+                      generating={generatingGuidedField === "idea"}
+                      onWrite={() => ideaInputRef.current?.focus()}
+                      onGenerate={() => void generateIdeaFromContext()}
+                      onRegenerate={() => void generateIdeaFromContext()}
+                      showRegenerate={Boolean(idea.trim())}
+                    />
+                  </div>
                   <textarea
+                    ref={ideaInputRef}
                     value={idea}
                     onChange={(event) => setIdea(event.target.value)}
                     rows={6}
@@ -2173,6 +2640,30 @@ const persistDraft = useCallback(() => {
                   />
                 </label>
               </div>
+
+              {shortIdeaHypotheses.length > 0 && !genreManuallyLocked && !genreDetectionAccepted && (
+                <ShortIdeaDetectionCard
+                  hypotheses={shortIdeaHypotheses}
+                  expanding={generatingGuidedField === "idea"}
+                  onAskQuestions={() => setUseGuidedInterview(true)}
+                  onExpand={() => void generateIdeaFromContext()}
+                  onDetectAnyway={() => {
+                    setShortIdeaForceDetect(true);
+                    toast.message("Rilevamento genere attivato per idea breve.");
+                  }}
+                />
+              )}
+
+              {pendingAutoDetection && (
+                <AutoDetectionProposalCard
+                  proposal={pendingAutoDetection}
+                  onAccept={acceptAutoDetection}
+                  onKeep={() => {
+                    setPendingAutoDetection(null);
+                    setAutoDetectionDismissed(true);
+                  }}
+                />
+              )}
 
               {(title.trim() || idea.trim()) && (
                 <div
@@ -2248,7 +2739,7 @@ const persistDraft = useCallback(() => {
             </div>
           )}
 
-          {step === 1 && (
+          {!useGuidedInterview && step === 1 && (
             <div className="space-y-4">
               <div>
                 <h2 className="text-xl font-semibold text-white">Stile e lettore</h2>
@@ -2257,11 +2748,48 @@ const persistDraft = useCallback(() => {
                 </p>
               </div>
 
+              {!bookForgeHandoff && (
+                <WelcomeForgePanel
+                  header={<p className="mb-2 text-sm font-semibold text-violet-50">Vuoi rifinire il DNA con Scriptora?</p>}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setUseGuidedInterview(true)}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-violet-300/35 bg-violet-500/15 px-4 py-2 text-xs font-bold text-violet-50"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Continua con intervista guidata
+                  </button>
+                </WelcomeForgePanel>
+              )}
+
               <div className="grid gap-3 sm:grid-cols-2">
-                <input value={targetReader} onChange={(e) => setTargetReader(e.target.value)} placeholder="Target lettore" className={inputClass} />
+                {!targetReader.trim() ? (
+                  <div className="sm:col-span-2">
+                    <GuidedEmptyState
+                      missingLabel="pubblico ideale"
+                      description="Scriptora può dedurlo da genere, titolo e idea."
+                      onGenerate={generateReaderToneFields}
+                      onWrite={() => targetReaderInputRef.current?.focus()}
+                    />
+                  </div>
+                ) : (
+                  <input ref={targetReaderInputRef} value={targetReader} onChange={(e) => setTargetReader(e.target.value)} placeholder="Target lettore" className={inputClass} />
+                )}
                 <input value={targetAge} onChange={(e) => setTargetAge(e.target.value)} placeholder="Eta target" className={inputClass} />
                 <input value={languageLevel} onChange={(e) => setLanguageLevel(e.target.value)} placeholder="Livello linguistico" className={inputClass} />
-                <input value={tone} onChange={(e) => setTone(e.target.value)} placeholder="Tono editoriale" className={inputClass} />
+                {!tone.trim() ? (
+                  <div className="sm:col-span-2">
+                    <GuidedEmptyState
+                      missingLabel="tono editoriale"
+                      description="Scegli un preset sotto o lascia che Scriptora lo proponga."
+                      onGenerate={generateReaderToneFields}
+                      onWrite={() => toneInputRef.current?.focus()}
+                    />
+                  </div>
+                ) : (
+                  <input ref={toneInputRef} value={tone} onChange={(e) => setTone(e.target.value)} placeholder="Tono editoriale" className={inputClass} />
+                )}
               </div>
 
               <div className="flex flex-wrap gap-2">
@@ -2274,8 +2802,21 @@ const persistDraft = useCallback(() => {
               </div>
 
               <label className="block space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Titolo reale</span>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Titolo reale</span>
+                  <GuidedFieldActions
+                    compact
+                    hasValue={Boolean(title.trim())}
+                    generating={generatingGuidedField === "titles" || generatingTitles}
+                    onWrite={() => titleInputRef.current?.focus()}
+                    onGenerate={() => void runMagicalTitleGeneration()}
+                    onSuggest={() => void runExtendedTitleSuggestions()}
+                    onRegenerate={() => void runMagicalTitleGeneration()}
+                    showRegenerate={Boolean(title.trim())}
+                  />
+                </div>
                 <input
+                  ref={titleInputRef}
                   value={title}
                   readOnly={titleLockedByCharacterStudio}
                   onChange={(e) => setTitle(e.target.value)}
@@ -2395,14 +2936,32 @@ const persistDraft = useCallback(() => {
             </div>
           )}
 
-          {step === 2 && (
+          {!useGuidedInterview && step === 2 && (
             <div className="space-y-4">
-              <div>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
                 <h2 className="text-xl font-semibold text-white">Struttura</h2>
                 <p className="mt-1 text-sm leading-6 text-white/60">
                   Scegli dimensione, capitoli, sottocapitoli e parti editoriali prima del blueprint.
                 </p>
+                </div>
+                <GuidedFieldActions
+                  compact
+                  hasValue={Boolean(structureType.trim() && wordsPerChapter.trim() && chapters >= 1)}
+                  onGenerate={generateStructureFields}
+                  onRegenerate={generateStructureFields}
+                  showRegenerate
+                  generateLabel="Suggerisci struttura"
+                />
               </div>
+              {!structureType.trim() && !wordsPerChapter.trim() && (
+                <GuidedEmptyState
+                  missingLabel="tipo struttura e parole per capitolo"
+                  description="Scriptora può proporre una struttura coerente con genere e lunghezza."
+                  onGenerate={generateStructureFields}
+                  onWrite={() => setStructureType("classica a tre atti")}
+                />
+              )}
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block space-y-1.5">
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Lunghezza</span>
@@ -2456,13 +3015,33 @@ const persistDraft = useCallback(() => {
             </div>
           )}
 
-          {step === 3 && (
+          {!useGuidedInterview && step === 3 && (
             <div className="space-y-4">
               <div>
                 <h2 className="text-xl font-semibold text-white">Narrativa</h2>
                 <p className="mt-1 text-sm leading-6 text-white/60">
                   Compila la scheda libro: personaggi quando servono, ma sempre promessa, hook, ambientazione e regole di racconto.
                 </p>
+              </div>
+
+              {(!narrativePromise.trim() && !coreConflict.trim() && !openingHook.trim()) && (
+                <GuidedEmptyState
+                  missingLabel="promessa narrativa, conflitto o hook"
+                  description="Parti dall'idea: Scriptora può estrarre protagonista, ambientazione e tensione."
+                  onGenerate={generateNarrativeFields}
+                  onWrite={() => setNarrativePromise("")}
+                />
+              )}
+
+              <div className="flex justify-end">
+                <GuidedFieldActions
+                  compact
+                  hasValue={Boolean(narrativePromise.trim() || coreConflict.trim())}
+                  onGenerate={generateNarrativeFields}
+                  onRegenerate={generateNarrativeFields}
+                  showRegenerate
+                  generateLabel="Genera scheda"
+                />
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
@@ -2539,14 +3118,33 @@ const persistDraft = useCallback(() => {
             </div>
           )}
 
-          {step === 4 && (
+          {!useGuidedInterview && step === 4 && (
             <div className="space-y-4">
-              <div>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
                 <h2 className="text-xl font-semibold text-white">Limiti e regole</h2>
                 <p className="mt-1 text-sm leading-6 text-white/60">
                   Blocca canone, contenuti vietati e soglie creative prima che Scriptora generi la struttura.
                 </p>
+                </div>
+                <GuidedFieldActions
+                  compact
+                  hasValue={Boolean(canonRules.trim() || forbiddenContent.trim())}
+                  onGenerate={generateLimitsFields}
+                  onRegenerate={generateLimitsFields}
+                  showRegenerate
+                  generateLabel="Regole base"
+                />
               </div>
+
+              {!canonRules.trim() && !forbiddenContent.trim() && (
+                <GuidedEmptyState
+                  missingLabel="regole canoniche o contenuti vietati"
+                  description="Puoi partire da un set base e poi personalizzare."
+                  onGenerate={generateLimitsFields}
+                  onWrite={() => setCanonRules("")}
+                />
+              )}
 
               <textarea value={canonRules} onChange={(event) => setCanonRules(event.target.value)} rows={3} placeholder="Regole canoniche: cosa deve restare sempre vero nel libro" className={inputClass} />
               <textarea value={forbiddenContent} onChange={(event) => setForbiddenContent(event.target.value)} rows={3} placeholder="Cose vietate: elementi, svolte o contenuti da non generare" className={inputClass} />
@@ -2602,14 +3200,33 @@ const persistDraft = useCallback(() => {
             </div>
           )}
 
-          {step === 5 && (
+          {!useGuidedInterview && step === 5 && (
             <div className="space-y-4">
-              <div>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
                 <h2 className="text-xl font-semibold text-white">Mercato e pubblicazione</h2>
                 <p className="mt-1 text-sm leading-6 text-white/60">
                   Aggiungi destinazione commerciale e dati utili per export, KDP Launch e readiness.
                 </p>
+                </div>
+                <GuidedFieldActions
+                  compact
+                  hasValue={Boolean(commercialGoal.trim() && shortDescription.trim())}
+                  onGenerate={generateMarketFields}
+                  onRegenerate={generateMarketFields}
+                  showRegenerate
+                  generateLabel="Suggerisci mercato"
+                />
               </div>
+
+              {(!commercialGoal.trim() && !shortDescription.trim()) && (
+                <GuidedEmptyState
+                  missingLabel="obiettivo commerciale e descrizione breve"
+                  description="Scriptora può derivarli da promessa narrativa e genere."
+                  onGenerate={generateMarketFields}
+                  onWrite={() => setCommercialGoal("")}
+                />
+              )}
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block space-y-1.5">
@@ -2698,7 +3315,7 @@ const persistDraft = useCallback(() => {
                 italianUi={language === "Italian"}
               />
             </div>
-          ) : step === 6 ? (
+          ) : !useGuidedInterview && step === 6 ? (
             <div className="space-y-4 text-center">
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-sky-300/25 bg-sky-400/10 shadow-[0_0_40px_rgba(56,189,248,0.16)]">
                 <BookOpen className="h-6 w-6 text-sky-200" />
@@ -2745,10 +3362,11 @@ const persistDraft = useCallback(() => {
                 </div>
               )}
             </div>
-          ) : step === 7 && blueprintPreview ? (
+          ) : !useGuidedInterview && step === 7 && blueprintPreview ? (
             <div className="space-y-5">
               <h2 className="text-2xl font-semibold text-white">Approvazione autore</h2>
-              <p className="text-sm text-white/65">Rivedi e modifica i titoli prima dell'approvazione.</p>
+              <p className="text-sm text-white/65">Rivedi blueprint e checklist prima di aprire Writer.</p>
+              <StepApprovalChecklist items={approvalChecklistItems} />
             </div>
           ) : null}
         </div>
@@ -2762,6 +3380,9 @@ const persistDraft = useCallback(() => {
           setStep={setStep}
           goNext={goNext}
           finishApproved={finishApproved}
+          canAdvance={currentStepComplete || step >= 6}
+          advanceHint={stepAdvanceHint}
+          approvalReady={approvalReady}
         />
       </div>
 
@@ -2795,7 +3416,15 @@ const persistDraft = useCallback(() => {
   );
 }
 
-function GuidedDecisionRail({ activeIndex }: { activeIndex: number }) {
+function GuidedDecisionRail({
+  activeIndex,
+  onJump,
+  forgeState,
+}: {
+  activeIndex: number;
+  onJump: (step: number) => void;
+  forgeState: BookForgeWizardState;
+}) {
   return (
     <div className="rounded-2xl border border-white/12 bg-white/[0.035] p-3">
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -2805,18 +3434,28 @@ function GuidedDecisionRail({ activeIndex }: { activeIndex: number }) {
         </span>
       </div>
       <div className="flex gap-1.5 overflow-x-auto pb-1">
-        {BOOK_CREATION_DECISIONS.map((decision, index) => (
-          <span
-            key={decision}
-            className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${
-              index <= activeIndex
-                ? "border-sky-300/40 bg-sky-300/12 text-sky-100"
-                : "border-white/10 bg-white/[0.04] text-white/42"
-            }`}
-          >
-            {index + 1}. {decision}
-          </span>
-        ))}
+        {BOOK_CREATION_DECISIONS.map((decision, index) => {
+          const reachable = index <= activeIndex || canAdvanceToStep(index, forgeState);
+          return (
+            <button
+              key={decision}
+              type="button"
+              disabled={!reachable}
+              onClick={() => onJump(index)}
+              className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+                index === activeIndex
+                  ? "border-sky-300/60 bg-sky-300/20 text-sky-50"
+                  : index < activeIndex
+                    ? "border-sky-300/40 bg-sky-300/12 text-sky-100 hover:bg-sky-300/18"
+                    : reachable
+                      ? "border-white/15 bg-white/[0.06] text-white/65 hover:bg-white/10"
+                      : "border-white/10 bg-white/[0.04] text-white/35 cursor-not-allowed"
+              }`}
+            >
+              {index + 1}. {decision}
+            </button>
+          );
+        })}
       </div>
       <p className="mt-2 text-[11px] leading-4 text-white/52">
         Ogni scelta alimenta blueprint, personaggi, struttura, mercato ed export. Puoi scrivere tu o usare gli starter.

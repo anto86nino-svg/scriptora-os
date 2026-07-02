@@ -2,6 +2,16 @@ import type { AuthorIdentity, BookConfig } from "@/types/book";
 import { isUserAuthorIdentityConfigured } from "@/lib/author-identity";
 import { inferGenreFromText, type GenreInference } from "./genre-inference";
 import { validateConfigCoherence } from "@/lib/book-config-engine";
+import { wizardInferenceForAutofill } from "@/lib/book-forge/genre-lock-wizard";
+import {
+  shouldBlockAutofillGenreMutation,
+  stripGenreFieldsFromAutofillPatch,
+} from "@/lib/book-forge/genre-priority";
+import {
+  NARRATIVE_BLUEPRINT_BLOCKED_MESSAGE,
+  type BookForgeWizardState,
+  isNarrativeReadyForBlueprint,
+} from "@/lib/book-forge/step-completion";
 
 export type PreflightIssue = {
   id: string;
@@ -24,9 +34,24 @@ function hasText(value: unknown, min = 2): boolean {
 export function runBlueprintPreflight(
   config: BookConfig,
   authorIdentity?: AuthorIdentity | null,
+  narrativeState?: BookForgeWizardState,
 ): BlueprintPreflightResult {
   const issues: PreflightIssue[] = [];
   const identity = authorIdentity || config.authorIdentity || null;
+
+  if (narrativeState && !isNarrativeReadyForBlueprint(narrativeState)) {
+    return {
+      ready: false,
+      issues: [{
+        id: "narrative",
+        field: "narrative",
+        message: NARRATIVE_BLUEPRINT_BLOCKED_MESSAGE,
+        humanHint: "Completa protagonista, conflitto, obiettivo e struttura nello step Narrativa.",
+        autoFillable: true,
+      }],
+      humanSummary: NARRATIVE_BLUEPRINT_BLOCKED_MESSAGE,
+    };
+  }
 
   if (!hasText(config.title) || config.title === "Romanzo senza titolo") {
     issues.push({
@@ -182,30 +207,67 @@ export function buildWizardAutofillPatch(
     coreConflict?: string;
     setting?: string;
     openingHook?: string;
+    genreManuallyLocked?: boolean;
+    genreDetectionAccepted?: boolean;
   },
 ): WizardAutofillPatch {
+  const dominantInference = wizardInferenceForAutofill(
+    {
+      title: config.title,
+      idea: config.idea,
+      genre: config.genre,
+      subgenre: config.subgenre,
+      bookTypeId: config.bookTypeId,
+      category: config.category,
+      subcategory: config.subcategory,
+      bookFormat: config.bookFormat,
+    },
+    extras?.genreManuallyLocked ?? false,
+  );
+  const locked = {
+    ...inference,
+    ...dominantInference,
+    genre: dominantInference.genre || inference.genre,
+    bookTypeId: dominantInference.bookTypeId || inference.bookTypeId,
+    category: dominantInference.category || inference.category,
+    subcategory: dominantInference.subcategory || inference.subcategory,
+    subgenre: dominantInference.subgenre || inference.subgenre,
+    bookFormat: dominantInference.bookFormat || inference.bookFormat,
+  };
+
   const patch: WizardAutofillPatch = {};
 
   if (!hasText(config.title) || config.title === "Romanzo senza titolo") {
     /* title left to magical generator */
   }
-  if (!hasText(config.genre)) patch.genre = inference.genre;
-  if (!hasText(config.category)) patch.category = inference.category;
-  if (!hasText(config.subcategory)) patch.subcategory = inference.subcategory;
-  if (!hasText(config.subgenre)) patch.subgenre = inference.subgenre;
-  if (!hasText(config.tone, 8)) patch.tone = inference.tone;
-  if (!hasText(config.targetReader, 12)) patch.targetReader = inference.targetReader;
-  if (!config.numberOfChapters) patch.chapters = inference.suggestedChapters;
-  patch.bookTypeId = inference.bookTypeId;
+  const genreLocked = shouldBlockAutofillGenreMutation({
+    genreManuallyLocked: extras?.genreManuallyLocked,
+    genreDetectionAccepted: extras?.genreDetectionAccepted,
+  });
+
+  if (!genreLocked) {
+    if (!hasText(config.genre)) patch.genre = locked.genre;
+    if (!hasText(config.category)) patch.category = locked.category;
+    if (!hasText(config.subcategory)) patch.subcategory = locked.subcategory;
+    if (!hasText(config.subgenre)) patch.subgenre = locked.subgenre;
+    patch.bookTypeId = locked.bookTypeId;
+  }
+
+  if (!hasText(config.tone, 8)) patch.tone = locked.tone;
+  if (!hasText(config.targetReader, 12)) patch.targetReader = locked.targetReader;
+  if (!config.numberOfChapters) patch.chapters = locked.suggestedChapters;
 
   const promiseMissing = !hasText(config.idea, 20) && !hasText(config.subtitle, 8);
   if (promiseMissing) {
-    patch.narrativePromise = extras?.narrativePromise || inference.narrativePromise;
-    patch.commercialGoal = extras?.commercialGoal || inference.commercialGoal;
-    if (!hasText(config.subtitle, 8)) patch.subtitle = inference.narrativePromise.slice(0, 90);
+    patch.narrativePromise = extras?.narrativePromise || locked.narrativePromise;
+    patch.commercialGoal = extras?.commercialGoal || locked.commercialGoal;
+    if (!hasText(config.subtitle, 8)) patch.subtitle = locked.narrativePromise.slice(0, 90);
   }
 
-  return patch;
+  return stripGenreFieldsFromAutofillPatch(patch, {
+    genreManuallyLocked: extras?.genreManuallyLocked,
+    genreDetectionAccepted: extras?.genreDetectionAccepted,
+  });
 }
 
 export function humanizeBlueprintError(error: unknown, config: BookConfig): string {
