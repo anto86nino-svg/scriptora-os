@@ -12,6 +12,29 @@ const SUPABASE_KEY =
 /** True when VITE_SUPABASE_* were present at build/dev time. */
 export const isSupabaseConfigured = !!(SUPABASE_URL && SUPABASE_KEY);
 
+/** Captured at module load before detectSessionInUrl can strip ?code= from the URL. */
+export function captureOAuthCallbackFromUrl() {
+  if (typeof window === "undefined") return { hasCallback: false, error: "", code: "" };
+  const search = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const code = search.get("code") || "";
+  const error =
+    search.get("error_description") ||
+    search.get("error") ||
+    hash.get("error_description") ||
+    hash.get("error") ||
+    "";
+  const hasCallback =
+    !!code ||
+    search.has("error") ||
+    search.has("error_description") ||
+    hash.has("error") ||
+    hash.has("error_description");
+  return { hasCallback, error, code };
+}
+
+export const frozenOAuthCallback = captureOAuthCallbackFromUrl();
+
 // Guard: strip ALL implicit-flow hash tokens BEFORE createClient runs.
 // flowType:"pkce" never uses hash-fragment access_token/refresh_token.
 // Any such tokens in the hash are either a stale implicit-flow redirect or

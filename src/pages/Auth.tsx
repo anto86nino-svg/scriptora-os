@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, Link, type NavigateFunction } from "react-router-dom";
 import { Sparkles, Mail, Lock, Loader2, ArrowLeft } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, frozenOAuthCallback } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { enableDevMode } from "@/lib/dev-mode";
 import { Input } from "@/components/ui/input";
@@ -152,6 +152,29 @@ function clearAuthCallbackUrl() {
   window.history.replaceState(window.history.state, "", window.location.pathname || "/auth");
 }
 
+const OAUTH_COMPLETION_TIMEOUT_MS = 15_000;
+const OAUTH_SESSION_POLL_MS = 250;
+const OAUTH_SESSION_POLL_BUDGET_MS = 3_000;
+
+/** Poll for detectSessionInUrl, then fall back to explicit PKCE exchange. */
+async function tryEstablishSessionFromOAuthCallback(code: string) {
+  const deadline = Date.now() + OAUTH_SESSION_POLL_BUDGET_MS;
+  while (Date.now() < deadline) {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    if (data.session?.user) return data.session;
+    await new Promise((resolve) => window.setTimeout(resolve, OAUTH_SESSION_POLL_MS));
+  }
+
+  const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+  if (exchangeError) {
+    const { data: retryData } = await supabase.auth.getSession();
+    if (retryData.session?.user) return retryData.session;
+    throw exchangeError;
+  }
+  return exchanged.session ?? null;
+}
+
 /**
  * Pagina /auth — Login + Registrazione.
  * Email + password (verifica obbligatoria) e Google OAuth.
@@ -165,19 +188,28 @@ export default function AuthPage() {
   const { user, loading } = useAuth();
   const redirectingRef = useRef(false);
   const callbackHandledRef = useRef(false);
+  // Freeze callback params on first render — Supabase may strip ?code= during bootstrap
+  // before this effect runs, which previously left authenticating stuck forever.
+  const oauthCallbackRef = useRef(frozenOAuthCallback);
 
   const [tab, setTab] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [authenticating, setAuthenticating] = useState(() => getAuthCallbackState().hasCallback);
+  const [authenticating, setAuthenticating] = useState(() => oauthCallbackRef.current.hasCallback);
   const [logoClicks, setLogoClicks] = useState(0);
+
+  const releaseOAuthLoading = useCallback(() => {
+    setAuthenticating(false);
+    setBusy(false);
+  }, []);
 
   const goToDashboard = useCallback(() => {
     if (redirectingRef.current) return;
     redirectingRef.current = true;
     clearAuthCallbackUrl();
+    releaseOAuthLoading();
     try {
       sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
     } catch {
@@ -192,13 +224,15 @@ export default function AuthPage() {
     }
     requestAppEntryLoading();
     redirectToDashboard(navigate);
-  }, [navigate]);
+  }, [navigate, releaseOAuthLoading]);
 
   useEffect(() => {
-    const { hasCallback, error, code } = getAuthCallbackState();
+    const { hasCallback, error, code } = oauthCallbackRef.current;
+    const liveCallback = getAuthCallbackState();
     logAuthDebug("Auth mounted", {
       href: typeof window !== "undefined" ? window.location.href : null,
-      hasCallback,
+      frozenHasCallback: hasCallback,
+      liveHasCallback: liveCallback.hasCallback,
       hasCode: !!code,
       hasError: !!error,
       error,
@@ -209,8 +243,7 @@ export default function AuthPage() {
       console.warn(AUTH_DEBUG_PREFIX, "OAuth callback error", { error });
       toast.error(tt("google_access_incomplete_with_error", { message: error }));
       clearAuthCallbackUrl();
-      setAuthenticating(false);
-      setBusy(false);
+      releaseOAuthLoading();
       return;
     }
 
@@ -222,47 +255,45 @@ export default function AuthPage() {
     let cancelled = false;
     let timeoutId: number | undefined;
 
-    const finishIfSessionExists = async (allowFallbackToast: boolean) => {
-      const { data, error: sessionError } = await supabase.auth.getSession();
-      logAuthDebug("getSession result", {
-        allowFallbackToast,
-        session: summarizeSession(data.session),
-        error: summarizeAuthError(sessionError),
-      });
+    const failOAuth = (message?: string) => {
       if (cancelled) return;
-      if (sessionError) {
-        console.error(AUTH_DEBUG_PREFIX, "Session check failed", summarizeAuthError(sessionError));
+      if (timeoutId) window.clearTimeout(timeoutId);
+      clearAuthCallbackUrl();
+      releaseOAuthLoading();
+      try {
+        sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
+      } catch {
+        /* private mode */
+      }
+      if (message) {
+        toast.error(tt("google_access_incomplete_with_error", { message }));
+      } else {
         toast.error(t("google_access_incomplete"));
-        clearAuthCallbackUrl();
-        setAuthenticating(false);
-        setBusy(false);
-        return;
       }
-      if (data.session?.user) {
-        goToDashboard();
-        return;
-      }
-      if (hasCallback) {
-        timeoutId = window.setTimeout(async () => {
-          const { data: lateData, error: lateError } = await supabase.auth.getSession();
-          logAuthDebug("late getSession result", {
-            session: summarizeSession(lateData.session),
-            error: summarizeAuthError(lateError),
-          });
-          if (cancelled) return;
-          if (lateData.session?.user) {
-            goToDashboard();
-            return;
-          }
-          if (lateError) console.error(AUTH_DEBUG_PREFIX, "Late session check failed", summarizeAuthError(lateError));
-          clearAuthCallbackUrl();
-          setAuthenticating(false);
-          setBusy(false);
-          if (allowFallbackToast) {
-            toast.error(t("google_access_incomplete"));
-          }
-        }, 12000);
-      }
+    };
+
+    const finishWithSession = () => {
+      if (cancelled) return;
+      if (timeoutId) window.clearTimeout(timeoutId);
+      goToDashboard();
+    };
+
+    const scheduleOAuthTimeout = () => {
+      if (!hasCallback || timeoutId) return;
+      timeoutId = window.setTimeout(async () => {
+        const { data: lateData, error: lateError } = await supabase.auth.getSession();
+        logAuthDebug("oauth completion timeout", {
+          session: summarizeSession(lateData.session),
+          error: summarizeAuthError(lateError),
+        });
+        if (cancelled) return;
+        if (lateData.session?.user) {
+          finishWithSession();
+          return;
+        }
+        if (lateError) console.error(AUTH_DEBUG_PREFIX, "Late session check failed", summarizeAuthError(lateError));
+        failOAuth();
+      }, OAUTH_COMPLETION_TIMEOUT_MS);
     };
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, newSession) => {
@@ -270,19 +301,35 @@ export default function AuthPage() {
         event: _event,
         session: summarizeSession(newSession),
       });
-      if (newSession?.user) goToDashboard();
+      if (newSession?.user) finishWithSession();
     });
 
     const completeOAuthCallback = async () => {
-      if (!hasCallback || callbackHandledRef.current) {
-        await finishIfSessionExists(false);
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      logAuthDebug("getSession result", {
+        session: summarizeSession(data.session),
+        error: summarizeAuthError(sessionError),
+      });
+      if (cancelled) return;
+      if (sessionError) {
+        console.error(AUTH_DEBUG_PREFIX, "Session check failed", summarizeAuthError(sessionError));
+        failOAuth();
+        return;
+      }
+      if (data.session?.user) {
+        finishWithSession();
+        return;
+      }
+
+      if (!hasCallback) {
+        releaseOAuthLoading();
         return;
       }
 
       const callbackFingerprint = code || error || "oauth-callback";
       try {
         if (sessionStorage.getItem(OAUTH_CALLBACK_HANDLED_KEY) === callbackFingerprint) {
-          await finishIfSessionExists(false);
+          scheduleOAuthTimeout();
           return;
         }
         sessionStorage.setItem(OAUTH_CALLBACK_HANDLED_KEY, callbackFingerprint);
@@ -290,29 +337,41 @@ export default function AuthPage() {
         /* private mode */
       }
 
+      if (callbackHandledRef.current) {
+        scheduleOAuthTimeout();
+        return;
+      }
       callbackHandledRef.current = true;
-      logAuthDebug("OAuth callback waiting for session", { hasCode: !!code, detectSessionInUrl: true });
 
-      // With detectSessionInUrl + PKCE, Supabase exchanges ?code= during client bootstrap.
-      // Wait for the persisted session instead of calling exchangeCodeForSession again.
-      await finishIfSessionExists(true);
+      logAuthDebug("OAuth callback resolving session", { hasCode: !!code, detectSessionInUrl: true });
+
+      if (code) {
+        try {
+          const session = await tryEstablishSessionFromOAuthCallback(code);
+          logAuthDebug("OAuth session established", { session: summarizeSession(session) });
+          if (cancelled) return;
+          if (session?.user) {
+            finishWithSession();
+            return;
+          }
+        } catch (callbackError) {
+          if (cancelled) return;
+          console.error(AUTH_DEBUG_PREFIX, "OAuth callback failed", callbackError);
+          failOAuth(getUserFriendlyError(callbackError, {
+            fallback: t("google_access_incomplete"),
+          }));
+          return;
+        }
+      }
+
+      scheduleOAuthTimeout();
     };
 
     completeOAuthCallback().catch((callbackError) => {
       if (cancelled) return;
       console.error(AUTH_DEBUG_PREFIX, "OAuth callback failed", callbackError);
-      clearAuthCallbackUrl();
-      setAuthenticating(false);
-      setBusy(false);
-      try {
-        sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
-      } catch {
-        /* private mode */
-      }
-      toast.error(tt("google_access_incomplete_with_error", {
-        message: getUserFriendlyError(callbackError, {
-          fallback: t("google_access_incomplete"),
-        }),
+      failOAuth(getUserFriendlyError(callbackError, {
+        fallback: t("google_access_incomplete"),
       }));
     });
 
@@ -321,12 +380,15 @@ export default function AuthPage() {
       if (timeoutId) window.clearTimeout(timeoutId);
       authListener.subscription.unsubscribe();
     };
-  }, [goToDashboard]);
+  }, [goToDashboard, releaseOAuthLoading]);
 
   // Già autenticato → vai via
   useEffect(() => {
-    if (!loading && user) goToDashboard();
-  }, [user, loading, goToDashboard]);
+    if (!loading && user) {
+      releaseOAuthLoading();
+      goToDashboard();
+    }
+  }, [user, loading, goToDashboard, releaseOAuthLoading]);
 
   useEffect(() => {
     if (logoClicks === 0) return;
