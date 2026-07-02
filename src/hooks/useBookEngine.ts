@@ -65,7 +65,7 @@ import { ensureBookTitleMetadata } from "@/lib/title-shadow";
 import { applyAuthorIdentityToConfig, getSelectedAuthorIdentity, resolveAuthorIdentity } from "@/lib/author-identity";
 import { normalizeBookConfig, normalizeBookProject } from "@/lib/book-config-studio/defaults";
 import { normalizeProjectChapters, normalizeChapterForGeneration } from "@/lib/manuscript/chapter-normalization";
-import { distributeChapterContentToSubchapters, hasRealSubchapterContent } from "@/lib/manuscript/subchapter-content";
+import { distributeChapterContentToSubchapters, hasRealSubchapterContent, resyncSubchapterContentsFromChapter } from "@/lib/manuscript/subchapter-content";
 import { shouldUseRealSubchapterPipeline, finalizeAssembledChapter, resolveGeneratedChapterAssembly } from "@/lib/writer/subchapter-pipeline";
 import { ensureChapterContinuityBeforeSave } from "@/lib/writer/narrative-continuity-gate";
 import type { BookBlueprint } from "@/types/book";
@@ -1127,11 +1127,16 @@ typeof crypto.randomUUID === "function"
           existingSubchapters: safeSubchapters(existingChapter),
         });
 
+        const trimmedContent = trimTextToWordLimit(assembly.content, remaining);
+        const syncedSubs = assembly.subchapters?.length
+          ? resyncSubchapterContentsFromChapter(trimmedContent, assembly.subchapters, index)
+          : assembly.subchapters;
+
         finalChapter = {
           ...chapter,
-          title: resolveProjectChapterTitle(proj, index, chapter.title, assembly.content),
-          content: trimTextToWordLimit(assembly.content, remaining),
-          subchapters: assembly.subchapters,
+          title: resolveProjectChapterTitle(proj, index, chapter.title, trimmedContent),
+          content: trimmedContent,
+          subchapters: syncedSubs,
         };
 
         if (remaining <= 0 || countWordsSafe(finalChapter.content) >= remaining) {

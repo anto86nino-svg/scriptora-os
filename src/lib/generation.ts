@@ -69,7 +69,7 @@ import {
 } from "@/lib/blueprint-recovery";
 import { buildBlueprintEntityPromptBlock, enrichBlueprintFromIdeaSeed } from "@/lib/blueprint-entity-enrichment";
 import { applyCleanTextPass } from "@/lib/writer/clean-text-pass";
-import { buildEditorialNovelModeBlock, applyEditorialNovelModePass, isEditorialNovelModeGenre } from "@/lib/writer/editorial-novel-mode";
+import { buildEditorialNovelModeBlock } from "@/lib/writer/editorial-novel-mode";
 import {
   TRADITIONAL_EDITOR_SYSTEM_PROMPT,
   applyTraditionalEditorLocalPrep,
@@ -90,6 +90,7 @@ import {
   finalizeAssembledChapter,
   repairSubchapterContinuityIfNeeded,
   shouldUseRealSubchapterPipeline,
+  syncChapterContentWithSubchapters,
   validateSubchapterNarrativeUnit,
 } from "@/lib/writer/subchapter-pipeline";
 import {
@@ -98,7 +99,13 @@ import {
 import {
   runNarrativeContinuityGate,
 } from "@/lib/writer/narrative-continuity-gate";
-import { applyNarrativeCleanupToChapter } from "@/lib/writer/narrative-cleanup-pass";
+import {
+  applyEditorialQualityToMatterFields,
+  buildMaximumEditorialQualityPromptBlock,
+  runEditorialQualityPipeline,
+  runEditorialQualityPipelineOnChapter,
+  validateFrontBackMatterQuality,
+} from "@/lib/writer/editorial-quality-pipeline";
 import {
   assertProjectReadyForGeneration,
   sanitizeEditorialSummary,
@@ -1671,9 +1678,14 @@ async function applyChapterEditorialFinishingPasses(
     onChunkProgress?: (progress: ChunkProgress) => void;
   },
 ): Promise<string> {
-  const editorialContent = isEditorialNovelModeGenre(context.config)
-    ? applyEditorialNovelModePass(text)
-    : text;
+  const pipeline = runEditorialQualityPipeline(text, {
+    config: context.config,
+    language: context.config.language,
+    genre: context.config.genre,
+    chapterTitle: context.chapterTitle,
+    contentKind: "chapter",
+  });
+  const editorialContent = pipeline.text;
 
   const traditionalContent = await applyTraditionalEditorPassIfNeeded(editorialContent, {
     config: context.config,
@@ -2337,6 +2349,8 @@ BESTSELLER QUALITY REQUIREMENTS:
 
 ${universalWritingQualityRules}
 
+${buildMaximumEditorialQualityPromptBlock(config, { contentKind: "chapter", language: config.language })}
+
 Return ONLY the chapter text. Start with the chapter content directly.
 Do NOT return JSON. Do NOT include the chapter title in the text.
 Write in ${config.language}.${adaptiveSuffix}`
@@ -2391,6 +2405,8 @@ CRITICAL RULES:
 - Increase depth and quality with each chunk
 
 ${universalWritingQualityRules}
+
+${buildMaximumEditorialQualityPromptBlock(config, { contentKind: "chapter", language: config.language })}
 ${phase === "CLOSURE" ? `
 ENDING RULES:
 - Write toward a POWERFUL, SATISFYING conclusion
@@ -2921,6 +2937,12 @@ CRITICAL — BESTSELLER QUALITY TITLES:
 - Every chapter must have a real specific title; the app will display it as "${formatChapterDisplayTitle(0, "Real specific title", { config })}"
 - Think bestseller table of contents that sells the book on its own
 
+BLUEPRINT EDITORIAL QUALITY — MANDATORY:
+- NEVER repeat the same chapter title or subchapter beat title across the book.
+- Emotional arc must move FORWARD — no backward arc labels without explicit flashback chapter.
+- For romance/literary fiction: NO philosophy beats (ontological paradox, existential implication, etc.).
+- When the idea is entity-rich, every chapter must anchor to concrete story elements — no generic template beats.
+
 Return a JSON object with:
 - overview: A 2-3 paragraph overview of the book's thesis and emotional journey (in ${config.language})
 - chapterOutlines: Array of {title, summary${subchapterCount > 0 ? `, subchapters: exactly ${subchapterCount} items [{title, summary}]` : ''}} (in ${config.language})
@@ -3052,6 +3074,13 @@ CRITICAL EDITORIAL RULES:
 - About Author MUST use the public biography from AUTHOR DECLARATION when available; never invent a different author history.
 - NEVER produce generic placeholders. Each section must feel domain-native.
 - Every field MUST be in ${config.language}.
+- Do NOT repeat the book synopsis/overview verbatim in dedication, letter to reader, or about author.
+- No backward time references (e.g. "tomorrow") unless the narrative timeline supports them.
+- Forward momentum only — each section has a distinct editorial purpose.
+
+${buildEditorialNovelModeBlock(config)}
+
+${buildMaximumEditorialQualityPromptBlock(config, { contentKind: "front_matter", language: config.language })}
 
 Map your sections to this JSON shape (combine extra sections into the closest field, NEVER omit domain-specific content):
 {
@@ -3068,9 +3097,36 @@ Return ONLY valid JSON. No markdown.`;
   const result = await callAI(getSystemPrompt(config, genreLock), prompt, withUsage(usage, { taskType: "generate_front_matter" }));
   try {
     const parsed = normalizeFrontMatter(JSON.parse(cleanJsonFence(result)), config);
-    return applyMatterOptionsToFrontMatter(parsed, matterOpts);
+    const polished = applyEditorialQualityToMatterFields(parsed, {
+      config,
+      language: config.language,
+      genre: config.genre,
+      contentKind: "front_matter",
+      synopsis: blueprint.overview,
+      overview: blueprint.overview,
+    });
+    const matterErrors = validateFrontBackMatterQuality(polished, {
+      kind: "front",
+      synopsis: blueprint.overview,
+      overview: blueprint.overview,
+      language: config.language,
+    });
+    if (matterErrors.length && import.meta.env.DEV) {
+      console.warn("[Scriptora] Front matter quality issues", matterErrors.slice(0, 5));
+    }
+    return applyMatterOptionsToFrontMatter(polished, matterOpts);
   } catch {
-    return applyMatterOptionsToFrontMatter(normalizeFrontMatter({ titlePage: config.title, letterToReader: result }, config), matterOpts);
+    const fallback = normalizeFrontMatter({ titlePage: config.title, letterToReader: result }, config);
+    return applyMatterOptionsToFrontMatter(
+      applyEditorialQualityToMatterFields(fallback, {
+        config,
+        language: config.language,
+        genre: config.genre,
+        contentKind: "front_matter",
+        synopsis: blueprint.overview,
+      }),
+      matterOpts,
+    );
   }
 }
 
@@ -3167,6 +3223,8 @@ ${editorialNovelMode}
 
 ${scriptoraOmegaDirective}
 
+${buildMaximumEditorialQualityPromptBlock(config, { contentKind: "subchapter", language: config.language })}
+
 SUBCHAPTER STRUCTURE — MANDATORY:
 - Opening: enter the scene or emotional beat without recap.
 - Development: advance one concrete narrative unit only.
@@ -3207,14 +3265,17 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
       content: rawContent,
       totalChapters: config.numberOfChapters,
     });
+    const guarded = applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex });
+    const pipelined = runEditorialQualityPipeline(guarded, {
+      config,
+      language: config.language,
+      genre: config.genre,
+      chapterTitle: outline.title,
+      contentKind: "subchapter",
+    }).text;
     return {
       title,
-      content: applyCleanTextPass(
-        isEditorialNovelModeGenre(config)
-          ? applyEditorialNovelModePass(applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex }))
-          : applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex }),
-        config.language,
-      ),
+      content: applyCleanTextPass(pipelined, config.language),
     };
   } catch {
     const rawContent = humanizeNarrativeText(result, {
@@ -3229,14 +3290,17 @@ ALL in ${config.language}. Return ONLY valid JSON.`;
       content: rawContent,
       totalChapters: config.numberOfChapters,
     });
+    const guarded = applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex });
+    const pipelined = runEditorialQualityPipeline(guarded, {
+      config,
+      language: config.language,
+      genre: config.genre,
+      chapterTitle: outline.title,
+      contentKind: "subchapter",
+    }).text;
     return {
       title,
-      content: applyCleanTextPass(
-        isEditorialNovelModeGenre(config)
-          ? applyEditorialNovelModePass(applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex }))
-          : applyUltraHumanAndFinalGuardToText(rawContent, { config, previousChapters, chapterIndex }),
-        config.language,
-      ),
+      content: applyCleanTextPass(pipelined, config.language),
     };
   }
 }
@@ -3358,11 +3422,15 @@ export async function generateChapterViaSubchapterPipeline(
   });
   chapterShell = assemblyRepair.chapter;
 
-  chapterShell = applyNarrativeCleanupToChapter(chapterShell, {
+  const pipelineChapter = runEditorialQualityPipelineOnChapter(chapterShell, {
+    config,
     language: config.language,
     genre: config.genre,
     chapterTitle: outline.title,
+    contentKind: "chapter",
+    chapterIndex,
   });
+  chapterShell = pipelineChapter.chapter;
 
   const continuityGate = runNarrativeContinuityGate(chapterShell, { language: config.language });
   if (!continuityGate.pass && import.meta.env.DEV) {
@@ -3396,9 +3464,11 @@ export async function generateChapterViaSubchapterPipeline(
   });
 
   return {
-    ...assembled,
+    ...syncChapterContentWithSubchapters(
+      { ...assembled, content: finishedContent },
+      chapterIndex,
+    ),
     title: outline.title,
-    content: finishedContent,
   };
 }
 
@@ -3453,6 +3523,13 @@ CRITICAL EDITORIAL RULES:
 - Review request and closing note must be attributable to the selected pen name, not a generic narrator.
 - NEVER produce generic placeholders. Each section must feel domain-native.
 - All in ${config.language}.
+- Do NOT repeat the book synopsis/overview verbatim in conclusion or author note.
+- No backward time contradictions — back matter closes the narrative arc forward.
+- Each section must be distinct — no duplicate paragraphs across fields.
+
+${buildEditorialNovelModeBlock(config)}
+
+${buildMaximumEditorialQualityPromptBlock(config, { contentKind: "back_matter", language: config.language })}
 
 Map your sections to this JSON shape (combine extra/domain-specific sections into the closest field, NEVER omit them — fold them into authorNote/callToAction/otherBooks as needed):
 {
@@ -3468,9 +3545,36 @@ Return ONLY valid JSON.`;
   const result = await callAI(getSystemPrompt(config, genreLock), prompt, withUsage(usage, { taskType: "generate_back_matter" }));
   try {
     const parsed = normalizeBackMatter(JSON.parse(cleanJsonFence(result)), config);
-    return applyMatterOptionsToBackMatter(parsed, matterOpts);
+    const polished = applyEditorialQualityToMatterFields(parsed, {
+      config,
+      language: config.language,
+      genre: config.genre,
+      contentKind: "back_matter",
+      synopsis: blueprint.overview,
+      overview: blueprint.overview,
+    });
+    const matterErrors = validateFrontBackMatterQuality(polished, {
+      kind: "back",
+      synopsis: blueprint.overview,
+      overview: blueprint.overview,
+      language: config.language,
+    });
+    if (matterErrors.length && import.meta.env.DEV) {
+      console.warn("[Scriptora] Back matter quality issues", matterErrors.slice(0, 5));
+    }
+    return applyMatterOptionsToBackMatter(polished, matterOpts);
   } catch {
-    return applyMatterOptionsToBackMatter(normalizeBackMatter({ conclusion: result }, config), matterOpts);
+    const fallback = normalizeBackMatter({ conclusion: result }, config);
+    return applyMatterOptionsToBackMatter(
+      applyEditorialQualityToMatterFields(fallback, {
+        config,
+        language: config.language,
+        genre: config.genre,
+        contentKind: "back_matter",
+        synopsis: blueprint.overview,
+      }),
+      matterOpts,
+    );
   }
 }
 
@@ -3647,6 +3751,8 @@ ${humanBestsellerModeV12}
 ${buildEditorialNovelModeBlock(config)}
 
 ${scriptoraOmegaDirective}
+
+${buildMaximumEditorialQualityPromptBlock(config, { contentKind: "chapter", language: config.language })}
 
 ${rewriteProtocol}
 

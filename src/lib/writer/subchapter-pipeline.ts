@@ -4,6 +4,7 @@ import { resolveSubchapterTitle } from "@/lib/chapter-titles";
 import {
   distributeChapterContentToSubchapters,
   hasRealSubchapterContent,
+  resyncSubchapterContentsFromChapter,
 } from "@/lib/manuscript/subchapter-content";
 import {
   analyzeSubchapterContinuity,
@@ -235,6 +236,47 @@ export function finalizeAssembledChapter(chapter: Chapter): Chapter {
     ...chapter,
     content: assembleChapterFromSubchapters(subs),
     subchapters: subs,
+  };
+}
+
+function normalizeBeatTitleKey(value: string): string {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const SCAFFOLD_SUBCHAPTER_BEAT_KEYS = new Set(
+  [
+    ...PURPOSE_LABELS_IT,
+    ...PURPOSE_LABELS_EN,
+    ...Object.values(PURPOSE_TITLE_IT),
+    ...Object.values(PURPOSE_TITLE_EN),
+  ].map(normalizeBeatTitleKey),
+);
+
+/** Purpose-derived scaffold titles repeat per chapter by design — not AI duplicate beats. */
+export function isScaffoldSubchapterBeatTitle(title: string): boolean {
+  return SCAFFOLD_SUBCHAPTER_BEAT_KEYS.has(normalizeBeatTitleKey(title));
+}
+
+export function syncChapterContentWithSubchapters(
+  chapter: Pick<Chapter, "content" | "subchapters">,
+  chapterIndex = 0,
+): Chapter {
+  const subs = Array.isArray(chapter.subchapters) ? chapter.subchapters : [];
+  const content = String(chapter.content || "").trim();
+  if (!subs.length) {
+    return { ...chapter, content, subchapters: subs };
+  }
+  const syncedSubs = resyncSubchapterContentsFromChapter(content, subs, chapterIndex);
+  return {
+    ...chapter,
+    subchapters: syncedSubs,
+    content,
   };
 }
 

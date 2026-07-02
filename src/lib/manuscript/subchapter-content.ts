@@ -159,6 +159,53 @@ function splitProportionally(text: string, expectedCount: number): string[] {
   return chunks.slice(0, expectedCount);
 }
 
+/** Re-split chapter body into subchapters after chapter-level editorial passes. */
+export function resyncSubchapterContentsFromChapter(
+  chapterContent: string,
+  subchapters: SubChapter[],
+  chapterIndex: number,
+): SubChapter[] {
+  const expectedCount = subchapters.length;
+  if (expectedCount <= 0) return subchapters;
+
+  const cleaned = cleanText(chapterContent);
+  const markerChunks = splitByExplicitMarkers(cleaned, chapterIndex, expectedCount);
+  if (markerChunks.length) {
+    return subchapters.map((sub, index) => ({
+      ...sub,
+      content: cleanText(markerChunks[index]) || cleanText(sub.content),
+    }));
+  }
+
+  if (expectedCount === 1) {
+    return [{ ...subchapters[0]!, content: cleaned }];
+  }
+
+  const separator = "\n\n";
+  const separatorBudget = separator.length * (expectedCount - 1);
+  const textBudget = Math.max(expectedCount, cleaned.length - separatorBudget);
+  const chunks: string[] = [];
+  let offset = 0;
+
+  for (let index = 0; index < expectedCount; index += 1) {
+    const remaining = expectedCount - index;
+    const remainingText = cleaned.length - offset;
+    const remainingSeparators = remaining - 1;
+    const targetLen = Math.max(
+      1,
+      Math.ceil((remainingText - remainingSeparators * separator.length) / remaining),
+    );
+    const end = index === expectedCount - 1 ? cleaned.length : offset + targetLen;
+    chunks.push(cleaned.slice(offset, end).trim());
+    offset = end;
+  }
+
+  return subchapters.map((sub, index) => ({
+    ...sub,
+    content: chunks[index] || cleanText(sub.content),
+  }));
+}
+
 export function distributeChapterContentToSubchapters(input: {
   chapterContent: string;
   chapterIndex: number;

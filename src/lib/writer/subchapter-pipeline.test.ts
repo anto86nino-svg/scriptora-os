@@ -3,6 +3,7 @@ import {
   assembleChapterFromSubchapters,
   ensureNarrativeSubchapterOutlines,
   resolveGeneratedChapterAssembly,
+  syncChapterContentWithSubchapters,
   validateSubchapterNarrativeUnit,
 } from "./subchapter-pipeline";
 
@@ -76,5 +77,19 @@ describe("subchapter-pipeline", () => {
     expect(resolved.subchapters).toHaveLength(3);
     expect(resolved.subchapters.every((sub) => sub.content.length >= 80)).toBe(true);
     expect(resolved.content).toBe(assembleChapterFromSubchapters(resolved.subchapters));
+  });
+
+  it("syncChapterContentWithSubchapters redistributes edited chapter body into subchapters", () => {
+    const subs = [
+      { title: "6.1", content: "Prima scena. ".repeat(30) },
+      { title: "6.2", content: "Seconda scena. ".repeat(30) },
+      { title: "6.3", content: "Terza scena. ".repeat(30) },
+    ];
+    const edited = `${subs[0]!.content}\n\n${subs[1]!.content.slice(0, 120)} [Limite parole del piano raggiunto.]`;
+
+    const synced = syncChapterContentWithSubchapters({ content: edited, subchapters: subs }, 5);
+    expect(synced.content).toBe(edited);
+    expect(synced.subchapters?.every((sub) => sub.content.length > 0)).toBe(true);
+    expect(synced.content).toContain("[Limite parole del piano raggiunto.]");
   });
 });

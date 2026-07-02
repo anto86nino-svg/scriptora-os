@@ -80,6 +80,20 @@ Fine risposta.`;
     expect(fallback.overview).toContain("Struttura base creata dalla configurazione");
   });
 
+  it("non rifiuta blueprint con sottocapitoli scaffold ripetuti tra capitoli", () => {
+    const config = {
+      ...sampleConfig(),
+      numberOfChapters: 3,
+      subchaptersEnabled: true,
+      subchaptersPerChapter: 3,
+      genre: "romance",
+    } as BookConfig;
+    const fallback = buildFallbackBlueprintFromConfig(config);
+    const errors = getBlueprintValidationErrors(fallback, config);
+    expect(errors.filter((e) => /beat duplicato/i.test(e))).toHaveLength(0);
+    expect(fallback.chapterOutlines[0]?.subchapters?.length).toBe(3);
+  });
+
   it("classifica errori blueprint in messaggio user-friendly", () => {
     const err = new BlueprintValidationError(
       "Blueprint AI non valido. Riprova — la struttura del libro non è stata salvata per evitare corruzione.",

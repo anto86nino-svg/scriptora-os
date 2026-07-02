@@ -3,7 +3,9 @@ import {
   distributeChapterContentToSubchapters,
   hasRealSubchapterContent,
   MIN_REAL_SUBCHAPTER_CHARS,
+  resyncSubchapterContentsFromChapter,
 } from "./subchapter-content";
+import { assembleChapterFromSubchapters } from "@/lib/writer/subchapter-pipeline";
 
 describe("subchapter content distribution", () => {
   it("splits a single generated chapter into the expected real subchapters", () => {
@@ -57,5 +59,19 @@ ${"Il ferro conserva la memoria e cambia il patto finale. ".repeat(4)}
     expect(subchapters[1]!.content).toContain("lettere segrete");
     expect(subchapters[2]!.content).toContain("coscienza artificiale");
     expect(subchapters[3]!.content).toContain("ferro");
+  });
+
+  it("resyncSubchapterContentsFromChapter keeps subchapters aligned after chapter trim", () => {
+    const subs = [
+      { title: "1.1", content: "Prima scena. ".repeat(40) },
+      { title: "1.2", content: "Seconda scena. ".repeat(40) },
+      { title: "1.3", content: "Terza scena. ".repeat(40) },
+    ];
+    const trimmed = `${subs[0]!.content}\n\n${subs[1]!.content.slice(0, 120)} [Limite parole del piano raggiunto.]`;
+
+    const resynced = resyncSubchapterContentsFromChapter(trimmed, subs, 0);
+    expect(trimmed).toContain(resynced[0]!.content.slice(0, 20));
+    expect(trimmed).toContain("[Limite parole del piano raggiunto.]");
+    expect(resynced.every((sub) => sub.content.length > 0)).toBe(true);
   });
 });

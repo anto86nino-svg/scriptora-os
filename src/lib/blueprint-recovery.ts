@@ -2,6 +2,7 @@ import type { BookBlueprint, BookConfig } from "@/types/book";
 import { getSubchaptersPerChapter } from "@/types/book";
 import { getGenreBlueprint } from "@/lib/genre-intelligence";
 import { isGenericChapterTitle, resolveChapterTitle, resolveSubchapterTitle } from "@/lib/chapter-titles";
+import { validateBlueprintEditorialQuality } from "@/lib/writer/editorial-quality-pipeline";
 import {
   buildBookKernelPromptBlock,
   resolveBookKernel,
@@ -211,6 +212,7 @@ export function getBlueprintValidationErrors(candidate: BookBlueprint, config: B
     }
   });
   errors.push(...validateBlueprintMatchesFormat(candidate, config));
+  errors.push(...validateBlueprintEditorialQuality(candidate, config));
   return errors;
 }
 
