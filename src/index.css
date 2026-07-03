@@ -253,6 +253,19 @@
     transform: translateX(-50%) translateY(-1px);
   }
 
+  html:has(.scriptora-modal-overlay) .scriptora-global-brand-beacon,
+  html:has([role="dialog"][data-state="open"]) .scriptora-global-brand-beacon,
+  html:has(.scriptora-mobile-fullscreen-shell) .scriptora-global-brand-beacon,
+  html:has(.scriptora-writer-main) .scriptora-global-brand-beacon,
+  html:has(.scriptora-study-session) .scriptora-global-brand-beacon,
+  html:has(.scriptora-cover-studio-overlay) .scriptora-global-brand-beacon,
+  html:has(.scriptora-manuscript-modal) .scriptora-global-brand-beacon,
+  body[data-scriptora-dock-dense="1"] .scriptora-global-brand-beacon {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
   .scriptora-global-brand-label {
     max-width: 6.5rem;
     overflow: hidden;
@@ -324,6 +337,16 @@
     .scriptora-global-brand-beacon {
       min-height: 2.1rem;
       padding-right: 0.55rem;
+    }
+
+    body:active .scriptora-global-brand-beacon,
+    html:has(input:focus) .scriptora-global-brand-beacon,
+    html:has(textarea:focus) .scriptora-global-brand-beacon,
+    html:has([contenteditable="true"]:focus) .scriptora-global-brand-beacon {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transform: translateX(-50%) translateY(-0.35rem);
     }
 
     .scriptora-global-brand-label {

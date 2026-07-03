@@ -50,7 +50,19 @@ const queryClient = new QueryClient();
 
 function ScriptoraOperationalBrandBeacon() {
   const location = useLocation();
-  const hiddenRoutes = ["/", "/auth", "/pricing", "/legal", "/install"];
+  const hiddenRoutes = [
+    "/",
+    "/auth",
+    "/pricing",
+    "/legal",
+    "/install",
+    "/app",
+    "/cover",
+    "/study-session",
+    "/manuscript-lab",
+    "/export-studio",
+    "/notepad",
+  ];
   if (hiddenRoutes.includes(location.pathname)) return null;
 
   return (

@@ -38,6 +38,22 @@ export interface NarrativeIdeaSignals {
   uniqueElements: string[];
 }
 
+const SECONDARY_NAME_SKIP = new Set([
+  "Il",
+  "La",
+  "Lo",
+  "Le",
+  "Gli",
+  "Un",
+  "Una",
+  "Custode",
+  "Concept",
+  "Protagonista",
+  "Personaggio",
+  "Obiettivo",
+  "Idea",
+]);
+
 function clean(value: string): string {
   return String(value || "").replace(/\s+/g, " ").trim();
 }
@@ -75,6 +91,7 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
     /\b(ghiaccio\s+etern\w*)\b/gi,
     /\b(prigione\s+(?:di\s+)?ghiaccio)\b/gi,
     /\b(porta(?:\s+nel\s+cuore)?)/gi,
+    /\b(bottega\s+delle\s+chiavi\s+perdute)\b/gi,
     /\b(stazione(?:\s+ferroviaria)?(?:\s+abbandonata)?)/gi,
     /\b(gallerie?\s+inesistenti?)/gi,
     /\b(piccolo\s+paese|paese|villaggio)/gi,
@@ -90,7 +107,9 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
   const objectPatterns = [
     /\b(fotograf(?:ia|ie))/gi,
     /\b(treno)/gi,
-    /\b(lettere?|diari?o|mappe?|orologio|specchio|scatola|chiave|confessione|bollette?)\b/gi,
+    /\b(chiavi?\s+(?:delle\s+)?scelte?\s+non\s+compiut\w*)\b/gi,
+    /\b(chiave\s+(?:dal|del|proveniente\s+dal)\s+futuro)\b/gi,
+    /\b(lettere?|diari?o|mappe?|orologio|specchio|scatola|chiavi?|confessione|bollette?)\b/gi,
   ];
   for (const pattern of objectPatterns) {
     for (const match of text.matchAll(pattern)) {
@@ -110,6 +129,8 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
     /\b(persone cancellate dall'esistenza)/gi,
     /\b(fotograf(?:ia|ie) che cambiano)/gi,
     /\b(non lasciare che io salga sul treno)/gi,
+    /\b(scelte?\s+non\s+compiut\w*)/gi,
+    /\b(libero\s+arbitrio)\b/gi,
     /\b(marted\w*|calendario|sonno|incubi|wifi|cadaver\w*|fantasma|mare\s+sta\s+salendo|mercato\s+nero|banche\s+dei\s+sogni|mezze\s+verit\w*)/gi,
   ];
   for (const pattern of mysteryPatterns) {
@@ -124,6 +145,8 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
   if (/\bdestino\b/i.test(text)) signals.stakes.push("destino");
   if (/\bmorte(?:\s+predett\w*)?\b/i.test(text)) signals.stakes.push("morte");
   if (/\bfuturo\b/i.test(text)) signals.stakes.push("futuro");
+  if (/\bscelte?\s+non\s+compiut\w*\b/i.test(text)) signals.stakes.push("scelte non compiute");
+  if (/\blibero\s+arbitrio\b/i.test(text)) signals.stakes.push("libero arbitrio");
   if (/\bfine del mondo|apocaliss/i.test(text)) signals.stakes.push("fine del mondo");
   if (/\bcolpa\b/i.test(text)) signals.stakes.push("colpa");
   if (/\bparola\b/i.test(text)) signals.stakes.push("parola");
@@ -134,6 +157,17 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
   if (/\bghiaccio\b/i.test(text)) signals.stakes.push("ghiaccio");
   if (/\bdisgelo\b/i.test(text)) signals.stakes.push("disgelo");
   if (/\bsvegli\w*|risvegli\w*\b/i.test(text)) signals.stakes.push("risveglio");
+
+  const protagonistKey = normalize(signals.protagonist || "");
+  for (const match of text.matchAll(/\b([A-ZÀ-Ý][a-zà-ÿ]{1,24})\b/g)) {
+    const name = clean(match[1]);
+    const key = normalize(name);
+    if (!name || SECONDARY_NAME_SKIP.has(name) || key === protagonistKey) continue;
+    if ([...signals.places, ...signals.objects, ...signals.mysteries, ...signals.stakes].some((item) => normalize(item) === key)) {
+      continue;
+    }
+    signals.mysteries.push(name);
+  }
 
   signals.uniqueElements = [
     ...signals.places,
@@ -159,6 +193,8 @@ export function hasRichNarrativeIdea(idea: string): boolean {
 
 export function buildEntityDrivenTitle(idea: string): string | undefined {
   const hay = clean(sanitizeUserConceptInput(idea)).toLowerCase();
+  if (/\bcustode\b/.test(hay) && /\bchiav/.test(hay) && /\bperdut/.test(hay)) return "Il Custode delle Chiavi Perdute";
+  if (/\bbottega\b/.test(hay) && /\bchiav/.test(hay) && /\bscelte?\s+non\s+compiut/.test(hay)) return "La Bottega delle Scelte Perdute";
   if (/\bscatola\b/.test(hay) && /\bmarted/.test(hay)) return "La Scatola del Martedì";
   if (/\bcadaver/.test(hay) && /\bbruma\b/.test(hay)) return "I Cadaveri che Parlano nei Sogni";
   if (/\bsonno\b/.test(hay) && /\bvaluta|banche\b/.test(hay)) return "La Valuta del Sonno";
@@ -200,6 +236,9 @@ export function buildEntityDrivenSubtitle(idea: string, protagonist?: string): s
   }
   if (/\bchiave\b/.test(hay) && /\bporte?\b/.test(hay)) {
     return `${lead} trova una chiave che apre solo porte che non esistono più — e ogni soglia rivelata riscrive ciò che credeva reale.`;
+  }
+  if (/\bchiav/.test(hay) && /\bscelte?\s+non\s+compiut/.test(hay)) {
+    return `${lead} custodisce chiavi nate dalle scelte non compiute — finché una chiave dal futuro trasforma il destino in una domanda di libero arbitrio.`;
   }
   if (/\bsilenzio\b/.test(hay)) {
     return "Un'indagine lirica sul silenzio: cosa resta quando le parole non bastano più.";

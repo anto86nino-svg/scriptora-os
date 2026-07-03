@@ -132,6 +132,8 @@ const STOP_WORDS = new Set([
 ]);
 
 const PARTICLES = new Set(["di", "del", "della", "delle", "degli", "dei", "e", "che", "con", "per", "tra", "fra", "sul", "sulla", "nel", "nella", "alla", "alle", "a", "da"]);
+const DESCRIPTIVE_ENTITY_VERB_RE =
+  /\b(appartiene|compare|comparsa|compareva|proveniente|trova|trovata|scopre|deve|dimostrare|salvare|decide|decidere|rivela|rivelare|nasconde|nascondere)\b/i;
 
 function clean(value?: unknown): string {
   return String(value || "")
@@ -239,6 +241,12 @@ function addElement(
   const key = normalize(text);
   if (!text || text.length < 3 || seen.has(key)) return;
   if ([...GENERIC_TITLE_WORDS].some((word) => key === normalize(word))) return;
+  const words = key.split(/\s+/).filter(Boolean);
+  const protectedSpecificPhrase =
+    /^bottega delle chiavi perdute$/.test(key) ||
+    /^chiavi? (?:delle )?scelte non compiut/.test(key) ||
+    /^chiave (?:dal|del) futuro$/.test(key);
+  if (!protectedSpecificPhrase && (DESCRIPTIVE_ENTITY_VERB_RE.test(text) || words.length > 4)) return;
   seen.add(key);
   list.push({ text, type, weight });
 }
@@ -261,6 +269,10 @@ export function extractDistinctiveTitleElements(input: TitleV2Input): Distinctiv
   const list: DistinctiveTitleElement[] = [];
   const seen = new Set<string>();
 
+  collectMatches(text, /\b(bottega\s+delle\s+chiavi\s+perdute)\b/gi, "place", 100, list, seen);
+  collectMatches(text, /\b(chiavi?\s+(?:delle\s+)?scelte?\s+non\s+compiut\w*)\b/gi, "object", 99, list, seen);
+  collectMatches(text, /\b(chiave\s+(?:dal|del)\s+futuro)\b/gi, "object", 98, list, seen);
+  collectMatches(text, /\b(libero\s+arbitrio)\b/gi, "mystery", 90, list, seen);
   collectMatches(text, /\b(?:camera|stanza|room)\s*\d+\b/gi, "place", 98, list, seen);
   collectMatches(text, /\b\d{1,2}:\d{2}\b/g, "mystery", 96, list, seen);
   collectMatches(text, /\b(?:stazione|gallerie?|treno|ferrovia|binari?)\b(?:\s+(?:ferroviaria|abbandonata|inesistente|inesistenti|fantasma|nero|nera|[a-zA-ZÀ-ÿ0-9'-]+)){0,3}/gi, "place", 92, list, seen);

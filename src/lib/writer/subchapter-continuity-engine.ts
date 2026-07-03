@@ -10,6 +10,7 @@ export type ContinuityCategory =
   | "timeline"
   | "causality"
   | "emotional_arc"
+  | "progression"
   | "repetition"
   | "continuity";
 
@@ -94,6 +95,16 @@ const FLASHBACK_MARKERS = [
   /\b(?:torn(?:ò|ai)\s+(?:indietro|a\s+quella))\b/gi,
 ];
 
+const PROGRESSION_MARKERS = [
+  /\b(?:scopr(?:e|ì|ono)|rivel(?:a|ò|ano)|cap(?:isce|ì|iscono)|decid(?:e|e|ono|ette)|scegl(?:ie|ie|ono)|perde|ottiene|apre|chiude|consegna|arriva|scompare|compare|minaccia|ostacol(?:o|a|ano)|fallisce|cambia\s+obiettivo)\b/gi,
+  /\b(?:conseguenza|per\s+questo|da\s+allora|a\s+quel\s+punto|la\s+posta\s+in\s+gioco|nuovo\s+indizio|nuova\s+prova|nuova\s+scoperta)\b/gi,
+];
+
+const NARRATIVE_ANCHOR_STOP = new Set([
+  "arturo", "nora", "marco", "elena", "capitolo", "sottocapitolo", "storia",
+  "quando", "ancora", "stessa", "stesso", "quella", "quello", "questo", "questa",
+]);
+
 function normalizeHay(value: string): string {
   return String(value || "")
     .normalize("NFD")
@@ -114,6 +125,14 @@ function tokenize(text: string): Set<string> {
     normalizeHay(text)
       .split(/[^a-z0-9']+/i)
       .filter((token) => token.length > 3),
+  );
+}
+
+function narrativeAnchors(text: string): Set<string> {
+  return new Set(
+    normalizeHay(text)
+      .split(/[^a-z0-9']+/i)
+      .filter((token) => token.length > 4 && !NARRATIVE_ANCHOR_STOP.has(token)),
   );
 }
 
@@ -425,6 +444,44 @@ function detectCausalityGaps(subchapters: SubchapterInput[]): ContinuityError[] 
   return errors;
 }
 
+function hasProgressionMarker(text: string): boolean {
+  return PROGRESSION_MARKERS.some((pattern) => {
+    pattern.lastIndex = 0;
+    return pattern.test(text);
+  });
+}
+
+function detectNarrativeProgressionStalls(subchapters: SubchapterInput[]): ContinuityError[] {
+  const errors: ContinuityError[] = [];
+
+  for (let i = 1; i < subchapters.length; i += 1) {
+    const prev = subchapters[i - 1]!;
+    const curr = subchapters[i]!;
+    const prevText = [prev.title, prev.summary, prev.content].filter(Boolean).join(" ");
+    const currText = [curr.title, curr.summary, curr.content].filter(Boolean).join(" ");
+    if (!prevText.trim() || !currText.trim()) continue;
+
+    const sharedAnchors = [...narrativeAnchors(prevText)].filter((token) => narrativeAnchors(currText).has(token));
+    const semanticSimilarity = jaccardSimilarity(tokenize(prevText), tokenize(currText));
+    const repeatsSameScene =
+      sharedAnchors.length >= 4 &&
+      semanticSimilarity > 0.36 &&
+      !hasProgressionMarker(currText);
+
+    if (repeatsSameScene) {
+      errors.push({
+        severity: "critical",
+        category: "progression",
+        subchapterIndex: i,
+        message: `Sottocapitolo ${i + 1} troppo simile al precedente: non introduce evento, scoperta, conseguenza, ostacolo o cambio di obiettivo.`,
+        excerpt: curr.content.slice(0, 120),
+      });
+    }
+  }
+
+  return errors;
+}
+
 function buildTimeline(subchapters: SubchapterInput[], order: number[]): TimelineEvent[] {
   return order.map((originalIndex, sequenceIndex) => {
     const sub = subchapters[originalIndex]!;
@@ -479,6 +536,7 @@ export function analyzeSubchapterContinuity(
 
   errors.push(...detectCrossSubchapterDuplicates(subchapters));
   errors.push(...detectEmotionalArcIssues(subchapters));
+  errors.push(...detectNarrativeProgressionStalls(subchapters));
   errors.push(...detectCausalityGaps(subchapters));
 
   const assembled = subchapters.map((s) => s.content).join("\n\n");

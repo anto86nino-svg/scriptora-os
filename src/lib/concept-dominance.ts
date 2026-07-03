@@ -338,7 +338,7 @@ export function countWildNarrativeAnchors(text: string): number {
   const hay = normalizedConceptHay(text);
   if (!hay) return 0;
   const matches = hay.match(
-    /\b(scatola|marted|chiave|lettera|confessione|cadaver|fantasma|mare|sonno|incubi|bollette|wifi|porte?|volpe|regno|silenzio|economist|insomne|guerra|calendario|pescatrice|interprete|condominio|luna\s+piena|mercato\s+nero|banche\s+dei\s+sogni|mezze\s+verit)\w*\b/g,
+    /\b(scatola|marted|chiav\w*|bottega|scelte?\s+non\s+compiut\w*|libero\s+arbitrio|lettera|confessione|cadaver|fantasma|mare|sonno|incubi|bollette|wifi|porte?|volpe|regno|silenzio|economist|insomne|guerra|calendario|pescatrice|interprete|condominio|luna\s+piena|mercato\s+nero|banche\s+dei\s+sogni|mezze\s+verit)\w*\b/g,
   );
   return matches?.length ?? 0;
 }
@@ -370,6 +370,9 @@ export function inferNarrativeGenreFromIdea(text: string): string | undefined {
   if (/\b(sonno|valuta|economist|insomne|mercato\s+nero)\b/.test(hay)) return "narrativa";
   if (/\b(volpe|regno|lettera|allegor)\b/.test(hay)) return "narrativa";
   if (/\b(scatola|marted|calendario)\b/.test(hay)) return "narrativa";
+  if (/\b(chiav\w*|bottega)\b/.test(hay) && /\b(scelte?\s+non\s+compiut\w*|libero\s+arbitrio|destino|futuro)\b/.test(hay)) {
+    return "narrativa";
+  }
   if (/\b(chiave|porte?)\b/.test(hay) && !hasHighConceptFantasySignals(text)) return "thriller";
   return undefined;
 }
@@ -408,6 +411,7 @@ function extractConceptSetting(idea: string): string | undefined {
     /\b(piccolo\s+paese|paese|villaggio)\b/i,
     /\b(stazione(?:\s+ferroviaria)?(?:\s+abbandonata)?)\b/i,
     /\b(regno|impero|colonia)\b/i,
+    /\b(bottega(?:\s+delle\s+chiavi\s+perdute)?)\b/i,
     /\b(casa|villa|bosco|isola)\b/i,
   ];
   for (const pattern of patterns) {
@@ -428,6 +432,10 @@ function extractConceptEntities(idea: string): string[] {
     /\b(entit[aà]\s+antica)\b/gi,
     /\b(segret\w*)\b/gi,
     /\b(storico|storica)\b/gi,
+    /\b(bottega\s+delle\s+chiavi\s+perdute)\b/gi,
+    /\b(chiavi?\s+(?:delle\s+)?scelte?\s+non\s+compiut\w*)\b/gi,
+    /\b(chiave\s+(?:dal|del|proveniente\s+dal)\s+futuro)\b/gi,
+    /\b(libero\s+arbitrio)\b/gi,
   ];
   for (const pattern of patterns) {
     for (const match of text.matchAll(pattern)) {
