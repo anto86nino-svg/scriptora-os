@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { shouldRetryOAuthCallbackInFreshFlow, shouldWaitForLateOAuthSession } from "./Auth";
+import {
+  shouldRetryOAuthCallbackInFreshFlow,
+  shouldRetryOAuthTimeoutInFreshFlow,
+  shouldWaitForLateOAuthSession,
+} from "./Auth";
 
 describe("Google OAuth callback recovery", () => {
   it("restarts Google flow once for recoverable PKCE callbacks without a session", () => {
@@ -38,6 +42,26 @@ describe("Google OAuth callback recovery", () => {
       hasCode: true,
       hasSession: true,
       alreadyRetried: true,
+    })).toBe(false);
+  });
+
+  it("restarts Google once when the callback timeout has a code but no session", () => {
+    expect(shouldRetryOAuthTimeoutInFreshFlow({
+      hasCode: true,
+      hasSession: false,
+      alreadyRetried: false,
+    })).toBe(true);
+
+    expect(shouldRetryOAuthTimeoutInFreshFlow({
+      hasCode: true,
+      hasSession: false,
+      alreadyRetried: true,
+    })).toBe(false);
+
+    expect(shouldRetryOAuthTimeoutInFreshFlow({
+      hasCode: false,
+      hasSession: false,
+      alreadyRetried: false,
     })).toBe(false);
   });
 });

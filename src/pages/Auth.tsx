@@ -184,6 +184,14 @@ export function shouldWaitForLateOAuthSession(input: {
   return input.hasCode && !input.hasSession && input.alreadyRetried;
 }
 
+export function shouldRetryOAuthTimeoutInFreshFlow(input: {
+  hasCode: boolean;
+  hasSession: boolean;
+  alreadyRetried: boolean;
+}) {
+  return input.hasCode && !input.hasSession && !input.alreadyRetried;
+}
+
 /** Single owner of exchangeCodeForSession for PKCE OAuth callbacks. */
 async function tryEstablishSessionFromOAuthCallback(code: string) {
   const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
@@ -319,7 +327,39 @@ export default function AuthPage() {
           return;
         }
         if (lateError) console.error(AUTH_DEBUG_PREFIX, "Late session check failed", summarizeAuthError(lateError));
-        failOAuth();
+        const alreadyRetried = (() => {
+          try {
+            return sessionStorage.getItem(OAUTH_AUTO_RETRY_KEY) === "1";
+          } catch {
+            return true;
+          }
+        })();
+        if (shouldRetryOAuthTimeoutInFreshFlow({
+          hasCode: !!code,
+          hasSession: false,
+          alreadyRetried,
+        })) {
+          try {
+            sessionStorage.setItem(OAUTH_AUTO_RETRY_KEY, "1");
+            sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
+          } catch {
+            /* private mode */
+          }
+          logAuthDebug("oauth completion timeout recoverable — restarting Google flow once");
+          clearAuthCallbackUrl();
+          const { error: retryError } = await supabase.auth.signInWithOAuth({
+            provider: "google",
+            options: { redirectTo: getAuthRedirectUrl() },
+          });
+          if (retryError) {
+            console.error(AUTH_DEBUG_PREFIX, "OAuth timeout retry failed", summarizeAuthError(retryError));
+            failOAuth(getUserFriendlyError(retryError, {
+              fallback: OAUTH_SESSION_EXPIRED_MESSAGE,
+            }));
+          }
+          return;
+        }
+        failOAuth(OAUTH_SESSION_EXPIRED_MESSAGE);
       }, OAUTH_COMPLETION_TIMEOUT_MS);
     };
 
@@ -340,7 +380,9 @@ export default function AuthPage() {
       if (cancelled) return;
       if (sessionError) {
         console.error(AUTH_DEBUG_PREFIX, "Session check failed", summarizeAuthError(sessionError));
-        failOAuth();
+        failOAuth(getUserFriendlyError(sessionError, {
+          fallback: OAUTH_SESSION_EXPIRED_MESSAGE,
+        }));
         return;
       }
       if (data.session?.user) {
@@ -431,7 +473,7 @@ export default function AuthPage() {
           if (cancelled) return;
           console.error(AUTH_DEBUG_PREFIX, "OAuth callback failed", callbackError);
           failOAuth(getUserFriendlyError(callbackError, {
-            fallback: t("google_access_incomplete"),
+            fallback: OAUTH_SESSION_EXPIRED_MESSAGE,
           }));
           return;
         }
@@ -444,7 +486,7 @@ export default function AuthPage() {
       if (cancelled) return;
       console.error(AUTH_DEBUG_PREFIX, "OAuth callback failed", callbackError);
       failOAuth(getUserFriendlyError(callbackError, {
-        fallback: t("google_access_incomplete"),
+        fallback: OAUTH_SESSION_EXPIRED_MESSAGE,
       }));
     });
 
