@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { ScrollToTop } from "@/components/routing/ScrollToTop";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -14,6 +14,7 @@ import { MobileAppChrome } from "@/components/MobileAppChrome";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { FeatureErrorBoundary } from "@/components/FeatureErrorBoundary";
 import { RouteSuspenseFallback } from "@/components/boot/ScriptoraAliveTransition";
+import { ScriptoraLogoMark } from "@/components/brand/ScriptoraLogoMark";
 
 const Home = lazyWithRetry(() => import("./pages/Home.tsx"));
 const Dashboard = lazyWithRetry(() => import("./pages/Dashboard.tsx"));
@@ -46,6 +47,24 @@ const CasaStudioPage = lazyWithRetry(() => import("./pages/os/CasaStudioPage.tsx
 const CasaImpostazioniPage = lazyWithRetry(() => import("./pages/os/CasaImpostazioniPage.tsx"));
 
 const queryClient = new QueryClient();
+
+function ScriptoraOperationalBrandBeacon() {
+  const location = useLocation();
+  const hiddenRoutes = ["/", "/auth", "/pricing", "/legal", "/install"];
+  if (hiddenRoutes.includes(location.pathname)) return null;
+
+  return (
+    <Link
+      to="/dashboard"
+      className="scriptora-global-brand-beacon"
+      aria-label="Torna alla Dashboard Scriptora"
+      title="Scriptora OS"
+    >
+      <ScriptoraLogoMark size="xs" alt="Scriptora OS" />
+      <span className="scriptora-global-brand-label">Scriptora</span>
+    </Link>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -95,6 +114,7 @@ const App = () => (
               </Routes>
               </Suspense>
               </AppErrorBoundary>
+              <ScriptoraOperationalBrandBeacon />
               <CreditVisibilityShell />
               <MobileAppChrome />
           </DominationProvider>

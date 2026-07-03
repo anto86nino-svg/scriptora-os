@@ -54,6 +54,8 @@
   html {
     overflow-x: clip;
     overflow-y: auto;
+    scrollbar-gutter: stable;
+    scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 4.75rem);
     -webkit-text-size-adjust: 100%;
   }
 
@@ -67,6 +69,7 @@
     overflow-x: clip;
     overflow-y: auto;
     overscroll-behavior-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   #root {
@@ -148,7 +151,7 @@
     max-height: none;
     overflow-y: visible;
     overscroll-behavior: auto;
-    -webkit-overflow-scrolling: auto;
+    -webkit-overflow-scrolling: touch;
     padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);
   }
 
@@ -219,6 +222,48 @@
     border-radius: 3px;
   }
 
+  .scriptora-global-brand-beacon {
+    position: fixed;
+    left: 50%;
+    top: calc(env(safe-area-inset-top, 0px) + 0.55rem);
+    z-index: 70;
+    display: inline-flex;
+    min-height: 2.25rem;
+    max-width: calc(100dvw - 1.5rem);
+    transform: translateX(-50%);
+    align-items: center;
+    gap: 0.45rem;
+    border-radius: 999px;
+    border: 1px solid rgba(242, 196, 0, 0.24);
+    background: rgba(5, 5, 5, 0.78);
+    padding: 0.25rem 0.7rem 0.25rem 0.3rem;
+    color: #f2c400;
+    box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28), 0 0 28px rgba(242, 196, 0, 0.12);
+    backdrop-filter: blur(18px) saturate(1.08);
+    -webkit-backdrop-filter: blur(18px) saturate(1.08);
+    contain: layout paint style;
+    isolation: isolate;
+    text-decoration: none;
+    transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
+  }
+
+  .scriptora-global-brand-beacon:hover {
+    border-color: rgba(242, 196, 0, 0.42);
+    background: rgba(5, 5, 5, 0.9);
+    transform: translateX(-50%) translateY(-1px);
+  }
+
+  .scriptora-global-brand-label {
+    max-width: 6.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
   /* ===== SCRIPTORA landing animations ===== */
   @keyframes scriptora-aurora-spin {
     0% { transform: translate(-50%, 0) rotate(0deg); }
@@ -274,6 +319,35 @@
 
     .scriptora-page-scroll.scriptora-app-surface {
       padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4.5rem);
+    }
+
+    .scriptora-global-brand-beacon {
+      min-height: 2.1rem;
+      padding-right: 0.55rem;
+    }
+
+    .scriptora-global-brand-label {
+      max-width: 5.6rem;
+      font-size: 0.62rem;
+      letter-spacing: 0.16em;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .scriptora-global-brand-beacon {
+      left: max(1rem, env(safe-area-inset-left, 0px));
+      top: calc(env(safe-area-inset-top, 0px) + 0.85rem);
+      transform: none;
+    }
+
+    .scriptora-global-brand-beacon:hover {
+      transform: translateY(-1px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scriptora-global-brand-beacon {
+      transition: none;
     }
   }
 }
