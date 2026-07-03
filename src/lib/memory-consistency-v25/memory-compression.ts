@@ -29,7 +29,11 @@ function compactPromiseLines(promises: StoryPromiseItem[]): string[] {
   return promises
     .filter((item) => item.status !== "resolved")
     .slice(0, 6)
-    .map((item) => `[Ch${item.chapterIntroduced || "?"}|${item.type}] ${item.description}`);
+    .map((item) => {
+      const development = item.developedIn?.length ? ` developed ch.${item.developedIn.join(",")}` : "";
+      const expected = item.expectedPayoffChapter ? ` payoff target ch.${item.expectedPayoffChapter}` : "";
+      return `[Ch${item.chapterIntroduced || "?"}|${item.type}|${item.status}] ${item.description}${development}${expected}`;
+    });
 }
 
 function compactEmotionLines(beats: EmotionalContinuityBeat[]): string[] {

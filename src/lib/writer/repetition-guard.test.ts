@@ -20,4 +20,16 @@ describe("repetition-guard", () => {
     expect((result.text.match(/si passò una mano sul viso/gi) || []).length).toBe(1);
     expect(result.fixesApplied).toBeGreaterThan(0);
   });
+
+  it("detects repeated sentence openings that make prose feel recycled", () => {
+    const text = [
+      "Nora aprì la porta senza respirare.",
+      "Nora aprì il cassetto e trovò la lettera.",
+      "Nora aprì gli occhi quando la casa scricchiolò.",
+      "Elia restò immobile nel corridoio.",
+    ].join(" ");
+
+    const issues = detectRepetitionIssues(text);
+    expect(issues.some((issue) => issue.type === "sentence_opening" && /nora apri/.test(issue.phrase))).toBe(true);
+  });
 });

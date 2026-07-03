@@ -42,6 +42,10 @@ export interface StoryPromiseItem {
   chapterIntroduced: number;
   status: "open" | "partial" | "resolved";
   urgency: "low" | "medium" | "high";
+  developedIn?: number[];
+  expectedPayoffChapter?: number;
+  payoffChapter?: number;
+  payoffEvidence?: string;
 }
 
 export interface EmotionalContinuityBeat {

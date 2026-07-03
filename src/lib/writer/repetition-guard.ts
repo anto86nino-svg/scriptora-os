@@ -2,6 +2,7 @@ export type RepetitionIssue = {
   phrase: string;
   count: number;
   message: string;
+  type?: "cliche" | "sentence_opening";
 };
 
 export type RepetitionGuardResult = {
@@ -28,6 +29,11 @@ const GESTURE_CLICHES = [
 ];
 
 const MAX_OCCURRENCES_PER_CHAPTER = 1;
+const MAX_SENTENCE_OPENING_OCCURRENCES = 2;
+const OPENING_STOPWORDS = new Set([
+  "il", "lo", "la", "i", "gli", "le", "un", "una", "uno", "the", "a", "an",
+  "e", "ma", "poi", "and", "but", "then", "quando", "mentre", "when", "while",
+]);
 
 function normalizeHay(value: string): string {
   return String(value || "")
@@ -58,6 +64,34 @@ function countPhraseOccurrences(text: string, phrase: string): number {
   return (text.match(pattern) || []).length;
 }
 
+function sentenceOpening(sentence: string): string | null {
+  const words = normalizeHay(sentence)
+    .replace(/[^a-z0-9à-ú\s]/gi, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length < 4) return null;
+  const meaningful = words.filter((word) => !OPENING_STOPWORDS.has(word)).slice(0, 3);
+  if (meaningful.length < 2) return null;
+  return meaningful.slice(0, 2).join(" ");
+}
+
+function detectRepeatedSentenceOpenings(text: string): RepetitionIssue[] {
+  const counts = new Map<string, number>();
+  for (const sentence of splitSentences(text)) {
+    const opening = sentenceOpening(sentence);
+    if (!opening) continue;
+    counts.set(opening, (counts.get(opening) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .filter(([, count]) => count > MAX_SENTENCE_OPENING_OCCURRENCES)
+    .map(([phrase, count]) => ({
+      phrase,
+      count,
+      type: "sentence_opening" as const,
+      message: `Apertura di frase ripetuta ${count} volte: "${phrase}". Varia soggetto, ritmo o punto di ingresso della frase.`,
+    }));
+}
+
 export function detectRepetitionIssues(text: string): RepetitionIssue[] {
   const issues: RepetitionIssue[] = [];
   const hay = normalizeHay(text);
@@ -68,10 +102,13 @@ export function detectRepetitionIssues(text: string): RepetitionIssue[] {
       issues.push({
         phrase,
         count,
+        type: "cliche",
         message: `Frase cliché ripetuta ${count} volte (max ${MAX_OCCURRENCES_PER_CHAPTER}): "${phrase}".`,
       });
     }
   }
+
+  issues.push(...detectRepeatedSentenceOpenings(text));
 
   return issues;
 }
@@ -114,10 +151,13 @@ export function applyRepetitionGuard(text: string): RepetitionGuardResult {
       issues.push({
         phrase,
         count,
+        type: "cliche",
         message: `Rimosse ${trimmed.removed} ripetizioni di "${phrase}".`,
       });
     }
   }
+
+  issues.push(...detectRepeatedSentenceOpenings(result));
 
   return { text: result, issues, fixesApplied };
 }

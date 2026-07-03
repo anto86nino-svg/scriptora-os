@@ -91,6 +91,61 @@ describe("Memory & Consistency Engine V2.5", () => {
     expect(block).toContain("no emotional amnesia");
   });
 
+  it("tracks promise development and payoff across long-book chapters", () => {
+    const payoffBlueprint = {
+      ...blueprint,
+      chapterOutlines: [
+        { title: "La chiave", summary: "Nora trova una chiave nella cattedrale." },
+        { title: "Il ritorno", summary: "La chiave riappare durante il confronto con Elia." },
+        { title: "La verita", summary: "Nora scopre che la chiave apre la cripta e rivela la verita." },
+      ],
+    };
+    const chapters = [
+      chapter(1, "Nora trovò una chiave d'argento sotto l'altare e giurò di capire a cosa servisse."),
+      chapter(2, "La chiave riapparve nella tasca di Elia, come se la cattedrale la stesse restituendo."),
+      chapter(3, "Nora scoprì che la chiave apriva la cripta e rivelava la verità sul bambino scomparso."),
+    ];
+
+    const snapshot = buildMemoryConsistencyV25Snapshot({
+      config: { ...baseConfig, numberOfChapters: 3 },
+      blueprint: payoffBlueprint,
+      chapters,
+      chapterIndex: 2,
+    });
+
+    const keyPromise = snapshot.storyPromises.find((item) =>
+      item.description.toLowerCase().includes("chiave") && item.chapterIntroduced === 1,
+    );
+    expect(keyPromise?.status).toBe("resolved");
+    expect(keyPromise?.developedIn).toContain(2);
+    expect(keyPromise?.payoffChapter).toBe(3);
+    expect(keyPromise?.payoffEvidence).toContain("Nora scoprì");
+  });
+
+  it("injects payoff operating rules when a blueprint payoff is due", () => {
+    const payoffBlueprint = {
+      ...blueprint,
+      chapterOutlines: [
+        { title: "La chiave", summary: "Nora trova una chiave nella cattedrale." },
+        { title: "Il ritorno", summary: "La chiave riappare durante il confronto con Elia." },
+        { title: "La verita", summary: "Nora scopre che la chiave apre la cripta e rivela la verita." },
+      ],
+    };
+    const block = buildMemoryConsistencyV25PromptBlock({
+      config: { ...baseConfig, numberOfChapters: 3 },
+      previousChapters: [
+        chapter(1, "Nora trovò una chiave d'argento sotto l'altare e giurò di capire a cosa servisse."),
+        chapter(2, "La chiave riapparve nella tasca di Elia, come se la cattedrale la stesse restituendo."),
+      ],
+      chapterIndex: 2,
+      blueprint: payoffBlueprint,
+    });
+
+    expect(block).toContain("PROMISE/PAYOFF OPERATING RULES");
+    expect(block).toContain("PAY OFF OR EXPLICITLY ADVANCE NOW");
+    expect(block).toContain("chiave");
+  });
+
   it("flags relationship reset and emotional amnesia in developmental check", () => {
     const project: BookProject = {
       id: "test",
