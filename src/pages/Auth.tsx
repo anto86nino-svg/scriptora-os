@@ -15,6 +15,7 @@ import { t, tt, useUILanguage } from "@/lib/i18n";
 import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
 const OAUTH_CALLBACK_HANDLED_KEY = "scriptora:oauth-callback-handled";
+const OAUTH_AUTO_RETRY_KEY = "scriptora:oauth-auto-retry";
 
 const AUTH_DEBUG_PREFIX = "[auth-debug]";
 
@@ -164,16 +165,28 @@ function isPkceVerifierMissingError(error: { name?: string; message?: string }) 
   );
 }
 
+export function shouldRetryOAuthCallbackInFreshFlow(input: {
+  hasCode: boolean;
+  hasSession: boolean;
+  recoverable: boolean;
+  alreadyRetried: boolean;
+}) {
+  return input.hasCode && !input.hasSession && input.recoverable && !input.alreadyRetried;
+}
+
 /** Single owner of exchangeCodeForSession for PKCE OAuth callbacks. */
 async function tryEstablishSessionFromOAuthCallback(code: string) {
   const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
   if (!exchangeError) {
-    return exchanged.session ?? null;
+    return { session: exchanged.session ?? null, recoverable: false };
   }
 
   if (isPkceVerifierMissingError(exchangeError)) {
     const { data: retryData } = await supabase.auth.getSession();
-    return retryData.session?.user ? retryData.session : null;
+    return {
+      session: retryData.session?.user ? retryData.session : null,
+      recoverable: true,
+    };
   }
 
   throw exchangeError;
@@ -214,6 +227,7 @@ export default function AuthPage() {
     releaseOAuthLoading();
     try {
       sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
+      sessionStorage.removeItem(OAUTH_AUTO_RETRY_KEY);
     } catch {
       /* private mode */
     }
@@ -264,6 +278,7 @@ export default function AuthPage() {
       releaseOAuthLoading();
       try {
         sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
+        sessionStorage.removeItem(OAUTH_AUTO_RETRY_KEY);
       } catch {
         /* private mode */
       }
@@ -349,11 +364,39 @@ export default function AuthPage() {
 
       if (code) {
         try {
-          const session = await tryEstablishSessionFromOAuthCallback(code);
-          logAuthDebug("OAuth session established", { session: summarizeSession(session) });
+          const result = await tryEstablishSessionFromOAuthCallback(code);
+          logAuthDebug("OAuth session established", { session: summarizeSession(result.session), recoverable: result.recoverable });
           if (cancelled) return;
-          if (session?.user) {
+          if (result.session?.user) {
             finishWithSession();
+            return;
+          }
+          const alreadyRetried = (() => {
+            try {
+              return sessionStorage.getItem(OAUTH_AUTO_RETRY_KEY) === "1";
+            } catch {
+              return true;
+            }
+          })();
+          if (shouldRetryOAuthCallbackInFreshFlow({
+            hasCode: !!code,
+            hasSession: false,
+            recoverable: result.recoverable,
+            alreadyRetried,
+          })) {
+            try {
+              sessionStorage.setItem(OAUTH_AUTO_RETRY_KEY, "1");
+              sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
+            } catch {
+              /* private mode */
+            }
+            logAuthDebug("OAuth callback recoverable — restarting Google flow once");
+            clearAuthCallbackUrl();
+            const { error: retryError } = await supabase.auth.signInWithOAuth({
+              provider: "google",
+              options: { redirectTo: getAuthRedirectUrl() },
+            });
+            if (retryError) throw retryError;
             return;
           }
           toast.error(OAUTH_SESSION_EXPIRED_MESSAGE);
@@ -475,6 +518,12 @@ export default function AuthPage() {
 
   const handleGoogle = async () => {
     setBusy(true);
+    try {
+      sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
+      sessionStorage.removeItem(OAUTH_AUTO_RETRY_KEY);
+    } catch {
+      /* private mode */
+    }
     logAuthDebug("signInWithOAuth start", { redirectTo: getAuthRedirectUrl() });
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
