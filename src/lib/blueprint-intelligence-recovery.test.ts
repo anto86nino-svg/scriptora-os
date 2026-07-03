@@ -24,6 +24,22 @@ Personaggio chiave: Nora.
 Concept centrale: una bottega delle chiavi perdute custodisce chiavi delle scelte non compiute.
 Una chiave dal futuro costringe Arturo a scegliere tra destino e libero arbitrio.`;
 
+const ULTIMATE_CUSTODE_IDEA = `Arturo Valli gestisce una piccola bottega di chiavi nel centro storico di Ferrara.
+Una notte trova una chiave senza serratura.
+La chiave porta inciso: "NON APRIRE LA PORTA DEL 17 OTTOBRE".
+Il problema è che la data appartiene al futuro.
+Pochi giorni dopo entra in negozio Nora Bellini.
+Nora sostiene di aver già conosciuto Arturo.
+Arturo è certo che sia impossibile.
+Nel corso della storia scoprirà che alcune chiavi aprono eventi, alcune chiavi aprono ricordi e alcune chiavi aprono possibilità mai vissute.
+Ogni volta che una chiave viene usata, una parte della realtà cambia.
+Alla fine Arturo dovrà scegliere: salvare Nora oppure preservare la linea temporale.
+Oggetti canonici: Chiave del 17 Ottobre, Registro delle Chiavi.
+Concetti canonici: libero arbitrio, destino, memoria, linea temporale.`;
+
+const ULTIMATE_FORBIDDEN_RE =
+  /\b(vampiri?|lupi\s+mannari|draghi?|profezi(?:a|e)|sceriffi?|regine|accademie\s+magiche|demoni|guerre\s+fantasy|castelli\s+fantasy)\b|citt[aà]\s+nel\s+ghiaccio|\bre\b/i;
+
 const expressInput = {
   bookFormat: "novel" as const,
   genre: "horror",
@@ -170,5 +186,73 @@ describe("Blueprint Intelligence Recovery — concept dominance from end-to-end 
 
     expect(analysis.errors.some((error) => error.category === "progression" && error.severity === "critical")).toBe(true);
     expect(analysis.score).toBeLessThan(80);
+  });
+
+  it("passes the ultimate Arturo/Nora temporal-key coherence stress test through blueprint, index, subchapters and export text", () => {
+    const config = applyBookKernelToConfig({
+      title: "Il Custode Delle Chiavi Perdute",
+      subtitle: "La chiave del futuro che puo riscrivere ogni scelta",
+      idea: ULTIMATE_CUSTODE_IDEA,
+      genre: "Thriller soprannaturale psicologico",
+      subgenre: "Mystery temporale",
+      language: "Italian",
+      tone: "oscuro, psicologico, temporale",
+      numberOfChapters: 20,
+      bookLength: "long",
+      chapterLength: "medium",
+      authorStyle: "teso e cinematografico",
+      category: "Fiction",
+      subcategory: "Mystery temporale",
+      bookFormat: "novel",
+      subchaptersEnabled: true,
+      subchaptersPerChapter: 3,
+      characters: [
+        { name: "Arturo Valli", role: "protagonist" },
+        { name: "Nora Bellini", role: "key character" },
+      ],
+    } as BookConfig);
+
+    const blueprint = buildFallbackBlueprintFromConfig(config);
+    const serializedBlueprint = JSON.stringify(blueprint);
+    const exportText = blueprint.chapterOutlines
+      .map((chapter, index) => [
+        `Capitolo ${index + 1}: ${chapter.title}`,
+        chapter.summary,
+        ...(chapter.subchapters || []).map((sub, subIndex) => `${index + 1}.${subIndex + 1} ${sub.title}\n${sub.summary}`),
+      ].join("\n"))
+      .join("\n\n");
+
+    const coverage = validateBlueprintEntityCoverage(blueprint, ULTIMATE_CUSTODE_IDEA, [
+      "Arturo",
+      "Nora",
+      "Ferrara",
+      "Bottega delle Chiavi Perdute",
+      "Chiave del 17 Ottobre",
+      "Registro delle Chiavi",
+      "libero arbitrio",
+      "destino",
+      "memoria",
+      "linea temporale",
+    ]);
+
+    expect(coverage.pass, `Missing entities: ${coverage.missing.join(", ")}`).toBe(true);
+    expect(blueprint.chapterOutlines).toHaveLength(20);
+    expect(serializedBlueprint).not.toMatch(ULTIMATE_FORBIDDEN_RE);
+    expect(exportText).not.toMatch(ULTIMATE_FORBIDDEN_RE);
+    expect(exportText).toMatch(/Arturo|Nora|Ferrara|Bottega delle Chiavi Perdute|Chiave del 17 Ottobre|Registro delle Chiavi/i);
+    expect(exportText).toMatch(/libero arbitrio|destino|memoria|linea temporale/i);
+    const subchapterTitles = blueprint.chapterOutlines.flatMap((chapter) => (chapter.subchapters || []).map((sub) => sub.title));
+    expect(new Set(subchapterTitles).size).toBeGreaterThan(12);
+
+    for (const [index, chapter] of blueprint.chapterOutlines.entries()) {
+      const chapterText = `${chapter.title} ${chapter.summary}`;
+      expect(chapterText, `chapter ${index + 1}`).toMatch(/Arturo|Nora|Ferrara|Bottega|Chiave|Registro|17 ottobre|linea temporale|memoria|destino|libero arbitrio/i);
+      expect(chapter.subchapters, `chapter ${index + 1} subchapters`).toHaveLength(3);
+      for (const sub of chapter.subchapters || []) {
+        const subText = `${sub.title} ${sub.summary}`;
+        expect(subText).not.toMatch(/apertura|pressione|svolta\/scelta|placeholder/i);
+        expect(subText).toMatch(/trova|evento|scopr|entra|consulta|capisc|conflitto|cambia|cerca|porta|altera|mostra|decid|scegl|conseguenza|ostacolo|obiettivo|complica|ribaltamento|confronto/i);
+      }
+    }
   });
 });

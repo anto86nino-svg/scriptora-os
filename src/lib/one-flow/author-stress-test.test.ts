@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { prepareOneFlowWriterPackage, startOneFlowSession } from "@/lib/one-flow/ScriptoraOneFlowOrchestrator";
+import { prepareOneFlowWriterPackage, startOneFlowSessionWithConfirmedFoundations } from "@/lib/one-flow/ScriptoraOneFlowOrchestrator";
 import {
   extractConceptProtagonist,
   hasBusinessRestaurantSignals,
@@ -97,7 +97,7 @@ Piano di miglioramento di 30 giorni.`,
 
 function scoreProposal(
   idea: string,
-  proposal: NonNullable<ReturnType<typeof startOneFlowSession>["proposal"]>,
+  proposal: NonNullable<ReturnType<typeof startOneFlowSessionWithConfirmedFoundations>["proposal"]>,
   payload: NonNullable<ReturnType<typeof prepareOneFlowWriterPackage>["payload"]>,
   test: StressCase,
 ): number {
@@ -145,7 +145,7 @@ describe("author stress test — One Flow editorial quality", () => {
   });
 
   it.each(CASES)("$label — scores ≥ minScore through One Flow", (test) => {
-    const session = startOneFlowSession(test.idea, { genreHint: test.genreHint, language: "Italiano" });
+    const session = startOneFlowSessionWithConfirmedFoundations(test.idea, { genreHint: test.genreHint, language: "Italiano" });
     expect(session.proposal).toBeTruthy();
     const { payload } = prepareOneFlowWriterPackage(session);
     expect(payload).toBeTruthy();

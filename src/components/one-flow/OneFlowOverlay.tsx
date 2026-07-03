@@ -1,17 +1,25 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import type { StudioLaunchPayload } from "@/lib/book-config-studio/types";
 import { AuthorProposalScreen } from "@/components/one-flow/AuthorProposalScreen";
+import AuthorBookFoundationsStep from "@/components/book-forge/AuthorBookFoundationsStep";
 import {
   answerOneFlowQuestion,
   applyProposalEditIntent,
+  confirmOneFlowFoundations,
   prepareOneFlowWriterPackage,
   skipToProposalIfReady,
   startOneFlowSession,
   type OneFlowSession,
 } from "@/lib/one-flow/ScriptoraOneFlowOrchestrator";
 import { getUserFriendlyError } from "@/lib/user-friendly-error";
+import { analyzeLongIdeaForProposal } from "@/lib/book-forge/auto-detection-engine";
+import {
+  buildFoundationsFromDetection,
+  isAuthorFoundationsComplete,
+  type AuthorFoundations,
+} from "@/lib/book-forge/author-format-genre-catalog";
 
 type Props = {
   open: boolean;
@@ -39,13 +47,22 @@ export function OneFlowOverlay({
   const [approving, setApproving] = useState(false);
 
   const [pendingIdea, setPendingIdea] = useState("");
+  const [authorFoundations, setAuthorFoundations] = useState<Partial<AuthorFoundations>>({});
+  const [detectionDismissed, setDetectionDismissed] = useState(false);
+
+  const detectionSuggestion = useMemo(() => {
+    if (!session?.rawIdea || detectionDismissed) return null;
+    const result = analyzeLongIdeaForProposal(session.rawIdea);
+    return result.shouldPropose ? result.proposal : null;
+  }, [session?.rawIdea, detectionDismissed]);
 
   const bootstrap = useCallback((idea: string) => {
     setBooting(true);
     try {
-      let next = startOneFlowSession(idea, { genreHint, language });
-      next = skipToProposalIfReady(next);
+      const next = startOneFlowSession(idea, { genreHint, language });
       setSession(next);
+      setAuthorFoundations({});
+      setDetectionDismissed(false);
       setAnswer("");
     } catch (error) {
       toast.error(getUserFriendlyError(error, { fallback: "Non sono riuscito ad avviare One Flow." }));
@@ -102,6 +119,36 @@ export function OneFlowOverlay({
     const next = applyProposalEditIntent(session, text);
     setSession({ ...next, blueprint: null, config: null });
     toast.success("Proposta aggiornata.");
+  };
+
+  const confirmFoundations = () => {
+    if (!session || !isAuthorFoundationsComplete(authorFoundations)) return;
+    setBooting(true);
+    try {
+      let next = confirmOneFlowFoundations(session, authorFoundations);
+      next = skipToProposalIfReady(next);
+      setSession(next);
+      toast.success("Fondamenta confermate.");
+    } catch (error) {
+      toast.error(getUserFriendlyError(error, { fallback: "Non sono riuscito a confermare le fondamenta." }));
+    } finally {
+      setBooting(false);
+    }
+  };
+
+  const acceptDetectionSuggestion = () => {
+    if (!detectionSuggestion) return;
+    const mapped = buildFoundationsFromDetection(detectionSuggestion);
+    if (mapped?.formatId && mapped.genreId) {
+      setAuthorFoundations({
+        ...authorFoundations,
+        ...mapped,
+        targetReader: detectionSuggestion.targetReader || authorFoundations.targetReader,
+        tone: detectionSuggestion.tone || authorFoundations.tone,
+      });
+    }
+    setDetectionDismissed(true);
+    toast.success("Suggerimento applicato — conferma per continuare.");
   };
 
   const handleApprove = () => {
@@ -168,7 +215,20 @@ export function OneFlowOverlay({
         ) : booting || !session ? (
           <div className="flex min-h-[320px] flex-col items-center justify-center rounded-[1.75rem] border border-white/10 bg-slate-950/90 p-8 text-center">
             <Loader2 className="h-9 w-9 animate-spin text-violet-300" />
-            <p className="mt-4 text-sm font-semibold text-white/80">Scriptora legge la tua idea…</p>
+            <p className="mt-4 text-sm font-semibold text-white/80">Preparazione…</p>
+          </div>
+        ) : session.phase === "foundations" ? (
+          <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/92 p-5 sm:p-6">
+            <AuthorBookFoundationsStep
+              idea={session.rawIdea}
+              value={authorFoundations}
+              onChange={setAuthorFoundations}
+              onConfirm={confirmFoundations}
+              detectionSuggestion={detectionDismissed ? null : detectionSuggestion}
+              onAcceptDetection={acceptDetectionSuggestion}
+              onModifyDetection={() => setDetectionDismissed(true)}
+              confirmLabel="Continua con One Flow"
+            />
           </div>
         ) : session.phase === "interview" && session.currentQuestion ? (
           <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/92 p-5 sm:p-6">

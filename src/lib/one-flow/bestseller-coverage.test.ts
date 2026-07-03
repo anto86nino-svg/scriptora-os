@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { prepareOneFlowWriterPackage, startOneFlowSession } from "@/lib/one-flow/ScriptoraOneFlowOrchestrator";
+import { prepareOneFlowWriterPackage, startOneFlowSessionWithConfirmedFoundations } from "@/lib/one-flow/ScriptoraOneFlowOrchestrator";
 import { HOME_CREA_CHIPS } from "@/components/os/home/HomeCreaBlock";
 import { mapGenreHintToExpressInput } from "@/lib/one-flow/ScriptoraOneFlowOrchestrator";
 
@@ -102,7 +102,7 @@ Fotografie che cambiano. Ricordi che si riscrivono. Donna vestita di nero.`,
 ];
 
 function joinedPackageText(
-  session: ReturnType<typeof startOneFlowSession>,
+  session: ReturnType<typeof startOneFlowSessionWithConfirmedFoundations>,
   payload: NonNullable<ReturnType<typeof prepareOneFlowWriterPackage>["payload"]>,
 ): string {
   return [
@@ -126,7 +126,7 @@ describe("bestseller coverage — One Flow E2E", () => {
   });
 
   it.each(CASES)("$label — end-to-end without template drift", ({ idea, genreHint, mustContain, mustNotContain, chapterMustContain, chapterMustNot }) => {
-    const session = startOneFlowSession(idea, { genreHint, language: "Italiano" });
+    const session = startOneFlowSessionWithConfirmedFoundations(idea, { genreHint, language: "Italiano" });
     const { payload } = prepareOneFlowWriterPackage(session);
     expect(payload).toBeTruthy();
 

@@ -82,8 +82,13 @@ export function buildExpressForgeConfiguration(
   baseState?: GuidedInterviewState,
 ): ExpressForgeResult {
   const sanitizedIdea = sanitizeUserConceptInput(input.ideaSeed || input.protagonistSeed || "");
-  const inferredBookFormat = inferExpressBookFormat({ ...input, ideaSeed: sanitizedIdea });
-  const normalizedGenre = inferDefaultExpressGenre(inferredBookFormat, sanitizedIdea, input.genre);
+  const authorLocked = Boolean(input.authorFormatLocked && input.bookFormat && input.genre?.trim());
+  const inferredBookFormat = authorLocked
+    ? input.bookFormat
+    : inferExpressBookFormat({ ...input, ideaSeed: sanitizedIdea });
+  const normalizedGenre = authorLocked
+    ? input.genre.trim()
+    : inferDefaultExpressGenre(inferredBookFormat, sanitizedIdea, input.genre);
 
   const normalizedInput: ExpressForgeInput = {
     ...input,
@@ -101,8 +106,8 @@ export function buildExpressForgeConfiguration(
   const memory = createEmptyForgeMemory();
   const provenance: Record<string, ForgeFieldProvenance> = {};
 
-  provenance.bookFormat = prov(normalizedInput.bookFormat, "user", 0.95);
-  provenance.genre = prov(normalizedInput.genre, "user", 0.95);
+  provenance.bookFormat = prov(normalizedInput.bookFormat, authorLocked ? "user" : "inferred", authorLocked ? 1 : 0.95);
+  provenance.genre = prov(normalizedInput.genre, authorLocked ? "user" : "inferred", authorLocked ? 1 : 0.95);
   provenance.language = prov(normalizedInput.language, "user", 0.95);
   provenance.rawIdea = prov(normalizedInput.ideaSeed, "user", 0.95);
   provenance.tone = prov(normalizedInput.tone, "user", 0.9);

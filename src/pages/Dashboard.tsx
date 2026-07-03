@@ -45,7 +45,7 @@ import { FORGE_PRESETS } from "@/lib/scriptora-forge/forge-presets";
 import { HomeRebirth } from "@/components/os/home/HomeRebirth";
 import { STUDIO_DRAFT_STORAGE_KEY } from "@/lib/book-config-studio/types";
 import type { DashboardActionContext } from "@/lib/one-flow/dashboard-home-actions";
-import { readHomeIdeaSeedFromStorage, saveHomeCreationDraft } from "@/lib/one-flow/home-creation-draft";
+import { normalizeHomeIdeaOverride, readHomeIdeaSeedFromStorage, saveHomeCreationDraft } from "@/lib/one-flow/home-creation-draft";
 import { readDashboardReturnState } from "@/lib/one-flow/dashboard-return-context";
 import { resetRouteScroll } from "@/lib/one-flow/dashboard-navigation";
 import { getToolRoute } from "@/lib/one-flow/tool-registry";
@@ -379,7 +379,7 @@ export default function Dashboard() {
 
   const readHomeIdeaSeed = useCallback((): string => readHomeIdeaSeedFromStorage(), []);
 
-  const openOneFlowFromHome = useCallback((ideaOverride?: string, genreHint?: HomeCreaChip) => {
+  const openOneFlowFromHome = useCallback((ideaOverride?: unknown, genreHint?: HomeCreaChip) => {
     if (freeBookUsed) {
       toast.error("Limite Blueprint Free raggiunto", {
         description: blueprintGate.message || "Passa a un piano autore o sblocca un singolo progetto.",
@@ -394,7 +394,7 @@ export default function Dashboard() {
       return;
     }
     closeAllDashboardTools();
-    const seed = ideaOverride?.trim() || readHomeIdeaSeed();
+    const seed = normalizeHomeIdeaOverride(ideaOverride) || readHomeIdeaSeed();
     saveHomeCreationDraft({ idea: seed, genreHint });
     setBookForgeHandoff(null);
     openDashboardTool("book-forge");
@@ -1141,8 +1141,8 @@ typeof crypto.randomUUID === "function"
 
   return (
     <div className="scriptora-dashboard-shell scriptora-ios-screen scriptora-app-surface scriptora-literary-shell scriptora-dashboard-mobile scriptora-page-scroll scriptora-cinematic-shell scriptora-brand-shell relative min-h-[100dvh] overflow-x-hidden safe-area-pt">
-      <header className="sticky top-0 z-20 border-b border-[#f2c400]/20 bg-[#2c1810]/88 shadow-[0_10px_40px_rgba(0,0,0,0.35)] backdrop-blur-2xl safe-area-pt">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-20 overflow-x-clip border-b border-[#f2c400]/20 bg-[#2c1810]/88 shadow-[0_10px_40px_rgba(0,0,0,0.35)] backdrop-blur-2xl safe-area-pt">
+        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-2 overflow-x-clip px-3 sm:gap-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             <button
               onClick={() => {

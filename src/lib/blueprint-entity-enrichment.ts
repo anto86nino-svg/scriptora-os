@@ -7,6 +7,7 @@ import {
   buildDragonFlameFantasyChapterTitles,
   buildHospitalMemoirChapterTitles,
   buildHorrorStationChapterTitles,
+  buildLostKeysTemporalMysteryChapterTitles,
   buildLiteraryRomanceChapterBeats,
   buildMemoirChapterTitles,
   buildPhotographyManualChapterTitles,
@@ -21,6 +22,7 @@ import {
   hasHighConceptFantasySignals,
   hasHospitalGuardianMemoirSignals,
   hasHorrorStationSignals,
+  hasLostKeysTemporalMysterySignals,
   hasLiteraryRomanceSignals,
   hasPhotographyManualSignals,
   hasSubmergedCitySciFiSignals,
@@ -139,6 +141,16 @@ export function buildFormatAwareChapterScaffold(
 ): Array<{ title: string; summary: string }> {
   const genre = String(opts.genre || "");
   const bookFormat = String(opts.bookFormat || "");
+  const allowsNarrativeEntityScaffold = ![
+    "poetry_collection",
+    "workbook",
+    "cookbook",
+    "self_help",
+    "business_book",
+    "manual",
+    "study_material",
+    "academic_summary",
+  ].includes(bookFormat.toLowerCase());
   const genreContext = {
     genre: opts.genre,
     subcategory: opts.subcategory,
@@ -148,6 +160,14 @@ export function buildFormatAwareChapterScaffold(
 
   if (hasLiteraryRomanceSignals(idea, genreContext)) {
     return expandConceptBeatsToCount(buildLiteraryRomanceChapterBeats(idea), chapterCount, idea, "literary_romance");
+  }
+  if (hasLostKeysTemporalMysterySignals(idea)) {
+    return expandConceptBeatsToCount(
+      buildLostKeysTemporalMysteryChapterTitles(idea),
+      chapterCount,
+      idea,
+      "lost_keys_temporal_mystery",
+    );
   }
   if (hasSupernaturalThrillerSignals(idea)) {
     return expandConceptBeatsToCount(buildSupernaturalThrillerChapterTitles(idea), chapterCount, idea, "supernatural_thriller");
@@ -185,10 +205,10 @@ export function buildFormatAwareChapterScaffold(
   if (/self-help|self help|manuale|business|guida/i.test(genre) || bookFormat === "self_help") {
     return expandConceptBeatsToCount(buildSelfHelpChapterTitles(idea), chapterCount, idea, "self_help");
   }
-  if (hasRichIdeaEntities(idea)) {
+  if (allowsNarrativeEntityScaffold && hasRichIdeaEntities(idea)) {
     return buildEntityAwareChapterScaffold(idea, chapterCount);
   }
-  if (shouldUseEntityDrivenScaffold(idea)) {
+  if (allowsNarrativeEntityScaffold && shouldUseEntityDrivenScaffold(idea)) {
     return buildEntityAwareChapterScaffold(idea, chapterCount);
   }
   return [];

@@ -34,6 +34,8 @@ type DominanceInput = {
   brain?: string;
   blueprintType?: string;
   marketingLabels?: string[] | string;
+  /** When true, author selection is absolute — never override format/genre from inference. */
+  authorFormatLocked?: boolean;
 };
 
 type MutableShape = DominanceInput & Record<string, unknown>;
@@ -97,6 +99,7 @@ const FORMAT_PROFILES: Record<string, FormatProfile> = {
     family: "poetry",
     brain: "poetry-brain",
     blueprintType: "PoetryBlueprint",
+    forbiddenGenres: ["romance", "horror", "fantasy", "thriller", "novel", "narrativa", "dark-romance", "sci-fi"],
   },
   memoir: {
     format: "memoir",
@@ -113,6 +116,7 @@ const FORMAT_PROFILES: Record<string, FormatProfile> = {
     family: "self_help",
     brain: "self-help-brain",
     blueprintType: "GuideBlueprint",
+    forbiddenGenres: ["romance", "horror", "fantasy", "thriller", "novel", "narrativa", "dark-romance", "sci-fi", "mystery"],
   },
   novel: {
     format: "novel",
@@ -210,24 +214,33 @@ export function applyFormatDominance<T extends MutableShape>(input: T): T {
   const next = { ...input } as T;
   const profile = resolved.profile;
   const existingGenre = normalize(next.genre);
+  const authorLocked = Boolean(input.authorFormatLocked);
 
   next.bookFormat = profile.format as T["bookFormat"];
 
-  if (!next.bookTypeId) {
-    next.bookTypeId = profile.bookTypeId as T["bookTypeId"];
+  if (!next.bookTypeId || authorLocked) {
+    if (!authorLocked || !next.bookTypeId) {
+      next.bookTypeId = profile.bookTypeId as T["bookTypeId"];
+    }
   }
 
   const isForbiddenGenre =
     profile.forbiddenGenres?.some((forbidden) => existingGenre.includes(normalize(forbidden))) ?? false;
 
-  const shouldPreserveGenre = isPreservedFictionGenre(existingGenre);
+  const shouldPreserveGenre = authorLocked || isPreservedFictionGenre(existingGenre);
   if ((!existingGenre || isForbiddenGenre || resolved.source !== "genre") && !shouldPreserveGenre) {
     next.genre = profile.genre as T["genre"];
   }
 
-  next.family = profile.family as T["family"];
-  next.brain = profile.brain as T["brain"];
-  next.blueprintType = profile.blueprintType as T["blueprintType"];
+  if (!authorLocked) {
+    next.family = profile.family as T["family"];
+    next.brain = profile.brain as T["brain"];
+    next.blueprintType = profile.blueprintType as T["blueprintType"];
+  } else if (!next.family) {
+    next.family = profile.family as T["family"];
+    next.brain = profile.brain as T["brain"];
+    next.blueprintType = profile.blueprintType as T["blueprintType"];
+  }
 
   return next;
 }
@@ -250,8 +263,16 @@ export function assertFormatIntegrity(input: DominanceInput): { ok: boolean; err
     }
   }
 
-  if (profile.format === "cookbook" && /philosophy|literary-fiction|psychology|novel|dark romance|memoir/.test(stack)) {
+  if (profile.format === "cookbook" && /philosophy|literary-fiction|psychology|novel|dark romance|memoir|protagonist|antagonist|romance|horror|fantasy/.test(stack)) {
     errors.push("Cookbook lock violato: rilevata deriva narrativa/filosofica.");
+  }
+
+  if (profile.format === "poetry_collection" && /romance|horror|fantasy|thriller|novel|narrativa|protagonist|antagonist|worldbuilding/.test(stack)) {
+    errors.push("Raccolta poetica: elementi narrativi/fiction non ammessi.");
+  }
+
+  if (profile.format === "self_help" && /romance|horror|fantasy|thriller|novel|narrativa|protagonist|antagonist|worldbuilding/.test(stack)) {
+    errors.push("Self Help: elementi narrativi/fiction non ammessi.");
   }
 
   return { ok: errors.length === 0, errors };

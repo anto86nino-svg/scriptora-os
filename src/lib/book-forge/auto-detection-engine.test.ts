@@ -44,4 +44,15 @@ describe("book forge auto-detection engine", () => {
     expect(result.proposal?.tone.length).toBeGreaterThan(8);
     expect(result.proposal?.targetReader.length).toBeGreaterThan(12);
   });
+
+  it("shows a single self-help detection label for procrastination concepts", () => {
+    const result = analyzeLongIdeaForProposal("La Vita Che Rimandi Sempre");
+    const proposalText = `${result.proposal?.detectedLabel} ${result.proposal?.genre} ${result.proposal?.subgenre}`;
+
+    expect(result.shouldPropose).toBe(true);
+    expect(result.proposal?.detectedLabel).toBe("Self Help");
+    expect(result.proposal?.genre).toBe("self-help");
+    expect(result.proposal?.bookFormat).toBe("self_help");
+    expect(proposalText).not.toMatch(/\b(romance|horror|thriller|fantasy|mystery)\b/i);
+  });
 });

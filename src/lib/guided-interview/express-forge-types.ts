@@ -33,6 +33,8 @@ export type ExpressForgeInput = {
   tone: string;
   length: "breve" | "medio" | "lungo" | "epico" | "pro";
   controlLevel: ExpressControlLevel;
+  /** Author confirmed format/genre — skip idea-based inference. */
+  authorFormatLocked?: boolean;
 };
 
 export type ForgeFieldProvenance = {

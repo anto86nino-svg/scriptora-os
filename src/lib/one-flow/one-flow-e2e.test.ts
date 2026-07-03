@@ -3,7 +3,7 @@ import {
   applyProposalEditIntent,
   prepareOneFlowWriterPackage,
   resolveQuestionBudget,
-  startOneFlowSession,
+  startOneFlowSessionWithConfirmedFoundations,
 } from "@/lib/one-flow/ScriptoraOneFlowOrchestrator";
 import { validateBlueprintEntityCoverage } from "@/lib/blueprint-entity-enrichment";
 import { isInvalidGeneratedTitle } from "@/lib/title-intelligence-validation";
@@ -25,7 +25,7 @@ describe("One Flow e2e — stazione 03:17 horror", () => {
   });
 
   it("builds entity-aware proposal with non-truncated title and specific promise", () => {
-    const session = startOneFlowSession(STATION_IDEA, { genreHint: "Horror", language: "Italiano" });
+    const session = startOneFlowSessionWithConfirmedFoundations(STATION_IDEA, { genreHint: "Horror", language: "Italiano" });
     expect(session.proposal).toBeTruthy();
     expect(isInvalidGeneratedTitle(session.proposal!.title, STATION_IDEA)).toBe(false);
     expect(isGenericNarrativePromise(session.proposal!.promise)).toBe(false);
@@ -33,7 +33,7 @@ describe("One Flow e2e — stazione 03:17 horror", () => {
   });
 
   it("generates entity-driven blueprint and blocks writing until approval package", () => {
-    let session = startOneFlowSession(STATION_IDEA, { genreHint: "Horror", language: "Italiano" });
+    let session = startOneFlowSessionWithConfirmedFoundations(STATION_IDEA, { genreHint: "Horror", language: "Italiano" });
     expect(canStartWritingFromSession(session)).toBe(false);
 
     const { session: ready, payload } = prepareOneFlowWriterPackage(session);
@@ -71,7 +71,7 @@ describe("One Flow e2e — stazione 03:17 horror", () => {
   });
 
   it("applies conversational edit intents without parallel AI path", () => {
-    const session = startOneFlowSession(STATION_IDEA, { genreHint: "Horror" });
+    const session = startOneFlowSessionWithConfirmedFoundations(STATION_IDEA, { genreHint: "Horror" });
     const darker = applyProposalEditIntent(session, "rendi il tono più oscuro e inquietante");
     expect(darker.proposal?.tone.toLowerCase()).toMatch(/oscuro|inquietant/);
 

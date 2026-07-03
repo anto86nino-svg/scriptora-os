@@ -252,6 +252,17 @@ export function repairBlueprintResponse(
 
 export function buildFallbackBlueprintFromConfig(config: BookConfig): BookBlueprint {
   const idea = String((config as BookConfig & { idea?: string }).idea || "").trim();
+  const lockedFormat = String((config as BookConfig & { bookFormat?: string }).bookFormat || "").toLowerCase();
+  const allowNarrativeEntityFallback = ![
+    "poetry_collection",
+    "workbook",
+    "cookbook",
+    "self_help",
+    "business_book",
+    "manual",
+    "study_material",
+    "academic_summary",
+  ].includes(lockedFormat);
   const formatScaffold = idea
     ? buildFormatAwareChapterScaffold(idea, config.numberOfChapters, {
         genre: config.genre,
@@ -261,7 +272,7 @@ export function buildFallbackBlueprintFromConfig(config: BookConfig): BookBluepr
         bookFormat: (config as BookConfig & { bookFormat?: string }).bookFormat,
       })
     : [];
-  if (formatScaffold.length > 0 || (idea && hasRichIdeaEntities(idea))) {
+  if (formatScaffold.length > 0 || (allowNarrativeEntityFallback && idea && hasRichIdeaEntities(idea))) {
     const scaffold = formatScaffold.length > 0
       ? formatScaffold
       : buildEntityAwareChapterScaffold(idea, config.numberOfChapters);

@@ -25,6 +25,21 @@ export type InferredBookFormat =
   | "children_book"
   | "mixed_or_unknown";
 
+export type ContentFamily =
+  | "FICTION"
+  | "SELF_HELP"
+  | "BUSINESS"
+  | "MEMOIR"
+  | "WORKBOOK"
+  | "POETRY"
+  | "COOKBOOK";
+
+export type ContentFamilyDetection = {
+  family: ContentFamily;
+  confidence: number;
+  label: string;
+};
+
 export type GenreInference = {
   bookFormat: InferredBookFormat;
   bookTypeId: string;
@@ -39,6 +54,9 @@ export type GenreInference = {
   level1: Level1BookType;
   confidence: "high" | "medium" | "low";
   label: string;
+  family?: ContentFamily;
+  familyConfidence?: number;
+  familyLabel?: string;
   suggestedChapters: number;
 };
 
@@ -89,8 +107,110 @@ const POETRY_CONTENT_PATTERNS = [
 const EXPLICIT_ROMANCE_PATTERN =
   /dark romance|romance|relazione romantica|love interest|storia d['’]?amore|\bcoppia\b|\battrazione\b|\bdesiderio\b|\bbacio\b|rottura sentimentale|riconciliazione amorosa|slow burn|enemies to lovers/i;
 
+const CONTENT_FAMILY_LABELS: Record<ContentFamily, string> = {
+  FICTION: "Fiction",
+  SELF_HELP: "Self Help",
+  BUSINESS: "Business",
+  MEMOIR: "Memoir",
+  WORKBOOK: "Workbook",
+  POETRY: "Poesia",
+  COOKBOOK: "Cookbook",
+};
+
 function countPatternHits(patterns: RegExp[], text: string): number {
   return patterns.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0);
+}
+
+function clampConfidence(value: number): number {
+  return Math.max(0, Math.min(0.99, Number(value.toFixed(2))));
+}
+
+function detectHits(patterns: RegExp[], text: string): number {
+  return patterns.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0);
+}
+
+export function detectContentFamily(title: string, idea = "", knownBookFormat?: string): ContentFamilyDetection {
+  const hay = `${title} ${sanitizeUserConceptInput(idea)} ${knownBookFormat || ""}`
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, " ");
+
+  const scores: Record<ContentFamily, number> = {
+    FICTION: 0.22,
+    SELF_HELP: 0,
+    BUSINESS: 0,
+    MEMOIR: 0,
+    WORKBOOK: 0,
+    POETRY: 0,
+    COOKBOOK: 0,
+  };
+
+  if (/poetry_collection|poesia|poesie|raccolta poetic/.test(hay)) scores.POETRY += 0.92;
+  if (/\ble\s+cose\s+che\s+non\s+ho\s+detto\b|\bnon\s+ho\s+detto\s+al\s+mare\b|\bmare\b.*\bsilenzio\b|\bversi\b/.test(hay)) {
+    scores.POETRY += 0.76;
+  }
+  if (/cookbook|ricettario|ricette|cucina|menu|ingredienti/.test(hay)) scores.COOKBOOK += 0.9;
+  if (/workbook|schede|esercizi guidati|tracker|attivita|attività/.test(hay)) scores.WORKBOOK += 0.86;
+  if (/memoir|memorie|autobiograf|storia vera|racconto personale/.test(hay)) scores.MEMOIR += 0.82;
+  if (/\bmio\s+padre\b|\bmia\s+madre\b|\bnon\s+mi\s+ha\s+mai\s+insegnat\w*\b|\bin\s+bicicletta\b|\binfanzia\s+raccontat\w*\b/.test(hay)) {
+    scores.MEMOIR += 0.86;
+  }
+  if (/business|marketing|leadership|imprend|startup|vendite|fatturato|brand|azienda/.test(hay)) scores.BUSINESS += 0.84;
+
+  const selfHelpHits = detectHits([
+    /\babitudin\w*\b/,
+    /\bdisciplina\b/,
+    /\bmotivazion\w*\b/,
+    /\bprocrastinazion\w*\b/,
+    /\bcrescita\s+personale\b/,
+    /\bobiettiv\w*\b/,
+    /\bmentalita\b/,
+    /\bmentalità\b/,
+    /\bsuccesso\b/,
+    /\bproduttivit\w*\b/,
+    /\bautostima\b/,
+    /\brimand\w*\b/,
+    /\bmetodo\b/,
+    /\bmindset\b/,
+    /\btrasformazion\w*\s+personale\b/,
+  ], hay);
+
+  scores.SELF_HELP += selfHelpHits * 0.18;
+  if (/\bvita\s+che\s+rimandi\s+sempre\b/.test(hay)) scores.SELF_HELP += 0.62;
+  if (/\b(?:la|il)\s+\w+\s+che\s+rimandi\b/.test(hay)) scores.SELF_HELP += 0.42;
+  if (/\bguida\s+pratica|manuale\s+pratico|percorso\s+pratico\b/.test(hay)) scores.SELF_HELP += 0.28;
+
+  const explicitFictionHits = detectHits([
+    /\bromanzo\b/,
+    /\bprotagonist\w*\b/,
+    /\bantagonist\w*\b/,
+    /\btrama\b/,
+    /\bcast\b/,
+    /\bthriller\b/,
+    /\bhorror\b/,
+    /\bromance\b/,
+    /\bfantasy\b/,
+    /\bmystery\b/,
+    /\bindagine\b/,
+    /\bomicid\w*\b/,
+  ], hay);
+  scores.FICTION += explicitFictionHits * 0.18;
+
+  if (scores.SELF_HELP > 0.7) {
+    scores.FICTION = Math.min(scores.FICTION, 0.25);
+  }
+  if (Math.max(scores.BUSINESS, scores.MEMOIR, scores.WORKBOOK, scores.POETRY, scores.COOKBOOK) > 0.7) {
+    scores.FICTION = Math.min(scores.FICTION, 0.3);
+  }
+
+  const [family, confidence] = (Object.entries(scores) as Array<[ContentFamily, number]>)
+    .sort((a, b) => b[1] - a[1])[0] || ["FICTION", 0.22];
+
+  return {
+    family,
+    confidence: clampConfidence(confidence),
+    label: CONTENT_FAMILY_LABELS[family],
+  };
 }
 
 function inferPoeticBookFormat(text: string): InferredBookFormat | null {
@@ -423,18 +543,101 @@ function withIdeaAwarePromise(inference: GenreInference, idea: string): GenreInf
   };
 }
 
+function withContentFamily(inference: GenreInference, family: ContentFamilyDetection): GenreInference {
+  return {
+    ...inference,
+    family: family.family,
+    familyConfidence: family.confidence,
+    familyLabel: family.label,
+  };
+}
+
+function buildSelfHelpFamilyInference(
+  family: ContentFamilyDetection,
+  title: string,
+  idea: string,
+): GenreInference {
+  const meta = studioMeta("self-help");
+  const hay = `${title} ${idea}`.toLowerCase();
+  const procrastination = /\b(procrastinazion\w*|rimand\w*)\b/i.test(hay);
+  return withContentFamily(withIdeaAwarePromise({
+    bookFormat: "self_help",
+    label: "Self Help",
+    bookTypeId: "self-help",
+    genre: "self-help",
+    category: meta.category || "Non-Fiction",
+    subcategory: "Self Help",
+    subgenre: procrastination ? "procrastinazione / crescita personale" : "crescita personale pratica",
+    tone: "chiaro, pratico, motivante, concreto",
+    targetReader: "Persone che vogliono smettere di rimandare, costruire abitudini sostenibili e trasformare obiettivi in azioni quotidiane.",
+    narrativePromise: "Un percorso pratico per riconoscere il rinvio, ricostruire disciplina e trasformare la crescita personale in passi concreti.",
+    commercialGoal: "Posizionamento self-help chiaro: promessa pratica, problema specifico e trasformazione misurabile.",
+    level1: "self-help",
+    confidence: family.confidence >= 0.82 ? "high" : "medium",
+    suggestedChapters: 12,
+  }, idea), family);
+}
+
+function buildBusinessFamilyInference(
+  family: ContentFamilyDetection,
+  title: string,
+  idea: string,
+): GenreInference {
+  const meta = studioMeta("business");
+  return withContentFamily(withIdeaAwarePromise({
+    bookFormat: "essay",
+    label: "Business",
+    bookTypeId: "business",
+    genre: "business",
+    category: meta.category || "Non-Fiction",
+    subcategory: "Business",
+    subgenre: "business strategy",
+    tone: "autorevole, diretto, pratico, orientato ai risultati",
+    targetReader: "Professionisti, imprenditori e team che cercano modelli applicabili, casi e metriche.",
+    narrativePromise: "Un percorso business fondato su metodo, strategia, casi e applicazione misurabile.",
+    commercialGoal: "Posizionamento business chiaro: promessa utile, framework riconoscibile e outcome concreto.",
+    level1: "business",
+    confidence: family.confidence >= 0.82 ? "high" : "medium",
+    suggestedChapters: 14,
+  }, `${title} ${idea}`), family);
+}
+
 export function inferGenreFromText(title: string, idea = "", knownBookFormat?: string): GenreInference {
   const known = String(knownBookFormat || "").toLowerCase().trim() as InferredBookFormat;
   const sanitizedIdea = sanitizeUserConceptInput(idea);
+  const contentFamily = detectContentFamily(title, sanitizedIdea, knownBookFormat);
   if (known) {
     const locked = buildFormatLockedInference(known, title, sanitizedIdea);
-    if (locked) return locked;
+    if (locked) return withContentFamily(locked, contentFamily);
   }
   const hay = `${title} ${sanitizedIdea}`.toLowerCase();
+  if (contentFamily.family === "SELF_HELP" && contentFamily.confidence > 0.7) {
+    return buildSelfHelpFamilyInference(contentFamily, title, sanitizedIdea);
+  }
+  if (contentFamily.confidence > 0.7) {
+    if (contentFamily.family === "COOKBOOK") {
+      const locked = buildFormatLockedInference("cookbook", title, sanitizedIdea);
+      if (locked) return withContentFamily(locked, contentFamily);
+    }
+    if (contentFamily.family === "WORKBOOK") {
+      const locked = buildFormatLockedInference("workbook", title, sanitizedIdea);
+      if (locked) return withContentFamily(locked, contentFamily);
+    }
+    if (contentFamily.family === "MEMOIR") {
+      const locked = buildFormatLockedInference("memoir", title, sanitizedIdea);
+      if (locked) return withContentFamily(locked, contentFamily);
+    }
+    if (contentFamily.family === "POETRY") {
+      return withContentFamily(buildPoetryInference("poetry_collection", 5), contentFamily);
+    }
+    if (contentFamily.family === "BUSINESS") {
+      return buildBusinessFamilyInference(contentFamily, title, sanitizedIdea);
+    }
+  }
   const poetryFormat = inferPoeticBookFormat(hay);
   if (poetryFormat) {
     const poetryScore = countPatternHits(POETRY_FORM_PATTERNS, hay) * 2 + countPatternHits(POETRY_CONTENT_PATTERNS, hay);
-    return buildPoetryInference(poetryFormat, poetryScore);
+    return withContentFamily(buildPoetryInference(poetryFormat, poetryScore), contentFamily);
   }
 
   let best: { score: number; signal: Signal } | null = null;
@@ -449,7 +652,7 @@ export function inferGenreFromText(title: string, idea = "", knownBookFormat?: s
 
   if (best) {
     const meta = studioMeta(best.signal.inference.bookTypeId);
-    return withIdeaAwarePromise({
+    return withContentFamily(withIdeaAwarePromise({
       ...best.signal.inference,
       bookFormat: best.signal.inference.bookFormat || bookFormatForBookType(best.signal.inference.bookTypeId),
       category: meta.category,
@@ -457,7 +660,7 @@ export function inferGenreFromText(title: string, idea = "", knownBookFormat?: s
       level1: resolveLevel1FromBookTypeId(best.signal.inference.bookTypeId),
       confidence: best.score >= 11 ? "high" : "medium",
       suggestedChapters: best.signal.inference.chapters,
-    }, sanitizedIdea);
+    }, sanitizedIdea), contentFamily);
   }
 
   const looksFictionTitle = /la |le |il |lo |una |un |casa|notte|sangue|ombra|madre|anima|morte|segreto/i.test(title)
@@ -468,7 +671,7 @@ export function inferGenreFromText(title: string, idea = "", knownBookFormat?: s
       ?? SIGNALS.find((signal) => signal.id === "thriller");
     if (thrillerSignal) {
       const meta = studioMeta(thrillerSignal.inference.bookTypeId);
-      return withIdeaAwarePromise({
+      return withContentFamily(withIdeaAwarePromise({
         ...thrillerSignal.inference,
         bookFormat: thrillerSignal.inference.bookFormat || bookFormatForBookType(thrillerSignal.inference.bookTypeId),
         category: meta.category,
@@ -476,7 +679,7 @@ export function inferGenreFromText(title: string, idea = "", knownBookFormat?: s
         level1: resolveLevel1FromBookTypeId(thrillerSignal.inference.bookTypeId),
         confidence: "high",
         suggestedChapters: thrillerSignal.inference.chapters,
-      }, sanitizedIdea);
+      }, sanitizedIdea), contentFamily);
     }
   }
 
@@ -484,7 +687,7 @@ export function inferGenreFromText(title: string, idea = "", knownBookFormat?: s
     const fantasySignal = SIGNALS.find((signal) => signal.id === "fantasy");
     if (fantasySignal) {
       const meta = studioMeta(fantasySignal.inference.bookTypeId);
-      return withIdeaAwarePromise({
+      return withContentFamily(withIdeaAwarePromise({
         ...fantasySignal.inference,
         bookFormat: fantasySignal.inference.bookFormat || bookFormatForBookType(fantasySignal.inference.bookTypeId),
         category: meta.category,
@@ -492,13 +695,13 @@ export function inferGenreFromText(title: string, idea = "", knownBookFormat?: s
         level1: resolveLevel1FromBookTypeId(fantasySignal.inference.bookTypeId),
         confidence: "high",
         suggestedChapters: fantasySignal.inference.chapters,
-      }, sanitizedIdea);
+      }, sanitizedIdea), contentFamily);
     }
   }
 
   if (looksFictionTitle || GENERIC_SELF_HELP_TITLES.test(title.trim())) {
     const meta = studioMeta("literary");
-    return withIdeaAwarePromise({
+    return withContentFamily(withIdeaAwarePromise({
       bookFormat: "novel",
       label: "Narrativa letteraria",
       bookTypeId: "literary",
@@ -513,11 +716,11 @@ export function inferGenreFromText(title: string, idea = "", knownBookFormat?: s
       level1: "romanzo",
       confidence: "low",
       suggestedChapters: 24,
-    }, sanitizedIdea);
+    }, sanitizedIdea), contentFamily);
   }
 
   const meta = studioMeta("literary");
-  return withIdeaAwarePromise({
+  return withContentFamily(withIdeaAwarePromise({
     bookFormat: "novel",
     label: "Romanzo (default narrativo)",
     bookTypeId: "literary",
@@ -532,7 +735,7 @@ export function inferGenreFromText(title: string, idea = "", knownBookFormat?: s
     level1: "romanzo",
     confidence: "low",
     suggestedChapters: 20,
-  }, sanitizedIdea);
+  }, sanitizedIdea), contentFamily);
 }
 
 export { computeTitleCategoryCoherence, isConfigIncoherentWithInference } from "./title-category-coherence";

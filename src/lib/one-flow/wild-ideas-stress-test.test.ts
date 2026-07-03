@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { prepareOneFlowWriterPackage, startOneFlowSession } from "@/lib/one-flow/ScriptoraOneFlowOrchestrator";
+import { prepareOneFlowWriterPackage, startOneFlowSessionWithConfirmedFoundations } from "@/lib/one-flow/ScriptoraOneFlowOrchestrator";
 import {
   extractConceptProtagonist,
   isSparseConceptInput,
@@ -7,6 +7,7 @@ import {
   shouldUseEntityDrivenScaffold,
 } from "@/lib/concept-dominance";
 import { isInvalidGeneratedTitle } from "@/lib/title-intelligence-validation";
+import type { AuthorFoundations } from "@/lib/book-forge/author-format-genre-catalog";
 import { isGenericNarrativePromise } from "@/lib/narrative-promise-intelligence";
 
 const GENERIC_BLUEPRINT =
@@ -16,9 +17,17 @@ type WildCase = {
   label: string;
   idea: string;
   expectedProtagonist?: string;
+  foundations?: AuthorFoundations;
   mustContain: RegExp;
   mustNotContain: RegExp;
   minScore: number;
+};
+
+const DEFAULT_NARRATIVE_FOUNDATIONS: AuthorFoundations = {
+  formatId: "romanzo",
+  formatLabel: "Romanzo",
+  genreId: "literary-fiction",
+  genreLabel: "Literary Fiction",
 };
 
 const WILD_CASES: WildCase[] = [
@@ -41,6 +50,7 @@ const WILD_CASES: WildCase[] = [
   {
     label: "WILD 3 — Speculative essay (sonno / economisti)",
     idea: "Se il sonno fosse una valuta, chi controlla le banche dei sogni controlla il futuro. Tre economisti e un insomne cercano di chiudere il mercato nero degli incubi.",
+    foundations: { formatId: "saggio", formatLabel: "Saggio", genreId: "cultura", genreLabel: "Cultura" },
     mustContain: /sonno|valuta|banche|sogni|incubi|economist|insomne/i,
     mustNotContain: /ariana|fantasy emozionale|la porta|primo ricordo/i,
     minScore: 85,
@@ -49,6 +59,7 @@ const WILD_CASES: WildCase[] = [
     label: "WILD 4 — Children's allegory (Argo / volpe)",
     idea: "La volpe Argo non sa mentire ma vive in un regno dove mentire è obbligatorio per legge. Deve consegnare una lettera al Re delle Mezze Verità.",
     expectedProtagonist: "Argo",
+    foundations: { formatId: "bambini", formatLabel: "Libro per bambini", genreId: "fiabe", genreLabel: "Fiabe" },
     mustContain: /argo|volpe|mentir|lettera|mezze verit/i,
     mustNotContain: /kael|la porta|primo ricordo|magia, tradimento|fantasy emozionale/i,
     minScore: 85,
@@ -72,6 +83,7 @@ const WILD_CASES: WildCase[] = [
   {
     label: "WILD 7 — Ultra minimal input",
     idea: "libro sul silenzio",
+    foundations: { formatId: "raccolta_poetica", formatLabel: "Raccolta poetica", genreId: "contemporanea", genreLabel: "Contemporanea" },
     mustContain: /silenzio|poesia|contemplativ|liric/i,
     mustNotContain: /ariana|inciting incident|la forza opposta|thriller|indagine\/fuga/i,
     minScore: 85,
@@ -88,7 +100,7 @@ const WILD_CASES: WildCase[] = [
 
 function scoreWildProposal(
   idea: string,
-  proposal: NonNullable<ReturnType<typeof startOneFlowSession>["proposal"]>,
+  proposal: NonNullable<ReturnType<typeof startOneFlowSessionWithConfirmedFoundations>["proposal"]>,
   payload: NonNullable<ReturnType<typeof prepareOneFlowWriterPackage>["payload"]>,
   test: WildCase,
 ): number {
@@ -141,7 +153,10 @@ describe("wild ideas stress test — One Flow entity-driven edge cases", () => {
   });
 
   it.each(WILD_CASES)("$label — scores ≥ minScore through One Flow", (test) => {
-    const session = startOneFlowSession(test.idea, { language: "Italiano" });
+    const session = startOneFlowSessionWithConfirmedFoundations(test.idea, {
+      language: "Italiano",
+      foundations: test.foundations ?? DEFAULT_NARRATIVE_FOUNDATIONS,
+    });
     expect(session.proposal).toBeTruthy();
     const { payload } = prepareOneFlowWriterPackage(session);
     expect(payload).toBeTruthy();

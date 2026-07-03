@@ -58,6 +58,7 @@ import {
   type GenreInference,
   type TitleCategoryCoherenceLevel,
 } from "@/lib/book-creation-os/genre-inference";
+import { buildBookDna } from "@/lib/book-creation-os/book-dna-engine";
 import {
   buildWizardAutofillPatch,
   humanizeBlueprintError,
@@ -136,6 +137,13 @@ import GuidedFieldActions from "@/components/book-forge/GuidedFieldActions";
 import GuidedEmptyState from "@/components/book-forge/GuidedEmptyState";
 import AutoDetectionProposalCard from "@/components/book-forge/AutoDetectionProposal";
 import ShortIdeaDetectionCard from "@/components/book-forge/ShortIdeaDetectionCard";
+import AuthorBookFoundationsStep from "@/components/book-forge/AuthorBookFoundationsStep";
+import {
+  buildFoundationsFromDetection,
+  isAuthorFoundationsComplete,
+  resolveAuthorFoundationsToConfig,
+  type AuthorFoundations,
+} from "@/lib/book-forge/author-format-genre-catalog";
 import StepApprovalChecklist, {
   approvalChecklistComplete,
   type ApprovalCheckItem,
@@ -236,7 +244,7 @@ export const BOOK_CREATION_DECISIONS = [
   "Base libro",
   "Stile e lettore",
   "Struttura",
-  "Narrativa",
+  "Scheda libro",
   "Limiti e regole",
   "Mercato e pubblicazione",
   "Blueprint",
@@ -703,6 +711,9 @@ export function BookCreationOsWizard({
   const [subgenre, setSubgenre] = useState("");
   const [bookFormat, setBookFormat] = useState("");
   const [genreManuallyLocked, setGenreManuallyLocked] = useState(false);
+  const [authorFormatLocked, setAuthorFormatLocked] = useState(false);
+  const [authorFoundations, setAuthorFoundations] = useState<Partial<AuthorFoundations>>({});
+  const [foundationsConfirmed, setFoundationsConfirmed] = useState(false);
   const [identityDraft, setIdentityDraft] = useState<AuthorIdentity>(authorIdentity);
   const [chapters, setChapters] = useState(18);
   const [chapterLength, setChapterLength] = useState<"short" | "medium" | "long">("medium");
@@ -826,6 +837,9 @@ export function BookCreationOsWizard({
     }
     const nextGenre = normalizeHandoffGenre(p.genre || p.bookType || p.bookTypeId);
     if (nextGenre) setGenre(nextGenre);
+    setFoundationsConfirmed(true);
+    setAuthorFormatLocked(true);
+    setGenreManuallyLocked(true);
 
     if (isPoetryHandoff(p)) {
       setForgePresetId("poetry");
@@ -964,23 +978,30 @@ export function BookCreationOsWizard({
 
   const genreMutationContext = useMemo(
     () => ({
-      genreManuallyLocked,
+      genreManuallyLocked: genreManuallyLocked || authorFormatLocked,
       genreDetectionAccepted,
       hasPendingAutoDetection: Boolean(pendingAutoDetection),
     }),
-    [genreManuallyLocked, genreDetectionAccepted, pendingAutoDetection],
+    [genreManuallyLocked, authorFormatLocked, genreDetectionAccepted, pendingAutoDetection],
   );
 
   const shortIdeaHypotheses = useMemo(() => {
-    if (!idea.trim() || idea.trim().length >= LONG_IDEA_THRESHOLD) return [];
+    if (!idea.trim() || idea.trim().length >= LONG_IDEA_THRESHOLD || foundationsConfirmed) return [];
     return detectGenreWithConfidence(idea, {
       title,
       existingGenre: genre,
       existingSubgenre: subgenre,
       existingBookTypeId: bookTypeId,
-      genreManuallyLocked,
+      genreManuallyLocked: genreManuallyLocked || authorFormatLocked,
     });
-  }, [idea, title, genre, subgenre, bookTypeId, genreManuallyLocked]);
+  }, [idea, title, genre, subgenre, bookTypeId, genreManuallyLocked, authorFormatLocked, foundationsConfirmed]);
+
+  const foundationDetectionSuggestion = useMemo(() => {
+    if (!idea.trim() || autoDetectionDismissed || foundationsConfirmed) return null;
+    if (bookForgeHandoff || forgePresetId || postDnaForge) return null;
+    const result = analyzeLongIdeaForProposal(idea, { title });
+    return result.shouldPropose ? result.proposal : null;
+  }, [idea, title, autoDetectionDismissed, foundationsConfirmed, bookForgeHandoff, forgePresetId, postDnaForge]);
 
   const textInference = useMemo(
     () => resolveWizardGenreInference(title, idea, {
@@ -992,16 +1013,53 @@ export function BookCreationOsWizard({
       category,
       subcategory,
       bookFormat,
-      genreManuallyLocked,
+      genreManuallyLocked: genreManuallyLocked || authorFormatLocked,
+      authorFormatLocked,
     }),
-    [title, idea, genre, subgenre, bookTypeId, category, subcategory, bookFormat, genreManuallyLocked],
+    [title, idea, genre, subgenre, bookTypeId, category, subcategory, bookFormat, genreManuallyLocked, authorFormatLocked],
   );
+  const bookDna = useMemo(
+    () => buildBookDna({
+      title,
+      subtitle,
+      idea,
+      genre,
+      subgenre,
+      bookTypeId,
+      bookFormat,
+      targetReader,
+      promise: marketingPromise || narrativePromise,
+    }),
+    [title, subtitle, idea, genre, subgenre, bookTypeId, bookFormat, targetReader, marketingPromise, narrativePromise],
+  );
+  const isBookDnaFieldVisible = useCallback(
+    (field: string) => bookDna.visibleFields.includes(field),
+    [bookDna.visibleFields],
+  );
+  const bookDnaNarrativeTitle = bookDna.family === "FICTION" ? "Narrativa" : "Scheda editoriale";
+  const bookDnaNarrativeDescription = bookDna.family === "FICTION"
+    ? "Compila la scheda libro: personaggi quando servono, ma sempre promessa, hook, ambientazione e regole di racconto."
+    : "Compila solo i campi utili a questo formato. Scriptora non forza personaggi, POV o worldbuilding dove non servono.";
+  const bookDnaCorePlaceholder = bookDna.family === "SELF_HELP"
+    ? "Problema lettore / blocco da risolvere"
+    : bookDna.family === "BUSINESS"
+      ? "Problema di mercato / tensione strategica"
+      : bookDna.family === "POETRY"
+        ? "Tema centrale / arco emotivo"
+        : bookDna.family === "COOKBOOK"
+          ? "Promessa pratica / identita della cucina"
+          : bookDna.family === "WORKBOOK"
+            ? "Obiettivo pratico / sfida"
+            : bookDna.family === "MEMOIR"
+              ? "Nodo di vita / trasformazione personale"
+              : "Conflitto centrale";
   const shouldUseCharacterForge = useMemo(() => {
     if (bookForgeHandoff) return isFictionHandoff(bookForgeHandoff.prefill);
+    if (bookDna.family !== "FICTION") return false;
     if (level1BookType === "poesia" || level1BookType === "manuale" || level1BookType === "educazione") return false;
     if (["self-help", "business", "manual", "education", "poetry"].includes(String(bookTypeId))) return false;
     return true;
-  }, [bookForgeHandoff, level1BookType, bookTypeId]);
+  }, [bookForgeHandoff, bookDna.family, level1BookType, bookTypeId]);
 
   useEffect(() => {
     const result = computeTitleCategoryCoherence({
@@ -1341,6 +1399,10 @@ const persistDraft = useCallback(() => {
         setLevel1BookType(resolveLevel1FromBookTypeId(draft.bookTypeId));
       }
       if (draft.genre) setGenre(draft.genre);
+      if (draft.genre && draft.bookTypeId) {
+        setFoundationsConfirmed(true);
+        setGenreManuallyLocked(true);
+      }
       if (draft.subgenre) setSubgenre(draft.subgenre);
       if (draft.chapters) setChapters(draft.chapters);
       if (draft.chapterLength) setChapterLength(draft.chapterLength);
@@ -1648,8 +1710,8 @@ const persistDraft = useCallback(() => {
   }, [generatingBlueprint]);
 
   useEffect(() => {
-    if (!open || step !== 0 || autoDetectionDismissed || !idea.trim()) {
-      if (!open || step !== 0) setPendingAutoDetection(null);
+    if (!open || step !== 0 || autoDetectionDismissed || !idea.trim() || !foundationsConfirmed) {
+      if (!open || step !== 0 || !foundationsConfirmed) setPendingAutoDetection(null);
       return;
     }
     const isShort = idea.trim().length < LONG_IDEA_THRESHOLD;
@@ -1670,7 +1732,9 @@ const persistDraft = useCallback(() => {
       });
     }, 320);
     return () => window.clearTimeout(timer);
-  }, [open, step, idea, genre, subgenre, bookTypeId, title, autoDetectionDismissed, genreManuallyLocked, shortIdeaForceDetect]);
+  }, [open, step, idea, genre, subgenre, bookTypeId, title, autoDetectionDismissed, genreManuallyLocked, shortIdeaForceDetect, foundationsConfirmed]);
+
+  const skipFoundationsStep = Boolean(bookForgeHandoff || forgePresetId || postDnaForge);
 
   const prevIdeaRef = useRef(idea);
   useEffect(() => {
@@ -1721,6 +1785,8 @@ const persistDraft = useCallback(() => {
     shortDescription,
     blueprintPreview: Boolean(blueprintPreview),
     narrativeAutoApproved,
+    foundationsConfirmed: foundationsConfirmed || skipFoundationsStep,
+    skipFoundationsStep,
   }), [
     language,
     bookTypeId,
@@ -1751,6 +1817,8 @@ const persistDraft = useCallback(() => {
     shortDescription,
     blueprintPreview,
     narrativeAutoApproved,
+    foundationsConfirmed,
+    skipFoundationsStep,
   ]);
 
   if (!open) return null;
@@ -1859,7 +1927,7 @@ const persistDraft = useCallback(() => {
       setSubcategory(reset.subcategory);
       setSubgenre(opts?.featuredSubgenre || reset.subgenre || reset.subcategory);
       setLevel1BookType(newLevel1);
-      toast.info("Impostazioni aggiornate per mantenere coerenza narrativa.");
+      toast.info("Impostazioni aggiornate per mantenere coerenza del libro.");
     } else {
       setSubgenre((current) => opts?.featuredSubgenre || current || g.defaultSubcategory);
     }
@@ -1901,6 +1969,30 @@ const persistDraft = useCallback(() => {
     }
   };
 
+  const applyAuthorFoundations = (foundations: AuthorFoundations) => {
+    const mapped = resolveAuthorFoundationsToConfig(foundations);
+    applyStudioGenre(mapped.bookTypeId, { force: true, featuredSubgenre: mapped.subgenre, lockGenre: true });
+    setGenre(mapped.genre as Genre);
+    setCategory(mapped.category);
+    setSubcategory(mapped.subcategory);
+    setSubgenre(foundations.subgenre?.trim() || mapped.subgenre);
+    setBookFormat(mapped.bookFormat);
+    if (foundations.targetReader?.trim()) setTargetReader(foundations.targetReader.trim());
+    if (foundations.tone?.trim()) setTone(foundations.tone.trim());
+    setAuthorFormatLocked(true);
+    setAuthorFoundations(foundations);
+    setFoundationsConfirmed(true);
+  };
+
+  const confirmAuthorFoundations = () => {
+    if (!isAuthorFoundationsComplete(authorFoundations)) {
+      toast.error("Seleziona formato e genere prima di continuare.");
+      return;
+    }
+    applyAuthorFoundations(authorFoundations);
+    toast.success("Fondamenta confermate.");
+  };
+
   const confirmTypeChange = () => {
     if (!pendingBookTypeId) return;
     applyStudioGenre(pendingBookTypeId, { force: true, featuredSubgenre: pendingFeaturedSubgenre });
@@ -1914,6 +2006,9 @@ const persistDraft = useCallback(() => {
   };
 
   const applyInference = (inference: GenreInference, opts?: { keepTitle?: boolean; lockGenre?: boolean }) => {
+    if (!foundationsConfirmed && !skipFoundationsStep && !opts?.lockGenre) {
+      return;
+    }
     const dominated = resolveWizardGenreInference(title, idea, {
       title,
       idea,
@@ -2089,22 +2184,43 @@ const persistDraft = useCallback(() => {
 
   const acceptAutoDetection = () => {
     if (!pendingAutoDetection) return;
-    applyStudioGenre(pendingAutoDetection.bookTypeId, { force: true, lockGenre: false });
-    setGenre(pendingAutoDetection.genre as Genre);
-    setCategory(pendingAutoDetection.category);
-    setSubcategory(pendingAutoDetection.subcategory);
-    setBookFormat(pendingAutoDetection.bookFormat);
-    if (pendingAutoDetection.subgenre) setSubgenre(pendingAutoDetection.subgenre);
-    if (pendingAutoDetection.tone) setTone(pendingAutoDetection.tone);
-    if (pendingAutoDetection.targetReader) setTargetReader(pendingAutoDetection.targetReader);
-    if (pendingAutoDetection.protagonist) setProtagonist(pendingAutoDetection.protagonist);
-    if (pendingAutoDetection.setting) setSetting(pendingAutoDetection.setting);
-    setGenreManuallyLocked(true);
+    const mapped = buildFoundationsFromDetection(pendingAutoDetection);
+    if (mapped?.formatId && mapped.genreId && isAuthorFoundationsComplete({
+      formatId: mapped.formatId,
+      formatLabel: mapped.formatLabel || "",
+      genreId: mapped.genreId,
+      genreLabel: mapped.genreLabel || "",
+      subgenre: pendingAutoDetection.subgenre || mapped.subgenre,
+      targetReader: pendingAutoDetection.targetReader,
+      tone: pendingAutoDetection.tone,
+    })) {
+      applyAuthorFoundations({
+        formatId: mapped.formatId,
+        formatLabel: mapped.formatLabel || "",
+        genreId: mapped.genreId,
+        genreLabel: mapped.genreLabel || "",
+        subgenre: pendingAutoDetection.subgenre || mapped.subgenre,
+        targetReader: pendingAutoDetection.targetReader,
+        tone: pendingAutoDetection.tone,
+      });
+    } else {
+      applyStudioGenre(pendingAutoDetection.bookTypeId, { force: true, lockGenre: true });
+      setGenre(pendingAutoDetection.genre as Genre);
+      setCategory(pendingAutoDetection.category);
+      setSubcategory(pendingAutoDetection.subcategory);
+      setBookFormat(pendingAutoDetection.bookFormat);
+      if (pendingAutoDetection.subgenre) setSubgenre(pendingAutoDetection.subgenre);
+      if (pendingAutoDetection.tone) setTone(pendingAutoDetection.tone);
+      if (pendingAutoDetection.targetReader) setTargetReader(pendingAutoDetection.targetReader);
+      setGenreManuallyLocked(true);
+      setAuthorFormatLocked(true);
+      setFoundationsConfirmed(true);
+    }
     setGenreDetectionAccepted(true);
     const detectedLabel = pendingAutoDetection.detectedLabel;
     setPendingAutoDetection(null);
     setAutoDetectionDismissed(true);
-    toast.success(`Proposta accettata: ${detectedLabel}.`);
+    toast.success(`Suggerimento confermato: ${detectedLabel}.`);
   };
 
   const generateIdeaFromContext = async () => {
@@ -2431,6 +2547,10 @@ const persistDraft = useCallback(() => {
       toast.error("Scrivi almeno qualche riga di idea: anche grezza va bene.");
       return;
     }
+    if (!foundationsConfirmed && !skipFoundationsStep) {
+      toast.message("Conferma prima formato e genere nelle fondamenta del libro.");
+      return;
+    }
     const local = inferGenreFromText(title, idea);
     if (!shouldBlockCloudGenreMutation(genreMutationContext)) {
       applyInference(local);
@@ -2557,7 +2677,24 @@ const persistDraft = useCallback(() => {
             </div>
           ) : null}
 
-          {!useGuidedInterview && step === 0 && (
+          {!useGuidedInterview && step === 0 && !skipFoundationsStep && !foundationsConfirmed && (
+            <div className="space-y-4">
+              <AuthorBookFoundationsStep
+                idea={idea}
+                value={authorFoundations}
+                onChange={setAuthorFoundations}
+                onConfirm={confirmAuthorFoundations}
+                detectionSuggestion={autoDetectionDismissed ? null : foundationDetectionSuggestion}
+                onAcceptDetection={acceptAutoDetection}
+                onModifyDetection={() => {
+                  setPendingAutoDetection(null);
+                  setAutoDetectionDismissed(true);
+                }}
+              />
+            </div>
+          )}
+
+          {!useGuidedInterview && step === 0 && (skipFoundationsStep || foundationsConfirmed) && (
             <div className="space-y-4">
               <div>
                 <h2 className="text-xl font-semibold text-white">
@@ -2639,17 +2776,23 @@ const persistDraft = useCallback(() => {
                 <label className="block space-y-1.5 sm:col-span-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Titolo provvisorio</span>
-                    <GuidedFieldActions
-                      compact
-                      hasValue={Boolean(title.trim())}
-                      generating={generatingGuidedField === "titles" || generatingTitles}
-                      onWrite={() => titleInputRef.current?.focus()}
-                      onGenerate={() => void runExtendedTitleSuggestions()}
-                      onSuggest={() => void runExtendedTitleSuggestions()}
-                      onRegenerate={() => void runMagicalTitleGeneration()}
-                      showRegenerate={Boolean(title.trim())}
-                      generateLabel="Suggerisci titoli"
-                    />
+                    {bookDna.shouldSkipTitleGeneration ? (
+                      <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-2 py-1 text-[10px] font-bold text-emerald-100">
+                        Titolo rilevato
+                      </span>
+                    ) : (
+                      <GuidedFieldActions
+                        compact
+                        hasValue={Boolean(title.trim())}
+                        generating={generatingGuidedField === "titles" || generatingTitles}
+                        onWrite={() => titleInputRef.current?.focus()}
+                        onGenerate={() => void runExtendedTitleSuggestions()}
+                        onSuggest={() => void runExtendedTitleSuggestions()}
+                        onRegenerate={() => void runMagicalTitleGeneration()}
+                        showRegenerate={Boolean(title.trim())}
+                        generateLabel="Suggerisci titoli"
+                      />
+                    )}
                   </div>
                   <input
                     ref={titleInputRef}
@@ -2702,11 +2845,20 @@ const persistDraft = useCallback(() => {
                 <AutoDetectionProposalCard
                   proposal={pendingAutoDetection}
                   onAccept={acceptAutoDetection}
-                  onKeep={() => {
+                  onModify={() => {
                     setPendingAutoDetection(null);
                     setAutoDetectionDismissed(true);
                   }}
                 />
+              )}
+
+              {(title.trim() || idea.trim()) && (
+                <div className="rounded-2xl border border-sky-300/20 bg-sky-400/10 p-3">
+                  <p className="text-sm font-semibold text-sky-50">{bookDna.detectedLabel}</p>
+                  <p className="mt-1 text-xs leading-5 text-white/55">
+                    Campi attivi: {bookDna.visibleFields.slice(0, 6).map((field) => field.replace(/([A-Z])/g, " $1")).join(", ")}.
+                  </p>
+                </div>
               )}
 
               {(title.trim() || idea.trim()) && (
@@ -2848,16 +3000,22 @@ const persistDraft = useCallback(() => {
               <label className="block space-y-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/52">Titolo reale</span>
-                  <GuidedFieldActions
-                    compact
-                    hasValue={Boolean(title.trim())}
-                    generating={generatingGuidedField === "titles" || generatingTitles}
-                    onWrite={() => titleInputRef.current?.focus()}
-                    onGenerate={() => void runMagicalTitleGeneration()}
-                    onSuggest={() => void runExtendedTitleSuggestions()}
-                    onRegenerate={() => void runMagicalTitleGeneration()}
-                    showRegenerate={Boolean(title.trim())}
-                  />
+                  {bookDna.shouldSkipTitleGeneration ? (
+                    <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-2 py-1 text-[10px] font-bold text-emerald-100">
+                      Presente nel DNA
+                    </span>
+                  ) : (
+                    <GuidedFieldActions
+                      compact
+                      hasValue={Boolean(title.trim())}
+                      generating={generatingGuidedField === "titles" || generatingTitles}
+                      onWrite={() => titleInputRef.current?.focus()}
+                      onGenerate={() => void runMagicalTitleGeneration()}
+                      onSuggest={() => void runExtendedTitleSuggestions()}
+                      onRegenerate={() => void runMagicalTitleGeneration()}
+                      showRegenerate={Boolean(title.trim())}
+                    />
+                  )}
                 </div>
                 <input
                   ref={titleInputRef}
@@ -2886,7 +3044,7 @@ const persistDraft = useCallback(() => {
                 </div>
               )}
 
-              {forgePresetId !== "poetry" && !titleLockedByCharacterStudio && (
+              {forgePresetId !== "poetry" && !titleLockedByCharacterStudio && !bookDna.shouldSkipTitleGeneration && (
                 <div className="rounded-2xl border border-violet-400/25 bg-gradient-to-br from-violet-500/10 via-sky-500/5 to-transparent p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
@@ -3062,9 +3220,9 @@ const persistDraft = useCallback(() => {
           {!useGuidedInterview && step === 3 && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-xl font-semibold text-white">Narrativa</h2>
+                <h2 className="text-xl font-semibold text-white">{bookDnaNarrativeTitle}</h2>
                 <p className="mt-1 text-sm leading-6 text-white/60">
-                  Compila la scheda libro: personaggi quando servono, ma sempre promessa, hook, ambientazione e regole di racconto.
+                  {bookDnaNarrativeDescription}
                 </p>
               </div>
 
@@ -3089,17 +3247,39 @@ const persistDraft = useCallback(() => {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <input value={protagonist} onChange={(event) => setProtagonist(event.target.value)} placeholder="Protagonista" className={inputClass} />
-                <input value={antagonist} onChange={(event) => setAntagonist(event.target.value)} placeholder="Antagonista / forza oppositiva" className={inputClass} />
-                <input value={secondaryCast} onChange={(event) => setSecondaryCast(event.target.value)} placeholder="Cast secondario, separato da virgole" className={inputClass} />
-                <input value={setting} onChange={(event) => setSetting(event.target.value)} placeholder="Ambientazione" className={inputClass} />
-                <input value={pov} onChange={(event) => setPov(event.target.value)} placeholder="POV" className={inputClass} />
-                <input value={tense} onChange={(event) => setTense(event.target.value)} placeholder="Tempo verbale" className={inputClass} />
-                <input value={endingType} onChange={(event) => setEndingType(event.target.value)} placeholder="Tipo di finale" className={inputClass} />
-                <input value={coreConflict} onChange={(event) => setCoreConflict(event.target.value)} placeholder="Conflitto centrale" className={inputClass} />
+                {isBookDnaFieldVisible("protagonist") && (
+                  <input value={protagonist} onChange={(event) => setProtagonist(event.target.value)} placeholder="Protagonista" className={inputClass} />
+                )}
+                {isBookDnaFieldVisible("antagonist") && (
+                  <input value={antagonist} onChange={(event) => setAntagonist(event.target.value)} placeholder="Antagonista / forza oppositiva" className={inputClass} />
+                )}
+                {isBookDnaFieldVisible("cast") && (
+                  <input value={secondaryCast} onChange={(event) => setSecondaryCast(event.target.value)} placeholder="Cast secondario, separato da virgole" className={inputClass} />
+                )}
+                {isBookDnaFieldVisible("setting") && (
+                  <input value={setting} onChange={(event) => setSetting(event.target.value)} placeholder="Ambientazione" className={inputClass} />
+                )}
+                {isBookDnaFieldVisible("pov") && (
+                  <input value={pov} onChange={(event) => setPov(event.target.value)} placeholder="POV" className={inputClass} />
+                )}
+                {isBookDnaFieldVisible("pov") && (
+                  <input value={tense} onChange={(event) => setTense(event.target.value)} placeholder="Tempo verbale" className={inputClass} />
+                )}
+                {bookDna.family === "FICTION" && (
+                  <input value={endingType} onChange={(event) => setEndingType(event.target.value)} placeholder="Tipo di finale" className={inputClass} />
+                )}
+                <input value={coreConflict} onChange={(event) => setCoreConflict(event.target.value)} placeholder={bookDnaCorePlaceholder} className={inputClass} />
                 <input value={narrativePromise} onChange={(event) => setNarrativePromise(event.target.value)} placeholder="Promessa narrativa / editoriale" className={inputClass} />
                 <input value={openingHook} onChange={(event) => setOpeningHook(event.target.value)} placeholder="Hook" className={inputClass} />
-                <textarea value={mainTwists} onChange={(event) => setMainTwists(event.target.value)} rows={3} placeholder="Twist, tema, regole del mondo o elementi chiave" className={`${inputClass} sm:col-span-2`} />
+                <textarea
+                  value={mainTwists}
+                  onChange={(event) => setMainTwists(event.target.value)}
+                  rows={3}
+                  placeholder={bookDna.family === "FICTION"
+                    ? "Twist, tema, regole del mondo o elementi chiave"
+                    : `Dettagli ${bookDna.familyLabel}: ${bookDna.wizardSteps.slice(0, 4).join(", ")}`}
+                  className={`${inputClass} sm:col-span-2`}
+                />
               </div>
 
               {!shouldUseCharacterForge && (
@@ -3435,7 +3615,7 @@ const persistDraft = useCallback(() => {
           <div className="w-full max-w-md rounded-2xl border border-white/15 bg-slate-950 p-5 shadow-2xl">
             <h3 className="text-lg font-semibold text-white">Hai cambiato tipo di libro</h3>
             <p className="mt-2 text-sm leading-6 text-white/70">
-              Alcune impostazioni verranno aggiornate automaticamente per mantenere qualità e coerenza narrativa.
+              Alcune impostazioni verranno aggiornate automaticamente per mantenere qualità e coerenza del libro.
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button

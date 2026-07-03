@@ -88,6 +88,7 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
     /\b(citt[aà]\s+sommersa)\b/gi,
     /\b(citt[aà](?:\s+nel|\s+nascosta\s+sotto)?\s+(?:il\s+)?ghiaccio)/gi,
     /\b(citt[aà]\s+portuale\s+di\s+\w+)/gi,
+    /\b(ferrara)\b/gi,
     /\b(ghiaccio\s+etern\w*)\b/gi,
     /\b(prigione\s+(?:di\s+)?ghiaccio)\b/gi,
     /\b(porta(?:\s+nel\s+cuore)?)/gi,
@@ -107,6 +108,8 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
   const objectPatterns = [
     /\b(fotograf(?:ia|ie))/gi,
     /\b(treno)/gi,
+    /\b(chiave\s+del\s+17\s+ottobre)\b/gi,
+    /\b(registro\s+delle\s+chiavi)\b/gi,
     /\b(chiavi?\s+(?:delle\s+)?scelte?\s+non\s+compiut\w*)\b/gi,
     /\b(chiave\s+(?:dal|del|proveniente\s+dal)\s+futuro)\b/gi,
     /\b(lettere?|diari?o|mappe?|orologio|specchio|scatola|chiavi?|confessione|bollette?)\b/gi,
@@ -130,6 +133,8 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
     /\b(fotograf(?:ia|ie) che cambiano)/gi,
     /\b(non lasciare che io salga sul treno)/gi,
     /\b(scelte?\s+non\s+compiut\w*)/gi,
+    /\b(linea\s+temporale)\b/gi,
+    /\b(Nora\s+Bellini)\b/g,
     /\b(libero\s+arbitrio)\b/gi,
     /\b(marted\w*|calendario|sonno|incubi|wifi|cadaver\w*|fantasma|mare\s+sta\s+salendo|mercato\s+nero|banche\s+dei\s+sogni|mezze\s+verit\w*)/gi,
   ];
@@ -145,6 +150,7 @@ export function extractNarrativeIdeaSignals(idea: string): NarrativeIdeaSignals 
   if (/\bdestino\b/i.test(text)) signals.stakes.push("destino");
   if (/\bmorte(?:\s+predett\w*)?\b/i.test(text)) signals.stakes.push("morte");
   if (/\bfuturo\b/i.test(text)) signals.stakes.push("futuro");
+  if (/\blinea\s+temporale\b/i.test(text)) signals.stakes.push("linea temporale");
   if (/\bscelte?\s+non\s+compiut\w*\b/i.test(text)) signals.stakes.push("scelte non compiute");
   if (/\blibero\s+arbitrio\b/i.test(text)) signals.stakes.push("libero arbitrio");
   if (/\bfine del mondo|apocaliss/i.test(text)) signals.stakes.push("fine del mondo");

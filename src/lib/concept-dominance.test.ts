@@ -16,7 +16,7 @@ import {
   resolveConceptDominance,
   sanitizeUserConceptInput,
 } from "@/lib/concept-dominance";
-import { prepareOneFlowWriterPackage, startOneFlowSession } from "@/lib/one-flow/ScriptoraOneFlowOrchestrator";
+import { prepareOneFlowWriterPackage, startOneFlowSessionWithConfirmedFoundations } from "@/lib/one-flow/ScriptoraOneFlowOrchestrator";
 
 describe("concept-dominance", () => {
   const eliasIdea =
@@ -80,7 +80,7 @@ describe("concept-dominance", () => {
   it("keeps Marta 03:17 thriller through One Flow without fantasy template contamination", () => {
     const dirty =
       "Idea di libro: Fantasy, High Concept, Mistero, Destino, Memoria. " + martaIdea;
-    const session = startOneFlowSession(dirty, { genreHint: "Fantasy", language: "Italiano" });
+    const session = startOneFlowSessionWithConfirmedFoundations(dirty, { genreHint: "Fantasy", language: "Italiano" });
     const { payload } = prepareOneFlowWriterPackage(session);
     expect(payload).toBeTruthy();
 
@@ -131,7 +131,7 @@ Mentre il mondo combatte per impossessarsene, Aren scopre che il ghiaccio era un
   it("keeps Aren submerged-city sci-fi through One Flow without philosophy template", () => {
     const arenIdea =
       "Per oltre trecento anni la città sommersa è rimasta congelata nel ghiaccio. Aren, ultimo storico della città, scopre che il disgelo sta rivelando tecnologia impossibile e un segreto che cambia la storia dell'umanità. Un'entità antica è stata imprigionata sotto la città.";
-    const session = startOneFlowSession(arenIdea, { language: "Italiano" });
+    const session = startOneFlowSessionWithConfirmedFoundations(arenIdea, { genreHint: "Fantasy", language: "Italiano" });
     const { payload } = prepareOneFlowWriterPackage(session);
     expect(payload).toBeTruthy();
 

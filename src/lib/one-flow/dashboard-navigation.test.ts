@@ -1,5 +1,9 @@
-import { describe, expect, it, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { resetRouteScroll } from "./dashboard-navigation";
+
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+}
 
 describe("resetRouteScroll", () => {
   beforeEach(() => {
@@ -27,5 +31,26 @@ describe("resetRouteScroll", () => {
     expect(document.body.style.position).toBe("");
     expect(document.body.style.width).toBe("");
     expect(document.body.style.top).toBe("");
+  });
+
+  it("avoids jsdom scrollTo noise while still resetting scroll positions", async () => {
+    const originalScrollTo = window.scrollTo;
+    const scrollTo = vi.fn();
+    Object.defineProperty(window, "scrollTo", { value: scrollTo, configurable: true });
+
+    try {
+      document.documentElement.scrollTop = 140;
+      document.body.scrollTop = 80;
+
+      resetRouteScroll();
+      await nextFrame();
+      await nextFrame();
+
+      expect(scrollTo).not.toHaveBeenCalled();
+      expect(document.documentElement.scrollTop).toBe(0);
+      expect(document.body.scrollTop).toBe(0);
+    } finally {
+      Object.defineProperty(window, "scrollTo", { value: originalScrollTo, configurable: true });
+    }
   });
 });

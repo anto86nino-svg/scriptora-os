@@ -10,7 +10,7 @@ describe("BookCreationOsWizard configuration flow", () => {
       "Base libro",
       "Stile e lettore",
       "Struttura",
-      "Narrativa",
+      "Scheda libro",
       "Limiti e regole",
       "Mercato e pubblicazione",
       "Blueprint",

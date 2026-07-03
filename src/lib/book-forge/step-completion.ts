@@ -33,6 +33,8 @@ export type BookForgeWizardState = {
   shortDescription: string;
   blueprintPreview: boolean;
   narrativeAutoApproved?: boolean;
+  foundationsConfirmed?: boolean;
+  skipFoundationsStep?: boolean;
 };
 
 function hasText(value: string | undefined, min = 1): boolean {
@@ -83,7 +85,9 @@ export function isStepComplete(step: number, state: BookForgeWizardState): boole
     case 0:
       return (
         hasText(state.language)
+        && (state.skipFoundationsStep || state.foundationsConfirmed)
         && hasText(state.bookTypeId)
+        && hasText(state.genre)
         && (hasText(state.idea, 20) || hasText(state.title, 3))
       );
     case 1:
@@ -122,9 +126,13 @@ export function stepCompletionHint(step: number, state: BookForgeWizardState): s
   if (isStepComplete(step, state)) return null;
   switch (step) {
     case 0:
+      if (!state.skipFoundationsStep && !state.foundationsConfirmed) {
+        return "Conferma formato e genere nelle fondamenta del libro.";
+      }
       if (!hasText(state.idea, 20) && !hasText(state.title, 3)) {
         return "Scrivi l'idea del libro (almeno 20 caratteri) oppure genera un titolo di partenza.";
       }
+      if (!hasText(state.genre)) return "Seleziona il genere del libro.";
       return "Conferma formato, lingua e genere.";
     case 1:
       if (!hasText(state.title, 3)) return "Serve un titolo reale — scrivilo o genera proposte.";

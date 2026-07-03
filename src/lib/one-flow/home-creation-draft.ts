@@ -5,6 +5,10 @@ export type HomeCreationDraftSeed = {
   genreHint?: string;
 };
 
+export function normalizeHomeIdeaOverride(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
 function resolveStorage(storage?: Storage): Storage | null {
   if (storage) return storage;
   if (typeof sessionStorage === "undefined") return null;
@@ -31,8 +35,8 @@ export function saveHomeCreationDraft(
   try {
     const target = resolveStorage(storage);
     if (!target) return;
-    const idea = String(seed.idea || "").trim();
-    const genreHint = String(seed.genreHint || "").trim();
+    const idea = normalizeHomeIdeaOverride(seed.idea);
+    const genreHint = normalizeHomeIdeaOverride(seed.genreHint);
     if (!idea && !genreHint) {
       target.removeItem(STUDIO_DRAFT_STORAGE_KEY);
       return;

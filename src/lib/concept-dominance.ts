@@ -175,6 +175,15 @@ export function hasSupernaturalThrillerSignals(text: string): boolean {
   return hasThrillerAnchors(hay);
 }
 
+export function hasLostKeysTemporalMysterySignals(text: string): boolean {
+  const hay = normalizedConceptHay(text);
+  if (!hay) return false;
+  const keys = /\bchiav\w*\b/.test(hay);
+  const temporalLock = /\b(17\s+ottobre|diciassette\s+ottobre|futuro|linea\s+temporale|realta\s+cambia|possibilita\s+mai\s+vissute)\b/.test(hay);
+  const conceptLock = /\b(arturo|nora|ferrara|bottega|registro\s+delle\s+chiavi|chiavi\s+perdute)\b/.test(hay);
+  return keys && temporalLock && conceptLock;
+}
+
 export function hasHighConceptFantasySignals(
   text: string,
   genreContext?: LiteraryRomanceGenreContext,
@@ -382,6 +391,7 @@ export function shouldUseEntityDrivenScaffold(text: string): boolean {
   if (!sanitized || isSparseConceptInput(sanitized)) return false;
   if (
     hasDragonFlameFantasySignals(sanitized) ||
+    hasLostKeysTemporalMysterySignals(sanitized) ||
     hasHorrorStationSignals(sanitized) ||
     hasHospitalGuardianMemoirSignals(sanitized) ||
     hasBusinessRestaurantSignals(sanitized) ||
@@ -410,6 +420,7 @@ function extractConceptSetting(idea: string): string | undefined {
     /\b(citt[aà]\s+sommersa)\b/i,
     /\b(piccolo\s+paese|paese|villaggio)\b/i,
     /\b(stazione(?:\s+ferroviaria)?(?:\s+abbandonata)?)\b/i,
+    /\b(ferrara)\b/i,
     /\b(regno|impero|colonia)\b/i,
     /\b(bottega(?:\s+delle\s+chiavi\s+perdute)?)\b/i,
     /\b(casa|villa|bosco|isola)\b/i,
@@ -433,9 +444,13 @@ function extractConceptEntities(idea: string): string[] {
     /\b(segret\w*)\b/gi,
     /\b(storico|storica)\b/gi,
     /\b(bottega\s+delle\s+chiavi\s+perdute)\b/gi,
+    /\b(ferrara)\b/gi,
+    /\b(chiave\s+del\s+17\s+ottobre)\b/gi,
+    /\b(registro\s+delle\s+chiavi)\b/gi,
     /\b(chiavi?\s+(?:delle\s+)?scelte?\s+non\s+compiut\w*)\b/gi,
     /\b(chiave\s+(?:dal|del|proveniente\s+dal)\s+futuro)\b/gi,
     /\b(libero\s+arbitrio)\b/gi,
+    /\b(linea\s+temporale)\b/gi,
   ];
   for (const pattern of patterns) {
     for (const match of text.matchAll(pattern)) {
@@ -634,6 +649,17 @@ export function resolveConceptDominance(
   const sanitized = sanitizeUserConceptInput(idea);
   const hay = `${opts.genre || ""} ${opts.tags || ""} ${sanitized}`.trim();
   const protagonist = extractConceptProtagonist(sanitized);
+
+  if (hasLostKeysTemporalMysterySignals(hay)) {
+    return {
+      genre: "thriller",
+      bookFormat: "novel",
+      blockRomanceTemplates: true,
+      blockPhilosophyBlueprint: true,
+      blockFantasyTemplates: true,
+      protagonist,
+    };
+  }
 
   if (hasSupernaturalThrillerSignals(hay)) {
     return {
@@ -941,7 +967,7 @@ export function buildLiteraryRomanceChapterBeats(idea: string): ConceptChapterBe
   const protagonist = extractConceptProtagonist(text) || "Il protagonista";
   const hay = normalizedConceptHay(text);
   const memory = /\b(memori|ricord|passato)\b/.test(hay);
-  const choice = /\b(scelte?\s+irreversibili|decisione|seconda\s+opportunit)\b/.test(hay);
+  const choice = /\b(scelt[ae]\s+irreversibil\w*|decisione|seconda\s+opportunit)\b/.test(hay);
   const matureLove = /\b(amore\s+maturo|desiderio|innamor|ritrov|separat)\b/.test(hay);
 
   return [
@@ -968,7 +994,7 @@ export function buildLiteraryRomanceChapterBeats(idea: string): ConceptChapterBe
     {
       title: choice ? "La scelta che non si rimanda" : "Il peso del domani",
       summary: choice
-        ? `${protagonist} deve decidere cosa salvare e cosa lasciare andare senza illusioni eroiche.`
+        ? `${protagonist} arriva alla scelta irreversibile: cosa salvare, cosa lasciare andare e quale relazione puo sopravvivere alla verita.`
         : `${protagonist} capisce che rimandare equivale già a una decisione.`,
     },
     {
@@ -1015,6 +1041,71 @@ export function buildSubmergedCityChapterTitles(idea: string): ConceptChapterBea
     {
       title: "Il Prezzo della Verità",
       summary: `${protagonist} deve decidere se rivelare il segreto che cambia la storia dell'umanità o lasciare ancora imprigionato ciò che il ghiaccio teneva in catene.`,
+    },
+  ];
+}
+
+function extractNamedCharacter(text: string, fallback: string, pattern: RegExp): string {
+  const match = text.match(pattern);
+  return match?.[1]?.trim() || fallback;
+}
+
+export function buildLostKeysTemporalMysteryChapterTitles(idea: string): ConceptChapterBeat[] {
+  const text = sanitizeUserConceptInput(idea);
+  const protagonist = extractNamedCharacter(text, extractConceptProtagonist(text) || "Arturo Valli", /\b(Arturo\s+Valli)\b/i);
+  const nora = extractNamedCharacter(text, "Nora Bellini", /\b(Nora\s+Bellini)\b/i);
+  const setting = /\bFerrara\b/i.test(text) ? "Ferrara" : "il centro storico";
+  const shop = /\bBottega\s+delle\s+Chiavi\s+Perdute\b/i.test(text) ? "Bottega delle Chiavi Perdute" : "bottega delle chiavi perdute";
+  const key = /\bChiave\s+del\s+17\s+Ottobre\b/i.test(text) ? "Chiave del 17 Ottobre" : "chiave senza serratura";
+
+  return [
+    {
+      title: "La Chiave del 17 Ottobre",
+      summary: `${protagonist} trova nella ${shop} una chiave senza serratura incisa con il 17 ottobre: evento iniziale che lega futuro, memoria e linea temporale.`,
+    },
+    {
+      title: "Nora Bellini Entra in Bottega",
+      summary: `${nora} entra nella ${shop} e sostiene di conoscere già ${protagonist}: nuova scoperta, non suggestione generica.`,
+    },
+    {
+      title: "Il Registro delle Chiavi",
+      summary: `${protagonist} consulta il Registro delle Chiavi e scopre che alcune chiavi aprono eventi, ricordi e possibilità mai vissute.`,
+    },
+    {
+      title: "Ferrara Non Ricorda",
+      summary: `A ${setting}, dettagli minimi cambiano dopo il primo uso della chiave: conseguenza concreta sulla realtà e sulla memoria.`,
+    },
+    {
+      title: "La Serratura Mancante",
+      summary: `${protagonist} cerca la porta legata al 17 ottobre, ma ogni indizio sposta l'obiettivo e rende ${nora} più centrale.`,
+    },
+    {
+      title: "Ricordi Mai Vissuti",
+      summary: `${nora} porta ricordi che ${protagonist} non ha vissuto: ostacolo psicologico tra libero arbitrio, destino e fiducia.`,
+    },
+    {
+      title: "La Prima Realtà Cambiata",
+      summary: `L'uso di una chiave altera una parte verificabile della realtà: il mistero temporale diventa regola narrativa con costo.`,
+    },
+    {
+      title: "La Linea Temporale si Spezza",
+      summary: `Il Registro delle Chiavi mostra una frattura nella linea temporale. ${protagonist} cambia obiettivo: capire chi ha già aperto il futuro.`,
+    },
+    {
+      title: "Le Scelte Non Compiute",
+      summary: `${protagonist} scopre che le chiavi custodiscono possibilità mai vissute e che ogni scelta salvata cancella qualcos'altro.`,
+    },
+    {
+      title: "Il Giorno che Arriva dal Futuro",
+      summary: `Il 17 ottobre si avvicina come evento attivo: la promessa iniziale evolve in conto alla rovescia emotivo e temporale.`,
+    },
+    {
+      title: "Salvare Nora",
+      summary: `${protagonist} capisce che salvare ${nora} potrebbe compromettere la linea temporale: il conflitto diventa personale e irreversibile.`,
+    },
+    {
+      title: "Preservare la Linea Temporale",
+      summary: `Finale: ${protagonist} deve scegliere tra ${nora} e la stabilità della linea temporale, chiudendo la promessa della ${key}.`,
     },
   ];
 }
@@ -1273,6 +1364,31 @@ export function buildFantasyChapterBeats(idea: string): ConceptChapterBeat[] {
   }
   const text = sanitizeUserConceptInput(idea);
   const protagonist = extractConceptProtagonist(text) || "Il protagonista";
+  const hay = normalizedConceptHay(text);
+  if (/\b(stell\w*|astral\w*|magia\s+celeste|casate|alleanze|politic\w*|mappa\s+del\s+cielo)\b/.test(hay)) {
+    return [
+      {
+        title: "Le Casate Astrali",
+        summary: `${protagonist} entra nel conflitto tra casate astrali: alleanze politiche, diritto al cielo e fedelta al custode delle stelle.`,
+      },
+      {
+        title: "Regole della Magia Celeste",
+        summary: `La magia celeste ha leggi precise: ogni stella concessa a una casata sposta potere, confini e responsabilita.`,
+      },
+      {
+        title: "La Mappa del Cielo Proibita",
+        summary: `${protagonist} scopre che la mappa del cielo proibita non indica luoghi, ma alleanze politiche cancellate dalla storia.`,
+      },
+      {
+        title: "Il Consiglio delle Stelle",
+        summary: `Il worldbuilding politico diventa pressione concreta: casate, consiglio e custodi decidono chi puo usare la magia.`,
+      },
+      {
+        title: "L'Ultimo Custode",
+        summary: `${protagonist} deve scegliere se proteggere le regole della magia celeste o spezzare l'equilibrio politico dell'impero.`,
+      },
+    ];
+  }
   const titles = buildFantasyChapterTitles(idea);
   return titles.map((title, index) => ({
     title,
@@ -1288,6 +1404,7 @@ export function buildFantasyChapterBeats(idea: string): ConceptChapterBeat[] {
 export type ChapterScaffoldFormat =
   | "dragon_fantasy"
   | "horror_station"
+  | "lost_keys_temporal_mystery"
   | "submerged_city"
   | "hospital_memoir"
   | "memoir"
@@ -1373,6 +1490,20 @@ function getFormatExpansionPool(format: ChapterScaffoldFormat, idea: string): Co
       expansionBeat("Fotogramma Morto", "", protagonist, "l'immagine della madre", "climax"),
       expansionBeat("Ultima Chiamata", "", protagonist, "l'ultimo binario", "climax"),
       expansionBeat("Oltre la Stazione", "", protagonist, "ciò che il treno porta via", "denouement"),
+    ],
+    lost_keys_temporal_mystery: [
+      expansionBeat("Il Vicolo di Ferrara", "", protagonist, "Ferrara", "escalation"),
+      expansionBeat("La Bottega dopo Mezzanotte", "", protagonist, "la Bottega delle Chiavi Perdute", "escalation"),
+      expansionBeat("La Pagina Strappata del Registro", "", protagonist, "il Registro delle Chiavi", "complication"),
+      expansionBeat("La Serratura che Non Esiste", "", protagonist, "la Chiave del 17 Ottobre", "complication"),
+      expansionBeat("Memoria Sostituita", "", protagonist, "la memoria alterata", "reversal"),
+      expansionBeat("L'Evento Aperto", "", protagonist, "l'evento aperto dalla chiave", "reversal"),
+      expansionBeat("Il Prezzo di Ogni Chiave", "", protagonist, "le scelte non compiute", "climax"),
+      expansionBeat("Nora Ricorda Due Volte", "", protagonist, "Nora Bellini", "complication"),
+      expansionBeat("Il 17 Ottobre Si Avvicina", "", protagonist, "il 17 ottobre", "climax"),
+      expansionBeat("La Scelta Non Neutrale", "", protagonist, "il libero arbitrio", "climax"),
+      expansionBeat("Linea Temporale Contaminata", "", protagonist, "la linea temporale", "reversal"),
+      expansionBeat("Ultima Possibilità", "", protagonist, "il destino di Nora", "denouement"),
     ],
     submerged_city: [
       expansionBeat("Mappa del Disgelo", "", protagonist, entity, "escalation"),
@@ -1519,7 +1650,7 @@ function generateOverflowBeat(
   const protagonist = extractConceptProtagonist(text) || "Il protagonista";
   const phase = phaseForChapterIndex(index, total);
   const entity =
-    extractSubmergedCityLabel(text) ||
+    (hasSubmergedCitySciFiSignals(text) ? extractSubmergedCityLabel(text) : "") ||
     (/\bospedale\b/i.test(text) ? "l'ospedale" : null) ||
     (/\bristorant|chiosco\b/i.test(text) ? "la catena" : null) ||
     (/\bfotograf/i.test(text) ? "la macchina fotografica" : null) ||

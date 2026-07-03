@@ -25,6 +25,7 @@ export type WizardGenreContext = {
   subcategory?: string;
   bookFormat?: string;
   genreManuallyLocked?: boolean;
+  authorFormatLocked?: boolean;
 };
 
 const STUDIO = studioGenresFromRegistry();
@@ -61,6 +62,9 @@ export function buildWizardDetectedLabel(
   idea: string,
   ctx: Pick<WizardGenreContext, "genre" | "subgenre" | "subcategory" | "bookTypeId"> = {},
 ): string {
+  if (inference.family === "SELF_HELP") {
+    return "Self Help";
+  }
   const romanceContext: LiteraryRomanceGenreContext = {
     genre: ctx.genre,
     subgenre: ctx.subgenre,
@@ -102,21 +106,22 @@ export function resolveWizardGenreInference(
   idea: string,
   ctx: WizardGenreContext = {},
 ): GenreInference {
+  const authorLocked = Boolean(ctx.authorFormatLocked || ctx.genreManuallyLocked);
   const concept = analyzeConceptFromIdea(idea, { genre: ctx.genre, tags: ctx.subgenre });
   const dominance = resolveConceptDominance(idea, { genre: ctx.genre, tags: ctx.subgenre });
-  const lockedFormat = ctx.genreManuallyLocked
+  const lockedFormat = authorLocked
     ? resolveWizardBookFormat({ ...ctx, title, idea })
     : concept.bookFormat || resolveWizardBookFormat({ ...ctx, title, idea });
 
   let inference = inferGenreFromText(title, idea, lockedFormat);
 
-  if (!ctx.genreManuallyLocked && dominance.genre && dominance.genre !== inference.genre) {
+  if (!authorLocked && dominance.genre && dominance.genre !== inference.genre) {
     inference = mergeConceptGenreIntoInference(inference, dominance.genre, title, idea, lockedFormat);
-  } else if (!ctx.genreManuallyLocked && concept.genre && concept.genre !== inference.genre) {
+  } else if (!authorLocked && concept.genre && concept.genre !== inference.genre) {
     inference = mergeConceptGenreIntoInference(inference, concept.genre, title, idea, lockedFormat);
   }
 
-  if (ctx.genreManuallyLocked && ctx.genre) {
+  if (authorLocked && ctx.genre) {
     const entry = studioEntryForGenre(ctx.genre, ctx.bookTypeId);
     if (entry) {
       inference = {
@@ -125,6 +130,7 @@ export function resolveWizardGenreInference(
         genre: entry.genre,
         category: ctx.category || entry.category,
         subcategory: ctx.subcategory || entry.defaultSubcategory,
+        bookFormat: (ctx.bookFormat || lockedFormat || inference.bookFormat) as GenreInference["bookFormat"],
       };
     }
   }
@@ -136,6 +142,7 @@ export function resolveWizardGenreInference(
     subgenre: inference.subgenre || ctx.subgenre,
     subcategory: inference.subcategory,
     category: inference.category,
+    authorFormatLocked: authorLocked,
   });
 
   return {
@@ -158,6 +165,7 @@ export function applyDominanceToWizardPatch<T extends Record<string, unknown>>(
     subgenre: String(patch.subgenre || ctx.subgenre || ""),
     subcategory: String(patch.subcategory || ctx.subcategory || ""),
     category: String(patch.category || ctx.category || ""),
+    authorFormatLocked: Boolean(ctx.authorFormatLocked || ctx.genreManuallyLocked),
   });
   return {
     ...patch,

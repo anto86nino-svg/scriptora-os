@@ -38,17 +38,19 @@ function baseState(overrides: Partial<BookForgeWizardState> = {}): BookForgeWiza
     commercialGoal: "",
     shortDescription: "",
     blueprintPreview: false,
+    foundationsConfirmed: true,
     ...overrides,
   };
 }
 
 describe("book forge step completion", () => {
   it("blocks step 1 until idea or title is present on step 0", () => {
-    const incomplete = baseState();
+    const incomplete = baseState({ foundationsConfirmed: false });
     expect(isStepComplete(0, incomplete)).toBe(false);
     expect(canAdvanceToStep(1, incomplete)).toBe(false);
 
     const withIdea = baseState({
+      foundationsConfirmed: true,
       idea: "Un thriller psicologico su una stazione abbandonata dove ogni notte qualcuno sparisce senza lasciare tracce.",
     });
     expect(isStepComplete(0, withIdea)).toBe(true);

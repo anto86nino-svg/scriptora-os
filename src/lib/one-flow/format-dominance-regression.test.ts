@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { prepareOneFlowWriterPackage, startOneFlowSession } from "@/lib/one-flow/ScriptoraOneFlowOrchestrator";
+import { prepareOneFlowWriterPackage, startOneFlowSessionWithConfirmedFoundations } from "@/lib/one-flow/ScriptoraOneFlowOrchestrator";
 
 describe("SCRIPTORA format dominance regressions", () => {
   it("keeps cookbook blueprint on ingredient/recipe/technique tracks", () => {
-    const session = startOneFlowSession("Libro di ricette cucina mediterranea", {
+    const session = startOneFlowSessionWithConfirmedFoundations("Libro di ricette cucina mediterranea", {
       genreHint: "Libro di ricette",
       language: "Italiano",
     });
@@ -22,7 +22,7 @@ describe("SCRIPTORA format dominance regressions", () => {
   });
 
   it("keeps workbook package practical and non-narrative", () => {
-    const session = startOneFlowSession("Workbook 30 giorni contro l'ansia", {
+    const session = startOneFlowSessionWithConfirmedFoundations("Workbook 30 giorni contro l'ansia", {
       genreHint: "Workbook",
       language: "Italiano",
     });
@@ -41,7 +41,7 @@ describe("SCRIPTORA format dominance regressions", () => {
   });
 
   it("keeps poetry collection away from narrative chapter defaults", () => {
-    const session = startOneFlowSession("Raccolta poetica sul tempo", {
+    const session = startOneFlowSessionWithConfirmedFoundations("Raccolta poetica sul tempo", {
       genreHint: "Raccolta poetica",
       language: "Italiano",
     });
@@ -60,7 +60,7 @@ describe("SCRIPTORA format dominance regressions", () => {
   });
 
   it("keeps 03:17 idea on horror blueprint without regression", () => {
-    const session = startOneFlowSession(
+    const session = startOneFlowSessionWithConfirmedFoundations(
       "Ogni notte alle 03:17 una stazione ferroviaria abbandonata compare per sette minuti tra due gallerie inesistenti.",
       { genreHint: "Horror", language: "Italiano" },
     );
@@ -80,7 +80,7 @@ describe("SCRIPTORA format dominance regressions", () => {
   it("keeps Elias high-concept fantasy away from romance and philosophy fallbacks", () => {
     const idea =
       "Elias, la porta nel cuore, ricordi di una donna vissuta mille anni prima, data della fine del mondo";
-    const session = startOneFlowSession(`${idea} Fantasy, High Concept, Mistero, Destino, Memoria ancestrale, Fine del mondo`, {
+    const session = startOneFlowSessionWithConfirmedFoundations(`${idea} Fantasy, High Concept, Mistero, Destino, Memoria ancestrale, Fine del mondo`, {
       genreHint: "Fantasy",
       language: "Italiano",
     });

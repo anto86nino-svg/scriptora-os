@@ -262,6 +262,17 @@ function storySignalTitle(context: ChapterTitleContext, index: number): string {
       ],
     },
     {
+      test: /custode delle chiavi perdute|bottega delle chiavi perdute|chiave del 17 ottobre|registro delle chiavi|linea temporale|arturo valli|nora bellini/,
+      titles: [
+        "La Chiave del 17 Ottobre",
+        "Nora Bellini Entra in Bottega",
+        "Il Registro delle Chiavi",
+        "Ferrara Non Ricorda",
+        "La Serratura Mancante",
+        "La Linea Temporale si Spezza",
+      ],
+    },
+    {
       test: /condotti|voce nei condotti|corridoi tecnici/,
       titles: ["La Voce nei Condotti", "La Cosa nei Condotti"],
     },
@@ -282,7 +293,7 @@ function storySignalTitle(context: ChapterTitleContext, index: number): string {
       titles: ["La Lettera Proibita", "Le Lettere che Restano"],
     },
     {
-      test: /falso nome|nome scelto|celeste|leo|vera|marzio/,
+      test: /falso nome|nome scelto/,
       titles: ["Il Nome Scelto", "Il Falso Nome"],
     },
   ];
@@ -355,6 +366,7 @@ export function formatChapterDisplayTitle(
 
 function subchapterSignalTitles(context: ChapterTitleContext, chapterTitle: string): string[] {
   const source = `${contextText(context)} ${chapterTitle}`.toLowerCase();
+  const chapter = normalizeLoose(chapterTitle);
   if (/casa sotto pelle|madri scomparse|madre scomparsa|paese d['’]?infanzia|casa di famiglia|la casa che ricorda|piazza vuota/.test(source)) {
     return [
       "La fontana scomparsa",
@@ -373,6 +385,31 @@ function subchapterSignalTitles(context: ChapterTitleContext, chapterTitle: stri
       "La vittima senza passato",
       "Il bambino cancellato",
       "La parete che condanna",
+    ];
+  }
+  if (/custode delle chiavi perdute|bottega delle chiavi perdute|chiave del 17 ottobre|registro delle chiavi|linea temporale|arturo valli|nora bellini/.test(source)) {
+    if (/salvare|preservare|scelta|destino|arbitrio|prezzo/.test(chapter)) {
+      return ["La scelta senza ritorno", "Il costo di Nora", "Il prezzo della linea"];
+    }
+    if (/nora|bellini/.test(chapter)) {
+      return ["La donna che ricorda", "Il nome gia conosciuto", "La seconda memoria"];
+    }
+    if (/registro|pagina/.test(chapter)) {
+      return ["La pagina che manca", "La lista delle possibilita", "La firma impossibile"];
+    }
+    if (/ferrara|vicolo|bottega/.test(chapter)) {
+      return ["Il banco dopo mezzanotte", "La via che cambia", "La citta fuori posto"];
+    }
+    if (/linea|temporale|17 ottobre|giorno|futuro/.test(chapter)) {
+      return ["La data che avanza", "La frattura nella linea", "Il futuro dentro la porta"];
+    }
+    return [
+      "La chiave senza serratura",
+      "L'incisione del 17 ottobre",
+      "La pagina del registro",
+      "Nora davanti al banco",
+      "La memoria cambiata",
+      "La scelta sulla linea",
     ];
   }
   if (/sala del sangue|debito di sangue|sigillo d['’]?argento/.test(source)) {

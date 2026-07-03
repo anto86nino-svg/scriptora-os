@@ -29,8 +29,13 @@ import { isInvalidGeneratedTitle } from "@/lib/title-intelligence-validation";
 import type { StudioLaunchPayload } from "@/lib/book-config-studio/types";
 import { normalizeBookConfig } from "@/lib/book-config-studio/defaults";
 import { analyzeConceptFromIdea, sanitizeUserConceptInput } from "@/lib/concept-dominance";
+import {
+  isAuthorFoundationsComplete,
+  resolveAuthorFoundationsToConfig,
+  type AuthorFoundations,
+} from "@/lib/book-forge/author-format-genre-catalog";
 
-export type OneFlowPhase = "interview" | "proposal" | "ready";
+export type OneFlowPhase = "foundations" | "interview" | "proposal" | "ready";
 
 export type AuthorProposal = {
   title: string;
@@ -48,6 +53,7 @@ export type OneFlowSession = {
   rawIdea: string;
   genreHint?: string;
   language: string;
+  authorFoundations?: AuthorFoundations;
   state: GuidedInterviewState;
   phase: OneFlowPhase;
   questionsAsked: number;
@@ -75,6 +81,34 @@ const CHIP_HINTS: Record<string, Partial<ExpressForgeInput>> = {
   Ricettario: { bookFormat: "cookbook", genre: "cookbook" },
   "Libro di ricette": { bookFormat: "cookbook", genre: "cookbook" },
 };
+
+const HINT_TO_AUTHOR_FOUNDATIONS: Record<string, AuthorFoundations> = {
+  Romanzo: { formatId: "romanzo", formatLabel: "Romanzo", genreId: "literary-fiction", genreLabel: "Literary Fiction" },
+  Thriller: { formatId: "romanzo", formatLabel: "Romanzo", genreId: "thriller", genreLabel: "Thriller" },
+  Horror: { formatId: "romanzo", formatLabel: "Romanzo", genreId: "horror", genreLabel: "Horror" },
+  Fantasy: { formatId: "romanzo", formatLabel: "Romanzo", genreId: "fantasy", genreLabel: "Fantasy" },
+  Romance: { formatId: "romanzo", formatLabel: "Romanzo", genreId: "romance", genreLabel: "Romance" },
+  Manuale: { formatId: "self_help", formatLabel: "Self Help", genreId: "crescita-personale", genreLabel: "Crescita personale" },
+  Business: { formatId: "business", formatLabel: "Business", genreId: "strategia", genreLabel: "Strategia" },
+  "Self-help": { formatId: "self_help", formatLabel: "Self Help", genreId: "crescita-personale", genreLabel: "Crescita personale" },
+  Workbook: { formatId: "workbook", formatLabel: "Workbook", genreId: "produttivita", genreLabel: "Produttività" },
+  Memoir: { formatId: "memoir", formatLabel: "Memoir", genreId: "personale", genreLabel: "Personale" },
+  "Raccolta poetica": { formatId: "raccolta_poetica", formatLabel: "Raccolta poetica", genreId: "contemporanea", genreLabel: "Contemporanea" },
+  Cookbook: { formatId: "cookbook", formatLabel: "Cookbook", genreId: "mediterranea", genreLabel: "Mediterranea" },
+  Ricettario: { formatId: "cookbook", formatLabel: "Cookbook", genreId: "mediterranea", genreLabel: "Mediterranea" },
+  "Libro di ricette": { formatId: "cookbook", formatLabel: "Cookbook", genreId: "mediterranea", genreLabel: "Mediterranea" },
+};
+
+export function resolveFoundationsFromGenreHint(hint?: string): AuthorFoundations | null {
+  if (!hint?.trim()) return null;
+  const direct = HINT_TO_AUTHOR_FOUNDATIONS[hint];
+  if (direct) return direct;
+  const normalized = hint.trim().toLowerCase();
+  if (normalized === "cookbook" || normalized === "ricettario" || normalized.includes("libro di ricette")) {
+    return HINT_TO_AUTHOR_FOUNDATIONS.Cookbook;
+  }
+  return null;
+}
 
 export function resolveQuestionBudget(idea: string): number {
   if (hasRichIdeaEntities(idea)) return 2;
@@ -112,18 +146,96 @@ function lockExpressFoundation(state: GuidedInterviewState): GuidedInterviewStat
 
 function buildExpressInput(
   idea: string,
-  opts: { genreHint?: string; language?: string; analyzedGenre?: string } = {},
+  opts: {
+    genreHint?: string;
+    language?: string;
+    foundations?: AuthorFoundations;
+  } = {},
 ): ExpressForgeInput {
-  const hint = mapGenreHintToExpressInput(opts.genreHint ?? opts.analyzedGenre);
+  if (opts.foundations && isAuthorFoundationsComplete(opts.foundations)) {
+    const mapped = resolveAuthorFoundationsToConfig(opts.foundations);
+    return {
+      bookFormat: mapped.bookFormat as ExpressBookFormat,
+      genre: mapped.genre,
+      language: opts.language ?? "Italiano",
+      titleMode: "suggest",
+      ideaSeed: idea.trim(),
+      tone: opts.foundations.tone || "",
+      length: "medio",
+      controlLevel: "auto",
+      authorFormatLocked: true,
+    };
+  }
+
+  const hint = mapGenreHintToExpressInput(opts.genreHint);
   return {
     bookFormat: (hint.bookFormat ?? "novel") as ExpressBookFormat,
-    genre: opts.analyzedGenre ?? hint.genre ?? "",
+    genre: hint.genre ?? "",
     language: opts.language ?? "Italiano",
     titleMode: "suggest",
     ideaSeed: idea.trim(),
     tone: "",
     length: "medio",
     controlLevel: "auto",
+  };
+}
+
+function bootstrapSessionFromIdea(
+  trimmed: string,
+  opts: { genreHint?: string; language?: string; foundations?: AuthorFoundations } = {},
+): OneFlowSession {
+  const budget = resolveQuestionBudget(trimmed);
+
+  if (!opts.foundations || !isAuthorFoundationsComplete(opts.foundations)) {
+    return {
+      rawIdea: trimmed,
+      genreHint: opts.genreHint,
+      language: opts.language ?? "Italiano",
+      state: getInitialInterviewState({ chatFirst: true }),
+      phase: "foundations",
+      questionsAsked: 0,
+      questionBudget: budget,
+      currentQuestion: null,
+      proposal: null,
+      config: null,
+      blueprint: null,
+      blockingIssues: [],
+    };
+  }
+
+  const expressResult = buildExpressForgeConfiguration(
+    buildExpressInput(trimmed, opts),
+    getInitialInterviewState({ chatFirst: true }),
+  );
+  const scenario = pickCommercialPackage(expressResult);
+  let state = applyExpressScenarioToState(expressResult.state, scenario);
+  const concept = analyzeConceptFromIdea(trimmed, { genre: opts.foundations ? resolveAuthorFoundationsToConfig(opts.foundations).genre : undefined });
+  if (concept.protagonist && resolveAuthorFoundationsToConfig(opts.foundations).bookFormat === "novel") {
+    state = {
+      ...state,
+      extracted: { ...state.extracted, protagonistWound: concept.protagonist },
+    };
+  }
+  state = lockExpressFoundation(state);
+
+  const rich = hasRichIdeaEntities(trimmed);
+  const phase = rich && getBlueprintGateStatus(state).isBlueprintReady ? "proposal" : sessionPhase(state, 0, budget);
+  const proposal = phase === "proposal" ? buildAuthorProposalFromState(state, trimmed) : null;
+
+  return {
+    rawIdea: trimmed,
+    genreHint: opts.genreHint,
+    language: opts.language ?? "Italiano",
+    authorFoundations: opts.foundations,
+    state,
+    phase,
+    questionsAsked: 0,
+    questionBudget: budget,
+    currentQuestion: resolveCurrentQuestion(state, phase === "proposal" ? "interview" : phase),
+    proposal,
+    config: null,
+    blueprint: null,
+    blockingIssues: [],
   };
 }
 
@@ -159,43 +271,22 @@ export function buildAuthorProposalFromState(state: GuidedInterviewState, rawIde
 
 export function startOneFlowSession(
   idea: string,
-  opts: { genreHint?: string; language?: string } = {},
+  opts: { genreHint?: string; language?: string; foundations?: AuthorFoundations } = {},
 ): OneFlowSession {
   const trimmed = sanitizeUserConceptInput(idea);
-  const analysis = analyzeConceptFromIdea(trimmed, { genre: opts.genreHint });
-  const budget = resolveQuestionBudget(trimmed);
-  const expressResult = buildExpressForgeConfiguration(
-    buildExpressInput(trimmed, { ...opts, analyzedGenre: analysis.genre }),
-    getInitialInterviewState({ chatFirst: true }),
-  );
-  const scenario = pickCommercialPackage(expressResult);
-  let state = applyExpressScenarioToState(expressResult.state, scenario);
-  if (analysis.protagonist) {
-    state = {
-      ...state,
-      extracted: { ...state.extracted, protagonistWound: analysis.protagonist },
-    };
-  }
-  state = lockExpressFoundation(state);
+  return bootstrapSessionFromIdea(trimmed, opts);
+}
 
-  const rich = hasRichIdeaEntities(trimmed);
-  const phase = rich && getBlueprintGateStatus(state).isBlueprintReady ? "proposal" : sessionPhase(state, 0, budget);
-  const proposal = phase === "proposal" ? buildAuthorProposalFromState(state, trimmed) : null;
-
-  return {
-    rawIdea: trimmed,
-    genreHint: opts.genreHint,
-    language: opts.language ?? "Italiano",
-    state,
-    phase,
-    questionsAsked: 0,
-    questionBudget: budget,
-    currentQuestion: resolveCurrentQuestion(state, phase === "proposal" ? "interview" : phase),
-    proposal,
-    config: null,
-    blueprint: null,
-    blockingIssues: [],
-  };
+export function confirmOneFlowFoundations(
+  session: OneFlowSession,
+  foundations: AuthorFoundations,
+): OneFlowSession {
+  if (!isAuthorFoundationsComplete(foundations)) return session;
+  return bootstrapSessionFromIdea(session.rawIdea, {
+    genreHint: session.genreHint,
+    language: session.language,
+    foundations,
+  });
 }
 
 export function answerOneFlowQuestion(session: OneFlowSession, answer: string): OneFlowSession {
@@ -375,4 +466,17 @@ export function prepareOneFlowWriterPackage(session: OneFlowSession): {
 
 export function canStartWritingFromSession(session: OneFlowSession): boolean {
   return session.phase === "ready" && Boolean(session.blueprint) && Boolean(session.config);
+}
+
+/** Regression / test helper — simulates author-confirmed foundations from a home chip hint. */
+export function startOneFlowSessionWithConfirmedFoundations(
+  idea: string,
+  opts: { genreHint?: string; language?: string; foundations?: AuthorFoundations } = {},
+): OneFlowSession {
+  const draft = startOneFlowSession(idea, opts);
+  const foundations = opts.foundations ?? resolveFoundationsFromGenreHint(opts.genreHint);
+  if (!foundations || !isAuthorFoundationsComplete(foundations)) {
+    return draft;
+  }
+  return skipToProposalIfReady(confirmOneFlowFoundations(draft, foundations));
 }

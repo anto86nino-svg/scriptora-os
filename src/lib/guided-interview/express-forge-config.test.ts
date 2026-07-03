@@ -51,10 +51,12 @@ describe("express-forge-config", () => {
     expect(getNextInterviewQuestion(applied).done).toBe(true);
   });
 
-  it("marks user idea as user source in provenance", () => {
+  it("marks user idea as user source in provenance when author locks format", () => {
     const result = buildExpressForgeConfiguration({
       ...expressInput,
+      bookFormat: "novel",
       genre: "thriller",
+      authorFormatLocked: true,
       titleMode: "provided",
       title: "Midnight Signal",
       ideaSeed: "detective in burnout",

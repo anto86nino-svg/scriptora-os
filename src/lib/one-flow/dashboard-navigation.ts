@@ -1,3 +1,17 @@
+function canUseWindowScrollTo(): boolean {
+  if (typeof window.scrollTo !== "function") return false;
+  return !window.navigator.userAgent.toLowerCase().includes("jsdom");
+}
+
+function scrollWindowToTop(): void {
+  if (!canUseWindowScrollTo()) return;
+  try {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  } catch {
+    /* restricted embed */
+  }
+}
+
 /** Reset scroll and dashboard overlay residue before/after route navigation. */
 export function resetRouteScroll(): void {
   try {
@@ -9,20 +23,12 @@ export function resetRouteScroll(): void {
     document.body.style.position = "";
     document.body.style.width = "";
     document.body.style.top = "";
-    try {
-      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    } catch {
-      /* jsdom / restricted embed */
-    }
+    scrollWindowToTop();
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        try {
-          window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-        } catch {
-          /* noop */
-        }
+        scrollWindowToTop();
         document.documentElement.scrollTop = 0;
         document.body.scrollTop = 0;
       });

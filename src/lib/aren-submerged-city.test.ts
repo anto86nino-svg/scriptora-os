@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildExpressBookScenarios } from "@/lib/guided-interview/express-book-package";
 import { buildExpressForgeConfiguration } from "@/lib/guided-interview/express-forge-config";
 import { analyzeConceptFromIdea } from "@/lib/concept-dominance";
-import { prepareOneFlowWriterPackage, startOneFlowSession } from "@/lib/one-flow/ScriptoraOneFlowOrchestrator";
+import { prepareOneFlowWriterPackage, startOneFlowSessionWithConfirmedFoundations } from "@/lib/one-flow/ScriptoraOneFlowOrchestrator";
 import {
   extractConceptProtagonist,
   hasSubmergedCitySciFiSignals,
@@ -61,7 +61,7 @@ describe("Aren submerged-city — exact author idea", () => {
   });
 
   it("keeps exact Aren idea through One Flow with editor-quality proposal", () => {
-    const session = startOneFlowSession(AREN_EXACT_IDEA, { genreHint: "Fantasy", language: "Italiano" });
+    const session = startOneFlowSessionWithConfirmedFoundations(AREN_EXACT_IDEA, { genreHint: "Fantasy", language: "Italiano" });
     const { payload } = prepareOneFlowWriterPackage(session);
     expect(payload).toBeTruthy();
 

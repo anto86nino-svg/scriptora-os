@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inferGenreFromText } from "./genre-inference";
+import { detectContentFamily, inferGenreFromText } from "./genre-inference";
 
 describe("inferGenreFromText poetry mode", () => {
   it("classifies an explicit poetry collection before any commercial genre fallback", () => {
@@ -50,5 +50,22 @@ describe("inferGenreFromText poetry mode", () => {
     expect(inference.bookTypeId).toBe("fantasy");
     expect(inference.genre).toBe("fantasy");
     expect(inference.bookTypeId).not.toBe("poetry");
+  });
+});
+
+describe("inferGenreFromText content family lock", () => {
+  it("classifies deferred-life/procrastination titles as self-help before fiction genres", () => {
+    const family = detectContentFamily("La Vita Che Rimandi Sempre", "");
+    const inference = inferGenreFromText("La Vita Che Rimandi Sempre", "");
+    const combined = `${inference.label} ${inference.genre} ${inference.bookTypeId} ${inference.subgenre} ${inference.targetReader}`;
+
+    expect(family.family).toBe("SELF_HELP");
+    expect(family.confidence).toBeGreaterThan(0.7);
+    expect(inference.family).toBe("SELF_HELP");
+    expect(inference.bookFormat).toBe("self_help");
+    expect(inference.genre).toBe("self-help");
+    expect(inference.bookTypeId).toBe("self-help");
+    expect(inference.subgenre).toMatch(/procrastinazione|crescita personale/i);
+    expect(combined).not.toMatch(/\b(romance|horror|thriller|fantasy|mystery)\b/i);
   });
 });
