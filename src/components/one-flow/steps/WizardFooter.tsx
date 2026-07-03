@@ -1,3 +1,4 @@
+import { memo, startTransition } from "react";
 import { ArrowLeft, ArrowRight, Loader2, Rocket, Sparkles } from "lucide-react";
 
 type Props = {
@@ -15,7 +16,7 @@ type Props = {
   approvalReady?: boolean;
 };
 
-export default function WizardFooter(props: Props) {
+function WizardFooter(props: Props) {
   const {
     step,
     postDnaForge,
@@ -46,7 +47,9 @@ export default function WizardFooter(props: Props) {
               return;
             }
 
-            setStep(s => Math.max(postDnaForge ? 6 : 0, s - 1));
+            startTransition(() => {
+              setStep((s) => Math.max(postDnaForge ? 6 : 0, s - 1));
+            });
           }}
           className="inline-flex items-center gap-1 rounded-xl border border-white/15 px-4 py-2 text-sm text-white/80 disabled:opacity-30"
         >
@@ -58,7 +61,9 @@ export default function WizardFooter(props: Props) {
           <button
             type="button"
             disabled={!canAdvance}
-            onClick={() => void goNext()}
+            onClick={() => {
+              void goNext();
+            }}
             className="inline-flex items-center gap-1 rounded-xl bg-white px-5 py-2 text-sm font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Avanti
@@ -70,7 +75,9 @@ export default function WizardFooter(props: Props) {
           <button
             type="button"
             disabled={generatingBlueprint}
-            onClick={() => void goNext()}
+            onClick={() => {
+              void goNext();
+            }}
             className="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-5 py-2 text-sm font-bold text-white disabled:opacity-50"
           >
             {generatingBlueprint
@@ -84,7 +91,9 @@ export default function WizardFooter(props: Props) {
           <button
             type="button"
             disabled={launching || !approvalReady}
-            onClick={() => void finishApproved()}
+            onClick={() => {
+              void finishApproved();
+            }}
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-5 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-60"
           >
             {launching
@@ -97,3 +106,5 @@ export default function WizardFooter(props: Props) {
     </div>
   );
 }
+
+export default memo(WizardFooter);

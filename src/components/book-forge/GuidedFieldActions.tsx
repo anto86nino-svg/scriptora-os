@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Loader2, PenLine, RefreshCw, Sparkles, Target } from "lucide-react";
 
 type Props = {
@@ -13,7 +14,7 @@ type Props = {
   generateLabel?: string;
 };
 
-export default function GuidedFieldActions({
+export default memo(function GuidedFieldActions({
   generating = false,
   hasValue = false,
   onWrite,
@@ -74,4 +75,4 @@ export default function GuidedFieldActions({
       )}
     </div>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   X, ArrowLeft, ArrowRight, Rocket, Sparkles, Plus, Trash2, Users, Loader2,
   CheckCircle2, AlertTriangle, BookOpen, Clock3, Info,
@@ -1618,8 +1618,16 @@ const persistDraft = useCallback(() => {
     applyForgePresetFromSession();
   }, [open, isFree, bookForgeHandoff]);
 
+  const persistDraftDebounceRef = useRef<number | null>(null);
   useEffect(() => {
-    if (open) persistDraft();
+    if (!open) return;
+    if (persistDraftDebounceRef.current) window.clearTimeout(persistDraftDebounceRef.current);
+    persistDraftDebounceRef.current = window.setTimeout(() => {
+      persistDraft();
+    }, 450);
+    return () => {
+      if (persistDraftDebounceRef.current) window.clearTimeout(persistDraftDebounceRef.current);
+    };
   }, [open, persistDraft]);
 
   useEffect(() => {
@@ -1649,14 +1657,19 @@ const persistDraft = useCallback(() => {
       setPendingAutoDetection(null);
       return;
     }
-    const result = analyzeLongIdeaForProposal(idea, {
-      existingGenre: genre,
-      existingSubgenre: subgenre,
-      existingBookTypeId: bookTypeId,
-      genreManuallyLocked,
-      title,
-    });
-    setPendingAutoDetection(result.shouldPropose ? result.proposal : null);
+    const timer = window.setTimeout(() => {
+      startTransition(() => {
+        const result = analyzeLongIdeaForProposal(idea, {
+          existingGenre: genre,
+          existingSubgenre: subgenre,
+          existingBookTypeId: bookTypeId,
+          genreManuallyLocked,
+          title,
+        });
+        setPendingAutoDetection(result.shouldPropose ? result.proposal : null);
+      });
+    }, 320);
+    return () => window.clearTimeout(timer);
   }, [open, step, idea, genre, subgenre, bookTypeId, title, autoDetectionDismissed, genreManuallyLocked, shortIdeaForceDetect]);
 
   const prevIdeaRef = useRef(idea);
@@ -1668,13 +1681,17 @@ const persistDraft = useCallback(() => {
     }
   }, [idea]);
 
-  if (!open) return null;
+  const builtConfig = useMemo(() => buildConfig(), [buildConfig]);
+  const validationIssues = useMemo(
+    () => (open ? validateBookConfigStudio(builtConfig, identityDraft) : []),
+    [open, builtConfig, identityDraft],
+  );
+  const coherenceReport = useMemo(
+    () => (open && step >= 5 ? validateConfigCoherence(builtConfig) : null),
+    [open, step, builtConfig],
+  );
 
-  const validationIssues = validateBookConfigStudio(buildConfig(), identityDraft);
-  const coherenceReport = step >= 5 ? validateConfigCoherence(buildConfig()) : null;
-  const stepLabel = BOOK_CREATION_DECISIONS[step] || STUDIO_STEPS[step];
-
-  const forgeWizardState: BookForgeWizardState = {
+  const forgeWizardState: BookForgeWizardState = useMemo(() => ({
     language,
     bookTypeId,
     genre,
@@ -1704,14 +1721,47 @@ const persistDraft = useCallback(() => {
     shortDescription,
     blueprintPreview: Boolean(blueprintPreview),
     narrativeAutoApproved,
-  };
+  }), [
+    language,
+    bookTypeId,
+    genre,
+    subgenre,
+    idea,
+    title,
+    targetReader,
+    tone,
+    subtitle,
+    authorName,
+    identityDraft,
+    pov,
+    chapters,
+    bookLength,
+    structureType,
+    narrativePromise,
+    coreConflict,
+    setting,
+    openingHook,
+    protagonist,
+    shouldUseCharacterForge,
+    characters,
+    canonRules,
+    forbiddenContent,
+    validationIssues.length,
+    commercialGoal,
+    shortDescription,
+    blueprintPreview,
+    narrativeAutoApproved,
+  ]);
 
+  if (!open) return null;
+
+  const stepLabel = BOOK_CREATION_DECISIONS[step] || STUDIO_STEPS[step];
   const currentStepComplete = isStepComplete(step, forgeWizardState);
   const stepAdvanceHint = stepCompletionHint(step, forgeWizardState);
 
   const jumpToWizardStep = (target: number) => {
     if (target < step) {
-      setStep(target);
+      startTransition(() => setStep(target));
       return;
     }
     if (!canAdvanceToStep(target, forgeWizardState)) {
@@ -1724,7 +1774,7 @@ const persistDraft = useCallback(() => {
       toast.error("Completa gli step precedenti prima di saltare avanti.");
       return;
     }
-    setStep(target);
+    startTransition(() => setStep(target));
   };
 
   const approvalChecklistItems: ApprovalCheckItem[] = [
@@ -2269,7 +2319,9 @@ const persistDraft = useCallback(() => {
       }
       return;
     }
-    setStep((s) => Math.min(STUDIO_STEPS.length - 1, s + 1));
+    startTransition(() => {
+      setStep((s) => Math.min(STUDIO_STEPS.length - 1, s + 1));
+    });
   };
 
   const updateBlueprintChapterTitle = (chapterIndex: number, value: string) => {
@@ -2410,7 +2462,7 @@ const persistDraft = useCallback(() => {
       className={
         embeddedInMobileForge
           ? "scriptora-book-forge-mobile fixed inset-0 z-[100] flex h-[100dvh] max-h-[100dvh] flex-col bg-slate-950"
-          : "scriptora-modal-overlay fixed inset-0 z-[80] flex items-stretch justify-stretch overflow-y-auto overscroll-contain bg-black/70 p-[calc(env(safe-area-inset-top,0px)+0.35rem)_0.35rem_calc(env(safe-area-inset-bottom,0px)+0.35rem)] backdrop-blur-sm sm:items-center sm:justify-center sm:p-4"
+          : "scriptora-modal-overlay fixed inset-0 z-[80] flex items-stretch justify-stretch overflow-hidden overscroll-contain bg-black/70 p-[calc(env(safe-area-inset-top,0px)+0.35rem)_0.35rem_calc(env(safe-area-inset-bottom,0px)+0.35rem)] backdrop-blur-sm sm:items-center sm:justify-center sm:p-4"
       }
     >
       {embeddedInMobileForge ? mobileForgeHeader : null}
@@ -2419,14 +2471,6 @@ const persistDraft = useCallback(() => {
           embeddedInMobileForge
             ? "flex min-h-0 flex-1 flex-col"
             : "scriptora-modal-panel scriptora-wizard-shell flex h-full min-h-0 w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/15 bg-slate-950 shadow-2xl"
-        }
-        style={
-          embeddedInMobileForge
-            ? undefined
-            : {
-                height: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.7rem)",
-                maxHeight: "calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.7rem)",
-              }
         }
       >
         <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4">
@@ -2461,8 +2505,8 @@ const persistDraft = useCallback(() => {
         <div
             className={
               embeddedInMobileForge
-                ? "scriptora-book-forge-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 py-4 pb-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] sm:px-5 sm:py-5"
-                : "scriptora-modal-body scriptora-wizard-scroll min-h-0 flex-1 overflow-x-clip overflow-y-auto overscroll-contain px-4 py-4 pb-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] sm:px-5 sm:py-5 sm:pb-5"
+                ? "scriptora-book-forge-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 py-4 sm:px-5 sm:py-5"
+                : "scriptora-modal-body scriptora-wizard-scroll min-h-0 flex-1 overflow-x-clip overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5"
             }
             style={{
               WebkitOverflowScrolling: "touch",

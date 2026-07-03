@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { GenreHypothesis } from "@/lib/book-forge/auto-detection-engine";
 import { Zap } from "lucide-react";
 
@@ -9,7 +10,7 @@ type Props = {
   expanding?: boolean;
 };
 
-export default function ShortIdeaDetectionCard({
+export default memo(function ShortIdeaDetectionCard({
   hypotheses,
   onAskQuestions,
   onExpand,
@@ -66,4 +67,4 @@ export default function ShortIdeaDetectionCard({
       </div>
     </div>
   );
-}
+});

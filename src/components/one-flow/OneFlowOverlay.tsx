@@ -126,14 +126,14 @@ export function OneFlowOverlay({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 p-3 backdrop-blur-sm sm:items-center sm:p-6">
+    <div className="fixed inset-0 z-[80] overflow-y-auto overscroll-contain bg-black/70 p-3 backdrop-blur-sm sm:flex sm:items-center sm:justify-center sm:p-6">
       <button
         type="button"
         aria-label="Chiudi"
-        className="absolute inset-0 cursor-default"
+        className="fixed inset-0 cursor-default"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-4xl">
+      <div className="relative z-10 mx-auto w-full max-w-4xl max-h-[min(92dvh,920px)] overflow-y-auto overscroll-contain pt-2 sm:my-auto sm:pt-0">
         <button
           type="button"
           onClick={onClose}

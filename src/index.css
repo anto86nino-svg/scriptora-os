@@ -4232,28 +4232,69 @@ html[data-scriptora-bg="classic-premium-author"] body::before {
 
 /* ── Mobile UX: wizard + modals ── */
 .scriptora-wizard-shell {
+  display: flex;
+  flex-direction: column;
   max-height: min(94dvh, 900px);
   min-height: 0;
+  overflow: hidden;
 }
 .scriptora-wizard-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: clip;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
 }
 .scriptora-wizard-footer {
-  position: sticky;
-  bottom: 0;
+  position: relative;
+  flex-shrink: 0;
   z-index: 2;
   background: rgba(2, 6, 23, 0.96);
   backdrop-filter: blur(12px);
+  touch-action: manipulation;
 }
 .scriptora-modal-overlay {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Book Forge wizard — single inner scroll region (no overlay + body dual scroll). */
+.scriptora-modal-overlay:has(.scriptora-wizard-shell) {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden !important;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+.scriptora-modal-overlay:has(.scriptora-wizard-shell) .scriptora-wizard-shell {
+  height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.5rem);
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 1.5rem);
+}
+
 @media (max-width: 767px) {
   .scriptora-wizard-shell {
-    max-height: 100dvh;
+    max-height: none;
     border-radius: 1.25rem 1.25rem 0 0;
+  }
+
+  .scriptora-modal-overlay:has(.scriptora-wizard-shell) {
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 0.35rem)
+      0.35rem
+      calc(env(safe-area-inset-bottom, 0px) + 0.35rem) !important;
+  }
+
+  .scriptora-modal-overlay:has(.scriptora-wizard-shell) .scriptora-wizard-shell {
+    width: 100% !important;
+    height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.7rem) !important;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.7rem) !important;
+    border-radius: 1.25rem !important;
   }
   .scriptora-feature-scroll {
     padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
@@ -6867,108 +6908,12 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
   }
 }
 
-/* SCRIPTORA MOBILE LITE — NEW BOOK WIZARD INNER SCROLL FIX
-   Fix: BookCreationOsWizard body must scroll inside the fixed modal shell on mobile.
-*/
-@media (max-width: 767px) {
-  html.scriptora-mobile-lite .scriptora-modal-overlay:has(.scriptora-wizard-shell) {
-    align-items: stretch !important;
-    justify-content: stretch !important;
-    padding-top: calc(env(safe-area-inset-top, 0px) + 0.35rem) !important;
-    padding-right: 0.35rem !important;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.35rem) !important;
-    padding-left: 0.35rem !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-  }
-
-  html.scriptora-mobile-lite .scriptora-wizard-shell,
-  .scriptora-wizard-shell {
-    width: 100% !important;
-    height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.7rem) !important;
-    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.7rem) !important;
-    min-height: 0 !important;
-    overflow: hidden !important;
-    border-radius: 1.25rem !important;
-  }
-
-  html.scriptora-mobile-lite .scriptora-wizard-scroll,
-  .scriptora-wizard-scroll {
-    min-height: 0 !important;
-    height: auto !important;
-    max-height: none !important;
-    flex: 1 1 auto !important;
-    overflow-x: clip !important;
-    overflow-y: auto !important;
-    overscroll-behavior-y: contain !important;
-    -webkit-overflow-scrolling: touch !important;
-    touch-action: pan-y !important;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem) !important;
-  }
-
-  html.scriptora-mobile-lite .scriptora-wizard-scroll > *,
-  .scriptora-wizard-scroll > * {
-    min-height: 0 !important;
-  }
-
-  html.scriptora-mobile-lite .scriptora-wizard-footer,
-  .scriptora-wizard-footer {
-    position: sticky !important;
-    bottom: 0 !important;
-    flex-shrink: 0 !important;
-  }
-}
-
-/* SCRIPTORA MOBILE — NEW BOOK WIZARD PAGE-SCROLL FALLBACK
-   Strong fallback: scroll the whole fixed overlay instead of relying on inner scroll.
-   This is intentionally scoped to overlays containing .scriptora-wizard-shell.
-   Also applies on short desktop viewports where inner flex scroll traps content.
-*/
-@media (max-width: 767px), (max-height: 720px) {
-  .scriptora-modal-overlay:has(.scriptora-wizard-shell) {
-    display: block !important;
-    align-items: initial !important;
-    justify-content: initial !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
-    overscroll-behavior-y: contain !important;
-    -webkit-overflow-scrolling: touch !important;
-    touch-action: pan-y !important;
-    padding-top: calc(env(safe-area-inset-top, 0px) + 0.5rem) !important;
-    padding-right: 0.5rem !important;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem) !important;
-    padding-left: 0.5rem !important;
-  }
-
-  .scriptora-modal-overlay:has(.scriptora-wizard-shell) .scriptora-wizard-shell {
-    height: auto !important;
-    min-height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    border-radius: 1.25rem !important;
-  }
-
-  .scriptora-modal-overlay:has(.scriptora-wizard-shell) .scriptora-wizard-scroll {
-    height: auto !important;
-    min-height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem) !important;
-  }
-
-  .scriptora-modal-overlay:has(.scriptora-wizard-shell) .scriptora-wizard-footer {
-    position: sticky !important;
-    bottom: 0 !important;
-    z-index: 5 !important;
-    margin-right: -0.01px;
-  }
-}
-
 /* Book Forge mobile — single scroll region (MobileForgeScrollShell / embedded wizard).
    Prevents global modal/wizard rules from creating nested scroll traps. */
 @media (max-width: 767px) {
   .scriptora-book-forge-mobile {
-    touch-action: manipulation;
+    overflow: hidden;
+    touch-action: pan-y;
     background:
       radial-gradient(900px 480px at 50% -8%, rgba(109, 40, 217, 0.22), transparent 58%),
       radial-gradient(640px 360px at 100% 20%, rgba(79, 70, 229, 0.12), transparent 55%),
@@ -6977,6 +6922,10 @@ html.scriptora-mobile-lite .scriptora-floating-dock-pill {
   }
 
   .scriptora-book-forge-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
     touch-action: pan-y;

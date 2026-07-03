@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { AutoDetectionProposal } from "@/lib/book-forge/auto-detection-engine";
 import { Sparkles } from "lucide-react";
 
@@ -7,7 +8,7 @@ type Props = {
   onKeep: () => void;
 };
 
-export default function AutoDetectionProposalCard({ proposal, onAccept, onKeep }: Props) {
+export default memo(function AutoDetectionProposalCard({ proposal, onAccept, onKeep }: Props) {
   return (
     <div className="rounded-2xl border border-violet-400/30 bg-gradient-to-br from-violet-500/10 via-sky-500/5 to-transparent p-4">
       <div className="flex items-start gap-2">
@@ -51,4 +52,4 @@ export default function AutoDetectionProposalCard({ proposal, onAccept, onKeep }
       </div>
     </div>
   );
-}
+});
