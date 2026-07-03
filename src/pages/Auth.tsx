@@ -159,9 +159,11 @@ const OAUTH_SESSION_EXPIRED_MESSAGE =
   "Sessione Google scaduta o interrotta. Riprova l'accesso da questa stessa finestra.";
 
 function isPkceVerifierMissingError(error: { name?: string; message?: string }) {
+  const message = error.message?.toLowerCase() ?? "";
   return (
     error.name === "AuthPKCECodeVerifierMissingError" ||
-    (error.message?.includes("PKCE code verifier not found") ?? false)
+    message.includes("code verifier") ||
+    (message.includes("pkce") && message.includes("verifier"))
   );
 }
 
@@ -174,11 +176,19 @@ export function shouldRetryOAuthCallbackInFreshFlow(input: {
   return input.hasCode && !input.hasSession && input.recoverable && !input.alreadyRetried;
 }
 
+export function shouldWaitForLateOAuthSession(input: {
+  hasCode: boolean;
+  hasSession: boolean;
+  alreadyRetried: boolean;
+}) {
+  return input.hasCode && !input.hasSession && input.alreadyRetried;
+}
+
 /** Single owner of exchangeCodeForSession for PKCE OAuth callbacks. */
 async function tryEstablishSessionFromOAuthCallback(code: string) {
   const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
   if (!exchangeError) {
-    return { session: exchanged.session ?? null, recoverable: false };
+    return { session: exchanged.session ?? null, recoverable: !exchanged.session };
   }
 
   if (isPkceVerifierMissingError(exchangeError)) {
@@ -397,6 +407,15 @@ export default function AuthPage() {
               options: { redirectTo: getAuthRedirectUrl() },
             });
             if (retryError) throw retryError;
+            return;
+          }
+          if (shouldWaitForLateOAuthSession({
+            hasCode: !!code,
+            hasSession: false,
+            alreadyRetried,
+          })) {
+            logAuthDebug("OAuth callback retry already attempted — waiting for late session");
+            scheduleOAuthTimeout();
             return;
           }
           toast.error(OAUTH_SESSION_EXPIRED_MESSAGE);
