@@ -1,10 +1,11 @@
 import { isMeaningfulStudyKeyword } from "@/lib/study-os/study-quality-gates";
+import { hasSchoolDefinition } from "@/lib/study-os/study-vocabulary";
 import type { StudyMaterialClassification } from "@/lib/study-session";
 
 /** Italian didactic stoplist — common words that must not become study concepts. */
 export const STUDY_DIDACTIC_STOP_WORDS = new Set([
   "erano", "essere", "sono", "era", "hanno", "aveva", "molte", "molti", "molta", "molto",
-  "aumento", "nascita", "economica", "economico", "politica", "politico", "mondiale",
+  "aumento", "nascita", "economica", "economico", "competizione", "diffidenza", "influenza", "internazionale",
   "guerra", "stati", "stato", "parte", "dopo", "prima", "anche", "come", "della", "delle",
   "degli", "degli", "questo", "questa", "quello", "quella", "quindi", "perché", "mentre",
   "sempre", "ancora", "nulla", "qualcosa", "coinvolse", "presentavano", "estensione",
@@ -47,7 +48,7 @@ const HISTORY_SINGLE_TERMS = new Set([
   "nazionalismo", "imperialismo", "militarismo", "colonialismo", "neutralismo",
   "interventismo", "trincea", "trincee", "artiglieria", "gas", "sottomarino",
   "tank", "aereo", "propaganda", "totalitarismo", "democrazia", "repubblica",
-  "monarchia", "impero", "alleanza", "intesa", "balcani", "sarajevo", "caporetto",
+  "monarchia", "impero", "balcani", "sarajevo", "caporetto",
   "versailles", "armistizio", "bolscevismo", "lenin", "wilson", "kaiser",
 ]);
 
@@ -62,7 +63,8 @@ function isDidacticStopWord(term: string): boolean {
   if (parts.length === 1 && parts[0].length < 5) return true;
   if (parts.length === 2 && parts.every((p) => STUDY_DIDACTIC_STOP_WORDS.has(p))) return true;
   if (/^(erano|sono|era|hanno|coinvolse|presentavano)\b/i.test(lower)) return true;
-  if (/^(molte|molti|aumento|nascita|economica)\b/i.test(lower)) return true;
+  if (/^(molte|molti|aumento|nascita|economica|competizione|diffidenza|influenza|internazionale)\b/i.test(lower)) return true;
+  if (lower === "intesa" || lower === "alleanza") return true;
   return false;
 }
 
@@ -76,9 +78,11 @@ function isValidStudyConcept(term: string, classification?: StudyMaterialClassif
     if (HISTORY_SINGLE_TERMS.has(lower)) return true;
     if (HISTORICAL_PHRASE_PATTERNS.some((item) => normalizeKeyword(item.label) === lower)) return true;
     if (/\b(19|20)\d{2}\b/.test(clean)) return true;
-    if (/^[A-ZÀ-Ý]/.test(clean) && clean.split(/\s+/).length <= 4) return true;
-    if (/(ismo|zione|alleanza|intesa|impero|trattato|attentato|armistizio|rivoluzione|battaglia)/i.test(lower)) return true;
+    if (/(ismo|zione|alleanza|impero|trattato|attentato|armistizio|rivoluzione|battaglia)/i.test(lower)) return true;
+    if (/^[A-ZÀ-Ý]/.test(clean) && clean.split(/\s+/).length <= 4 && clean.split(/\s+/).length >= 2) return true;
   }
+
+  if (classification?.type === "history" && !hasSchoolDefinition(clean, classification)) return false;
 
   if (clean.split(/\s+/).length === 1 && clean.length < 6) return false;
   if (/^(definizione|esempio|collegamento|concetto)$/i.test(lower)) return false;

@@ -41,3 +41,11 @@ export function getSummaryModeLabels(difficultyLevel: StudyDifficultyLevel = 3):
 export function getUniversitySummaryTitle(difficultyLevel: StudyDifficultyLevel = 3): string {
   return difficultyLevel >= 5 ? "Universitario" : "Approfondito";
 }
+
+export function getDictionaryAdvancedLabel(difficultyLevel: StudyDifficultyLevel = 3): string {
+  return getUniversitySummaryTitle(difficultyLevel);
+}
+
+export function getDictionaryAdvancedHeadline(difficultyLevel: StudyDifficultyLevel = 3): string {
+  return difficultyLevel >= 5 ? "Spiegamelo da universitario" : "Spiegamelo in modo approfondito";
+}

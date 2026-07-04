@@ -2068,9 +2068,11 @@ export default function StudySessionPage() {
               </div>
             )}
 
+            {!(sourceTextQuality?.status === "pass" && (sourceTextQuality.score ?? 0) >= 90) && (
             <p className={`mt-2 text-xs leading-5 ${wordCount < 40 ? "text-amber-200/90" : "text-emerald-100/85"}`}>
               {materialReadinessCopy}
             </p>
+            )}
             {staleNotice && (
               <div className="mt-3 rounded-2xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-xs leading-5 text-amber-100">
                 {staleNotice}

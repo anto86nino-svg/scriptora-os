@@ -1,4 +1,5 @@
-import type { DifficultWord } from "@/lib/study-session";
+import type { StudyDifficultyLevel } from "@/lib/study-session";
+import { getDictionaryAdvancedHeadline } from "@/lib/study-os/study-summary-labels";
 import type { StudyKernelPlan } from "@/lib/study-os/study-intelligence-kernel";
 
 export type DictionaryExplainMode = "bambino" | "universitario";
@@ -95,7 +96,11 @@ export function lookupDictionaryTerm(
 }
 
 /** Explain a term in the selected mode — "bambino" ≈ 10 anni, "universitario" = accademico. */
-export function formatDictionaryLookup(entry: DictionaryEntry, mode: DictionaryExplainMode): DictionaryLookupResult {
+export function formatDictionaryLookup(
+  entry: DictionaryEntry,
+  mode: DictionaryExplainMode,
+  difficultyLevel: StudyDifficultyLevel = 3,
+): DictionaryLookupResult {
   if (mode === "bambino") {
     return {
       entry,
@@ -114,7 +119,7 @@ export function formatDictionaryLookup(entry: DictionaryEntry, mode: DictionaryE
   return {
     entry,
     mode,
-    headline: "Spiegamelo da universitario",
+    headline: getDictionaryAdvancedHeadline(difficultyLevel),
     body: [
       entry.tecnica,
       entry.esempio ? `Esempio applicativo: ${entry.esempio}` : "",

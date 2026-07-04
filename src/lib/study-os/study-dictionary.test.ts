@@ -32,7 +32,7 @@ describe("Study Dictionary", () => {
   it("formats universitario mode with technical detail", () => {
     const index = buildDictionaryIndex(result.difficultWords, result.keyConcepts, plan);
     const [first] = Array.from(index.values());
-    const lookup = formatDictionaryLookup(first, "universitario");
+    const lookup = formatDictionaryLookup(first, "universitario", 5);
     expect(lookup.headline).toContain("universitario");
     expect(lookup.body).toContain(first.tecnica.slice(0, 20));
   });

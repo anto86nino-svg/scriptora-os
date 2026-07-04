@@ -37,7 +37,10 @@ const PLACEHOLDER_PATTERN =
   /\b(la spiegazione sta nel contesto|come indicato nel manoscritto|questo termine è importante nel testo|questo termine e' importante nel testo|dipende dal contesto|non disponibile|placeholder|n\/a|definizione scolastica:|concetto da spiegare con definizione|da spiegare con definizione)\b/i;
 
 const VOCABULARY_PLACEHOLDER_PATTERN =
-  /\b(definizione \+ esempio|collegalo al tema centrale|testo incollato|definizione scolastica)\b/i;
+  /\b(definizione \+ esempio|collegalo al tema centrale|testo incollato|materiale incollato|definizione scolastica|parola importante del testo|va capita[,\s]+non solo memorizzata|prova a definirlo con parole tue|questo termine è importante nel testo)\b/i;
+
+const VOCABULARY_TEMPLATE_PATTERN =
+  /\b(parola importante del testo|va capita[,\s]+non solo memorizzata|prova a definirlo con parole tue|funziona come termine chiave di area)\b/i;
 
 export function resolveStudyTextSourceKind(sourceType?: string): StudyTextSourceKind {
   const kind = String(sourceType || "").toLowerCase();
@@ -240,6 +243,42 @@ function hasSummaryDuplication(text: string): boolean {
   return /(.{18,}?)\1/i.test(compact);
 }
 
+function normalizeSentence(sentence: string): string {
+  return String(sentence || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
+    .trim();
+}
+
+function sentencesFromStudyText(text: string): string[] {
+  return String(text || "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/^Riassunto[^\n]*\n+/i, "")
+    .replace(/\n+/g, " ")
+    .match(/[^.!?…]+[.!?…]+|[^.!?…]+$/g)
+    ?.map((s) => normalizeSentence(s))
+    .filter((s) => s.length >= 24) || [];
+}
+
+export function summaryExtractivityRatio(summary: string, sourceText: string): number {
+  const summarySentences = sentencesFromStudyText(summary);
+  const sourceSentences = sentencesFromStudyText(sourceText);
+  if (!summarySentences.length || !sourceSentences.length) return 0;
+
+  let identical = 0;
+  for (const sentence of summarySentences) {
+    if (sourceSentences.some((source) => source === sentence || source.includes(sentence) || sentence.includes(source))) {
+      identical += 1;
+    }
+  }
+  return identical / summarySentences.length;
+}
+
+export function hasVocabularyTemplateText(text: string): boolean {
+  return VOCABULARY_TEMPLATE_PATTERN.test(String(text || "")) || hasStudyPlaceholderText(text);
+}
+
 function hasNonIntroductorySummaryStart(text: string): boolean {
   const body = text.replace(/^Riassunto[^\n]*\n+/i, "").trim();
   return /^Per la sua estensione\b/i.test(body);
@@ -261,6 +300,11 @@ export function evaluateSummaryQuality(summary: string, sourceText = ""): StudyO
   if (hasTruncatedSummarySentence(text)) issues.push("frasi troncate nel riassunto");
   if (hasSummaryDuplication(text)) issues.push("duplicazioni nel riassunto");
   if (hasNonIntroductorySummaryStart(text)) issues.push("incipit non introduttivo");
+  if (/\b(testo|materiale)[\s_-]*incollat/i.test(text)) issues.push("titolo generico nel riassunto");
+  if (sourceText && summaryExtractivityRatio(text, sourceText) > 0.6) issues.push("riassunto eccessivamente estrattivo");
+  const requiredHistoryBlocks = /\bnazionalismo\b/i.test(sourceText) && /\bsarajevo\b/i.test(sourceText);
+  if (requiredHistoryBlocks && !/\bnazionalismo\b/i.test(text)) issues.push("blocchi storici mancanti");
+  if (requiredHistoryBlocks && !/\b(versailles|armistizio|1917)\b/i.test(text)) issues.push("blocchi storici mancanti");
 
   const score = clampScore(100 - issues.length * 24 - (words < 35 ? 20 : 0));
   return {
@@ -323,10 +367,14 @@ export function evaluateKeywordQuality(
   if (words.some((item) => VOCABULARY_PLACEHOLDER_PATTERN.test(`${item.school || ""} ${item.simple || ""} ${item.technical || ""}`))) {
     issues.push("definizioni generiche");
   }
+  if (words.some((item) => hasVocabularyTemplateText(`${item.simple || ""} ${item.technical || ""} ${item.school || ""} ${item.example || ""}`))) {
+    issues.push("definizioni template");
+  }
   const score = clampScore(100 - issues.length * 25);
   const hardFail =
     issues.includes("placeholder nelle spiegazioni") ||
     issues.includes("definizioni incomplete") ||
+    issues.includes("definizioni template") ||
     issues.includes("keyword casuali o frammenti OCR");
   return { status: hardFail || issues.length >= 2 ? "fail" : issues.length ? "warning" : "pass", score, detectedIssues: issues };
 }

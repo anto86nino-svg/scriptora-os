@@ -18,8 +18,9 @@ import {
 } from "@/lib/study-os/study-quality-gates";
 import { extractStudyKeywords } from "@/lib/study-os/study-keywords";
 import { composeStudySummaries, ensureComposedSummary } from "@/lib/study-os/study-summary-composer";
-import { buildStudyTermDefinition, isRealStudyDefinition } from "@/lib/study-os/study-vocabulary";
+import { buildStudyTermDefinition, isLegacyStudyDefinition, isRealStudyDefinition } from "@/lib/study-os/study-vocabulary";
 import { computeStudyReadinessBreakdown } from "@/lib/study-os/study-readiness";
+import { extractStudyTopic, replaceBannedTopicPhrases, sanitizeStudyTopic } from "@/lib/study-os/study-topic-extract";
 
 async function loadPdfJs() {
   const pdfjsLib = await import("pdfjs-dist");
@@ -1418,6 +1419,34 @@ function buildProfessionalVocabulary(
   words: number,
   classification?: StudyMaterialClassification,
 ): DifficultWord[] {
+  if (classification?.type === "history") {
+    const conceptKeywords = keywords(clean, words > 900 ? 24 : 16, classification).filter((word) => word.length >= 4);
+    const professionalTerms = extractProfessionalTerms(clean, 18);
+    const unique = Array.from(new Set(
+      [...conceptKeywords, ...professionalTerms]
+        .map((word) => word.trim())
+        .filter((word) => isMeaningfulStudyKeyword(word)),
+    ));
+    const selected = unique.slice(0, Math.max(8, Math.min(14, unique.length)));
+    const built = selected
+      .map((word, index) => buildStudyTermDefinition(
+        word,
+        clean,
+        classification,
+        selected.filter((candidate) => candidate.toLowerCase() !== word.toLowerCase()).slice(index + 1, index + 4),
+      ))
+      .filter(isRealStudyDefinition);
+
+    if (built.length >= 8) return built.slice(0, 14);
+    for (const word of conceptKeywords) {
+      if (built.length >= 12) break;
+      if (built.some((item) => item.word.toLowerCase() === word.toLowerCase())) continue;
+      const entry = buildStudyTermDefinition(word, clean, classification, built.map((item) => item.word).slice(0, 3));
+      if (isRealStudyDefinition(entry)) built.push(entry);
+    }
+    return built.slice(0, 14);
+  }
+
   const professionalTerms = extractProfessionalTerms(clean, 18);
   const candidateWords = [
     ...professionalTerms,
@@ -1437,7 +1466,7 @@ function buildProfessionalVocabulary(
         .slice(index + 1, index + 4);
       return buildStudyTermDefinition(word, clean, classification, connections);
     })
-    .filter(isRealStudyDefinition);
+    .filter(isLegacyStudyDefinition);
 }
 
 function buildEvidenceInventory(clean: string): string {
@@ -2014,16 +2043,19 @@ export function sanitizeStudySessionResult(result: StudySessionResult, fallback?
     }),
   ) as Record<StudySummaryMode, string>;
 
+  const titleCandidate = sanitizeStudyOutput(result.title, fallback?.title || "Sessione Studio");
+  const resolvedTitle = sanitizeStudyTopic(titleCandidate, result.mediumSummary || fallback?.mediumSummary || result.sourceName || "");
+
   const sanitized: StudySessionResult = {
     ...result,
-    title: sanitizeStudyOutput(result.title, fallback?.title || "Sessione Studio"),
-    detectedSubject: sanitizeStudyOutput(result.detectedSubject, fallback?.detectedSubject || "Materiale di studio"),
-    subjectLabel: sanitizeStudyOutput(result.subjectLabel, fallback?.subjectLabel || "Materiale di studio"),
+    title: resolvedTitle,
+    detectedSubject: replaceBannedTopicPhrases(sanitizeStudyOutput(result.detectedSubject, fallback?.detectedSubject || "Materiale di studio"), resolvedTitle),
+    subjectLabel: replaceBannedTopicPhrases(sanitizeStudyOutput(result.subjectLabel, fallback?.subjectLabel || "Materiale di studio"), resolvedTitle),
     studyMode: sanitizeStudyOutput(result.studyMode, fallback?.studyMode || "Studio guidato"),
-    lightSummary: ensureComposedSummary(sanitizeStudyOutput(result.lightSummary, fallback?.lightSummary), fallback?.lightSummary || sanitizedSummaryFallback(result.mediumSummary)),
-    mediumSummary: ensureComposedSummary(sanitizeStudyOutput(result.mediumSummary, fallback?.mediumSummary), fallback?.mediumSummary || sanitizedSummaryFallback(result.lightSummary)),
-    proSummary: ensureComposedSummary(sanitizeStudyOutput(result.proSummary, fallback?.proSummary), fallback?.proSummary || sanitizedSummaryFallback(result.mediumSummary)),
-    studyNotesPro: sanitizeStudyOutput(result.studyNotesPro, fallback?.studyNotesPro),
+    lightSummary: replaceBannedTopicPhrases(ensureComposedSummary(sanitizeStudyOutput(result.lightSummary, fallback?.lightSummary), fallback?.lightSummary || sanitizedSummaryFallback(result.mediumSummary)), resolvedTitle),
+    mediumSummary: replaceBannedTopicPhrases(ensureComposedSummary(sanitizeStudyOutput(result.mediumSummary, fallback?.mediumSummary), fallback?.mediumSummary || sanitizedSummaryFallback(result.lightSummary)), resolvedTitle),
+    proSummary: replaceBannedTopicPhrases(ensureComposedSummary(sanitizeStudyOutput(result.proSummary, fallback?.proSummary), fallback?.proSummary || sanitizedSummaryFallback(result.mediumSummary)), resolvedTitle),
+    studyNotesPro: replaceBannedTopicPhrases(sanitizeStudyOutput(result.studyNotesPro, fallback?.studyNotesPro), resolvedTitle),
     summaries: sanitizedSummaries,
     keyConcepts: Array.from(new Set((result.keyConcepts || []).map((item) => sanitizeStudyOutput(item, "")).filter(Boolean))).slice(0, 18),
     openQuestions: safeOpenQuestions,
@@ -2092,10 +2124,7 @@ export function getStudyImportCapabilities(
 }
 
 function detectSubject(text: string, sourceName: string): string {
-  const keys = keywords(text, 5);
-  const base = sourceName.replace(/\.(txt|md|markdown|docx|pdf|epub)$/i, "").replace(/[_-]+/g, " ").trim();
-  if (base && base.length > 3) return base;
-  return keys.length ? keys.map((k) => k[0].toUpperCase() + k.slice(1)).join(", ") : "Materiale di studio";
+  return extractStudyTopic(text, sourceName);
 }
 
 function detectStudySourceTypeFromName(sourceName: string): string {

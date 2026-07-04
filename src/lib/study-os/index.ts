@@ -164,6 +164,7 @@ export {
 
 export {
   buildStudyTermDefinition,
+  hasSchoolDefinition,
   isRealStudyDefinition,
 } from "@/lib/study-os/study-vocabulary";
 
@@ -174,6 +175,23 @@ export {
 } from "@/lib/study-os/study-summary-composer";
 
 export {
+  extractStudyTopic,
+  isBannedStudyTopic,
+  replaceBannedTopicPhrases,
+  sanitizeStudyTopic,
+} from "@/lib/study-os/study-topic-extract";
+
+export {
+  buildSyntheticHistoryCauses,
+  buildSyntheticHistoryKeyPoints,
+  buildSyntheticHistoryTimeline,
+  countCauseConsequenceItems,
+  countTimelineEvents,
+} from "@/lib/study-os/study-history-outputs";
+
+export {
+  getDictionaryAdvancedHeadline,
+  getDictionaryAdvancedLabel,
   getSummaryModeLabels,
   getUniversitySummaryTitle,
   type SummaryModeLabel,
@@ -184,6 +202,8 @@ export {
   evaluateStudyTextQuality,
   evaluateSummaryQuality,
   hasStudyPlaceholderText,
+  hasVocabularyTemplateText,
+  summaryExtractivityRatio,
   STUDY_TEXT_READY_MESSAGE,
   type StudyTextSourceKind,
 } from "@/lib/study-os/study-quality-gates";

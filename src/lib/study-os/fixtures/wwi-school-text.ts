@@ -39,7 +39,18 @@ I trattati di pace
 La conferenza di pace culminò nel Trattato di Versailles del 1919, che impose condizioni severe alla Germania, riconoscendo la sua responsabilità del conflitto e prevedendo riparazioni, perdite territoriali e limitazioni militari. Il trattato ridisegnò le mappe europee e contribuì a creare nuove tensioni, alimentando risentimenti che avrebbero influenzato la politica degli anni successivi. La Prima guerra mondiale segnò così la fine di un'epoca e l'inizio di un nuovo equilibrio internazionale, più instabile e segnato da profonde trasformazioni sociali e culturali.
 `.trim();
 
-export const WWI_FORBIDDEN_CONCEPTS = ["Erano", "Coinvolse molte", "Aumento", "Nascita", "Economica"];
+export const WWI_FORBIDDEN_CONCEPTS = [
+  "Erano",
+  "Coinvolse molte",
+  "Aumento",
+  "Nascita",
+  "Economica",
+  "Competizione",
+  "Diffidenza",
+  "Influenza",
+  "Internazionale",
+  "Intesa",
+];
 
 export const WWI_REQUIRED_CONCEPTS = [
   "nazionalismo",
