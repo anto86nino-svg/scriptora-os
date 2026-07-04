@@ -5,6 +5,7 @@ import {
   validateEditorialCleanupResult,
   type EditorialCleanupResult,
 } from "@/lib/editorial-cleanup";
+import { detectSubchapterBoundaryIssues } from "@/lib/writer/clean-text-pass";
 
 export type ChapterToolId = "analysis" | "score" | "cleanup" | "patch" | "rewrite";
 export type MobileChapterToolId = "analysis" | "cleanup" | "patch" | "more";
@@ -100,7 +101,10 @@ export function shouldShowChapterTools(content?: string): boolean {
   return hasCleanableChapterContent(content);
 }
 
-export function buildChapterEditorialOutcome(content: string): ChapterEditorialOutcome {
+export function buildChapterEditorialOutcome(
+  content: string,
+  subchapters: Array<{ title?: string; content?: string }> = [],
+): ChapterEditorialOutcome {
   const normalized = String(content || "").trim();
   if (!normalized) {
     return {
@@ -111,15 +115,18 @@ export function buildChapterEditorialOutcome(content: string): ChapterEditorialO
     };
   }
 
-  const cleanup = runEditorialCleanup({ content: normalized });
+  const boundaryIssues = detectSubchapterBoundaryIssues(subchapters);
+  const cleanup = runEditorialCleanup({ content: normalized, subchapters: subchapters as any });
   const dirtyIssues = cleanup.issuesFound.filter((issue) => issue.severity === "high" || issue.type === "typo" || issue.type === "corrupted_sentence");
   const issues: ChapterEditorialIssue[] = [];
 
-  if (dirtyIssues.length > 0) {
+  if (dirtyIssues.length > 0 || boundaryIssues.length > 0) {
     issues.push({
       type: "dirty_text",
-      severity: dirtyIssues.some((issue) => issue.severity === "high") ? "high" : "medium",
-      description: "Sono presenti refusi, frasi rotte o ripetizioni immediate da correggere prima di interventi piu' invasivi.",
+      severity: dirtyIssues.some((issue) => issue.severity === "high") || boundaryIssues.length > 0 ? "high" : "medium",
+      description: boundaryIssues.length > 0
+        ? "Il capitolo è completo, ma contiene rotture di continuità o frammenti da pulire tra sottocapitoli."
+        : "Sono presenti refusi, frasi rotte o ripetizioni immediate da correggere prima di interventi piu' invasivi.",
       suggestedTool: "cleanup",
     });
   }
@@ -182,6 +189,7 @@ export function scoreChapterEditorialReadiness(content: string): ChapterEditoria
   const outcome = buildChapterEditorialOutcome(normalized);
   const cleanup = normalized ? runEditorialCleanup({ content: normalized }) : null;
   const severeDirtyIssues = cleanup?.issuesFound.filter((issue) => issue.severity === "high").length || 0;
+  const corruptionIssues = cleanup?.issuesFound.filter((issue) => issue.type === "corrupted_sentence").length || 0;
   const dirtyPenalty = cleanup ? Math.min(4.5, cleanup.issuesFound.length * 1.05 + severeDirtyIssues * 0.55) : 4;
   const rhythmPenalty = hasWeakRhythm(normalized) ? 1.3 : 0;
   const structurePenalty = hasStructuralRisk(normalized) || wordCount(normalized) < 120 ? 1.8 : 0;
@@ -193,7 +201,11 @@ export function scoreChapterEditorialReadiness(content: string): ChapterEditoria
   const originality = roundScore(8);
   const emotionalImpact = roundScore(7.8 - structurePenalty * 0.25);
   const publishReadiness = roundScore((editorialCleanliness + rhythm + coherence + style) / 4);
-  const overall = roundScore((style + coherence + rhythm + originality + emotionalImpact + editorialCleanliness + publishReadiness) / 7);
+  const metricAverage = (style + coherence + rhythm + originality + emotionalImpact + editorialCleanliness + publishReadiness) / 7;
+  const lowestMetric = Math.min(style, coherence, rhythm, originality, emotionalImpact, editorialCleanliness, publishReadiness);
+  let overall = roundScore(Math.min(metricAverage + 0.2, metricAverage));
+  if (lowestMetric < 6.5) overall = Math.min(overall, 8.2);
+  if (corruptionIssues > 0) overall = Math.min(overall, 6);
 
   const nextAction =
     outcome.recommendedNextAction === "editorial_cleanup"

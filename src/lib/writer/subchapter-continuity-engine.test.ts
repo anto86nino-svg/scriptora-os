@@ -109,6 +109,15 @@ describe("subchapter-continuity-engine", () => {
     expect(errors.some((e) => e.severity === "critical")).toBe(true);
   });
 
+  it("validateSubchapterHandoff flags split words at subchapter boundary", () => {
+    const errors = validateSubchapterHandoff(
+      "Il metodo sembra funzionare, ma appena aumenti il ritmo acceleri p",
+      "er non cadere nella stessa ansia di prima.",
+    );
+
+    expect(errors.some((e) => e.severity === "critical" && /spezzata/i.test(e.message))).toBe(true);
+  });
+
   it("reconstructs by stripping duplicate prefix when 1.2 repeats 1.1", () => {
     const analysis = analyzeSubchapterContinuity(DUPLICATE_PHONE);
     const result = reconstructSubchapterSequence(analysis, DUPLICATE_PHONE.subchapters);

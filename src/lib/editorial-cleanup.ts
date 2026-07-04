@@ -1,4 +1,10 @@
 import type { Chapter } from "@/types/book";
+import {
+  detectResidualSplitArtifacts,
+  repairCorruptedMergeFragments,
+  repairSubchapterSplitBoundaries,
+  type SplitBoundaryIssue,
+} from "@/lib/writer/clean-text-pass";
 
 export type EditorialCleanupIssueType =
   | "corrupted_sentence"
@@ -95,6 +101,8 @@ function removeDuplicateHeadings(text: string, chapterTitle = ""): SegmentCleanu
 
 function fixKnownCorruptions(text: string): SegmentCleanup {
   const replacements: Array<{ pattern: RegExp; before: string; after: string }> = [
+    { pattern: /\bun\s+crepa\b/gi, before: "un crepa", after: "una crepa" },
+    { pattern: /\bcome\s+se\s+a\s+fosse\s+successo\b/gi, before: "come se a fosse successo", after: "come se nulla fosse successo" },
     { pattern: /\ba fissare il a\b/gi, before: "a fissare il a", after: "a fissare il vuoto" },
     { pattern: /\bAdesso non sembra pi[ùu] a\b/gi, before: "Adesso non sembra più a", after: "Adesso non sembra più lo stesso" },
     { pattern: /\bSi schiar[iì] la voce, ma non disse subito a\b/gi, before: "Si schiarì la voce, ma non disse subito a", after: "Si schiarì la voce, ma non disse subito nulla" },
@@ -112,6 +120,19 @@ function fixKnownCorruptions(text: string): SegmentCleanup {
       before: replacement.before,
       after: replacement.after,
     });
+  }
+
+  const repaired = repairCorruptedMergeFragments(next);
+  if (repaired !== next) {
+    for (const artifact of detectResidualSplitArtifacts(next)) {
+      issues.push({
+        type: "corrupted_sentence",
+        severity: "high",
+        before: artifact,
+        after: repaired,
+      });
+    }
+    next = repaired;
   }
 
   return { text: next, issues };
@@ -222,6 +243,28 @@ function cleanupSegment(text: string, title?: string): SegmentCleanup {
   );
 }
 
+function boundaryIssuesToCleanupIssues(issues: SplitBoundaryIssue[]): EditorialCleanupIssue[] {
+  return issues.map((issue) => ({
+    type: "corrupted_sentence",
+    severity: "high",
+    before: issue.before,
+    after: issue.after || undefined,
+  }));
+}
+
+function assembleWithBoundaryRepairs(
+  subchapters: Array<{ content?: string }>,
+  issues: SplitBoundaryIssue[],
+): string {
+  return subchapters.reduce((assembled, sub, index) => {
+    const content = String(sub.content || "").trim();
+    if (!content) return assembled;
+    if (!assembled) return content;
+    const repairedBoundary = issues.some((issue) => issue.boundaryIndex === index - 1 && issue.repaired);
+    return `${assembled}${repairedBoundary ? " " : "\n\n"}${content}`;
+  }, "").trim();
+}
+
 function uniqueChanges(issues: EditorialCleanupIssue[]): string[] {
   const labels: Partial<Record<EditorialCleanupIssueType, string>> = {
     corrupted_sentence: "Corrette frasi corrotte o parole mancanti",
@@ -252,16 +295,23 @@ export function runEditorialCleanup(input: EditorialCleanupInput): EditorialClea
   const subchaptersWithContent = (input.subchapters || []).filter((sub) => String(sub?.content || "").trim().length > 20);
 
   if (subchaptersWithContent.length > 0) {
-    const cleanedSubchapters = (input.subchapters || []).map((sub) => {
+    const boundaryRepair = repairSubchapterSplitBoundaries(input.subchapters || []);
+    const sourceSubchapters = boundaryRepair.subchapters;
+    const cleanedSubchapters = sourceSubchapters.map((sub) => {
       if (!String(sub?.content || "").trim()) return { title: sub?.title || "", content: sub?.content || "" };
       const cleaned = cleanupSegment(sub.content, sub.title);
       return { title: sub.title, content: cleaned.text };
     });
-    const issuesFound = (input.subchapters || []).flatMap((sub) => cleanupSegment(sub?.content || "", sub?.title).issues);
-    const cleanedContent = cleanedSubchapters
-      .filter((sub) => sub.content.trim())
-      .map((sub) => [sub.title, sub.content].filter(Boolean).join("\n\n"))
-      .join("\n\n");
+    const issuesFound = [
+      ...boundaryIssuesToCleanupIssues(boundaryRepair.issues),
+      ...sourceSubchapters.flatMap((sub) => cleanupSegment(sub?.content || "", sub?.title).issues),
+    ];
+    const cleanedContent = boundaryRepair.issues.some((issue) => issue.repaired)
+      ? cleanupSegment(assembleWithBoundaryRepairs(sourceSubchapters, boundaryRepair.issues), input.title).text
+      : cleanedSubchapters
+          .filter((sub) => sub.content.trim())
+          .map((sub) => [sub.title, sub.content].filter(Boolean).join("\n\n"))
+          .join("\n\n");
     const stats = statsForIssues(issuesFound);
     return {
       cleanedContent,

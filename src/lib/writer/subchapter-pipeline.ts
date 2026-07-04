@@ -15,6 +15,7 @@ import {
   type SubchapterContinuityAnalysis,
 } from "@/lib/writer/subchapter-continuity-engine";
 import { extractDeliveredRevelations } from "@/lib/writer/chapter-continuity-assembly";
+import { repairSubchapterSplitBoundaries, detectSubchapterBoundaryIssues } from "@/lib/writer/clean-text-pass";
 
 export type NarrativeSubchapterOutline = {
   title: string;
@@ -123,11 +124,19 @@ export function validateSubchapterNarrativeUnit(content: string): { valid: boole
 }
 
 export function assembleChapterFromSubchapters(subchapters: SubChapter[]): string {
-  return subchapters
-    .map((sub) => String(sub.content || "").trim())
-    .filter(Boolean)
-    .join("\n\n")
-    .trim();
+  const repaired = repairSubchapterSplitBoundaries(subchapters);
+  return repaired.subchapters.reduce((assembled, sub, index) => {
+    const content = String(sub.content || "").trim();
+    if (!content) return assembled;
+    const previousBoundary = index - 1;
+    const shouldJoinTight = repaired.issues.some((issue) => issue.boundaryIndex === previousBoundary && issue.repaired);
+    if (!assembled) return content;
+    return `${assembled}${shouldJoinTight ? " " : "\n\n"}${content}`;
+  }, "").trim();
+}
+
+export function hasSubchapterBoundaryCorruption(subchapters: Array<Pick<SubChapter, "content">>): boolean {
+  return detectSubchapterBoundaryIssues(subchapters).length > 0;
 }
 
 export function shouldUseRealSubchapterPipeline(config: BookConfig, blueprint?: BookBlueprint | null): boolean {

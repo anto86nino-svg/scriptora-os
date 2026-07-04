@@ -1,6 +1,7 @@
 import type { BookConfig } from "@/types/book";
 import { runNarrativeContinuityGate } from "@/lib/writer/narrative-continuity-gate";
 import { countNarrativeCorruptionIssues } from "@/lib/writer/narrative-cleanup-pass";
+import { detectSubchapterBoundaryIssues } from "@/lib/writer/clean-text-pass";
 
 export interface MemorabilityContext {
   language?: string | null;
@@ -418,7 +419,7 @@ export function evaluateMemorability(chapterText: string, context: MemorabilityC
     language: context.language,
     genre,
     chapterTitle: context.chapterTitle,
-  });
+  }) + detectSubchapterBoundaryIssues(context.subchapters || []).length;
   const corruptionPenalty = Math.min(28, corruptionIssues * 7);
 
   const predictability = clampScore(35 + countMatches(text, PREDICTABLE_TROPES) * 18 + countMatches(text, GENERIC_IMAGERY) * 10);
@@ -449,6 +450,8 @@ export function evaluateMemorability(chapterText: string, context: MemorabilityC
   const narrativeContinuity = clampScore(continuity.score - Math.min(15, corruptionIssues * 4));
   const rhythm = clampScore(70 - (splitParagraphs(text).some((p) => p.split(/\s+/).length > 80) ? 12 : 0));
   const repetitions = clampScore(85 - countMatches(text, PREDICTABLE_TROPES) * 10);
+
+  const corruptionCap = corruptionIssues > 0 ? 60 : 100;
 
   if (isLiteraryOrRomance(genre) && narrativeContinuity < 60) {
     narrativeQuality = applyContinuityCap(narrativeQuality, narrativeContinuity, genre);
@@ -481,15 +484,15 @@ export function evaluateMemorability(chapterText: string, context: MemorabilityC
     emotionalSurprise: applyProvisionalUncertainty(emotionalSurprise, provisional),
     sceneIdentity: applyProvisionalUncertainty(sceneIdentity, provisional),
     characterDistinction: applyProvisionalUncertainty(characterDistinction, provisional),
-    memorability: applyProvisionalUncertainty(cappedMemorability, provisional),
+    memorability: applyProvisionalUncertainty(Math.min(cappedMemorability, corruptionCap), provisional),
     originality: applyProvisionalUncertainty(originality, provisional),
-    narrativeQuality: applyProvisionalUncertainty(narrativeQuality, provisional),
+    narrativeQuality: applyProvisionalUncertainty(Math.min(narrativeQuality, corruptionCap), provisional),
     dialogue: applyProvisionalUncertainty(dialogue, provisional),
     tension: applyProvisionalUncertainty(tension, provisional),
-    coherence: applyProvisionalUncertainty(coherence, provisional),
-    narrativeContinuity: applyProvisionalUncertainty(narrativeContinuity, provisional),
-    rhythm: applyProvisionalUncertainty(rhythm, provisional),
-    repetitions: applyProvisionalUncertainty(repetitions, provisional),
+    coherence: applyProvisionalUncertainty(Math.min(coherence, corruptionCap), provisional),
+    narrativeContinuity: applyProvisionalUncertainty(Math.min(narrativeContinuity, corruptionCap), provisional),
+    rhythm: applyProvisionalUncertainty(Math.min(rhythm, corruptionCap), provisional),
+    repetitions: applyProvisionalUncertainty(Math.min(repetitions, corruptionCap), provisional),
   };
 
   return {
@@ -502,7 +505,7 @@ export function evaluateMemorability(chapterText: string, context: MemorabilityC
     improvements: provisional
       ? ["Completa il capitolo prima di considerare il punteggio definitivo.", ...improvements]
       : improvements,
-    needsLocalPatch,
+    needsLocalPatch: needsLocalPatch || corruptionIssues > 0,
     provisional,
   };
 }

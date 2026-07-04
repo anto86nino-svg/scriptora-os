@@ -22,6 +22,7 @@ import { t } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import { hasRealSubchapterContent } from "@/lib/manuscript/subchapter-content";
+import { detectSubchapterBoundaryIssues } from "@/lib/writer/clean-text-pass";
 import { chapterAnchorId, getChapterIndexFromSection } from "@/lib/writer/chapter-navigation";
 import { buildEditorialChapterPreview } from "@/lib/project-generation-readiness";
 import { CreditCostBadge } from "@/components/billing/CreditCostBadge";
@@ -883,7 +884,11 @@ function SubchapterCoverageStrip({
   const total = expectedCount > 0 ? expectedCount : subchapters.length;
   if (total <= 0) return null;
 
-  const written = subchapters.slice(0, total).filter((sub) => hasRealSubchapterContent(sub.content)).length;
+  const boundaryIssues = detectSubchapterBoundaryIssues(subchapters.slice(0, total));
+  const corruptSubIndexes = new Set(boundaryIssues.flatMap((issue) => [issue.boundaryIndex, issue.boundaryIndex + 1]));
+  const written = subchapters
+    .slice(0, total)
+    .filter((sub, index) => hasRealSubchapterContent(sub.content) && !corruptSubIndexes.has(index)).length;
 
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
@@ -899,7 +904,8 @@ function SubchapterCoverageStrip({
         {Array.from({ length: total }, (_, index) => {
           const sub = subchapters[index];
           const generating = isGeneratingSection(`chapter-${chapterIndex}-sub-${index}`);
-          const done = hasRealSubchapterContent(sub?.content);
+          const corrupt = corruptSubIndexes.has(index);
+          const done = hasRealSubchapterContent(sub?.content) && !corrupt;
           const canGenerate = !done && !generating && index < total;
           return (
             <button
@@ -907,16 +913,17 @@ function SubchapterCoverageStrip({
               type="button"
               disabled={!canGenerate}
               onClick={() => onGenerateSubchapter(index)}
-              title={done ? `Sottocapitolo ${chapterIndex + 1}.${index + 1} scritto` : `Genera sottocapitolo ${chapterIndex + 1}.${index + 1}`}
+              title={corrupt ? `Sottocapitolo ${chapterIndex + 1}.${index + 1} da pulire: frammento al confine` : done ? `Sottocapitolo ${chapterIndex + 1}.${index + 1} scritto` : `Genera sottocapitolo ${chapterIndex + 1}.${index + 1}`}
               className={cn(
                 "min-h-8 rounded-lg border px-2.5 text-[11px] font-semibold transition-colors",
                 done && "border-emerald-300/25 bg-emerald-300/10 text-emerald-100",
+                corrupt && "border-rose-300/30 bg-rose-300/10 text-rose-100",
                 generating && "border-amber-300/25 bg-amber-300/10 text-amber-100",
                 !done && !generating && canGenerate && "border-cyan-300/25 bg-cyan-300/10 text-cyan-100 hover:bg-cyan-300/15",
                 !done && !generating && !canGenerate && "border-white/10 bg-white/[0.03] text-white/35",
               )}
             >
-              {chapterIndex + 1}.{index + 1} · {done ? "scritto" : generating ? "live" : "manca"}
+              {chapterIndex + 1}.{index + 1} · {corrupt ? "da pulire" : done ? "scritto" : generating ? "live" : "manca"}
             </button>
           );
         })}
@@ -1152,8 +1159,8 @@ function ChapterView({
   const autoFollowLiveRef = useRef(true);
   const [showReturnToLive, setShowReturnToLive] = useState(false);
   const editorialOutcome = useMemo(
-    () => buildChapterEditorialOutcome(chapter?.content || ""),
-    [chapter?.content],
+    () => buildChapterEditorialOutcome(chapter?.content || "", chapter?.subchapters || []),
+    [chapter?.content, chapter?.subchapters],
   );
 
   const rawPublicTitle = isGenerated

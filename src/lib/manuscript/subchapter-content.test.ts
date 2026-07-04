@@ -5,7 +5,7 @@ import {
   MIN_REAL_SUBCHAPTER_CHARS,
   resyncSubchapterContentsFromChapter,
 } from "./subchapter-content";
-import { assembleChapterFromSubchapters } from "@/lib/writer/subchapter-pipeline";
+import { assembleChapterFromSubchapters, hasSubchapterBoundaryCorruption } from "@/lib/writer/subchapter-pipeline";
 
 describe("subchapter content distribution", () => {
   it("splits a single generated chapter into the expected real subchapters", () => {
@@ -70,8 +70,41 @@ ${"Il ferro conserva la memoria e cambia il patto finale. ".repeat(4)}
     const trimmed = `${subs[0]!.content}\n\n${subs[1]!.content.slice(0, 120)} [Limite parole del piano raggiunto.]`;
 
     const resynced = resyncSubchapterContentsFromChapter(trimmed, subs, 0);
-    expect(trimmed).toContain(resynced[0]!.content.slice(0, 20));
+    expect(resynced[0]!.content).toMatch(/^Prima scena/);
     expect(trimmed).toContain("[Limite parole del piano raggiunto.]");
     expect(resynced.every((sub) => sub.content.length > 0)).toBe(true);
+  });
+
+  it("repairs self-help subchapter words split across assembly boundaries", () => {
+    const subchapters = [
+      {
+        title: "1.1",
+        content: [
+          "Quando rimandi una scelta importante, il corpo impara a cercare velocità al posto di chiarezza.",
+          "Ti sembra di recuperare terreno, ma in realtà acceleri p",
+        ].join("\n\n"),
+      },
+      {
+        title: "1.2",
+        content: [
+          "er non cadere nella sensazione di essere indietro rispetto a tutti gli altri.",
+          "Il punto non è fare di più: è vedere quale pressione stai obbedendo e quale scelta resta nessuna par",
+        ].join("\n\n"),
+      },
+      {
+        title: "1.3",
+        content: [
+          "te.",
+          "Ogni micro-decisione diventa più chiara quando la smetti di trattare il rinvio come un difetto morale.",
+        ].join("\n\n"),
+      },
+    ];
+
+    const assembled = assembleChapterFromSubchapters(subchapters);
+
+    expect(hasSubchapterBoundaryCorruption(subchapters)).toBe(true);
+    expect(assembled).not.toContain("acceleri p er");
+    expect(assembled).toContain("acceleri per non cadere");
+    expect(assembled).toContain("nessuna parte");
   });
 });

@@ -78,4 +78,21 @@ describe("chapter editorial tools", () => {
     expect(result.cleanedContent).toContain("La porta");
     expect(result.cleanedContent).toContain("Il sigillo");
   });
+
+  it("recommends cleanup when subchapter boundaries split words", () => {
+    const subchapters = [
+      { title: "1.1", content: "Il capitolo self-help resta utile, ma termina mentre acceleri p" },
+      { title: "1.2", content: "er non cadere nella stessa paura. Questo rende visibile nessuna par" },
+      { title: "1.3", content: "te del metodo ancora stabile." },
+    ];
+    const content = subchapters.map((sub) => sub.content).join("\n\n");
+    const outcome = buildChapterEditorialOutcome(content, subchapters);
+    const score = scoreChapterEditorialReadiness(content);
+
+    expect(outcome.recommendedNextAction).toBe("editorial_cleanup");
+    expect(outcome.summary).toMatch(/ripulit/i);
+    expect(outcome.issues.some((issue) => issue.severity === "high" && /frammenti|rotture/i.test(issue.description))).toBe(true);
+    expect(score.overall).toBeLessThanOrEqual(6);
+    expect(score.nextAction).toBe("Pulizia editoriale");
+  });
 });

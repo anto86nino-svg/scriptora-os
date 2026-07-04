@@ -3,6 +3,7 @@ import {
   validateNarrativeTimeline,
   type NarrativeTimelineIssue,
 } from "@/lib/writer/narrative-timeline-validator";
+import { detectSubchapterBoundaryIssues } from "@/lib/writer/clean-text-pass";
 
 export type ContinuitySeverity = "critical" | "medium" | "minor";
 
@@ -230,6 +231,17 @@ export function validateSubchapterHandoff(
   const prev = String(prevContent || "").trim();
   const next = String(nextContent || "").trim();
   if (!prev || !next) return errors;
+
+  for (const issue of detectSubchapterBoundaryIssues([{ content: prev }, { content: next }])) {
+    errors.push({
+      severity: "critical",
+      category: "continuity",
+      message: issue.repaired
+        ? "Parola spezzata al confine tra sottocapitoli: serve pulizia editoriale prima di considerare il capitolo completo."
+        : "Possibile parola spezzata non riparabile al confine tra sottocapitoli.",
+      excerpt: issue.before,
+    });
+  }
 
   const prevClosing = extractClosing(prev);
   const nextOpening = extractOpening(next);

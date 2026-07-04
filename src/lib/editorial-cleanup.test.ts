@@ -71,4 +71,21 @@ describe("editorial cleanup", () => {
     expect(result.cleanedContent).toContain("Specchio");
     expect(result.cleanedContent).toContain("Crepa");
   });
+
+  it("repairs split words across subchapter boundaries during cleanup", () => {
+    const result = runEditorialCleanup({
+      title: "Lasciare andare",
+      content: "",
+      subchapters: [
+        { title: "1.1", content: "Il primo passo non è correre più forte: è capire perché acceleri p" },
+        { title: "1.2", content: "er non cadere nella vecchia urgenza. Nessuna par" },
+        { title: "1.3", content: "te di te deve dimostrare valore attraverso la fretta." },
+      ],
+    });
+
+    expect(result.cleanedContent).not.toContain("acceleri p er");
+    expect(result.cleanedContent).toContain("acceleri per non cadere");
+    expect(result.cleanedContent).toContain("Nessuna parte");
+    expect(result.issuesFound.some((issue) => issue.type === "corrupted_sentence" && issue.severity === "high")).toBe(true);
+  });
 });

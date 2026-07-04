@@ -115,4 +115,26 @@ describe("memorability-engine", () => {
     );
     expect(corrupted.scores.narrativeQuality).toBeLessThan(clean.scores.narrativeQuality);
   });
+
+  it("caps score and exposes problems when subchapter boundaries are corrupted", () => {
+    const subchapters = [
+      { title: "1.1", content: "La procrastinazione sembra proteggerti, ma spesso ti fa correre più forte e acceleri p" },
+      { title: "1.2", content: "er non cadere nella vergogna. La soluzione non è forzarti: nessuna par" },
+      { title: "1.3", content: "te di te cambia davvero senza una scelta piccola e ripetibile." },
+    ];
+    const report = evaluateMemorability(
+      subchapters.map((sub) => sub.content).join("\n\n"),
+      {
+        language: "Italian",
+        genre: "self-help",
+        config: { genre: "self-help", language: "Italian", subchaptersPerChapter: 3 },
+        subchapters,
+      },
+    );
+
+    expect(report.scores.narrativeQuality).toBeLessThanOrEqual(60);
+    expect(report.scores.narrativeContinuity).toBeLessThanOrEqual(60);
+    expect(report.problems.join(" ")).toMatch(/Artefatti narrativi|pulizia consigliata/i);
+    expect(report.needsLocalPatch).toBe(true);
+  });
 });

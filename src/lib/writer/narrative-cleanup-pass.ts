@@ -1,5 +1,9 @@
 import type { Chapter } from "@/types/book";
-import { repairCorruptedMergeFragments } from "@/lib/writer/clean-text-pass";
+import {
+  detectResidualSplitArtifacts,
+  repairCorruptedMergeFragments,
+  repairSubchapterSplitBoundaries,
+} from "@/lib/writer/clean-text-pass";
 import { assembleChapterFromSubchapters } from "@/lib/writer/subchapter-pipeline";
 
 export type NarrativeCorruptionKind =
@@ -9,7 +13,8 @@ export type NarrativeCorruptionKind =
   | "nonsense_fragment"
   | "out_of_context"
   | "duplicate_cliche"
-  | "typo_artifact";
+  | "typo_artifact"
+  | "split_subchapter_boundary";
 
 export interface NarrativeCorruptionIssue {
   kind: NarrativeCorruptionKind;
@@ -33,6 +38,8 @@ export interface NarrativeCleanupResult {
 const CONJUNCTION_WORDS = new Set(["ma", "pero", "però", "e", "o", "a", "se", "perché", "perche", "but", "and", "or", "if", "because"]);
 
 const TYPO_FIXES: Array<[RegExp, string]> = [
+  [/\bun\s+crepa\b/gi, "una crepa"],
+  [/\bcome\s+se\s+a\s+fosse\s+successo\b/gi, "come se nulla fosse successo"],
   [/\bpizzico la gola\b/gi, "pizzicò la gola"],
   [/\ble pizzico la\b/gi, "le pizzicò la"],
   [/\bnon diceva a\./gi, "non diceva nulla."],
@@ -255,6 +262,14 @@ function detectIssuesInText(text: string, context: NarrativeCleanupContext = {})
     }
   }
 
+  for (const artifact of detectResidualSplitArtifacts(source)) {
+    issues.push({
+      kind: "split_subchapter_boundary",
+      message: "Parola o frase spezzata da assemblaggio tra sottocapitoli.",
+      excerpt: artifact,
+    });
+  }
+
   const ooc = removeOutOfContextFragments(source, context);
   issues.push(...ooc.removed);
 
@@ -332,10 +347,11 @@ export function applyNarrativeCleanupToChapter(
   chapter: Chapter,
   context: NarrativeCleanupContext = {},
 ): Chapter {
-  const subs = (chapter.subchapters || []).map((sub) => {
+  const cleanedSubs = (chapter.subchapters || []).map((sub) => {
     const cleaned = applyNarrativeCleanupPass(String(sub.content || ""), context);
     return { ...sub, content: cleaned.text };
   });
+  const subs = repairSubchapterSplitBoundaries(cleanedSubs).subchapters;
   const fullText = assembleChapterFromSubchapters(subs);
   const fullCleaned = applyNarrativeCleanupPass(fullText, context);
   return {
