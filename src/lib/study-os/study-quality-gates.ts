@@ -337,7 +337,7 @@ export function ensureDiscursiveStudySummary(summary: string, fallback: string):
 }
 
 export function evaluateExerciseQuality(
-  exercises: Array<{ prompt?: string; solution?: string; explanation?: string; difficulty?: string; level?: string; sourceConcept?: string }>,
+  exercises: Array<{ prompt?: string; solution?: string; explanation?: string; difficulty?: string; level?: string; sourceConcept?: string; commonError?: string; hint?: string }>,
 ): StudyOutputQualityReport {
   const issues: string[] = [];
   if (exercises.length < 6) issues.push("pochi esercizi");
@@ -345,6 +345,7 @@ export function evaluateExerciseQuality(
   if (exercises.some((item) => !item.prompt || !item.explanation || !item.solution)) issues.push("esercizi senza risposta o spiegazione");
   if (exercises.some((item) => hasStudyPlaceholderText(`${item.prompt || ""} ${item.solution || ""} ${item.explanation || ""}`))) issues.push("placeholder negli esercizi");
   if (exercises.some((item) => !item.sourceConcept)) issues.push("manca riferimento al concetto studiato");
+  if (exercises.some((item) => !item.commonError && !item.hint)) issues.push("manca errore comune o suggerimento");
   const score = clampScore(100 - issues.length * 22);
   return {
     status: issues.includes("placeholder negli esercizi") || issues.length >= 2 ? "fail" : issues.length ? "warning" : "pass",

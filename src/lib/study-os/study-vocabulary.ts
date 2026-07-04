@@ -112,19 +112,19 @@ function sentenceContext(text: string, term: string, radius = 1): string {
 
 function buildImportanceSentence(term: string, classification?: StudyMaterialClassification): string {
   if (classification?.type === "history") {
-    return `Capire "${term}" aiuta a ricostruire cause, eventi e conseguenze del periodo storico studiato.`;
+    return `"${term}" aiuta a spiegare un passaggio preciso del periodo storico (cause, evento o conseguenza).`;
   }
   if (classification?.type === "law") {
     return `"${term}" è utile per collegare norme, obblighi ed effetti pratici nel materiale.`;
   }
-  return `"${term}" è un concetto chiave per organizzare lo studio e rispondere a verifiche sul tema.`;
+  return `"${term}" organizza lo studio e risponde a verifiche sul tema con definizione ed esempio.`;
 }
 
 function buildReviewQuestion(term: string, classification?: StudyMaterialClassification): string {
   if (classification?.type === "history") {
-    return `Perché "${term}" è rilevante nello svolgimento o nelle conseguenze degli eventi descritti?`;
+    return `In che modo "${term}" incide su cause, eventi o conseguenze del periodo studiato?`;
   }
-  return `Come spiegheresti "${term}" con definizione ed esempio tratto dal testo?`;
+  return `Come spiegheresti "${term}" con definizione ed esempio tratto dal capitolo?`;
 }
 
 /** Build a real vocabulary entry — no placeholder templates. */
@@ -176,7 +176,7 @@ export function buildStudyTermDefinition(
     newExample: example,
     examQuestion: buildReviewQuestion(entry.word, classification),
     connections: connections.slice(0, 4),
-    commonMistake: `Confondere "${entry.word}" con un termine generico senza spiegare il suo ruolo nel periodo studiato.`,
+    commonMistake: `Confondere "${entry.word}" con un'etichetta da memorizzare senza spiegare il ruolo nel periodo studiato.`,
     importance: "alto",
   };
 }

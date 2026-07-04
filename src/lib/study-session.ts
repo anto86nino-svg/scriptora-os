@@ -21,6 +21,7 @@ import { composeStudySummaries, ensureComposedSummary } from "@/lib/study-os/stu
 import { buildStudyTermDefinition, isLegacyStudyDefinition, isRealStudyDefinition } from "@/lib/study-os/study-vocabulary";
 import { computeStudyReadinessBreakdown } from "@/lib/study-os/study-readiness";
 import { extractStudyTopic, replaceBannedTopicPhrases, sanitizeStudyTopic } from "@/lib/study-os/study-topic-extract";
+import { buildDidacticAssessmentPack } from "@/lib/study-os/study-assessment-quality-engine";
 
 async function loadPdfJs() {
   const pdfjsLib = await import("pdfjs-dist");
@@ -191,6 +192,14 @@ export interface QuizQuestion {
 export interface OpenStudyQuestion {
   question: string;
   answerGuide: string;
+  questionType?: string;
+  difficulty?: string;
+  verifiedConcepts?: string[];
+  modelAnswer?: string;
+  shortAnswer?: string;
+  gradingCriteria?: string;
+  oralFollowUp?: string;
+  oralTrap?: string;
 }
 
 export type StudyMaterialType =
@@ -261,6 +270,10 @@ export interface StudyExercise {
   exerciseType?: "risposta breve" | "completamento" | "vero/falso" | "scelta multipla" | "collegamenti" | "spiegazione aperta" | "applicazione" | "confronto" | "interrogazione orale" | "trabocchetto";
   sourceConcept?: string;
   hint?: string;
+  estimatedMinutes?: number;
+  objective?: string;
+  guidedCorrection?: string;
+  commonError?: string;
 }
 
 export interface StudyConceptMapNode {
@@ -1080,6 +1093,14 @@ function hasWords(text: string, words: string[]): boolean {
 function isValidStudyQuestion(question: string, seen = new Set<string>()): boolean {
   const clean = question.replace(/\s+/g, " ").trim();
   const key = clean.toLowerCase();
+  if (/^vero o falso:/i.test(clean)) {
+    if (seen.has(key)) return false;
+    return clean.length >= 12;
+  }
+  if (/^completa:/i.test(clean) || /^metti in ordine/i.test(clean)) {
+    if (seen.has(key)) return false;
+    return countStudyWords(clean) >= 5;
+  }
   if (!clean.endsWith("?")) return false;
   if (countStudyWords(clean) < 6) return false;
   if (seen.has(key)) return false;
@@ -1092,6 +1113,7 @@ export function sanitizeStudyOpenQuestions(items: OpenStudyQuestion[], fallback:
   const seen = new Set<string>();
   const clean = items
     .map((item) => ({
+      ...item,
       question: String(item.question || "").replace(/\s+/g, " ").trim(),
       answerGuide: String(item.answerGuide || "").trim() || "Rispondi con prove dal testo e collega la risposta al capitolo.",
     }))
@@ -1707,7 +1729,9 @@ function buildExamQuestionList(
   const questions = [
     ...openQuestions.map((item) => item.question),
     ...quiz.filter((item) => item.difficulty === "hard" || item.learningLevel === "exam" || item.learningLevel === "professor").map((item) => item.question),
-    ...concepts.slice(0, 4).map((concept) => `Spiega "${concept}" collegando definizione, esempio e conseguenza.`),
+    ...(openQuestions.length < 6
+      ? concepts.slice(0, 4).map((concept) => `Spiega "${concept}" collegando definizione, esempio e conseguenza.`)
+      : []),
   ];
 
   return Array.from(new Set(questions.map((item) => sanitizeStudyOutput(item, "")).filter(Boolean))).slice(0, 10);
@@ -2028,6 +2052,9 @@ export function sanitizeStudySessionResult(result: StudySessionResult, fallback?
       explanation: sanitizeStudyOutput(item.explanation, ""),
       sourceConcept: item.sourceConcept ? sanitizeStudyOutput(item.sourceConcept, "") : item.sourceConcept,
       hint: item.hint ? sanitizeStudyOutput(item.hint, "") : item.hint,
+      commonError: item.commonError ? sanitizeStudyOutput(item.commonError, "") : item.commonError,
+      objective: item.objective ? sanitizeStudyOutput(item.objective, "") : item.objective,
+      guidedCorrection: item.guidedCorrection ? sanitizeStudyOutput(item.guidedCorrection, "") : item.guidedCorrection,
     }))
     .filter((item) => item.prompt && item.explanation && item.solution && item.sourceConcept && !hasStudyPlaceholderText(`${item.prompt} ${item.solution} ${item.explanation}`))
     .slice(0, 14);
@@ -2201,12 +2228,38 @@ export function analyzeStudyMaterial(
   const pro = pickSentences(clean, 28);
   const summaries = buildSummaries(title, clean, classification, manual.difficultyLevel);
 
-  const difficultWords = buildProfessionalVocabulary(clean, words, classification);
-  const flashcards = buildProfessionalFlashcards(keyConcepts, classification, manual.difficultyLevel);
-  const quiz = narrativeMode ? buildNarrativeQuiz(clean, title) : buildProgressiveQuiz(keyConcepts, classification, manual.difficultyLevel);
-  const fallbackOpenQuestions = buildOpenQuestions(title, keyConcepts, narrativeMode, clean);
+  let difficultWords = buildProfessionalVocabulary(clean, words, classification);
+  const assessmentPack = !narrativeMode
+    ? buildDidacticAssessmentPack({
+        title,
+        clean,
+        classification,
+        keyConcepts,
+        difficultyLevel: manual.difficultyLevel,
+        difficultWords,
+        proLines: pro.length ? pro : medium,
+      })
+    : null;
+
+  if (assessmentPack?.enrichedVocabulary.length) {
+    difficultWords = assessmentPack.enrichedVocabulary;
+  }
+
+  const flashcards = assessmentPack?.flashcards.length
+    ? assessmentPack.flashcards
+    : buildProfessionalFlashcards(keyConcepts, classification, manual.difficultyLevel);
+  const quiz = narrativeMode
+    ? buildNarrativeQuiz(clean, title)
+    : assessmentPack?.quiz.length
+      ? assessmentPack.quiz
+      : buildProgressiveQuiz(keyConcepts, classification, manual.difficultyLevel);
+  const fallbackOpenQuestions = assessmentPack?.openQuestions.length
+    ? assessmentPack.openQuestions
+    : buildOpenQuestions(title, keyConcepts, narrativeMode, clean);
   const openQuestions = sanitizeStudyOpenQuestions(fallbackOpenQuestions, fallbackOpenQuestions);
-  const trueFalse = buildTrueFalseQuiz(keyConcepts);
+  const trueFalse = assessmentPack?.trueFalse.length
+    ? assessmentPack.trueFalse
+    : buildTrueFalseQuiz(keyConcepts);
   const learningPackage = buildLearningPackage({
     summaries,
     keyConcepts,
@@ -2217,16 +2270,19 @@ export function analyzeStudyMaterial(
   });
   const knowledgeMap = buildInitialKnowledgeMap(keyConcepts, classification, manual.difficultyLevel);
   const adaptiveCoach = buildInitialAdaptiveCoach(knowledgeMap, learningPackage, classification);
+  const studyNotesBase = assessmentPack?.studyNotesPro || buildStudyNotesPro(title, keyConcepts, pro.length ? pro : medium);
   const studyNotesPro = [
-    buildStudyNotesPro(title, keyConcepts, pro.length ? pro : medium),
+    studyNotesBase,
     "",
-    "5. Errori comuni",
+    "Errori comuni",
     ...learningPackage.commonMistakes.slice(0, 6).map((item) => `• ${item}`),
     "",
-    "6. Possibili domande d'esame",
-    ...learningPackage.examQuestions.slice(0, 6).map((item) => `• ${item}`),
+    "Possibili domande d'esame",
+    ...(assessmentPack?.examQuestions.length
+      ? assessmentPack.examQuestions.slice(0, 6).map((item) => `• ${item.domanda}`)
+      : learningPackage.examQuestions.slice(0, 6).map((item) => `• ${item}`)),
     "",
-    "7. Date/nomi/formule/definizioni",
+    "Date/nomi/formule/definizioni",
     `• ${buildEvidenceInventory(clean)}`,
   ].join("\n");
 
@@ -2251,7 +2307,9 @@ export function analyzeStudyMaterial(
     openQuestions,
     quiz,
     trueFalse,
-    exercises: buildExercises(keyConcepts, classification),
+    exercises: assessmentPack?.exercises.length
+      ? assessmentPack.exercises
+      : buildExercises(keyConcepts, classification),
     conceptMap: buildConceptMap(title, keyConcepts, pro.length ? pro : medium, classification),
     learningPackage,
     knowledgeMap,
