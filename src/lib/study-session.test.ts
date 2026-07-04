@@ -104,6 +104,64 @@ describe("Study OS material analysis", () => {
     expect(result.conceptMap?.nodes.length).toBeGreaterThan(2);
   });
 
+  it("blocks study generation when OCR quality fails", () => {
+    const dirtyOcr = Array.from(
+      { length: 12 },
+      () => "pa ro la con os cen za stu dio p\n@@@ 17 xq ##\nfrase tron ca senza\n",
+    ).join("\n");
+
+    const result = analyzeStudyMaterial(dirtyOcr, "foto-pagina.png", { studyMaterialType: "image_page" });
+
+    expect(result.sourceQuality?.status).toBe("fail");
+    expect(result.sessionMode).toBe("insufficient");
+    expect(result.quiz).toHaveLength(0);
+    expect(result.flashcards).toHaveLength(0);
+    expect(result.difficultWords).toHaveLength(0);
+    expect(result.lightSummary).toContain("Il testo non è leggibile abbastanza");
+  });
+
+  it("creates discursive summaries instead of tables or random concept maps", () => {
+    const result = analyzeStudyMaterial(studyText(
+      "Biologia",
+      "La fotosintesi clorofilliana è un processo biochimico che permette alle piante di trasformare luce, acqua e anidride carbonica in glucosio e ossigeno. Il processo avviene nei cloroplasti e dipende dalla clorofilla. La fase luminosa produce energia, mentre il ciclo di Calvin usa questa energia per fissare il carbonio.",
+    ), "biologia-fotosintesi.txt", { studySubject: "biology", studyGoal: "complete_summary" });
+
+    const complete = result.summaries?.complete || "";
+    const lines = complete.split("\n").filter(Boolean);
+    const bulletLines = lines.filter((line) => /^[•\-]/.test(line.trim()));
+
+    expect(complete).toContain("Riassunto completo");
+    expect(complete).not.toMatch(/^\|.*\|$/m);
+    expect(bulletLines.length).toBeLessThan(2);
+    expect(complete).not.toMatch(/placeholder|la spiegazione sta nel contesto/i);
+  });
+
+  it("builds teacher-grade exercises with levels, answers and source concepts", () => {
+    const result = analyzeStudyMaterial(studyText(
+      "Storia",
+      "La Rivoluzione francese nasce da crisi economica, disuguaglianze sociali, monarchia assoluta e nuove idee politiche. Gli eventi del 1789 producono conseguenze istituzionali, dichiarazione dei diritti, trasformazione della cittadinanza e conflitti europei.",
+    ), "rivoluzione-francese.txt", { studySubject: "history", studyGoal: "exam_prep", difficultyLevel: 5 });
+
+    expect(result.exercises?.length).toBeGreaterThanOrEqual(8);
+    expect(Array.from(new Set(result.exercises?.map((item) => item.level)))).toEqual(expect.arrayContaining(["Base", "Intermedio", "Avanzato", "Verifica finale"]));
+    expect(result.exercises?.every((item) => item.prompt && item.solution && item.explanation && item.sourceConcept)).toBe(true);
+    expect(result.exercises?.some((item) => item.exerciseType === "trabocchetto")).toBe(true);
+  });
+
+  it("keeps remembered words meaningful and rejects placeholder explanations", () => {
+    const result = analyzeStudyMaterial(studyText(
+      "Informatica",
+      "Algoritmo, database, funzione, variabile, protocollo, compilatore, memoria, processo, thread, rete, API e cifratura sono concetti tecnici collegati allo sviluppo software e alla sicurezza informatica.",
+    ), "informatica.txt", { studySubject: "computer-science" });
+
+    const joined = result.difficultWords.map((item) => `${item.word} ${item.simple} ${item.technical} ${item.example}`).join(" ");
+
+    expect(result.difficultWords.length).toBeGreaterThanOrEqual(6);
+    expect(result.difficultWords.map((item) => item.word.toLowerCase())).not.toEqual(expect.arrayContaining(["come", "della", "parte"]));
+    expect(joined).not.toMatch(/la spiegazione sta nel contesto|come indicato nel manoscritto|non disponibile|placeholder|N\/A/i);
+    expect(result.difficultWords.every((item) => item.simple && item.technical && item.example)).toBe(true);
+  });
+
   it("builds a single-pass learning package, contextual dictionary and cognitive quiz levels", () => {
     const result = analyzeStudyMaterial(studyText(
       "Biologia",

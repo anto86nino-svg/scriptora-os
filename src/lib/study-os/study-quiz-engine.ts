@@ -33,10 +33,13 @@ const TIER_TO_INTERNAL: Record<QuizDifficultyTier, QuizQuestion["difficulty"]> =
 };
 
 function inferKernelType(item: QuizQuestion, profile: StudySubjectProfile): KernelQuizType {
-  if (item.type === "true-false" || item.options.length === 2) return "true_false";
+  if (item.type === "true-false" || /^vero\s*(?:o|\/)\s*falso/i.test(item.question)) return "true_false";
   if (item.type === "open" || item.type === "short-answer") return "open_answer";
-  if (item.type === "case" || item.type === "application") return "practical_case";
   if (/complet|inserisci|riempi|____/i.test(item.question)) return "completion";
+  if (item.type === "case" || item.type === "application") return "practical_case";
+  if (item.type === "multiple-choice" || item.type === "comparison" || item.type === "connection" || item.options.length >= 3) {
+    return "multiple_choice";
+  }
   if (profile.prefersCases && item.learningLevel === "exam") return "practical_case";
   return "multiple_choice";
 }
@@ -178,19 +181,16 @@ export function buildStudyQuizPack(
     items = items.filter((item) => !NARRATIVE_TROPE_PATTERN.test(item.question));
   }
 
-  const byType = plan.quizTypes.reduce<Record<KernelQuizType, EnhancedQuizItem[]>>(
-    (acc, type) => {
-      acc[type] = items.filter((item) => item.kernelType === type);
-      return acc;
-    },
-    {
-      multiple_choice: [],
-      open_answer: [],
-      completion: [],
-      true_false: [],
-      practical_case: [],
-    },
-  );
+  const byType: Record<KernelQuizType, EnhancedQuizItem[]> = {
+    multiple_choice: [],
+    open_answer: [],
+    completion: [],
+    true_false: [],
+    practical_case: [],
+  };
+  items.forEach((item) => {
+    byType[item.kernelType].push(item);
+  });
 
   return {
     items: items.slice(0, 24),

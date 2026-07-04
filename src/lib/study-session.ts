@@ -5,6 +5,17 @@ import {
   buildTopicModeSession,
   classifyStudyInput,
 } from "@/lib/study-os/study-topic-mode";
+import {
+  STUDY_TEXT_NOT_READABLE_MESSAGE,
+  canGenerateStudyOutputs,
+  ensureDiscursiveStudySummary,
+  evaluateExerciseQuality,
+  evaluateKeywordQuality,
+  evaluateStudyTextQuality,
+  hasStudyPlaceholderText,
+  isMeaningfulStudyKeyword,
+  type StudyTextQualityReport,
+} from "@/lib/study-os/study-quality-gates";
 
 async function loadPdfJs() {
   const pdfjsLib = await import("pdfjs-dist");
@@ -241,6 +252,10 @@ export interface StudyExercise {
   solution?: string;
   explanation: string;
   difficulty: "easy" | "medium" | "hard";
+  level?: "Base" | "Intermedio" | "Avanzato" | "Verifica finale";
+  exerciseType?: "risposta breve" | "completamento" | "vero/falso" | "scelta multipla" | "collegamenti" | "spiegazione aperta" | "applicazione" | "confronto" | "interrogazione orale" | "trabocchetto";
+  sourceConcept?: string;
+  hint?: string;
 }
 
 export interface StudyConceptMapNode {
@@ -326,6 +341,8 @@ export interface StudySessionResult {
   studyGoal?: StudyGoalIntent;
   difficultyLevel?: StudyDifficultyLevel;
   qualityScores?: StudyQualityScores;
+  sourceQuality?: StudyTextQualityReport;
+  studyReadinessScore?: number;
 }
 
 export interface StudyFileReadResult {
@@ -1013,6 +1030,26 @@ function paragraph(title: string, lines: string[]): string {
   return [`${title}`, ...lines.map((line) => `• ${line}`)].join("\n");
 }
 
+function discursiveSummary(title: string, lines: string[], options: { maxSentences?: number; closing?: string } = {}): string {
+  const cleanLines = Array.from(new Set(
+    lines
+      .map((line) => sanitizeStudyOutput(line, ""))
+      .filter(Boolean)
+      .map((line) => line.replace(/^[•\-\d.)\s]+/, "").trim())
+      .filter((line) => countStudyWords(line) >= 5),
+  )).slice(0, options.maxSentences ?? 14);
+
+  if (!cleanLines.length) return `${title}\n\nIl materiale non contiene abbastanza frasi leggibili per costruire un riassunto discorsivo affidabile.`;
+
+  const paragraphs: string[] = [];
+  for (let index = 0; index < cleanLines.length; index += 3) {
+    paragraphs.push(cleanLines.slice(index, index + 3).join(" "));
+  }
+
+  if (options.closing) paragraphs.push(options.closing);
+  return [title, ...paragraphs].join("\n\n");
+}
+
 function buildStudyNotesPro(title: string, concepts: string[], proLines: string[]): string {
   const conceptLines = concepts.length
     ? concepts.map((concept) => `• ${concept}: definiscilo, spiegalo con parole tue e collegalo al tema centrale.`)
@@ -1130,6 +1167,7 @@ function looksTruncatedStudyText(text: string): boolean {
   if (/[.…]{2,}\s*$/.test(clean)) return true;
   if (/\b(Viola sent|sent\.\.\.|sent…|guard\.\.\.|pens\.\.\.)/i.test(clean)) return true;
   if (/\b(domanda|risposta|spiegazione)\s*:\s*$/i.test(clean)) return true;
+  if (hasStudyPlaceholderText(clean)) return true;
   return false;
 }
 
@@ -1144,7 +1182,7 @@ export function sanitizeStudyOutput(output: unknown, fallback = "Questa sezione 
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-  if (!clean || hasTechnicalArtifact(clean)) return fallback;
+  if (!clean || hasTechnicalArtifact(clean) || hasStudyPlaceholderText(clean)) return fallback;
 
   const seen = new Set<string>();
   const lines = clean
@@ -1435,7 +1473,11 @@ function buildProfessionalVocabulary(clean: string, words: number): DifficultWor
     ...professionalTerms,
     ...keywords(clean, words > 900 ? 24 : 14).filter((word) => word.length >= 6),
   ];
-  const unique = Array.from(new Set(candidateWords.map((word) => word.trim()).filter(Boolean)));
+  const unique = Array.from(new Set(
+    candidateWords
+      .map((word) => word.trim())
+      .filter((word) => isMeaningfulStudyKeyword(word)),
+  ));
   const target = words > 900 ? Math.max(8, Math.min(18, unique.length)) : Math.min(12, unique.length);
   const selected = unique.slice(0, Math.max(1, target));
   return selected.map((word, index) => {
@@ -1518,22 +1560,23 @@ function buildSummaries(
   const strategyLine = `Strategia: ${classification.strategy.join(" · ")}.`;
 
   return {
-    brief: formatLines("Riassunto breve", light.slice(0, 6)),
-    complete: formatLines("Riassunto completo", medium.length ? medium : light),
+    brief: discursiveSummary("Riassunto breve", light.slice(0, 6), { maxSentences: 6 }),
+    complete: discursiveSummary("Riassunto completo", medium.length ? medium : light, { maxSentences: 14 }),
     university: [
       "Riassunto universitario",
-      `Tesi/tema centrale: ${title}.`,
-      strategyLine,
-      ...pro.slice(0, 18).map((line) => `• ${line}`),
-      "• Per un esame: collega definizioni, esempi e implicazioni invece di ripetere frasi isolate.",
-    ].join("\n"),
-    oral: [
-      "Riassunto per interrogazione",
-      `Apertura: il materiale parla di ${title}.`,
-      ...medium.slice(0, 10).map((line) => `• Spiega: ${line}`),
-      "• Chiudi sempre con un esempio o una conseguenza.",
-    ].join("\n"),
-    ultraSimple: formatLines("Riassunto ultra semplice", (light.length ? light : medium).slice(0, 8).map(simplifyLine)),
+      "",
+      `Il tema centrale è ${title}. ${strategyLine}`,
+      "",
+      discursiveSummary("", pro.slice(0, 18), {
+        maxSentences: 18,
+        closing: "Per un esame non basta ripetere: collega definizioni, esempi e implicazioni usando prove presenti nel materiale.",
+      }).replace(/^\s+/, ""),
+    ].join("\n").replace(/\n{3,}/g, "\n\n").trim(),
+    oral: discursiveSummary("Riassunto per interrogazione", medium.length ? medium : light, {
+      maxSentences: 10,
+      closing: `Apri la risposta presentando ${title}, poi collega almeno due concetti e chiudi con un esempio o una conseguenza.`,
+    }),
+    ultraSimple: discursiveSummary("Riassunto ultra semplice", (light.length ? light : medium).slice(0, 8).map(simplifyLine), { maxSentences: 8 }),
     quickReview: [
       "Ripasso veloce",
       ...concepts.slice(0, 8).map((concept) => `• ${concept}: definizione + esempio + collegamento.`),
@@ -1602,6 +1645,10 @@ function buildExercises(concepts: string[], classification: StudyMaterialClassif
       solution: `Una risposta forte definisce ${base[0]}, lo collega a ${classification.label} e chiude con un esempio concreto.`,
       explanation: "Esercizio guidato per costruire una risposta da interrogazione.",
       difficulty: "easy",
+      level: "Base",
+      exerciseType: "risposta breve",
+      sourceConcept: base[0],
+      hint: "Parti dalla definizione e usa una frase del materiale come prova.",
     },
     {
       id: "application-1",
@@ -1610,6 +1657,10 @@ function buildExercises(concepts: string[], classification: StudyMaterialClassif
       solution: "L'esempio deve usare solo concetti presenti nel materiale e mostrare causa, effetto o conseguenza.",
       explanation: "Verifica se sai usare il concetto, non solo ripeterlo.",
       difficulty: "medium",
+      level: "Intermedio",
+      exerciseType: "applicazione",
+      sourceConcept: base[1] || base[0],
+      hint: "Non inventare teoria nuova: usa definizione, esempio e conseguenza.",
     },
     {
       id: "reasoning-1",
@@ -1618,13 +1669,70 @@ function buildExercises(concepts: string[], classification: StudyMaterialClassif
       solution: "Risposta attesa: almeno una somiglianza, una differenza e un collegamento al tema centrale.",
       explanation: "Allena il ragionamento comparativo.",
       difficulty: "hard",
+      level: "Avanzato",
+      exerciseType: "confronto",
+      sourceConcept: base[0],
+      hint: "Costruisci due colonne mentali: somiglianze, differenze, conseguenze.",
     },
     {
       id: "free-1",
       type: "free",
       prompt: `Scrivi una risposta libera di 8-10 righe sul tema centrale: ${classification.label}.`,
+      solution: `La risposta deve presentare ${classification.label}, collegare almeno due concetti e usare un esempio tratto dal materiale.`,
       explanation: "Usa questa traccia per simulare una domanda aperta da verifica.",
       difficulty: "medium",
+      level: "Verifica finale",
+      exerciseType: "spiegazione aperta",
+      sourceConcept: classification.label,
+      hint: "Imposta la risposta come se fossi interrogato: apertura, sviluppo, esempio, chiusura.",
+    },
+    {
+      id: "completion-1",
+      type: "guided",
+      prompt: `Completa: "${base[0]}" è importante perché __________ e si collega a __________.`,
+      solution: `Completa con una funzione reale di "${base[0]}" e con un secondo concetto del materiale, ad esempio "${base[1] || classification.label}".`,
+      explanation: "Il completamento verifica memoria precisa e collegamenti.",
+      difficulty: "easy",
+      level: "Base",
+      exerciseType: "completamento",
+      sourceConcept: base[0],
+      hint: "Rileggi la definizione e cerca una relazione causa-effetto o esempio.",
+    },
+    {
+      id: "true-false-correction-1",
+      type: "correction",
+      prompt: `Vero o falso con correzione: "${base[1] || base[0]}" può essere spiegato senza riferimenti al materiale.`,
+      solution: "Falso: una spiegazione utile deve sempre collegare il concetto al testo studiato, con definizione ed esempio.",
+      explanation: "Allena l'abitudine a correggere risposte vaghe.",
+      difficulty: "medium",
+      level: "Intermedio",
+      exerciseType: "vero/falso",
+      sourceConcept: base[1] || base[0],
+      hint: "Se una risposta potrebbe valere per qualunque argomento, è troppo generica.",
+    },
+    {
+      id: "oral-1",
+      type: "free",
+      prompt: `Interrogazione orale: spiega ${base[2] || base[0]} in 60 secondi, poi aggiungi un collegamento a ${base[3] || classification.label}.`,
+      solution: "Risposta attesa: definizione chiara, passaggio logico, collegamento, esempio e conclusione breve.",
+      explanation: "Simula pressione orale e capacità di organizzare il discorso.",
+      difficulty: "hard",
+      level: "Avanzato",
+      exerciseType: "interrogazione orale",
+      sourceConcept: base[2] || base[0],
+      hint: "Non partire dall'esempio: prima definisci il concetto.",
+    },
+    {
+      id: "trap-1",
+      type: "reasoning",
+      prompt: `Domanda trabocchetto: quale errore faresti se studiassi "${base[0]}" come parola isolata?`,
+      solution: "L'errore è memorizzare il termine senza spiegare ruolo, conseguenza e legame con gli altri concetti del materiale.",
+      explanation: "Serve a riconoscere risposte apparentemente corrette ma superficiali.",
+      difficulty: "hard",
+      level: "Verifica finale",
+      exerciseType: "trabocchetto",
+      sourceConcept: base[0],
+      hint: "Cerca cosa manca: definizione, contesto, collegamento o conseguenza.",
     },
   ];
 }
@@ -1747,6 +1855,93 @@ function sanitizedSummaryFallback(text?: string): string {
   return String(text || "Sezione non disponibile nel materiale caricato.").trim();
 }
 
+function buildUnreadableStudySession(
+  clean: string,
+  sourceName: string,
+  intent: StudyIntentSettings,
+  sourceQuality: StudyTextQualityReport,
+): StudySessionResult {
+  const manual = normalizeStudyIntent(intent);
+  const words = countStudyWords(clean);
+  const title = sourceName.replace(/\.(txt|md|markdown|docx|pdf|epub|png|jpe?g|webp|heic|heif)$/i, "").replace(/[_-]+/g, " ").trim() || "Testo non leggibile";
+  const message = STUDY_TEXT_NOT_READABLE_MESSAGE;
+  const suggested = sourceQuality.detectedIssues.length
+    ? `Problemi rilevati: ${sourceQuality.detectedIssues.join("; ")}.`
+    : "Il testo contiene frammenti o parti troppo poco chiare.";
+
+  return {
+    title,
+    sourceName,
+    words,
+    contentType: "mixed_or_unknown",
+    subjectLabel: "Testo non leggibile",
+    studyMode: "Foto da riscattare",
+    detectedSubject: "Testo non leggibile",
+    difficulty: "soft",
+    sessionMode: "insufficient",
+    classification: {
+      type: "general",
+      label: "Testo non leggibile",
+      contentType: "mixed_or_unknown",
+      subjectLabel: "Testo non leggibile",
+      mode: "Foto da riscattare",
+      confidence: sourceQuality.score,
+      language: detectStudyLanguage(clean || sourceName),
+      difficultyScore: 1,
+      estimatedStudyMinutes: 0,
+      signals: sourceQuality.detectedIssues,
+      strategy: ["riscatta foto", "carica immagine nitida", "incolla testo manualmente"],
+    },
+    summaries: {
+      brief: message,
+      complete: `${message}\n\n${suggested}`,
+      university: `${message}\n\n${suggested}`,
+      oral: message,
+      ultraSimple: message,
+      quickReview: message,
+      chronological: message,
+      causeEffect: message,
+      bulletPoints: message,
+      oralExam: message,
+    },
+    lightSummary: message,
+    mediumSummary: `${message}\n\n${suggested}`,
+    proSummary: `${message}\n\n${sourceQuality.suggestedAction}`,
+    studyNotesPro: `${message}\n\n${suggested}\n\nAzioni: Riscatta foto · Carica un'altra immagine · Incolla testo manualmente.`,
+    openQuestions: [],
+    difficultWords: [],
+    flashcards: [],
+    quiz: [],
+    trueFalse: [],
+    exercises: [],
+    conceptMap: {
+      title: "Testo non leggibile",
+      nodes: [],
+      relations: [],
+      exportText: message,
+    },
+    learningPackage: undefined,
+    knowledgeMap: [],
+    adaptiveCoach: undefined,
+    keyConcepts: [],
+    studyMaterialType: manual.studyMaterialType,
+    studySubject: manual.studySubject,
+    literaryGenre: manual.literaryGenre,
+    studyGoal: manual.studyGoal,
+    difficultyLevel: manual.difficultyLevel,
+    sourceQuality,
+    studyReadinessScore: sourceQuality.score,
+    qualityScores: {
+      summaryQuality: 1,
+      quizQuality: 1,
+      vocabularyQuality: 1,
+      flashcardQuality: 1,
+      oralExamQuality: 1,
+      reasons: ["source_quality_failed", ...sourceQuality.detectedIssues],
+    },
+  };
+}
+
 export function scoreStudySessionQuality(result: StudySessionResult): StudyQualityScores {
   const reasons: string[] = [];
   if (result.sessionMode === "topic" || result.sessionMode === "insufficient") {
@@ -1841,6 +2036,9 @@ export function sanitizeStudySessionResult(result: StudySessionResult, fallback?
     .filter((item) => {
       const key = item.word.toLowerCase();
       if (!item.word || seenWords.has(key)) return false;
+      if (!isMeaningfulStudyKeyword(item.word)) return false;
+      if (!item.simple || !item.technical || !item.example) return false;
+      if (hasStudyPlaceholderText(`${item.simple} ${item.technical} ${item.example} ${item.school || ""} ${item.advanced || ""}`)) return false;
       seenWords.add(key);
       return true;
     })
@@ -1863,9 +2061,9 @@ export function sanitizeStudySessionResult(result: StudySessionResult, fallback?
     .slice(0, 18);
   const learningPackage = result.learningPackage
     ? {
-        summaryUltraBrief: sanitizeStudyOutput(result.learningPackage.summaryUltraBrief, fallback?.learningPackage?.summaryUltraBrief || sanitizedSummaryFallback(result.lightSummary)),
-        summaryStandard: sanitizeStudyOutput(result.learningPackage.summaryStandard, fallback?.learningPackage?.summaryStandard || sanitizedSummaryFallback(result.mediumSummary)),
-        summaryDeep: sanitizeStudyOutput(result.learningPackage.summaryDeep, fallback?.learningPackage?.summaryDeep || sanitizedSummaryFallback(result.proSummary)),
+        summaryUltraBrief: ensureDiscursiveStudySummary(sanitizeStudyOutput(result.learningPackage.summaryUltraBrief, fallback?.learningPackage?.summaryUltraBrief || sanitizedSummaryFallback(result.lightSummary)), sanitizedSummaryFallback(result.lightSummary)),
+        summaryStandard: ensureDiscursiveStudySummary(sanitizeStudyOutput(result.learningPackage.summaryStandard, fallback?.learningPackage?.summaryStandard || sanitizedSummaryFallback(result.mediumSummary)), sanitizedSummaryFallback(result.mediumSummary)),
+        summaryDeep: ensureDiscursiveStudySummary(sanitizeStudyOutput(result.learningPackage.summaryDeep, fallback?.learningPackage?.summaryDeep || sanitizedSummaryFallback(result.proSummary)), sanitizedSummaryFallback(result.proSummary)),
         keyConcepts: Array.from(new Set((result.learningPackage.keyConcepts || []).map((item) => sanitizeStudyOutput(item, "")).filter(Boolean))).slice(0, 14),
         commonMistakes: Array.from(new Set((result.learningPackage.commonMistakes || []).map((item) => sanitizeStudyOutput(item, "")).filter(Boolean))).slice(0, 10),
         examQuestions: Array.from(new Set((result.learningPackage.examQuestions || []).map((item) => sanitizeStudyOutput(item, "")).filter(Boolean))).slice(0, 12),
@@ -1895,6 +2093,28 @@ export function sanitizeStudySessionResult(result: StudySessionResult, fallback?
   const guardedFlashcards = semanticReady ? (flashcards.length ? flashcards : fallback?.flashcards || []) : [];
   const guardedTrueFalse = semanticReady ? safeTrueFalse : [];
   const guardedDifficultWords = semanticReady ? (difficultWords.length ? difficultWords : fallback?.difficultWords || []) : [];
+  const exercises = (result.exercises || fallback?.exercises || [])
+    .map((item) => ({
+      ...item,
+      prompt: sanitizeStudyOutput(item.prompt, ""),
+      solution: item.solution ? sanitizeStudyOutput(item.solution, "") : item.solution,
+      explanation: sanitizeStudyOutput(item.explanation, ""),
+      sourceConcept: item.sourceConcept ? sanitizeStudyOutput(item.sourceConcept, "") : item.sourceConcept,
+      hint: item.hint ? sanitizeStudyOutput(item.hint, "") : item.hint,
+    }))
+    .filter((item) => item.prompt && item.explanation && item.solution && item.sourceConcept && !hasStudyPlaceholderText(`${item.prompt} ${item.solution} ${item.explanation}`))
+    .slice(0, 14);
+
+  const sanitizedSummaries = Object.fromEntries(
+    Object.entries(result.summaries || {}).map(([key, value]) => {
+      const cleanValue = sanitizeStudyOutput(value, fallback?.summaries?.[key as StudySummaryMode]);
+      const shouldBeDiscursive = ["brief", "complete", "university", "oral", "ultraSimple", "oralExam"].includes(key);
+      return [
+        key,
+        shouldBeDiscursive ? ensureDiscursiveStudySummary(cleanValue, fallback?.summaries?.[key as StudySummaryMode] || cleanValue) : cleanValue,
+      ];
+    }),
+  ) as Record<StudySummaryMode, string>;
 
   const sanitized: StudySessionResult = {
     ...result,
@@ -1902,19 +2122,18 @@ export function sanitizeStudySessionResult(result: StudySessionResult, fallback?
     detectedSubject: sanitizeStudyOutput(result.detectedSubject, fallback?.detectedSubject || "Materiale di studio"),
     subjectLabel: sanitizeStudyOutput(result.subjectLabel, fallback?.subjectLabel || "Materiale di studio"),
     studyMode: sanitizeStudyOutput(result.studyMode, fallback?.studyMode || "Studio guidato"),
-    lightSummary: sanitizeStudyOutput(result.lightSummary, fallback?.lightSummary),
-    mediumSummary: sanitizeStudyOutput(result.mediumSummary, fallback?.mediumSummary),
-    proSummary: sanitizeStudyOutput(result.proSummary, fallback?.proSummary),
+    lightSummary: ensureDiscursiveStudySummary(sanitizeStudyOutput(result.lightSummary, fallback?.lightSummary), fallback?.lightSummary || sanitizedSummaryFallback(result.mediumSummary)),
+    mediumSummary: ensureDiscursiveStudySummary(sanitizeStudyOutput(result.mediumSummary, fallback?.mediumSummary), fallback?.mediumSummary || sanitizedSummaryFallback(result.lightSummary)),
+    proSummary: ensureDiscursiveStudySummary(sanitizeStudyOutput(result.proSummary, fallback?.proSummary), fallback?.proSummary || sanitizedSummaryFallback(result.mediumSummary)),
     studyNotesPro: sanitizeStudyOutput(result.studyNotesPro, fallback?.studyNotesPro),
-    summaries: Object.fromEntries(
-      Object.entries(result.summaries || {}).map(([key, value]) => [key, sanitizeStudyOutput(value, fallback?.summaries?.[key as StudySummaryMode])]),
-    ) as Record<StudySummaryMode, string>,
+    summaries: sanitizedSummaries,
     keyConcepts: Array.from(new Set((result.keyConcepts || []).map((item) => sanitizeStudyOutput(item, "")).filter(Boolean))).slice(0, 18),
     openQuestions: safeOpenQuestions,
     difficultWords: guardedDifficultWords,
     flashcards: guardedFlashcards,
     quiz: guardedQuiz,
     trueFalse: guardedTrueFalse,
+    exercises: semanticReady ? exercises : [],
     learningPackage,
     knowledgeMap,
     adaptiveCoach: adaptiveCoach
@@ -1929,9 +2148,26 @@ export function sanitizeStudySessionResult(result: StudySessionResult, fallback?
       : undefined,
   };
 
+  const qualityScores = scoreStudySessionQuality(sanitized);
+  const exerciseQuality = evaluateExerciseQuality(sanitized.exercises || []);
+  const keywordQuality = evaluateKeywordQuality(sanitized.difficultWords || []);
+  if (exerciseQuality.status !== "pass") qualityScores.reasons.push(...exerciseQuality.detectedIssues);
+  if (keywordQuality.status !== "pass") qualityScores.reasons.push(...keywordQuality.detectedIssues);
+  if (sanitized.sourceQuality?.status === "fail") qualityScores.reasons.push("source_quality_failed");
+
+  const studyReadinessScore = Math.round(Math.max(0, Math.min(100,
+    ((sanitized.sourceQuality?.score ?? 86) * 0.35)
+    + (qualityScores.summaryQuality * 10 * 0.18)
+    + (qualityScores.quizQuality * 10 * 0.16)
+    + (qualityScores.vocabularyQuality * 10 * 0.12)
+    + (qualityScores.flashcardQuality * 10 * 0.10)
+    + (exerciseQuality.score * 0.09),
+  )));
+
   return {
     ...sanitized,
-    qualityScores: scoreStudySessionQuality(sanitized),
+    qualityScores,
+    studyReadinessScore,
   };
 }
 
@@ -1966,6 +2202,15 @@ function detectSubject(text: string, sourceName: string): string {
   const base = sourceName.replace(/\.(txt|md|markdown|docx|pdf|epub)$/i, "").replace(/[_-]+/g, " ").trim();
   if (base && base.length > 3) return base;
   return keys.length ? keys.map((k) => k[0].toUpperCase() + k.slice(1)).join(", ") : "Materiale di studio";
+}
+
+function detectStudySourceTypeFromName(sourceName: string): string {
+  const lower = sourceName.toLowerCase();
+  if (/\.(png|jpe?g|webp|heic|heif)$/.test(lower) || /pagina|foto|immagine|ocr/i.test(sourceName)) return "image";
+  if (lower.endsWith(".pdf")) return "pdf";
+  if (lower.endsWith(".docx") || lower.endsWith(".doc")) return "docx";
+  if (lower.endsWith(".epub")) return "epub";
+  return "text";
 }
 
 function explainWord(word: string): DifficultWord {
@@ -2003,6 +2248,10 @@ export function analyzeStudyMaterial(
   }
   if (inputKind.kind === "insufficient") {
     return buildInsufficientStudySession(clean, sourceName, intent, inputKind.wordCount);
+  }
+  const sourceQuality = evaluateStudyTextQuality(clean, { sourceType: detectStudySourceTypeFromName(sourceName) });
+  if (!canGenerateStudyOutputs(sourceQuality)) {
+    return buildUnreadableStudySession(clean, sourceName, intent, sourceQuality);
   }
 
   const manual = normalizeStudyIntent(intent);
@@ -2089,6 +2338,8 @@ export function analyzeStudyMaterial(
     literaryGenre: manual.literaryGenre,
     studyGoal: manual.studyGoal,
     difficultyLevel: manual.difficultyLevel,
+    sourceQuality,
+    studyReadinessScore: sourceQuality.score,
   };
   return sanitizeStudySessionResult(result);
 }
@@ -2461,13 +2712,19 @@ export async function readImageWithSmartOcr(file: File, options: StudyImageOcrOp
   try {
     const browserText = cleanText(await readImageWithBrowserOcr(prepared.image, options));
     if (countStudyWords(browserText) > 0) {
-      const words = countStudyWords(browserText);
-      warnings.push(words >= 40 ? STUDY_IMAGE_OCR_SUCCESS_COPY : STUDY_IMAGE_OCR_PARTIAL_COPY);
+      const quality = evaluateStudyTextQuality(browserText, { sourceType: "image" });
+      warnings.push(
+        quality.status === "pass"
+          ? STUDY_IMAGE_OCR_SUCCESS_COPY
+          : quality.status === "warning"
+            ? `${STUDY_IMAGE_OCR_PARTIAL_COPY} ${quality.detectedIssues.join("; ")}`
+            : STUDY_TEXT_NOT_READABLE_MESSAGE,
+      );
       return {
         text: browserText,
         engine: "text-detector",
         warnings,
-        empty: false,
+        empty: quality.status === "fail",
       };
     }
   } catch (error) {
@@ -2478,13 +2735,19 @@ export async function readImageWithSmartOcr(file: File, options: StudyImageOcrOp
     const clientResult = await readImageWithTesseractOcr(prepared.image, options);
     const clientText = cleanText(clientResult.text);
     if (countStudyWords(clientText) > 0) {
-      const words = countStudyWords(clientText);
-      warnings.push(words >= 40 ? STUDY_IMAGE_OCR_SUCCESS_COPY : STUDY_IMAGE_OCR_PARTIAL_COPY);
+      const quality = evaluateStudyTextQuality(clientText, { sourceType: "image", ocrConfidence: clientResult.confidence });
+      warnings.push(
+        quality.status === "pass"
+          ? STUDY_IMAGE_OCR_SUCCESS_COPY
+          : quality.status === "warning"
+            ? `${STUDY_IMAGE_OCR_PARTIAL_COPY} ${quality.detectedIssues.join("; ")}`
+            : STUDY_TEXT_NOT_READABLE_MESSAGE,
+      );
       return {
         text: clientText,
         engine: "tesseract",
         warnings,
-        empty: false,
+        empty: quality.status === "fail",
         confidence: clientResult.confidence,
       };
     }

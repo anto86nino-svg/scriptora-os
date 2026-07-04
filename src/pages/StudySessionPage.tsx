@@ -78,6 +78,12 @@ import {
 } from "@/lib/study-os/session-store";
 import { STUDY_USAGE_LIMITS, formatStudyLimitMessage } from "@/lib/study-os/study-limits";
 import {
+  STUDY_TEXT_NOT_READABLE_MESSAGE,
+  STUDY_TEXT_WARNING_MESSAGE,
+  canGenerateStudyOutputs,
+  evaluateStudyTextQuality,
+} from "@/lib/study-os/study-quality-gates";
+import {
   buildSessionKernelPlan,
   buildStudyQuizPack,
   classifyStudyInput,
@@ -447,9 +453,19 @@ export default function StudySessionPage() {
   const [examQuizAnswers, setExamQuizAnswers] = useState<Record<number, number>>({});
   const [examLockdownActive, setExamLockdownActive] = useState(false);
 
+  const hasScannerPages = scannerPages.length > 0;
   const wordCount = useMemo(() => rawText.trim().split(/\s+/).filter(Boolean).length, [rawText]);
   const studyInputKind = useMemo(() => classifyStudyInput(rawText), [rawText]);
   const studyChunkPlan = useMemo(() => createStudyChunkPlan(rawText, sourceName), [rawText, sourceName]);
+  const sourceTextQuality = useMemo(() => {
+    if (!rawText.trim()) return null;
+    return evaluateStudyTextQuality(rawText, {
+      sourceType: hasScannerPages ? "image" : detectStudySourceType(sourceName),
+    });
+  }, [hasScannerPages, rawText, sourceName]);
+  const sourceQualityBlocksGeneration = Boolean(
+    sourceTextQuality?.status === "fail" && (hasScannerPages || studyInputKind.kind === "real_material"),
+  );
   const activeBookChunk = useMemo(
     () => bookManifest?.chunks.find((chunk) => chunk.id === activeBookChunkId) || null,
     [activeBookChunkId, bookManifest],
@@ -477,6 +493,8 @@ export default function StudySessionPage() {
     if (bookManifest && !activeBookChunkId) {
       return `${bookManifest.totalWords.toLocaleString("it-IT")} parole divise in ${bookManifest.chunks.length} sessioni. Scegli una sessione per iniziare.`;
     }
+    if (sourceQualityBlocksGeneration) return STUDY_TEXT_NOT_READABLE_MESSAGE;
+    if (sourceTextQuality?.status === "warning" && studyInputKind.kind === "real_material") return STUDY_TEXT_WARNING_MESSAGE;
     if (wordCount < 40 && studyInputKind.kind === "topic_only") {
       return `Argomento rilevato: modalità esplorazione disponibile (${wordCount} parole). Non simulerò una sessione completa.`;
     }
@@ -488,17 +506,18 @@ export default function StudySessionPage() {
       return `Capitolo narrativo pronto per l'analisi. ${wordCount.toLocaleString("it-IT")} parole rilevate.`;
     }
     return `Materiale pronto per l'analisi. ${wordCount.toLocaleString("it-IT")} parole rilevate.`;
-  }, [activeBookChunkId, bookManifest, currentStudyClassification?.contentType, studyInputKind.kind, wordCount]);
-  const hasScannerPages = scannerPages.length > 0;
+  }, [activeBookChunkId, bookManifest, currentStudyClassification?.contentType, sourceQualityBlocksGeneration, sourceTextQuality?.status, studyInputKind.kind, wordCount]);
   const scannerReadyPages = scannerPages.filter((page) => page.words > 0).length;
   const scannerCopy = useMemo(() => {
     if (!hasScannerPages) return "";
     if (reading) return scannerStatus || "Sto leggendo il testo dall'immagine...";
+    if (sourceQualityBlocksGeneration) return STUDY_TEXT_NOT_READABLE_MESSAGE;
+    if (sourceTextQuality?.status === "warning") return STUDY_TEXT_WARNING_MESSAGE;
     if (wordCount >= 40) return "Testo rilevato. Materiale pronto per l'analisi.";
     if (scannerReadyPages > 0) return "Ho letto parte del testo. Puoi correggerlo prima di continuare.";
     return STUDY_IMAGE_OCR_FALLBACK_COPY;
-  }, [hasScannerPages, reading, scannerReadyPages, scannerStatus, wordCount]);
-  const canAnalyze = (studyInputKind.kind === "real_material" || studyInputKind.kind === "topic_only") && !reading;
+  }, [hasScannerPages, reading, scannerReadyPages, scannerStatus, sourceQualityBlocksGeneration, sourceTextQuality?.status, wordCount]);
+  const canAnalyze = (studyInputKind.kind === "real_material" || studyInputKind.kind === "topic_only") && !reading && !sourceQualityBlocksGeneration;
   const currentSourceHash = useMemo(() => computeStudySourceHash(rawText, sourceName), [rawText, sourceName]);
   const resultFresh = Boolean(result && studySession.results.analysis?.sourceHash === currentSourceHash);
 
@@ -916,6 +935,15 @@ export default function StudySessionPage() {
         return normalizeStudyResultForUI(analyzeStudyMaterial(text, name, studyIntent));
       }
 
+      const quality = evaluateStudyTextQuality(text, {
+        sourceType: hasScannerPages ? "image" : detectStudySourceType(name),
+      });
+      if (!canGenerateStudyOutputs(quality)) {
+        setStudyGenerationStatus(STUDY_TEXT_NOT_READABLE_MESSAGE);
+        setAiMode("idle");
+        return normalizeStudyResultForUI(analyzeStudyMaterial(text, name, studyIntent));
+      }
+
       const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
       const isHugeMaterial = wordCount > 60000 || text.length > 320000;
       const isLongMaterial = wordCount > 12000 || text.length > 70000;
@@ -968,13 +996,26 @@ export default function StudySessionPage() {
         clearStudyNoticeTimers();
       }
     },
-    [clearStudyNoticeTimers, studyIntent, studyLanguage],
+    [clearStudyNoticeTimers, hasScannerPages, studyIntent, studyLanguage],
   );
 
   const generateActiveBookChunkAnalysis = useCallback(async () => {
     if (!bookManifest || !activeBookChunk || !rawText.trim()) {
       toast.error("Scegli una sessione del libro", {
         description: "Apri un capitolo o un blocco prima di generare riassunto e quiz.",
+      });
+      return;
+    }
+    const quality = evaluateStudyTextQuality(rawText, { sourceType: bookManifest.sourceType });
+    if (!canGenerateStudyOutputs(quality)) {
+      const failedManifest = updateStudyBookChunk(bookManifest.id, activeBookChunk.id, {
+        status: "error",
+        errorMessage: STUDY_TEXT_NOT_READABLE_MESSAGE,
+      });
+      if (failedManifest) setBookManifest(failedManifest);
+      setActiveSection("materials");
+      toast.error("Testo non leggibile", {
+        description: STUDY_TEXT_NOT_READABLE_MESSAGE,
       });
       return;
     }
@@ -1038,6 +1079,19 @@ export default function StudySessionPage() {
   ]);
 
   const analyze = async () => {
+    if (sourceQualityBlocksGeneration) {
+      setActiveSection("materials");
+      saveStudyUxState({ activeSection: "materials" });
+      toast.error("Testo non leggibile", {
+        description: STUDY_TEXT_NOT_READABLE_MESSAGE,
+        action: {
+          label: hasScannerPages ? "Riscatta foto" : "Incolla testo manualmente",
+          onClick: () => (hasScannerPages ? openCameraCapture(false) : textAreaRef.current?.focus()),
+        },
+      });
+      return;
+    }
+
     if (bookManifest) {
       if (!activeBookChunkId) {
         toast.message("Scegli una sessione del libro", {
@@ -1260,8 +1314,15 @@ export default function StudySessionPage() {
           };
         }
 
+        const pageQuality = readResult.text.trim()
+          ? evaluateStudyTextQuality(readResult.text, { sourceType: "image" })
+          : null;
         const words = readResult.text.trim().split(/\s+/).filter(Boolean).length;
-        const status: StudyScannerPageStatus = words >= 40 ? "ready" : words > 0 ? "partial" : "failed";
+        const status: StudyScannerPageStatus = pageQuality?.status === "fail"
+          ? "failed"
+          : pageQuality?.status === "warning"
+            ? "partial"
+            : words >= 40 ? "ready" : words > 0 ? "partial" : "failed";
         workingPages = workingPages.map((page) =>
           page.id === incomingPage.id
             ? {
@@ -1269,7 +1330,7 @@ export default function StudySessionPage() {
                 text: readResult.text,
                 words,
                 status,
-                warnings: readResult.warnings,
+                warnings: pageQuality ? [...readResult.warnings, ...pageQuality.detectedIssues] : readResult.warnings,
               }
             : page,
         );
@@ -1286,7 +1347,20 @@ export default function StudySessionPage() {
         errorCategory: finalWords > 0 ? undefined : "ocr_unavailable",
       });
 
-      if (finalWords >= 40) {
+      const finalQuality = finalText.trim() ? evaluateStudyTextQuality(finalText, { sourceType: "image" }) : null;
+      if (finalQuality?.status === "fail") {
+        toast.error("Testo non leggibile", {
+          description: STUDY_TEXT_NOT_READABLE_MESSAGE,
+          action: {
+            label: "Riscatta foto",
+            onClick: () => openCameraCapture(false),
+          },
+        });
+      } else if (finalQuality?.status === "warning") {
+        toast.message("Testo da ricontrollare", {
+          description: STUDY_TEXT_WARNING_MESSAGE,
+        });
+      } else if (finalWords >= 40) {
         toast.success("Testo rilevato", {
           description: "Materiale pronto per l'analisi.",
         });
@@ -1332,6 +1406,42 @@ export default function StudySessionPage() {
       const sourceType = readResult.sourceType === "pdf" || readResult.sourceType === "docx" || readResult.sourceType === "txt" || readResult.sourceType === "image"
         ? readResult.sourceType
         : "file";
+      const importQuality = text.trim()
+        ? evaluateStudyTextQuality(text, { sourceType })
+        : null;
+      if (importQuality?.status === "fail") {
+        const fileSession = updateStudySessionSource(createEmptyStudySession({ language: studyLanguage }), {
+          sourceText: text,
+          sourceName: readResult.fileName,
+          sourceType,
+        }).session;
+        const storedManualSession = saveStudySession(fileSession);
+        setStudySession(storedManualSession);
+        setCurrentStudySessionId(storedManualSession.id);
+        setRawText(text);
+        setSourceName(readResult.fileName);
+        setResult(null);
+        setProjectId(undefined);
+        setStaleNotice("");
+        setImportWarnings([...readResult.warnings, ...importQuality.detectedIssues]);
+        setAiMode("idle");
+        setActiveSection("materials");
+        resetSessionState();
+        toast.error("Testo non leggibile", {
+          description: STUDY_TEXT_NOT_READABLE_MESSAGE,
+          action: {
+            label: sourceType === "image" ? "Riscatta foto" : "Incolla testo manualmente",
+            onClick: () => (sourceType === "image" ? openCameraCapture(false) : textAreaRef.current?.focus()),
+          },
+        });
+        return;
+      }
+      if (importQuality?.status === "warning") {
+        setImportWarnings([...readResult.warnings, STUDY_TEXT_WARNING_MESSAGE, ...importQuality.detectedIssues]);
+      }
+      const fileImportWarnings = importQuality?.status === "warning"
+        ? [...readResult.warnings, STUDY_TEXT_WARNING_MESSAGE, ...importQuality.detectedIssues]
+        : readResult.warnings;
 
       const bookManifestCandidate = createAndSaveStudyBookManifest(text, readResult.fileName, sourceType);
       if (bookManifestCandidate) {
@@ -1351,7 +1461,7 @@ export default function StudySessionPage() {
         setResult(null);
         setProjectId(undefined);
         setStaleNotice("");
-        setImportWarnings(readResult.warnings);
+        setImportWarnings(fileImportWarnings);
         setAiMode("idle");
         setActiveSection("materials");
         resetSessionState();
@@ -1373,7 +1483,7 @@ export default function StudySessionPage() {
       setResult(null);
       setProjectId(undefined);
       setStaleNotice("");
-      setImportWarnings(readResult.warnings);
+      setImportWarnings(fileImportWarnings);
       resetSessionState();
       setAiMode("deepseek");
 
@@ -1477,6 +1587,22 @@ export default function StudySessionPage() {
     () => (quizPack ? selectExamSimQuestions(quizPack.items, kernelPlan, 12) : enhancedQuiz.slice(0, 12)),
     [quizPack, kernelPlan, enhancedQuiz],
   );
+  const studyFolderCards = useMemo(() => {
+    if (!safeResult) return [];
+    const sourceFailed = safeResult.sourceQuality?.status === "fail";
+    const status = sourceFailed ? "Testo non leggibile" : "Pronto";
+    return [
+      { id: "materials" as const, title: "Materiale originale", desc: "Testo estratto e qualità sorgente", count: `${safeResult.words.toLocaleString("it-IT")} parole`, status },
+      { id: "summary" as const, title: "Riassunti", desc: "Breve, completo, interrogazione", count: safeResult.summaries ? `${Object.keys(safeResult.summaries).length} versioni` : "0 versioni", status },
+      { id: "maps" as const, title: "Mappe / schemi", desc: "Relazioni e esercizi", count: `${safeExercises.length} esercizi`, status },
+      { id: "flashcards" as const, title: "Flashcard", desc: "Ripasso attivo", count: `${safeFlashcards.length} card`, status: sourceFailed ? "Bloccato" : "Pronto" },
+      { id: "quiz" as const, title: "Quiz", desc: "Domande e interrogazione", count: `${safeCombinedQuiz.length + safeOpenQuestions.length} domande`, status: sourceFailed ? "Bloccato" : "Pronto" },
+      { id: "exam" as const, title: "Verifica finale", desc: "Simulazione e risultati", count: `${examSimQuiz.length} quesiti`, status: sourceFailed ? "Bloccato" : "Da completare" },
+      { id: "progress" as const, title: "Progressi", desc: "Preparazione e memoria", count: `${safeResult.studyReadinessScore ?? 0}/100 readiness`, status },
+      { id: "certificates" as const, title: "Certificati", desc: "Attestati e risultati", count: "storico", status: "Archivio" },
+      { id: "coach" as const, title: "Coach", desc: "Prossimo passo consigliato", count: safeResult.adaptiveCoach?.currentLevel || "piano", status },
+    ].filter((card) => visibleTabs.some((tab) => tab.id === card.id));
+  }, [examSimQuiz.length, safeCombinedQuiz.length, safeExercises.length, safeFlashcards.length, safeOpenQuestions.length, safeResult, visibleTabs]);
   const recommendedSummaryLevel = resolveRecommendedSummaryLevel(kernelPlan);
   const gapAnalysis = useMemo(
     () => analyzeStudyGaps({ memory: memorySnapshot }),
@@ -1540,6 +1666,8 @@ export default function StudySessionPage() {
       : !canAnalyze);
   const primaryStudyActionLabel = reading
     ? "Scriptora sta preparando la sessione..."
+    : sourceQualityBlocksGeneration
+      ? "Correggi il testo prima di studiare"
     : bookManifest
       ? activeBookChunkId
         ? safeResult
@@ -1867,6 +1995,60 @@ export default function StudySessionPage() {
               placeholder="Incolla qui capitoli, appunti, dispense o una parte del libro..."
               className="scriptora-text-safe min-h-[240px] w-full min-w-0 max-w-full resize-y overflow-x-hidden rounded-2xl border border-white/10 bg-background/70 p-3 text-sm leading-6 text-foreground outline-none focus:border-emerald-300/40 sm:min-h-[280px] sm:p-4 lg:min-h-[420px]"
             />
+            {sourceTextQuality && sourceTextQuality.status !== "pass" && (
+              <div className={[
+                "mt-3 rounded-2xl border px-3 py-3 text-xs leading-5",
+                sourceTextQuality.status === "fail"
+                  ? "border-rose-300/30 bg-rose-400/10 text-rose-50"
+                  : "border-amber-300/25 bg-amber-300/10 text-amber-50",
+              ].join(" ")}
+              >
+                <p className="font-semibold">
+                  {sourceTextQuality.status === "fail" ? "Testo non leggibile" : "Testo da ricontrollare"} · qualità {sourceTextQuality.score}/100
+                </p>
+                <p className="mt-1">
+                  {sourceTextQuality.status === "fail" ? STUDY_TEXT_NOT_READABLE_MESSAGE : STUDY_TEXT_WARNING_MESSAGE}
+                </p>
+                {sourceTextQuality.detectedIssues.length > 0 && (
+                  <p className="mt-2 opacity-85">
+                    Problemi rilevati: {sourceTextQuality.detectedIssues.slice(0, 4).join("; ")}.
+                  </p>
+                )}
+                {sourceTextQuality.suspiciousLines.length > 0 && (
+                  <div className="mt-2 rounded-xl border border-white/10 bg-black/10 p-2">
+                    <p className="font-semibold">Righe sospette</p>
+                    {sourceTextQuality.suspiciousLines.slice(0, 3).map((line) => (
+                      <p key={line} className="mt-1 break-words opacity-80">{line}</p>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {hasScannerPages && (
+                    <button
+                      type="button"
+                      onClick={() => openCameraCapture(false)}
+                      className="rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-950"
+                    >
+                      Riscatta foto
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => openImagePicker(false)}
+                    className="rounded-xl border border-white/15 bg-white/[0.06] px-3 py-2 text-xs font-semibold text-current"
+                  >
+                    Carica un&apos;altra immagine
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => textAreaRef.current?.focus()}
+                    className="rounded-xl border border-white/15 bg-white/[0.06] px-3 py-2 text-xs font-semibold text-current"
+                  >
+                    Incolla testo manualmente
+                  </button>
+                </div>
+              </div>
+            )}
             {studyInputKind.kind === "insufficient" && wordCount > 0 && (
               <div className="mt-3 rounded-2xl border border-amber-300/25 bg-amber-300/10 px-3 py-3 text-xs leading-5 text-amber-50">
                 <p className="font-semibold">{STUDY_INSUFFICIENT_MESSAGE}</p>
@@ -2157,6 +2339,52 @@ export default function StudySessionPage() {
                     gapAnalysis={gapAnalysis.weakTopics.length || gapAnalysis.strongTopics.length ? gapAnalysis : null}
                   />
                 )}
+
+                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.20em] text-emerald-200/80">Cartelle sessione</p>
+                      <h3 className="text-base font-semibold text-foreground">Scegli cosa studiare adesso</h3>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      Readiness {safeResult.studyReadinessScore ?? 0}/100
+                    </span>
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {studyFolderCards.map((folder) => (
+                      <button
+                        key={folder.id}
+                        type="button"
+                        onClick={() => handleSectionChange(folder.id)}
+                        className={[
+                          "rounded-2xl border p-3 text-left transition hover:border-emerald-200/50 hover:bg-emerald-200/10",
+                          activeSection === folder.id
+                            ? "border-emerald-200/60 bg-emerald-300/15"
+                            : "border-white/10 bg-background/35",
+                        ].join(" ")}
+                      >
+                        <span className="flex items-start justify-between gap-2">
+                          <span>
+                            <span className="block text-sm font-semibold text-foreground">{folder.title}</span>
+                            <span className="mt-1 block text-xs leading-5 text-muted-foreground">{folder.desc}</span>
+                          </span>
+                          <span className={[
+                            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
+                            folder.status === "Testo non leggibile" || folder.status === "Bloccato"
+                              ? "bg-rose-300 text-slate-950"
+                              : folder.status === "Da completare"
+                                ? "bg-amber-300 text-slate-950"
+                                : "bg-emerald-300 text-slate-950",
+                          ].join(" ")}
+                          >
+                            {folder.status}
+                          </span>
+                        </span>
+                        <span className="mt-2 block text-xs font-semibold text-emerald-100/80">{folder.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 <div className="sticky top-2 z-10 rounded-3xl border border-white/10 bg-background/80 p-2 backdrop-blur-xl">
                   {examLockdownActive && (
