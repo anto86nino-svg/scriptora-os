@@ -68,4 +68,28 @@ describe("inferGenreFromText content family lock", () => {
     expect(inference.subgenre).toMatch(/procrastinazione|crescita personale/i);
     expect(combined).not.toMatch(/\b(romance|horror|thriller|fantasy|mystery)\b/i);
   });
+
+  it("honors an explicit self-help format for generic transformation titles", () => {
+    const family = detectContentFamily("Lasciare andare", "", "self_help");
+    const inference = inferGenreFromText("Lasciare andare", "", "self_help");
+    const visibleSurface = [
+      inference.label,
+      inference.bookFormat,
+      inference.genre,
+      inference.subgenre,
+      inference.targetReader,
+      inference.narrativePromise,
+      inference.commercialGoal,
+      inference.level1,
+    ].join(" ");
+
+    expect(family.family).toBe("SELF_HELP");
+    expect(family.confidence).toBeGreaterThan(0.7);
+    expect(inference.family).toBe("SELF_HELP");
+    expect(inference.bookFormat).toBe("self_help");
+    expect(inference.label).toBe("Self Help");
+    expect(inference.genre).toBe("self-help");
+    expect(inference.subgenre).toMatch(/crescita personale/i);
+    expect(visibleSurface).not.toMatch(/romanzo|personaggi|trama|progressione narrativa|lettori di narrativa|narrativa contemporanea/i);
+  });
 });

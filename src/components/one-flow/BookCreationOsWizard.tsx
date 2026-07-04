@@ -2105,7 +2105,7 @@ const persistDraft = useCallback(() => {
               !shouldBlockCloudGenreMutation(genreMutationContext)
               && detected.genre
             ) {
-              const remoteInference = inferGenreFromText(remoteTitle || title, `${idea} ${detected.genre} ${detected.subcategory || ""}`);
+              const remoteInference = inferGenreFromText(remoteTitle || title, `${idea} ${detected.genre} ${detected.subcategory || ""}`, bookFormat);
               proposals[0] = { ...proposals[0], inference: remoteInference, perceivedGenre: remoteInference.label };
               setTitleProposals([...proposals]);
             }
@@ -2240,7 +2240,7 @@ const persistDraft = useCallback(() => {
       ].filter(Boolean).join("\n\n");
       setIdea(expanded);
       if (!shouldBlockCloudGenreMutation(genreMutationContext)) {
-        applyInference(inferGenreFromText(draft.title, expanded));
+        applyInference(inferGenreFromText(draft.title, expanded, bookFormat));
       }
       if (!title.trim() && draft.title) setTitle(draft.title);
       toast.success("Idea espansa da Scriptora.");
@@ -2551,7 +2551,7 @@ const persistDraft = useCallback(() => {
       toast.message("Conferma prima formato e genere nelle fondamenta del libro.");
       return;
     }
-    const local = inferGenreFromText(title, idea);
+    const local = inferGenreFromText(title, idea, bookFormat);
     if (!shouldBlockCloudGenreMutation(genreMutationContext)) {
       applyInference(local);
     }
@@ -2568,7 +2568,7 @@ const persistDraft = useCallback(() => {
         !shouldBlockCloudGenreMutation(genreMutationContext)
         && (detected?.genre || detected?.subcategory)
       ) {
-        const merged = inferGenreFromText(title || detected.suggestedTitles?.[0] || "", `${idea} ${detected.genre || ""} ${detected.subcategory || ""}`);
+        const merged = inferGenreFromText(title || detected.suggestedTitles?.[0] || "", `${idea} ${detected.genre || ""} ${detected.subcategory || ""}`, bookFormat);
         applyInference(merged);
       }
       toast.success("Suggerimenti applicati dall'idea.");

@@ -125,6 +125,16 @@ function clampConfidence(value: number): number {
   return Math.max(0, Math.min(0.99, Number(value.toFixed(2))));
 }
 
+function normalizeKnownBookFormat(value?: string): InferredBookFormat | "" {
+  const normalized = String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[\s-]+/g, "_");
+
+  if (normalized === "selfhelp") return "self_help";
+  return normalized as InferredBookFormat | "";
+}
+
 function detectHits(patterns: RegExp[], text: string): number {
   return patterns.reduce((count, pattern) => count + (pattern.test(text) ? 1 : 0), 0);
 }
@@ -156,6 +166,7 @@ export function detectContentFamily(title: string, idea = "", knownBookFormat?: 
     scores.MEMOIR += 0.86;
   }
   if (/business|marketing|leadership|imprend|startup|vendite|fatturato|brand|azienda/.test(hay)) scores.BUSINESS += 0.84;
+  if (/self[_\s-]?help|crescita\s+personale|personal\s+growth/.test(hay)) scores.SELF_HELP += 0.92;
 
   const selfHelpHits = detectHits([
     /\babitudin\w*\b/,
@@ -336,6 +347,14 @@ function buildFormatLockedInference(format: InferredBookFormat, title: string, i
       confidence: "high",
       suggestedChapters: 14,
     };
+  }
+  if (format === "self_help") {
+    const detected = detectContentFamily(title, idea, "self_help");
+    return buildSelfHelpFamilyInference({
+      family: "SELF_HELP",
+      confidence: Math.max(detected.confidence, 0.92),
+      label: CONTENT_FAMILY_LABELS.SELF_HELP,
+    }, title, idea);
   }
   if (format === "poetry_collection") return buildPoetryInference("poetry_collection", 5);
   if (format === "memoir") {
@@ -603,9 +622,9 @@ function buildBusinessFamilyInference(
 }
 
 export function inferGenreFromText(title: string, idea = "", knownBookFormat?: string): GenreInference {
-  const known = String(knownBookFormat || "").toLowerCase().trim() as InferredBookFormat;
+  const known = normalizeKnownBookFormat(knownBookFormat);
   const sanitizedIdea = sanitizeUserConceptInput(idea);
-  const contentFamily = detectContentFamily(title, sanitizedIdea, knownBookFormat);
+  const contentFamily = detectContentFamily(title, sanitizedIdea, known);
   if (known) {
     const locked = buildFormatLockedInference(known, title, sanitizedIdea);
     if (locked) return withContentFamily(locked, contentFamily);
