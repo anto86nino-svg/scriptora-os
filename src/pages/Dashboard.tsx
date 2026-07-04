@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { lazy, Suspense, useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { loadProjects, deleteProjectAsync, getLastProjectId, getCurrentUserId, setLastProjectId, saveProjectAsync } from "@/services/storageService";
 import { isProjectComplete } from "@/lib/project-status";
 import { SCRIPTORA_CHARACTER_BIBLE_KEY, SCRIPTORA_CHARACTER_PROJECT_KEY } from "@/lib/character-studio-keys";
@@ -1294,14 +1295,15 @@ typeof crypto.randomUUID === "function"
             <div className="relative">
               <button
                 onClick={() => setShowLangMenu(!showLangMenu)}
+                aria-label={t("language")}
                 className="ios-toolbar-button h-8 w-8 px-0 text-xs font-medium min-[420px]:w-auto min-[420px]:px-3"
               >
                 <Globe className="h-3.5 w-3.5" /> <span className="hidden min-[420px]:inline">{currentLangLabel}</span>
               </button>
-              {showLangMenu && (
+              {showLangMenu && typeof document !== "undefined" && createPortal(
                 <>
-                  <div className="fixed inset-0" onClick={() => setShowLangMenu(false)} />
-                  <div className="ios-glass absolute right-0 z-50 mt-1 w-40 rounded-lg py-1">
+                  <div className="scriptora-language-menu-layer fixed inset-0" onClick={() => setShowLangMenu(false)} />
+                  <div className="scriptora-language-menu-layer ios-glass fixed right-3 top-[calc(env(safe-area-inset-top,0px)+3.75rem)] w-44 rounded-lg py-1 shadow-2xl md:right-6">
                     {UI_LANGUAGES.map(lang => (
                       <button key={lang.value} onClick={() => changeLang(lang.value)}
                         className={`w-full px-3 py-2 text-left text-xs transition-colors hover:bg-muted/50 ${
@@ -1312,7 +1314,7 @@ typeof crypto.randomUUID === "function"
                     ))}
                   </div>
                 </>
-              )}
+              , document.body)}
             </div>
             <MobileDashboardMoreMenu
               showMoreMenu={showMobileMoreMenu}

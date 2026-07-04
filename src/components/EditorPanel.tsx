@@ -18,7 +18,7 @@ import { ScriptoraFreeWatermark } from "@/components/brand/ScriptoraFreeWatermar
 import { appendScriptoraFreeWatermarkToText, shouldApplyScriptoraFreeWatermark } from "@/lib/brand/scriptoraBrand";
 import type { RewriteLevel, ChunkProgress } from "@/lib/generation-types";
 import { cn } from "@/lib/utils";
-import { t } from "@/lib/i18n";
+import { t, tt } from "@/lib/i18n";
 import { WritingSettings } from "@/lib/settings";
 import { formatChapterDisplayTitle, resolveChapterTitle } from "@/lib/chapter-titles";
 import { hasRealSubchapterContent } from "@/lib/manuscript/subchapter-content";
@@ -175,7 +175,7 @@ export function EditorPanel({
         </div>
       )}
 
-      <div className="scriptora-scroll-main scriptora-writer-scroll scrollbar-thin min-h-0 flex-1 overflow-y-auto overflow-x-clip">
+      <div className="scriptora-scroll-main scriptora-writer-scroll scriptora-scroll-panel scrollbar-thin min-h-0 flex-1 overflow-y-auto overflow-x-clip">
         <div className={cn(
           "mx-auto min-h-0 w-full min-w-0 max-w-full px-4 py-4 pb-[calc(env(safe-area-inset-bottom)+5rem)] sm:px-6 sm:py-6 md:pb-safe",
           activeSection === "blueprint" && premiumWriter
@@ -935,15 +935,15 @@ function SubchapterCoverageStrip({
 function recommendationLabel(action: ChapterEditorialOutcome["recommendedNextAction"]): string {
   switch (action) {
     case "editorial_cleanup":
-      return "Pulizia consigliata";
+      return t("recommendation_cleanup");
     case "patch":
-      return "Patch consigliata";
+      return t("recommendation_patch");
     case "rewrite_light":
-      return "Riscrittura leggera consigliata";
+      return t("recommendation_rewrite_light");
     case "rewrite_medium":
-      return "Riscrittura media consigliata";
+      return t("recommendation_rewrite_medium");
     default:
-      return "Nessuna riscrittura necessaria";
+      return t("recommendation_none");
   }
 }
 
@@ -976,8 +976,8 @@ function ChapterToolsHub({
     <section className="rounded-2xl border border-border/45 bg-muted/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.10)]">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-muted-foreground">Strumenti capitolo</p>
-          <h3 className="mt-1 text-base font-black text-foreground">Esito editoriale</h3>
+          <p className="text-[11px] font-black uppercase tracking-[0.16em] text-muted-foreground">{t("chapter_tools")}</p>
+          <h3 className="mt-1 text-base font-black text-foreground">{t("editorial_outcome")}</h3>
           <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">{outcome.summary}</p>
         </div>
         <span className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-[11px] font-bold text-emerald-100">
@@ -991,7 +991,7 @@ function ChapterToolsHub({
           {outcome.issues.slice(0, 2).map((issue) => (
             <div key={`${issue.type}-${issue.severity}`} className="rounded-xl border border-border/35 bg-background/35 px-3 py-2">
               <p className="text-[10px] font-bold uppercase tracking-[0.13em] text-muted-foreground">
-                Priorita' {issue.severity}
+                {tt("priority_label", { severity: issue.severity })}
               </p>
               <p className="mt-1 text-xs leading-5 text-foreground/70">{issue.description}</p>
             </div>
@@ -1002,37 +1002,37 @@ function ChapterToolsHub({
       <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
         <ChapterToolHubButton
           icon={Zap}
-          label="Analizza"
-          description="Trova problemi di ritmo, coerenza e struttura."
+          label={t("analyze")}
+          description={t("tool_analyze_desc")}
           onClick={onAnalysis}
           disabled={busy}
         />
         <ChapterToolHubButton
           icon={Search}
-          label="Vota"
-          description="Assegna un voto editoriale severo al capitolo."
+          label={t("rate")}
+          description={t("tool_score_desc")}
           onClick={onEvaluate}
           disabled={busy}
         />
         <ChapterToolHubButton
           icon={Shield}
-          label="Pulizia editoriale"
-          description="Corregge errori e ripetizioni senza riscrivere."
+          label={t("editorial_cleanup")}
+          description={t("tool_cleanup_desc")}
           onClick={onCleanup}
           disabled={cleanupDisabled || cleanupRunning}
           loading={cleanupRunning}
         />
         <ChapterToolHubButton
           icon={Scissors}
-          label="Patch"
-          description="Corregge un problema specifico."
+          label={t("patch_action")}
+          description={t("tool_patch_desc")}
           onClick={onPatch}
           disabled={busy}
         />
         <ChapterToolHubButton
           icon={Sparkles}
-          label="Riscrivi"
-          description="Riscrive con intervento piu' forte."
+          label={t("rewrite")}
+          description={t("tool_rewrite_desc")}
           onClick={onToggleRewrite}
           disabled={busy}
         />
@@ -1041,10 +1041,10 @@ function ChapterToolsHub({
       {rewriteOpen && (
         <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3">
           <p className="text-xs font-bold text-amber-100">
-            La riscrittura e' piu' invasiva di Pulizia editoriale e Patch.
+            {t("rewrite_warning_title")}
           </p>
           <p className="mt-1 text-[11px] leading-5 text-amber-100/75">
-            Usala solo se il capitolo e' debole a livello di struttura, ritmo o resa narrativa.
+            {t("rewrite_warning_desc")}
           </p>
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             {(["light", "deep", "bestseller"] as RewriteLevel[]).map((level) => (
@@ -1686,7 +1686,7 @@ function ChapterView({
               {expectedSubchapterCount > 0 && <span>{writtenSubchapterCount}/{expectedSubchapterCount} sottocapitoli</span>}
             </div>
           </div>
-          <div className="scriptora-chapter-reading-scroll max-h-[min(72dvh,760px)] overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 lg:px-8">
+          <div className="scriptora-chapter-reading-scroll scriptora-reader-scroll max-h-[min(72dvh,760px)] overflow-y-auto overscroll-y-auto px-4 py-5 sm:px-6 lg:px-8">
             <div className="mx-auto w-full max-w-[74ch] space-y-6">
               {premiumWriter && (
                 <EditorScorePro

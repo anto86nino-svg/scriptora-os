@@ -727,7 +727,7 @@ const Index = () => {
   }
 
   return (
-    <div className="scriptora-ios-screen scriptora-app-surface scriptora-literary-shell scriptora-writer-studio relative flex min-h-[100dvh] overflow-x-hidden overflow-y-visible lg:flex-row">
+    <div className="scriptora-ios-screen scriptora-app-surface scriptora-literary-shell scriptora-writer-studio scriptora-scroll-page relative flex min-h-[100dvh] overflow-x-hidden overflow-y-visible lg:flex-row">
       {/* Floating sidebar toggle — mobile opens fullscreen navigator; desktop toggles sidebar */}
       <button
         onClick={() => {
@@ -902,7 +902,7 @@ const Index = () => {
       </aside>
 
       {/* Main Area + Tools */}
-      <div className="flex min-h-[100dvh] min-w-0 flex-1 flex-col lg:flex-row">
+      <div className="scriptora-writer-main-shell flex min-h-[100dvh] min-w-0 flex-1 flex-col lg:flex-row">
       <div
         className={`scriptora-writer-main flex min-h-[100dvh] min-w-0 flex-1 flex-col overflow-x-clip overflow-y-visible pb-[calc(env(safe-area-inset-bottom)+7.5rem)] transition-all duration-300 md:pb-[calc(env(safe-area-inset-bottom)+1.5rem)] lg:pb-0 ${
           sidebarOpen ? "p-2 md:p-3" : "p-2 md:px-4 md:py-3"

@@ -8211,6 +8211,84 @@ body:has(.scriptora-dedicated-screen) {
   contain-intrinsic-size: 720px;
 }
 
+/* Global operational layers */
+.scriptora-language-menu-layer {
+  z-index: 2147483000;
+}
+
+/* Writer Studio scroll ownership */
+.scriptora-scroll-page {
+  min-height: 100dvh;
+  overflow-x: clip;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scriptora-scroll-panel,
+.scriptora-reader-scroll {
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: auto;
+  scroll-padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);
+}
+
+.scriptora-reader-scroll {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 2rem);
+}
+
+@media (min-width: 1024px) {
+  .scriptora-writer-studio {
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .scriptora-writer-main-shell,
+  .scriptora-writer-main {
+    min-height: 0 !important;
+    height: 100dvh;
+    overflow: hidden !important;
+  }
+
+  .scriptora-writer-editor-card {
+    min-height: 0 !important;
+    height: auto;
+    max-height: 100%;
+    overflow: hidden !important;
+  }
+
+  .scriptora-writer-scroll {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: auto;
+  }
+}
+
+@media (max-width: 1023px) {
+  .scriptora-writer-studio,
+  .scriptora-writer-main-shell,
+  .scriptora-writer-main {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow-y: visible !important;
+  }
+
+  .scriptora-writer-editor-card {
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .scriptora-single-chapter-view .scriptora-scroll-main,
+  .scriptora-chapter-reading-scroll {
+    max-height: none !important;
+    overflow: visible !important;
+    overscroll-behavior-y: auto !important;
+  }
+
+  .scriptora-chapter-reading-shell {
+    overflow: visible !important;
+  }
+}
+
 /* Chapter navigation anchors — offset for sticky writer header */
 .scriptora-chapter-anchor {
   scroll-margin-top: 96px;
@@ -8225,7 +8303,7 @@ body:has(.scriptora-dedicated-screen) {
 /* Mobile: single chapter view — hide cascade, focus one chapter */
 .scriptora-single-chapter-view .scriptora-scroll-main {
   overflow-y: auto;
-  overscroll-behavior: contain;
+  overscroll-behavior-y: auto;
 }
 
 .scriptora-single-chapter-view .scriptora-manuscript-premium {
