@@ -16,6 +16,10 @@ import {
   isMeaningfulStudyKeyword,
   type StudyTextQualityReport,
 } from "@/lib/study-os/study-quality-gates";
+import { extractStudyKeywords } from "@/lib/study-os/study-keywords";
+import { composeStudySummaries, ensureComposedSummary } from "@/lib/study-os/study-summary-composer";
+import { buildStudyTermDefinition, isRealStudyDefinition } from "@/lib/study-os/study-vocabulary";
+import { computeStudyReadinessBreakdown } from "@/lib/study-os/study-readiness";
 
 async function loadPdfJs() {
   const pdfjsLib = await import("pdfjs-dist");
@@ -343,6 +347,8 @@ export interface StudySessionResult {
   qualityScores?: StudyQualityScores;
   sourceQuality?: StudyTextQualityReport;
   studyReadinessScore?: number;
+  materialReadinessScore?: number;
+  studentPreparationScore?: number;
 }
 
 export interface StudyFileReadResult {
@@ -947,68 +953,8 @@ function sentences(text: string): string[] {
 }
 
 
-function keywords(text: string, limit = 12): string[] {
-  const clean = text.toLowerCase();
-
-  // cattura frasi concetto tipo:
-  // emotional regulation, nervous system, attachment style
-  const phraseMatches =
-    clean.match(/[a-z][a-z'-]{3,}\s+[a-z][a-z'-]{3,}/g) || [];
-
-  const phraseCounts = new Map<string, number>();
-
-  const BAD_PHRASES = new Set([
-    "will become",
-    "will feel",
-    "feels like",
-    "other people",
-    "your own",
-    "there will",
-    "you will",
-  ]);
-
-  for (const phrase of phraseMatches) {
-    const parts = phrase.split(" ");
-
-    if (BAD_PHRASES.has(phrase)) continue;
-    if (parts.some((p) => STOP_WORDS.has(p))) continue;
-    if (phrase.length < 8) continue;
-
-    phraseCounts.set(
-      phrase,
-      (phraseCounts.get(phrase) || 0) + 1
-    );
-  }
-
-  const wordMatches =
-    clean.match(/[\p{L}][\p{L}'’-]{4,}/gu) || [];
-
-  const wordCounts = new Map<string, number>();
-
-  for (const word of wordMatches) {
-    const normalized = word.replace(/[’']/g, "");
-
-    if (STOP_WORDS.has(normalized)) continue;
-    if (normalized.length < 5) continue;
-
-    wordCounts.set(
-      normalized,
-      (wordCounts.get(normalized) || 0) + 1
-    );
-  }
-
-  const phrases = [...phraseCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, Math.max(3, Math.floor(limit / 2)))
-    .map(([w]) => w);
-
-  const words = [...wordCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([w]) => w);
-
-  return [...new Set([...phrases, ...words])]
-    .slice(0, limit);
+function keywords(text: string, limit = 12, classification?: StudyMaterialClassification): string[] {
+  return extractStudyKeywords(text, limit, classification);
 }
 
 function pickSentences(text: string, wanted: number): string[] {
@@ -1467,11 +1413,15 @@ function buildProfessionalFlashcards(
   });
 }
 
-function buildProfessionalVocabulary(clean: string, words: number): DifficultWord[] {
+function buildProfessionalVocabulary(
+  clean: string,
+  words: number,
+  classification?: StudyMaterialClassification,
+): DifficultWord[] {
   const professionalTerms = extractProfessionalTerms(clean, 18);
   const candidateWords = [
     ...professionalTerms,
-    ...keywords(clean, words > 900 ? 24 : 14).filter((word) => word.length >= 6),
+    ...keywords(clean, words > 900 ? 24 : 14, classification).filter((word) => word.length >= 4),
   ];
   const unique = Array.from(new Set(
     candidateWords
@@ -1480,28 +1430,14 @@ function buildProfessionalVocabulary(clean: string, words: number): DifficultWor
   ));
   const target = words > 900 ? Math.max(8, Math.min(18, unique.length)) : Math.min(12, unique.length);
   const selected = unique.slice(0, Math.max(1, target));
-  return selected.map((word, index) => {
-    const entry = explainWord(word);
-    const connections = selected
-      .filter((candidate) => candidate.toLowerCase() !== word.toLowerCase())
-      .slice(index + 1, index + 4);
-    return {
-      word: entry.word,
-      simple: sanitizeStudyOutput(entry.simple, "Definizione semplice dedotta dal contesto."),
-      technical: sanitizeStudyOutput(entry.technical, "Definizione precisa dedotta dal contesto."),
-      school: `Definizione scolastica: "${entry.word}" e' un concetto da spiegare con definizione, contesto ed esempio tratto dal materiale.`,
-      advanced: `Definizione avanzata: collega "${entry.word}" a meccanismi, conseguenze o confronti presenti nel testo, evitando informazioni esterne non verificate.`,
-      precise: sanitizeStudyOutput(entry.technical, "Definizione dedotta dal contesto."),
-      example: sanitizeStudyOutput(entry.example, `Esempio dal contesto: ${entry.word} compare nel materiale studiato.`),
-      newExample: `Nuovo esempio: usa "${entry.word}" in una frase che spieghi il tema centrale.`,
-      synonyms: [],
-      antonyms: [],
-      commonMistake: `Usare "${entry.word}" senza definirlo o senza collegarlo al materiale.`,
-      examQuestion: `Come spiegheresti "${entry.word}" durante un'interrogazione?`,
-      connections,
-      importance: index < 6 ? "alto" : index < 12 ? "medio" : "basso",
-    };
-  });
+  return selected
+    .map((word, index) => {
+      const connections = selected
+        .filter((candidate) => candidate.toLowerCase() !== word.toLowerCase())
+        .slice(index + 1, index + 4);
+      return buildStudyTermDefinition(word, clean, classification, connections);
+    })
+    .filter(isRealStudyDefinition);
 }
 
 function buildEvidenceInventory(clean: string): string {
@@ -1552,47 +1488,9 @@ function buildSummaries(
   title: string,
   clean: string,
   classification: StudyMaterialClassification,
+  difficultyLevel: StudyDifficultyLevel = 3,
 ): Record<StudySummaryMode, string> {
-  const light = pickSentences(clean, 8);
-  const medium = pickSentences(clean, 16);
-  const pro = pickSentences(clean, 28);
-  const concepts = keywords(clean, 12).map((k) => k[0].toUpperCase() + k.slice(1));
-  const strategyLine = `Strategia: ${classification.strategy.join(" · ")}.`;
-
-  return {
-    brief: discursiveSummary("Riassunto breve", light.slice(0, 6), { maxSentences: 6 }),
-    complete: discursiveSummary("Riassunto completo", medium.length ? medium : light, { maxSentences: 14 }),
-    university: [
-      "Riassunto universitario",
-      "",
-      `Il tema centrale è ${title}. ${strategyLine}`,
-      "",
-      discursiveSummary("", pro.slice(0, 18), {
-        maxSentences: 18,
-        closing: "Per un esame non basta ripetere: collega definizioni, esempi e implicazioni usando prove presenti nel materiale.",
-      }).replace(/^\s+/, ""),
-    ].join("\n").replace(/\n{3,}/g, "\n\n").trim(),
-    oral: discursiveSummary("Riassunto per interrogazione", medium.length ? medium : light, {
-      maxSentences: 10,
-      closing: `Apri la risposta presentando ${title}, poi collega almeno due concetti e chiudi con un esempio o una conseguenza.`,
-    }),
-    ultraSimple: discursiveSummary("Riassunto ultra semplice", (light.length ? light : medium).slice(0, 8).map(simplifyLine), { maxSentences: 8 }),
-    quickReview: [
-      "Ripasso veloce",
-      ...concepts.slice(0, 8).map((concept) => `• ${concept}: definizione + esempio + collegamento.`),
-      "• Se hai 5 minuti: ripeti a voce i primi 5 concetti senza guardare.",
-    ].join("\n"),
-    chronological: buildChronology([...light, ...medium], classification),
-    causeEffect: buildCauseEffect([...medium, ...pro], classification),
-    bulletPoints: formatLines("Riassunto a punti", [...concepts.slice(0, 8), ...light.slice(0, 6)]),
-    oralExam: [
-      "Riassunto per esame orale",
-      `1. Presenta l'argomento: ${title}.`,
-      `2. Metodo di risposta consigliato: ${classification.strategy.join(", ")}.`,
-      ...pro.slice(0, 12).map((line, index) => `${index + 3}. ${line}`),
-      "Conclusione: collega almeno due concetti e prepara un esempio concreto.",
-    ].join("\n"),
-  };
+  return composeStudySummaries({ title, clean, classification, difficultyLevel });
 }
 
 function relationLabelFor(classification: StudyMaterialClassification, index: number): StudyConceptMapRelation["type"] {
@@ -2122,9 +2020,9 @@ export function sanitizeStudySessionResult(result: StudySessionResult, fallback?
     detectedSubject: sanitizeStudyOutput(result.detectedSubject, fallback?.detectedSubject || "Materiale di studio"),
     subjectLabel: sanitizeStudyOutput(result.subjectLabel, fallback?.subjectLabel || "Materiale di studio"),
     studyMode: sanitizeStudyOutput(result.studyMode, fallback?.studyMode || "Studio guidato"),
-    lightSummary: ensureDiscursiveStudySummary(sanitizeStudyOutput(result.lightSummary, fallback?.lightSummary), fallback?.lightSummary || sanitizedSummaryFallback(result.mediumSummary)),
-    mediumSummary: ensureDiscursiveStudySummary(sanitizeStudyOutput(result.mediumSummary, fallback?.mediumSummary), fallback?.mediumSummary || sanitizedSummaryFallback(result.lightSummary)),
-    proSummary: ensureDiscursiveStudySummary(sanitizeStudyOutput(result.proSummary, fallback?.proSummary), fallback?.proSummary || sanitizedSummaryFallback(result.mediumSummary)),
+    lightSummary: ensureComposedSummary(sanitizeStudyOutput(result.lightSummary, fallback?.lightSummary), fallback?.lightSummary || sanitizedSummaryFallback(result.mediumSummary)),
+    mediumSummary: ensureComposedSummary(sanitizeStudyOutput(result.mediumSummary, fallback?.mediumSummary), fallback?.mediumSummary || sanitizedSummaryFallback(result.lightSummary)),
+    proSummary: ensureComposedSummary(sanitizeStudyOutput(result.proSummary, fallback?.proSummary), fallback?.proSummary || sanitizedSummaryFallback(result.mediumSummary)),
     studyNotesPro: sanitizeStudyOutput(result.studyNotesPro, fallback?.studyNotesPro),
     summaries: sanitizedSummaries,
     keyConcepts: Array.from(new Set((result.keyConcepts || []).map((item) => sanitizeStudyOutput(item, "")).filter(Boolean))).slice(0, 18),
@@ -2155,19 +2053,15 @@ export function sanitizeStudySessionResult(result: StudySessionResult, fallback?
   if (keywordQuality.status !== "pass") qualityScores.reasons.push(...keywordQuality.detectedIssues);
   if (sanitized.sourceQuality?.status === "fail") qualityScores.reasons.push("source_quality_failed");
 
-  const studyReadinessScore = Math.round(Math.max(0, Math.min(100,
-    ((sanitized.sourceQuality?.score ?? 86) * 0.35)
-    + (qualityScores.summaryQuality * 10 * 0.18)
-    + (qualityScores.quizQuality * 10 * 0.16)
-    + (qualityScores.vocabularyQuality * 10 * 0.12)
-    + (qualityScores.flashcardQuality * 10 * 0.10)
-    + (exerciseQuality.score * 0.09),
-  )));
+  const readiness = computeStudyReadinessBreakdown(sanitized);
+  const studyReadinessScore = readiness.materialReadiness;
 
   return {
     ...sanitized,
     qualityScores,
     studyReadinessScore,
+    materialReadinessScore: readiness.materialReadiness,
+    studentPreparationScore: readiness.studentPreparation,
   };
 }
 
@@ -2269,15 +2163,16 @@ export function analyzeStudyMaterial(
   const title = detectSubject(clean, sourceName);
   const keyConcepts = keywords(
     clean,
-    narrativeMode ? 6 : 10
-  ).map((k) => k[0].toUpperCase() + k.slice(1));
+    narrativeMode ? 8 : 14,
+    classification,
+  );
 
   const light = pickSentences(clean, 8);
   const medium = pickSentences(clean, 16);
   const pro = pickSentences(clean, 28);
-  const summaries = buildSummaries(title, clean, classification);
+  const summaries = buildSummaries(title, clean, classification, manual.difficultyLevel);
 
-  const difficultWords = buildProfessionalVocabulary(clean, words);
+  const difficultWords = buildProfessionalVocabulary(clean, words, classification);
   const flashcards = buildProfessionalFlashcards(keyConcepts, classification, manual.difficultyLevel);
   const quiz = narrativeMode ? buildNarrativeQuiz(clean, title) : buildProgressiveQuiz(keyConcepts, classification, manual.difficultyLevel);
   const fallbackOpenQuestions = buildOpenQuestions(title, keyConcepts, narrativeMode, clean);

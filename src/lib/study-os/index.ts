@@ -149,6 +149,46 @@ export {
 } from "@/lib/study-os/study-reminders";
 
 export {
+  computeMaterialReadiness,
+  computeStudentPreparation,
+  computeStudyReadinessBreakdown,
+  type StudyReadinessBreakdown,
+  type StudentActivityInput,
+} from "@/lib/study-os/study-readiness";
+
+export {
+  extractStudyKeywords,
+  isBannedStudyConcept,
+  STUDY_DIDACTIC_STOP_WORDS,
+} from "@/lib/study-os/study-keywords";
+
+export {
+  buildStudyTermDefinition,
+  isRealStudyDefinition,
+} from "@/lib/study-os/study-vocabulary";
+
+export {
+  composeStudySummaries,
+  ensureComposedSummary,
+  isExtractiveSummaryDefect,
+} from "@/lib/study-os/study-summary-composer";
+
+export {
+  getSummaryModeLabels,
+  getUniversitySummaryTitle,
+  type SummaryModeLabel,
+} from "@/lib/study-os/study-summary-labels";
+
+export {
+  evaluateKeywordQuality,
+  evaluateStudyTextQuality,
+  evaluateSummaryQuality,
+  hasStudyPlaceholderText,
+  STUDY_TEXT_READY_MESSAGE,
+  type StudyTextSourceKind,
+} from "@/lib/study-os/study-quality-gates";
+
+export {
   buildInsufficientStudySession,
   buildTopicModeSession,
   classifyStudyInput,

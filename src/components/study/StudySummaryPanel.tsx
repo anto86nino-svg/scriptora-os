@@ -7,6 +7,7 @@ import {
   RIASSUNTO_PRO_LEVELS,
   type RiassuntoProSection,
 } from "@/lib/study-os/riassunti-pro";
+import { getSummaryModeLabels } from "@/lib/study-os/study-summary-labels";
 import type { RiassuntoProLevel, StudyKernelPlan } from "@/lib/study-os/study-intelligence-kernel";
 import { StudyDictionaryPopover } from "@/components/study/StudyDictionaryPopover";
 
@@ -22,20 +23,12 @@ interface StudySummaryPanelProps {
   initialLevel?: RiassuntoProLevel;
   onLevelChange?: (level: RiassuntoProLevel) => void;
   kernelPlan?: StudyKernelPlan | null;
+  difficultyLevel?: 1 | 2 | 3 | 4 | 5;
 }
 
-const SUMMARY_MODE_LABELS: Array<{ key: StudySummaryMode; title: string; badge: string }> = [
-  { key: "brief", title: "Breve", badge: "Sintesi rapida" },
-  { key: "complete", title: "Completo", badge: "Studio base" },
-  { key: "university", title: "Universitario", badge: "Approfondito" },
-  { key: "oral", title: "Interrogazione", badge: "Risposta a voce" },
-  { key: "ultraSimple", title: "Ultra semplice", badge: "Spiegato facile" },
-  { key: "quickReview", title: "Ripasso veloce", badge: "5 minuti" },
-  { key: "chronological", title: "Cronologico", badge: "Sequenza" },
-  { key: "causeEffect", title: "Causa-effetto", badge: "Relazioni" },
-  { key: "bulletPoints", title: "Punti elenco", badge: "Checklist" },
-  { key: "oralExam", title: "Esame orale", badge: "Metodo professore" },
-];
+function useSummaryModeLabels(difficultyLevel: 1 | 2 | 3 | 4 | 5 = 3) {
+  return useMemo(() => getSummaryModeLabels(difficultyLevel), [difficultyLevel]);
+}
 
 function RiassuntoProPanel({
   section,
@@ -325,11 +318,13 @@ export function StudySummaryPanel({
   initialLevel,
   onLevelChange,
   kernelPlan,
+  difficultyLevel = 3,
 }: StudySummaryPanelProps) {
   const [level, setLevel] = useState<RiassuntoProLevel>(initialLevel ?? recommendedLevel ?? "dettagliato");
   const lightCompressed = compressLightSummary(lightSummary);
   const notesSections = parseStudyNotesPro(studyNotesPro);
-  const modeCards = SUMMARY_MODE_LABELS
+  const summaryModeLabels = useSummaryModeLabels(difficultyLevel);
+  const modeCards = summaryModeLabels
     .map((mode) => ({ ...mode, text: summaries?.[mode.key] || "" }))
     .filter((mode) => mode.text.trim().length > 0);
 

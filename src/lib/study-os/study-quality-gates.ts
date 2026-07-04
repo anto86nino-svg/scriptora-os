@@ -21,6 +21,11 @@ export const STUDY_TEXT_NOT_READABLE_MESSAGE =
 export const STUDY_TEXT_WARNING_MESSAGE =
   "Ho letto il testo, ma alcune parti sembrano poco chiare. Puoi continuare, ma il materiale potrebbe essere meno preciso.";
 
+export const STUDY_TEXT_READY_MESSAGE =
+  "Materiale pronto per lo studio.";
+
+export type StudyTextSourceKind = "pasted" | "pdf" | "docx" | "epub" | "image" | "ocr" | "unknown";
+
 const COMMON_WORDS = new Set([
   "anche", "come", "della", "delle", "degli", "dopo", "essere", "molto", "nella", "nelle",
   "parte", "perche", "prima", "questa", "questo", "senza", "sopra", "sotto", "stato", "tutto",
@@ -29,7 +34,24 @@ const COMMON_WORDS = new Set([
 ]);
 
 const PLACEHOLDER_PATTERN =
-  /\b(la spiegazione sta nel contesto|come indicato nel manoscritto|questo termine è importante nel testo|questo termine e' importante nel testo|dipende dal contesto|non disponibile|placeholder|n\/a)\b/i;
+  /\b(la spiegazione sta nel contesto|come indicato nel manoscritto|questo termine è importante nel testo|questo termine e' importante nel testo|dipende dal contesto|non disponibile|placeholder|n\/a|definizione scolastica:|concetto da spiegare con definizione|da spiegare con definizione)\b/i;
+
+const VOCABULARY_PLACEHOLDER_PATTERN =
+  /\b(definizione \+ esempio|collegalo al tema centrale|testo incollato|definizione scolastica)\b/i;
+
+export function resolveStudyTextSourceKind(sourceType?: string): StudyTextSourceKind {
+  const kind = String(sourceType || "").toLowerCase();
+  if (kind === "image" || kind === "ocr") return "image";
+  if (kind === "pdf") return "pdf";
+  if (kind === "docx" || kind === "doc") return "docx";
+  if (kind === "epub") return "epub";
+  if (kind === "txt" || kind === "text" || kind === "md" || kind === "markdown" || kind === "pasted") return "pasted";
+  return "unknown";
+}
+
+function isPastedOrDocumentSource(kind: StudyTextSourceKind): boolean {
+  return kind === "pasted" || kind === "pdf" || kind === "docx" || kind === "epub";
+}
 
 function clampScore(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -74,6 +96,8 @@ export function evaluateStudyTextQuality(
   text: string,
   options: { sourceType?: string; ocrConfidence?: number; minWords?: number } = {},
 ): StudyTextQualityReport {
+  const sourceKind = resolveStudyTextSourceKind(options.sourceType);
+  const pastedOrDocument = isPastedOrDocumentSource(sourceKind);
   const normalized = String(text || "")
     .replace(/\r\n?/g, "\n")
     .replace(/[ \t]+/g, " ")
@@ -85,6 +109,8 @@ export function evaluateStudyTextQuality(
   const minWords = options.minWords ?? 40;
   const issues: string[] = [];
   const suspiciousLines: string[] = [];
+  const paragraphs = normalized.split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean);
+  const hasCoherentParagraphs = paragraphs.length >= 2 && paragraphs.some((part) => wordsOf(part).length >= 20);
   const formulaSignals = normalized.match(
     /[=<>±√∑∫π^*]|(?:\b\d+\/\d+\b)|(?:\b(?:formula|equazione|funzione|teorema|forza|energia|massa|accelerazione|velocità|corrente|tensione)\b)/gi,
   ) || [];
@@ -115,7 +141,21 @@ export function evaluateStudyTextQuality(
   suspiciousLines.push(...fragmentedLines.slice(0, 4));
 
   const structuredSentences = sentences.filter((sentence) => wordsOf(sentence).length >= 6 && hasVerbLikeStructure(sentence));
-  if (words.length >= minWords && !formulaRichText && structuredSentences.length < Math.max(1, Math.floor(sentences.length * 0.25))) {
+  const verbLessSentences = sentences.filter((sentence) => wordsOf(sentence).length >= 4 && !hasVerbLikeStructure(sentence));
+  const verbLessRatio = sentences.length ? verbLessSentences.length / sentences.length : 0;
+  const structuredRatio = sentences.length ? structuredSentences.length / sentences.length : 0;
+  const shouldCheckStructure = sourceKind === "image" || sourceKind === "ocr" || typeof options.ocrConfidence === "number";
+  const lacksStructureProof =
+    structuredSentences.length < Math.max(2, Math.floor(sentences.length * 0.18))
+    && verbLessRatio > 0.42
+    && !hasCoherentParagraphs;
+  if (
+    words.length >= minWords
+    && !formulaRichText
+    && shouldCheckStructure
+    && lacksStructureProof
+    && !(pastedOrDocument && structuredRatio >= 0.22 && hasCoherentParagraphs)
+  ) {
     issues.push("frasi senza struttura minima");
   }
 
@@ -133,6 +173,9 @@ export function evaluateStudyTextQuality(
   score -= Math.min(18, fragmentedLines.length * 2);
   if (structuredSentences.length < 1 && words.length >= minWords && !formulaRichText) score -= 18;
   if (typeof options.ocrConfidence === "number") score -= Math.max(0, 72 - options.ocrConfidence) * 0.65;
+  if (pastedOrDocument && hasCoherentParagraphs && structuredRatio >= 0.2) score += 12;
+  if (pastedOrDocument && words.length >= 200 && structuredRatio >= 0.25) score += 6;
+  if (pastedOrDocument && issues.length === 0 && words.length >= 150) score = Math.max(score, 92);
   score = clampScore(score);
 
   const hardFail =
@@ -144,13 +187,23 @@ export function evaluateStudyTextQuality(
     || shortRuns.length >= 4
     || (typeof options.ocrConfidence === "number" && options.ocrConfidence < 45);
 
-  const status: StudyQualityStatus = hardFail || score < 55 ? "fail" : score < 78 || issues.length > 0 ? "warning" : "pass";
+  const warningThreshold = pastedOrDocument ? 82 : 78;
+  const onlySoftIssues = issues.every((issue) =>
+    /confidenza OCR|righe che terminano|righe brevi/i.test(issue),
+  );
+  const status: StudyQualityStatus = hardFail || score < 55
+    ? "fail"
+    : score >= 90 && !hardFail && (issues.length === 0 || (pastedOrDocument && onlySoftIssues))
+      ? "pass"
+      : score < warningThreshold || issues.length > 0
+        ? "warning"
+        : "pass";
 
   return {
     status,
     score,
     reason: status === "pass"
-      ? "Testo leggibile e adatto alla generazione Study OS."
+      ? score >= 90 ? STUDY_TEXT_READY_MESSAGE : "Testo leggibile e adatto alla generazione Study OS."
       : status === "warning"
         ? STUDY_TEXT_WARNING_MESSAGE
         : STUDY_TEXT_NOT_READABLE_MESSAGE,
@@ -159,13 +212,37 @@ export function evaluateStudyTextQuality(
       ? "Riscatta foto, carica un'altra immagine o incolla il testo manualmente."
       : status === "warning"
         ? "Controlla il testo estratto prima di continuare."
-        : "Puoi generare il materiale di studio.",
+        : score >= 90 ? STUDY_TEXT_READY_MESSAGE : "Puoi generare il materiale di studio.",
     suspiciousLines: Array.from(new Set(suspiciousLines)).slice(0, 8),
   };
 }
 
 export function canGenerateStudyOutputs(report: StudyTextQualityReport | null | undefined): boolean {
   return !report || report.status !== "fail";
+}
+
+function hasTruncatedSummarySentence(text: string): boolean {
+  return /(?:\b(per|da|di|a|in|con|che|un|una)\s*\.|\bse uno Stato fosse entrato\.|presentavano la guerra come un modo per\.)\s*$/im.test(text);
+}
+
+function hasSummaryDuplication(text: string): boolean {
+  const compact = text.replace(/\s+/g, " ");
+  if (/\bLa Prima guerra mondiale La Prima guerra mondiale\b/i.test(compact)) return true;
+  if (compact.length > 4000) {
+    const chunks = compact.toLowerCase().match(/\b[\p{L}][\p{L}'’-]{5,}\s+[\p{L}][\p{L}'’-]{5,}\b/gu) || [];
+    const seen = new Set<string>();
+    for (const chunk of chunks) {
+      if (seen.has(chunk)) return true;
+      seen.add(chunk);
+    }
+    return false;
+  }
+  return /(.{18,}?)\1/i.test(compact);
+}
+
+function hasNonIntroductorySummaryStart(text: string): boolean {
+  const body = text.replace(/^Riassunto[^\n]*\n+/i, "").trim();
+  return /^Per la sua estensione\b/i.test(body);
 }
 
 export function evaluateSummaryQuality(summary: string, sourceText = ""): StudyOutputQualityReport {
@@ -181,6 +258,9 @@ export function evaluateSummaryQuality(summary: string, sourceText = ""): StudyO
   if (tableLines > 0 || /\|[^\n]+\|/.test(text)) issues.push("tabella usata nel campo riassunto");
   if (hasStudyPlaceholderText(text)) issues.push("placeholder nel riassunto");
   if (/\b(questo testo parla di|argomento importante|concetti vari)\b/i.test(text)) issues.push("frasi generiche");
+  if (hasTruncatedSummarySentence(text)) issues.push("frasi troncate nel riassunto");
+  if (hasSummaryDuplication(text)) issues.push("duplicazioni nel riassunto");
+  if (hasNonIntroductorySummaryStart(text)) issues.push("incipit non introduttivo");
 
   const score = clampScore(100 - issues.length * 24 - (words < 35 ? 20 : 0));
   return {
@@ -192,7 +272,12 @@ export function evaluateSummaryQuality(summary: string, sourceText = ""): StudyO
 
 export function ensureDiscursiveStudySummary(summary: string, fallback: string): string {
   const report = evaluateSummaryQuality(summary);
-  if (report.status !== "fail") return summary;
+  const defective =
+    report.status === "fail"
+    || hasTruncatedSummarySentence(summary)
+    || hasSummaryDuplication(summary)
+    || hasNonIntroductorySummaryStart(summary);
+  if (!defective) return summary;
 
   const lines = String(summary || fallback || "")
     .split("\n")
@@ -232,8 +317,11 @@ export function evaluateKeywordQuality(
   if (terms.some((term) => !isMeaningfulStudyKeyword(term))) issues.push("keyword casuali o frammenti OCR");
   if (new Set(terms.map((term) => term.toLowerCase())).size < terms.length) issues.push("keyword duplicate");
   if (words.some((item) => !item.simple || !item.technical || !item.example)) issues.push("definizioni incomplete");
-  if (words.some((item) => hasStudyPlaceholderText(`${item.simple || ""} ${item.technical || ""} ${item.example || ""} ${item.school || ""} ${item.advanced || ""}`))) {
+  if (words.some((item) => hasStudyPlaceholderText(`${item.simple || ""} ${item.technical || ""} ${item.example || ""} ${item.school || ""} ${item.advanced || ""} ${item.examQuestion || ""}`))) {
     issues.push("placeholder nelle spiegazioni");
+  }
+  if (words.some((item) => VOCABULARY_PLACEHOLDER_PATTERN.test(`${item.school || ""} ${item.simple || ""} ${item.technical || ""}`))) {
+    issues.push("definizioni generiche");
   }
   const score = clampScore(100 - issues.length * 25);
   const hardFail =

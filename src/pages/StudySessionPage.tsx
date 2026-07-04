@@ -79,6 +79,7 @@ import {
 import { STUDY_USAGE_LIMITS, formatStudyLimitMessage } from "@/lib/study-os/study-limits";
 import {
   STUDY_TEXT_NOT_READABLE_MESSAGE,
+  STUDY_TEXT_READY_MESSAGE,
   STUDY_TEXT_WARNING_MESSAGE,
   canGenerateStudyOutputs,
   evaluateStudyTextQuality,
@@ -412,12 +413,13 @@ export default function StudySessionPage() {
   const studyNoticeTimersRef = useRef<number[]>([]);
   const studyFallbackReasonRef = useRef<string | null>(null);
 
-  const initialActiveSection = useMemo<StudySection>(() => {
+  const initialActiveSection = useMemo<StudySection | null>(() => {
     const saved = uxSaved.activeSection;
     if (saved === "questions" || saved === "vocabulary") return "quiz";
-    return (TAB_CONFIG.some((tab) => tab.id === saved) ? saved : DEFAULT_STUDY_UX.activeSection) as StudySection;
+    if (TAB_CONFIG.some((tab) => tab.id === saved)) return saved as StudySection;
+    return null;
   }, [uxSaved.activeSection]);
-  const [activeSection, setActiveSection] = useState<StudySection>(initialActiveSection);
+  const [activeSection, setActiveSection] = useState<StudySection | null>(initialActiveSection);
   const [studyLanguage, setStudyLanguage] = useState<
     "Italian" | "English" | "Spanish" | "French" | "German"
   >("Italian");
@@ -494,6 +496,9 @@ export default function StudySessionPage() {
       return `${bookManifest.totalWords.toLocaleString("it-IT")} parole divise in ${bookManifest.chunks.length} sessioni. Scegli una sessione per iniziare.`;
     }
     if (sourceQualityBlocksGeneration) return STUDY_TEXT_NOT_READABLE_MESSAGE;
+    if (sourceTextQuality?.status === "pass" && (sourceTextQuality.score ?? 0) >= 90) {
+      return STUDY_TEXT_READY_MESSAGE;
+    }
     if (sourceTextQuality?.status === "warning" && studyInputKind.kind === "real_material") return STUDY_TEXT_WARNING_MESSAGE;
     if (wordCount < 40 && studyInputKind.kind === "topic_only") {
       return `Argomento rilevato: modalità esplorazione disponibile (${wordCount} parole). Non simulerò una sessione completa.`;
@@ -653,9 +658,8 @@ export default function StudySessionPage() {
     setCurrentStudySessionId(stored.id);
     setReadyStudySessionId(stored.id);
     try { localStorage.setItem("scriptora-last-study-session", stored.id); } catch { /* noop */ }
-    const nextSection = resolveKernelSection(text, name);
-    setActiveSection(nextSection);
-    saveStudyUxState({ activeSection: nextSection });
+    setActiveSection(null);
+    saveStudyUxState({ activeSection: "summary" });
     setRawText(stored.sourceText);
     setSourceName(stored.sourceName || name);
     const committed = resolveCommittedStudyResult(stored, enriched);
@@ -1598,7 +1602,7 @@ export default function StudySessionPage() {
       { id: "flashcards" as const, title: "Flashcard", desc: "Ripasso attivo", count: `${safeFlashcards.length} card`, status: sourceFailed ? "Bloccato" : "Pronto" },
       { id: "quiz" as const, title: "Quiz", desc: "Domande e interrogazione", count: `${safeCombinedQuiz.length + safeOpenQuestions.length} domande`, status: sourceFailed ? "Bloccato" : "Pronto" },
       { id: "exam" as const, title: "Verifica finale", desc: "Simulazione e risultati", count: `${examSimQuiz.length} quesiti`, status: sourceFailed ? "Bloccato" : "Da completare" },
-      { id: "progress" as const, title: "Progressi", desc: "Preparazione e memoria", count: `${safeResult.studyReadinessScore ?? 0}/100 readiness`, status },
+      { id: "progress" as const, title: "Progressi", desc: "Materiale e preparazione", count: `Materiale ${safeResult.materialReadinessScore ?? safeResult.studyReadinessScore ?? 0}/100`, status },
       { id: "certificates" as const, title: "Certificati", desc: "Attestati e risultati", count: "storico", status: "Archivio" },
       { id: "coach" as const, title: "Coach", desc: "Prossimo passo consigliato", count: safeResult.adaptiveCoach?.currentLevel || "piano", status },
     ].filter((card) => visibleTabs.some((tab) => tab.id === card.id));
@@ -1995,6 +1999,12 @@ export default function StudySessionPage() {
               placeholder="Incolla qui capitoli, appunti, dispense o una parte del libro..."
               className="scriptora-text-safe min-h-[240px] w-full min-w-0 max-w-full resize-y overflow-x-hidden rounded-2xl border border-white/10 bg-background/70 p-3 text-sm leading-6 text-foreground outline-none focus:border-emerald-300/40 sm:min-h-[280px] sm:p-4 lg:min-h-[420px]"
             />
+            {sourceTextQuality && sourceTextQuality.status === "pass" && (sourceTextQuality.score ?? 0) >= 90 && (
+              <div className="mt-3 rounded-2xl border border-emerald-300/25 bg-emerald-300/10 px-3 py-3 text-xs leading-5 text-emerald-50">
+                <p className="font-semibold">Materiale pronto per lo studio · qualità {sourceTextQuality.score}/100</p>
+                <p className="mt-1">{STUDY_TEXT_READY_MESSAGE}</p>
+              </div>
+            )}
             {sourceTextQuality && sourceTextQuality.status !== "pass" && (
               <div className={[
                 "mt-3 rounded-2xl border px-3 py-3 text-xs leading-5",
@@ -2321,6 +2331,51 @@ export default function StudySessionPage() {
                   </div>
                 )}
 
+                {activeSection === null ? (
+              <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
+                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.20em] text-emerald-200/80">Dashboard sessione</p>
+                    <h3 className="text-base font-semibold text-foreground">Scegli una cartella per iniziare</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Materiale pronto {(safeResult.materialReadinessScore ?? safeResult.studyReadinessScore ?? 0)}/100
+                      {" · "}
+                      Preparazione {safeResult.studentPreparationScore ?? 0}/100 — inizia quiz o flashcard per misurarla
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  {studyFolderCards.map((folder) => (
+                    <button
+                      key={folder.id}
+                      type="button"
+                      onClick={() => handleSectionChange(folder.id)}
+                      className="rounded-2xl border border-white/10 bg-background/35 p-3 text-left transition hover:border-emerald-200/50 hover:bg-emerald-200/10"
+                    >
+                      <span className="flex items-start justify-between gap-2">
+                        <span>
+                          <span className="block text-sm font-semibold text-foreground">{folder.title}</span>
+                          <span className="mt-1 block text-xs leading-5 text-muted-foreground">{folder.desc}</span>
+                        </span>
+                        <span className={[
+                          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase",
+                          folder.status === "Testo non leggibile" || folder.status === "Bloccato"
+                            ? "bg-rose-300 text-slate-950"
+                            : folder.status === "Da completare"
+                              ? "bg-amber-300 text-slate-950"
+                              : "bg-emerald-300 text-slate-950",
+                        ].join(" ")}
+                        >
+                          {folder.status}
+                        </span>
+                      </span>
+                      <span className="mt-2 block text-xs font-semibold text-emerald-100/80">{folder.count}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <>
                 <StudyMetricsCard
                   result={safeResult}
                   aiMode={aiMode}
@@ -2334,21 +2389,41 @@ export default function StudySessionPage() {
                 {kernelPlan && (
                   <StudyKernelBanner
                     plan={kernelPlan}
-                    activeSection={activeSection}
+                    activeSection={activeSection || "summary"}
                     onNavigate={handleSectionChange}
                     gapAnalysis={gapAnalysis.weakTopics.length || gapAnalysis.strongTopics.length ? gapAnalysis : null}
                   />
                 )}
 
-                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl">
+                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl lg:hidden">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-[0.20em] text-emerald-200/80">Sezione attiva</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {studyFolderCards.find((folder) => folder.id === activeSection)?.title || activeSection}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveSection(null)}
+                      className="ios-toolbar-button h-9 px-3 text-xs font-semibold text-emerald-100"
+                    >
+                      Cartelle
+                    </button>
+                  </div>
+                </div>
+
+                <div className="hidden rounded-3xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur-2xl lg:block">
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-[0.20em] text-emerald-200/80">Cartelle sessione</p>
                       <h3 className="text-base font-semibold text-foreground">Scegli cosa studiare adesso</h3>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      Readiness {safeResult.studyReadinessScore ?? 0}/100
-                    </span>
+                    <div className="text-xs text-muted-foreground">
+                      <span>Materiale pronto {(safeResult.materialReadinessScore ?? safeResult.studyReadinessScore ?? 0)}/100</span>
+                      <span className="mx-2">·</span>
+                      <span>Preparazione {safeResult.studentPreparationScore ?? 0}/100</span>
+                    </div>
                   </div>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                     {studyFolderCards.map((folder) => (
@@ -2400,7 +2475,7 @@ export default function StudySessionPage() {
                         onClick={() => handleSectionChange(tab.id)}
                         className={[
                           "min-h-[44px] shrink-0 snap-start rounded-2xl px-4 py-2.5 text-sm font-semibold transition",
-                          studyTabHighlightClass(tab.id, activeSection, kernelPlan),
+                          studyTabHighlightClass(tab.id, activeSection || "summary", kernelPlan),
                         ].join(" ")}
                       >
                         {tab.icon} {tab.label}
@@ -2432,6 +2507,7 @@ export default function StudySessionPage() {
                     initialLevel={riassuntoLevel}
                     onLevelChange={setRiassuntoLevel}
                     kernelPlan={kernelPlan}
+                    difficultyLevel={difficultyLevel}
                   />
                 )}
 
@@ -2574,6 +2650,8 @@ export default function StudySessionPage() {
                     />
                   </div>
                 )}
+              </>
+            )}
               </>
             )}
           </section>
