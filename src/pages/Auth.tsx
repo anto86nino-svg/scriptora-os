@@ -14,9 +14,6 @@ import { hasValidConsent } from "@/lib/legal-consent";
 import { t, tt, useUILanguage } from "@/lib/i18n";
 import { getUserFriendlyError } from "@/lib/user-friendly-error";
 
-const OAUTH_CALLBACK_HANDLED_KEY = "scriptora:oauth-callback-handled";
-const OAUTH_AUTO_RETRY_KEY = "scriptora:oauth-auto-retry";
-
 const AUTH_DEBUG_PREFIX = "[auth-debug]";
 
 function logAuthDebug(label: string, details?: Record<string, unknown>) {
@@ -158,58 +155,6 @@ const OAUTH_COMPLETION_TIMEOUT_MS = 15_000;
 const OAUTH_SESSION_EXPIRED_MESSAGE =
   "Sessione Google scaduta o interrotta. Riprova l'accesso da questa stessa finestra.";
 
-function isPkceVerifierMissingError(error: { name?: string; message?: string }) {
-  const message = error.message?.toLowerCase() ?? "";
-  return (
-    error.name === "AuthPKCECodeVerifierMissingError" ||
-    message.includes("code verifier") ||
-    (message.includes("pkce") && message.includes("verifier"))
-  );
-}
-
-export function shouldRetryOAuthCallbackInFreshFlow(input: {
-  hasCode: boolean;
-  hasSession: boolean;
-  recoverable: boolean;
-  alreadyRetried: boolean;
-}) {
-  return input.hasCode && !input.hasSession && input.recoverable && !input.alreadyRetried;
-}
-
-export function shouldWaitForLateOAuthSession(input: {
-  hasCode: boolean;
-  hasSession: boolean;
-  alreadyRetried: boolean;
-}) {
-  return input.hasCode && !input.hasSession && input.alreadyRetried;
-}
-
-export function shouldRetryOAuthTimeoutInFreshFlow(input: {
-  hasCode: boolean;
-  hasSession: boolean;
-  alreadyRetried: boolean;
-}) {
-  return input.hasCode && !input.hasSession && !input.alreadyRetried;
-}
-
-/** Single owner of exchangeCodeForSession for PKCE OAuth callbacks. */
-async function tryEstablishSessionFromOAuthCallback(code: string) {
-  const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-  if (!exchangeError) {
-    return { session: exchanged.session ?? null, recoverable: !exchanged.session };
-  }
-
-  if (isPkceVerifierMissingError(exchangeError)) {
-    const { data: retryData } = await supabase.auth.getSession();
-    return {
-      session: retryData.session?.user ? retryData.session : null,
-      recoverable: true,
-    };
-  }
-
-  throw exchangeError;
-}
-
 /**
  * Pagina /auth — Login + Registrazione.
  * Email + password (verifica obbligatoria) e Google OAuth.
@@ -243,12 +188,6 @@ export default function AuthPage() {
     redirectingRef.current = true;
     clearAuthCallbackUrl();
     releaseOAuthLoading();
-    try {
-      sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
-      sessionStorage.removeItem(OAUTH_AUTO_RETRY_KEY);
-    } catch {
-      /* private mode */
-    }
     if (!hasValidConsent()) {
       navigate("/?legalRequired=true", {
         replace: true,
@@ -261,130 +200,67 @@ export default function AuthPage() {
   }, [navigate, releaseOAuthLoading]);
 
   useEffect(() => {
-    const { hasCallback, error, code } = oauthCallbackRef.current;
-    const liveCallback = getAuthCallbackState();
-    logAuthDebug("Auth mounted", {
-      href: typeof window !== "undefined" ? window.location.href : null,
-      frozenHasCallback: hasCallback,
-      liveHasCallback: liveCallback.hasCallback,
-      hasCode: !!code,
-      hasError: !!error,
-      error,
-      storage: getStorageDebugState(),
-    });
+    const { hasCallback, error } = oauthCallbackRef.current;
 
     if (error) {
-      console.warn(AUTH_DEBUG_PREFIX, "OAuth callback error", { error });
       toast.error(tt("google_access_incomplete_with_error", { message: error }));
       clearAuthCallbackUrl();
       releaseOAuthLoading();
       return;
     }
 
-    if (hasCallback) {
-      setAuthenticating(true);
-      setBusy(true);
-    }
-
     let cancelled = false;
     let timeoutId: number | undefined;
-
-    const failOAuth = (message?: string) => {
-      if (cancelled) return;
-      if (timeoutId) window.clearTimeout(timeoutId);
-      clearAuthCallbackUrl();
-      releaseOAuthLoading();
-      try {
-        sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
-        sessionStorage.removeItem(OAUTH_AUTO_RETRY_KEY);
-      } catch {
-        /* private mode */
-      }
-      if (message) {
-        toast.error(tt("google_access_incomplete_with_error", { message }));
-      } else {
-        toast.error(t("google_access_incomplete"));
-      }
-    };
 
     const finishWithSession = () => {
       if (cancelled) return;
       if (timeoutId) window.clearTimeout(timeoutId);
+      clearAuthCallbackUrl();
       goToDashboard();
     };
 
-    const scheduleOAuthTimeout = () => {
-      if (!hasCallback || timeoutId) return;
-      timeoutId = window.setTimeout(async () => {
-        const { data: lateData, error: lateError } = await supabase.auth.getSession();
-        logAuthDebug("oauth completion timeout", {
-          session: summarizeSession(lateData.session),
-          error: summarizeAuthError(lateError),
-        });
-        if (cancelled) return;
-        if (lateData.session?.user) {
-          finishWithSession();
-          return;
-        }
-        if (lateError) console.error(AUTH_DEBUG_PREFIX, "Late session check failed", summarizeAuthError(lateError));
-        const alreadyRetried = (() => {
-          try {
-            return sessionStorage.getItem(OAUTH_AUTO_RETRY_KEY) === "1";
-          } catch {
-            return true;
-          }
-        })();
-        if (shouldRetryOAuthTimeoutInFreshFlow({
-          hasCode: !!code,
-          hasSession: false,
-          alreadyRetried,
-        })) {
-          try {
-            sessionStorage.setItem(OAUTH_AUTO_RETRY_KEY, "1");
-            sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
-          } catch {
-            /* private mode */
-          }
-          logAuthDebug("oauth completion timeout recoverable — restarting Google flow once");
-          clearAuthCallbackUrl();
-          const { error: retryError } = await supabase.auth.signInWithOAuth({
-            provider: "google",
-            options: { redirectTo: getAuthRedirectUrl() },
-          });
-          if (retryError) {
-            console.error(AUTH_DEBUG_PREFIX, "OAuth timeout retry failed", summarizeAuthError(retryError));
-            failOAuth(getUserFriendlyError(retryError, {
-              fallback: OAUTH_SESSION_EXPIRED_MESSAGE,
-            }));
-          }
-          return;
-        }
-        failOAuth(OAUTH_SESSION_EXPIRED_MESSAGE);
-      }, OAUTH_COMPLETION_TIMEOUT_MS);
+    const failWithoutSession = () => {
+      if (cancelled) return;
+      clearAuthCallbackUrl();
+      releaseOAuthLoading();
+      toast.error(
+        tt("google_access_incomplete_with_error", {
+          message: OAUTH_SESSION_EXPIRED_MESSAGE,
+        }),
+      );
     };
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      logAuthDebug("onAuthStateChange", {
-        event: _event,
-        session: summarizeSession(newSession),
-      });
-      if (newSession?.user) finishWithSession();
-    });
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, newSession) => {
+        logAuthDebug("onAuthStateChange", {
+          event: _event,
+          session: summarizeSession(newSession),
+        });
 
-    const completeOAuthCallback = async () => {
+        if (newSession?.user) {
+          finishWithSession();
+        }
+      },
+    );
+
+    const resolveSession = async () => {
       const { data, error: sessionError } = await supabase.auth.getSession();
+
       logAuthDebug("getSession result", {
         session: summarizeSession(data.session),
         error: summarizeAuthError(sessionError),
       });
+
       if (cancelled) return;
+
       if (sessionError) {
-        console.error(AUTH_DEBUG_PREFIX, "Session check failed", summarizeAuthError(sessionError));
-        failOAuth(getUserFriendlyError(sessionError, {
-          fallback: OAUTH_SESSION_EXPIRED_MESSAGE,
-        }));
-        return;
+        console.error(
+          AUTH_DEBUG_PREFIX,
+          "Session check failed",
+          summarizeAuthError(sessionError),
+        );
       }
+
       if (data.session?.user) {
         finishWithSession();
         return;
@@ -395,100 +271,23 @@ export default function AuthPage() {
         return;
       }
 
-      const callbackFingerprint = code || error || "oauth-callback";
-      try {
-        if (sessionStorage.getItem(OAUTH_CALLBACK_HANDLED_KEY) === callbackFingerprint) {
-          scheduleOAuthTimeout();
+      // Supabase elabora automaticamente il ?code PKCE.
+      // Attendiamo un eventuale evento SIGNED_IN senza iniziare un secondo OAuth.
+      timeoutId = window.setTimeout(async () => {
+        const { data: lateData } = await supabase.auth.getSession();
+
+        if (cancelled) return;
+
+        if (lateData.session?.user) {
+          finishWithSession();
           return;
         }
-        sessionStorage.setItem(OAUTH_CALLBACK_HANDLED_KEY, callbackFingerprint);
-      } catch {
-        /* private mode */
-      }
 
-      if (callbackHandledRef.current) {
-        scheduleOAuthTimeout();
-        return;
-      }
-      callbackHandledRef.current = true;
-
-      logAuthDebug("OAuth callback resolving session", { hasCode: !!code });
-
-      if (code) {
-        try {
-          const result = await tryEstablishSessionFromOAuthCallback(code);
-          logAuthDebug("OAuth session established", { session: summarizeSession(result.session), recoverable: result.recoverable });
-          if (cancelled) return;
-          if (result.session?.user) {
-            finishWithSession();
-            return;
-          }
-          const alreadyRetried = (() => {
-            try {
-              return sessionStorage.getItem(OAUTH_AUTO_RETRY_KEY) === "1";
-            } catch {
-              return true;
-            }
-          })();
-          if (shouldRetryOAuthCallbackInFreshFlow({
-            hasCode: !!code,
-            hasSession: false,
-            recoverable: result.recoverable,
-            alreadyRetried,
-          })) {
-            try {
-              sessionStorage.setItem(OAUTH_AUTO_RETRY_KEY, "1");
-              sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
-            } catch {
-              /* private mode */
-            }
-            logAuthDebug("OAuth callback recoverable — restarting Google flow once");
-            clearAuthCallbackUrl();
-            const { error: retryError } = await supabase.auth.signInWithOAuth({
-              provider: "google",
-              options: { redirectTo: getAuthRedirectUrl() },
-            });
-            if (retryError) throw retryError;
-            return;
-          }
-          if (shouldWaitForLateOAuthSession({
-            hasCode: !!code,
-            hasSession: false,
-            alreadyRetried,
-          })) {
-            logAuthDebug("OAuth callback retry already attempted — waiting for late session");
-            scheduleOAuthTimeout();
-            return;
-          }
-          toast.error(OAUTH_SESSION_EXPIRED_MESSAGE);
-          clearAuthCallbackUrl();
-          releaseOAuthLoading();
-          try {
-            sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
-          } catch {
-            /* private mode */
-          }
-          return;
-        } catch (callbackError) {
-          if (cancelled) return;
-          console.error(AUTH_DEBUG_PREFIX, "OAuth callback failed", callbackError);
-          failOAuth(getUserFriendlyError(callbackError, {
-            fallback: OAUTH_SESSION_EXPIRED_MESSAGE,
-          }));
-          return;
-        }
-      }
-
-      scheduleOAuthTimeout();
+        failWithoutSession();
+      }, OAUTH_COMPLETION_TIMEOUT_MS);
     };
 
-    completeOAuthCallback().catch((callbackError) => {
-      if (cancelled) return;
-      console.error(AUTH_DEBUG_PREFIX, "OAuth callback failed", callbackError);
-      failOAuth(getUserFriendlyError(callbackError, {
-        fallback: OAUTH_SESSION_EXPIRED_MESSAGE,
-      }));
-    });
+    void resolveSession();
 
     return () => {
       cancelled = true;
@@ -512,7 +311,6 @@ export default function AuthPage() {
   }, [logoClicks]);
 
   const handleLogoClick = () => {
-    if (!import.meta.env.DEV) return;
     const next = logoClicks + 1;
     if (next >= 3) {
       setLogoClicks(0);
@@ -579,12 +377,6 @@ export default function AuthPage() {
 
   const handleGoogle = async () => {
     setBusy(true);
-    try {
-      sessionStorage.removeItem(OAUTH_CALLBACK_HANDLED_KEY);
-      sessionStorage.removeItem(OAUTH_AUTO_RETRY_KEY);
-    } catch {
-      /* private mode */
-    }
     logAuthDebug("signInWithOAuth start", { redirectTo: getAuthRedirectUrl() });
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",

@@ -39,7 +39,7 @@ export const frozenOAuthCallback = captureOAuthCallbackFromUrl();
 // flowType:"pkce" never uses hash-fragment access_token/refresh_token.
 // Any such tokens in the hash are either a stale implicit-flow redirect or
 // a misconfigured provider response. Supabase's internal URL parser can
-// still pick them up even with detectSessionInUrl:false and throw
+// stale implicit-flow tokens can still interfere with client startup and throw
 // UNAUTHORIZED_INVALID_JWT_FORMAT. Strip them unconditionally.
 try {
   if (typeof window !== "undefined" && window.location.hash) {
@@ -67,9 +67,9 @@ export const supabase = isSupabaseConfigured
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        // PKCE ?code= exchange is owned by Auth.tsx — not client bootstrap.
-        // Implicit-flow hash tokens are stripped above before createClient runs.
-        detectSessionInUrl: false,
+        // Supabase è l'unico proprietario del callback OAuth PKCE.
+        // Elabora automaticamente il parametro ?code e persiste la sessione.
+        detectSessionInUrl: true,
         flowType: "pkce",
       },
     })

@@ -1,67 +1,45 @@
 import { describe, expect, it } from "vitest";
-import {
-  shouldRetryOAuthCallbackInFreshFlow,
-  shouldRetryOAuthTimeoutInFreshFlow,
-  shouldWaitForLateOAuthSession,
-} from "./Auth";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
-describe("Google OAuth callback recovery", () => {
-  it("restarts Google flow once for recoverable PKCE callbacks without a session", () => {
-    expect(shouldRetryOAuthCallbackInFreshFlow({
-      hasCode: true,
-      hasSession: false,
-      recoverable: true,
-      alreadyRetried: false,
-    })).toBe(true);
+function readSource(path: string): string {
+  return readFileSync(resolve(process.cwd(), path), "utf8");
+}
+
+describe("Google OAuth PKCE architecture", () => {
+  it("lets the Supabase client own the PKCE callback", () => {
+    const source = readSource("src/integrations/supabase/client.ts");
+
+    expect(source).toContain("detectSessionInUrl: true");
+    expect(source).toContain('flowType: "pkce"');
+    expect(source).toContain("persistSession: true");
+    expect(source).toContain("autoRefreshToken: true");
   });
 
-  it("does not retry when a session exists or retry was already attempted", () => {
-    expect(shouldRetryOAuthCallbackInFreshFlow({
-      hasCode: true,
-      hasSession: true,
-      recoverable: true,
-      alreadyRetried: false,
-    })).toBe(false);
+  it("does not manually exchange the OAuth code", () => {
+    const source = readSource("src/pages/Auth.tsx");
 
-    expect(shouldRetryOAuthCallbackInFreshFlow({
-      hasCode: true,
-      hasSession: false,
-      recoverable: true,
-      alreadyRetried: true,
-    })).toBe(false);
+    expect(source).not.toContain("exchangeCodeForSession");
+    expect(source).not.toContain("tryEstablishSessionFromOAuthCallback");
   });
 
-  it("waits for a late session instead of hard-failing after the automatic retry", () => {
-    expect(shouldWaitForLateOAuthSession({
-      hasCode: true,
-      hasSession: false,
-      alreadyRetried: true,
-    })).toBe(true);
+  it("does not automatically restart the Google OAuth flow", () => {
+    const source = readSource("src/pages/Auth.tsx");
 
-    expect(shouldWaitForLateOAuthSession({
-      hasCode: true,
-      hasSession: true,
-      alreadyRetried: true,
-    })).toBe(false);
+    expect(source).not.toContain("OAUTH_AUTO_RETRY_KEY");
+    expect(source).not.toContain("OAUTH_CALLBACK_HANDLED_KEY");
+    expect(source).not.toContain("shouldRetryOAuthCallbackInFreshFlow");
+    expect(source).not.toContain("shouldRetryOAuthTimeoutInFreshFlow");
+    expect(source).not.toContain("shouldWaitForLateOAuthSession");
   });
 
-  it("restarts Google once when the callback timeout has a code but no session", () => {
-    expect(shouldRetryOAuthTimeoutInFreshFlow({
-      hasCode: true,
-      hasSession: false,
-      alreadyRetried: false,
-    })).toBe(true);
+  it("starts Google OAuth only from the explicit login handler", () => {
+    const source = readSource("src/pages/Auth.tsx");
 
-    expect(shouldRetryOAuthTimeoutInFreshFlow({
-      hasCode: true,
-      hasSession: false,
-      alreadyRetried: true,
-    })).toBe(false);
+    const calls = source.match(/signInWithOAuth\s*\(/g) ?? [];
 
-    expect(shouldRetryOAuthTimeoutInFreshFlow({
-      hasCode: false,
-      hasSession: false,
-      alreadyRetried: false,
-    })).toBe(false);
+    expect(calls).toHaveLength(1);
+    expect(source).toContain('provider: "google"');
+    expect(source).toContain("redirectTo: getAuthRedirectUrl()");
   });
 });

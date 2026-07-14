@@ -77,7 +77,7 @@ export function ProtectedRoute({
     );
   }
 
-  const devBypassAuth = import.meta.env.DEV && isDevMode();
+  const devBypassAuth = isDevMode();
   if (!user && !devBypassAuth) {
     return <Navigate to="/auth" state={{ from: location.pathname }} replace />;
   }
